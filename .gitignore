@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Internal/Private documents (not for public repo)
+plan.md
+BUSINESS.md
+*.private.md
+
+# Local storage (user data)
+.nomoreaislop/
+
+# Temporary files
+*.tmp
+*.temp
