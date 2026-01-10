@@ -1,8 +1,8 @@
 # NoMoreAISlop - Data Models Specification
 
-> Version: 1.0.0
-> Last Updated: 2026-01-09
-> Status: Draft
+> Version: 2.1.0
+> Last Updated: 2026-01-10
+> Status: Current
 
 ---
 
@@ -363,9 +363,326 @@ export type Evaluation = z.infer<typeof EvaluationSchema>;
 
 ---
 
-## 4. Storage: Analysis JSON
+## 4. Analysis Dimensions (v2.1)
 
-### 4.1 Stored Analysis Schema
+### 4.1 Overview
+
+Version 2.1 introduces multi-dimensional analysis that goes beyond simple ratings. Each dimension provides quantified metrics, actionable insights, and personalized recommendations.
+
+### 4.2 AI Coding Style Types
+
+The AI Coding Style Type is an MBTI-like personality type for developers. All types are positive, each with unique strengths and growth points.
+
+```typescript
+type CodingStyleType = 'architect' | 'scientist' | 'collaborator' | 'speedrunner' | 'craftsman';
+
+interface TypeResult {
+  primaryType: CodingStyleType;
+  distribution: Record<CodingStyleType, number>; // percentages that sum to 100
+  evidence: ConversationEvidence[];
+  metrics: SessionMetrics;
+  sessionCount: number;
+  analyzedAt: string; // ISO 8601
+}
+
+interface ConversationEvidence {
+  type: CodingStyleType;
+  quote: string;
+  timestamp: string; // ISO 8601
+  explanation: string;
+}
+
+interface SessionMetrics {
+  avgPromptLength: number;
+  avgFirstPromptLength: number;
+  maxPromptLength: number;
+  avgTurnsPerSession: number;
+  totalTurns: number;
+  questionFrequency: number;
+  whyHowWhatCount: number;
+  toolUsage: {
+    read: number;
+    grep: number;
+    glob: number;
+    task: number;
+    plan: number;
+    bash: number;
+    write: number;
+    edit: number;
+    total: number;
+  };
+  modificationRequestCount: number;
+  modificationRate: number;
+  refactorKeywordCount: number;
+  styleKeywordCount: number;
+  qualityTermCount: number;
+  positiveFeedbackCount: number;
+  negativeFeedbackCount: number;
+  avgCycleTimeSeconds: number;
+  sessionDurationSeconds: number;
+}
+```
+
+#### The 5 AI Coding Style Types
+
+1. **Architect** (🏗️): Strategic thinker who plans before diving into code
+   - Strengths: Systematic approach, maximizes AI implementation speed, high consistency
+   - Growth: Quick prototyping can sometimes be more efficient
+
+2. **Scientist** (🔬): Truth-seeker who always verifies AI output
+   - Strengths: Catches bugs early, high code quality, low AI dependency
+   - Growth: Verifying everything can slow velocity
+
+3. **Collaborator** (🤝): Partnership master who finds answers through dialogue
+   - Strengths: Maximizes AI synergy, quality through iteration, flexible problem solving
+   - Growth: Clearer initial requirements could reduce turns
+
+4. **Speedrunner** (⚡): Agile executor who delivers through fast iteration
+   - Strengths: Rapid prototyping, new discoveries through experimentation, high output
+   - Growth: Technical debt may accumulate
+
+5. **Craftsman** (🔧): Artisan who prioritizes code quality above all
+   - Strengths: Maintainable code, codebase consistency, minimizes technical debt
+   - Growth: Perfectionism may delay deployment
+
+### 4.3 AI Collaboration Mastery Score
+
+Measures a developer's mastery of effective AI collaboration. Score 0-100: higher is better (more collaborative mastery).
+
+**Source**: [Collaborative Intelligence in Software Development](https://anthropic.com/research)
+
+```typescript
+interface AICollaborationMasteryResult {
+  score: number; // 0-100, higher is better
+  level: 'novice' | 'developing' | 'proficient' | 'expert';
+  breakdown: {
+    contextEngineering: {
+      score: number;                // 0-100
+      fileReferences: number;        // Count of explicit file/path references
+      constraintsMentioned: number;  // Count of constraints specified
+      patternReferences: number;     // Count of existing code pattern references
+    };
+    structuredPlanning: {
+      score: number;                // 0-100
+      todoWriteUsage: number;        // Count of todo write operations
+      stepByStepPlans: number;       // Count of step-by-step request patterns
+      specFileReferences: number;    // Count of spec/doc references
+    };
+    aiOrchestration: {
+      score: number;                // 0-100
+      taskToolUsage: number;         // Count of task tool invocations
+      multiAgentSessions: number;    // Count of multi-agent collaboration patterns
+      parallelWorkflows: number;     // Count of parallel execution patterns
+    };
+    criticalVerification: {
+      score: number;                // 0-100
+      codeReviewRequests: number;    // Count of review/verify requests
+      testRequests: number;          // Count of test/verification requests
+      outputModifications: number;   // Count of modifications made
+    };
+  };
+  strengths: string[];
+  growthAreas: string[];
+  interpretation: string;
+}
+```
+
+#### Scoring Components (weights)
+
+- **Context Engineering** (25%): Effective file references, constraint specification, pattern awareness
+- **Structured Planning** (25%): Use of planning tools, step-by-step approaches, documentation references
+- **AI Orchestration** (25%): Advanced tool usage, multi-agent coordination, parallel workflows
+- **Critical Verification** (25%): Code reviews, test requests, intentional modifications
+
+#### Level Thresholds
+
+- **Novice** (0-25): Beginning to establish collaboration patterns, limited tool usage
+- **Developing** (26-50): Building consistent practices, moderate tool utilization, emerging patterns
+- **Proficient** (51-75): Strong collaboration practices, effective tool usage, clear intentionality
+- **Expert** (76-100): Mastery of AI collaboration, advanced orchestration, exceptional intentionality
+
+### 4.4 Prompt Engineering Score
+
+Measures how effective a developer's prompts are. Score 0-100: higher is better.
+
+**Source**: [JetBrains State of Developer Ecosystem 2025](https://blog.jetbrains.com/research/2025/10/state-of-developer-ecosystem-2025/)
+
+```typescript
+interface PromptScoreResult {
+  score: number; // 0-100, higher is better
+  breakdown: {
+    contextProvision: number;      // 0-100
+    specificity: number;           // 0-100
+    iterationEfficiency: number;   // 0-100
+    firstTrySuccess: number;       // 0-100
+    constraintClarity: number;     // 0-100
+  };
+  bestPrompt: {
+    content: string;
+    score: number;
+    reasons: string[];
+  } | null;
+  worstPrompt: {
+    content: string;
+    score: number;
+    reasons: string[];
+  } | null;
+  tips: string[];
+  avgPromptLength: number;
+  constraintUsageRate: number; // % prompts with constraints
+}
+```
+
+#### Scoring Components (weights)
+
+- **Context Provision** (25%): Length, file references, existing patterns, explains goal
+- **Specificity** (20%): Numbered steps, technical terms, specific requirements, avoids vague language
+- **Iteration Efficiency** (20%): Fewer turns for same result = more efficient prompts
+- **First Try Success** (20%): No correction patterns, positive feedback early
+- **Constraint Clarity** (15%): Includes constraints, format requirements, expected outputs
+
+#### Iteration Efficiency Scale
+
+- 3 or fewer turns: 90 points
+- 4-5 turns: 80 points
+- 6-8 turns: 60 points
+- 9-12 turns: 40 points
+- 13+ turns: 20 points
+
+### 4.5 Burnout Risk Indicators
+
+Analyzes session patterns to detect potential burnout risk. Score 0-100: lower is healthier (higher = more risk).
+
+**Source**: [Software Developer Burnout - How to Spot Early Warning Signs](https://www.usehaystack.io/blog/software-developer-burnout-how-to-spot-early-warning-signs)
+
+```typescript
+interface BurnoutRiskResult {
+  score: number; // 0-100, lower is healthier
+  level: 'low' | 'moderate' | 'elevated' | 'high';
+  breakdown: {
+    afterHoursRate: number;        // % sessions after 9 PM
+    weekendRate: number;           // % sessions on weekends
+    lateNightCount: number;        // Sessions after midnight
+    avgSessionDuration: number;    // Average session length in minutes
+    sessionTrend: 'increasing' | 'stable' | 'decreasing';
+    longestSession: number;        // Longest session in minutes
+  };
+  timeDistribution: {
+    businessHours: number;         // % 9 AM - 6 PM weekdays
+    evening: number;               // % 6 PM - 9 PM
+    lateNight: number;             // % 9 PM - 6 AM
+    weekend: number;               // % Saturday/Sunday
+  };
+  recommendations: string[];
+  qualityCorrelation: {
+    shortSessions: {
+      avgDuration: number;
+      qualityIndicator: string;    // 'High quality' | 'Good quality' | etc.
+    };
+    longSessions: {
+      avgDuration: number;
+      qualityIndicator: string;
+    };
+  };
+}
+```
+
+#### Scoring Components (weights)
+
+- **After Hours Rate** (25%): Sessions after 9 PM
+- **Weekend Rate** (20%): Weekend sessions
+- **Late Night Rate** (15%): Sessions after midnight or before 6 AM
+- **Long Sessions** (20%): Sessions over 2 hours
+- **Increasing Trend** (10%): Session duration increasing over time
+- **Frequency** (10%): Total number of sessions
+
+#### Level Thresholds
+
+- **Low** (0-25): Healthy work patterns
+- **Moderate** (26-45): Some late hours, monitor patterns
+- **Elevated** (46-65): Concerning patterns, consider breaks
+- **High** (66-100): High risk, prioritize work-life balance
+
+### 4.6 Tool Mastery Profile
+
+Analyzes how effectively a developer uses Claude Code's tools. Score 0-100: higher is better.
+
+**Source**: [GitHub Copilot Metrics Dashboard](https://docs.github.com/en/copilot/concepts/copilot-metrics)
+
+```typescript
+type MasteryLevel = 'novice' | 'basic' | 'adept' | 'expert';
+
+interface ToolMasteryResult {
+  overallScore: number; // 0-100
+  toolUsage: Record<string, {
+    count: number;
+    percentage: number;          // % of total tool calls
+    level: MasteryLevel;
+    assessment: string;           // Personalized feedback
+  }>;
+  topTools: string[];             // 3 most-used tools
+  underutilizedTools: string[];   // Tools used < 30% of expected
+  tips: string[];
+}
+```
+
+#### Tool Categories
+
+**Exploration Tools** (expected 40% of usage):
+- **Read** (20%): Review code before changes
+- **Grep** (10%): Search for patterns in codebase
+- **Glob** (10%): Find files by pattern
+
+**Modification Tools** (expected 30% of usage):
+- **Edit** (20%): Targeted code edits
+- **Write** (10%): Create new files
+
+**Execution Tools** (expected 15% of usage):
+- **Bash** (15%): Run commands and scripts
+
+**Orchestration Tools** (expected 5% of usage):
+- **Task** (5%): Parallel agent execution
+
+**Planning Tools** (expected 5% of usage):
+- **TodoWrite** (5%): Track task progress
+
+**Research Tools** (expected 5% of usage):
+- **WebSearch** (3%): Search for documentation
+- **WebFetch** (2%): Fetch web content
+
+#### Mastery Level Calculation
+
+Ratio = Actual Usage / Expected Usage
+
+- **Novice** (< 0.3): Using tool less than 30% of expected
+- **Basic** (0.3 - 0.7): Using tool 30-70% of expected
+- **Adept** (0.7 - 1.5): Using tool at expected level
+- **Expert** (> 1.5): Using tool more than 150% of expected
+
+#### Overall Score Calculation
+
+- **Diversity Score** (30 points): Number of tools used / 6 * 30
+- **Balance Score** (40 points): How close usage is to expected proportions
+- **Advanced Usage Score** (30 points): Use of Task, WebSearch, WebFetch, TodoWrite (7.5 points each)
+
+### 4.7 Full Analysis Result
+
+```typescript
+interface FullAnalysisResult {
+  aiCollaborationMastery: AICollaborationMasteryResult;
+  promptScore: PromptScoreResult;
+  burnoutRisk: BurnoutRiskResult;
+  toolMastery: ToolMasteryResult;
+}
+```
+
+This complete analysis result combines all dimensions for a comprehensive developer profile.
+
+---
+
+## 5. Storage: Analysis JSON
+
+### 5.1 Stored Analysis Schema
 
 ```typescript
 export const StoredAnalysisSchema = z.object({
@@ -386,7 +703,7 @@ export const StoredAnalysisSchema = z.object({
 export type StoredAnalysis = z.infer<typeof StoredAnalysisSchema>;
 ```
 
-### 4.2 Storage Location
+### 5.2 Storage Location
 
 ```
 ~/.nomoreaislop/
@@ -397,7 +714,7 @@ export type StoredAnalysis = z.infer<typeof StoredAnalysisSchema>;
 └── config.json
 ```
 
-### 4.3 Example Stored Analysis File
+### 5.3 Example Stored Analysis File
 
 ```json
 {
@@ -427,9 +744,9 @@ export type StoredAnalysis = z.infer<typeof StoredAnalysisSchema>;
 
 ---
 
-## 5. Configuration: User Settings
+## 6. Configuration: User Settings
 
-### 5.1 Config Schema
+### 6.1 Config Schema
 
 ```typescript
 export const ConfigSchema = z.object({
@@ -442,7 +759,7 @@ export const ConfigSchema = z.object({
 export type Config = z.infer<typeof ConfigSchema>;
 ```
 
-### 5.2 Default Configuration
+### 6.2 Default Configuration
 
 ```json
 {
@@ -454,7 +771,7 @@ export type Config = z.infer<typeof ConfigSchema>;
 }
 ```
 
-### 5.3 Configuration Resolution Order
+### 6.3 Configuration Resolution Order
 
 1. Environment variable (`ANTHROPIC_API_KEY`, `NOSLOP_*`)
 2. Config file (`~/.nomoreaislop/config.json`)
@@ -462,9 +779,9 @@ export type Config = z.infer<typeof ConfigSchema>;
 
 ---
 
-## 6. Telemetry: Event Schema
+## 7. Telemetry: Event Schema
 
-### 6.1 Telemetry Event Schema
+### 7.1 Telemetry Event Schema
 
 ```typescript
 export const TelemetryEventSchema = z.object({
@@ -484,7 +801,7 @@ export const TelemetryEventSchema = z.object({
 export type TelemetryEvent = z.infer<typeof TelemetryEventSchema>;
 ```
 
-### 6.2 Example Telemetry Events
+### 7.2 Example Telemetry Events
 
 **Plugin Installed:**
 ```json
@@ -515,9 +832,9 @@ export type TelemetryEvent = z.infer<typeof TelemetryEventSchema>;
 
 ---
 
-## 7. Type Export Summary
+## 8. Type Export Summary
 
-### 7.1 Public Types (src/models/index.ts)
+### 8.1 Public Types (src/models/index.ts)
 
 ```typescript
 // Input types
@@ -526,8 +843,22 @@ export type { UserMessage, AssistantMessage, ContentBlock, ToolUseBlock };
 // Internal types
 export type { ParsedSession, ParsedMessage, SessionMetadata, ToolCall };
 
-// Output types
+// Output types (v1.0)
 export type { Rating, Clue, CategoryEvaluation, Evaluation };
+
+// Analysis Dimensions (v2.1)
+export type {
+  CodingStyleType,
+  TypeResult,
+  ConversationEvidence,
+  SessionMetrics,
+  AICollaborationMasteryResult,
+  PromptScoreResult,
+  BurnoutRiskResult,
+  ToolMasteryResult,
+  MasteryLevel,
+  FullAnalysisResult,
+};
 
 // Storage types
 export type { StoredAnalysis, Config };
@@ -535,7 +866,7 @@ export type { StoredAnalysis, Config };
 // Telemetry types
 export type { TelemetryEvent };
 
-// Zod schemas
+// Zod schemas (v1.0)
 export {
   RatingSchema,
   ClueSchema,
@@ -545,13 +876,19 @@ export {
   ConfigSchema,
   TelemetryEventSchema,
 };
+
+// Zod schemas (v2.1)
+export {
+  CodingStyleTypeSchema,
+  TypeResultSchema,
+};
 ```
 
 ---
 
-## 8. Validation Utilities
+## 9. Validation Utilities
 
-### 8.1 Safe Parse Helper
+### 9.1 Safe Parse Helper
 
 ```typescript
 export function safeParse<T>(
@@ -566,7 +903,7 @@ export function safeParse<T>(
 }
 ```
 
-### 8.2 JSONL Line Validator
+### 9.2 JSONL Line Validator
 
 ```typescript
 export function isValidMessage(line: unknown): line is UserMessage | AssistantMessage {
@@ -578,18 +915,71 @@ export function isValidMessage(line: unknown): line is UserMessage | AssistantMe
 
 ---
 
-## 9. Migration Strategy
+## 10. Migration Strategy
 
-### 9.1 Schema Versioning
+### 10.1 Schema Versioning
 
 All persisted data includes a `version` field:
 - `StoredAnalysis.version: "1.0.0"`
 - `Config.version: "1.0.0"`
 
-### 9.2 Future Migration
+### 10.2 Version History
+
+- **v1.0.0** (2026-01-09): Initial release with basic evaluation schema
+  - Planning, Critical Thinking, Code Understanding ratings
+  - Clues and recommendations
+
+- **v2.1.0** (2026-01-10): Multi-dimensional analysis
+  - AI Coding Style Types (5 personality types)
+  - AI Collaboration Mastery Score (replaced AI Dependency Score)
+  - Prompt Engineering Score
+  - Burnout Risk Indicators
+  - Tool Mastery Profile
+  - Full Analysis Result combining all dimensions
+
+### 10.3 Future Migration
 
 When schema changes:
 1. Increment version number
-2. Add migration function: `migrate_1_0_0_to_1_1_0()`
+2. Add migration function: `migrate_X_X_X_to_Y_Y_Y()`
 3. Auto-migrate on load if version mismatch
 4. Keep backward compatibility for at least 2 versions
+
+---
+
+## 11. Summary of Changes in v2.1
+
+### New Data Models
+
+1. **AI Coding Style Types**: MBTI-like personality assessment with 5 positive types
+2. **AI Collaboration Mastery Score**: Measures effective AI collaboration across 4 dimensions (0-100, higher is better)
+3. **Prompt Engineering Score**: Quantifies prompt effectiveness (0-100, higher is better)
+4. **Burnout Risk Indicators**: Analyzes session patterns for burnout signals (0-100, lower is better)
+5. **Tool Mastery Profile**: Evaluates Claude Code tool usage effectiveness (0-100, higher is better)
+6. **Full Analysis Result**: Combines all dimensions for comprehensive profile
+
+### AI Collaboration Mastery Dimensions
+
+The AI Collaboration Mastery Score replaces the previous AI Dependency Score with a more comprehensive framework:
+
+- **Context Engineering** (25%): Ability to provide clear references, constraints, and pattern context
+- **Structured Planning** (25%): Effective use of planning tools and step-by-step methodologies
+- **AI Orchestration** (25%): Mastery of advanced features like task tools and multi-agent coordination
+- **Critical Verification** (25%): Intentional code review, testing, and output verification practices
+
+### Key Features
+
+- **Quantified Metrics**: All scores are 0-100 with clear interpretations
+- **Personalized Insights**: Evidence-based recommendations specific to developer patterns
+- **Research-Backed**: Each dimension cites industry research and best practices
+- **Actionable Tips**: Concrete suggestions for improvement in each area
+- **Comparative Data**: Shows developer's usage vs. expected/optimal patterns
+- **Positive Framing**: Mastery score celebrates collaboration skills rather than measuring dependency
+
+### Integration Points
+
+All new dimensions integrate seamlessly with existing session parsing:
+- Input: `ParsedSession[]` (same as v1.0)
+- Processing: New analyzer functions in `src/analyzer/dimensions/`
+- Output: Structured results with consistent interfaces
+- Storage: Compatible with existing `StoredAnalysis` schema

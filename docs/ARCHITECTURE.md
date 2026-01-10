@@ -1,8 +1,8 @@
 # NoMoreAISlop - Architecture Document
 
-> Version: 1.0.0
-> Last Updated: 2026-01-09
-> Status: Draft
+> Version: 2.1.0
+> Last Updated: 2026-01-10
+> Status: Production
 
 ---
 
@@ -23,11 +23,24 @@
 │         ▼                    ▼                    ▼            │
 │  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐   │
 │  │   /noslop    │     │ SessionParser│     │   Reporter   │   │
-│  │   /analyze   │     │ LLMAnalyzer  │     │   Storage    │   │
-│  │   /sessions  │     │              │     │   Telemetry  │   │
-│  │   /history   │     │              │     │              │   │
-│  │   /config    │     │              │     │              │   │
-│  └──────────────┘     └──────────────┘     └──────────────┘   │
+│  │   /analyze   │     │ LLMAnalyzer  │     │ WebServer ◄─┐│   │
+│  │   /sessions  │     │ StyleAnalyzer│     │   CLI        ││   │
+│  │   /history   │     │ Dimensions   │     │   Storage    ││   │
+│  │   /config    │     │              │     │   Telemetry  ││   │
+│  └──────────────┘     └──────────────┘     └──────────────┘│   │
+│                              │                              │   │
+│                              ▼                              │   │
+│                       ┌──────────────┐                     │   │
+│                       │  Dimensions  │                     │   │
+│                       │  (v2.1 NEW)  │                     │   │
+│                       │              │                     │   │
+│                       │ • AI Collab. │                     │   │
+│                       │ • Prompt Scr │                     │   │
+│                       │ • Burnout    │                     │   │
+│                       │ • Tool Mast. │                     │   │
+│                       └──────────────┘                     │   │
+│                              │                              │   │
+│                              └──────────────────────────────┘   │
 │                                                                │
 ├────────────────────────────────────────────────────────────────┤
 │                     External Dependencies                       │
@@ -44,8 +57,11 @@
 |-----------|---------------|
 | Commands | Entry points for user interaction |
 | SessionParser | Read and parse Claude Code JSONL logs |
-| LLMAnalyzer | Send session to Claude API for evaluation |
+| LLMAnalyzer | Send session to Claude API for evaluation (legacy) |
+| **StyleAnalyzer** | **NEW v2.1**: Determine AI Coding Style type |
+| **Dimensions** | **NEW v2.1**: Calculate deep analysis metrics |
 | ReportGenerator | Format evaluation as CLI markdown |
+| **WebServer** | **NEW v2.1**: Serve terminal-aesthetic HTML reports |
 | StorageManager | Persist analysis results locally |
 | ConfigManager | Manage user settings |
 | TelemetryClient | Track anonymous usage events |
@@ -66,6 +82,9 @@ nomoreaislop/
 │   ├── history.md               # View past analyses
 │   └── config.md                # Manage settings
 │
+├── scripts/                     # NEW v2.1: Entry point scripts
+│   └── analyze-style.ts         # Main CLI entry for style analysis
+│
 ├── src/
 │   ├── index.ts                 # Main entry point & exports
 │   │
@@ -75,17 +94,43 @@ nomoreaislop/
 │   │   └── types.ts             # Parser-specific types
 │   │
 │   ├── analyzer/
-│   │   ├── index.ts             # LLMAnalyzer class
+│   │   ├── index.ts             # LLMAnalyzer class (legacy)
 │   │   ├── prompts.ts           # System & user prompts
-│   │   └── types.ts             # Analyzer-specific types
+│   │   ├── schema-converter.ts  # Zod to JSON Schema converter
+│   │   ├── style-analyzer.ts    # NEW v2.1: Style analysis orchestrator
+│   │   ├── type-detector.ts     # NEW v2.1: Type detection logic
+│   │   ├── evidence-extractor.ts# NEW v2.1: Extract conversation evidence
+│   │   │
+│   │   └── dimensions/          # NEW v2.1: Deep analysis dimensions
+│   │       ├── index.ts         # Dimension aggregator
+│   │       ├── ai-collaboration.ts # AI Collaboration Mastery Score (0-100)
+│   │       ├── prompt-score.ts  # Prompt Engineering Score (0-100)
+│   │       ├── burnout-risk.ts  # Burnout Risk Analysis
+│   │       └── tool-mastery.ts  # Tool Mastery Profile
+│   │
+│   ├── web/                     # NEW v2.1: Web server for reports
+│   │   ├── server.ts            # HTTP server (pure Node.js)
+│   │   └── template.ts          # Terminal-aesthetic HTML generator
+│   │
+│   ├── cli/output/
+│   │   ├── spinner.ts           # Loading spinner
+│   │   ├── ratings.ts           # Rating display
+│   │   ├── evidence.ts          # Evidence display
+│   │   └── components/          # NEW v2.1: UI components
+│   │       ├── index.ts         # Re-exports
+│   │       └── type-result.ts   # Type result renderer
 │   │
 │   ├── models/
-│   │   ├── evaluation.ts        # Zod schemas for evaluation
+│   │   ├── evaluation.ts        # Zod schemas for evaluation (legacy)
 │   │   ├── session.ts           # Zod schemas for parsed session
-│   │   └── config.ts            # Zod schemas for config
+│   │   ├── style-types.ts       # NEW v2.1: AI Coding Style types
+│   │   ├── dimensions.ts        # NEW v2.1: Dimension result types
+│   │   ├── config.ts            # Zod schemas for config
+│   │   ├── storage.ts           # Zod schemas for storage
+│   │   └── telemetry.ts         # Zod schemas for telemetry
 │   │
 │   ├── utils/
-│   │   ├── reporter.ts          # ReportGenerator class
+│   │   ├── reporter.ts          # ReportGenerator class (legacy)
 │   │   ├── storage.ts           # StorageManager class
 │   │   ├── telemetry.ts         # TelemetryClient class
 │   │   └── errors.ts            # Custom error types
@@ -98,6 +143,8 @@ nomoreaislop/
 │   ├── parser.test.ts
 │   ├── analyzer.test.ts
 │   ├── reporter.test.ts
+│   ├── style-analyzer.test.ts   # NEW v2.1
+│   ├── dimensions.test.ts       # NEW v2.1
 │   └── storage.test.ts
 │
 ├── docs/
@@ -171,11 +218,221 @@ class SessionParser {
 - `readline` - Line-by-line JSONL parsing
 - `path` - Path manipulation
 
-### 3.2 LLMAnalyzer
+### 3.2 StyleAnalyzer (NEW v2.1)
+
+**File:** `src/analyzer/style-analyzer.ts`
+
+**Purpose:** Analyze sessions to determine AI Coding Style personality type (MBTI-like for coding).
+
+```typescript
+/**
+ * Analyze sessions and determine AI Coding Style
+ *
+ * Returns one of 5 types:
+ * - Architect: Strategic planner, upfront design
+ * - Scientist: Analytical, experiments before committing
+ * - Collaborator: Iterative feedback loops with AI
+ * - Speedrunner: Fast execution, minimal planning
+ * - Craftsman: Refines and polishes iteratively
+ */
+function analyzeStyle(
+  sessions: ParsedSession[],
+  options?: StyleAnalyzerOptions
+): TypeResult;
+
+/**
+ * Get detailed analysis for a single session
+ */
+function analyzeSession(session: ParsedSession): {
+  metrics: SessionMetrics;
+  distribution: TypeDistribution;
+  primaryType: CodingStyleType;
+};
+```
+
+**Key Features:**
+- Pattern detection across conversation history
+- Evidence extraction from actual prompts
+- Type distribution scoring (all 5 types with percentages)
+- Strengths and growth points identification
+
+**Dependencies:**
+- `type-detector.ts` - Metric extraction and type scoring
+- `evidence-extractor.ts` - Conversation quote extraction
+
+### 3.3 Dimensions Module (NEW v2.1)
+
+**Directory:** `src/analyzer/dimensions/`
+
+**Purpose:** Calculate deep analysis metrics for extended insights.
+
+#### 3.3.1 AI Collaboration Mastery Score
+
+**File:** `ai-collaboration.ts`
+
+```typescript
+interface AICollaborationResult {
+  score: number; // 0-100, higher is better
+  level: 'novice' | 'developing' | 'proficient' | 'expert';
+  breakdown: {
+    contextEngineering: number;
+    structuredPlanning: number;
+    orchestration: number;
+    criticalVerification: number;
+  };
+  interpretation: string;
+}
+
+function calculateAICollaboration(sessions: ParsedSession[]): AICollaborationResult;
+```
+
+**Categories:**
+- Context Engineering - Quality of information provided to AI
+- Structured Planning - Pre-planning and approach clarity
+- AI Orchestration - Effective multi-turn collaboration patterns
+- Critical Verification - Quality of code review and validation
+
+#### 3.3.2 Prompt Engineering Score
+
+**File:** `prompt-score.ts`
+
+```typescript
+interface PromptScoreResult {
+  score: number; // 0-100, higher is better
+  level: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  breakdown: {
+    contextProvision: number;
+    specificity: number;
+    constraintDefinition: number;
+    iterativeRefinement: number;
+  };
+  interpretation: string;
+}
+
+function calculatePromptScore(sessions: ParsedSession[]): PromptScoreResult;
+```
+
+**Metrics:**
+- Context provision (background info, code snippets)
+- Specificity (clear vs vague requests)
+- Constraint definition (requirements, edge cases)
+- Iterative refinement (follow-up improvements)
+
+#### 3.3.3 Burnout Risk Analysis
+
+**File:** `burnout-risk.ts`
+
+```typescript
+interface BurnoutRiskResult {
+  score: number; // 0-100, higher is riskier
+  level: 'low' | 'moderate' | 'elevated' | 'high';
+  breakdown: {
+    sessionLength: number;
+    taskSwitching: number;
+    intensityPattern: string;
+    recoveryTime: number;
+  };
+  interpretation: string;
+}
+
+function calculateBurnoutRisk(sessions: ParsedSession[]): BurnoutRiskResult;
+```
+
+**Metrics:**
+- Session duration patterns
+- Task-switching frequency
+- Intensity patterns (sprints vs sustained)
+- Recovery time between sessions
+
+#### 3.3.4 Tool Mastery Profile
+
+**File:** `tool-mastery.ts`
+
+```typescript
+interface ToolMasteryResult {
+  overallScore: number; // 0-100
+  breakdown: {
+    readWriteBalance: number;
+    grepEffectiveness: number;
+    multiToolChains: number;
+    bashUsage: number;
+  };
+  topTools: Array<{ tool: string; count: number }>;
+  interpretation: string;
+}
+
+function calculateToolMastery(sessions: ParsedSession[]): ToolMasteryResult;
+```
+
+**Metrics:**
+- Read/Write balance (verification before changes)
+- Grep effectiveness (search before modify)
+- Multi-tool chains (complex workflows)
+- Bash usage (advanced operations)
+
+### 3.4 WebServer (NEW v2.1)
+
+**File:** `src/web/server.ts`
+
+**Purpose:** Serve terminal-aesthetic HTML reports locally with freemium conversion psychology.
+
+```typescript
+/**
+ * Start a local web server to display the report
+ */
+async function startReportServer(
+  result: TypeResult,
+  options?: WebServerOptions,
+  dimensions?: FullAnalysisResult
+): Promise<{ server: Server; port: number; url: string }>;
+
+/**
+ * Stop the report server
+ */
+function stopReportServer(server: Server): Promise<void>;
+```
+
+**Key Features:**
+- Pure Node.js HTTP server (no external framework)
+- Terminal-aesthetic CSS with monospace fonts
+- FREE tier: Type result + limited evidence (2 samples)
+- LOCKED tier: Full evidence (8 samples) + dimensions + PDF + badge
+- Auto-port selection (tries 3000, increments if busy)
+- Auto-open in default browser
+
+**HTML Structure:**
+```
+┌─────────────────────────────────┐
+│     FREE SECTION (Always)       │
+│  • Your Type (Architect, etc.)  │
+│  • Distribution Chart           │
+│  • Strengths                    │
+│  • Evidence (2 samples)         │
+└─────────────────────────────────┘
+┌─────────────────────────────────┐
+│    LOCKED SECTION (Blur)        │
+│  • All Evidence (8 samples)     │
+│  • Dimensions (4 scores)        │
+│  • Growth Roadmap               │
+│  • PDF Download                 │
+│  • Shareable Badge              │
+│                                 │
+│  [$6.99 ONE-TIME UNLOCK]        │
+└─────────────────────────────────┘
+```
+
+**Template Features (template.ts):**
+- Terminal-aesthetic CSS (green text, black bg, phosphor glow)
+- Typewriter font (JetBrains Mono, Fira Code fallbacks)
+- Blur effect on locked sections
+- Sticky CTA button
+- Responsive design
+
+### 3.5 LLMAnalyzer (Legacy)
 
 **File:** `src/analyzer/index.ts`
 
-**Purpose:** Send parsed session to Claude API and receive structured evaluation.
+**Purpose:** Send parsed session to Claude API and receive structured evaluation (original v1.0 approach).
 
 ```typescript
 class LLMAnalyzer {
@@ -185,7 +442,7 @@ class LLMAnalyzer {
   constructor(apiKey: string, model?: string);
 
   /**
-   * Analyze a parsed session
+   * Analyze a parsed session using Claude API
    * @param session - Parsed session data
    * @returns Structured evaluation
    * @throws AnalysisError on API or parsing failure
@@ -194,89 +451,50 @@ class LLMAnalyzer {
 
   /**
    * Build the prompt for the LLM
-   * @param session - Parsed session data
-   * @returns Complete prompt string
    */
   private buildPrompt(session: ParsedSession): string;
 
   /**
-   * Parse LLM response into evaluation
-   * @param response - Raw LLM response text
-   * @returns Validated evaluation object
-   * @throws ValidationError if response doesn't match schema
+   * Parse LLM response into evaluation using Structured Outputs
    */
   private parseResponse(response: string): Evaluation;
-
-  /**
-   * Format session as conversation text
-   * @param session - Parsed session
-   * @returns Formatted conversation string
-   */
-  private formatConversation(session: ParsedSession): string;
 }
 ```
+
+**Note:** This component is kept for backward compatibility with v1.0 evaluation approach. v2.1 primarily uses rule-based `StyleAnalyzer` for performance and cost efficiency.
 
 **Dependencies:**
 - `@anthropic-ai/sdk` - Anthropic API client
 - `zod` - Response validation
+- `schema-converter.ts` - Zod to JSON Schema conversion
 
-### 3.3 ReportGenerator
+### 3.6 ReportGenerator (Legacy)
 
 **File:** `src/utils/reporter.ts`
 
-**Purpose:** Transform evaluation object into formatted CLI markdown.
+**Purpose:** Transform v1.0 evaluation object into formatted CLI markdown.
 
 ```typescript
 class ReportGenerator {
-  /**
-   * Generate full markdown report
-   * @param evaluation - Evaluation result
-   * @param metadata - Session metadata
-   * @returns Formatted markdown string
-   */
   generateReport(
     evaluation: Evaluation,
     metadata: SessionMetadata
   ): string;
 
-  /**
-   * Format a single category section
-   * @param category - Category name
-   * @param data - Category evaluation data
-   * @returns Formatted section string
-   */
   private formatCategory(
     category: string,
     data: CategoryEvaluation
   ): string;
 
-  /**
-   * Format rating with appropriate styling
-   * @param rating - Rating value
-   * @returns Styled rating string
-   */
   private formatRating(rating: Rating): string;
-
-  /**
-   * Format a clue/evidence item
-   * @param clue - Clue object
-   * @returns Formatted clue string
-   */
   private formatClue(clue: Clue): string;
-
-  /**
-   * Generate overview table
-   * @param evaluation - Full evaluation
-   * @returns Markdown table string
-   */
   private generateOverviewTable(evaluation: Evaluation): string;
 }
 ```
 
-**Dependencies:**
-- None (pure string manipulation)
+**Note:** v2.1 uses new CLI components in `src/cli/output/components/` for type result rendering.
 
-### 3.4 StorageManager
+### 3.7 StorageManager
 
 **File:** `src/utils/storage.ts`
 
@@ -288,56 +506,28 @@ class StorageManager {
 
   constructor(basePath?: string);
 
-  /**
-   * Save analysis result
-   * @param sessionId - Session identifier
-   * @param evaluation - Evaluation to save
-   * @param metadata - Session metadata
-   */
   saveAnalysis(
     sessionId: string,
     evaluation: Evaluation,
     metadata: SessionMetadata
   ): Promise<void>;
 
-  /**
-   * Load a specific analysis
-   * @param sessionId - Session identifier
-   * @returns Stored analysis or null if not found
-   */
   loadAnalysis(sessionId: string): Promise<StoredAnalysis | null>;
-
-  /**
-   * List all stored analyses
-   * @returns Array of analysis summaries
-   */
   listAnalyses(): Promise<AnalysisSummary[]>;
-
-  /**
-   * Delete a stored analysis
-   * @param sessionId - Session identifier
-   */
   deleteAnalysis(sessionId: string): Promise<void>;
 
-  /**
-   * Ensure storage directory exists
-   */
   private ensureDir(): Promise<void>;
-
-  /**
-   * Get file path for a session
-   * @param sessionId - Session identifier
-   * @returns Full file path
-   */
   private getFilePath(sessionId: string): string;
 }
 ```
+
+**Storage Location:** `~/.nomoreaislop/analyses/`
 
 **Dependencies:**
 - `fs/promises` - File system operations
 - `path` - Path manipulation
 
-### 3.5 ConfigManager
+### 3.8 ConfigManager
 
 **File:** `src/config/manager.ts`
 
@@ -350,53 +540,24 @@ class ConfigManager {
 
   constructor(configPath?: string);
 
-  /**
-   * Load configuration from disk
-   */
   load(): Promise<void>;
-
-  /**
-   * Save configuration to disk
-   */
   save(): Promise<void>;
 
-  /**
-   * Get a configuration value
-   * @param key - Config key
-   * @returns Config value
-   */
   get<K extends keyof Config>(key: K): Config[K];
-
-  /**
-   * Set a configuration value
-   * @param key - Config key
-   * @param value - New value
-   */
   set<K extends keyof Config>(key: K, value: Config[K]): void;
 
-  /**
-   * Get API key from config or environment
-   * @returns API key or null
-   */
   getApiKey(): string | null;
-
-  /**
-   * Check if telemetry is enabled
-   * @returns Boolean
-   */
   isTelemetryEnabled(): boolean;
-
-  /**
-   * Reset to default configuration
-   */
   reset(): void;
 }
 ```
 
+**Config Location:** `~/.nomoreaislop/config.json`
+
 **Dependencies:**
 - `fs/promises` - File system operations
 
-### 3.6 TelemetryClient
+### 3.9 TelemetryClient
 
 **File:** `src/utils/telemetry.ts`
 
@@ -410,26 +571,12 @@ class TelemetryClient {
 
   constructor(enabled: boolean, endpoint?: string);
 
-  /**
-   * Track an event
-   * @param event - Event type
-   * @param properties - Additional properties
-   */
   trackEvent(
     event: TelemetryEventType,
     properties?: Record<string, unknown>
   ): Promise<void>;
 
-  /**
-   * Get or create anonymous ID
-   * @returns Anonymous identifier
-   */
   private getAnonymousId(): string;
-
-  /**
-   * Send event to endpoint
-   * @param payload - Event payload
-   */
   private send(payload: TelemetryPayload): Promise<void>;
 }
 
@@ -439,7 +586,9 @@ type TelemetryEventType =
   | 'analysis_completed'
   | 'analysis_failed'
   | 'sessions_listed'
-  | 'history_viewed';
+  | 'history_viewed'
+  | 'style_analyzed'      // NEW v2.1
+  | 'web_report_opened';  // NEW v2.1
 ```
 
 **Dependencies:**
@@ -450,7 +599,64 @@ type TelemetryEventType =
 
 ## 4. Data Flow
 
-### 4.1 Analysis Flow
+### 4.1 Style Analysis Flow (NEW v2.1)
+
+```
+┌─────────────┐
+│   Command   │  User runs script: node scripts/analyze-style.ts
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│   Session   │  1. Scan ~/.claude/projects/
+│   Parser    │  2. Find all *.jsonl files
+│             │  3. Parse recent 30 sessions
+└──────┬──────┘
+       │
+       ├──────────────────────────────┐
+       ▼                              ▼
+┌─────────────┐               ┌─────────────┐
+│   Style     │               │ Dimensions  │
+│  Analyzer   │               │   Module    │
+│             │               │             │
+│ 1. Extract  │               │ • AI Collab.│
+│    metrics  │               │ • Prompt    │
+│ 2. Calculate│               │ • Burnout   │
+│    scores   │               │ • Tool      │
+│ 3. Detect   │               │             │
+│    type     │               │ Score each  │
+│ 4. Extract  │               │ dimension   │
+│    evidence │               │ 0-100       │
+└──────┬──────┘               └──────┬──────┘
+       │                             │
+       └──────────┬──────────────────┘
+                  ▼
+           ┌─────────────┐
+           │   Output    │
+           │   Layer     │
+           │             │
+           │  CLI + Web  │
+           └──────┬──────┘
+                  │
+       ┌──────────┴──────────┐
+       ▼                     ▼
+┌─────────────┐       ┌─────────────┐
+│    CLI      │       │     Web     │
+│   Output    │       │   Server    │
+│             │       │             │
+│ • Type box  │       │ • Terminal  │
+│ • Distrib.  │       │   aesthetic │
+│ • Evidence  │       │ • FREE tier │
+│   (2 samp.) │       │ • LOCKED    │
+│ • Dim. prev.│       │   sections  │
+│ • Web link  │       │ • CTA       │
+└─────────────┘       └─────────────┘
+       │                     │
+       ▼                     ▼
+  Terminal            http://localhost:3000
+```
+
+### 4.2 Legacy Analysis Flow (v1.0)
 
 ```
 ┌─────────────┐
@@ -475,11 +681,11 @@ type TelemetryEventType =
 │    LLM      │────▶│  Anthropic  │
 │  Analyzer   │◀────│    API      │
 │             │     │             │
-│  1. Build   │     │  claude-3.5 │
+│  1. Build   │     │  claude-4.5 │
 │     prompt  │     │  -sonnet    │
 │  2. Call API│     │             │
-│  3. Parse   │     │             │
-│     response│     │             │
+│  3. Parse   │     │ Structured  │
+│     response│     │  Outputs    │
 └──────┬──────┘     └─────────────┘
        │
        ▼
@@ -505,7 +711,7 @@ type TelemetryEventType =
 └─────────────┘
 ```
 
-### 4.2 Session Listing Flow
+### 4.3 Session Listing Flow
 
 ```
 ┌─────────────┐
@@ -526,7 +732,7 @@ type TelemetryEventType =
 └─────────────┘
 ```
 
-### 4.3 History Flow
+### 4.4 History Flow
 
 ```
 ┌─────────────┐
@@ -548,9 +754,100 @@ type TelemetryEventType =
 
 ---
 
-## 5. Error Handling Strategy
+## 5. Data Models (v2.1)
 
-### 5.1 Error Types
+### 5.1 AI Coding Style Types
+
+```typescript
+type CodingStyleType =
+  | 'architect'      // Strategic planner
+  | 'scientist'      // Analytical experimenter
+  | 'collaborator'   // Iterative feedback loops
+  | 'speedrunner'    // Fast execution
+  | 'craftsman';     // Refines and polishes
+
+interface TypeMetadata {
+  name: string;
+  emoji: string;
+  tagline: string;
+  description: string;
+  strengths: string[];
+  growthPoints: string[];
+  traits: {
+    planningStyle: string;
+    communicationPattern: string;
+    iterationSpeed: string;
+  };
+}
+```
+
+**Type Definitions:**
+
+| Type | Emoji | Tagline | Planning | Communication | Speed |
+|------|-------|---------|----------|---------------|-------|
+| Architect | 🏗️ | "I design before I build" | Upfront, detailed | Structured requests | Measured |
+| Scientist | 🔬 | "I experiment to understand" | Hypothesis-driven | Questions first | Exploratory |
+| Collaborator | 🤝 | "I iterate with feedback" | Incremental | Conversational | Steady |
+| Speedrunner | ⚡ | "I move fast and fix later" | Minimal | Terse commands | Rapid |
+| Craftsman | 🎨 | "I refine until perfect" | Iterative polish | Detailed refinement | Patient |
+
+### 5.2 Type Result
+
+```typescript
+interface TypeResult {
+  primaryType: CodingStyleType;
+  distribution: TypeDistribution;
+  metrics: {
+    avgPromptLength: number;
+    avgFirstPromptLength: number;
+    avgTurnsPerSession: number;
+    questionFrequency: number;
+    modificationRate: number;
+    toolUsageHighlight: string;
+  };
+  evidence: Evidence[];
+  sessionCount: number;
+  analyzedAt: string;
+}
+
+interface TypeDistribution {
+  architect: number;      // 0-100%
+  scientist: number;
+  collaborator: number;
+  speedrunner: number;
+  craftsman: number;
+}
+
+interface Evidence {
+  type: CodingStyleType;
+  quote: string;          // Actual user prompt
+  timestamp: string;
+  explanation: string;    // Why this is evidence
+}
+```
+
+### 5.3 Dimension Results
+
+```typescript
+interface FullAnalysisResult {
+  aiCollaboration: AICollaborationResult;
+  promptScore: PromptScoreResult;
+  burnoutRisk: BurnoutRiskResult;
+  toolMastery: ToolMasteryResult;
+}
+
+// Each dimension has:
+// - score: number (0-100)
+// - level: string (e.g., 'novice' | 'developing' | 'proficient' | 'expert')
+// - breakdown: Record<string, number>
+// - interpretation: string
+```
+
+---
+
+## 6. Error Handling Strategy
+
+### 6.1 Error Types
 
 ```typescript
 // Base error class
@@ -580,9 +877,14 @@ class ParseError extends NoSlopError {
 class StorageError extends NoSlopError {
   code = 'STORAGE_ERROR';
 }
+
+// NEW v2.1
+class ServerError extends NoSlopError {
+  code = 'SERVER_ERROR';
+}
 ```
 
-### 5.2 Error Handling Matrix
+### 6.2 Error Handling Matrix
 
 | Error Type | Behavior | User Message |
 |------------|----------|--------------|
@@ -593,8 +895,10 @@ class StorageError extends NoSlopError {
 | Parse Error (JSONL) | Skip line | Warning in output, continue |
 | Parse Error (Response) | Retry 1x | "Failed to parse response. Retrying..." |
 | Storage Error | Continue | Warning in output, analysis still displayed |
+| **Port Unavailable** | **Retry 10x** | **"Port {N} busy, trying {N+1}..."** |
+| **Server Error** | **Continue** | **"Could not start web server. Check CLI output."** |
 
-### 5.3 Retry Strategy
+### 6.3 Retry Strategy
 
 ```typescript
 async function withRetry<T>(
@@ -629,9 +933,9 @@ async function withRetry<T>(
 
 ---
 
-## 6. Configuration
+## 7. Configuration
 
-### 6.1 Plugin Manifest
+### 7.1 Plugin Manifest
 
 **File:** `.claude-plugin/plugin.json`
 
@@ -639,7 +943,7 @@ async function withRetry<T>(
 {
   "name": "noslop",
   "displayName": "NoMoreAISlop",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "description": "Analyze your AI collaboration skills",
   "author": "nomoreaislop",
   "license": "MIT",
@@ -657,48 +961,60 @@ async function withRetry<T>(
 }
 ```
 
-### 6.2 User Configuration Schema
+### 7.2 User Configuration Schema
 
 **File:** `~/.nomoreaislop/config.json`
 
 ```json
 {
-  "version": "1.0.0",
+  "version": "2.1.0",
   "telemetry": true,
   "storagePath": "~/.nomoreaislop",
-  "model": "claude-3-5-sonnet-20241022",
-  "apiKey": null
+  "model": "claude-sonnet-4-20250514",
+  "apiKey": null,
+  "webServerPort": 3000,
+  "webServerAutoOpen": true
 }
 ```
 
-### 6.3 Environment Variables
+### 7.3 Environment Variables
 
 | Variable | Purpose | Required |
 |----------|---------|----------|
-| `ANTHROPIC_API_KEY` | API key for Claude | Yes (or in config) |
+| `ANTHROPIC_API_KEY` | API key for Claude (legacy LLM mode) | No (v2.1 rule-based) |
 | `NOSLOP_STORAGE_PATH` | Override storage location | No |
 | `NOSLOP_TELEMETRY` | Override telemetry setting | No |
+| `NOSLOP_MODEL` | Override default model | No |
+| **`NOSLOP_WEB_PORT`** | **Override default port (3000)** | **No** |
 
 ---
 
-## 7. Dependencies
+## 8. Dependencies
 
-### 7.1 Runtime Dependencies
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `@anthropic-ai/sdk` | ^0.30.0 | Anthropic API client |
-| `zod` | ^3.23.0 | Schema validation |
-
-### 7.2 Development Dependencies
+### 8.1 Runtime Dependencies
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `typescript` | ^5.0.0 | TypeScript compiler |
-| `vitest` | ^2.0.0 | Testing framework |
-| `@types/node` | ^20.0.0 | Node.js types |
+| `@anthropic-ai/sdk` | ^0.35.0 | Anthropic API client (legacy) |
+| `zod` | ^3.24.0 | Schema validation |
+| `zod-to-json-schema` | ^3.24.0 | Schema conversion for API |
+| **`picocolors`** | **^1.1.1** | **Terminal colors** |
+| **`boxen`** | **^8.0.1** | **CLI boxes** |
+| **`cli-table3`** | **^0.6.5** | **CLI tables** |
+| **`ora`** | **^8.1.1** | **CLI spinner** |
+| **`wrap-ansi`** | **^9.0.0** | **Text wrapping** |
+| **`dotenv`** | **^17.2.3** | **Environment variables** |
 
-### 7.3 Peer Dependencies
+### 8.2 Development Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `typescript` | ^5.7.0 | TypeScript compiler |
+| `vitest` | ^2.1.0 | Testing framework |
+| `@types/node` | ^22.0.0 | Node.js types |
+| **`tsx`** | **^4.21.0** | **TypeScript execution** |
+
+### 8.3 Peer Dependencies
 
 | Dependency | Version | Notes |
 |------------|---------|-------|
@@ -707,58 +1023,95 @@ async function withRetry<T>(
 
 ---
 
-## 8. Security Considerations
+## 9. Security Considerations
 
-### 8.1 Data Privacy
+### 9.1 Data Privacy
 
-- Session content is only sent to Anthropic API (user's own key)
+- Session content is only sent to Anthropic API (user's own key) **in legacy mode**
+- **v2.1**: Style analysis is **local-only** (no API calls)
 - No data stored on third-party servers (except telemetry if enabled)
 - Local storage uses plain JSON (no encryption for MVP)
 - User can delete all data by removing `~/.nomoreaislop/`
+- **Web server runs locally** (localhost only, no external access)
 
-### 8.2 API Key Security
+### 9.2 API Key Security
 
 - API key read from environment variable (preferred)
 - Alternative: stored in local config file (user's responsibility)
 - Never logged or sent to telemetry
+- **Not required for v2.1 style analysis**
 
-### 8.3 Telemetry Data
+### 9.3 Telemetry Data
 
 Only collects:
 - Anonymous installation ID (UUID)
-- Event type (e.g., "analysis_completed")
+- Event type (e.g., "style_analyzed", "web_report_opened")
 - Timestamp
 - Plugin version
+- Session count (number, not content)
 
 Never collects:
 - Session content
 - API keys
 - File paths
 - User identifiable information
+- Prompts or code
+
+### 9.4 Web Server Security
+
+- Runs on localhost only (no external binding)
+- No authentication (local-only access)
+- No persistent storage (in-memory only)
+- Auto-stops when process exits
+- No file system access from browser
 
 ---
 
-## 9. Future Considerations
+## 10. Future Considerations
 
-### 9.1 Extensibility Points
+### 10.1 Extensibility Points
 
 | Point | Description |
 |-------|-------------|
 | Additional evaluators | Support multiple evaluation frameworks |
-| Output formats | JSON, HTML, PDF exports |
+| Output formats | JSON, **HTML (v2.1)**, PDF exports (planned) |
 | Storage backends | Cloud sync, database |
 | AI tool support | Cursor, Copilot, other IDEs |
+| **Type system expansion** | **More personality types** |
+| **Dimension plugins** | **Custom metrics via plugins** |
 
-### 9.2 Performance Optimizations
+### 10.2 Performance Optimizations
 
 | Optimization | Benefit |
 |--------------|---------|
 | Session caching | Faster re-analysis |
-| Streaming API | Faster perceived response |
+| Streaming API | Faster perceived response (legacy) |
 | Incremental parsing | Lower memory usage |
 | Background analysis | Non-blocking UX |
+| **Web report caching** | **Faster page loads** |
+| **Dimension parallelization** | **Faster multi-dimension analysis** |
 
-### 9.3 Cloud Integration Points
+### 10.3 Monetization (v2.1+)
+
+| Feature | Tier |
+|---------|------|
+| Type analysis | FREE |
+| Evidence (2 samples) | FREE |
+| CLI output | FREE |
+| Web report (basic) | FREE |
+| **All evidence (8 samples)** | **LOCKED ($6.99)** |
+| **Dimension scores** | **LOCKED ($6.99)** |
+| **Growth roadmap** | **LOCKED ($6.99)** |
+| **PDF download** | **LOCKED ($6.99)** |
+| **Shareable badge** | **LOCKED ($6.99)** |
+
+**Payment Integration:**
+- Stripe Checkout (planned)
+- One-time payment (no subscription)
+- License key activation
+- Unlock stored locally (~/.nomoreaislop/license.json)
+
+### 10.4 Cloud Integration Points
 
 | Feature | Integration |
 |---------|-------------|
@@ -766,3 +1119,51 @@ Never collects:
 | Data sync | REST API upload |
 | Team features | Multi-tenant backend |
 | Billing | Stripe integration |
+| **Badge hosting** | **CDN for shareable badges** |
+| **Leaderboard** | **Anonymous type distribution stats** |
+
+---
+
+## 11. Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0.0 | 2026-01-09 | Initial release: LLM-based evaluation |
+| **2.1.0** | **2026-01-10** | **Style types, dimensions, web reports, freemium model** |
+
+---
+
+## Appendix A: Terminal Aesthetic Design Principles
+
+The v2.1 web interface follows these design principles:
+
+### Color Palette
+- Background: `#0d1117` (GitHub dark)
+- Text: `#00ff00` (phosphor green)
+- Dim text: `#58a6ff` (accent blue)
+- Glow: `text-shadow: 0 0 10px #00ff00`
+
+### Typography
+- Font: JetBrains Mono, Fira Code, Courier New
+- Line height: 1.6
+- Letter spacing: 0.5px
+- Monospace everywhere
+
+### Layout
+- Max width: 800px
+- Padding: 24px
+- Border radius: 8px
+- Box shadows for depth
+
+### Interactivity
+- Hover effects: Glow intensification
+- Smooth transitions: 0.3s ease
+- Locked sections: Blur filter + overlay
+- CTA button: Sticky bottom, yellow highlight
+
+### Conversion Psychology
+- Free tier shows value
+- Locked sections create curiosity
+- One-time pricing reduces friction
+- Social proof via testimonials (planned)
+- Scarcity: "Unlock this analysis forever"
