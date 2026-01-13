@@ -444,11 +444,44 @@ Analysis results are stored at:
 
 When used as a Claude Code plugin, available commands:
 
-- `/noslop` - Analyze current session
-- `/noslop:analyze <id>` - Analyze specific session
-- `/noslop:sessions` - List available sessions
-- `/noslop:history` - View past analyses
-- `/noslop:config` - Manage settings
+#### Session Analysis
+| Command | Description |
+|---------|-------------|
+| `/noslop` | Analyze current session for AI collaboration quality |
+| `/noslop:analyze <id>` | Analyze specific session by ID |
+| `/noslop:sessions` | List available Claude Code sessions |
+| `/noslop:history` | View past analysis results |
+| `/noslop:config` | View NoMoreAISlop configuration |
+
+#### Knowledge Platform
+| Command | Description |
+|---------|-------------|
+| `/noslop:learn` | Gather and organize AI engineering knowledge from web sources |
+| `/noslop:search-knowledge <query>` | Search the curated knowledge base |
+| `/noslop:knowledge` | Browse and manage the knowledge base |
+
+### CLI Scripts
+
+Direct script execution for advanced usage:
+
+```bash
+# Style Analysis
+npx tsx scripts/analyze-style.ts                    # Normal mode (pattern-based)
+npx tsx scripts/analyze-style.ts --verbose          # Verbose mode (LLM-powered)
+npx tsx scripts/analyze-style.ts --verbose --dry-run # Preview cost without running
+npx tsx scripts/analyze-style.ts --verbose --yes    # Skip cost confirmation
+
+# Session Management
+npx tsx scripts/test-local.ts sessions              # List sessions
+npx tsx scripts/test-local.ts analyze <id>          # Analyze specific session
+npx tsx scripts/test-local.ts history               # View history
+
+# Knowledge Platform
+npx tsx scripts/learn.ts --mock                     # Test learning pipeline
+npx tsx scripts/browse-knowledge.ts --stats         # Knowledge base statistics
+npx tsx scripts/search-knowledge.ts "query"         # Search knowledge
+npx tsx scripts/knowledge.ts list                   # List knowledge items
+```
 
 ---
 
