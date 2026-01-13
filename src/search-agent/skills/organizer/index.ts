@@ -13,8 +13,9 @@ import {
   TopicCategory,
   ContentType,
   SourcePlatform,
+  detectPlatformFromUrl,
 } from '../../models/index.js';
-import { KnowledgeStore, knowledgeStore } from '../../storage/index.js';
+import { knowledgeDb } from '../../db/index.js';
 import { ORGANIZER_SYSTEM_PROMPT, buildOrganizePrompt, ORGANIZE_TOOL } from './prompts.js';
 
 /**
@@ -31,7 +32,6 @@ export interface RawContent {
 export interface OrganizerInput {
   judgments: JudgmentResult[];
   rawContents: Map<string, RawContent>; // URL -> content
-  store?: KnowledgeStore; // Optional custom store (for testing)
 }
 
 /**
@@ -75,9 +75,6 @@ export class OrganizerSkill extends BaseSkill<OrganizerInput, OrganizerOutput> {
     try {
       this.ensureLLMClient();
 
-      const store = input.store || knowledgeStore;
-      await store.initialize();
-
       const items: KnowledgeItem[] = [];
       const errors: Array<{ url: string; error: string }> = [];
       let duplicatesSkipped = 0;
@@ -85,7 +82,7 @@ export class OrganizerSkill extends BaseSkill<OrganizerInput, OrganizerOutput> {
 
       for (const judgment of input.judgments) {
         // Skip if already exists
-        if (await store.hasItemByUrl(judgment.sourceUrl)) {
+        if (await knowledgeDb.hasItemByUrl(judgment.sourceUrl)) {
           duplicatesSkipped++;
           continue;
         }
@@ -118,7 +115,7 @@ export class OrganizerSkill extends BaseSkill<OrganizerInput, OrganizerOutput> {
           }
 
           // Save
-          await store.saveItem(validated.data);
+          await knowledgeDb.save(validated.data);
           items.push(validated.data);
 
           // Update counts
@@ -208,10 +205,7 @@ export class OrganizerSkill extends BaseSkill<OrganizerInput, OrganizerOutput> {
    * Detect platform from URL
    */
   private detectPlatform(url: string): SourcePlatform {
-    if (url.includes('reddit.com')) return 'reddit';
-    if (url.includes('twitter.com') || url.includes('x.com')) return 'twitter';
-    if (url.includes('threads.net')) return 'threads';
-    return 'web';
+    return detectPlatformFromUrl(url);
   }
 }
 

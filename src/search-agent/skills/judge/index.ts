@@ -15,6 +15,7 @@ import {
   RELEVANCE_THRESHOLDS,
 } from '../../models/index.js';
 import { JUDGE_SYSTEM_PROMPT, buildJudgePrompt, JUDGE_TOOL } from './prompts.js';
+import { getInfluencerDetector, DetectionResult } from '../../influencers/index.js';
 
 /**
  * Judge input - results to evaluate
@@ -48,10 +49,12 @@ export interface JudgeOutput {
  * 2. Check novelty against existing knowledge
  * 3. Suggest categorization and tags
  * 4. Make accept/review/reject recommendations
+ * 5. Detect and boost scores for tracked influencers
  */
 export class JudgeSkill extends BaseSkill<JudgeInput, JudgeOutput> {
   readonly name = 'judge';
   readonly description = 'Evaluates content relevance for the NoMoreAISlop project';
+  private influencerDetector = getInfluencerDetector();
 
   async execute(input: JudgeInput): Promise<SkillResult<JudgeOutput>> {
     const startTime = Date.now();
@@ -129,6 +132,14 @@ export class JudgeSkill extends BaseSkill<JudgeInput, JudgeOutput> {
     result: EnhancedSearchResult,
     existingKnowledge: string[]
   ): Promise<JudgmentResult> {
+    // Detect if this is from a tracked influencer (async)
+    const influencerResult = await this.influencerDetector.detect(
+      result.url,
+      undefined,
+      undefined,
+      result.platform
+    );
+
     const response = await this.callLLM(
       JUDGE_SYSTEM_PROMPT,
       buildJudgePrompt(result, existingKnowledge),
@@ -144,15 +155,73 @@ export class JudgeSkill extends BaseSkill<JudgeInput, JudgeOutput> {
     const rawAssessment = toolUse.input as Record<string, unknown>;
 
     // Validate and parse assessment
-    const assessment = RelevanceAssessmentSchema.parse(rawAssessment);
+    let assessment = RelevanceAssessmentSchema.parse(rawAssessment);
+
+    // Apply influencer credibility boost
+    if (influencerResult.found && influencerResult.credibilityBoost > 0) {
+      assessment = this.applyInfluencerBoost(assessment, influencerResult);
+    }
 
     return {
       sourceUrl: result.url,
       assessment,
       suggestedCategory: this.mapTopicToCategory(result.extracted.mainTopic),
-      suggestedTags: this.generateTags(result, assessment),
+      suggestedTags: this.generateTags(result, assessment, influencerResult),
       extractedInsights: result.extracted.keyInsights.slice(0, 5),
       judgedAt: new Date().toISOString(),
+      influencerMatch: influencerResult.found ? {
+        influencerId: influencerResult.influencer!.id,
+        influencerName: influencerResult.influencer!.name,
+        credibilityTier: influencerResult.influencer!.credibilityTier,
+        boostApplied: influencerResult.credibilityBoost,
+      } : undefined,
+    };
+  }
+
+  /**
+   * Apply credibility boost from tracked influencer
+   */
+  private applyInfluencerBoost(
+    assessment: RelevanceAssessment,
+    influencerResult: DetectionResult
+  ): RelevanceAssessment {
+    const boost = influencerResult.credibilityBoost;
+
+    // Boost credibility score specifically
+    const boostedCredibility = Math.min(1, assessment.credibility.score + boost);
+
+    // Recalculate overall score with boosted credibility
+    const weights = {
+      topicRelevance: 0.25,
+      projectFit: 0.25,
+      actionability: 0.20,
+      novelty: 0.15,
+      credibility: 0.15,
+    };
+
+    const newOverallScore =
+      assessment.topicRelevance.score * weights.topicRelevance +
+      assessment.projectFit.score * weights.projectFit +
+      assessment.actionability.score * weights.actionability +
+      assessment.novelty.score * weights.novelty +
+      boostedCredibility * weights.credibility;
+
+    // Determine new recommendation based on boosted score
+    let recommendation: 'accept' | 'review' | 'reject' = 'reject';
+    if (newOverallScore >= RELEVANCE_THRESHOLDS.accept) {
+      recommendation = 'accept';
+    } else if (newOverallScore >= RELEVANCE_THRESHOLDS.review) {
+      recommendation = 'review';
+    }
+
+    return {
+      ...assessment,
+      credibility: {
+        ...assessment.credibility,
+        score: boostedCredibility,
+      },
+      overallScore: newOverallScore,
+      recommendation,
     };
   }
 
@@ -178,7 +247,8 @@ export class JudgeSkill extends BaseSkill<JudgeInput, JudgeOutput> {
    */
   private generateTags(
     result: EnhancedSearchResult,
-    assessment: RelevanceAssessment
+    assessment: RelevanceAssessment,
+    influencerResult?: DetectionResult
   ): string[] {
     const tags = new Set<string>();
 
@@ -202,6 +272,12 @@ export class JudgeSkill extends BaseSkill<JudgeInput, JudgeOutput> {
 
     // Add topic-based tags from main topic
     tags.add(result.extracted.mainTopic);
+
+    // Add influencer tag if from tracked influencer
+    if (influencerResult?.found) {
+      tags.add('influencer-content');
+      tags.add(`tier-${influencerResult.influencer!.credibilityTier}`);
+    }
 
     return Array.from(tags).slice(0, 10);
   }

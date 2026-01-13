@@ -2,6 +2,30 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Core Vision & Strategy
+
+> **Core**: A B2B service that assesses and educates developers' AI utilization capabilities
+>
+> **Strategy**: B2C (viral personality test) → B2B (enterprise capability assessment/training)
+
+### Business Objective
+
+Continuously assess developers' AI utilization capabilities and provide appropriate educational materials, ultimately monetizing as a **B2B enterprise employee capability assessment and education service**.
+
+### GTM Strategy
+
+1. **Phase 1 - B2C**: Attract individual developers with "What's Your AI Coding Style?" viral personality test
+2. **Phase 2 - B2B**: Transition to enterprise services using accumulated assessment data and criteria
+
+### Search Agent Role
+
+The Search Agent is core infrastructure for improving the product's **assessment quality**:
+
+1. **Establishing Assessment Criteria**: Continuously update the definition of "a developer who uses AI well" according to industry trends
+2. **Educational Content Sourcing**: Collect and recommend learning materials suitable for developer improvement areas
+
+---
+
 ## Project Overview
 
 NoMoreAISlop is a Claude Code plugin that analyzes developer-AI collaboration sessions. It parses Claude Code session logs from `~/.claude/projects/`, sends conversations to Claude for evaluation using Structured Outputs, and generates reports rating developers on Planning, Critical Thinking, and Code Understanding.

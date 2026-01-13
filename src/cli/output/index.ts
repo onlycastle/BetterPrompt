@@ -14,6 +14,7 @@ import {
   renderRecommendations,
   renderFooter,
 } from './components/index.js';
+import { ratingIcon } from './theme.js';
 
 export { createSpinner, ProgressSpinner } from './components/index.js';
 export * from './theme.js';
@@ -97,15 +98,9 @@ export function renderCompactSummary(evaluation: Evaluation): string {
     minute: '2-digit',
   });
 
-  const icons = {
-    Strong: pc.green('●'),
-    Developing: pc.yellow('◐'),
-    'Needs Work': pc.red('○'),
-  };
-
-  const p = icons[evaluation.planning.rating];
-  const c = icons[evaluation.criticalThinking.rating];
-  const u = icons[evaluation.codeUnderstanding.rating];
+  const p = ratingIcon[evaluation.planning.rating];
+  const c = ratingIcon[evaluation.criticalThinking.rating];
+  const u = ratingIcon[evaluation.codeUnderstanding.rating];
 
   return `${date} │ ${p} ${c} ${u} │ ${pc.dim(evaluation.sessionId.slice(0, 8))}...`;
 }

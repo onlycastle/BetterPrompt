@@ -1,0 +1,137 @@
+.hero {
+  background: linear-gradient(135deg, var(--accent-primary-soft) 0%, var(--surface-2) 100%);
+}
+
+.heroContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.typeSection {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.emoji {
+  font-size: 4rem;
+  line-height: 1;
+}
+
+.typeInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.typeLabel {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.statsSection {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 1.5rem 0;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.statValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.divider {
+  width: 1px;
+  height: 2.5rem;
+  background: var(--border);
+}
+
+.milestone {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: var(--accent-emerald-soft);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--accent-emerald);
+}
+
+.milestoneIcon {
+  color: var(--accent-emerald);
+  flex-shrink: 0;
+}
+
+.milestoneText {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.milestoneText strong {
+  color: var(--accent-emerald);
+  font-weight: 700;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .typeSection {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .emoji {
+    font-size: 3rem;
+  }
+
+  .typeLabel {
+    font-size: 1.5rem;
+  }
+
+  .statsSection {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem 0;
+  }
+
+  .divider {
+    width: 100%;
+    height: 1px;
+  }
+
+  .statItem {
+    align-items: center;
+    text-align: center;
+  }
+
+  .milestone {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+}

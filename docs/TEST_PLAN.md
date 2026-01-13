@@ -1,28 +1,39 @@
 # NoMoreAISlop - Test Plan
 
-> Version: 1.0.0
-> Last Updated: 2026-01-09
-> Status: Draft
+> Version: 2.0.0
+> Last Updated: 2026-01-13
+> Status: Active (Production Ready)
+
+---
+
+## Test Summary
+
+| Metric | Value |
+|--------|-------|
+| **Total Tests** | 424 |
+| **Test Files** | 18 |
+| **Status** | All Passing |
+| **Last Run** | 2026-01-13 |
 
 ---
 
 ## 1. Overview
 
-This document defines the test strategy, test cases, and verification procedures for NoMoreAISlop plugin.
+Comprehensive testing strategy covering unit tests, integration tests, manual testing, and performance benchmarks.
 
 ### 1.1 Test Categories
 
 | Category | Purpose | Tools |
 |----------|---------|-------|
-| Unit Tests | Test individual components in isolation | Vitest |
-| Integration Tests | Test component interactions | Vitest |
-| Manual Tests | Verify end-to-end user experience | Manual |
-| Performance Tests | Measure execution time | Custom timing |
+| Unit Tests | Individual component isolation | Vitest |
+| Integration Tests | Component interactions | Vitest |
+| Manual Tests | End-to-end user experience | Manual |
+| Performance Tests | Execution time measurement | Custom timing |
 
 ### 1.2 Coverage Goals
 
-| Component | Target Coverage |
-|-----------|-----------------|
+| Component | Target |
+|-----------|--------|
 | SessionParser | 90% |
 | LLMAnalyzer | 80% |
 | ReportGenerator | 90% |
@@ -34,626 +45,218 @@ This document defines the test strategy, test cases, and verification procedures
 
 ## 2. Unit Tests
 
-### 2.1 SessionParser Tests
-
-**File:** `tests/parser.test.ts`
-
-#### 2.1.1 JSONL Parsing
-
-```typescript
-describe('SessionParser', () => {
-  describe('parseJsonlFile', () => {
-    test('parses valid JSONL file correctly', async () => {
-      // Given: A valid JSONL file with user and assistant messages
-      // When: parseJsonlFile is called
-      // Then: Returns array of parsed message objects
-    });
-
-    test('handles empty JSONL file', async () => {
-      // Given: An empty JSONL file
-      // When: parseJsonlFile is called
-      // Then: Returns empty array without error
-    });
-
-    test('skips malformed JSON lines', async () => {
-      // Given: JSONL file with some invalid JSON lines
-      // When: parseJsonlFile is called
-      // Then: Valid lines are parsed, invalid lines skipped with warning
-    });
-
-    test('ignores non-message types', async () => {
-      // Given: JSONL with queue-operation and file-history-snapshot entries
-      // When: parseJsonlFile is called
-      // Then: Only user and assistant messages are returned
-    });
-  });
-});
-```
-
-#### 2.1.2 Session Parsing
-
-```typescript
-describe('parseSession', () => {
-  test('extracts user messages correctly', async () => {
-    // Given: Session with user messages
-    // When: parseSession is called
-    // Then: User messages have correct role, content, timestamp
-  });
-
-  test('extracts assistant messages correctly', async () => {
-    // Given: Session with assistant messages
-    // When: parseSession is called
-    // Then: Assistant messages include content and tool calls
-  });
-
-  test('calculates session duration correctly', async () => {
-    // Given: Session spanning 45 minutes
-    // When: parseSession is called
-    // Then: durationSeconds equals 2700
-  });
-
-  test('counts tool calls correctly', async () => {
-    // Given: Session with 10 tool uses
-    // When: parseSession is called
-    // Then: stats.toolCallCount equals 10
-  });
-
-  test('aggregates token usage', async () => {
-    // Given: Multiple assistant messages with token usage
-    // When: parseSession is called
-    // Then: Total tokens are summed correctly
-  });
-
-  test('throws SessionNotFoundError for missing session', async () => {
-    // Given: Non-existent session ID
-    // When: parseSession is called
-    // Then: Throws SessionNotFoundError
-  });
-});
-```
-
-#### 2.1.3 Session Listing
-
-```typescript
-describe('listSessions', () => {
-  test('returns all sessions across projects', async () => {
-    // Given: Multiple projects with sessions
-    // When: listSessions is called
-    // Then: Returns sessions from all projects
-  });
-
-  test('sorts sessions by date (newest first)', async () => {
-    // Given: Sessions from different dates
-    // When: listSessions is called
-    // Then: Array is sorted newest to oldest
-  });
-
-  test('includes correct metadata for each session', async () => {
-    // Given: Sessions with various metadata
-    // When: listSessions is called
-    // Then: Each session has sessionId, projectPath, timestamp, messageCount
-  });
-
-  test('handles empty projects directory', async () => {
-    // Given: No projects in ~/.claude
-    // When: listSessions is called
-    // Then: Returns empty array without error
-  });
-});
-```
-
-### 2.2 LLMAnalyzer Tests
-
-**File:** `tests/analyzer.test.ts`
-
-#### 2.2.1 Prompt Building
-
-```typescript
-describe('LLMAnalyzer', () => {
-  describe('buildPrompt', () => {
-    test('includes system prompt', () => {
-      // Given: Parsed session
-      // When: buildPrompt is called
-      // Then: Result includes system prompt content
-    });
-
-    test('formats conversation correctly', () => {
-      // Given: Session with messages
-      // When: buildPrompt is called
-      // Then: Conversation is formatted with timestamps and roles
-    });
-
-    test('includes session metadata', () => {
-      // Given: Session with stats
-      // When: buildPrompt is called
-      // Then: Includes duration, message count, tool count
-    });
-
-    test('truncates long conversations', () => {
-      // Given: Session with 100+ messages
-      // When: buildPrompt is called
-      // Then: Conversation is truncated with indicator
-    });
-  });
-});
-```
-
-#### 2.2.2 Response Parsing
-
-```typescript
-describe('parseResponse', () => {
-  test('parses valid JSON response', () => {
-    // Given: Valid JSON evaluation response
-    // When: parseResponse is called
-    // Then: Returns Evaluation object
-  });
-
-  test('extracts JSON from markdown code block', () => {
-    // Given: Response with JSON in ```json block
-    // When: parseResponse is called
-    // Then: Extracts and parses JSON correctly
-  });
-
-  test('validates against schema', () => {
-    // Given: JSON with invalid rating value
-    // When: parseResponse is called
-    // Then: Throws ValidationError
-  });
-
-  test('throws ParseError for invalid JSON', () => {
-    // Given: Malformed JSON string
-    // When: parseResponse is called
-    // Then: Throws ParseError
-  });
-});
-```
-
-#### 2.2.3 API Integration
-
-```typescript
-describe('analyze', () => {
-  test('calls Anthropic API with correct parameters', async () => {
-    // Given: Mocked Anthropic client
-    // When: analyze is called
-    // Then: API called with correct model, max_tokens, messages
-  });
-
-  test('handles rate limit with retry', async () => {
-    // Given: API returns 429 first, then success
-    // When: analyze is called
-    // Then: Retries and returns result
-  });
-
-  test('throws AnalysisError after max retries', async () => {
-    // Given: API consistently fails
-    // When: analyze is called
-    // Then: Throws AnalysisError after retries exhausted
-  });
-});
-```
-
-### 2.3 ReportGenerator Tests
-
-**File:** `tests/reporter.test.ts`
-
-```typescript
-describe('ReportGenerator', () => {
-  describe('generateReport', () => {
-    test('includes session summary header', () => {
-      // Given: Evaluation with metadata
-      // When: generateReport is called
-      // Then: Output includes session ID, duration, message count
-    });
-
-    test('generates overview table', () => {
-      // Given: Evaluation with all three ratings
-      // When: generateReport is called
-      // Then: Output includes markdown table with ratings
-    });
-
-    test('formats each category section', () => {
-      // Given: Evaluation with category data
-      // When: generateReport is called
-      // Then: Each category has heading, summary, and clues
-    });
-
-    test('includes evidence quotes', () => {
-      // Given: Evaluation with clues
-      // When: generateReport is called
-      // Then: Quotes are formatted as blockquotes
-    });
-
-    test('includes recommendations', () => {
-      // Given: Evaluation with recommendations
-      // When: generateReport is called
-      // Then: Recommendations are numbered list
-    });
-
-    test('includes footer with save path', () => {
-      // Given: Evaluation with session ID
-      // When: generateReport is called
-      // Then: Footer shows save location
-    });
-  });
-
-  describe('formatRating', () => {
-    test('formats Strong rating', () => {
-      expect(formatRating('Strong')).toContain('Strong');
-    });
-
-    test('formats Developing rating', () => {
-      expect(formatRating('Developing')).toContain('Developing');
-    });
-
-    test('formats Needs Work rating', () => {
-      expect(formatRating('Needs Work')).toContain('Needs Work');
-    });
-  });
-});
-```
-
-### 2.4 StorageManager Tests
-
-**File:** `tests/storage.test.ts`
-
-```typescript
-describe('StorageManager', () => {
-  describe('saveAnalysis', () => {
-    test('saves analysis to correct path', async () => {
-      // Given: Evaluation and metadata
-      // When: saveAnalysis is called
-      // Then: File created at ~/.nomoreaislop/analyses/{id}.json
-    });
-
-    test('creates directory if not exists', async () => {
-      // Given: No existing storage directory
-      // When: saveAnalysis is called
-      // Then: Directory is created
-    });
-
-    test('overwrites existing analysis', async () => {
-      // Given: Existing analysis file
-      // When: saveAnalysis called with same ID
-      // Then: File is overwritten
-    });
-
-    test('includes version and timestamp', async () => {
-      // Given: Evaluation to save
-      // When: saveAnalysis is called
-      // Then: Saved JSON includes version and createdAt
-    });
-  });
-
-  describe('loadAnalysis', () => {
-    test('loads existing analysis', async () => {
-      // Given: Saved analysis file
-      // When: loadAnalysis is called
-      // Then: Returns StoredAnalysis object
-    });
-
-    test('returns null for missing analysis', async () => {
-      // Given: Non-existent session ID
-      // When: loadAnalysis is called
-      // Then: Returns null without error
-    });
-
-    test('validates loaded data against schema', async () => {
-      // Given: Corrupted JSON file
-      // When: loadAnalysis is called
-      // Then: Throws ValidationError or returns null
-    });
-  });
-
-  describe('listAnalyses', () => {
-    test('returns all stored analyses', async () => {
-      // Given: Multiple saved analyses
-      // When: listAnalyses is called
-      // Then: Returns array of summaries
-    });
-
-    test('sorts by date descending', async () => {
-      // Given: Analyses from different dates
-      // When: listAnalyses is called
-      // Then: Newest first
-    });
-
-    test('handles empty directory', async () => {
-      // Given: No saved analyses
-      // When: listAnalyses is called
-      // Then: Returns empty array
-    });
-  });
-
-  describe('deleteAnalysis', () => {
-    test('deletes existing analysis', async () => {
-      // Given: Saved analysis
-      // When: deleteAnalysis is called
-      // Then: File is removed
-    });
-
-    test('no error for missing analysis', async () => {
-      // Given: Non-existent session ID
-      // When: deleteAnalysis is called
-      // Then: No error thrown
-    });
-  });
-});
-```
-
-### 2.5 ConfigManager Tests
-
-**File:** `tests/config.test.ts`
-
-```typescript
-describe('ConfigManager', () => {
-  describe('load', () => {
-    test('loads existing config file', async () => {
-      // Given: Config file exists
-      // When: load is called
-      // Then: Config values are available via get()
-    });
-
-    test('creates default config if not exists', async () => {
-      // Given: No config file
-      // When: load is called
-      // Then: Default config is used and saved
-    });
-  });
-
-  describe('get/set', () => {
-    test('gets config value', () => {
-      // Given: Config with telemetry=true
-      // When: get('telemetry') called
-      // Then: Returns true
-    });
-
-    test('sets config value', () => {
-      // Given: Config manager
-      // When: set('telemetry', false) called
-      // Then: get('telemetry') returns false
-    });
-  });
-
-  describe('getApiKey', () => {
-    test('returns API key from environment', () => {
-      // Given: ANTHROPIC_API_KEY set in env
-      // When: getApiKey is called
-      // Then: Returns env value
-    });
-
-    test('falls back to config file', () => {
-      // Given: No env var, config has apiKey
-      // When: getApiKey is called
-      // Then: Returns config value
-    });
-
-    test('returns null if not configured', () => {
-      // Given: No env var or config
-      // When: getApiKey is called
-      // Then: Returns null
-    });
-  });
-
-  describe('save', () => {
-    test('persists config to file', async () => {
-      // Given: Modified config
-      // When: save is called
-      // Then: Changes persisted to disk
-    });
-  });
-
-  describe('reset', () => {
-    test('resets to default values', () => {
-      // Given: Modified config
-      // When: reset is called
-      // Then: All values are defaults
-    });
-  });
-});
-```
-
-### 2.6 TelemetryClient Tests
-
-**File:** `tests/telemetry.test.ts`
-
-```typescript
-describe('TelemetryClient', () => {
-  describe('trackEvent', () => {
-    test('sends event when enabled', async () => {
-      // Given: Telemetry enabled
-      // When: trackEvent called
-      // Then: HTTP request sent to endpoint
-    });
-
-    test('does not send when disabled', async () => {
-      // Given: Telemetry disabled
-      // When: trackEvent called
-      // Then: No HTTP request made
-    });
-
-    test('includes anonymous ID', async () => {
-      // Given: Telemetry enabled
-      // When: trackEvent called
-      // Then: Payload includes anonymousId
-    });
-
-    test('handles network errors gracefully', async () => {
-      // Given: Network failure
-      // When: trackEvent called
-      // Then: No exception thrown, error logged
-    });
-  });
-
-  describe('getAnonymousId', () => {
-    test('returns consistent ID across calls', () => {
-      // Given: TelemetryClient
-      // When: getAnonymousId called multiple times
-      // Then: Returns same UUID each time
-    });
-
-    test('persists ID across sessions', () => {
-      // Given: ID stored in config
-      // When: New TelemetryClient created
-      // Then: Uses stored ID
-    });
-  });
-});
-```
+### 2.1 Parser Tests
+
+**File:** `tests/unit/parser/jsonl-reader.test.ts` (34 tests)
+
+Tests cover JSONL parsing, session extraction, metadata calculation, and error handling for Claude Code session logs.
+
+### 2.2 Analyzer Tests
+
+**Files:**
+- `tests/unit/analyzer/schema-converter.test.ts` (14 tests)
+- `tests/unit/analyzer/type-detector.test.ts` (28 tests)
+- `tests/unit/analyzer/dimensions/pattern-utils.test.ts` (40 tests)
+
+Tests cover schema conversion from Zod to JSON Schema, coding style type detection, and pattern matching utilities for dimension analysis.
+
+### 2.3 Models Tests
+
+**Files:**
+- `tests/unit/models/session.test.ts` (35 tests)
+- `tests/unit/models/evaluation.test.ts` (22 tests)
+- `tests/unit/models/config.test.ts` (18 tests)
+
+Tests cover Zod schema validation for sessions, evaluations, and configuration models.
+
+### 2.4 Config Tests
+
+**File:** `tests/unit/config/manager.test.ts` (26 tests)
+
+Tests cover configuration loading, saving, environment variable handling, and default value management.
+
+### 2.5 Library Tests
+
+**File:** `tests/unit/lib/result.test.ts` (45 tests)
+
+Tests cover Result monad implementation for type-safe error handling, including success/failure paths, mapping, and chaining operations.
+
+### 2.6 Application Service Tests
+
+**Files:**
+- `tests/unit/application/services/influencer-service.test.ts` (22 tests)
+- `tests/unit/application/services/knowledge-service.test.ts` (18 tests)
+
+Tests cover business logic for influencer management and knowledge item operations, including dependency injection mocking.
+
+### 2.7 API Route Tests
+
+**Files:**
+- `tests/unit/api/routes/influencers.test.ts` (18 tests)
+- `tests/unit/api/routes/knowledge.test.ts` (15 tests)
+
+Tests cover Express route handlers using Supertest for HTTP assertions, including request validation and error handling.
+
+### 2.8 Search Agent Tests
+
+**Files:**
+- `tests/unit/search-agent/models/knowledge.test.ts` (28 tests)
+- `tests/unit/search-agent/models/relevance.test.ts` (25 tests)
+- `tests/unit/search-agent/skills/judge/criteria.test.ts` (22 tests)
+
+Tests cover knowledge domain models, relevance scoring algorithms, and quality assessment criteria.
+
+### 2.9 Web UI Tests
+
+**File:** `web-ui/src/types/__tests__/report.test.ts` (10 tests)
+
+Tests cover TypeScript type definitions and schema validation for report data structures.
 
 ---
 
 ## 3. Integration Tests
 
-**File:** `tests/integration.test.ts`
+**File:** `tests/integration.test.ts` (4 tests)
 
-### 3.1 End-to-End Analysis Flow
+Tests cover end-to-end session parsing, statistics calculation, and dimension analysis workflows.
+
+---
+
+## 4. Test Dependencies
+
+### Core Testing Framework
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `vitest` | ^2.1.0 | Test runner and framework |
+| `@types/node` | ^22.0.0 | Node.js type definitions |
+| `tsx` | ^4.21.0 | TypeScript execution for scripts |
+
+### Testing Utilities
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `memfs` | ^4.51.1 | In-memory filesystem for file operation testing |
+| `supertest` | ^7.2.2 | HTTP assertion library for Express routes |
+| `@types/supertest` | ^6.0.3 | Type definitions for Supertest |
+
+### API Testing
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `@types/express` | ^5.0.6 | Type definitions for Express |
+| `@types/cors` | ^2.8.19 | Type definitions for CORS |
+
+---
+
+## 5. Test Patterns
+
+### 5.1 In-Memory Filesystem (memfs)
+
+Used for testing file operations without touching the actual filesystem:
 
 ```typescript
-describe('Integration: Analysis Flow', () => {
-  test('complete analysis pipeline', async () => {
-    // Given: Real session JSONL fixture
-    // When: Full pipeline executed
-    // Then:
-    //   1. Session parsed correctly
-    //   2. LLM called (mocked)
-    //   3. Response parsed
-    //   4. Report generated
-    //   5. Analysis saved
-  });
+import { vol } from 'memfs';
 
-  test('handles API error gracefully', async () => {
-    // Given: Session and mocked API error
-    // When: Analysis attempted
-    // Then: Error message shown, no crash
+beforeEach(() => {
+  vol.reset();
+  vol.fromJSON({
+    '/test/file.json': '{"key": "value"}'
   });
 });
 ```
 
-### 3.2 Command Integration
+### 5.2 Dependency Injection Mocking
+
+Service tests use factory functions with `deps` parameter for clean mocking:
 
 ```typescript
-describe('Integration: Commands', () => {
-  test('/noslop with current session', async () => {
-    // Given: Active Claude Code session
-    // When: /noslop command executed
-    // Then: Analysis displayed in CLI
-  });
+const mockRepo = {
+  findAll: vi.fn().mockResolvedValue([...]),
+  save: vi.fn().mockResolvedValue(...)
+};
 
-  test('/noslop:sessions lists available', async () => {
-    // Given: Multiple projects with sessions
-    // When: /noslop:sessions executed
-    // Then: Table displayed with all sessions
-  });
+const service = createService({ repository: mockRepo });
+```
 
-  test('/noslop:history shows past analyses', async () => {
-    // Given: Previous saved analyses
-    // When: /noslop:history executed
-    // Then: Summary list displayed
-  });
+### 5.3 Supertest HTTP Assertions
 
-  test('/noslop:config allows editing', async () => {
-    // Given: Default config
-    // When: /noslop:config executed
-    // Then: Can view and modify settings
+API route tests use Supertest for declarative HTTP testing:
+
+```typescript
+await request(app)
+  .get('/api/knowledge')
+  .expect(200)
+  .expect('Content-Type', /json/)
+  .expect((res) => {
+    expect(res.body).toHaveLength(5);
   });
-});
+```
+
+### 5.4 Zod Schema Testing
+
+Model tests verify schema validation using `safeParse()`:
+
+```typescript
+const result = schema.safeParse(input);
+expect(result.success).toBe(true);
+expect(result.data).toEqual(expected);
 ```
 
 ---
 
-## 4. Manual Testing Checklist
+## 6. Manual Testing Checklist
 
-### 4.1 Installation
+### 6.1 Installation
 
-- [ ] Plugin installs via marketplace command
-  ```
-  /plugin marketplace add nomoreaislop/marketplace
-  /plugin install noslop
-  ```
-- [ ] Plugin installs from local path
-  ```
-  /plugin install --dir /path/to/nomoreaislop
-  ```
-- [ ] All commands register correctly
-  - [ ] `/noslop` appears in command list
-  - [ ] `/noslop:analyze` appears
-  - [ ] `/noslop:sessions` appears
-  - [ ] `/noslop:history` appears
-  - [ ] `/noslop:config` appears
+- [ ] Plugin installs via marketplace
+- [ ] Plugin installs from local directory
+- [ ] All commands register (noslop, analyze, sessions, history, config)
 
-### 4.2 First Run Experience
+### 6.2 First Run
 
-- [ ] `/noslop` without API key shows helpful error
-  ```
-  Expected: "API key required. Set ANTHROPIC_API_KEY..."
-  ```
-- [ ] `/noslop` with API key runs analysis
-- [ ] Progress indicator shown during analysis
-- [ ] Report displays correctly in CLI
-  - [ ] Session summary visible
-  - [ ] Overview table renders
-  - [ ] Category sections formatted
-  - [ ] Evidence quotes displayed
-  - [ ] Recommendations listed
-- [ ] Analysis saved to `~/.nomoreaislop/analyses/`
+- [ ] Missing API key shows helpful error
+- [ ] Analysis runs with valid key
+- [ ] Progress indicator displayed
+- [ ] Report displays correctly (summary, table, sections, quotes, recommendations)
+- [ ] Analysis saved to ~/.nomoreaislop/analyses/
 - [ ] Save path shown in footer
 
-### 4.3 Session Management
+### 6.3 Session Management
 
-- [ ] `/noslop:sessions` shows all available sessions
-  - [ ] Sessions grouped by project
-  - [ ] Date, message count visible
-  - [ ] Session IDs copyable
+- [ ] `/noslop:sessions` shows all sessions grouped by project
 - [ ] `/noslop:analyze <id>` works with valid ID
 - [ ] `/noslop:analyze <invalid>` shows helpful error
-- [ ] `/noslop:history` shows past analyses
-  - [ ] Ratings summary visible
-  - [ ] Can identify which session each is for
+- [ ] `/noslop:history` shows past analyses with ratings
 
-### 4.4 Configuration
+### 6.4 Configuration
 
 - [ ] `/noslop:config` displays current settings
 - [ ] Can disable telemetry
-- [ ] Setting persists after restart
-- [ ] Storage path can be changed
-- [ ] Model can be changed
+- [ ] Settings persist after restart
+- [ ] Storage path configurable
+- [ ] Model override supported
 
-### 4.5 Edge Cases
+### 6.5 Edge Cases
 
-#### Short Sessions (< 5 messages)
-- [ ] Analysis completes without error
-- [ ] Report acknowledges limited data
-- [ ] Ratings are reasonable given context
+| Scenario | Expected Result |
+|----------|-----------------|
+| Short sessions (< 5 messages) | Completes, acknowledges limited data |
+| Long sessions (> 100 messages) | Reasonable time, no memory issues |
+| Tool-heavy sessions | Tool calls visible, no parsing errors |
+| Sessions with malformed lines | Lines skipped, warning shown |
 
-#### Long Sessions (> 100 messages)
-- [ ] Analysis completes in reasonable time
-- [ ] No memory issues
-- [ ] Conversation truncated appropriately
+### 6.6 Telemetry
 
-#### Tool-Heavy Sessions
-- [ ] Tool calls visible in analysis
-- [ ] Evaluation considers tool usage
-- [ ] No parsing errors
-
-#### Sessions with Errors
-- [ ] Malformed JSONL lines skipped
-- [ ] Warning shown for skipped content
-- [ ] Analysis still completes
-
-### 4.6 Telemetry
-
-- [ ] Events sent when enabled (default)
-  - [ ] `plugin_installed` on first run
-  - [ ] `analysis_completed` after analysis
+- [ ] Events sent when enabled (plugin_installed, analysis_completed)
 - [ ] Events NOT sent when disabled
-  - [ ] Verify via network monitor
-- [ ] Config setting persists correctly
+- [ ] Config setting persists
 
 ---
 
-## 5. Performance Benchmarks
+## 7. Performance Benchmarks
 
-### 5.1 Targets
+### 7.1 Targets
 
 | Scenario | Target | Max Acceptable |
 |----------|--------|----------------|
@@ -664,48 +267,13 @@ describe('Integration: Commands', () => {
 | LLM analysis (API) | < 15s | 30s |
 | Report generation | < 50ms | 100ms |
 | Storage save | < 30ms | 50ms |
-| Storage list 20 analyses | < 200ms | 500ms |
+| List 20 analyses | < 200ms | 500ms |
 
-### 5.2 Benchmark Tests
-
-**File:** `tests/benchmark.test.ts`
-
-```typescript
-describe('Performance Benchmarks', () => {
-  test('parseSession performance', async () => {
-    const start = performance.now();
-
-    await parser.parseSession(largeSessionId);
-
-    const duration = performance.now() - start;
-    expect(duration).toBeLessThan(800);
-  });
-
-  test('generateReport performance', () => {
-    const start = performance.now();
-
-    reporter.generateReport(evaluation, metadata);
-
-    const duration = performance.now() - start;
-    expect(duration).toBeLessThan(100);
-  });
-
-  test('listSessions performance', async () => {
-    const start = performance.now();
-
-    await parser.listSessions();
-
-    const duration = performance.now() - start;
-    expect(duration).toBeLessThan(3000);
-  });
-});
-```
+**File:** `tests/benchmark.test.ts` - See file for implementation.
 
 ---
 
-## 6. Test Fixtures
-
-### 6.1 Sample JSONL Files
+## 8. Test Fixtures
 
 **Location:** `tests/fixtures/`
 
@@ -718,7 +286,7 @@ describe('Performance Benchmarks', () => {
 | `malformed-lines.jsonl` | Contains invalid JSON |
 | `empty-session.jsonl` | Zero messages |
 
-### 6.2 Sample Evaluation Responses
+### Response Fixtures
 
 **Location:** `tests/fixtures/responses/`
 
@@ -728,104 +296,177 @@ describe('Performance Benchmarks', () => {
 | `strong-all.json` | All Strong ratings |
 | `needs-work-all.json` | All Needs Work ratings |
 | `minimal-clues.json` | Minimum 1 clue per category |
-| `max-clues.json` | Maximum 5 clues per category |
-| `malformed-json.txt` | Invalid JSON response |
-| `missing-fields.json` | Response missing required fields |
+| `max-clues.json` | Maximum 5 clues |
+| `malformed-json.txt` | Invalid JSON |
+| `missing-fields.json` | Missing required fields |
 
 ---
 
-## 7. Test Environment Setup
+## 9. Test Environment Setup
 
-### 7.1 Environment Variables
+### 9.1 Environment Variables
 
 ```bash
-# Required for integration tests
 export ANTHROPIC_API_KEY="test-key-xxx"
-
-# Override storage for tests
 export NOSLOP_STORAGE_PATH="./test-storage"
-
-# Disable telemetry in tests
 export NOSLOP_TELEMETRY="false"
 ```
 
-### 7.2 Mock Setup
+### 9.2 Mock Setup
 
-```typescript
-// tests/setup.ts
-import { vi } from 'vitest';
+**File:** `tests/setup.ts`
+- Mock Anthropic client with messages.create stub
+- Mock fs/promises for storage tests
+- See file for implementation details
 
-// Mock Anthropic client
-vi.mock('@anthropic-ai/sdk', () => ({
-  Anthropic: vi.fn().mockImplementation(() => ({
-    messages: {
-      create: vi.fn(),
-    },
-  })),
-}));
+### 9.3 Cleanup
 
-// Mock file system for storage tests
-vi.mock('fs/promises', async () => {
-  const actual = await vi.importActual('fs/promises');
-  return {
-    ...actual,
-    // Custom mocks as needed
-  };
-});
-```
-
-### 7.3 Cleanup
-
-```typescript
-// tests/cleanup.ts
-import { rmdir } from 'fs/promises';
-
-afterAll(async () => {
-  // Clean up test storage
-  await rmdir('./test-storage', { recursive: true });
-});
-```
+**File:** `tests/cleanup.ts` - Removes ./test-storage after test suite completion.
 
 ---
 
-## 8. CI/CD Integration
+## 10. Search Agent Tests
 
-### 8.1 GitHub Actions Workflow
+**Files:** `tests/search-agent/*.test.ts`
 
-```yaml
-# .github/workflows/test.yml
-name: Tests
+| Skill | Test File | Key Tests |
+|-------|-----------|-----------|
+| Gatherer | `gatherer.test.ts` | Collects results, deduplicates, detects platforms, extracts metadata, batches processing |
+| Judge | `judge.test.ts` | Evaluates dimensions, categorizes (accept/review/reject), boosts credibility, generates tags |
+| Organizer | `organizer.test.ts` | Categorizes by topic, builds hierarchy, identifies gaps, generates paths, creates summaries |
+| Transcript | `transcript.test.ts` | Fetches YouTube transcripts, parses sections, extracts segments, caches results |
+| Pipeline | `pipeline.test.ts` | End-to-end workflow, skill coordination, failure handling, performance on large datasets |
 
-on: [push, pull_request]
+See individual test files for detailed test cases and error handling scenarios.
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
+---
 
-    steps:
-      - uses: actions/checkout@v4
+## 11. API Tests
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+**Files:** `tests/api/*.test.ts`
 
-      - name: Install dependencies
-        run: npm ci
+| API Endpoint | Test Scenarios | File |
+|--------------|----------------|------|
+| GET /api/knowledge | List, filter, search, sort, combine filters | `knowledge.test.ts` |
+| GET /api/knowledge/stats | Statistics, time-based metrics | `knowledge.test.ts` |
+| GET /api/knowledge/metrics | Quality, diversity metrics | `knowledge.test.ts` |
+| GET /api/knowledge/:id | Retrieve, related items, not found | `knowledge.test.ts` |
+| DELETE /api/knowledge/:id | Delete, audit logging | `knowledge.test.ts` |
+| POST /api/learn/search | Initiate discovery, validate params | `learn.test.ts` |
+| GET /api/learn/:executionId | Status, progress, results | `learn.test.ts` |
+| POST /api/learn/:executionId/accept | Mark as accepted | `learn.test.ts` |
+| POST /api/learn/:executionId/reject | Mark as rejected | `learn.test.ts` |
+| GET /api/influencers | List, filter by tier, metrics | `influencers.test.ts` |
+| POST /api/influencers | Add with validation | `influencers.test.ts` |
+| GET /api/influencers/:id | Details, stats | `influencers.test.ts` |
+| DELETE /api/influencers/:id | Remove from tracking | `influencers.test.ts` |
 
-      - name: Run unit tests
-        run: npm test
+### Error Handling
 
-      - name: Run integration tests
-        run: npm run test:integration
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+**File:** `error-handling.test.ts`
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-```
+| Error Type | Expected Response |
+|-----------|------------------|
+| Validation error | 400 with field list |
+| Missing auth | 401 Unauthorized |
+| Insufficient permissions | 403 Forbidden |
+| Resource not found | 404 with message |
+| Database error | 500 with generic message |
+| Rate limit exceeded | 429 with Retry-After header |
 
-### 8.2 Test Scripts
+---
+
+## 12. Web UI Tests
+
+### 12.1 KnowledgeBrowser Component
+
+**File:** `web-ui/src/__tests__/KnowledgeBrowser.test.tsx`
+
+| Feature | Test Coverage |
+|---------|---------------|
+| Rendering | Display items, empty state, filter sidebar |
+| Filtering | By platform, category, score range, combine filters, URL persistence |
+| Searching | Keyword search, suggestions, clear |
+| Pagination | Controls, navigation, jump to page |
+| Item Details | Open modal, show related items, metadata |
+
+### 12.2 InfluencerManager Component
+
+**File:** `web-ui/src/__tests__/InfluencerManager.test.tsx`
+
+| Feature | Test Coverage |
+|---------|---------------|
+| Rendering | Display list, statistics, add button |
+| Adding | Open dialog, validation, submission, duplicate detection |
+| Managing | Remove, confirm delete, edit tier, update platforms |
+| Content Monitoring | Show recent, filter by score, link to knowledge |
+| Performance | Lazy loading, caching |
+
+### 12.3 API Integration
+
+**File:** `web-ui/src/__tests__/api-integration.test.ts`
+
+| Feature | Test Coverage |
+|---------|---------------|
+| Knowledge Fetching | On mount, error handling, filter changes, debouncing |
+| Influencer Fetching | On mount, refresh, removal handling |
+| Learning | Start discovery, poll status, show progress |
+| Error Handling | Timeouts, 401, 403, 429 rate limits |
+| Caching | Cache responses, invalidate on mutations, respect TTL |
+
+---
+
+## 13. Database Tests
+
+**Files:** `tests/database/*.test.ts`
+
+### 13.1 Knowledge CRUD
+
+**File:** `knowledge-crud.test.ts`
+
+| Operation | Test Coverage |
+|-----------|---------------|
+| Create | Validation, timestamps, default status |
+| Read | By ID, all items, pagination, filtering |
+| Update | Field updates, validation, preserve created_at, status change |
+| Delete | Hard/soft delete, success/failure response |
+
+### 13.2 Influencer CRUD
+
+**File:** `influencer-crud.test.ts`
+
+| Operation | Test Coverage |
+|-----------|---------------|
+| Create | Validation, platform URLs, initialization |
+| Read | By ID, by URL, all records, filter by tier |
+| Update | Data updates, tier changes, activity tracking |
+| Delete | Remove tracking, orphan associated content |
+
+### 13.3 Search & Filtering
+
+**File:** `search.test.ts`
+
+| Feature | Test Coverage |
+|---------|---------------|
+| Full-text | Title, content, case-insensitive, multiple fields |
+| Filtering | Multiple platforms, date range, score range, combinations |
+| Sorting | By creation, relevance, title, custom fields |
+| Aggregations | Count by platform/category, average score, percentiles |
+
+### 13.4 RLS Policies
+
+**File:** `rls-policies.test.ts`
+
+| Policy Area | Test Coverage |
+|-----------|---------------|
+| Knowledge Items | Public read, auth read, admin-only modify/delete |
+| Influencers | Auth read, admin-only manage |
+| Audit Logs | Immutability, admin read-only, user self-read |
+| Enforcement | Row-level filtering, joined queries, aggregations |
+
+---
+
+## 14. Test Scripts
 
 ```json
 {
@@ -841,16 +482,28 @@ jobs:
 
 ---
 
-## 9. Bug Reporting Template
+## 15. CI/CD Integration
 
-When a test fails, create an issue with:
+### GitHub Actions Workflow
+
+**File:** `.github/workflows/test.yml`
+
+- Checkout code
+- Setup Node.js 20
+- Install dependencies (`npm ci`)
+- Run unit tests (`npm test`)
+- Run integration tests with ANTHROPIC_API_KEY secret
+- Upload coverage to codecov
+
+---
+
+## 16. Bug Reporting Template
 
 ```markdown
 ## Test Failure Report
 
 **Test:** [Test name and file]
-**Date:** [Date of failure]
-**Environment:** [Node version, OS, Claude Code version]
+**Environment:** [Node version, OS, Database]
 
 ### Expected Behavior
 [What should happen]
@@ -863,10 +516,20 @@ When a test fails, create an issue with:
 2. [Step 2]
 
 ### Error Output
-```
-[Error message and stack trace]
+[Stack trace]
+
+### Related Tests
+[Other affected tests]
 ```
 
-### Related Fixtures
-[Any relevant test data]
-```
+---
+
+## Quick Reference
+
+- **Unit test files:** `tests/{parser,analyzer,reporter,storage,config,telemetry}.test.ts`
+- **Integration tests:** `tests/integration.test.ts`
+- **API tests:** `tests/api/{knowledge,learn,influencers,error-handling}.test.ts`
+- **UI tests:** `web-ui/src/__tests__/{KnowledgeBrowser,InfluencerManager,api-integration}.test.ts`
+- **Database tests:** `tests/database/{knowledge-crud,influencer-crud,search,rls-policies}.test.ts`
+- **Performance tests:** `tests/benchmark.test.ts`
+- **Fixtures:** `tests/fixtures/` and `tests/fixtures/responses/`

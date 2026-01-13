@@ -12,7 +12,13 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "api": "tsx src/api/index.ts",
+    "api:dev": "tsx watch src/api/index.ts",
+    "ui": "tsx scripts/start-ui.ts",
+    "ui:api": "npm run api",
+    "ui:web": "cd web-ui && npm run dev",
+    "analyze": "tsx scripts/analyze-style.ts"
   },
   "keywords": [
     "claude",
@@ -34,17 +40,26 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.35.0",
+    "@supabase/supabase-js": "^2.90.1",
     "boxen": "^8.0.1",
     "cli-table3": "^0.6.5",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
+    "express": "^5.2.1",
     "ora": "^8.1.1",
     "picocolors": "^1.1.1",
     "wrap-ansi": "^9.0.0",
+    "youtube-transcript": "^1.2.1",
     "zod": "^3.24.0",
     "zod-to-json-schema": "^3.24.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/node": "^22.0.0",
+    "@types/supertest": "^6.0.3",
+    "memfs": "^4.51.1",
+    "supertest": "^7.2.2",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0",
     "vitest": "^2.1.0"

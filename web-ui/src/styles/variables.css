@@ -1,0 +1,156 @@
+/**
+ * Design System Variables
+ * "Editorial Intelligence" - Light Refined Theme
+ */
+
+:root {
+  /* Typography - Display (headlines, big numbers) */
+  --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Typography - Mono (data, metrics, code) */
+  --font-mono: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
+
+  /* Typography - Body (default) */
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Surfaces - warm neutrals */
+  --surface-0: #FAFAF9;        /* Page background */
+  --surface-1: #FFFFFF;        /* Cards */
+  --surface-2: #F5F5F0;        /* Elevated sections */
+  --surface-3: #EDEDEA;        /* Hover states */
+
+  /* Text - warmer grays */
+  --text-primary: #1A1A1A;
+  --text-secondary: #6B6B6B;
+  --text-tertiary: #9B9B9B;
+
+  /* Accents */
+  --accent-primary: #2563EB;
+  --accent-primary-hover: #1D4ED8;
+  --accent-primary-soft: #EFF6FF;
+  --accent-emerald: #059669;
+  --accent-emerald-soft: #ECFDF5;
+  --accent-amber: #D97706;
+  --accent-amber-soft: #FFFBEB;
+  --accent-rose: #DC2626;
+  --accent-rose-soft: #FEF2F2;
+
+  /* Platform colors */
+  --platform-youtube: #E52D27;
+  --platform-twitter: #1A8CD8;
+  --platform-reddit: #FF5700;
+  --platform-linkedin: #0A66C2;
+  --platform-web: #6B7280;
+
+  /* Credibility Tiers */
+  --tier-high: #F59E0B;
+  --tier-medium: #9CA3AF;
+  --tier-standard: #CD7F32;
+
+  /* Borders - subtle */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.1);
+  --border-strong: rgba(0, 0, 0, 0.15);
+
+  /* Shadows - refined */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.10);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 24px rgba(37, 99, 235, 0.15);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.06);
+
+  /* Spacing (8px base) */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+
+  /* Typography Scale */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+  --text-4xl: 36px;
+  --text-5xl: 48px;
+
+  /* Font Weights */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Line Heights */
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* Border Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 350ms ease;
+  --transition-bounce: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Layout */
+  --sidebar-width: 260px;
+  --sidebar-width-collapsed: 72px;
+  --header-height: 64px;
+  --content-max-width: 1280px;
+
+  /* Z-index */
+  --z-sidebar: 100;
+  --z-header: 90;
+  --z-modal: 200;
+  --z-tooltip: 300;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-0: #0F0F0F;
+    --surface-1: #1A1A1A;
+    --surface-2: #242424;
+    --surface-3: #2E2E2E;
+
+    --text-primary: #FAFAFA;
+    --text-secondary: #A1A1A1;
+    --text-tertiary: #6B6B6B;
+
+    --accent-primary: #3B82F6;
+    --accent-primary-hover: #60A5FA;
+    --accent-primary-soft: #1E3A5F;
+    --accent-emerald-soft: #134E3A;
+    --accent-amber-soft: #451A03;
+    --accent-rose-soft: #450A0A;
+
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-default: rgba(255, 255, 255, 0.1);
+    --border-strong: rgba(255, 255, 255, 0.15);
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+    --shadow-glow: 0 0 24px rgba(59, 130, 246, 0.2);
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.2);
+    --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+}

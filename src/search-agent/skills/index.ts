@@ -42,3 +42,35 @@ export {
 // Criteria and taxonomy
 export { RELEVANCE_CRITERIA, type RelevanceCriterion } from './judge/criteria.js';
 export { KNOWLEDGE_TAXONOMY, getTaxonomyNode, type TaxonomyNode } from './organizer/taxonomy.js';
+
+// Transcript skill
+export {
+  TranscriptSkill,
+  createTranscriptSkill,
+  type TranscriptInput,
+  type TranscriptOutput,
+  type VideoAnalysisResult,
+} from './transcript/index.js';
+
+// Re-export transcript types
+export type { YouTubeTranscript, AnalyzedTranscript } from './transcript/index.js';
+export {
+  parseYouTubeVideoId,
+  parseYouTubePlaylistId,
+  isYouTubeUrl,
+  TranscriptError,
+} from './transcript/index.js';
+
+// Discovery skill
+export {
+  DiscoverySkill,
+  createDiscoverySkill,
+  aggregateInfluencers,
+  generateSearchQueries,
+  getTopicQueries,
+  estimateQueryCount,
+  type DiscoveryInput,
+  type DiscoveryOutput,
+  type WebSearchResult,
+  type SearchQueryDef,
+} from './discovery/index.js';

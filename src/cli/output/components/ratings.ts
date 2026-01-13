@@ -6,7 +6,7 @@
 
 import pc from 'picocolors';
 import type { Evaluation, Rating } from '../../../models/index.js';
-import { formatRatingLabel, ratingBar } from '../theme.js';
+import { formatRatingLabel, ratingBar, ratingIcon } from '../theme.js';
 
 /**
  * Render the ratings summary section
@@ -40,15 +40,9 @@ export function renderRatings(evaluation: Evaluation): string {
  * Render a compact one-line ratings summary
  */
 export function renderCompactRatings(evaluation: Evaluation): string {
-  const icons = {
-    Strong: pc.green('●'),
-    Developing: pc.yellow('◐'),
-    'Needs Work': pc.red('○'),
-  };
-
-  const p = icons[evaluation.planning.rating];
-  const c = icons[evaluation.criticalThinking.rating];
-  const u = icons[evaluation.codeUnderstanding.rating];
+  const p = ratingIcon[evaluation.planning.rating];
+  const c = ratingIcon[evaluation.criticalThinking.rating];
+  const u = ratingIcon[evaluation.codeUnderstanding.rating];
 
   return `${p} Planning  ${c} Critical  ${u} Code`;
 }

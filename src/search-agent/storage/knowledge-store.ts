@@ -13,6 +13,7 @@ import {
   KnowledgeItemSchema,
   KnowledgeCollection,
   TopicCategory,
+  SourcePlatform,
 } from '../models/index.js';
 
 /**
@@ -29,6 +30,35 @@ export interface KnowledgeStats {
   totalItems: number;
   byCategory: Partial<Record<TopicCategory, number>>;
   byStatus: Record<string, number>;
+  byPlatform: Partial<Record<SourcePlatform, number>>;
+}
+
+/**
+ * Quality metrics for the knowledge base
+ */
+export interface QualityMetrics {
+  totalItems: number;
+  averageRelevanceScore: number;
+  highQualityCount: number; // score >= 0.7
+  influencerContentCount: number;
+  platformDistribution: Partial<Record<SourcePlatform, number>>;
+  categoryDistribution: Partial<Record<TopicCategory, number>>;
+  recentItemsCount: number; // Last 7 days
+}
+
+/**
+ * Advanced search options
+ */
+export interface AdvancedSearchOptions {
+  query?: string;
+  platform?: SourcePlatform;
+  category?: TopicCategory;
+  author?: string;
+  influencerId?: string;
+  minScore?: number;
+  status?: string;
+  limit?: number;
+  sortBy?: 'relevance' | 'date' | 'score';
 }
 
 /**
@@ -209,15 +239,11 @@ export class KnowledgeStore {
     const items = await this.listItems();
     const queryLower = query.toLowerCase();
 
-    // Score each item by match quality
-    const scored = items.map((item) => {
-      let score = 0;
-      if (item.title.toLowerCase().includes(queryLower)) score += 3;
-      if (item.summary.toLowerCase().includes(queryLower)) score += 2;
-      if (item.tags.some((t) => t.toLowerCase().includes(queryLower))) score += 2;
-      if (item.content.toLowerCase().includes(queryLower)) score += 1;
-      return { item, score };
-    });
+    // Score each item by match quality using the shared helper
+    const scored = items.map((item) => ({
+      item,
+      score: this.calculateTextMatchScore(item, queryLower),
+    }));
 
     return scored
       .filter((s) => s.score > 0)
@@ -321,10 +347,17 @@ export class KnowledgeStore {
       byCategory[cat as TopicCategory] = ids.length;
     }
 
+    const byPlatform: Partial<Record<SourcePlatform, number>> = {};
+    for (const item of items) {
+      const platform = item.source.platform;
+      byPlatform[platform] = (byPlatform[platform] || 0) + 1;
+    }
+
     return {
       totalItems: this.collection?.totalItems || 0,
       byCategory,
       byStatus,
+      byPlatform,
     };
   }
 
@@ -334,6 +367,201 @@ export class KnowledgeStore {
   async getCollection(): Promise<KnowledgeCollection | null> {
     await this.ensureInitialized();
     return this.collection;
+  }
+
+  /**
+   * List items by platform
+   */
+  async listByPlatform(platform: SourcePlatform): Promise<KnowledgeItem[]> {
+    await this.ensureInitialized();
+    const items = await this.listItems();
+    return items.filter((item) => item.source.platform === platform);
+  }
+
+  /**
+   * List items by author (name or handle)
+   */
+  async listByAuthor(author: string): Promise<KnowledgeItem[]> {
+    await this.ensureInitialized();
+    const items = await this.listItems();
+    const normalizedAuthor = author.toLowerCase();
+
+    return items.filter((item) => {
+      const sourceAuthor = item.source.author?.toLowerCase();
+      const sourceHandle = item.source.authorHandle?.toLowerCase();
+      return (
+        sourceAuthor?.includes(normalizedAuthor) ||
+        sourceHandle?.includes(normalizedAuthor)
+      );
+    });
+  }
+
+  /**
+   * List items by influencer ID
+   */
+  async listByInfluencer(influencerId: string): Promise<KnowledgeItem[]> {
+    await this.ensureInitialized();
+    const items = await this.listItems();
+    return items.filter((item) => item.source.influencerId === influencerId);
+  }
+
+  /**
+   * List items with high credibility (from tracked influencers)
+   */
+  async listHighCredibility(): Promise<KnowledgeItem[]> {
+    await this.ensureInitialized();
+    const items = await this.listItems();
+    return items.filter(
+      (item) => item.source.credibilityTier === 'high' || item.source.influencerId
+    );
+  }
+
+  /**
+   * Advanced search with multiple filters
+   */
+  async searchAdvanced(options: AdvancedSearchOptions): Promise<KnowledgeItem[]> {
+    await this.ensureInitialized();
+    let items = await this.listItems();
+
+    // Apply filters
+    if (options.platform) {
+      items = items.filter((i) => i.source.platform === options.platform);
+    }
+
+    if (options.category) {
+      items = items.filter((i) => i.category === options.category);
+    }
+
+    if (options.author) {
+      const normalizedAuthor = options.author.toLowerCase();
+      items = items.filter((i) => {
+        const sourceAuthor = i.source.author?.toLowerCase();
+        const sourceHandle = i.source.authorHandle?.toLowerCase();
+        return (
+          sourceAuthor?.includes(normalizedAuthor) ||
+          sourceHandle?.includes(normalizedAuthor)
+        );
+      });
+    }
+
+    if (options.influencerId) {
+      items = items.filter((i) => i.source.influencerId === options.influencerId);
+    }
+
+    if (options.minScore !== undefined) {
+      items = items.filter((i) => i.relevance.score >= options.minScore!);
+    }
+
+    if (options.status) {
+      items = items.filter((i) => i.status === options.status);
+    }
+
+    if (options.query) {
+      const queryLower = options.query.toLowerCase();
+      items = items.filter((i) =>
+        i.title.toLowerCase().includes(queryLower) ||
+        i.summary.toLowerCase().includes(queryLower) ||
+        i.tags.some((t) => t.toLowerCase().includes(queryLower)) ||
+        i.content.toLowerCase().includes(queryLower)
+      );
+    }
+
+    // Sort
+    switch (options.sortBy) {
+      case 'date':
+        items.sort((a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        break;
+      case 'score':
+        items.sort((a, b) => b.relevance.score - a.relevance.score);
+        break;
+      case 'relevance':
+      default:
+        // Keep original order or apply text match scoring if query provided
+        if (options.query) {
+          const queryLower = options.query.toLowerCase();
+          items.sort((a, b) => {
+            const scoreA = this.calculateTextMatchScore(a, queryLower);
+            const scoreB = this.calculateTextMatchScore(b, queryLower);
+            return scoreB - scoreA;
+          });
+        }
+        break;
+    }
+
+    // Apply limit
+    if (options.limit) {
+      items = items.slice(0, options.limit);
+    }
+
+    return items;
+  }
+
+  /**
+   * Calculate text match score for sorting
+   */
+  private calculateTextMatchScore(item: KnowledgeItem, query: string): number {
+    let score = 0;
+    if (item.title.toLowerCase().includes(query)) score += 3;
+    if (item.summary.toLowerCase().includes(query)) score += 2;
+    if (item.tags.some((t) => t.toLowerCase().includes(query))) score += 2;
+    if (item.content.toLowerCase().includes(query)) score += 1;
+    return score;
+  }
+
+  /**
+   * Get quality metrics for the knowledge base
+   */
+  async getQualityMetrics(): Promise<QualityMetrics> {
+    await this.ensureInitialized();
+    const items = await this.listItems();
+
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const platformDistribution: Partial<Record<SourcePlatform, number>> = {};
+    const categoryDistribution: Partial<Record<TopicCategory, number>> = {};
+    let totalScore = 0;
+    let highQualityCount = 0;
+    let influencerContentCount = 0;
+    let recentItemsCount = 0;
+
+    for (const item of items) {
+      // Platform distribution
+      const platform = item.source.platform;
+      platformDistribution[platform] = (platformDistribution[platform] || 0) + 1;
+
+      // Category distribution
+      categoryDistribution[item.category] = (categoryDistribution[item.category] || 0) + 1;
+
+      // Score metrics
+      totalScore += item.relevance.score;
+      if (item.relevance.score >= 0.7) {
+        highQualityCount++;
+      }
+
+      // Influencer content
+      if (item.source.influencerId || item.source.credibilityTier === 'high') {
+        influencerContentCount++;
+      }
+
+      // Recent items
+      const itemDate = new Date(item.createdAt);
+      if (itemDate >= sevenDaysAgo) {
+        recentItemsCount++;
+      }
+    }
+
+    return {
+      totalItems: items.length,
+      averageRelevanceScore: items.length > 0 ? totalScore / items.length : 0,
+      highQualityCount,
+      influencerContentCount,
+      platformDistribution,
+      categoryDistribution,
+      recentItemsCount,
+    };
   }
 }
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import 'dotenv/config';
+
 /**
  * AI Coding Style Analyzer - v2.1
  *
@@ -11,6 +13,7 @@ import { analyzeStyle } from '../src/analyzer/style-analyzer.js';
 import { calculateAllDimensions } from '../src/analyzer/dimensions/index.js';
 import { renderFullTypeResult, renderDimensionSummary } from '../src/cli/output/components/index.js';
 import { startReportServer } from '../src/web/index.js';
+import { exec } from 'child_process';
 import pc from 'picocolors';
 
 async function main() {
@@ -83,15 +86,65 @@ async function main() {
   const dimensionOutput = renderDimensionSummary(dimensions);
   console.log(dimensionOutput);
 
-  // Step 5: Start web server with dimensions
+  // Step 5: Try to save to API and open React app, or fallback to local server
+  console.log('');
+  console.log(pc.dim('  🌐 Opening web report...'));
+
+  let reportUrl = 'http://localhost:5173/report/local';
+  let useApiMode = false;
+
   try {
-    const { url } = await startReportServer(
-      result,
-      { port: 3000, autoOpen: true },
-      dimensions
-    );
-    console.log(pc.dim(`  Server running at ${url}`));
-    console.log(pc.dim('  Press Ctrl+C to stop'));
+    // Try to save report to API
+    const response = await fetch('http://localhost:3001/api/reports/share', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        typeResult: result,
+        dimensions: dimensions,
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      reportUrl = `http://localhost:5173/report/${data.reportId}`;
+      useApiMode = true;
+      console.log(pc.green('  ✓ Report saved to database'));
+      console.log(pc.dim(`     Report ID: ${data.reportId}`));
+    }
+  } catch (error) {
+    // API not running, fall back to local mode
+    console.log(pc.yellow('  ⚠ API server not running, using local mode'));
+  }
+
+  // Open browser
+  try {
+    if (!useApiMode) {
+      // Start local server as fallback
+      const { url } = await startReportServer(
+        result,
+        { port: 3000, autoOpen: false },
+        dimensions
+      );
+      reportUrl = url;
+      console.log(pc.dim(`  Server running at ${url}`));
+      console.log(pc.dim('  Press Ctrl+C to stop'));
+    }
+
+    // Open the URL in browser
+    const openCommand = process.platform === 'darwin'
+      ? `open "${reportUrl}"`
+      : process.platform === 'win32'
+        ? `start "${reportUrl}"`
+        : `xdg-open "${reportUrl}"`;
+
+    exec(openCommand, (err) => {
+      if (err) {
+        console.error(pc.yellow(`  ⚠ Failed to open browser automatically`));
+        console.log(pc.dim(`     Please open: ${reportUrl}`));
+      } else {
+        console.log(pc.green(`  ✓ Opening ${reportUrl}`));
+      }
+    });
   } catch (err) {
     console.error(pc.yellow('  ⚠ Could not start web server'));
     console.error(pc.dim(`    ${(err as Error).message}`));

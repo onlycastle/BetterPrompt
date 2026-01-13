@@ -15,9 +15,11 @@ import { type TypeResult, type CodingStyleType, TYPE_METADATA } from '../models/
 import {
   type FullAnalysisResult,
   type AICollaborationResult,
-  type PromptScoreResult,
+  type ContextEngineeringResult,
   type BurnoutRiskResult,
   type ToolMasteryResult,
+  type AIControlResult,
+  type SkillResilienceResult,
 } from '../analyzer/dimensions/index.js';
 
 /**
@@ -29,17 +31,67 @@ export interface ExtendedAnalysisData {
 }
 
 /**
+ * Report options for customization
+ */
+export interface ReportOptions {
+  reportId?: string;
+  baseUrl?: string;
+  enableSharing?: boolean;
+  /** Show all premium content without blur (for paid users or testing) */
+  unlocked?: boolean;
+}
+
+/**
  * Generate the complete HTML report with scroll-based terminal UI
  */
-export function generateReportHTML(result: TypeResult, dimensions?: FullAnalysisResult): string {
+export function generateReportHTML(
+  result: TypeResult,
+  dimensions?: FullAnalysisResult,
+  options?: ReportOptions
+): string {
   const meta = TYPE_METADATA[result.primaryType];
+  const { reportId, baseUrl = 'https://nomoreaislop.xyz', enableSharing = true, unlocked } = options || {};
+  const shareUrl = reportId ? `${baseUrl}/r/${reportId}` : '';
+  const ogImageUrl = reportId ? `${baseUrl}/api/reports/${reportId}/og-image` : '';
+
+  // Determine if premium content should be unlocked
+  // Supports: explicit unlocked option, or NOSLOP_TEST_TIER env var in non-production
+  const testTier = process.env.NOSLOP_TEST_TIER;
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isUnlocked = unlocked || (!isProduction && ['pro', 'premium', 'enterprise'].includes(testTier || ''));
+
+  const ogTitle = `I'm a ${meta.name} ${meta.emoji} - What's Your AI Coding Style?`;
+  const ogDescription = meta.tagline;
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your AI Coding Style | NoMoreAISlop</title>
+  <title>Your AI Coding Style: ${meta.name} ${meta.emoji} | NoMoreAISlop</title>
+
+  <!-- Open Graph / Facebook -->
+  ${reportId ? `
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${shareUrl}">
+  <meta property="og:title" content="${ogTitle}">
+  <meta property="og:description" content="${ogDescription}">
+  <meta property="og:image" content="${ogImageUrl}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="${shareUrl}">
+  <meta name="twitter:title" content="${ogTitle}">
+  <meta name="twitter:description" content="${ogDescription}">
+  <meta name="twitter:image" content="${ogImageUrl}">
+
+  <!-- Additional meta -->
+  <meta name="description" content="${ogDescription}">
+  <link rel="canonical" href="${shareUrl}">
+  ` : ''}
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -75,8 +127,8 @@ ${getEnhancedStyles()}
         <div class="terminal-tab" data-section="ai-collaboration">
           <span class="tab-index">1:</span><span class="tab-text">ai-dep</span>
         </div>
-        <div class="terminal-tab" data-section="prompt-score">
-          <span class="tab-index">2:</span><span class="tab-text">prompt</span>
+        <div class="terminal-tab" data-section="context-engineering">
+          <span class="tab-index">2:</span><span class="tab-text">context</span>
         </div>
         <div class="terminal-tab" data-section="burnout-risk">
           <span class="tab-index">3:</span><span class="tab-text">burnout</span>
@@ -84,15 +136,21 @@ ${getEnhancedStyles()}
         <div class="terminal-tab" data-section="tool-mastery">
           <span class="tab-index">4:</span><span class="tab-text">tools</span>
         </div>
+        <div class="terminal-tab" data-section="ai-control">
+          <span class="tab-index">5:</span><span class="tab-text">control</span>
+        </div>
+        <div class="terminal-tab" data-section="skill-resilience">
+          <span class="tab-index">6:</span><span class="tab-text">skills</span>
+        </div>
         <div class="terminal-tab" data-section="unlock">
-          <span class="tab-index">5:</span><span class="tab-text">unlock</span>
+          <span class="tab-index">7:</span><span class="tab-text">unlock</span>
         </div>
         ` : `
         <div class="terminal-tab" data-section="unlock">
           <span class="tab-index">1:</span><span class="tab-text">unlock</span>
         </div>
         `}
-        <span class="tabs-hint">↑↓/jk navigate • 1-${dimensions ? '6' : '2'} jump</span>
+        <span class="tabs-hint">↑↓/jk navigate • 1-${dimensions ? '8' : '2'} jump</span>
       </div>
     </div>
 
@@ -110,36 +168,51 @@ ${getEnhancedStyles()}
       <!-- Section 1: AI Collaboration Mastery -->
       <section class="snap-section section-ai-collaboration" data-section="ai-collaboration" data-index="1">
         <div class="section-inner">
-          ${renderAICollaborationSection(dimensions.aiCollaboration)}
+          ${renderAICollaborationSection(dimensions.aiCollaboration, isUnlocked)}
         </div>
       </section>
 
-      <!-- Section 2: Prompt Engineering -->
-      <section class="snap-section section-prompt-score" data-section="prompt-score" data-index="2">
+      <!-- Section 2: Context Engineering -->
+      <section class="snap-section section-context-engineering" data-section="context-engineering" data-index="2">
         <div class="section-inner">
-          ${renderPromptScoreSection(dimensions.promptScore)}
+          ${renderContextEngineeringSection(dimensions.contextEngineering, isUnlocked)}
         </div>
       </section>
 
       <!-- Section 3: Burnout Risk -->
       <section class="snap-section section-burnout-risk" data-section="burnout-risk" data-index="3">
         <div class="section-inner">
-          ${renderBurnoutRiskSection(dimensions.burnoutRisk)}
+          ${renderBurnoutRiskSection(dimensions.burnoutRisk, isUnlocked)}
         </div>
       </section>
 
       <!-- Section 4: Tool Mastery -->
       <section class="snap-section section-tool-mastery" data-section="tool-mastery" data-index="4">
         <div class="section-inner">
-          ${renderToolMasterySection(dimensions.toolMastery)}
+          ${renderToolMasterySection(dimensions.toolMastery, isUnlocked)}
+        </div>
+      </section>
+
+      <!-- Section 5: AI Control Index -->
+      <section class="snap-section section-ai-control" data-section="ai-control" data-index="5">
+        <div class="section-inner">
+          ${renderAIControlSection(dimensions.aiControl, isUnlocked)}
+        </div>
+      </section>
+
+      <!-- Section 6: Skill Resilience -->
+      <section class="snap-section section-skill-resilience" data-section="skill-resilience" data-index="6">
+        <div class="section-inner">
+          ${renderSkillResilienceSection(dimensions.skillResilience, isUnlocked)}
         </div>
       </section>
       ` : ''}
 
-      <!-- Section 5: Unlock & Footer -->
-      <section class="snap-section" data-section="unlock" data-index="${dimensions ? '5' : '1'}">
+      <!-- Section 7: Unlock & Footer -->
+      <section class="snap-section" data-section="unlock" data-index="${dimensions ? '7' : '1'}">
         <div class="section-inner">
-          ${renderLockedSection()}
+          ${enableSharing ? renderShareSection(result, meta, reportId, baseUrl) : ''}
+          ${renderLockedSection(isUnlocked)}
           ${renderFooter()}
         </div>
       </section>
@@ -303,14 +376,14 @@ function getEnhancedStyles(): string {
     }
 
     /* ============================================
-       Scroll-Snap Container
+       Scroll Container (Natural Flow Layout)
        ============================================ */
     .scroll-container {
       flex: 1;
-      overflow-y: scroll;
+      overflow-y: auto;
       overflow-x: hidden;
-      scroll-snap-type: y mandatory;
       scroll-behavior: smooth;
+      padding-bottom: 40px;
 
       /* Custom scrollbar - neon style */
       scrollbar-width: thin;
@@ -337,41 +410,47 @@ function getEnhancedStyles(): string {
     }
 
     /* ============================================
-       Snap Sections - Performance Optimized
+       Content Sections - Natural Flow Layout
        ============================================ */
     .snap-section {
-      min-height: 100%;
-      scroll-snap-align: start;
-      scroll-snap-stop: always;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: block;
       padding: 40px;
       position: relative;
+      border-bottom: 1px solid var(--border);
 
-      /* Performance: opacity + transform only (no expensive filter) */
-      opacity: 0.4;
-      transform: scale(0.97) translateZ(0);
-      transition: opacity 0.4s ease-out, transform 0.4s ease-out;
-      will-change: opacity, transform;
-      contain: content;
+      /* Always visible - no blur/fade effects */
+      opacity: 1;
+      transform: none;
+    }
+
+    .snap-section:last-child {
+      border-bottom: none;
+    }
+
+    /* First section has more top padding */
+    .snap-section:first-child {
+      padding-top: 48px;
     }
 
     .snap-section.in-view {
+      /* Kept for JavaScript compatibility */
       opacity: 1;
-      transform: scale(1) translateZ(0);
+      transform: none;
     }
 
     .section-inner {
       width: 100%;
       max-width: 700px;
+      margin: 0 auto;
     }
 
     /* Section-specific accent colors */
     .section-ai-collaboration { --section-accent: var(--neon-cyan); }
-    .section-prompt-score { --section-accent: var(--neon-green); }
+    .section-context-engineering { --section-accent: var(--neon-green); }
     .section-burnout-risk { --section-accent: var(--neon-yellow); }
     .section-tool-mastery { --section-accent: var(--neon-magenta); }
+    .section-ai-control { --section-accent: var(--neon-purple); }
+    .section-skill-resilience { --section-accent: var(--neon-pink); }
 
     /* ============================================
        Terminal Tabs (iTerm2/macOS Style) - PRIMARY NAV
@@ -885,6 +964,158 @@ function getEnhancedStyles(): string {
       user-select: none;
       pointer-events: none;
     }
+
+    /* ============================================
+       Share Section Styles
+       ============================================ */
+    .share-section {
+      text-align: center;
+      padding: 32px 24px;
+      margin-bottom: 32px;
+      background: linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 16px;
+    }
+
+    .share-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--neon-cyan);
+      margin: 0 0 8px 0;
+    }
+
+    .share-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin: 0 0 24px 0;
+    }
+
+    .share-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .share-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .share-btn svg {
+      flex-shrink: 0;
+    }
+
+    .share-btn.twitter {
+      background: #000;
+      color: #fff;
+      border-color: #333;
+    }
+
+    .share-btn.twitter:hover {
+      background: #1a1a1a;
+      border-color: #fff;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+    }
+
+    .share-btn.linkedin {
+      background: #0077b5;
+      color: #fff;
+      border-color: #0077b5;
+    }
+
+    .share-btn.linkedin:hover {
+      background: #006097;
+      box-shadow: 0 0 20px rgba(0, 119, 181, 0.4);
+    }
+
+    .share-btn.copy {
+      background: var(--bg-tertiary);
+      color: var(--neon-cyan);
+      border-color: var(--neon-cyan);
+    }
+
+    .share-btn.copy:hover {
+      background: rgba(0, 212, 255, 0.1);
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+    }
+
+    .share-url-container {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .share-url-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-primary);
+      border: 1px solid var(--bg-tertiary);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .share-url-input:focus {
+      outline: none;
+      border-color: var(--neon-cyan);
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--neon-green);
+      color: #000;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .toast-icon {
+      font-size: 16px;
+    }
+
+    /* Responsive adjustments for share section */
+    @media (max-width: 600px) {
+      .share-buttons {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .share-btn {
+        width: 100%;
+        max-width: 280px;
+        justify-content: center;
+      }
+    }
   `;
 }
 
@@ -903,27 +1134,19 @@ function getScrollScript(): string {
       let activationTimeout = null;
       let keyDebounce = false;
 
-      // Performance: Reduced thresholds from 5 to 2
+      // Natural scroll detection - activate when section top is near viewport top
       const observerOptions = {
         root: container,
-        rootMargin: '-30% 0px -30% 0px',
-        threshold: [0, 0.5]
+        rootMargin: '-10% 0px -80% 0px',
+        threshold: [0, 0.1, 0.2]
       };
 
       const sectionObserver = new IntersectionObserver((entries) => {
-        let mostVisible = null;
-        let maxRatio = 0;
-
         entries.forEach(entry => {
-          if (entry.intersectionRatio > maxRatio) {
-            maxRatio = entry.intersectionRatio;
-            mostVisible = entry.target;
+          if (entry.isIntersecting && entry.intersectionRatio > 0.05) {
+            requestActivation(entry.target);
           }
         });
-
-        if (mostVisible && maxRatio > 0.4) {
-          requestActivation(mostVisible);
-        }
       }, observerOptions);
 
       // Observe all sections
@@ -1009,6 +1232,8 @@ function getScrollScript(): string {
           case '4':
           case '5':
           case '6':
+          case '7':
+          case '8':
             e.preventDefault();
             const index = parseInt(e.key) - 1;
             if (index < sections.length) {
@@ -1035,6 +1260,35 @@ function getScrollScript(): string {
       }
     })();
   `;
+}
+
+// ============================================================================
+// Section Rendering Helpers
+// ============================================================================
+
+type CssLevelClass = 'healthy' | 'balanced' | 'moderate' | 'warning';
+
+/**
+ * Maps a dimension level to its CSS class for score-level styling
+ *
+ * @param level - The dimension level string
+ * @param positiveLevel - Level(s) that map to 'healthy' class
+ * @param useWarning - If true, uses 'warning' instead of 'moderate' for lowest level
+ */
+function getLevelClass(
+  level: string,
+  positiveLevel: string | string[],
+  useWarning = false
+): CssLevelClass {
+  const positiveLevels = Array.isArray(positiveLevel) ? positiveLevel : [positiveLevel];
+
+  if (positiveLevels.includes(level)) {
+    return 'healthy';
+  }
+  if (level === 'developing') {
+    return 'balanced';
+  }
+  return useWarning ? 'warning' : 'moderate';
 }
 
 // ============================================================================
@@ -1081,11 +1335,12 @@ function renderMainResultSection(result: TypeResult, meta: typeof TYPE_METADATA[
 
 /**
  * AI Collaboration Mastery Section - Full screen
+ * Now with 3 categories: Planning, Orchestration, Verification
+ * (Context Engineering is now a separate dimension)
  */
-function renderAICollaborationSection(data: AICollaborationResult): string {
-  const levelClass = data.level === 'expert' || data.level === 'proficient'
-    ? 'healthy'
-    : data.level === 'developing' ? 'balanced' : 'moderate';
+function renderAICollaborationSection(data: AICollaborationResult, isUnlocked: boolean): string {
+  const blurClass = isUnlocked ? '' : 'blurred-content';
+  const levelClass = getLevelClass(data.level, ['expert', 'proficient']);
 
   const levelLabels: Record<string, string> = {
     expert: 'Expert Collaborator',
@@ -1112,14 +1367,6 @@ function renderAICollaborationSection(data: AICollaborationResult): string {
     </div>
 
     <div class="metrics-container">
-      <div class="metric-row">
-        <span class="metric-label">Context Engineering</span>
-        <div class="metric-bar">
-          <div class="metric-fill ${data.breakdown.contextEngineering.score >= 60 ? 'green' : 'yellow'}"
-               style="width: ${data.breakdown.contextEngineering.score}%"></div>
-        </div>
-        <span class="metric-value">${data.breakdown.contextEngineering.score}</span>
-      </div>
       <div class="metric-row">
         <span class="metric-label">Structured Planning</span>
         <div class="metric-bar">
@@ -1154,79 +1401,146 @@ function renderAICollaborationSection(data: AICollaborationResult): string {
     ` : ''}
 
     ${data.growthAreas.length > 0 ? `
-    <div class="subsection-title blurred-content" style="margin-top: 16px;">🌱 Growth Areas</div>
-    <ul class="blurred-content" style="list-style: none; padding: 0; margin: 0;">
+    <div class="subsection-title ${blurClass}" style="margin-top: 16px;">🌱 Growth Areas</div>
+    <ul class="${blurClass}" style="list-style: none; padding: 0; margin: 0;">
       ${data.growthAreas.map(g => `<li style="padding: 4px 0; color: var(--text-muted); font-size: 13px;">→ ${g}</li>`).join('')}
     </ul>
     ` : ''}
 
+    ${isUnlocked ? '' : `
     <div class="unlock-prompt">
       <span class="unlock-prompt-text">🔓 Unlock detailed breakdown + personalized recommendations</span>
     </div>
+    `}
   `;
 }
 
 /**
- * Prompt Engineering Section - Full screen
+ * Context Engineering Section - Full screen
+ * Based on 4 core strategies: WRITE, SELECT, COMPRESS, ISOLATE
  */
-function renderPromptScoreSection(data: PromptScoreResult): string {
-  const scoreClass = data.score >= 70 ? 'healthy' : data.score >= 50 ? 'balanced' : 'moderate';
-  const levelLabel = data.score >= 70 ? 'Above Average' : data.score >= 50 ? 'Average' : 'Needs Work';
+function renderContextEngineeringSection(data: ContextEngineeringResult, isUnlocked: boolean): string {
+  const blurClass = isUnlocked ? '' : 'blurred-content';
+  const levelClass = getLevelClass(data.level, ['expert', 'proficient']);
+
+  const levelLabels: Record<string, string> = {
+    expert: 'Context Master',
+    proficient: 'Proficient',
+    developing: 'Developing',
+    novice: 'Getting Started',
+  };
 
   return `
     <div class="section-header">
-      <div class="section-icon">🎯</div>
-      <div class="section-title">Prompt Engineering Score</div>
-      <div class="section-subtitle">How effectively do you communicate with AI?</div>
+      <div class="section-icon">🧠</div>
+      <div class="section-title">Context Engineering</div>
+      <div class="section-subtitle">How effectively do you manage AI context?</div>
     </div>
 
     <div class="score-display">
       <div class="score-value">${data.score}</div>
       <div class="score-label">out of 100</div>
-      <span class="score-level ${scoreClass}">${levelLabel}</span>
+      <span class="score-level ${levelClass}">${levelLabels[data.level]}</span>
+    </div>
+
+    <div class="interpretation">
+      ${data.interpretation}
     </div>
 
     <div class="metrics-container">
       <div class="metric-row">
-        <span class="metric-label">Context provision</span>
+        <span class="metric-label">WRITE (Preserve)</span>
         <div class="metric-bar">
-          <div class="metric-fill cyan" style="width: ${data.breakdown.contextProvision}%"></div>
+          <div class="metric-fill ${data.breakdown.write.score >= 60 ? 'green' : 'cyan'}"
+               style="width: ${data.breakdown.write.score}%"></div>
         </div>
-        <span class="metric-value">${data.breakdown.contextProvision}</span>
+        <span class="metric-value">${data.breakdown.write.score}</span>
       </div>
       <div class="metric-row">
-        <span class="metric-label">Specificity</span>
+        <span class="metric-label">SELECT (Retrieve)</span>
         <div class="metric-bar">
-          <div class="metric-fill green" style="width: ${data.breakdown.specificity}%"></div>
+          <div class="metric-fill ${data.breakdown.select.score >= 60 ? 'cyan' : 'yellow'}"
+               style="width: ${data.breakdown.select.score}%"></div>
         </div>
-        <span class="metric-value">${data.breakdown.specificity}</span>
+        <span class="metric-value">${data.breakdown.select.score}</span>
       </div>
-      <div class="metric-row blurred-content">
-        <span class="metric-label">First-try success</span>
+      <div class="metric-row">
+        <span class="metric-label">COMPRESS (Reduce)</span>
         <div class="metric-bar">
-          <div class="metric-fill magenta" style="width: ${data.breakdown.firstTrySuccess}%"></div>
+          <div class="metric-fill ${data.breakdown.compress.score >= 60 ? 'magenta' : 'yellow'}"
+               style="width: ${data.breakdown.compress.score}%"></div>
         </div>
-        <span class="metric-value">${data.breakdown.firstTrySuccess}</span>
+        <span class="metric-value">${data.breakdown.compress.score}</span>
       </div>
-      <div class="metric-row blurred-content">
-        <span class="metric-label">Constraint clarity</span>
+      <div class="metric-row">
+        <span class="metric-label">ISOLATE (Partition)</span>
         <div class="metric-bar">
-          <div class="metric-fill cyan" style="width: ${data.breakdown.constraintClarity}%"></div>
+          <div class="metric-fill ${data.breakdown.isolate.score >= 60 ? 'green' : 'cyan'}"
+               style="width: ${data.breakdown.isolate.score}%"></div>
         </div>
-        <span class="metric-value">${data.breakdown.constraintClarity}</span>
+        <span class="metric-value">${data.breakdown.isolate.score}</span>
       </div>
     </div>
 
-    <div class="unlock-prompt">
-      <span class="unlock-prompt-text">🔓 Unlock best/worst prompt analysis + improvement tips</span>
+    <div class="subsection-title" style="margin-top: 24px;">📊 Key Metrics</div>
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 12px;">
+      <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 20px; color: var(--neon-green); font-weight: 700;">${data.breakdown.write.fileReferences}</div>
+        <div style="font-size: 10px; color: var(--text-muted);">File References</div>
+      </div>
+      <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 20px; color: var(--neon-cyan); font-weight: 700;">${data.breakdown.compress.compactUsageCount}</div>
+        <div style="font-size: 10px; color: var(--text-muted);">/compact Uses</div>
+      </div>
+      <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 20px; color: var(--neon-magenta); font-weight: 700;">${data.breakdown.isolate.taskToolUsage}</div>
+        <div style="font-size: 10px; color: var(--text-muted);">Task Delegations</div>
+      </div>
+      <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 20px; color: var(--neon-yellow); font-weight: 700;">${data.breakdown.compress.avgTurnsPerSession.toFixed(1)}</div>
+        <div style="font-size: 10px; color: var(--text-muted);">Avg Turns/Session</div>
+      </div>
     </div>
+
+    ${data.tips.length > 0 ? `
+    <div class="subsection-title ${blurClass}" style="margin-top: 16px;">💡 Tips</div>
+    <ul class="${blurClass}" style="list-style: none; padding: 0; margin: 0;">
+      ${data.tips.map(t => `<li style="padding: 4px 0; color: var(--text-muted); font-size: 13px;">→ ${t}</li>`).join('')}
+    </ul>
+    ` : ''}
+
+    ${isUnlocked ? '' : `
+    <div class="unlock-prompt">
+      <span class="unlock-prompt-text">🔓 Unlock best/worst examples + advanced tips</span>
+    </div>
+    `}
   `;
 }
 
 /**
- * Burnout Risk Section - Full screen (LOCKED)
+ * Burnout Risk Section - Full screen (LOCKED by default, unlocked for premium)
  */
-function renderBurnoutRiskSection(data: BurnoutRiskResult): string {
+function renderBurnoutRiskSection(data: BurnoutRiskResult, isUnlocked: boolean): string {
+  const blurClass = isUnlocked ? '' : 'blurred-locked';
+
+  // Level labels for burnout risk (inverted - lower is better)
+  const levelLabels: Record<string, string> = {
+    low: 'Low Risk',
+    moderate: 'Moderate Risk',
+    elevated: 'Elevated Risk',
+    high: 'High Risk',
+  };
+
+  // Calculate bar widths based on actual data
+  const afterHoursWidth = Math.min(data.breakdown.afterHoursRate, 100);
+  const weekendWidth = Math.min(data.breakdown.weekendRate, 100);
+  const lateNightWidth = Math.min((data.breakdown.lateNightCount / 10) * 100, 100);
+
+  // Build interpretation from recommendations
+  const interpretationText = data.recommendations.length > 0
+    ? data.recommendations[0]
+    : 'Based on your session patterns, we\'ve analyzed your work habits including late-night sessions, weekend work frequency, and session intensity patterns.';
+
   return `
     <div class="section-header">
       <div class="section-icon">🔥</div>
@@ -1235,37 +1549,36 @@ function renderBurnoutRiskSection(data: BurnoutRiskResult): string {
     </div>
 
     <div class="score-display">
-      <div class="score-value blurred-locked" style="color: var(--text-muted);">??</div>
+      <div class="score-value ${blurClass}" style="${isUnlocked ? '' : 'color: var(--text-muted);'}">${isUnlocked ? data.score : '??'}</div>
       <div class="score-label">Work-Life Balance Score</div>
-      <span class="score-level moderate" class="blurred-locked">???</span>
+      <span class="score-level ${data.level} ${blurClass}">${isUnlocked ? levelLabels[data.level] || data.level : '???'}</span>
     </div>
 
-    <div class="interpretation" class="blurred-locked">
-      Based on your session patterns, we've analyzed your work habits including late-night sessions,
-      weekend work frequency, and session intensity patterns.
+    <div class="interpretation ${blurClass}">
+      ${isUnlocked ? interpretationText : 'Based on your session patterns, we\'ve analyzed your work habits including late-night sessions, weekend work frequency, and session intensity patterns.'}
     </div>
 
     <div class="metrics-container">
       <div class="metric-row">
         <span class="metric-label">After-hours rate</span>
         <div class="metric-bar">
-          <div class="metric-fill yellow" style="width: 0%"></div>
+          <div class="metric-fill yellow" style="width: ${isUnlocked ? afterHoursWidth : 0}%"></div>
         </div>
-        <span class="metric-value" class="blurred-locked">??%</span>
+        <span class="metric-value ${blurClass}">${isUnlocked ? Math.round(data.breakdown.afterHoursRate) + '%' : '??%'}</span>
       </div>
       <div class="metric-row">
-        <span class="metric-label">Weekend sessions</span>
+        <span class="metric-label">Weekend rate</span>
         <div class="metric-bar">
-          <div class="metric-fill red" style="width: 0%"></div>
+          <div class="metric-fill red" style="width: ${isUnlocked ? weekendWidth : 0}%"></div>
         </div>
-        <span class="metric-value" class="blurred-locked">??</span>
+        <span class="metric-value ${blurClass}">${isUnlocked ? Math.round(data.breakdown.weekendRate) + '%' : '??%'}</span>
       </div>
       <div class="metric-row">
         <span class="metric-label">Late night count</span>
         <div class="metric-bar">
-          <div class="metric-fill red" style="width: 0%"></div>
+          <div class="metric-fill red" style="width: ${isUnlocked ? lateNightWidth : 0}%"></div>
         </div>
-        <span class="metric-value" class="blurred-locked">??</span>
+        <span class="metric-value ${blurClass}">${isUnlocked ? data.breakdown.lateNightCount : '??'}</span>
       </div>
     </div>
 
@@ -1273,16 +1586,20 @@ function renderBurnoutRiskSection(data: BurnoutRiskResult): string {
       We detected <span style="color: var(--neon-yellow);">${data.breakdown.lateNightCount}</span> late-night sessions...
     </p>
 
+    ${isUnlocked ? '' : `
     <div class="unlock-prompt">
       <span class="unlock-prompt-text">🔓 Unlock full time analysis + wellness recommendations</span>
     </div>
+    `}
   `;
 }
 
 /**
  * Tool Mastery Section - Full screen
  */
-function renderToolMasterySection(data: ToolMasteryResult): string {
+function renderToolMasterySection(data: ToolMasteryResult, isUnlocked: boolean): string {
+  const blurClass = isUnlocked ? '' : 'blurred-content';
+
   const topToolsHtml = data.topTools.slice(0, 4).map(tool => {
     const toolData = data.toolUsage[tool];
     if (!toolData) return '';
@@ -1322,21 +1639,445 @@ function renderToolMasterySection(data: ToolMasteryResult): string {
       ${topToolsHtml}
     </div>
 
-    <div class="subsection-title" style="color: var(--text-muted);">Underutilized (Unlock for tips)</div>
-    <div class="tool-grid blurred-content">
+    <div class="subsection-title" style="color: var(--text-muted);">${isUnlocked ? 'Underutilized Tools' : 'Underutilized (Unlock for tips)'}</div>
+    <div class="tool-grid ${blurClass}">
       ${underutilizedHtml}
     </div>
 
+    ${isUnlocked ? '' : `
     <div class="unlock-prompt">
       <span class="unlock-prompt-text">🔓 Unlock full tool analysis + optimization strategies</span>
+    </div>
+    `}
+  `;
+}
+
+/**
+ * AI Control Index Section - Full screen
+ * Based on elvis: "Professional developers don't vibe, they control"
+ */
+function renderAIControlSection(data: AIControlResult, isUnlocked: boolean): string {
+  const blurClass = isUnlocked ? '' : 'blurred-content';
+  const levelClass = getLevelClass(data.level, 'ai-master', true);
+
+  const levelLabels: Record<string, string> = {
+    'ai-master': 'AI Master',
+    developing: 'Developing Control',
+    'vibe-coder': 'Vibe Coder',
+  };
+
+  const levelDescriptions: Record<string, string> = {
+    'ai-master': 'You effectively control AI output',
+    developing: 'Building control habits',
+    'vibe-coder': 'High AI dependency detected',
+  };
+
+  return `
+    <div class="section-header">
+      <div class="section-icon">🎮</div>
+      <div class="section-title">AI Control Index</div>
+      <div class="section-subtitle">Do you control AI or does AI control you?</div>
+    </div>
+
+    <div class="score-display">
+      <div class="score-value">${data.score}</div>
+      <div class="score-label">out of 100 (higher = more control)</div>
+      <span class="score-level ${levelClass}">${levelLabels[data.level]}</span>
+    </div>
+
+    <p style="text-align: center; font-size: 13px; color: var(--text-secondary); margin: 16px 0;">
+      ${levelDescriptions[data.level]}
+    </p>
+
+    <div class="interpretation">
+      ${data.interpretation}
+    </div>
+
+    <div class="metrics-container">
+      <div class="metric-row">
+        <span class="metric-label">Verification Rate</span>
+        <div class="metric-bar">
+          <div class="metric-fill ${data.breakdown.verificationRate >= 60 ? 'green' : 'yellow'}"
+               style="width: ${data.breakdown.verificationRate}%"></div>
+        </div>
+        <span class="metric-value">${data.breakdown.verificationRate}</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Constraint Specification</span>
+        <div class="metric-bar">
+          <div class="metric-fill ${data.breakdown.constraintSpecification >= 60 ? 'cyan' : 'yellow'}"
+               style="width: ${data.breakdown.constraintSpecification}%"></div>
+        </div>
+        <span class="metric-value">${data.breakdown.constraintSpecification}</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Output Critique</span>
+        <div class="metric-bar">
+          <div class="metric-fill ${data.breakdown.outputCritique >= 60 ? 'magenta' : 'yellow'}"
+               style="width: ${data.breakdown.outputCritique}%"></div>
+        </div>
+        <span class="metric-value">${data.breakdown.outputCritique}</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Context Control</span>
+        <div class="metric-bar">
+          <div class="metric-fill ${data.breakdown.contextControl >= 60 ? 'green' : 'cyan'}"
+               style="width: ${data.breakdown.contextControl}%"></div>
+        </div>
+        <span class="metric-value">${data.breakdown.contextControl}</span>
+      </div>
+    </div>
+
+    ${data.signals.length > 0 ? `
+    <div class="subsection-title" style="margin-top: 24px;">📡 Control Signals Detected</div>
+    <ul style="list-style: none; padding: 0; margin: 0;">
+      ${data.signals.slice(0, 3).map(s => `<li style="padding: 4px 0; color: var(--neon-purple); font-size: 13px;">→ ${s}</li>`).join('')}
+    </ul>
+    ` : ''}
+
+    ${data.strengths.length > 0 ? `
+    <div class="subsection-title" style="margin-top: 16px;">✨ Your Strengths</div>
+    <ul style="list-style: none; padding: 0; margin: 0;">
+      ${data.strengths.slice(0, 2).map(s => `<li style="padding: 4px 0; color: var(--neon-green); font-size: 13px;">✓ ${s}</li>`).join('')}
+    </ul>
+    ` : ''}
+
+    ${data.growthAreas.length > 0 ? `
+    <div class="subsection-title ${blurClass}" style="margin-top: 16px;">🌱 Growth Areas</div>
+    <ul class="${blurClass}" style="list-style: none; padding: 0; margin: 0;">
+      ${data.growthAreas.slice(0, 2).map(g => `<li style="padding: 4px 0; color: var(--text-muted); font-size: 13px;">→ ${g}</li>`).join('')}
+    </ul>
+    ` : ''}
+
+    ${isUnlocked ? '' : `
+    <div class="unlock-prompt">
+      <span class="unlock-prompt-text">🔓 Unlock detailed control analysis + professional tips</span>
+    </div>
+    `}
+  `;
+}
+
+/**
+ * Skill Resilience Section - Full screen
+ * Based on VCP Paper (arXiv:2601.02410) metrics
+ */
+function renderSkillResilienceSection(data: SkillResilienceResult, isUnlocked: boolean): string {
+  const blurClass = isUnlocked ? '' : 'blurred-content';
+  const levelClass = getLevelClass(data.level, 'resilient', true);
+
+  const levelLabels: Record<string, string> = {
+    resilient: 'Resilient Skills',
+    developing: 'Developing Resilience',
+    'at-risk': 'At Risk',
+  };
+
+  const levelDescriptions: Record<string, string> = {
+    resilient: 'You can code independently without AI',
+    developing: 'Building independent coding skills',
+    'at-risk': 'Skill atrophy risk detected',
+  };
+
+  return `
+    <div class="section-header">
+      <div class="section-icon">💪</div>
+      <div class="section-title">Skill Resilience</div>
+      <div class="section-subtitle">Can you code without AI assistance?</div>
+    </div>
+
+    <div class="score-display">
+      <div class="score-value">${data.score}</div>
+      <div class="score-label">out of 100 (higher = more resilient)</div>
+      <span class="score-level ${levelClass}">${levelLabels[data.level]}</span>
+    </div>
+
+    <p style="text-align: center; font-size: 13px; color: var(--text-secondary); margin: 16px 0;">
+      ${levelDescriptions[data.level]}
+    </p>
+
+    <div class="interpretation">
+      ${data.interpretation}
+    </div>
+
+    <div class="metrics-container">
+      <div class="metric-row">
+        <span class="metric-label">Cold Start Capability</span>
+        <div class="metric-bar">
+          <div class="metric-fill ${data.breakdown.coldStartCapability >= 60 ? 'green' : 'yellow'}"
+               style="width: ${data.breakdown.coldStartCapability}%"></div>
+        </div>
+        <span class="metric-value">${data.breakdown.coldStartCapability}</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Hallucination Detection</span>
+        <div class="metric-bar">
+          <div class="metric-fill ${data.breakdown.hallucinationDetection >= 60 ? 'cyan' : 'yellow'}"
+               style="width: ${data.breakdown.hallucinationDetection}%"></div>
+        </div>
+        <span class="metric-value">${data.breakdown.hallucinationDetection}</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Code Understanding</span>
+        <div class="metric-bar">
+          <div class="metric-fill ${data.breakdown.explainabilityGap >= 60 ? 'magenta' : 'yellow'}"
+               style="width: ${data.breakdown.explainabilityGap}%"></div>
+        </div>
+        <span class="metric-value">${data.breakdown.explainabilityGap}</span>
+      </div>
+    </div>
+
+    <div class="subsection-title" style="margin-top: 24px;">📊 VCP Research Metrics</div>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px;">
+      <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 20px; color: var(--neon-pink); font-weight: 700;">${data.vpcMetrics.m_csr.toFixed(2)}</div>
+        <div style="font-size: 10px; color: var(--text-muted);">M_CSR</div>
+      </div>
+      <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 20px; color: var(--neon-cyan); font-weight: 700;">${data.vpcMetrics.m_ht.toFixed(2)}</div>
+        <div style="font-size: 10px; color: var(--text-muted);">M_HT</div>
+      </div>
+      <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 20px; color: var(--neon-green); font-weight: 700;">${data.vpcMetrics.e_gap.toFixed(2)}</div>
+        <div style="font-size: 10px; color: var(--text-muted);">E_gap</div>
+      </div>
+    </div>
+    <p style="font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 8px;">
+      Based on VCP Paper (arXiv:2601.02410) cognitive offloading metrics
+    </p>
+
+    ${data.warnings.length > 0 ? `
+    <div class="subsection-title" style="margin-top: 24px; color: var(--neon-yellow);">⚠️ Warnings</div>
+    <ul style="list-style: none; padding: 0; margin: 0;">
+      ${data.warnings.slice(0, 2).map(w => `<li style="padding: 4px 0; color: var(--neon-yellow); font-size: 13px;">! ${w}</li>`).join('')}
+    </ul>
+    ` : ''}
+
+    ${data.recommendations.length > 0 ? `
+    <div class="subsection-title ${blurClass}" style="margin-top: 16px;">💡 Recommendations</div>
+    <ul class="${blurClass}" style="list-style: none; padding: 0; margin: 0;">
+      ${data.recommendations.slice(0, 2).map(r => `<li style="padding: 4px 0; color: var(--text-muted); font-size: 13px;">→ ${r}</li>`).join('')}
+    </ul>
+    ` : ''}
+
+    ${isUnlocked ? '' : `
+    <div class="unlock-prompt">
+      <span class="unlock-prompt-text">🔓 Unlock full skill analysis + practice exercises</span>
+    </div>
+    `}
+  `;
+}
+
+/**
+ * Share Section - Social sharing buttons and copy-to-clipboard
+ */
+function renderShareSection(
+  _result: TypeResult,
+  meta: typeof TYPE_METADATA[CodingStyleType],
+  reportId?: string,
+  baseUrl: string = 'https://nomoreaislop.xyz'
+): string {
+  if (!reportId) {
+    return ''; // No share section if no reportId
+  }
+
+  const shareUrl = `${baseUrl}/r/${reportId}`;
+
+  // Pre-filled tweet text
+  const tweetText = encodeURIComponent(`I'm a ${meta.name} ${meta.emoji} developer!
+
+My AI Coding Style:
+"${meta.tagline}"
+
+Top Strength: ${meta.strengths[0]}
+
+What's YOUR style? Find out:
+${shareUrl}
+
+#NoMoreAISlop #AICollaboration #DeveloperTools`);
+
+  const twitterUrl = `https://twitter.com/intent/tweet?text=${tweetText}`;
+  const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
+
+  return `
+    <div class="share-section">
+      <h3 class="share-title">📤 Share Your Results</h3>
+      <p class="share-subtitle">Show off your AI coding style!</p>
+
+      <div class="share-buttons">
+        <button class="share-btn twitter" onclick="window.open('${twitterUrl}', '_blank', 'width=600,height=400')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+          <span>Share on X</span>
+        </button>
+
+        <button class="share-btn linkedin" onclick="window.open('${linkedInUrl}', '_blank', 'width=600,height=600')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+          </svg>
+          <span>Share on LinkedIn</span>
+        </button>
+
+        <button class="share-btn copy" onclick="copyShareUrl()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span id="copy-btn-text">Copy Link</span>
+        </button>
+      </div>
+
+      <div class="share-url-container">
+        <input type="text" class="share-url-input" id="share-url" value="${shareUrl}" readonly onclick="this.select()">
+      </div>
+
+      <!-- Toast notification -->
+      <div class="toast" id="toast">
+        <span class="toast-icon">✓</span>
+        <span class="toast-text">Link copied to clipboard!</span>
+      </div>
+    </div>
+
+    <script>
+      function copyShareUrl() {
+        const urlInput = document.getElementById('share-url');
+        const copyBtnText = document.getElementById('copy-btn-text');
+        const toast = document.getElementById('toast');
+
+        navigator.clipboard.writeText(urlInput.value).then(() => {
+          // Show toast
+          toast.classList.add('show');
+          copyBtnText.textContent = 'Copied!';
+
+          // Track share action
+          fetch('${baseUrl}/api/reports/${reportId}/share', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ platform: 'clipboard' })
+          }).catch(() => {});
+
+          // Reset after 2 seconds
+          setTimeout(() => {
+            toast.classList.remove('show');
+            copyBtnText.textContent = 'Copy Link';
+          }, 2000);
+        }).catch((err) => {
+          console.error('Failed to copy:', err);
+          // Fallback: select the text
+          urlInput.select();
+          document.execCommand('copy');
+        });
+      }
+
+      // Track Twitter/LinkedIn shares
+      document.querySelectorAll('.share-btn.twitter, .share-btn.linkedin').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const platform = btn.classList.contains('twitter') ? 'twitter' : 'linkedin';
+          fetch('${baseUrl}/api/reports/${reportId}/share', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ platform })
+          }).catch(() => {});
+        });
+      });
+    </script>
+  `;
+}
+
+/**
+ * Locked/CTA Section - shows unlock badge when premium, paywall when free
+ */
+/**
+ * Dashboard Buttons - shows both My Dashboard and Enterprise buttons
+ */
+function renderDashboardButtons(): string {
+  const baseUrl = process.env.NOSLOP_DASHBOARD_URL || 'http://localhost:5173';
+
+  return `
+    <div class="dashboard-buttons" style="
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      margin: 32px 0;
+      flex-wrap: wrap;
+    ">
+      <a
+        href="${baseUrl}/personal"
+        class="dashboard-btn personal"
+        style="
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 14px 28px;
+          background: linear-gradient(135deg, #00d4ff, #ff00ff);
+          color: #0a0a0a;
+          font-weight: 600;
+          font-size: 14px;
+          border-radius: 8px;
+          text-decoration: none;
+          transition: transform 0.2s, box-shadow 0.2s;
+          box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+        "
+        onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 25px rgba(0, 212, 255, 0.6)';"
+        onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 20px rgba(0, 212, 255, 0.4)';"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        My Dashboard
+      </a>
+      <a
+        href="${baseUrl}/enterprise"
+        class="dashboard-btn enterprise"
+        style="
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 14px 28px;
+          background: linear-gradient(135deg, #00ff88, #00d4ff);
+          color: #0a0a0a;
+          font-weight: 600;
+          font-size: 14px;
+          border-radius: 8px;
+          text-decoration: none;
+          transition: transform 0.2s, box-shadow 0.2s;
+          box-shadow: 0 4px 20px rgba(0, 255, 136, 0.4);
+        "
+        onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 25px rgba(0, 255, 136, 0.6)';"
+        onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 20px rgba(0, 255, 136, 0.4)';"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 21h18"></path>
+          <path d="M5 21V7l8-4v18"></path>
+          <path d="M19 21V11l-6-4"></path>
+          <path d="M9 9v.01"></path>
+          <path d="M9 12v.01"></path>
+          <path d="M9 15v.01"></path>
+          <path d="M9 18v.01"></path>
+        </svg>
+        Enterprise
+      </a>
     </div>
   `;
 }
 
 /**
- * Locked/CTA Section
+ * Locked/CTA Section - shows unlock badge when premium, paywall when free
  */
-function renderLockedSection(): string {
+function renderLockedSection(isUnlocked: boolean): string {
+  if (isUnlocked) {
+    return `
+      <div class="locked-section" style="text-align: center; padding: 40px 20px;">
+        <div style="font-size: 48px; margin-bottom: 16px;">✨</div>
+        <h3 style="color: var(--neon-green); font-size: 24px; margin-bottom: 8px;">Full Analysis Unlocked</h3>
+        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">
+          You have access to all premium features and detailed breakdowns.
+        </p>
+        ${renderDashboardButtons()}
+      </div>
+    `;
+  }
+
   return `
     <div class="locked-section">
       <h3 class="locked-title">🔒 Unlock Full Analysis</h3>
@@ -1349,6 +2090,8 @@ function renderLockedSection(): string {
         <li class="locked-item">🎯 Best & worst prompt examples with improvement tips</li>
         <li class="locked-item">🔥 Complete burnout risk analysis + time patterns</li>
         <li class="locked-item">🛠️ All tool mastery data + optimization strategies</li>
+        <li class="locked-item">🎮 AI Control Index deep-dive + professional tips</li>
+        <li class="locked-item">💪 Skill Resilience analysis + practice exercises</li>
         <li class="locked-item">📊 Peer comparison percentiles (vs 10,000+ users)</li>
         <li class="locked-item">📈 Learning velocity tracking</li>
         <li class="locked-item">💬 All conversation evidence examples</li>
@@ -1364,6 +2107,13 @@ function renderLockedSection(): string {
         Want unlimited analyses + trend tracking?
         <span style="color: var(--neon-cyan);">PRO: $9/month</span>
       </p>
+
+      <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-subtle);">
+        <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">
+          Track your growth or manage your team
+        </p>
+        ${renderDashboardButtons()}
+      </div>
     </div>
   `;
 }

@@ -1,0 +1,87 @@
+/**
+ * Terminal Aesthetic Variables
+ * Extracted from src/web/template.ts for React components
+ * Neon terminal theme with CRT effects
+ */
+
+:root {
+  /* Terminal Background Colors */
+  --terminal-bg: #0a0a0a;
+  --terminal-surface: #1a1a1a;
+  --terminal-elevated: #2a2a2a;
+
+  /* Neon Colors - Primary Palette */
+  --neon-cyan: #00d4ff;
+  --neon-green: #00ff88;
+  --neon-magenta: #ff00ff;
+  --neon-yellow: #ffcc00;
+  --neon-red: #ff4444;
+  --neon-purple: #8b5cf6;
+  --neon-pink: #ec4899;
+  --neon-orange: #ff8800;
+
+  /* Text Colors */
+  --text-primary: #e0e0e0;
+  --text-secondary: #888888;
+  --text-muted: #555555;
+
+  /* Border Colors */
+  --border: #333333;
+  --border-subtle: #2a2a2a;
+
+  /* Glow Effects */
+  --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.3);
+  --glow-green: 0 0 20px rgba(0, 255, 136, 0.3);
+  --glow-magenta: 0 0 20px rgba(255, 0, 255, 0.3);
+  --glow-yellow: 0 0 20px rgba(255, 204, 0, 0.3);
+  --glow-red: 0 0 20px rgba(255, 68, 68, 0.3);
+  --glow-purple: 0 0 20px rgba(139, 92, 246, 0.3);
+  --glow-pink: 0 0 20px rgba(236, 72, 153, 0.3);
+
+  /* Typography */
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* Traffic Light Buttons (macOS) */
+  --traffic-red: #ff5f56;
+  --traffic-yellow: #ffbd2e;
+  --traffic-green: #27c93f;
+
+  /* Section-specific Accent Colors */
+  --accent-ai-collaboration: var(--neon-cyan);
+  --accent-context-engineering: var(--neon-green);
+  --accent-burnout-risk: var(--neon-yellow);
+  --accent-tool-mastery: var(--neon-magenta);
+  --accent-ai-control: var(--neon-purple);
+  --accent-skill-resilience: var(--neon-pink);
+}
+
+/* macOS Big Sur Solar Background Gradient */
+.macos-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 100% 50% at 80% 10%, #4FA4E5 0%, transparent 50%),
+    radial-gradient(ellipse 80% 30% at 70% 45%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 200, 150, 0.4) 40%, transparent 60%),
+    radial-gradient(ellipse 130% 70% at 50% 70%, #FF6B6B 0%, #D64545 35%, transparent 65%),
+    radial-gradient(ellipse 80% 90% at 8% 75%, #8B5CF6 0%, #EC4899 50%, transparent 70%),
+    linear-gradient(160deg, #1E3A5F 0%, #1A1A2E 50%, #0F0F1A 100%);
+}
+
+/* CRT Scanline Effect */
+.scanline {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.03),
+    rgba(0, 0, 0, 0.03) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 1000;
+}

@@ -1,633 +1,155 @@
-# NoMoreAISlop - LLM Prompts Specification
+# NoMoreAISlop - LLM Prompts Reference
 
-> Version: 1.0.0
-> Last Updated: 2026-01-09
-> Status: Draft
-
----
-
-## 1. Overview
-
-This document specifies the prompts used to evaluate developer-AI collaboration quality. The prompts are designed to:
-
-1. Provide clear evaluation criteria
-2. Request structured JSON output
-3. Ensure consistent, evidence-based ratings
-4. Focus on growth rather than criticism
+> Version: 1.1.0
+> Last Updated: 2026-01-12
+> Status: Reference Documentation
 
 ---
 
-## 2. System Prompt
+## Overview
 
-```
-You are an expert evaluator of developer-AI collaboration quality. Your task is to analyze conversations between developers and Claude Code to assess how effectively the developer collaborates with AI.
+This document provides a quick reference to the prompts used for evaluating developer-AI collaboration quality. Full prompt implementations are in `src/analyzer/prompts.ts`.
 
-## Your Role
-
-You are a supportive coach, not a harsh judge. Your goal is to help developers improve their AI collaboration skills by:
-- Identifying what they do well
-- Highlighting specific areas for growth
-- Providing actionable, concrete recommendations
-
-## Evaluation Philosophy
-
-- **Evidence-based**: Every rating must be supported by specific quotes from the conversation
-- **Growth-focused**: Use language that encourages improvement ("Developing" not "Weak")
-- **Balanced**: Acknowledge both strengths and opportunities for growth
-- **Specific**: Avoid vague feedback; reference actual conversation moments
-
-## Important Guidelines
-
-1. **Be fair**: A short session with few opportunities to demonstrate skills should not be penalized
-2. **Consider context**: Some tasks naturally require less planning or critical thinking
-3. **Quote accurately**: Only use actual text from the conversation as evidence
-4. **Be constructive**: Frame weaknesses as opportunities for growth
-```
+**Evaluation Philosophy**: Evidence-based, growth-focused, balanced, and specific feedback that encourages improvement.
 
 ---
 
-## 3. Evaluation Criteria
+## Style Analyzer Prompts
 
-### 3.1 Planning
+Prompts used to evaluate developer-Claude Code collaboration sessions.
 
-```
-## Planning
+| Prompt | Purpose | Key Criteria | Source |
+|--------|---------|--------------|--------|
+| **System Prompt** | Establishes evaluator role as supportive coach | Fair, constructive, evidence-based feedback | `systemPrompt` in prompts.ts |
+| **Evaluation Template** | Sends conversation for analysis | Returns JSON with ratings + evidence | `userPromptTemplate` in prompts.ts |
 
-**Definition**: The ability to clarify ambiguous requirements and provide specific, structured instructions to the AI.
+### Evaluation Dimensions
 
-### Strong Indicators (Positive Signals)
+**Planning** - Clarifying requirements and providing structured instructions
+- Strong: Task decomposition, clear input/output, edge cases, context provided, acceptance criteria
+- Developing: Some structure, missed opportunities
+- Needs Work: Vague prompts, minimal planning evidence
 
-- Breaking complex tasks into smaller, manageable steps
-- Specifying expected input/output formats clearly
-- Mentioning edge cases or constraints before implementation
-- Providing existing codebase context proactively
-- Asking clarifying questions before jumping into implementation
-- Setting clear acceptance criteria for the task
-- Describing the "why" behind requirements, not just the "what"
+**Critical Thinking** - Recognizing and correcting suboptimal AI suggestions
+- Strong: Questions approaches, identifies bugs, requests improvements, validates output
+- Developing: Sometimes questions, misses some issues
+- Needs Work: Rarely questions, accepts suggestions uncritically
 
-### Growth Opportunities (Negative Signals)
-
-- Vague prompts like "make it work", "fix this", or "do the thing"
-- Missing context that the AI clearly needs to proceed
-- Starting implementation without understanding requirements
-- Not specifying error handling or edge case behavior
-- Assuming AI knows project-specific conventions without explanation
-
-### Rating Guidelines
-
-- **Strong**: Consistently demonstrates 3+ positive signals, minimal negative signals
-- **Developing**: Shows some positive signals, has clear opportunities for improvement
-- **Needs Work**: Primarily vague prompts, minimal planning evidence
-```
-
-### 3.2 Critical Thinking
-
-```
-## Critical Thinking
-
-**Definition**: The ability to recognize when AI suggestions are wrong, suboptimal, or inefficient, and to correct them.
-
-### Strong Indicators (Positive Signals)
-
-- Questioning the AI's approach or suggesting alternatives
-- Identifying bugs or logic errors in AI-generated code
-- Requesting improvements to initial suggestions
-- Pointing out inefficiencies or better patterns
-- Verifying AI output before accepting it
-- Asking "what could go wrong?" or similar validation questions
-- Catching security, performance, or maintainability issues
-
-### Growth Opportunities (Negative Signals)
-
-- Blindly accepting all AI suggestions without review
-- Copy-pasting generated code without understanding it
-- Not questioning approaches that seem overly complex
-- Missing obvious bugs or issues in generated code
-- Accepting first solution without considering alternatives
-
-### Rating Guidelines
-
-- **Strong**: Actively questions and improves AI suggestions, catches issues
-- **Developing**: Sometimes questions AI, but misses some opportunities
-- **Needs Work**: Rarely questions AI output, accepts most suggestions uncritically
-```
-
-### 3.3 Code Understanding
-
-```
-## Code Understanding
-
-**Definition**: The ability to understand existing code and direct AI to leverage existing functions, patterns, and conventions.
-
-### Strong Indicators (Positive Signals)
-
-- Referencing existing functions or classes in prompts
-- Asking AI to follow existing patterns in the codebase
-- Providing relevant code context from other files
-- Ensuring AI-generated code integrates with existing architecture
-- Specifying file locations, module names, or import paths
-- Pointing AI to existing utilities instead of reinventing
-- Explaining project-specific naming conventions
-
-### Growth Opportunities (Negative Signals)
-
-- Creating duplicate functionality that already exists
-- Ignoring established patterns in the codebase
-- Not providing context about existing code structure
-- Allowing AI to use inconsistent naming or styling
-- Not connecting new code to existing modules appropriately
-
-### Rating Guidelines
-
-- **Strong**: Consistently references existing code, maintains patterns
-- **Developing**: Sometimes provides context, occasionally misses opportunities
-- **Needs Work**: Rarely references existing code, allows inconsistencies
-```
+**Code Understanding** - Leveraging existing functions, patterns, and conventions
+- Strong: References existing code, follows patterns, provides context, maintains consistency
+- Developing: Sometimes provides context, occasional misses
+- Needs Work: Rarely references code, allows inconsistencies
 
 ---
 
-## 4. User Prompt Template
+## Search Agent Prompts
 
-```
-Analyze the following conversation between a developer and Claude Code.
+Multi-skill architecture for discovering and organizing AI engineering knowledge.
 
-<conversation>
-{conversation_content}
-</conversation>
+| Skill | Purpose | Tools Used | Source |
+|-------|---------|-----------|--------|
+| **Gatherer** | Extract metadata from web content (topics, insights, code, tools) | `extract_metadata` | `gatherer/index.ts` |
+| **Judge** | Score relevance across 5 dimensions; recommend accept/review/reject | `evaluate_relevance` | `judge/index.ts` |
+| **Organizer** | Transform evaluated content into structured knowledge items | `organize_knowledge` | `organizer/index.ts` |
+| **Transcript** | Analyze YouTube transcripts for AI engineering insights | `analyze_transcript` | `skills/transcript/` |
 
-<session_metadata>
-Duration: {duration_minutes} minutes
-User Messages: {user_message_count}
-Assistant Messages: {assistant_message_count}
-Tool Calls: {tool_call_count}
-Tools Used: {unique_tools_list}
-</session_metadata>
+### Judge Evaluation Dimensions
 
-## Your Task
+Weighted scoring (0.0-1.0) with recommendations:
 
-Evaluate the developer's AI collaboration skills in three categories:
+| Dimension | Weight | Positive Signals | Negative Signals |
+|-----------|--------|-----------------|-----------------|
+| **Topic Relevance** | 0.25 | Context engineering, Claude Code, AI workflows | Off-topic, generic advice, outdated |
+| **Project Fit** | 0.25 | Planning/critical thinking, evaluation frameworks | Focuses on AI capabilities only, too theoretical |
+| **Actionability** | 0.20 | Concrete examples, step-by-step, clear do/don'ts | Purely theoretical, vague, speculative |
+| **Novelty** | 0.15 | New techniques, unique perspective, original research | Repeats known info, rehashes docs |
+| **Credibility** | 0.15 | Official docs, known experts, evidence-backed | Anonymous, factual errors, low engagement |
 
-1. **Planning** - How well do they structure and communicate requirements?
-2. **Critical Thinking** - How effectively do they evaluate and improve AI suggestions?
-3. **Code Understanding** - How well do they leverage existing code and patterns?
+**Recommendation Logic**: Accept (≥0.7), Review (0.4-0.7), Reject (<0.4)
 
-## Output Requirements
+---
 
-For each category, provide:
-1. A rating: `Strong`, `Developing`, or `Needs Work`
-2. A summary (2-3 sentences explaining the rating)
-3. 1-5 specific evidence items (quotes from the conversation with explanations)
+## Output Schemas
 
-Also provide:
-4. An overall summary of the developer's collaboration style (3-5 sentences)
-5. 1-5 specific, actionable recommendations for improvement
+### Style Analyzer Output
 
-## Response Format
-
-Respond with a valid JSON object matching this schema:
+JSON structure returned by evaluation:
 
 ```json
 {
-  "planning": {
-    "rating": "Strong" | "Developing" | "Needs Work",
-    "summary": "2-3 sentence summary",
-    "clues": [
-      {
-        "type": "positive" | "negative",
-        "quote": "Exact quote from conversation",
-        "explanation": "Why this is evidence for the rating"
-      }
-    ]
-  },
-  "criticalThinking": {
-    "rating": "Strong" | "Developing" | "Needs Work",
-    "summary": "2-3 sentence summary",
-    "clues": [...]
-  },
-  "codeUnderstanding": {
-    "rating": "Strong" | "Developing" | "Needs Work",
-    "summary": "2-3 sentence summary",
-    "clues": [...]
-  },
-  "overallSummary": "3-5 sentence overall assessment",
-  "recommendations": [
-    "Specific, actionable recommendation 1",
-    "Specific, actionable recommendation 2"
-  ]
+  "planning": { "rating": "Strong|Developing|Needs Work", "summary": "...", "clues": [] },
+  "criticalThinking": { "rating": "...", "summary": "...", "clues": [] },
+  "codeUnderstanding": { "rating": "...", "summary": "...", "clues": [] },
+  "overallSummary": "...",
+  "recommendations": ["action 1", "action 2", ...]
 }
 ```
 
-## Important Notes
+Each category clue includes:
+- `type`: "positive" or "negative"
+- `quote`: Exact text from conversation
+- `explanation`: Why this is evidence
 
-- Only use actual quotes from the conversation
-- Be constructive and growth-focused
-- Consider the session length and context
-- A short session may have limited evidence - that's okay
-- If a category has no clear evidence, default to "Developing" with a note
-```
+### Search Agent Outputs
 
----
+**Metadata** (Gatherer): mainTopic, keyInsights (1-5), codeSnippets (max 3), referencedTools
 
-## 5. Conversation Formatting
+**Evaluation** (Judge): Scores for each dimension, overall weighted score, confidence, recommendation, reasoning
 
-### 5.1 Format Function
-
-```typescript
-function formatConversation(session: ParsedSession): string {
-  const lines: string[] = [];
-
-  for (const message of session.messages) {
-    const role = message.role === 'user' ? 'DEVELOPER' : 'CLAUDE';
-    const timestamp = message.timestamp.toISOString().slice(11, 19); // HH:MM:SS
-
-    lines.push(`[${timestamp}] ${role}:`);
-
-    if (message.content) {
-      // Truncate very long messages
-      const content = message.content.length > 2000
-        ? message.content.slice(0, 2000) + '...[truncated]'
-        : message.content;
-      lines.push(content);
-    }
-
-    if (message.toolCalls?.length) {
-      for (const tool of message.toolCalls) {
-        lines.push(`  [Tool: ${tool.name}]`);
-        if (tool.result) {
-          const result = tool.result.length > 500
-            ? tool.result.slice(0, 500) + '...[truncated]'
-            : tool.result;
-          lines.push(`  [Result: ${result}]`);
-        }
-      }
-    }
-
-    lines.push(''); // Blank line between messages
-  }
-
-  return lines.join('\n');
-}
-```
-
-### 5.2 Example Formatted Conversation
-
-```
-[10:35:56] DEVELOPER:
-I need to add a new endpoint for user profile updates. It should accept PATCH requests with partial user data.
-
-[10:36:15] CLAUDE:
-I'll help you create that endpoint. Let me first check the existing user routes to understand the pattern.
-  [Tool: Read]
-  [Result: // src/routes/users.ts ...]
-
-Based on the existing pattern, I'll create a PATCH endpoint that validates partial updates.
-  [Tool: Write]
-  [Result: File written successfully]
-
-[10:37:02] DEVELOPER:
-Wait, we need to make sure the email field can't be updated through this endpoint - that should go through a separate verification flow.
-
-[10:37:30] CLAUDE:
-Good catch! I'll add validation to exclude the email field from partial updates.
-  [Tool: Edit]
-  [Result: File updated]
-```
+**Knowledge Item** (Organizer): title, summary, content, category, contentType, tags
 
 ---
 
-## 6. Response Parsing
+## Model Configuration
 
-### 6.1 Parsing Strategy
-
-```typescript
-async function parseEvaluationResponse(
-  response: string,
-  sessionId: string
-): Promise<Evaluation> {
-  // 1. Extract JSON from response
-  const jsonMatch = response.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new ParseError('No JSON object found in response');
-  }
-
-  // 2. Parse JSON
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(jsonMatch[0]);
-  } catch (e) {
-    throw new ParseError(`Invalid JSON: ${e.message}`);
-  }
-
-  // 3. Validate with Zod schema
-  const result = EvaluationSchema.omit({
-    sessionId: true,
-    analyzedAt: true,
-  }).safeParse(parsed);
-
-  if (!result.success) {
-    throw new ValidationError(
-      `Schema validation failed: ${result.error.message}`
-    );
-  }
-
-  // 4. Add metadata
-  return {
-    sessionId,
-    analyzedAt: new Date().toISOString(),
-    ...result.data,
-  };
-}
+```
+Model: claude-3-5-sonnet-20241022 (recommended for balance)
+Max Tokens: 2,000
+Temperature: 0.3 (lower for consistency)
 ```
 
-### 6.2 Error Recovery
-
-```typescript
-async function analyzeWithRetry(
-  session: ParsedSession,
-  maxRetries: number = 1
-): Promise<Evaluation> {
-  let lastError: Error;
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await callLLM(session);
-      return await parseEvaluationResponse(response, session.sessionId);
-    } catch (error) {
-      lastError = error;
-
-      if (attempt < maxRetries) {
-        console.warn(`Parse attempt ${attempt + 1} failed, retrying...`);
-      }
-    }
-  }
-
-  throw new AnalysisError(
-    `Failed to parse evaluation after ${maxRetries + 1} attempts: ${lastError.message}`
-  );
-}
-```
+**Token Budget**:
+- System Prompt: ~500 tokens
+- Evaluation Criteria: ~800 tokens
+- User Prompt: ~400 tokens
+- Conversation: ~3,000 tokens (truncated if needed)
+- Total Input: ~4,700 tokens
 
 ---
 
-## 7. Token Management
+## Edge Cases
 
-### 7.1 Context Limits
+For short sessions (<5 messages): Focus on available evidence, avoid penalizing for lack of opportunities.
 
-| Component | Target Tokens | Max Tokens |
-|-----------|---------------|------------|
-| System Prompt | ~500 | 1,000 |
-| Evaluation Criteria | ~800 | 1,500 |
-| User Prompt Template | ~400 | 800 |
-| Conversation Content | ~3,000 | 6,000 |
-| **Total Input** | ~4,700 | 9,300 |
-| Expected Output | ~1,000 | 2,000 |
+For tool-heavy sessions: Base evaluation on prompts initiating operations and feedback provided.
 
-### 7.2 Conversation Truncation
-
-For sessions exceeding token limits:
-
-```typescript
-function truncateConversation(
-  messages: ParsedMessage[],
-  maxTokens: number = 6000
-): ParsedMessage[] {
-  // Estimate: 4 characters ≈ 1 token
-  const estimateTokens = (text: string) => Math.ceil(text.length / 4);
-
-  let totalTokens = 0;
-  const selected: ParsedMessage[] = [];
-
-  // Always include first and last few messages
-  const firstN = 3;
-  const lastN = 5;
-
-  const first = messages.slice(0, firstN);
-  const last = messages.slice(-lastN);
-  const middle = messages.slice(firstN, -lastN);
-
-  // Add first messages
-  for (const msg of first) {
-    totalTokens += estimateTokens(msg.content);
-    selected.push(msg);
-  }
-
-  // Add last messages
-  for (const msg of last) {
-    totalTokens += estimateTokens(msg.content);
-  }
-
-  // Fill middle until limit
-  for (const msg of middle) {
-    const tokens = estimateTokens(msg.content);
-    if (totalTokens + tokens > maxTokens) {
-      selected.push({
-        ...msg,
-        content: '[... middle of conversation truncated for length ...]',
-      });
-      break;
-    }
-    totalTokens += tokens;
-    selected.push(msg);
-  }
-
-  // Add last messages at end
-  selected.push(...last);
-
-  return selected;
-}
-```
+For error recovery sessions: Recognize that error correction demonstrates critical thinking.
 
 ---
 
-## 8. Model Configuration
+## Categories & Tags
 
-### 8.1 Recommended Settings
+**Knowledge Categories**:
+context-engineering, claude-code-skills, subagents, memory-management, prompt-engineering, tool-use, workflow-automation, best-practices, other
 
-```typescript
-const modelConfig = {
-  model: 'claude-3-5-sonnet-20241022',
-  max_tokens: 2000,
-  temperature: 0.3,  // Lower for more consistent ratings
-};
-```
-
-### 8.2 Model Selection Rationale
-
-| Model | Pros | Cons |
-|-------|------|------|
-| Claude 3.5 Sonnet | Balanced cost/quality, good JSON output | - |
-| Claude 3 Opus | Highest quality | Higher cost, slower |
-| Claude 3 Haiku | Fast, cheap | May miss nuances |
-
-**Recommendation**: Claude 3.5 Sonnet for best balance.
+**Content Types**:
+technique, pattern, tool, configuration, insight, example, reference
 
 ---
 
-## 9. Edge Cases
+## Implementation Notes
 
-### 9.1 Short Sessions
-
-For sessions with < 5 messages:
-
-```
-Add to prompt:
-
-Note: This is a short session with limited interactions.
-Focus on the evidence available and avoid penalizing for
-lack of opportunities to demonstrate skills.
-```
-
-### 9.2 Tool-Heavy Sessions
-
-For sessions with mostly tool calls and little conversation:
-
-```
-Add to prompt:
-
-Note: This session contains many tool operations but
-limited conversational interaction. Base your evaluation
-on the prompts that initiated the tool operations and
-any feedback provided.
-```
-
-### 9.3 Error Recovery Sessions
-
-For sessions focused on debugging AI mistakes:
-
-```
-Add to prompt:
-
-Note: This session appears to involve correcting or
-recovering from errors. Consider this context when
-evaluating - error correction demonstrates critical
-thinking even if the initial approach had issues.
-```
+- Full prompt text and conversation formatting logic: See `src/analyzer/prompts.ts`
+- Conversation truncation for large sessions: Uses 4 char ≈ 1 token estimation
+- Structured Outputs: Uses Anthropic's `anthropic-beta: structured-outputs-2025-11-13`
+- Schema conversion: Zod schemas → JSON Schema via `src/analyzer/schema-converter.ts`
+- Response parsing: JSON extraction, validation, error recovery with 1 retry attempt
 
 ---
 
-## 10. Example Evaluations
-
-### 10.1 Strong Example
-
-**Session Summary**: Developer working on implementing authentication
-
-**Conversation Highlights**:
-- "Let me break this down: first we need the JWT utilities, then the middleware, finally the route protection."
-- "Wait, this doesn't handle token expiration correctly. What happens when the token is expired?"
-- "Use the same error format as our existing ApiError class in src/errors.ts"
-
-**Expected Evaluation**:
-```json
-{
-  "planning": {
-    "rating": "Strong",
-    "summary": "Excellent systematic breakdown of the authentication implementation into logical steps. Clear understanding of the sequence required.",
-    "clues": [
-      {
-        "type": "positive",
-        "quote": "Let me break this down: first we need the JWT utilities, then the middleware, finally the route protection.",
-        "explanation": "Clear task decomposition with logical ordering"
-      }
-    ]
-  },
-  "criticalThinking": {
-    "rating": "Strong",
-    "summary": "Proactively identified edge cases and potential bugs before they became issues.",
-    "clues": [
-      {
-        "type": "positive",
-        "quote": "Wait, this doesn't handle token expiration correctly. What happens when the token is expired?",
-        "explanation": "Caught a critical security edge case in token handling"
-      }
-    ]
-  },
-  "codeUnderstanding": {
-    "rating": "Strong",
-    "summary": "Consistently referenced existing code patterns and utilities.",
-    "clues": [
-      {
-        "type": "positive",
-        "quote": "Use the same error format as our existing ApiError class in src/errors.ts",
-        "explanation": "Direct reference to existing error handling pattern"
-      }
-    ]
-  }
-}
-```
-
-### 10.2 Developing Example
-
-**Session Summary**: Developer adding a new feature
-
-**Conversation Highlights**:
-- "Add a button that does the thing"
-- "Actually, good point about the loading state"
-- (No references to existing code patterns)
-
-**Expected Evaluation**:
-```json
-{
-  "planning": {
-    "rating": "Needs Work",
-    "summary": "Initial request was vague without specifying expected behavior or requirements.",
-    "clues": [
-      {
-        "type": "negative",
-        "quote": "Add a button that does the thing",
-        "explanation": "Vague request lacking specifics about appearance, behavior, or location"
-      }
-    ]
-  },
-  "criticalThinking": {
-    "rating": "Developing",
-    "summary": "Showed some critical thinking when prompted, but didn't proactively identify issues.",
-    "clues": [
-      {
-        "type": "positive",
-        "quote": "Actually, good point about the loading state",
-        "explanation": "Acknowledged and incorporated feedback about UX consideration"
-      }
-    ]
-  },
-  "codeUnderstanding": {
-    "rating": "Developing",
-    "summary": "Limited references to existing code patterns or utilities.",
-    "clues": [
-      {
-        "type": "negative",
-        "quote": "[No references to existing components or patterns]",
-        "explanation": "Missed opportunity to reference existing button components or styling patterns"
-      }
-    ]
-  }
-}
-```
-
----
-
-## 11. Prompt Versioning
-
-### 11.1 Version History
+## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0.0 | 2026-01-09 | Initial release |
-
-### 11.2 A/B Testing
-
-For future prompt improvements:
-
-```typescript
-interface PromptVersion {
-  id: string;
-  systemPrompt: string;
-  userPromptTemplate: string;
-  criteria: EvaluationCriteria;
-}
-
-// Track which version was used for each analysis
-interface StoredAnalysis {
-  // ...
-  promptVersion: string;
-}
-```
+| 1.0.0 | 2026-01-09 | Initial release with style analyzer prompts |
+| 1.1.0 | 2026-01-12 | Added search agent prompts; converted to reference format |

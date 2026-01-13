@@ -1,0 +1,70 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-weight: var(--weight-medium);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  line-height: 1;
+}
+
+/* Sizes - more refined and elegant */
+.sm {
+  height: 20px;
+  padding: 0 var(--space-sm);
+  font-size: var(--text-xs);
+}
+
+.md {
+  height: 24px;
+  padding: 0 var(--space-md);
+  font-size: var(--text-sm);
+}
+
+/* Variants */
+.default {
+  background-color: var(--surface-2);
+  color: var(--text-secondary);
+}
+
+.success {
+  background-color: var(--accent-emerald-soft);
+  color: var(--accent-emerald);
+}
+
+.warning {
+  background-color: var(--accent-amber-soft);
+  color: var(--accent-amber);
+}
+
+.error {
+  background-color: var(--accent-rose-soft);
+  color: var(--accent-rose);
+}
+
+/* Platform variants - desaturated with high contrast */
+.platform {
+  color: white;
+  font-weight: var(--weight-medium);
+}
+
+.platform-youtube {
+  background-color: var(--platform-youtube);
+}
+
+.platform-twitter {
+  background-color: var(--platform-twitter);
+}
+
+.platform-reddit {
+  background-color: var(--platform-reddit);
+}
+
+.platform-linkedin {
+  background-color: var(--platform-linkedin);
+}
+
+.platform-web {
+  background-color: var(--platform-web);
+}

@@ -73,15 +73,24 @@ export function formatRatingLabel(rating: Rating): string {
 }
 
 /**
+ * Get fill percentage for a rating
+ */
+function getRatingFillPercent(rating: Rating): number {
+  switch (rating) {
+    case 'Strong':
+      return 1.0;
+    case 'Developing':
+      return 0.6;
+    case 'Needs Work':
+      return 0.35;
+  }
+}
+
+/**
  * Generate a visual rating bar
  */
 export function ratingBar(rating: Rating, width = 20): string {
-  const filled =
-    rating === 'Strong'
-      ? width
-      : rating === 'Developing'
-        ? Math.floor(width * 0.6)
-        : Math.floor(width * 0.35);
+  const filled = Math.floor(width * getRatingFillPercent(rating));
   const empty = width - filled;
 
   const color = ratingColor[rating];

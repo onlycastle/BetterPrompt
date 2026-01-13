@@ -14,25 +14,19 @@ export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
 /**
  * Parse a single line of JSONL
- * Returns null for invalid lines (skipped silently)
+ * Returns null for invalid or empty lines (skipped silently)
  */
 export function parseJSONLLine(line: string): JSONLLine | null {
-  if (!line.trim()) {
+  const trimmed = line.trim();
+  if (!trimmed) {
     return null;
   }
 
   try {
-    const parsed = JSON.parse(line);
+    const parsed = JSON.parse(trimmed);
     const result = JSONLLineSchema.safeParse(parsed);
-
-    if (result.success) {
-      return result.data;
-    }
-
-    // Line doesn't match known schema - skip
-    return null;
+    return result.success ? result.data : null;
   } catch {
-    // Invalid JSON - skip
     return null;
   }
 }

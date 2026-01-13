@@ -131,17 +131,21 @@ describe('SessionParser Integration', () => {
     expect(dimensions.aiCollaboration.score).toBeGreaterThanOrEqual(0);
     expect(dimensions.aiCollaboration.score).toBeLessThanOrEqual(100);
 
-    // Verify breakdown categories
-    expect(dimensions.aiCollaboration.breakdown).toHaveProperty('contextEngineering');
+    // Verify breakdown categories (Context Engineering is now a separate dimension)
     expect(dimensions.aiCollaboration.breakdown).toHaveProperty('structuredPlanning');
     expect(dimensions.aiCollaboration.breakdown).toHaveProperty('aiOrchestration');
     expect(dimensions.aiCollaboration.breakdown).toHaveProperty('criticalVerification');
 
-    // Verify Prompt Score result
-    expect(dimensions.promptScore).toHaveProperty('score');
-    expect(dimensions.promptScore).toHaveProperty('breakdown');
-    expect(dimensions.promptScore.score).toBeGreaterThanOrEqual(0);
-    expect(dimensions.promptScore.score).toBeLessThanOrEqual(100);
+    // Verify Context Engineering result (new top-level dimension with 4 strategies)
+    expect(dimensions.contextEngineering).toHaveProperty('score');
+    expect(dimensions.contextEngineering).toHaveProperty('level');
+    expect(dimensions.contextEngineering).toHaveProperty('breakdown');
+    expect(dimensions.contextEngineering.score).toBeGreaterThanOrEqual(0);
+    expect(dimensions.contextEngineering.score).toBeLessThanOrEqual(100);
+    expect(dimensions.contextEngineering.breakdown).toHaveProperty('write');
+    expect(dimensions.contextEngineering.breakdown).toHaveProperty('select');
+    expect(dimensions.contextEngineering.breakdown).toHaveProperty('compress');
+    expect(dimensions.contextEngineering.breakdown).toHaveProperty('isolate');
 
     // Verify Burnout Risk result
     expect(dimensions.burnoutRisk).toHaveProperty('score');
@@ -158,13 +162,21 @@ describe('SessionParser Integration', () => {
         score: dimensions.aiCollaboration.score,
         level: dimensions.aiCollaboration.level,
         breakdown: {
-          contextEngineering: dimensions.aiCollaboration.breakdown.contextEngineering.score,
           structuredPlanning: dimensions.aiCollaboration.breakdown.structuredPlanning.score,
           aiOrchestration: dimensions.aiCollaboration.breakdown.aiOrchestration.score,
           criticalVerification: dimensions.aiCollaboration.breakdown.criticalVerification.score,
         },
       },
-      promptScore: { score: dimensions.promptScore.score },
+      contextEngineering: {
+        score: dimensions.contextEngineering.score,
+        level: dimensions.contextEngineering.level,
+        breakdown: {
+          write: dimensions.contextEngineering.breakdown.write.score,
+          select: dimensions.contextEngineering.breakdown.select.score,
+          compress: dimensions.contextEngineering.breakdown.compress.score,
+          isolate: dimensions.contextEngineering.breakdown.isolate.score,
+        },
+      },
       burnoutRisk: { score: dimensions.burnoutRisk.score, level: dimensions.burnoutRisk.level },
       toolMastery: { score: dimensions.toolMastery.overallScore, topTools: dimensions.toolMastery.topTools },
     });

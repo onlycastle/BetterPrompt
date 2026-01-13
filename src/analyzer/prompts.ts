@@ -28,6 +28,12 @@ You are a supportive coach, not a harsh judge. Your goal is to help developers i
 
 /**
  * Evaluation criteria included in the prompt
+ *
+ * Updated based on verified research:
+ * - VCP Paper (arXiv:2601.02410): Skill atrophy metrics
+ * - Anthropic: Context engineering best practices
+ * - MIT Technology Review: Vibe coding → context engineering shift
+ * - Karpathy: New skill layer requirements
  */
 export const EVALUATION_CRITERIA = `## Evaluation Categories
 
@@ -42,6 +48,9 @@ export const EVALUATION_CRITERIA = `## Evaluation Categories
 - Asking clarifying questions before jumping into implementation
 - Setting clear acceptance criteria for the task
 - Describing the "why" behind requirements, not just the "what"
+- **Using structured planning documents (spec.md, plan.md) before implementation**
+- **"80% planning, 20% execution" approach - thorough upfront design**
+- **Multi-phase plans with clear milestones and checkpoints**
 
 **Growth Opportunities (Negative Signals):**
 - Vague prompts like "make it work", "fix this", or "do the thing"
@@ -49,6 +58,8 @@ export const EVALUATION_CRITERIA = `## Evaluation Categories
 - Starting implementation without understanding requirements
 - Not specifying error handling or edge case behavior
 - Assuming AI knows project-specific conventions without explanation
+- **Diving into code without any plan or structure**
+- **Letting AI drive the planning instead of directing it**
 
 **Rating Guidelines:**
 - **Strong**: Consistently demonstrates 3+ positive signals, minimal negative signals
@@ -66,6 +77,10 @@ export const EVALUATION_CRITERIA = `## Evaluation Categories
 - Verifying AI output before accepting it
 - Asking "what could go wrong?" or similar validation questions
 - Catching security, performance, or maintainability issues
+- **"Inverted TDD" approach: Writing tests first, then asking AI to implement**
+- **Requesting alternative approaches before accepting the first solution**
+- **Catching hallucinations and factual errors in AI output**
+- **Challenging AI claims with "are you sure?" or verification requests**
 
 **Growth Opportunities (Negative Signals):**
 - Blindly accepting all AI suggestions without review
@@ -73,6 +88,8 @@ export const EVALUATION_CRITERIA = `## Evaluation Categories
 - Not questioning approaches that seem overly complex
 - Missing obvious bugs or issues in generated code
 - Accepting first solution without considering alternatives
+- **Never modifying or correcting AI output (professional developers modify ~50%)**
+- **Not testing or validating AI-generated code before using it**
 
 **Rating Guidelines:**
 - **Strong**: Actively questions and improves AI suggestions, catches issues
@@ -88,6 +105,11 @@ export const EVALUATION_CRITERIA = `## Evaluation Categories
 - Providing relevant code context from other files
 - Ensuring AI-generated code integrates with existing architecture
 - Specifying file locations, module names, or import paths
+- **Specifying exact file locations with line numbers (e.g., src/parser/index.ts:123)**
+- **Mentioning specific class names, function names, or component names (e.g., "modify the SessionParser class")**
+- **Using /compact command to efficiently manage context window**
+- **Starting fresh sessions when context becomes polluted**
+- **Using Task tool to delegate to specialized subagents**
 - Pointing AI to existing utilities instead of reinventing
 - Explaining project-specific naming conventions
 
@@ -97,11 +119,24 @@ export const EVALUATION_CRITERIA = `## Evaluation Categories
 - Not providing context about existing code structure
 - Allowing AI to use inconsistent naming or styling
 - Not connecting new code to existing modules appropriately
+- **Never referencing specific code locations or identifiers**
+- **Not managing context window, leading to degraded AI performance**
+- **Asking AI to explain code you should understand yourself (skill atrophy risk)**
 
 **Rating Guidelines:**
 - **Strong**: Consistently references existing code, maintains patterns
 - **Developing**: Sometimes provides context, occasionally misses opportunities
 - **Needs Work**: Rarely references existing code, allows inconsistencies`;
+
+/**
+ * Truncate text to a maximum length with suffix
+ */
+function truncate(text: string, maxLength: number): string {
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return text.slice(0, maxLength) + '...[truncated]';
+}
 
 /**
  * Format a conversation for the LLM prompt
@@ -116,23 +151,14 @@ export function formatConversation(session: ParsedSession): string {
     lines.push(`[${timestamp}] ${role}:`);
 
     if (message.content) {
-      // Truncate very long messages
-      const content =
-        message.content.length > 2000
-          ? message.content.slice(0, 2000) + '...[truncated]'
-          : message.content;
-      lines.push(content);
+      lines.push(truncate(message.content, 2000));
     }
 
     if (message.toolCalls?.length) {
       for (const tool of message.toolCalls) {
         lines.push(`  [Tool: ${tool.name}]`);
         if (tool.result) {
-          const result =
-            tool.result.length > 500
-              ? tool.result.slice(0, 500) + '...[truncated]'
-              : tool.result;
-          lines.push(`  [Result: ${result}]`);
+          lines.push(`  [Result: ${truncate(tool.result, 500)}]`);
         }
       }
     }

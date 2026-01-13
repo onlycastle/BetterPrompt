@@ -1,0 +1,158 @@
+.resultBox {
+  border: 2px solid var(--neon-cyan);
+  border-radius: 12px;
+  padding: 48px 32px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(0, 212, 255, 0.08) 0%, transparent 100%);
+  box-shadow: 0 0 40px rgba(0, 212, 255, 0.2);
+}
+
+.resultEmoji {
+  font-size: 72px;
+  margin-bottom: 20px;
+}
+
+.resultTitle {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  margin-bottom: 12px;
+  text-shadow: 0 0 30px var(--neon-cyan);
+}
+
+.resultTagline {
+  font-size: 16px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Distribution Chart */
+.distribution {
+  background: var(--terminal-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  margin-top: 32px;
+  text-align: left;
+}
+
+.subsectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
+.distributionRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+}
+
+.distributionRow:last-child {
+  margin-bottom: 0;
+}
+
+.distributionRow.primary {
+  color: var(--neon-cyan);
+}
+
+.distributionEmoji {
+  font-size: 18px;
+  width: 28px;
+}
+
+.distributionName {
+  width: 110px;
+  font-size: 13px;
+}
+
+.distributionBar {
+  flex: 1;
+  height: 20px;
+  background: var(--terminal-elevated);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.distributionFill {
+  height: 100%;
+  background: var(--text-muted);
+  transition: width 0.8s ease;
+}
+
+.distributionRow.primary .distributionFill {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px var(--neon-cyan);
+}
+
+.distributionPct {
+  width: 45px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.distributionMarker {
+  width: 24px;
+  color: var(--neon-cyan);
+  font-weight: bold;
+}
+
+/* Metrics Grid */
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.metricCard {
+  background: var(--terminal-surface);
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+}
+
+.metricValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--neon-green);
+  text-shadow: 0 0 15px var(--neon-green);
+  margin-bottom: 4px;
+}
+
+.metricLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .resultBox {
+    padding: 32px 20px;
+  }
+
+  .resultTitle {
+    font-size: 24px;
+  }
+
+  .resultEmoji {
+    font-size: 56px;
+  }
+
+  .metricsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .distributionName {
+    width: 90px;
+    font-size: 12px;
+  }
+}

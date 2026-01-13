@@ -14,6 +14,7 @@ import {
   EnhancedSearchResult,
   ExtractedMetadata,
   SourcePlatform,
+  detectPlatformFromUrl,
 } from '../../models/index.js';
 import {
   EXTRACTION_SYSTEM_PROMPT,
@@ -142,10 +143,7 @@ export class GathererSkill extends BaseSkill<GathererInput, GathererOutput> {
    * Detect platform from URL
    */
   private detectPlatform(url: string, defaultPlatforms: SourcePlatform[]): SourcePlatform {
-    if (url.includes('reddit.com')) return 'reddit';
-    if (url.includes('twitter.com') || url.includes('x.com')) return 'twitter';
-    if (url.includes('threads.net')) return 'threads';
-    return defaultPlatforms[0] || 'web';
+    return detectPlatformFromUrl(url, defaultPlatforms[0] || 'web');
   }
 
   /**

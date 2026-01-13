@@ -1,0 +1,244 @@
+/* Page */
+.page {
+  background: var(--surface-0);
+  animation: pageEnter var(--transition-normal) ease-out;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Container - Single column centered layout */
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* Form Cards */
+.formCard {
+  background: var(--surface-1);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--transition-normal);
+}
+
+.formCard:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Card Header */
+.cardIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.cardTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  line-height: var(--leading-tight);
+}
+
+.cardDescription {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-xs);
+  line-height: var(--leading-normal);
+}
+
+/* Form */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* Checkbox */
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--transition-fast);
+}
+
+.checkbox:hover {
+  color: var(--text-primary);
+}
+
+.checkbox input {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--accent-primary);
+}
+
+/* Toast Messages */
+.successToast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  margin-top: var(--space-md);
+  background: var(--accent-emerald-soft);
+  color: var(--accent-emerald);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  animation: slideInFromTop var(--transition-normal) ease-out;
+  border: 1px solid var(--accent-emerald);
+  border-opacity: 0.2;
+}
+
+.errorToast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  margin-top: var(--space-md);
+  background: var(--accent-rose-soft);
+  color: var(--accent-rose);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  animation: slideInFromTop var(--transition-normal) ease-out;
+  border: 1px solid var(--accent-rose);
+  border-opacity: 0.2;
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Tips Section */
+.tipsSection {
+  margin-top: var(--space-lg);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: box-shadow var(--transition-normal);
+}
+
+.tipsSection:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+.tipsToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-lg);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.tipsToggle:hover {
+  background: var(--surface-2);
+}
+
+.tipsTitle {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.tipsIcon {
+  color: var(--text-secondary);
+  transition: transform var(--transition-normal), color var(--transition-fast);
+}
+
+.tipsToggle:hover .tipsIcon {
+  color: var(--text-primary);
+}
+
+.tipsIconOpen {
+  transform: rotate(180deg);
+}
+
+/* Tips Content */
+.tipsContent {
+  padding: 0 var(--space-lg) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  animation: expandDown var(--transition-normal) ease-out;
+}
+
+@keyframes expandDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}
+
+.tipCard {
+  padding: var(--space-md);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+  border: 1px solid var(--border-subtle);
+}
+
+.tipCard strong {
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .container {
+    max-width: 100%;
+    padding: 0 var(--space-md);
+  }
+
+  .cardTitle {
+    font-size: var(--text-md);
+  }
+
+  .cardDescription {
+    font-size: var(--text-xs);
+  }
+
+  .tipsToggle {
+    padding: var(--space-md);
+  }
+
+  .tipsContent {
+    padding: 0 var(--space-md) var(--space-md);
+  }
+}

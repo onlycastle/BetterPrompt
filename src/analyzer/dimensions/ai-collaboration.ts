@@ -5,29 +5,24 @@
  * Score 0-100: Higher is better (more skilled collaboration).
  *
  * Based on 2025 research on essential AI collaboration skills:
- * - Context Engineering (Anthropic, MIT Technology Review)
- * - Structured Planning (Addy Osmani, Simon Willison)
- * - AI Orchestration (Andrej Karpathy, RedMonk)
- * - Critical Verification (Google Cloud)
+ * - Structured Planning (Addy Osmani, Simon Willison) - 33%
+ * - AI Orchestration (Andrej Karpathy, RedMonk) - 33%
+ * - Critical Verification (Google Cloud) - 33%
+ *
+ * Note: Context Engineering is now a separate top-level dimension.
  *
  * Sources:
- * - https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents
  * - https://www.technologyreview.com/2025/11/05/1127477/from-vibe-coding-to-context-engineering-2025-in-software-development/
  * - https://redmonk.com/kholterhoff/2025/12/22/10-things-developers-want-from-their-agentic-ides-in-2025/
  */
 
 import { type ParsedSession } from '../../models/index.js';
+import { countMatches, PATTERNS } from './pattern-utils.js';
 
 export interface AICollaborationResult {
   score: number; // 0-100, higher is better
   level: 'novice' | 'developing' | 'proficient' | 'expert';
   breakdown: {
-    contextEngineering: {
-      score: number;
-      fileReferences: number;
-      constraintsMentioned: number;
-      patternReferences: number;
-    };
     structuredPlanning: {
       score: number;
       todoWriteUsage: number;
@@ -63,28 +58,25 @@ export function calculateAICollaboration(sessions: ParsedSession[]): AICollabora
   const metrics = extractCollaborationMetrics(sessions);
 
   // Calculate category scores (0-100 each)
-  const contextScore = calculateContextEngineeringScore(metrics);
+  // Note: Context Engineering is now a separate dimension
   const planningScore = calculateStructuredPlanningScore(metrics);
   const orchestrationScore = calculateOrchestrationScore(metrics);
   const verificationScore = calculateVerificationScore(metrics);
 
-  // Weighted average (25% each)
+  // Weighted average (33% each for 3 categories)
   const score = Math.round(
-    contextScore * 0.25 +
-    planningScore * 0.25 +
-    orchestrationScore * 0.25 +
-    verificationScore * 0.25
+    planningScore * 0.33 +
+    orchestrationScore * 0.34 +
+    verificationScore * 0.33
   );
 
   const strengths = identifyStrengths(metrics, {
-    contextScore,
     planningScore,
     orchestrationScore,
     verificationScore,
   });
 
   const growthAreas = identifyGrowthAreas(metrics, {
-    contextScore,
     planningScore,
     orchestrationScore,
     verificationScore,
@@ -94,12 +86,6 @@ export function calculateAICollaboration(sessions: ParsedSession[]): AICollabora
     score,
     level: getLevel(score),
     breakdown: {
-      contextEngineering: {
-        score: contextScore,
-        fileReferences: metrics.fileReferences,
-        constraintsMentioned: metrics.constraintsMentioned,
-        patternReferences: metrics.patternReferences,
-      },
       structuredPlanning: {
         score: planningScore,
         todoWriteUsage: metrics.todoWriteUsage,
@@ -126,10 +112,7 @@ export function calculateAICollaboration(sessions: ParsedSession[]): AICollabora
 }
 
 interface CollaborationMetrics {
-  // Context Engineering
-  fileReferences: number;
-  constraintsMentioned: number;
-  patternReferences: number;
+  // General
   totalUserMessages: number;
 
   // Structured Planning
@@ -149,9 +132,6 @@ interface CollaborationMetrics {
 }
 
 function extractCollaborationMetrics(sessions: ParsedSession[]): CollaborationMetrics {
-  let fileReferences = 0;
-  let constraintsMentioned = 0;
-  let patternReferences = 0;
   let totalUserMessages = 0;
 
   let todoWriteUsage = 0;
@@ -166,16 +146,6 @@ function extractCollaborationMetrics(sessions: ParsedSession[]): CollaborationMe
   let testRequests = 0;
   let outputModifications = 0;
 
-  // Pattern detection regexes
-  const filePathPattern = /(?:src\/|\.\/|\/[\w-]+\/|[\w-]+\.[tj]sx?|[\w-]+\.(?:md|json|yaml|yml|py|go|rs|java|kt|swift|rb))\b/gi;
-  const constraintKeywords = /\b(must|should not|shouldn't|cannot|can't|required|constraint|limit|maximum|minimum|only|never|always|ensure|avoid)\b/gi;
-  const patternKeywords = /\b(pattern|similar to|like the|existing|same as|follow|consistent with|based on|matching|mimic|replicate)\b/gi;
-  const stepKeywords = /\b(step\s*\d|first[,:]|second[,:]|then[,:]|next[,:]|finally[,:]|1\.|2\.|3\.|\d\)\s)/gi;
-  const specKeywords = /\b(requirements?\.md|design\.md|spec\.md|plan\.md|todo\.md|tasks\.md|readme\.md|architecture\.md)\b/gi;
-  const reviewKeywords = /\b(review|check|verify|double.?check|look at|examine|inspect|validate|ensure|confirm)\b/gi;
-  const testKeywords = /\b(test|npm test|yarn test|pytest|jest|vitest|run tests|unit test|integration test)\b/gi;
-  const modificationKeywords = /\b(change|fix|update|modify|wrong|error|incorrect|doesn't|don't|not right|actually|wait|no,|but |instead)\b/gi;
-
   for (const session of sessions) {
     const userMessages = session.messages.filter((m) => m.role === 'user');
     const assistantMessages = session.messages.filter((m) => m.role === 'assistant');
@@ -186,32 +156,16 @@ function extractCollaborationMetrics(sessions: ParsedSession[]): CollaborationMe
       const content = msg.content;
       const lowerContent = content.toLowerCase();
 
-      // Context Engineering
-      const fileMatches = content.match(filePathPattern);
-      if (fileMatches) fileReferences += fileMatches.length;
-
-      const constraintMatches = lowerContent.match(constraintKeywords);
-      if (constraintMatches) constraintsMentioned += constraintMatches.length;
-
-      const patternMatches = lowerContent.match(patternKeywords);
-      if (patternMatches) patternReferences += patternMatches.length;
-
       // Structured Planning
-      const stepMatches = content.match(stepKeywords);
-      if (stepMatches && stepMatches.length >= 2) stepByStepPlans++;
+      const stepCount = countMatches(content, PATTERNS.steps);
+      if (stepCount >= 2) stepByStepPlans++;
 
-      const specMatches = lowerContent.match(specKeywords);
-      if (specMatches) specFileReferences += specMatches.length;
+      specFileReferences += countMatches(lowerContent, PATTERNS.specs);
 
       // Critical Verification
-      const reviewMatches = lowerContent.match(reviewKeywords);
-      if (reviewMatches) codeReviewRequests += reviewMatches.length;
-
-      const testMatches = lowerContent.match(testKeywords);
-      if (testMatches) testRequests += testMatches.length;
-
-      const modMatches = lowerContent.match(modificationKeywords);
-      if (modMatches) outputModifications += modMatches.length;
+      codeReviewRequests += countMatches(lowerContent, PATTERNS.review);
+      testRequests += countMatches(lowerContent, PATTERNS.test);
+      outputModifications += countMatches(lowerContent, PATTERNS.modification);
     }
 
     // Analyze assistant tool usage
@@ -249,9 +203,6 @@ function extractCollaborationMetrics(sessions: ParsedSession[]): CollaborationMe
   }
 
   return {
-    fileReferences,
-    constraintsMentioned,
-    patternReferences,
     totalUserMessages,
     todoWriteUsage,
     stepByStepPlans,
@@ -263,21 +214,6 @@ function extractCollaborationMetrics(sessions: ParsedSession[]): CollaborationMe
     testRequests,
     outputModifications,
   };
-}
-
-function calculateContextEngineeringScore(metrics: CollaborationMetrics): number {
-  if (metrics.totalUserMessages === 0) return 50;
-
-  // Normalize per message (higher is better)
-  const fileRefRate = Math.min(metrics.fileReferences / metrics.totalUserMessages, 2);
-  const constraintRate = Math.min(metrics.constraintsMentioned / metrics.totalUserMessages, 1.5);
-  const patternRate = Math.min(metrics.patternReferences / metrics.totalUserMessages, 1);
-
-  // Weight: file references most important (40%), constraints (35%), patterns (25%)
-  const rawScore = fileRefRate * 0.4 + constraintRate * 0.35 + patternRate * 0.25;
-
-  // Scale to 0-100 (max raw score ~3.5 maps to 100)
-  return Math.min(Math.round(rawScore * 30), 100);
 }
 
 function calculateStructuredPlanningScore(metrics: CollaborationMetrics): number {
@@ -331,7 +267,6 @@ function getLevel(score: number): 'novice' | 'developing' | 'proficient' | 'expe
 }
 
 interface CategoryScores {
-  contextScore: number;
   planningScore: number;
   orchestrationScore: number;
   verificationScore: number;
@@ -340,9 +275,6 @@ interface CategoryScores {
 function identifyStrengths(metrics: CollaborationMetrics, scores: CategoryScores): string[] {
   const strengths: string[] = [];
 
-  if (scores.contextScore >= 70) {
-    strengths.push('Excellent context engineering - you provide rich context for AI to work with');
-  }
   if (scores.planningScore >= 70) {
     strengths.push('Strong structured planning - you break down tasks effectively');
   }
@@ -353,11 +285,14 @@ function identifyStrengths(metrics: CollaborationMetrics, scores: CategoryScores
     strengths.push('Rigorous verification - you validate AI outputs thoroughly');
   }
 
-  if (metrics.fileReferences > 10) {
-    strengths.push('Good file referencing - you guide AI to specific code locations');
-  }
   if (metrics.todoWriteUsage > 5) {
     strengths.push('Effective task tracking - you use structured todo management');
+  }
+  if (metrics.taskToolUsage > 3) {
+    strengths.push('Strong delegation - you leverage specialized agents effectively');
+  }
+  if (metrics.parallelWorkflows > 0) {
+    strengths.push('Parallel execution - you run multiple agents concurrently');
   }
   if (metrics.testRequests > 3) {
     strengths.push('Test-driven mindset - you ensure code quality through testing');
@@ -369,9 +304,6 @@ function identifyStrengths(metrics: CollaborationMetrics, scores: CategoryScores
 function identifyGrowthAreas(metrics: CollaborationMetrics, scores: CategoryScores): string[] {
   const growthAreas: string[] = [];
 
-  if (scores.contextScore < 40) {
-    growthAreas.push('Try referencing specific files and patterns when describing tasks');
-  }
   if (scores.planningScore < 40) {
     growthAreas.push('Use step-by-step plans or TodoWrite to structure complex tasks');
   }
@@ -382,11 +314,11 @@ function identifyGrowthAreas(metrics: CollaborationMetrics, scores: CategoryScor
     growthAreas.push('Request code reviews and test runs to verify AI output');
   }
 
-  if (metrics.constraintsMentioned < 3) {
-    growthAreas.push('Specify constraints and requirements more explicitly');
-  }
   if (metrics.specFileReferences === 0) {
     growthAreas.push('Consider creating spec files (requirements.md) for complex features');
+  }
+  if (metrics.taskToolUsage === 0 && metrics.totalUserMessages > 5) {
+    growthAreas.push('Try delegating subtasks to specialized agents using Task tool');
   }
 
   return growthAreas.slice(0, 4); // Max 4 growth areas
@@ -394,15 +326,15 @@ function identifyGrowthAreas(metrics: CollaborationMetrics, scores: CategoryScor
 
 function getInterpretation(score: number, metrics: CollaborationMetrics): string {
   if (score >= 80) {
-    return `Expert-level AI collaboration! You excel at context engineering (${metrics.fileReferences} file references), structured planning, and verification. You're leveraging AI as a true force multiplier.`;
+    return `Expert-level AI collaboration! You excel at structured planning (${metrics.todoWriteUsage} todo uses), orchestration (${metrics.taskToolUsage} delegations), and verification. You're leveraging AI as a true force multiplier.`;
   }
   if (score >= 60) {
-    return `Proficient AI collaborator. You understand the importance of context and verification. Keep developing your orchestration skills to unlock even more productivity.`;
+    return `Proficient AI collaborator. You understand the importance of planning and verification. Keep developing your orchestration skills to unlock even more productivity.`;
   }
   if (score >= 40) {
-    return `Developing AI collaboration skills. Focus on providing more context (file paths, constraints) and structuring tasks with clear steps. These habits will significantly improve your AI-assisted output.`;
+    return `Developing AI collaboration skills. Focus on structuring tasks with clear steps and delegating to specialized agents. These habits will significantly improve your AI-assisted output.`;
   }
-  return `Room for growth in AI collaboration. Start by referencing specific files when asking questions, and try breaking complex tasks into numbered steps. Small changes yield big improvements!`;
+  return `Room for growth in AI collaboration. Start by breaking complex tasks into numbered steps, and try using TodoWrite for task tracking. Small changes yield big improvements!`;
 }
 
 function createDefaultResult(): AICollaborationResult {
@@ -410,12 +342,6 @@ function createDefaultResult(): AICollaborationResult {
     score: 50,
     level: 'developing',
     breakdown: {
-      contextEngineering: {
-        score: 50,
-        fileReferences: 0,
-        constraintsMentioned: 0,
-        patternReferences: 0,
-      },
       structuredPlanning: {
         score: 50,
         todoWriteUsage: 0,

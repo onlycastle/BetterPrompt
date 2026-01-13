@@ -55,6 +55,17 @@ export const RelevanceAssessmentSchema = z.object({
 export type RelevanceAssessment = z.infer<typeof RelevanceAssessmentSchema>;
 
 /**
+ * Influencer match information (when content is from tracked influencer)
+ */
+export const InfluencerMatchInfoSchema = z.object({
+  influencerId: z.string().uuid(),
+  influencerName: z.string(),
+  credibilityTier: z.enum(['high', 'medium', 'standard']),
+  boostApplied: z.number().min(0).max(0.5),
+});
+export type InfluencerMatchInfo = z.infer<typeof InfluencerMatchInfoSchema>;
+
+/**
  * Judgment result for a search result
  */
 export const JudgmentResultSchema = z.object({
@@ -64,6 +75,7 @@ export const JudgmentResultSchema = z.object({
   suggestedTags: z.array(z.string()),
   extractedInsights: z.array(z.string()).max(5),
   judgedAt: z.string().datetime(),
+  influencerMatch: InfluencerMatchInfoSchema.optional(), // NEW: Track influencer attribution
 });
 export type JudgmentResult = z.infer<typeof JudgmentResultSchema>;
 

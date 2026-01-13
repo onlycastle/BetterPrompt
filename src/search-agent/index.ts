@@ -38,21 +38,71 @@ export {
   type OrganizerInput,
   type OrganizerOutput,
   type RawContent,
+  // Transcript
+  TranscriptSkill,
+  createTranscriptSkill,
+  parseYouTubeVideoId,
+  parseYouTubePlaylistId,
+  isYouTubeUrl,
+  TranscriptError,
+  type TranscriptInput,
+  type TranscriptOutput,
+  type VideoAnalysisResult,
+  type YouTubeTranscript,
+  type AnalyzedTranscript,
   // Criteria & Taxonomy
   RELEVANCE_CRITERIA,
   KNOWLEDGE_TAXONOMY,
   getTaxonomyNode,
+  // Discovery
+  DiscoverySkill,
+  createDiscoverySkill,
+  aggregateInfluencers,
+  generateSearchQueries,
+  getTopicQueries,
+  estimateQueryCount,
+  type DiscoveryInput,
+  type DiscoveryOutput,
+  type WebSearchResult,
+  type SearchQueryDef,
 } from './skills/index.js';
 
 // ============================================================================
-// Storage
+// Storage (Legacy - File-based)
 // ============================================================================
 export {
   KnowledgeStore,
   knowledgeStore,
   KNOWLEDGE_BASE_PATH,
   type KnowledgeStats,
+  type QualityMetrics,
+  type AdvancedSearchOptions,
 } from './storage/index.js';
+
+// ============================================================================
+// Database (Supabase)
+// ============================================================================
+export {
+  knowledgeDb,
+  influencerDb,
+  type KnowledgeFilters,
+  type QueryOptions,
+  type PaginatedResult,
+} from './db/index.js';
+
+// ============================================================================
+// Influencers
+// ============================================================================
+export {
+  InfluencerRegistryManager,
+  getInfluencerRegistry,
+  createInfluencerRegistry,
+  INFLUENCER_REGISTRY_PATH,
+  InfluencerDetector,
+  getInfluencerDetector,
+  createInfluencerDetector,
+  type DetectionResult,
+} from './influencers/index.js';
 
 // ============================================================================
 // Orchestration
@@ -63,7 +113,7 @@ import { createGatherer, GathererOutput, WebSearchItem } from './skills/gatherer
 import { createJudge, JudgeOutput } from './skills/judge/index.js';
 import { createOrganizer, OrganizerOutput, RawContent } from './skills/organizer/index.js';
 import { SearchQuery, KnowledgeItem } from './models/index.js';
-import { knowledgeStore } from './storage/index.js';
+import { knowledgeDb } from './db/index.js';
 import type { SkillConfig } from './skills/base-skill.js';
 
 /**
@@ -146,9 +196,8 @@ export async function learn(
   const judge = createJudge(skillConfig);
 
   // Get existing knowledge summaries for novelty check
-  await knowledgeStore.initialize();
-  const existingItems = await knowledgeStore.listItems();
-  const existingKnowledge = existingItems.map((item) => item.summary);
+  const existingResult = await knowledgeDb.findAll();
+  const existingKnowledge = existingResult.items.map((item) => item.summary);
 
   const judgeResult = await judge.execute({
     results: gatherResult.data.enhancedResults,
@@ -212,8 +261,8 @@ export async function searchKnowledge(
   query: string,
   limit: number = 10
 ): Promise<KnowledgeItem[]> {
-  await knowledgeStore.initialize();
-  return knowledgeStore.search(query, limit);
+  const result = await knowledgeDb.search({ query }, { limit });
+  return result.items;
 }
 
 /**
@@ -222,8 +271,7 @@ export async function searchKnowledge(
  * @returns Statistics about the knowledge base
  */
 export async function getKnowledgeStats() {
-  await knowledgeStore.initialize();
-  return knowledgeStore.getStats();
+  return knowledgeDb.getStats();
 }
 
 /**
@@ -233,6 +281,95 @@ export async function getKnowledgeStats() {
  * @returns Top-rated knowledge items
  */
 export async function getTopKnowledge(limit: number = 10): Promise<KnowledgeItem[]> {
-  await knowledgeStore.initialize();
-  return knowledgeStore.getTopItems(limit);
+  const result = await knowledgeDb.search({}, {
+    limit,
+    sortBy: 'relevance_score',
+    sortOrder: 'desc',
+  });
+  return result.items;
+}
+
+/**
+ * Get knowledge items by platform
+ *
+ * @param platform - Source platform to filter by
+ * @returns Knowledge items from that platform
+ */
+export async function getKnowledgeByPlatform(
+  platform: import('./models/index.js').SourcePlatform
+): Promise<KnowledgeItem[]> {
+  return knowledgeDb.findByPlatform(platform);
+}
+
+/**
+ * Get knowledge items by author
+ *
+ * @param author - Author name or handle to search for
+ * @returns Knowledge items from that author
+ */
+export async function getKnowledgeByAuthor(author: string): Promise<KnowledgeItem[]> {
+  const result = await knowledgeDb.search({ author }, { limit: 100 });
+  return result.items;
+}
+
+/**
+ * Advanced knowledge search with multiple filters
+ *
+ * @param options - Search options
+ * @returns Matching knowledge items
+ */
+export async function searchKnowledgeAdvanced(
+  options: import('./storage/index.js').AdvancedSearchOptions
+): Promise<KnowledgeItem[]> {
+  // Map legacy options to new filter format
+  const dbSortBy = options.sortBy === 'relevance' ? 'relevance_score' :
+                   options.sortBy === 'date' ? 'created_at' : 'created_at';
+
+  const result = await knowledgeDb.search({
+    platform: options.platform,
+    category: options.category,
+    author: options.author,
+    minScore: options.minScore,
+    query: options.query,
+  }, {
+    limit: options.limit || 20,
+    sortBy: dbSortBy,
+    sortOrder: 'desc',
+  });
+  return result.items;
+}
+
+/**
+ * Get quality metrics for the knowledge base
+ *
+ * @returns Quality metrics including scores, distributions, and counts
+ */
+export async function getQualityMetrics(): Promise<import('./storage/index.js').QualityMetrics> {
+  return knowledgeDb.getQualityMetrics();
+}
+
+/**
+ * Learn from a YouTube video transcript
+ *
+ * @param url - YouTube video or playlist URL
+ * @param config - Optional skill configuration
+ * @returns Transcript analysis results
+ */
+export async function learnFromYouTube(
+  url: string,
+  config?: SkillConfig & { processPlaylist?: boolean; maxPlaylistVideos?: number }
+): Promise<import('./skills/transcript/index.js').TranscriptOutput> {
+  const { createTranscriptSkill } = await import('./skills/transcript/index.js');
+  const skill = createTranscriptSkill(config);
+  const result = await skill.execute({
+    url,
+    processPlaylist: config?.processPlaylist,
+    maxPlaylistVideos: config?.maxPlaylistVideos,
+  });
+
+  if (!result.success || !result.data) {
+    throw new Error(`Transcript learning failed: ${result.error}`);
+  }
+
+  return result.data;
 }

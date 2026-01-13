@@ -8,6 +8,7 @@ import {
   type ParsedSession,
   StoredAnalysisSchema,
 } from '../models/index.js';
+import { getProjectName } from '../parser/jsonl-reader.js';
 
 /**
  * Default storage directory
@@ -50,7 +51,7 @@ export class StorageManager {
       evaluation,
       metadata: {
         projectPath: session.projectPath,
-        projectName: this.getProjectName(session.projectPath),
+        projectName: getProjectName(session.projectPath),
         durationSeconds: session.durationSeconds,
         messageCount:
           session.stats.userMessageCount + session.stats.assistantMessageCount,
@@ -137,14 +138,6 @@ export class StorageManager {
     } catch {
       return [];
     }
-  }
-
-  /**
-   * Get project name from path
-   */
-  private getProjectName(projectPath: string): string {
-    const parts = projectPath.split('/').filter(Boolean);
-    return parts[parts.length - 1] || 'unknown';
   }
 
   /**

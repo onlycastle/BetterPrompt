@@ -11,4 +11,6 @@ export {
   ITEMS_PATH,
   INDEX_PATH,
   type KnowledgeStats,
+  type QualityMetrics,
+  type AdvancedSearchOptions,
 } from './knowledge-store.js';

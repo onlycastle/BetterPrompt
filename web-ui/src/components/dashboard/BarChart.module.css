@@ -1,0 +1,48 @@
+.barChart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.barItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.barHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.barLabel {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.barValue {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: var(--weight-medium);
+}
+
+.barTrack {
+  height: 8px;
+  background: var(--surface-3);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  width: 0;
+  transition: width 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition-delay: var(--bar-delay, 0ms);
+}
+
+.barFill.animated {
+  /* Width is set inline, animation happens via transition */
+}

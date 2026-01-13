@@ -286,23 +286,12 @@ export function renderDimensionSummary(dimensions: FullAnalysisResult): string {
 
   // AI Collaboration Mastery - show score and level
   const collab = dimensions.aiCollaboration;
-  const collabColor =
-    collab.level === 'expert' || collab.level === 'proficient'
-      ? pc.green
-      : collab.level === 'developing'
-        ? pc.cyan
-        : pc.yellow;
+  const collabColor = getColorForLevel(collab.level);
   lines.push(
     `   🤝 ${pc.dim('AI Collaboration:')} ${collabColor(collab.score.toString())}${pc.dim('/100')} ${collabColor(`(${collab.level})`)}`
   );
 
-  // Context Engineering breakdown
-  const ctx = collab.breakdown.contextEngineering;
-  lines.push(
-    `      ${pc.dim('├─ Context Engineering:')} ${pc.white(ctx.score.toString())}${pc.dim('/100')}`
-  );
-
-  // Structured Planning breakdown
+  // Structured Planning breakdown (Context Engineering is now a separate dimension)
   const plan = collab.breakdown.structuredPlanning;
   lines.push(
     `      ${pc.dim('├─ Structured Planning:')} ${pc.white(plan.score.toString())}${pc.dim('/100')}`
@@ -322,11 +311,14 @@ export function renderDimensionSummary(dimensions: FullAnalysisResult): string {
 
   lines.push('');
 
-  // Prompt Score - show score
-  const prompt = dimensions.promptScore;
-  const promptColor = prompt.score >= 70 ? pc.green : prompt.score >= 50 ? pc.cyan : pc.yellow;
+  // Context Engineering - show score (now a separate dimension with 4 strategies)
+  const ctx = dimensions.contextEngineering;
+  const ctxColor = getColorForScore(ctx.score);
   lines.push(
-    `   🎯 ${pc.dim('Prompt Score:')} ${promptColor(prompt.score.toString())}${pc.dim('/100')}`
+    `   🧠 ${pc.dim('Context Engineering:')} ${ctxColor(ctx.score.toString())}${pc.dim('/100')} ${ctxColor(`(${ctx.level})`)}`
+  );
+  lines.push(
+    `      ${pc.dim('├─ WRITE:')} ${pc.white(ctx.breakdown.write.score.toString())}  ${pc.dim('├─ SELECT:')} ${pc.white(ctx.breakdown.select.score.toString())}  ${pc.dim('├─ COMPRESS:')} ${pc.white(ctx.breakdown.compress.score.toString())}  ${pc.dim('└─ ISOLATE:')} ${pc.white(ctx.breakdown.isolate.score.toString())}`
   );
 
   // Burnout Risk - teaser (locked)
@@ -350,6 +342,30 @@ export function renderDimensionSummary(dimensions: FullAnalysisResult): string {
 // ============================================================================
 // Helper functions
 // ============================================================================
+
+/**
+ * Get the color function for a dimension level
+ */
+function getColorForLevel(level: string): (s: string) => string {
+  switch (level) {
+    case 'expert':
+    case 'proficient':
+      return pc.green;
+    case 'developing':
+      return pc.cyan;
+    default:
+      return pc.yellow;
+  }
+}
+
+/**
+ * Get the color function based on a numeric score
+ */
+function getColorForScore(score: number, greenThreshold = 70, cyanThreshold = 50): (s: string) => string {
+  if (score >= greenThreshold) return pc.green;
+  if (score >= cyanThreshold) return pc.cyan;
+  return pc.yellow;
+}
 
 function wrapQuote(text: string, width: number): string[] {
   const words = text.split(' ');

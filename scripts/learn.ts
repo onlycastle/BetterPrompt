@@ -9,6 +9,7 @@
  *   npx tsx scripts/learn.ts --mock  # Use mock data for testing
  */
 
+import 'dotenv/config';
 import { readFile } from 'node:fs/promises';
 import { learn, getKnowledgeStats, type WebSearchItem } from '../src/search-agent/index.js';
 
