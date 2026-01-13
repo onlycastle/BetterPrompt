@@ -112,6 +112,45 @@ Tests cover knowledge domain models, relevance scoring algorithms, and quality a
 
 Tests cover TypeScript type definitions and schema validation for report data structures.
 
+### 2.10 Verbose Analysis Tests (Pending)
+
+**Target Files:**
+- `tests/unit/analyzer/cost-estimator.test.ts`
+- `tests/unit/analyzer/verbose-analyzer.test.ts`
+- `tests/unit/parser/session-selector.test.ts`
+- `tests/unit/models/verbose-evaluation.test.ts`
+
+**Test Coverage Targets:**
+
+| Component | Test Cases | Priority |
+|-----------|------------|----------|
+| **CostEstimator** | Token counting accuracy, pricing calculation, model fallback, code block detection | 🟡 P1 |
+| **SessionSelector** | Weight calculation, duration filtering (5-min min), recency window (90-day), max session limit (10), edge cases (empty, relaxed criteria) | 🟡 P1 |
+| **VerboseAnalyzer** | API call mocking, structured output parsing, response validation, error handling, retry logic | 🟡 P1 |
+| **VerboseEvaluation** | Schema validation, required FREE tier fields, optional PREMIUM tier fields, evidence quote validation | 🟢 P2 |
+| **CostConfirmation** | Render formatting, user input handling, --yes flag bypass | 🟢 P2 |
+| **VerboseReport** | Section rendering, strength/growth display, premium teaser rendering | 🟢 P2 |
+
+**Key Test Scenarios:**
+
+1. **Cost Estimation Accuracy**
+   - Verify token counting with plain text
+   - Verify additional tokens for code blocks
+   - Verify JSON structure overhead calculation
+   - Verify model-specific pricing (Sonnet 4, Opus 4, Haiku 3.5)
+
+2. **Session Selection Logic**
+   - Sessions under 5 minutes excluded
+   - Sessions older than 90 days excluded (unless relaxed)
+   - Optimal 10 sessions selected by score
+   - Score = duration (40%) + recency (30%) + messages (30%)
+
+3. **Verbose Schema Validation**
+   - personalitySummary: 200-800 characters
+   - strengths: 3-5 items, each with 2-5 evidence quotes
+   - growthAreas: 2-4 items, each with 1-3 evidence quotes
+   - promptPatterns: 3-6 items with frequency/effectiveness enums
+
 ---
 
 ## 3. Integration Tests

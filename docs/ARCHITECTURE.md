@@ -46,9 +46,23 @@
 
 ## Core Pipeline
 
+### Normal Mode (Pattern-based)
 ```
 Session JSONL → Parser → Analyzer → Dimensions → Output (CLI + Web)
 ```
+
+### Verbose Mode (LLM-powered)
+```
+Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation] → VerboseAnalyzer → VerboseReport
+```
+
+**Verbose Mode Components:**
+- **SessionSelector** (`src/parser/session-selector.ts`) - Selects optimal sessions (5-min minimum, 90-day window, max 10)
+- **CostEstimator** (`src/analyzer/cost-estimator.ts`) - Token counting and API cost calculation
+- **VerboseAnalyzer** (`src/analyzer/verbose-analyzer.ts`) - LLM-powered hyper-personalized analysis
+- **VerbosePrompts** (`src/analyzer/verbose-prompts.ts`) - Behavioral analyst prompts
+- **CostConfirmation** (`src/cli/output/components/cost-confirmation.ts`) - Interactive cost approval
+- **VerboseReport** (`src/cli/output/components/verbose-report.ts`) - Terminal rendering
 
 ## Key Components
 

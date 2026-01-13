@@ -95,6 +95,111 @@ enum AIControlLevel {
 
 **Example**: A developer who is primarily a "scientist" (verifies AI output) with an AI Control score of 72 would be classified as **"Research Master 🔬"** - someone who treats every AI output as a hypothesis to be tested.
 
+## Verbose Evaluation Schema
+
+Extended schema for hyper-personalized analysis with FREE and PREMIUM tier content. Used by `--verbose` mode.
+
+**Source**: `src/models/verbose-evaluation.ts`
+
+### VerboseEvaluation
+
+| Field | Type | Tier | Description |
+|-------|------|------|-------------|
+| sessionId | string | - | Session UUID |
+| analyzedAt | datetime | - | Analysis timestamp |
+| sessionsAnalyzed | number | - | Number of sessions analyzed |
+| primaryType | CodingStyleType | FREE | Primary style (architect, scientist, etc.) |
+| controlLevel | AIControlLevel | FREE | Control level (vibe-coder, developing, ai-master) |
+| distribution | TypeDistribution | FREE | Percentage breakdown across 5 types |
+| personalitySummary | string (200-800 chars) | FREE | Hyper-personalized paragraph |
+| strengths | PersonalizedStrength[] (3-5) | FREE | Unique strengths with evidence quotes |
+| growthAreas | GrowthArea[] (2-4) | FREE | Growth opportunities with recommendations |
+| promptPatterns | PromptPattern[] (3-6) | FREE | Unique prompting style patterns |
+| toolUsageDeepDive | ToolUsageInsight[] | PREMIUM | Deep tool usage analysis |
+| tokenEfficiency | TokenEfficiency | PREMIUM | Token usage efficiency analysis |
+| growthRoadmap | GrowthRoadmap | PREMIUM | Personalized growth plan |
+| comparativeInsights | ComparativeInsight[] | PREMIUM | Peer comparison metrics |
+| sessionTrends | SessionTrend[] | PREMIUM | Progress trends over time |
+
+### PersonalizedEvidence
+
+Evidence quotes extracted from conversations:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| quote | string (20-500 chars) | Actual quote from conversation |
+| sessionDate | string | ISO date when said |
+| context | string (max 200 chars) | What was being discussed |
+| significance | string (max 300 chars) | What this reveals about personality |
+| sentiment | enum | positive, neutral, growth_opportunity |
+
+### PersonalizedStrength
+
+| Field | Type | Description |
+|-------|------|-------------|
+| title | string (max 50 chars) | Short strength title |
+| description | string (100-500 chars) | Detailed description |
+| evidence | PersonalizedEvidence[] (2-5) | Quotes demonstrating strength |
+| percentile | number (0-100) | Optional peer comparison |
+
+### GrowthArea
+
+| Field | Type | Description |
+|-------|------|-------------|
+| title | string (max 50 chars) | Growth area title |
+| description | string (100-500 chars) | Detailed description |
+| evidence | PersonalizedEvidence[] (1-3) | Examples showing opportunity |
+| recommendation | string (max 300 chars) | Specific actionable advice |
+| resources | string[] (max 3) | Optional learning resources |
+
+### PromptPattern
+
+| Field | Type | Description |
+|-------|------|-------------|
+| patternName | string (max 50 chars) | Pattern identifier |
+| description | string (max 300 chars) | Pattern description |
+| frequency | enum | frequent, occasional, rare |
+| examples | { quote, analysis }[] (1-3) | Examples with analysis |
+| effectiveness | enum | highly_effective, effective, could_improve |
+| tip | string (max 200 chars) | Optional improvement tip |
+
+## Cost Estimation
+
+Token counting and API cost calculation for verbose analysis.
+
+**Source**: `src/analyzer/cost-estimator.ts`
+
+### CostEstimate
+
+| Field | Type | Description |
+|-------|------|-------------|
+| totalInputTokens | number | Total estimated input tokens |
+| estimatedOutputTokens | number | Estimated output tokens (~6,000) |
+| totalCost | number | Estimated cost in USD |
+| breakdown.sessionTokens | number | Tokens from session content |
+| breakdown.systemPromptTokens | number | System prompt overhead (~2,500) |
+| breakdown.schemaOverhead | number | Schema overhead (~1,500) |
+| model | string | Model identifier |
+| modelName | string | Human-readable model name |
+
+### Token Counting Methodology
+
+The cost estimator uses character-based heuristics with adjustments:
+- Base: ~4 characters per token (English text)
+- Code blocks: +50 tokens per block (symbol-heavy)
+- JSON structure: +0.5 tokens per brace/bracket
+- Newlines: +0.1 tokens per newline
+- Special characters: +0.1 tokens per special char
+
+### Pricing (as of 2025)
+
+| Model | Input (per 1M tokens) | Output (per 1M tokens) |
+|-------|----------------------|------------------------|
+| Claude Sonnet 4 | $3.00 | $15.00 |
+| Claude Opus 4 | $15.00 | $75.00 |
+| Claude Opus 4.5 | $15.00 | $75.00 |
+| Claude 3.5 Haiku | $0.80 | $4.00 |
+
 ## Analysis Dimensions
 
 Six numeric dimensions rated 0-100 with three proficiency levels:

@@ -53,6 +53,29 @@ FREE (CLI analysis) → PRO (detailed reports) → PREMIUM (tracking) → ENTERP
 | Knowledge base | ✗ | ✗ | ✓ | ✓ + custom |
 | Team management | ✗ | ✗ | ✗ | ✓ |
 
+## Analysis Modes
+
+| Mode | Description | Cost |
+|------|-------------|------|
+| **Normal** | Pattern-based analysis of 30 recent sessions | Free (local) |
+| **Verbose** | LLM-powered hyper-personalized analysis (10 optimal sessions) | API cost (~$0.05-0.15) |
+
+### Verbose Mode Features
+
+| Feature | FREE | PREMIUM |
+|---------|------|---------|
+| Personality Summary | ✓ | ✓ |
+| Strengths with Evidence (3-5) | ✓ | ✓ |
+| Growth Areas (2-4) | ✓ | ✓ |
+| Prompt Patterns (3-6) | ✓ | ✓ |
+| Tool Usage Deep Dive | 🔒 | ✓ |
+| Token Efficiency Analysis | 🔒 | ✓ |
+| Growth Roadmap | 🔒 | ✓ |
+| Comparative Insights | 🔒 | ✓ |
+| Session Trends | 🔒 | ✓ |
+
+**CLI Flags:** `--verbose`, `--dry-run`, `--yes`
+
 ## Web UI Routes
 
 ```

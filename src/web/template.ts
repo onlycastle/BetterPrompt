@@ -21,6 +21,7 @@ import {
   type AIControlResult,
   type SkillResilienceResult,
 } from '../analyzer/dimensions/index.js';
+import { type VerboseEvaluation } from '../models/verbose-evaluation.js';
 
 /**
  * Extended analysis data for full report
@@ -47,7 +48,8 @@ export interface ReportOptions {
 export function generateReportHTML(
   result: TypeResult,
   dimensions?: FullAnalysisResult,
-  options?: ReportOptions
+  options?: ReportOptions,
+  verboseEvaluation?: VerboseEvaluation
 ): string {
   const meta = TYPE_METADATA[result.primaryType];
   const { reportId, baseUrl = 'https://nomoreaislop.xyz', enableSharing = true, unlocked } = options || {};
@@ -161,6 +163,11 @@ ${getEnhancedStyles()}
       <section class="snap-section in-view" data-section="result" data-index="0">
         <div class="section-inner">
           ${renderMainResultSection(result, meta)}
+          ${verboseEvaluation ? renderVerbosePersonalitySummary(verboseEvaluation, isUnlocked) : ''}
+          ${verboseEvaluation ? renderVerboseStrengths(verboseEvaluation, isUnlocked) : ''}
+          ${verboseEvaluation ? renderVerboseGrowthAreas(verboseEvaluation, isUnlocked) : ''}
+          ${verboseEvaluation ? renderVerbosePromptPatterns(verboseEvaluation, isUnlocked) : ''}
+          ${verboseEvaluation ? renderVerboseLockedTeasers(isUnlocked) : ''}
         </div>
       </section>
 
@@ -2133,6 +2140,252 @@ function renderFooter(): string {
       <p>Analysis generated on ${date}</p>
       <p>Built with 💜 by <a href="https://nomoreaislop.dev">NoMoreAISlop</a></p>
     </footer>
+  `;
+}
+
+// ============================================================================
+// Verbose Evaluation Rendering Functions
+// ============================================================================
+
+/**
+ * Render verbose personality summary section
+ */
+function renderVerbosePersonalitySummary(verboseEval: VerboseEvaluation, _isUnlocked: boolean): string {
+  return `
+    <div style="margin: 32px 0; padding: 24px; background: var(--bg-secondary); border-radius: 12px; border-left: 4px solid var(--neon-cyan);">
+      <div class="subsection-title" style="margin-bottom: 16px;">🎭 Your AI Coding Personality</div>
+      <p style="font-size: 14px; line-height: 1.8; color: var(--text-primary);">
+        ${verboseEval.personalitySummary}
+      </p>
+    </div>
+  `;
+}
+
+/**
+ * Render verbose strengths section with evidence
+ */
+function renderVerboseStrengths(verboseEval: VerboseEvaluation, _isUnlocked: boolean): string {
+  const strengthsHtml = verboseEval.strengths
+    .map(
+      strength => `
+    <div style="margin-bottom: 24px; padding: 20px; background: var(--bg-tertiary); border-radius: 8px; border: 1px solid rgba(0, 255, 136, 0.2);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <h4 style="color: var(--neon-green); font-size: 16px; margin: 0;">✨ ${strength.title}</h4>
+        ${strength.percentile ? `<span style="font-size: 12px; color: var(--text-muted);">Top ${100 - strength.percentile}%</span>` : ''}
+      </div>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+        ${strength.description}
+      </p>
+      <div style="margin-top: 12px;">
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Evidence from your sessions:</div>
+        ${strength.evidence
+          .map(
+            ev => `
+          <div style="padding: 8px 12px; background: var(--bg-primary); border-radius: 4px; margin-bottom: 6px; border-left: 2px solid var(--neon-green);">
+            <div style="font-size: 12px; font-style: italic; color: var(--text-primary); margin-bottom: 4px;">"${escapeHtml(ev.quote)}"</div>
+            <div style="font-size: 10px; color: var(--text-muted);">${ev.context} • ${new Date(ev.sessionDate).toLocaleDateString()}</div>
+            <div style="font-size: 11px; color: var(--neon-green); margin-top: 4px;">→ ${escapeHtml(ev.significance)}</div>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+    </div>
+  `
+    )
+    .join('');
+
+  return `
+    <div style="margin: 32px 0;">
+      <div class="subsection-title" style="margin-bottom: 20px;">💪 Your Strengths (with Evidence)</div>
+      ${strengthsHtml}
+    </div>
+  `;
+}
+
+/**
+ * Render verbose growth areas section
+ */
+function renderVerboseGrowthAreas(verboseEval: VerboseEvaluation, isUnlocked: boolean): string {
+  const blurClass = isUnlocked ? '' : 'blurred-content';
+
+  const growthAreasHtml = verboseEval.growthAreas
+    .map(
+      area => `
+    <div class="${blurClass}" style="margin-bottom: 24px; padding: 20px; background: var(--bg-tertiary); border-radius: 8px; border: 1px solid rgba(255, 204, 0, 0.2);">
+      <h4 style="color: var(--neon-yellow); font-size: 16px; margin: 0 0 12px 0;">🌱 ${area.title}</h4>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+        ${area.description}
+      </p>
+      <div style="margin-top: 12px;">
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Examples from your sessions:</div>
+        ${area.evidence
+          .map(
+            ev => `
+          <div style="padding: 8px 12px; background: var(--bg-primary); border-radius: 4px; margin-bottom: 6px; border-left: 2px solid var(--neon-yellow);">
+            <div style="font-size: 12px; font-style: italic; color: var(--text-primary); margin-bottom: 4px;">"${escapeHtml(ev.quote)}"</div>
+            <div style="font-size: 10px; color: var(--text-muted);">${ev.context} • ${new Date(ev.sessionDate).toLocaleDateString()}</div>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+      <div style="margin-top: 16px; padding: 12px; background: rgba(0, 212, 255, 0.08); border-radius: 6px; border: 1px solid rgba(0, 212, 255, 0.2);">
+        <div style="font-size: 11px; color: var(--neon-cyan); font-weight: 600; margin-bottom: 4px;">💡 Recommendation:</div>
+        <div style="font-size: 12px; color: var(--text-primary);">${area.recommendation}</div>
+        ${
+          area.resources && area.resources.length > 0
+            ? `
+        <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
+          Resources: ${area.resources.map(r => `<a href="${r}" style="color: var(--neon-cyan);">${r}</a>`).join(', ')}
+        </div>
+        `
+            : ''
+        }
+      </div>
+    </div>
+  `
+    )
+    .join('');
+
+  return `
+    <div style="margin: 32px 0;">
+      <div class="subsection-title" style="margin-bottom: 20px;">🎯 Growth Opportunities</div>
+      ${growthAreasHtml}
+      ${
+        isUnlocked
+          ? ''
+          : `
+      <div class="unlock-prompt">
+        <span class="unlock-prompt-text">🔓 Unlock detailed recommendations and resources</span>
+      </div>
+      `
+      }
+    </div>
+  `;
+}
+
+/**
+ * Render verbose prompt patterns section
+ */
+function renderVerbosePromptPatterns(verboseEval: VerboseEvaluation, _isUnlocked: boolean): string {
+  const getFrequencyColor = (freq: string) => {
+    switch (freq) {
+      case 'frequent':
+        return 'var(--neon-green)';
+      case 'occasional':
+        return 'var(--neon-cyan)';
+      case 'rare':
+        return 'var(--text-muted)';
+      default:
+        return 'var(--text-secondary)';
+    }
+  };
+
+  const getEffectivenessColor = (eff: string) => {
+    switch (eff) {
+      case 'highly_effective':
+        return 'var(--neon-green)';
+      case 'effective':
+        return 'var(--neon-cyan)';
+      case 'could_improve':
+        return 'var(--neon-yellow)';
+      default:
+        return 'var(--text-secondary)';
+    }
+  };
+
+  const patternsHtml = verboseEval.promptPatterns
+    .map(
+      pattern => `
+    <div style="margin-bottom: 24px; padding: 20px; background: var(--bg-tertiary); border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.2);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <h4 style="color: var(--neon-purple); font-size: 16px; margin: 0;">📝 ${pattern.patternName}</h4>
+        <div style="display: flex; gap: 12px;">
+          <span style="font-size: 11px; padding: 4px 8px; background: rgba(139, 92, 246, 0.2); border-radius: 4px; color: ${getFrequencyColor(pattern.frequency)};">
+            ${pattern.frequency}
+          </span>
+          <span style="font-size: 11px; padding: 4px 8px; background: rgba(0, 212, 255, 0.2); border-radius: 4px; color: ${getEffectivenessColor(pattern.effectiveness)};">
+            ${pattern.effectiveness.replace('_', ' ')}
+          </span>
+        </div>
+      </div>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+        ${pattern.description}
+      </p>
+      <div style="margin-top: 12px;">
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Examples:</div>
+        ${pattern.examples
+          .map(
+            ex => `
+          <div style="padding: 8px 12px; background: var(--bg-primary); border-radius: 4px; margin-bottom: 6px; border-left: 2px solid var(--neon-purple);">
+            <div style="font-size: 12px; font-style: italic; color: var(--text-primary); margin-bottom: 4px;">"${escapeHtml(ex.quote)}"</div>
+            <div style="font-size: 11px; color: var(--text-muted);">→ ${escapeHtml(ex.analysis)}</div>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+      ${
+        pattern.tip
+          ? `
+      <div style="margin-top: 12px; padding: 10px; background: rgba(255, 204, 0, 0.08); border-radius: 6px; border: 1px solid rgba(255, 204, 0, 0.2);">
+        <div style="font-size: 11px; color: var(--neon-yellow); font-weight: 600;">💡 Tip:</div>
+        <div style="font-size: 12px; color: var(--text-primary); margin-top: 4px;">${pattern.tip}</div>
+      </div>
+      `
+          : ''
+      }
+    </div>
+  `
+    )
+    .join('');
+
+  return `
+    <div style="margin: 32px 0;">
+      <div class="subsection-title" style="margin-bottom: 20px;">🔍 Your Prompt Patterns</div>
+      ${patternsHtml}
+    </div>
+  `;
+}
+
+/**
+ * Render locked premium teasers
+ */
+function renderVerboseLockedTeasers(isUnlocked: boolean): string {
+  if (isUnlocked) {
+    return ''; // No teasers if already unlocked
+  }
+
+  return `
+    <div style="margin: 32px 0; padding: 32px 24px; background: var(--bg-tertiary); border-radius: 12px; border: 2px dashed var(--text-muted);">
+      <div class="subsection-title" style="text-align: center; margin-bottom: 24px;">🔒 Premium Content</div>
+      <div style="display: grid; gap: 16px;">
+        <div class="blurred-content" style="padding: 16px; background: var(--bg-primary); border-radius: 8px; border-left: 3px solid var(--neon-magenta);">
+          <div style="font-size: 14px; font-weight: 600; color: var(--neon-magenta); margin-bottom: 8px;">🛠️ Tool Usage Deep Dive</div>
+          <div style="font-size: 12px; color: var(--text-muted);">Detailed analysis of how you use each tool, with comparisons to expert users and optimization strategies...</div>
+        </div>
+        <div class="blurred-content" style="padding: 16px; background: var(--bg-primary); border-radius: 8px; border-left: 3px solid var(--neon-green);">
+          <div style="font-size: 14px; font-weight: 600; color: var(--neon-green); margin-bottom: 8px;">💰 Token Efficiency Analysis</div>
+          <div style="font-size: 12px; color: var(--text-muted);">Your token usage patterns, efficiency score, and estimated monthly savings with optimization tips...</div>
+        </div>
+        <div class="blurred-content" style="padding: 16px; background: var(--bg-primary); border-radius: 8px; border-left: 3px solid var(--neon-cyan);">
+          <div style="font-size: 14px; font-weight: 600; color: var(--neon-cyan); margin-bottom: 8px;">🗺️ Personalized Growth Roadmap</div>
+          <div style="font-size: 12px; color: var(--text-muted);">Step-by-step plan to reach the next level, with time estimates and measurable milestones...</div>
+        </div>
+        <div class="blurred-content" style="padding: 16px; background: var(--bg-primary); border-radius: 8px; border-left: 3px solid var(--neon-yellow);">
+          <div style="font-size: 14px; font-weight: 600; color: var(--neon-yellow); margin-bottom: 8px;">📊 Comparative Insights</div>
+          <div style="font-size: 12px; color: var(--text-muted);">How you compare to 10,000+ developers across key metrics, with percentile rankings...</div>
+        </div>
+        <div class="blurred-content" style="padding: 16px; background: var(--bg-primary); border-radius: 8px; border-left: 3px solid var(--neon-pink);">
+          <div style="font-size: 14px; font-weight: 600; color: var(--neon-pink); margin-bottom: 8px;">📈 Session Trends</div>
+          <div style="font-size: 12px; color: var(--text-muted);">Track your improvement over time across all dimensions with trend analysis...</div>
+        </div>
+      </div>
+      <div style="text-align: center; margin-top: 24px;">
+        <div style="font-size: 13px; color: var(--neon-yellow); font-weight: 600;">🔓 Unlock all premium features for $6.99</div>
+      </div>
+    </div>
   `;
 }
 

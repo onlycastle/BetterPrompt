@@ -6,7 +6,7 @@ CLI scripts for development, analysis, and knowledge management. Execute with `n
 
 | Script | Purpose | Key Options | Example |
 |--------|---------|------------|---------|
-| **analyze-style.ts** | Analyze Claude Code sessions for AI collaboration coding style | (none) | `npx tsx scripts/analyze-style.ts` |
+| **analyze-style.ts** | Analyze Claude Code sessions for AI collaboration coding style | `--verbose`, `--dry-run`, `--yes` | `npx tsx scripts/analyze-style.ts --verbose` |
 | **start-ui.ts** | Start API (3001) and React UI (3000) concurrently | (none) | `npm run ui` |
 | **browse-knowledge.ts** | Search/filter knowledge base | `--platform`, `--category`, `--author`, `--min-score`, `--query`, `--limit`, `--sort`, `--stats`, `--metrics`, `--json` | `npx tsx scripts/browse-knowledge.ts --platform youtube --min-score 0.7` |
 | **populate-knowledge.ts** | Seed knowledge base with curated content | (none) | `npx tsx scripts/populate-knowledge.ts` |
@@ -21,9 +21,51 @@ CLI scripts for development, analysis, and knowledge management. Execute with `n
 ## Script Details
 
 ### analyze-style.ts
-Scans `~/.claude/projects/` for Claude Code sessions, analyzes last 30 sessions for patterns, calculates AI collaboration style type with 8+ dimensions, and generates interactive web report at http://localhost:3000.
+Scans `~/.claude/projects/` for Claude Code sessions, analyzes sessions for patterns, calculates AI collaboration style type with 8+ dimensions, and generates interactive web report at http://localhost:3000.
 
-**Output:** CLI summary with ratings and evidence + interactive web report
+**Modes:**
+- **Normal Mode** (default): Pattern-based analysis of last 30 sessions, generates CLI + web report
+- **Verbose Mode** (`--verbose`): LLM-based hyper-personalized analysis of up to 10 optimal sessions
+
+**Options:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--verbose` | Enable LLM-powered verbose analysis with personality insights | Disabled |
+| `--dry-run` | Show cost estimate without running analysis (verbose mode only) | Disabled |
+| `--yes` | Skip cost confirmation prompt (verbose mode only) | Disabled |
+
+**Verbose Mode Features:**
+- **Session Selection**: Automatically selects up to 10 optimal sessions based on duration (5-min minimum), recency (90-day window), and message count
+- **Cost Estimation**: Shows estimated API cost before analysis with token breakdown
+- **Interactive Confirmation**: Prompts user before incurring API costs (bypassed with `--yes`)
+- **Personalized Output**: Includes personality summary, strengths with evidence quotes, growth areas, and prompt patterns
+
+**Cost Estimation Methodology:**
+The verbose mode calculates estimated API costs using:
+- Session content token count (character-based heuristics with code/JSON adjustments)
+- System prompt overhead (~2,500 tokens)
+- Schema overhead (~1,500 tokens)
+- Estimated output (~6,000 tokens)
+
+**Examples:**
+```bash
+# Normal analysis (pattern-based)
+npx tsx scripts/analyze-style.ts
+
+# Verbose analysis with cost confirmation
+npx tsx scripts/analyze-style.ts --verbose
+
+# Preview cost without running analysis
+npx tsx scripts/analyze-style.ts --verbose --dry-run
+
+# Skip cost confirmation (for automation)
+npx tsx scripts/analyze-style.ts --verbose --yes
+```
+
+**Output:**
+- Normal mode: CLI summary with ratings and evidence + interactive web report
+- Verbose mode: Hyper-personalized report with strengths, growth areas, and prompt patterns
 
 **See** [`scripts/analyze-style.ts`](scripts/analyze-style.ts)
 

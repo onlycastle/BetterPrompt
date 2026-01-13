@@ -558,6 +558,43 @@ Last audited: 2026-01-13
 
 ## Changelog
 
+### 2026-01-13: Verbose Analysis Feature
+
+**Work Completed:**
+1. Added verbose analysis mode with LLM-powered hyper-personalized evaluation
+2. Implemented session selector with duration/recency/message-count weighting
+3. Added cost estimator with token counting and model-specific pricing
+4. Created interactive cost confirmation CLI component
+5. Added verbose report terminal rendering with premium tier teaser
+6. Extended schema-converter for verbose evaluation JSON schema
+7. Extended web template with verbose evaluation rendering
+
+**New Files:**
+| File | Purpose | Status |
+|------|---------|--------|
+| `src/analyzer/cost-estimator.ts` | Token counting and cost calculation | ✅ Complete |
+| `src/analyzer/verbose-analyzer.ts` | LLM-powered verbose analysis | ✅ Complete |
+| `src/analyzer/verbose-prompts.ts` | Verbose analysis prompts | ✅ Complete |
+| `src/models/verbose-evaluation.ts` | Verbose evaluation Zod schemas | ✅ Complete |
+| `src/parser/session-selector.ts` | Duration-based session selection | ✅ Complete |
+| `src/cli/output/components/cost-confirmation.ts` | Interactive cost confirmation | ✅ Complete |
+| `src/cli/output/components/verbose-report.ts` | Verbose report rendering | ✅ Complete |
+
+**Modified Files:**
+| File | Changes | Status |
+|------|---------|--------|
+| `scripts/analyze-style.ts` | Added `--verbose`, `--dry-run`, `--yes` flags | ✅ Complete |
+| `src/analyzer/schema-converter.ts` | Added `verboseEvaluationToJsonSchema()` | ✅ Complete |
+| `src/web/template.ts` | Added verbose evaluation rendering | ✅ Complete |
+| `src/cli/output/components/index.ts` | Export verbose components | ✅ Complete |
+
+**CLI Flags:**
+- `--verbose`: Enable LLM-powered verbose analysis
+- `--dry-run`: Show cost estimate without running analysis
+- `--yes`: Skip cost confirmation prompt
+
+---
+
 ### 2026-01-13: Documentation Alignment Update
 
 **Work Completed:**

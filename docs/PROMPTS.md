@@ -1,7 +1,7 @@
 # NoMoreAISlop - LLM Prompts Reference
 
-> Version: 1.1.0
-> Last Updated: 2026-01-12
+> Version: 1.2.0
+> Last Updated: 2026-01-13
 > Status: Reference Documentation
 
 ---
@@ -39,6 +39,82 @@ Prompts used to evaluate developer-Claude Code collaboration sessions.
 - Strong: References existing code, follows patterns, provides context, maintains consistency
 - Developing: Sometimes provides context, occasional misses
 - Needs Work: Rarely references code, allows inconsistencies
+
+---
+
+## Verbose Analysis Prompts
+
+Prompts optimized for hyper-personalized multi-session analysis. Used by `--verbose` mode.
+
+**Source**: `src/analyzer/verbose-prompts.ts`
+
+| Prompt | Purpose | Key Criteria | Source |
+|--------|---------|--------------|--------|
+| **Verbose System Prompt** | Establishes behavioral analyst role | Personalization, quote extraction, personality insights | `VERBOSE_SYSTEM_PROMPT` |
+| **Verbose User Prompt** | Sends multi-session data for analysis | Session formatting, metrics aggregation, tier-based output | `buildVerboseUserPrompt()` |
+
+### Analysis Approach
+
+The verbose prompt uses four key strategies:
+
+| Strategy | Description |
+|----------|-------------|
+| **Quote Extraction** | Find quotes revealing personality, not just competence. Look for unique thinking patterns, characteristic phrases, expressions of frustration/satisfaction/curiosity. |
+| **Behavioral Signatures** | What makes THIS developer different? Verbal tics, characteristic phrases, request structure (long/short, detailed/vague). |
+| **Pattern Analysis** | Don't just say "they ask questions" - show exactly HOW. Every pattern must have 2+ concrete examples with quotes. |
+| **Personalization** | Use actual words when describing strengths. Reference specific sessions/timestamps. Make comparisons to archetypal behaviors. |
+
+### Output Quality Standards
+
+- **NEVER** use generic phrases without specific quotes
+- **ALWAYS** include actual user quote, not paraphrases
+- **MINIMUM** 5 different quotes across free tier content
+- **EACH** strength must have 2+ evidence quotes
+- **EACH** growth area must have 1+ evidence quote
+
+### The 5 AI Coding Styles (Verbose Context)
+
+| Type | Emoji | Description |
+|------|-------|-------------|
+| architect | 🏗️ | Strategic planner who designs before coding |
+| scientist | 🔬 | Truth-seeker who verifies AI output |
+| collaborator | 🤝 | Partnership master who iterates through dialogue |
+| speedrunner | ⚡ | Agile executor who moves fast |
+| craftsman | 🔧 | Quality artisan who prioritizes code quality |
+
+### Control Levels (Verbose Context)
+
+| Level | Description |
+|-------|-------------|
+| vibe-coder | High AI dependency - accepts output without much modification |
+| developing | Learning balance - building control habits |
+| ai-master | Strategic control - directs AI as a precision tool |
+
+### Verbose Output Schema
+
+```json
+{
+  "primaryType": "architect|scientist|collaborator|speedrunner|craftsman",
+  "controlLevel": "vibe-coder|developing|ai-master",
+  "distribution": { "architect": 25, "scientist": 30, ... },
+  "personalitySummary": "200-800 char personalized paragraph...",
+  "strengths": [
+    {
+      "title": "Short title",
+      "description": "100-500 char description",
+      "evidence": [{ "quote": "...", "sessionDate": "...", "significance": "..." }],
+      "percentile": 85
+    }
+  ],
+  "growthAreas": [{ "title": "...", "evidence": [...], "recommendation": "..." }],
+  "promptPatterns": [{ "patternName": "...", "frequency": "frequent", "effectiveness": "highly_effective" }],
+  "toolUsageDeepDive": [...],
+  "tokenEfficiency": {...},
+  "growthRoadmap": {...},
+  "comparativeInsights": [...],
+  "sessionTrends": [...]
+}
+```
 
 ---
 
@@ -153,3 +229,4 @@ technique, pattern, tool, configuration, insight, example, reference
 |---------|------|---------|
 | 1.0.0 | 2026-01-09 | Initial release with style analyzer prompts |
 | 1.1.0 | 2026-01-12 | Added search agent prompts; converted to reference format |
+| 1.2.0 | 2026-01-13 | Added verbose analysis prompts for hyper-personalized mode |

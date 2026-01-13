@@ -26,3 +26,6 @@ export {
   renderFullTypeResult,
   renderDimensionSummary,
 } from './type-result.js';
+
+// Verbose Report Component
+export { renderVerboseReport } from './verbose-report.js';
