@@ -19,8 +19,20 @@ import type {
   KnowledgeStatus,
 } from '../../search-agent/models/knowledge.js';
 import { randomUUID } from 'node:crypto';
+import { createMemoryJobQueue } from '../../infrastructure/jobs/index.js';
 
 const router = Router();
+
+// Job queue for async learning operations
+let jobQueue: ReturnType<typeof createMemoryJobQueue> | null = null;
+
+function getJobQueue() {
+  if (!jobQueue) {
+    jobQueue = createMemoryJobQueue({ concurrency: 2 });
+    jobQueue.start();
+  }
+  return jobQueue;
+}
 
 /**
  * POST /api/learn/youtube
@@ -148,8 +160,8 @@ router.post('/youtube', async (req: Request, res: Response) => {
  * POST /api/learn/url
  * Learn from a web URL (Twitter, Reddit, LinkedIn, etc.)
  *
- * Note: This is a placeholder that creates a basic knowledge item.
- * Full implementation would use the search-agent pipeline.
+ * If summary is provided, creates knowledge item synchronously.
+ * If summary is missing, queues an async job for content analysis.
  */
 router.post('/url', async (req: Request, res: Response) => {
   try {
@@ -160,6 +172,35 @@ router.post('/url', async (req: Request, res: Response) => {
       return;
     }
 
+    // If no summary provided, queue for async analysis
+    if (!summary || summary.trim() === '') {
+      const queue = getJobQueue();
+      const jobResult = await queue.enqueue({
+        type: 'knowledge_learn',
+        payload: {
+          type: 'knowledge_learn',
+          query: url,
+          topics: topics.length > 0 ? topics : ['ai-coding'],
+          maxItems: 1,
+        },
+        priority: 'normal',
+      });
+
+      if (!jobResult.success) {
+        res.status(500).json({ success: false, error: 'Failed to queue learning job' });
+        return;
+      }
+
+      res.status(202).json({
+        success: true,
+        jobId: jobResult.data.id,
+        status: 'queued',
+        message: 'Learning job queued for processing',
+      });
+      return;
+    }
+
+    // Synchronous path: create knowledge item immediately with provided data
     // Detect platform from URL
     const platform = detectPlatformFromUrl(url);
 
@@ -172,10 +213,8 @@ router.post('/url', async (req: Request, res: Response) => {
       id: randomUUID(),
       version: '1.0.0',
       title: (title || `Content from ${platform}`).slice(0, 200),
-      summary: (summary || 'Manually added content - pending analysis').slice(0, 1000),
-      content: (
-        summary || 'Content pending analysis. This item was manually added and needs to be reviewed.'
-      ).slice(0, 10000),
+      summary: summary.slice(0, 1000),
+      content: summary.slice(0, 10000),
       category: 'other' as TopicCategory,
       contentType: 'insight' as ContentType,
       tags: topics.length > 0 ? topics.slice(0, 10) : ['ai-coding'],
@@ -189,9 +228,9 @@ router.post('/url', async (req: Request, res: Response) => {
       relevance: {
         score: 0.5,
         confidence: 0.3,
-        reasoning: 'Manually added - needs analysis',
+        reasoning: 'Manually added with summary',
       },
-      status: 'draft' as KnowledgeStatus,
+      status: 'reviewed' as KnowledgeStatus,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -213,15 +252,37 @@ router.post('/url', async (req: Request, res: Response) => {
 
 /**
  * GET /api/learn/status/:id
- * Get learning job status (placeholder for async processing)
+ * Get learning job status
  */
 router.get('/status/:id', async (req: Request, res: Response) => {
-  // Placeholder for async job status tracking
-  res.json({
-    id: req.params.id,
-    status: 'completed',
-    message: 'Learning completed',
-  });
+  try {
+    const { id } = req.params;
+
+    // Ensure id is a string (Express types it as string | string[])
+    if (typeof id !== 'string') {
+      res.status(400).json({ error: 'Invalid job ID' });
+      return;
+    }
+
+    const queue = getJobQueue();
+    const statusResult = await queue.getStatus(id);
+
+    if (!statusResult.success) {
+      res.status(500).json({ error: 'Failed to get job status' });
+      return;
+    }
+
+    if (!statusResult.data) {
+      res.status(404).json({ error: 'Job not found' });
+      return;
+    }
+
+    res.json(statusResult.data);
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 });
 
 /**

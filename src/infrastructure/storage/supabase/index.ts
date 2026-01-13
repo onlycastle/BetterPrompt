@@ -35,3 +35,5 @@ export { createSupabaseKnowledgeRepository } from './knowledge-repo.js';
 export { createSupabaseInfluencerRepository } from './influencer-repo.js';
 export { createSupabaseUserRepository } from './user-repo.js';
 export { createSupabaseSharingRepository } from './sharing-repo.js';
+export { createSupabaseTeamRepository } from './team-repo.js';
+export { createSupabaseTrackingRepository } from './tracking-repo.js';
