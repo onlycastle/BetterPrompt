@@ -18,7 +18,8 @@
     "ui": "tsx scripts/start-ui.ts",
     "ui:api": "npm run api",
     "ui:web": "cd web-ui && npm run dev",
-    "analyze": "tsx scripts/analyze-style.ts"
+    "analyze": "tsx scripts/analyze-style.ts",
+    "analyze:quick": "tsx scripts/analyze-style.ts --quick"
   },
   "keywords": [
     "claude",

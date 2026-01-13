@@ -12,12 +12,18 @@ npx tsx /Users/sungmancho/projects/nomoreaislop/scripts/test-local.ts analyze
 ```
 
 This will:
-1. Parse the current session's conversation log from ~/.claude/projects/
-2. Send the conversation to Claude for evaluation
-3. Generate a detailed report with ratings for:
-   - **Planning**: How well requirements are structured and communicated
-   - **Critical Thinking**: How effectively AI suggestions are evaluated
-   - **Code Understanding**: How well existing code patterns are leveraged
-4. Save the analysis to ~/.nomoreaislop/analyses/
+1. Parse session logs from ~/.claude/projects/
+2. Display session statistics (messages, characters, estimated tokens)
+3. Show cost estimate for LLM analysis
+4. After user confirmation, run LLM-powered evaluation
+5. Generate a detailed report with:
+   - **AI Coding Style Type** (Architect, Scientist, Collaborator, Speedrunner, Craftsman)
+   - **6 Deep Dimensions** (AI Collaboration, Context Engineering, Tool Mastery, etc.)
+   - Personalized recommendations
+
+**Options:**
+- Add `--quick` flag for fast pattern-based analysis (no LLM, free)
+- Add `--dry-run` to see cost estimate without running analysis
+- Add `--yes` to skip cost confirmation
 
 Display the full report output to the user.

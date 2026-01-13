@@ -10,8 +10,8 @@
 
 | Metric | Value |
 |--------|-------|
-| **Total Tests** | 424 |
-| **Test Files** | 18 |
+| **Total Tests** | 558 |
+| **Test Files** | 21 |
 | **Status** | All Passing |
 | **Last Run** | 2026-01-13 |
 
@@ -112,7 +112,23 @@ Tests cover knowledge domain models, relevance scoring algorithms, and quality a
 
 Tests cover TypeScript type definitions and schema validation for report data structures.
 
-### 2.10 Verbose Analysis Tests (Pending)
+### 2.10 Hyper-Personalized Report Tests
+
+**Files:**
+- `tests/unified-report.test.ts` (94 tests) - UnifiedReport schema + SchemaBridge conversion
+- `tests/knowledge-linker.test.ts` (92 tests) - DimensionKeywords + KnowledgeLinker
+- `tests/insight-generator.test.ts` (37 tests) - DimensionQuoteExtractor + InsightPrompts + InsightGenerator
+
+Tests cover:
+- UnifiedReport schema validation (Profile, DimensionResult, EvidenceQuote, Recommendations)
+- SchemaBridge conversion from VerboseEvaluation/TypeResult → UnifiedReport
+- DimensionKeywords mapping for 6 dimensions × 2 modes (reinforcement/improvement)
+- KnowledgeLinker linking dimensions to KB items + professional insights
+- DimensionQuoteExtractor pattern-based quote extraction per dimension
+- InsightPrompts advice template selection and LLM prompt building
+- InsightGenerator orchestration combining KB + quotes + advice
+
+### 2.11 Verbose Analysis Tests (Pending)
 
 **Target Files:**
 - `tests/unit/analyzer/cost-estimator.test.ts`

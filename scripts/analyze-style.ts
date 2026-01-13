@@ -2,13 +2,15 @@
 import 'dotenv/config';
 
 /**
- * AI Coding Style Analyzer - v2.1
+ * AI Coding Style Analyzer - v2.2
  *
  * Analyzes ~/.claude session logs to determine your AI Coding Style type.
  * Generates both CLI output and a local web report with deep analysis dimensions.
  *
+ * By default, runs LLM-powered verbose analysis with token stats and cost estimate.
+ *
  * Options:
- *   --verbose    Enable verbose analysis mode (session-by-session evaluation)
+ *   --quick      Use pattern-based analysis only (no LLM, free)
  *   --dry-run    Show cost estimate without running analysis
  *   --yes        Skip cost confirmation prompts
  */
@@ -18,19 +20,19 @@ import { analyzeStyle } from '../src/analyzer/style-analyzer.js';
 import { aggregateMetrics } from '../src/analyzer/type-detector.js';
 import { calculateAllDimensions } from '../src/analyzer/dimensions/index.js';
 import { renderFullTypeResult, renderDimensionSummary } from '../src/cli/output/components/index.js';
-import { startReportServer } from '../src/web/index.js';
+import { startReportServer, startVerboseReportServer } from '../src/web/index.js';
 import { selectOptimalSessions } from '../src/parser/session-selector.js';
-import { estimateAnalysisCost } from '../src/analyzer/cost-estimator.js';
+import { estimateAnalysisCost, countTokensAccurate } from '../src/analyzer/cost-estimator.js';
 import { confirmCost } from '../src/cli/output/components/cost-confirmation.js';
 import { VerboseAnalyzer } from '../src/analyzer/verbose-analyzer.js';
-import { renderVerboseReport } from '../src/cli/output/components/verbose-report.js';
 import { exec } from 'child_process';
 import pc from 'picocolors';
 
 async function main() {
   // Parse CLI flags
   const args = process.argv.slice(2);
-  const verboseMode = args.includes('--verbose');
+  const quickMode = args.includes('--quick');
+  const verboseMode = !quickMode; // Verbose (LLM analysis) is now the default
   const dryRun = args.includes('--dry-run');
   const skipConfirm = args.includes('--yes');
 
@@ -41,8 +43,8 @@ async function main() {
   console.log(pc.bold('  ╚═══════════════════════════════════════════════════╝'));
   console.log('');
 
-  if (verboseMode) {
-    console.log(pc.cyan('  🔍 Verbose Mode Enabled') + pc.dim(' - Session-by-session analysis'));
+  if (quickMode) {
+    console.log(pc.yellow('  ⚡ Quick Mode') + pc.dim(' - Pattern-based analysis (no LLM)'));
     console.log('');
   }
 
@@ -93,6 +95,28 @@ async function main() {
   console.log(pc.dim(`     Parsed ${parsedSessions.length} sessions successfully`));
   console.log('');
 
+  // Calculate session statistics (shown in all modes)
+  let totalMessages = 0;
+  let totalChars = 0;
+  for (const session of parsedSessions) {
+    totalMessages += session.messages.length;
+    for (const msg of session.messages) {
+      if (msg.content) {
+        totalChars += msg.content.length;
+      }
+    }
+  }
+  const estimatedTokens = countTokensAccurate(
+    parsedSessions.map(s => s.messages.map(m => m.content || '').join('\n')).join('\n')
+  );
+
+  console.log(pc.bold('  📊 Session Statistics:'));
+  console.log(pc.dim(`     Sessions analyzed: ${parsedSessions.length}`));
+  console.log(pc.dim(`     Total messages: ${totalMessages.toLocaleString()}`));
+  console.log(pc.dim(`     Total characters: ${totalChars.toLocaleString()}`));
+  console.log(pc.dim(`     Estimated tokens: ~${estimatedTokens.toLocaleString()}`));
+  console.log('');
+
   // Step 3: Branch to verbose or normal analysis
   if (verboseMode) {
     // VERBOSE MODE: Session-by-session LLM analysis
@@ -130,14 +154,15 @@ async function main() {
     console.log(pc.green('  ✓ Verbose analysis complete!'));
     console.log('');
 
-    // Render verbose report
-    const verboseOutput = renderVerboseReport(verboseResult);
-    console.log(verboseOutput);
-
-    // Exit after verbose analysis (no web report yet)
-    console.log('');
-    console.log(pc.dim('  💡 Verbose analysis complete. Web report coming soon!'));
-    process.exit(0);
+    // Start web server with verbose results
+    console.log(pc.dim('  🌐 Starting web report...'));
+    const { url } = await startVerboseReportServer(verboseResult, {
+      port: 3000,
+      autoOpen: true,
+    });
+    console.log(pc.green(`  ✓ Report ready at ${url}`));
+    console.log(pc.dim('  Press Ctrl+C to stop'));
+    // Server runs until user presses Ctrl+C
   } else {
     // NORMAL MODE: Pattern-based analysis
     console.log(pc.dim('  🔬 Analyzing your AI collaboration patterns...'));
@@ -209,11 +234,7 @@ async function main() {
       }
 
       // Open the URL in browser
-      const openCommand = process.platform === 'darwin'
-        ? `open "${reportUrl}"`
-        : process.platform === 'win32'
-          ? `start "${reportUrl}"`
-          : `xdg-open "${reportUrl}"`;
+      const openCommand = getBrowserCommand(reportUrl);
 
       exec(openCommand, (err) => {
         if (err) {
@@ -228,6 +249,21 @@ async function main() {
       console.error(pc.dim(`    ${(err as Error).message}`));
     }
   }
+}
+
+/**
+ * Get the platform-specific command to open a URL in the browser
+ */
+function getBrowserCommand(url: string): string {
+  if (process.platform === 'darwin') {
+    return `open "${url}"`;
+  }
+
+  if (process.platform === 'win32') {
+    return `start "${url}"`;
+  }
+
+  return `xdg-open "${url}"`;
 }
 
 main().catch((err) => {

@@ -29,3 +29,6 @@ export {
 
 // Verbose Report Component
 export { renderVerboseReport } from './verbose-report.js';
+
+// Unified Report Component
+export { renderUnifiedReportCLI } from './unified-report-cli.js';

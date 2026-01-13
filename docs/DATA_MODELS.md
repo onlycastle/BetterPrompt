@@ -10,6 +10,8 @@
 | Evaluation | Analysis output | `~/.nomoreaislop/analyses/` |
 | TypeResult | AI coding style (5 types) | Analysis output |
 | CodingStyleMatrix | Style x Control Level (5x3=15) | Analysis output |
+| **UnifiedReport** | Complete hyper-personalized report | `src/models/unified-report.ts` |
+| **SchemaBridge** | Legacy → UnifiedReport conversion | `src/models/schema-bridge.ts` |
 | UserTier | Subscription tier | Supabase `users` |
 | KnowledgeItem | Curated knowledge | Supabase `knowledge_items` |
 | Influencer | Tracked thought leaders | Supabase `influencers` |
@@ -94,6 +96,126 @@ enum AIControlLevel {
 | craftsman  | Perfectionist 🎨 | Quality Seeker 🔧 | Code Artisan 💎 |
 
 **Example**: A developer who is primarily a "scientist" (verifies AI output) with an AI Control score of 72 would be classified as **"Research Master 🔬"** - someone who treats every AI output as a hypothesis to be tested.
+
+## UnifiedReport Schema (NEW)
+
+The **UnifiedReport** schema is the complete output format for the hyper-personalized report pipeline. It integrates all analysis outputs into a single comprehensive report.
+
+**Source:** `src/models/unified-report.ts`
+
+### Core Structure
+
+```typescript
+UnifiedReport {
+  id: UUID
+  createdAt: ISO datetime
+  sessionsAnalyzed: integer ≥ 1
+  profile: Profile
+  dimensions: DimensionResult[6]
+  summary: ReportSummary
+  evidence: EvidenceQuote[3-20]
+  recommendations: Recommendation[1-10]
+  premium?: PremiumContent  // tier-gated
+  tier: 'free' | 'pro' | 'premium' | 'enterprise'
+}
+```
+
+### Profile
+
+Developer's coding style and AI control assessment:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| primaryType | CodingStyleType | architect/scientist/collaborator/speedrunner/craftsman |
+| controlLevel | ControlLevel | vibe-coder/developing/ai-master |
+| matrixName | string | Matrix personality name (e.g., "Systems Architect") |
+| matrixEmoji | string | Matrix emoji (e.g., "🏛️") |
+| distribution | Record<type, 0-100> | Percentage breakdown across 5 types |
+| personalitySummary | string (100-1500) | Hyper-personalized paragraph |
+
+### DimensionResult
+
+Analysis result for a single dimension:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | DimensionName | One of 6 dimensions |
+| displayName | string | Human-readable name |
+| score | 0-100 | Numeric score |
+| level | DimensionLevel | novice/developing/proficient/expert |
+| isStrength | boolean | Score ≥ 70 |
+| trend? | Trend | improving/stable/declining |
+| breakdown | Record<string, number> | Sub-score breakdown |
+| highlights | { strengths[], growthAreas[] } | Key points |
+| insights | DimensionInsight[] (max 5) | Personalized insights |
+| interpretation | string (max 1000) | Narrative interpretation |
+
+### DimensionInsight
+
+Personalized insight for a dimension:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | InsightType | reinforcement/improvement |
+| conversationBased? | ConversationInsight | Quote + advice from actual conversation |
+| researchBased? | ResearchInsight | Professional insight from KB |
+| learningResource? | LearningResource | Recommended learning material |
+
+### EvidenceQuote
+
+Supporting evidence from actual conversations:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| quote | string (10-500) | Actual user quote |
+| messageIndex | number | Position in conversation |
+| timestamp? | string | When said |
+| category | 'strength' \| 'growth' \| 'pattern' | Evidence type |
+| dimension? | DimensionName | Related dimension |
+| sentiment | 'positive' \| 'negative' \| 'neutral' | Quote sentiment |
+| analysis | string (max 500) | What this reveals |
+
+### Key Constants
+
+| Constant | Value | Used For |
+|----------|-------|----------|
+| `STRENGTH_THRESHOLD` | 70 | Classifying strengths vs growth areas |
+| `DIMENSION_DISPLAY_NAMES` | Record | Human-readable dimension names |
+| `MATRIX_NAMES` | 5×3 Record | 15 personality combinations with emojis |
+
+---
+
+## SchemaBridge
+
+Converts legacy schemas (VerboseEvaluation, TypeResult, FullAnalysisResult) to UnifiedReport.
+
+**Source:** `src/models/schema-bridge.ts`
+
+### Conversion Functions
+
+| Function | Input | Output |
+|----------|-------|--------|
+| `verboseToProfile()` | VerboseEvaluation | Profile |
+| `typeResultToProfile()` | TypeResult, ControlLevel | Profile |
+| `dimensionsToDimensionResults()` | FullAnalysisResult | DimensionResult[] |
+| `generateSummary()` | DimensionResult[] | ReportSummary |
+| `extractEvidence()` | VerboseEvaluation | EvidenceQuote[] |
+| `toUnifiedReport()` | ConversionInput | UnifiedReport |
+| `isDimensionStrength()` | score | boolean |
+| `getMatrixInfo()` | style, control | {name, emoji} |
+
+### Level Normalization
+
+Maps various level names to standard 4 levels:
+
+| Input Levels | Output |
+|--------------|--------|
+| novice, at-risk, high | novice |
+| developing, elevated, vibe-coder | developing |
+| proficient, moderate | proficient |
+| expert, resilient, low, ai-master | expert |
+
+---
 
 ## Verbose Evaluation Schema
 
@@ -447,6 +569,115 @@ The system uses a domain-driven architecture with consolidated models in `src/do
 - `getEnvValue()` - Read from environment
 - `parseEnvBoolean()` - Parse boolean env var
 - `validateSupabaseConfig()` - Validate Supabase setup
+
+---
+
+## Insight Generation Models (NEW)
+
+Models for the hyper-personalized insight generation pipeline.
+
+### Dimension Keywords (`dimension-keywords.ts`)
+
+Maps dimensions to Knowledge Base search parameters with dual configurations.
+
+**Types**:
+- `InsightMode` - 'reinforcement' | 'improvement'
+- `ResourceLevel` - 'beginner' | 'intermediate' | 'advanced'
+- `TopicCategory` - 9 categories: context-engineering, claude-code-skills, subagents, memory-management, prompt-engineering, tool-use, workflow-automation, best-practices, other
+- `DimensionKeywordConfig` - Keywords, categories, insight IDs, level, search query
+- `DimensionMapping` - Reinforcement and improvement configurations
+
+**Constants**:
+- `DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping>` - All 6 dimensions
+- `STRENGTH_THRESHOLD = 70`
+- `ADVANCED_THRESHOLD = 85`
+- `INTERMEDIATE_THRESHOLD = 50`
+
+**Functions**:
+- `getKeywordConfig(dimension, mode)` - Get config for dimension/mode
+- `getDimensionCategories(dimension)` - Get deduplicated categories
+- `getModeFromScore(score)` - Score ≥ 70 = reinforcement
+- `getResourceLevel(score)` - ≥85 = advanced, ≥50 = intermediate
+
+### Knowledge Linker (`knowledge-linker.ts`)
+
+Links dimensions to Knowledge Base items and professional insights.
+
+**Interfaces**:
+- `LinkedKnowledge` - KB item with relevance score, category, level
+- `LinkedInsight` - Professional insight with key takeaway and actionable advice
+- `DimensionKnowledge` - Knowledge result for one dimension (items + insights)
+- `KnowledgeContext` - Aggregated knowledge (reinforcements + improvements)
+- `KnowledgeSource` - Dependency injection interface for KB
+
+**Classes**:
+- `KnowledgeLinker` - Main class with `findRelevant()` and `getKnowledgeForDimensions()`
+- `MockKnowledgeSource` - Testing implementation
+
+**Factory**:
+- `createKnowledgeLinker(source?)` - Create configured instance
+
+### Dimension Quote Extractor (`dimension-quote-extractor.ts`)
+
+Extracts conversation quotes relevant to each dimension using pattern matching.
+
+**Types**:
+- `ExtractedQuote` - Quote with messageIndex, dimension, sentiment, explanation
+
+**Functions**:
+- `extractDimensionQuotes(sessions, dimension, maxQuotes)` - Extract for one dimension
+- `extractAllDimensionQuotes(sessions, quotesPerDimension)` - Extract for all dimensions
+- `toConversationInsight(quote, advice)` - Convert to ConversationInsight
+- `toEvidenceQuote(quote, category, analysis)` - Convert to EvidenceQuote
+
+**Pattern Categories** (per dimension):
+- Positive patterns: Show good practices (e.g., planning, context provision)
+- Negative patterns: Show improvement opportunities (e.g., minimal guidance)
+- Neutral patterns: Show learning behavior
+
+### Insight Prompts (`insight-prompts.ts`)
+
+Generates personalized advice with templates and LLM prompts.
+
+**Constants**:
+- `INSIGHT_GENERATION_SYSTEM_PROMPT` - LLM system prompt
+- `LEVEL_DESCRIPTORS: Record<DimensionLevel, string>` - Level descriptions
+- `DIMENSION_DESCRIPTIONS: Record<DimensionName, {name, strengthDesc, growthDesc}>`
+- `ADVICE_TEMPLATES: Record<DimensionName, {reinforcement[], improvement[]}>` - 3 templates each
+
+**Functions**:
+- `generateAdvice(dimension, score, isStrength)` - Select advice from templates
+- `generateQuoteAdvice(dimension, quote, isStrength)` - Quote-aware advice
+- `formatProfessionalInsight(insight)` - Format with key takeaway + actions
+- `getDimensionDescription(dimension, isStrength)` - Get narrative description
+- `generateInterpretation(dimension, score, level, isStrength)` - Complete interpretation
+- `buildInsightPrompt(dimension, score, quotes, insights)` - Build LLM prompt
+
+### Insight Generator (`insight-generator.ts`)
+
+Orchestrates insight generation combining KB + quotes + advice.
+
+**Interfaces**:
+- `InsightGeneratorConfig` - maxInsightsPerDimension, maxQuotesPerDimension, includeResearchInsights, includeLearningResources
+- `GeneratedInsights` - dimension, insights[], evidence[], interpretation
+
+**Classes**:
+- `InsightGenerator` - Main orchestrator with:
+  - `generateForDimension(dimension, score, sessions)` - Single dimension
+  - `generateForAllDimensions(dimensionResults, sessions)` - All dimensions
+  - `generateEvidence(dimensionResults, sessions, maxEvidence)` - Evidence quotes
+
+**Factory**:
+- `createInsightGenerator(knowledgeLinker?, config?)` - Create configured instance
+
+**Constants**:
+- `MAX_INSIGHTS_PER_DIMENSION = 3`
+- `DEFAULT_QUOTES_PER_DIMENSION = 3`
+- `DEFAULT_MAX_EVIDENCE = 10`
+- `LEVEL_THRESHOLDS = { expert: 85, proficient: 70, developing: 50 }`
+- `EVIDENCE_CATEGORY_PRIORITY = { strength: 0, growth: 1, pattern: 2 }`
+
+---
 
 ## Supabase Tables
 

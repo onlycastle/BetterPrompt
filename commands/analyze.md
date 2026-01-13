@@ -20,4 +20,11 @@ Example:
 npx tsx /Users/sungmancho/projects/nomoreaislop/scripts/test-local.ts analyze e0c35da6-6274-44c3-85c0-736d3d4d900f
 ```
 
+This will show session statistics, cost estimate, and after confirmation, run LLM analysis.
+
+**Options:**
+- Add `--quick` for pattern-based analysis only (no LLM)
+- Add `--dry-run` to see cost without running
+- Add `--yes` to skip confirmation
+
 Display the full analysis report to the user.

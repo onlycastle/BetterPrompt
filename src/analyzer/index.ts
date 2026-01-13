@@ -216,3 +216,66 @@ export function createAnalyzer(config?: AnalyzerConfig): LLMAnalyzer {
 // Re-export prompts utilities
 export { formatConversation, buildUserPrompt, estimateTokens } from './prompts.js';
 export { getEvaluationJsonSchema, getEvaluationTool } from './schema-converter.js';
+
+// Re-export knowledge linking utilities
+export {
+  type InsightMode,
+  type ResourceLevel,
+  type TopicCategory,
+  type DimensionKeywordConfig,
+  type DimensionMapping,
+  DIMENSION_KEYWORDS,
+  getKeywordConfig,
+  getDimensionCategories,
+  getModeFromScore,
+  getResourceLevel,
+} from './dimension-keywords.js';
+
+export {
+  type LinkedKnowledge,
+  type LinkedInsight,
+  type DimensionKnowledge,
+  type KnowledgeContext,
+  type KnowledgeSource,
+  KnowledgeLinker,
+  MockKnowledgeSource,
+  createKnowledgeLinker,
+} from './knowledge-linker.js';
+
+// Re-export dimension quote extraction utilities
+export {
+  type ExtractedQuote,
+  extractDimensionQuotes,
+  extractAllDimensionQuotes,
+  toConversationInsight,
+  toEvidenceQuote,
+} from './dimension-quote-extractor.js';
+
+// Re-export insight generation utilities
+export {
+  generateAdvice,
+  generateQuoteAdvice,
+  formatProfessionalInsight,
+  getDimensionDescription,
+  generateInterpretation,
+  buildInsightPrompt,
+  INSIGHT_GENERATION_SYSTEM_PROMPT,
+} from './insight-prompts.js';
+
+// Re-export insight generator
+export {
+  type InsightGeneratorConfig,
+  type GeneratedInsights,
+  InsightGenerator,
+  createInsightGenerator,
+} from './insight-generator.js';
+
+// Re-export unified analyzer
+export {
+  type UnifiedAnalyzerConfig,
+  type AnalyzeOptions,
+  type UnifiedAnalysisResult,
+  UnifiedAnalyzer,
+  createUnifiedAnalyzer,
+  analyzeUnified,
+} from './unified-analyzer.js';

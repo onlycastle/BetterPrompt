@@ -6,8 +6,16 @@
 
 export {
   startReportServer,
+  startVerboseReportServer,
   stopReportServer,
   type WebServerOptions,
   type ReportData,
+  type VerboseReportData,
 } from './server.js';
-export { generateReportHTML, type ExtendedAnalysisData } from './template.js';
+export {
+  generateReportHTML,
+  generateUnifiedReportHTML,
+  type ExtendedAnalysisData,
+  type ReportOptions,
+} from './template.js';
+export * from './components.js';

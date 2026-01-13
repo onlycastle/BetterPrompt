@@ -10,6 +10,12 @@ import { randomBytes } from 'crypto';
 import { getSupabase } from '../../lib/supabase.js';
 import type { TypeResult } from '../../models/coding-style.js';
 import type { FullAnalysisResult } from '../../analyzer/dimensions/index.js';
+import {
+  generateComparison,
+  getFeaturesByCategory,
+  getComparisonStats,
+  FEATURE_COMPARISON,
+} from '../services/comparison-service.js';
 
 const router = Router();
 
@@ -17,16 +23,14 @@ const router = Router();
 const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://nomoreaislop.xyz';
 
 /**
- * Generate a short, URL-friendly report ID
- * Format: 8 alphanumeric characters
+ * Generate a short, URL-friendly report ID (8 alphanumeric characters)
  */
 function generateReportId(): string {
   return randomBytes(4).toString('hex');
 }
 
 /**
- * Generate an access token for the report
- * Format: 16 alphanumeric characters
+ * Generate an access token for the report (16 alphanumeric characters)
  */
 function generateAccessToken(): string {
   return randomBytes(8).toString('hex');
@@ -100,7 +104,6 @@ router.post('/share', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Return share URL
     const shareUrl = `${BASE_URL}/r/${reportId}`;
 
     res.status(201).json({
@@ -390,6 +393,95 @@ router.delete('/:reportId', async (req: Request, res: Response): Promise<void> =
     res.json({ success: true, reportId });
   } catch (error) {
     console.error('Error in DELETE /api/reports/:reportId:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+/**
+ * GET /api/reports/comparison/features
+ * Get feature comparison matrix (no report needed)
+ */
+router.get('/comparison/features', (_req: Request, res: Response): void => {
+  try {
+    const stats = getComparisonStats();
+    const featuresByCategory = getFeaturesByCategory();
+
+    res.json({
+      features: FEATURE_COMPARISON,
+      byCategory: featuresByCategory,
+      stats,
+    });
+  } catch (error) {
+    console.error('Error in GET /api/reports/comparison/features:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+/**
+ * GET /api/reports/comparison/:reportId
+ * Get a report formatted for free/premium comparison
+ */
+router.get('/comparison/:reportId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { reportId } = req.params;
+
+    if (!reportId) {
+      res.status(400).json({
+        error: 'Invalid request',
+        message: 'reportId is required',
+      });
+      return;
+    }
+
+    const supabase = getSupabase();
+
+    // Get the report
+    const { data, error } = await supabase
+      .from('shared_reports')
+      .select('*')
+      .eq('report_id', reportId)
+      .eq('is_active', true)
+      .single();
+
+    if (error || !data) {
+      res.status(404).json({
+        error: 'Report not found',
+        message: 'The requested report does not exist or has been removed',
+      });
+      return;
+    }
+
+    // Check expiration
+    if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      res.status(410).json({
+        error: 'Report expired',
+        message: 'This report has expired',
+      });
+      return;
+    }
+
+    // Generate comparison data
+    const comparison = generateComparison({
+      reportId: data.report_id,
+      typeResult: data.type_result as TypeResult,
+      dimensions: data.dimensions as FullAnalysisResult | undefined,
+      sessionMetadata: {
+        sessionId: data.session_id,
+        durationMinutes: data.session_duration_minutes,
+        messageCount: data.message_count,
+        toolCallCount: data.tool_call_count,
+      },
+    });
+
+    res.json(comparison);
+  } catch (error) {
+    console.error('Error in GET /api/reports/comparison/:reportId:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : String(error),

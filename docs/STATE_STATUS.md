@@ -558,6 +558,65 @@ Last audited: 2026-01-13
 
 ## Changelog
 
+### 2026-01-13: Hyper-Personalized Report System (Phase 0-2)
+
+**Goal:** Create a unified report pipeline that combines Knowledge Base resources, conversation quotes, and personalized insights for each dimension.
+
+**Phase 0: Unified Schema Design** ✅
+
+| File | Purpose | Status |
+|------|---------|--------|
+| `src/models/unified-report.ts` | 32 Zod schemas for complete report structure | ✅ Complete |
+| `src/models/schema-bridge.ts` | Legacy → UnifiedReport conversion | ✅ Complete |
+| `tests/unified-report.test.ts` | Schema validation + bridge tests | ✅ Complete |
+
+Key schemas:
+- `UnifiedReport` - Complete developer assessment (Profile + 6 Dimensions + Summary + Evidence + Recommendations)
+- `Profile` - Coding style + control level + personality matrix
+- `DimensionResult` - Score + level + breakdown + insights + interpretation
+- `DimensionInsight` - ConversationBased + ResearchBased + LearningResource
+
+**Phase 1: KB Linker Implementation** ✅
+
+| File | Purpose | Status |
+|------|---------|--------|
+| `src/analyzer/dimension-keywords.ts` | Dimension → KB search parameter mapping | ✅ Complete |
+| `src/analyzer/knowledge-linker.ts` | KB items + professional insights linking | ✅ Complete |
+| `tests/knowledge-linker.test.ts` | Dimension keywords + linker tests | ✅ Complete |
+
+Key concepts:
+- `InsightMode`: reinforcement (score ≥ 70) vs improvement (score < 70)
+- `ResourceLevel`: beginner / intermediate / advanced based on score
+- `DimensionMapping`: Dual config (reinforcement + improvement) per dimension
+- 7 pre-built professional insights with score ranges and priority
+
+**Phase 2: Insight Generator Implementation** ✅
+
+| File | Purpose | Status |
+|------|---------|--------|
+| `src/analyzer/dimension-quote-extractor.ts` | Pattern-based quote extraction per dimension | ✅ Complete |
+| `src/analyzer/insight-prompts.ts` | Advice templates + LLM prompt building | ✅ Complete |
+| `src/analyzer/insight-generator.ts` | Insight orchestration (KB + quotes + advice) | ✅ Complete |
+| `tests/insight-generator.test.ts` | Quote extraction + prompt + generator tests | ✅ Complete |
+
+Key functionality:
+- Extract quotes using regex patterns (positive/negative/neutral sentiment)
+- Generate advice from templates (3 reinforcement + 3 improvement per dimension)
+- Combine ConversationInsight + ResearchInsight + LearningResource
+- Create evidence quotes sorted by category priority
+
+**Test Results:**
+- Phase 0-2 tests: 37+ new tests
+- Total tests: 558 passing
+
+**Remaining Phases:**
+- [ ] Phase 3: Unified analysis pipeline implementation
+- [ ] Phase 4: Web template update
+- [ ] Phase 5: CLI output update
+- [ ] Phase 6: Integration testing and documentation
+
+---
+
 ### 2026-01-13: Verbose Analysis Feature
 
 **Work Completed:**

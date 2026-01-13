@@ -64,6 +64,61 @@ Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation
 - **CostConfirmation** (`src/cli/output/components/cost-confirmation.ts`) - Interactive cost approval
 - **VerboseReport** (`src/cli/output/components/verbose-report.ts`) - Terminal rendering
 
+### Hyper-Personalized Report Pipeline (NEW)
+
+```
+ParsedSession[]
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  QUOTE EXTRACTION                                │
+│  DimensionQuoteExtractor → Pattern matching per dimension       │
+│  ExtractedQuote[] (with sentiment: positive/negative/neutral)   │
+└─────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  KNOWLEDGE LINKING                               │
+│  DimensionKeywords → KB search params (reinforcement/improve)   │
+│  KnowledgeLinker → LinkedKnowledge[] + LinkedInsight[]          │
+└─────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  INSIGHT GENERATION                              │
+│  InsightGenerator → DimensionInsight[] per dimension            │
+│  (ConversationInsight + ResearchInsight + LearningResource)     │
+└─────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  SCHEMA BRIDGE                                   │
+│  SchemaBridge → UnifiedReport (complete developer assessment)   │
+│  (Profile + 6 Dimensions + Summary + Evidence + Recommendations)│
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Hyper-Personalized Report Components:**
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **UnifiedReport Schema** | `src/models/unified-report.ts` | 32 Zod schemas for complete report structure |
+| **SchemaBridge** | `src/models/schema-bridge.ts` | Converts VerboseEval/TypeResult → UnifiedReport |
+| **DimensionKeywords** | `src/analyzer/dimension-keywords.ts` | Maps dimensions → KB search parameters |
+| **KnowledgeLinker** | `src/analyzer/knowledge-linker.ts` | Links dimensions → KB items + professional insights |
+| **DimensionQuoteExtractor** | `src/analyzer/dimension-quote-extractor.ts` | Extracts quotes by dimension patterns |
+| **InsightPrompts** | `src/analyzer/insight-prompts.ts` | Advice templates + LLM prompt building |
+| **InsightGenerator** | `src/analyzer/insight-generator.ts` | Orchestrates insight generation |
+
+**Key Concepts:**
+
+| Concept | Values | Description |
+|---------|--------|-------------|
+| **InsightMode** | reinforcement / improvement | Score ≥ 70 = reinforce strengths, < 70 = improve |
+| **ResourceLevel** | beginner / intermediate / advanced | ≥ 85 = advanced, 50-84 = intermediate, < 50 = beginner |
+| **DimensionLevel** | novice / developing / proficient / expert | ≥ 85 = expert, 70-84 = proficient, 50-69 = developing |
+| **STRENGTH_THRESHOLD** | 70 | Universal threshold for strength vs growth area |
+
 ## Key Components
 
 | Directory | Purpose | Layer |
@@ -75,7 +130,8 @@ Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation
 | `src/domain/` | Domain models (Zod schemas, business rules) | Domain |
 | `src/infrastructure/` | Supabase & local storage adapters | Infrastructure |
 | `src/lib/` | Shared utilities (Result type, Supabase client) | Infrastructure |
-| `src/analyzer/` | LLM analysis (prompts, dimensions) | Application |
+| `src/analyzer/` | LLM analysis (prompts, dimensions, insights) | Application |
+| `src/models/` | Zod schemas (unified-report, schema-bridge) | Domain |
 | `src/parser/` | JSONL session parsing | Infrastructure |
 | `src/search-agent/` | Knowledge curation system | Application |
 

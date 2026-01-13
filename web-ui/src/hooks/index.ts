@@ -7,3 +7,4 @@ export * from './useLearn.js';
 export * from './useReport.js';
 export * from './usePersonalAnalytics.js';
 export * from './useEnterprise.js';
+export * from './useComparison.js';
