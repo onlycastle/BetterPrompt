@@ -5,7 +5,7 @@
  */
 
 import type { ParsedSession, ParsedMessage } from '../../src/models/session.js';
-import type { TypeResult, CodingStyleType } from '../../src/web/types.js';
+import type { TypeResult, CodingStyleType } from '../../src/models/coding-style.js';
 import type { FullAnalysisResult } from '../../src/analyzer/dimensions/index.js';
 import type { VerboseEvaluation } from '../../src/models/verbose-evaluation.js';
 import type { UnifiedReport, DimensionResult } from '../../src/models/unified-report.js';
