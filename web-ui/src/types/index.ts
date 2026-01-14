@@ -129,6 +129,9 @@ export interface InfluencerListResponse {
 export * from './enterprise.js';
 export * from './personal.js';
 
+// Re-export verbose analysis types
+export * from './verbose.js';
+
 // Re-export report types (avoid conflicts by only exporting specific types)
 export type {
   TypeDistribution,

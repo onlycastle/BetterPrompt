@@ -9,3 +9,4 @@ export * from './usePersonalAnalytics.js';
 export * from './useEnterprise.js';
 export * from './useComparison.js';
 export * from './useScrollNavigation.js';
+export * from './useAnalysisReport.js';

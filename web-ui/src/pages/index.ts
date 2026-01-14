@@ -5,3 +5,4 @@ export { EnterpriseDashboardPage } from './EnterpriseDashboardPage';
 export { PersonalDashboardPage } from './PersonalDashboardPage';
 export { ReportPage } from './ReportPage';
 export { ComparisonPage } from './ComparisonPage';
+export { AnalysisReportPage } from './AnalysisReportPage';
