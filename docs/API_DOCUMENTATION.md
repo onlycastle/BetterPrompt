@@ -1,6 +1,6 @@
 # NoMoreAISlop - API Documentation
 
-> Version: 3.0.0 | Base URL: `http://localhost:3001/api`
+> Version: 5.0.0 | Base URL: `http://localhost:3001/api`
 
 ## Authentication
 

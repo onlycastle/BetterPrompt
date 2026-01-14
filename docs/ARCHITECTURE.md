@@ -1,6 +1,6 @@
 # NoMoreAISlop - Architecture
 
-> Version: 4.0.0 | Status: Closed-Source SaaS
+> Version: 5.0.0 | Status: Closed-Source SaaS
 
 ## Business Model
 
@@ -20,7 +20,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     PRESENTATION LAYER                          │
-│   CLI (commands/)  │  REST API (api/)  │  Web UI (web-ui/)     │
+│   CLI (commands/)  │  REST API (src/api/)  │  React SPA (web-ui/) │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -48,7 +48,7 @@
 
 ### Analysis Pipeline (LLM-powered Verbose Analysis)
 ```
-Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation] → VerboseAnalyzer → VerboseReport
+Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation] → VerboseAnalyzer → React SPA (web-ui/)
 ```
 
 **Key Components:**
@@ -57,7 +57,7 @@ Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation
 - **VerboseAnalyzer** (`src/analyzer/verbose-analyzer.ts`) - LLM-powered hyper-personalized analysis
 - **VerbosePrompts** (`src/analyzer/verbose-prompts.ts`) - Behavioral analyst prompts
 - **CostConfirmation** (`src/cli/output/components/cost-confirmation.ts`) - Interactive cost approval
-- **VerboseReport** (`src/cli/output/components/verbose-report.ts`) - Terminal rendering
+- **React SPA** (`web-ui/`) - Unified web dashboard with analysis report view
 
 ### Hyper-Personalized Report Pipeline (NEW)
 
@@ -151,8 +151,8 @@ The UnifiedAnalyzer integrates all analysis components into a single orchestrato
 | Directory | Purpose | Layer |
 |-----------|---------|-------|
 | `commands/` | Claude Code plugin commands | Presentation |
-| `src/api/` | REST API server | Presentation |
-| `web-ui/` | React dashboard | Presentation |
+| `src/api/` | REST API server (Express, port 3001) | Presentation |
+| `web-ui/` | **Unified React SPA** (Vite, port 5173 dev) | Presentation |
 | `src/application/` | Application services & ports | Application |
 | `src/domain/` | Domain models (Zod schemas, business rules) | Domain |
 | `src/infrastructure/` | Supabase & local storage adapters | Infrastructure |
@@ -161,6 +161,36 @@ The UnifiedAnalyzer integrates all analysis components into a single orchestrato
 | `src/models/` | Zod schemas (unified-report, schema-bridge) | Domain |
 | `src/parser/` | JSONL session parsing | Infrastructure |
 | `src/search-agent/` | Knowledge curation system | Application |
+
+### Web UI Architecture (Unified)
+
+The `web-ui/` React SPA serves as the **single web interface** for all features:
+
+```
+web-ui/
+├── src/
+│   ├── pages/
+│   │   ├── BrowsePage.tsx          # Knowledge base discovery
+│   │   ├── LearnPage.tsx           # Add YouTube/URL content
+│   │   ├── DashboardPage.tsx       # Knowledge analytics
+│   │   ├── AnalysisReportPage.tsx  # Analysis report (terminal-style)
+│   │   ├── PersonalDashboardPage.tsx   # Individual growth journey
+│   │   └── EnterpriseDashboardPage.tsx # Team performance (B2B)
+│   ├── components/
+│   │   ├── report/                 # Analysis report components
+│   │   ├── verbose/                # Hyper-personalized insights
+│   │   ├── enterprise/             # Team analytics components
+│   │   └── ui/                     # Reusable UI primitives
+│   └── hooks/
+│       ├── useScrollNavigation.ts  # Section navigation (j/k, 1-8 keys)
+│       └── useAnalysisReport.ts    # Report data fetching
+```
+
+**Key Features:**
+- Terminal-aesthetic design (macOS window chrome, neon colors)
+- Snap-scroll section navigation with keyboard shortcuts
+- Premium content blur/unlock logic
+- React Query for server state management
 
 ## Port Interfaces
 

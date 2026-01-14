@@ -1,7 +1,7 @@
 # NoMoreAISlop - LLM Prompts Reference
 
-> Version: 1.2.0
-> Last Updated: 2026-01-13
+> Version: 5.0.0
+> Last Updated: 2026-01-14
 > Status: Reference Documentation
 
 ---

@@ -54,15 +54,14 @@ npm run lint           # ESLint on src/
 ### Core Pipeline (Default: LLM-powered Verbose Analysis)
 
 ```
-Session JSONL → SessionParser → SessionSelector → CostEstimator → VerboseAnalyzer → VerboseReport → Web Server
+Session JSONL → SessionParser → SessionSelector → CostEstimator → VerboseAnalyzer → React SPA (web-ui/)
 ```
 
 1. **SessionParser** (`src/parser/`) - Reads JSONL files from `~/.claude/projects/{encoded-path}/{session-id}.jsonl`
 2. **SessionSelector** (`src/parser/session-selector.ts`) - Selects optimal sessions (5-min minimum, max 10)
 3. **CostEstimator** (`src/analyzer/cost-estimator.ts`) - Token counting and API cost calculation
 4. **VerboseAnalyzer** (`src/analyzer/verbose-analyzer.ts`) - LLM-powered hyper-personalized multi-session analysis
-5. **VerboseReport** (`src/cli/output/components/verbose-report.ts`) - Terminal rendering with personality insights
-6. **Web Server** (`src/web/server.ts`) - Serves interactive web report at localhost:3000
+5. **React SPA** (`web-ui/`) - Unified web dashboard with terminal-style analysis report
 
 ### Key Implementation Details
 
@@ -78,12 +77,17 @@ Session JSONL → SessionParser → SessionSelector → CostEstimator → Verbos
 commands/           # Claude Code plugin commands (*.md with YAML frontmatter)
 src/
 ├── analyzer/       # LLM analysis (verbose-analyzer.ts, unified-analyzer.ts)
+├── api/            # REST API server (Express, port 3001)
 ├── cli/output/     # CLI rendering components (spinner, verbose-report, type-result)
 ├── config/         # ConfigManager for ~/.nomoreaislop/config.json
 ├── models/         # Zod schemas (verbose-evaluation, unified-report, session, config)
 ├── parser/         # JSONL session parsing
-├── web/            # Web server and HTML templates
 └── utils/          # Reporter, storage, helpers
+
+web-ui/             # React SPA (Vite, port 5173 dev)
+├── src/pages/      # Route pages (AnalysisReport, Dashboard, Browse, Learn)
+├── src/components/ # React components (report/, verbose/, enterprise/, ui/)
+└── src/hooks/      # Custom hooks (useScrollNavigation, useAnalysisReport)
 ```
 
 ## Data Models

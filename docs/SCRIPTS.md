@@ -7,7 +7,7 @@ CLI scripts for development, analysis, and knowledge management. Execute with `n
 | Script | Purpose | Key Options | Example |
 |--------|---------|------------|---------|
 | **analyze-style.ts** | Analyze Claude Code sessions for AI collaboration coding style | `--dry-run`, `--yes` | `npx tsx scripts/analyze-style.ts` |
-| **start-ui.ts** | Start API (3001) and React UI (3000) concurrently | (none) | `npm run ui` |
+| **start-ui.ts** | Start API (3001) and React SPA (5173) concurrently | (none) | `npm run ui` |
 | **browse-knowledge.ts** | Search/filter knowledge base | `--platform`, `--category`, `--author`, `--min-score`, `--query`, `--limit`, `--sort`, `--stats`, `--metrics`, `--json` | `npx tsx scripts/browse-knowledge.ts --platform youtube --min-score 0.7` |
 | **populate-knowledge.ts** | Seed knowledge base with curated content | (none) | `npx tsx scripts/populate-knowledge.ts` |
 | **learn.ts** | Process search results into knowledge items | `<file>`, `--mock` | `npx tsx scripts/learn.ts results.json` |
@@ -21,7 +21,7 @@ CLI scripts for development, analysis, and knowledge management. Execute with `n
 ## Script Details
 
 ### analyze-style.ts
-Scans `~/.claude/projects/` for Claude Code sessions, analyzes sessions for patterns, calculates AI collaboration style type with 8+ dimensions, and generates interactive web report at http://localhost:3000.
+Scans `~/.claude/projects/` for Claude Code sessions, analyzes sessions for patterns, calculates AI collaboration style type with 8+ dimensions, and opens interactive web report in React SPA (http://localhost:5173/analysis).
 
 **Options:**
 
@@ -61,9 +61,9 @@ Hyper-personalized report with strengths, growth areas, and prompt patterns
 **See** [`scripts/analyze-style.ts`](scripts/analyze-style.ts)
 
 ### start-ui.ts
-Starts Node.js API and React development server concurrently. Waits 2 seconds for API initialization before starting web server. Auto-opens browser.
+Starts Node.js API and React SPA development server concurrently. Waits 2 seconds for API initialization before starting web server. Auto-opens browser.
 
-**Ports:** API:3001, Web:3000
+**Ports:** API:3001, React SPA:5173
 
 **See** [`scripts/start-ui.ts`](scripts/start-ui.ts)
 
@@ -197,7 +197,7 @@ Simple connection test for Supabase setup.
 **Analyze Coding Style:**
 ```bash
 npx tsx scripts/analyze-style.ts
-# Opens http://localhost:3000 automatically
+# Opens http://localhost:5173/analysis automatically (requires dev server)
 ```
 
 **Build Knowledge Base:**

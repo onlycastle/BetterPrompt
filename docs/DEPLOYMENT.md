@@ -1,6 +1,6 @@
 # NoMoreAISlop - Deployment Guide
 
-> Version: 2.2.0 | Last Updated: 2026-01-12 | Status: Production
+> Version: 5.0.0 | Last Updated: 2026-01-14 | Status: Production
 
 ## Quick Start
 
@@ -61,11 +61,10 @@ npm run ui                         # Optional: Web UI
    npm run typecheck && npm run lint && npm test
    ```
 
-4. **Start Development** (use separate terminals)
+4. **Start Development**
    ```bash
-   npm run dev            # Watch mode
-   npx tsx scripts/analyze-style.ts  # CLI
-   npm run ui             # Web UI (optional)
+   npm run dev            # API + React SPA (concurrently)
+   npx tsx scripts/analyze-style.ts  # CLI analysis
    ```
 
 ## Testing
@@ -76,7 +75,7 @@ npm run ui                         # Optional: Web UI
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run test:coverage` | Generate coverage report |
 | `npx tsx scripts/analyze-style.ts` | Test CLI analysis |
-| `npm run ui` | Test web UI (http://localhost:5173) |
+| `npm run ui:dev` | Test React SPA (http://localhost:5173) |
 | `curl http://localhost:3001/health` | Test API health |
 | `npx tsx scripts/test-supabase.ts` | Test Supabase connection |
 
