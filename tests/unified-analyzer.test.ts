@@ -247,29 +247,6 @@ describe('UnifiedAnalyzer', () => {
     });
   });
 
-  describe('analyzeSync', () => {
-    let analyzer: UnifiedAnalyzer;
-
-    beforeEach(() => {
-      analyzer = createAnalyzerWithMockKB();
-    });
-
-    it('should return sync analysis without insights', () => {
-      const session = createTypicalSession();
-      const result = analyzer.analyzeSync([session]);
-
-      expect(result.dimensions).toBeDefined();
-      expect(result.typeResult).toBeDefined();
-      expect(result.dimensionResults).toHaveLength(6);
-    });
-
-    it('should throw error for empty sessions', () => {
-      expect(() => analyzer.analyzeSync([])).toThrow(
-        'At least one session is required'
-      );
-    });
-  });
-
   describe('generateInsights', () => {
     let analyzer: UnifiedAnalyzer;
 
@@ -279,9 +256,9 @@ describe('UnifiedAnalyzer', () => {
 
     it('should generate insights for dimension results', async () => {
       const session = createTypicalSession();
-      const { dimensionResults } = analyzer.analyzeSync([session]);
+      const result = await analyzer.analyze([session]);
 
-      const insights = await analyzer.generateInsights(dimensionResults, [session]);
+      const insights = await analyzer.generateInsights(result.report.dimensions, [session]);
 
       expect(insights).toBeInstanceOf(Map);
       expect(insights.size).toBeGreaterThan(0);

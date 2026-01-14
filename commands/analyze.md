@@ -23,7 +23,6 @@ npx tsx /Users/sungmancho/projects/nomoreaislop/scripts/test-local.ts analyze e0
 This will show session statistics, cost estimate, and after confirmation, run LLM analysis.
 
 **Options:**
-- Add `--quick` for pattern-based analysis only (no LLM)
 - Add `--dry-run` to see cost without running
 - Add `--yes` to skip confirmation
 

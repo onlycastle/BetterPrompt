@@ -160,7 +160,7 @@ export class DiscoverySkill extends BaseSkill<DiscoveryInput, DiscoveryOutput> {
               stats.engagementFiltered++;
             }
           }
-        } catch (error) {
+        } catch {
           stats.errors++;
           // Continue processing other results
         }

@@ -223,6 +223,38 @@ Extended schema for hyper-personalized analysis with FREE and PREMIUM tier conte
 
 **Source**: `src/models/verbose-evaluation.ts`
 
+### VerboseEvaluation → UnifiedReport Flow
+
+The system converts VerboseEvaluation to UnifiedReport through SchemaBridge:
+
+```
+VerboseEvaluation
+    │
+    ├──→ verboseToProfile()
+    │    ├── primaryType → Profile.primaryType
+    │    ├── controlLevel → Profile.controlLevel
+    │    ├── distribution → Profile.distribution
+    │    └── personalitySummary → Profile.personalitySummary
+    │
+    ├──→ extractEvidence()
+    │    └── strengths[].evidence + growthAreas[].evidence → EvidenceQuote[]
+    │
+    └──→ toUnifiedReport()
+         └── Profile + DimensionResult[] + Summary + Evidence → UnifiedReport
+```
+
+**Tier-Gated Content Mapping:**
+
+| VerboseEvaluation Field | UnifiedReport Location | Tier Required |
+|------------------------|------------------------|---------------|
+| personalitySummary | profile.personalitySummary | FREE |
+| strengths | evidence (category='strength') | FREE |
+| growthAreas | evidence (category='growth') | FREE |
+| promptPatterns | premium.patterns | PRO |
+| toolUsageDeepDive | premium.toolInsights | PREMIUM |
+| growthRoadmap | premium.roadmap | PREMIUM |
+| comparativeInsights | premium.peerComparison | PREMIUM |
+
 ### VerboseEvaluation
 
 | Field | Type | Tier | Description |

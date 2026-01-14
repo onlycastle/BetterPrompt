@@ -30,7 +30,7 @@ NoMoreAISlop is a dual-purpose platform:
 
 - **Node.js** 18.0.0 or higher
 - **npm** 8.0.0 or higher
-- **Anthropic API Key** (for legacy LLM analysis mode)
+- **Anthropic API Key** (for LLM-powered analysis)
 - **Optional**: Supabase account (for knowledge platform features)
 
 ### Installation
@@ -67,6 +67,36 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 ```
 
 See [`.env.example`](./.env.example) for complete configuration options.
+
+---
+
+## 🧪 Quick Local Testing
+
+빠른 테스트를 위한 핵심 커맨드:
+
+```bash
+# 1. 빌드 & 검증
+npm run build && npm run typecheck && npm run lint
+
+# 2. 테스트 실행
+npm test
+
+# 3. 스타일 분석 (LLM 기반 심층 분석 + 웹 리포트)
+npx tsx scripts/analyze-style.ts
+
+# 4. API 서버 + UI 시작
+npm run ui
+```
+
+**추가 옵션:**
+
+| 목적 | 커맨드 |
+|------|--------|
+| 비용 확인 없이 실행 | `npx tsx scripts/analyze-style.ts --yes` |
+| 비용만 미리 확인 | `npx tsx scripts/analyze-style.ts --dry-run` |
+| DB 연결 테스트 | `npx tsx scripts/test-supabase.ts` |
+
+> 📘 상세 스크립트 레퍼런스: [docs/SCRIPTS.md](./docs/SCRIPTS.md)
 
 ---
 
@@ -281,11 +311,12 @@ nomoreaislop/
 │
 ├── src/
 │   ├── analyzer/              # Session analysis
-│   │   ├── index.ts           # LLMAnalyzer (legacy)
-│   │   ├── style-analyzer.ts  # NEW: Style type detection
-│   │   ├── prompts.ts         # Analysis prompts
+│   │   ├── index.ts           # Analyzer exports (VerboseAnalyzer, UnifiedAnalyzer)
+│   │   ├── style-analyzer.ts  # Style type detection
+│   │   ├── verbose-analyzer.ts # LLM-powered hyper-personalized analysis
+│   │   ├── unified-analyzer.ts # Full pipeline integration
 │   │   ├── schema-converter.ts
-│   │   └── dimensions/        # NEW: Multi-metric analysis
+│   │   └── dimensions/        # Multi-metric analysis
 │   │       ├── ai-collaboration.ts
 │   │       ├── prompt-score.ts
 │   │       ├── burnout-risk.ts
@@ -465,16 +496,10 @@ When used as a Claude Code plugin, available commands:
 Direct script execution for advanced usage:
 
 ```bash
-# Style Analysis
-npx tsx scripts/analyze-style.ts                    # Normal mode (pattern-based)
-npx tsx scripts/analyze-style.ts --verbose          # Verbose mode (LLM-powered)
-npx tsx scripts/analyze-style.ts --verbose --dry-run # Preview cost without running
-npx tsx scripts/analyze-style.ts --verbose --yes    # Skip cost confirmation
-
-# Session Management
-npx tsx scripts/test-local.ts sessions              # List sessions
-npx tsx scripts/test-local.ts analyze <id>          # Analyze specific session
-npx tsx scripts/test-local.ts history               # View history
+# Style Analysis (LLM-powered verbose analysis)
+npx tsx scripts/analyze-style.ts                    # Default: LLM-powered verbose analysis
+npx tsx scripts/analyze-style.ts --dry-run          # Preview cost without running
+npx tsx scripts/analyze-style.ts --yes              # Skip cost confirmation
 
 # Knowledge Platform
 npx tsx scripts/learn.ts --mock                     # Test learning pipeline
@@ -496,22 +521,19 @@ Run this sequence to verify the full implementation is working:
 npm run build                              # Compile TypeScript
 npm run typecheck                          # Verify types
 
-# 2. Automated Tests (414 tests across 17 files)
+# 2. Automated Tests
 npm test                                   # Run all unit/integration tests
 
 # 3. Database Connection (requires SUPABASE_* env vars)
 npx tsx scripts/test-supabase.ts           # Verify Supabase connection
 
-# 4. Session Analyzer
-npx tsx scripts/test-local.ts sessions     # List Claude Code sessions
-
-# 5. Search Agent (no external dependencies)
+# 4. Search Agent (no external dependencies)
 npx tsx scripts/learn.ts --mock            # Test learning pipeline
 
-# 6. Knowledge Base
+# 5. Knowledge Base
 npx tsx scripts/browse-knowledge.ts --stats # Verify knowledge storage
 
-# 7. Style Analysis
+# 6. Style Analysis (LLM-powered, default)
 npx tsx scripts/analyze-style.ts           # Full style analysis + web report
 ```
 
@@ -570,26 +592,17 @@ SUPABASE_ANON_KEY=your-anon-key
 
 ---
 
-### Session Analyzer Testing
+### Session Analysis Testing
 
 ```bash
-# List available Claude Code sessions
-npx tsx scripts/test-local.ts sessions
-
-# Analyze most recent session (requires ANTHROPIC_API_KEY)
-npx tsx scripts/test-local.ts analyze
-
-# Analyze specific session with options
-npx tsx scripts/test-local.ts analyze <session-id>
-npx tsx scripts/test-local.ts analyze --summary   # Condensed view
-npx tsx scripts/test-local.ts analyze --verbose   # Full details
-npx tsx scripts/test-local.ts analyze --json      # Raw JSON output
-
-# View past analyses
-npx tsx scripts/test-local.ts history
-
-# Full style analysis with web report (port 3000)
+# Full style analysis with web report (port 3000) - LLM-powered
 npx tsx scripts/analyze-style.ts
+
+# Preview cost before running
+npx tsx scripts/analyze-style.ts --dry-run
+
+# Skip cost confirmation prompt
+npx tsx scripts/analyze-style.ts --yes
 ```
 
 ---
@@ -733,22 +746,18 @@ npm test
 # ====== PHASE 3: Database ======
 npx tsx scripts/test-supabase.ts
 
-# ====== PHASE 4: Session Analyzer ======
-npx tsx scripts/test-local.ts sessions
-npx tsx scripts/test-local.ts history
-
-# ====== PHASE 5: Search Agent ======
+# ====== PHASE 4: Search Agent ======
 npx tsx scripts/learn.ts --mock
 npx tsx scripts/browse-knowledge.ts --stats
 npx tsx scripts/manage-influencers.ts list
 
-# ====== PHASE 6: API ======
+# ====== PHASE 5: API ======
 npm run api &
 sleep 2
 curl -s http://localhost:3001/api/health | head -1
 pkill -f "tsx src/api"
 
-# ====== PHASE 7: Style Analysis ======
+# ====== PHASE 6: Style Analysis (LLM-powered) ======
 npx tsx scripts/analyze-style.ts
 ```
 

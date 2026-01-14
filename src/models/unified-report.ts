@@ -97,6 +97,38 @@ export const DimensionHighlightsSchema = z.object({
   growthAreas: z.array(z.string()).min(0).max(5),
 });
 
+// ============================================
+// Verbose Insight Schemas (for per-dimension display with evidence)
+// ============================================
+
+/**
+ * Evidence for verbose insights
+ */
+export const VerboseEvidenceSchema = z.object({
+  quote: z.string(),
+  sessionDate: z.string(),
+  context: z.string(),
+});
+
+/**
+ * Strength with evidence (for display in dimension section)
+ */
+export const VerboseStrengthSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  evidence: z.array(VerboseEvidenceSchema),
+});
+
+/**
+ * Growth area with evidence and recommendation (for display in dimension section)
+ */
+export const VerboseGrowthAreaSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  evidence: z.array(VerboseEvidenceSchema),
+  recommendation: z.string(),
+});
+
 export const DimensionResultSchema = z.object({
   name: DimensionNameSchema,
   displayName: z.string(),
@@ -108,6 +140,10 @@ export const DimensionResultSchema = z.object({
   highlights: DimensionHighlightsSchema,
   insights: z.array(DimensionInsightSchema).max(5),
   interpretation: z.string().max(1000),
+
+  // NEW: Verbose insights with evidence (primary display content, replaces score-based display)
+  verboseStrengths: z.array(VerboseStrengthSchema).optional(),
+  verboseGrowthAreas: z.array(VerboseGrowthAreaSchema).optional(),
 });
 
 // ============================================
@@ -264,6 +300,9 @@ export type DimensionInsight = z.infer<typeof DimensionInsightSchema>;
 export type DimensionName = z.infer<typeof DimensionNameSchema>;
 export type Trend = z.infer<typeof TrendSchema>;
 export type DimensionHighlights = z.infer<typeof DimensionHighlightsSchema>;
+export type VerboseEvidence = z.infer<typeof VerboseEvidenceSchema>;
+export type VerboseStrength = z.infer<typeof VerboseStrengthSchema>;
+export type VerboseGrowthArea = z.infer<typeof VerboseGrowthAreaSchema>;
 export type DimensionResult = z.infer<typeof DimensionResultSchema>;
 export type EvidenceCategory = z.infer<typeof EvidenceCategorySchema>;
 export type EvidenceSentiment = z.infer<typeof EvidenceSentimentSchema>;

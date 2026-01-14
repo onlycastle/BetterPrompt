@@ -38,10 +38,15 @@ export class StorageManager {
 
   /**
    * Save an analysis result
+   *
+   * @param evaluation - The evaluation result from LLM analysis
+   * @param session - The parsed session data
+   * @param sourceHash - Optional SHA-256 hash of source JSONL for cache invalidation
    */
   async saveAnalysis(
     evaluation: Evaluation,
-    session: ParsedSession
+    session: ParsedSession,
+    sourceHash?: string
   ): Promise<string> {
     await this.initialize();
 
@@ -57,6 +62,7 @@ export class StorageManager {
           session.stats.userMessageCount + session.stats.assistantMessageCount,
         toolCallCount: session.stats.toolCallCount,
         claudeCodeVersion: session.claudeCodeVersion,
+        sourceHash,
       },
     };
 
@@ -99,6 +105,38 @@ export class StorageManager {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Check if cached analysis is valid (exists and hash matches if available)
+   *
+   * @param sessionId - The session ID to check
+   * @param currentHash - Current hash of the source file (if available)
+   * @returns Object with validity status and cached analysis if valid
+   */
+  async checkCacheValidity(
+    sessionId: string,
+    currentHash?: string
+  ): Promise<{
+    valid: boolean;
+    analysis: StoredAnalysis | null;
+    reason: 'not_found' | 'hash_mismatch' | 'valid' | 'valid_no_hash';
+  }> {
+    const analysis = await this.loadAnalysis(sessionId);
+
+    if (!analysis) {
+      return { valid: false, analysis: null, reason: 'not_found' };
+    }
+
+    // If we have both hashes, compare them
+    const storedHash = analysis.metadata.sourceHash;
+    if (currentHash && storedHash && currentHash !== storedHash) {
+      return { valid: false, analysis: null, reason: 'hash_mismatch' };
+    }
+
+    // Valid cache hit
+    const reason = storedHash ? 'valid' : 'valid_no_hash';
+    return { valid: true, analysis, reason };
   }
 
   /**

@@ -493,3 +493,10 @@ export class KnowledgeLinker {
 export function createKnowledgeLinker(source?: KnowledgeSource): KnowledgeLinker {
   return new KnowledgeLinker(source);
 }
+
+// Re-export SupabaseKnowledgeSource for convenience
+export {
+  SupabaseKnowledgeSource,
+  createSupabaseKnowledgeSource,
+  type SupabaseKnowledgeSourceConfig,
+} from './supabase-knowledge-source.js';

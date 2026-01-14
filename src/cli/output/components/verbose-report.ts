@@ -137,7 +137,15 @@ function renderStrengths(evaluation: VerboseEvaluation): string {
   lines.push(pc.bold('  ✨ Your Strengths'));
   lines.push('');
 
-  for (const strength of evaluation.strengths) {
+  // Handle legacy global strengths (deprecated, but supported)
+  const strengths = evaluation.strengths ?? [];
+  if (strengths.length === 0) {
+    lines.push(pc.dim('     No global strengths available. See dimension-specific insights.'));
+    lines.push('');
+    return lines.join('\n');
+  }
+
+  for (const strength of strengths) {
     // Strength title with percentile if available
     const percentileText = strength.percentile
       ? pc.dim(` (Top ${100 - strength.percentile}%)`)
@@ -172,7 +180,15 @@ function renderGrowthAreas(evaluation: VerboseEvaluation): string {
   lines.push(pc.bold('  🌱 Growth Areas'));
   lines.push('');
 
-  for (const area of evaluation.growthAreas) {
+  // Handle legacy global growth areas (deprecated, but supported)
+  const growthAreas = evaluation.growthAreas ?? [];
+  if (growthAreas.length === 0) {
+    lines.push(pc.dim('     No global growth areas available. See dimension-specific insights.'));
+    lines.push('');
+    return lines.join('\n');
+  }
+
+  for (const area of growthAreas) {
     // Area title
     lines.push(`   ${pc.yellow('→')} ${pc.bold(pc.white(area.title))}`);
     lines.push('');
@@ -442,16 +458,16 @@ function renderEvidence(evidence: PersonalizedEvidence, indent: number = 5): str
   });
   lines.push(`${prefix}${sentimentIcon} ${pc.dim(date)} - ${pc.dim(evidence.context)}`);
 
-  // Quote
-  const quoteWrapped = wrapQuote(evidence.quote, 60);
+  // Quote - dim italic with quotation marks (supporting evidence)
+  const quoteWrapped = wrapQuoteWithMarks(evidence.quote, 60);
   for (const line of quoteWrapped) {
-    lines.push(`${prefix}${pc.dim('│')} ${pc.italic(pc.white(line))}`);
+    lines.push(`${prefix}${pc.dim('│')} ${pc.dim(pc.italic(line))}`);
   }
 
-  // Significance
+  // Significance - white (primary analysis content)
   const sigWrapped = wrapText(evidence.significance, 60);
   for (const line of sigWrapped) {
-    lines.push(`${prefix}${pc.dim('→')} ${pc.dim(line)}`);
+    lines.push(`${prefix}${pc.dim('→')} ${pc.white(line)}`);
   }
 
   return lines.join('\n');
@@ -576,4 +592,22 @@ function wrapQuote(text: string, width: number): string[] {
   }
 
   return lines;
+}
+
+/**
+ * Wrap quote text with quotation marks at start and end
+ */
+function wrapQuoteWithMarks(text: string, width: number): string[] {
+  const lines = wrapQuote(text, width - 2); // Reserve space for quotes
+  if (lines.length === 0) return [];
+
+  if (lines.length === 1) {
+    return [`"${lines[0]}"`];
+  }
+
+  return lines.map((line, i) => {
+    if (i === 0) return `"${line}`;
+    if (i === lines.length - 1) return `${line}"`;
+    return line;
+  });
 }

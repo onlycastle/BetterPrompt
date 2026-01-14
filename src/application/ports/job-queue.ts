@@ -211,6 +211,11 @@ export interface IJobQueuePort {
    * Unsubscribe from job events
    */
   off(event: JobQueueEvent, handler: JobEventHandler): void;
+
+  /**
+   * Remove all event listeners (for cleanup/testing)
+   */
+  removeAllListeners?(): void;
 }
 
 // ============================================================================

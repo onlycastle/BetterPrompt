@@ -1,0 +1,74 @@
+{
+  "aiCollaboration": {
+    "score": 78,
+    "level": "proficient",
+    "interpretation": "You demonstrate strong AI collaboration skills with excellent planning and verification habits.",
+    "breakdown": {
+      "structuredPlanning": { "score": 82, "signals": ["Uses task breakdown", "Provides context upfront"] },
+      "aiOrchestration": { "score": 75, "signals": ["Uses Task tool", "Parallel execution"] },
+      "criticalVerification": { "score": 77, "signals": ["Reviews output", "Requests verification"] }
+    },
+    "strengths": ["Excellent task breakdown", "Strong context provision"],
+    "growthAreas": ["Could use more multi-agent patterns"]
+  },
+  "contextEngineering": {
+    "score": 72,
+    "level": "developing",
+    "interpretation": "Good context engineering skills with room for optimization.",
+    "breakdown": {
+      "write": { "score": 75, "signals": ["File references", "Clear constraints"] },
+      "select": { "score": 70, "signals": ["Specific file paths"] },
+      "compress": { "score": 68, "signals": ["Some iteration efficiency"] },
+      "isolate": { "score": 74, "signals": ["Uses Task tool appropriately"] }
+    },
+    "strengths": ["Good file referencing"],
+    "growthAreas": ["Token efficiency could improve"]
+  },
+  "toolMastery": {
+    "score": 85,
+    "level": "adept",
+    "interpretation": "Expert-level tool usage with sophisticated patterns.",
+    "breakdown": {
+      "read": { "score": 90, "usage": 25, "level": "expert" },
+      "grep": { "score": 85, "usage": 15, "level": "adept" },
+      "task": { "score": 80, "usage": 8, "level": "adept" },
+      "edit": { "score": 85, "usage": 20, "level": "adept" }
+    },
+    "strengths": ["Expert Read tool usage", "Good Grep patterns"],
+    "growthAreas": ["Could explore Task tool more"]
+  },
+  "burnoutRisk": {
+    "score": 28,
+    "level": "low",
+    "recommendations": ["Keep up the healthy work patterns!"],
+    "breakdown": {
+      "afterHoursRate": 15,
+      "weekendRate": 8,
+      "lateNightCount": 2
+    }
+  },
+  "aiControl": {
+    "score": 74,
+    "level": "ai-master",
+    "interpretation": "You maintain strategic control while leveraging AI capabilities effectively.",
+    "breakdown": {
+      "guidance": { "score": 78, "signals": ["Clear direction", "Iterative refinement"] },
+      "verification": { "score": 72, "signals": ["Reviews changes"] },
+      "autonomy": { "score": 72, "signals": ["Balanced autonomy"] }
+    },
+    "strengths": ["Strong guidance patterns"],
+    "growthAreas": ["Verification could be more consistent"]
+  },
+  "skillResilience": {
+    "score": 68,
+    "level": "developing",
+    "interpretation": "Good skill maintenance with some areas for growth.",
+    "breakdown": {
+      "codeReview": { "score": 72, "signals": ["Reviews AI output"] },
+      "debugging": { "score": 65, "signals": ["Some independent debugging"] },
+      "architecture": { "score": 67, "signals": ["Participates in design decisions"] }
+    },
+    "strengths": ["Active code review"],
+    "growthAreas": ["Independent debugging skills"]
+  }
+}

@@ -31,7 +31,12 @@ import {
   type InsightGeneratorConfig,
   type GeneratedInsights,
 } from './insight-generator.js';
-import { createKnowledgeLinker, type KnowledgeLinker } from './knowledge-linker.js';
+import {
+  createKnowledgeLinker,
+  createSupabaseKnowledgeSource,
+  type KnowledgeLinker,
+} from './knowledge-linker.js';
+import type { IKnowledgeRepository } from '../application/ports/storage.js';
 import {
   toUnifiedReport,
   dimensionsToDimensionResults,
@@ -63,6 +68,18 @@ export interface UnifiedAnalyzerConfig {
    * Skip insight generation (for faster analysis)
    */
   skipInsights?: boolean;
+
+  /**
+   * Supabase Knowledge Repository for KB integration
+   * When provided, automatically creates SupabaseKnowledgeSource
+   */
+  knowledgeRepository?: IKnowledgeRepository;
+
+  /**
+   * Cache TTL for knowledge queries (milliseconds)
+   * Default: 5 minutes (300000ms)
+   */
+  kbCacheTTL?: number;
 }
 
 export interface AnalyzeOptions {
@@ -109,7 +126,24 @@ export class UnifiedAnalyzer {
   private skipInsights: boolean;
 
   constructor(config: UnifiedAnalyzerConfig = {}) {
-    const knowledgeLinker = config.knowledgeLinker ?? createKnowledgeLinker();
+    // Priority: knowledgeLinker > knowledgeRepository > default mock
+    let knowledgeLinker: KnowledgeLinker;
+
+    if (config.knowledgeLinker) {
+      // Use provided KnowledgeLinker directly
+      knowledgeLinker = config.knowledgeLinker;
+    } else if (config.knowledgeRepository) {
+      // Create KnowledgeLinker with SupabaseKnowledgeSource
+      const knowledgeSource = createSupabaseKnowledgeSource(config.knowledgeRepository, {
+        cacheTTL: config.kbCacheTTL,
+        fallbackToHardcoded: true,
+      });
+      knowledgeLinker = createKnowledgeLinker(knowledgeSource);
+    } else {
+      // Default: use mock source
+      knowledgeLinker = createKnowledgeLinker();
+    }
+
     this.insightGenerator = createInsightGenerator(knowledgeLinker, config.insightConfig);
     this.tier = config.tier ?? 'free';
     this.skipInsights = config.skipInsights ?? false;
@@ -175,29 +209,6 @@ export class UnifiedAnalyzer {
       dimensions,
       typeResult,
       insights,
-    };
-  }
-
-  /**
-   * Quick analysis without LLM calls (pattern-based only)
-   */
-  analyzeSync(sessions: ParsedSession[]): {
-    dimensions: FullAnalysisResult;
-    typeResult: TypeResult;
-    dimensionResults: DimensionResult[];
-  } {
-    if (sessions.length === 0) {
-      throw new Error('At least one session is required for analysis');
-    }
-
-    const dimensions = calculateAllDimensions(sessions);
-    const typeResult = this.detectType(sessions);
-    const dimensionResults = dimensionsToDimensionResults(dimensions);
-
-    return {
-      dimensions,
-      typeResult,
-      dimensionResults,
     };
   }
 
@@ -310,4 +321,26 @@ export async function analyzeUnified(
   const analyzer = createUnifiedAnalyzer(options);
   const result = await analyzer.analyze(sessions, options);
   return result.report;
+}
+
+/**
+ * Create a UnifiedAnalyzer with Supabase KB integration
+ *
+ * @example
+ * ```typescript
+ * import { createSupabaseKnowledgeRepository } from './infrastructure/storage/supabase';
+ *
+ * const repository = createSupabaseKnowledgeRepository();
+ * const analyzer = createUnifiedAnalyzerWithKB(repository);
+ * const result = await analyzer.analyze(sessions);
+ * ```
+ */
+export function createUnifiedAnalyzerWithKB(
+  repository: IKnowledgeRepository,
+  config?: Omit<UnifiedAnalyzerConfig, 'knowledgeRepository' | 'knowledgeLinker'>
+): UnifiedAnalyzer {
+  return new UnifiedAnalyzer({
+    ...config,
+    knowledgeRepository: repository,
+  });
 }

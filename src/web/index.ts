@@ -15,7 +15,9 @@ export {
 export {
   generateReportHTML,
   generateUnifiedReportHTML,
+} from './templates/index.js';
+export {
   type ExtendedAnalysisData,
   type ReportOptions,
-} from './template.js';
+} from './types.js';
 export * from './components.js';

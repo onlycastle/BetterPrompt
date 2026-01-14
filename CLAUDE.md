@@ -51,16 +51,18 @@ npm run lint           # ESLint on src/
 
 ## Architecture
 
-### Core Pipeline
+### Core Pipeline (Default: LLM-powered Verbose Analysis)
 
 ```
-Session JSONL → SessionParser → LLMAnalyzer → ReportGenerator → Storage
+Session JSONL → SessionParser → SessionSelector → CostEstimator → VerboseAnalyzer → VerboseReport → Web Server
 ```
 
 1. **SessionParser** (`src/parser/`) - Reads JSONL files from `~/.claude/projects/{encoded-path}/{session-id}.jsonl`
-2. **LLMAnalyzer** (`src/analyzer/`) - Uses Anthropic Structured Outputs to get guaranteed JSON evaluations
-3. **ReportGenerator** (`src/utils/reporter.ts`) - Formats evaluations as CLI markdown
-4. **StorageManager** (`src/utils/storage.ts`) - Persists analyses to `~/.nomoreaislop/analyses/`
+2. **SessionSelector** (`src/parser/session-selector.ts`) - Selects optimal sessions (5-min minimum, max 10)
+3. **CostEstimator** (`src/analyzer/cost-estimator.ts`) - Token counting and API cost calculation
+4. **VerboseAnalyzer** (`src/analyzer/verbose-analyzer.ts`) - LLM-powered hyper-personalized multi-session analysis
+5. **VerboseReport** (`src/cli/output/components/verbose-report.ts`) - Terminal rendering with personality insights
+6. **Web Server** (`src/web/server.ts`) - Serves interactive web report at localhost:3000
 
 ### Key Implementation Details
 
@@ -75,20 +77,22 @@ Session JSONL → SessionParser → LLMAnalyzer → ReportGenerator → Storage
 ```
 commands/           # Claude Code plugin commands (*.md with YAML frontmatter)
 src/
-├── analyzer/       # LLM analysis (prompts.ts, schema-converter.ts)
-├── cli/output/     # CLI rendering components (spinner, ratings, evidence)
+├── analyzer/       # LLM analysis (verbose-analyzer.ts, unified-analyzer.ts)
+├── cli/output/     # CLI rendering components (spinner, verbose-report, type-result)
 ├── config/         # ConfigManager for ~/.nomoreaislop/config.json
-├── models/         # Zod schemas (evaluation, session, config, storage, telemetry)
+├── models/         # Zod schemas (verbose-evaluation, unified-report, session, config)
 ├── parser/         # JSONL session parsing
+├── web/            # Web server and HTML templates
 └── utils/          # Reporter, storage, helpers
 ```
 
 ## Data Models
 
 All schemas are defined with Zod in `src/models/`:
-- **Evaluation** - Analysis output with ratings (Strong/Developing/Needs Work), clues, and recommendations
+- **VerboseEvaluation** - Hyper-personalized analysis with personality summary, strengths, growth areas, prompt patterns
+- **UnifiedReport** - Complete assessment with 6 dimensions, insights, and recommendations
 - **ParsedSession** - Normalized session data with messages and stats
-- **StoredAnalysis** - Persisted analysis with evaluation + metadata
+- **StoredAnalysis** - Persisted analysis with evaluation + metadata (legacy compatibility)
 
 ## Plugin Commands
 

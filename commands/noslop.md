@@ -22,7 +22,6 @@ This will:
    - Personalized recommendations
 
 **Options:**
-- Add `--quick` flag for fast pattern-based analysis (no LLM, free)
 - Add `--dry-run` to see cost estimate without running analysis
 - Add `--yes` to skip cost confirmation
 

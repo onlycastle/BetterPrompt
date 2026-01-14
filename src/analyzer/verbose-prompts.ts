@@ -52,10 +52,12 @@ This developer is about to see your analysis and decide whether to purchase the 
 <output_quality_standards>
 - **NEVER** use generic phrases like "shows good communication" without a specific quote
 - **ALWAYS** include the actual user quote, not a paraphrase
-- **MINIMUM** 5 different quotes across the free tier content
-- **EACH** strength must have at least 2 evidence quotes
-- **EACH** growth area must have at least 1 evidence quote with specific example
+- **MINIMUM** 15-20 different quotes across the free tier content (this is critical for credibility)
+- **EACH** dimension should have 8-15 total quotes across its strengths and growth areas
+- **EACH** strength cluster must have 3-5 evidence quotes showing the pattern repeatedly
+- **EACH** growth area must have 2-3 evidence quotes with specific examples
 - Write as if speaking directly to this specific person, not a generic developer
+- The MORE quotes you include, the MORE the user will feel "seen" and trust the analysis
 </output_quality_standards>
 
 <tone>
@@ -77,7 +79,73 @@ Control Levels:
 - **vibe-coder**: High AI dependency - accepts output without much modification
 - **developing**: Learning balance - building control habits
 - **ai-master**: Strategic control - directs AI as a precision tool
-</type_definitions>`;
+</type_definitions>
+
+<dimension_definitions>
+The 6 Analysis Dimensions and their BEHAVIORAL SIGNALS:
+
+## 1. AI Collaboration Mastery (aiCollaboration)
+What to look for:
+- **Structured Planning**: TodoWrite usage, numbered step plans, spec file references
+- **AI Orchestration**: Task tool usage, subagent delegation, parallel workflows
+- **Critical Verification**: Code review requests, test requests, output modifications
+
+Strength signals: TodoWrite used frequently, Task tool delegation, parallel agent calls
+Growth signals: No task breakdown, single long session for complex work, no verification
+
+## 2. Context Engineering (contextEngineering)
+What to look for:
+- **WRITE**: File references, code element mentions, constraint keywords
+- **SELECT**: Specific file:line references, pattern usage
+- **COMPRESS**: /compact usage, efficient iterations (3-5 turns ideal)
+- **ISOLATE**: Task delegation, focused single-concern prompts
+
+Strength signals: Rich context in prompts, specific references, efficient sessions
+Growth signals: Vague prompts (<50 chars), no file references, 8+ turn sessions
+
+## 3. Tool Mastery (toolMastery)
+What to look for:
+- **Diversity**: Using multiple tools (Read, Edit, Grep, Glob, Bash, Task, etc.)
+- **Advanced usage**: Task tool, TodoWrite, WebSearch
+
+Strength signals: Balanced tool usage, advanced tools utilized
+Growth signals: Single tool focus (only Read/Edit), underutilized tools
+
+## 4. Burnout Risk (burnoutRisk)
+What to look for:
+- **Work hours**: After 9 PM sessions, weekend sessions, late night (after midnight)
+- **Session patterns**: Average duration, longest session, trend (increasing/decreasing)
+
+Low risk signals: Business hours focus, <2 hour sessions, stable/decreasing trend
+High risk signals: Frequent night/weekend work, >3 hour sessions, increasing frequency
+
+## 5. AI Control Index (aiControl)
+What to look for:
+- **Verification**: Output modification requests, review requests, questions asked
+- **Constraints**: "must", "should not", "required" keywords
+- **Critique**: Corrections, rejections, alternative requests
+
+Strength signals: Regular verification, constraints specified, corrections made
+Growth signals: Accepts all output uncritically, no constraints, no corrections
+
+## 6. Skill Resilience (skillResilience)
+What to look for:
+- **Cold Start (M_CSR)**: Detailed first prompts vs vague "help me" starts
+- **Hallucination Detection (M_HT)**: Error corrections, challenges to AI
+- **Explainability Gap (E_gap)**: "Explain this code" requests (gap indicator)
+
+Strength signals: Detailed structured first prompts, catches AI errors, explains own code
+Growth signals: Vague starts, no error corrections, frequent "what does this do?" questions
+</dimension_definitions>
+
+<critical_rules>
+**IMPORTANT: Score-Free Analysis**
+- Do NOT mention numeric scores or percentages in insights
+- Do NOT say "Your planning score is 78" - instead describe behavioral patterns
+- Do NOT say "Your verification rate is 52%" - instead say "You frequently verify outputs"
+- Focus on WHAT they do, not HOW MUCH (quantitatively)
+- Each insight must be grounded in actual conversation evidence with quotes
+</critical_rules>`;
 
 /**
  * Build the user prompt with conversation data
@@ -120,30 +188,60 @@ Tool Usage Summary: Read=${aggregatedMetrics.toolUsage.read}, Grep=${aggregatedM
 <instructions>
 Generate a VerboseEvaluation with the following sections:
 
-## FREE TIER (Generate fully - this sells the premium)
+## TYPE CLASSIFICATION
 
 1. **primaryType**: One of architect, scientist, collaborator, speedrunner, craftsman
 2. **controlLevel**: One of vibe-coder, developing, ai-master
 3. **distribution**: Percentages for each type (must sum to 100)
 
-4. **personalitySummary** (200-800 chars)
+## PERSONALITY SUMMARY (200-800 chars)
+
+4. **personalitySummary**
    - Write a deeply personal paragraph that makes them feel seen
    - Use their actual phrases and communication style
    - Reference specific behavioral patterns you noticed
    - Make them think "How does it know this about me?"
 
-5. **strengths** (3-5 items, each with 2-5 evidence quotes)
-   - Each strength should feel unique to THIS developer
-   - Include verbatim quotes that demonstrate the strength
-   - Explain why each quote is significant
-   - Optional: include percentile comparison
+## DIMENSION INSIGHTS (Required: exactly 6 dimensions) - QUOTE-HEAVY
 
-6. **growthAreas** (2-4 items, each with 1-3 evidence quotes)
-   - Frame as extensions of their strengths, not weaknesses
-   - Provide specific, actionable recommendations
-   - Show the evidence that led to this conclusion
+5. **dimensionInsights** - An array of exactly 6 objects, one for each dimension:
 
-7. **promptPatterns** (3-6 patterns)
+**CRITICAL: Each dimension needs 8-15 TOTAL quotes for maximum credibility and AHA moments.**
+
+For EACH dimension (aiCollaboration, contextEngineering, toolMastery, burnoutRisk, aiControl, skillResilience):
+
+- **dimension**: The dimension key (e.g., "aiCollaboration")
+- **dimensionDisplayName**: Human-readable name (e.g., "AI Collaboration Mastery")
+- **strengths** (2-4 clusters per dimension): Group related behaviors into themed clusters
+  - title: Short descriptive name for this cluster (max 50 chars, e.g., "Strategic Task Delegation")
+  - description: What they do well - qualitative, NO numeric scores (max 300 chars)
+  - evidence: **3-5 quotes** demonstrating this strength pattern REPEATEDLY
+    - quote: Verbatim text from conversation (the MORE the BETTER for credibility)
+    - sessionDate: ISO date string
+    - context: Brief context that adds insight (max 150 chars, e.g., "→ Precise file targeting")
+- **growthAreas** (1-2 per dimension): Only if behavioral signals show improvement opportunity
+  - title: Short descriptive name (max 50 chars)
+  - description: What could improve - qualitative, NO numeric scores (max 300 chars)
+  - evidence: **2-4 quotes** showing this opportunity from different sessions
+  - recommendation: Specific action to take (max 200 chars)
+
+**QUOTE EXTRACTION STRATEGY:**
+- For each dimension, search through ALL sessions for relevant quotes
+- Prefer quotes that reveal personality (frustration, excitement, unique phrasing)
+- Include timestamps to show pattern consistency over time
+- Group similar quotes into themed "clusters" (e.g., "Bilingual Technical Communication")
+- The goal: User sees 8-15 of their own words per dimension and thinks "This IS me!"
+
+**IMPORTANT RULES for dimensionInsights:**
+- Aim for 8-15 total quotes per dimension (across strengths + growth areas)
+- Base ALL insights on actual conversation evidence - no generic advice
+- Do NOT mention numeric scores or percentages anywhere
+- Focus on behavioral patterns, not quantities
+- Make each quote feel like evidence in a "behavioral dossier" about the user
+
+## PROMPT PATTERNS
+
+6. **promptPatterns** (3-6 patterns)
    - Identify their unique prompting style
    - Show 1-3 examples of each pattern with actual quotes
    - Rate effectiveness and provide improvement tips

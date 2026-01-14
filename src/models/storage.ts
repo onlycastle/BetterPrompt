@@ -17,6 +17,8 @@ export const StoredAnalysisSchema = z.object({
     messageCount: z.number(),
     toolCallCount: z.number(),
     claudeCodeVersion: z.string(),
+    /** SHA-256 hash of source JSONL file for cache invalidation */
+    sourceHash: z.string().optional(),
   }),
 });
 export type StoredAnalysis = z.infer<typeof StoredAnalysisSchema>;

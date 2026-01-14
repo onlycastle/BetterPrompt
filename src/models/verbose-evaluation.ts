@@ -86,6 +86,80 @@ export const PromptPatternSchema = z.object({
 export type PromptPattern = z.infer<typeof PromptPatternSchema>;
 
 // ============================================================================
+// PER-DIMENSION INSIGHT SCHEMAS (Score-Free)
+// ============================================================================
+
+/**
+ * The 6 analysis dimensions
+ */
+export const DimensionNameEnumSchema = z.enum([
+  'aiCollaboration',
+  'contextEngineering',
+  'toolMastery',
+  'burnoutRisk',
+  'aiControl',
+  'skillResilience',
+]);
+export type DimensionNameEnum = z.infer<typeof DimensionNameEnumSchema>;
+
+/**
+ * Evidence for dimension-specific insights (simplified from PersonalizedEvidence)
+ */
+export const DimensionEvidenceSchema = z.object({
+  quote: z.string().min(5).max(800).describe('Actual quote from the conversation'),
+  sessionDate: z.string().describe('When this was said (ISO date)'),
+  context: z.string().max(200).describe('Brief context of what was being discussed'),
+});
+export type DimensionEvidence = z.infer<typeof DimensionEvidenceSchema>;
+
+/**
+ * Strength within a specific dimension
+ */
+export const DimensionStrengthSchema = z.object({
+  title: z.string().max(50).describe('Short title for this strength'),
+  description: z.string().max(300).describe('What they do well (qualitative, no scores)'),
+  evidence: z
+    .array(DimensionEvidenceSchema)
+    .min(1)
+    .max(5)
+    .describe('1-5 quotes demonstrating this strength for maximum credibility'),
+});
+export type DimensionStrength = z.infer<typeof DimensionStrengthSchema>;
+
+/**
+ * Growth area within a specific dimension
+ */
+export const DimensionGrowthAreaSchema = z.object({
+  title: z.string().max(50).describe('Short title for this growth area'),
+  description: z.string().max(300).describe('What could improve (qualitative, no scores)'),
+  evidence: z
+    .array(DimensionEvidenceSchema)
+    .min(1)
+    .max(4)
+    .describe('1-4 quotes showing this opportunity'),
+  recommendation: z.string().max(200).describe('Specific action to take'),
+});
+export type DimensionGrowthArea = z.infer<typeof DimensionGrowthAreaSchema>;
+
+/**
+ * Per-dimension insight containing strengths and growth areas
+ * This replaces the global strengths/growthAreas with dimension-specific ones
+ */
+export const PerDimensionInsightSchema = z.object({
+  dimension: DimensionNameEnumSchema,
+  dimensionDisplayName: z.string().max(50).describe('Human-readable dimension name'),
+  strengths: z
+    .array(DimensionStrengthSchema)
+    .max(4)
+    .describe('0-4 strength clusters, each with multiple quotes for credibility'),
+  growthAreas: z
+    .array(DimensionGrowthAreaSchema)
+    .max(3)
+    .describe('0-3 growth areas with evidence quotes'),
+});
+export type PerDimensionInsight = z.infer<typeof PerDimensionInsightSchema>;
+
+// ============================================================================
 // PREMIUM TIER SCHEMAS (LOCKED)
 // ============================================================================
 
@@ -205,8 +279,17 @@ export const VerboseEvaluationSchema = z.object({
     .min(200)
     .max(800)
     .describe('Hyper-personalized summary of their AI coding personality'),
-  strengths: z.array(PersonalizedStrengthSchema).min(3).max(5),
-  growthAreas: z.array(GrowthAreaSchema).min(2).max(4),
+
+  // NEW: Per-dimension insights (replaces global strengths/growthAreas)
+  dimensionInsights: z
+    .array(PerDimensionInsightSchema)
+    .length(6)
+    .describe('Insights for each of the 6 analysis dimensions'),
+
+  // DEPRECATED: Keep for backward compatibility, but prefer dimensionInsights
+  strengths: z.array(PersonalizedStrengthSchema).optional(),
+  growthAreas: z.array(GrowthAreaSchema).optional(),
+
   promptPatterns: z.array(PromptPatternSchema).min(3).max(6),
 
   // PREMIUM TIER - Locked content

@@ -63,6 +63,7 @@ const PRIORITY_ORDER: Record<JobPriority, number> = {
 interface InternalJob {
   job: Job;
   timeoutHandle?: NodeJS.Timeout;
+  retryHandle?: NodeJS.Timeout;
   cancelledFlag: boolean;
   startedAt?: Date;
 }
@@ -122,8 +123,25 @@ class MemoryJobQueue implements IJobQueuePort {
     this.running = false;
     this.stopPolling();
 
-    // Wait for currently processing jobs to complete
+    // Clear all pending timers to prevent process hanging
+    for (const internal of this.jobs.values()) {
+      if (internal.retryHandle) {
+        clearTimeout(internal.retryHandle);
+        internal.retryHandle = undefined;
+      }
+      if (internal.timeoutHandle) {
+        clearTimeout(internal.timeoutHandle);
+        internal.timeoutHandle = undefined;
+      }
+    }
+
+    // Wait for currently processing jobs with timeout
+    const maxWaitMs = 5000;
+    const startTime = Date.now();
     while (this.processingCount > 0) {
+      if (Date.now() - startTime > maxWaitMs) {
+        break;
+      }
       await this.sleep(100);
     }
   }
@@ -489,6 +507,13 @@ class MemoryJobQueue implements IJobQueuePort {
     this.eventEmitter.off(event, handler);
   }
 
+  /**
+   * Remove all event listeners (for cleanup/testing)
+   */
+  removeAllListeners(): void {
+    this.eventEmitter.removeAllListeners();
+  }
+
   private emit(event: JobQueueEvent, payload: JobEventPayload): void {
     this.eventEmitter.emit(event, payload);
   }
@@ -718,12 +743,14 @@ class MemoryJobQueue implements IJobQueuePort {
           ? this.config.retryDelay(job.retryCount)
           : this.config.retryDelay;
 
-      setTimeout(() => {
+      // Store handle so it can be cleared on stop()
+      internal.retryHandle = setTimeout(() => {
         job.status = 'pending';
         job.retryCount++;
         job.startedAt = undefined;
         job.error = undefined;
         internal.cancelledFlag = false;
+        internal.retryHandle = undefined;
       }, delay);
     } else {
       job.status = 'failed';

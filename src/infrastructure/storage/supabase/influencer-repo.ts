@@ -75,11 +75,11 @@ function getSortColumn(field?: 'name' | 'credibilityTier' | 'contentCount'): str
 }
 
 const URL_PATTERNS: Array<{ platform: InfluencerPlatform; regex: RegExp }> = [
-  { platform: 'youtube', regex: /youtube\.com\/@([^\/\?]+)/i },
-  { platform: 'youtube', regex: /youtube\.com\/channel\/([^\/\?]+)/i },
-  { platform: 'twitter', regex: /(?:twitter|x)\.com\/([^\/\?]+)/i },
-  { platform: 'github', regex: /github\.com\/([^\/\?]+)/i },
-  { platform: 'linkedin', regex: /linkedin\.com\/in\/([^\/\?]+)/i },
+  { platform: 'youtube', regex: /youtube\.com\/@([^/?]+)/i },
+  { platform: 'youtube', regex: /youtube\.com\/channel\/([^/?]+)/i },
+  { platform: 'twitter', regex: /(?:twitter|x)\.com\/([^/?]+)/i },
+  { platform: 'github', regex: /github\.com\/([^/?]+)/i },
+  { platform: 'linkedin', regex: /linkedin\.com\/in\/([^/?]+)/i },
 ];
 
 export function createSupabaseInfluencerRepository(): IInfluencerRepository {

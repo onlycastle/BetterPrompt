@@ -229,7 +229,7 @@ export class VerboseAnalyzer {
     });
 
     // Remove $schema as Anthropic doesn't need it
-    const { $schema, ...schema } = fullSchema as Record<string, unknown>;
+    const { $schema: _$schema, ...schema } = fullSchema as Record<string, unknown>;
 
     return schema;
   }

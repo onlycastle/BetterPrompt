@@ -18,8 +18,7 @@
     "ui": "tsx scripts/start-ui.ts",
     "ui:api": "npm run api",
     "ui:web": "cd web-ui && npm run dev",
-    "analyze": "tsx scripts/analyze-style.ts",
-    "analyze:quick": "tsx scripts/analyze-style.ts --quick"
+    "analyze": "tsx scripts/analyze-style.ts"
   },
   "keywords": [
     "claude",
@@ -55,14 +54,21 @@
     "zod-to-json-schema": "^3.24.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@playwright/test": "^1.57.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsdom": "^27.0.0",
     "@types/node": "^22.0.0",
     "@types/supertest": "^6.0.3",
+    "eslint": "^9.39.2",
+    "jsdom": "^27.4.0",
     "memfs": "^4.51.1",
+    "playwright": "^1.57.0",
     "supertest": "^7.2.2",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0",
+    "typescript-eslint": "^8.53.0",
     "vitest": "^2.1.0"
   }
 }

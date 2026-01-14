@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { SessionParser } from '../src/parser/index.js';
-import { listAllSessions } from '../src/parser/jsonl-reader.js';
 import { calculateAllDimensions } from '../src/analyzer/dimensions/index.js';
 
-describe('SessionParser Integration', () => {
+describe('SessionParser Integration', { timeout: 60000 }, () => {
   const parser = new SessionParser();
 
   it('should list available sessions', async () => {

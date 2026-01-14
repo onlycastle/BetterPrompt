@@ -35,6 +35,11 @@ describe('MemoryJobQueue', () => {
   });
 
   afterEach(async () => {
+    // Remove all event listeners to prevent process hanging
+    if ('removeAllListeners' in queue) {
+      (queue as any).removeAllListeners();
+    }
+
     if (queue.isRunning()) {
       await queue.stop();
     }

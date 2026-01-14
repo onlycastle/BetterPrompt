@@ -2,6 +2,7 @@
  * NoMoreAISlop - Claude Code Plugin
  *
  * Analyze your Claude Code sessions to improve AI collaboration skills.
+ * Uses Verbose Mode as the default analysis approach.
  *
  * @module nomoreaislop
  */
@@ -27,19 +28,68 @@ export {
 } from './parser/jsonl-reader.js';
 
 // ============================================================================
-// Analyzer
+// Analyzer (Verbose Mode - Default)
 // ============================================================================
 export {
-  LLMAnalyzer,
-  AnalysisError,
-  createAnalyzer,
-  formatConversation,
-  buildUserPrompt,
-  estimateTokens,
+  // Verbose Analyzer (primary)
+  VerboseAnalyzer,
+  VerboseAnalysisError,
+  createVerboseAnalyzer,
+  buildVerboseUserPrompt,
+  type VerboseAnalyzerConfig,
+  // Unified Analyzer
+  UnifiedAnalyzer,
+  createUnifiedAnalyzer,
+  analyzeUnified,
+  createUnifiedAnalyzerWithKB,
+  type UnifiedAnalyzerConfig,
+  type AnalyzeOptions,
+  type UnifiedAnalysisResult,
+  // Knowledge Linking
+  KnowledgeLinker,
+  MockKnowledgeSource,
+  createKnowledgeLinker,
+  SupabaseKnowledgeSource,
+  createSupabaseKnowledgeSource,
+  type KnowledgeSource,
+  type LinkedKnowledge,
+  type LinkedInsight,
+  type DimensionKnowledge,
+  type KnowledgeContext,
+  type SupabaseKnowledgeSourceConfig,
+  // Dimension utilities
+  DIMENSION_KEYWORDS,
+  getKeywordConfig,
+  getDimensionCategories,
+  getModeFromScore,
+  getResourceLevel,
+  type InsightMode,
+  type ResourceLevel,
+  type TopicCategory,
+  type DimensionKeywordConfig,
+  type DimensionMapping,
+  // Quote extraction
+  extractDimensionQuotes,
+  extractAllDimensionQuotes,
+  toConversationInsight,
+  toEvidenceQuote,
+  type ExtractedQuote,
+  // Insight generation
+  InsightGenerator,
+  createInsightGenerator,
+  generateAdvice,
+  generateQuoteAdvice,
+  formatProfessionalInsight,
+  getDimensionDescription,
+  generateInterpretation,
+  buildInsightPrompt,
+  INSIGHT_GENERATION_SYSTEM_PROMPT,
+  type InsightGeneratorConfig,
+  type GeneratedInsights,
+  // Schema utilities
   getEvaluationJsonSchema,
   getEvaluationTool,
 } from './analyzer/index.js';
-export type { AnalyzerConfig } from './analyzer/index.js';
 
 // ============================================================================
 // Utils
@@ -55,16 +105,33 @@ export {
   DEFAULT_STORAGE_PATH,
 } from './utils/storage.js';
 
+export { computeFileHash } from './utils/hash.js';
+
 // ============================================================================
-// CLI
+// CLI (Verbose Mode - Default)
 // ============================================================================
 export {
+  // Utility components
   createSpinner,
   ProgressSpinner,
-  renderReport,
-  renderCompactSummary,
-  renderJson,
-  renderError,
+  // Verbose Report renderer (default)
+  renderVerboseReport,
+  // Unified Report renderer
+  renderUnifiedReportCLI,
+  // v2.0 Style components
+  renderTypeResult,
+  renderDistribution,
+  renderMetricsSummary,
+  renderStrengths,
+  renderGrowthPoints,
+  renderStyleEvidence,
+  renderLockedTeaser,
+  renderWebLink,
+  // Utility components
+  renderRecommendations,
+  renderFooter,
+  confirmCost,
+  // Options
   type RenderOptions,
 } from './cli/index.js';
 
@@ -128,7 +195,7 @@ export {
   type LearnResult,
   type KnowledgeItem,
   type KnowledgeStats,
-  type TopicCategory,
+  type TopicCategory as SearchTopicCategory,
   type ContentType,
   type SearchQuery,
   type RelevanceAssessment,
@@ -136,53 +203,10 @@ export {
 } from './search-agent/index.js';
 
 // ============================================================================
-// Main Function
+// Helper Functions
 // ============================================================================
 
 import { sessionParser } from './parser/index.js';
-import { createAnalyzer } from './analyzer/index.js';
-import { storageManager } from './utils/storage.js';
-import { configManager } from './config/manager.js';
-import type { Evaluation, ParsedSession } from './models/index.js';
-
-/**
- * Analyze result with evaluation, session, and save path
- */
-export interface AnalyzeResult {
-  evaluation: Evaluation;
-  session: ParsedSession;
-  savePath: string;
-}
-
-/**
- * Analyze a Claude Code session
- *
- * @param sessionId - The session ID to analyze (optional, defaults to current/most recent)
- * @returns The analysis result with evaluation, session, and save path
- */
-export async function analyzeSession(sessionId?: string): Promise<AnalyzeResult> {
-  // Get session ID
-  const targetId = sessionId || (await sessionParser.getCurrentSessionId());
-  if (!targetId) {
-    throw new Error('No session found. Please specify a session ID.');
-  }
-
-  // Parse session
-  const session = await sessionParser.parseSession(targetId);
-
-  // Get API key from config
-  const apiKey = await configManager.getApiKey();
-  const model = await configManager.getModel();
-
-  // Create analyzer and run analysis
-  const analyzer = createAnalyzer({ apiKey: apiKey || undefined, model });
-  const evaluation = await analyzer.analyze(session);
-
-  // Save analysis
-  const savePath = await storageManager.saveAnalysis(evaluation, session);
-
-  return { evaluation, session, savePath };
-}
 
 /**
  * List available Claude Code sessions
@@ -202,6 +226,7 @@ export async function listSessions(): Promise<string> {
  */
 export async function listHistory(): Promise<string> {
   const { generateHistoryList } = await import('./utils/reporter.js');
+  const { storageManager } = await import('./utils/storage.js');
   const analyses = await storageManager.listAnalyses();
   return generateHistoryList(analyses);
 }

@@ -50,7 +50,7 @@ export function countIfAtLeast(
 export const PATTERNS = {
   // File references
   filePath: /(?:src\/|\.\/|\/[\w-]+\/|[\w-]+\.[tj]sx?|[\w-]+\.(?:md|json|yaml|yml|py|go|rs|java|kt|swift|rb))\b/gi,
-  fileLine: /[\w\/.+-]+\.(?:[tj]sx?|py|go|rs|java|kt|rb|vue|css|scss|html|json|yaml|yml|md):\d+/gi,
+  fileLine: /[\w/.+-]+\.(?:[tj]sx?|py|go|rs|java|kt|rb|vue|css|scss|html|json|yaml|yml|md):\d+/gi,
 
   // Code elements
   codeElement: /\b(?:class|function|method|component|interface|type|const)\s+([A-Z][a-zA-Z0-9]*|[a-z][a-zA-Z0-9]+)\b/gi,

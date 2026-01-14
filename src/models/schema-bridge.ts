@@ -6,7 +6,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import type { VerboseEvaluation } from './verbose-evaluation.js';
+import type { VerboseEvaluation, PerDimensionInsight, DimensionNameEnum } from './verbose-evaluation.js';
 import type { TypeResult } from './coding-style.js';
 import type { FullAnalysisResult } from '../analyzer/dimensions/index.js';
 import {
@@ -19,6 +19,8 @@ import {
   type Tier,
   type CodingStyleType,
   type ControlLevel,
+  type VerboseStrength,
+  type VerboseGrowthArea,
   DIMENSION_DISPLAY_NAMES,
   STRENGTH_THRESHOLD,
   MATRIX_NAMES,
@@ -353,6 +355,51 @@ function getOverallMessage(avgScore: number): string {
 }
 
 // ============================================
+// Dimension Insights Merging
+// ============================================
+
+/**
+ * Merge verbose dimension insights into DimensionResult array
+ * This adds verboseStrengths and verboseGrowthAreas to each dimension
+ */
+function mergeDimensionInsights(
+  dimensionResults: DimensionResult[],
+  dimensionInsights: PerDimensionInsight[]
+): void {
+  for (const insight of dimensionInsights) {
+    const result = dimensionResults.find(d => d.name === insight.dimension);
+    if (result) {
+      // Map DimensionStrength to VerboseStrength
+      if (insight.strengths && insight.strengths.length > 0) {
+        result.verboseStrengths = insight.strengths.map(s => ({
+          title: s.title,
+          description: s.description,
+          evidence: s.evidence.map(e => ({
+            quote: e.quote,
+            sessionDate: e.sessionDate,
+            context: e.context,
+          })),
+        })) as VerboseStrength[];
+      }
+
+      // Map DimensionGrowthArea to VerboseGrowthArea
+      if (insight.growthAreas && insight.growthAreas.length > 0) {
+        result.verboseGrowthAreas = insight.growthAreas.map(g => ({
+          title: g.title,
+          description: g.description,
+          evidence: g.evidence.map(e => ({
+            quote: e.quote,
+            sessionDate: e.sessionDate,
+            context: e.context,
+          })),
+          recommendation: g.recommendation,
+        })) as VerboseGrowthArea[];
+      }
+    }
+  }
+}
+
+// ============================================
 // Evidence Extraction
 // ============================================
 
@@ -371,35 +418,75 @@ function mapEvidenceSentiment(
 
 /**
  * Extract evidence quotes from VerboseEvaluation
+ * Now handles both legacy (strengths/growthAreas) and new (dimensionInsights) formats
  */
 export function extractEvidence(verbose: VerboseEvaluation): EvidenceQuote[] {
   const evidence: EvidenceQuote[] = [];
 
-  // From strengths
-  for (const strength of verbose.strengths) {
-    for (const e of strength.evidence) {
-      evidence.push({
-        quote: e.quote,
-        messageIndex: 0,
-        timestamp: e.sessionDate,
-        category: 'strength',
-        sentiment: mapEvidenceSentiment(e.sentiment, 'strength'),
-        analysis: e.significance,
-      });
+  // From dimensionInsights (new format)
+  if (verbose.dimensionInsights) {
+    for (const insight of verbose.dimensionInsights) {
+      // Strengths from each dimension
+      for (const strength of insight.strengths || []) {
+        for (const e of strength.evidence) {
+          evidence.push({
+            quote: e.quote,
+            messageIndex: 0,
+            timestamp: e.sessionDate,
+            category: 'strength',
+            dimension: insight.dimension as DimensionNameEnum,
+            sentiment: 'positive',
+            analysis: strength.description,
+          });
+        }
+      }
+
+      // Growth areas from each dimension
+      for (const area of insight.growthAreas || []) {
+        for (const e of area.evidence) {
+          evidence.push({
+            quote: e.quote,
+            messageIndex: 0,
+            timestamp: e.sessionDate,
+            category: 'growth',
+            dimension: insight.dimension as DimensionNameEnum,
+            sentiment: 'negative',
+            analysis: area.description,
+          });
+        }
+      }
     }
   }
 
-  // From growth areas
-  for (const area of verbose.growthAreas) {
-    for (const e of area.evidence) {
-      evidence.push({
-        quote: e.quote,
-        messageIndex: 0,
-        timestamp: e.sessionDate,
-        category: 'growth',
-        sentiment: mapEvidenceSentiment(e.sentiment, 'growth'),
-        analysis: e.significance,
-      });
+  // Legacy: From global strengths (deprecated, but supported for backward compatibility)
+  if (verbose.strengths) {
+    for (const strength of verbose.strengths) {
+      for (const e of strength.evidence) {
+        evidence.push({
+          quote: e.quote,
+          messageIndex: 0,
+          timestamp: e.sessionDate,
+          category: 'strength',
+          sentiment: mapEvidenceSentiment(e.sentiment, 'strength'),
+          analysis: e.significance,
+        });
+      }
+    }
+  }
+
+  // Legacy: From global growth areas (deprecated, but supported for backward compatibility)
+  if (verbose.growthAreas) {
+    for (const area of verbose.growthAreas) {
+      for (const e of area.evidence) {
+        evidence.push({
+          quote: e.quote,
+          messageIndex: 0,
+          timestamp: e.sessionDate,
+          category: 'growth',
+          sentiment: mapEvidenceSentiment(e.sentiment, 'growth'),
+          analysis: e.significance,
+        });
+      }
     }
   }
 
@@ -581,6 +668,11 @@ export function toUnifiedReport(input: ConversionInput): UnifiedReport {
 
   // Convert dimensions
   const dimensionResults = dimensionsToDimensionResults(dimensions);
+
+  // Merge verbose dimension insights if available
+  if (verbose?.dimensionInsights) {
+    mergeDimensionInsights(dimensionResults, verbose.dimensionInsights);
+  }
 
   // Generate summary
   const summary = generateSummary(dimensionResults);

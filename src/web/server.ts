@@ -9,7 +9,7 @@ import { createServer, type Server } from 'node:http';
 import { type TypeResult } from '../models/index.js';
 import { type VerboseEvaluation } from '../models/verbose-evaluation.js';
 import { type FullAnalysisResult } from '../analyzer/dimensions/index.js';
-import { generateReportHTML } from './template.js';
+import { generateReportHTML } from './templates/index.js';
 
 export interface WebServerOptions {
   port?: number;

@@ -1,0 +1,120 @@
+{
+  "aiCollaboration": {
+    "score": 92,
+    "level": "expert",
+    "interpretation": "Expert-level AI collaboration! You excel at structured planning (12 todo uses), orchestration (8 delegations), and verification. You're leveraging AI as a true force multiplier.",
+    "breakdown": {
+      "structuredPlanning": { "score": 95, "signals": ["Excellent task decomposition", "Consistent TodoWrite usage"] },
+      "aiOrchestration": { "score": 88, "signals": ["Multi-agent delegation", "Parallel task execution"] },
+      "criticalVerification": { "score": 93, "signals": ["Rigorous output review", "Test-driven approach"] }
+    },
+    "strengths": [
+      "Strong structured planning - you break down tasks effectively",
+      "Advanced AI orchestration - you leverage multi-agent capabilities well",
+      "Rigorous verification - you validate AI outputs thoroughly",
+      "Parallel execution - you run multiple agents concurrently"
+    ],
+    "growthAreas": []
+  },
+  "contextEngineering": {
+    "score": 88,
+    "level": "expert",
+    "interpretation": "Context Master! You understand the delicate art of context engineering - preserving, selecting, compressing, and isolating context effectively.",
+    "breakdown": {
+      "write": { "score": 90, "fileReferences": 45, "codeElementReferences": 20, "constraintsMentioned": 12, "patternReferences": 8 },
+      "select": { "score": 85, "specificity": 88, "codebaseNavigation": 15, "existingPatternUsage": 10 },
+      "compress": { "score": 87, "compactUsageCount": 8, "iterationEfficiency": 92, "avgTurnsPerSession": 5 },
+      "isolate": { "score": 90, "taskToolUsage": 12, "multiAgentDelegation": 6, "focusedPrompts": 18 }
+    },
+    "bestExample": {
+      "content": "Please check src/analyzer/dimensions/ai-collaboration.ts:45-120 for the existing scoring logic. I need to add a new metric for parallel workflow detection. The new metric should follow the same pattern as calculateOrchestrationScore at line 234.",
+      "score": 95,
+      "reasons": ["Precise file:line reference", "Clear context provision", "Pattern reference for consistency"]
+    },
+    "worstExample": null,
+    "tips": ["Your context engineering is excellent! Consider writing a CLAUDE.md guide for your team."]
+  },
+  "burnoutRisk": {
+    "score": 18,
+    "level": "low",
+    "breakdown": {
+      "afterHoursRate": 8,
+      "weekendRate": 3,
+      "lateNightCount": 0,
+      "avgSessionDuration": 22,
+      "sessionTrend": "stable",
+      "longestSession": 35
+    },
+    "timeDistribution": {
+      "businessHours": 85,
+      "evening": 12,
+      "lateNight": 0,
+      "weekend": 3
+    },
+    "recommendations": [
+      "Excellent work-life balance maintained!",
+      "Your session patterns indicate sustainable productivity"
+    ],
+    "qualityCorrelation": {
+      "shortSessions": { "avgDuration": 12, "qualityIndicator": "focused sprints" },
+      "longSessions": { "avgDuration": 30, "qualityIndicator": "deep work sessions" }
+    }
+  },
+  "toolMastery": {
+    "overallScore": 95,
+    "toolUsage": {
+      "Read": { "count": 120, "percentage": 28, "level": "expert", "assessment": "Master-level file exploration" },
+      "Task": { "count": 85, "percentage": 20, "level": "expert", "assessment": "Expert delegation patterns" },
+      "Edit": { "count": 65, "percentage": 15, "level": "expert", "assessment": "Precise targeted modifications" },
+      "Grep": { "count": 55, "percentage": 13, "level": "adept", "assessment": "Strong pattern searching" },
+      "TodoWrite": { "count": 45, "percentage": 11, "level": "expert", "assessment": "Excellent task tracking" },
+      "Bash": { "count": 35, "percentage": 8, "level": "adept", "assessment": "Effective shell usage" },
+      "WebSearch": { "count": 15, "percentage": 4, "level": "basic", "assessment": "Occasional research" }
+    },
+    "topTools": ["Read", "Task", "Edit", "Grep", "TodoWrite"],
+    "underutilizedTools": [],
+    "tips": ["You've mastered the core toolkit! Consider exploring MCP integrations for even more power."]
+  },
+  "aiControl": {
+    "score": 90,
+    "level": "ai-master",
+    "interpretation": "You are an AI Master. You maintain strategic control over AI outputs, provide clear constraints, and verify critically. This is the hallmark of a professional AI-assisted developer.",
+    "breakdown": {
+      "verificationRate": 92,
+      "constraintSpecification": 88,
+      "outputCritique": 90,
+      "contextControl": 89
+    },
+    "signals": [
+      "Consistently verifies AI output before accepting",
+      "Provides detailed constraints and requirements",
+      "Modifies AI suggestions to match project standards",
+      "Uses iterative refinement for complex tasks"
+    ],
+    "strengths": [
+      "Expert verification habits - you never blindly accept AI output",
+      "Clear constraint specification - AI understands exactly what you need",
+      "Strategic context control - you manage what AI knows effectively"
+    ],
+    "growthAreas": []
+  },
+  "skillResilience": {
+    "score": 85,
+    "level": "resilient",
+    "interpretation": "Resilient Skills! You maintain strong independent coding abilities while leveraging AI effectively. You can code without AI assistance when needed.",
+    "breakdown": {
+      "coldStartCapability": 88,
+      "hallucinationDetection": 82,
+      "explainabilityGap": 85
+    },
+    "warnings": [],
+    "recommendations": [
+      "Your skills are well-maintained! Consider mentoring others on AI-human collaboration balance."
+    ],
+    "vpcMetrics": {
+      "m_csr": 0.88,
+      "m_ht": 0.82,
+      "e_gap": 0.15
+    }
+  }
+}

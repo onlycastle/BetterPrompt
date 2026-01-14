@@ -46,17 +46,12 @@
 
 ## Core Pipeline
 
-### Normal Mode (Pattern-based)
-```
-Session JSONL → Parser → Analyzer → Dimensions → Output (CLI + Web)
-```
-
-### Verbose Mode (LLM-powered)
+### Analysis Pipeline (LLM-powered Verbose Analysis)
 ```
 Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation] → VerboseAnalyzer → VerboseReport
 ```
 
-**Verbose Mode Components:**
+**Key Components:**
 - **SessionSelector** (`src/parser/session-selector.ts`) - Selects optimal sessions (5-min minimum, 90-day window, max 10)
 - **CostEstimator** (`src/analyzer/cost-estimator.ts`) - Token counting and API cost calculation
 - **VerboseAnalyzer** (`src/analyzer/verbose-analyzer.ts`) - LLM-powered hyper-personalized analysis
@@ -97,6 +92,38 @@ ParsedSession[]
 │  (Profile + 6 Dimensions + Summary + Evidence + Recommendations)│
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+### UnifiedAnalyzer Pipeline
+
+The UnifiedAnalyzer integrates all analysis components into a single orchestrator:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    UNIFIED ANALYZER                              │
+│                                                                  │
+│  Input: ParsedSession[]                                          │
+│    │                                                             │
+│    ├──→ PatternAnalyzer ──→ TypeResult + FullAnalysisResult     │
+│    │                                                             │
+│    ├──→ VerboseAnalyzer ──→ VerboseEvaluation (if enabled)      │
+│    │                                                             │
+│    ├──→ DimensionQuoteExtractor ──→ ExtractedQuote[]            │
+│    │                                                             │
+│    ├──→ KnowledgeLinker ──→ LinkedKnowledge[] + LinkedInsight[] │
+│    │                                                             │
+│    ├──→ InsightGenerator ──→ DimensionInsight[]                 │
+│    │                                                             │
+│    └──→ SchemaBridge ──→ UnifiedReport                          │
+│                                                                  │
+│  Output: UnifiedReport (complete assessment)                     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key Features:**
+- **Single Entry Point**: `analyze(sessions, options)` method handles full pipeline
+- **Progressive Enhancement**: Basic analysis always runs, verbose adds LLM insights
+- **Knowledge Integration**: Links KB items to dimension insights
+- **Schema Unification**: SchemaBridge converts all outputs to UnifiedReport
 
 **Hyper-Personalized Report Components:**
 

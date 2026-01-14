@@ -1,0 +1,74 @@
+{
+  "aiCollaboration": {
+    "score": 35,
+    "level": "novice",
+    "interpretation": "Getting started with AI collaboration. Focus on building planning habits.",
+    "breakdown": {
+      "structuredPlanning": { "score": 30, "signals": ["Minimal planning observed"] },
+      "aiOrchestration": { "score": 35, "signals": ["Basic tool usage"] },
+      "criticalVerification": { "score": 40, "signals": ["Some output review"] }
+    },
+    "strengths": ["Willingness to experiment"],
+    "growthAreas": ["Task breakdown", "Context provision", "Verification habits"]
+  },
+  "contextEngineering": {
+    "score": 32,
+    "level": "beginner",
+    "interpretation": "Basic context engineering skills. Consider learning WRITE-SELECT-COMPRESS-ISOLATE strategies.",
+    "breakdown": {
+      "write": { "score": 35, "signals": ["Limited file references"] },
+      "select": { "score": 30, "signals": ["Generic queries"] },
+      "compress": { "score": 28, "signals": ["High token usage"] },
+      "isolate": { "score": 35, "signals": ["Single-thread patterns"] }
+    },
+    "strengths": ["Basic queries"],
+    "growthAreas": ["File references", "Specificity", "Token efficiency"]
+  },
+  "toolMastery": {
+    "score": 40,
+    "level": "novice",
+    "interpretation": "Learning the tool ecosystem. Focus on mastering Read and Grep first.",
+    "breakdown": {
+      "read": { "score": 50, "usage": 5, "level": "basic" },
+      "grep": { "score": 35, "usage": 2, "level": "novice" },
+      "task": { "score": 25, "usage": 0, "level": "novice" },
+      "edit": { "score": 50, "usage": 8, "level": "basic" }
+    },
+    "strengths": ["Basic file operations"],
+    "growthAreas": ["Search patterns", "Task delegation", "Multi-tool workflows"]
+  },
+  "burnoutRisk": {
+    "score": 65,
+    "level": "elevated",
+    "recommendations": ["Consider taking breaks between sessions", "Avoid late-night coding"],
+    "breakdown": {
+      "afterHoursRate": 45,
+      "weekendRate": 35,
+      "lateNightCount": 8
+    }
+  },
+  "aiControl": {
+    "score": 32,
+    "level": "vibe-coder",
+    "interpretation": "High AI dependency observed. Focus on building verification habits.",
+    "breakdown": {
+      "guidance": { "score": 35, "signals": ["Minimal direction"] },
+      "verification": { "score": 28, "signals": ["Accepts output without review"] },
+      "autonomy": { "score": 33, "signals": ["Heavy AI reliance"] }
+    },
+    "strengths": ["Comfortable with AI"],
+    "growthAreas": ["Output verification", "Strategic direction", "Critical review"]
+  },
+  "skillResilience": {
+    "score": 38,
+    "level": "at-risk",
+    "interpretation": "Risk of skill atrophy detected. Consider more independent coding practice.",
+    "breakdown": {
+      "codeReview": { "score": 40, "signals": ["Limited review"] },
+      "debugging": { "score": 35, "signals": ["AI-dependent debugging"] },
+      "architecture": { "score": 39, "signals": ["Defers design decisions"] }
+    },
+    "strengths": ["Efficiency with AI"],
+    "growthAreas": ["Independent problem-solving", "Manual debugging", "Architecture understanding"]
+  }
+}

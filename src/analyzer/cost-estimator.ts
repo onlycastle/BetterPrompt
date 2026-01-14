@@ -68,7 +68,7 @@ export function countTokensAccurate(text: string): number {
   baseCount += codeBlockCount * 50; // Code blocks are token-heavy
 
   // JSON structure overhead
-  const jsonBraceMatches = text.match(/[{}\[\]]/g);
+  const jsonBraceMatches = text.match(/[{}[\]]/g);
   const jsonBraceCount = jsonBraceMatches ? jsonBraceMatches.length : 0;
   baseCount += jsonBraceCount * 0.5;
 

@@ -1,15 +1,11 @@
 /**
  * CLI Components
  *
- * Re-exports all CLI components.
+ * Re-exports all CLI components for rendering reports.
  */
 
+// Utility components
 export { ProgressSpinner, createSpinner } from './spinner.js';
-export { renderRatings, renderCompactRatings } from './ratings.js';
-export { renderEvidence, renderEvidenceList } from './evidence.js';
-export { renderHeader } from './header.js';
-export { renderCategory } from './category.js';
-export { renderAssessment } from './assessment.js';
 export { renderRecommendations } from './recommendations.js';
 export { renderFooter } from './footer.js';
 
@@ -23,12 +19,13 @@ export {
   renderEvidence as renderStyleEvidence,
   renderLockedTeaser,
   renderWebLink,
-  renderFullTypeResult,
-  renderDimensionSummary,
 } from './type-result.js';
 
-// Verbose Report Component
+// Verbose Report Component (default mode)
 export { renderVerboseReport } from './verbose-report.js';
 
 // Unified Report Component
 export { renderUnifiedReportCLI } from './unified-report-cli.js';
+
+// Cost Confirmation
+export { confirmCost } from './cost-confirmation.js';
