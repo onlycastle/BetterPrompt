@@ -12,6 +12,7 @@ import { learnRoutes } from './routes/learn.js';
 import { influencerRoutes } from './routes/influencers.js';
 import { reportRoutes } from './routes/reports.js';
 import { enterpriseRoutes } from './routes/enterprise.js';
+import { analysisRoutes } from './routes/analysis.js';
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use('/api/learn', learnRoutes);
 app.use('/api/influencers', influencerRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/enterprise', enterpriseRoutes);
+app.use('/api/analysis', analysisRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -58,5 +60,6 @@ export function startServer(port: number = 3001): void {
     console.log(`   Influencers: http://localhost:${port}/api/influencers`);
     console.log(`   Reports: http://localhost:${port}/api/reports`);
     console.log(`   Enterprise: http://localhost:${port}/api/enterprise`);
+    console.log(`   Analysis: http://localhost:${port}/api/analysis`);
   });
 }
