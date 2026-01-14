@@ -1,0 +1,30 @@
+.container {
+  margin: 32px 0;
+  padding: 24px;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  border-left: 4px solid var(--neon-cyan);
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neon-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title::before {
+  content: '🎭';
+}
+
+.content {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text-primary);
+  margin: 0;
+}

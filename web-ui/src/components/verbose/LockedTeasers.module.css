@@ -1,0 +1,67 @@
+.container {
+  margin: 32px 0;
+  padding: 32px 24px;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  border: 2px dashed var(--text-muted);
+}
+
+.title {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 24px;
+}
+
+.title::before {
+  content: '🔒 ';
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+}
+
+.featureCard {
+  padding: 16px;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+  filter: blur(3px);
+  transition: filter 0.3s ease;
+}
+
+.featureCard:hover {
+  filter: blur(2px);
+}
+
+.featureTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.featureDescription {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.unlockPrompt {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neon-yellow);
+}
+
+.unlockPrompt::before {
+  content: '🔓 ';
+}
