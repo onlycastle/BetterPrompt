@@ -38,7 +38,7 @@ export interface ScrollNavigationReturn {
   /** Navigate by relative index (positive = forward, negative = backward) */
   navigateByIndex: (delta: number) => void;
   /** Ref to attach to the scroll container */
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
 /**

@@ -5,7 +5,8 @@
  * Mirrors backend VerboseEvaluation schema from src/models/verbose-evaluation.ts
  */
 
-import type { CodingStyleType, AIControlLevel, TypeDistribution } from './enterprise.js';
+import type { CodingStyleType, AIControlLevel } from './enterprise.js';
+import type { TypeDistribution } from './report.js';
 
 // Re-export for convenience
 export type { CodingStyleType, AIControlLevel, TypeDistribution };
@@ -33,8 +34,16 @@ export interface DimensionGrowthArea {
   recommendation: string;
 }
 
+export type DimensionName =
+  | 'aiCollaboration'
+  | 'contextEngineering'
+  | 'toolMastery'
+  | 'burnoutRisk'
+  | 'aiControl'
+  | 'skillResilience';
+
 export interface PerDimensionInsight {
-  dimension: string;
+  dimension: DimensionName;
   dimensionDisplayName: string;
   strengths: DimensionStrength[];
   growthAreas: DimensionGrowthArea[];
@@ -109,6 +118,7 @@ export interface VerboseTypeMetadata {
   name: string;
   tagline: string;
   description: string;
+  strengths: string[];
 }
 
 export const VERBOSE_TYPE_METADATA: Record<CodingStyleType, VerboseTypeMetadata> = {
@@ -118,6 +128,7 @@ export const VERBOSE_TYPE_METADATA: Record<CodingStyleType, VerboseTypeMetadata>
     tagline: 'Strategic thinker who plans before diving into code',
     description:
       'You approach AI collaboration with a clear vision. Your structured prompts and systematic planning maximize AI implementation speed while maintaining consistency.',
+    strengths: ['Strategic planning', 'Systematic approach', 'Clear communication'],
   },
   scientist: {
     emoji: '🔬',
@@ -125,6 +136,7 @@ export const VERBOSE_TYPE_METADATA: Record<CodingStyleType, VerboseTypeMetadata>
     tagline: 'Truth-seeker who always verifies AI output',
     description:
       "You maintain healthy skepticism toward AI output. Your verification habits catch bugs early and ensure high code quality while keeping your skills sharp.",
+    strengths: ['Verification habits', 'Critical thinking', 'Quality assurance'],
   },
   collaborator: {
     emoji: '🤝',
@@ -132,6 +144,7 @@ export const VERBOSE_TYPE_METADATA: Record<CodingStyleType, VerboseTypeMetadata>
     tagline: 'Partnership master who finds answers through dialogue',
     description:
       'You excel at iterative refinement through conversation. Your collaborative approach maximizes AI synergy and leads to quality improvement through iteration.',
+    strengths: ['Iterative refinement', 'Communication skills', 'AI synergy'],
   },
   speedrunner: {
     emoji: '⚡',
@@ -139,6 +152,7 @@ export const VERBOSE_TYPE_METADATA: Record<CodingStyleType, VerboseTypeMetadata>
     tagline: 'Agile executor who delivers through fast iteration',
     description:
       'You move fast and iterate quickly. Your rapid prototyping approach leads to new discoveries through experimentation and high output per time.',
+    strengths: ['Rapid prototyping', 'High output', 'Experimentation'],
   },
   craftsman: {
     emoji: '🔧',
@@ -146,5 +160,6 @@ export const VERBOSE_TYPE_METADATA: Record<CodingStyleType, VerboseTypeMetadata>
     tagline: 'Artisan who prioritizes code quality above all',
     description:
       'You care deeply about code quality and consistency. Your attention to detail produces maintainable code and minimizes long-term technical debt.',
+    strengths: ['Code quality', 'Attention to detail', 'Maintainability'],
   },
 };

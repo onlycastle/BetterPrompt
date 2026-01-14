@@ -1,8 +1,9 @@
 import styles from './TypeResultSection.module.css';
+import type { CodingStyleType, TypeDistribution } from '../../types/report';
 
 interface TypeResult {
-  primaryType: string;
-  distribution: Record<string, number>;
+  primaryType: CodingStyleType;
+  distribution: TypeDistribution;
   metrics: {
     avgPromptLength: number;
     avgFirstPromptLength: number;
@@ -24,7 +25,7 @@ interface TypeMetadata {
 
 interface TypeResultSectionProps {
   typeResult: TypeResult;
-  typeMetadata: Record<string, TypeMetadata>;
+  typeMetadata: Record<CodingStyleType, TypeMetadata>;
 }
 
 /**
@@ -33,7 +34,7 @@ interface TypeResultSectionProps {
  */
 export function TypeResultSection({ typeResult, typeMetadata }: TypeResultSectionProps) {
   const meta = typeMetadata[typeResult.primaryType];
-  const types = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'];
+  const types: CodingStyleType[] = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'];
 
   return (
     <div className={styles.resultBox}>

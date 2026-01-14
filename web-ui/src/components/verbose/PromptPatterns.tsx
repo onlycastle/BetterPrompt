@@ -18,7 +18,7 @@ interface PromptPattern {
 }
 
 interface PromptPatternsProps {
-  patterns: PromptPattern[];
+  promptPatterns: PromptPattern[];
 }
 
 const FREQUENCY_COLORS: Record<Frequency, string> = {
@@ -41,11 +41,11 @@ function formatEffectiveness(effectiveness: Effectiveness): string {
  * Prompt patterns analysis component
  * Shows detected patterns with frequency, effectiveness badges, and examples
  */
-export function PromptPatterns({ patterns }: PromptPatternsProps) {
+export function PromptPatterns({ promptPatterns }: PromptPatternsProps) {
   return (
     <div className={styles.container}>
       <div className={styles.title}>Your Prompt Patterns</div>
-      {patterns.map((pattern, idx) => (
+      {promptPatterns.map((pattern, idx) => (
         <div key={idx} className={styles.patternCard}>
           <div className={styles.patternHeader}>
             <h4 className={styles.patternName}>{pattern.patternName}</h4>

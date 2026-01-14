@@ -30,10 +30,16 @@ export function usePersonalAnalytics(userId?: string) {
         // Transform API response to PersonalAnalytics format
         return {
           ...MOCK_PERSONAL_DATA, // Use mock as base structure
-          weeklyTrend: data.metrics || MOCK_PERSONAL_DATA.weeklyTrend,
-          overallScore: data.avgScore || MOCK_PERSONAL_DATA.overallScore,
-          totalSessions: data.totalSessions || MOCK_PERSONAL_DATA.totalSessions,
-          currentStreak: data.streak || MOCK_PERSONAL_DATA.currentStreak,
+          history: data.metrics || MOCK_PERSONAL_DATA.history,
+          latestAnalysis: {
+            ...MOCK_PERSONAL_DATA.latestAnalysis,
+            overallScore: data.avgScore || MOCK_PERSONAL_DATA.latestAnalysis.overallScore,
+          },
+          analysisCount: data.totalSessions || MOCK_PERSONAL_DATA.analysisCount,
+          journey: {
+            ...MOCK_PERSONAL_DATA.journey,
+            currentStreak: data.streak || MOCK_PERSONAL_DATA.journey.currentStreak,
+          },
         };
       } catch (error) {
         console.warn('Failed to fetch personal analytics, using mock data:', error);
