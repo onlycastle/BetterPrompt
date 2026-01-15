@@ -158,9 +158,11 @@ The UnifiedAnalyzer integrates all analysis components into a single orchestrato
 | `src/infrastructure/` | Supabase & local storage adapters | Infrastructure |
 | `src/lib/` | Shared utilities (Result type, Supabase client) | Infrastructure |
 | `src/analyzer/` | LLM analysis (prompts, dimensions, insights) | Application |
+| `src/analyzer/stages/` | Two-stage pipeline (data-analyst, content-writer) | Application |
 | `src/models/` | Zod schemas (unified-report, schema-bridge) | Domain |
 | `src/parser/` | JSONL session parsing | Infrastructure |
 | `src/search-agent/` | Knowledge curation system | Application |
+| `packages/cli/` | NPM CLI package (npx no-ai-slop) | Presentation |
 
 ### Web UI Architecture (Unified)
 
@@ -170,20 +172,34 @@ The `web-ui/` React SPA serves as the **single web interface** for all features:
 web-ui/
 ├── src/
 │   ├── pages/
-│   │   ├── BrowsePage.tsx          # Knowledge base discovery
-│   │   ├── LearnPage.tsx           # Add YouTube/URL content
-│   │   ├── DashboardPage.tsx       # Knowledge analytics
-│   │   ├── AnalysisReportPage.tsx  # Analysis report (terminal-style)
+│   │   ├── BrowsePage.tsx              # Knowledge base discovery
+│   │   ├── LearnPage.tsx               # Add YouTube/URL content
+│   │   ├── DashboardPage.tsx           # Knowledge analytics
+│   │   ├── ReportPage.tsx              # Analysis report (terminal-style)
+│   │   ├── ComparisonPage.tsx          # Compare multiple analyses
 │   │   ├── PersonalDashboardPage.tsx   # Individual growth journey
-│   │   └── EnterpriseDashboardPage.tsx # Team performance (B2B)
+│   │   ├── EnterpriseDashboardPage.tsx # Team performance (B2B)
+│   │   └── PublicResultPage.tsx        # Shared public results
 │   ├── components/
-│   │   ├── report/                 # Analysis report components
-│   │   ├── verbose/                # Hyper-personalized insights
-│   │   ├── enterprise/             # Team analytics components
-│   │   └── ui/                     # Reusable UI primitives
+│   │   ├── report/                     # Analysis report components
+│   │   ├── verbose/                    # Hyper-personalized insights
+│   │   ├── enterprise/                 # Team analytics components
+│   │   ├── personal/                   # Personal dashboard components
+│   │   ├── knowledge/                  # Knowledge base components
+│   │   ├── dashboard/                  # Dashboard widgets
+│   │   ├── auth/                       # Authentication components
+│   │   ├── ui/                         # Reusable UI primitives
+│   │   └── layout/                     # Layout components
 │   └── hooks/
-│       ├── useScrollNavigation.ts  # Section navigation (j/k, 1-8 keys)
-│       └── useAnalysisReport.ts    # Report data fetching
+│       ├── useAnalysisReport.ts        # Report data fetching
+│       ├── useScrollNavigation.ts      # Section navigation (j/k, 1-8 keys)
+│       ├── useKnowledge.ts             # Knowledge base operations
+│       ├── useLearn.ts                 # Learning/content addition
+│       ├── useReport.ts                # Report management
+│       ├── useComparison.ts            # Analysis comparison
+│       ├── useEnterprise.ts            # Enterprise/team features
+│       ├── usePersonalAnalytics.ts     # Personal analytics
+│       └── useLatestAnalysis.ts        # Latest analysis fetching
 ```
 
 **Key Features:**
@@ -191,6 +207,56 @@ web-ui/
 - Snap-scroll section navigation with keyboard shortcuts
 - Premium content blur/unlock logic
 - React Query for server state management
+- Component-based architecture with CSS Modules
+
+### CLI Package (NPM)
+
+The `packages/cli/` directory contains the standalone CLI tool published as `no-ai-slop` on npm:
+
+```
+packages/cli/
+├── src/
+│   ├── index.ts        # Main CLI entry point
+│   ├── scanner.ts      # Session directory scanning
+│   ├── uploader.ts     # API communication
+│   └── display.ts      # Terminal output formatting
+```
+
+**Usage:**
+```bash
+npx no-ai-slop          # Scan and analyze current project
+npx no-ai-slop --help   # Show help
+```
+
+**Key Features:**
+- Scans `~/.claude/projects/` for session JSONL files
+- Uploads session data to NoMoreAISlop API
+- Displays analysis results in terminal
+- Generates shareable report URLs
+- Zero configuration required
+
+**Published as:** `no-ai-slop` on npm registry
+
+### Two-Stage Analysis Pipeline
+
+The analyzer uses a two-stage Gemini pipeline for structured output. See [LLM_FLOW.md](./LLM_FLOW.md) for details.
+
+**Stage 1: Data Analyst** (`src/analyzer/stages/data-analyst.ts`)
+- Extracts behavioral patterns from session data
+- Outputs structured JSON using `responseJsonSchema`
+- Temperature: 1.0 (Gemini's recommended default)
+
+**Stage 2: Content Writer** (`src/analyzer/stages/content-writer.ts`)
+- Transforms behavioral data into personalized narrative
+- Generates dimension insights and recommendations
+- Outputs structured JSON using `responseJsonSchema`
+
+**Prompt Engineering:**
+- Prompts in `src/analyzer/stages/data-analyst-prompts.ts` and `content-writer-prompts.ts`
+- Uses PTCF framework (Persona · Task · Context · Format)
+- Zod schemas → JSON Schema via `zod-to-json-schema`
+
+**Model:** `gemini-3-flash-preview` for both stages
 
 ## Port Interfaces
 
@@ -264,12 +330,45 @@ See [DATABASE.md](./DATABASE.md) for full schema details.
 
 ## API Routes
 
-| Route | Purpose | Auth |
-|-------|---------|------|
-| `/api/reports` | Shared reports (viral) | Public |
-| `/api/analyses` | User's analysis history | Required |
-| `/api/tracking` | Daily/weekly metrics | PREMIUM |
-| `/api/knowledge` | Knowledge base | PREMIUM |
+| Route | Purpose | Auth | File |
+|-------|---------|------|------|
+| `/api/analysis` | Local and remote analysis | Optional | `src/api/routes/analysis.ts` |
+| `/api/reports` | Report sharing and OG images | Public | `src/api/routes/reports.ts` |
+| `/api/knowledge` | Knowledge base operations | PREMIUM | `src/api/routes/knowledge.ts` |
+| `/api/learn` | YouTube/URL learning | PREMIUM | `src/api/routes/learn.ts` |
+| `/api/enterprise` | Team analytics | ENTERPRISE | `src/api/routes/enterprise.ts` |
+| `/api/influencers` | Influencer management | Internal | `src/api/routes/influencers.ts` |
+
+**Key Endpoints:**
+
+**Analysis Route:**
+- `POST /api/analysis` - Analyze session data (local or remote)
+- `GET /api/analysis/:id` - Retrieve analysis by ID
+- `GET /api/analysis/latest` - Get latest analysis
+
+**Reports Route:**
+- `GET /api/reports/:shareId` - Get shared report
+- `GET /api/reports/:shareId/og-image` - Generate OG image for sharing
+- `POST /api/reports/share` - Create shareable report
+
+**Knowledge Route:**
+- `GET /api/knowledge` - List knowledge items (filterable)
+- `POST /api/knowledge` - Add new knowledge item
+- `GET /api/knowledge/:id` - Get specific knowledge item
+
+**Learn Route:**
+- `POST /api/learn/youtube` - Learn from YouTube video
+- `POST /api/learn/url` - Learn from URL content
+
+**Enterprise Route:**
+- `GET /api/enterprise/teams/:teamId` - Get team analytics
+- `GET /api/enterprise/members` - List team members
+- `POST /api/enterprise/invite` - Invite team member
+
+**Influencers Route:**
+- `GET /api/influencers` - List influencers
+- `POST /api/influencers` - Add influencer
+- `PUT /api/influencers/:id` - Update influencer
 
 ## Authentication
 

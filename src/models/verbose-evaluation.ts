@@ -118,6 +118,24 @@ export const DimensionNameEnumSchema = z.enum([
 export type DimensionNameEnum = z.infer<typeof DimensionNameEnumSchema>;
 
 /**
+ * Array of all dimension names, derived from the schema
+ * Use this constant instead of hardcoding dimension arrays
+ */
+export const DIMENSION_NAMES = DimensionNameEnumSchema.options;
+
+/**
+ * Human-readable display names for each dimension
+ */
+export const DIMENSION_DISPLAY_NAMES: Record<DimensionNameEnum, string> = {
+  aiCollaboration: 'AI Collaboration Mastery',
+  contextEngineering: 'Context Engineering',
+  toolMastery: 'Tool Mastery',
+  burnoutRisk: 'Burnout Risk Assessment',
+  aiControl: 'AI Control Index',
+  skillResilience: 'Skill Resilience',
+};
+
+/**
  * Strength within a specific dimension (full schema with evidence)
  * Used in VerboseEvaluation for storage and display
  */

@@ -14,6 +14,7 @@ import {
   StructuredAnalysisDataSchema,
   type StructuredAnalysisData,
 } from '../../models/analysis-data.js';
+import { DIMENSION_NAMES } from '../../models/verbose-evaluation.js';
 import { DATA_ANALYST_SYSTEM_PROMPT, buildDataAnalystUserPrompt } from './data-analyst-prompts.js';
 
 /**
@@ -156,18 +157,9 @@ Tool Usage: Read=${metrics.toolUsage.read}, Grep=${metrics.toolUsage.grep}, Glob
       (q) => q.quote && q.quote.length >= 10
     );
 
-    const dimensions = [
-      'aiCollaboration',
-      'contextEngineering',
-      'toolMastery',
-      'burnoutRisk',
-      'aiControl',
-      'skillResilience',
-    ] as const;
-
     // Ensure dimensionSignals has exactly 6 items (one per dimension)
     if (!Array.isArray(sanitized.dimensionSignals) || sanitized.dimensionSignals.length !== 6) {
-      sanitized.dimensionSignals = dimensions.map((dim) => {
+      sanitized.dimensionSignals = DIMENSION_NAMES.map((dim) => {
         const existing = sanitized.dimensionSignals?.find((s) => s.dimension === dim);
         return (
           existing || {
@@ -185,13 +177,13 @@ Tool Usage: Read=${metrics.toolUsage.read}, Grep=${metrics.toolUsage.grep}, Glob
         ...sanitized.analysisMetadata,
         totalQuotesAnalyzed: sanitized.analysisMetadata?.totalQuotesAnalyzed || 0,
         confidenceScore: sanitized.analysisMetadata?.confidenceScore || 0.5,
-        coverageScores: dimensions.map((dim) => ({
+        coverageScores: DIMENSION_NAMES.map((dim) => ({
           dimension: dim,
           score: 0.5,
         })),
       };
     } else if (sanitized.analysisMetadata.coverageScores.length !== 6) {
-      sanitized.analysisMetadata.coverageScores = dimensions.map((dim) => {
+      sanitized.analysisMetadata.coverageScores = DIMENSION_NAMES.map((dim) => {
         const existing = sanitized.analysisMetadata.coverageScores.find(
           (c) => c.dimension === dim
         );

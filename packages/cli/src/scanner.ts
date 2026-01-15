@@ -70,6 +70,25 @@ function parseJSONLLine(line: string): { type: string; timestamp?: string } | nu
 }
 
 /**
+ * Check if a line is a conversation message (user or assistant)
+ */
+function isConversationLine(parsed: { type: string } | null): boolean {
+  return parsed !== null && (parsed.type === 'user' || parsed.type === 'assistant');
+}
+
+/**
+ * Update timestamp bounds (min/max) with a new timestamp
+ */
+function updateTimestampBounds(
+  timestamp: string,
+  bounds: { first: Date | null; last: Date | null }
+): void {
+  const ts = new Date(timestamp);
+  if (!bounds.first || ts < bounds.first) bounds.first = ts;
+  if (!bounds.last || ts > bounds.last) bounds.last = ts;
+}
+
+/**
  * Get metadata for a session file
  */
 async function getSessionMetadata(filePath: string): Promise<SessionMetadata | null> {
@@ -80,37 +99,32 @@ async function getSessionMetadata(filePath: string): Promise<SessionMetadata | n
     if (lines.length === 0) return null;
 
     const fileName = basename(filePath, '.jsonl');
-
     let messageCount = 0;
-    let firstTimestamp: Date | null = null;
-    let lastTimestamp: Date | null = null;
+    const timestamps = { first: null as Date | null, last: null as Date | null };
 
     for (const line of lines) {
       const parsed = parseJSONLLine(line);
-      if (parsed && (parsed.type === 'user' || parsed.type === 'assistant')) {
+      if (isConversationLine(parsed)) {
         messageCount++;
-        if (parsed.timestamp) {
-          const ts = new Date(parsed.timestamp);
-          if (!firstTimestamp || ts < firstTimestamp) firstTimestamp = ts;
-          if (!lastTimestamp || ts > lastTimestamp) lastTimestamp = ts;
+        if (parsed?.timestamp) {
+          updateTimestampBounds(parsed.timestamp, timestamps);
         }
       }
     }
 
-    if (!firstTimestamp || !lastTimestamp) return null;
+    if (!timestamps.first || !timestamps.last) return null;
 
     const projectDirName = basename(join(filePath, '..'));
     const projectPath = decodeProjectPath(projectDirName);
-
     const durationSeconds = Math.floor(
-      (lastTimestamp.getTime() - firstTimestamp.getTime()) / 1000
+      (timestamps.last.getTime() - timestamps.first.getTime()) / 1000
     );
 
     return {
       sessionId: fileName,
       projectPath,
       projectName: getProjectName(projectPath),
-      timestamp: firstTimestamp,
+      timestamp: timestamps.first,
       messageCount,
       durationSeconds,
       filePath,

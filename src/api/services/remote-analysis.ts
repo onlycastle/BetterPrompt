@@ -168,31 +168,8 @@ function parseRemoteSession(data: RemoteSessionData): ParsedSession | null {
     }
   }
 
-  // Compute stats
-  let userMessageCount = 0;
-  let assistantMessageCount = 0;
-  let toolCallCount = 0;
-  let totalInputTokens = 0;
-  let totalOutputTokens = 0;
-  const toolsUsed = new Set<string>();
-
-  for (const msg of parsedMessages) {
-    if (msg.role === 'user') {
-      userMessageCount++;
-    } else {
-      assistantMessageCount++;
-      if (msg.toolCalls) {
-        toolCallCount += msg.toolCalls.length;
-        for (const tool of msg.toolCalls) {
-          toolsUsed.add(tool.name);
-        }
-      }
-      if (msg.tokenUsage) {
-        totalInputTokens += msg.tokenUsage.input;
-        totalOutputTokens += msg.tokenUsage.output;
-      }
-    }
-  }
+  // Compute stats from parsed messages
+  const stats = computeMessageStats(parsedMessages);
 
   return {
     sessionId: data.sessionId,
@@ -202,14 +179,49 @@ function parseRemoteSession(data: RemoteSessionData): ParsedSession | null {
     durationSeconds,
     claudeCodeVersion,
     messages: parsedMessages,
-    stats: {
-      userMessageCount,
-      assistantMessageCount,
-      toolCallCount,
-      uniqueToolsUsed: Array.from(toolsUsed).sort(),
-      totalInputTokens,
-      totalOutputTokens,
-    },
+    stats,
+  };
+}
+
+/**
+ * Compute session statistics from parsed messages
+ */
+function computeMessageStats(messages: ParsedSession['messages']): ParsedSession['stats'] {
+  let userMessageCount = 0;
+  let assistantMessageCount = 0;
+  let toolCallCount = 0;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  const toolsUsed = new Set<string>();
+
+  for (const msg of messages) {
+    if (msg.role === 'user') {
+      userMessageCount++;
+      continue;
+    }
+
+    assistantMessageCount++;
+
+    if (msg.toolCalls) {
+      toolCallCount += msg.toolCalls.length;
+      for (const tool of msg.toolCalls) {
+        toolsUsed.add(tool.name);
+      }
+    }
+
+    if (msg.tokenUsage) {
+      totalInputTokens += msg.tokenUsage.input;
+      totalOutputTokens += msg.tokenUsage.output;
+    }
+  }
+
+  return {
+    userMessageCount,
+    assistantMessageCount,
+    toolCallCount,
+    uniqueToolsUsed: Array.from(toolsUsed).sort(),
+    totalInputTokens,
+    totalOutputTokens,
   };
 }
 

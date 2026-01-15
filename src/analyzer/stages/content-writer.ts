@@ -10,7 +10,12 @@
 
 import { GeminiClient, type GeminiClientConfig } from '../clients/gemini-client.js';
 import type { ParsedSession } from '../../domain/models/analysis.js';
-import { VerboseLLMResponseSchema, type VerboseLLMResponse } from '../../models/verbose-evaluation.js';
+import {
+  VerboseLLMResponseSchema,
+  DIMENSION_NAMES,
+  DIMENSION_DISPLAY_NAMES,
+  type VerboseLLMResponse,
+} from '../../models/verbose-evaluation.js';
 import type { StructuredAnalysisData } from '../../models/analysis-data.js';
 import {
   CONTENT_WRITER_SYSTEM_PROMPT,
@@ -117,21 +122,12 @@ export class ContentWriterStage {
 
     // Ensure dimensionInsights has exactly 6 items
     if (!Array.isArray(sanitized.dimensionInsights) || sanitized.dimensionInsights.length !== 6) {
-      const dimensions = [
-        { key: 'aiCollaboration', name: 'AI Collaboration Mastery' },
-        { key: 'contextEngineering', name: 'Context Engineering' },
-        { key: 'toolMastery', name: 'Tool Mastery' },
-        { key: 'burnoutRisk', name: 'Burnout Risk Assessment' },
-        { key: 'aiControl', name: 'AI Control Index' },
-        { key: 'skillResilience', name: 'Skill Resilience' },
-      ] as const;
-
-      sanitized.dimensionInsights = dimensions.map((dim) => {
-        const existing = sanitized.dimensionInsights?.find((d) => d.dimension === dim.key);
+      sanitized.dimensionInsights = DIMENSION_NAMES.map((dim) => {
+        const existing = sanitized.dimensionInsights?.find((d) => d.dimension === dim);
         return (
           existing || {
-            dimension: dim.key,
-            dimensionDisplayName: dim.name,
+            dimension: dim,
+            dimensionDisplayName: DIMENSION_DISPLAY_NAMES[dim],
             strengths: [],
             growthAreas: [],
           }
