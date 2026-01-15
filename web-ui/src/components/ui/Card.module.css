@@ -1,28 +1,26 @@
 /**
- * Card Component - Glassmorphism Style
+ * Card Component - Notebook Sketch Style
  */
 
 .card {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-card);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   transition:
     box-shadow var(--transition-normal),
-    transform var(--transition-normal),
+    transform var(--transition-fast),
     border-color var(--transition-normal);
 }
 
 .hover:hover {
-  box-shadow: var(--shadow-card-hover);
-  transform: translateY(-4px);
-  border-color: rgba(14, 165, 233, 0.15);
+  box-shadow: var(--shadow-md);
+  transform: rotate(-0.5deg);
+  border-color: var(--sketch-cyan);
   cursor: pointer;
 }
 
-/* Gradient accent border on top */
+/* Accent border on top - sketch style */
 .accent {
   border-top: none;
   position: relative;
@@ -36,29 +34,24 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: var(--gradient-primary);
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--sketch-cyan);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
-/* Gradient border variant */
+/* Colored border variant */
 .gradientBorder {
-  background:
-    linear-gradient(var(--glass-bg), var(--glass-bg)) padding-box,
-    var(--gradient-primary) border-box;
-  border: 2px solid transparent;
+  border: 2px solid var(--sketch-cyan);
 }
 
-/* Glow effect variant */
+/* Highlighted variant */
 .glow {
-  box-shadow:
-    var(--shadow-card),
-    var(--shadow-glow);
+  background: var(--sketch-yellow-light);
+  border-color: var(--sketch-yellow);
 }
 
 .glow:hover {
-  box-shadow:
-    var(--shadow-card-hover),
-    var(--shadow-glow-strong);
+  background: var(--sketch-yellow-soft);
+  transform: rotate(-0.5deg);
 }
 
 /* Padding variants */
@@ -103,11 +96,10 @@
   gap: var(--space-xs);
   margin-top: var(--space-md);
   padding-top: var(--space-md);
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px dashed var(--ink-muted);
 }
 
-/* Solid variant (no glass) */
+/* Solid variant */
 .solid {
   background: var(--surface-1);
-  backdrop-filter: none;
 }

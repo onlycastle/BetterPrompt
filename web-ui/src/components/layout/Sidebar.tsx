@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { BookOpen, GraduationCap, LayoutDashboard, Brain, ChevronLeft, ChevronRight, Building2, User } from 'lucide-react';
+import { BookOpen, GraduationCap, LayoutDashboard, ChevronLeft, ChevronRight, Building2, User } from 'lucide-react';
 import styles from './Sidebar.module.css';
 
 const NAV_ITEMS = [
-  { to: '/', icon: BookOpen, label: 'Knowledge Base' },
+  { to: '/personal', icon: User, label: 'My Profile' },
+  { to: '/browse', icon: BookOpen, label: 'Knowledge Base' },
   { to: '/learn', icon: GraduationCap, label: 'Learn' },
   { to: '/dashboard', icon: LayoutDashboard, label: 'KB Dashboard' },
-  { to: '/personal', icon: User, label: 'Personal' },
   { to: '/enterprise', icon: Building2, label: 'Enterprise' },
 ];
 
@@ -28,7 +28,7 @@ export function Sidebar({ onCollapseChange }: SidebarProps) {
     <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`}>
       <div className={styles.header}>
         <div className={styles.logo}>
-          <Brain size={28} />
+          <img src="/public/logo.png" alt="No More AI Slop" className={styles.logoIcon} />
           {!collapsed && <span className={styles.logoText}>No More AI Slop</span>}
         </div>
         <button

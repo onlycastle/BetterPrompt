@@ -150,6 +150,12 @@ Tool Usage: Read=${metrics.toolUsage.read}, Grep=${metrics.toolUsage.grep}, Glob
       sanitized.extractedQuotes = [];
     }
 
+    // Filter out quotes that don't meet the minimum length requirement (10 chars)
+    // This prevents schema validation failures when LLM generates short quotes
+    sanitized.extractedQuotes = sanitized.extractedQuotes.filter(
+      (q) => q.quote && q.quote.length >= 10
+    );
+
     const dimensions = [
       'aiCollaboration',
       'contextEngineering',

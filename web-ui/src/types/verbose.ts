@@ -12,6 +12,25 @@ import type { TypeDistribution } from './report.js';
 export type { CodingStyleType, AIControlLevel, TypeDistribution };
 
 // ============================================================================
+// Analyzed Session Info - Metadata about sessions included in analysis
+// ============================================================================
+
+export interface AnalyzedSessionInfo {
+  /** JSONL file name (e.g., "abc123.jsonl") */
+  fileName: string;
+  /** Session UUID */
+  sessionId: string;
+  /** Last segment of project path */
+  projectName: string;
+  /** Session start timestamp (ISO) */
+  startTime: string;
+  /** Number of messages in session */
+  messageCount: number;
+  /** Session duration in minutes */
+  durationMinutes: number;
+}
+
+// ============================================================================
 // Dimension Insights
 // NOTE: Evidence is now a string array (just quotes) instead of object array
 // to reduce nesting depth for Gemini API compatibility.
@@ -79,6 +98,8 @@ export interface VerboseAnalysisData {
   // Session metrics (computed)
   avgPromptLength?: number;
   avgTurnsPerSession?: number;
+  // Analyzed session files (metadata for display)
+  analyzedSessions?: AnalyzedSessionInfo[];
   primaryType: CodingStyleType;
   controlLevel: AIControlLevel;
   distribution: TypeDistribution;

@@ -1,3 +1,7 @@
+/**
+ * Header Component - Notebook Sketch Style
+ */
+
 .header {
   display: flex;
   align-items: flex-start;
@@ -13,16 +17,17 @@
 }
 
 .title {
-  font-family: var(--font-display);
+  font-family: var(--font-primary);
   font-size: var(--text-3xl);
   font-weight: var(--weight-bold);
-  color: var(--text-primary);
+  color: var(--ink-primary);
   line-height: var(--leading-tight);
 }
 
 .subtitle {
   font-size: var(--text-md);
   color: var(--text-secondary);
+  font-family: var(--font-primary);
 }
 
 .actions {

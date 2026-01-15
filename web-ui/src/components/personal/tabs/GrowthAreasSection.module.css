@@ -1,5 +1,5 @@
 /**
- * GrowthAreasSection Styles
+ * GrowthAreasSection - Notebook Sketch Style
  */
 
 .container {
@@ -9,38 +9,38 @@
 }
 
 .areaCard {
-  border-left: 3px solid #F59E0B;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(251, 191, 36, 0.2);
-  border-left: 3px solid #F59E0B;
-  box-shadow: 0 8px 32px rgba(251, 191, 36, 0.08);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-left: 4px solid var(--sketch-yellow);
+  border-radius: var(--radius-md);
+  box-shadow: 2px 2px 0 var(--ink-muted);
+  padding: var(--space-lg);
 }
 
 .title {
-  font-family: var(--font-display);
+  font-family: var(--font-primary);
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
-  color: #0F172A;
+  color: var(--ink-primary);
   margin: 0 0 var(--space-xs) 0;
 }
 
 .description {
-  font-family: var(--font-body);
+  font-family: var(--font-primary);
   font-size: var(--text-sm);
-  color: #475569;
+  color: var(--text-secondary);
   line-height: var(--leading-relaxed);
   margin: 0 0 var(--space-md) 0;
 }
 
 .quote {
-  font-family: var(--font-body);
+  font-family: var(--font-primary);
   font-size: var(--text-sm);
-  color: #0F172A;
+  color: var(--ink-primary);
   font-style: italic;
   margin: 0 0 var(--space-md) 0;
   padding-left: var(--space-md);
-  border-left: 2px solid rgba(251, 191, 36, 0.3);
+  border-left: 3px solid var(--sketch-yellow);
 }
 
 .recommendation {
@@ -48,10 +48,9 @@
   align-items: flex-start;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
-  background: rgba(99, 102, 241, 0.05);
-  backdrop-filter: blur(10px);
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(99, 102, 241, 0.1);
+  background: var(--sketch-cyan-soft);
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--sketch-cyan);
 }
 
 .recommendationIcon {
@@ -60,8 +59,8 @@
 }
 
 .recommendationText {
-  font-family: var(--font-body);
+  font-family: var(--font-primary);
   font-size: var(--text-sm);
-  color: #475569;
+  color: var(--text-secondary);
   line-height: var(--leading-relaxed);
 }

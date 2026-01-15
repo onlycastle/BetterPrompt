@@ -1,6 +1,5 @@
 /**
- * Personal Dashboard Page Styles
- * Glassmorphism aesthetic with tabbed layout
+ * Personal Dashboard Page - Notebook Sketch Style
  */
 
 .page {
@@ -14,13 +13,29 @@
 
 .tabContent {
   min-height: 400px;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
   padding: var(--space-xl);
-  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.08);
+  box-shadow: 3px 3px 0 var(--ink-muted);
+}
+
+.signInHint {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--sketch-cyan);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.signInHint:hover {
+  background: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan-dark, #0369a1);
 }
 
 /* Responsive Layout */

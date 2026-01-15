@@ -1,165 +1,171 @@
+/**
+ * DimensionSection Component - Notebook Sketch Style
+ */
+
 .dimensionSection {
-  --accent: var(--neon-cyan);
+  --accent: var(--sketch-cyan);
 }
 
 /* Header */
 .sectionHeader {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: var(--space-xl);
 }
 
 .sectionIcon {
   font-size: 48px;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-md);
 }
 
 .sectionTitle {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
   color: var(--accent);
-  margin-bottom: 8px;
-  text-shadow: 0 0 20px var(--accent);
+  margin-bottom: var(--space-sm);
+  font-family: var(--font-primary);
 }
 
 .sectionSubtitle {
-  font-size: 14px;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
 }
 
 /* Score Display */
 .scoreDisplay {
   text-align: center;
-  padding: 32px 0;
+  padding: var(--space-xl) 0;
 }
 
 .scoreValue {
   font-size: 72px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--accent);
-  text-shadow: 0 0 40px var(--accent);
   line-height: 1;
+  font-family: var(--font-primary);
 }
 
 .scoreLabel {
-  font-size: 14px;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
-  margin-top: 8px;
+  margin-top: var(--space-sm);
 }
 
 .scoreLevel {
-  font-size: 14px;
-  padding: 6px 16px;
-  border-radius: 20px;
+  font-size: var(--text-sm);
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-sm);
   display: inline-block;
-  margin-top: 12px;
-  font-weight: 500;
+  margin-top: var(--space-sm);
+  font-weight: var(--weight-medium);
+  border: 1.5px solid;
 }
 
 .scoreLevel.healthy {
-  background: rgba(0, 255, 136, 0.2);
-  color: var(--neon-green);
-  border: 1px solid var(--neon-green);
+  background: var(--sketch-green-light);
+  color: var(--sketch-green-text);
+  border-color: var(--sketch-green);
 }
 
 .scoreLevel.balanced {
-  background: rgba(0, 212, 255, 0.2);
-  color: var(--neon-cyan);
-  border: 1px solid var(--neon-cyan);
+  background: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan-text);
+  border-color: var(--sketch-cyan);
 }
 
 .scoreLevel.moderate {
-  background: rgba(255, 204, 0, 0.2);
-  color: var(--neon-yellow);
-  border: 1px solid var(--neon-yellow);
+  background: var(--sketch-yellow-light);
+  color: var(--sketch-yellow-dark);
+  border-color: var(--sketch-yellow);
 }
 
 .scoreLevel.warning {
-  background: rgba(255, 68, 68, 0.2);
-  color: var(--neon-red);
-  border: 1px solid var(--neon-red);
+  background: var(--sketch-red-light);
+  color: var(--sketch-red);
+  border-color: var(--sketch-red);
 }
 
 /* Interpretation */
 .interpretation {
-  font-size: 14px;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: 1.7;
-  margin: 24px 0;
-  padding: 16px;
-  background: var(--terminal-surface);
-  border-radius: 8px;
+  margin: var(--space-lg) 0;
+  padding: var(--space-md);
+  background: var(--surface-1);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--ink-muted);
   border-left: 3px solid var(--accent);
 }
 
 /* Metrics Container */
 .metricsContainer {
-  margin-top: 32px;
+  margin-top: var(--space-xl);
 }
 
 .metricRow {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-  font-size: 13px;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+  font-size: var(--text-sm);
 }
 
 .metricLabel {
   width: 160px;
   color: var(--text-secondary);
+  font-family: var(--font-primary);
 }
 
 .metricBar {
   flex: 1;
   height: 10px;
-  background: var(--terminal-elevated);
-  border-radius: 5px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
   overflow: hidden;
+  border: 1px solid var(--ink-muted);
 }
 
 .metricFill {
   height: 100%;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   transition: width 0.8s ease;
 }
 
 .metricFill.cyan {
-  background: var(--neon-cyan);
-  box-shadow: 0 0 8px var(--neon-cyan);
+  background: var(--sketch-cyan);
 }
 
 .metricFill.green {
-  background: var(--neon-green);
-  box-shadow: 0 0 8px var(--neon-green);
+  background: var(--sketch-green);
 }
 
 .metricFill.yellow {
-  background: var(--neon-yellow);
-  box-shadow: 0 0 8px var(--neon-yellow);
+  background: var(--sketch-yellow);
 }
 
 .metricFill.red {
-  background: var(--neon-red);
-  box-shadow: 0 0 8px var(--neon-red);
+  background: var(--sketch-red);
 }
 
 .metricValue {
   width: 55px;
   text-align: right;
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
+  font-family: var(--font-primary);
 }
 
 /* Subsection Titles */
 .subsectionTitle {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
   color: var(--text-primary);
-  margin: 24px 0 12px;
+  margin: var(--space-lg) 0 var(--space-sm);
+  font-family: var(--font-primary);
 }
 
 .subsectionTitle.warning {
-  color: var(--neon-yellow);
+  color: var(--sketch-yellow-dark);
 }
 
 /* Lists */
@@ -171,55 +177,55 @@
 .recommendationsList {
   list-style: none;
   padding: 0;
-  margin: 0 0 16px 0;
+  margin: 0 0 var(--space-md) 0;
 }
 
 .strengthsList li {
-  padding: 4px 0;
-  color: var(--neon-green);
-  font-size: 13px;
+  padding: var(--space-xs) 0;
+  color: var(--sketch-green-text);
+  font-size: var(--text-sm);
 }
 
 .strengthsList li::before {
   content: '✓ ';
-  margin-right: 4px;
+  margin-right: var(--space-xs);
 }
 
 .signalsList li {
-  padding: 4px 0;
-  color: var(--neon-purple);
-  font-size: 13px;
+  padding: var(--space-xs) 0;
+  color: var(--sketch-blue);
+  font-size: var(--text-sm);
 }
 
 .signalsList li::before {
   content: '→ ';
-  margin-right: 4px;
+  margin-right: var(--space-xs);
 }
 
 .warningsList li {
-  padding: 4px 0;
-  color: var(--neon-yellow);
-  font-size: 13px;
+  padding: var(--space-xs) 0;
+  color: var(--sketch-yellow-dark);
+  font-size: var(--text-sm);
 }
 
 .warningsList li::before {
   content: '! ';
-  margin-right: 4px;
+  margin-right: var(--space-xs);
 }
 
 .growthList li,
 .tipsList li,
 .recommendationsList li {
-  padding: 4px 0;
-  color: var(--text-muted);
-  font-size: 13px;
+  padding: var(--space-xs) 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
 }
 
 .growthList li::before,
 .tipsList li::before,
 .recommendationsList li::before {
   content: '→ ';
-  margin-right: 4px;
+  margin-right: var(--space-xs);
 }
 
 /* Blurred Content */
@@ -232,16 +238,17 @@
 /* Unlock Prompt */
 .unlockPrompt {
   text-align: center;
-  padding: 20px;
-  margin-top: 24px;
-  background: rgba(255, 204, 0, 0.08);
-  border: 1px dashed var(--neon-yellow);
-  border-radius: 8px;
+  padding: var(--space-lg);
+  margin-top: var(--space-lg);
+  background: var(--sketch-yellow-light);
+  border: 2px dashed var(--sketch-yellow);
+  border-radius: var(--radius-md);
 }
 
 .unlockPromptText {
-  font-size: 13px;
-  color: var(--neon-yellow);
+  font-size: var(--text-sm);
+  color: var(--sketch-yellow-dark);
+  font-family: var(--font-primary);
 }
 
 /* Responsive Design */
@@ -252,6 +259,6 @@
 
   .metricLabel {
     width: 120px;
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
 }

@@ -1,6 +1,5 @@
 /**
- * TypeResultMinimal Styles
- * Notion/Linear aesthetic
+ * TypeResultMinimal - Notebook Sketch Style
  */
 
 .container {
@@ -24,24 +23,24 @@
 }
 
 .typeName {
-  font-family: var(--font-display);
+  font-family: var(--font-primary);
   font-size: var(--text-2xl);
   font-weight: var(--weight-bold);
-  color: #0F172A;
+  color: var(--ink-primary);
   margin: 0 0 var(--space-xs) 0;
 }
 
 .tagline {
-  font-family: var(--font-body);
+  font-family: var(--font-primary);
   font-size: var(--text-md);
-  color: #374151;
+  color: var(--text-secondary);
   margin: 0;
 }
 
 .description {
-  font-family: var(--font-body);
+  font-family: var(--font-primary);
   font-size: var(--text-md);
-  color: #374151;
+  color: var(--text-secondary);
   line-height: var(--leading-relaxed);
   margin: 0 0 var(--space-lg) 0;
 }
@@ -54,27 +53,26 @@
 }
 
 .strengthBadge {
-  font-family: var(--font-body);
+  font-family: var(--font-primary);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  color: #059669;
-  background: rgba(16, 185, 129, 0.12);
-  backdrop-filter: blur(10px);
+  color: var(--sketch-green-text);
+  background: var(--sketch-green-soft);
   padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--sketch-green);
 }
 
 .distributionSection {
   padding-top: var(--space-lg);
-  border-top: 1px solid rgba(14, 165, 233, 0.1);
+  border-top: 2px dashed var(--ink-muted);
 }
 
 .sectionLabel {
-  font-family: var(--font-body);
+  font-family: var(--font-primary);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  color: #94A3B8;
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 0 0 var(--space-md) 0;
@@ -94,13 +92,12 @@
 }
 
 .distributionRow.primary {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
+  background: var(--surface-1);
   margin: 0 calc(-1 * var(--space-md));
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(14, 165, 233, 0.1);
-  box-shadow: 0 4px 16px rgba(14, 165, 233, 0.06);
+  border: 2px solid var(--sketch-green);
+  box-shadow: 2px 2px 0 var(--ink-muted);
 }
 
 .distEmoji {
@@ -110,65 +107,65 @@
 }
 
 .distName {
-  font-family: var(--font-body);
+  font-family: var(--font-primary);
   font-size: var(--text-sm);
-  color: #374151;
+  color: var(--text-secondary);
   width: 120px;
 }
 
 .primary .distName {
-  color: #0F172A;
+  color: var(--ink-primary);
   font-weight: var(--weight-medium);
 }
 
 .distBar {
   flex: 1;
-  height: 6px;
-  background: rgba(148, 163, 184, 0.15);
-  border-radius: var(--radius-full);
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--ink-muted);
   overflow: hidden;
 }
 
 .distFill {
   height: 100%;
-  background: linear-gradient(135deg, #0EA5E9 0%, #06B6D4 100%);
-  border-radius: var(--radius-full);
+  background: var(--sketch-cyan);
+  border-radius: var(--radius-sm);
   transition: width var(--transition-normal);
-  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.2);
 }
 
 .primary .distBar {
-  background: rgba(16, 185, 129, 0.2);
+  background: var(--sketch-green-soft);
+  border-color: var(--sketch-green);
 }
 
 .primary .distFill {
-  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+  background: var(--sketch-green);
 }
 
 .distPct {
-  font-family: var(--font-mono);
+  font-family: var(--font-primary);
   font-size: var(--text-sm);
-  color: #94A3B8;
+  color: var(--text-tertiary);
   width: 40px;
   text-align: right;
 }
 
 .primary .distPct {
-  color: #0F172A;
+  color: var(--ink-primary);
   font-weight: var(--weight-medium);
 }
 
 .footer {
   margin-top: var(--space-lg);
   padding-top: var(--space-md);
-  border-top: 1px solid rgba(14, 165, 233, 0.1);
+  border-top: 2px dashed var(--ink-muted);
 }
 
 .sessionsLabel {
-  font-family: var(--font-body);
+  font-family: var(--font-primary);
   font-size: var(--text-sm);
-  color: #94A3B8;
+  color: var(--text-tertiary);
 }
 
 /* Responsive */

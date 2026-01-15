@@ -45,7 +45,7 @@ export type ShareToken = z.infer<typeof ShareTokenSchema>;
 export const SharedReportSchema = z.object({
   id: z.string().uuid(),
 
-  // Short URL identifier (e.g., "abc123" for nomoreaislop.xyz/r/abc123)
+  // Short URL identifier (e.g., "abc123" for www.nomoreaislop.xyz/r/abc123)
   reportId: z.string().min(6).max(20),
 
   // Access control
@@ -226,7 +226,7 @@ export function generateReportId(): string {
 /**
  * Build share URL for a report
  */
-export function buildShareUrl(reportId: string, baseUrl = 'https://nomoreaislop.xyz'): string {
+export function buildShareUrl(reportId: string, baseUrl = 'https://www.nomoreaislop.xyz'): string {
   return `${baseUrl}/r/${reportId}`;
 }
 

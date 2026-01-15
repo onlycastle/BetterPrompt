@@ -25,7 +25,7 @@ export function GrowthAreasSection({ areas }: GrowthAreasSectionProps) {
 
           {area.evidence.length > 0 && (
             <blockquote className={styles.quote}>
-              "{area.evidence[0].quote}"
+              "{area.evidence[0]}"
             </blockquote>
           )}
 

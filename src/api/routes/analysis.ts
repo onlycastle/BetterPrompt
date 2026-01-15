@@ -1,13 +1,20 @@
 /**
  * Analysis API Routes
  *
- * Endpoints for loading analysis data from local storage.
- * Bridges the CLI-generated local analysis files with the React SPA.
+ * Endpoints for:
+ * 1. Loading analysis data from local storage (CLI → React SPA bridge)
+ * 2. Remote analysis from npx CLI (POST /api/analysis/remote)
+ * 3. Fetching remote results by ID (GET /api/analysis/results/:resultId)
  */
 
 import { Router, Request, Response } from 'express';
 import { loadAnalysisLocally, listLocalAnalyses, LocalAnalysis } from '../../utils/local-analysis.js';
 import type { VerboseEvaluation } from '../../models/verbose-evaluation.js';
+import {
+  analyzeRemoteSessions,
+  loadRemoteResult,
+  type AnalysisRequest,
+} from '../services/remote-analysis.js';
 
 const router = Router();
 
@@ -87,6 +94,81 @@ router.get('/local/:localId', async (req: Request, res: Response): Promise<void>
     console.error('Error loading local analysis:', error);
     res.status(500).json({
       error: 'Failed to load analysis',
+      message: getErrorMessage(error),
+    });
+  }
+});
+
+/**
+ * POST /api/analysis/remote
+ * Remote analysis from CLI - receives session data, runs analysis, returns result
+ *
+ * Privacy: Raw session data is processed and immediately discarded.
+ * Only the analysis result is stored.
+ */
+router.post('/remote', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const request = req.body as AnalysisRequest;
+
+    // Validate request
+    if (!request.sessions || !Array.isArray(request.sessions) || request.sessions.length === 0) {
+      res.status(400).json({
+        code: 'INVALID_REQUEST',
+        message: 'At least one session is required',
+      });
+      return;
+    }
+
+    // Run analysis
+    const result = await analyzeRemoteSessions(request);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error in remote analysis:', error);
+    res.status(500).json({
+      code: 'ANALYSIS_FAILED',
+      message: getErrorMessage(error),
+    });
+  }
+});
+
+/**
+ * GET /api/analysis/results/:resultId
+ * Fetch analysis result by ID (for web UI)
+ */
+router.get('/results/:resultId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const resultIdParam = req.params.resultId;
+    const resultId = Array.isArray(resultIdParam) ? resultIdParam[0] : resultIdParam;
+
+    if (!resultId) {
+      res.status(400).json({
+        error: 'Invalid request',
+        message: 'resultId is required',
+      });
+      return;
+    }
+
+    const result = await loadRemoteResult(resultId);
+
+    if (!result) {
+      res.status(404).json({
+        error: 'Result not found',
+        message: 'Analysis result not found. It may have expired.',
+      });
+      return;
+    }
+
+    // Return full or blurred data based on payment status
+    res.json({
+      resultId,
+      isPaid: result.isPaid,
+      evaluation: result.evaluation,
+    });
+  } catch (error) {
+    console.error('Error loading remote result:', error);
+    res.status(500).json({
+      error: 'Failed to load result',
       message: getErrorMessage(error),
     });
   }

@@ -1,6 +1,10 @@
+/**
+ * Spinner Component - Notebook Sketch Style
+ */
+
 .spinner {
   animation: spin 1s linear infinite;
-  color: var(--accent-primary);
+  color: var(--sketch-cyan);
 }
 
 @keyframes spin {
@@ -19,5 +23,6 @@
 
 .message {
   color: var(--text-secondary);
-  font-size: var(--font-size-md);
+  font-size: var(--text-md);
+  font-family: var(--font-primary);
 }

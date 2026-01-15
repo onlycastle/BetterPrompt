@@ -20,7 +20,7 @@ import {
 const router = Router();
 
 // Base URL for share links (configure in env)
-const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://nomoreaislop.xyz';
+const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://www.nomoreaislop.xyz';
 
 /**
  * Generate a short, URL-friendly report ID (8 alphanumeric characters)
@@ -342,7 +342,7 @@ function generateOGImageSVG(typeResult: TypeResult): string {
   <!-- CTA -->
   <text x="600" y="550" text-anchor="middle"
         font-family="monospace" font-size="24" fill="#00d4ff">
-    nomoreaislop.xyz
+    www.nomoreaislop.xyz
   </text>
 
   <!-- Scanlines effect -->

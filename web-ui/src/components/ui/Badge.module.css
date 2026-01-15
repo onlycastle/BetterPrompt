@@ -1,17 +1,19 @@
 /**
- * Badge Component - Glassmorphism Style
+ * Badge Component - Notebook Sketch Style
  */
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
+  font-family: var(--font-primary);
   font-weight: var(--weight-medium);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-sm);
   white-space: nowrap;
   font-size: var(--text-xs);
   line-height: 1;
   transition: all var(--transition-fast);
+  border: 1.5px solid var(--ink-muted);
 }
 
 /* Sizes */
@@ -34,40 +36,45 @@
 }
 
 /* ============================================
-   Variants
+   Variants - Sketch Style
    ============================================ */
 .default {
   background-color: var(--surface-2);
   color: var(--text-secondary);
+  border-color: var(--ink-muted);
 }
 
 .success {
-  background-color: var(--accent-emerald-soft);
-  color: var(--accent-emerald);
+  background-color: var(--sketch-green-light);
+  color: var(--sketch-green-text);
+  border-color: var(--sketch-green);
 }
 
 .warning {
-  background-color: var(--accent-amber-soft);
-  color: var(--accent-amber);
+  background-color: var(--sketch-yellow-light);
+  color: var(--sketch-yellow-dark);
+  border-color: var(--sketch-yellow);
 }
 
 .error {
-  background-color: var(--accent-rose-soft);
-  color: var(--accent-rose);
+  background-color: var(--sketch-red-light);
+  color: var(--sketch-red);
+  border-color: var(--sketch-red);
 }
 
 .info {
-  background-color: var(--accent-primary-soft);
-  color: var(--accent-primary);
+  background-color: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan-text);
+  border-color: var(--sketch-cyan);
 }
 
 /* ============================================
-   Gradient Variant - Premium Style
+   Primary Variant - Solid Cyan
    ============================================ */
 .gradient {
-  background: var(--gradient-primary);
-  color: var(--text-on-gradient);
-  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.2);
+  background: var(--sketch-cyan);
+  color: var(--bg-paper);
+  border-color: var(--ink-primary);
 }
 
 .gradient.sm,
@@ -76,13 +83,11 @@
 }
 
 /* ============================================
-   Glass Variant
+   Glass Variant - Now flat sketch style
    ============================================ */
 .glass {
-  background: var(--glass-bg-subtle);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--glass-border-subtle);
+  background: var(--surface-1);
+  border: 1.5px solid var(--ink-secondary);
   color: var(--text-primary);
 }
 
@@ -91,36 +96,36 @@
    ============================================ */
 .outline {
   background: transparent;
-  border: 1px solid currentColor;
+  border: 1.5px solid currentColor;
 }
 
 .outlineSuccess {
-  color: var(--accent-emerald);
-  border-color: var(--accent-emerald);
+  color: var(--sketch-green-text);
+  border-color: var(--sketch-green);
 }
 
 .outlineWarning {
-  color: var(--accent-amber);
-  border-color: var(--accent-amber);
+  color: var(--sketch-yellow-dark);
+  border-color: var(--sketch-yellow);
 }
 
 .outlineError {
-  color: var(--accent-rose);
-  border-color: var(--accent-rose);
+  color: var(--sketch-red);
+  border-color: var(--sketch-red);
 }
 
 .outlineInfo {
-  color: var(--accent-primary);
-  border-color: var(--accent-primary);
+  color: var(--sketch-cyan-text);
+  border-color: var(--sketch-cyan);
 }
 
 /* ============================================
-   Platform Variants - Solid with High Contrast
+   Platform Variants - Solid with Border
    ============================================ */
 .platform {
   color: white;
   font-weight: var(--weight-semibold);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1.5px solid var(--ink-primary);
 }
 
 .platform-youtube {

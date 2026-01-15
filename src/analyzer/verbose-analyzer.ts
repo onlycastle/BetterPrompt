@@ -15,6 +15,7 @@ import {
   type VerboseEvaluation,
   type VerboseLLMResponse,
   VerboseLLMResponseSchema,
+  type AnalyzedSessionInfo,
 } from '../models/verbose-evaluation.js';
 import {
   VERBOSE_SYSTEM_PROMPT,
@@ -80,32 +81,34 @@ function sanitizeEvidence(evidence: string[]): string[] {
 
 /**
  * Sanitize DimensionStrength
+ * Note: evidence may be undefined when using LLMDimensionStrengthSchema (no evidence field)
  */
 function sanitizeStrength(strength: {
   title: string;
   description: string;
-  evidence: string[];
-}): typeof strength {
+  evidence?: string[];
+}): { title: string; description: string; evidence: string[] } {
   return {
     title: truncate(strength.title, STRING_LIMITS.title),
     description: truncate(strength.description, STRING_LIMITS.description),
-    evidence: sanitizeEvidence(strength.evidence),
+    evidence: strength.evidence ? sanitizeEvidence(strength.evidence) : [],
   };
 }
 
 /**
  * Sanitize DimensionGrowthArea
+ * Note: evidence may be undefined when using LLMDimensionGrowthAreaSchema (no evidence field)
  */
 function sanitizeGrowthArea(area: {
   title: string;
   description: string;
-  evidence: string[];
+  evidence?: string[];
   recommendation: string;
-}): typeof area {
+}): { title: string; description: string; evidence: string[]; recommendation: string } {
   return {
     title: truncate(area.title, STRING_LIMITS.title),
     description: truncate(area.description, STRING_LIMITS.description),
-    evidence: sanitizeEvidence(area.evidence),
+    evidence: area.evidence ? sanitizeEvidence(area.evidence) : [],
     recommendation: truncate(area.recommendation, STRING_LIMITS.recommendation),
   };
 }
@@ -160,6 +163,20 @@ function sanitizeLLMResponse(input: unknown): unknown {
   }
 
   return result;
+}
+
+/**
+ * Extract session info from ParsedSession array for display purposes
+ */
+function extractAnalyzedSessions(sessions: ParsedSession[]): AnalyzedSessionInfo[] {
+  return sessions.map((session) => ({
+    fileName: `${session.sessionId}.jsonl`,
+    sessionId: session.sessionId,
+    projectName: session.projectPath.split('/').pop() || 'Unknown',
+    startTime: session.startTime.toISOString(),
+    messageCount: session.messages.length,
+    durationMinutes: Math.round(session.durationSeconds / 60),
+  }));
 }
 
 /**
@@ -357,6 +374,9 @@ export class VerboseAnalyzer {
     // Stage 2: Transform into narrative
     const verboseResponse = await this.contentWriter.transform(analysisData, sessions);
 
+    // Extract session file info for display
+    const analyzedSessions = extractAnalyzedSessions(sessions);
+
     // Create full evaluation with metadata
     const evaluation: VerboseEvaluation = {
       sessionId: sessions[sessions.length - 1].sessionId,
@@ -364,6 +384,7 @@ export class VerboseAnalyzer {
       sessionsAnalyzed: sessions.length,
       avgPromptLength: Math.round(metrics.avgPromptLength),
       avgTurnsPerSession: Math.round(metrics.avgTurnsPerSession * 10) / 10,
+      analyzedSessions,
       ...verboseResponse,
     };
 
@@ -388,6 +409,9 @@ export class VerboseAnalyzer {
         const response = await this.callLLM(sessions, metrics);
         const parsed = this.parseResponse(response);
 
+        // Extract session file info for display
+        const analyzedSessions = extractAnalyzedSessions(sessions);
+
         // Add metadata to create full VerboseEvaluation
         const evaluation: VerboseEvaluation = {
           sessionId: sessions[sessions.length - 1].sessionId,
@@ -395,6 +419,7 @@ export class VerboseAnalyzer {
           sessionsAnalyzed: sessions.length,
           avgPromptLength: Math.round(metrics.avgPromptLength),
           avgTurnsPerSession: Math.round(metrics.avgTurnsPerSession * 10) / 10,
+          analyzedSessions,
           ...parsed,
         };
 

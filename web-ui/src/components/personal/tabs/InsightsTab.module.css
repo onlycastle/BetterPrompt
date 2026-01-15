@@ -1,5 +1,5 @@
 /**
- * InsightsTab Styles
+ * InsightsTab - Notebook Sketch Style
  */
 
 .container {
@@ -11,16 +11,16 @@
 }
 
 .sectionTitle {
-  font-family: var(--font-display);
+  font-family: var(--font-primary);
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
-  color: #0F172A;
+  color: var(--ink-primary);
   margin: 0 0 var(--space-xs) 0;
 }
 
 .sectionDescription {
-  font-family: var(--font-body);
+  font-family: var(--font-primary);
   font-size: var(--text-sm);
-  color: #94A3B8;
+  color: var(--text-tertiary);
   margin: 0 0 var(--space-lg) 0;
 }

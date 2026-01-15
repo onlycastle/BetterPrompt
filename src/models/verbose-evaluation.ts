@@ -13,6 +13,24 @@ import { z } from 'zod';
 import { CodingStyleTypeSchema, AIControlLevelSchema } from './coding-style.js';
 
 // ============================================================================
+// ANALYZED SESSION INFO - Metadata about sessions included in analysis
+// ============================================================================
+
+/**
+ * Information about a single session that was analyzed
+ * Used to display which session files were included in the analysis
+ */
+export const AnalyzedSessionInfoSchema = z.object({
+  fileName: z.string().describe('JSONL file name (e.g., "abc123.jsonl")'),
+  sessionId: z.string().describe('Session UUID'),
+  projectName: z.string().describe('Last segment of project path'),
+  startTime: z.string().datetime().describe('Session start timestamp (ISO)'),
+  messageCount: z.number().describe('Number of messages in session'),
+  durationMinutes: z.number().describe('Session duration in minutes'),
+});
+export type AnalyzedSessionInfo = z.infer<typeof AnalyzedSessionInfoSchema>;
+
+// ============================================================================
 // FREE TIER SCHEMAS
 // ============================================================================
 
@@ -283,6 +301,10 @@ export const VerboseEvaluationSchema = z.object({
   // Session metrics (computed, not from LLM)
   avgPromptLength: z.number().optional(),
   avgTurnsPerSession: z.number().optional(),
+
+  // Analyzed session files (metadata for display)
+  analyzedSessions: z.array(AnalyzedSessionInfoSchema).optional()
+    .describe('List of session files that were analyzed'),
 
   // Type result (same as before)
   primaryType: CodingStyleTypeSchema,

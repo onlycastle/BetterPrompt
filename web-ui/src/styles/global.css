@@ -1,19 +1,86 @@
 /**
- * Global Styles
+ * Global Styles - Notebook Sketch Theme
  */
 
 @import './variables.css';
 @import './reset.css';
 
+/* Base styles */
 body {
-  font-family: var(--font-body);
+  font-family: var(--font-primary);
   font-size: var(--text-md);
   color: var(--text-primary);
-  background-color: var(--surface-0);
+  background-color: var(--bg-paper);
   line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Typography utilities */
+/* ============================================
+   Graph Paper Background
+   ============================================ */
+.graph-paper {
+  background-color: var(--bg-paper);
+  background-image:
+    linear-gradient(var(--bg-grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-color) 1px, transparent 1px);
+  background-size: var(--bg-grid-size) var(--bg-grid-size);
+}
+
+.graph-paper-accent {
+  background-color: var(--bg-paper);
+  background-image:
+    linear-gradient(var(--bg-grid-color-accent) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-color-accent) 1px, transparent 1px);
+  background-size: var(--bg-grid-size) var(--bg-grid-size);
+}
+
+.graph-paper-dense {
+  background-color: var(--bg-paper);
+  background-image:
+    linear-gradient(var(--bg-grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-color) 1px, transparent 1px);
+  background-size: 10px 10px;
+}
+
+/* ============================================
+   Sketchy Border Utilities
+   ============================================ */
+.sketchy {
+  filter: url(#sketchy);
+}
+
+.sketchy-light {
+  filter: url(#sketchy-light);
+}
+
+.border-sketch {
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-sm);
+}
+
+.border-sketch-light {
+  border: 1.5px solid var(--ink-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.border-sketch-accent {
+  border: 2px solid var(--sketch-cyan);
+  border-radius: var(--radius-sm);
+}
+
+/* Sketch hover effect - subtle rotation */
+.sketch-hover {
+  transition: transform var(--transition-fast);
+}
+
+.sketch-hover:hover {
+  transform: rotate(-0.5deg);
+}
+
+/* ============================================
+   Typography Utilities
+   ============================================ */
 .text-xs { font-size: var(--text-xs); }
 .text-sm { font-size: var(--text-sm); }
 .text-md { font-size: var(--text-md); }
@@ -24,6 +91,7 @@ body {
 .text-4xl { font-size: var(--text-4xl); }
 .text-5xl { font-size: var(--text-5xl); }
 
+.font-light { font-weight: var(--weight-light); }
 .font-regular { font-weight: var(--weight-regular); }
 .font-medium { font-weight: var(--weight-medium); }
 .font-semibold { font-weight: var(--weight-semibold); }
@@ -41,7 +109,23 @@ body {
 .text-secondary { color: var(--text-secondary); }
 .text-tertiary { color: var(--text-tertiary); }
 
-/* Spacing utilities */
+/* Ink colors */
+.ink-primary { color: var(--ink-primary); }
+.ink-secondary { color: var(--ink-secondary); }
+.ink-muted { color: var(--ink-muted); }
+
+/* Sketch accent text - using accessible text variants */
+.text-cyan { color: var(--sketch-cyan-text); }
+.text-yellow { color: var(--sketch-yellow-text); }
+.text-pink { color: var(--sketch-pink); }
+.text-green { color: var(--sketch-green-text); }
+.text-blue { color: var(--sketch-blue); }
+.text-orange { color: var(--sketch-orange); }
+.text-red { color: var(--sketch-red); }
+
+/* ============================================
+   Spacing Utilities
+   ============================================ */
 .mt-xs { margin-top: var(--space-xs); }
 .mt-sm { margin-top: var(--space-sm); }
 .mt-md { margin-top: var(--space-md); }
@@ -59,7 +143,9 @@ body {
 .p-lg { padding: var(--space-lg); }
 .p-xl { padding: var(--space-xl); }
 
-/* Flex utilities */
+/* ============================================
+   Flex Utilities
+   ============================================ */
 .flex { display: flex; }
 .flex-col { flex-direction: column; }
 .items-center { align-items: center; }
@@ -70,13 +156,17 @@ body {
 .gap-md { gap: var(--space-md); }
 .gap-lg { gap: var(--space-lg); }
 
-/* Grid utilities */
+/* ============================================
+   Grid Utilities
+   ============================================ */
 .grid { display: grid; }
 .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
 .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
 
-/* Truncate text */
+/* ============================================
+   Truncate Text
+   ============================================ */
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -97,12 +187,29 @@ body {
   overflow: hidden;
 }
 
-/* Background utilities */
+/* ============================================
+   Background Utilities
+   ============================================ */
+.bg-paper { background-color: var(--bg-paper); }
 .bg-surface-0 { background-color: var(--surface-0); }
 .bg-surface-1 { background-color: var(--surface-1); }
 .bg-surface-2 { background-color: var(--surface-2); }
 .bg-surface-3 { background-color: var(--surface-3); }
 
+/* Sketch accent backgrounds */
+.bg-cyan { background-color: var(--sketch-cyan); }
+.bg-cyan-light { background-color: var(--sketch-cyan-light); }
+.bg-cyan-soft { background-color: var(--sketch-cyan-soft); }
+.bg-yellow { background-color: var(--sketch-yellow); }
+.bg-yellow-light { background-color: var(--sketch-yellow-light); }
+.bg-pink { background-color: var(--sketch-pink); }
+.bg-pink-light { background-color: var(--sketch-pink-light); }
+.bg-green { background-color: var(--sketch-green); }
+.bg-green-light { background-color: var(--sketch-green-light); }
+.bg-blue { background-color: var(--sketch-blue); }
+.bg-blue-light { background-color: var(--sketch-blue-light); }
+
+/* Legacy compatibility */
 .bg-accent-primary { background-color: var(--accent-primary); }
 .bg-accent-primary-soft { background-color: var(--accent-primary-soft); }
 .bg-accent-emerald { background-color: var(--accent-emerald); }
@@ -112,7 +219,9 @@ body {
 .bg-accent-rose { background-color: var(--accent-rose); }
 .bg-accent-rose-soft { background-color: var(--accent-rose-soft); }
 
-/* Border utilities */
+/* ============================================
+   Border Utilities
+   ============================================ */
 .border { border: 1px solid var(--border-default); }
 .border-subtle { border: 1px solid var(--border-subtle); }
 .border-strong { border: 1px solid var(--border-strong); }
@@ -122,16 +231,20 @@ body {
 .border-l { border-left: 1px solid var(--border-default); }
 .border-r { border-right: 1px solid var(--border-default); }
 
-/* Shadow utilities */
+/* ============================================
+   Shadow Utilities
+   ============================================ */
+.shadow-none { box-shadow: var(--shadow-none); }
 .shadow-xs { box-shadow: var(--shadow-xs); }
 .shadow-sm { box-shadow: var(--shadow-sm); }
 .shadow-md { box-shadow: var(--shadow-md); }
 .shadow-lg { box-shadow: var(--shadow-lg); }
 .shadow-xl { box-shadow: var(--shadow-xl); }
 .shadow-card { box-shadow: var(--shadow-card); }
-.shadow-glow { box-shadow: var(--shadow-glow); }
 
-/* Border radius utilities */
+/* ============================================
+   Border Radius Utilities
+   ============================================ */
 .rounded-sm { border-radius: var(--radius-sm); }
 .rounded-md { border-radius: var(--radius-md); }
 .rounded-lg { border-radius: var(--radius-lg); }
@@ -139,52 +252,47 @@ body {
 .rounded-2xl { border-radius: var(--radius-2xl); }
 .rounded-full { border-radius: var(--radius-full); }
 
-/* Glass effect utilities */
+/* ============================================
+   Glass Effect (Simplified for flat design)
+   ============================================ */
 .glass {
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
 }
 
 .glass-strong {
   background: var(--glass-bg-strong);
-  backdrop-filter: var(--glass-blur-strong);
-  -webkit-backdrop-filter: var(--glass-blur-strong);
   border: 1px solid var(--glass-border);
 }
 
 .glass-subtle {
   background: var(--glass-bg-subtle);
-  backdrop-filter: var(--glass-blur-subtle);
-  -webkit-backdrop-filter: var(--glass-blur-subtle);
 }
 
-/* Gradient utilities */
+/* ============================================
+   Accent Text (Replaces gradient-text)
+   ============================================ */
 .gradient-text {
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--sketch-cyan);
 }
 
 .gradient-bg {
-  background: var(--gradient-primary);
+  background: var(--sketch-cyan);
 }
 
 .gradient-border {
-  background:
-    linear-gradient(var(--surface-1), var(--surface-1)) padding-box,
-    var(--gradient-primary) border-box;
-  border: 2px solid transparent;
+  border: 2px solid var(--sketch-cyan);
 }
 
-/* Hover transform utilities */
+/* ============================================
+   Hover Utilities
+   ============================================ */
 .hover-lift {
   transition: transform var(--transition-normal), box-shadow var(--transition-normal);
 }
 .hover-lift:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .hover-scale {
@@ -194,14 +302,17 @@ body {
   transform: scale(1.02);
 }
 
-.hover-glow {
-  transition: box-shadow var(--transition-normal);
+/* Sketch-style hover - subtle wobble */
+.hover-wobble {
+  transition: transform var(--transition-fast);
 }
-.hover-glow:hover {
-  box-shadow: var(--shadow-glow);
+.hover-wobble:hover {
+  transform: rotate(-1deg);
 }
 
-/* Animation keyframes */
+/* ============================================
+   Animation Keyframes
+   ============================================ */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -312,23 +423,21 @@ body {
   50% { transform: translateY(-8px); }
 }
 
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+/* Sketchy-specific animations */
+@keyframes wobble {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-1deg); }
+  75% { transform: rotate(1deg); }
 }
 
-@keyframes shimmer-glass {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
+@keyframes draw-line {
+  from { stroke-dashoffset: 1000; }
+  to { stroke-dashoffset: 0; }
 }
 
-@keyframes glow-pulse {
-  0%, 100% { box-shadow: var(--shadow-glow); }
-  50% { box-shadow: var(--shadow-glow-strong); }
-}
-
-/* Animation utility classes */
+/* ============================================
+   Animation Utility Classes
+   ============================================ */
 .animate-spin {
   animation: spin 1s linear infinite;
 }
@@ -385,13 +494,8 @@ body {
   animation: float 6s ease-in-out infinite;
 }
 
-.animate-gradient {
-  background-size: 200% 200%;
-  animation: gradient-shift 8s ease infinite;
-}
-
-.animate-glow-pulse {
-  animation: glow-pulse 3s ease-in-out infinite;
+.animate-wobble {
+  animation: wobble 0.5s ease-in-out;
 }
 
 /* Stagger children animations */
@@ -408,14 +512,18 @@ body {
 .stagger-fade-in > *:nth-child(7) { animation-delay: 300ms; }
 .stagger-fade-in > *:nth-child(8) { animation-delay: 350ms; }
 
-/* Transition utilities */
+/* ============================================
+   Transition Utilities
+   ============================================ */
 .transition-all { transition: all var(--transition-normal); }
 .transition-colors { transition: color var(--transition-fast), background-color var(--transition-fast); }
 .transition-transform { transition: transform var(--transition-normal); }
 .transition-opacity { transition: opacity var(--transition-fast); }
 .transition-bounce { transition: all var(--transition-bounce); }
 
-/* Reduced motion support */
+/* ============================================
+   Reduced Motion Support
+   ============================================ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -424,4 +532,72 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ============================================
+   Selection Styling
+   ============================================ */
+::selection {
+  background: var(--sketch-cyan-light);
+  color: var(--ink-primary);
+}
+
+::-moz-selection {
+  background: var(--sketch-cyan-light);
+  color: var(--ink-primary);
+}
+
+/* ============================================
+   Highlight / Marker Effect
+   ============================================ */
+.highlight-yellow {
+  background: linear-gradient(
+    transparent 40%,
+    var(--sketch-yellow-light) 40%,
+    var(--sketch-yellow-light) 85%,
+    transparent 85%
+  );
+}
+
+.highlight-cyan {
+  background: linear-gradient(
+    transparent 40%,
+    var(--sketch-cyan-light) 40%,
+    var(--sketch-cyan-light) 85%,
+    transparent 85%
+  );
+}
+
+.highlight-pink {
+  background: linear-gradient(
+    transparent 40%,
+    var(--sketch-pink-light) 40%,
+    var(--sketch-pink-light) 85%,
+    transparent 85%
+  );
+}
+
+.highlight-green {
+  background: linear-gradient(
+    transparent 40%,
+    var(--sketch-green-light) 40%,
+    var(--sketch-green-light) 85%,
+    transparent 85%
+  );
+}
+
+/* ============================================
+   Underline Accent (Replaces glow effects)
+   ============================================ */
+.underline-sketch {
+  text-decoration: underline;
+  text-decoration-color: var(--sketch-cyan);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.underline-wavy {
+  text-decoration: underline wavy;
+  text-decoration-color: var(--sketch-cyan);
+  text-underline-offset: 3px;
 }

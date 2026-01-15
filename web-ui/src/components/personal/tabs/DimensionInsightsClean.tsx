@@ -84,7 +84,7 @@ function DimensionCard({ insight }: DimensionCardProps) {
                   <p className={styles.itemDescription}>{strength.description}</p>
                   {strength.evidence.length > 0 && (
                     <blockquote className={styles.itemQuote}>
-                      "{strength.evidence[0].quote}"
+                      "{strength.evidence[0]}"
                     </blockquote>
                   )}
                 </div>

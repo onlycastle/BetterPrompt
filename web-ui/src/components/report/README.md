@@ -87,7 +87,7 @@ import { UnlockSection } from '@/components/report';
 
 <UnlockSection
   isUnlocked={false}
-  dashboardBaseUrl="https://nomoreaislop.xyz"
+  dashboardBaseUrl="https://www.nomoreaislop.xyz"
 />
 ```
 

@@ -1,21 +1,28 @@
+/**
+ * PersonalitySummary Component - Notebook Sketch Style
+ */
+
 .container {
-  margin: 32px 0;
-  padding: 24px;
-  background: var(--bg-secondary);
-  border-radius: 12px;
-  border-left: 4px solid var(--neon-cyan);
+  margin: var(--space-xl) 0;
+  padding: var(--space-lg);
+  background: var(--surface-1);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--ink-primary);
+  border-left: 4px solid var(--sketch-cyan);
+  box-shadow: 2px 2px 0 var(--ink-muted);
 }
 
 .title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--neon-cyan);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-cyan);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-md);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-sm);
+  font-family: var(--font-primary);
 }
 
 .title::before {
@@ -23,8 +30,13 @@
 }
 
 .content {
-  font-size: 14px;
+  font-size: var(--text-sm);
   line-height: 1.8;
   color: var(--text-primary);
   margin: 0;
+}
+
+.emphasis {
+  color: var(--sketch-cyan);
+  font-weight: var(--weight-semibold);
 }

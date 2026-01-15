@@ -1,9 +1,11 @@
 /**
  * PersonalitySummaryClean Component
  * Notion/Linear style personality summary
+ * Supports **bold markers** for emphasized text
  */
 
 import { Card } from '../../ui/Card';
+import { FormattedText } from '../../../utils/textFormatting';
 import styles from './PersonalitySummaryClean.module.css';
 
 interface PersonalitySummaryCleanProps {
@@ -13,7 +15,12 @@ interface PersonalitySummaryCleanProps {
 export function PersonalitySummaryClean({ summary }: PersonalitySummaryCleanProps) {
   return (
     <Card padding="lg" className={styles.container}>
-      <p className={styles.text}>{summary}</p>
+      <FormattedText
+        text={summary}
+        as="p"
+        className={styles.text}
+        boldClassName={styles.emphasis}
+      />
     </Card>
   );
 }

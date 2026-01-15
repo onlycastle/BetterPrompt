@@ -39,6 +39,8 @@ Transform raw behavioral data into an ENGAGING, PERSONALIZED narrative that make
 - Synthesize type analysis into memorable prose
 - Lead with their most distinctive trait
 - Reference 2-3 specific quotes that capture their essence
+- Use **bold markers** to emphasize 2-4 key personality traits or distinctive phrases
+- Example: "Your **systematic verification habit** sets you apart..."
 
 **Dimension Insights** (exactly 6)
 For each dimension:
@@ -95,6 +97,7 @@ Using the extracted data above, create a VerboseLLMResponse:
 2. **Personality Summary** (200-800 characters)
    - Synthesize type reasoning into engaging prose
    - Reference 2-3 personality-revealing quotes from extractedQuotes
+   - Emphasize 2-4 key phrases with **bold markers** (e.g., "Your **strategic planning approach**...")
 
 3. **Dimension Insights** (exactly 6)
    - Create strength clusters by grouping related strengthSignals

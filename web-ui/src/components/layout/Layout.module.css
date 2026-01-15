@@ -1,27 +1,20 @@
 /**
- * Layout Component - Glassmorphism Style
+ * Layout Component - Notebook Sketch Style
  */
 
 .layout {
   min-height: 100vh;
-  background: var(--gradient-page);
+  background-color: var(--bg-paper);
+  background-image:
+    linear-gradient(var(--bg-grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-color) 1px, transparent 1px);
+  background-size: var(--bg-grid-size) var(--bg-grid-size);
   position: relative;
 }
 
-/* Background decorative elements */
+/* Remove decorative gradients - keep it flat */
 .layout::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background:
-    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(14, 165, 233, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 40% at 80% 90%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse 50% 30% at 60% 0%, rgba(20, 184, 166, 0.05) 0%, transparent 40%);
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 .main {
@@ -50,7 +43,7 @@
 .pageTitle {
   font-size: var(--text-3xl);
   font-weight: var(--weight-bold);
-  font-family: var(--font-display);
+  font-family: var(--font-primary);
   color: var(--text-primary);
   letter-spacing: var(--tracking-tight);
   margin-bottom: var(--space-sm);
@@ -62,12 +55,13 @@
   line-height: var(--leading-relaxed);
 }
 
-/* Gradient title variant */
+/* Accent title variant - cyan underline instead of gradient */
 .pageTitleGradient {
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--sketch-cyan);
+  text-decoration: underline;
+  text-decoration-color: var(--sketch-cyan);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 4px;
 }
 
 /* ============================================
@@ -97,10 +91,7 @@
    ============================================ */
 .layoutFullscreen {
   background: transparent;
-}
-
-.layoutFullscreen::before {
-  display: none;
+  background-image: none;
 }
 
 .layoutFullscreen .main {

@@ -100,10 +100,18 @@ export class ContentWriterStage {
     sanitized.controlLevel = analysisData.typeAnalysis.controlLevel;
     sanitized.distribution = analysisData.typeAnalysis.distribution;
 
-    // Truncate strings that exceed limits
+    // Truncate strings that exceed limits (preserving bold markers)
     if (sanitized.personalitySummary && typeof sanitized.personalitySummary === 'string') {
       if (sanitized.personalitySummary.length > 800) {
-        sanitized.personalitySummary = sanitized.personalitySummary.slice(0, 797) + '...';
+        let truncated = sanitized.personalitySummary.slice(0, 797);
+        // Avoid breaking a bold marker mid-way by checking for unclosed **
+        const lastBoldStart = truncated.lastIndexOf('**');
+        const beforeLastBold = truncated.slice(0, lastBoldStart).lastIndexOf('**');
+        // If there's an unclosed bold marker (odd number of ** before truncation point)
+        if (lastBoldStart > beforeLastBold && lastBoldStart > 0) {
+          truncated = truncated.slice(0, lastBoldStart).trimEnd();
+        }
+        sanitized.personalitySummary = truncated + '...';
       }
     }
 

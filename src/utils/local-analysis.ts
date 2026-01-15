@@ -20,11 +20,23 @@ import type { VerboseEvaluation } from '../models/verbose-evaluation.js';
 /** Analysis type identifier */
 export type AnalysisType = 'verbose' | 'unified';
 
+/** Information about a single analyzed session */
+export interface SessionFileInfo {
+  fileName: string;
+  sessionId: string;
+  projectName: string;
+  startTime: string;
+  messageCount: number;
+  durationMinutes: number;
+}
+
 /** Metadata associated with an analysis */
 export interface AnalysisMetadata {
   sessionCount?: number;
   projectPath?: string;
   version?: string;
+  /** List of session files that were analyzed */
+  sessionFiles?: SessionFileInfo[];
 }
 
 /**

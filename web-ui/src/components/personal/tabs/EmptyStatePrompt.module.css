@@ -1,6 +1,5 @@
 /**
- * EmptyStatePrompt Styles
- * Clean, minimal empty state
+ * EmptyStatePrompt - Notebook Sketch Style
  */
 
 .container {
@@ -20,30 +19,29 @@
   justify-content: center;
   width: 80px;
   height: 80px;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(99, 102, 241, 0.1);
-  border-radius: var(--radius-xl);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-lg);
   margin-bottom: var(--space-lg);
-  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.08);
+  box-shadow: 3px 3px 0 var(--ink-muted);
 }
 
 .icon {
-  color: #94A3B8;
+  color: var(--text-tertiary);
 }
 
 .title {
-  font-family: var(--font-display);
+  font-family: var(--font-primary);
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
-  color: #0F172A;
+  color: var(--ink-primary);
   margin: 0 0 var(--space-sm) 0;
 }
 
 .message {
-  font-family: var(--font-body);
+  font-family: var(--font-primary);
   font-size: var(--text-md);
-  color: #475569;
+  color: var(--text-secondary);
   line-height: var(--leading-relaxed);
   margin: 0 0 var(--space-xl) 0;
 }
@@ -61,17 +59,16 @@
   align-items: center;
   gap: var(--space-xs);
   font-size: var(--text-sm);
-  color: #94A3B8;
+  color: var(--text-tertiary);
 }
 
 .command {
-  font-family: var(--font-mono);
+  font-family: var(--font-primary);
   font-size: var(--text-md);
-  color: #6366F1;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
+  color: var(--sketch-cyan);
+  background: var(--surface-1);
   padding: var(--space-sm) var(--space-lg);
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.08);
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--sketch-cyan);
+  box-shadow: 2px 2px 0 var(--ink-muted);
 }

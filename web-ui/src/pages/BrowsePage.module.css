@@ -1,3 +1,7 @@
+/**
+ * Browse Page - Notebook Sketch Style
+ */
+
 /* Page fade-in animation */
 .page {
   animation: fadeIn var(--transition-normal) ease-out;
@@ -29,13 +33,10 @@
 }
 
 .heroTitle {
-  font-family: var(--font-display);
+  font-family: var(--font-primary);
   font-size: var(--text-4xl);
   font-weight: var(--weight-bold);
-  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #EC4899 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--sketch-cyan);
   line-height: var(--leading-tight);
   margin: 0 0 var(--space-md) 0;
 }
@@ -54,17 +55,16 @@
 .heroSearch input {
   height: 56px;
   font-size: var(--text-lg);
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
   transition: all var(--transition-normal);
 }
 
 .heroSearch input:focus {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: #6366F1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), 0 8px 32px rgba(99, 102, 241, 0.12);
+  background: var(--surface-1);
+  border-color: var(--sketch-cyan);
+  box-shadow: 4px 4px 0 var(--ink-primary);
+  outline: none;
 }
 
 /* Filter Bar */
@@ -94,11 +94,9 @@
 .filterSelect {
   height: 40px;
   padding: 0 var(--space-md);
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: var(--radius-full);
+  background: var(--surface-1);
+  border: 1.5px solid var(--ink-secondary);
+  border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--text-primary);
@@ -107,15 +105,14 @@
 }
 
 .filterSelect:hover {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(99, 102, 241, 0.3);
+  background: var(--sketch-cyan-soft);
+  border-color: var(--sketch-cyan);
 }
 
 .filterSelect:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.9);
-  border-color: #6366F1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: var(--sketch-cyan);
+  box-shadow: 2px 2px 0 var(--ink-primary);
 }
 
 .filterPill {
@@ -124,20 +121,19 @@
   gap: var(--space-xs);
   height: 40px;
   padding: 0 var(--space-md);
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: var(--radius-full);
+  background: var(--sketch-cyan-light);
+  border: 2px solid var(--sketch-cyan);
+  border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  color: #6366F1;
+  color: var(--sketch-cyan);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .filterPill:hover {
-  background: #6366F1;
+  background: var(--sketch-cyan);
   color: white;
-  border-color: #6366F1;
 }
 
 .filterPillClose {
@@ -151,7 +147,7 @@
   padding: 0 var(--space-md);
   background-color: transparent;
   border: none;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--text-tertiary);
@@ -161,7 +157,7 @@
 
 .filterClear:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--surface-3);
 }
 
 /* Grid */
@@ -197,14 +193,14 @@
   width: 80px;
   height: 80px;
   font-size: 40px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 2px solid rgba(239, 68, 68, 0.3);
-  border-radius: var(--radius-xl);
-  color: #EF4444;
+  background: var(--sketch-red-light);
+  border: 2px solid var(--sketch-red);
+  border-radius: var(--radius-md);
+  color: var(--sketch-red);
 }
 
 .errorTitle {
-  font-family: var(--font-display);
+  font-family: var(--font-primary);
   font-size: var(--text-2xl);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
@@ -236,16 +232,14 @@
   justify-content: center;
   width: 120px;
   height: 120px;
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 2px solid rgba(99, 102, 241, 0.2);
-  border-radius: var(--radius-2xl);
+  background: var(--surface-2);
+  border: 2px dashed var(--ink-muted);
+  border-radius: var(--radius-lg);
   color: var(--text-tertiary);
 }
 
 .emptyTitle {
-  font-family: var(--font-display);
+  font-family: var(--font-primary);
   font-size: var(--text-2xl);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);

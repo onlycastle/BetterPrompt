@@ -165,7 +165,11 @@ export function BrowsePage() {
       ) : (
         <div className={styles.grid}>
           {data?.items.map((item) => (
-            <KnowledgeCard key={item.id} item={item} />
+            <KnowledgeCard
+              key={item.id}
+              item={item}
+              onClick={() => window.open(item.source.url, '_blank', 'noopener,noreferrer')}
+            />
           ))}
         </div>
       )}

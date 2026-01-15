@@ -1,5 +1,5 @@
 /**
- * ReportTab Styles
+ * ReportTab - Notebook Sketch Style
  */
 
 .container {
@@ -11,9 +11,9 @@
 }
 
 .sectionTitle {
-  font-family: var(--font-display);
+  font-family: var(--font-primary);
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
-  color: #0F172A;
+  color: var(--ink-primary);
   margin: 0 0 var(--space-md) 0;
 }

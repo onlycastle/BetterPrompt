@@ -48,6 +48,25 @@ Commands in `commands/*.md` with YAML frontmatter:
 | `ANTHROPIC_API_KEY` | Required for legacy single-stage mode or fallback |
 | `NOSLOP_MODEL` | Override model (legacy mode only) |
 
+## Release Workflow
+
+**Web/API (Vercel)**: Push to `main` → Vercel auto-deploys
+
+**NPM CLI Package** (`no-ai-slop`):
+```bash
+cd packages/cli
+npm run release          # patch bump (0.1.0 → 0.1.1)
+npm run release:minor    # minor bump (0.1.0 → 0.2.0)
+npm run release:major    # major bump (0.1.0 → 1.0.0)
+```
+
+After npm release, commit the version bump:
+```bash
+git add packages/cli/package.json
+git commit -m "chore(cli): release vX.X.X"
+git push origin main
+```
+
 ## Architecture
 
 See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for system design, pipelines, and components.

@@ -53,7 +53,7 @@ export interface SharingServiceDeps {
  */
 export function createSharingService(deps: SharingServiceDeps) {
   const { sharingRepo, userRepo } = deps;
-  const baseUrl = deps.baseUrl || process.env.NOSLOP_BASE_URL || 'https://nomoreaislop.xyz';
+  const baseUrl = deps.baseUrl || process.env.NOSLOP_BASE_URL || 'https://www.nomoreaislop.xyz';
 
   return {
     /**

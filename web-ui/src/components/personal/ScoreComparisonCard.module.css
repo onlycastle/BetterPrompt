@@ -1,22 +1,28 @@
+/**
+ * ScoreComparisonCard Component - Notebook Sketch Style
+ */
+
 .card {
   height: 100%;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.08);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
+  box-shadow: 3px 3px 0 var(--ink-muted);
+  padding: var(--space-xl);
 }
 
 .title {
-  margin: 0 0 2rem 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #0F172A;
+  margin: 0 0 var(--space-xl) 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  font-family: var(--font-primary);
 }
 
 .comparison {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  gap: 2rem;
+  gap: var(--space-xl);
   align-items: center;
 }
 
@@ -24,67 +30,69 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-md);
 }
 
 .label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #475569;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .date {
-  font-size: 0.875rem;
-  color: #94A3B8;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  font-family: var(--font-primary);
 }
 
 .improvement {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-sm);
 }
 
 .improvementBadge {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-lg);
-  font-weight: 700;
-  font-size: 1.25rem;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-lg);
+  border: 2px solid var(--ink-primary);
+  box-shadow: 2px 2px 0 var(--ink-muted);
 }
 
 .improvementBadge.positive {
-  background: rgba(16, 185, 129, 0.12);
-  color: #059669;
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: var(--sketch-green-light);
+  color: var(--sketch-green);
+  border-color: var(--sketch-green);
 }
 
 .improvementBadge.negative {
-  background: rgba(244, 63, 94, 0.12);
-  color: #E11D48;
-  border: 1px solid rgba(244, 63, 94, 0.2);
+  background: var(--sketch-red-light);
+  color: var(--sketch-red);
+  border-color: var(--sketch-red);
 }
 
 .improvementBadge.neutral {
-  background: rgba(148, 163, 184, 0.12);
-  color: #475569;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  border-color: var(--ink-muted);
 }
 
 .improvementValue {
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-primary);
 }
 
 .improvementLabel {
-  font-size: 0.75rem;
-  color: #94A3B8;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -93,7 +101,7 @@
 @media (max-width: 768px) {
   .comparison {
     grid-template-columns: 1fr;
-    gap: 2rem;
+    gap: var(--space-xl);
   }
 
   .improvement {
@@ -101,7 +109,7 @@
   }
 
   .improvementBadge {
-    padding: 1rem 1.5rem;
-    font-size: 1.5rem;
+    padding: var(--space-md) var(--space-xl);
+    font-size: var(--text-xl);
   }
 }

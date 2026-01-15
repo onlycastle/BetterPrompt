@@ -1,6 +1,6 @@
 /**
- * ProgressRing Component Styles
- * SVG-based circular progress indicator with smooth animation
+ * ProgressRing Component - Notebook Sketch Style
+ * SVG-based circular progress indicator
  */
 
 .container {
@@ -12,17 +12,17 @@
 
 .svg {
   transform: rotate(-90deg); /* Start from top */
-  filter: drop-shadow(0 2px 8px rgba(99, 102, 241, 0.15));
 }
 
 .track {
-  opacity: 0.15;
+  opacity: 0.2;
+  stroke: var(--ink-muted);
 }
 
 .progress {
   transition: stroke-dashoffset 1s ease;
   transform-origin: center;
-  stroke: url(#progressGradient);
+  stroke: var(--sketch-cyan);
 }
 
 .value {
@@ -32,18 +32,18 @@
   transform: translate(-50%, -50%);
   display: flex;
   align-items: baseline;
-  font-family: var(--font-mono);
+  font-family: var(--font-primary);
   font-weight: var(--weight-bold);
   line-height: 1;
 }
 
 .number {
   font-size: var(--text-2xl);
-  color: #0F172A;
+  color: var(--ink-primary);
 }
 
 .percent {
   font-size: var(--text-sm);
-  color: #475569;
+  color: var(--text-secondary);
   margin-left: 2px;
 }

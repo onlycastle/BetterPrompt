@@ -1,3 +1,7 @@
+/**
+ * Dashboard Page - Notebook Sketch Style
+ */
+
 /* Page Container */
 .page {
   animation: pageEnter var(--transition-normal) ease-out;
@@ -23,20 +27,18 @@
 }
 
 .statCard {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
   padding: var(--space-lg);
-  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.08);
+  box-shadow: 3px 3px 0 var(--ink-muted);
   transition: all var(--transition-normal);
 }
 
 .statCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 48px rgba(99, 102, 241, 0.12);
-  border-color: rgba(99, 102, 241, 0.3);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink-primary);
+  border-color: var(--sketch-cyan);
 }
 
 .stat {
@@ -51,19 +53,17 @@
   justify-content: center;
   width: 56px;
   height: 56px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   flex-shrink: 0;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+  background: var(--sketch-cyan-light);
+  border: 2px solid var(--sketch-cyan);
 }
 
 .statValue {
-  font-family: var(--font-display);
+  font-family: var(--font-primary);
   font-size: var(--text-2xl);
   font-weight: var(--weight-bold);
-  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--sketch-cyan);
   line-height: var(--leading-tight);
   margin-bottom: var(--space-xs);
 }
@@ -82,30 +82,25 @@
 }
 
 .chartCard {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
   padding: var(--space-xl);
-  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.08);
+  box-shadow: 3px 3px 0 var(--ink-muted);
   transition: all var(--transition-normal);
 }
 
 .chartCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 48px rgba(99, 102, 241, 0.12);
-  border-color: rgba(99, 102, 241, 0.3);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink-primary);
+  border-color: var(--sketch-cyan);
 }
 
 .chartTitle {
-  font-family: var(--font-display);
+  font-family: var(--font-primary);
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
-  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--sketch-cyan);
   margin-bottom: var(--space-lg);
   line-height: var(--leading-tight);
 }

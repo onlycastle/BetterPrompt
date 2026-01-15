@@ -1,5 +1,5 @@
 /**
- * Button Component - Glassmorphism Style
+ * Button Component - Notebook Sketch Style
  */
 
 .button {
@@ -7,16 +7,16 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-sm);
+  font-family: var(--font-primary);
   font-weight: var(--weight-semibold);
-  border-radius: var(--radius-md);
-  border: none;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--ink-primary);
   transition:
     all var(--transition-fast),
     transform var(--transition-micro);
   cursor: pointer;
   white-space: nowrap;
   position: relative;
-  overflow: hidden;
 }
 
 .button:active:not(:disabled) {
@@ -29,45 +29,41 @@
 }
 
 /* ============================================
-   Primary - Gradient Style
+   Primary - Solid Cyan
    ============================================ */
 .primary {
-  background: var(--gradient-primary);
-  color: var(--text-on-gradient);
-  box-shadow:
-    0 4px 16px rgba(14, 165, 233, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: var(--sketch-cyan);
+  color: var(--bg-paper);
+  border-color: var(--ink-primary);
+  box-shadow: 3px 3px 0 var(--ink-primary);
 }
 
 .primary:hover:not(:disabled) {
-  background: var(--gradient-primary-hover);
-  transform: translateY(-2px);
-  box-shadow:
-    0 8px 24px rgba(14, 165, 233, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: var(--accent-primary-hover);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink-primary);
 }
 
 .primary:active:not(:disabled) {
-  transform: translateY(0) scale(0.98);
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 var(--ink-primary);
 }
 
 /* ============================================
-   Secondary - Glass Style
+   Secondary - Outlined
    ============================================ */
 .secondary {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur-subtle);
-  -webkit-backdrop-filter: var(--glass-blur-subtle);
-  color: var(--accent-primary);
-  border: 1px solid rgba(14, 165, 233, 0.2);
-  box-shadow: var(--shadow-sm);
+  background: var(--bg-paper);
+  color: var(--ink-primary);
+  border-color: var(--ink-primary);
+  box-shadow: 2px 2px 0 var(--ink-muted);
 }
 
 .secondary:hover:not(:disabled) {
-  background: rgba(14, 165, 233, 0.08);
-  border-color: rgba(14, 165, 233, 0.3);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background: var(--sketch-cyan-soft);
+  border-color: var(--sketch-cyan);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink-primary);
 }
 
 /* ============================================
@@ -76,30 +72,34 @@
 .ghost {
   background-color: transparent;
   color: var(--text-primary);
+  border: none;
+  box-shadow: none;
 }
 
 .ghost:hover:not(:disabled) {
-  background-color: rgba(14, 165, 233, 0.08);
-  color: var(--accent-primary);
+  background-color: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan);
 }
 
 /* ============================================
-   Danger - Alert Style
+   Danger - Red Alert Style
    ============================================ */
 .danger {
-  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
-  color: white;
-  box-shadow:
-    0 4px 16px rgba(239, 68, 68, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: var(--sketch-red);
+  color: var(--bg-paper);
+  border-color: var(--ink-primary);
+  box-shadow: 3px 3px 0 var(--ink-primary);
 }
 
 .danger:hover:not(:disabled) {
-  background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
-  transform: translateY(-2px);
-  box-shadow:
-    0 8px 24px rgba(239, 68, 68, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: #DC2626;
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink-primary);
+}
+
+.danger:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 var(--ink-primary);
 }
 
 /* ============================================
@@ -107,32 +107,30 @@
    ============================================ */
 .outline {
   background: transparent;
-  color: var(--accent-primary);
-  border: 2px solid var(--accent-primary);
+  color: var(--sketch-cyan);
+  border: 2px solid var(--sketch-cyan);
+  box-shadow: none;
 }
 
 .outline:hover:not(:disabled) {
-  background: var(--accent-primary-soft);
-  transform: translateY(-1px);
+  background: var(--sketch-cyan-soft);
+  transform: rotate(-1deg);
 }
 
 /* ============================================
-   Glow - Premium Style
+   Glow - Highlighted Style
    ============================================ */
 .glow {
-  background: var(--gradient-primary);
-  color: var(--text-on-gradient);
-  box-shadow:
-    0 4px 16px rgba(14, 165, 233, 0.35),
-    0 0 40px rgba(14, 165, 233, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: var(--sketch-yellow);
+  color: var(--ink-primary);
+  border-color: var(--ink-primary);
+  box-shadow: 3px 3px 0 var(--ink-primary);
 }
 
 .glow:hover:not(:disabled) {
-  box-shadow:
-    0 8px 24px rgba(14, 165, 233, 0.45),
-    0 0 60px rgba(14, 165, 233, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: #FFC107;
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink-primary);
 }
 
 /* ============================================
@@ -142,7 +140,6 @@
   height: 32px;
   padding: 0 var(--space-md);
   font-size: var(--text-sm);
-  border-radius: var(--radius-sm);
 }
 
 .md {
@@ -155,7 +152,6 @@
   height: 48px;
   padding: 0 var(--space-xl);
   font-size: var(--text-lg);
-  border-radius: var(--radius-lg);
 }
 
 /* ============================================

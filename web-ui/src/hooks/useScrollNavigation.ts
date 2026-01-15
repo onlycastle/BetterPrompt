@@ -22,7 +22,7 @@ export interface ScrollNavigationOptions {
   onSectionChange?: (sectionId: string, index: number) => void;
   /** Enable keyboard navigation (default: true) */
   enableKeyboard?: boolean;
-  /** Debounce time for section activation in ms (default: 50) */
+  /** Debounce time for section activation in ms (default: 150) */
   activationDebounce?: number;
   /** Debounce time for keyboard input in ms (default: 100) */
   keyboardDebounce?: number;
@@ -73,7 +73,7 @@ export function useScrollNavigation(
     tabSelector = '.terminal-tab',
     onSectionChange,
     enableKeyboard = true,
-    activationDebounce = 50,
+    activationDebounce = 150,
     keyboardDebounce = 100,
   } = options;
 
@@ -110,17 +110,13 @@ export function useScrollNavigation(
       setActiveSection(sectionId);
       setActiveSectionIndex(sectionIndex);
 
-      // Update terminal tabs
-      const tabs = document.querySelectorAll(tabSelector);
-      tabs.forEach((tab) => {
-        const isActive = tab.getAttribute('data-section') === sectionId;
-        tab.classList.toggle('active', isActive);
-      });
+      // Note: Tab UI is controlled by React state (activeSectionIndex)
+      // passed to TerminalTabs component - no direct DOM manipulation needed
 
       // Call user callback
       onSectionChange?.(sectionId, sectionIndex);
     },
-    [sectionSelector, tabSelector, onSectionChange]
+    [sectionSelector, onSectionChange]
   );
 
   /**
@@ -196,13 +192,13 @@ export function useScrollNavigation(
 
     const observerOptions: IntersectionObserverInit = {
       root: container,
-      rootMargin: '-10% 0px -80% 0px',
-      threshold: [0, 0.1, 0.2],
+      rootMargin: '-10% 0px -60% 0px',
+      threshold: [0, 0.1],
     };
 
     const sectionObserver = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
-        if (entry.isIntersecting && entry.intersectionRatio > 0.05) {
+        if (entry.isIntersecting && entry.intersectionRatio > 0.1) {
           requestActivation(entry.target);
         }
       });

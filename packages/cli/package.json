@@ -1,0 +1,47 @@
+{
+  "name": "no-ai-slop",
+  "version": "0.1.0",
+  "description": "Analyze your AI collaboration style with Claude Code",
+  "type": "module",
+  "bin": {
+    "no-ai-slop": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build",
+    "release": "./scripts/publish.sh",
+    "release:patch": "./scripts/publish.sh patch",
+    "release:minor": "./scripts/publish.sh minor",
+    "release:major": "./scripts/publish.sh major"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "ai",
+    "collaboration",
+    "developer-tools",
+    "productivity",
+    "analysis",
+    "slop"
+  ],
+  "author": "NoMoreAISlop",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nomoreaislop/nomoreaislop"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "picocolors": "^1.1.1",
+    "ora": "^8.1.1",
+    "boxen": "^8.0.1"
+  }
+}

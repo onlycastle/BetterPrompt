@@ -1,3 +1,7 @@
+/**
+ * Input Component - Notebook Sketch Style
+ */
+
 .container {
   display: flex;
   flex-direction: column;
@@ -8,6 +12,7 @@
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--text-secondary);
+  font-family: var(--font-primary);
 }
 
 .inputWrapper {
@@ -20,12 +25,14 @@
   width: 100%;
   height: 48px;
   padding: 0 var(--space-md);
-  background-color: var(--surface-2);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  background-color: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-sm);
   font-size: var(--text-md);
+  font-family: var(--font-primary);
   color: var(--text-primary);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow: 2px 2px 0 var(--ink-muted);
 }
 
 .input::placeholder {
@@ -34,8 +41,8 @@
 
 .input:focus {
   outline: none;
-  border-color: var(--accent-primary);
-  box-shadow: var(--shadow-glow);
+  border-color: var(--sketch-cyan);
+  box-shadow: 3px 3px 0 var(--sketch-cyan);
 }
 
 .hasIcon {
@@ -53,15 +60,17 @@
 }
 
 .hasError .input {
-  border-color: var(--accent-rose);
+  border-color: var(--sketch-red);
+  box-shadow: 2px 2px 0 var(--sketch-red);
 }
 
 .hasError .input:focus {
-  border-color: var(--accent-rose);
-  box-shadow: 0 0 24px rgba(220, 38, 38, 0.15);
+  border-color: var(--sketch-red);
+  box-shadow: 3px 3px 0 var(--sketch-red);
 }
 
 .error {
   font-size: var(--text-sm);
-  color: var(--accent-rose);
+  color: var(--sketch-red);
+  font-family: var(--font-primary);
 }

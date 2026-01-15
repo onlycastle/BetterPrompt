@@ -1,6 +1,7 @@
 /**
  * Personal Dashboard Page
  * Individual developer's growth journey with tabbed navigation
+ * Shows blurred content for non-authenticated users
  */
 
 import { useState } from 'react';
@@ -8,6 +9,8 @@ import { FileText, TrendingUp, Lightbulb } from 'lucide-react';
 import { Header } from '../components/layout';
 import { Tabs, LoadingState } from '../components/ui';
 import type { Tab } from '../components/ui';
+import { AuthGatedContent, LoginModal } from '../components/auth';
+import { useAuth } from '../contexts';
 import { ReportTab, ProgressTab, InsightsTab } from '../components/personal';
 import { usePersonalAnalytics } from '../hooks/usePersonalAnalytics';
 import { useLatestAnalysis } from '../hooks/useLatestAnalysis';
@@ -22,6 +25,9 @@ const TABS: Tab[] = [
 
 export function PersonalDashboardPage() {
   const [activeTab, setActiveTab] = useState('report');
+  const [showLogin, setShowLogin] = useState(false);
+  const { isAuthenticated } = useAuth();
+
   const { data: analytics, isLoading: analyticsLoading } = usePersonalAnalytics();
   const { data: analysis, isLoading: analysisLoading, hasAnalysis } = useLatestAnalysis();
 
@@ -34,26 +40,52 @@ export function PersonalDashboardPage() {
   // Use mock data for MVP if no analytics
   const personalData = analytics || MOCK_PERSONAL_DATA;
 
+  // Content components
+  const reportContent = <ReportTab analysis={analysis} hasAnalysis={hasAnalysis} />;
+  const progressContent = <ProgressTab analytics={personalData} />;
+  const insightsContent = <InsightsTab analytics={personalData} analysis={analysis} />;
+
   return (
     <div className={styles.page}>
       <Header
         title="My Profile"
-        subtitle="Your AI coding analysis and growth journey"
+        subtitle={isAuthenticated
+          ? "Your AI coding analysis and growth journey"
+          : "Sign in to unlock your personalized insights"}
+        actions={!isAuthenticated ? (
+          <button className={styles.signInHint} onClick={() => setShowLogin(true)}>
+            Sign in
+          </button>
+        ) : undefined}
       />
 
       <Tabs tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
       <div className={styles.tabContent}>
         {activeTab === 'report' && (
-          <ReportTab analysis={analysis} hasAnalysis={hasAnalysis} />
+          isAuthenticated ? reportContent : (
+            <AuthGatedContent blurIntensity="medium" message="Sign in to see your full analysis report">
+              {reportContent}
+            </AuthGatedContent>
+          )
         )}
         {activeTab === 'progress' && (
-          <ProgressTab analytics={personalData} />
+          isAuthenticated ? progressContent : (
+            <AuthGatedContent blurIntensity="heavy" message="Sign in to track your progress over time">
+              {progressContent}
+            </AuthGatedContent>
+          )
         )}
         {activeTab === 'insights' && (
-          <InsightsTab analytics={personalData} analysis={analysis} />
+          isAuthenticated ? insightsContent : (
+            <AuthGatedContent blurIntensity="heavy" message="Sign in to get personalized insights">
+              {insightsContent}
+            </AuthGatedContent>
+          )
         )}
       </div>
+
+      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} />
     </div>
   );
 }

@@ -13,7 +13,7 @@ import { TYPE_METADATA } from '../models/coding-style.js';
 /**
  * Base URL for share links (configure in env)
  */
-const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://nomoreaislop.xyz';
+const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://www.nomoreaislop.xyz';
 
 /**
  * Generate Twitter/X share URL with pre-filled tweet

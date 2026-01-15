@@ -147,7 +147,7 @@ import { recordShare } from '@/hooks/useReport';
 async function handleShare(reportId: string, platform: 'twitter' | 'linkedin') {
   await navigator.share({
     title: 'My AI Coding Style',
-    url: `https://nomoreaislop.xyz/r/${reportId}`
+    url: `https://www.nomoreaislop.xyz/r/${reportId}`
   });
 
   await recordShare(reportId, platform);

@@ -1,14 +1,18 @@
+/**
+ * AnimatedNumber Component - Notebook Sketch Style
+ */
+
 .animatedNumber {
-  font-family: var(--font-mono);
+  font-family: var(--font-primary);
   font-weight: var(--weight-bold);
   font-size: var(--text-4xl);
-  color: #0F172A;
+  color: var(--ink-primary);
   display: inline-block;
   line-height: 1.2;
   letter-spacing: -0.02em;
-  transition: color 0.2s ease;
+  transition: color var(--transition-fast);
 }
 
 .animatedNumber:hover {
-  color: #6366F1;
+  color: var(--sketch-cyan);
 }
