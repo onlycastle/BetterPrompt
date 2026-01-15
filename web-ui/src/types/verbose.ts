@@ -12,25 +12,23 @@ import type { TypeDistribution } from './report.js';
 export type { CodingStyleType, AIControlLevel, TypeDistribution };
 
 // ============================================================================
-// Dimension Evidence & Insights
+// Dimension Insights
+// NOTE: Evidence is now a string array (just quotes) instead of object array
+// to reduce nesting depth for Gemini API compatibility.
 // ============================================================================
-
-export interface DimensionEvidence {
-  quote: string;
-  sessionDate: string;
-  context: string;
-}
 
 export interface DimensionStrength {
   title: string;
   description: string;
-  evidence: DimensionEvidence[];
+  /** Array of quote strings demonstrating this strength */
+  evidence: string[];
 }
 
 export interface DimensionGrowthArea {
   title: string;
   description: string;
-  evidence: DimensionEvidence[];
+  /** Array of quote strings showing this growth opportunity */
+  evidence: string[];
   recommendation: string;
 }
 
@@ -78,6 +76,9 @@ export interface VerboseAnalysisData {
   sessionId: string;
   analyzedAt: string;
   sessionsAnalyzed: number;
+  // Session metrics (computed)
+  avgPromptLength?: number;
+  avgTurnsPerSession?: number;
   primaryType: CodingStyleType;
   controlLevel: AIControlLevel;
   distribution: TypeDistribution;

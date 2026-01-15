@@ -11,9 +11,10 @@ import 'dotenv/config';
  *   --dry-run    Show cost estimate without running analysis
  *   --yes        Skip cost confirmation prompts
  *   --no-open    Don't open browser automatically
+ *   --no-server  Don't start/wait for servers
  */
 
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { SessionParser } from '../src/parser/index.js';
 import { aggregateMetrics } from '../src/analyzer/type-detector.js';
 import { selectOptimalSessions } from '../src/parser/session-selector.js';
@@ -54,6 +55,76 @@ async function isServerRunning(url: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** Check if web UI is running */
+async function isWebUIRunning(): Promise<boolean> {
+  try {
+    const response = await fetch(WEB_UI_URL, { signal: AbortSignal.timeout(2000) });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Store server processes for cleanup */
+const serverProcesses: ChildProcess[] = [];
+
+/** Start the API server */
+function startAPIServer(): ChildProcess {
+  const proc = spawn('npm', ['run', 'api'], {
+    cwd: import.meta.dirname ? `${import.meta.dirname}/..` : process.cwd(),
+    stdio: 'pipe',
+    shell: true,
+  });
+  serverProcesses.push(proc);
+  return proc;
+}
+
+/** Start the Web UI server */
+function startWebUIServer(): ChildProcess {
+  const cwd = import.meta.dirname ? `${import.meta.dirname}/../web-ui` : `${process.cwd()}/web-ui`;
+  const proc = spawn('npm', ['run', 'dev'], {
+    cwd,
+    stdio: 'pipe',
+    shell: true,
+  });
+  serverProcesses.push(proc);
+  return proc;
+}
+
+/** Wait for a server to become available */
+async function waitForServer(checkFn: () => Promise<boolean>, name: string, maxWaitMs = 30000): Promise<boolean> {
+  const startTime = Date.now();
+  const checkInterval = 500;
+
+  while (Date.now() - startTime < maxWaitMs) {
+    if (await checkFn()) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, checkInterval));
+    process.stdout.write(pc.dim('.'));
+  }
+  console.log('');
+  console.log(pc.yellow(`  ⚠️  ${name} did not start within ${maxWaitMs / 1000}s`));
+  return false;
+}
+
+/** Cleanup server processes on exit */
+function setupCleanup(): void {
+  const cleanup = () => {
+    for (const proc of serverProcesses) {
+      proc.kill();
+    }
+  };
+
+  process.on('SIGINT', () => {
+    console.log(pc.dim('\n  👋 Shutting down servers...'));
+    cleanup();
+    process.exit(0);
+  });
+
+  process.on('exit', cleanup);
 }
 
 /** Session statistics for display */
@@ -97,6 +168,7 @@ async function main() {
   const dryRun = args.includes('--dry-run');
   const skipConfirm = args.includes('--yes');
   const noOpen = args.includes('--no-open');
+  const noServer = args.includes('--no-server');
 
   console.log('');
   console.log(pc.bold('  ╔═══════════════════════════════════════════════════╗'));
@@ -202,18 +274,40 @@ async function main() {
   console.log(pc.green(`  ✓ Saved analysis: ${analysisId}`));
   console.log('');
 
-  // Step 6: Open React SPA
+  // Step 6: Start servers and open React SPA
   const reportUrl = `${WEB_UI_URL}/analysis?local=${analysisId}`;
 
-  if (!noOpen) {
-    // Check if API server is running
+  // Check if servers are running, start them if needed
+  let serversStartedByUs = false;
+
+  if (!noServer && !noOpen) {
     const apiRunning = await isServerRunning(API_URL);
-    if (!apiRunning) {
-      console.log(pc.yellow('  ⚠️  API server not running'));
-      console.log(pc.dim('     Start it with: npm run api'));
+    const webRunning = await isWebUIRunning();
+
+    if (!apiRunning || !webRunning) {
+      console.log(pc.dim('  🚀 Starting servers...'));
+      setupCleanup();
+
+      if (!apiRunning) {
+        process.stdout.write(pc.dim('     Starting API server'));
+        startAPIServer();
+        await waitForServer(() => isServerRunning(API_URL), 'API server');
+        console.log(pc.green(' ✓'));
+      }
+
+      if (!webRunning) {
+        process.stdout.write(pc.dim('     Starting Web UI server'));
+        startWebUIServer();
+        await waitForServer(isWebUIRunning, 'Web UI server');
+        console.log(pc.green(' ✓'));
+      }
+
+      serversStartedByUs = true;
       console.log('');
     }
+  }
 
+  if (!noOpen) {
     console.log(pc.dim('  🌐 Opening report in browser...'));
     openBrowser(reportUrl);
     console.log(pc.green(`  ✓ Report URL: ${reportUrl}`));
@@ -223,9 +317,26 @@ async function main() {
   }
 
   console.log('');
-  console.log(pc.dim('  To view this report later:'));
-  console.log(pc.dim(`     Open ${reportUrl}`));
-  console.log(pc.dim('     Or run: npm run ui'));
+
+  // If we started the servers, keep running and show instructions
+  if (serversStartedByUs) {
+    console.log(pc.bold('  ════════════════════════════════════════════════'));
+    console.log(pc.green('  ✓ Servers running. Report is ready!'));
+    console.log('');
+    console.log(pc.dim('  Press Ctrl+C to stop servers and exit.'));
+    console.log(pc.dim(`  Report URL: ${reportUrl}`));
+    console.log(pc.bold('  ════════════════════════════════════════════════'));
+
+    // Keep the process alive
+    await new Promise(() => {
+      // This promise never resolves, keeping the process running
+      // The setupCleanup() handler will catch Ctrl+C
+    });
+  } else {
+    console.log(pc.dim('  To view this report later:'));
+    console.log(pc.dim(`     Open ${reportUrl}`));
+    console.log(pc.dim('     Or run: npm run ui'));
+  }
 }
 
 main().catch((err) => {

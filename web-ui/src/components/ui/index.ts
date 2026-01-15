@@ -12,3 +12,6 @@ export type { BadgeProps, BadgeVariant, PlatformType, PlatformBadgeProps, TierBa
 
 export { Spinner, LoadingState } from './Spinner';
 export type { SpinnerProps, LoadingStateProps } from './Spinner';
+
+export { Tabs } from './Tabs';
+export type { Tab } from './Tabs';

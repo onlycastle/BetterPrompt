@@ -87,3 +87,11 @@ export {
   createVerboseAnalyzer,
   buildVerboseUserPrompt,
 } from './verbose-analyzer.js';
+
+// Re-export content gateway
+export {
+  type Tier,
+  type PremiumPreview,
+  ContentGateway,
+  createContentGateway,
+} from './content-gateway.js';

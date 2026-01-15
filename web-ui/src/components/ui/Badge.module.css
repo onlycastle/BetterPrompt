@@ -1,3 +1,7 @@
+/**
+ * Badge Component - Glassmorphism Style
+ */
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -7,22 +11,31 @@
   white-space: nowrap;
   font-size: var(--text-xs);
   line-height: 1;
+  transition: all var(--transition-fast);
 }
 
-/* Sizes - more refined and elegant */
+/* Sizes */
 .sm {
   height: 20px;
   padding: 0 var(--space-sm);
-  font-size: var(--text-xs);
+  font-size: 11px;
 }
 
 .md {
   height: 24px;
   padding: 0 var(--space-md);
+  font-size: var(--text-xs);
+}
+
+.lg {
+  height: 28px;
+  padding: 0 calc(var(--space-md) + 4px);
   font-size: var(--text-sm);
 }
 
-/* Variants */
+/* ============================================
+   Variants
+   ============================================ */
 .default {
   background-color: var(--surface-2);
   color: var(--text-secondary);
@@ -43,10 +56,71 @@
   color: var(--accent-rose);
 }
 
-/* Platform variants - desaturated with high contrast */
+.info {
+  background-color: var(--accent-primary-soft);
+  color: var(--accent-primary);
+}
+
+/* ============================================
+   Gradient Variant - Premium Style
+   ============================================ */
+.gradient {
+  background: var(--gradient-primary);
+  color: var(--text-on-gradient);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.2);
+}
+
+.gradient.sm,
+.gradient.md {
+  font-weight: var(--weight-semibold);
+}
+
+/* ============================================
+   Glass Variant
+   ============================================ */
+.glass {
+  background: var(--glass-bg-subtle);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border-subtle);
+  color: var(--text-primary);
+}
+
+/* ============================================
+   Outline Variant
+   ============================================ */
+.outline {
+  background: transparent;
+  border: 1px solid currentColor;
+}
+
+.outlineSuccess {
+  color: var(--accent-emerald);
+  border-color: var(--accent-emerald);
+}
+
+.outlineWarning {
+  color: var(--accent-amber);
+  border-color: var(--accent-amber);
+}
+
+.outlineError {
+  color: var(--accent-rose);
+  border-color: var(--accent-rose);
+}
+
+.outlineInfo {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+/* ============================================
+   Platform Variants - Solid with High Contrast
+   ============================================ */
 .platform {
   color: white;
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-semibold);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .platform-youtube {
@@ -67,4 +141,27 @@
 
 .platform-web {
   background-color: var(--platform-web);
+}
+
+/* ============================================
+   Dot Indicator
+   ============================================ */
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.dotPulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }

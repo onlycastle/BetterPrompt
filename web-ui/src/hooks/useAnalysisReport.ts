@@ -12,9 +12,9 @@ import { useSearchParams } from 'react-router-dom';
 import type { VerboseAnalysisData } from '../types/verbose.js';
 
 // Re-export types for consumers
+// NOTE: DimensionEvidence was removed - evidence is now string[] for Gemini API compatibility
 export type {
   VerboseAnalysisData,
-  DimensionEvidence,
   DimensionStrength,
   DimensionGrowthArea,
   PerDimensionInsight,

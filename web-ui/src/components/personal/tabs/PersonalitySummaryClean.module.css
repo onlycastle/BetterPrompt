@@ -1,0 +1,15 @@
+/**
+ * PersonalitySummaryClean Styles
+ */
+
+.container {
+  margin-bottom: var(--space-xl);
+}
+
+.text {
+  font-family: var(--font-body);
+  font-size: var(--text-lg);
+  color: #374151;
+  line-height: var(--leading-relaxed);
+  margin: 0;
+}

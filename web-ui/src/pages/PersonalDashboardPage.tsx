@@ -1,60 +1,59 @@
 /**
  * Personal Dashboard Page
- * Individual developer's growth journey and progress tracking
+ * Individual developer's growth journey with tabbed navigation
  */
 
+import { useState } from 'react';
+import { FileText, TrendingUp, Lightbulb } from 'lucide-react';
 import { Header } from '../components/layout';
-import { Card } from '../components/ui/Card';
-import { LoadingState } from '../components/ui';
-import { TrendLineChart } from '../components/enterprise';
-import {
-  JourneyHeader,
-  ScoreComparisonCard,
-  DimensionBreakdown,
-  RecommendationsList,
-} from '../components/personal';
+import { Tabs, LoadingState } from '../components/ui';
+import type { Tab } from '../components/ui';
+import { ReportTab, ProgressTab, InsightsTab } from '../components/personal';
 import { usePersonalAnalytics } from '../hooks/usePersonalAnalytics';
+import { useLatestAnalysis } from '../hooks/useLatestAnalysis';
 import { MOCK_PERSONAL_DATA } from '../data/mockPersonalData';
 import styles from './PersonalDashboardPage.module.css';
 
+const TABS: Tab[] = [
+  { id: 'report', label: 'Report', icon: <FileText size={16} /> },
+  { id: 'progress', label: 'Progress', icon: <TrendingUp size={16} /> },
+  { id: 'insights', label: 'Insights', icon: <Lightbulb size={16} /> },
+];
+
 export function PersonalDashboardPage() {
-  const { data: analytics, isLoading } = usePersonalAnalytics();
+  const [activeTab, setActiveTab] = useState('report');
+  const { data: analytics, isLoading: analyticsLoading } = usePersonalAnalytics();
+  const { data: analysis, isLoading: analysisLoading, hasAnalysis } = useLatestAnalysis();
+
+  const isLoading = analyticsLoading || analysisLoading;
 
   if (isLoading) {
-    return <LoadingState message="Loading your growth journey..." />;
+    return <LoadingState message="Loading your profile..." />;
   }
 
-  // Use mock data for MVP (hook already returns mock data)
+  // Use mock data for MVP if no analytics
   const personalData = analytics || MOCK_PERSONAL_DATA;
 
   return (
     <div className={styles.page}>
       <Header
-        title="My Growth Journey"
-        subtitle="Track your AI collaboration skills and personal development"
+        title="My Profile"
+        subtitle="Your AI coding analysis and growth journey"
       />
 
-      {/* Journey Header - Hero section */}
-      <JourneyHeader analytics={personalData} />
+      <Tabs tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Score Comparison + Trend Chart */}
-      <div className={styles.statsGrid}>
-        <ScoreComparisonCard analytics={personalData} />
-
-        <Card padding="lg" className={styles.trendCard}>
-          <h3 className={styles.chartTitle}>Your Progress Over Time</h3>
-          <div className={styles.chartSubtitle}>Overall score trend</div>
-          <div className={styles.chartContent}>
-            <TrendLineChart data={personalData.history} height={280} />
-          </div>
-        </Card>
+      <div className={styles.tabContent}>
+        {activeTab === 'report' && (
+          <ReportTab analysis={analysis} hasAnalysis={hasAnalysis} />
+        )}
+        {activeTab === 'progress' && (
+          <ProgressTab analytics={personalData} />
+        )}
+        {activeTab === 'insights' && (
+          <InsightsTab analytics={personalData} analysis={analysis} />
+        )}
       </div>
-
-      {/* Dimension Breakdown */}
-      <DimensionBreakdown analytics={personalData} />
-
-      {/* Recommendations */}
-      <RecommendationsList recommendations={personalData.recommendations} />
     </div>
   );
 }

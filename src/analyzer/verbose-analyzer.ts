@@ -1,8 +1,12 @@
 /**
  * Verbose Analyzer - Hyper-personalized multi-session analysis
  *
- * Extends the standard analyzer with deep behavioral insights and personalization.
- * Uses Anthropic's Structured Outputs to guarantee valid JSON matching the verbose schema.
+ * Supports two analysis modes:
+ * 1. Single-stage (legacy): One LLM call with Anthropic Claude (requires ANTHROPIC_API_KEY)
+ * 2. Two-stage pipeline: Data Analyst + Content Writer with Gemini 3 Flash (requires GOOGLE_GEMINI_API_KEY)
+ *
+ * Two-stage pipeline uses Gemini 3 Flash with structured JSON outputs.
+ * Single-stage legacy mode uses Anthropic's Structured Outputs.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -18,6 +22,145 @@ import {
   getVerboseToolDefinition,
 } from './verbose-prompts.js';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { DataAnalystStage, type DataAnalystConfig } from './stages/data-analyst.js';
+import { ContentWriterStage, type ContentWriterConfig } from './stages/content-writer.js';
+import { ContentGateway, type Tier } from './content-gateway.js';
+
+// ============================================================================
+// STRING SANITIZATION - Truncate long strings from LLM responses
+// ============================================================================
+
+/**
+ * Field-specific max length constraints from the schema
+ */
+const STRING_LIMITS = {
+  personalitySummary: 800,
+  patternName: 50,
+  description: 300,
+  tip: 200,
+  quote: 300, // Default for PromptPattern examples
+  analysis: 200,
+  context: 200,
+  title: 50,
+  recommendation: 200,
+  dimensionDisplayName: 50,
+} as const;
+
+/** Quote limit for evidence (larger than pattern examples) */
+const EVIDENCE_QUOTE_LIMIT = 800;
+
+/**
+ * Truncate string with ellipsis if exceeds max length
+ */
+function truncate(str: string, max: number): string {
+  if (str.length <= max) return str;
+  return str.slice(0, max - 3) + '...';
+}
+
+/**
+ * Sanitize PromptPattern examples
+ */
+function sanitizePatternExamples(
+  examples: Array<{ quote: string; analysis: string }>
+): Array<{ quote: string; analysis: string }> {
+  return examples.map((ex) => ({
+    quote: truncate(ex.quote, STRING_LIMITS.quote),
+    analysis: truncate(ex.analysis, STRING_LIMITS.analysis),
+  }));
+}
+
+/**
+ * Sanitize evidence array (now string array, not object array)
+ * NOTE: Evidence was flattened from {quote, sessionDate, context} objects to simple quote strings
+ * to reduce nesting depth for Gemini API compatibility.
+ */
+function sanitizeEvidence(evidence: string[]): string[] {
+  return evidence.map((quote) => truncate(quote, EVIDENCE_QUOTE_LIMIT));
+}
+
+/**
+ * Sanitize DimensionStrength
+ */
+function sanitizeStrength(strength: {
+  title: string;
+  description: string;
+  evidence: string[];
+}): typeof strength {
+  return {
+    title: truncate(strength.title, STRING_LIMITS.title),
+    description: truncate(strength.description, STRING_LIMITS.description),
+    evidence: sanitizeEvidence(strength.evidence),
+  };
+}
+
+/**
+ * Sanitize DimensionGrowthArea
+ */
+function sanitizeGrowthArea(area: {
+  title: string;
+  description: string;
+  evidence: string[];
+  recommendation: string;
+}): typeof area {
+  return {
+    title: truncate(area.title, STRING_LIMITS.title),
+    description: truncate(area.description, STRING_LIMITS.description),
+    evidence: sanitizeEvidence(area.evidence),
+    recommendation: truncate(area.recommendation, STRING_LIMITS.recommendation),
+  };
+}
+
+/**
+ * Sanitize entire LLM response to ensure all strings are within schema limits.
+ * This prevents schema validation failures from overly verbose LLM outputs.
+ */
+function sanitizeLLMResponse(input: unknown): unknown {
+  if (!input || typeof input !== 'object') return input;
+
+  const data = input as Record<string, unknown>;
+  const result: Record<string, unknown> = { ...data };
+
+  // Sanitize personalitySummary
+  if (typeof result.personalitySummary === 'string') {
+    result.personalitySummary = truncate(result.personalitySummary, STRING_LIMITS.personalitySummary);
+  }
+
+  // Sanitize promptPatterns
+  if (Array.isArray(result.promptPatterns)) {
+    result.promptPatterns = result.promptPatterns.map((pattern: Record<string, unknown>) => ({
+      ...pattern,
+      patternName:
+        typeof pattern.patternName === 'string'
+          ? truncate(pattern.patternName, STRING_LIMITS.patternName)
+          : pattern.patternName,
+      description:
+        typeof pattern.description === 'string'
+          ? truncate(pattern.description, STRING_LIMITS.description)
+          : pattern.description,
+      tip: typeof pattern.tip === 'string' ? truncate(pattern.tip, STRING_LIMITS.tip) : pattern.tip,
+      examples: Array.isArray(pattern.examples)
+        ? sanitizePatternExamples(pattern.examples as Array<{ quote: string; analysis: string }>)
+        : pattern.examples,
+    }));
+  }
+
+  // Sanitize dimensionInsights
+  if (Array.isArray(result.dimensionInsights)) {
+    result.dimensionInsights = result.dimensionInsights.map((insight: Record<string, unknown>) => ({
+      ...insight,
+      dimensionDisplayName:
+        typeof insight.dimensionDisplayName === 'string'
+          ? truncate(insight.dimensionDisplayName, STRING_LIMITS.dimensionDisplayName)
+          : insight.dimensionDisplayName,
+      strengths: Array.isArray(insight.strengths) ? insight.strengths.map(sanitizeStrength) : insight.strengths,
+      growthAreas: Array.isArray(insight.growthAreas)
+        ? insight.growthAreas.map(sanitizeGrowthArea)
+        : insight.growthAreas,
+    }));
+  }
+
+  return result;
+}
 
 /**
  * Error types for verbose analysis failures
@@ -34,6 +177,20 @@ export class VerboseAnalysisError extends Error {
 }
 
 /**
+ * Pipeline mode for analysis
+ */
+export type PipelineMode = 'single' | 'two-stage';
+
+/**
+ * Two-stage pipeline configuration
+ */
+export interface PipelineConfig {
+  mode: PipelineMode;
+  stage1?: DataAnalystConfig;
+  stage2?: ContentWriterConfig;
+}
+
+/**
  * Configuration for the verbose analyzer
  */
 export interface VerboseAnalyzerConfig {
@@ -41,49 +198,114 @@ export interface VerboseAnalyzerConfig {
   model?: string;
   maxRetries?: number;
   maxTokens?: number;
+  /** Pipeline mode: 'single' (legacy) or 'two-stage' (default) */
+  pipeline?: PipelineConfig;
+  /** User tier for content filtering */
+  tier?: Tier;
+  /** Fallback to legacy mode if two-stage fails */
+  fallbackToLegacy?: boolean;
 }
 
 /**
  * Default configuration
+ *
+ * Two-stage pipeline (default):
+ * - Uses Gemini 3 Flash for both stages
+ * - Requires GOOGLE_GEMINI_API_KEY
+ *
+ * Single-stage legacy mode:
+ * - Uses Anthropic Claude Sonnet
+ * - Requires ANTHROPIC_API_KEY
  */
-const DEFAULT_CONFIG: Required<VerboseAnalyzerConfig> = {
+const DEFAULT_CONFIG: Required<Omit<VerboseAnalyzerConfig, 'apiKey'>> & { apiKey: string } = {
   apiKey: '',
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-20250514', // For legacy single-stage mode
   maxRetries: 1,
-  maxTokens: 8192, // Higher token limit for verbose output
+  maxTokens: 8192,
+  pipeline: {
+    mode: 'two-stage',
+    stage1: {
+      model: 'gemini-3-flash-preview',
+      temperature: 1.0, // Gemini 3 strongly recommends 1.0
+      maxOutputTokens: 8192,
+    },
+    stage2: {
+      model: 'gemini-3-flash-preview',
+      temperature: 1.0, // Gemini 3 strongly recommends 1.0
+      maxOutputTokens: 8192,
+    },
+  },
+  tier: 'enterprise', // Generate full content by default
+  fallbackToLegacy: true,
 };
 
 /**
- * VerboseAnalyzer - Sends multiple session data to Claude API for hyper-personalized evaluation
+ * VerboseAnalyzer - Hyper-personalized multi-session analysis
  *
- * Uses Anthropic's Structured Outputs feature to guarantee valid JSON responses
- * matching the VerboseEvaluation schema.
+ * Supports two modes:
+ * 1. Single-stage (legacy): One LLM call with Claude Sonnet (ANTHROPIC_API_KEY)
+ * 2. Two-stage pipeline: Gemini 3 Flash for both stages (GOOGLE_GEMINI_API_KEY)
+ *
+ * Two-stage pipeline uses Gemini's structured JSON output.
+ * Single-stage uses Anthropic's Structured Outputs feature.
  */
 export class VerboseAnalyzer {
   private client: Anthropic;
-  private config: Required<VerboseAnalyzerConfig>;
+  private config: Required<Omit<VerboseAnalyzerConfig, 'apiKey'>> & { apiKey: string };
+  private dataAnalyst: DataAnalystStage | null = null;
+  private contentWriter: ContentWriterStage | null = null;
+  private contentGateway: ContentGateway;
 
   constructor(config: VerboseAnalyzerConfig = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.config = {
+      ...DEFAULT_CONFIG,
+      ...config,
+      pipeline: { ...DEFAULT_CONFIG.pipeline, ...config.pipeline },
+    };
 
-    // Get API key from config or environment
-    const apiKey = this.config.apiKey || process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new VerboseAnalysisError(
-        'API key required. Set ANTHROPIC_API_KEY environment variable or pass apiKey in config.',
-        'NO_API_KEY'
-      );
+    this.contentGateway = new ContentGateway();
+
+    // Initialize stages for two-stage pipeline (uses GOOGLE_GEMINI_API_KEY)
+    if (this.config.pipeline.mode === 'two-stage') {
+      // Stages use GeminiClient which gets GOOGLE_GEMINI_API_KEY from env
+      this.dataAnalyst = new DataAnalystStage({
+        ...this.config.pipeline.stage1,
+      });
+      this.contentWriter = new ContentWriterStage({
+        ...this.config.pipeline.stage2,
+      });
     }
 
-    this.client = new Anthropic({ apiKey });
+    // Get Anthropic API key for legacy single-stage mode (or fallback)
+    const anthropicApiKey = this.config.apiKey || process.env.ANTHROPIC_API_KEY;
+
+    // Only require Anthropic key if single-stage mode or fallback is enabled
+    if (this.config.pipeline.mode === 'single' || this.config.fallbackToLegacy) {
+      if (!anthropicApiKey) {
+        const message = this.config.pipeline.mode === 'single'
+          ? 'ANTHROPIC_API_KEY required for single-stage mode.'
+          : 'ANTHROPIC_API_KEY required for fallback. Set fallbackToLegacy: false to disable.';
+        throw new VerboseAnalysisError(message, 'NO_API_KEY');
+      }
+    }
+
+    // Initialize Anthropic client for legacy mode (may be unused in two-stage)
+    this.client = new Anthropic({ apiKey: anthropicApiKey || '' });
   }
 
   /**
    * Analyze multiple sessions and return a verbose evaluation
+   *
+   * Uses two-stage pipeline by default:
+   * 1. Stage 1 (Gemini 3 Flash): Extract structured behavioral data
+   * 2. Stage 2 (Gemini 3 Flash): Transform into engaging narrative
+   *
+   * Falls back to single-stage (legacy with Claude) if two-stage fails and fallbackToLegacy is true.
    */
   async analyzeVerbose(
     sessions: ParsedSession[],
-    metrics: SessionMetrics
+    metrics: SessionMetrics,
+    options: { tier?: Tier } = {}
   ): Promise<VerboseEvaluation> {
     if (sessions.length === 0) {
       throw new VerboseAnalysisError(
@@ -92,6 +314,73 @@ export class VerboseAnalyzer {
       );
     }
 
+    const tier = options.tier ?? this.config.tier;
+
+    // Try two-stage pipeline if configured
+    if (this.config.pipeline.mode === 'two-stage' && this.dataAnalyst && this.contentWriter) {
+      try {
+        return await this.analyzeTwoStage(sessions, metrics, tier);
+      } catch (error) {
+        if (this.config.fallbackToLegacy) {
+          console.warn('Two-stage pipeline failed, falling back to legacy mode:', error);
+          return await this.analyzeSingleStage(sessions, metrics, tier);
+        }
+        throw error;
+      }
+    }
+
+    // Use single-stage (legacy) mode
+    return await this.analyzeSingleStage(sessions, metrics, tier);
+  }
+
+  /**
+   * Two-stage analysis pipeline using Gemini 3 Flash
+   *
+   * Stage 1: Data Analyst - Extract structured behavioral data
+   * Stage 2: Content Writer - Transform into engaging narrative
+   */
+  private async analyzeTwoStage(
+    sessions: ParsedSession[],
+    metrics: SessionMetrics,
+    tier: Tier
+  ): Promise<VerboseEvaluation> {
+    if (!this.dataAnalyst || !this.contentWriter) {
+      throw new VerboseAnalysisError(
+        'Two-stage pipeline not initialized',
+        'PIPELINE_NOT_INITIALIZED'
+      );
+    }
+
+    // Stage 1: Extract structured data
+    const analysisData = await this.dataAnalyst.analyze(sessions, metrics);
+
+    // Stage 2: Transform into narrative
+    const verboseResponse = await this.contentWriter.transform(analysisData, sessions);
+
+    // Create full evaluation with metadata
+    const evaluation: VerboseEvaluation = {
+      sessionId: sessions[sessions.length - 1].sessionId,
+      analyzedAt: new Date().toISOString(),
+      sessionsAnalyzed: sessions.length,
+      avgPromptLength: Math.round(metrics.avgPromptLength),
+      avgTurnsPerSession: Math.round(metrics.avgTurnsPerSession * 10) / 10,
+      ...verboseResponse,
+    };
+
+    // Apply tier-based content filtering
+    return this.contentGateway.filter(evaluation, tier);
+  }
+
+  /**
+   * Single-stage analysis (legacy mode)
+   *
+   * One LLM call that does both data extraction and content writing.
+   */
+  private async analyzeSingleStage(
+    sessions: ParsedSession[],
+    metrics: SessionMetrics,
+    tier: Tier
+  ): Promise<VerboseEvaluation> {
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
@@ -100,12 +389,17 @@ export class VerboseAnalyzer {
         const parsed = this.parseResponse(response);
 
         // Add metadata to create full VerboseEvaluation
-        return {
-          sessionId: sessions[sessions.length - 1].sessionId, // Use last session ID
+        const evaluation: VerboseEvaluation = {
+          sessionId: sessions[sessions.length - 1].sessionId,
           analyzedAt: new Date().toISOString(),
           sessionsAnalyzed: sessions.length,
+          avgPromptLength: Math.round(metrics.avgPromptLength),
+          avgTurnsPerSession: Math.round(metrics.avgTurnsPerSession * 10) / 10,
           ...parsed,
         };
+
+        // Apply tier-based content filtering
+        return this.contentGateway.filter(evaluation, tier);
       } catch (error) {
         lastError = error as Error;
 
@@ -200,18 +494,18 @@ export class VerboseAnalyzer {
     );
 
     if (!toolUse) {
-      throw new VerboseAnalysisError(
-        'No tool use found in response',
-        'PARSE_ERROR'
-      );
+      throw new VerboseAnalysisError('No tool use found in response', 'PARSE_ERROR');
     }
 
+    // Sanitize LLM response to truncate strings that exceed schema limits
+    const sanitized = sanitizeLLMResponse(toolUse.input);
+
     // Validate against schema
-    const result = VerboseLLMResponseSchema.safeParse(toolUse.input);
+    const result = VerboseLLMResponseSchema.safeParse(sanitized);
 
     if (!result.success) {
       throw new VerboseAnalysisError(
-        `Schema validation failed: ${result.error.message}`,
+        `Schema validation failed: ${JSON.stringify(result.error.issues, null, 2)}`,
         'VALIDATION_ERROR'
       );
     }
@@ -249,5 +543,8 @@ export function createVerboseAnalyzer(config?: VerboseAnalyzerConfig): VerboseAn
   return new VerboseAnalyzer(config);
 }
 
-// Re-export prompts utilities
+// Re-export types and utilities
 export { buildVerboseUserPrompt } from './verbose-prompts.js';
+export { type Tier, ContentGateway, createContentGateway } from './content-gateway.js';
+export { DataAnalystStage, type DataAnalystConfig } from './stages/data-analyst.js';
+export { ContentWriterStage, type ContentWriterConfig } from './stages/content-writer.js';

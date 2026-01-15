@@ -54,7 +54,11 @@ function buildTypeResult(data: VerboseAnalysisData): TypeResult {
     distribution: data.distribution,
     sessionCount: data.sessionsAnalyzed,
     analyzedAt: data.analyzedAt,
-    metrics: DEFAULT_METRICS,
+    metrics: {
+      ...DEFAULT_METRICS,
+      avgPromptLength: data.avgPromptLength ?? 0,
+      avgTurnsPerSession: data.avgTurnsPerSession ?? 0,
+    },
   };
 }
 
@@ -163,7 +167,10 @@ export function AnalysisReportPage() {
           onTabClick={handleTabClick}
         />
 
-        <div className="scroll-container" ref={containerRef}>
+        <div
+          className="scroll-container"
+          ref={containerRef}
+        >
           {/* Section 0: Main Result */}
           <section
             className="snap-section"

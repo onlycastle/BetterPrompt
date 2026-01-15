@@ -77,18 +77,22 @@ export function TypeResultSection({ typeResult, typeMetadata }: TypeResultSectio
           <div className={styles.metricValue}>{typeResult.sessionCount}</div>
           <div className={styles.metricLabel}>Sessions Analyzed</div>
         </div>
-        <div className={styles.metricCard}>
-          <div className={styles.metricValue}>
-            {Math.round(typeResult.metrics.avgTurnsPerSession)}
+        {typeResult.metrics.avgTurnsPerSession > 0 && (
+          <div className={styles.metricCard}>
+            <div className={styles.metricValue}>
+              {Math.round(typeResult.metrics.avgTurnsPerSession)}
+            </div>
+            <div className={styles.metricLabel}>Avg Turns/Session</div>
           </div>
-          <div className={styles.metricLabel}>Avg Turns/Session</div>
-        </div>
-        <div className={styles.metricCard}>
-          <div className={styles.metricValue}>
-            {Math.round(typeResult.metrics.avgPromptLength)}
+        )}
+        {typeResult.metrics.avgPromptLength > 0 && (
+          <div className={styles.metricCard}>
+            <div className={styles.metricValue}>
+              {Math.round(typeResult.metrics.avgPromptLength)}
+            </div>
+            <div className={styles.metricLabel}>Avg Prompt Length</div>
           </div>
-          <div className={styles.metricLabel}>Avg Prompt Length</div>
-        </div>
+        )}
       </div>
     </div>
   );

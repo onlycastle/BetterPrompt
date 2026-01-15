@@ -6,24 +6,26 @@
   width: calc(100% - 40px);
   max-width: 900px;
   height: calc(100vh - 80px);
-  background: rgba(10, 10, 10, 0.92);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 16px;
   box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.8),
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(8px);
+    0 8px 32px rgba(99, 102, 241, 0.08),
+    0 4px 16px rgba(139, 92, 246, 0.06),
+    0 0 0 1px rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(32px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  isolation: isolate;
 }
 
 /* macOS Titlebar */
 .terminalTitlebar {
   height: 40px;
   min-height: 40px;
-  background: linear-gradient(180deg, #3d3d3d 0%, #2d2d2d 100%);
-  border-bottom: 1px solid #1a1a1a;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -44,28 +46,31 @@
 }
 
 .terminalBtn.close {
-  background: var(--traffic-red);
+  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
 }
 
 .terminalBtn.minimize {
-  background: var(--traffic-yellow);
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
 }
 
 .terminalBtn.maximize {
-  background: var(--traffic-green);
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
 }
 
 .terminalTitle {
   flex: 1;
   text-align: center;
   font-size: 13px;
-  color: #888;
+  color: #6B7280;
   font-family: var(--font-mono);
   user-select: none;
 }
 
 .terminalSpacer {
-  width: 52px; /* Balance the buttons on left */
+  width: 52px;
 }
 
 /* Responsive Design */
@@ -74,6 +79,6 @@
     top: 10px;
     width: calc(100% - 20px);
     height: calc(100vh - 20px);
-    border-radius: 8px;
+    border-radius: 12px;
   }
 }

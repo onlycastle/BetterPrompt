@@ -11,12 +11,32 @@
 import { type ParsedSession } from '../domain/models/analysis.js';
 
 /**
- * Anthropic pricing as of 2025 (per token)
+ * Model pricing configuration
  */
-export const ANTHROPIC_PRICING: Record<
-  string,
-  { input: number; output: number; name: string }
-> = {
+type ModelPricing = Record<string, { input: number; output: number; name: string }>;
+
+/**
+ * Google Gemini pricing as of 2025 (per token)
+ * Source: https://ai.google.dev/gemini-api/docs/pricing
+ */
+export const GEMINI_PRICING: ModelPricing = {
+  'gemini-3-flash-preview': {
+    input: 0.5 / 1_000_000, // $0.50 per 1M tokens
+    output: 3.0 / 1_000_000, // $3.00 per 1M tokens
+    name: 'Gemini 3 Flash',
+  },
+  'gemini-3-flash': {
+    input: 0.5 / 1_000_000,
+    output: 3.0 / 1_000_000,
+    name: 'Gemini 3 Flash',
+  },
+};
+
+/**
+ * Anthropic pricing as of 2025 (per token)
+ * Used for legacy single-stage mode fallback
+ */
+export const ANTHROPIC_PRICING: ModelPricing = {
   'claude-sonnet-4-20250514': {
     input: 3.0 / 1_000_000,
     output: 15.0 / 1_000_000,
@@ -37,6 +57,14 @@ export const ANTHROPIC_PRICING: Record<
     output: 4.0 / 1_000_000,
     name: 'Claude 3.5 Haiku',
   },
+};
+
+/**
+ * Combined pricing lookup (Gemini first, then Anthropic for legacy)
+ */
+export const ALL_PRICING: ModelPricing = {
+  ...GEMINI_PRICING,
+  ...ANTHROPIC_PRICING,
 };
 
 export interface CostEstimate {
@@ -131,15 +159,18 @@ const ESTIMATED_OUTPUT_TOKENS = 6000;
 
 /**
  * Estimate the cost of running verbose analysis
+ *
+ * Default model is Gemini 3 Flash (two-stage pipeline).
+ * Falls back to Gemini pricing for unknown models.
  */
 export function estimateAnalysisCost(
   sessions: ParsedSession[],
-  model: string = 'claude-sonnet-4-20250514'
+  model: string = 'gemini-3-flash-preview'
 ): CostEstimate {
-  const pricing = ANTHROPIC_PRICING[model];
+  const pricing = ALL_PRICING[model];
   if (!pricing) {
-    // Fallback to sonnet pricing
-    const fallbackPricing = ANTHROPIC_PRICING['claude-sonnet-4-20250514'];
+    // Fallback to Gemini 3 Flash pricing for unknown models
+    const fallbackPricing = GEMINI_PRICING['gemini-3-flash-preview'];
     return estimateWithPricing(sessions, model, fallbackPricing, 'Unknown Model');
   }
 

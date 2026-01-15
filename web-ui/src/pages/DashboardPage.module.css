@@ -1,6 +1,5 @@
 /* Page Container */
 .page {
-  background-color: var(--surface-0);
   animation: pageEnter var(--transition-normal) ease-out;
 }
 
@@ -24,13 +23,20 @@
 }
 
 .statCard {
-  background-color: var(--surface-1);
-  box-shadow: var(--shadow-card);
-  transition: box-shadow var(--transition-normal);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.08);
+  transition: all var(--transition-normal);
 }
 
 .statCard:hover {
-  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 48px rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.3);
 }
 
 .stat {
@@ -47,13 +53,17 @@
   height: 56px;
   border-radius: var(--radius-lg);
   flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
 }
 
 .statValue {
   font-family: var(--font-display);
   font-size: var(--text-2xl);
   font-weight: var(--weight-bold);
-  color: var(--text-primary);
+  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   line-height: var(--leading-tight);
   margin-bottom: var(--space-xs);
 }
@@ -72,20 +82,30 @@
 }
 
 .chartCard {
-  background-color: var(--surface-1);
-  box-shadow: var(--shadow-card);
-  transition: box-shadow var(--transition-normal);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.08);
+  transition: all var(--transition-normal);
 }
 
 .chartCard:hover {
-  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 48px rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.3);
 }
 
 .chartTitle {
   font-family: var(--font-display);
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
-  color: var(--text-primary);
+  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: var(--space-lg);
   line-height: var(--leading-tight);
 }

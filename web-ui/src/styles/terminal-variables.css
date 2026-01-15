@@ -1,87 +1,67 @@
 /**
  * Terminal Aesthetic Variables
- * Extracted from src/web/template.ts for React components
- * Neon terminal theme with CRT effects
+ * Bright glassmorphism theme with refined accent colors
  */
 
 :root {
-  /* Terminal Background Colors */
-  --terminal-bg: #0a0a0a;
-  --terminal-surface: #1a1a1a;
-  --terminal-elevated: #2a2a2a;
+  /* Terminal Background Colors - Bright Glassmorphism */
+  --terminal-bg: linear-gradient(135deg, #F0F4FF 0%, #E8EFFF 50%, #F5F3FF 100%);
+  --terminal-surface: rgba(255, 255, 255, 0.7);
+  --terminal-elevated: rgba(255, 255, 255, 0.9);
 
-  /* Neon Colors - Primary Palette */
-  --neon-cyan: #00d4ff;
-  --neon-green: #00ff88;
-  --neon-magenta: #ff00ff;
-  --neon-yellow: #ffcc00;
-  --neon-red: #ff4444;
-  --neon-purple: #8b5cf6;
-  --neon-pink: #ec4899;
-  --neon-orange: #ff8800;
+  /* Accent Colors - Refined Palette (no glow) */
+  --accent-primary: #0EA5E9;    /* Sky Blue */
+  --accent-secondary: #06B6D4;  /* Cyan */
+  --accent-tertiary: #06B6D4;   /* Cyan */
+  --accent-success: #10B981;    /* Emerald */
+  --accent-warning: #F59E0B;    /* Amber */
+  --accent-error: #EF4444;      /* Red */
+  --accent-pink: #EC4899;       /* Pink */
 
-  /* Text Colors */
-  --text-primary: #e0e0e0;
-  --text-secondary: #888888;
-  --text-muted: #555555;
+  /* Text Colors - High Contrast for Readability */
+  --text-primary: #1F2937;
+  --text-secondary: #4B5563;   /* Gray 600 - better contrast */
+  --text-muted: #6B7280;       /* Gray 500 - WCAG AA compliant (~4.6:1) */
 
   /* Border Colors */
-  --border: #333333;
-  --border-subtle: #2a2a2a;
+  --border: rgba(107, 114, 128, 0.2);
+  --border-subtle: rgba(156, 163, 175, 0.1);
 
-  /* Glow Effects */
-  --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.3);
-  --glow-green: 0 0 20px rgba(0, 255, 136, 0.3);
-  --glow-magenta: 0 0 20px rgba(255, 0, 255, 0.3);
-  --glow-yellow: 0 0 20px rgba(255, 204, 0, 0.3);
-  --glow-red: 0 0 20px rgba(255, 68, 68, 0.3);
-  --glow-purple: 0 0 20px rgba(139, 92, 246, 0.3);
-  --glow-pink: 0 0 20px rgba(236, 72, 153, 0.3);
+  /* Subtle Shadow Effects (instead of glow) */
+  --shadow-primary: 0 4px 12px rgba(14, 165, 233, 0.15);
+  --shadow-secondary: 0 4px 12px rgba(6, 182, 212, 0.15);
+  --shadow-tertiary: 0 4px 12px rgba(6, 182, 212, 0.15);
+  --shadow-success: 0 4px 12px rgba(16, 185, 129, 0.15);
+  --shadow-warning: 0 4px 12px rgba(245, 158, 11, 0.15);
+  --shadow-error: 0 4px 12px rgba(239, 68, 68, 0.15);
+  --shadow-pink: 0 4px 12px rgba(236, 72, 153, 0.15);
 
   /* Typography */
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
-  /* Traffic Light Buttons (macOS) */
+  /* Traffic Light Buttons (macOS) - Keep original colors */
   --traffic-red: #ff5f56;
   --traffic-yellow: #ffbd2e;
   --traffic-green: #27c93f;
 
   /* Section-specific Accent Colors */
-  --accent-ai-collaboration: var(--neon-cyan);
-  --accent-context-engineering: var(--neon-green);
-  --accent-burnout-risk: var(--neon-yellow);
-  --accent-tool-mastery: var(--neon-magenta);
-  --accent-ai-control: var(--neon-purple);
-  --accent-skill-resilience: var(--neon-pink);
+  --accent-ai-collaboration: var(--accent-tertiary);     /* Cyan */
+  --accent-context-engineering: var(--accent-success);   /* Emerald */
+  --accent-burnout-risk: var(--accent-warning);          /* Amber */
+  --accent-tool-mastery: var(--accent-pink);             /* Pink */
+  --accent-ai-control: var(--accent-secondary);          /* Cyan */
+  --accent-skill-resilience: var(--accent-primary);      /* Sky Blue */
 }
 
-/* macOS Big Sur Solar Background Gradient */
+/* macOS-inspired Bright Colorful Background */
 .macos-background {
   position: fixed;
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(ellipse 100% 50% at 80% 10%, #4FA4E5 0%, transparent 50%),
-    radial-gradient(ellipse 80% 30% at 70% 45%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 200, 150, 0.4) 40%, transparent 60%),
-    radial-gradient(ellipse 130% 70% at 50% 70%, #FF6B6B 0%, #D64545 35%, transparent 65%),
-    radial-gradient(ellipse 80% 90% at 8% 75%, #8B5CF6 0%, #EC4899 50%, transparent 70%),
-    linear-gradient(160deg, #1E3A5F 0%, #1A1A2E 50%, #0F0F1A 100%);
-}
-
-/* CRT Scanline Effect */
-.scanline {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.03),
-    rgba(0, 0, 0, 0.03) 1px,
-    transparent 1px,
-    transparent 2px
-  );
-  pointer-events: none;
-  z-index: 1000;
+    radial-gradient(ellipse 100% 50% at 80% 10%, rgba(14, 165, 233, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 30% at 70% 45%, rgba(6, 182, 212, 0.1) 0%, rgba(236, 72, 153, 0.08) 40%, transparent 60%),
+    radial-gradient(ellipse 130% 70% at 50% 70%, rgba(6, 182, 212, 0.12) 0%, rgba(16, 185, 129, 0.1) 35%, transparent 65%),
+    radial-gradient(ellipse 80% 90% at 8% 75%, rgba(245, 158, 11, 0.08) 0%, rgba(239, 68, 68, 0.06) 50%, transparent 70%),
+    linear-gradient(160deg, #FDFEFF 0%, #F8FAFF 50%, #F5F7FF 100%);
 }

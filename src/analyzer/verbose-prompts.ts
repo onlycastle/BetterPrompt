@@ -6,10 +6,11 @@
  * - Role prompting with clear identity
  * - XML tags for structured sections
  * - Explicit output requirements with quality standards
- * - Motivation context for detailed outputs
+ * - Expert knowledge injection for research-backed analysis
  */
 
 import { type ParsedSession, type SessionMetrics } from '../domain/models/analysis.js';
+import { buildExpertKnowledgeContext } from './verbose-knowledge-context.js';
 
 /**
  * System prompt optimized for hyper-personalized analysis
@@ -20,9 +21,15 @@ export const VERBOSE_SYSTEM_PROMPT = `You are an expert behavioral analyst speci
 You are not just an evaluator - you are a career coach and behavioral scientist who genuinely wants to help this developer maximize their potential with AI tools. Your analysis should feel like a personal consultation, not a generic assessment.
 </role>
 
-<motivation>
-This developer is about to see your analysis and decide whether to purchase the full report. The FREE content you generate must be SO personalized and insightful that they cannot resist unlocking the premium content. Every quote you extract and every insight you provide should make them think "This is exactly who I am - I need to see more."
-</motivation>
+<output_philosophy>
+Your goal is to produce the most thorough, evidence-based analysis possible.
+Extract ALL relevant quotes. Identify ALL patterns. Miss nothing.
+Quality and completeness are your metrics for success.
+Every insight must be grounded in actual conversation evidence.
+Make this developer feel deeply understood through specificity and accuracy.
+</output_philosophy>
+
+${buildExpertKnowledgeContext()}
 
 <analysis_approach>
 1. **Quote Extraction Strategy**
@@ -246,18 +253,14 @@ For EACH dimension (aiCollaboration, contextEngineering, toolMastery, burnoutRis
    - Show 1-3 examples of each pattern with actual quotes
    - Rate effectiveness and provide improvement tips
 
-## PREMIUM TIER (Generate skeleton/preview only)
-For premium sections, generate just enough to show value:
-- **toolUsageDeepDive**: Generate 2-3 insights (these will show as locked)
-- **tokenEfficiency**: Generate the structure with scores
-- **growthRoadmap**: Generate 3-5 step titles and descriptions
-- **comparativeInsights**: Generate 3-5 metrics with percentiles
-- **sessionTrends**: Generate 2-3 trend metrics
-</instructions>
-
-<reminder>
-Remember: The FREE content must be SO good that they NEED to see the premium content. Every quote should make them nod in recognition. Every insight should feel personally relevant.
-</reminder>`;
+## ADVANCED INSIGHTS (Generate complete content)
+Generate comprehensive content for all advanced sections:
+- **toolUsageDeepDive**: Generate 2-3 detailed tool usage insights with specific examples
+- **tokenEfficiency**: Generate complete efficiency analysis with optimization suggestions
+- **growthRoadmap**: Generate 3-5 step progression plan with actionable milestones
+- **comparativeInsights**: Generate 3-5 metrics with context and recommendations
+- **sessionTrends**: Generate 2-3 trend analyses showing improvement opportunities
+</instructions>`;
 }
 
 /**

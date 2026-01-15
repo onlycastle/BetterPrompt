@@ -1,12 +1,16 @@
 .card {
   height: 100%;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.08);
 }
 
 .title {
   margin: 0 0 2rem 0;
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #0F172A;
 }
 
 .comparison {
@@ -26,14 +30,14 @@
 .label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: #475569;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .date {
   font-size: 0.875rem;
-  color: var(--text-tertiary);
+  color: #94A3B8;
 }
 
 .improvement {
@@ -52,21 +56,26 @@
   border-radius: var(--radius-lg);
   font-weight: 700;
   font-size: 1.25rem;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .improvementBadge.positive {
-  background: var(--accent-emerald-soft);
-  color: var(--accent-emerald);
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .improvementBadge.negative {
-  background: var(--accent-rose-soft);
-  color: var(--accent-rose);
+  background: rgba(244, 63, 94, 0.12);
+  color: #E11D48;
+  border: 1px solid rgba(244, 63, 94, 0.2);
 }
 
 .improvementBadge.neutral {
-  background: var(--surface-3);
-  color: var(--text-secondary);
+  background: rgba(148, 163, 184, 0.12);
+  color: #475569;
+  border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .improvementValue {
@@ -75,7 +84,7 @@
 
 .improvementLabel {
   font-size: 0.75rem;
-  color: var(--text-tertiary);
+  color: #94A3B8;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }

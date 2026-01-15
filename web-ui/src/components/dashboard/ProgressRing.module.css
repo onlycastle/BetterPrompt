@@ -12,15 +12,17 @@
 
 .svg {
   transform: rotate(-90deg); /* Start from top */
+  filter: drop-shadow(0 2px 8px rgba(99, 102, 241, 0.15));
 }
 
 .track {
-  opacity: 0.2;
+  opacity: 0.15;
 }
 
 .progress {
   transition: stroke-dashoffset 1s ease;
   transform-origin: center;
+  stroke: url(#progressGradient);
 }
 
 .value {
@@ -37,11 +39,11 @@
 
 .number {
   font-size: var(--text-2xl);
-  color: var(--text-primary);
+  color: #0F172A;
 }
 
 .percent {
   font-size: var(--text-sm);
-  color: var(--text-secondary);
+  color: #475569;
   margin-left: 2px;
 }

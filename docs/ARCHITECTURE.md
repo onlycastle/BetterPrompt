@@ -286,8 +286,16 @@ See [DATABASE.md](./DATABASE.md) for full schema details.
 | `SUPABASE_SERVICE_ROLE_KEY` | Backend access |
 | `POLAR_ACCESS_TOKEN` | Payments |
 
-## Related Docs
+## Data Models Overview
 
-- [DATA_MODELS.md](./DATA_MODELS.md) - Schemas
-- [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) - Endpoints
-- [DATABASE.md](./DATABASE.md) - Supabase schema
+The system uses Zod schemas for type safety. Key schemas are in `src/models/`:
+
+| Schema | File | Purpose |
+|--------|------|---------|
+| **VerboseEvaluation** | `verbose-evaluation.ts` | LLM analysis output (personality, strengths, growth areas) |
+| **UnifiedReport** | `unified-report.ts` | Complete developer assessment (profile + 6 dimensions) |
+| **ParsedSession** | `session.ts` | Normalized session data from JSONL |
+| **TypeResult** | `coding-style.ts` | AI coding style (5 types + distribution) |
+| **StoredAnalysis** | `storage.ts` | Persisted analysis with metadata |
+
+All schemas are self-documenting via `.describe()` calls. See the source files for details.

@@ -1,0 +1,26 @@
+/**
+ * InsightsTab Styles
+ */
+
+.container {
+  max-width: 800px;
+}
+
+.section {
+  margin-bottom: var(--space-2xl);
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: #0F172A;
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.sectionDescription {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: #94A3B8;
+  margin: 0 0 var(--space-lg) 0;
+}

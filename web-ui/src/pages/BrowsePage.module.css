@@ -1,7 +1,6 @@
 /* Page fade-in animation */
 .page {
   animation: fadeIn var(--transition-normal) ease-out;
-  background-color: var(--surface-0);
 }
 
 @keyframes fadeIn {
@@ -33,7 +32,10 @@
   font-family: var(--font-display);
   font-size: var(--text-4xl);
   font-weight: var(--weight-bold);
-  color: var(--text-primary);
+  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #EC4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   line-height: var(--leading-tight);
   margin: 0 0 var(--space-md) 0;
 }
@@ -52,15 +54,17 @@
 .heroSearch input {
   height: 56px;
   font-size: var(--text-lg);
-  background-color: var(--surface-2);
-  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(99, 102, 241, 0.2);
   transition: all var(--transition-normal);
 }
 
 .heroSearch input:focus {
-  background-color: var(--surface-1);
-  border-color: var(--accent-primary);
-  box-shadow: var(--shadow-glow);
+  background: rgba(255, 255, 255, 0.85);
+  border-color: #6366F1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), 0 8px 32px rgba(99, 102, 241, 0.12);
 }
 
 /* Filter Bar */
@@ -90,8 +94,10 @@
 .filterSelect {
   height: 40px;
   padding: 0 var(--space-md);
-  background-color: var(--surface-2);
-  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(99, 102, 241, 0.2);
   border-radius: var(--radius-full);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
@@ -101,15 +107,15 @@
 }
 
 .filterSelect:hover {
-  background-color: var(--surface-3);
-  border-color: var(--border-default);
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(99, 102, 241, 0.3);
 }
 
 .filterSelect:focus {
   outline: none;
-  background-color: var(--surface-1);
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px var(--accent-primary-soft);
+  background: rgba(255, 255, 255, 0.9);
+  border-color: #6366F1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .filterPill {
@@ -118,19 +124,20 @@
   gap: var(--space-xs);
   height: 40px;
   padding: 0 var(--space-md);
-  background-color: var(--accent-primary-soft);
-  border: 1px solid var(--accent-primary);
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: var(--radius-full);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  color: var(--accent-primary);
+  color: #6366F1;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .filterPill:hover {
-  background-color: var(--accent-primary);
+  background: #6366F1;
   color: white;
+  border-color: #6366F1;
 }
 
 .filterPillClose {
@@ -154,7 +161,7 @@
 
 .filterClear:hover {
   color: var(--text-primary);
-  background-color: var(--surface-2);
+  background: rgba(255, 255, 255, 0.5);
 }
 
 /* Grid */
@@ -190,10 +197,10 @@
   width: 80px;
   height: 80px;
   font-size: 40px;
-  background: linear-gradient(135deg, var(--accent-rose-soft), var(--accent-rose-soft));
-  border: 2px solid var(--accent-rose);
+  background: rgba(239, 68, 68, 0.1);
+  border: 2px solid rgba(239, 68, 68, 0.3);
   border-radius: var(--radius-xl);
-  color: var(--accent-rose);
+  color: #EF4444;
 }
 
 .errorTitle {
@@ -229,8 +236,10 @@
   justify-content: center;
   width: 120px;
   height: 120px;
-  background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
-  border: 2px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 2px solid rgba(99, 102, 241, 0.2);
   border-radius: var(--radius-2xl);
   color: var(--text-tertiary);
 }

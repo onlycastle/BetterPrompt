@@ -4,7 +4,7 @@ import { BookOpen, GraduationCap, LayoutDashboard, Brain, ChevronLeft, ChevronRi
 import styles from './Sidebar.module.css';
 
 const NAV_ITEMS = [
-  { to: '/', icon: BookOpen, label: 'Browse' },
+  { to: '/', icon: BookOpen, label: 'Knowledge Base' },
   { to: '/learn', icon: GraduationCap, label: 'Learn' },
   { to: '/dashboard', icon: LayoutDashboard, label: 'KB Dashboard' },
   { to: '/personal', icon: User, label: 'Personal' },
@@ -29,7 +29,7 @@ export function Sidebar({ onCollapseChange }: SidebarProps) {
       <div className={styles.header}>
         <div className={styles.logo}>
           <Brain size={28} />
-          {!collapsed && <span className={styles.logoText}>Knowledge Base</span>}
+          {!collapsed && <span className={styles.logoText}>No More AI Slop</span>}
         </div>
         <button
           className={styles.collapseButton}

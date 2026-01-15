@@ -9,22 +9,20 @@ type DimensionName =
   | 'aiControl'
   | 'skillResilience';
 
-interface DimensionEvidence {
-  quote: string;
-  sessionDate: string;
-  context: string;
-}
-
+/**
+ * NOTE: Evidence is now a string array (just quotes) instead of object array
+ * to reduce nesting depth for Gemini API compatibility.
+ */
 interface DimensionStrength {
   title: string;
   description: string;
-  evidence: DimensionEvidence[];
+  evidence: string[];
 }
 
 interface DimensionGrowthArea {
   title: string;
   description: string;
-  evidence: DimensionEvidence[];
+  evidence: string[];
   recommendation: string;
 }
 
@@ -88,22 +86,18 @@ const DEFAULT_CONFIG: DimensionConfig = {
 
 const VISIBLE_COUNT = 2;
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString();
-}
-
-function countEvidence<T extends { evidence: DimensionEvidence[] }>(items: T[]): number {
+function countEvidence<T extends { evidence: string[] }>(items: T[]): number {
   return items.reduce((sum, item) => sum + item.evidence.length, 0);
 }
 
 interface QuoteCardProps {
-  evidence: DimensionEvidence;
+  quote: string;
   config: DimensionConfig;
   isHero?: boolean;
   isHidden?: boolean;
 }
 
-function QuoteCard({ evidence, config, isHero = false, isHidden = false }: QuoteCardProps) {
+function QuoteCard({ quote, config, isHero = false, isHidden = false }: QuoteCardProps) {
   const baseClass = isHero ? styles.heroQuote : styles.regularQuote;
   const className = isHidden ? `${baseClass} ${styles.hidden}` : baseClass;
 
@@ -113,11 +107,7 @@ function QuoteCard({ evidence, config, isHero = false, isHidden = false }: Quote
       style={{ '--accent': config.color, '--accent-bg': config.bgColor } as React.CSSProperties}
     >
       {isHero && <div className={styles.heroLabel}>defining moment</div>}
-      <p className={styles.quoteText}>"{evidence.quote}"</p>
-      <div className={styles.quoteMeta}>
-        <span className={styles.quoteDate}>[{formatDate(evidence.sessionDate)}]</span>
-        <span className={styles.quoteContext}>{evidence.context}</span>
-      </div>
+      <p className={styles.quoteText}>"{quote}"</p>
     </div>
   );
 }
@@ -129,8 +119,8 @@ interface StrengthClusterProps {
 
 function StrengthCluster({ strength, config }: StrengthClusterProps) {
   const [expanded, setExpanded] = useState(false);
-  const [heroEvidence, ...regularEvidence] = strength.evidence;
-  const hiddenCount = Math.max(0, regularEvidence.length - VISIBLE_COUNT);
+  const [heroQuote, ...regularQuotes] = strength.evidence;
+  const hiddenCount = Math.max(0, regularQuotes.length - VISIBLE_COUNT);
 
   const toggleExpanded = useCallback(() => {
     setExpanded((prev) => !prev);
@@ -150,13 +140,13 @@ function StrengthCluster({ strength, config }: StrengthClusterProps) {
 
       <p className={styles.clusterDescription}>{strength.description}</p>
 
-      {heroEvidence && <QuoteCard evidence={heroEvidence} config={config} isHero />}
+      {heroQuote && <QuoteCard quote={heroQuote} config={config} isHero />}
 
       <div className={styles.quoteWall}>
-        {regularEvidence.map((ev, idx) => (
+        {regularQuotes.map((quote, idx) => (
           <QuoteCard
             key={idx}
-            evidence={ev}
+            quote={quote}
             config={config}
             isHidden={!expanded && idx >= VISIBLE_COUNT}
           />
@@ -195,13 +185,9 @@ function GrowthCluster({ growth, isUnlocked }: GrowthClusterProps) {
       <p className={styles.clusterDescription}>{growth.description}</p>
 
       <div className={styles.quoteWall}>
-        {growth.evidence.map((ev, idx) => (
+        {growth.evidence.map((quote, idx) => (
           <div key={idx} className={styles.growthQuote}>
-            <p className={styles.quoteText}>"{ev.quote}"</p>
-            <div className={styles.quoteMeta}>
-              <span className={styles.quoteDate}>[{formatDate(ev.sessionDate)}]</span>
-              <span className={styles.growthContext}>{ev.context}</span>
-            </div>
+            <p className={styles.quoteText}>"{quote}"</p>
           </div>
         ))}
       </div>

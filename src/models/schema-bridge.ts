@@ -370,14 +370,16 @@ function mergeDimensionInsights(
     const result = dimensionResults.find(d => d.name === insight.dimension);
     if (result) {
       // Map DimensionStrength to VerboseStrength
+      // NOTE: evidence is now optional string[] (just quotes) instead of required object[]
+      // We convert to the VerboseEvidence format expected by unified-report
       if (insight.strengths && insight.strengths.length > 0) {
         result.verboseStrengths = insight.strengths.map(s => ({
           title: s.title,
           description: s.description,
-          evidence: s.evidence.map(e => ({
-            quote: e.quote,
-            sessionDate: e.sessionDate,
-            context: e.context,
+          evidence: (s.evidence || []).map(quote => ({
+            quote: typeof quote === 'string' ? quote : (quote as any).quote || '',
+            sessionDate: typeof quote === 'string' ? '' : (quote as any).sessionDate || '',
+            context: typeof quote === 'string' ? '' : (quote as any).context || '',
           })),
         })) as VerboseStrength[];
       }
@@ -387,10 +389,10 @@ function mergeDimensionInsights(
         result.verboseGrowthAreas = insight.growthAreas.map(g => ({
           title: g.title,
           description: g.description,
-          evidence: g.evidence.map(e => ({
-            quote: e.quote,
-            sessionDate: e.sessionDate,
-            context: e.context,
+          evidence: (g.evidence || []).map(quote => ({
+            quote: typeof quote === 'string' ? quote : (quote as any).quote || '',
+            sessionDate: typeof quote === 'string' ? '' : (quote as any).sessionDate || '',
+            context: typeof quote === 'string' ? '' : (quote as any).context || '',
           })),
           recommendation: g.recommendation,
         })) as VerboseGrowthArea[];
@@ -419,6 +421,7 @@ function mapEvidenceSentiment(
 /**
  * Extract evidence quotes from VerboseEvaluation
  * Now handles both legacy (strengths/growthAreas) and new (dimensionInsights) formats
+ * NOTE: evidence is now string[] (just quotes) instead of object[]
  */
 export function extractEvidence(verbose: VerboseEvaluation): EvidenceQuote[] {
   const evidence: EvidenceQuote[] = [];
@@ -428,11 +431,11 @@ export function extractEvidence(verbose: VerboseEvaluation): EvidenceQuote[] {
     for (const insight of verbose.dimensionInsights) {
       // Strengths from each dimension
       for (const strength of insight.strengths || []) {
-        for (const e of strength.evidence) {
+        for (const quote of strength.evidence || []) {
           evidence.push({
-            quote: e.quote,
+            quote: typeof quote === 'string' ? quote : (quote as any).quote || '',
             messageIndex: 0,
-            timestamp: e.sessionDate,
+            timestamp: typeof quote === 'string' ? '' : (quote as any).sessionDate || '',
             category: 'strength',
             dimension: insight.dimension as DimensionNameEnum,
             sentiment: 'positive',
@@ -443,11 +446,11 @@ export function extractEvidence(verbose: VerboseEvaluation): EvidenceQuote[] {
 
       // Growth areas from each dimension
       for (const area of insight.growthAreas || []) {
-        for (const e of area.evidence) {
+        for (const quote of area.evidence || []) {
           evidence.push({
-            quote: e.quote,
+            quote: typeof quote === 'string' ? quote : (quote as any).quote || '',
             messageIndex: 0,
-            timestamp: e.sessionDate,
+            timestamp: typeof quote === 'string' ? '' : (quote as any).sessionDate || '',
             category: 'growth',
             dimension: insight.dimension as DimensionNameEnum,
             sentiment: 'negative',

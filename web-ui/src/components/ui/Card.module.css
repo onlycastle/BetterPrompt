@@ -1,19 +1,64 @@
+/**
+ * Card Component - Glassmorphism Style
+ */
+
 .card {
-  background-color: var(--surface-1);
-  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-card);
-  transition: box-shadow var(--transition-normal), transform var(--transition-normal);
+  transition:
+    box-shadow var(--transition-normal),
+    transform var(--transition-normal),
+    border-color var(--transition-normal);
 }
 
 .hover:hover {
   box-shadow: var(--shadow-card-hover);
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  border-color: rgba(14, 165, 233, 0.15);
   cursor: pointer;
 }
 
-/* Optional accent line on top */
+/* Gradient accent border on top */
 .accent {
-  border-top: 4px solid var(--accent-primary);
+  border-top: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.accent::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+
+/* Gradient border variant */
+.gradientBorder {
+  background:
+    linear-gradient(var(--glass-bg), var(--glass-bg)) padding-box,
+    var(--gradient-primary) border-box;
+  border: 2px solid transparent;
+}
+
+/* Glow effect variant */
+.glow {
+  box-shadow:
+    var(--shadow-card),
+    var(--shadow-glow);
+}
+
+.glow:hover {
+  box-shadow:
+    var(--shadow-card-hover),
+    var(--shadow-glow-strong);
 }
 
 /* Padding variants */
@@ -31,6 +76,10 @@
 
 .padding-lg {
   padding: var(--space-lg);
+}
+
+.padding-xl {
+  padding: var(--space-xl);
 }
 
 /* Card sections */
@@ -55,4 +104,10 @@
   margin-top: var(--space-md);
   padding-top: var(--space-md);
   border-top: 1px solid var(--border-subtle);
+}
+
+/* Solid variant (no glass) */
+.solid {
+  background: var(--surface-1);
+  backdrop-filter: none;
 }

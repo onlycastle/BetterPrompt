@@ -179,7 +179,7 @@
 
 .quoteText {
   font-size: 14px;
-  color: var(--text-muted);
+  color: var(--text-secondary);  /* Better contrast for readability */
   font-style: italic;
   line-height: 1.7;
   margin: 0 0 10px 0;

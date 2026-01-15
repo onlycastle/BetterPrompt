@@ -1,0 +1,77 @@
+/**
+ * EmptyStatePrompt Styles
+ * Clean, minimal empty state
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-3xl) var(--space-xl);
+  max-width: 480px;
+  margin: var(--space-2xl) auto;
+}
+
+.iconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-lg);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.08);
+}
+
+.icon {
+  color: #94A3B8;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: #0F172A;
+  margin: 0 0 var(--space-sm) 0;
+}
+
+.message {
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  color: #475569;
+  line-height: var(--leading-relaxed);
+  margin: 0 0 var(--space-xl) 0;
+}
+
+.commandSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.commandLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-sm);
+  color: #94A3B8;
+}
+
+.command {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  color: #6366F1;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.08);
+}
