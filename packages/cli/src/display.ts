@@ -78,7 +78,7 @@ export function displayResults(result: AnalysisResult): void {
   lines.push('');
 
   // Report link
-  lines.push(`📊 ${pc.bold('Full Report:')} ${pc.cyan(pc.underline(result.reportUrl))}`);
+  lines.push(`📊 ${pc.bold('Detailed Report:')} ${pc.cyan(pc.underline(result.reportUrl))}`);
 
   const box = boxen(lines.join('\n'), {
     padding: 1,
