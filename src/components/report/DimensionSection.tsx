@@ -48,27 +48,30 @@ export function DimensionSection({
 }: DimensionSectionProps) {
   const blurClass = isUnlocked ? '' : styles.blurred;
 
-  // Get level class for styling
-  const getLevelClass = (level: string): string => {
-    if (['expert', 'proficient', 'resilient', 'ai-master'].includes(level)) {
-      return styles.healthy;
-    }
-    if (level === 'developing') {
-      return styles.balanced;
-    }
-    if (['high', 'at-risk', 'vibe-coder'].includes(level)) {
-      return styles.warning;
-    }
-    return styles.moderate;
+  // Level-to-style class mapping
+  const LEVEL_CLASSES: Record<string, string> = {
+    expert: styles.healthy,
+    proficient: styles.healthy,
+    resilient: styles.healthy,
+    'ai-master': styles.healthy,
+    developing: styles.balanced,
+    high: styles.warning,
+    'at-risk': styles.warning,
+    'vibe-coder': styles.warning,
   };
 
-  // Get metric color based on score
-  const getMetricColor = (score: number): string => {
+  // Get level class for styling
+  function getLevelClass(level: string): string {
+    return LEVEL_CLASSES[level] ?? styles.moderate;
+  }
+
+  // Get metric color based on score thresholds
+  function getMetricColor(score: number): string {
     if (score >= 75) return styles.green;
     if (score >= 50) return styles.cyan;
     if (score >= 25) return styles.yellow;
     return styles.red;
-  };
+  }
 
   return (
     <div className={styles.dimensionSection} style={{ '--accent': accentColor } as CSSProperties}>

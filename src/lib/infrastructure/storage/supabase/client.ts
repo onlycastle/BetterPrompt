@@ -10,9 +10,10 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Environment variables
-const supabaseUrl = process.env.SUPABASE_URL;
+// NEXT_PUBLIC_ prefix required for client-side access in Next.js
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 // Singleton instance
 let _supabase: SupabaseClient | null = null;
