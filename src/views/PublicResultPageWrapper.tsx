@@ -1,11 +1,11 @@
 /**
  * Public Result Page Wrapper
- * Server component for SEO, fetches data directly without react-query
+ * Server component for SEO, fetches data directly from Supabase
  */
 
+import { createClient } from '@supabase/supabase-js';
 import styles from './PublicResultPage.module.css';
-
-// API routes are relative in Next.js
+import { ShareButton } from './ShareButton';
 
 interface ResultData {
   resultId: string;
@@ -45,13 +45,34 @@ const TYPE_META: Record<string, { emoji: string; name: string; tagline: string }
 
 async function fetchResult(resultId: string): Promise<ResultData | null> {
   try {
-    const response = await fetch(`/api/analysis/results/${resultId}`, {
-      next: { revalidate: 3600 } // Cache for 1 hour
-    });
-    if (!response.ok) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      const missing = [];
+      if (!supabaseUrl) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+      if (!supabaseKey) missing.push('SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY');
+      console.error(`Missing environment variables: ${missing.join(', ')}`);
       return null;
     }
-    return response.json();
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { data, error } = await supabase
+      .from('analysis_results')
+      .select('evaluation, is_paid')
+      .eq('result_id', resultId)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return {
+      resultId,
+      isPaid: data.is_paid,
+      evaluation: data.evaluation,
+    };
   } catch (error) {
     console.error('Error fetching result:', error);
     return null;
@@ -134,7 +155,7 @@ export async function PublicResultPageWrapper({ resultId }: PublicResultPageWrap
             </div>
             <div className={styles.unlockOverlay}>
               <button className={styles.unlockButton}>
-                🔓 Unlock Full Report
+                🔓 Unlock Detailed Report
               </button>
               <p className={styles.unlockNote}>One-time purchase</p>
             </div>
@@ -174,19 +195,3 @@ export async function PublicResultPageWrapper({ resultId }: PublicResultPageWrap
   );
 }
 
-// Client component for share button - needs to be in a separate file
-// For now, we'll use a simple button without the 'use client' directive issue
-function ShareButton() {
-  return (
-    <button
-      onClick={() => {
-        if (typeof window !== 'undefined') {
-          navigator.clipboard.writeText(window.location.href);
-        }
-      }}
-      className={styles.shareButton}
-    >
-      📋 Copy Link
-    </button>
-  );
-}
