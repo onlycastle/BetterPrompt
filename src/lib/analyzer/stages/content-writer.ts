@@ -20,6 +20,7 @@ import type { StructuredAnalysisData } from '../../models/analysis-data';
 import {
   CONTENT_WRITER_SYSTEM_PROMPT,
   buildContentWriterUserPrompt,
+  detectKoreanContent,
 } from './content-writer-prompts';
 
 /**
@@ -77,7 +78,12 @@ export class ContentWriterStage {
     sessions: ParsedSession[]
   ): Promise<VerboseLLMResponse> {
     const structuredDataJson = JSON.stringify(analysisData, null, 2);
-    const userPrompt = buildContentWriterUserPrompt(structuredDataJson, sessions.length);
+
+    // Detect if user's quotes are primarily in Korean
+    const quotes = analysisData.extractedQuotes.map((q) => q.quote);
+    const useKorean = detectKoreanContent(quotes);
+
+    const userPrompt = buildContentWriterUserPrompt(structuredDataJson, sessions.length, useKorean);
 
     const result = await this.client.generateStructured({
       systemPrompt: CONTENT_WRITER_SYSTEM_PROMPT,
@@ -156,7 +162,146 @@ export class ContentWriterStage {
     // We add evidence here by matching quotes from Stage 1's extractedQuotes
     this.addEvidenceFromStage1(sanitized, analysisData);
 
+    // Sanitize Premium/Enterprise sections (Anti-Patterns, Critical Thinking, Planning)
+    this.sanitizePremiumSections(sanitized, analysisData);
+
     return sanitized;
+  }
+
+  /**
+   * Sanitize Premium/Enterprise sections and provide defaults if missing
+   */
+  private sanitizePremiumSections(
+    response: VerboseLLMResponse,
+    analysisData: StructuredAnalysisData
+  ): void {
+    // Anti-Patterns Analysis
+    const hasAntiPatterns =
+      analysisData.detectedAntiPatterns && analysisData.detectedAntiPatterns.length > 0;
+
+    if (hasAntiPatterns) {
+      if (!response.antiPatternsAnalysis) {
+        response.antiPatternsAnalysis = {
+          detected: [],
+          summary:
+            'Some growth opportunities were identified. These are common learning patterns that every developer experiences.',
+          overallHealthScore: 80,
+        };
+      }
+      // Ensure required fields
+      if (!Array.isArray(response.antiPatternsAnalysis.detected)) {
+        response.antiPatternsAnalysis.detected = [];
+      }
+      if (typeof response.antiPatternsAnalysis.overallHealthScore !== 'number') {
+        response.antiPatternsAnalysis.overallHealthScore = 80;
+      }
+    }
+
+    // Critical Thinking Analysis
+    const hasCriticalThinking =
+      analysisData.criticalThinkingMoments && analysisData.criticalThinkingMoments.length > 0;
+
+    if (hasCriticalThinking) {
+      if (!response.criticalThinkingAnalysis) {
+        response.criticalThinkingAnalysis = {
+          strengths: [],
+          opportunities: [],
+          summary:
+            'Shows signs of critical evaluation when working with AI-generated content.',
+          overallScore: 70,
+        };
+      }
+      // Ensure required fields
+      if (!Array.isArray(response.criticalThinkingAnalysis.strengths)) {
+        response.criticalThinkingAnalysis.strengths = [];
+      }
+      if (!Array.isArray(response.criticalThinkingAnalysis.opportunities)) {
+        response.criticalThinkingAnalysis.opportunities = [];
+      }
+      if (typeof response.criticalThinkingAnalysis.overallScore !== 'number') {
+        response.criticalThinkingAnalysis.overallScore = 70;
+      }
+    }
+
+    // Planning Analysis
+    const hasPlanningBehaviors =
+      analysisData.planningBehaviors && analysisData.planningBehaviors.length > 0;
+
+    if (hasPlanningBehaviors) {
+      if (!response.planningAnalysis) {
+        // Determine maturity level from Stage 1 data
+        const hasSlashPlan = analysisData.planningBehaviors?.some(
+          (b) => b.behaviorType === 'slash_plan_usage'
+        );
+        const hasTodoWrite = analysisData.planningBehaviors?.some(
+          (b) => b.behaviorType === 'todowrite_usage'
+        );
+
+        let maturityLevel: 'reactive' | 'emerging' | 'structured' | 'expert' = 'emerging';
+        if (hasSlashPlan) {
+          // Check if /plan has detailed decomposition
+          const slashPlanBehavior = analysisData.planningBehaviors?.find(
+            (b) => b.behaviorType === 'slash_plan_usage'
+          );
+          if (
+            slashPlanBehavior?.planDetails?.problemDecomposition &&
+            (slashPlanBehavior?.planDetails?.stepsCount ?? 0) >= 3
+          ) {
+            maturityLevel = 'expert';
+          } else {
+            maturityLevel = 'structured';
+          }
+        } else if (hasTodoWrite) {
+          maturityLevel = 'emerging';
+        } else {
+          maturityLevel = 'reactive';
+        }
+
+        response.planningAnalysis = {
+          strengths: [],
+          opportunities: [],
+          summary:
+            'Shows planning awareness in development workflow.',
+          planningMaturityLevel: maturityLevel,
+        };
+      }
+
+      // Ensure required fields
+      if (!Array.isArray(response.planningAnalysis.strengths)) {
+        response.planningAnalysis.strengths = [];
+      }
+      if (!Array.isArray(response.planningAnalysis.opportunities)) {
+        response.planningAnalysis.opportunities = [];
+      }
+
+      // Add slashPlanStats from Stage 1 data if available
+      if (!response.planningAnalysis.slashPlanStats) {
+        const slashPlanBehaviors = analysisData.planningBehaviors?.filter(
+          (b) => b.behaviorType === 'slash_plan_usage'
+        );
+        if (slashPlanBehaviors && slashPlanBehaviors.length > 0) {
+          const totalUsage = slashPlanBehaviors.length;
+          const stepsArray = slashPlanBehaviors
+            .map((b) => b.planDetails?.stepsCount)
+            .filter((s): s is number => typeof s === 'number');
+          const avgSteps =
+            stepsArray.length > 0
+              ? stepsArray.reduce((a, b) => a + b, 0) / stepsArray.length
+              : undefined;
+          const decompositionCount = slashPlanBehaviors.filter(
+            (b) => b.planDetails?.problemDecomposition
+          ).length;
+          const decompositionRate =
+            totalUsage > 0 ? decompositionCount / totalUsage : undefined;
+
+          response.planningAnalysis.slashPlanStats = {
+            totalUsage,
+            avgStepsPerPlan: avgSteps,
+            problemDecompositionRate: decompositionRate,
+          };
+        }
+      }
+    }
   }
 
   /**

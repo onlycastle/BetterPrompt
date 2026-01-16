@@ -13,6 +13,7 @@
 
 import { INITIAL_INSIGHTS, type ProfessionalInsight } from '../domain/models/knowledge';
 import { DIMENSION_KEYWORDS, type DimensionMapping } from './dimension-keywords';
+import { buildKnowledgePatternsXML } from './knowledge-driven-patterns';
 
 /**
  * Dimension display names for readable output
@@ -113,6 +114,7 @@ ${dimensions}
 export function buildExpertKnowledgeContext(): string {
   const researchInsights = buildResearchInsights();
   const behavioralSignals = buildBehavioralSignals();
+  const actionablePatterns = buildKnowledgePatternsXML();
 
   return `<expert_knowledge>
   <!-- This knowledge base informs your analysis with research-backed insights -->
@@ -122,12 +124,15 @@ ${researchInsights}
 
 ${behavioralSignals}
 
+${actionablePatterns}
+
   <usage_guidelines>
     - Reference specific insights when they apply to the developer's patterns
     - Use behavioral signals to identify strengths and growth opportunities
     - Connect recommendations to actionable advice from research
     - Prioritize insights by their priority score when multiple apply
     - Consider trigger conditions (maxScore) when recommending insights
+    - CRITICAL: Detect actionable_patterns and report which ones the developer practiced/missed
   </usage_guidelines>
 </expert_knowledge>`;
 }

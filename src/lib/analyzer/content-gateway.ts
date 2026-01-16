@@ -52,6 +52,20 @@ export interface PremiumPreview {
   growthRoadmapPreview?: string;
   comparativeInsightsPreview?: string[];
   sessionTrendsPreview?: string[];
+
+  // Premium features preview (Anti-Patterns, Critical Thinking, Planning)
+  antiPatternsPreview?: {
+    count: number;
+    healthScore: number;
+  };
+  criticalThinkingPreview?: {
+    strengthCount: number;
+    overallScore: number;
+  };
+  planningPreview?: {
+    maturityLevel: string;
+    slashPlanUsage?: number;
+  };
 }
 
 // ============================================================================
@@ -63,8 +77,9 @@ export interface PremiumPreview {
  *
  * Tier Access Matrix:
  * - Free: Type result, personalitySummary, first 2 dimensionInsights (full detail), rest get empty arrays
- * - Premium: All dimensionInsights, promptPatterns (no premium fields)
- * - Enterprise: Everything including premium fields
+ * - Premium: All dimensionInsights, promptPatterns, actionablePractices,
+ *            antiPatternsAnalysis, criticalThinkingAnalysis, planningAnalysis
+ * - Enterprise: Everything including analytics (toolUsageDeepDive, tokenEfficiency, growthRoadmap, etc.)
  *
  * @example
  * ```typescript
@@ -134,6 +149,30 @@ export class ContentGateway {
       preview.sessionTrendsPreview = evaluation.sessionTrends.map((trend) => trend.metricName);
     }
 
+    // Anti-Patterns Preview (count and health score only)
+    if (evaluation.antiPatternsAnalysis) {
+      preview.antiPatternsPreview = {
+        count: evaluation.antiPatternsAnalysis.detected?.length ?? 0,
+        healthScore: evaluation.antiPatternsAnalysis.overallHealthScore ?? 80,
+      };
+    }
+
+    // Critical Thinking Preview (strength count and score only)
+    if (evaluation.criticalThinkingAnalysis) {
+      preview.criticalThinkingPreview = {
+        strengthCount: evaluation.criticalThinkingAnalysis.strengths?.length ?? 0,
+        overallScore: evaluation.criticalThinkingAnalysis.overallScore ?? 70,
+      };
+    }
+
+    // Planning Preview (maturity level and /plan usage only)
+    if (evaluation.planningAnalysis) {
+      preview.planningPreview = {
+        maturityLevel: evaluation.planningAnalysis.planningMaturityLevel ?? 'emerging',
+        slashPlanUsage: evaluation.planningAnalysis.slashPlanStats?.totalUsage,
+      };
+    }
+
     return preview;
   }
 
@@ -146,7 +185,9 @@ export class ContentGateway {
    * - First 2 dimension insights (fully detailed)
    * - Remaining 4 dimensions get empty strengths/growthAreas arrays (teaser)
    * - No prompt patterns
-   * - No premium fields
+   * - No actionable practices
+   * - No anti-patterns/critical thinking/planning analysis
+   * - No premium analytics fields
    */
   private filterFree(evaluation: VerboseEvaluation): VerboseEvaluation {
     // Filter dimension insights - first 2 full, rest empty
@@ -190,6 +231,14 @@ export class ContentGateway {
       growthRoadmap: undefined,
       comparativeInsights: undefined,
       sessionTrends: undefined,
+
+      // Premium/Enterprise analysis features (locked for free)
+      antiPatternsAnalysis: undefined,
+      criticalThinkingAnalysis: undefined,
+      planningAnalysis: undefined,
+
+      // Actionable practices (locked for free)
+      actionablePractices: undefined,
     };
   }
 
@@ -200,7 +249,11 @@ export class ContentGateway {
    * - Everything in free tier
    * - All 6 dimension insights (fully detailed)
    * - Prompt patterns
-   * - No premium analytics fields (locked for enterprise)
+   * - Actionable practices (expert advice adoption)
+   * - Anti-patterns analysis (growth opportunities)
+   * - Critical thinking analysis (verification habits)
+   * - Planning analysis (/plan usage, maturity level)
+   * - No enterprise analytics fields (locked for enterprise)
    */
   private filterPremium(evaluation: VerboseEvaluation): VerboseEvaluation {
     return {
@@ -233,6 +286,14 @@ export class ContentGateway {
       growthRoadmap: undefined,
       comparativeInsights: undefined,
       sessionTrends: undefined,
+
+      // Premium analysis features (Anti-Patterns, Critical Thinking, Planning)
+      antiPatternsAnalysis: evaluation.antiPatternsAnalysis,
+      criticalThinkingAnalysis: evaluation.criticalThinkingAnalysis,
+      planningAnalysis: evaluation.planningAnalysis,
+
+      // Actionable practices (premium)
+      actionablePractices: evaluation.actionablePractices,
     };
   }
 
