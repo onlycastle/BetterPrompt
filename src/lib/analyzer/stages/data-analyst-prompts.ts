@@ -35,13 +35,77 @@ Extract ALL relevant behavioral signals from conversation data:
 - verification_habit: Testing and review behaviors
 - tool_usage: Tool preferences and advanced usage
 
+**Actionable Pattern Detection** (CRITICAL - from expert_knowledge.actionable_patterns)
+- For EACH pattern in actionable_patterns, determine if the developer practiced it
+- Extract evidence quotes when pattern is detected
+- Report BOTH practiced and missed patterns with evidence
+- Use the provided if_found/if_missing feedback templates
+
 **Dimension Signal Analysis** (exactly 6 dimensions)
 - aiCollaboration: Task delegation, TodoWrite usage, parallel workflows
-- contextEngineering: File references, WRITE/SELECT/COMPRESS patterns
+- contextEngineering: File references, WRITE/SELECT/COMPRESS/ISOLATE patterns
+  * CRITICAL: Context window utilization - optimal is ~50%, >70% is OVERLOAD
+  * Strength signals: /compact usage, starting fresh sessions, efficient context
+  * Growth signals: Very long sessions, no /compact, "context getting long" mentions
 - toolMastery: Tool diversity, advanced tool usage
 - burnoutRisk: Work hours, session duration patterns
 - aiControl: Verification requests, corrections, modifications
 - skillResilience: Cold start behavior, hallucination detection
+
+**Anti-Pattern Detection** (target: 0-3 patterns, Premium/Enterprise)
+Detect inefficient AI collaboration patterns (frame as "growth opportunity", NOT criticism):
+- sunk_cost_loop: Same error + same/similar approach repeated 3+ times
+  * Examples in any language: "다시 해줘", "try again", "もう一度", "fix it again"
+  * Look for: repeated prompts after identical errors, no change in approach
+- emotional_escalation: Frustration affecting prompts
+  * Examples: "아 진짜", "ugh", "come on", expressions of anger/frustration
+  * Look for: emotional language after AI errors, tone degradation
+- blind_retry: Retry without analysis or approach change
+  * Examples: "다시 해", "fix it", "run again" without error analysis
+  * Look for: retry requests without mentioning what to change
+- passive_acceptance: Accepting AI output without verification
+  * Look for: no verification questions, no testing, immediate use of AI code
+
+**Critical Thinking Detection** (target: 3-8 moments, Premium/Enterprise)
+Detect verification and questioning behaviors (celebrate these as strengths):
+- verification_request: Verifying AI output before accepting
+  * Examples: "정말?", "확실해?", "are you sure?", "let me check"
+  * Look for: questions about correctness, running tests, checking results
+- output_validation: Actually testing or validating AI suggestions
+  * Look for: mentions of running tests, checking output, verifying behavior
+- assumption_questioning: Challenging AI's assumptions or decisions
+  * Examples: "왜 이 방법이야?", "이게 최선이야?", "why this approach?"
+  * Look for: questions about the reasoning behind AI suggestions
+- alternative_exploration: Asking for different approaches
+  * Examples: "다른 방법은?", "대안은?", "what about...", "instead of..."
+  * Look for: requests for alternatives, comparison of options
+- security_check: Checking for security, performance, or side effects
+  * Examples: "보안 취약점은?", "성능 문제?", "side effects?"
+  * Look for: questions about security, performance, or unintended consequences
+
+**Planning Behavior Detection** (target: 2-5 behaviors, Premium/Enterprise)
+Detect strategic thinking before implementation:
+- slash_plan_usage: /plan command usage (HIGHEST SIGNAL)
+  * Detection: Message starts with "/plan"
+  * MUST analyze: Count steps in plan, check for problem decomposition
+  * Record: planContent (summary), problemDecomposition (boolean), stepsCount (number)
+- structure_first: Planning before implementation
+  * Examples: "먼저 전체 구조를 보자", "설계부터", "let's plan first"
+  * Look for: architectural thinking before coding
+- task_decomposition: Breaking complex tasks into steps
+  * Examples: "단계별로", "step by step", numbered lists, bullet points
+  * Look for: explicit task breakdown
+- todowrite_usage: Using TodoWrite tool
+  * Look for: TodoWrite tool calls, task list management
+- stepwise_approach: Sequential, methodical approach
+  * Examples: "1. 먼저... 2. 그 다음...", ordered execution
+  * Look for: numbered steps, sequential thinking
+
+**Planning Quality Assessment:**
+- /plan usage + 3+ steps with decomposition → 'expert'
+- /plan usage + simple plan → 'structured'
+- TodoWrite usage only → 'emerging'
+- No planning, direct implementation → 'reactive'
 
 **Type Classification**
 - primaryType: architect | scientist | collaborator | speedrunner | craftsman
@@ -58,6 +122,10 @@ Return StructuredAnalysisData with:
 - typeAnalysis: Classification with reasoning
 - extractedQuotes: Array of quotes (MINIMUM 15, target 20-50)
 - detectedPatterns: Array of patterns (MINIMUM 3, target 5-10)
+- actionablePatternMatches: Array of { patternId, practiced: boolean, evidence: string[], feedback: string }
+- detectedAntiPatterns: Array of { patternId, patternType, frequency, examples, severity, triggerContext }
+- criticalThinkingMoments: Array of { moment, type, result, dimension, confidence }
+- planningBehaviors: Array of { behavior, behaviorType, frequency, examples, effectiveness, planDetails? }
 - dimensionSignals: EXACTLY 6 objects, one per dimension
 - analysisMetadata: Summary statistics and confidence
 
@@ -68,7 +136,19 @@ Return StructuredAnalysisData with:
 - DO assign confidence scores honestly
 - ALWAYS include at least 15 extractedQuotes
 - ALWAYS include at least 3 detectedPatterns
-- ALWAYS include exactly 6 dimensionSignals`;
+- ALWAYS include actionablePatternMatches for EVERY pattern in actionable_patterns
+- ALWAYS include exactly 6 dimensionSignals
+
+**IMPORTANT - Anti-Pattern Tone:**
+- Frame ALL anti-patterns as "growth opportunities", NEVER as criticisms
+- Use supportive language: "You could explore..." NOT "You failed to..."
+- Acknowledge that anti-patterns are common learning stages
+- Suggest specific improvements rather than just highlighting problems
+
+**IMPORTANT - Language Independence:**
+- Detect patterns by MEANING, not by specific keywords
+- The examples given are in multiple languages - detect similar INTENT in any language
+- For /plan command, detection is language-independent (it's a slash command)`;
 
 /**
  * Build the user prompt for Stage 1 data extraction
@@ -108,6 +188,21 @@ Analyze the sessions above and extract:
    - Primary type with evidence
    - Control level assessment
    - Distribution percentages
+
+5. **Anti-Patterns** (0-3 patterns)
+   - Look for: sunk_cost_loop, emotional_escalation, blind_retry, passive_acceptance
+   - Frame as growth opportunities, not criticisms
+   - Include triggerContext (what situation caused this)
+
+6. **Critical Thinking Moments** (3-8 moments)
+   - Look for: verification_request, output_validation, assumption_questioning, alternative_exploration, security_check
+   - Celebrate these as strengths
+   - Note what result the critical thinking led to
+
+7. **Planning Behaviors** (2-5 behaviors)
+   - Look for: slash_plan_usage (HIGHEST PRIORITY), structure_first, task_decomposition, todowrite_usage
+   - For /plan usage: MUST include planDetails with planContent, problemDecomposition, stepsCount
+   - Assess effectiveness
 
 Return StructuredAnalysisData. Be EXHAUSTIVE.`;
 }
