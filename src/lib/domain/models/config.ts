@@ -89,8 +89,8 @@ export type SupabaseConfig = z.infer<typeof SupabaseConfigSchema>;
  * Environment variable mappings for Supabase
  */
 export const SUPABASE_ENV_MAPPINGS = {
-  url: 'SUPABASE_URL',
-  anonKey: 'SUPABASE_ANON_KEY',
+  url: 'NEXT_PUBLIC_SUPABASE_URL',
+  anonKey: 'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   serviceRoleKey: 'SUPABASE_SERVICE_ROLE_KEY',
 } as const;
 

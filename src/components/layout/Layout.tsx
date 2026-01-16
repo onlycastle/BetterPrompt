@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, type ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import styles from './Layout.module.css';

@@ -199,6 +199,24 @@
   color: var(--color-text-muted);
 }
 
+.moreContent {
+  text-align: center;
+  margin-top: var(--space-md);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Unlock Prompt (inline, not overlay) */
+.unlockPrompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-lg) 0;
+  margin-top: var(--space-md);
+  border-top: 1px dashed var(--color-border);
+}
+
 /* Patterns (Premium) */
 .patterns {
   display: flex;

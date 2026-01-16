@@ -1,5 +1,8 @@
+'use client';
+
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { BookOpen, GraduationCap, LayoutDashboard, ChevronLeft, ChevronRight, Building2, User } from 'lucide-react';
 import styles from './Sidebar.module.css';
 
@@ -17,6 +20,7 @@ export interface SidebarProps {
 
 export function Sidebar({ onCollapseChange }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const pathname = usePathname();
 
   const handleToggle = () => {
     const newCollapsed = !collapsed;
@@ -28,7 +32,7 @@ export function Sidebar({ onCollapseChange }: SidebarProps) {
     <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`}>
       <div className={styles.header}>
         <div className={styles.logo}>
-          <img src="/public/logo.png" alt="No More AI Slop" className={styles.logoIcon} />
+          <img src="/images/logo.png" alt="No More AI Slop" className={styles.logoIcon} />
           {!collapsed && <span className={styles.logoText}>No More AI Slop</span>}
         </div>
         <button
@@ -43,17 +47,15 @@ export function Sidebar({ onCollapseChange }: SidebarProps) {
 
       <nav className={styles.nav}>
         {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
-          <NavLink
+          <Link
             key={to}
-            to={to}
-            className={({ isActive }) =>
-              `${styles.navItem} ${isActive ? styles.active : ''}`
-            }
+            href={to}
+            className={`${styles.navItem} ${pathname === to ? styles.active : ''}`}
             title={collapsed ? label : undefined}
           >
             <Icon size={20} className={styles.navIcon} />
             {!collapsed && <span className={styles.navLabel}>{label}</span>}
-          </NavLink>
+          </Link>
         ))}
       </nav>
 

@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { FileText, TrendingUp, Lightbulb } from 'lucide-react';
+import { FileText, TrendingUp, Lightbulb, LogOut } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { Tabs, LoadingState } from '@/components/ui';
 import type { Tab } from '@/components/ui';
@@ -26,7 +26,7 @@ const TABS: Tab[] = [
 export function PersonalDashboardPage() {
   const [activeTab, setActiveTab] = useState('report');
   const [showLogin, setShowLogin] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, signOut, user } = useAuth();
 
   const { data: analytics, isLoading: analyticsLoading } = usePersonalAnalytics();
   const { data: analysis, isLoading: analysisLoading, hasAnalysis } = useLatestAnalysis();
@@ -50,13 +50,20 @@ export function PersonalDashboardPage() {
       <Header
         title="My Profile"
         subtitle={isAuthenticated
-          ? "Your AI coding analysis and growth journey"
+          ? `Your AI coding analysis and growth journey`
           : "Sign in to unlock your personalized insights"}
-        actions={!isAuthenticated ? (
-          <button className={styles.signInHint} onClick={() => setShowLogin(true)}>
-            Sign in
-          </button>
-        ) : undefined}
+        actions={
+          isAuthenticated ? (
+            <button className={styles.signOutButton} onClick={signOut} title={user?.email}>
+              <LogOut size={16} />
+              Sign out
+            </button>
+          ) : (
+            <button className={styles.signInHint} onClick={() => setShowLogin(true)}>
+              Sign in
+            </button>
+          )
+        }
       />
 
       <Tabs tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />

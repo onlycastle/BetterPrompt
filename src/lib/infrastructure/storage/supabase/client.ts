@@ -2,12 +2,13 @@
  * Supabase Client Infrastructure
  *
  * Centralized Supabase client management for infrastructure layer.
- * Re-exports from lib/supabase.ts with additional utilities.
+ * Uses @supabase/ssr for proper cookie-based session handling.
  *
  * @module infrastructure/storage/supabase/client
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 // Environment variables
 // NEXT_PUBLIC_ prefix required for client-side access in Next.js
@@ -15,8 +16,9 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Singleton instance
+// Singleton instances
 let _supabase: SupabaseClient | null = null;
+let _browserClient: SupabaseClient | null = null;
 
 /**
  * Validate Supabase environment configuration
@@ -55,8 +57,28 @@ export function getSupabaseClient(): SupabaseClient {
 }
 
 /**
+ * Get the browser client instance (singleton)
+ * Uses @supabase/ssr for cookie-based session storage.
+ * This allows server-side API routes to read the auth session.
+ */
+export function getBrowserClient(): SupabaseClient {
+  if (typeof window === 'undefined') {
+    throw new Error('getBrowserClient can only be used in browser environment');
+  }
+
+  if (!_browserClient) {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set');
+    }
+    _browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
+  }
+  return _browserClient;
+}
+
+/**
  * Create a new Supabase client with anon key
  * For client-side or restricted access (respects RLS)
+ * @deprecated Use getBrowserClient() instead for proper SSR cookie handling
  */
 export function createAnonClient(): SupabaseClient {
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -83,10 +105,11 @@ export function createUserClient(accessToken: string): SupabaseClient {
 }
 
 /**
- * Reset the singleton (for testing)
+ * Reset the singletons (for testing)
  */
 export function resetSupabaseClient(): void {
   _supabase = null;
+  _browserClient = null;
 }
 
 // Re-export types
