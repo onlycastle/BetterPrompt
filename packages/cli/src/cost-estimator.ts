@@ -46,7 +46,7 @@ export interface CostEstimate {
  * Count tokens using character-based heuristics
  * with adjustments for common patterns in JSONL content
  */
-function countTokensAccurate(text: string): number {
+export function countTokensAccurate(text: string): number {
   if (!text) return 0;
 
   // Base estimate: ~4 chars per token for English

@@ -15,6 +15,8 @@ import {
   displayPrivacyNotice,
   displayError,
   displayNoSessions,
+  displaySessionList,
+  displaySelectionHelp,
 } from './display.js';
 import { estimateAnalysisCost, renderCostEstimate } from './cost-estimator.js';
 import { saveCache, loadCache, displayCacheHelp } from './cache.js';
@@ -39,8 +41,8 @@ function displayHelp(): void {
   console.log(pc.bold(pc.cyan('Usage:')) + ' npx no-ai-slop [options]');
   console.log('');
   console.log(pc.bold('Options:'));
-  console.log('  --save-cache    Save scanned sessions to local cache');
-  console.log('  --use-cache     Use cached sessions (skip scanning)');
+  console.log('  --save-cache    Run analysis and save result to local cache');
+  console.log('  --use-cache     Use cached analysis result (skip API call)');
   console.log('  --help, -h      Show this help message');
   console.log('');
 }
@@ -64,6 +66,63 @@ async function confirm(message: string): Promise<boolean> {
 }
 
 /**
+ * Parse session selection string into indices
+ * Supports: "1,3,5", "1-5", "1-3,5,7-10"
+ */
+function parseSessionSelection(input: string, max: number): number[] {
+  const indices = new Set<number>();
+
+  // Split by comma
+  const parts = input.split(',').map(p => p.trim());
+
+  for (const part of parts) {
+    if (part.includes('-')) {
+      // Range: "1-5"
+      const [startStr, endStr] = part.split('-');
+      const start = parseInt(startStr, 10);
+      const end = parseInt(endStr, 10);
+      if (!isNaN(start) && !isNaN(end)) {
+        for (let i = start; i <= end; i++) {
+          if (i >= 1 && i <= max) indices.add(i - 1); // Convert to 0-based
+        }
+      }
+    } else {
+      // Single number
+      const num = parseInt(part, 10);
+      if (!isNaN(num) && num >= 1 && num <= max) {
+        indices.add(num - 1); // Convert to 0-based
+      }
+    }
+  }
+
+  return Array.from(indices).sort((a, b) => a - b);
+}
+
+/**
+ * Prompt user for session selection
+ */
+async function promptSessionSelection(maxSessions: number): Promise<number[] | 'all'> {
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(pc.cyan('Select sessions to analyze: '), (answer) => {
+      rl.close();
+      const normalized = answer.trim().toLowerCase();
+
+      if (normalized === '' || normalized === 'all') {
+        resolve('all');
+        return;
+      }
+
+      resolve(parseSessionSelection(normalized, maxSessions));
+    });
+  });
+}
+
+/**
  * Main CLI entry point
  */
 async function main(): Promise<void> {
@@ -79,6 +138,17 @@ async function main(): Promise<void> {
   console.log(pc.bold(pc.cyan('🚀 no-ai-slop')) + pc.dim(' - AI Collaboration Style Analyzer'));
   console.log('');
 
+  // Try to use cached analysis result if requested
+  if (args.useCache) {
+    console.log(pc.dim('  Checking analysis cache...'));
+    const cachedResult = await loadCache();
+    if (cachedResult) {
+      displayResults(cachedResult);
+      return;
+    }
+    console.log(pc.dim('  No cached analysis found, running fresh analysis...'));
+  }
+
   // Check if Claude projects directory exists
   const hasProjects = await hasClaudeProjects();
   if (!hasProjects) {
@@ -86,57 +156,61 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Scan sessions
+  const scanSpinner = ora('Scanning Claude Code sessions...').start();
+
   let scanResult;
-
-  // Try to use cache if requested
-  if (args.useCache) {
-    console.log(pc.dim('  Checking cache...'));
-    const cached = await loadCache();
-    if (cached) {
-      scanResult = cached;
-    } else {
-      console.log(pc.dim('  Cache miss, scanning...'));
-    }
+  try {
+    scanResult = await scanSessions(10);
+  } catch (error) {
+    scanSpinner.fail('Failed to scan sessions');
+    displayError(error instanceof Error ? error.message : 'Unknown error');
+    process.exit(1);
   }
 
-  // Scan if we don't have cached data
-  if (!scanResult) {
-    const scanSpinner = ora('Scanning Claude Code sessions...').start();
+  if (scanResult.sessions.length === 0) {
+    scanSpinner.stop();
+    displayNoSessions();
+    process.exit(1);
+  }
 
-    try {
-      scanResult = await scanSessions(10);
-    } catch (error) {
-      scanSpinner.fail('Failed to scan sessions');
-      displayError(error instanceof Error ? error.message : 'Unknown error');
-      process.exit(1);
-    }
+  scanSpinner.succeed(
+    `Found ${pc.bold(String(scanResult.sessions.length))} sessions`
+  );
 
-    if (scanResult.sessions.length === 0) {
-      scanSpinner.stop();
-      displayNoSessions();
-      process.exit(1);
-    }
+  // Display session list for selection
+  displaySessionList(scanResult.sessions);
+  displaySelectionHelp();
 
-    scanSpinner.succeed(
-      `Found ${pc.bold(String(scanResult.sessions.length))} sessions ` +
-      `(${pc.dim(`${scanResult.totalMessages} interactions`)})`
-    );
+  // Prompt for selection
+  const selection = await promptSessionSelection(scanResult.sessions.length);
 
-    // Save to cache if requested
-    if (args.saveCache) {
-      await saveCache(scanResult);
-    }
+  // Filter sessions based on selection
+  let selectedSessions;
+  if (selection === 'all') {
+    selectedSessions = scanResult.sessions;
+    console.log(pc.dim(`  Selected all ${selectedSessions.length} sessions\n`));
+  } else if (selection.length === 0) {
+    console.log(pc.yellow('\n  No valid sessions selected.\n'));
+    process.exit(0);
   } else {
-    // Display cached session info
-    console.log(
-      pc.green('✔') + ` Loaded ${pc.bold(String(scanResult.sessions.length))} sessions from cache ` +
-      `(${pc.dim(`${scanResult.totalMessages} interactions`)})`
-    );
+    selectedSessions = selection.map(i => scanResult.sessions[i]);
+    console.log(pc.dim(`  Selected ${selectedSessions.length} session(s)\n`));
   }
+
+  // Create filtered ScanResult for cost estimation and upload
+  const filteredResult = {
+    sessions: selectedSessions,
+    totalMessages: selectedSessions.reduce((sum, s) => sum + s.metadata.messageCount, 0),
+    totalDurationMinutes: selectedSessions.reduce(
+      (sum, s) => sum + Math.round(s.metadata.durationSeconds / 60),
+      0
+    ),
+  };
 
   // Estimate and display cost
-  const costEstimate = estimateAnalysisCost(scanResult);
-  console.log(renderCostEstimate(costEstimate, scanResult.sessions.length));
+  const costEstimate = estimateAnalysisCost(filteredResult);
+  console.log(renderCostEstimate(costEstimate, selectedSessions.length));
 
   // Show privacy notice and ask for consent
   displayPrivacyNotice();
@@ -151,11 +225,16 @@ async function main(): Promise<void> {
   const analyzeSpinner = ora('Analyzing your AI collaboration style...').start();
 
   try {
-    const result = await uploadForAnalysis(scanResult, (stage, progress, message) => {
+    const result = await uploadForAnalysis(filteredResult, (stage, progress, message) => {
       // Update spinner text with progress
       analyzeSpinner.text = `${message} (${progress}%)`;
     });
     analyzeSpinner.succeed('Analysis complete!');
+
+    // Save to cache if requested
+    if (args.saveCache) {
+      await saveCache(result);
+    }
 
     // Display results
     displayResults(result);
