@@ -19,6 +19,28 @@
 import { type ParsedSession } from '../../models/index';
 import { countMatches, filterPascalCaseMatches, PATTERNS } from './pattern-utils';
 
+/**
+ * Context window size by model (in tokens)
+ * Claude 3.5 Sonnet / Claude 3 Opus = 200K
+ * We use 200K as default since Claude Code primarily uses Sonnet
+ */
+const CONTEXT_WINDOW_SIZE = 200_000;
+
+/**
+ * Optimal context utilization range
+ * Research suggests ~50% utilization is optimal for LLM performance
+ * - Under 30%: Underutilizing context (might be fine, but missing opportunity)
+ * - 30-60%: Optimal range - best performance
+ * - 60-70%: Acceptable but approaching limit
+ * - Over 70%: Overloaded - performance degradation, hallucination risk
+ */
+const CONTEXT_THRESHOLDS = {
+  OPTIMAL_MIN: 30,
+  OPTIMAL_MAX: 60,
+  WARNING: 70,
+  CRITICAL: 85,
+} as const;
+
 export interface ContextEngineeringResult {
   score: number; // 0-100, higher is better
   level: 'novice' | 'developing' | 'proficient' | 'expert';
@@ -44,6 +66,14 @@ export interface ContextEngineeringResult {
       compactUsageCount: number;
       iterationEfficiency: number;
       avgTurnsPerSession: number;
+      // Context window utilization metrics
+      contextUtilization: {
+        maxUtilization: number; // Peak % of context window used (0-100)
+        avgUtilization: number; // Average % across session
+        peakTokens: number; // Highest input_tokens seen
+        isOverloaded: boolean; // True if max > 70%
+        isOptimal: boolean; // True if avg is 30-60%
+      };
     };
     // ISOLATE (Partition) - 20% weight
     isolate: {
@@ -88,10 +118,13 @@ export function calculateContextEngineering(sessions: ParsedSession[]): ContextE
     ...scorePrompt(prompt.content),
   }));
 
+  // Calculate context utilization from token data
+  const contextUtilization = calculateContextUtilization(sessions);
+
   // Calculate category scores (0-100 each)
   const writeScore = calculateWriteScore(metrics);
   const selectScore = calculateSelectScore(metrics, scoredPrompts);
-  const compressScore = calculateCompressScore(metrics, sessions);
+  const compressScore = calculateCompressScore(metrics, sessions, contextUtilization);
   const isolateScore = calculateIsolateScore(metrics, scoredPrompts);
 
   // Weighted average: WRITE 30%, SELECT 25%, COMPRESS 25%, ISOLATE 20%
@@ -108,7 +141,7 @@ export function calculateContextEngineering(sessions: ParsedSession[]): ContextE
   const worstPrompt = sortedPrompts[sortedPrompts.length - 1];
 
   // Generate tips
-  const tips = generateTips(writeScore, selectScore, compressScore, isolateScore, metrics);
+  const tips = generateTips(writeScore, selectScore, compressScore, isolateScore, metrics, contextUtilization);
 
   return {
     score,
@@ -134,6 +167,7 @@ export function calculateContextEngineering(sessions: ParsedSession[]): ContextE
         compactUsageCount: metrics.compactUsageCount,
         iterationEfficiency: calculateIterationEfficiency(sessions),
         avgTurnsPerSession: calculateAvgTurns(sessions),
+        contextUtilization,
       },
       isolate: {
         score: isolateScore,
@@ -455,16 +489,31 @@ function calculateSelectScore(metrics: ContextMetrics, prompts: ScoredPrompt[]):
 
 /**
  * COMPRESS Score: How efficiently you manage context/tokens
+ *
+ * Now includes actual context window utilization!
+ * - Optimal utilization (~50%) is rewarded
+ * - Overloaded context (>70%) is penalized
  */
-function calculateCompressScore(metrics: ContextMetrics, sessions: ParsedSession[]): number {
+function calculateCompressScore(
+  metrics: ContextMetrics,
+  sessions: ParsedSession[],
+  contextUtilization: ContextUtilizationResult
+): number {
   // /compact usage bonus
-  const compactBonus = Math.min(metrics.compactUsageCount * 15, 30);
+  const compactBonus = Math.min(metrics.compactUsageCount * 15, 20);
 
   // Iteration efficiency (fewer turns = better first prompts = less token waste)
   const iterationEfficiency = calculateIterationEfficiency(sessions);
 
-  // Weighted: iteration 70%, compact 30%
-  return Math.round(iterationEfficiency * 0.70 + compactBonus + 20);
+  // Context utilization score (optimal ~50%, penalize >70%)
+  const utilizationScore = scoreContextUtilization(contextUtilization);
+
+  // Weighted: utilization 40%, iteration 35%, compact 25%
+  return Math.round(
+    utilizationScore * 0.40 +
+    iterationEfficiency * 0.35 +
+    compactBonus * 0.25
+  );
 }
 
 /**
@@ -509,6 +558,94 @@ function calculateAvgTurns(sessions: ParsedSession[]): number {
   return Math.round((totalTurns / sessions.length) * 10) / 10;
 }
 
+interface ContextUtilizationResult {
+  maxUtilization: number;
+  avgUtilization: number;
+  peakTokens: number;
+  isOverloaded: boolean;
+  isOptimal: boolean;
+}
+
+/**
+ * Calculate context window utilization from session token data
+ *
+ * input_tokens in each assistant message = total context size at that point
+ * Higher is not better! ~50% utilization is optimal.
+ */
+function calculateContextUtilization(sessions: ParsedSession[]): ContextUtilizationResult {
+  const inputTokenCounts: number[] = [];
+
+  for (const session of sessions) {
+    for (const msg of session.messages) {
+      if (msg.role === 'assistant' && msg.tokenUsage) {
+        inputTokenCounts.push(msg.tokenUsage.input);
+      }
+    }
+  }
+
+  if (inputTokenCounts.length === 0) {
+    return {
+      maxUtilization: 0,
+      avgUtilization: 0,
+      peakTokens: 0,
+      isOverloaded: false,
+      isOptimal: true, // No data = assume optimal
+    };
+  }
+
+  const peakTokens = Math.max(...inputTokenCounts);
+  const avgTokens = inputTokenCounts.reduce((a, b) => a + b, 0) / inputTokenCounts.length;
+
+  const maxUtilization = Math.round((peakTokens / CONTEXT_WINDOW_SIZE) * 100);
+  const avgUtilization = Math.round((avgTokens / CONTEXT_WINDOW_SIZE) * 100);
+
+  return {
+    maxUtilization,
+    avgUtilization,
+    peakTokens,
+    isOverloaded: maxUtilization > CONTEXT_THRESHOLDS.WARNING,
+    isOptimal: avgUtilization >= CONTEXT_THRESHOLDS.OPTIMAL_MIN &&
+               avgUtilization <= CONTEXT_THRESHOLDS.OPTIMAL_MAX,
+  };
+}
+
+/**
+ * Score context utilization (0-100)
+ * Optimal (~50%) = 100, too high (>70%) = penalty
+ */
+function scoreContextUtilization(utilization: ContextUtilizationResult): number {
+  const { avgUtilization, maxUtilization } = utilization;
+
+  // No data case
+  if (maxUtilization === 0) return 70; // Neutral score
+
+  let score = 100;
+
+  // Penalty for high average utilization
+  if (avgUtilization > CONTEXT_THRESHOLDS.CRITICAL) {
+    score -= 50; // Severe penalty for >85%
+  } else if (avgUtilization > CONTEXT_THRESHOLDS.WARNING) {
+    score -= 30; // Moderate penalty for >70%
+  } else if (avgUtilization > CONTEXT_THRESHOLDS.OPTIMAL_MAX) {
+    score -= 15; // Minor penalty for 60-70%
+  }
+
+  // Penalty for peak utilization (even one spike matters)
+  if (maxUtilization > CONTEXT_THRESHOLDS.CRITICAL) {
+    score -= 20;
+  } else if (maxUtilization > CONTEXT_THRESHOLDS.WARNING) {
+    score -= 10;
+  }
+
+  // Bonus for staying in optimal range
+  if (avgUtilization >= CONTEXT_THRESHOLDS.OPTIMAL_MIN &&
+      avgUtilization <= CONTEXT_THRESHOLDS.OPTIMAL_MAX) {
+    score += 10;
+  }
+
+  return Math.max(0, Math.min(100, score));
+}
+
 function countFocusedPrompts(prompts: ScoredPrompt[]): number {
   return prompts.filter((p) => p.isFocused).length;
 }
@@ -532,9 +669,21 @@ function generateTips(
   selectScore: number,
   compressScore: number,
   isolateScore: number,
-  metrics: ContextMetrics
+  metrics: ContextMetrics,
+  contextUtilization: ContextUtilizationResult
 ): string[] {
   const tips: string[] = [];
+
+  // Context utilization tips - highest priority
+  if (contextUtilization.isOverloaded) {
+    tips.push(
+      `⚠️ OVERLOADED: Your context hit ${contextUtilization.maxUtilization}% - use /compact or start fresh sessions more often. ~50% is optimal.`
+    );
+  } else if (contextUtilization.avgUtilization > CONTEXT_THRESHOLDS.OPTIMAL_MAX) {
+    tips.push(
+      `COMPRESS: Your avg context is ${contextUtilization.avgUtilization}% - try to stay under 60% for best AI performance.`
+    );
+  }
 
   if (writeScore < 50) {
     tips.push('WRITE: Reference specific files and constraints when describing tasks');
@@ -544,7 +693,7 @@ function generateTips(
     tips.push('SELECT: Use file:line references (e.g., src/foo.ts:123) for precise navigation');
   }
 
-  if (compressScore < 50 && metrics.compactUsageCount === 0) {
+  if (compressScore < 50 && metrics.compactUsageCount === 0 && !contextUtilization.isOverloaded) {
     tips.push('COMPRESS: Use /compact command to manage long sessions efficiently');
   }
 
@@ -613,6 +762,13 @@ function createDefaultResult(): ContextEngineeringResult {
         compactUsageCount: 0,
         iterationEfficiency: 50,
         avgTurnsPerSession: 0,
+        contextUtilization: {
+          maxUtilization: 0,
+          avgUtilization: 0,
+          peakTokens: 0,
+          isOverloaded: false,
+          isOptimal: true,
+        },
       },
       isolate: {
         score: 50,
