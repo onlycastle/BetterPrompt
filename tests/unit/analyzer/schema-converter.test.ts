@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   getEvaluationJsonSchema,
   getEvaluationTool,
-} from '../../../src/analyzer/schema-converter.js';
+} from '../../../src/lib/analyzer/schema-converter.js';
 
 describe('Schema Converter', () => {
   describe('getEvaluationJsonSchema', () => {

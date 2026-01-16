@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { SessionParser } from '../src/parser/index.js';
-import { calculateAllDimensions } from '../src/analyzer/dimensions/index.js';
+import { SessionParser } from '../src/lib/parser/index.js';
+import { calculateAllDimensions } from '../src/lib/analyzer/dimensions/index.js';
 
 describe('SessionParser Integration', { timeout: 60000 }, () => {
   const parser = new SessionParser();

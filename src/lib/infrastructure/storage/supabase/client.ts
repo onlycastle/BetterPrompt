@@ -10,9 +10,10 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Environment variables
-const supabaseUrl = process.env.SUPABASE_URL;
+// NEXT_PUBLIC_ prefix required for client-side access in Next.js
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 // Singleton instance
 let _supabase: SupabaseClient | null = null;
@@ -22,10 +23,10 @@ let _supabase: SupabaseClient | null = null;
  */
 function validateEnv(): void {
   if (!supabaseUrl) {
-    throw new Error('SUPABASE_URL environment variable is not set');
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL environment variable is not set');
   }
   if (!supabaseServiceKey && !supabaseAnonKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY must be set');
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY must be set');
   }
 }
 
@@ -59,7 +60,7 @@ export function getSupabaseClient(): SupabaseClient {
  */
 export function createAnonClient(): SupabaseClient {
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be set');
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set');
   }
   return createClient(supabaseUrl, supabaseAnonKey);
 }
@@ -70,7 +71,7 @@ export function createAnonClient(): SupabaseClient {
  */
 export function createUserClient(accessToken: string): SupabaseClient {
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be set');
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set');
   }
   return createClient(supabaseUrl, supabaseAnonKey, {
     global: {

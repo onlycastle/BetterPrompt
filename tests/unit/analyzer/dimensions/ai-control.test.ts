@@ -5,8 +5,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { calculateAIControl, type AIControlResult } from '../../../../src/analyzer/dimensions/ai-control.js';
-import type { ParsedSession, ParsedMessage } from '../../../../src/models/index.js';
+import { calculateAIControl, type AIControlResult } from '../../../../src/lib/analyzer/dimensions/ai-control.js';
+import type { ParsedSession, ParsedMessage } from '../../../../src/lib/models/index.js';
 
 // Helper to create mock sessions
 function createMockSession(

@@ -9,15 +9,15 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { ParsedSession, ParsedMessage } from '../src/models/index.js';
-import type { DimensionName, UnifiedReport } from '../src/models/unified-report.js';
+import type { ParsedSession, ParsedMessage } from '../src/lib/models/index.js';
+import type { DimensionName, UnifiedReport } from '../src/lib/models/unified-report.js';
 import {
   UnifiedAnalyzer,
   createUnifiedAnalyzer,
   analyzeUnified,
   type UnifiedAnalyzerConfig,
-} from '../src/analyzer/unified-analyzer.js';
-import { MockKnowledgeSource, createKnowledgeLinker } from '../src/analyzer/knowledge-linker.js';
+} from '../src/lib/analyzer/unified-analyzer.js';
+import { MockKnowledgeSource, createKnowledgeLinker } from '../src/lib/analyzer/knowledge-linker.js';
 
 // ============================================
 // Test Helpers

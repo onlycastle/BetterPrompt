@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ConfigManager, DEFAULT_CONFIG_PATH } from '../../../src/config/manager.js';
-import { DEFAULT_CONFIG } from '../../../src/models/config.js';
+import { ConfigManager, DEFAULT_CONFIG_PATH } from '../../../src/lib/config/manager.js';
+import { DEFAULT_CONFIG } from '../../../src/lib/models/config.js';
 import { homedir } from 'node:os';
 import * as fs from 'node:fs/promises';
 

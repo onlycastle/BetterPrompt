@@ -5,7 +5,7 @@ import {
   CategoryEvaluationSchema,
   EvaluationSchema,
   LLMResponseSchema,
-} from '../../../src/models/evaluation.js';
+} from '../../../src/lib/models/evaluation.js';
 
 describe('Evaluation Models', () => {
   describe('RatingSchema', () => {

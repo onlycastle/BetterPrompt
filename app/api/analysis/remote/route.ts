@@ -286,20 +286,25 @@ function parseRemoteSession(data: RemoteSessionData): ParsedSession | null {
 
 /**
  * Check if Supabase is configured
+ * Uses NEXT_PUBLIC_ prefixed variables for consistency with rest of codebase
  */
 function isSupabaseConfigured(): boolean {
-  return !!(process.env.SUPABASE_URL && (process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY));
+  return !!(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  );
 }
 
 /**
  * Get Supabase client
+ * Uses NEXT_PUBLIC_ prefixed variables for consistency with rest of codebase
  */
 function getSupabaseClient() {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
-    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY are required');
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required');
   }
 
   return createClient(supabaseUrl, supabaseKey);

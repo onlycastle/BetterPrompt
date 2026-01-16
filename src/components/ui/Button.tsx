@@ -31,11 +31,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         {...props}
       >
-        {loading ? (
+        {loading && (
           <Loader2 className={styles.spinner} size={size === 'sm' ? 14 : 18} />
-        ) : icon ? (
-          <span className={styles.icon}>{icon}</span>
-        ) : null}
+        )}
+        {!loading && icon && <span className={styles.icon}>{icon}</span>}
         {children && <span className={styles.label}>{children}</span>}
       </button>
     );

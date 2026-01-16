@@ -41,3 +41,6 @@ BUSINESS.md
 .next
 .next
 tsconfig.tsbuildinfo
+
+# Claude Code local settings
+.claude/

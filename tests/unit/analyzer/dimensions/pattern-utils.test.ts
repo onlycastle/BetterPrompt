@@ -6,7 +6,7 @@ import {
   filterPascalCaseMatches,
   PATTERNS,
   PASCAL_CASE_EXCLUSIONS,
-} from '../../../../src/analyzer/dimensions/pattern-utils.js';
+} from '../../../../src/lib/analyzer/dimensions/pattern-utils.js';
 
 describe('Pattern Utils', () => {
   describe('countMatches', () => {

@@ -137,7 +137,7 @@ async function getSessionMetadata(filePath: string): Promise<SessionMetadata | n
 /**
  * List all project directories
  */
-async function listProjectDirs(): Promise<string[]> {
+export async function listProjectDirs(): Promise<string[]> {
   try {
     const entries = await readdir(CLAUDE_PROJECTS_DIR);
     const dirs: string[] = [];
@@ -163,7 +163,7 @@ async function listProjectDirs(): Promise<string[]> {
 /**
  * List session files in a directory
  */
-async function listSessionFiles(projectDir: string): Promise<string[]> {
+export async function listSessionFiles(projectDir: string): Promise<string[]> {
   try {
     const files = await readdir(projectDir);
     return files

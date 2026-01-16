@@ -56,8 +56,14 @@ export interface TierBadgeProps {
   size?: 'sm' | 'md';
 }
 
+const TIER_EMOJIS: Record<TierBadgeProps['tier'], string> = {
+  high: '⭐',
+  medium: '✨',
+  standard: '',
+};
+
 export function TierBadge({ tier, size = 'sm' }: TierBadgeProps) {
-  const tierEmoji = tier === 'high' ? '⭐' : tier === 'medium' ? '✨' : '';
+  const tierEmoji = TIER_EMOJIS[tier];
   return (
     <Badge variant="default" size={size}>
       {tierEmoji} {tier}

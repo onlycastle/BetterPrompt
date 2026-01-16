@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ok, err } from '../../../../src/lib/result.js';
-import { StorageError, SkillError } from '../../../../src/domain/errors/index.js';
-import { createKnowledgeService } from '../../../../src/application/services/knowledge-service.js';
-import type { IKnowledgeRepository, IInfluencerRepository, PaginatedResult } from '../../../../src/application/ports/storage.js';
-import type { ILLMPort } from '../../../../src/application/ports/llm.js';
-import type { KnowledgeItem, KnowledgeStats, Influencer } from '../../../../src/domain/models/index.js';
+import { StorageError, SkillError } from '../../../../src/lib/domain/errors/index.js';
+import { createKnowledgeService } from '../../../../src/lib/application/services/knowledge-service.js';
+import type { IKnowledgeRepository, IInfluencerRepository, PaginatedResult } from '../../../../src/lib/application/ports/storage.js';
+import type { ILLMPort } from '../../../../src/lib/application/ports/llm.js';
+import type { KnowledgeItem, KnowledgeStats, Influencer } from '../../../../src/lib/domain/models/index.js';
 
 // Mock KnowledgeItem factory
 function createMockKnowledgeItem(overrides: Partial<KnowledgeItem> = {}): KnowledgeItem {

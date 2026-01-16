@@ -20,7 +20,7 @@ import {
   type InsightMode,
   type ResourceLevel,
   type TopicCategory,
-} from '../src/analyzer/dimension-keywords.js';
+} from '../src/lib/analyzer/dimension-keywords.js';
 import {
   KnowledgeLinker,
   MockKnowledgeSource,
@@ -29,8 +29,8 @@ import {
   type LinkedKnowledge,
   type DimensionKnowledge,
   type KnowledgeContext,
-} from '../src/analyzer/knowledge-linker.js';
-import type { DimensionName, DimensionResult } from '../src/models/unified-report.js';
+} from '../src/lib/analyzer/knowledge-linker.js';
+import type { DimensionName, DimensionResult } from '../src/lib/models/unified-report.js';
 
 // ============================================
 // dimension-keywords.ts Tests

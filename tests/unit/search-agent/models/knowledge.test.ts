@@ -12,7 +12,7 @@ import {
   DEFAULT_SEARCH_TOPICS,
   TOPIC_DISPLAY_NAMES,
   INITIAL_INSIGHTS,
-} from '../../../../src/search-agent/models/knowledge.js';
+} from '../../../../src/lib/search-agent/models/knowledge.js';
 
 describe('Knowledge Models', () => {
   describe('TopicCategorySchema', () => {

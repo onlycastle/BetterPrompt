@@ -12,7 +12,7 @@ import {
   isTextBlock,
   isToolUseBlock,
   isToolResultBlock,
-} from '../../../src/models/session.js';
+} from '../../../src/lib/models/session.js';
 
 describe('Session Models', () => {
   describe('TextBlockSchema', () => {

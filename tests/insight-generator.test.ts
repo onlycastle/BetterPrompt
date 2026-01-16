@@ -8,12 +8,12 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { ParsedSession, ParsedMessage } from '../src/models/index.js';
+import type { ParsedSession, ParsedMessage } from '../src/lib/models/index.js';
 import type {
   DimensionName,
   DimensionResult,
   EvidenceQuote,
-} from '../src/models/unified-report.js';
+} from '../src/lib/models/unified-report.js';
 
 // ============================================
 // Import modules under test
@@ -25,7 +25,7 @@ import {
   toConversationInsight,
   toEvidenceQuote,
   type ExtractedQuote,
-} from '../src/analyzer/dimension-quote-extractor.js';
+} from '../src/lib/analyzer/dimension-quote-extractor.js';
 
 import {
   generateAdvice,
@@ -34,15 +34,15 @@ import {
   getDimensionDescription,
   generateInterpretation,
   buildInsightPrompt,
-} from '../src/analyzer/insight-prompts.js';
+} from '../src/lib/analyzer/insight-prompts.js';
 
 import {
   InsightGenerator,
   createInsightGenerator,
   type GeneratedInsights,
-} from '../src/analyzer/insight-generator.js';
+} from '../src/lib/analyzer/insight-generator.js';
 
-import type { LinkedInsight } from '../src/analyzer/knowledge-linker.js';
+import type { LinkedInsight } from '../src/lib/analyzer/knowledge-linker.js';
 
 // ============================================
 // Test Helpers

@@ -12,7 +12,7 @@ interface UnlockSectionProps {
  */
 export function UnlockSection({
   isUnlocked,
-  dashboardBaseUrl = 'http://localhost:5173',
+  dashboardBaseUrl = 'https://www.nomoreaislop.xyz',
 }: UnlockSectionProps) {
   const personalUrl = `${dashboardBaseUrl}/personal`;
   const enterpriseUrl = `${dashboardBaseUrl}/enterprise`;
@@ -34,7 +34,7 @@ export function UnlockSection({
         <>
           {/* Locked State - Paywall */}
           <div className={styles.lockedContent}>
-            <h3 className={styles.lockedTitle}>🔒 Unlock Full Analysis</h3>
+            <h3 className={styles.lockedTitle}>🔒 Unlock Detailed Analysis</h3>
             <p className={styles.lockedDescription}>
               Get the complete picture of your AI collaboration patterns with detailed breakdowns,
               personalized recommendations, and professional insights.
@@ -56,7 +56,7 @@ export function UnlockSection({
             </ul>
 
             <div className={styles.ctaBox}>
-              <div className={styles.ctaPrice}>☕ ONE-TIME: $6.99</div>
+              <div className={styles.ctaPrice}>☕ ONE-TIME: $4.99</div>
               <div className={styles.ctaSubtitle}>
                 Less than a coffee • Unlock this analysis forever
               </div>
@@ -64,7 +64,7 @@ export function UnlockSection({
 
             <p className={styles.proNote}>
               Want unlimited analyses + trend tracking?{' '}
-              <span className={styles.proHighlight}>PRO: $9/month</span>
+              <span className={styles.proHighlight}>PRO: $6.99/month</span>
             </p>
 
             <div className={styles.dashboardDivider}>

@@ -15,7 +15,7 @@ import {
   readJSONLFile,
   listSessionFiles,
   getSessionMetadata,
-} from '../../../src/parser/jsonl-reader.js';
+} from '../../../src/lib/parser/jsonl-reader.js';
 
 describe('JSONL Reader', () => {
   describe('parseJSONLLine', () => {

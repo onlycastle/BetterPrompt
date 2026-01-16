@@ -5,8 +5,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ContentGateway, createContentGateway, type Tier } from '../../../src/analyzer/content-gateway.js';
-import type { VerboseEvaluation } from '../../../src/models/verbose-evaluation.js';
+import { ContentGateway, createContentGateway, type Tier } from '../../../src/lib/analyzer/content-gateway.js';
+import type { VerboseEvaluation } from '../../../src/lib/models/verbose-evaluation.js';
 
 describe('ContentGateway', () => {
   let gateway: ContentGateway;

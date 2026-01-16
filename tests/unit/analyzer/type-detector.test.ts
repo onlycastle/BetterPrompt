@@ -6,8 +6,8 @@ import {
   scoresToDistribution,
   getPrimaryType,
   getToolUsageHighlight,
-} from '../../../src/analyzer/type-detector.js';
-import type { ParsedSession, ParsedMessage } from '../../../src/models/session.js';
+} from '../../../src/lib/analyzer/type-detector.js';
+import type { ParsedSession, ParsedMessage } from '../../../src/lib/models/session.js';
 
 /**
  * Helper to create a mock parsed session

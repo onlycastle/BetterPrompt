@@ -3,7 +3,7 @@ import {
   ConfigSchema,
   DEFAULT_CONFIG,
   ENV_MAPPINGS,
-} from '../../../src/models/config.js';
+} from '../../../src/lib/models/config.js';
 
 describe('Config Models', () => {
   describe('ConfigSchema', () => {
