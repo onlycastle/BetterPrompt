@@ -509,4 +509,72 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
     priority: 10,
     enabled: true,
   },
+  {
+    version: '1.0.0',
+    category: 'tool',
+    title: 'The 50% Context Rule',
+    keyTakeaway:
+      'Research shows ~50% context window utilization is optimal. Above 70%, LLM performance degrades and hallucination risk increases.',
+    actionableAdvice: [
+      'Use /compact command when sessions get long',
+      'Start fresh sessions for new tasks instead of continuing old ones',
+      'Delegate to subagents to distribute context load',
+      'Monitor your context usage - if AI responses degrade, context may be overloaded',
+    ],
+    source: {
+      type: 'research',
+      url: 'https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents',
+      author: 'Anthropic Research',
+    },
+    applicableDimensions: ['contextEngineering'],
+    maxScore: 60,
+    priority: 9,
+    enabled: true,
+  },
+  // ============================================================================
+  // Anti-Patterns & Critical Thinking Insights (NEW)
+  // ============================================================================
+  {
+    version: '1.0.0',
+    category: 'diagnosis',
+    title: 'Sunk Cost Fallacy in AI Prompting',
+    keyTakeaway:
+      'When AI fails repeatedly with the same approach, continuing to tweak the prompt is a sunk cost fallacy. Reset context and try a fundamentally different approach.',
+    actionableAdvice: [
+      'If the same error occurs 3+ times, reset context completely and start fresh',
+      'Analyze error messages before retrying - understand what went wrong',
+      "Don't let frustration drive your prompts - take a breath and rethink",
+      "Recognize AI's limitations - some tasks may need a different tool or manual approach",
+    ],
+    source: {
+      type: 'research',
+      url: 'https://nomoreaislop.com/insights/sunk-cost-fallacy',
+      author: 'NoMoreAISlop Research',
+    },
+    applicableDimensions: ['aiControl', 'skillResilience'],
+    maxScore: 50,
+    priority: 9,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'diagnosis',
+    title: 'Trust but Verify: Critical Thinking in AI Collaboration',
+    keyTakeaway:
+      'Professional developers verify AI output before accepting. Passive acceptance leads to bugs, security issues, and skill atrophy.',
+    actionableAdvice: [
+      "Ask 'are you sure?' at least once per complex task",
+      'Run tests before accepting AI-generated code',
+      'Question AI assumptions - ask why it chose a particular approach',
+      'Request alternatives for important decisions',
+    ],
+    source: {
+      type: 'research',
+      url: 'https://nomoreaislop.com/insights/trust-but-verify',
+      author: 'NoMoreAISlop Research',
+    },
+    applicableDimensions: ['aiControl', 'skillResilience'],
+    priority: 9,
+    enabled: true,
+  },
 ];
