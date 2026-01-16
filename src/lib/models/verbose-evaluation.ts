@@ -218,6 +218,254 @@ export const PerDimensionInsightSchema = z.object({
 export type PerDimensionInsight = z.infer<typeof PerDimensionInsightSchema>;
 
 // ============================================================================
+// ACTIONABLE PRACTICES SCHEMAS (Knowledge-Driven Feedback)
+// ============================================================================
+
+/**
+ * A practiced actionable advice with evidence
+ * Shows what expert recommendations the developer followed
+ */
+export const PracticedAdviceSchema = z.object({
+  patternId: z.string().describe('Pattern identifier from KNOWLEDGE_DRIVEN_PATTERNS'),
+  advice: z.string().max(200).describe('The actionable advice that was practiced'),
+  source: z.string().describe('Source of this advice (e.g., "Anthropic", "Karpathy")'),
+  feedback: z.string().max(500).describe('Personalized feedback about this practice'),
+  evidence: z.array(z.string().max(300)).describe('Quotes showing this practice'),
+  dimension: z.string().describe('Related dimension'),
+});
+export type PracticedAdvice = z.infer<typeof PracticedAdviceSchema>;
+
+/**
+ * An opportunity to practice expert advice
+ * Shows what recommendations could be adopted
+ */
+export const OpportunityAdviceSchema = z.object({
+  patternId: z.string().describe('Pattern identifier from KNOWLEDGE_DRIVEN_PATTERNS'),
+  advice: z.string().max(200).describe('The actionable advice to try'),
+  source: z.string().describe('Source of this advice (e.g., "Anthropic", "Karpathy")'),
+  tip: z.string().max(500).describe('Why and how to adopt this practice'),
+  dimension: z.string().describe('Related dimension'),
+  priority: z.number().min(1).max(10).describe('Priority of this advice'),
+});
+export type OpportunityAdvice = z.infer<typeof OpportunityAdviceSchema>;
+
+/**
+ * Actionable practices section - Knowledge-driven feedback
+ * Links expert recommendations to actual developer behavior
+ */
+export const ActionablePracticesSchema = z.object({
+  practiced: z.array(PracticedAdviceSchema).describe('Expert advice the developer followed'),
+  opportunities: z.array(OpportunityAdviceSchema).describe('Expert advice to consider adopting'),
+  summary: z.string().max(300).describe('Overall assessment of actionable practices'),
+});
+export type ActionablePractices = z.infer<typeof ActionablePracticesSchema>;
+
+/**
+ * LLM version of Practiced Advice (simplified for Gemini API)
+ */
+export const LLMPracticedAdviceSchema = z.object({
+  patternId: z.string(),
+  advice: z.string().max(200),
+  source: z.string(),
+  feedback: z.string().max(500),
+  dimension: z.string(),
+});
+
+/**
+ * LLM version of Opportunity Advice (simplified for Gemini API)
+ */
+export const LLMOpportunityAdviceSchema = z.object({
+  patternId: z.string(),
+  advice: z.string().max(200),
+  source: z.string(),
+  tip: z.string().max(500),
+  dimension: z.string(),
+  priority: z.number().min(1).max(10),
+});
+
+/**
+ * LLM version of Actionable Practices (simplified for Gemini API)
+ * Evidence is added in post-processing from Stage 1 data
+ */
+export const LLMActionablePracticesSchema = z.object({
+  practiced: z.array(LLMPracticedAdviceSchema).describe('Expert advice the developer followed'),
+  opportunities: z.array(LLMOpportunityAdviceSchema).describe('Expert advice to consider'),
+  summary: z.string().max(300).describe('Overall assessment'),
+});
+
+// ============================================================================
+// ANTI-PATTERNS ANALYSIS SCHEMAS (Premium/Enterprise)
+// ============================================================================
+
+/**
+ * Individual anti-pattern with personalized feedback
+ * Framed as "growth opportunity" rather than criticism
+ */
+export const AntiPatternInsightSchema = z.object({
+  /** Type of anti-pattern */
+  antiPatternType: z.string().max(50),
+
+  /** Human-readable display name (e.g., "The Retry Loop") */
+  displayName: z.string().max(50),
+
+  /** Personalized description of what was observed */
+  description: z.string().max(300),
+
+  /** How many times this pattern was observed */
+  occurrences: z.number(),
+
+  /** Severity assessment */
+  severity: z.enum(['mild', 'moderate', 'significant']),
+
+  /** Evidence quotes showing this pattern */
+  evidence: z.array(z.string().max(300)).optional(),
+
+  /** Supportive growth opportunity message */
+  growthOpportunity: z.string().max(400),
+
+  /** Specific actionable tip */
+  actionableTip: z.string().max(200),
+});
+export type AntiPatternInsight = z.infer<typeof AntiPatternInsightSchema>;
+
+/**
+ * Complete anti-patterns analysis section
+ * Premium/Enterprise only
+ */
+export const AntiPatternsAnalysisSchema = z.object({
+  /** Detected anti-patterns with growth opportunities */
+  detected: z.array(AntiPatternInsightSchema),
+
+  /** Overall supportive summary */
+  summary: z.string().max(400),
+
+  /** Health score (100 = no anti-patterns detected) */
+  overallHealthScore: z.number().min(0).max(100),
+});
+export type AntiPatternsAnalysis = z.infer<typeof AntiPatternsAnalysisSchema>;
+
+// ============================================================================
+// CRITICAL THINKING ANALYSIS SCHEMAS (Premium/Enterprise)
+// ============================================================================
+
+/**
+ * Individual critical thinking highlight
+ * Celebrates verification and questioning behaviors
+ */
+export const CriticalThinkingHighlightSchema = z.object({
+  /** Type of critical thinking behavior */
+  indicatorType: z.string().max(50),
+
+  /** Human-readable title (e.g., "The Guardrail") */
+  displayName: z.string().max(50),
+
+  /** Personalized description of the behavior */
+  description: z.string().max(300),
+
+  /** How frequently observed */
+  frequency: z.number(),
+
+  /** Quality assessment */
+  quality: z.enum(['basic', 'intermediate', 'advanced']),
+
+  /** Evidence quotes showing this behavior */
+  evidence: z.array(z.string().max(300)).optional(),
+
+  /** Tip for further development */
+  tip: z.string().max(200).optional(),
+});
+export type CriticalThinkingHighlight = z.infer<typeof CriticalThinkingHighlightSchema>;
+
+/**
+ * Complete critical thinking analysis section
+ * Premium/Enterprise only
+ */
+export const CriticalThinkingAnalysisSchema = z.object({
+  /** Critical thinking strengths observed */
+  strengths: z.array(CriticalThinkingHighlightSchema),
+
+  /** Opportunities to develop critical thinking */
+  opportunities: z.array(CriticalThinkingHighlightSchema),
+
+  /** Overall summary */
+  summary: z.string().max(400),
+
+  /** Overall critical thinking score */
+  overallScore: z.number().min(0).max(100),
+});
+export type CriticalThinkingAnalysis = z.infer<typeof CriticalThinkingAnalysisSchema>;
+
+// ============================================================================
+// PLANNING ANALYSIS SCHEMAS (Premium/Enterprise)
+// ============================================================================
+
+/**
+ * Individual planning behavior insight
+ * Assesses strategic thinking before implementation
+ */
+export const PlanningInsightSchema = z.object({
+  /** Type of planning behavior */
+  behaviorType: z.string().max(50),
+
+  /** Human-readable title (e.g., "The Master Planner") */
+  displayName: z.string().max(50),
+
+  /** Personalized description */
+  description: z.string().max(300),
+
+  /** Frequency of this behavior */
+  frequency: z.number(),
+
+  /** Sophistication level */
+  sophistication: z.enum(['basic', 'intermediate', 'advanced']),
+
+  /** Evidence quotes */
+  evidence: z.array(z.string().max(300)).optional(),
+
+  /** Tip for improvement */
+  tip: z.string().max(200).optional(),
+});
+export type PlanningInsight = z.infer<typeof PlanningInsightSchema>;
+
+/**
+ * /plan command usage statistics
+ * Key indicator of planning maturity
+ */
+export const SlashPlanStatsSchema = z.object({
+  /** Total number of /plan command usages */
+  totalUsage: z.number(),
+
+  /** Average number of steps per plan */
+  avgStepsPerPlan: z.number().optional(),
+
+  /** Ratio of plans with problem decomposition (0-1) */
+  problemDecompositionRate: z.number().min(0).max(1).optional(),
+});
+export type SlashPlanStats = z.infer<typeof SlashPlanStatsSchema>;
+
+/**
+ * Complete planning analysis section
+ * Premium/Enterprise only
+ */
+export const PlanningAnalysisSchema = z.object({
+  /** Planning strengths observed */
+  strengths: z.array(PlanningInsightSchema),
+
+  /** Opportunities to improve planning */
+  opportunities: z.array(PlanningInsightSchema),
+
+  /** Overall summary */
+  summary: z.string().max(400),
+
+  /** Planning maturity level */
+  planningMaturityLevel: z.enum(['reactive', 'emerging', 'structured', 'expert']),
+
+  /** /plan command statistics (key indicator) */
+  slashPlanStats: SlashPlanStatsSchema.optional(),
+});
+export type PlanningAnalysis = z.infer<typeof PlanningAnalysisSchema>;
+
+// ============================================================================
 // PREMIUM TIER SCHEMAS (LOCKED)
 // ============================================================================
 
@@ -354,6 +602,23 @@ export const VerboseEvaluationSchema = z.object({
 
   promptPatterns: z.array(PromptPatternSchema),
 
+  // NEW: Actionable Practices - Knowledge-driven feedback
+  // Uses LLM schema (no evidence field) - evidence is in Stage 1's actionablePatternMatches
+  actionablePractices: LLMActionablePracticesSchema.optional()
+    .describe('Expert recommendations practiced/missed by the developer'),
+
+  // NEW: Anti-Patterns Analysis (Premium/Enterprise)
+  antiPatternsAnalysis: AntiPatternsAnalysisSchema.optional()
+    .describe('Anti-patterns detected with growth opportunities'),
+
+  // NEW: Critical Thinking Analysis (Premium/Enterprise)
+  criticalThinkingAnalysis: CriticalThinkingAnalysisSchema.optional()
+    .describe('Critical thinking behaviors analysis'),
+
+  // NEW: Planning Analysis (Premium/Enterprise)
+  planningAnalysis: PlanningAnalysisSchema.optional()
+    .describe('Planning behaviors analysis'),
+
   // PREMIUM TIER - Locked content
   toolUsageDeepDive: z.array(ToolUsageInsightSchema).optional(),
   tokenEfficiency: TokenEfficiencySchema.optional(),
@@ -400,5 +665,21 @@ export const VerboseLLMResponseSchema = z.object({
 
   // Prompt patterns
   promptPatterns: z.array(PromptPatternSchema),
+
+  // Actionable practices (transformed from Stage 1 actionablePatternMatches)
+  actionablePractices: LLMActionablePracticesSchema.optional()
+    .describe('Expert recommendations practiced/missed'),
+
+  // NEW: Anti-Patterns Analysis (Premium/Enterprise)
+  antiPatternsAnalysis: AntiPatternsAnalysisSchema.optional()
+    .describe('Anti-patterns detected with growth opportunities'),
+
+  // NEW: Critical Thinking Analysis (Premium/Enterprise)
+  criticalThinkingAnalysis: CriticalThinkingAnalysisSchema.optional()
+    .describe('Critical thinking behaviors analysis'),
+
+  // NEW: Planning Analysis (Premium/Enterprise)
+  planningAnalysis: PlanningAnalysisSchema.optional()
+    .describe('Planning behaviors analysis'),
 });
 export type VerboseLLMResponse = z.infer<typeof VerboseLLMResponseSchema>;
