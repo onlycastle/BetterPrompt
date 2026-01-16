@@ -20,7 +20,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     PRESENTATION LAYER                          │
-│   CLI (commands/)  │  REST API (src/api/)  │  React SPA (web-ui/) │
+│   CLI (commands/)  │  Next.js API (app/api/)  │  Next.js App (app/) │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -48,16 +48,16 @@
 
 ### Analysis Pipeline (LLM-powered Verbose Analysis)
 ```
-Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation] → VerboseAnalyzer → React SPA (web-ui/)
+Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation] → VerboseAnalyzer → Next.js App (app/)
 ```
 
 **Key Components:**
-- **SessionSelector** (`src/parser/session-selector.ts`) - Selects optimal sessions (5-min minimum, 90-day window, max 10)
-- **CostEstimator** (`src/analyzer/cost-estimator.ts`) - Token counting and API cost calculation
-- **VerboseAnalyzer** (`src/analyzer/verbose-analyzer.ts`) - LLM-powered hyper-personalized analysis
-- **VerbosePrompts** (`src/analyzer/verbose-prompts.ts`) - Behavioral analyst prompts
-- **CostConfirmation** (`src/cli/output/components/cost-confirmation.ts`) - Interactive cost approval
-- **React SPA** (`web-ui/`) - Unified web dashboard with analysis report view
+- **SessionSelector** (`src/lib/parser/session-selector.ts`) - Selects optimal sessions (5-min minimum, 90-day window, max 10)
+- **CostEstimator** (`src/lib/analyzer/cost-estimator.ts`) - Token counting and API cost calculation
+- **VerboseAnalyzer** (`src/lib/analyzer/verbose-analyzer.ts`) - LLM-powered hyper-personalized analysis
+- **VerbosePrompts** (`src/lib/analyzer/verbose-prompts.ts`) - Behavioral analyst prompts
+- **CostConfirmation** (`src/lib/cli/output/components/cost-confirmation.ts`) - Interactive cost approval
+- **Next.js App** (`app/`) - Unified web dashboard with analysis report view
 
 ### Hyper-Personalized Report Pipeline (NEW)
 
@@ -129,13 +129,13 @@ The UnifiedAnalyzer integrates all analysis components into a single orchestrato
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| **UnifiedReport Schema** | `src/models/unified-report.ts` | 32 Zod schemas for complete report structure |
-| **SchemaBridge** | `src/models/schema-bridge.ts` | Converts VerboseEval/TypeResult → UnifiedReport |
-| **DimensionKeywords** | `src/analyzer/dimension-keywords.ts` | Maps dimensions → KB search parameters |
-| **KnowledgeLinker** | `src/analyzer/knowledge-linker.ts` | Links dimensions → KB items + professional insights |
-| **DimensionQuoteExtractor** | `src/analyzer/dimension-quote-extractor.ts` | Extracts quotes by dimension patterns |
-| **InsightPrompts** | `src/analyzer/insight-prompts.ts` | Advice templates + LLM prompt building |
-| **InsightGenerator** | `src/analyzer/insight-generator.ts` | Orchestrates insight generation |
+| **UnifiedReport Schema** | `src/lib/models/unified-report.ts` | 32 Zod schemas for complete report structure |
+| **SchemaBridge** | `src/lib/models/schema-bridge.ts` | Converts VerboseEval/TypeResult → UnifiedReport |
+| **DimensionKeywords** | `src/lib/analyzer/dimension-keywords.ts` | Maps dimensions → KB search parameters |
+| **KnowledgeLinker** | `src/lib/analyzer/knowledge-linker.ts` | Links dimensions → KB items + professional insights |
+| **DimensionQuoteExtractor** | `src/lib/analyzer/dimension-quote-extractor.ts` | Extracts quotes by dimension patterns |
+| **InsightPrompts** | `src/lib/analyzer/insight-prompts.ts` | Advice templates + LLM prompt building |
+| **InsightGenerator** | `src/lib/analyzer/insight-generator.ts` | Orchestrates insight generation |
 
 **Key Concepts:**
 
@@ -151,63 +151,80 @@ The UnifiedAnalyzer integrates all analysis components into a single orchestrato
 | Directory | Purpose | Layer |
 |-----------|---------|-------|
 | `commands/` | Claude Code plugin commands | Presentation |
-| `src/api/` | REST API server (Express, port 3001) | Presentation |
-| `web-ui/` | **Unified React SPA** (Vite, port 5173 dev) | Presentation |
-| `src/application/` | Application services & ports | Application |
-| `src/domain/` | Domain models (Zod schemas, business rules) | Domain |
-| `src/infrastructure/` | Supabase & local storage adapters | Infrastructure |
-| `src/lib/` | Shared utilities (Result type, Supabase client) | Infrastructure |
-| `src/analyzer/` | LLM analysis (prompts, dimensions, insights) | Application |
-| `src/analyzer/stages/` | Two-stage pipeline (data-analyst, content-writer) | Application |
-| `src/models/` | Zod schemas (unified-report, schema-bridge) | Domain |
-| `src/parser/` | JSONL session parsing | Infrastructure |
-| `src/search-agent/` | Knowledge curation system | Application |
+| `app/api/` | Next.js 15 API routes | Presentation |
+| `app/` | Next.js pages and layouts | Presentation |
+| `src/components/` | React UI components | Presentation |
+| `src/hooks/` | React hooks | Presentation |
+| `src/views/` | Page view components | Presentation |
+| `src/lib/application/` | Application services & ports | Application |
+| `src/lib/domain/` | Domain models (Zod schemas, business rules) | Domain |
+| `src/lib/infrastructure/` | Supabase & local storage adapters | Infrastructure |
+| `src/lib/analyzer/` | LLM analysis (prompts, dimensions, insights) | Application |
+| `src/lib/analyzer/stages/` | Two-stage pipeline (data-analyst, content-writer) | Application |
+| `src/lib/models/` | Zod schemas (unified-report, schema-bridge) | Domain |
+| `src/lib/parser/` | JSONL session parsing | Infrastructure |
+| `src/lib/search-agent/` | Knowledge curation system | Application |
 | `packages/cli/` | NPM CLI package (npx no-ai-slop) | Presentation |
 
-### Web UI Architecture (Unified)
+### Next.js 15 App Router Architecture
 
-The `web-ui/` React SPA serves as the **single web interface** for all features:
+The `app/` directory serves as the **single web interface** using Next.js 15 App Router:
 
 ```
-web-ui/
-├── src/
-│   ├── pages/
-│   │   ├── BrowsePage.tsx              # Knowledge base discovery
-│   │   ├── LearnPage.tsx               # Add YouTube/URL content
-│   │   ├── DashboardPage.tsx           # Knowledge analytics
-│   │   ├── ReportPage.tsx              # Analysis report (terminal-style)
-│   │   ├── ComparisonPage.tsx          # Compare multiple analyses
-│   │   ├── PersonalDashboardPage.tsx   # Individual growth journey
-│   │   ├── EnterpriseDashboardPage.tsx # Team performance (B2B)
-│   │   └── PublicResultPage.tsx        # Shared public results
-│   ├── components/
-│   │   ├── report/                     # Analysis report components
-│   │   ├── verbose/                    # Hyper-personalized insights
-│   │   ├── enterprise/                 # Team analytics components
-│   │   ├── personal/                   # Personal dashboard components
-│   │   ├── knowledge/                  # Knowledge base components
-│   │   ├── dashboard/                  # Dashboard widgets
-│   │   ├── auth/                       # Authentication components
-│   │   ├── ui/                         # Reusable UI primitives
-│   │   └── layout/                     # Layout components
-│   └── hooks/
-│       ├── useAnalysisReport.ts        # Report data fetching
-│       ├── useScrollNavigation.ts      # Section navigation (j/k, 1-8 keys)
-│       ├── useKnowledge.ts             # Knowledge base operations
-│       ├── useLearn.ts                 # Learning/content addition
-│       ├── useReport.ts                # Report management
-│       ├── useComparison.ts            # Analysis comparison
-│       ├── useEnterprise.ts            # Enterprise/team features
-│       ├── usePersonalAnalytics.ts     # Personal analytics
-│       └── useLatestAnalysis.ts        # Latest analysis fetching
+app/
+├── layout.tsx                  # Root layout with providers
+├── page.tsx                    # Home page
+├── browse/page.tsx             # Knowledge base discovery
+├── learn/page.tsx              # Add YouTube/URL content
+├── dashboard/page.tsx          # Knowledge analytics
+├── personal/page.tsx           # Individual growth journey
+├── enterprise/page.tsx         # Team performance (B2B)
+├── report/[reportId]/page.tsx  # Analysis report (terminal-style)
+├── comparison/[reportId]/page.tsx  # Compare multiple analyses
+├── r/[resultId]/page.tsx       # Public result pages
+└── api/                        # API routes
+    ├── knowledge/              # Knowledge base operations
+    ├── learn/                  # YouTube/URL learning
+    ├── reports/                # Report sharing
+    ├── enterprise/             # Team analytics
+    ├── analysis/               # Analysis operations
+    └── influencers/            # Influencer management
+```
+
+**Components Structure** (`src/components/`):
+```
+src/components/
+├── ui/                 # Reusable UI primitives (Button, Badge, Card, etc.)
+├── report/             # Analysis report components
+├── verbose/            # Hyper-personalized insights
+├── enterprise/         # Team analytics components
+├── personal/           # Personal dashboard components
+├── knowledge/          # Knowledge base components
+├── dashboard/          # Dashboard widgets
+├── auth/               # Authentication components
+└── layout/             # Layout components (Header, Sidebar)
+```
+
+**Hooks** (`src/hooks/`):
+```
+src/hooks/
+├── useAnalysisReport.ts        # Report data fetching
+├── useScrollNavigation.ts      # Section navigation (j/k, 1-8 keys)
+├── useKnowledge.ts             # Knowledge base operations
+├── useLearn.ts                 # Learning/content addition
+├── useReport.ts                # Report management
+├── useComparison.ts            # Analysis comparison
+├── useEnterprise.ts            # Enterprise/team features
+├── usePersonalAnalytics.ts     # Personal analytics
+└── useLatestAnalysis.ts        # Latest analysis fetching
 ```
 
 **Key Features:**
 - Terminal-aesthetic design (macOS window chrome, neon colors)
 - Snap-scroll section navigation with keyboard shortcuts
 - Premium content blur/unlock logic
-- React Query for server state management
-- Component-based architecture with CSS Modules
+- Server Components for optimal performance
+- React hooks for client-side state management
 
 ### CLI Package (NPM)
 
@@ -241,18 +258,18 @@ npx no-ai-slop --help   # Show help
 
 The analyzer uses a two-stage Gemini pipeline for structured output. See [LLM_FLOW.md](./LLM_FLOW.md) for details.
 
-**Stage 1: Data Analyst** (`src/analyzer/stages/data-analyst.ts`)
+**Stage 1: Data Analyst** (`src/lib/analyzer/stages/data-analyst.ts`)
 - Extracts behavioral patterns from session data
 - Outputs structured JSON using `responseJsonSchema`
 - Temperature: 1.0 (Gemini's recommended default)
 
-**Stage 2: Content Writer** (`src/analyzer/stages/content-writer.ts`)
+**Stage 2: Content Writer** (`src/lib/analyzer/stages/content-writer.ts`)
 - Transforms behavioral data into personalized narrative
 - Generates dimension insights and recommendations
 - Outputs structured JSON using `responseJsonSchema`
 
 **Prompt Engineering:**
-- Prompts in `src/analyzer/stages/data-analyst-prompts.ts` and `content-writer-prompts.ts`
+- Prompts in `src/lib/analyzer/stages/data-analyst-prompts.ts` and `content-writer-prompts.ts`
 - Uses PTCF framework (Persona · Task · Context · Format)
 - Zod schemas → JSON Schema via `zod-to-json-schema`
 
@@ -328,47 +345,57 @@ The analyzer uses a two-stage Gemini pipeline for structured output. See [LLM_FL
 
 See [DATABASE.md](./DATABASE.md) for full schema details.
 
-## API Routes
+## API Routes (Next.js App Router)
 
-| Route | Purpose | Auth | File |
-|-------|---------|------|------|
-| `/api/analysis` | Local and remote analysis | Optional | `src/api/routes/analysis.ts` |
-| `/api/reports` | Report sharing and OG images | Public | `src/api/routes/reports.ts` |
-| `/api/knowledge` | Knowledge base operations | PREMIUM | `src/api/routes/knowledge.ts` |
-| `/api/learn` | YouTube/URL learning | PREMIUM | `src/api/routes/learn.ts` |
-| `/api/enterprise` | Team analytics | ENTERPRISE | `src/api/routes/enterprise.ts` |
-| `/api/influencers` | Influencer management | Internal | `src/api/routes/influencers.ts` |
+| Route | Purpose | Auth | Directory |
+|-------|---------|------|-----------|
+| `/api/analysis` | Local and remote analysis | Optional | `app/api/analysis/` |
+| `/api/reports` | Report sharing and OG images | Public | `app/api/reports/` |
+| `/api/knowledge` | Knowledge base operations | PREMIUM | `app/api/knowledge/` |
+| `/api/learn` | YouTube/URL learning | PREMIUM | `app/api/learn/` |
+| `/api/enterprise` | Team analytics | ENTERPRISE | `app/api/enterprise/` |
+| `/api/influencers` | Influencer management | Internal | `app/api/influencers/` |
+| `/api/health` | Health check | Public | `app/api/health/` |
 
 **Key Endpoints:**
 
-**Analysis Route:**
-- `POST /api/analysis` - Analyze session data (local or remote)
-- `GET /api/analysis/:id` - Retrieve analysis by ID
-- `GET /api/analysis/latest` - Get latest analysis
+**Analysis Route** (`app/api/analysis/`):
+- `POST /api/analysis/remote` - Analyze session data remotely
+- `GET /api/analysis/results/:resultId` - Retrieve analysis by ID
 
-**Reports Route:**
-- `GET /api/reports/:shareId` - Get shared report
-- `GET /api/reports/:shareId/og-image` - Generate OG image for sharing
-- `POST /api/reports/share` - Create shareable report
+**Reports Route** (`app/api/reports/`):
+- `GET /api/reports/:reportId` - Get shared report
+- `GET /api/reports/:reportId/og-image` - Generate OG image for sharing
+- `POST /api/reports/:reportId/share` - Create shareable report
+- `GET /api/reports/comparison/:reportId` - Compare reports
+- `GET /api/reports/comparison/features` - Comparison features
 
-**Knowledge Route:**
-- `GET /api/knowledge` - List knowledge items (filterable)
-- `POST /api/knowledge` - Add new knowledge item
+**Knowledge Route** (`app/api/knowledge/`):
+- `GET /api/knowledge` - List knowledge items (filterable by platform, category, status)
+- `POST /api/knowledge` - Create knowledge item
 - `GET /api/knowledge/:id` - Get specific knowledge item
+- `GET /api/knowledge/stats` - Get statistics
+- `GET /api/knowledge/metrics` - Get quality metrics
 
-**Learn Route:**
+**Learn Route** (`app/api/learn/`):
 - `POST /api/learn/youtube` - Learn from YouTube video
 - `POST /api/learn/url` - Learn from URL content
+- `GET /api/learn/status/:id` - Get job status
 
-**Enterprise Route:**
-- `GET /api/enterprise/teams/:teamId` - Get team analytics
-- `GET /api/enterprise/members` - List team members
-- `POST /api/enterprise/invite` - Invite team member
+**Enterprise Route** (`app/api/enterprise/`):
+- `GET /api/enterprise/team/demo` - Get demo team data
+- `GET /api/enterprise/team/demo/members` - Get team members
+- `GET /api/enterprise/team/demo/trends` - Get trend data
+- `GET /api/enterprise/personal/history` - Personal history
+- `POST /api/enterprise/personal/tracking` - Personal tracking
 
-**Influencers Route:**
+**Influencers Route** (`app/api/influencers/`):
 - `GET /api/influencers` - List influencers
-- `POST /api/influencers` - Add influencer
-- `PUT /api/influencers/:id` - Update influencer
+- `POST /api/influencers` - Create influencer
+- `GET /api/influencers/active` - Get active influencers
+- `GET /api/influencers/:id` - Get specific influencer
+- `DELETE /api/influencers/:id/deactivate` - Deactivate influencer
+- `GET /api/influencers/tier/:tier` - Filter by tier
 
 ## Authentication
 
@@ -380,14 +407,15 @@ See [DATABASE.md](./DATABASE.md) for full schema details.
 
 | Variable | Purpose |
 |----------|---------|
-| `ANTHROPIC_API_KEY` | Claude API |
+| `GOOGLE_GEMINI_API_KEY` | Gemini 3 Flash API (two-stage pipeline) |
+| `ANTHROPIC_API_KEY` | Claude API (legacy/fallback) |
 | `SUPABASE_URL` | Database URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Backend access |
 | `POLAR_ACCESS_TOKEN` | Payments |
 
 ## Data Models Overview
 
-The system uses Zod schemas for type safety. Key schemas are in `src/models/`:
+The system uses Zod schemas for type safety. Key schemas are in `src/lib/models/`:
 
 | Schema | File | Purpose |
 |--------|------|---------|

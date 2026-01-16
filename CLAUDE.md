@@ -13,10 +13,10 @@ NoMoreAISlop analyzes developer-AI collaboration sessions from `~/.claude/projec
 ## Commands
 
 ```bash
-npm run build          # Compile TypeScript
+npm run dev            # Start Next.js development server (port 3000)
+npm run build          # Build production bundle
 npm run typecheck      # Type check without emitting
 npm test               # Run all tests
-npm run ui             # Start API (3001) + React SPA (5173)
 ```
 
 ## Key Implementation Details
@@ -27,11 +27,11 @@ npm run ui             # Start API (3001) + React SPA (5173)
 - Prompts use PTCF framework (Persona · Task · Context · Format)
 - Temperature: 1.0 (Gemini's recommended default)
 
-**Structured Outputs**: Gemini stages use `responseJsonSchema` with `responseMimeType: "application/json"`. Zod schemas in `src/models/` → JSON Schema via `zod-to-json-schema`. Legacy single-stage mode uses Anthropic's beta feature.
+**Structured Outputs**: Gemini stages use `responseJsonSchema` with `responseMimeType: "application/json"`. Zod schemas in `src/lib/models/` → JSON Schema via `zod-to-json-schema`. Legacy single-stage mode uses Anthropic's beta feature.
 
 **JSONL Parsing**: Session logs contain `user`, `assistant`, `queue-operation`, `file-history-snapshot` types. Only `user` and `assistant` are analyzed. Content blocks: `text`, `tool_use`, `tool_result`.
 
-**Path Encoding**: Claude Code encodes paths by replacing `/` with `-`. See `encodeProjectPath`/`decodeProjectPath` in `src/parser/jsonl-reader.ts`.
+**Path Encoding**: Claude Code encodes paths by replacing `/` with `-`. See `encodeProjectPath`/`decodeProjectPath` in `src/lib/parser/jsonl-reader.ts`.
 
 ## Plugin Commands
 

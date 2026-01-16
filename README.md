@@ -14,11 +14,25 @@ NoMoreAISlop analyzes your Claude Code sessions to identify your AI collaboratio
 - **AI Coding Style Detection** - Architect, Scientist, Collaborator, Speedrunner, or Craftsman
 - **6-Dimension Analysis** - AI collaboration, context engineering, burnout risk, tool mastery, control index, skill resilience
 - **LLM-Powered Insights** - Hyper-personalized analysis with evidence quotes from your actual sessions
-- **Terminal-Aesthetic Web UI** - React dashboard with macOS-style interface
+- **Terminal-Aesthetic Web UI** - Next.js dashboard with macOS-style interface
 
 ---
 
 ## Quick Start
+
+### Analyze Your Sessions (Recommended)
+
+```bash
+# Run analysis directly (uses hosted API)
+npx no-ai-slop
+```
+
+This will:
+1. Scan your `~/.claude/projects/` for Claude Code sessions
+2. Upload session data for analysis
+3. Return your AI Coding Style type and a shareable report URL
+
+### Run Locally
 
 ```bash
 # Clone and install
@@ -28,23 +42,29 @@ npm install
 
 # Configure environment
 cp .env.example .env
-# Edit .env with your ANTHROPIC_API_KEY
+# Edit .env with your API keys
 
-# Run analysis
-npx tsx scripts/analyze-style.ts
+# Start development server
+npm run dev
+
+# Run analysis against local server
+NOSLOP_API_URL=http://localhost:3000 npx no-ai-slop
+
+# Open the report URL returned by the CLI
+# Example: http://localhost:3000/r/abc123
 ```
 
 ### Environment Variables
 
 ```env
 # Required
-ANTHROPIC_API_KEY=your-api-key-here
+ANTHROPIC_API_KEY=your-anthropic-api-key-here
 
 # Optional
 NOSLOP_MODEL=claude-sonnet-4-20250514
-NOSLOP_TELEMETRY=true
+NOSLOP_TELEMETRY=false
 
-# Optional (Knowledge Platform)
+# Supabase (for knowledge platform)
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
@@ -52,32 +72,15 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 ---
 
-## Usage
-
-### Analysis Commands
+## Development Commands
 
 ```bash
-# Run analysis (opens web report)
-npx tsx scripts/analyze-style.ts
-
-# Preview cost without running
-npx tsx scripts/analyze-style.ts --dry-run
-
-# Skip cost confirmation
-npx tsx scripts/analyze-style.ts --yes
-```
-
-### Development Commands
-
-```bash
-npm run build          # Compile TypeScript
+npm run dev            # Start Next.js development server (port 3000)
+npm run build          # Build production bundle
+npm run start          # Start production server
 npm run typecheck      # Type check
 npm run test           # Run tests
 npm run lint           # ESLint
-
-npm run ui             # Start API + React UI
-npm run api            # API only (port 3001)
-npm run ui:web         # React only (port 5173)
 ```
 
 ---
@@ -98,17 +101,26 @@ npm run ui:web         # React only (port 5173)
 
 ```
 nomoreaislop/
+├── app/                   # Next.js 15 App Router
+│   ├── api/               # API routes (knowledge, learn, reports, etc.)
+│   ├── browse/            # Knowledge discovery page
+│   ├── dashboard/         # Analytics dashboard
+│   ├── personal/          # Personal analytics
+│   ├── enterprise/        # Team dashboard (B2B)
+│   └── report/[reportId]/ # Dynamic report pages
 ├── src/
-│   ├── analyzer/      # LLM analysis (VerboseAnalyzer, UnifiedAnalyzer)
-│   ├── parser/        # JSONL session parsing
-│   ├── models/        # Zod schemas (verbose-evaluation, unified-report)
-│   ├── api/           # REST API (Express, port 3001)
-│   └── domain/        # Domain models and errors
-├── web-ui/            # React SPA (Vite, port 5173)
-├── scripts/           # CLI utilities
-├── commands/          # Claude Code plugin commands
-└── docs/
-    └── ARCHITECTURE.md  # System design details
+│   ├── lib/               # Core library
+│   │   ├── analyzer/      # LLM analysis (two-stage pipeline)
+│   │   ├── parser/        # JSONL session parsing
+│   │   ├── models/        # Zod schemas
+│   │   └── search-agent/  # Knowledge curation
+│   ├── components/        # React UI components
+│   ├── hooks/             # React hooks
+│   └── views/             # Page view components
+├── packages/cli/          # NPM CLI package (npx no-ai-slop)
+├── scripts/               # CLI utilities
+├── commands/              # Claude Code plugin commands
+└── docs/                  # Documentation
 ```
 
 For detailed architecture, see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
@@ -132,24 +144,8 @@ npm run test:coverage
 
 ## Data Privacy
 
-- **Local-First**: Session content only sent to Anthropic with your API key
-- **Local Storage**: Results saved in `~/.nomoreaislop/`
-- **No Cloud Storage**: Dashboard runs on localhost only
+- **Local-First**: Session content only sent to LLM providers with your API keys
 - **Optional Telemetry**: Disable with `NOSLOP_TELEMETRY=false`
-
----
-
-## Plugin Commands
-
-When used as a Claude Code plugin:
-
-| Command | Description |
-|---------|-------------|
-| `/noslop` | Analyze current session |
-| `/noslop:analyze <id>` | Analyze specific session |
-| `/noslop:sessions` | List available sessions |
-| `/noslop:history` | View past analyses |
-| `/noslop:config` | View configuration |
 
 ---
 
@@ -171,4 +167,4 @@ MIT License. See [LICENSE](./LICENSE) file.
 
 ---
 
-**Built with TypeScript, React, and Anthropic's Claude API.**
+**Built with TypeScript, Next.js 15, and React 19.**
