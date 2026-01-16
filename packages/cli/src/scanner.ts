@@ -223,9 +223,6 @@ export async function scanSessions(maxSessions: number = 10): Promise<ScanResult
     }
   }
 
-  // Sort by token count ascending (smallest first)
-  sessions.sort((a, b) => a.tokenCount - b.tokenCount);
-
   return {
     sessions,
     totalMessages,
