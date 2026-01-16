@@ -9,8 +9,8 @@ import { describe, it, expect } from 'vitest';
 import {
   calculateContextEngineering,
   type ContextEngineeringResult,
-} from '../../../../src/analyzer/dimensions/context-engineering.js';
-import type { ParsedSession, ParsedMessage } from '../../../../src/models/index.js';
+} from '../../../../src/lib/analyzer/dimensions/context-engineering.js';
+import type { ParsedSession, ParsedMessage } from '../../../../src/lib/models/index.js';
 
 // Helper to create mock sessions
 function createMockSession(

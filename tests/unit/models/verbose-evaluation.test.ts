@@ -17,7 +17,7 @@ import {
   PerDimensionInsightSchema,
   DimensionStrengthSchema,
   DimensionGrowthAreaSchema,
-} from '../../../src/models/verbose-evaluation.js';
+} from '../../../src/lib/models/verbose-evaluation.js';
 
 describe('VerboseLLMResponseSchema', () => {
   const validPromptPattern = {

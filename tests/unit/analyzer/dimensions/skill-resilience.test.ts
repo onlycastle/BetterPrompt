@@ -9,8 +9,8 @@ import { describe, it, expect } from 'vitest';
 import {
   calculateSkillResilience,
   type SkillResilienceResult,
-} from '../../../../src/analyzer/dimensions/skill-resilience.js';
-import type { ParsedSession, ParsedMessage } from '../../../../src/models/index.js';
+} from '../../../../src/lib/analyzer/dimensions/skill-resilience.js';
+import type { ParsedSession, ParsedMessage } from '../../../../src/lib/models/index.js';
 
 // Helper to create mock sessions
 function createMockSession(userMessages: string[]): ParsedSession {

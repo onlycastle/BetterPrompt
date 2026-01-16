@@ -12,7 +12,7 @@ import {
   DIMENSION_DISPLAY_NAMES,
   STRENGTH_THRESHOLD,
   MATRIX_NAMES,
-} from '../src/models/unified-report.js';
+} from '../src/lib/models/unified-report.js';
 import {
   verboseToProfile,
   dimensionsToDimensionResults,
@@ -20,9 +20,9 @@ import {
   toUnifiedReport,
   isDimensionStrength,
   getMatrixInfo,
-} from '../src/models/schema-bridge.js';
-import type { VerboseEvaluation } from '../src/models/verbose-evaluation.js';
-import type { FullAnalysisResult } from '../src/analyzer/dimensions/index.js';
+} from '../src/lib/models/schema-bridge.js';
+import type { VerboseEvaluation } from '../src/lib/models/verbose-evaluation.js';
+import type { FullAnalysisResult } from '../src/lib/analyzer/dimensions/index.js';
 
 // ============================================
 // Test Fixtures

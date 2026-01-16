@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ok, err } from '../../../../src/lib/result.js';
-import { StorageError } from '../../../../src/domain/errors/index.js';
-import { createInfluencerService } from '../../../../src/application/services/influencer-service.js';
-import type { IInfluencerRepository, PaginatedResult } from '../../../../src/application/ports/storage.js';
-import type { Influencer, InfluencerMatch } from '../../../../src/domain/models/index.js';
+import { StorageError } from '../../../../src/lib/domain/errors/index.js';
+import { createInfluencerService } from '../../../../src/lib/application/services/influencer-service.js';
+import type { IInfluencerRepository, PaginatedResult } from '../../../../src/lib/application/ports/storage.js';
+import type { Influencer, InfluencerMatch } from '../../../../src/lib/domain/models/index.js';
 
 // Mock influencer factory
 function createMockInfluencer(overrides: Partial<Influencer> = {}): Influencer {

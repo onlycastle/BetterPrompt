@@ -3,7 +3,7 @@ import {
   RELEVANCE_CRITERIA,
   formatCriteriaForPrompt,
   type RelevanceCriterion,
-} from '../../../../../src/search-agent/skills/judge/criteria.js';
+} from '../../../../../src/lib/search-agent/skills/judge/criteria.js';
 
 describe('Relevance Criteria', () => {
   describe('RELEVANCE_CRITERIA', () => {

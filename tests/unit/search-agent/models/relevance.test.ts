@@ -8,7 +8,7 @@ import {
   JudgmentStatsSchema,
   DEFAULT_DIMENSION_WEIGHTS,
   RELEVANCE_THRESHOLDS,
-} from '../../../../src/search-agent/models/relevance.js';
+} from '../../../../src/lib/search-agent/models/relevance.js';
 
 describe('Relevance Models', () => {
   describe('RelevanceDimensionSchema', () => {

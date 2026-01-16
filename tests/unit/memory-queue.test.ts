@@ -7,19 +7,19 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createMemoryJobQueue } from '../../src/infrastructure/jobs/memory-queue.js';
+import { createMemoryJobQueue } from '../../src/lib/infrastructure/jobs/memory-queue.js';
 import type {
   IJobQueuePort,
   JobHandler,
   JobContext,
-} from '../../src/application/ports/job-queue.js';
+} from '../../src/lib/application/ports/job-queue.js';
 import type {
   Job,
   JobResult,
   CreateJobInput,
   YouTubeTranscriptPayload,
   KnowledgeLearnPayload,
-} from '../../src/domain/models/index.js';
+} from '../../src/lib/domain/models/index.js';
 
 describe('MemoryJobQueue', () => {
   let queue: IJobQueuePort;
