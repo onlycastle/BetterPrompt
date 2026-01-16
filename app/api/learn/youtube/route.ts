@@ -19,21 +19,30 @@ import type {
 } from '@/lib/search-agent/models/knowledge';
 
 /**
+ * Keyword-to-category mapping for topic detection
+ */
+const TOPIC_CATEGORY_KEYWORDS: Array<{ keywords: string[]; category: TopicCategory }> = [
+  { keywords: ['prompt'], category: 'prompt-engineering' },
+  { keywords: ['context', 'window'], category: 'context-engineering' },
+  { keywords: ['tool', 'mcp'], category: 'tool-use' },
+  { keywords: ['subagent', 'agent'], category: 'subagents' },
+  { keywords: ['memory'], category: 'memory-management' },
+  { keywords: ['workflow', 'automation'], category: 'workflow-automation' },
+  { keywords: ['practice', 'pattern'], category: 'best-practices' },
+  { keywords: ['claude', 'skill'], category: 'claude-code-skills' },
+];
+
+/**
  * Helper: Map topics to category
  */
 function mapTopicsToCategory(topics: string[]): TopicCategory {
   const topicLower = topics.map((t) => t.toLowerCase()).join(' ');
 
-  if (topicLower.includes('prompt')) return 'prompt-engineering';
-  if (topicLower.includes('context') || topicLower.includes('window'))
-    return 'context-engineering';
-  if (topicLower.includes('tool') || topicLower.includes('mcp')) return 'tool-use';
-  if (topicLower.includes('subagent') || topicLower.includes('agent')) return 'subagents';
-  if (topicLower.includes('memory')) return 'memory-management';
-  if (topicLower.includes('workflow') || topicLower.includes('automation'))
-    return 'workflow-automation';
-  if (topicLower.includes('practice') || topicLower.includes('pattern')) return 'best-practices';
-  if (topicLower.includes('claude') || topicLower.includes('skill')) return 'claude-code-skills';
+  for (const { keywords, category } of TOPIC_CATEGORY_KEYWORDS) {
+    if (keywords.some((keyword) => topicLower.includes(keyword))) {
+      return category;
+    }
+  }
 
   return 'other';
 }

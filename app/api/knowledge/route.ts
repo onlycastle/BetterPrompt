@@ -40,10 +40,12 @@ export async function GET(request: NextRequest) {
     };
 
     // Map sortBy for compatibility
-    let dbSortBy: 'created_at' | 'relevance_score' | 'title' = 'created_at';
-    if (sortBy === 'createdAt') dbSortBy = 'created_at';
-    else if (sortBy === 'relevance') dbSortBy = 'relevance_score';
-    else if (sortBy === 'title') dbSortBy = 'title';
+    const SORT_FIELD_MAP: Record<string, 'created_at' | 'relevance_score' | 'title'> = {
+      createdAt: 'created_at',
+      relevance: 'relevance_score',
+      title: 'title',
+    };
+    const dbSortBy = SORT_FIELD_MAP[sortBy] ?? 'created_at';
 
     // Execute search
     const result = await knowledgeDb.search(filters, {
