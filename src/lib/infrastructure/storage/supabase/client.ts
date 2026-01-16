@@ -23,10 +23,10 @@ let _supabase: SupabaseClient | null = null;
  */
 function validateEnv(): void {
   if (!supabaseUrl) {
-    throw new Error('SUPABASE_URL environment variable is not set');
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL environment variable is not set');
   }
   if (!supabaseServiceKey && !supabaseAnonKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY must be set');
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY must be set');
   }
 }
 
@@ -60,7 +60,7 @@ export function getSupabaseClient(): SupabaseClient {
  */
 export function createAnonClient(): SupabaseClient {
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be set');
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set');
   }
   return createClient(supabaseUrl, supabaseAnonKey);
 }
@@ -71,7 +71,7 @@ export function createAnonClient(): SupabaseClient {
  */
 export function createUserClient(accessToken: string): SupabaseClient {
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be set');
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set');
   }
   return createClient(supabaseUrl, supabaseAnonKey, {
     global: {

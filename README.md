@@ -65,8 +65,8 @@ NOSLOP_MODEL=claude-sonnet-4-20250514
 NOSLOP_TELEMETRY=false
 
 # Supabase (for knowledge platform)
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
@@ -138,6 +138,42 @@ npm run test:watch
 
 # Coverage
 npm run test:coverage
+```
+
+---
+
+## CLI Development (`packages/cli/`)
+
+### Local Testing
+
+```bash
+cd packages/cli
+npm run build
+
+# Save session cache (first time)
+echo "n" | node dist/index.js --save-cache
+
+# Use cache for testing (no API costs)
+NOSLOP_API_URL=http://localhost:3000 node dist/index.js --use-cache
+```
+
+### Deploy to NPM
+
+```bash
+cd packages/cli
+npm run release          # patch (0.1.0 → 0.1.1)
+npm run release:minor    # minor (0.1.0 → 0.2.0)
+
+# Commit version bump
+git add packages/cli/package.json
+git commit -m "chore(cli): release vX.X.X"
+git push origin main
+```
+
+### Post-Deployment Test
+
+```bash
+npx no-ai-slop@latest --help
 ```
 
 ---

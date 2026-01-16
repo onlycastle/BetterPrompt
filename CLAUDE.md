@@ -46,6 +46,9 @@ Commands in `commands/*.md` with YAML frontmatter:
 |----------|-------------|
 | `GOOGLE_GEMINI_API_KEY` | Required for two-stage pipeline (Gemini 3 Flash) |
 | `ANTHROPIC_API_KEY` | Required for legacy single-stage mode or fallback |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (client-side) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key (client-side) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
 | `NOSLOP_MODEL` | Override model (legacy mode only) |
 
 ## Release Workflow
