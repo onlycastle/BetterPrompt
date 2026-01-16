@@ -1,0 +1,63 @@
+/**
+ * ProgressTab - Notebook Sketch Style
+ */
+
+.container {
+  max-width: 100%;
+}
+
+.statsRow {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.chartCard {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  box-shadow: 3px 3px 0 var(--ink-muted);
+  padding: var(--space-lg);
+  border-radius: var(--radius-md);
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.chartCard:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink-muted);
+}
+
+.chartTitle {
+  font-family: var(--font-primary);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  margin: 0;
+}
+
+.chartSubtitle {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  margin: var(--space-xs) 0 var(--space-lg) 0;
+}
+
+.chartWrapper {
+  flex: 1;
+  min-height: 280px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .statsRow {
+    grid-template-columns: 1fr;
+  }
+
+  .chartCard {
+    order: -1;
+  }
+}

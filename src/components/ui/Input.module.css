@@ -1,0 +1,76 @@
+/**
+ * Input Component - Notebook Sketch Style
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  font-family: var(--font-primary);
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  height: 48px;
+  padding: 0 var(--space-md);
+  background-color: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-md);
+  font-family: var(--font-primary);
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow: 2px 2px 0 var(--ink-muted);
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--sketch-cyan);
+  box-shadow: 3px 3px 0 var(--sketch-cyan);
+}
+
+.hasIcon {
+  padding-left: 48px;
+}
+
+.icon {
+  position: absolute;
+  left: var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.hasError .input {
+  border-color: var(--sketch-red);
+  box-shadow: 2px 2px 0 var(--sketch-red);
+}
+
+.hasError .input:focus {
+  border-color: var(--sketch-red);
+  box-shadow: 3px 3px 0 var(--sketch-red);
+}
+
+.error {
+  font-size: var(--text-sm);
+  color: var(--sketch-red);
+  font-family: var(--font-primary);
+}

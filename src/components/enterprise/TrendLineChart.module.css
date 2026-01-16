@@ -1,0 +1,51 @@
+.container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.svg {
+  display: block;
+}
+
+.gridLine {
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+}
+
+.line {
+  fill: none;
+  stroke: var(--accent-primary);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.point {
+  fill: var(--surface-1);
+  stroke: var(--accent-primary);
+  stroke-width: 2;
+  cursor: pointer;
+  transition: r var(--transition-fast);
+}
+
+.point:hover {
+  r: 6;
+}
+
+.xLabel,
+.yLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  fill: var(--text-tertiary);
+  user-select: none;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  background-color: var(--surface-2);
+  border-radius: var(--radius-md);
+}

@@ -82,11 +82,14 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  // Upload and analyze
+  // Upload and analyze with streaming progress
   const analyzeSpinner = ora('Analyzing your AI collaboration style...').start();
 
   try {
-    const result = await uploadForAnalysis(scanResult);
+    const result = await uploadForAnalysis(scanResult, (stage, progress, message) => {
+      // Update spinner text with progress
+      analyzeSpinner.text = `${message} (${progress}%)`;
+    });
     analyzeSpinner.succeed('Analysis complete!');
 
     // Display results

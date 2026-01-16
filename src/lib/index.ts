@@ -35,4 +35,4 @@ export {
   mapAsync,
   flatMapAsync,
   allAsync,
-} from './result.js';
+} from './result';

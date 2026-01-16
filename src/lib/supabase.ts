@@ -15,10 +15,10 @@ export {
   isSupabaseConfigured,
   resetSupabaseClient,
   type SupabaseClient,
-} from '../infrastructure/storage/supabase/client.js';
+} from './infrastructure/storage/supabase/client';
 
 // Backward compatibility for existing .client getter pattern
-import { getSupabaseClient } from '../infrastructure/storage/supabase/client.js';
+import { getSupabaseClient } from './infrastructure/storage/supabase/client';
 
 export const supabase = {
   get client() {

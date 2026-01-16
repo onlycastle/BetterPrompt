@@ -7,8 +7,8 @@
  * - Copy-to-clipboard text
  */
 
-import type { TypeResult } from '../models/coding-style.js';
-import { TYPE_METADATA } from '../models/coding-style.js';
+import type { TypeResult } from './models/coding-style';
+import { TYPE_METADATA } from './models/coding-style';
 
 /**
  * Base URL for share links (configure in env)

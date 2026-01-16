@@ -1,0 +1,172 @@
+/**
+ * Badge Component - Notebook Sketch Style
+ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-family: var(--font-primary);
+  font-weight: var(--weight-medium);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  line-height: 1;
+  transition: all var(--transition-fast);
+  border: 1.5px solid var(--ink-muted);
+}
+
+/* Sizes */
+.sm {
+  height: 20px;
+  padding: 0 var(--space-sm);
+  font-size: 11px;
+}
+
+.md {
+  height: 24px;
+  padding: 0 var(--space-md);
+  font-size: var(--text-xs);
+}
+
+.lg {
+  height: 28px;
+  padding: 0 calc(var(--space-md) + 4px);
+  font-size: var(--text-sm);
+}
+
+/* ============================================
+   Variants - Sketch Style
+   ============================================ */
+.default {
+  background-color: var(--surface-2);
+  color: var(--text-secondary);
+  border-color: var(--ink-muted);
+}
+
+.success {
+  background-color: var(--sketch-green-light);
+  color: var(--sketch-green-text);
+  border-color: var(--sketch-green);
+}
+
+.warning {
+  background-color: var(--sketch-yellow-light);
+  color: var(--sketch-yellow-dark);
+  border-color: var(--sketch-yellow);
+}
+
+.error {
+  background-color: var(--sketch-red-light);
+  color: var(--sketch-red);
+  border-color: var(--sketch-red);
+}
+
+.info {
+  background-color: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan-text);
+  border-color: var(--sketch-cyan);
+}
+
+/* ============================================
+   Primary Variant - Solid Cyan
+   ============================================ */
+.gradient {
+  background: var(--sketch-cyan);
+  color: var(--bg-paper);
+  border-color: var(--ink-primary);
+}
+
+.gradient.sm,
+.gradient.md {
+  font-weight: var(--weight-semibold);
+}
+
+/* ============================================
+   Glass Variant - Now flat sketch style
+   ============================================ */
+.glass {
+  background: var(--surface-1);
+  border: 1.5px solid var(--ink-secondary);
+  color: var(--text-primary);
+}
+
+/* ============================================
+   Outline Variant
+   ============================================ */
+.outline {
+  background: transparent;
+  border: 1.5px solid currentColor;
+}
+
+.outlineSuccess {
+  color: var(--sketch-green-text);
+  border-color: var(--sketch-green);
+}
+
+.outlineWarning {
+  color: var(--sketch-yellow-dark);
+  border-color: var(--sketch-yellow);
+}
+
+.outlineError {
+  color: var(--sketch-red);
+  border-color: var(--sketch-red);
+}
+
+.outlineInfo {
+  color: var(--sketch-cyan-text);
+  border-color: var(--sketch-cyan);
+}
+
+/* ============================================
+   Platform Variants - Solid with Border
+   ============================================ */
+.platform {
+  color: white;
+  font-weight: var(--weight-semibold);
+  border: 1.5px solid var(--ink-primary);
+}
+
+.platform-youtube {
+  background-color: var(--platform-youtube);
+}
+
+.platform-twitter {
+  background-color: var(--platform-twitter);
+}
+
+.platform-reddit {
+  background-color: var(--platform-reddit);
+}
+
+.platform-linkedin {
+  background-color: var(--platform-linkedin);
+}
+
+.platform-web {
+  background-color: var(--platform-web);
+}
+
+/* ============================================
+   Dot Indicator
+   ============================================ */
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.dotPulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

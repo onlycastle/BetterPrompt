@@ -1,0 +1,120 @@
+/**
+ * Dashboard Page - Notebook Sketch Style
+ */
+
+/* Page Container */
+.page {
+  animation: pageEnter var(--transition-normal) ease-out;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stats Grid */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-2xl);
+}
+
+.statCard {
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  box-shadow: 3px 3px 0 var(--ink-muted);
+  transition: all var(--transition-normal);
+}
+
+.statCard:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink-primary);
+  border-color: var(--sketch-cyan);
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.statIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  background: var(--sketch-cyan-light);
+  border: 2px solid var(--sketch-cyan);
+}
+
+.statValue {
+  font-family: var(--font-primary);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--sketch-cyan);
+  line-height: var(--leading-tight);
+  margin-bottom: var(--space-xs);
+}
+
+.statLabel {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+}
+
+/* Charts Grid */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-lg);
+}
+
+.chartCard {
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-xl);
+  box-shadow: 3px 3px 0 var(--ink-muted);
+  transition: all var(--transition-normal);
+}
+
+.chartCard:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink-primary);
+  border-color: var(--sketch-cyan);
+}
+
+.chartTitle {
+  font-family: var(--font-primary);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-cyan);
+  margin-bottom: var(--space-lg);
+  line-height: var(--leading-tight);
+}
+
+/* Score Display */
+.scoreDisplay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-lg) var(--space-md);
+  min-height: 200px;
+}
+
+/* Chart Content */
+.chartContent {
+  padding: var(--space-xs) 0;
+}

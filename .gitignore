@@ -38,3 +38,6 @@ BUSINESS.md
 # Temporary files
 *.tmp
 *.temp
+.next
+.next
+tsconfig.tsbuildinfo

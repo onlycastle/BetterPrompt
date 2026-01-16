@@ -10,12 +10,12 @@
 // ============================================================================
 // Models
 // ============================================================================
-export * from './models/index.js';
+export * from './lib/models/index';
 
 // ============================================================================
 // Parser
 // ============================================================================
-export { SessionParser, sessionParser } from './parser/index.js';
+export { SessionParser, sessionParser } from './lib/parser/index';
 export {
   readJSONLFile,
   findSessionFile,
@@ -25,7 +25,7 @@ export {
   encodeProjectPath,
   getProjectName,
   CLAUDE_PROJECTS_DIR,
-} from './parser/jsonl-reader.js';
+} from './lib/parser/jsonl-reader';
 
 // ============================================================================
 // Analyzer (Verbose Mode - Default)
@@ -89,7 +89,7 @@ export {
   // Schema utilities
   getEvaluationJsonSchema,
   getEvaluationTool,
-} from './analyzer/index.js';
+} from './lib/analyzer/index';
 
 // ============================================================================
 // Utils
@@ -97,15 +97,15 @@ export {
 export {
   generateSessionsTable,
   generateHistoryList,
-} from './utils/reporter.js';
+} from './lib/utils/reporter';
 
 export {
   StorageManager,
   storageManager,
   DEFAULT_STORAGE_PATH,
-} from './utils/storage.js';
+} from './lib/utils/storage';
 
-export { computeFileHash } from './utils/hash.js';
+export { computeFileHash } from './lib/utils/hash';
 
 // ============================================================================
 // CLI (Verbose Mode - Default)
@@ -133,7 +133,7 @@ export {
   confirmCost,
   // Options
   type RenderOptions,
-} from './cli/index.js';
+} from './lib/cli/index';
 
 // ============================================================================
 // Config
@@ -142,7 +142,7 @@ export {
   ConfigManager,
   configManager,
   DEFAULT_CONFIG_PATH,
-} from './config/manager.js';
+} from './lib/config/manager';
 
 // ============================================================================
 // Search Agent
@@ -200,13 +200,13 @@ export {
   type SearchQuery,
   type RelevanceAssessment,
   type JudgmentResult,
-} from './search-agent/index.js';
+} from './lib/search-agent/index';
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
-import { sessionParser } from './parser/index.js';
+import { sessionParser } from './lib/parser/index';
 
 /**
  * List available Claude Code sessions
@@ -214,7 +214,7 @@ import { sessionParser } from './parser/index.js';
  * @returns Markdown table of sessions
  */
 export async function listSessions(): Promise<string> {
-  const { generateSessionsTable } = await import('./utils/reporter.js');
+  const { generateSessionsTable } = await import('./lib/utils/reporter.js');
   const sessions = await sessionParser.listSessions();
   return generateSessionsTable(sessions);
 }
@@ -225,8 +225,8 @@ export async function listSessions(): Promise<string> {
  * @returns Markdown table of past analyses
  */
 export async function listHistory(): Promise<string> {
-  const { generateHistoryList } = await import('./utils/reporter.js');
-  const { storageManager } = await import('./utils/storage.js');
+  const { generateHistoryList } = await import('./lib/utils/reporter.js');
+  const { storageManager } = await import('./lib/utils/storage.js');
   const analyses = await storageManager.listAnalyses();
   return generateHistoryList(analyses);
 }

@@ -7,7 +7,7 @@
  * @module lib/result
  */
 
-import { DomainError } from '../domain/errors/index.js';
+import { DomainError } from './domain/errors/index';
 
 // ============================================================================
 // Result Type Definition

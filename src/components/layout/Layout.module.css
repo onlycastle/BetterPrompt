@@ -1,0 +1,100 @@
+/**
+ * Layout Component - Notebook Sketch Style
+ */
+
+.layout {
+  min-height: 100vh;
+  background-color: var(--bg-paper);
+  background-image:
+    linear-gradient(var(--bg-grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-color) 1px, transparent 1px);
+  background-size: var(--bg-grid-size) var(--bg-grid-size);
+  position: relative;
+}
+
+/* Remove decorative gradients - keep it flat */
+.layout::before {
+  display: none;
+}
+
+.main {
+  position: relative;
+  margin-left: var(--sidebar-width);
+  min-height: 100vh;
+  padding: var(--space-xl);
+  transition: margin-left var(--transition-normal);
+  z-index: 1;
+}
+
+.main.mainCollapsed {
+  margin-left: var(--sidebar-width-collapsed);
+}
+
+.content {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+}
+
+/* Page header area */
+.pageHeader {
+  margin-bottom: var(--space-2xl);
+}
+
+.pageTitle {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  font-family: var(--font-primary);
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-tight);
+  margin-bottom: var(--space-sm);
+}
+
+.pageDescription {
+  font-size: var(--text-lg);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+/* Accent title variant - cyan underline instead of gradient */
+.pageTitleGradient {
+  color: var(--sketch-cyan);
+  text-decoration: underline;
+  text-decoration-color: var(--sketch-cyan);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 4px;
+}
+
+/* ============================================
+   Responsive Adjustments
+   ============================================ */
+@media (max-width: 768px) {
+  .main {
+    margin-left: 0;
+    padding: var(--space-md);
+  }
+
+  .main.mainCollapsed {
+    margin-left: 0;
+  }
+
+  .pageTitle {
+    font-size: var(--text-2xl);
+  }
+
+  .pageDescription {
+    font-size: var(--text-md);
+  }
+}
+
+/* ============================================
+   Full-screen Overlay Mode (for Terminal)
+   ============================================ */
+.layoutFullscreen {
+  background: transparent;
+  background-image: none;
+}
+
+.layoutFullscreen .main {
+  margin-left: 0;
+  padding: 0;
+}

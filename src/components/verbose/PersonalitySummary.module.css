@@ -1,0 +1,42 @@
+/**
+ * PersonalitySummary Component - Notebook Sketch Style
+ */
+
+.container {
+  margin: var(--space-xl) 0;
+  padding: var(--space-lg);
+  background: var(--surface-1);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--ink-primary);
+  border-left: 4px solid var(--sketch-cyan);
+  box-shadow: 2px 2px 0 var(--ink-muted);
+}
+
+.title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-primary);
+}
+
+.title::before {
+  content: '🎭';
+}
+
+.content {
+  font-size: var(--text-sm);
+  line-height: 1.8;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.emphasis {
+  color: var(--sketch-cyan);
+  font-weight: var(--weight-semibold);
+}
