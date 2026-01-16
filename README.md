@@ -57,11 +57,14 @@ NOSLOP_API_URL=http://localhost:3000 npx no-ai-slop
 ### Environment Variables
 
 ```env
-# Required
+# Required - Two-stage pipeline (Gemini 3 Flash)
+GOOGLE_GEMINI_API_KEY=your-gemini-api-key-here
+
+# Optional - Legacy single-stage mode / fallback
 ANTHROPIC_API_KEY=your-anthropic-api-key-here
 
-# Optional
-NOSLOP_MODEL=claude-sonnet-4-20250514
+# Optional - Configuration
+NOSLOP_MODEL=claude-sonnet-4-20250514  # Legacy mode only
 NOSLOP_TELEMETRY=false
 
 # Supabase (for knowledge platform)
@@ -150,11 +153,11 @@ npm run test:coverage
 cd packages/cli
 npm run build
 
-# Save session cache (first time)
-echo "n" | node dist/index.js --save-cache
+# Run analysis and save result to cache
+NOSLOP_API_URL=http://localhost:3000 node dist/index.js --save-cache
 
-# Use cache for testing (no API costs)
-NOSLOP_API_URL=http://localhost:3000 node dist/index.js --use-cache
+# Use cached analysis result (no API costs)
+node dist/index.js --use-cache
 ```
 
 ### Deploy to NPM

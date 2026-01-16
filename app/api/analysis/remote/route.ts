@@ -436,9 +436,11 @@ export async function POST(request: NextRequest) {
         })));
 
         // Run analysis
+        // NOTE: Use 'enterprise' tier to store FULL evaluation in database
+        // Tier-based filtering is applied when serving via /api/analysis/results/:resultId
         const analyzer = new VerboseAnalyzer({
           pipeline: { mode: 'two-stage' },
-          tier: 'free',
+          tier: 'enterprise',
           fallbackToLegacy: true,
         });
 
@@ -460,7 +462,7 @@ export async function POST(request: NextRequest) {
         let evaluation: VerboseEvaluation;
         try {
           evaluation = await analyzer.analyzeVerbose(parsedSessions, metrics, {
-            tier: 'free',
+            tier: 'enterprise',
           });
         } finally {
           clearInterval(heartbeatInterval);
