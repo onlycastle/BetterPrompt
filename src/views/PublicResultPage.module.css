@@ -157,6 +157,11 @@
   font-size: 1rem;
 }
 
+.summary strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
 /* Blurred Section */
 .blurredSection {
   position: relative;

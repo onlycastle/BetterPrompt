@@ -7,6 +7,7 @@
 import { createClient } from '@supabase/supabase-js';
 import styles from './PublicResultPage.module.css';
 import { DetailButton } from './DetailButton';
+import { FormattedText } from '../utils/textFormatting';
 
 // ============================================================================
 // Types
@@ -225,7 +226,7 @@ export async function PublicResultPageWrapper({ resultId }: PublicResultPageWrap
       {/* Summary */}
       <div className={styles.card}>
         <h2>Your AI Collaboration Style</h2>
-        <p className={styles.summary}>{evaluation.personalitySummary}</p>
+        <FormattedText text={evaluation.personalitySummary} as="p" className={styles.summary} />
       </div>
 
       {/* Prompt Patterns - Show 3 patterns with 1 quote each (FREE tier) */}

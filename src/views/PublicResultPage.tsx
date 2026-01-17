@@ -14,6 +14,7 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoginModal } from '@/components/auth/LoginModal';
+import { FormattedText } from '@/utils/textFormatting';
 import styles from './PublicResultPage.module.css';
 
 // ============================================================================
@@ -188,7 +189,7 @@ export function PublicResultPage() {
       {/* Summary */}
       <div className={styles.card}>
         <h2>Your AI Collaboration Style</h2>
-        <p className={styles.summary}>{evaluation.personalitySummary}</p>
+        <FormattedText text={evaluation.personalitySummary} as="p" className={styles.summary} />
       </div>
 
       {/* Prompt Patterns - Premium section with auth-based blur */}
