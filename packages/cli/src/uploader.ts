@@ -3,8 +3,10 @@
  *
  * Handles communication with the NoMoreAISlop server
  * Supports SSE streaming for real-time progress updates
+ * Uses gzip compression to reduce payload size
  */
 
+import { gzipSync } from 'node:zlib';
 import type { ScanResult } from './scanner.js';
 
 const API_BASE_URL = process.env.NOSLOP_API_URL || 'https://www.nomoreaislop.xyz';
@@ -75,13 +77,18 @@ export async function uploadForAnalysis(
     totalDurationMinutes: scanResult.totalDurationMinutes,
   };
 
+  // Compress payload with gzip to reduce size (Vercel has 4.5MB limit)
+  const jsonString = JSON.stringify(payload);
+  const compressedBody = gzipSync(Buffer.from(jsonString, 'utf-8'));
+
   const response = await fetch(`${API_BASE_URL}/api/analysis/remote`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Content-Encoding': 'gzip',
       'X-Gemini-API-Key': apiKey,
     },
-    body: JSON.stringify(payload),
+    body: compressedBody,
   });
 
   if (!response.ok) {
@@ -129,9 +136,6 @@ async function handleStreamingResponse(
 
       buffer += decoder.decode(value, { stream: true });
 
-      // DEBUG: Log raw SSE data
-      console.error('[DEBUG] Raw chunk:', JSON.stringify(value ? decoder.decode(value) : 'empty'));
-
       // Process complete lines
       const lines = buffer.split('\n');
       buffer = lines.pop() || ''; // Keep incomplete line in buffer
@@ -141,7 +145,6 @@ async function handleStreamingResponse(
         if (!trimmed) continue;
 
         const event = parseSSELine(trimmed);
-        console.error('[DEBUG] Parsed event:', event ? event.type : 'null', trimmed.slice(0, 100));
         if (!event) continue;
 
         switch (event.type) {
@@ -176,7 +179,6 @@ async function handleStreamingResponse(
     }
 
     if (!result) {
-      console.error('[DEBUG] Stream ended without result. Final buffer:', buffer);
       throw new Error('No result received from server');
     }
 

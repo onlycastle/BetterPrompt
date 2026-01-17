@@ -11,6 +11,7 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import * as crypto from 'node:crypto';
+import { gunzipSync } from 'node:zlib';
 import { VerboseAnalyzer } from '@/lib/analyzer/verbose-analyzer';
 import { aggregateMetrics } from '@/lib/analyzer/type-detector';
 import type { ParsedSession } from '@/lib/domain/models/analysis';
@@ -379,9 +380,23 @@ export async function POST(request: NextRequest) {
       try {
         // Parse request body manually to handle large payloads
         // Next.js App Router's request.json() has a 4MB default limit
+        // Supports gzip compression from CLI
         console.log('[remote-analysis] Receiving request body...');
-        const bodyText = await request.text();
-        console.log(`[remote-analysis] Body received: ${bodyText.length} bytes (${(bodyText.length / 1024 / 1024).toFixed(2)} MB)`);
+        const contentEncoding = request.headers.get('content-encoding');
+        const isGzipped = contentEncoding === 'gzip';
+
+        let bodyText: string;
+        if (isGzipped) {
+          // Decompress gzip body
+          const compressedBuffer = await request.arrayBuffer();
+          console.log(`[remote-analysis] Compressed body received: ${compressedBuffer.byteLength} bytes`);
+          const decompressed = gunzipSync(Buffer.from(compressedBuffer));
+          bodyText = decompressed.toString('utf-8');
+          console.log(`[remote-analysis] Decompressed to: ${bodyText.length} bytes (${(bodyText.length / 1024 / 1024).toFixed(2)} MB)`);
+        } else {
+          bodyText = await request.text();
+          console.log(`[remote-analysis] Body received: ${bodyText.length} bytes (${(bodyText.length / 1024 / 1024).toFixed(2)} MB)`);
+        }
 
         if (bodyText.length > MAX_BODY_SIZE) {
           controller.enqueue(encoder.encode(formatSSE({
