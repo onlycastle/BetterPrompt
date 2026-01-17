@@ -197,21 +197,24 @@ export async function scanSessions(maxSessions: number = 10): Promise<ScanResult
     const files = await listSessionFiles(dir);
     for (const file of files) {
       const metadata = await getSessionMetadata(file);
-      if (metadata && metadata.messageCount >= 5) {
+      // Filter: at least 5 messages AND at least 60 seconds duration
+      if (metadata && metadata.messageCount >= 5 && metadata.durationSeconds >= 60) {
         allMetadata.push(metadata);
       }
     }
   }
 
-  // Sort by duration (longer sessions first) then by recency
-  allMetadata.sort((a, b) => {
-    const durationDiff = b.durationSeconds - a.durationSeconds;
-    if (Math.abs(durationDiff) > 60) return durationDiff;
-    return b.timestamp.getTime() - a.timestamp.getTime();
-  });
+  // Step 1: Sort by timestamp, most recent first
+  allMetadata.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
-  // Select top sessions
-  const selected = allMetadata.slice(0, maxSessions);
+  // Step 2: Take top 50 most recent sessions
+  const recentSessions = allMetadata.slice(0, 50);
+
+  // Step 3: Sort by message count (more messages = more meaningful)
+  recentSessions.sort((a, b) => b.messageCount - a.messageCount);
+
+  // Step 4: Select top 20 by message count (user picks from these)
+  const selected = recentSessions.slice(0, 20);
 
   // Read and parse content for selected sessions
   const sessions: SessionWithParsed[] = [];

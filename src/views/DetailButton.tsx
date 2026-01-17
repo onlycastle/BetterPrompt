@@ -72,7 +72,7 @@ export function DetailButton({ resultId }: DetailButtonProps) {
         </p>
       </div>
 
-      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} />
+      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} pendingResultId={resultId} />
     </>
   );
 }

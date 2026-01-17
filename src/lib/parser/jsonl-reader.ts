@@ -137,13 +137,7 @@ export async function getSessionMetadata(
     // Get session ID from filename
     const fileName = basename(filePath, '.jsonl');
 
-    // Parse first line for session info
-    const firstLine = parseJSONLLine(lines[0]);
-    if (!firstLine || (firstLine.type !== 'user' && firstLine.type !== 'assistant')) {
-      return null;
-    }
-
-    // Count messages
+    // Count messages (scan entire file - don't rely on first line type)
     let messageCount = 0;
     let firstTimestamp: Date | null = null;
     let lastTimestamp: Date | null = null;

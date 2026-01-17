@@ -4,7 +4,8 @@
  * Shows blurred content for non-authenticated users
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { FileText, TrendingUp, Lightbulb, LogOut } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { Tabs, LoadingState } from '@/components/ui';
@@ -26,15 +27,45 @@ const TABS: Tab[] = [
 export function PersonalDashboardPage() {
   const [activeTab, setActiveTab] = useState('report');
   const [showLogin, setShowLogin] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false);
   const { isAuthenticated, signOut, user } = useAuth();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const { data: analytics, isLoading: analyticsLoading } = usePersonalAnalytics();
-  const { data: analysis, isLoading: analysisLoading, hasAnalysis } = useLatestAnalysis();
+  const { data: analysis, isLoading: analysisLoading, hasAnalysis, refetch } = useLatestAnalysis();
 
-  const isLoading = analyticsLoading || analysisLoading;
+  const pendingResultId = searchParams.get('pendingResultId');
+
+  // Claim pending result after OAuth redirect
+  const claimPendingResult = useCallback(async (resultId: string) => {
+    setIsClaiming(true);
+    try {
+      await fetch('/api/analysis/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resultId }),
+      });
+      // Remove pendingResultId from URL and refetch analysis
+      router.replace('/personal');
+      refetch();
+    } catch (err) {
+      console.warn('Failed to claim result:', err);
+    } finally {
+      setIsClaiming(false);
+    }
+  }, [router, refetch]);
+
+  useEffect(() => {
+    if (pendingResultId && isAuthenticated && !isClaiming) {
+      claimPendingResult(pendingResultId);
+    }
+  }, [pendingResultId, isAuthenticated, isClaiming, claimPendingResult]);
+
+  const isLoading = analyticsLoading || analysisLoading || isClaiming;
 
   if (isLoading) {
-    return <LoadingState message="Loading your profile..." />;
+    return <LoadingState message={isClaiming ? "Claiming your analysis..." : "Loading your profile..."} />;
   }
 
   // Use mock data for MVP if no analytics

@@ -17,8 +17,8 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUpWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithGoogle: () => Promise<{ error: Error | null }>;
-  signInWithGitHub: () => Promise<{ error: Error | null }>;
+  signInWithGoogle: (pendingResultId?: string) => Promise<{ error: Error | null }>;
+  signInWithGitHub: (pendingResultId?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -76,20 +76,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (pendingResultId?: string) => {
     if (!supabase) return { error: new Error('Authentication not configured') };
+    const next = pendingResultId
+      ? `/personal?pendingResultId=${encodeURIComponent(pendingResultId)}`
+      : '/personal';
     const { error } = await supabase.client.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/personal` }
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` }
     });
     return { error };
   };
 
-  const signInWithGitHub = async () => {
+  const signInWithGitHub = async (pendingResultId?: string) => {
     if (!supabase) return { error: new Error('Authentication not configured') };
+    const next = pendingResultId
+      ? `/personal?pendingResultId=${encodeURIComponent(pendingResultId)}`
+      : '/personal';
     const { error } = await supabase.client.auth.signInWithOAuth({
       provider: 'github',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/personal` }
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` }
     });
     return { error };
   };

@@ -14,9 +14,10 @@ import styles from './LoginModal.module.css';
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
+  pendingResultId?: string;
 }
 
-export function LoginModal({ isOpen, onClose }: LoginModalProps) {
+export function LoginModal({ isOpen, onClose, pendingResultId }: LoginModalProps) {
   const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithGitHub } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -45,13 +46,13 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
   const handleGitHub = async () => {
     setError(null);
-    const { error } = await signInWithGitHub();
+    const { error } = await signInWithGitHub(pendingResultId);
     if (error) setError(error.message);
   };
 
   const handleGoogle = async () => {
     setError(null);
-    const { error } = await signInWithGoogle();
+    const { error } = await signInWithGoogle(pendingResultId);
     if (error) setError(error.message);
   };
 
