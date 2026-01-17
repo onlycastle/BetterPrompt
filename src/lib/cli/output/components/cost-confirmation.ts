@@ -24,9 +24,9 @@ export function renderCostEstimate(
   lines.push(`  ${pc.dim('Model:')} ${pc.white(estimate.modelName)}`);
   lines.push('');
   lines.push(`  ${pc.dim('Input tokens:')} ${pc.white(estimate.totalInputTokens.toLocaleString())}`);
-  lines.push(`    ${pc.dim('├─ Session content:')} ${estimate.breakdown.sessionTokens.toLocaleString()}`);
-  lines.push(`    ${pc.dim('├─ System prompt:')} ${estimate.breakdown.systemPromptTokens.toLocaleString()}`);
-  lines.push(`    ${pc.dim('└─ Schema overhead:')} ${estimate.breakdown.schemaOverhead.toLocaleString()}`);
+  lines.push(`    ${pc.dim('├─ Data Analyst:')} ${estimate.breakdown.dataAnalystInput.toLocaleString()}`);
+  lines.push(`    ${pc.dim('├─ Personality Analyst:')} ${estimate.breakdown.personalityAnalystInput.toLocaleString()}`);
+  lines.push(`    ${pc.dim('└─ Content Writer:')} ${estimate.breakdown.contentWriterInput.toLocaleString()}`);
   lines.push(`  ${pc.dim('Output tokens (est):')} ${pc.white(estimate.estimatedOutputTokens.toLocaleString())}`);
   lines.push('');
 
@@ -36,7 +36,7 @@ export function renderCostEstimate(
   lines.push(pc.green(`  ║  ${pc.bold('Estimated Cost:')} ${pc.bold(pc.yellow(costStr.padEnd(15)))} ║`));
   lines.push(pc.green(`  ╚══════════════════════════════════╝`));
   lines.push('');
-  lines.push(pc.dim('  This uses your Anthropic API key.'));
+  lines.push(pc.dim('  This uses your Google Gemini API key.'));
   lines.push('');
 
   return lines.join('\n');

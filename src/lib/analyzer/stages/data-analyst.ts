@@ -16,6 +16,7 @@ import {
 } from '../../models/analysis-data';
 import { DIMENSION_NAMES } from '../../models/verbose-evaluation';
 import { DATA_ANALYST_SYSTEM_PROMPT, buildDataAnalystUserPrompt } from './data-analyst-prompts';
+import { formatSessionsForAnalysis, DATA_ANALYST_FORMAT } from '../shared/session-formatter';
 
 /**
  * Configuration for the Data Analyst stage
@@ -96,38 +97,10 @@ export class DataAnalystStage {
 
   /**
    * Format sessions for the prompt
+   * Uses shared formatter for consistency with cost estimator
    */
   private formatSessions(sessions: ParsedSession[]): string {
-    return sessions
-      .map((session, index) => {
-        const date = session.startTime.toISOString().split('T')[0];
-        const durationMin = Math.round(session.durationSeconds / 60);
-        const messages = session.messages
-          .map((msg) => {
-            const role = msg.role === 'user' ? 'DEVELOPER' : 'CLAUDE';
-            const timestamp = msg.timestamp.toISOString().slice(11, 19);
-            const content =
-              msg.content && msg.content.length > 2000
-                ? msg.content.slice(0, 2000) + '...[truncated]'
-                : msg.content || '';
-
-            let text = `[${timestamp}] ${role}:\n${content}`;
-
-            if (msg.toolCalls?.length) {
-              for (const tool of msg.toolCalls) {
-                text += `\n  [Tool: ${tool.name}]`;
-              }
-            }
-
-            return text;
-          })
-          .join('\n\n');
-
-        return `<session index="${index + 1}" date="${date}" duration_minutes="${durationMin}">
-${messages}
-</session>`;
-      })
-      .join('\n\n');
+    return formatSessionsForAnalysis(sessions, DATA_ANALYST_FORMAT);
   }
 
   /**

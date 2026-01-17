@@ -2,13 +2,23 @@
  * Cost Estimator - Token counting and API cost calculation
  *
  * Estimates the cost of running verbose analysis based on:
- * - Session content token count
- * - System prompt overhead
- * - Expected output tokens
+ * - Session content token count (using same truncation as actual stages)
+ * - System prompt overhead per stage
+ * - Expected output tokens per stage
  * - Model-specific pricing
+ *
+ * Three-stage pipeline:
+ * - Stage 1A: Data Analyst (input: sessions, output: StructuredAnalysisData)
+ * - Stage 1B: Personality Analyst (input: sessions, output: PersonalityProfile)
+ * - Stage 2: Content Writer (input: Stage 1A + 1B outputs, output: final report)
  */
 
 import { type ParsedSession } from '../domain/models/analysis';
+import {
+  countFormattedTokens,
+  DATA_ANALYST_FORMAT,
+  PERSONALITY_ANALYST_FORMAT,
+} from './shared/session-formatter';
 
 /**
  * Model pricing configuration
@@ -67,15 +77,22 @@ export const ALL_PRICING: ModelPricing = {
   ...ANTHROPIC_PRICING,
 };
 
+/**
+ * Stage-specific breakdown for cost estimation
+ */
+export interface StageBreakdown {
+  dataAnalystInput: number;
+  personalityAnalystInput: number;
+  contentWriterInput: number;
+  systemPromptOverhead: number;
+  schemaOverhead: number;
+}
+
 export interface CostEstimate {
   totalInputTokens: number;
   estimatedOutputTokens: number;
   totalCost: number;
-  breakdown: {
-    sessionTokens: number;
-    systemPromptTokens: number;
-    schemaOverhead: number;
-  };
+  breakdown: StageBreakdown;
   model: string;
   modelName: string;
 }
@@ -83,6 +100,8 @@ export interface CostEstimate {
 /**
  * Count tokens more accurately using character-based heuristics
  * with adjustments for common patterns
+ *
+ * @deprecated Use countFormattedTokens from shared/session-formatter instead
  */
 export function countTokensAccurate(text: string): number {
   if (!text) return 0;
@@ -114,53 +133,45 @@ export function countTokensAccurate(text: string): number {
 }
 
 /**
- * Format a session for token counting
+ * System prompt tokens per stage (approximate)
  */
-function formatSessionForCounting(session: ParsedSession): string {
-  const lines: string[] = [];
-
-  for (const message of session.messages) {
-    const role = message.role === 'user' ? 'DEVELOPER' : 'CLAUDE';
-    lines.push(`[${role}]:`);
-
-    if (message.content) {
-      lines.push(message.content);
-    }
-
-    if (message.toolCalls?.length) {
-      for (const tool of message.toolCalls) {
-        lines.push(`[Tool: ${tool.name}]`);
-        if (tool.result) {
-          const result =
-            tool.result.length > 500 ? tool.result.slice(0, 500) + '...' : tool.result;
-          lines.push(`[Result: ${result}]`);
-        }
-      }
-    }
-  }
-
-  return lines.join('\n');
-}
+const SYSTEM_PROMPT_TOKENS_PER_STAGE = 2500;
 
 /**
- * Estimate system prompt tokens (approximate)
+ * Schema overhead tokens per stage
  */
-const ESTIMATED_SYSTEM_PROMPT_TOKENS = 2500;
+const SCHEMA_OVERHEAD_PER_STAGE = 1500;
 
 /**
- * Estimate schema overhead tokens
+ * Number of LLM stages in the pipeline
+ * - Data Analyst (Stage 1A)
+ * - Personality Analyst (Stage 1B)
+ * - Content Writer (Stage 2)
  */
-const ESTIMATED_SCHEMA_OVERHEAD = 1500;
+const PIPELINE_STAGES = 3;
 
 /**
- * Estimate output tokens for verbose analysis
+ * Estimated output tokens per stage (generous 2x buffer)
+ * - Data Analyst: ~8000 (structured data extraction)
+ * - Personality Analyst: ~4000 (personality profile)
+ * - Content Writer: ~12000 (final narrative report)
  */
-const ESTIMATED_OUTPUT_TOKENS = 6000;
+const ESTIMATED_OUTPUT_PER_STAGE = {
+  dataAnalyst: 8000,
+  personalityAnalyst: 4000,
+  contentWriter: 12000,
+};
+
+/**
+ * Content Writer receives Stage 1A + 1B outputs as input
+ * Estimate based on typical output sizes (generous 2x buffer)
+ */
+const CONTENT_WRITER_INPUT_FROM_STAGES = 12000; // ~8000 + ~4000 from prior stages
 
 /**
  * Estimate the cost of running verbose analysis
  *
- * Default model is Gemini 3 Flash (two-stage pipeline).
+ * Default model is Gemini 3 Flash (three-stage pipeline).
  * Falls back to Gemini pricing for unknown models.
  */
 export function estimateAnalysisCost(
@@ -183,27 +194,39 @@ function estimateWithPricing(
   pricing: { input: number; output: number },
   modelName: string
 ): CostEstimate {
-  // Calculate session content tokens
-  let sessionTokens = 0;
-  for (const session of sessions) {
-    const formatted = formatSessionForCounting(session);
-    sessionTokens += countTokensAccurate(formatted);
-  }
+  // Calculate session tokens using the same truncation as actual stages
+  const dataAnalystSessionTokens = countFormattedTokens(sessions, DATA_ANALYST_FORMAT);
+  const personalitySessionTokens = countFormattedTokens(sessions, PERSONALITY_ANALYST_FORMAT);
 
-  const totalInputTokens =
-    sessionTokens + ESTIMATED_SYSTEM_PROMPT_TOKENS + ESTIMATED_SCHEMA_OVERHEAD;
+  // System prompt and schema overhead for each stage
+  const systemPromptOverhead = SYSTEM_PROMPT_TOKENS_PER_STAGE * PIPELINE_STAGES;
+  const schemaOverhead = SCHEMA_OVERHEAD_PER_STAGE * PIPELINE_STAGES;
 
-  const totalCost =
-    totalInputTokens * pricing.input + ESTIMATED_OUTPUT_TOKENS * pricing.output;
+  // Total input tokens per stage
+  const dataAnalystInput = dataAnalystSessionTokens + SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
+  const personalityInput = personalitySessionTokens + SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
+  const contentWriterInput = CONTENT_WRITER_INPUT_FROM_STAGES + SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
+
+  const totalInputTokens = dataAnalystInput + personalityInput + contentWriterInput;
+
+  // Total output tokens
+  const totalOutputTokens =
+    ESTIMATED_OUTPUT_PER_STAGE.dataAnalyst +
+    ESTIMATED_OUTPUT_PER_STAGE.personalityAnalyst +
+    ESTIMATED_OUTPUT_PER_STAGE.contentWriter;
+
+  const totalCost = totalInputTokens * pricing.input + totalOutputTokens * pricing.output;
 
   return {
     totalInputTokens,
-    estimatedOutputTokens: ESTIMATED_OUTPUT_TOKENS,
+    estimatedOutputTokens: totalOutputTokens,
     totalCost,
     breakdown: {
-      sessionTokens,
-      systemPromptTokens: ESTIMATED_SYSTEM_PROMPT_TOKENS,
-      schemaOverhead: ESTIMATED_SCHEMA_OVERHEAD,
+      dataAnalystInput,
+      personalityAnalystInput: personalityInput,
+      contentWriterInput,
+      systemPromptOverhead,
+      schemaOverhead,
     },
     model,
     modelName,
@@ -218,9 +241,9 @@ export function formatCostEstimate(estimate: CostEstimate): string {
 
   lines.push(`Model: ${estimate.modelName}`);
   lines.push(`Input Tokens: ${estimate.totalInputTokens.toLocaleString()}`);
-  lines.push(`  - Session Content: ${estimate.breakdown.sessionTokens.toLocaleString()}`);
-  lines.push(`  - System Prompt: ${estimate.breakdown.systemPromptTokens.toLocaleString()}`);
-  lines.push(`  - Schema Overhead: ${estimate.breakdown.schemaOverhead.toLocaleString()}`);
+  lines.push(`  - Data Analyst: ${estimate.breakdown.dataAnalystInput.toLocaleString()}`);
+  lines.push(`  - Personality Analyst: ${estimate.breakdown.personalityAnalystInput.toLocaleString()}`);
+  lines.push(`  - Content Writer: ${estimate.breakdown.contentWriterInput.toLocaleString()}`);
   lines.push(`Output Tokens (est): ${estimate.estimatedOutputTokens.toLocaleString()}`);
   lines.push(`Estimated Cost: $${estimate.totalCost.toFixed(4)}`);
 

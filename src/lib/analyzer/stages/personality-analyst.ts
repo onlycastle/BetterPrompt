@@ -22,6 +22,10 @@ import {
   PERSONALITY_ANALYST_SYSTEM_PROMPT,
   buildPersonalityAnalystUserPrompt,
 } from './personality-analyst-prompts';
+import {
+  formatSessionsForAnalysis,
+  PERSONALITY_ANALYST_FORMAT,
+} from '../shared/session-formatter';
 
 /**
  * Configuration for the Personality Analyst stage
@@ -126,30 +130,10 @@ export class PersonalityAnalystStage {
 
   /**
    * Format sessions for the prompt
-   * Simplified version focusing on user messages for personality signals
+   * Uses shared formatter for consistency with cost estimator
    */
   private formatSessions(sessions: ParsedSession[]): string {
-    return sessions
-      .map((session, index) => {
-        const date = session.startTime.toISOString().split('T')[0];
-        const messages = session.messages
-          .filter((msg) => msg.role === 'user') // Focus on user messages for personality
-          .map((msg) => {
-            const timestamp = msg.timestamp.toISOString().slice(11, 19);
-            const content =
-              msg.content && msg.content.length > 1500
-                ? msg.content.slice(0, 1500) + '...[truncated]'
-                : msg.content || '';
-
-            return `[${timestamp}] DEVELOPER:\n${content}`;
-          })
-          .join('\n\n');
-
-        return `<session index="${index + 1}" date="${date}">
-${messages}
-</session>`;
-      })
-      .join('\n\n');
+    return formatSessionsForAnalysis(sessions, PERSONALITY_ANALYST_FORMAT);
   }
 
   /**
