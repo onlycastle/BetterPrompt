@@ -228,38 +228,52 @@ export const LLMPerDimensionInsightSchema = z.object({
   dimension: DimensionNameEnumSchema,
   dimensionDisplayName: z.string().max(60).describe('Human-readable dimension name'),
 
-  /** Strengths as pipe-separated pairs, semicolon between items: "title|description;title|description;..." */
+  /** Strengths with clusterId: "clusterId|title|description;..." (clusterId for evidence matching) */
   strengthsData: z.string().max(5000).optional()
-    .describe('0-8 strengths as "title|description;..." format'),
+    .describe('0-8 strengths as "clusterId|title|description;..." format - clusterId MUST match Stage 1 cluster'),
 
-  /** Growth areas as pipe-separated triplets: "title|description|recommendation;..." */
+  /** Growth areas with clusterId: "clusterId|title|description|recommendation;..." */
   growthAreasData: z.string().max(5000).optional()
-    .describe('0-5 growth areas as "title|description|recommendation;..." format'),
+    .describe('0-5 growth areas as "clusterId|title|description|recommendation;..." format - clusterId MUST match Stage 1 cluster'),
 });
 
 /**
- * Helper to parse strengthsData string into array of {title, description}
+ * Helper to parse strengthsData string into array of {clusterId?, title, description}
+ * Supports both new format (clusterId|title|description) and legacy format (title|description)
  */
-export function parseStrengthsData(data: string | undefined): Array<{ title: string; description: string }> {
+export function parseStrengthsData(data: string | undefined): Array<{ clusterId?: string; title: string; description: string }> {
   if (!data) return [];
   return data.split(';').filter(Boolean).map((s) => {
-    const [title, description] = s.split('|');
-    return { title: title || '', description: description || '' };
+    const parts = s.split('|');
+    if (parts.length >= 3) {
+      // New format: clusterId|title|description
+      return { clusterId: parts[0], title: parts[1], description: parts.slice(2).join('|') };
+    } else if (parts.length === 2) {
+      // Legacy format: title|description
+      return { title: parts[0], description: parts[1] };
+    }
+    return { title: s, description: '' };
   });
 }
 
 /**
- * Helper to parse growthAreasData string into array of {title, description, recommendation}
+ * Helper to parse growthAreasData string into array of {clusterId?, title, description, recommendation}
+ * Supports both new format (clusterId|title|description|recommendation) and legacy format (title|description|recommendation)
  */
-export function parseGrowthAreasData(data: string | undefined): Array<{ title: string; description: string; recommendation: string }> {
+export function parseGrowthAreasData(data: string | undefined): Array<{ clusterId?: string; title: string; description: string; recommendation: string }> {
   if (!data) return [];
   return data.split(';').filter(Boolean).map((s) => {
-    const [title, description, recommendation] = s.split('|');
-    return {
-      title: title || '',
-      description: description || '',
-      recommendation: recommendation || '',
-    };
+    const parts = s.split('|');
+    if (parts.length >= 4) {
+      // New format: clusterId|title|description|recommendation
+      return { clusterId: parts[0], title: parts[1], description: parts[2], recommendation: parts.slice(3).join('|') };
+    } else if (parts.length === 3) {
+      // Legacy format: title|description|recommendation
+      return { title: parts[0], description: parts[1], recommendation: parts[2] };
+    } else if (parts.length === 2) {
+      return { title: parts[0], description: parts[1], recommendation: '' };
+    }
+    return { title: s, description: '', recommendation: '' };
   });
 }
 

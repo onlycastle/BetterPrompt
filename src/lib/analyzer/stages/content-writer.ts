@@ -443,7 +443,7 @@ export class ContentWriterStage {
 
   /**
    * Add evidence quotes from Stage 1 data to dimension insights
-   * Uses clusterId-based matching to ensure unique quotes per section
+   * Uses clusterId-based matching (primary) with semantic fallback
    *
    * @param response - Converted response with nested arrays (strengths/growthAreas)
    * @param analysisData - Stage 1 structured analysis data
@@ -470,57 +470,137 @@ export class ContentWriterStage {
         quotesByCluster.get(key)!.push(quote);
       }
 
-      // Get cluster themes from Stage 1 (FLATTENED format: "clusterId:theme")
-      const dimSignal = analysisData.dimensionSignals.find(
-        (s) => s.dimension === insight.dimension
-      );
-
-      // Parse flattened cluster themes into {clusterId, theme} pairs
-      const parseClusterThemes = (themes: string[] | undefined): Array<{ clusterId: string; theme: string }> => {
-        if (!themes) return [];
-        return themes.map((t) => {
-          const colonIndex = t.indexOf(':');
-          if (colonIndex > 0) {
-            return { clusterId: t.slice(0, colonIndex), theme: t.slice(colonIndex + 1) };
-          }
-          return { clusterId: t, theme: '' };
-        });
-      };
-
-      const strengthClusters = parseClusterThemes(dimSignal?.strengthClusterThemes);
-      const growthClusters = parseClusterThemes(dimSignal?.growthClusterThemes);
-
-      // Match quotes to strengths by cluster order
+      // ClusterId-based matching for strengths (with semantic fallback)
       if (Array.isArray(insight.strengths)) {
-        for (let i = 0; i < insight.strengths.length; i++) {
-          const cluster = strengthClusters[i];
-          const clusterQuotes = cluster
-            ? quotesByCluster.get(cluster.clusterId) || []
-            : [];
+        const strengthQuotes = dimensionQuotes.filter(q => q.signal === 'strength');
 
-          // Sort by confidence and take up to 6 quotes
-          (insight.strengths[i] as any).evidence = clusterQuotes
-            .sort((a, b) => b.confidence - a.confidence)
-            .slice(0, 6)
-            .map((q) => q.quote);
+        for (const strength of insight.strengths) {
+          const clusterId = (strength as any).clusterId;
+
+          if (clusterId && quotesByCluster.has(clusterId)) {
+            // Primary: Direct clusterId match
+            (strength as any).evidence = quotesByCluster.get(clusterId)!
+              .sort((a, b) => b.confidence - a.confidence)
+              .slice(0, 6)
+              .map((q) => q.quote);
+          } else {
+            // Fallback: Semantic similarity matching
+            (strength as any).evidence = this.findSemanticMatches(
+              strength.title + ' ' + strength.description,
+              strengthQuotes
+            );
+            if (!clusterId) {
+              console.warn(`[ContentWriter] Strength "${strength.title}" missing clusterId, using semantic fallback`);
+            } else {
+              console.warn(`[ContentWriter] ClusterId "${clusterId}" not found in quotes, using semantic fallback`);
+            }
+          }
         }
       }
 
-      // Match quotes to growthAreas by cluster order
+      // ClusterId-based matching for growthAreas (with semantic fallback)
       if (Array.isArray(insight.growthAreas)) {
-        for (let i = 0; i < insight.growthAreas.length; i++) {
-          const cluster = growthClusters[i];
-          const clusterQuotes = cluster
-            ? quotesByCluster.get(cluster.clusterId) || []
-            : [];
+        const growthQuotes = dimensionQuotes.filter(q => q.signal === 'growth');
 
-          // Sort by confidence and take up to 4 quotes
-          (insight.growthAreas[i] as any).evidence = clusterQuotes
-            .sort((a, b) => b.confidence - a.confidence)
-            .slice(0, 4)
-            .map((q) => q.quote);
+        for (const growth of insight.growthAreas) {
+          const clusterId = (growth as any).clusterId;
+
+          if (clusterId && quotesByCluster.has(clusterId)) {
+            // Primary: Direct clusterId match
+            (growth as any).evidence = quotesByCluster.get(clusterId)!
+              .sort((a, b) => b.confidence - a.confidence)
+              .slice(0, 4)
+              .map((q) => q.quote);
+          } else {
+            // Fallback: Semantic similarity matching
+            (growth as any).evidence = this.findSemanticMatches(
+              growth.title + ' ' + growth.description,
+              growthQuotes,
+              4
+            );
+            if (!clusterId) {
+              console.warn(`[ContentWriter] Growth "${growth.title}" missing clusterId, using semantic fallback`);
+            } else {
+              console.warn(`[ContentWriter] ClusterId "${clusterId}" not found in quotes, using semantic fallback`);
+            }
+          }
         }
       }
     }
+  }
+
+  /**
+   * Find semantically matching quotes when clusterId matching fails
+   * Uses keyword overlap scoring as a lightweight semantic similarity measure
+   */
+  private findSemanticMatches(
+    sectionText: string,
+    candidates: Array<{ quote: string; behavioralMarker: string; confidence: number }>,
+    maxResults: number = 6
+  ): string[] {
+    if (candidates.length === 0) return [];
+
+    // Extract keywords from section text
+    const keywords = this.extractKeywords(sectionText);
+
+    // Score each candidate quote
+    const scored = candidates.map(quote => ({
+      quote,
+      score: this.calculateOverlapScore(keywords, quote.quote + ' ' + quote.behavioralMarker)
+    }));
+
+    // Sort by score descending, then by confidence, take top matches
+    return scored
+      .filter(s => s.score > 0.1) // Minimum relevance threshold
+      .sort((a, b) => b.score - a.score || b.quote.confidence - a.quote.confidence)
+      .slice(0, maxResults)
+      .map(s => s.quote.quote);
+  }
+
+  /**
+   * Extract meaningful keywords from text
+   */
+  private extractKeywords(text: string): Set<string> {
+    // Common stop words in English and Korean
+    const stopWords = new Set([
+      'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should',
+      'this', 'that', 'these', 'those', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by',
+      'from', 'as', 'or', 'and', 'but', 'if', 'then', 'else', 'when', 'where', 'which', 'who',
+      'your', 'you', 'their', 'its', 'our', 'my', 'his', 'her',
+      '이', '그', '저', '것', '수', '를', '을', '에', '의', '와', '과', '로', '으로', '는', '은', '가', '이'
+    ]);
+
+    const words = text.toLowerCase()
+      .replace(/[^\w\s가-힣]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 2 && !stopWords.has(w));
+
+    return new Set(words);
+  }
+
+  /**
+   * Calculate overlap score between keyword sets
+   */
+  private calculateOverlapScore(keywords: Set<string>, text: string): number {
+    const textKeywords = this.extractKeywords(text);
+    if (textKeywords.size === 0 || keywords.size === 0) return 0;
+
+    let matches = 0;
+    for (const kw of keywords) {
+      if (textKeywords.has(kw)) {
+        matches++;
+      } else {
+        // Partial match for compound words
+        for (const tk of textKeywords) {
+          if (tk.includes(kw) || kw.includes(tk)) {
+            matches += 0.5;
+            break;
+          }
+        }
+      }
+    }
+
+    return matches / Math.max(keywords.size, 1);
   }
 }
