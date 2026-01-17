@@ -28,6 +28,23 @@ import {
 export const maxDuration = 300; // Allow up to 5 minutes for analysis (Vercel Pro)
 export const dynamic = 'force-dynamic';
 
+/**
+ * Format buffer bytes as hex string for debugging
+ */
+function formatBytesHex(buffer: Buffer, count: number): string {
+  return Array.from(buffer.slice(0, count))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join(' ');
+}
+
+/**
+ * Check if buffer starts with gzip magic bytes (0x1f 0x8b)
+ * Per RFC 1952 - GZIP file format specification
+ */
+function isGzipBuffer(buffer: Buffer): boolean {
+  return buffer.length >= 2 && buffer[0] === 0x1f && buffer[1] === 0x8b;
+}
+
 // Custom body size limit - parse manually for large payloads
 const MAX_BODY_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -382,22 +399,49 @@ export async function POST(request: NextRequest) {
         // Next.js App Router's request.json() has a 4MB default limit
         // Supports gzip compression from CLI
         console.log('[remote-analysis] Receiving request body...');
-        // Use custom header X-Content-Encoding to bypass Vercel's Content-Encoding interception
-        const contentEncoding = request.headers.get('x-content-encoding') || request.headers.get('content-encoding');
-        const isGzipped = contentEncoding === 'gzip';
-        console.log(`[remote-analysis] Content-Encoding: ${contentEncoding}, isGzipped: ${isGzipped}`);
+
+        // Always read as arrayBuffer first to enable magic byte detection
+        // This is more reliable than headers which Vercel may strip
+        const rawBuffer = await request.arrayBuffer();
+        const buffer = Buffer.from(rawBuffer);
+
+        console.log(`[remote-analysis] Raw body received: ${buffer.byteLength} bytes`);
+
+        // Check for gzip magic bytes - more reliable than headers which Vercel may strip
+        const hasGzipMagicBytes = isGzipBuffer(buffer);
+
+        // Also check header as secondary signal (for debugging)
+        const contentEncodingHeader = request.headers.get('x-content-encoding') || request.headers.get('content-encoding');
+        const headerIndicatesGzip = contentEncodingHeader === 'gzip';
+
+        console.log(`[remote-analysis] Detection: magicBytes=${hasGzipMagicBytes}, header=${contentEncodingHeader}`);
+
+        // Log warning if detection methods disagree
+        if (hasGzipMagicBytes !== headerIndicatesGzip) {
+          console.warn(`[remote-analysis] WARNING: Detection mismatch - magic=${hasGzipMagicBytes}, header=${headerIndicatesGzip}. Using magic bytes.`);
+        }
 
         let bodyText: string;
-        if (isGzipped) {
-          // Decompress gzip body
-          const compressedBuffer = await request.arrayBuffer();
-          console.log(`[remote-analysis] Compressed body received: ${compressedBuffer.byteLength} bytes`);
-          const decompressed = gunzipSync(Buffer.from(compressedBuffer));
-          bodyText = decompressed.toString('utf-8');
-          console.log(`[remote-analysis] Decompressed to: ${bodyText.length} bytes (${(bodyText.length / 1024 / 1024).toFixed(2)} MB)`);
+        if (hasGzipMagicBytes) {
+          try {
+            const decompressed = gunzipSync(buffer);
+            bodyText = decompressed.toString('utf-8');
+            console.log(`[remote-analysis] Decompressed: ${buffer.byteLength} -> ${bodyText.length} bytes (${(bodyText.length / 1024 / 1024).toFixed(2)} MB)`);
+          } catch (decompressError) {
+            console.error(`[remote-analysis] Decompression failed:`, decompressError);
+            console.error(`[remote-analysis] First 20 bytes: ${formatBytesHex(buffer, 20)}`);
+            throw new Error(`Gzip decompression failed: ${decompressError instanceof Error ? decompressError.message : 'Unknown error'}`);
+          }
         } else {
-          bodyText = await request.text();
-          console.log(`[remote-analysis] Body received: ${bodyText.length} bytes (${(bodyText.length / 1024 / 1024).toFixed(2)} MB)`);
+          bodyText = buffer.toString('utf-8');
+          console.log(`[remote-analysis] Plain text body: ${bodyText.length} bytes (${(bodyText.length / 1024 / 1024).toFixed(2)} MB)`);
+
+          // Sanity check for non-JSON content
+          const trimmedStart = bodyText.trimStart().slice(0, 10);
+          if (trimmedStart && !trimmedStart.startsWith('{') && !trimmedStart.startsWith('[')) {
+            console.warn(`[remote-analysis] Body doesn't look like JSON: ${JSON.stringify(trimmedStart)}`);
+            console.warn(`[remote-analysis] First 20 bytes: ${formatBytesHex(buffer, 20)}`);
+          }
         }
 
         if (bodyText.length > MAX_BODY_SIZE) {
