@@ -252,23 +252,23 @@ const DEFAULT_CONFIG: Required<Omit<VerboseAnalyzerConfig, 'apiKey' | 'geminiApi
   geminiApiKey: '',
   model: 'claude-sonnet-4-20250514', // For legacy single-stage mode
   maxRetries: 1,
-  maxTokens: 8192,
+  maxTokens: 65536,
   pipeline: {
     mode: 'two-stage',
     stage1: {
       model: 'gemini-3-flash-preview',
       temperature: 1.0, // Gemini 3 strongly recommends 1.0
-      maxOutputTokens: 8192,
+      maxOutputTokens: 65536,
     },
     moduleB: {
       model: 'gemini-3-flash-preview',
       temperature: 1.0, // Gemini 3 strongly recommends 1.0
-      maxOutputTokens: 4096, // Personality profile is smaller than behavioral data
+      maxOutputTokens: 65536,
     },
     stage2: {
       model: 'gemini-3-flash-preview',
       temperature: 1.0, // Gemini 3 strongly recommends 1.0
-      maxOutputTokens: 8192,
+      maxOutputTokens: 65536,
     },
   },
   tier: 'enterprise', // Generate full content by default

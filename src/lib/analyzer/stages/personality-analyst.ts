@@ -36,11 +36,13 @@ export interface PersonalityAnalystConfig {
 
 /**
  * Default configuration values
+ *
+ * maxOutputTokens set to maximum (65536) to prevent truncation.
  */
 const DEFAULT_CONFIG: Required<Omit<PersonalityAnalystConfig, 'apiKey'>> = {
   model: 'gemini-3-flash-preview',
   temperature: 1.0, // Gemini 3 strongly recommends 1.0
-  maxOutputTokens: 8192, // Personality output is smaller than Stage 1
+  maxOutputTokens: 65536,
   maxRetries: 2,
 };
 

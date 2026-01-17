@@ -85,7 +85,7 @@ export class GeminiClient {
           contents: this.buildContents(request.systemPrompt, request.userPrompt),
           config: {
             temperature: this.temperature,
-            maxOutputTokens: request.maxOutputTokens || 16384,
+            maxOutputTokens: request.maxOutputTokens || 65536,
             responseMimeType: 'application/json',
             responseJsonSchema: responseSchema,
           },

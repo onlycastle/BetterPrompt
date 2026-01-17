@@ -42,13 +42,13 @@ export interface ContentWriterConfig {
 /**
  * Default configuration values
  *
- * maxOutputTokens increased to 16384 for consistency with Stage 1.
- * Stage 2 generates personalized narrative with dimension insights.
+ * maxOutputTokens set to maximum (65536) to prevent truncation.
+ * Gemini 3 Flash supports up to 65536 output tokens.
  */
 const DEFAULT_CONFIG: Required<Omit<ContentWriterConfig, 'apiKey'>> = {
   model: 'gemini-3-flash-preview',
   temperature: 1.0, // Gemini 3 strongly recommends 1.0
-  maxOutputTokens: 16384,
+  maxOutputTokens: 65536,
   maxRetries: 2,
 };
 

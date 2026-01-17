@@ -31,15 +31,14 @@ export interface DataAnalystConfig {
 /**
  * Default configuration values
  *
- * maxOutputTokens increased to 16384 because:
- * - Stage 1 extracts 25-100 quotes, 5-15 patterns, 6 dimension signals
- * - Complex sessions can easily exceed 8192 tokens in JSON output
- * - Gemini 3 Flash supports up to 65536 output tokens
+ * maxOutputTokens set to maximum (65536) to prevent truncation.
+ * Gemini 3 Flash supports up to 65536 output tokens.
+ * You only pay for tokens actually generated, not the limit.
  */
 const DEFAULT_CONFIG: Required<Omit<DataAnalystConfig, 'apiKey'>> = {
   model: 'gemini-3-flash-preview',
   temperature: 1.0, // Gemini 3 strongly recommends 1.0
-  maxOutputTokens: 16384,
+  maxOutputTokens: 65536,
   maxRetries: 2,
 };
 
