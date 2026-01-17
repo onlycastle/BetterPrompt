@@ -1,9 +1,12 @@
 /**
  * Content Writer Stage Implementation
  *
- * Stage 2 of the two-stage pipeline.
+ * Stage 2 of the three-stage pipeline.
  * Uses Gemini 3 Flash for high-quality content writing.
  * Temperature: 1.0 (Gemini's recommended default).
+ *
+ * Input: Module A output (StructuredAnalysisData) + Module B output (PersonalityProfile)
+ * Output: VerboseLLMResponse
  *
  * @module analyzer/stages/content-writer
  */
@@ -17,6 +20,7 @@ import {
   type VerboseLLMResponse,
 } from '../../models/verbose-evaluation';
 import type { StructuredAnalysisData } from '../../models/analysis-data';
+import type { PersonalityProfile } from '../../models/personality';
 import {
   CONTENT_WRITER_SYSTEM_PROMPT,
   buildContentWriterUserPrompt,
@@ -75,18 +79,29 @@ export class ContentWriterStage {
 
   /**
    * Transform structured analysis data into engaging content
+   *
+   * @param analysisData - Module A output (behavioral analysis)
+   * @param personalityProfile - Module B output (personality analysis)
+   * @param sessions - Raw parsed sessions
    */
   async transform(
     analysisData: StructuredAnalysisData,
+    personalityProfile: PersonalityProfile,
     sessions: ParsedSession[]
   ): Promise<VerboseLLMResponse> {
     const structuredDataJson = JSON.stringify(analysisData, null, 2);
+    const personalityDataJson = JSON.stringify(personalityProfile, null, 2);
 
     // Detect if user's quotes are primarily in Korean
     const quotes = analysisData.extractedQuotes.map((q) => q.quote);
     const useKorean = detectKoreanContent(quotes);
 
-    const userPrompt = buildContentWriterUserPrompt(structuredDataJson, sessions.length, useKorean);
+    const userPrompt = buildContentWriterUserPrompt(
+      structuredDataJson,
+      personalityDataJson,
+      sessions.length,
+      useKorean
+    );
 
     const result = await this.client.generateStructured({
       systemPrompt: CONTENT_WRITER_SYSTEM_PROMPT,

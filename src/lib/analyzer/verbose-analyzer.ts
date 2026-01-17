@@ -3,9 +3,13 @@
  *
  * Supports two analysis modes:
  * 1. Single-stage (legacy): One LLM call with Anthropic Claude (requires ANTHROPIC_API_KEY)
- * 2. Two-stage pipeline: Data Analyst + Content Writer with Gemini 3 Flash (requires GOOGLE_GEMINI_API_KEY)
+ * 2. Three-stage pipeline: Module A + Module B + Stage 2 with Gemini 3 Flash (requires GOOGLE_GEMINI_API_KEY)
  *
- * Two-stage pipeline uses Gemini 3 Flash with structured JSON outputs.
+ * Three-stage pipeline:
+ * - Module A (Data Analyst): Extract structured behavioral data
+ * - Module B (Personality Analyst): Extract personality profile
+ * - Stage 2 (Content Writer): Transform into engaging narrative using both outputs
+ *
  * Single-stage legacy mode uses Anthropic's Structured Outputs.
  */
 
@@ -24,8 +28,10 @@ import {
 } from './verbose-prompts';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { DataAnalystStage, type DataAnalystConfig } from './stages/data-analyst';
+import { PersonalityAnalystStage, type PersonalityAnalystConfig } from './stages/personality-analyst';
 import { ContentWriterStage, type ContentWriterConfig } from './stages/content-writer';
 import { ContentGateway, type Tier } from './content-gateway';
+import { createDefaultPersonalityProfile } from '../models/personality';
 
 // ============================================================================
 // STRING SANITIZATION - Truncate long strings from LLM responses
@@ -199,11 +205,16 @@ export class VerboseAnalysisError extends Error {
 export type PipelineMode = 'single' | 'two-stage';
 
 /**
- * Two-stage pipeline configuration
+ * Three-stage pipeline configuration
+ *
+ * - stage1 (Module A): Data Analyst - behavioral data extraction
+ * - moduleB: Personality Analyst - personality profile extraction
+ * - stage2: Content Writer - narrative generation
  */
 export interface PipelineConfig {
   mode: PipelineMode;
   stage1?: DataAnalystConfig;
+  moduleB?: PersonalityAnalystConfig;
   stage2?: ContentWriterConfig;
 }
 
@@ -249,6 +260,11 @@ const DEFAULT_CONFIG: Required<Omit<VerboseAnalyzerConfig, 'apiKey' | 'geminiApi
       temperature: 1.0, // Gemini 3 strongly recommends 1.0
       maxOutputTokens: 8192,
     },
+    moduleB: {
+      model: 'gemini-3-flash-preview',
+      temperature: 1.0, // Gemini 3 strongly recommends 1.0
+      maxOutputTokens: 4096, // Personality profile is smaller than behavioral data
+    },
     stage2: {
       model: 'gemini-3-flash-preview',
       temperature: 1.0, // Gemini 3 strongly recommends 1.0
@@ -273,6 +289,7 @@ export class VerboseAnalyzer {
   private client: Anthropic;
   private config: Required<Omit<VerboseAnalyzerConfig, 'apiKey' | 'geminiApiKey'>> & { apiKey: string; geminiApiKey: string };
   private dataAnalyst: DataAnalystStage | null = null;
+  private personalityAnalyst: PersonalityAnalystStage | null = null;
   private contentWriter: ContentWriterStage | null = null;
   private contentGateway: ContentGateway;
 
@@ -285,15 +302,24 @@ export class VerboseAnalyzer {
 
     this.contentGateway = new ContentGateway();
 
-    // Initialize stages for two-stage pipeline
+    // Initialize stages for three-stage pipeline (Module A + Module B + Stage 2)
     if (this.config.pipeline.mode === 'two-stage') {
       // Use provided geminiApiKey or fall back to environment variable
       const geminiApiKey = config.geminiApiKey || process.env.GOOGLE_GEMINI_API_KEY;
 
+      // Module A: Data Analyst - behavioral data extraction
       this.dataAnalyst = new DataAnalystStage({
         ...this.config.pipeline.stage1,
         apiKey: geminiApiKey,
       });
+
+      // Module B: Personality Analyst - personality profile extraction
+      this.personalityAnalyst = new PersonalityAnalystStage({
+        ...this.config.pipeline.moduleB,
+        apiKey: geminiApiKey,
+      });
+
+      // Stage 2: Content Writer - narrative generation
       this.contentWriter = new ContentWriterStage({
         ...this.config.pipeline.stage2,
         apiKey: geminiApiKey,
@@ -358,28 +384,43 @@ export class VerboseAnalyzer {
   }
 
   /**
-   * Two-stage analysis pipeline using Gemini 3 Flash
+   * Three-stage analysis pipeline using Gemini 3 Flash
    *
-   * Stage 1: Data Analyst - Extract structured behavioral data
-   * Stage 2: Content Writer - Transform into engaging narrative
+   * Module A (Stage 1): Data Analyst - Extract structured behavioral data
+   * Module B: Personality Analyst - Extract personality profile
+   * Stage 2: Content Writer - Transform into engaging narrative using both outputs
    */
   private async analyzeTwoStage(
     sessions: ParsedSession[],
     metrics: SessionMetrics,
     tier: Tier
   ): Promise<VerboseEvaluation> {
-    if (!this.dataAnalyst || !this.contentWriter) {
+    if (!this.dataAnalyst || !this.personalityAnalyst || !this.contentWriter) {
       throw new VerboseAnalysisError(
-        'Two-stage pipeline not initialized',
+        'Three-stage pipeline not initialized',
         'PIPELINE_NOT_INITIALIZED'
       );
     }
 
-    // Stage 1: Extract structured data
+    // Module A (Stage 1): Extract structured behavioral data
     const analysisData = await this.dataAnalyst.analyze(sessions, metrics);
 
-    // Stage 2: Transform into narrative
-    const verboseResponse = await this.contentWriter.transform(analysisData, sessions);
+    // Module B: Extract personality profile using sessions + Module A output
+    let personalityProfile;
+    try {
+      personalityProfile = await this.personalityAnalyst.analyze(sessions, analysisData);
+    } catch (error) {
+      // Graceful degradation: use default profile if Module B fails
+      console.warn('Module B (Personality Analyst) failed, using default profile:', error);
+      personalityProfile = createDefaultPersonalityProfile();
+    }
+
+    // Stage 2: Transform into narrative using Module A + Module B outputs
+    const verboseResponse = await this.contentWriter.transform(
+      analysisData,
+      personalityProfile,
+      sessions
+    );
 
     // Extract session file info for display
     const analyzedSessions = extractAnalyzedSessions(sessions);
@@ -579,4 +620,5 @@ export function createVerboseAnalyzer(config?: VerboseAnalyzerConfig): VerboseAn
 export { buildVerboseUserPrompt } from './verbose-prompts';
 export { type Tier, ContentGateway, createContentGateway } from './content-gateway';
 export { DataAnalystStage, type DataAnalystConfig } from './stages/data-analyst';
+export { PersonalityAnalystStage, type PersonalityAnalystConfig } from './stages/personality-analyst';
 export { ContentWriterStage, type ContentWriterConfig } from './stages/content-writer';
