@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   createSupabaseTeamRepository,
 } from '@/lib/infrastructure/storage/supabase/index';
-import { MOCK_TEAM_ANALYTICS } from '@/lib/api/data/mockEnterprise';
+import { MOCK_TEAM_ANALYTICS } from '@/data/mockEnterpriseData';
 
 export async function GET(request: NextRequest) {
   try {

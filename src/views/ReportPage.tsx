@@ -5,7 +5,7 @@
  * This is a basic implementation - full features to be added later.
  */
 
-import { useParams } from 'react-router-dom';
+import { useParams } from 'next/navigation';
 import { useReport } from '@/hooks';
 import { REPORT_TYPE_METADATA } from '@/types/report';
 

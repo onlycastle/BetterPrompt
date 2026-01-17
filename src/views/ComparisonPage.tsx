@@ -5,7 +5,7 @@
  * Used for product planning and marketing review.
  */
 
-import { useParams } from 'react-router-dom';
+import { useParams } from 'next/navigation';
 import { useComparison, useFeatureComparison } from '@/hooks';
 import styles from './ComparisonPage.module.css';
 import { REPORT_TYPE_METADATA } from '@/types/report';

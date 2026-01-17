@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { MOCK_TEAM_MEMBERS } from '@/lib/api/data/mockEnterprise';
+import { MOCK_TEAM_MEMBERS } from '@/data/mockEnterpriseData';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;

@@ -8,7 +8,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'next/navigation';
 import type { VerboseAnalysisData } from '../types/verbose';
 
 // Re-export types for consumers
@@ -96,7 +96,7 @@ export function useAnalysisReport(
   reportId?: string,
   options?: UseAnalysisReportOptions
 ) {
-  const [searchParams] = useSearchParams();
+  const searchParams = useSearchParams();
   const localId = searchParams.get('local');
 
   const effectiveId = localId || reportId;
