@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase) return { error: new Error('Authentication not configured') };
     const { error } = await supabase.client.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/personal` }
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=/personal` }
     });
     return { error };
   };
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase) return { error: new Error('Authentication not configured') };
     const { error } = await supabase.client.auth.signInWithOAuth({
       provider: 'github',
-      options: { redirectTo: `${window.location.origin}/personal` }
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=/personal` }
     });
     return { error };
   };

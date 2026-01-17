@@ -8,6 +8,7 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
+import { countTokensAccurate } from './cost-estimator.js';
 
 export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
@@ -26,8 +27,12 @@ export interface SessionData {
   content: string; // Raw JSONL content
 }
 
+export interface SessionWithTokens extends SessionData {
+  tokenCount: number;
+}
+
 export interface ScanResult {
-  sessions: SessionData[];
+  sessions: SessionWithTokens[];
   totalMessages: number;
   totalDurationMinutes: number;
 }
@@ -201,15 +206,16 @@ export async function scanSessions(maxSessions: number = 10): Promise<ScanResult
   // Select top sessions
   const selected = allMetadata.slice(0, maxSessions);
 
-  // Read content for selected sessions
-  const sessions: SessionData[] = [];
+  // Read content for selected sessions and calculate tokens
+  const sessions: SessionWithTokens[] = [];
   let totalMessages = 0;
   let totalDurationMinutes = 0;
 
   for (const metadata of selected) {
     try {
       const content = await readFile(metadata.filePath, 'utf-8');
-      sessions.push({ metadata, content });
+      const tokenCount = countTokensAccurate(content);
+      sessions.push({ metadata, content, tokenCount });
       totalMessages += metadata.messageCount;
       totalDurationMinutes += Math.round(metadata.durationSeconds / 60);
     } catch {

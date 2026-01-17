@@ -206,6 +206,17 @@ Tool Usage: Read=${metrics.toolUsage.read}, Grep=${metrics.toolUsage.grep}, Glob
       sanitized.detectedPatterns = existing;
     }
 
+    // Ensure new optional arrays exist (Premium/Enterprise features)
+    if (!Array.isArray(sanitized.detectedAntiPatterns)) {
+      sanitized.detectedAntiPatterns = [];
+    }
+    if (!Array.isArray(sanitized.criticalThinkingMoments)) {
+      sanitized.criticalThinkingMoments = [];
+    }
+    if (!Array.isArray(sanitized.planningBehaviors)) {
+      sanitized.planningBehaviors = [];
+    }
+
     return sanitized;
   }
 }

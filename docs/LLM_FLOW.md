@@ -61,7 +61,7 @@
 └─────────────────────────────────────────────────┘
 
          │
-         │  selectOptimalSessions() - 최대 10개 선정
+         │  selectOptimalSessions() - 최대 30개 선정
          │  aggregateMetrics()
          ▼
 
@@ -378,7 +378,7 @@ Stage 1에 주입되는 전문가 지식 구조:
   │ ParsedSession[] │
   └────────┬────────┘
            │
-           │ [2] Select optimal sessions (max 10)
+           │ [2] Select optimal sessions (max 30)
            │     Aggregate metrics
            ▼
   ┌─────────────────┐     ┌─────────────────┐
@@ -492,17 +492,51 @@ Stage 1에 주입되는 전문가 지식 구조:
 
 ## Key Files Reference
 
+### Pipeline Orchestration
+
 | Component | File | Description |
 |-----------|------|-------------|
-| Orchestrator | `src/analyzer/verbose-analyzer.ts` | 파이프라인 조율 |
-| Stage 1 | `src/analyzer/stages/data-analyst.ts` | 데이터 추출 |
-| Stage 1 Prompts | `src/analyzer/stages/data-analyst-prompts.ts` | Gemini PTCF 프롬프트 |
-| Stage 2 | `src/analyzer/stages/content-writer.ts` | 내러티브 변환 |
-| Stage 2 Prompts | `src/analyzer/stages/content-writer-prompts.ts` | Gemini PTCF 프롬프트 |
-| Knowledge Context | `src/analyzer/verbose-knowledge-context.ts` | 전문가 지식 빌더 |
-| Content Gateway | `src/analyzer/content-gateway.ts` | 티어별 필터링 |
-| Stage 1 Schema | `src/models/analysis-data.ts` | 중간 데이터 스키마 |
-| Final Schema | `src/models/verbose-evaluation.ts` | 최종 출력 스키마 |
+| Orchestrator | `src/lib/analyzer/verbose-analyzer.ts` | Two-stage 파이프라인 조율, 문자열 sanitization |
+| Content Gateway | `src/lib/analyzer/content-gateway.ts` | 티어별 콘텐츠 필터링 (free/premium/enterprise) |
+
+### Stage 1: Data Analyst
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Stage Implementation | `src/lib/analyzer/stages/data-analyst.ts` | DataAnalystStage 클래스, Gemini 호출 |
+| Prompts (PTCF) | `src/lib/analyzer/stages/data-analyst-prompts.ts` | 시스템/유저 프롬프트 빌더 |
+| Output Schema | `src/lib/models/analysis-data.ts` | StructuredAnalysisData Zod 스키마 |
+
+### Stage 2: Content Writer
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Stage Implementation | `src/lib/analyzer/stages/content-writer.ts` | ContentWriterStage 클래스, 내러티브 변환 |
+| Prompts (PTCF) | `src/lib/analyzer/stages/content-writer-prompts.ts` | 시스템/유저 프롬프트 빌더 |
+| Output Schema | `src/lib/models/verbose-evaluation.ts` | VerboseLLMResponse, VerboseEvaluation 스키마 |
+
+### Session Parsing (Stage 0)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| JSONL Reader | `src/lib/parser/jsonl-reader.ts` | JSONL 파싱, 경로 인코딩/디코딩 |
+| Session Selector | `src/lib/parser/session-selector.ts` | Duration-based 최적 세션 선정 (max 30) |
+| Session Types | `src/lib/models/session.ts` | JSONLLine, SessionMetadata 타입 |
+| Domain Types | `src/lib/domain/models/analysis.ts` | ParsedSession, SessionMetrics 타입 |
+
+### Knowledge Context
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Context Builder | `src/lib/analyzer/verbose-knowledge-context.ts` | XML 형태의 전문가 지식 빌더 |
+| Research Insights | `src/lib/domain/models/knowledge.ts` | INITIAL_INSIGHTS 전문가 인사이트 정의 |
+| Behavioral Signals | `src/lib/analyzer/dimension-keywords.ts` | DIMENSION_KEYWORDS 행동 시그널 매핑 |
+
+### API Client
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Gemini Client | `src/lib/analyzer/clients/gemini-client.ts` | @google/genai SDK 래퍼, structured output 지원 |
 
 ---
 

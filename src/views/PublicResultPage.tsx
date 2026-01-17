@@ -3,13 +3,29 @@
  *
  * Displays analysis results from CLI (npx no-ai-slop).
  * Accessed via /r/:resultId - shareable public link.
+ * Implements tiered access:
+ * - Non-authenticated: Show blur + "Sign in to unlock"
+ * - Authenticated + unpaid: Show blur + "Get Premium"
+ * - Authenticated + paid: Show full report
  */
 
+import { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
+import { LoginModal } from '@/components/auth/LoginModal';
 import styles from './PublicResultPage.module.css';
 
-// In Next.js, API routes are served from the same domain
+// ============================================================================
+// Types
+// ============================================================================
+
+interface PreviewMetadata {
+  totalPromptPatterns: number;
+  totalGrowthAreas: number;
+  previewCount: number;
+  hasPartialItem: boolean;
+}
 
 interface ResultData {
   resultId: string;
@@ -37,6 +53,7 @@ interface ResultData {
       growthAreas: Array<{ title: string; description: string }>;
     }>;
   };
+  preview?: PreviewMetadata;
 }
 
 const TYPE_META: Record<string, { emoji: string; name: string; tagline: string }> = {
@@ -57,12 +74,52 @@ async function fetchResult(resultId: string): Promise<ResultData> {
 
 export function PublicResultPage() {
   const { resultId } = useParams<{ resultId: string }>();
+  const { isAuthenticated } = useAuth();
+  const [showLogin, setShowLogin] = useState(false);
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['publicResult', resultId],
     queryFn: () => fetchResult(resultId!),
     enabled: !!resultId,
   });
+
+  // Unlock button handler - creates Polar checkout
+  const handleUnlock = useCallback(async () => {
+    if (!isAuthenticated) {
+      setShowLogin(true);
+      return;
+    }
+
+    // Authenticated: create checkout session
+    setIsCheckoutLoading(true);
+    setCheckoutError(null);
+
+    try {
+      const response = await fetch('/api/payments/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resultId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create checkout');
+      }
+
+      const { checkoutUrl } = await response.json();
+      window.location.href = checkoutUrl;
+    } catch (err) {
+      console.error('Checkout error:', err);
+      setCheckoutError(err instanceof Error ? err.message : 'Failed to start checkout');
+      setIsCheckoutLoading(false);
+    }
+  }, [isAuthenticated, resultId]);
+
+  // Determine if premium content should be locked
+  // Locked if: not authenticated OR (authenticated but not paid)
+  const isPremiumLocked = !data?.isPaid;
 
   if (isLoading) {
     return (
@@ -90,7 +147,7 @@ export function PublicResultPage() {
     );
   }
 
-  const { evaluation, isPaid } = data;
+  const { evaluation, preview } = data;
   const typeMeta = TYPE_META[evaluation.primaryType] || TYPE_META.collaborator;
 
   return (
@@ -134,37 +191,54 @@ export function PublicResultPage() {
         <p className={styles.summary}>{evaluation.personalitySummary}</p>
       </div>
 
-      {/* Blurred Premium Content */}
-      {!isPaid && (
-        <div className={styles.card}>
-          <div className={styles.blurredSection}>
-            <div className={styles.blurredContent}>
-              <h2>Deep Insights</h2>
-              <p>Unlock detailed analysis of your prompt patterns, dimension scores, and personalized recommendations.</p>
-            </div>
-            <div className={styles.unlockOverlay}>
-              <button className={styles.unlockButton}>
-                🔓 Unlock Full Report
-              </button>
-              <p className={styles.unlockNote}>One-time purchase</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Premium Content (if paid) */}
-      {isPaid && evaluation.promptPatterns && (
+      {/* Prompt Patterns - Premium section with auth-based blur */}
+      {evaluation.promptPatterns && evaluation.promptPatterns.length > 0 && (
         <div className={styles.card}>
           <h2>Your Prompt Patterns</h2>
-          <div className={styles.patterns}>
-            {evaluation.promptPatterns.map((pattern, i) => (
-              <div key={i} className={styles.patternItem}>
-                <h3>{pattern.patternName}</h3>
-                <p>{pattern.description}</p>
-                <span className={styles.frequency}>{pattern.frequency}</span>
+          <div className={isPremiumLocked ? styles.blurredSection : ''}>
+            <div className={isPremiumLocked ? styles.blurredContent : ''}>
+              <div className={styles.patterns}>
+                {evaluation.promptPatterns.map((pattern, idx) => (
+                  <div key={idx} className={styles.patternItem}>
+                    <h3>{pattern.patternName}</h3>
+                    <p>{pattern.description}</p>
+                    <span className={styles.frequency}>{pattern.frequency}</span>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Unlock overlay for locked premium content */}
+            {isPremiumLocked && (
+              <div className={styles.unlockOverlay}>
+                <button
+                  className={styles.unlockButton}
+                  onClick={handleUnlock}
+                  disabled={isCheckoutLoading}
+                >
+                  {isCheckoutLoading
+                    ? '⏳ Loading...'
+                    : isAuthenticated
+                      ? '✨ Get Premium Report'
+                      : '🔓 Sign in to Unlock'}
+                </button>
+                <p className={styles.unlockNote}>
+                  {checkoutError
+                    ? checkoutError
+                    : isAuthenticated
+                      ? 'Unlock all patterns and detailed insights'
+                      : 'Create an account to see your full analysis'}
+                </p>
+              </div>
+            )}
           </div>
+
+          {/* Additional patterns count for premium users who haven't paid */}
+          {isPremiumLocked && preview && preview.totalPromptPatterns > (evaluation.promptPatterns?.length || 0) && (
+            <p className={styles.moreContent}>
+              +{preview.totalPromptPatterns - (evaluation.promptPatterns?.length || 0)} more patterns available
+            </p>
+          )}
         </div>
       )}
 
@@ -185,6 +259,9 @@ export function PublicResultPage() {
           Get your own analysis →
         </a>
       </div>
+
+      {/* Login Modal */}
+      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} />
     </div>
   );
 }

@@ -38,6 +38,28 @@
   color: var(--sketch-cyan-dark, #0369a1);
 }
 
+.signOutButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-secondary);
+  background: none;
+  border: 1px solid var(--ink-muted);
+  cursor: pointer;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.signOutButton:hover {
+  background: var(--surface-2);
+  color: var(--ink-primary);
+  border-color: var(--ink-secondary);
+}
+
 /* Responsive Layout */
 @media (max-width: 768px) {
   .page {

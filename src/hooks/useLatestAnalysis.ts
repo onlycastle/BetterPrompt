@@ -2,7 +2,9 @@
  * useLatestAnalysis Hook
  *
  * Fetches the most recent analysis automatically.
- * First fetches the list of local analyses, then loads the latest one.
+ * Priority order:
+ * 1. User's claimed remote analyses (from Supabase)
+ * 2. Local analyses (from ~/.nomoreaislop/reports/)
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -19,14 +21,55 @@ interface LocalAnalysisListResponse {
   count: number;
 }
 
+interface UserAnalysisItem {
+  id: string;
+  resultId: string;
+  evaluation: VerboseAnalysisData;
+  isPaid: boolean;
+  claimedAt: string;
+  source: 'remote';
+}
+
+interface UserAnalysisResponse {
+  analyses: UserAnalysisItem[];
+  count: number;
+}
+
 /**
- * Fetch the latest analysis by:
- * 1. Getting the list of all local analyses
- * 2. Taking the most recent one (sorted by createdAt desc)
- * 3. Fetching the full analysis data
+ * Try to fetch user's claimed remote analyses first
  */
-async function fetchLatestAnalysis(): Promise<VerboseAnalysisData | null> {
-  // Step 1: Get list of all local analyses
+async function fetchUserAnalyses(): Promise<UserAnalysisItem[] | null> {
+  try {
+    console.log('[useLatestAnalysis] Fetching /api/analysis/user...');
+    const res = await fetch('/api/analysis/user', {
+      credentials: 'include', // Ensure cookies are sent with request
+    });
+
+    console.log('[useLatestAnalysis] Response status:', res.status);
+
+    if (!res.ok) {
+      // User not authenticated or other error - fall back to local
+      console.log('[useLatestAnalysis] API returned non-ok, falling back to local');
+      return null;
+    }
+
+    const data: UserAnalysisResponse = await res.json();
+    console.log('[useLatestAnalysis] API response:', {
+      count: data.count,
+      analysesLength: data.analyses?.length,
+      firstHasEvaluation: data.analyses?.[0]?.evaluation ? 'yes' : 'no',
+    });
+    return data.analyses || null;
+  } catch (error) {
+    console.error('[useLatestAnalysis] Fetch error:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch local analyses as fallback
+ */
+async function fetchLocalAnalyses(): Promise<VerboseAnalysisData | null> {
   const listRes = await fetch('/api/analysis/local');
 
   if (!listRes.ok) {
@@ -38,15 +81,11 @@ async function fetchLatestAnalysis(): Promise<VerboseAnalysisData | null> {
 
   const listData: LocalAnalysisListResponse = await listRes.json();
 
-  // Return null if no analyses exist
   if (!listData.analyses || listData.analyses.length === 0) {
     return null;
   }
 
-  // Step 2: Get the most recent one (API returns sorted by createdAt desc)
   const latestId = listData.analyses[0].id;
-
-  // Step 3: Fetch full analysis data
   const detailRes = await fetch(`/api/analysis/local/${latestId}`);
 
   if (!detailRes.ok) {
@@ -55,12 +94,48 @@ async function fetchLatestAnalysis(): Promise<VerboseAnalysisData | null> {
 
   const response = await detailRes.json();
 
-  // Handle wrapper format from local analysis endpoint
   if (response.data) {
     return response.data as VerboseAnalysisData;
   }
 
   return response as VerboseAnalysisData;
+}
+
+/**
+ * Fetch the latest analysis by:
+ * 1. First try user's claimed remote analyses (if authenticated)
+ * 2. Fall back to local analyses
+ */
+async function fetchLatestAnalysis(): Promise<VerboseAnalysisData | null> {
+  console.log('[useLatestAnalysis] fetchLatestAnalysis called');
+
+  // Step 1: Try user's claimed remote analyses
+  const userAnalyses = await fetchUserAnalyses();
+
+  console.log('[useLatestAnalysis] userAnalyses result:', {
+    isNull: userAnalyses === null,
+    length: userAnalyses?.length,
+  });
+
+  if (userAnalyses && userAnalyses.length > 0) {
+    // Return the evaluation from the most recent claimed analysis
+    const latest = userAnalyses[0];
+    console.log('[useLatestAnalysis] Using remote analysis:', {
+      resultId: latest.resultId,
+      hasEvaluation: !!latest.evaluation,
+      evaluationKeys: latest.evaluation ? Object.keys(latest.evaluation) : [],
+    });
+    return latest.evaluation;
+  }
+
+  // Step 2: Fall back to local analyses
+  console.log('[useLatestAnalysis] Falling back to local analyses');
+  const localResult = await fetchLocalAnalyses();
+  console.log('[useLatestAnalysis] Local analyses result:', {
+    isNull: localResult === null,
+    hasData: !!localResult,
+  });
+  return localResult;
 }
 
 export interface UseLatestAnalysisResult {
