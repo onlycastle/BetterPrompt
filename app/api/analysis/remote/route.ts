@@ -355,6 +355,9 @@ async function storeResult(
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
 
+  // Extract user's Gemini API key from header
+  const userGeminiApiKey = request.headers.get('X-Gemini-API-Key');
+
   // Helper to send SSE event
   function formatSSE(event: SSEEvent): string {
     return `data: ${JSON.stringify(event)}\n\n`;
@@ -362,6 +365,17 @@ export async function POST(request: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      // Validate API key is provided
+      if (!userGeminiApiKey) {
+        controller.enqueue(encoder.encode(formatSSE({
+          type: 'error',
+          code: 'NO_API_KEY',
+          message: 'Gemini API key is required. Pass --api-key flag or set GOOGLE_GEMINI_API_KEY environment variable.',
+        })));
+        controller.close();
+        return;
+      }
+
       try {
         // Parse request body manually to handle large payloads
         // Next.js App Router's request.json() has a 4MB default limit
@@ -469,7 +483,8 @@ export async function POST(request: NextRequest) {
         const analyzer = new VerboseAnalyzer({
           pipeline: { mode: 'two-stage' },
           tier: 'enterprise',
-          fallbackToLegacy: true,
+          fallbackToLegacy: false, // Don't fallback to Anthropic - user provides Gemini key
+          geminiApiKey: userGeminiApiKey,
         });
 
         // Send heartbeat before long LLM call

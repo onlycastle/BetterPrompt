@@ -24,12 +24,31 @@ import { saveCache, loadCache, displayCacheHelp } from './cache.js';
 /**
  * Parse CLI arguments
  */
-function parseArgs(): { saveCache: boolean; useCache: boolean; help: boolean } {
+function parseArgs(): { saveCache: boolean; useCache: boolean; help: boolean; apiKey?: string } {
   const args = process.argv.slice(2);
+
+  // Parse --api-key flag
+  let apiKey: string | undefined;
+  const apiKeyIndex = args.findIndex(arg => arg === '--api-key' || arg.startsWith('--api-key='));
+  if (apiKeyIndex !== -1) {
+    const arg = args[apiKeyIndex];
+    if (arg.includes('=')) {
+      apiKey = arg.split('=')[1];
+    } else if (args[apiKeyIndex + 1] && !args[apiKeyIndex + 1].startsWith('-')) {
+      apiKey = args[apiKeyIndex + 1];
+    }
+  }
+
+  // Also check environment variable
+  if (!apiKey) {
+    apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+  }
+
   return {
     saveCache: args.includes('--save-cache'),
     useCache: args.includes('--use-cache'),
     help: args.includes('--help') || args.includes('-h'),
+    apiKey,
   };
 }
 
@@ -41,10 +60,38 @@ function displayHelp(): void {
   console.log(pc.bold(pc.cyan('Usage:')) + ' npx no-ai-slop [options]');
   console.log('');
   console.log(pc.bold('Options:'));
+  console.log('  --api-key KEY   Your Google Gemini API key (or set GOOGLE_GEMINI_API_KEY env)');
   console.log('  --save-cache    Run analysis and save result to local cache');
   console.log('  --use-cache     Use cached analysis result (skip API call)');
   console.log('  --help, -h      Show this help message');
   console.log('');
+  console.log(pc.bold('Environment Variables:'));
+  console.log('  GOOGLE_GEMINI_API_KEY    Your Gemini API key (alternative to --api-key)');
+  console.log('');
+  console.log(pc.dim('Get your API key at: https://aistudio.google.com/app/apikey'));
+  console.log('');
+}
+
+/**
+ * Prompt user for API key
+ */
+async function promptApiKey(): Promise<string> {
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  console.log('');
+  console.log(pc.yellow('⚠️  No API key found.'));
+  console.log(pc.dim('  Get your free Gemini API key at: https://aistudio.google.com/app/apikey'));
+  console.log('');
+
+  return new Promise((resolve) => {
+    rl.question(pc.cyan('Enter your Gemini API key: '), (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
 }
 
 /**
@@ -221,11 +268,21 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
+  // Get API key (from args, env, or prompt)
+  let apiKey = args.apiKey;
+  if (!apiKey) {
+    apiKey = await promptApiKey();
+    if (!apiKey) {
+      console.log(pc.red('\n❌ API key is required for analysis.'));
+      process.exit(1);
+    }
+  }
+
   // Upload and analyze with streaming progress
   const analyzeSpinner = ora('Analyzing your AI collaboration style...').start();
 
   try {
-    const result = await uploadForAnalysis(filteredResult, (stage, progress, message) => {
+    const result = await uploadForAnalysis(filteredResult, apiKey, (stage, progress, message) => {
       // Update spinner text with progress
       analyzeSpinner.text = `${message} (${progress}%)`;
     });

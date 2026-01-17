@@ -212,6 +212,8 @@ export interface PipelineConfig {
  */
 export interface VerboseAnalyzerConfig {
   apiKey?: string;
+  /** Gemini API key for two-stage pipeline (overrides GOOGLE_GEMINI_API_KEY env) */
+  geminiApiKey?: string;
   model?: string;
   maxRetries?: number;
   maxTokens?: number;
@@ -234,8 +236,9 @@ export interface VerboseAnalyzerConfig {
  * - Uses Anthropic Claude Sonnet
  * - Requires ANTHROPIC_API_KEY
  */
-const DEFAULT_CONFIG: Required<Omit<VerboseAnalyzerConfig, 'apiKey'>> & { apiKey: string } = {
+const DEFAULT_CONFIG: Required<Omit<VerboseAnalyzerConfig, 'apiKey' | 'geminiApiKey'>> & { apiKey: string; geminiApiKey: string } = {
   apiKey: '',
+  geminiApiKey: '',
   model: 'claude-sonnet-4-20250514', // For legacy single-stage mode
   maxRetries: 1,
   maxTokens: 8192,
@@ -268,7 +271,7 @@ const DEFAULT_CONFIG: Required<Omit<VerboseAnalyzerConfig, 'apiKey'>> & { apiKey
  */
 export class VerboseAnalyzer {
   private client: Anthropic;
-  private config: Required<Omit<VerboseAnalyzerConfig, 'apiKey'>> & { apiKey: string };
+  private config: Required<Omit<VerboseAnalyzerConfig, 'apiKey' | 'geminiApiKey'>> & { apiKey: string; geminiApiKey: string };
   private dataAnalyst: DataAnalystStage | null = null;
   private contentWriter: ContentWriterStage | null = null;
   private contentGateway: ContentGateway;
@@ -282,14 +285,18 @@ export class VerboseAnalyzer {
 
     this.contentGateway = new ContentGateway();
 
-    // Initialize stages for two-stage pipeline (uses GOOGLE_GEMINI_API_KEY)
+    // Initialize stages for two-stage pipeline
     if (this.config.pipeline.mode === 'two-stage') {
-      // Stages use GeminiClient which gets GOOGLE_GEMINI_API_KEY from env
+      // Use provided geminiApiKey or fall back to environment variable
+      const geminiApiKey = config.geminiApiKey || process.env.GOOGLE_GEMINI_API_KEY;
+
       this.dataAnalyst = new DataAnalystStage({
         ...this.config.pipeline.stage1,
+        apiKey: geminiApiKey,
       });
       this.contentWriter = new ContentWriterStage({
         ...this.config.pipeline.stage2,
+        apiKey: geminiApiKey,
       });
     }
 

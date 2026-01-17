@@ -60,6 +60,7 @@ function parseSSELine(line: string): SSEEvent | null {
  */
 export async function uploadForAnalysis(
   scanResult: ScanResult,
+  apiKey: string,
   onProgress?: ProgressCallback
 ): Promise<AnalysisResult> {
   const payload = {
@@ -78,6 +79,7 @@ export async function uploadForAnalysis(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-Gemini-API-Key': apiKey,
     },
     body: JSON.stringify(payload),
   });
@@ -183,6 +185,6 @@ async function handleStreamingResponse(
  * Legacy upload function (non-streaming)
  * Kept for backward compatibility
  */
-export async function uploadForAnalysisLegacy(scanResult: ScanResult): Promise<AnalysisResult> {
-  return uploadForAnalysis(scanResult);
+export async function uploadForAnalysisLegacy(scanResult: ScanResult, apiKey: string): Promise<AnalysisResult> {
+  return uploadForAnalysis(scanResult, apiKey);
 }
