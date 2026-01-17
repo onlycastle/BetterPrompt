@@ -11,6 +11,108 @@ import type { ScanResult } from './scanner.js';
 
 const API_BASE_URL = process.env.NOSLOP_API_URL || 'https://www.nomoreaislop.xyz';
 
+/**
+ * Vercel Pro payload limit with safety margin
+ * Pro: 4.5MB, we use 4MB to be safe
+ */
+const PAYLOAD_LIMIT = 4 * 1024 * 1024;
+
+/**
+ * Target content length per session after truncation (characters)
+ */
+const TRUNCATED_CONTENT_LENGTH = 150_000;
+
+/**
+ * Truncate JSONL content to keep most recent messages
+ * Preserves the structure while reducing size
+ */
+function truncateSessionContent(content: string, maxLength: number): string {
+  if (content.length <= maxLength) return content;
+
+  const lines = content.split('\n');
+  const result: string[] = [];
+  let currentLength = 0;
+
+  // Keep lines from the end (most recent messages) up to maxLength
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (currentLength + line.length + 1 > maxLength) break;
+    result.unshift(line);
+    currentLength += line.length + 1;
+  }
+
+  return result.join('\n');
+}
+
+/**
+ * Prepare payload with automatic truncation if needed
+ * Returns compressed payload that fits within Vercel limits
+ */
+function preparePayload(scanResult: ScanResult): {
+  compressed: Buffer;
+  truncated: boolean;
+  droppedCount: number;
+} {
+  // First attempt: full payload
+  let sessions = scanResult.sessions.map(s => ({
+    sessionId: s.metadata.sessionId,
+    projectName: s.metadata.projectName,
+    messageCount: s.metadata.messageCount,
+    durationMinutes: Math.round(s.metadata.durationSeconds / 60),
+    content: s.content,
+  }));
+
+  let payload = {
+    sessions,
+    totalMessages: scanResult.totalMessages,
+    totalDurationMinutes: scanResult.totalDurationMinutes,
+  };
+
+  let compressed = gzipSync(Buffer.from(JSON.stringify(payload), 'utf-8'));
+
+  if (compressed.length <= PAYLOAD_LIMIT) {
+    return { compressed, truncated: false, droppedCount: 0 };
+  }
+
+  // Second attempt: truncate session content
+  sessions = scanResult.sessions.map(s => ({
+    sessionId: s.metadata.sessionId,
+    projectName: s.metadata.projectName,
+    messageCount: s.metadata.messageCount,
+    durationMinutes: Math.round(s.metadata.durationSeconds / 60),
+    content: truncateSessionContent(s.content, TRUNCATED_CONTENT_LENGTH),
+  }));
+
+  payload = {
+    sessions,
+    totalMessages: scanResult.totalMessages,
+    totalDurationMinutes: scanResult.totalDurationMinutes,
+  };
+
+  compressed = gzipSync(Buffer.from(JSON.stringify(payload), 'utf-8'));
+
+  if (compressed.length <= PAYLOAD_LIMIT) {
+    return { compressed, truncated: true, droppedCount: 0 };
+  }
+
+  // Third attempt: drop sessions until it fits (keep most recent)
+  let droppedCount = 0;
+  while (sessions.length > 1 && compressed.length > PAYLOAD_LIMIT) {
+    sessions.pop(); // Remove oldest session
+    droppedCount++;
+
+    payload = {
+      sessions,
+      totalMessages: sessions.reduce((sum, s) => sum + s.messageCount, 0),
+      totalDurationMinutes: sessions.reduce((sum, s) => sum + s.durationMinutes, 0),
+    };
+
+    compressed = gzipSync(Buffer.from(JSON.stringify(payload), 'utf-8'));
+  }
+
+  return { compressed, truncated: true, droppedCount };
+}
+
 export interface AnalysisResult {
   resultId: string;
   primaryType: string;
@@ -65,21 +167,16 @@ export async function uploadForAnalysis(
   apiKey: string,
   onProgress?: ProgressCallback
 ): Promise<AnalysisResult> {
-  const payload = {
-    sessions: scanResult.sessions.map(s => ({
-      sessionId: s.metadata.sessionId,
-      projectName: s.metadata.projectName,
-      messageCount: s.metadata.messageCount,
-      durationMinutes: Math.round(s.metadata.durationSeconds / 60),
-      content: s.content,
-    })),
-    totalMessages: scanResult.totalMessages,
-    totalDurationMinutes: scanResult.totalDurationMinutes,
-  };
+  // Prepare payload with automatic truncation if needed
+  const { compressed: compressedBody, truncated, droppedCount } = preparePayload(scanResult);
 
-  // Compress payload with gzip to reduce size (Vercel has 4.5MB limit)
-  const jsonString = JSON.stringify(payload);
-  const compressedBody = gzipSync(Buffer.from(jsonString, 'utf-8'));
+  // Notify about truncation
+  if (truncated) {
+    const msg = droppedCount > 0
+      ? `Large payload detected. Truncated content and excluded ${droppedCount} session(s) to fit limits.`
+      : 'Large payload detected. Session content was truncated to fit limits.';
+    onProgress?.('preparing', 0, msg);
+  }
 
   const response = await fetch(`${API_BASE_URL}/api/analysis/remote`, {
     method: 'POST',
@@ -88,7 +185,7 @@ export async function uploadForAnalysis(
       'X-Content-Encoding': 'gzip',  // Custom header to bypass Vercel interception
       'X-Gemini-API-Key': apiKey,
     },
-    body: compressedBody,
+    body: new Uint8Array(compressedBody),
   });
 
   if (!response.ok) {
