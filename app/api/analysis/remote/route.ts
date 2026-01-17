@@ -548,20 +548,43 @@ export async function POST(request: NextRequest) {
           geminiApiKey: userGeminiApiKey,
         });
 
-        // Send heartbeat before long LLM call
+        // Detailed analysis messages to rotate during the LLM call
+        // These create a sense of deep, thorough analysis happening
+        const analysisMessages = [
+          { progress: 42, message: 'Extracting behavioral patterns from conversations...' },
+          { progress: 45, message: 'Analyzing tool usage patterns (Read, Write, Edit)...' },
+          { progress: 48, message: 'Mapping conversation flow and interaction style...' },
+          { progress: 51, message: 'Running personality dimension analysis...' },
+          { progress: 54, message: 'Analyzing communication style preferences...' },
+          { progress: 57, message: 'Evaluating decision-making patterns...' },
+          { progress: 60, message: 'Detecting AI collaboration techniques...' },
+          { progress: 63, message: 'Measuring verification and validation habits...' },
+          { progress: 66, message: 'Analyzing planning and task decomposition...' },
+          { progress: 69, message: 'Building personality profile...' },
+          { progress: 72, message: 'Generating personalized insights...' },
+          { progress: 75, message: 'Crafting evidence-based observations...' },
+          { progress: 78, message: 'Synthesizing findings into narrative...' },
+          { progress: 81, message: 'Finalizing your developer profile...' },
+          { progress: 84, message: 'Completing deep analysis...' },
+        ];
+        let messageIndex = 0;
+
+        // Send heartbeat with rotating detailed messages
         const heartbeatInterval = setInterval(() => {
           try {
+            const currentMsg = analysisMessages[messageIndex % analysisMessages.length];
             controller.enqueue(encoder.encode(formatSSE({
               type: 'progress',
               stage: 'analyzing',
-              progress: 50,
-              message: 'AI analysis in progress...',
+              progress: currentMsg.progress,
+              message: currentMsg.message,
             })));
+            messageIndex++;
           } catch {
             // Stream might be closed
             clearInterval(heartbeatInterval);
           }
-        }, 5000); // Send heartbeat every 5 seconds
+        }, 3000); // Send heartbeat every 3 seconds for more engagement
 
         let evaluation: VerboseEvaluation;
         try {

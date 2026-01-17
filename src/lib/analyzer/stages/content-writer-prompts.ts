@@ -70,15 +70,24 @@ Transform raw behavioral data into an ENGAGING, PERSONALIZED narrative that make
 - Make this feel like a professional career assessment worth paying for
 
 **Dimension Insights** (exactly 6 - COMPREHENSIVE)
-For each dimension:
-- Create 3-8 themed STRENGTH CLUSTERS from raw signals
-  - Give each cluster a specific, memorable title (not generic)
-  - Write detailed descriptions (up to 500 chars) that feel personal, not templated
-  - Include 3-6 evidence quotes per cluster for credibility
-- Create 2-5 GROWTH AREAS (where signals warrant)
-  - Frame as opportunities, not criticisms
-  - Include detailed, actionable recommendations (up to 400 chars)
-  - Provide specific examples and next steps
+For each dimension, USE CLUSTERS from Stage 1 data (dimensionSignals.clusters):
+
+STRENGTH SECTIONS:
+- Number of strength sections = number of strength clusters defined in Stage 1
+- For each cluster: transform cluster.theme into an engaging section title
+  - Make it specific and memorable (not generic)
+  - Example: cluster theme "전문가 페르소나 활용" → title "다중 전문가 페르소나 오케스트레이션"
+- Write detailed descriptions (up to 500 chars) that feel personal
+- Evidence quotes will be added automatically via clusterId matching
+
+GROWTH AREAS:
+- Number of growth sections = number of growth clusters defined in Stage 1
+- Transform cluster.theme into actionable section title
+- Frame as opportunities, not criticisms
+- Include detailed, actionable recommendations (up to 400 chars)
+- Evidence quotes will be added automatically via clusterId matching
+
+CRITICAL: The order of strengths/growthAreas MUST match the order of clusters in Stage 1 data
 
 **Prompt Patterns** (5-12 patterns for comprehensive analysis)
 - Name each pattern distinctively based on its characteristics
@@ -146,25 +155,115 @@ For each dimension:
 - If NO /plan usage: recommend "복잡한 작업 전 /plan 명령어로 로드맵을 세워보세요"
 - Write summary emphasizing their planning sophistication
 
+**Top 3 Focus Areas** (CRITICAL - from personalizedPriorities)
+This is the MOST ACTIONABLE part of the report. Use personalizedPriorities from Stage 1:
+
+- Transform each priority into an engaging, memorable narrative:
+  - Lead with WHY this matters for THIS developer
+  - Reference specific quotes that led to this priority (use quote.insight.rootCause)
+  - Connect the situation (quote.context) to the recommendation
+  - Make the expected impact feel tangible and motivating
+
+- Use the priority's context + insight data to write deeper analysis:
+  - "In your debugging sessions (context.situationType), you tend to..."
+  - "This happens because (insight.rootCause)..."
+  - "Developing this habit will (expectedImpact)..."
+
+- Writing style for priorities:
+  - Rank 1: Most urgent, most impactful - emphasize immediate actionability
+  - Rank 2: Important for sustained growth - emphasize consistency
+  - Rank 3: Long-term excellence - emphasize mastery mindset
+
+- Include specific action steps for each priority:
+  - What to START doing
+  - What to STOP doing
+  - What to CONTINUE doing
+
+**Personality Insights** (CRITICAL - from personalityProfile, uses 4 storytelling techniques)
+
+Transform Module B's PersonalityProfile into conversational insights that make developers feel "오!! 완전 나야!!" / "They really know me!"
+
+**The 4 Techniques (MUST USE ALL):**
+
+1. **Specific Evidence** - Ground every insight in DATA
+   - Quote actual developer words or cite specific numbers
+   - ✅ "You said '/plan' 8 times across your sessions..."
+   - ✅ "'이거 맞아?' 하고 7번이나 확인하셨어요"
+   - ❌ "You are a systematic person" (too generic)
+
+2. **Confirmation Pattern** (~시죠?/don't you?) - Create "Yes! That's me!" moments
+   - Use question form to invite agreement, not declare
+   - ✅ "You like to see the whole map before walking, don't you?"
+   - ✅ "일 시작 전에 전체 그림 먼저 그리시는 편이시죠?"
+   - ❌ "You are a planner" (too definitive)
+
+3. **Strength-Shadow Connection** - Show you understand the WHOLE person
+   - Every strength has a flip side - connect them
+   - ✅ "That speed is your superpower — but it sometimes skips the safety check"
+   - ✅ "빠른 실행력이 강점인데, 그 속도 때문에 가끔 검증을 건너뛰실 때가 있어요"
+   - Use: personalityProfile.sangsaeng (synergy) + personalityProfile.sanggeuk (conflict)
+
+4. **Daily Life Bridge** - Make it feel personal beyond coding
+   - Connect coding patterns to general life for deeper rapport
+   - ✅ "'Move fast, break things' — probably your motto outside coding too, right?"
+   - ✅ "회의할 때도 '일단 해보자'보다 '계획 먼저' 하시는 분 같아요 😄"
+   - Use: personalityProfile.gyeokguk (overall pattern) for inspiration
+
+**Using PersonalityProfile Data:**
+- dimensions.jp.score > 70 → emphasize planning habits
+- dimensions.tf.score < 30 → emphasize logical verification
+- yongsin → frame as growth opportunity naturally
+- gisin → acknowledge but frame positively (the flip side of a strength)
+- gyeokguk → use as basis for the daily life connection
+
+**MUST NOT DO:**
+- ❌ MBTI codes: "INTJ", "J 성향", "외향적"
+- ❌ Psychology jargon: "직관형", "감각형", "판단형"
+- ❌ Scores/percentages: "계획성 78점", "your J score is 78"
+- ❌ Generic statements: "You are a structured person"
+
 # Format
 
 Return VerboseLLMResponse with all sections populated.
 
+**Required fields:**
+- primaryType, controlLevel, distribution (from Stage 1 typeAnalysis)
+- personalitySummary (300-1500 chars)
+- dimensionInsights (exactly 6)
+- promptPatterns (5-12)
+- actionablePractices (practiced + opportunities)
+- antiPatternsAnalysis (if detectedAntiPatterns exists)
+- criticalThinkingAnalysis (if criticalThinkingMoments exists)
+- planningAnalysis (if planningBehaviors exists)
+- **topFocusAreas** (transform personalizedPriorities into narrative):
+  - areas: array of 1-3 TopFocusArea objects
+    - rank, dimension, title, narrative (WHY this matters), expectedImpact, priorityScore
+    - actions: { start, stop, continue }
+  - summary: explanation of priority selection
+- **personalityInsights** (CRITICAL - the "wow" moment):
+  - coreObservation: Evidence + "~시죠?/don't you?" pattern (100-300 chars)
+  - strengthConnection: How personality → coding strength (max 300 chars)
+  - growthOpportunity: Strength-shadow connection (max 300 chars)
+  - dailyLifeConnection: Beyond coding connection (max 150 chars, optional)
+
 **Critical Rules:**
 - Use ACTUAL quotes from the input data. Do not invent quotes.
 - Every insight must be grounded in the provided data.
-- Type classification values (primaryType, controlLevel, distribution) come from input data.`;
+- Type classification values (primaryType, controlLevel, distribution) come from input data.
+- personalityInsights MUST use all 4 storytelling techniques. NO MBTI codes or scores.`;
 
 /**
  * Build the user prompt for Stage 2 content transformation
  * Places data context before instructions (Gemini best practice)
  *
- * @param structuredData - JSON string of Stage 1 analysis data
+ * @param structuredData - JSON string of Stage 1 analysis data (Module A)
+ * @param personalityData - JSON string of personality profile (Module B)
  * @param sessionCount - Number of sessions analyzed
  * @param useKorean - Whether to generate content in Korean
  */
 export function buildContentWriterUserPrompt(
   structuredData: string,
+  personalityData: string,
   sessionCount: number,
   useKorean: boolean = false
 ): string {
@@ -218,8 +317,11 @@ Do NOT write pattern names, descriptions, tips, or analysis in English.
 
 This developer has ${sessionCount} sessions analyzed.
 ${koreanHeader}
-## Structured Analysis Data (from Stage 1)
+## Structured Analysis Data (from Module A - Behavioral Analysis)
 ${structuredData}
+
+## Personality Profile (from Module B - Personality Analysis)
+${personalityData}
 
 # Transformation Instructions
 
@@ -234,11 +336,12 @@ Using the extracted data above, create a VerboseLLMResponse:
    - Emphasize 3-5 key phrases with **bold markers** (e.g., "Your **strategic planning approach**...")
    - Include insights on collaboration style, problem-solving, and growth mindset${koreanSummaryReminder}
 
-3. **Dimension Insights** (exactly 6 - COMPREHENSIVE)
-   - Create 3-8 strength clusters per dimension by grouping related strengthSignals
-   - Each cluster: title (max 80 chars), description (max 500 chars), evidence as string array (3-6 actual quote strings)
-   - Create 2-5 growth areas from growthSignals (where meaningful signals exist)
-   - For growth areas: include 2-4 evidence quote strings and a detailed recommendation (max 400 chars)${koreanDimensionReminder}
+3. **Dimension Insights** (exactly 6 - USE CLUSTERS FROM STAGE 1)
+   - Use dimensionSignals.clusters to determine number and order of sections
+   - For each strength cluster: transform theme into engaging title (max 80 chars), write description (max 500 chars)
+   - For each growth cluster: transform theme into title, write description and recommendation (max 400 chars)
+   - Evidence quotes are added automatically - do NOT include evidence arrays
+   - CRITICAL: Order of strengths/growthAreas MUST match order of clusters in Stage 1${koreanDimensionReminder}
 
 4. **Prompt Patterns** (5-12 for comprehensive analysis)
    - Transform detectedPatterns into distinctively named patterns
@@ -274,6 +377,47 @@ Using the extracted data above, create a VerboseLLMResponse:
    - Include slashPlanStats if /plan was used (CRITICAL: totalUsage, avgStepsPerPlan, problemDecompositionRate)
    - If no /plan usage, recommend it in opportunities
    - Write summary emphasizing planning sophistication
+
+10. **Top 3 Focus Areas** (output to topFocusAreas field)
+   - Use personalizedPriorities from Stage 1 data
+   - Output to topFocusAreas: { areas: [...], summary: string }
+   - For each priority in topPriorities, create a TopFocusArea:
+     * rank: same as priority.rank
+     * dimension: same as priority.dimension
+     * title: transform priority.focusArea into engaging title
+     * narrative: WHY this matters (use insight.rootCause from related quotes)
+     * expectedImpact: same as priority.expectedImpact
+     * priorityScore: same as priority.priorityScore
+     * actions: { start: "...", stop: "...", continue: "..." }
+   - summary: transform priority.selectionRationale into narrative
+
+11. **Personality Insights** (CRITICAL - the "오!! 완전 나야!!" moment)
+   - Use Module B's PersonalityProfile to generate compelling insights
+   - Apply ALL 4 storytelling techniques:
+
+   **coreObservation** (100-300 chars):
+   - Start with SPECIFIC evidence (number, quote, or behavior count)
+   - End with confirmation question ("~시죠?", "don't you?", "right?")
+   - Example: "You said '/plan' 8 times. You like to see the whole map before walking, don't you?"
+   - Use: extractedQuotes, planningBehaviors.frequency, personalityProfile.dimensions.jp
+
+   **strengthConnection** (max 300 chars):
+   - Connect personality trait to coding strength
+   - Reference specific quote or behavior
+   - Example: "That systematic approach helps you tackle complex features. When you said '...' — that's peak you."
+   - Use: personalityProfile.gyeokguk, personalityProfile.sangsaeng
+
+   **growthOpportunity** (max 300 chars):
+   - Frame growth as the flip side of a strength (NOT criticism)
+   - Use "~인데", "— but", "though" connectors
+   - Example: "That speed is your superpower — but it sometimes skips the safety check"
+   - Use: personalityProfile.gisin, personalityProfile.sanggeuk
+
+   **dailyLifeConnection** (max 150 chars, optional):
+   - Connect coding pattern to real life
+   - Use playful, friendly tone
+   - Example: "'Move fast, break things' — your motto outside coding too? 😄"
+   - Use: personalityProfile.gyeokguk for inspiration
 
 Make this developer feel truly understood. Use their actual words.${koreanFinalReminder}`;
 }

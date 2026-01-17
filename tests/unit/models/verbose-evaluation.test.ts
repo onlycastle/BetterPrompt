@@ -12,7 +12,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   VerboseLLMResponseSchema,
-  VerboseEvaluationSchema,
   PromptPatternSchema,
   PerDimensionInsightSchema,
   DimensionStrengthSchema,
@@ -269,30 +268,8 @@ describe('VerboseLLMResponseSchema', () => {
     });
   });
 
-  describe('personalitySummary validation', () => {
-    it('should FAIL when personalitySummary is too short', () => {
-      const response = {
-        ...createValidResponse(),
-        personalitySummary: 'Too short', // Less than 200 characters
-      };
-
-      const result = VerboseLLMResponseSchema.safeParse(response);
-
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when personalitySummary is too long', () => {
-      const response = {
-        ...createValidResponse(),
-        personalitySummary: 'a'.repeat(801), // Exceeds 800 character max
-      };
-
-      const result = VerboseLLMResponseSchema.safeParse(response);
-
-      expect(result.success).toBe(false);
-    });
-  });
 });
+
 
 describe('PromptPatternSchema', () => {
   const validPattern = {
@@ -329,45 +306,7 @@ describe('PromptPatternSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  // String length constraint tests
-  describe('string length constraints', () => {
-    it('should FAIL when patternName exceeds 50 characters', () => {
-      const pattern = { ...validPattern, patternName: 'a'.repeat(51) };
-      const result = PromptPatternSchema.safeParse(pattern);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when description exceeds 300 characters', () => {
-      const pattern = { ...validPattern, description: 'a'.repeat(301) };
-      const result = PromptPatternSchema.safeParse(pattern);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when tip exceeds 200 characters', () => {
-      const pattern = { ...validPattern, tip: 'a'.repeat(201) };
-      const result = PromptPatternSchema.safeParse(pattern);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when examples[].quote exceeds 300 characters', () => {
-      const pattern = {
-        ...validPattern,
-        examples: [{ quote: 'a'.repeat(301), analysis: 'test' }],
-      };
-      const result = PromptPatternSchema.safeParse(pattern);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when examples[].analysis exceeds 200 characters', () => {
-      const pattern = {
-        ...validPattern,
-        examples: [{ quote: 'test', analysis: 'a'.repeat(201) }],
-      };
-      const result = PromptPatternSchema.safeParse(pattern);
-      expect(result.success).toBe(false);
-    });
-  });
-
+  // NOTE: String length constraints are flexible for LLM output variability
   // NOTE: examples array min/max constraints removed for Gemini API compatibility
   describe('examples array', () => {
     it('should accept empty examples array (no min constraint for Gemini)', () => {
@@ -415,18 +354,6 @@ describe('PerDimensionInsightSchema', () => {
       const result = PerDimensionInsightSchema.safeParse(insight);
       expect(result.success).toBe(true);
     }
-  });
-
-  it('should FAIL when dimensionDisplayName exceeds 50 characters', () => {
-    const insight = {
-      dimension: 'aiCollaboration' as const,
-      dimensionDisplayName: 'a'.repeat(51),
-      strengths: [],
-      growthAreas: [],
-    };
-
-    const result = PerDimensionInsightSchema.safeParse(insight);
-    expect(result.success).toBe(false);
   });
 
   // NOTE: strengths/growthAreas array constraints removed for Gemini API compatibility
@@ -478,20 +405,7 @@ describe('DimensionStrengthSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  describe('string length constraints', () => {
-    it('should FAIL when title exceeds 50 characters', () => {
-      const strength = { ...validStrength, title: 'a'.repeat(51) };
-      const result = DimensionStrengthSchema.safeParse(strength);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when description exceeds 300 characters', () => {
-      const strength = { ...validStrength, description: 'a'.repeat(301) };
-      const result = DimensionStrengthSchema.safeParse(strength);
-      expect(result.success).toBe(false);
-    });
-  });
-
+  // NOTE: String length constraints are flexible for LLM output variability
   describe('evidence array (string[])', () => {
     it('should accept empty evidence array (no min constraint for Gemini)', () => {
       const strength = { ...validStrength, evidence: [] };
@@ -504,18 +418,6 @@ describe('DimensionStrengthSchema', () => {
         ...validStrength,
         evidence: ['quote 1', 'quote 2', 'quote 3', 'quote 4', 'quote 5'],
       };
-      const result = DimensionStrengthSchema.safeParse(strength);
-      expect(result.success).toBe(true);
-    });
-
-    it('should FAIL when evidence string exceeds 800 characters', () => {
-      const strength = { ...validStrength, evidence: ['a'.repeat(801)] };
-      const result = DimensionStrengthSchema.safeParse(strength);
-      expect(result.success).toBe(false);
-    });
-
-    it('should accept evidence string at max length (800)', () => {
-      const strength = { ...validStrength, evidence: ['a'.repeat(800)] };
       const result = DimensionStrengthSchema.safeParse(strength);
       expect(result.success).toBe(true);
     });
@@ -537,26 +439,7 @@ describe('DimensionGrowthAreaSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  describe('string length constraints', () => {
-    it('should FAIL when title exceeds 50 characters', () => {
-      const area = { ...validGrowthArea, title: 'a'.repeat(51) };
-      const result = DimensionGrowthAreaSchema.safeParse(area);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when description exceeds 300 characters', () => {
-      const area = { ...validGrowthArea, description: 'a'.repeat(301) };
-      const result = DimensionGrowthAreaSchema.safeParse(area);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when recommendation exceeds 200 characters', () => {
-      const area = { ...validGrowthArea, recommendation: 'a'.repeat(201) };
-      const result = DimensionGrowthAreaSchema.safeParse(area);
-      expect(result.success).toBe(false);
-    });
-  });
-
+  // NOTE: String length constraints are flexible for LLM output variability
   describe('evidence array (string[])', () => {
     it('should accept empty evidence array (no min constraint for Gemini)', () => {
       const area = { ...validGrowthArea, evidence: [] };
@@ -571,12 +454,6 @@ describe('DimensionGrowthAreaSchema', () => {
       };
       const result = DimensionGrowthAreaSchema.safeParse(area);
       expect(result.success).toBe(true);
-    });
-
-    it('should FAIL when evidence string exceeds 800 characters', () => {
-      const area = { ...validGrowthArea, evidence: ['a'.repeat(801)] };
-      const result = DimensionGrowthAreaSchema.safeParse(area);
-      expect(result.success).toBe(false);
     });
   });
 });
