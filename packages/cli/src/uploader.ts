@@ -17,7 +17,7 @@ const API_BASE_URL = process.env.NOSLOP_API_URL || 'https://www.nomoreaislop.xyz
  * - 10MB+ payload support (vs Vercel's 4.5MB)
  * - 15 minute timeout (vs Vercel's 5 minutes)
  */
-const ANALYSIS_ENDPOINT = '/api/lambda/';
+const ANALYSIS_ENDPOINT = '/api/lambda';
 
 /**
  * Lambda payload limit (10MB with safety margin)
