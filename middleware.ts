@@ -16,10 +16,19 @@ export async function middleware(request: NextRequest) {
   // Create initial response
   let supabaseResponse = NextResponse.next({ request });
 
+  // Skip auth for API routes and when Supabase is not configured
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Supabase not configured, skip auth middleware
+    return supabaseResponse;
+  }
+
   // Create Supabase client with cookie handling
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
@@ -43,7 +52,11 @@ export async function middleware(request: NextRequest) {
 
   // Refresh session - this will update cookies if tokens are refreshed
   // IMPORTANT: Use getUser() not getSession() to validate with Supabase Auth server
-  await supabase.auth.getUser();
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    // Auth refresh failed, continue without blocking the request
+  }
 
   return supabaseResponse;
 }
