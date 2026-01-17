@@ -24,7 +24,7 @@ import {
 
 // Route Segment Config for App Router
 // Increase body size limit for large session uploads (default is 4MB)
-export const maxDuration = 60; // Allow up to 60 seconds for analysis
+export const maxDuration = 300; // Allow up to 5 minutes for analysis (Vercel Pro)
 export const dynamic = 'force-dynamic';
 
 // Custom body size limit - parse manually for large payloads
