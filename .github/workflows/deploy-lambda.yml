@@ -34,6 +34,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-2
 
+      - name: Clear system Pulumi (use SST bundled version)
+        run: |
+          # Remove any pre-installed Pulumi that conflicts with SST
+          sudo rm -rf /usr/local/bin/pulumi* || true
+          sudo rm -rf ~/.pulumi || true
+
       - name: Deploy with SST
         run: npx sst deploy --stage production
         env:
