@@ -3,14 +3,30 @@
  *
  * AWS Lambda version of /api/analysis/remote with:
  * - Lambda Response Streaming for SSE
- * - 10MB payload support
+ * - Supabase Storage integration for large payloads (>6MB)
  * - 15 minute timeout
+ *
+ * Routes:
+ * - POST /upload-url: Generate Supabase Storage signed upload URL
+ * - POST /analyze: Analyze from Supabase Storage
+ * - POST / (default): Direct upload (legacy, <6MB only)
  */
 
 import { Writable } from "node:stream";
 import { gunzipSync } from "node:zlib";
 import * as crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+
+/**
+ * Lambda event type
+ */
+interface LambdaEvent {
+  headers: Record<string, string>;
+  body: string;
+  isBase64Encoded: boolean;
+  rawPath?: string;
+  path?: string;
+}
 
 // Import shared libs (bundled by SST)
 import { VerboseAnalyzer } from "../src/lib/analyzer/verbose-analyzer";
@@ -384,272 +400,491 @@ function formatSSE(event: SSEEvent): string {
 }
 
 /**
- * Lambda handler with Response Streaming
+ * Shared analysis logic - runs the actual analysis pipeline
  */
-export const handler = awslambda.streamifyResponse(
-  async (
-    event: {
-      headers: Record<string, string>;
-      body: string;
-      isBase64Encoded: boolean;
-    },
-    responseStream: Writable
-  ) => {
-    // Set SSE headers via metadata
-    const metadata = {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
-    };
+async function runAnalysis(
+  body: AnalysisRequest,
+  userGeminiApiKey: string,
+  write: (event: SSEEvent) => void
+): Promise<void> {
+  // Progress: Starting
+  write({
+    type: "progress",
+    stage: "parsing",
+    progress: 10,
+    message: `Parsing ${body.sessions.length} session(s)...`,
+  });
 
-    // Wrap stream with metadata
-    responseStream = awslambda.HttpResponseStream.from(responseStream, metadata);
+  // Parse sessions
+  const parsedSessions: ParsedSession[] = [];
 
-    const write = (event: SSEEvent) => {
-      responseStream.write(formatSSE(event));
-    };
+  for (let i = 0; i < body.sessions.length; i++) {
+    const parsed = parseRemoteSession(body.sessions[i]);
+    if (parsed) {
+      parsedSessions.push(parsed);
+    }
 
-    try {
-      // Get API key from header
-      const userGeminiApiKey =
-        event.headers["x-gemini-api-key"] ||
-        event.headers["X-Gemini-API-Key"];
-
-      if (!userGeminiApiKey) {
-        write({
-          type: "error",
-          code: "NO_API_KEY",
-          message:
-            "Gemini API key is required. Pass --api-key flag or set GOOGLE_GEMINI_API_KEY environment variable.",
-        });
-        responseStream.end();
-        return;
-      }
-
-      // Decode body
-      let rawBuffer: Buffer;
-      if (event.isBase64Encoded) {
-        rawBuffer = Buffer.from(event.body, "base64");
-      } else {
-        rawBuffer = Buffer.from(event.body, "utf-8");
-      }
-
-      console.log(`[lambda-analysis] Raw body received: ${rawBuffer.length} bytes`);
-
-      // Check for gzip
-      const hasGzipMagicBytes = isGzipBuffer(rawBuffer);
-      console.log(`[lambda-analysis] Gzip detected: ${hasGzipMagicBytes}`);
-
-      let bodyText: string;
-      if (hasGzipMagicBytes) {
-        const decompressed = gunzipSync(rawBuffer);
-        bodyText = decompressed.toString("utf-8");
-        console.log(
-          `[lambda-analysis] Decompressed: ${rawBuffer.length} -> ${bodyText.length} bytes`
-        );
-      } else {
-        bodyText = rawBuffer.toString("utf-8");
-      }
-
-      if (bodyText.length > MAX_BODY_SIZE) {
-        write({
-          type: "error",
-          code: "PAYLOAD_TOO_LARGE",
-          message: `Request body exceeds ${MAX_BODY_SIZE / 1024 / 1024}MB limit`,
-        });
-        responseStream.end();
-        return;
-      }
-
-      // Parse JSON
-      let body: AnalysisRequest;
-      try {
-        body = JSON.parse(bodyText) as AnalysisRequest;
-        console.log(`[lambda-analysis] Parsed ${body.sessions?.length || 0} sessions`);
-      } catch (parseError) {
-        write({
-          type: "error",
-          code: "INVALID_JSON",
-          message:
-            parseError instanceof Error
-              ? parseError.message
-              : "Invalid JSON in request body",
-        });
-        responseStream.end();
-        return;
-      }
-
-      // Validate request
-      if (
-        !body.sessions ||
-        !Array.isArray(body.sessions) ||
-        body.sessions.length === 0
-      ) {
-        write({
-          type: "error",
-          code: "INVALID_REQUEST",
-          message: "At least one session is required",
-        });
-        responseStream.end();
-        return;
-      }
-
-      // Progress: Starting
+    if (i % 3 === 0) {
       write({
         type: "progress",
         stage: "parsing",
-        progress: 10,
-        message: `Parsing ${body.sessions.length} session(s)...`,
+        progress: 10 + Math.floor((i / body.sessions.length) * 20),
+        message: `Parsed ${i + 1}/${body.sessions.length} sessions`,
       });
+    }
+  }
 
-      // Parse sessions
-      const parsedSessions: ParsedSession[] = [];
+  if (parsedSessions.length === 0) {
+    write({
+      type: "error",
+      code: "NO_VALID_SESSIONS",
+      message: "No valid sessions found in request",
+    });
+    return;
+  }
 
-      for (let i = 0; i < body.sessions.length; i++) {
-        const parsed = parseRemoteSession(body.sessions[i]);
-        if (parsed) {
-          parsedSessions.push(parsed);
-        }
+  // Progress: Sessions parsed
+  write({
+    type: "progress",
+    stage: "analyzing",
+    progress: 30,
+    message: `Analyzing ${parsedSessions.length} valid session(s)...`,
+  });
 
-        if (i % 3 === 0) {
-          write({
-            type: "progress",
-            stage: "parsing",
-            progress: 10 + Math.floor((i / body.sessions.length) * 20),
-            message: `Parsed ${i + 1}/${body.sessions.length} sessions`,
-          });
-        }
-      }
+  // Compute metrics
+  const metrics = aggregateMetrics(parsedSessions);
 
-      if (parsedSessions.length === 0) {
-        write({
-          type: "error",
-          code: "NO_VALID_SESSIONS",
-          message: "No valid sessions found in request",
-        });
-        responseStream.end();
-        return;
-      }
+  // Progress: Starting LLM analysis
+  write({
+    type: "progress",
+    stage: "analyzing",
+    progress: 40,
+    message: "Running AI analysis (Stage 1: Data extraction)...",
+  });
 
-      // Progress: Sessions parsed
+  // Analysis progress messages
+  const analysisMessages = [
+    { progress: 42, message: "Extracting behavioral patterns from conversations..." },
+    { progress: 45, message: "Analyzing tool usage patterns (Read, Write, Edit)..." },
+    { progress: 48, message: "Mapping conversation flow and interaction style..." },
+    { progress: 51, message: "Running personality dimension analysis..." },
+    { progress: 54, message: "Analyzing communication style preferences..." },
+    { progress: 57, message: "Evaluating decision-making patterns..." },
+    { progress: 60, message: "Detecting AI collaboration techniques..." },
+    { progress: 63, message: "Measuring verification and validation habits..." },
+    { progress: 66, message: "Analyzing planning and task decomposition..." },
+    { progress: 69, message: "Building personality profile..." },
+    { progress: 72, message: "Generating personalized insights..." },
+    { progress: 75, message: "Crafting evidence-based observations..." },
+    { progress: 78, message: "Synthesizing findings into narrative..." },
+    { progress: 81, message: "Finalizing your developer profile..." },
+    { progress: 84, message: "Completing deep analysis..." },
+  ];
+  let messageIndex = 0;
+
+  // Heartbeat interval
+  const heartbeatInterval = setInterval(() => {
+    try {
+      const currentMsg = analysisMessages[messageIndex % analysisMessages.length];
       write({
         type: "progress",
         stage: "analyzing",
-        progress: 30,
-        message: `Analyzing ${parsedSessions.length} valid session(s)...`,
+        progress: currentMsg.progress,
+        message: currentMsg.message,
       });
+      messageIndex++;
+    } catch {
+      clearInterval(heartbeatInterval);
+    }
+  }, 3000);
 
-      // Compute metrics
-      const metrics = aggregateMetrics(parsedSessions);
+  // Run analysis
+  let evaluation: VerboseEvaluation;
+  try {
+    const analyzer = new VerboseAnalyzer({
+      pipeline: { mode: "two-stage" },
+      tier: "enterprise",
+      fallbackToLegacy: false,
+      geminiApiKey: userGeminiApiKey,
+    });
 
-      // Progress: Starting LLM analysis
-      write({
-        type: "progress",
-        stage: "analyzing",
-        progress: 40,
-        message: "Running AI analysis (Stage 1: Data extraction)...",
-      });
+    console.log("[lambda-analysis] Starting analyzeVerbose...");
+    evaluation = await analyzer.analyzeVerbose(parsedSessions, metrics, {
+      tier: "enterprise",
+    });
+    console.log("[lambda-analysis] analyzeVerbose completed successfully");
+  } finally {
+    clearInterval(heartbeatInterval);
+  }
 
-      // Analysis progress messages
-      const analysisMessages = [
-        { progress: 42, message: "Extracting behavioral patterns from conversations..." },
-        { progress: 45, message: "Analyzing tool usage patterns (Read, Write, Edit)..." },
-        { progress: 48, message: "Mapping conversation flow and interaction style..." },
-        { progress: 51, message: "Running personality dimension analysis..." },
-        { progress: 54, message: "Analyzing communication style preferences..." },
-        { progress: 57, message: "Evaluating decision-making patterns..." },
-        { progress: 60, message: "Detecting AI collaboration techniques..." },
-        { progress: 63, message: "Measuring verification and validation habits..." },
-        { progress: 66, message: "Analyzing planning and task decomposition..." },
-        { progress: 69, message: "Building personality profile..." },
-        { progress: 72, message: "Generating personalized insights..." },
-        { progress: 75, message: "Crafting evidence-based observations..." },
-        { progress: 78, message: "Synthesizing findings into narrative..." },
-        { progress: 81, message: "Finalizing your developer profile..." },
-        { progress: 84, message: "Completing deep analysis..." },
-      ];
-      let messageIndex = 0;
+  // Progress: Analysis complete
+  write({
+    type: "progress",
+    stage: "storing",
+    progress: 90,
+    message: "Storing results...",
+  });
 
-      // Heartbeat interval
-      const heartbeatInterval = setInterval(() => {
-        try {
-          const currentMsg = analysisMessages[messageIndex % analysisMessages.length];
-          write({
-            type: "progress",
-            stage: "analyzing",
-            progress: currentMsg.progress,
-            message: currentMsg.message,
-          });
-          messageIndex++;
-        } catch {
-          clearInterval(heartbeatInterval);
-        }
-      }, 3000);
+  // Generate result ID and store
+  const resultId = generateResultId();
+  await storeResult(resultId, evaluation);
 
-      // Run analysis
-      let evaluation: VerboseEvaluation;
-      try {
-        const analyzer = new VerboseAnalyzer({
-          pipeline: { mode: "two-stage" },
-          tier: "enterprise",
-          fallbackToLegacy: false,
-          geminiApiKey: userGeminiApiKey,
-        });
+  // Progress: Complete
+  write({
+    type: "progress",
+    stage: "complete",
+    progress: 100,
+    message: "Analysis complete!",
+  });
 
-        console.log("[lambda-analysis] Starting analyzeVerbose...");
-        evaluation = await analyzer.analyzeVerbose(parsedSessions, metrics, {
-          tier: "enterprise",
-        });
-        console.log("[lambda-analysis] analyzeVerbose completed successfully");
-      } finally {
-        clearInterval(heartbeatInterval);
-      }
+  // Send final result
+  const response: AnalysisResponse = {
+    resultId,
+    primaryType: evaluation.primaryType,
+    controlLevel: evaluation.controlLevel || "developing",
+    distribution: evaluation.distribution,
+    personalitySummary: evaluation.personalitySummary,
+  };
 
-      // Progress: Analysis complete
-      write({
-        type: "progress",
-        stage: "storing",
-        progress: 90,
-        message: "Storing results...",
-      });
+  write({
+    type: "result",
+    data: response,
+  });
+}
 
-      // Generate result ID and store
-      const resultId = generateResultId();
-      await storeResult(resultId, evaluation);
+/**
+ * Handle GET /upload-url - Generate Supabase Storage signed upload URL
+ */
+async function handleGetUploadUrl(
+  event: LambdaEvent,
+  responseStream: Writable
+): Promise<void> {
+  const metadata = {
+    statusCode: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+    },
+  };
+  responseStream = awslambda.HttpResponseStream.from(responseStream, metadata);
 
-      // Progress: Complete
-      write({
-        type: "progress",
-        stage: "complete",
-        progress: 100,
-        message: "Analysis complete!",
-      });
+  try {
+    if (!isSupabaseConfigured()) {
+      responseStream.write(JSON.stringify({ error: "Storage not configured" }));
+      responseStream.end();
+      return;
+    }
 
-      // Send final result
-      const response: AnalysisResponse = {
-        resultId,
-        primaryType: evaluation.primaryType,
-        controlLevel: evaluation.controlLevel || "developing",
-        distribution: evaluation.distribution,
-        personalitySummary: evaluation.personalitySummary,
-      };
+    const supabase = getSupabaseClient();
+    const uploadId = crypto.randomUUID();
+    const storagePath = `sessions/${uploadId}.json.gz`;
 
-      write({
-        type: "result",
-        data: response,
-      });
-    } catch (error) {
-      console.error("Analysis error:", error);
+    console.log(`[lambda] Creating signed upload URL for: ${storagePath}`);
+
+    const { data, error } = await supabase.storage
+      .from("uploads")
+      .createSignedUploadUrl(storagePath);
+
+    if (error) {
+      console.error("[lambda] Failed to create upload URL:", error);
+      responseStream.write(JSON.stringify({ error: error.message }));
+      responseStream.end();
+      return;
+    }
+
+    console.log(`[lambda] Upload URL created successfully`);
+    responseStream.write(JSON.stringify({
+      signedUrl: data.signedUrl,
+      token: data.token,
+      path: data.path,
+      storagePath,
+    }));
+  } catch (err) {
+    console.error("[lambda] Upload URL error:", err);
+    responseStream.write(JSON.stringify({
+      error: err instanceof Error ? err.message : "Unknown error",
+    }));
+  }
+  responseStream.end();
+}
+
+/**
+ * Handle POST /analyze - Analyze from Supabase Storage
+ */
+async function handleAnalyzeFromStorage(
+  event: LambdaEvent,
+  responseStream: Writable
+): Promise<void> {
+  // Set SSE headers
+  const metadata = {
+    statusCode: 200,
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  };
+  responseStream = awslambda.HttpResponseStream.from(responseStream, metadata);
+
+  const write = (evt: SSEEvent) => responseStream.write(formatSSE(evt));
+
+  try {
+    // Get API key from header
+    const userGeminiApiKey =
+      event.headers["x-gemini-api-key"] || event.headers["X-Gemini-API-Key"];
+
+    if (!userGeminiApiKey) {
       write({
         type: "error",
-        code: "ANALYSIS_FAILED",
-        message: error instanceof Error ? error.message : "Analysis failed",
+        code: "NO_API_KEY",
+        message: "Gemini API key is required.",
       });
-    } finally {
       responseStream.end();
+      return;
     }
+
+    // Parse request body
+    let requestBody: { storagePath: string };
+    try {
+      if (event.isBase64Encoded) {
+        requestBody = JSON.parse(Buffer.from(event.body, "base64").toString("utf-8"));
+      } else {
+        requestBody = JSON.parse(event.body);
+      }
+    } catch {
+      write({
+        type: "error",
+        code: "INVALID_JSON",
+        message: "Invalid JSON in request body",
+      });
+      responseStream.end();
+      return;
+    }
+
+    if (!requestBody.storagePath) {
+      write({
+        type: "error",
+        code: "INVALID_REQUEST",
+        message: "storagePath is required",
+      });
+      responseStream.end();
+      return;
+    }
+
+    write({
+      type: "progress",
+      stage: "preparing",
+      progress: 5,
+      message: "Downloading from storage...",
+    });
+
+    // Download from Supabase Storage
+    const supabase = getSupabaseClient();
+    console.log(`[lambda] Downloading from storage: ${requestBody.storagePath}`);
+
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from("uploads")
+      .download(requestBody.storagePath);
+
+    if (downloadError || !fileData) {
+      console.error("[lambda] Download error:", downloadError);
+      write({
+        type: "error",
+        code: "DOWNLOAD_FAILED",
+        message: downloadError?.message || "Failed to download from storage",
+      });
+      responseStream.end();
+      return;
+    }
+
+    // Convert Blob to Buffer
+    const rawBuffer = Buffer.from(await fileData.arrayBuffer());
+    console.log(`[lambda] Downloaded ${rawBuffer.length} bytes from storage`);
+
+    // Check for gzip and decompress
+    let bodyText: string;
+    if (isGzipBuffer(rawBuffer)) {
+      const decompressed = gunzipSync(rawBuffer);
+      bodyText = decompressed.toString("utf-8");
+      console.log(`[lambda] Decompressed: ${rawBuffer.length} -> ${bodyText.length} bytes`);
+    } else {
+      bodyText = rawBuffer.toString("utf-8");
+    }
+
+    // Parse JSON
+    let body: AnalysisRequest;
+    try {
+      body = JSON.parse(bodyText) as AnalysisRequest;
+      console.log(`[lambda] Parsed ${body.sessions?.length || 0} sessions from storage`);
+    } catch (parseError) {
+      write({
+        type: "error",
+        code: "INVALID_JSON",
+        message: "Invalid JSON in stored file",
+      });
+      responseStream.end();
+      return;
+    }
+
+    // Validate request
+    if (!body.sessions || !Array.isArray(body.sessions) || body.sessions.length === 0) {
+      write({
+        type: "error",
+        code: "INVALID_REQUEST",
+        message: "At least one session is required",
+      });
+      responseStream.end();
+      return;
+    }
+
+    // Run the shared analysis logic
+    await runAnalysis(body, userGeminiApiKey, write);
+
+    // Clean up: delete the uploaded file from storage
+    try {
+      await supabase.storage.from("uploads").remove([requestBody.storagePath]);
+      console.log(`[lambda] Cleaned up storage file: ${requestBody.storagePath}`);
+    } catch (cleanupError) {
+      console.warn("[lambda] Failed to cleanup storage file:", cleanupError);
+    }
+  } catch (error) {
+    console.error("[lambda] Analysis from storage error:", error);
+    write({
+      type: "error",
+      code: "ANALYSIS_FAILED",
+      message: error instanceof Error ? error.message : "Analysis failed",
+    });
+  } finally {
+    responseStream.end();
+  }
+}
+
+/**
+ * Handle direct upload (legacy, <6MB only)
+ */
+async function handleDirectUpload(
+  event: LambdaEvent,
+  responseStream: Writable
+): Promise<void> {
+  // Set SSE headers via metadata
+  const metadata = {
+    statusCode: 200,
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  };
+  responseStream = awslambda.HttpResponseStream.from(responseStream, metadata);
+
+  const write = (evt: SSEEvent) => responseStream.write(formatSSE(evt));
+
+  try {
+    // Get API key from header
+    const userGeminiApiKey =
+      event.headers["x-gemini-api-key"] || event.headers["X-Gemini-API-Key"];
+
+    if (!userGeminiApiKey) {
+      write({
+        type: "error",
+        code: "NO_API_KEY",
+        message: "Gemini API key is required. Pass --api-key flag or set GOOGLE_GEMINI_API_KEY environment variable.",
+      });
+      responseStream.end();
+      return;
+    }
+
+    // Decode body
+    let rawBuffer: Buffer;
+    if (event.isBase64Encoded) {
+      rawBuffer = Buffer.from(event.body, "base64");
+    } else {
+      rawBuffer = Buffer.from(event.body, "utf-8");
+    }
+
+    console.log(`[lambda] Direct upload: ${rawBuffer.length} bytes`);
+
+    // Check for gzip
+    const hasGzipMagicBytes = isGzipBuffer(rawBuffer);
+
+    let bodyText: string;
+    if (hasGzipMagicBytes) {
+      const decompressed = gunzipSync(rawBuffer);
+      bodyText = decompressed.toString("utf-8");
+      console.log(`[lambda] Decompressed: ${rawBuffer.length} -> ${bodyText.length} bytes`);
+    } else {
+      bodyText = rawBuffer.toString("utf-8");
+    }
+
+    if (bodyText.length > MAX_BODY_SIZE) {
+      write({
+        type: "error",
+        code: "PAYLOAD_TOO_LARGE",
+        message: `Request body exceeds ${MAX_BODY_SIZE / 1024 / 1024}MB limit`,
+      });
+      responseStream.end();
+      return;
+    }
+
+    // Parse JSON
+    let body: AnalysisRequest;
+    try {
+      body = JSON.parse(bodyText) as AnalysisRequest;
+      console.log(`[lambda] Parsed ${body.sessions?.length || 0} sessions`);
+    } catch (parseError) {
+      write({
+        type: "error",
+        code: "INVALID_JSON",
+        message: parseError instanceof Error ? parseError.message : "Invalid JSON",
+      });
+      responseStream.end();
+      return;
+    }
+
+    // Validate request
+    if (!body.sessions || !Array.isArray(body.sessions) || body.sessions.length === 0) {
+      write({
+        type: "error",
+        code: "INVALID_REQUEST",
+        message: "At least one session is required",
+      });
+      responseStream.end();
+      return;
+    }
+
+    // Run the shared analysis logic
+    await runAnalysis(body, userGeminiApiKey, write);
+  } catch (error) {
+    console.error("[lambda] Direct upload error:", error);
+    write({
+      type: "error",
+      code: "ANALYSIS_FAILED",
+      message: error instanceof Error ? error.message : "Analysis failed",
+    });
+  } finally {
+    responseStream.end();
+  }
+}
+
+/**
+ * Lambda handler with Response Streaming and Routing
+ */
+export const handler = awslambda.streamifyResponse(
+  async (event: LambdaEvent, responseStream: Writable) => {
+    const path = event.rawPath || event.path || "/";
+    console.log(`[lambda] Request path: ${path}`);
+
+    // Route: POST /upload-url - Generate Supabase Storage signed upload URL
+    if (path === "/upload-url" || path.endsWith("/upload-url")) {
+      return handleGetUploadUrl(event, responseStream);
+    }
+
+    // Route: POST /analyze - Analyze from Supabase Storage
+    if (path === "/analyze" || path.endsWith("/analyze")) {
+      return handleAnalyzeFromStorage(event, responseStream);
+    }
+
+    // Default: Legacy direct upload (backward compatible)
+    return handleDirectUpload(event, responseStream);
   }
 );

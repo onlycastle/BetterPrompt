@@ -1,6 +1,6 @@
 {
   "name": "no-ai-slop",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Analyze your AI collaboration style with Claude Code",
   "type": "module",
   "bin": {

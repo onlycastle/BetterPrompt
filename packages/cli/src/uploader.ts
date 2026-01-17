@@ -4,6 +4,9 @@
  * Handles communication with the NoMoreAISlop server
  * Supports SSE streaming for real-time progress updates
  * Uses gzip compression to reduce payload size
+ *
+ * For large payloads (>5MB), automatically uses Supabase Storage
+ * to bypass Lambda Function URL's 6MB request limit.
  */
 
 import { gzipSync } from 'node:zlib';
@@ -12,8 +15,8 @@ import type { ScanResult } from './scanner.js';
 /**
  * Lambda Function URL for analysis API
  * Calls Lambda directly to bypass Vercel's 4.5MB body size limit
- * - Supports 50MB payloads
  * - 15 minute timeout
+ * - Supports Supabase Storage for large payloads
  */
 const DEFAULT_LAMBDA_URL = 'https://kgdby5xqjypfnlihknmcllqwgq0labzp.lambda-url.ap-northeast-2.on.aws';
 const LAMBDA_API_URL = process.env.NOSLOP_API_URL || DEFAULT_LAMBDA_URL;
@@ -24,10 +27,17 @@ const LAMBDA_API_URL = process.env.NOSLOP_API_URL || DEFAULT_LAMBDA_URL;
 const REPORT_BASE_URL = 'https://www.nomoreaislop.xyz';
 
 /**
- * Lambda payload limit (25MB with safety margin)
- * Lambda handler supports up to 50MB, but we use 25MB for safety
+ * Threshold for using Supabase Storage upload
+ * Lambda Function URL has a hard 6MB request payload limit
+ * Use Storage for anything larger than 5MB (with safety margin)
  */
-const PAYLOAD_LIMIT = 25 * 1024 * 1024;
+const USE_STORAGE_THRESHOLD = 5 * 1024 * 1024;
+
+/**
+ * Maximum payload size (for truncation purposes)
+ * This is effectively unlimited now since we use Storage for large payloads
+ */
+const PAYLOAD_LIMIT = 100 * 1024 * 1024;
 
 /**
  * Target content length per session after truncation (characters)
@@ -216,7 +226,65 @@ function formatSize(bytes: number): string {
 }
 
 /**
+ * Response from /upload-url endpoint
+ */
+interface UploadUrlResponse {
+  signedUrl?: string;
+  storagePath?: string;
+  token?: string;
+  path?: string;
+  error?: string;
+}
+
+/**
+ * Upload large payload via Supabase Storage (presigned URL)
+ * Used when payload exceeds Lambda Function URL's 6MB limit
+ */
+async function uploadViaStorage(
+  compressedBody: Buffer,
+  onProgress?: ProgressCallback
+): Promise<{ storagePath: string }> {
+  // 1. Get signed upload URL from Lambda
+  onProgress?.('preparing', 10, 'Getting upload URL...');
+
+  const urlResponse = await fetch(`${LAMBDA_API_URL}/upload-url`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  if (!urlResponse.ok) {
+    const errorText = await urlResponse.text().catch(() => '');
+    throw new Error(`Failed to get upload URL: ${urlResponse.status} ${errorText}`);
+  }
+
+  const urlData = await urlResponse.json() as UploadUrlResponse;
+
+  if (urlData.error || !urlData.signedUrl || !urlData.storagePath) {
+    throw new Error(urlData.error || 'Invalid upload URL response');
+  }
+
+  // 2. Upload to Supabase Storage via signed URL
+  onProgress?.('preparing', 30, `Uploading ${formatSize(compressedBody.length)} to secure storage...`);
+
+  const uploadResponse = await fetch(urlData.signedUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: new Uint8Array(compressedBody),
+  });
+
+  if (!uploadResponse.ok) {
+    const errorText = await uploadResponse.text().catch(() => '');
+    throw new Error(`Storage upload failed: ${uploadResponse.status} ${errorText}`);
+  }
+
+  onProgress?.('preparing', 50, 'Upload complete, starting analysis...');
+
+  return { storagePath: urlData.storagePath };
+}
+
+/**
  * Upload session data for analysis with streaming progress
+ * Automatically uses Supabase Storage for large payloads (>5MB)
  */
 export async function uploadForAnalysis(
   scanResult: ScanResult,
@@ -238,7 +306,32 @@ export async function uploadForAnalysis(
     ? `${formatSize(originalSizeBytes)} → ${formatSize(truncatedSizeBytes)} (gzip: ${formatSize(compressedSizeBytes)})`
     : `${formatSize(originalSizeBytes)} (gzip: ${formatSize(compressedSizeBytes)})`;
 
-  // Notify about payload preparation with size info
+  // Route based on payload size
+  if (compressedSizeBytes > USE_STORAGE_THRESHOLD) {
+    // Large payload: Use Supabase Storage path
+    onProgress?.('preparing', 0, `${sizeInfo} | Using secure storage for large payload`);
+
+    const { storagePath } = await uploadViaStorage(compressedBody, onProgress);
+
+    // Trigger analysis from storage
+    const response = await fetch(`${LAMBDA_API_URL}/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Gemini-API-Key': apiKey,
+      },
+      body: JSON.stringify({ storagePath }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(`Analysis request failed: ${response.status} ${errorText}`);
+    }
+
+    return handleStreamingResponse(response, onProgress);
+  }
+
+  // Small payload: Direct upload (legacy path)
   if (truncated) {
     const truncationMsg = droppedCount > 0
       ? `Truncated and excluded ${droppedCount} session(s)`
@@ -252,7 +345,7 @@ export async function uploadForAnalysis(
     method: 'POST',
     headers: {
       'Content-Type': 'application/octet-stream',
-      'X-Content-Encoding': 'gzip',  // Custom header to bypass Vercel interception
+      'X-Content-Encoding': 'gzip',
       'X-Gemini-API-Key': apiKey,
     },
     body: new Uint8Array(compressedBody),
@@ -260,7 +353,7 @@ export async function uploadForAnalysis(
 
   if (!response.ok) {
     const responseText = await response.text().catch(() => '');
-    let errorMessage = `Server error: ${response.status}`;
+    let errorMessage = `Server error: ${response.status} (payload: ${formatSize(compressedSizeBytes)})`;
     try {
       const error = JSON.parse(responseText) as UploadError;
       errorMessage = error.message || errorMessage;
@@ -278,7 +371,7 @@ export async function uploadForAnalysis(
 
   if (contentType.includes('text/event-stream')) {
     // Handle SSE streaming response
-    return await handleStreamingResponse(response, onProgress);
+    return handleStreamingResponse(response, onProgress);
   } else {
     // Handle legacy JSON response (fallback)
     const result = await response.json() as AnalysisResult;
