@@ -25,6 +25,7 @@ export const api = new sst.aws.Function("AnalysisFunction", {
   },
   // Enable Function URL for direct invocation (no API Gateway)
   url: {
+    authorization: "none", // Public access (no IAM auth required)
     cors: {
       allowOrigins: ["*"],
       allowMethods: ["*"],
