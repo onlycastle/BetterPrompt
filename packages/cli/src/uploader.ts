@@ -12,10 +12,17 @@ import type { ScanResult } from './scanner.js';
 const API_BASE_URL = process.env.NOSLOP_API_URL || 'https://www.nomoreaislop.xyz';
 
 /**
- * Vercel Pro payload limit with safety margin
- * Pro: 4.5MB, we use 4MB to be safe
+ * Analysis endpoint path
+ * Uses /api/lambda/ which is proxied to AWS Lambda for:
+ * - 10MB+ payload support (vs Vercel's 4.5MB)
+ * - 15 minute timeout (vs Vercel's 5 minutes)
  */
-const PAYLOAD_LIMIT = 4 * 1024 * 1024;
+const ANALYSIS_ENDPOINT = '/api/lambda/';
+
+/**
+ * Lambda payload limit (10MB with safety margin)
+ */
+const PAYLOAD_LIMIT = 10 * 1024 * 1024;
 
 /**
  * Target content length per session after truncation (characters)
@@ -178,7 +185,7 @@ export async function uploadForAnalysis(
     onProgress?.('preparing', 0, msg);
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/analysis/remote`, {
+  const response = await fetch(`${API_BASE_URL}${ANALYSIS_ENDPOINT}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/octet-stream',

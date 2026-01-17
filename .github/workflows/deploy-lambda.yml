@@ -41,13 +41,69 @@ jobs:
           sudo rm -rf ~/.pulumi || true
 
       - name: Deploy with SST
-        run: npx sst deploy --stage production
+        id: sst-deploy
+        run: |
+          # Deploy and capture output
+          npx sst deploy --stage production 2>&1 | tee sst-output.txt
+
+          # Extract API URL from SST output
+          API_URL=$(grep -oP 'apiUrl:\s*\K(https://[^\s]+)' sst-output.txt || true)
+          if [ -n "$API_URL" ]; then
+            echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+            echo "Lambda API URL: $API_URL"
+          fi
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Update Vercel environment variable
+        if: steps.sst-deploy.outputs.api_url != ''
+        run: |
+          # Install Vercel CLI
+          npm i -g vercel
+
+          # Link to project (required for env commands)
+          vercel link --yes --token=${{ secrets.VERCEL_TOKEN }}
+
+          # Try update first (for existing var), fallback to add (for new var)
+          echo "${{ steps.sst-deploy.outputs.api_url }}" | vercel env add LAMBDA_API_URL production --force --token=${{ secrets.VERCEL_TOKEN }} \
+            || echo "Failed to update env var - may need manual setup"
+
+          echo "Updated Vercel LAMBDA_API_URL to: ${{ steps.sst-deploy.outputs.api_url }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Add public invoke permission
+        run: |
+          # Get the Lambda function name (SST naming: nomoreaislop-production-AnalysisFunctionFunction-*)
+          FUNCTION_NAME=$(aws lambda list-functions \
+            --query "Functions[?starts_with(FunctionName, 'nomoreaislop-production-AnalysisFunction')].FunctionName" \
+            --output text)
+
+          if [ -n "$FUNCTION_NAME" ]; then
+            echo "Found Lambda function: $FUNCTION_NAME"
+
+            # Add lambda:InvokeFunction permission for public access
+            # This is required alongside lambda:InvokeFunctionUrl (AWS 2025 policy)
+            aws lambda add-permission \
+              --function-name "$FUNCTION_NAME" \
+              --statement-id "AllowPublicInvoke" \
+              --action "lambda:InvokeFunction" \
+              --principal "*" \
+              2>/dev/null || echo "Permission already exists or was updated"
+          else
+            echo "Warning: Lambda function not found"
+          fi
 
       - name: Output API URL
         run: |
           echo "## Lambda API Deployed 🚀" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Check SST console for the API URL" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.sst-deploy.outputs.api_url }}" ]; then
+            echo "**API URL:** ${{ steps.sst-deploy.outputs.api_url }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Vercel environment variable updated automatically." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Check SST console for the API URL" >> $GITHUB_STEP_SUMMARY
+          fi

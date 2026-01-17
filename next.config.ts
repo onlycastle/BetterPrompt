@@ -1,5 +1,8 @@
 import type { NextConfig } from 'next';
 
+// Lambda URL for heavy analysis API (bypasses Vercel's 4.5MB limit)
+const LAMBDA_API_URL = process.env.LAMBDA_API_URL || 'https://kgdby5xqjypfnlihknmcllqwgq0labzp.lambda-url.ap-northeast-2.on.aws';
+
 const nextConfig: NextConfig = {
   // Enable server external packages for LLM SDKs
   serverExternalPackages: ['@anthropic-ai/sdk', '@google/genai'],
@@ -30,6 +33,17 @@ const nextConfig: NextConfig = {
   eslint: {
     // Allow build to succeed even with lint errors during migration
     ignoreDuringBuilds: true,
+  },
+
+  // Rewrite /api/lambda/* to Lambda Function URL
+  // This bypasses Vercel's 4.5MB payload limit and 5-minute timeout
+  async rewrites() {
+    return [
+      {
+        source: '/api/lambda/:path*',
+        destination: `${LAMBDA_API_URL}/:path*`,
+      },
+    ];
   },
 };
 
