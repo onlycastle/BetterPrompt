@@ -67,11 +67,15 @@ export function displayResults(result: AnalysisResult): void {
   lines.push('');
 
   // Summary (truncated for CLI)
-  const summaryLines = result.personalitySummary.split('\n');
-  const truncatedSummary = summaryLines.slice(0, 3).join('\n');
-  lines.push(pc.italic(truncatedSummary));
-  if (summaryLines.length > 3) {
-    lines.push(pc.dim('...'));
+  if (result.personalitySummary) {
+    const summaryLines = result.personalitySummary.split('\n');
+    const truncatedSummary = summaryLines.slice(0, 3).join('\n');
+    lines.push(pc.italic(truncatedSummary));
+    if (summaryLines.length > 3) {
+      lines.push(pc.dim('...'));
+    }
+  } else {
+    lines.push(pc.dim('(Personality summary not available)'));
   }
 
   lines.push('');

@@ -36,9 +36,10 @@ export type AnalyzedSessionInfo = z.infer<typeof AnalyzedSessionInfoSchema>;
 
 /**
  * Personalized evidence with actual quotes
+ * NOTE: min constraints removed - Gemini doesn't reliably follow minimum length requirements
  */
 export const PersonalizedEvidenceSchema = z.object({
-  quote: z.string().min(20).max(500).describe('Actual quote from the conversation'),
+  quote: z.string().max(500).describe('Actual quote from the conversation (target: 20-500 chars)'),
   sessionDate: z.string().describe('When this was said (ISO date)'),
   context: z.string().max(200).describe('Brief context of what was being discussed'),
   significance: z.string().max(300).describe('What this reveals about their personality'),
@@ -48,10 +49,11 @@ export type PersonalizedEvidence = z.infer<typeof PersonalizedEvidenceSchema>;
 
 /**
  * Strength with personalized evidence
+ * NOTE: min constraints removed - Gemini doesn't reliably follow minimum length requirements
  */
 export const PersonalizedStrengthSchema = z.object({
   title: z.string().max(50).describe('Short title for this strength'),
-  description: z.string().min(100).max(500).describe('Detailed description of this strength'),
+  description: z.string().max(500).describe('Detailed description of this strength (target: 100-500 chars)'),
   evidence: z
     .array(PersonalizedEvidenceSchema)
     .describe('Quotes demonstrating this strength (target: 2-5)'),
@@ -66,10 +68,11 @@ export type PersonalizedStrength = z.infer<typeof PersonalizedStrengthSchema>;
 
 /**
  * Growth area with specific examples
+ * NOTE: min constraints removed - Gemini doesn't reliably follow minimum length requirements
  */
 export const GrowthAreaSchema = z.object({
   title: z.string().max(50),
-  description: z.string().min(100).max(500),
+  description: z.string().max(500).describe('Detailed description (target: 100-500 chars)'),
   evidence: z
     .array(PersonalizedEvidenceSchema)
     .describe('Examples showing this growth opportunity (target: 1-3)'),
@@ -727,16 +730,19 @@ export type TopFocusAreas = z.infer<typeof TopFocusAreasSchema>;
  */
 export const PersonalityInsightsSchema = z.object({
   /** Core observation with evidence and "~시죠?/don't you?" pattern */
-  coreObservation: z.string().min(100).max(300)
-    .describe('Lead with specific evidence + confirmation question'),
+  // NOTE: min constraint removed - Gemini doesn't reliably follow minimum length requirements
+  coreObservation: z.string().max(300)
+    .describe('Lead with specific evidence + confirmation question (target: 100-300 chars)'),
 
   /** How their personality connects to their coding strengths */
+  // NOTE: min constraint removed for consistency with Gemini behavior
   strengthConnection: z.string().max(300)
-    .describe('Connect personality trait to coding strength'),
+    .describe('Connect personality trait to coding strength (target: 100-300 chars)'),
 
   /** Growth opportunity framed through strength-shadow connection */
+  // NOTE: min constraint removed for consistency with Gemini behavior
   growthOpportunity: z.string().max(300)
-    .describe('Frame growth as flip side of strength'),
+    .describe('Frame growth as flip side of strength (target: 100-300 chars)'),
 
   /** Daily life connection for deeper rapport (optional) */
   dailyLifeConnection: z.string().max(150).optional()
@@ -863,11 +869,11 @@ export const VerboseEvaluationSchema = z.object({
   }),
 
   // FREE TIER - Verbose content
+  // NOTE: min constraint removed - Gemini doesn't reliably follow minimum length requirements
   personalitySummary: z
     .string()
-    .min(300)
     .max(1500)
-    .describe('Hyper-personalized summary of their AI coding personality (expanded for premium value)'),
+    .describe('Hyper-personalized summary of their AI coding personality (target: 300-1500 chars)'),
 
   // NEW: Per-dimension insights (replaces global strengths/growthAreas)
   dimensionInsights: z
@@ -939,11 +945,11 @@ export const VerboseLLMResponseSchema = z.object({
   }),
 
   // Content
+  // NOTE: min constraint removed - Gemini doesn't reliably follow minimum length requirements
   personalitySummary: z
     .string()
-    .min(300)
     .max(1500)
-    .describe('Hyper-personalized summary of their AI coding personality (expanded for premium value)'),
+    .describe('Hyper-personalized summary of their AI coding personality (target: 300-1500 chars)'),
 
   // Dimension insights with REDUCED nesting (no evidence field)
   dimensionInsights: z

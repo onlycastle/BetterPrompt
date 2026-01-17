@@ -165,8 +165,28 @@ export class GeminiClient {
     // Validate against Zod schema
     const result = schema.safeParse(parsed);
     if (!result.success) {
-      console.error('Schema validation failed:', result.error.errors);
-      throw new Error(`Invalid response structure: ${result.error.message}`);
+      console.error('[GeminiClient] Schema validation failed:', result.error.errors);
+
+      // Build detailed debug info for error message
+      const debugDetails: string[] = [];
+      for (const error of result.error.errors) {
+        const path = error.path.join('.');
+        let actualValue: unknown = parsed;
+        for (const key of error.path) {
+          if (actualValue && typeof actualValue === 'object') {
+            actualValue = (actualValue as Record<string, unknown>)[key as string];
+          }
+        }
+        const valueInfo = typeof actualValue === 'string'
+          ? `"${actualValue.slice(0, 50)}${actualValue.length > 50 ? '...' : ''}" (${actualValue.length} chars)`
+          : JSON.stringify(actualValue)?.slice(0, 100);
+        debugDetails.push(`${path}: ${valueInfo}`);
+        console.error(`[GeminiClient] Field "${path}" value:`, valueInfo);
+      }
+
+      throw new Error(
+        `Invalid response structure: ${result.error.message}\n\nDebug info:\n${debugDetails.join('\n')}`
+      );
     }
 
     return result.data;

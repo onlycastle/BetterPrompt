@@ -204,7 +204,7 @@ export interface AnalysisResult {
     speedrunner: number;
     craftsman: number;
   };
-  personalitySummary: string;
+  personalitySummary?: string; // Optional: may be undefined if LLM fails to generate
   reportUrl: string;
 }
 
