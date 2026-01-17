@@ -43,5 +43,9 @@
     "picocolors": "^1.1.1",
     "ora": "^8.1.1",
     "boxen": "^8.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
   }
 }
