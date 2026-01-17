@@ -14,7 +14,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "analyze": "tsx scripts/analyze-style.ts"
+    "analyze": "tsx scripts/analyze-style.ts",
+    "sst:dev": "sst dev",
+    "sst:deploy": "sst deploy --stage production",
+    "sst:remove": "sst remove"
   },
   "keywords": [
     "claude",
@@ -59,8 +62,10 @@
     "zod-to-json-schema": "^3.24.0"
   },
   "devDependencies": {
+    "sst": "^3.17.25",
     "@eslint/js": "^9.39.2",
     "@playwright/test": "^1.57.0",
+    "@types/aws-lambda": "^8.10.147",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsdom": "^27.0.0",
