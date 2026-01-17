@@ -466,6 +466,100 @@ export const PlanningAnalysisSchema = z.object({
 export type PlanningAnalysis = z.infer<typeof PlanningAnalysisSchema>;
 
 // ============================================================================
+// TOP FOCUS AREAS SCHEMA (Personalized Priorities from Stage 1)
+// ============================================================================
+
+/**
+ * Action steps for a focus area (START/STOP/CONTINUE framework)
+ */
+export const FocusAreaActionsSchema = z.object({
+  /** What to START doing */
+  start: z.string().max(200),
+  /** What to STOP doing */
+  stop: z.string().max(200),
+  /** What to CONTINUE doing */
+  continue: z.string().max(200),
+});
+export type FocusAreaActions = z.infer<typeof FocusAreaActionsSchema>;
+
+/**
+ * Single top focus area with personalized narrative
+ * Transformed from Stage 1's personalizedPriorities
+ */
+export const TopFocusAreaSchema = z.object({
+  /** Priority rank (1, 2, or 3) */
+  rank: z.number().min(1).max(3),
+
+  /** Which dimension this priority relates to */
+  dimension: DimensionNameEnumSchema,
+
+  /** Specific focus area title */
+  title: z.string().max(100),
+
+  /** WHY this matters for this developer (narrative) */
+  narrative: z.string().max(500),
+
+  /** Expected impact if they focus on this */
+  expectedImpact: z.string().max(200),
+
+  /** Priority score (0-100) from Stage 1 calculation */
+  priorityScore: z.number().min(0).max(100),
+
+  /** Specific action steps */
+  actions: FocusAreaActionsSchema.optional(),
+});
+export type TopFocusArea = z.infer<typeof TopFocusAreaSchema>;
+
+/**
+ * Top 3 Focus Areas section
+ * The MOST ACTIONABLE part of the report
+ */
+export const TopFocusAreasSchema = z.object({
+  /** Top 3 personalized priorities */
+  areas: z.array(TopFocusAreaSchema).max(3),
+
+  /** Overall summary explaining the selection */
+  summary: z.string().max(500),
+});
+export type TopFocusAreas = z.infer<typeof TopFocusAreasSchema>;
+
+// ============================================================================
+// PERSONALITY INSIGHTS SCHEMA (User-Facing - No Labels/Scores)
+// ============================================================================
+
+/**
+ * Personality insights for the user
+ * Uses 4 storytelling techniques to create "Oh wow, they really know me!" feeling
+ *
+ * IMPORTANT: NO MBTI codes, NO psychological terms, NO scores
+ * Only natural, conversational observations
+ *
+ * 4 Techniques:
+ * 1. Specific Evidence - "You said '/plan' 8 times..."
+ * 2. Confirmation Pattern - "You like to see the whole picture, don't you?"
+ * 3. Strength-Shadow Connection - "That speed is great, but sometimes..."
+ * 4. Daily Life Bridge - "Probably your motto outside coding too, right?"
+ */
+export const PersonalityInsightsSchema = z.object({
+  /** Core observation with evidence and "~시죠?/don't you?" pattern */
+  coreObservation: z.string().min(100).max(300)
+    .describe('Lead with specific evidence + confirmation question'),
+
+  /** How their personality connects to their coding strengths */
+  strengthConnection: z.string().max(300)
+    .describe('Connect personality trait to coding strength'),
+
+  /** Growth opportunity framed through strength-shadow connection */
+  growthOpportunity: z.string().max(300)
+    .describe('Frame growth as flip side of strength'),
+
+  /** Daily life connection for deeper rapport (optional) */
+  dailyLifeConnection: z.string().max(150).optional()
+    .describe('Connect coding style to real life for "wow" moment'),
+});
+export type PersonalityInsights = z.infer<typeof PersonalityInsightsSchema>;
+
+// ============================================================================
 // PREMIUM TIER SCHEMAS (LOCKED)
 // ============================================================================
 
@@ -619,6 +713,14 @@ export const VerboseEvaluationSchema = z.object({
   planningAnalysis: PlanningAnalysisSchema.optional()
     .describe('Planning behaviors analysis'),
 
+  // NEW: Top 3 Focus Areas (from Stage 1 personalizedPriorities)
+  topFocusAreas: TopFocusAreasSchema.optional()
+    .describe('Top 3 personalized priorities - the MOST ACTIONABLE part'),
+
+  // NEW: Personality Insights (from Module B personalityProfile)
+  personalityInsights: PersonalityInsightsSchema.optional()
+    .describe('Personality-driven insights using 4 storytelling techniques'),
+
   // PREMIUM TIER - Locked content
   toolUsageDeepDive: z.array(ToolUsageInsightSchema).optional(),
   tokenEfficiency: TokenEfficiencySchema.optional(),
@@ -681,5 +783,13 @@ export const VerboseLLMResponseSchema = z.object({
   // NEW: Planning Analysis (Premium/Enterprise)
   planningAnalysis: PlanningAnalysisSchema.optional()
     .describe('Planning behaviors analysis'),
+
+  // NEW: Top 3 Focus Areas (from Stage 1 personalizedPriorities)
+  topFocusAreas: TopFocusAreasSchema.optional()
+    .describe('Top 3 personalized priorities - the MOST ACTIONABLE part'),
+
+  // NEW: Personality Insights (from Module B personalityProfile)
+  personalityInsights: PersonalityInsightsSchema.optional()
+    .describe('Personality-driven insights using 4 storytelling techniques'),
 });
 export type VerboseLLMResponse = z.infer<typeof VerboseLLMResponseSchema>;

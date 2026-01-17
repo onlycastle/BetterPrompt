@@ -20,6 +20,7 @@ import {
 } from './display.js';
 import { estimateAnalysisCost, renderCostEstimate } from './cost-estimator.js';
 import { saveCache, loadCache, displayCacheHelp } from './cache.js';
+import { createProgressDisplay } from './progress.js';
 
 /**
  * Parse CLI arguments
@@ -278,15 +279,16 @@ async function main(): Promise<void> {
     }
   }
 
-  // Upload and analyze with streaming progress
-  const analyzeSpinner = ora('Analyzing your AI collaboration style...').start();
+  // Upload and analyze with rich progress display
+  const progressDisplay = createProgressDisplay();
+  progressDisplay.start();
 
   try {
     const result = await uploadForAnalysis(filteredResult, apiKey, (stage, progress, message) => {
-      // Update spinner text with progress
-      analyzeSpinner.text = `${message} (${progress}%)`;
+      // Update progress display with detailed info
+      progressDisplay.update(stage, progress, message);
     });
-    analyzeSpinner.succeed('Analysis complete!');
+    progressDisplay.succeed('Analysis complete!');
 
     // Save to cache if requested
     if (args.saveCache) {
@@ -296,7 +298,7 @@ async function main(): Promise<void> {
     // Display results
     displayResults(result);
   } catch (error) {
-    analyzeSpinner.fail('Analysis failed');
+    progressDisplay.fail('Analysis failed');
     displayError(error instanceof Error ? error.message : 'Unknown error');
     process.exit(1);
   }
