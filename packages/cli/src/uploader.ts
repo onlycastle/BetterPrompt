@@ -9,20 +9,25 @@
 import { gzipSync } from 'node:zlib';
 import type { ScanResult } from './scanner.js';
 
-const API_BASE_URL = process.env.NOSLOP_API_URL || 'https://www.nomoreaislop.xyz';
+/**
+ * Lambda Function URL for analysis API
+ * Calls Lambda directly to bypass Vercel's 4.5MB body size limit
+ * - Supports 50MB payloads
+ * - 15 minute timeout
+ */
+const DEFAULT_LAMBDA_URL = 'https://kgdby5xqjypfnlihknmcllqwgq0labzp.lambda-url.ap-northeast-2.on.aws';
+const LAMBDA_API_URL = process.env.NOSLOP_API_URL || DEFAULT_LAMBDA_URL;
 
 /**
- * Analysis endpoint path
- * Uses /api/lambda/ which is proxied to AWS Lambda for:
- * - 10MB+ payload support (vs Vercel's 4.5MB)
- * - 15 minute timeout (vs Vercel's 5 minutes)
+ * Web app base URL for report links
  */
-const ANALYSIS_ENDPOINT = '/api/lambda';
+const REPORT_BASE_URL = 'https://www.nomoreaislop.xyz';
 
 /**
- * Lambda payload limit (10MB with safety margin)
+ * Lambda payload limit (25MB with safety margin)
+ * Lambda handler supports up to 50MB, but we use 25MB for safety
  */
-const PAYLOAD_LIMIT = 10 * 1024 * 1024;
+const PAYLOAD_LIMIT = 25 * 1024 * 1024;
 
 /**
  * Target content length per session after truncation (characters)
@@ -52,14 +57,22 @@ function truncateSessionContent(content: string, maxLength: number): string {
 }
 
 /**
- * Prepare payload with automatic truncation if needed
- * Returns compressed payload that fits within Vercel limits
+ * Result of payload preparation with size metrics for debugging
  */
-function preparePayload(scanResult: ScanResult): {
+interface PreparePayloadResult {
   compressed: Buffer;
   truncated: boolean;
   droppedCount: number;
-} {
+  originalSizeBytes: number;      // Raw JSON size before any truncation
+  truncatedSizeBytes: number;     // JSON size after truncation (before compression)
+  compressedSizeBytes: number;    // Final gzip compressed size
+}
+
+/**
+ * Prepare payload with automatic truncation if needed
+ * Returns compressed payload that fits within Lambda limits
+ */
+function preparePayload(scanResult: ScanResult): PreparePayloadResult {
   // First attempt: full payload
   let sessions = scanResult.sessions.map(s => ({
     sessionId: s.metadata.sessionId,
@@ -75,10 +88,21 @@ function preparePayload(scanResult: ScanResult): {
     totalDurationMinutes: scanResult.totalDurationMinutes,
   };
 
-  let compressed = gzipSync(Buffer.from(JSON.stringify(payload), 'utf-8'));
+  // Track original size before any modifications
+  const originalJson = JSON.stringify(payload);
+  const originalSizeBytes = Buffer.byteLength(originalJson, 'utf-8');
+
+  let compressed = gzipSync(Buffer.from(originalJson, 'utf-8'));
 
   if (compressed.length <= PAYLOAD_LIMIT) {
-    return { compressed, truncated: false, droppedCount: 0 };
+    return {
+      compressed,
+      truncated: false,
+      droppedCount: 0,
+      originalSizeBytes,
+      truncatedSizeBytes: originalSizeBytes,
+      compressedSizeBytes: compressed.length,
+    };
   }
 
   // Second attempt: truncate session content
@@ -96,10 +120,18 @@ function preparePayload(scanResult: ScanResult): {
     totalDurationMinutes: scanResult.totalDurationMinutes,
   };
 
-  compressed = gzipSync(Buffer.from(JSON.stringify(payload), 'utf-8'));
+  let truncatedJson = JSON.stringify(payload);
+  compressed = gzipSync(Buffer.from(truncatedJson, 'utf-8'));
 
   if (compressed.length <= PAYLOAD_LIMIT) {
-    return { compressed, truncated: true, droppedCount: 0 };
+    return {
+      compressed,
+      truncated: true,
+      droppedCount: 0,
+      originalSizeBytes,
+      truncatedSizeBytes: Buffer.byteLength(truncatedJson, 'utf-8'),
+      compressedSizeBytes: compressed.length,
+    };
   }
 
   // Third attempt: drop sessions until it fits (keep most recent)
@@ -114,10 +146,18 @@ function preparePayload(scanResult: ScanResult): {
       totalDurationMinutes: sessions.reduce((sum, s) => sum + s.durationMinutes, 0),
     };
 
-    compressed = gzipSync(Buffer.from(JSON.stringify(payload), 'utf-8'));
+    truncatedJson = JSON.stringify(payload);
+    compressed = gzipSync(Buffer.from(truncatedJson, 'utf-8'));
   }
 
-  return { compressed, truncated: true, droppedCount };
+  return {
+    compressed,
+    truncated: true,
+    droppedCount,
+    originalSizeBytes,
+    truncatedSizeBytes: Buffer.byteLength(truncatedJson, 'utf-8'),
+    compressedSizeBytes: compressed.length,
+  };
 }
 
 export interface AnalysisResult {
@@ -167,6 +207,15 @@ function parseSSELine(line: string): SSEEvent | null {
 }
 
 /**
+ * Format bytes to human-readable size string
+ */
+function formatSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${bytes}B`;
+}
+
+/**
  * Upload session data for analysis with streaming progress
  */
 export async function uploadForAnalysis(
@@ -175,17 +224,31 @@ export async function uploadForAnalysis(
   onProgress?: ProgressCallback
 ): Promise<AnalysisResult> {
   // Prepare payload with automatic truncation if needed
-  const { compressed: compressedBody, truncated, droppedCount } = preparePayload(scanResult);
+  const {
+    compressed: compressedBody,
+    truncated,
+    droppedCount,
+    originalSizeBytes,
+    truncatedSizeBytes,
+    compressedSizeBytes,
+  } = preparePayload(scanResult);
 
-  // Notify about truncation
+  // Build size info string for user feedback
+  const sizeInfo = truncated
+    ? `${formatSize(originalSizeBytes)} → ${formatSize(truncatedSizeBytes)} (gzip: ${formatSize(compressedSizeBytes)})`
+    : `${formatSize(originalSizeBytes)} (gzip: ${formatSize(compressedSizeBytes)})`;
+
+  // Notify about payload preparation with size info
   if (truncated) {
-    const msg = droppedCount > 0
-      ? `Large payload detected. Truncated content and excluded ${droppedCount} session(s) to fit limits.`
-      : 'Large payload detected. Session content was truncated to fit limits.';
-    onProgress?.('preparing', 0, msg);
+    const truncationMsg = droppedCount > 0
+      ? `Truncated and excluded ${droppedCount} session(s)`
+      : 'Session content truncated';
+    onProgress?.('preparing', 0, `${sizeInfo} | ${truncationMsg}`);
+  } else {
+    onProgress?.('preparing', 0, sizeInfo);
   }
 
-  const response = await fetch(`${API_BASE_URL}${ANALYSIS_ENDPOINT}`, {
+  const response = await fetch(LAMBDA_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/octet-stream',
@@ -221,7 +284,7 @@ export async function uploadForAnalysis(
     const result = await response.json() as AnalysisResult;
     return {
       ...result,
-      reportUrl: `${API_BASE_URL}/r/${result.resultId}`,
+      reportUrl: `${REPORT_BASE_URL}/r/${result.resultId}`,
     };
   }
 }
@@ -269,7 +332,7 @@ async function handleStreamingResponse(
           case 'result':
             result = {
               ...event.data,
-              reportUrl: `${API_BASE_URL}/r/${event.data.resultId}`,
+              reportUrl: `${REPORT_BASE_URL}/r/${event.data.resultId}`,
             };
             break;
 
@@ -285,7 +348,7 @@ async function handleStreamingResponse(
       if (event?.type === 'result') {
         result = {
           ...event.data,
-          reportUrl: `${API_BASE_URL}/r/${event.data.resultId}`,
+          reportUrl: `${REPORT_BASE_URL}/r/${event.data.resultId}`,
         };
       } else if (event?.type === 'error') {
         throw new Error(event.message || 'Analysis failed');

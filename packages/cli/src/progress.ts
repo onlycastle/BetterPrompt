@@ -20,6 +20,11 @@ interface StageConfig {
 }
 
 const STAGE_CONFIGS: Record<string, StageConfig> = {
+  preparing: {
+    icon: '📦',
+    color: pc.magenta,
+    baseMessage: 'Preparing payload',
+  },
   parsing: {
     icon: '📄',
     color: pc.cyan,
