@@ -36,8 +36,8 @@ export type TypeDistribution = z.infer<typeof TypeDistributionSchema>;
  * Used as evidence for strengths or growth areas in specific dimensions
  */
 export const ExtractedQuoteSchema = z.object({
-  /** The actual quote from the developer (10-800 chars) */
-  quote: z.string().min(10).max(800),
+  /** The actual quote from the developer (10-1200 chars for richer context) */
+  quote: z.string().min(10).max(1200),
 
   /** ISO 8601 date string when this was said */
   sessionDate: z.string(),
@@ -49,7 +49,7 @@ export const ExtractedQuoteSchema = z.object({
   signal: z.enum(['strength', 'growth']),
 
   /** Specific behavior this quote demonstrates (e.g., "Iterative refinement", "Verification habit") */
-  behavioralMarker: z.string().max(100),
+  behavioralMarker: z.string().max(150),
 
   /** Confidence level in this quote's significance (0.0 - 1.0) */
   confidence: z.number().min(0).max(1),
@@ -80,11 +80,11 @@ export const DetectedPatternSchema = z.object({
   /** How many times this pattern was observed */
   frequency: z.number(),
 
-  /** Example quotes demonstrating this pattern (target: 2-5 examples) */
+  /** Example quotes demonstrating this pattern (target: 3-6 examples for richer evidence) */
   examples: z.array(z.string()),
 
-  /** Why this pattern matters (max 200 chars) */
-  significance: z.string().max(200),
+  /** Why this pattern matters and its impact (max 400 chars for detailed analysis) */
+  significance: z.string().max(400),
 });
 export type DetectedPattern = z.infer<typeof DetectedPatternSchema>;
 

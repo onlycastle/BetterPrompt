@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '50mb',
     },
+    // Middleware body size limit for large API requests (default: 10MB)
+    // https://nextjs.org/docs/app/api-reference/config/next-config-js/middlewareClientMaxBodySize
+    middlewareClientMaxBodySize: '50mb',
   },
 
   // Image optimization

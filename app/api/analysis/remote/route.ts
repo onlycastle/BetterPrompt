@@ -22,14 +22,13 @@ import {
   type AssistantMessage,
 } from '@/lib/domain/models/analysis';
 
-// Body size configuration for large session uploads
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb',
-    },
-  },
-};
+// Route Segment Config for App Router
+// Increase body size limit for large session uploads (default is 4MB)
+export const maxDuration = 60; // Allow up to 60 seconds for analysis
+export const dynamic = 'force-dynamic';
+
+// Custom body size limit - parse manually for large payloads
+const MAX_BODY_SIZE = 50 * 1024 * 1024; // 50MB
 
 /**
  * Session data from CLI
@@ -364,8 +363,37 @@ export async function POST(request: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        // Parse request body
-        const body = await request.json() as AnalysisRequest;
+        // Parse request body manually to handle large payloads
+        // Next.js App Router's request.json() has a 4MB default limit
+        console.log('[remote-analysis] Receiving request body...');
+        const bodyText = await request.text();
+        console.log(`[remote-analysis] Body received: ${bodyText.length} bytes (${(bodyText.length / 1024 / 1024).toFixed(2)} MB)`);
+
+        if (bodyText.length > MAX_BODY_SIZE) {
+          controller.enqueue(encoder.encode(formatSSE({
+            type: 'error',
+            code: 'PAYLOAD_TOO_LARGE',
+            message: `Request body exceeds ${MAX_BODY_SIZE / 1024 / 1024}MB limit`,
+          })));
+          controller.close();
+          return;
+        }
+
+        let body: AnalysisRequest;
+        try {
+          console.log('[remote-analysis] Parsing JSON...');
+          body = JSON.parse(bodyText) as AnalysisRequest;
+          console.log(`[remote-analysis] Parsed ${body.sessions?.length || 0} sessions`);
+        } catch (parseError) {
+          console.error('[remote-analysis] JSON parse error:', parseError);
+          controller.enqueue(encoder.encode(formatSSE({
+            type: 'error',
+            code: 'INVALID_JSON',
+            message: parseError instanceof Error ? parseError.message : 'Invalid JSON in request body',
+          })));
+          controller.close();
+          return;
+        }
 
         // Validate request
         if (!body.sessions || !Array.isArray(body.sessions) || body.sessions.length === 0) {

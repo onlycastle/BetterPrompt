@@ -60,23 +60,27 @@ Transform raw behavioral data into an ENGAGING, PERSONALIZED narrative that make
 
 # Transformation Rules
 
-**Personality Summary** (200-800 chars)
-- Synthesize type analysis into memorable prose
+**Personality Summary** (300-1500 chars for premium depth)
+- Synthesize type analysis into memorable, detailed prose
 - Lead with their most distinctive trait
-- Reference 2-3 specific quotes that capture their essence
-- Use **bold markers** to emphasize 2-4 key personality traits or distinctive phrases
+- Reference 3-5 specific quotes that capture their essence
+- Use **bold markers** to emphasize 3-5 key personality traits or distinctive phrases
 - Example: "Your **systematic verification habit** sets you apart..."
+- Include insights about their collaboration style, problem-solving approach, and growth mindset
+- Make this feel like a professional career assessment worth paying for
 
-**Dimension Insights** (exactly 6)
+**Dimension Insights** (exactly 6 - COMPREHENSIVE)
 For each dimension:
-- Create 2-4 themed STRENGTH CLUSTERS from raw signals
-  - Give each cluster a specific, descriptive title (not generic)
-  - Write descriptions that feel personal, not templated
-- Create 1-2 GROWTH AREAS (only where signals warrant)
+- Create 3-8 themed STRENGTH CLUSTERS from raw signals
+  - Give each cluster a specific, memorable title (not generic)
+  - Write detailed descriptions (up to 500 chars) that feel personal, not templated
+  - Include 3-6 evidence quotes per cluster for credibility
+- Create 2-5 GROWTH AREAS (where signals warrant)
   - Frame as opportunities, not criticisms
-  - Include specific, actionable recommendations
+  - Include detailed, actionable recommendations (up to 400 chars)
+  - Provide specific examples and next steps
 
-**Prompt Patterns** (3-6 patterns)
+**Prompt Patterns** (5-12 patterns for comprehensive analysis)
 - Name each pattern distinctively based on its characteristics
 - Show examples with actual quotes
 - Rate effectiveness and provide improvement tips
@@ -164,25 +168,59 @@ export function buildContentWriterUserPrompt(
   sessionCount: number,
   useKorean: boolean = false
 ): string {
-  const languageInstruction = useKorean
+  // Korean-specific instructions for different sections
+  const koreanHeader = useKorean
     ? `
-## Language Requirement
+## 🇰🇷 CRITICAL: Korean Output Required
 
-**IMPORTANT**: The developer's quotes are primarily in Korean. You MUST write ALL content (personalitySummary, strength/growth descriptions, pattern descriptions, tips, analysis, recommendations, etc.) in **Korean (한국어)**.
+**모든 출력은 한국어로 작성하세요.**
 
-- Write naturally in Korean, not translated English
-- Keep technical terms in English where appropriate (e.g., "AI", "IDE", "debugging")
-- Match the developer's communication style from their quotes
+The developer's quotes are in Korean. You MUST write EVERY field in **Korean (한국어)**:
+- personalitySummary: 한국어로 작성
+- patternName: 한국어로 작성 (예: "페르소나 앵커링", "깃 타임머신")
+- pattern description: 한국어로 작성
+- pattern tip: 한국어로 작성
+- example analysis: 한국어로 작성
+- strength/growth titles: 한국어로 작성
+- strength/growth descriptions: 한국어로 작성
+- ALL recommendations: 한국어로 작성
+
+Keep technical terms in English (AI, IDE, debugging, Git, commit).
+Match the developer's casual Korean style from their quotes.
 `
+    : '';
+
+  const koreanPatternReminder = useKorean
+    ? `
+   - ⚠️ **한국어로 작성**: patternName, description, tip, analysis 모두 한국어로`
+    : '';
+
+  const koreanDimensionReminder = useKorean
+    ? `
+   - ⚠️ **한국어로 작성**: title, description, recommendation 모두 한국어로`
+    : '';
+
+  const koreanSummaryReminder = useKorean
+    ? `
+   - ⚠️ **한국어로 작성**`
+    : '';
+
+  const koreanFinalReminder = useKorean
+    ? `
+
+---
+## ⚠️ Final Reminder: 모든 출력 필드를 한국어로 작성하세요!
+Do NOT write pattern names, descriptions, tips, or analysis in English.
+예시: "The Persona Anchor" ❌ → "페르소나 앵커" ✅`
     : '';
 
   return `# Context Data
 
 This developer has ${sessionCount} sessions analyzed.
-
+${koreanHeader}
 ## Structured Analysis Data (from Stage 1)
 ${structuredData}
-${languageInstruction}
+
 # Transformation Instructions
 
 Using the extracted data above, create a VerboseLLMResponse:
@@ -190,21 +228,22 @@ Using the extracted data above, create a VerboseLLMResponse:
 1. **Type Result**
    - Use typeAnalysis from the data directly (primaryType, controlLevel, distribution)
 
-2. **Personality Summary** (200-800 characters)
-   - Synthesize type reasoning into engaging prose
-   - Reference 2-3 personality-revealing quotes from extractedQuotes
-   - Emphasize 2-4 key phrases with **bold markers** (e.g., "Your **strategic planning approach**...")
+2. **Personality Summary** (300-1500 characters for premium value)
+   - Synthesize type reasoning into engaging, detailed prose
+   - Reference 3-5 personality-revealing quotes from extractedQuotes
+   - Emphasize 3-5 key phrases with **bold markers** (e.g., "Your **strategic planning approach**...")
+   - Include insights on collaboration style, problem-solving, and growth mindset${koreanSummaryReminder}
 
-3. **Dimension Insights** (exactly 6)
-   - Create strength clusters by grouping related strengthSignals
-   - Each cluster: title (max 50 chars), description (max 300 chars), evidence as string array (3-5 actual quote strings)
-   - Create growth areas from growthSignals (only if meaningful signals exist)
-   - For growth areas: include 1-4 evidence quote strings and a recommendation
+3. **Dimension Insights** (exactly 6 - COMPREHENSIVE)
+   - Create 3-8 strength clusters per dimension by grouping related strengthSignals
+   - Each cluster: title (max 80 chars), description (max 500 chars), evidence as string array (3-6 actual quote strings)
+   - Create 2-5 growth areas from growthSignals (where meaningful signals exist)
+   - For growth areas: include 2-4 evidence quote strings and a detailed recommendation (max 400 chars)${koreanDimensionReminder}
 
-4. **Prompt Patterns** (3-6)
-   - Transform detectedPatterns into named, illustrated patterns
-   - Include 1-3 example quotes each
-   - Rate effectiveness and provide improvement tips
+4. **Prompt Patterns** (5-12 for comprehensive analysis)
+   - Transform detectedPatterns into distinctively named patterns
+   - Include 2-5 example quotes each with detailed analysis
+   - Rate effectiveness and provide detailed improvement tips (max 400 chars)${koreanPatternReminder}
 
 5. **Actionable Practices** (IMPORTANT - from actionablePatternMatches)
    - Split actionablePatternMatches by practiced=true/false
@@ -236,5 +275,5 @@ Using the extracted data above, create a VerboseLLMResponse:
    - If no /plan usage, recommend it in opportunities
    - Write summary emphasizing planning sophistication
 
-Make this developer feel truly understood. Use their actual words.`;
+Make this developer feel truly understood. Use their actual words.${koreanFinalReminder}`;
 }

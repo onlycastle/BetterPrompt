@@ -250,6 +250,241 @@
   font-family: var(--font-mono);
 }
 
+/* Quote Examples */
+.examples {
+  margin-top: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.quoteBlock {
+  margin: 0;
+  padding: var(--space-sm) var(--space-md);
+  border-left: 3px solid var(--color-accent);
+  background: rgba(100, 108, 255, 0.05);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.quoteText {
+  margin: 0 0 var(--space-xs) 0;
+  font-style: italic;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+.quoteAnalysis {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-style: normal;
+}
+
+/* Dimension Insights */
+.dimensionGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.dimensionCard {
+  padding: var(--space-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.dimensionTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  margin-bottom: var(--space-sm);
+  font-family: var(--font-mono);
+}
+
+.strengthsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.strengthItem {
+  padding: var(--space-sm);
+  background: rgba(100, 108, 255, 0.03);
+  border-radius: var(--radius-sm);
+}
+
+.strengthItem strong {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.strengthItem p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* Blurred Teaser */
+.blurredTeaser {
+  position: relative;
+  padding: var(--space-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.blurredDimensions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  filter: blur(4px);
+  opacity: 0.6;
+}
+
+.blurredDimensionItem {
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.teaserOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--color-text-primary);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.lockIcon {
+  font-size: 1rem;
+}
+
+/* Expert Teaser */
+.expertTeaser {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.expertSources {
+  padding: var(--space-md);
+  background: rgba(100, 108, 255, 0.08);
+  border-radius: var(--radius-md);
+}
+
+.expertLabel {
+  margin: 0 0 var(--space-sm) 0;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.sourceList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.sourceBadge {
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.blurredPractices {
+  position: relative;
+  padding: var(--space-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.practicePreview {
+  filter: blur(4px);
+  opacity: 0.6;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.blurredPracticeItem {
+  padding: var(--space-sm);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+}
+
+.practiceAdvice {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+/* Score Teaser */
+.scoreTeaser {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.scoreItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.scoreLabel {
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.scoreValue {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  color: var(--color-text-secondary);
+}
+
+.blurredScore {
+  display: inline-block;
+  filter: blur(6px);
+  background: var(--color-accent);
+  color: var(--color-accent);
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-sm);
+}
+
+.teaserNote {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  background: rgba(100, 108, 255, 0.1);
+  border-radius: var(--radius-md);
+  color: var(--color-accent);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
 /* Footer */
 .footer {
   display: flex;
@@ -293,6 +528,292 @@
   opacity: 0.9;
 }
 
+/* Detail Button - Login CTA */
+.detailButtonContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-xl) 0;
+  margin: var(--space-lg) 0;
+}
+
+.detailButton {
+  background: linear-gradient(135deg, var(--color-accent), var(--color-success));
+  color: var(--color-bg);
+  border: none;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-lg);
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.detailButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.detailNote {
+  margin-top: var(--space-sm);
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+/* ============================================= */
+/* GRADIENT BLUR - 사주/타로 앱 스타일 */
+/* ============================================= */
+
+/* 점진적 블러 컨테이너 */
+.gradientBlur {
+  position: relative;
+  overflow: hidden;
+}
+
+.gradientBlur::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70%;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(10, 10, 15, 0.3) 30%,
+    rgba(10, 10, 15, 0.6) 50%,
+    rgba(10, 10, 15, 0.85) 70%,
+    rgba(10, 10, 15, 0.95) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 블러된 콘텐츠 영역 */
+.gradientBlurContent {
+  position: relative;
+}
+
+/* CTA 오버레이 - 블러 위에 표시 */
+.gradientBlurCta {
+  position: absolute;
+  bottom: var(--space-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.gradientBlurCtaButton {
+  background: linear-gradient(135deg, var(--color-accent), var(--color-success));
+  color: var(--color-bg);
+  border: none;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(100, 108, 255, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.gradientBlurCtaButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(100, 108, 255, 0.5);
+}
+
+.gradientBlurCtaNote {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* ============================================= */
+/* 안티패턴 티저 - "X개의 위험 신호" 스타일 */
+/* ============================================= */
+
+.antiPatternTeaser {
+  background: linear-gradient(135deg, rgba(255, 100, 100, 0.08), rgba(255, 150, 100, 0.05));
+  border: 1px solid rgba(255, 100, 100, 0.2);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  text-align: center;
+}
+
+.antiPatternAlert {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.antiPatternIcon {
+  font-size: 1.5rem;
+}
+
+.antiPatternCount {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ff6b6b;
+}
+
+.antiPatternBlurredArea {
+  position: relative;
+  height: 100px;
+  margin: var(--space-md) 0;
+  overflow: hidden;
+}
+
+.antiPatternBlurredLines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  filter: blur(8px);
+  opacity: 0.4;
+}
+
+.antiPatternBlurredLine {
+  height: 16px;
+  background: linear-gradient(90deg,
+    rgba(255, 100, 100, 0.3) 0%,
+    rgba(255, 150, 100, 0.3) 50%,
+    rgba(255, 100, 100, 0.3) 100%
+  );
+  border-radius: var(--radius-sm);
+}
+
+.antiPatternBlurredLine:nth-child(2) {
+  width: 85%;
+  margin-left: auto;
+}
+
+.antiPatternBlurredLine:nth-child(3) {
+  width: 70%;
+}
+
+.antiPatternCta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  color: var(--color-accent);
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+/* ============================================= */
+/* 콘텐츠 카운터 - "7개 중 2개 표시" 스타일 */
+/* ============================================= */
+
+.contentCounter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(100, 108, 255, 0.1);
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  color: var(--color-accent);
+  margin-bottom: var(--space-md);
+}
+
+.contentCounterIcon {
+  font-size: 0.9rem;
+}
+
+/* ============================================= */
+/* 시그니처 문장 섹션 */
+/* ============================================= */
+
+.signatureQuotes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.signatureQuote {
+  position: relative;
+  padding: var(--space-md) var(--space-lg);
+  background: linear-gradient(135deg, rgba(100, 108, 255, 0.08), rgba(100, 200, 255, 0.05));
+  border-left: 4px solid var(--color-accent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.signatureQuoteText {
+  font-size: 1rem;
+  font-style: italic;
+  color: var(--color-text-primary);
+  line-height: 1.6;
+  margin: 0 0 var(--space-sm) 0;
+}
+
+.signatureQuoteLabel {
+  font-size: 0.8rem;
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+/* 블러된 시그니처 문장 */
+.signatureQuoteBlurred {
+  filter: blur(6px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ============================================= */
+/* 성장 로드맵 티저 */
+/* ============================================= */
+
+.roadmapTeaser {
+  background: linear-gradient(135deg, rgba(100, 200, 100, 0.08), rgba(100, 108, 255, 0.05));
+  border: 1px solid rgba(100, 200, 100, 0.2);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  text-align: center;
+}
+
+.roadmapTeaserIcon {
+  font-size: 2.5rem;
+  margin-bottom: var(--space-sm);
+}
+
+.roadmapTeaserTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.roadmapTeaserSubtitle {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-md);
+}
+
+.roadmapStepsPreview {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.roadmapStepDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  opacity: 0.3;
+}
+
+.roadmapStepDot:first-child {
+  opacity: 1;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .barRow {
@@ -305,5 +826,14 @@
 
   .typeName {
     font-size: 1.8rem;
+  }
+
+  .gradientBlurCtaButton {
+    padding: var(--space-sm) var(--space-lg);
+    font-size: 0.95rem;
+  }
+
+  .antiPatternTeaser {
+    padding: var(--space-md);
   }
 }

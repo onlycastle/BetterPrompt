@@ -85,18 +85,18 @@ export type GrowthArea = z.infer<typeof GrowthAreaSchema>;
  * Prompt pattern analysis
  */
 export const PromptPatternSchema = z.object({
-  patternName: z.string().max(50).describe('Name of the pattern'),
-  description: z.string().max(300).describe('What this pattern is'),
+  patternName: z.string().max(80).describe('Distinctive name for this pattern'),
+  description: z.string().max(500).describe('Detailed description of what this pattern is and why it matters'),
   frequency: z.enum(['frequent', 'occasional', 'rare']),
   examples: z
     .array(
       z.object({
-        quote: z.string().max(300),
-        analysis: z.string().max(200),
+        quote: z.string().max(500),
+        analysis: z.string().max(300),
       })
     ),
   effectiveness: z.enum(['highly_effective', 'effective', 'could_improve']),
-  tip: z.string().max(200).optional().describe('Tip to improve or continue this pattern'),
+  tip: z.string().max(400).optional().describe('Detailed tip with examples to improve or continue this pattern'),
 });
 export type PromptPattern = z.infer<typeof PromptPatternSchema>;
 
@@ -140,12 +140,12 @@ export const DIMENSION_DISPLAY_NAMES: Record<DimensionNameEnum, string> = {
  * Used in VerboseEvaluation for storage and display
  */
 export const DimensionStrengthSchema = z.object({
-  title: z.string().max(50).describe('Short title for this strength'),
-  description: z.string().max(300).describe('What they do well (qualitative, no scores)'),
+  title: z.string().max(80).describe('Descriptive title for this strength'),
+  description: z.string().max(500).describe('Detailed description of what they do well (qualitative, no scores)'),
   evidence: z
-    .array(z.string().max(800))
+    .array(z.string().max(1200))
     .optional()
-    .describe('Quotes demonstrating this strength'),
+    .describe('Quotes demonstrating this strength (target: 3-6 quotes)'),
 });
 export type DimensionStrength = z.infer<typeof DimensionStrengthSchema>;
 
@@ -154,13 +154,13 @@ export type DimensionStrength = z.infer<typeof DimensionStrengthSchema>;
  * Used in VerboseEvaluation for storage and display
  */
 export const DimensionGrowthAreaSchema = z.object({
-  title: z.string().max(50).describe('Short title for this growth area'),
-  description: z.string().max(300).describe('What could improve (qualitative, no scores)'),
+  title: z.string().max(80).describe('Descriptive title for this growth area'),
+  description: z.string().max(500).describe('Detailed description of what could improve (qualitative, no scores)'),
   evidence: z
-    .array(z.string().max(800))
+    .array(z.string().max(1200))
     .optional()
-    .describe('Quotes showing this opportunity'),
-  recommendation: z.string().max(200).describe('Specific action to take'),
+    .describe('Quotes showing this opportunity (target: 2-4 quotes)'),
+  recommendation: z.string().max(400).describe('Detailed, specific action to take with examples'),
 });
 export type DimensionGrowthArea = z.infer<typeof DimensionGrowthAreaSchema>;
 
@@ -173,8 +173,8 @@ export type DimensionGrowthArea = z.infer<typeof DimensionGrowthAreaSchema>;
  * Evidence is added in post-processing from Stage 1 data
  */
 export const LLMDimensionStrengthSchema = z.object({
-  title: z.string().max(50).describe('Short title for this strength'),
-  description: z.string().max(300).describe('What they do well (qualitative, no scores)'),
+  title: z.string().max(80).describe('Descriptive title for this strength'),
+  description: z.string().max(500).describe('Detailed description of what they do well (qualitative, no scores)'),
 });
 
 /**
@@ -182,9 +182,9 @@ export const LLMDimensionStrengthSchema = z.object({
  * Evidence is added in post-processing from Stage 1 data
  */
 export const LLMDimensionGrowthAreaSchema = z.object({
-  title: z.string().max(50).describe('Short title for this growth area'),
-  description: z.string().max(300).describe('What could improve (qualitative, no scores)'),
-  recommendation: z.string().max(200).describe('Specific action to take'),
+  title: z.string().max(80).describe('Descriptive title for this growth area'),
+  description: z.string().max(500).describe('Detailed description of what could improve (qualitative, no scores)'),
+  recommendation: z.string().max(400).describe('Detailed, specific action to take with examples'),
 });
 
 /**
@@ -192,13 +192,13 @@ export const LLMDimensionGrowthAreaSchema = z.object({
  */
 export const LLMPerDimensionInsightSchema = z.object({
   dimension: DimensionNameEnumSchema,
-  dimensionDisplayName: z.string().max(50).describe('Human-readable dimension name'),
+  dimensionDisplayName: z.string().max(60).describe('Human-readable dimension name'),
   strengths: z
     .array(LLMDimensionStrengthSchema)
-    .describe('0-4 strength clusters'),
+    .describe('0-8 strength clusters for comprehensive analysis'),
   growthAreas: z
     .array(LLMDimensionGrowthAreaSchema)
-    .describe('0-3 growth areas'),
+    .describe('0-5 growth areas with detailed recommendations'),
 });
 
 /**
@@ -207,13 +207,13 @@ export const LLMPerDimensionInsightSchema = z.object({
  */
 export const PerDimensionInsightSchema = z.object({
   dimension: DimensionNameEnumSchema,
-  dimensionDisplayName: z.string().max(50).describe('Human-readable dimension name'),
+  dimensionDisplayName: z.string().max(60).describe('Human-readable dimension name'),
   strengths: z
     .array(DimensionStrengthSchema)
-    .describe('0-4 strength clusters, each with multiple quotes for credibility'),
+    .describe('0-8 strength clusters, each with multiple quotes for credibility'),
   growthAreas: z
     .array(DimensionGrowthAreaSchema)
-    .describe('0-3 growth areas with evidence quotes'),
+    .describe('0-5 growth areas with evidence quotes and detailed recommendations'),
 });
 export type PerDimensionInsight = z.infer<typeof PerDimensionInsightSchema>;
 
@@ -586,9 +586,9 @@ export const VerboseEvaluationSchema = z.object({
   // FREE TIER - Verbose content
   personalitySummary: z
     .string()
-    .min(200)
-    .max(800)
-    .describe('Hyper-personalized summary of their AI coding personality'),
+    .min(300)
+    .max(1500)
+    .describe('Hyper-personalized summary of their AI coding personality (expanded for premium value)'),
 
   // NEW: Per-dimension insights (replaces global strengths/growthAreas)
   dimensionInsights: z
@@ -653,9 +653,9 @@ export const VerboseLLMResponseSchema = z.object({
   // Content
   personalitySummary: z
     .string()
-    .min(200)
-    .max(800)
-    .describe('Hyper-personalized summary of their AI coding personality'),
+    .min(300)
+    .max(1500)
+    .describe('Hyper-personalized summary of their AI coding personality (expanded for premium value)'),
 
   // Dimension insights with REDUCED nesting (no evidence field)
   dimensionInsights: z
