@@ -13,39 +13,34 @@
 import { z } from 'zod';
 
 // ============================================================================
-// Dimension Signal Types (E/I, S/N, T/F, J/P internal mapping)
+// Dimension Signal Types (FLATTENED for Gemini API compatibility)
 // ============================================================================
 
 /**
  * Signal that contributed to a dimension score
- * Each signal represents behavioral evidence for the personality analysis
+ * LEGACY TYPE: Each signal represents behavioral evidence for the personality analysis
  */
-export const DimensionSignalSchema = z.object({
-  /** Type of signal (e.g., "message_brevity", "planning_behavior") */
-  type: z.string().max(50),
-
-  /** Evidence quote or description supporting this signal */
-  evidence: z.string().max(300),
-
-  /** Confidence in this signal (0.0 - 1.0) */
-  confidence: z.number().min(0).max(1),
-});
-export type DimensionSignal = z.infer<typeof DimensionSignalSchema>;
+export type DimensionSignal = {
+  type: string;
+  evidence: string;
+  confidence: number;
+};
 
 // ============================================================================
-// Individual Dimension Analysis Schema
+// Individual Dimension Analysis Schema (FLATTENED)
 // ============================================================================
 
 /**
  * Analysis for a single personality dimension
  * Score: 0 = first pole (E/S/T/J), 100 = second pole (I/N/F/P)
+ * FLATTENED: signals is now a semicolon-separated string instead of nested array
  */
 export const DimensionAnalysisSchema = z.object({
   /** Score on this dimension (0-100, where 50 is balanced) */
   score: z.number().min(0).max(100),
 
-  /** Signals that contributed to this score */
-  signals: z.array(DimensionSignalSchema),
+  /** Signals as semicolon-separated string (format: "type:evidence:confidence;...") */
+  signalsData: z.string().max(2000).optional(),
 
   /** Natural language insight about this dimension (NO labels/codes) */
   insight: z.string().max(200),
@@ -120,7 +115,7 @@ export type PersonalityProfile = z.infer<typeof PersonalityProfileSchema>;
 export function createDefaultPersonalityProfile(): PersonalityProfile {
   const defaultDimension: DimensionAnalysis = {
     score: 50, // Balanced/unknown
-    signals: [],
+    signalsData: '', // Empty signals
     insight: 'Insufficient data for analysis',
   };
 
@@ -138,4 +133,21 @@ export function createDefaultPersonalityProfile(): PersonalityProfile {
     sanggeuk: [],
     overallConfidence: 0,
   };
+}
+
+/**
+ * Helper to parse signalsData string into DimensionSignal array
+ * Format: "type:evidence:confidence;type:evidence:confidence;..."
+ */
+export function parseSignalsData(signalsData: string | undefined): DimensionSignal[] {
+  if (!signalsData) return [];
+
+  return signalsData.split(';').filter(Boolean).map((s) => {
+    const parts = s.split(':');
+    return {
+      type: parts[0] || '',
+      evidence: parts[1] || '',
+      confidence: parseFloat(parts[2]) || 0,
+    };
+  });
 }

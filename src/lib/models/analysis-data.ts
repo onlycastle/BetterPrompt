@@ -28,70 +28,55 @@ export const TypeDistributionSchema = z.object({
 export type TypeDistribution = z.infer<typeof TypeDistributionSchema>;
 
 // ============================================================================
-// Quote Context Schema (A: 맥락 분석)
+// Quote Context & Insight Enums (Flattened for Gemini API compatibility)
 // ============================================================================
 
 /**
- * Contextual information about when and why a quote occurred
- * Helps understand the situation that triggered this behavior
+ * Enum values for quote context and insight fields
+ * FLATTENED: Previously nested in QuoteContextSchema and QuoteInsightSchema
+ * Now inlined into ExtractedQuoteSchema to reduce nesting depth
  */
-export const QuoteContextSchema = z.object({
-  /** What type of situation triggered this behavior */
-  situationType: z.enum([
-    'complex_decision', // 복잡한 결정 상황
-    'debugging', // 디버깅 중
-    'feature_building', // 기능 구현
-    'refactoring', // 리팩토링
-    'code_review', // 코드 리뷰
-    'learning', // 학습/탐색
-  ]),
+export const SituationTypeEnum = z.enum([
+  'complex_decision', // 복잡한 결정 상황
+  'debugging', // 디버깅 중
+  'feature_building', // 기능 구현
+  'refactoring', // 리팩토링
+  'code_review', // 코드 리뷰
+  'learning', // 학습/탐색
+]);
 
-  /** What triggered this particular behavior (optional) */
-  trigger: z
-    .enum([
-      'uncertainty', // 불확실성
-      'previous_failure', // 이전 실패
-      'time_pressure', // 시간 압박
-      'complexity', // 복잡성
-      'unfamiliarity', // 익숙하지 않음
-    ])
-    .optional(),
+export const TriggerEnum = z.enum([
+  'uncertainty', // 불확실성
+  'previous_failure', // 이전 실패
+  'time_pressure', // 시간 압박
+  'complexity', // 복잡성
+  'unfamiliarity', // 익숙하지 않음
+]);
 
-  /** What outcome resulted from this behavior (optional) */
-  outcome: z
-    .enum([
-      'successful', // 성공적
-      'partially_successful', // 부분적 성공
-      'unsuccessful', // 실패
-      'unknown', // 알 수 없음
-    ])
-    .optional(),
-});
-export type QuoteContext = z.infer<typeof QuoteContextSchema>;
+export const OutcomeEnum = z.enum([
+  'successful', // 성공적
+  'partially_successful', // 부분적 성공
+  'unsuccessful', // 실패
+  'unknown', // 알 수 없음
+]);
 
-// ============================================================================
-// Quote Insight Schema (C: Why 분석)
-// ============================================================================
+export const GrowthSignalEnum = z.enum([
+  'deliberate', // 의도적으로 선택한 행동
+  'reactive', // 상황에 반응한 행동
+  'habitual', // 습관화된 행동
+]);
 
-/**
- * Deep insight into why a behavior occurred
- * Provides root cause analysis for more actionable feedback
- */
-export const QuoteInsightSchema = z.object({
-  /** Root cause of this behavior (max 200 chars) */
-  rootCause: z.string().max(200),
-
-  /** What this behavior implies about the developer's growth */
-  implication: z.string().max(200),
-
-  /** Whether this behavior is deliberate, reactive, or habitual */
-  growthSignal: z.enum([
-    'deliberate', // 의도적으로 선택한 행동
-    'reactive', // 상황에 반응한 행동
-    'habitual', // 습관화된 행동
-  ]),
-});
-export type QuoteInsight = z.infer<typeof QuoteInsightSchema>;
+// Legacy type exports for backward compatibility
+export type QuoteContext = {
+  situationType: z.infer<typeof SituationTypeEnum>;
+  trigger?: z.infer<typeof TriggerEnum>;
+  outcome?: z.infer<typeof OutcomeEnum>;
+};
+export type QuoteInsight = {
+  rootCause: string;
+  implication: string;
+  growthSignal: z.infer<typeof GrowthSignalEnum>;
+};
 
 // ============================================================================
 // Extracted Quote Schema
@@ -127,11 +112,25 @@ export const ExtractedQuoteSchema = z.object({
   /** Cluster identifier for grouping related quotes (format: "{dimension}_s_{n}" or "{dimension}_g_{n}") */
   clusterId: z.string().optional(),
 
-  /** A: Context - When and what situation triggered this behavior */
-  context: QuoteContextSchema.optional(),
+  // ---- A: Context fields (FLATTENED from QuoteContextSchema) ----
+  /** What type of situation triggered this behavior */
+  contextSituationType: SituationTypeEnum.optional(),
 
-  /** C: Why - Root cause analysis for deeper understanding */
-  insight: QuoteInsightSchema.optional(),
+  /** What triggered this particular behavior */
+  contextTrigger: TriggerEnum.optional(),
+
+  /** What outcome resulted from this behavior */
+  contextOutcome: OutcomeEnum.optional(),
+
+  // ---- C: Insight fields (FLATTENED from QuoteInsightSchema) ----
+  /** Root cause of this behavior (max 200 chars) */
+  insightRootCause: z.string().max(200).optional(),
+
+  /** What this behavior implies about the developer's growth */
+  insightImplication: z.string().max(200).optional(),
+
+  /** Whether this behavior is deliberate, reactive, or habitual */
+  insightGrowthSignal: GrowthSignalEnum.optional(),
 });
 export type ExtractedQuote = z.infer<typeof ExtractedQuoteSchema>;
 
@@ -267,6 +266,7 @@ export type CriticalThinkingMoment = z.infer<typeof CriticalThinkingMomentSchema
 /**
  * Planning behavior observed in sessions
  * Represents strategic thinking before implementation
+ * FLATTENED: planDetails fields are now inlined
  */
 export const PlanningBehaviorSchema = z.object({
   /** Description of the planning behavior */
@@ -284,47 +284,38 @@ export const PlanningBehaviorSchema = z.object({
   /** How consistently this behavior was observed */
   frequency: z.enum(['always', 'often', 'sometimes', 'rarely']),
 
-  /** Example quotes demonstrating this behavior */
-  examples: z.array(z.string().max(300)),
+  /** Example quotes demonstrating this behavior (as semicolon-separated string to reduce nesting) */
+  examples: z.string().max(1500),
 
   /** Effectiveness assessment */
   effectiveness: z.enum(['high', 'medium', 'low']),
 
-  /** Additional details for /plan usage (populated when behaviorType is 'slash_plan_usage') */
-  planDetails: z
-    .object({
-      /** Summary of the plan content */
-      planContent: z.string().max(500).optional(),
+  // ---- Plan details (FLATTENED from nested object) ----
+  /** Summary of the plan content (for slash_plan_usage) */
+  planContentSummary: z.string().max(500).optional(),
 
-      /** Whether the plan decomposed the problem into smaller parts */
-      problemDecomposition: z.boolean().optional(),
+  /** Whether the plan decomposed the problem into smaller parts */
+  planHasDecomposition: z.boolean().optional(),
 
-      /** Number of steps in the plan */
-      stepsCount: z.number().optional(),
-    })
-    .optional(),
+  /** Number of steps in the plan */
+  planStepsCount: z.number().optional(),
 });
 export type PlanningBehavior = z.infer<typeof PlanningBehaviorSchema>;
 
 // ============================================================================
-// Cluster Definition Schema (for quote-to-section mapping)
+// Cluster Definition (Legacy type for backward compatibility)
 // ============================================================================
 
 /**
- * Defines a thematic cluster of quotes within a dimension
- * Used to group similar quotes and map them to strength/growth sections
+ * Legacy type for ClusterDefinition
+ * NOTE: Clusters are now derived from extractedQuotes via clusterId field
+ * This type is kept for backward compatibility with existing code
  */
-export const ClusterDefinitionSchema = z.object({
-  /** Unique cluster identifier (format: "{dimension}_s_{n}" or "{dimension}_g_{n}") */
-  clusterId: z.string(),
-
-  /** Whether this cluster contains strength or growth quotes */
-  signal: z.enum(['strength', 'growth']),
-
-  /** Theme/topic this cluster represents (used as basis for section title) */
-  theme: z.string(),
-});
-export type ClusterDefinition = z.infer<typeof ClusterDefinitionSchema>;
+export type ClusterDefinition = {
+  clusterId: string;
+  signal: 'strength' | 'growth';
+  theme: string;
+};
 
 // ============================================================================
 // Personalized Priority Schema (B: 개인화된 우선순위)
@@ -333,6 +324,7 @@ export type ClusterDefinition = z.infer<typeof ClusterDefinitionSchema>;
 /**
  * A single prioritized focus area for this specific developer
  * Represents one of the top 3 areas they should focus on
+ * FLATTENED: relatedClusterIds is now a comma-separated string
  */
 export const PriorityItemSchema = z.object({
   /** Priority rank (1, 2, or 3) */
@@ -353,18 +345,40 @@ export const PriorityItemSchema = z.object({
   /** Calculated priority score (0-100) based on frequency, impact, potential, relevance */
   priorityScore: z.number().min(0).max(100),
 
-  /** Related cluster IDs that contributed to this priority */
-  relatedClusterIds: z.array(z.string()),
+  /** Related cluster IDs as comma-separated string (e.g., "dim1_s_1,dim1_g_2") */
+  relatedClusterIds: z.string().max(500),
 });
 export type PriorityItem = z.infer<typeof PriorityItemSchema>;
 
 /**
  * Personalized top 3 priorities for this developer
  * Calculated based on frequency, impact, growth potential, and context relevance
+ * FLATTENED: Now has 3 separate priority fields instead of nested array
  */
 export const PersonalizedPrioritySchema = z.object({
-  /** Top 3 priorities for this developer */
-  topPriorities: z.array(PriorityItemSchema),
+  /** Priority 1 - highest priority focus area */
+  priority1Dimension: DimensionNameEnumSchema.optional(),
+  priority1FocusArea: z.string().max(100).optional(),
+  priority1Rationale: z.string().max(300).optional(),
+  priority1ExpectedImpact: z.string().max(200).optional(),
+  priority1Score: z.number().min(0).max(100).optional(),
+  priority1ClusterIds: z.string().max(500).optional(),
+
+  /** Priority 2 */
+  priority2Dimension: DimensionNameEnumSchema.optional(),
+  priority2FocusArea: z.string().max(100).optional(),
+  priority2Rationale: z.string().max(300).optional(),
+  priority2ExpectedImpact: z.string().max(200).optional(),
+  priority2Score: z.number().min(0).max(100).optional(),
+  priority2ClusterIds: z.string().max(500).optional(),
+
+  /** Priority 3 */
+  priority3Dimension: DimensionNameEnumSchema.optional(),
+  priority3FocusArea: z.string().max(100).optional(),
+  priority3Rationale: z.string().max(300).optional(),
+  priority3ExpectedImpact: z.string().max(200).optional(),
+  priority3Score: z.number().min(0).max(100).optional(),
+  priority3ClusterIds: z.string().max(500).optional(),
 
   /** Explanation of how priorities were selected */
   selectionRationale: z.string().max(500),
@@ -379,7 +393,8 @@ export type PersonalizedPriority = z.infer<typeof PersonalizedPrioritySchema>;
  * Aggregated signals for a single analysis dimension
  * Flattened structure to avoid exceeding Gemini's max nesting depth
  *
- * Note: Quotes are matched to sections via clusterId field.
+ * Note: Quotes are matched to sections via clusterId field in extractedQuotes.
+ * Cluster themes are now stored as simple string arrays instead of nested objects.
  */
 export const DimensionSignalSchema = z.object({
   /** Which dimension these signals belong to */
@@ -391,8 +406,11 @@ export const DimensionSignalSchema = z.object({
   /** Growth signals (opportunities) as simple string descriptions */
   growthSignals: z.array(z.string().max(150)),
 
-  /** Cluster definitions for mapping quotes to strength/growth sections */
-  clusters: z.array(ClusterDefinitionSchema).optional(),
+  /** Cluster themes for strength quotes (format: "clusterId:theme" pairs as strings) */
+  strengthClusterThemes: z.array(z.string().max(200)).optional(),
+
+  /** Cluster themes for growth quotes (format: "clusterId:theme" pairs as strings) */
+  growthClusterThemes: z.array(z.string().max(200)).optional(),
 });
 export type DimensionSignal = z.infer<typeof DimensionSignalSchema>;
 

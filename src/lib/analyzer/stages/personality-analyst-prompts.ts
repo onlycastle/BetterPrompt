@@ -102,7 +102,8 @@ Return PersonalityProfile with:
 1. **dimensions**: Object with ei, sn, tf, jp
    Each dimension has:
    - score: 0-100 (50 = balanced)
-   - signals: Array of { type, evidence, confidence }
+   - signalsData: FLATTENED string format "type:evidence:confidence;type:evidence:confidence;..."
+     (e.g., "message_brevity:Uses concise messages:0.8;planning_behavior:Plans before coding:0.7")
    - insight: Natural observation (NO labels like "You're an INTJ")
 
 2. **yongsin**: What they need (max 200 chars)

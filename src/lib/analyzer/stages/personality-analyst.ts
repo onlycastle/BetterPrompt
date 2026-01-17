@@ -157,10 +157,10 @@ ${messages}
     // Deep clone to avoid mutation
     const sanitized = JSON.parse(JSON.stringify(input)) as PersonalityProfile;
 
-    // Ensure all dimensions exist
+    // Ensure all dimensions exist (FLATTENED format)
     const defaultDimension = {
       score: 50,
-      signals: [],
+      signalsData: '', // FLATTENED: no more nested array
       insight: 'Balanced',
     };
 
@@ -185,9 +185,9 @@ ${messages}
         Math.min(100, sanitized.dimensions[key].score || 50)
       );
 
-      // Ensure signals is an array
-      if (!Array.isArray(sanitized.dimensions[key].signals)) {
-        sanitized.dimensions[key].signals = [];
+      // Ensure signalsData is a string (FLATTENED format)
+      if (typeof sanitized.dimensions[key].signalsData !== 'string') {
+        sanitized.dimensions[key].signalsData = '';
       }
 
       // Ensure insight is a string

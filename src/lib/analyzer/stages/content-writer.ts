@@ -18,6 +18,7 @@ import {
   DIMENSION_NAMES,
   DIMENSION_DISPLAY_NAMES,
   type VerboseLLMResponse,
+  type DimensionNameEnum,
 } from '../../models/verbose-evaluation';
 import type { StructuredAnalysisData } from '../../models/analysis-data';
 import type { PersonalityProfile } from '../../models/personality';
@@ -262,8 +263,8 @@ export class ContentWriterStage {
             (b) => b.behaviorType === 'slash_plan_usage'
           );
           if (
-            slashPlanBehavior?.planDetails?.problemDecomposition &&
-            (slashPlanBehavior?.planDetails?.stepsCount ?? 0) >= 3
+            slashPlanBehavior?.planHasDecomposition &&
+            (slashPlanBehavior?.planStepsCount ?? 0) >= 3
           ) {
             maturityLevel = 'expert';
           } else {
@@ -300,14 +301,14 @@ export class ContentWriterStage {
         if (slashPlanBehaviors && slashPlanBehaviors.length > 0) {
           const totalUsage = slashPlanBehaviors.length;
           const stepsArray = slashPlanBehaviors
-            .map((b) => b.planDetails?.stepsCount)
+            .map((b) => b.planStepsCount)
             .filter((s): s is number => typeof s === 'number');
           const avgSteps =
             stepsArray.length > 0
               ? stepsArray.reduce((a, b) => a + b, 0) / stepsArray.length
               : undefined;
           const decompositionCount = slashPlanBehaviors.filter(
-            (b) => b.planDetails?.problemDecomposition
+            (b) => b.planHasDecomposition
           ).length;
           const decompositionRate =
             totalUsage > 0 ? decompositionCount / totalUsage : undefined;
@@ -321,23 +322,60 @@ export class ContentWriterStage {
       }
     }
 
-    // Top Focus Areas (from personalizedPriorities)
+    // Top Focus Areas (from personalizedPriorities - FLATTENED structure)
+    const priorities = analysisData.personalizedPriorities;
     const hasPersonalizedPriorities =
-      analysisData.personalizedPriorities &&
-      analysisData.personalizedPriorities.topPriorities.length > 0;
+      priorities && priorities.priority1Dimension;
 
     if (hasPersonalizedPriorities && !response.topFocusAreas) {
-      // Fallback: Convert Stage 1 data directly if LLM didn't generate
-      const priorities = analysisData.personalizedPriorities!;
+      // Fallback: Convert Stage 1 flattened data directly if LLM didn't generate
+      const areas: Array<{
+        rank: number;
+        dimension: DimensionNameEnum;
+        title: string;
+        narrative: string;
+        expectedImpact: string;
+        priorityScore: number;
+      }> = [];
+
+      // Priority 1
+      if (priorities.priority1Dimension && priorities.priority1FocusArea) {
+        areas.push({
+          rank: 1,
+          dimension: priorities.priority1Dimension,
+          title: priorities.priority1FocusArea,
+          narrative: priorities.priority1Rationale || '',
+          expectedImpact: priorities.priority1ExpectedImpact || '',
+          priorityScore: priorities.priority1Score || 0,
+        });
+      }
+
+      // Priority 2
+      if (priorities.priority2Dimension && priorities.priority2FocusArea) {
+        areas.push({
+          rank: 2,
+          dimension: priorities.priority2Dimension,
+          title: priorities.priority2FocusArea,
+          narrative: priorities.priority2Rationale || '',
+          expectedImpact: priorities.priority2ExpectedImpact || '',
+          priorityScore: priorities.priority2Score || 0,
+        });
+      }
+
+      // Priority 3
+      if (priorities.priority3Dimension && priorities.priority3FocusArea) {
+        areas.push({
+          rank: 3,
+          dimension: priorities.priority3Dimension,
+          title: priorities.priority3FocusArea,
+          narrative: priorities.priority3Rationale || '',
+          expectedImpact: priorities.priority3ExpectedImpact || '',
+          priorityScore: priorities.priority3Score || 0,
+        });
+      }
+
       response.topFocusAreas = {
-        areas: priorities.topPriorities.map((p) => ({
-          rank: p.rank,
-          dimension: p.dimension,
-          title: p.focusArea,
-          narrative: p.rationale,
-          expectedImpact: p.expectedImpact,
-          priorityScore: p.priorityScore,
-        })),
+        areas,
         summary: priorities.selectionRationale,
       };
     }
@@ -369,13 +407,25 @@ export class ContentWriterStage {
         quotesByCluster.get(key)!.push(quote);
       }
 
-      // Get cluster definitions from Stage 1
+      // Get cluster themes from Stage 1 (FLATTENED format: "clusterId:theme")
       const dimSignal = analysisData.dimensionSignals.find(
         (s) => s.dimension === insight.dimension
       );
-      const clusterDefs = dimSignal?.clusters || [];
-      const strengthClusters = clusterDefs.filter((c) => c.signal === 'strength');
-      const growthClusters = clusterDefs.filter((c) => c.signal === 'growth');
+
+      // Parse flattened cluster themes into {clusterId, theme} pairs
+      const parseClusterThemes = (themes: string[] | undefined): Array<{ clusterId: string; theme: string }> => {
+        if (!themes) return [];
+        return themes.map((t) => {
+          const colonIndex = t.indexOf(':');
+          if (colonIndex > 0) {
+            return { clusterId: t.slice(0, colonIndex), theme: t.slice(colonIndex + 1) };
+          }
+          return { clusterId: t, theme: '' };
+        });
+      };
+
+      const strengthClusters = parseClusterThemes(dimSignal?.strengthClusterThemes);
+      const growthClusters = parseClusterThemes(dimSignal?.growthClusterThemes);
 
       // Match quotes to strengths by cluster order
       if (Array.isArray(insight.strengths)) {

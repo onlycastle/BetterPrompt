@@ -77,16 +77,17 @@ After extracting quotes, group them into thematic clusters:
 1. Within each dimension × signal combination, identify 2-5 natural groupings
 2. Similar behavioral patterns should form a cluster
 3. Assign unique clusterId to each quote (format: "{dimension}_s_{n}" for strength, "{dimension}_g_{n}" for growth)
-4. Define clusters in dimensionSignals.clusters with: clusterId, signal, theme
+4. FLATTENED: Define clusters in dimensionSignals.strengthClusterThemes and growthClusterThemes arrays
+   - Format: "clusterId:theme" strings (e.g., "aiCollaboration_s_1:전문가 페르소나 활용")
 
 Example thinking process:
 "I found 8 strength quotes for aiCollaboration. Looking at the patterns:
 - 3 quotes about using expert personas → clusterId: 'aiCollaboration_s_1', theme: '전문가 페르소나 활용'
 - 2 quotes about deep thinking triggers → clusterId: 'aiCollaboration_s_2', theme: '고밀도 사고 유도'
-- 3 quotes about structured planning → clusterId: 'aiCollaboration_s_3', theme: '구조적 접근법'"
+Resulting strengthClusterThemes: ['aiCollaboration_s_1:전문가 페르소나 활용', 'aiCollaboration_s_2:고밀도 사고 유도']"
 
 Clustering rules:
-- Each quote MUST have a clusterId that matches a defined cluster
+- Each quote MUST have a clusterId that matches a defined cluster theme
 - Similar quotes (same theme/behavior) MUST share the same clusterId
 - Each cluster needs at least 1 quote
 - Cluster theme should be descriptive (used as basis for report section titles)
@@ -115,8 +116,9 @@ Clustering rules:
 - aiControl: Verification requests, corrections, modifications
 - skillResilience: Cold start behavior, hallucination detection
 
-For EACH dimension, include clusters array with 2-5 clusters per signal type:
-- Each cluster: { clusterId, signal, theme }
+For EACH dimension, include cluster themes as flattened string arrays:
+- strengthClusterThemes: ["clusterId:theme", ...] (e.g., ["aiControl_s_1:검증 요청 습관"])
+- growthClusterThemes: ["clusterId:theme", ...] (e.g., ["aiControl_g_1:수동적 수용 패턴"])
 - clusterId must match the clusterIds assigned to quotes
 - theme describes what the cluster represents (will be used for section titles)
 
@@ -227,19 +229,29 @@ ${buildExpertKnowledgeContext()}
 
 # Format
 
-Return StructuredAnalysisData with:
+Return StructuredAnalysisData with FLATTENED structure:
 - typeAnalysis: Classification with reasoning
-- extractedQuotes: Array of quotes with context and insight (MINIMUM 25, target 40-100)
+- extractedQuotes: Array of quotes with INLINE context and insight fields (MINIMUM 25, target 40-100)
   * Each quote MUST include: dimension, signal, behavioralMarker, confidence, clusterId
-  * Each quote SHOULD include: context { situationType, trigger?, outcome? }
-  * Each quote SHOULD include: insight { rootCause, implication, growthSignal }
+  * FLATTENED context: contextSituationType?, contextTrigger?, contextOutcome? (inline, not nested)
+  * FLATTENED insight: insightRootCause?, insightImplication?, insightGrowthSignal? (inline, not nested)
 - detectedPatterns: Array of patterns (MINIMUM 5, target 8-15)
 - actionablePatternMatches: Array of { patternId, practiced: boolean, evidence: string[], feedback: string }
 - detectedAntiPatterns: Array of { patternId, patternType, frequency, examples, severity, triggerContext }
 - criticalThinkingMoments: Array of { moment, type, result, dimension, confidence }
-- planningBehaviors: Array of { behavior, behaviorType, frequency, examples, effectiveness, planDetails? }
-- personalizedPriorities: { topPriorities: [max 3], selectionRationale: string }
-- dimensionSignals: EXACTLY 6 objects, one per dimension, each with clusters array
+- planningBehaviors: Array with FLATTENED fields:
+  * behavior, behaviorType, frequency, effectiveness
+  * examples: semicolon-separated string (not array)
+  * planContentSummary?, planHasDecomposition?, planStepsCount? (inline, not nested planDetails)
+- personalizedPriorities: FLATTENED structure:
+  * priority1Dimension, priority1FocusArea, priority1Rationale, priority1ExpectedImpact, priority1Score, priority1ClusterIds
+  * priority2Dimension, priority2FocusArea, ... (same pattern)
+  * priority3Dimension, priority3FocusArea, ... (same pattern)
+  * selectionRationale: string
+- dimensionSignals: EXACTLY 6 objects, each with:
+  * dimension, strengthSignals: string[], growthSignals: string[]
+  * strengthClusterThemes: string[] (format: "clusterId:theme")
+  * growthClusterThemes: string[] (format: "clusterId:theme")
 - analysisMetadata: Summary statistics and confidence
 
 **Critical Rules:**
@@ -288,13 +300,14 @@ Analyze the sessions above and extract:
 1. **Quotes** (40-100+ total for comprehensive premium analysis)
    - Every personality-revealing statement
    - Tag with dimension, signal type, confidence, clusterId
-   - Include context: { situationType, trigger?, outcome? }
-   - Include insight: { rootCause, implication, growthSignal }
+   - FLATTENED context fields: contextSituationType, contextTrigger?, contextOutcome?
+   - FLATTENED insight fields: insightRootCause?, insightImplication?, insightGrowthSignal?
 
 2. **Quote Clustering** (CRITICAL)
    - Group similar quotes into thematic clusters (2-5 per dimension×signal)
    - Assign unique clusterId to each quote
-   - Define clusters in dimensionSignals.clusters
+   - Define clusters in dimensionSignals via strengthClusterThemes and growthClusterThemes arrays
+   - Format: "clusterId:theme" strings (e.g., ["aiCollaboration_s_1:전문가 페르소나 활용"])
 
 3. **Patterns** (8-15 patterns)
    - Recurring behaviors across sessions
@@ -302,8 +315,8 @@ Analyze the sessions above and extract:
 
 4. **Dimension Signals** (6 dimensions)
    - All strength and growth signals per dimension
-   - Include clusters array with { clusterId, signal, theme }
-   - Ensure every quote's clusterId matches a defined cluster
+   - Include strengthClusterThemes: string[] and growthClusterThemes: string[]
+   - Format each as "clusterId:theme" (e.g., "aiControl_s_1:검증 습관")
 
 5. **Type Classification**
    - Primary type with evidence
@@ -322,14 +335,18 @@ Analyze the sessions above and extract:
 
 8. **Planning Behaviors** (2-5 behaviors)
    - Look for: slash_plan_usage (HIGHEST PRIORITY), structure_first, task_decomposition, todowrite_usage
-   - For /plan usage: MUST include planDetails with planContent, problemDecomposition, stepsCount
+   - For /plan usage: MUST include FLATTENED fields: planContentSummary, planHasDecomposition, planStepsCount
    - Assess effectiveness
+   - FLATTENED: examples is a semicolon-separated string, not an array
 
-9. **Personalized Priorities** (CRITICAL - Top 3)
+9. **Personalized Priorities** (CRITICAL - Top 3, FLATTENED)
    - Calculate priority score using: frequency (0.25), impact (0.30), potential (0.25), relevance (0.20)
-   - Select top 3 focus areas with highest combined scores
-   - Write personalized rationale explaining WHY these matter for THIS developer
-   - Connect priorities to specific evidence from their sessions
+   - FLATTENED format: Use priority1*, priority2*, priority3* fields instead of topPriorities array:
+     * priority1Dimension, priority1FocusArea, priority1Rationale, priority1ExpectedImpact, priority1Score, priority1ClusterIds
+     * priority2Dimension, priority2FocusArea, ... (same pattern)
+     * priority3Dimension, priority3FocusArea, ... (same pattern)
+   - priority*ClusterIds: comma-separated string (e.g., "aiControl_g_1,aiControl_g_2")
+   - selectionRationale: explain how these 3 priorities were selected
 
 Return StructuredAnalysisData. Be EXHAUSTIVE.`;
 }

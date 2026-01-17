@@ -13,6 +13,14 @@ import { gzipSync } from 'node:zlib';
 import type { ScanResult } from './scanner.js';
 
 /**
+ * Debug mode - set NOSLOP_DEBUG=1 to enable verbose logging
+ */
+const DEBUG = process.env.NOSLOP_DEBUG === '1';
+function debugLog(...args: unknown[]) {
+  if (DEBUG) console.error('[DEBUG]', ...args);
+}
+
+/**
  * Lambda Function URL for analysis API
  * Calls Lambda directly to bypass Vercel's 4.5MB body size limit
  * - 15 minute timeout
@@ -207,11 +215,19 @@ export type ProgressCallback = (stage: string, progress: number, message: string
  * Parse SSE data line
  */
 function parseSSELine(line: string): SSEEvent | null {
-  if (!line.startsWith('data: ')) return null;
+  if (!line.startsWith('data: ')) {
+    debugLog('Non-SSE line skipped:', line.slice(0, 50));
+    return null;
+  }
 
   try {
     return JSON.parse(line.slice(6)) as SSEEvent;
-  } catch {
+  } catch (e) {
+    // Log parse failures but continue - might be incomplete chunk
+    debugLog('SSE parse failed:', {
+      line: line.slice(0, 100),
+      error: (e as Error).message,
+    });
     return null;
   }
 }
@@ -242,6 +258,7 @@ interface UploadUrlResponse {
  */
 async function uploadViaStorage(
   compressedBody: Buffer,
+  apiKey: string,
   onProgress?: ProgressCallback
 ): Promise<{ storagePath: string }> {
   // 1. Get signed upload URL from Lambda
@@ -249,7 +266,10 @@ async function uploadViaStorage(
 
   const urlResponse = await fetch(`${LAMBDA_API_URL}/upload-url`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Gemini-API-Key': apiKey,
+    },
   });
 
   if (!urlResponse.ok) {
@@ -257,7 +277,16 @@ async function uploadViaStorage(
     throw new Error(`Failed to get upload URL: ${urlResponse.status} ${errorText}`);
   }
 
-  const urlData = await urlResponse.json() as UploadUrlResponse;
+  // Log response details for debugging (before parsing)
+  const responseText = await urlResponse.text();
+  debugLog('/upload-url response:', {
+    status: urlResponse.status,
+    contentType: urlResponse.headers.get('content-type'),
+    bodyPreview: responseText.slice(0, 200),
+  });
+
+  // Parse JSON - let errors propagate with full stack trace
+  const urlData = JSON.parse(responseText) as UploadUrlResponse;
 
   if (urlData.error || !urlData.signedUrl || !urlData.storagePath) {
     throw new Error(urlData.error || 'Invalid upload URL response');
@@ -311,9 +340,10 @@ export async function uploadForAnalysis(
     // Large payload: Use Supabase Storage path
     onProgress?.('preparing', 0, `${sizeInfo} | Using secure storage for large payload`);
 
-    const { storagePath } = await uploadViaStorage(compressedBody, onProgress);
+    const { storagePath } = await uploadViaStorage(compressedBody, apiKey, onProgress);
 
     // Trigger analysis from storage
+    debugLog('Calling /analyze with storagePath:', storagePath);
     const response = await fetch(`${LAMBDA_API_URL}/analyze`, {
       method: 'POST',
       headers: {
@@ -377,6 +407,13 @@ async function handleStreamingResponse(
   response: Response,
   onProgress?: ProgressCallback
 ): Promise<AnalysisResult> {
+  // Log response headers for debugging
+  debugLog('SSE response:', {
+    status: response.status,
+    contentType: response.headers.get('content-type'),
+    contentEncoding: response.headers.get('content-encoding'),
+  });
+
   const reader = response.body?.getReader();
   if (!reader) {
     throw new Error('Response body is not readable');
@@ -385,6 +422,7 @@ async function handleStreamingResponse(
   const decoder = new TextDecoder();
   let buffer = '';
   let result: AnalysisResult | null = null;
+  let isFirstChunk = true;
 
   try {
     while (true) {
@@ -392,7 +430,18 @@ async function handleStreamingResponse(
 
       if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
+      const chunk = decoder.decode(value, { stream: true });
+
+      // Log first chunk to see what we're receiving
+      if (isFirstChunk && value) {
+        debugLog('SSE first chunk:', {
+          bytes: value.length,
+          preview: chunk.slice(0, 150),
+        });
+        isFirstChunk = false;
+      }
+
+      buffer += chunk;
 
       // Process complete lines
       const lines = buffer.split('\n');
