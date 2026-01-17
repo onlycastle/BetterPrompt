@@ -309,7 +309,7 @@ export class ContentWriterStage {
 
   /**
    * Add evidence quotes from Stage 1 data to dimension insights
-   * This post-processing step adds the evidence that was omitted from LLM schema
+   * Uses clusterId-based matching to ensure unique quotes per section
    */
   private addEvidenceFromStage1(
     response: VerboseLLMResponse,
@@ -322,30 +322,54 @@ export class ContentWriterStage {
       const dimensionQuotes = analysisData.extractedQuotes.filter(
         (q) => q.dimension === insight.dimension
       );
-      const strengthQuotes = dimensionQuotes.filter((q) => q.signal === 'strength');
-      const growthQuotes = dimensionQuotes.filter((q) => q.signal === 'growth');
 
-      // Add evidence to strengths
+      // Group quotes by clusterId
+      const quotesByCluster = new Map<string, typeof dimensionQuotes>();
+      for (const quote of dimensionQuotes) {
+        const key = quote.clusterId || `${quote.dimension}_${quote.signal}_default`;
+        if (!quotesByCluster.has(key)) {
+          quotesByCluster.set(key, []);
+        }
+        quotesByCluster.get(key)!.push(quote);
+      }
+
+      // Get cluster definitions from Stage 1
+      const dimSignal = analysisData.dimensionSignals.find(
+        (s) => s.dimension === insight.dimension
+      );
+      const clusterDefs = dimSignal?.clusters || [];
+      const strengthClusters = clusterDefs.filter((c) => c.signal === 'strength');
+      const growthClusters = clusterDefs.filter((c) => c.signal === 'growth');
+
+      // Match quotes to strengths by cluster order
       if (Array.isArray(insight.strengths)) {
-        for (const strength of insight.strengths) {
-          // Get up to 3 quotes per strength, prefer high confidence
-          const quotes = strengthQuotes
+        for (let i = 0; i < insight.strengths.length; i++) {
+          const cluster = strengthClusters[i];
+          const clusterQuotes = cluster
+            ? quotesByCluster.get(cluster.clusterId) || []
+            : [];
+
+          // Sort by confidence and take up to 6 quotes
+          (insight.strengths[i] as any).evidence = clusterQuotes
             .sort((a, b) => b.confidence - a.confidence)
-            .slice(0, 3)
+            .slice(0, 6)
             .map((q) => q.quote);
-          (strength as any).evidence = quotes;
         }
       }
 
-      // Add evidence to growth areas
+      // Match quotes to growthAreas by cluster order
       if (Array.isArray(insight.growthAreas)) {
-        for (const area of insight.growthAreas) {
-          // Get up to 2 quotes per growth area, prefer high confidence
-          const quotes = growthQuotes
+        for (let i = 0; i < insight.growthAreas.length; i++) {
+          const cluster = growthClusters[i];
+          const clusterQuotes = cluster
+            ? quotesByCluster.get(cluster.clusterId) || []
+            : [];
+
+          // Sort by confidence and take up to 4 quotes
+          (insight.growthAreas[i] as any).evidence = clusterQuotes
             .sort((a, b) => b.confidence - a.confidence)
-            .slice(0, 2)
+            .slice(0, 4)
             .map((q) => q.quote);
-          (area as any).evidence = quotes;
         }
       }
     }

@@ -70,15 +70,24 @@ Transform raw behavioral data into an ENGAGING, PERSONALIZED narrative that make
 - Make this feel like a professional career assessment worth paying for
 
 **Dimension Insights** (exactly 6 - COMPREHENSIVE)
-For each dimension:
-- Create 3-8 themed STRENGTH CLUSTERS from raw signals
-  - Give each cluster a specific, memorable title (not generic)
-  - Write detailed descriptions (up to 500 chars) that feel personal, not templated
-  - Include 3-6 evidence quotes per cluster for credibility
-- Create 2-5 GROWTH AREAS (where signals warrant)
-  - Frame as opportunities, not criticisms
-  - Include detailed, actionable recommendations (up to 400 chars)
-  - Provide specific examples and next steps
+For each dimension, USE CLUSTERS from Stage 1 data (dimensionSignals.clusters):
+
+STRENGTH SECTIONS:
+- Number of strength sections = number of strength clusters defined in Stage 1
+- For each cluster: transform cluster.theme into an engaging section title
+  - Make it specific and memorable (not generic)
+  - Example: cluster theme "전문가 페르소나 활용" → title "다중 전문가 페르소나 오케스트레이션"
+- Write detailed descriptions (up to 500 chars) that feel personal
+- Evidence quotes will be added automatically via clusterId matching
+
+GROWTH AREAS:
+- Number of growth sections = number of growth clusters defined in Stage 1
+- Transform cluster.theme into actionable section title
+- Frame as opportunities, not criticisms
+- Include detailed, actionable recommendations (up to 400 chars)
+- Evidence quotes will be added automatically via clusterId matching
+
+CRITICAL: The order of strengths/growthAreas MUST match the order of clusters in Stage 1 data
 
 **Prompt Patterns** (5-12 patterns for comprehensive analysis)
 - Name each pattern distinctively based on its characteristics
@@ -145,6 +154,30 @@ For each dimension:
   - problemDecompositionRate: ratio with decomposition
 - If NO /plan usage: recommend "복잡한 작업 전 /plan 명령어로 로드맵을 세워보세요"
 - Write summary emphasizing their planning sophistication
+
+**Top 3 Focus Areas** (CRITICAL - from personalizedPriorities)
+This is the MOST ACTIONABLE part of the report. Use personalizedPriorities from Stage 1:
+
+- Transform each priority into an engaging, memorable narrative:
+  - Lead with WHY this matters for THIS developer
+  - Reference specific quotes that led to this priority (use quote.insight.rootCause)
+  - Connect the situation (quote.context) to the recommendation
+  - Make the expected impact feel tangible and motivating
+
+- Use the priority's context + insight data to write deeper analysis:
+  - "In your debugging sessions (context.situationType), you tend to..."
+  - "This happens because (insight.rootCause)..."
+  - "Developing this habit will (expectedImpact)..."
+
+- Writing style for priorities:
+  - Rank 1: Most urgent, most impactful - emphasize immediate actionability
+  - Rank 2: Important for sustained growth - emphasize consistency
+  - Rank 3: Long-term excellence - emphasize mastery mindset
+
+- Include specific action steps for each priority:
+  - What to START doing
+  - What to STOP doing
+  - What to CONTINUE doing
 
 # Format
 
@@ -234,11 +267,12 @@ Using the extracted data above, create a VerboseLLMResponse:
    - Emphasize 3-5 key phrases with **bold markers** (e.g., "Your **strategic planning approach**...")
    - Include insights on collaboration style, problem-solving, and growth mindset${koreanSummaryReminder}
 
-3. **Dimension Insights** (exactly 6 - COMPREHENSIVE)
-   - Create 3-8 strength clusters per dimension by grouping related strengthSignals
-   - Each cluster: title (max 80 chars), description (max 500 chars), evidence as string array (3-6 actual quote strings)
-   - Create 2-5 growth areas from growthSignals (where meaningful signals exist)
-   - For growth areas: include 2-4 evidence quote strings and a detailed recommendation (max 400 chars)${koreanDimensionReminder}
+3. **Dimension Insights** (exactly 6 - USE CLUSTERS FROM STAGE 1)
+   - Use dimensionSignals.clusters to determine number and order of sections
+   - For each strength cluster: transform theme into engaging title (max 80 chars), write description (max 500 chars)
+   - For each growth cluster: transform theme into title, write description and recommendation (max 400 chars)
+   - Evidence quotes are added automatically - do NOT include evidence arrays
+   - CRITICAL: Order of strengths/growthAreas MUST match order of clusters in Stage 1${koreanDimensionReminder}
 
 4. **Prompt Patterns** (5-12 for comprehensive analysis)
    - Transform detectedPatterns into distinctively named patterns
@@ -274,6 +308,15 @@ Using the extracted data above, create a VerboseLLMResponse:
    - Include slashPlanStats if /plan was used (CRITICAL: totalUsage, avgStepsPerPlan, problemDecompositionRate)
    - If no /plan usage, recommend it in opportunities
    - Write summary emphasizing planning sophistication
+
+10. **Top 3 Focus Areas** (CRITICAL - from personalizedPriorities)
+   - Use personalizedPriorities from Stage 1 data
+   - Transform each priority into engaging narrative with:
+     * WHY this matters (using insight.rootCause from related quotes)
+     * WHEN this happens (using context.situationType from related quotes)
+     * WHAT to do (specific START/STOP/CONTINUE actions)
+   - Make priorities feel personal and immediately actionable
+   - Connect to specific evidence from their sessions
 
 Make this developer feel truly understood. Use their actual words.${koreanFinalReminder}`;
 }

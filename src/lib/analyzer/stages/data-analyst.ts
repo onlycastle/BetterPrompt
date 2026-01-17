@@ -156,10 +156,9 @@ Tool Usage: Read=${metrics.toolUsage.read}, Grep=${metrics.toolUsage.grep}, Glob
       sanitized.extractedQuotes = [];
     }
 
-    // Filter out quotes that don't meet the minimum length requirement (10 chars)
-    // This prevents schema validation failures when LLM generates short quotes
+    // Filter out empty quotes only - no length constraints on user data
     sanitized.extractedQuotes = sanitized.extractedQuotes.filter(
-      (q) => q.quote && q.quote.length >= 10
+      (q) => q.quote && q.quote.trim().length > 0
     );
 
     // Ensure dimensionSignals has exactly 6 items (one per dimension)

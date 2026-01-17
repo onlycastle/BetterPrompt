@@ -287,7 +287,7 @@ detectedPatterns[]                      promptPatterns[]
 │  (primaryType, controlLevel)                                             │
 │                                                                          │
 │  Personality Summary             ✓          ✓           ✓               │
-│  (200-800 chars)                                                         │
+│                                                                          │
 │                                                                          │
 │  Dimensions 1-2                  ✓          ✓           ✓               │
 │  (full detail)                  full       full        full             │
