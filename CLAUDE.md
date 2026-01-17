@@ -62,9 +62,20 @@ Commands in `commands/*.md` with YAML frontmatter:
 
 Option 1 - Tag-based (recommended):
 ```bash
-git tag cli-v0.5.0
-git push origin cli-v0.5.0  # Triggers GitHub Actions → npm publish
+# 1. Update version in package.json FIRST
+cd packages/cli
+npm version patch --no-git-tag-version  # or minor/major
+
+# 2. Commit the version bump
+git add packages/cli/package.json
+git commit -m "chore(cli): bump version to X.X.X"
+
+# 3. Create and push tag (must match package.json version)
+git tag cli-vX.X.X
+git push origin main --tags  # Triggers GitHub Actions → npm publish
 ```
+
+⚠️ **Important**: The tag version must match package.json version. GitHub Actions does NOT auto-update package.json for tag triggers.
 
 Option 2 - Manual trigger:
 Go to Actions → "Publish CLI to npm" → Run workflow → Select version type

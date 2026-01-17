@@ -162,15 +162,32 @@ node dist/index.js --use-cache
 
 ### Deploy to NPM
 
+**Option 1 - Tag-based (recommended):**
+```bash
+cd packages/cli
+
+# 1. Update version in package.json FIRST
+npm version patch --no-git-tag-version  # or minor/major
+
+# 2. Commit the version bump
+git add packages/cli/package.json
+git commit -m "chore(cli): bump version to X.X.X"
+
+# 3. Create and push tag (must match package.json version)
+git tag cli-vX.X.X
+git push origin main --tags  # Triggers GitHub Actions → npm publish
+```
+
+⚠️ **Important**: Tag version must match package.json. GitHub Actions does NOT auto-update package.json.
+
+**Option 2 - Manual GitHub Actions:**
+Go to Actions → "Publish CLI to npm" → Run workflow → Select version type (auto-bumps package.json)
+
+**Option 3 - Local script (legacy):**
 ```bash
 cd packages/cli
 npm run release          # patch (0.1.0 → 0.1.1)
 npm run release:minor    # minor (0.1.0 → 0.2.0)
-
-# Commit version bump
-git add packages/cli/package.json
-git commit -m "chore(cli): release vX.X.X"
-git push origin main
 ```
 
 ### Post-Deployment Test
