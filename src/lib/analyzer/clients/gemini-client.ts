@@ -85,7 +85,7 @@ export class GeminiClient {
           contents: this.buildContents(request.systemPrompt, request.userPrompt),
           config: {
             temperature: this.temperature,
-            maxOutputTokens: request.maxOutputTokens || 8192,
+            maxOutputTokens: request.maxOutputTokens || 16384,
             responseMimeType: 'application/json',
             responseJsonSchema: responseSchema,
           },
@@ -129,8 +129,21 @@ export class GeminiClient {
 
   /**
    * Parse and validate the response
+   * Also checks for truncation via finishReason
    */
-  private parseResponse<T>(response: { text?: string }, schema: ZodSchema<T>): T {
+  private parseResponse<T>(
+    response: { text?: string; candidates?: Array<{ finishReason?: string }> },
+    schema: ZodSchema<T>
+  ): T {
+    // Check for truncation before attempting to parse
+    const finishReason = response.candidates?.[0]?.finishReason;
+    if (finishReason === 'MAX_TOKENS') {
+      throw new Error(
+        'Response truncated: Output exceeded maxOutputTokens limit. ' +
+          'The AI generated more content than allowed. Try analyzing fewer sessions or contact support.'
+      );
+    }
+
     if (!response.text) {
       throw new Error('Empty response from Gemini');
     }
@@ -139,6 +152,13 @@ export class GeminiClient {
     try {
       parsed = JSON.parse(response.text);
     } catch {
+      // If JSON parsing fails, check if it looks like truncation
+      if (response.text.length > 100 && !response.text.trim().endsWith('}')) {
+        throw new Error(
+          'Response truncated: JSON output was cut off before completion. ' +
+            'This usually means the analysis is too large. Try analyzing fewer sessions.'
+        );
+      }
       throw new Error(`Failed to parse JSON response: ${response.text.slice(0, 200)}`);
     }
 
