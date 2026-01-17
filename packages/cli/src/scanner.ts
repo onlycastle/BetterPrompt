@@ -1,14 +1,14 @@
 /**
  * Session Scanner
  *
- * Scans ~/.claude/projects/ for Claude Code session logs
- * and extracts data for analysis.
+ * Scans ~/.claude/projects/ for Claude Code session logs,
+ * parses JSONL into structured sessions, and prepares for analysis.
  */
 
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
-import { countTokensAccurate } from './cost-estimator.js';
+import { parseSessionContent, type ParsedSession } from './session-formatter.js';
 
 export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
@@ -22,17 +22,24 @@ export interface SessionMetadata {
   filePath: string;
 }
 
-export interface SessionData {
+/**
+ * Scanned session with raw content (for initial scanning)
+ */
+export interface ScannedSession {
   metadata: SessionMetadata;
   content: string; // Raw JSONL content
 }
 
-export interface SessionWithTokens extends SessionData {
-  tokenCount: number;
+/**
+ * Parsed session ready for analysis
+ */
+export interface SessionWithParsed {
+  metadata: SessionMetadata;
+  parsed: ParsedSession;
 }
 
 export interface ScanResult {
-  sessions: SessionWithTokens[];
+  sessions: SessionWithParsed[];
   totalMessages: number;
   totalDurationMinutes: number;
 }
@@ -94,7 +101,7 @@ function updateTimestampBounds(
 }
 
 /**
- * Get metadata for a session file
+ * Get metadata for a session file (quick scan without full parsing)
  */
 async function getSessionMetadata(filePath: string): Promise<SessionMetadata | null> {
   try {
@@ -180,7 +187,7 @@ export async function listSessionFiles(projectDir: string): Promise<string[]> {
 }
 
 /**
- * Scan all sessions and select the best ones for analysis
+ * Scan all sessions and parse them for analysis
  */
 export async function scanSessions(maxSessions: number = 10): Promise<ScanResult> {
   const projectDirs = await listProjectDirs();
@@ -206,18 +213,26 @@ export async function scanSessions(maxSessions: number = 10): Promise<ScanResult
   // Select top sessions
   const selected = allMetadata.slice(0, maxSessions);
 
-  // Read content for selected sessions and calculate tokens
-  const sessions: SessionWithTokens[] = [];
+  // Read and parse content for selected sessions
+  const sessions: SessionWithParsed[] = [];
   let totalMessages = 0;
   let totalDurationMinutes = 0;
 
   for (const metadata of selected) {
     try {
       const content = await readFile(metadata.filePath, 'utf-8');
-      const tokenCount = countTokensAccurate(content);
-      sessions.push({ metadata, content, tokenCount });
-      totalMessages += metadata.messageCount;
-      totalDurationMinutes += Math.round(metadata.durationSeconds / 60);
+      const parsed = parseSessionContent(
+        metadata.sessionId,
+        metadata.projectPath,
+        metadata.projectName,
+        content
+      );
+
+      if (parsed) {
+        sessions.push({ metadata, parsed });
+        totalMessages += metadata.messageCount;
+        totalDurationMinutes += Math.round(metadata.durationSeconds / 60);
+      }
     } catch {
       // Skip unreadable files
     }

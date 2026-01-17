@@ -44,24 +44,80 @@ import {
 const MAX_BODY_SIZE = 50 * 1024 * 1024;
 
 /**
- * Session data from CLI
+ * Session data from CLI (legacy v1 format - raw JSONL)
  */
-interface RemoteSessionData {
+interface RemoteSessionDataV1 {
   sessionId: string;
   projectName: string;
   messageCount: number;
   durationMinutes: number;
-  content: string;
+  content: string; // Raw JSONL content
 }
 
 /**
- * Analysis request from CLI
+ * Pre-parsed message from CLI (v2 format)
  */
-interface AnalysisRequest {
-  sessions: RemoteSessionData[];
+interface SerializedMessage {
+  uuid: string;
+  role: 'user' | 'assistant';
+  timestamp: string; // ISO string
+  content: string;
+  toolCalls?: Array<{
+    id: string;
+    name: string;
+    input: Record<string, unknown>;
+    result?: string;
+    isError?: boolean;
+  }>;
+  tokenUsage?: {
+    input: number;
+    output: number;
+  };
+}
+
+/**
+ * Pre-parsed session from CLI (v2 format)
+ */
+interface SerializedSession {
+  sessionId: string;
+  projectPath: string;
+  projectName: string;
+  startTime: string; // ISO string
+  endTime: string; // ISO string
+  durationSeconds: number;
+  claudeCodeVersion: string;
+  messages: SerializedMessage[];
+  stats: {
+    userMessageCount: number;
+    assistantMessageCount: number;
+    toolCallCount: number;
+    uniqueToolsUsed: string[];
+    totalInputTokens: number;
+    totalOutputTokens: number;
+  };
+}
+
+/**
+ * Analysis request from CLI (v1 - legacy raw JSONL)
+ */
+interface AnalysisRequestV1 {
+  sessions: RemoteSessionDataV1[];
   totalMessages: number;
   totalDurationMinutes: number;
+  version?: undefined | 1;
 }
+
+/**
+ * Analysis request from CLI (v2 - pre-parsed)
+ */
+interface AnalysisRequestV2 {
+  sessions: SerializedSession[];
+  totalMessages: number;
+  totalDurationMinutes: number;
+  version: 2;
+}
+
+type AnalysisRequest = AnalysisRequestV1 | AnalysisRequestV2;
 
 /**
  * Analysis result returned to CLI
@@ -241,7 +297,7 @@ function computeMessageStats(
 /**
  * Parse remote session data into ParsedSession format
  */
-function parseRemoteSession(data: RemoteSessionData): ParsedSession | null {
+function parseRemoteSessionV1(data: RemoteSessionDataV1): ParsedSession | null {
   const lines = parseJSONLContent(data.content);
   const messages = lines.filter(isConversationMessage);
 
@@ -332,6 +388,37 @@ function parseRemoteSession(data: RemoteSessionData): ParsedSession | null {
 }
 
 /**
+ * Convert pre-parsed session (v2) to ParsedSession
+ * No parsing needed - just deserialize dates
+ */
+function deserializeSessionV2(data: SerializedSession): ParsedSession {
+  return {
+    sessionId: data.sessionId,
+    projectPath: data.projectPath,
+    startTime: new Date(data.startTime),
+    endTime: new Date(data.endTime),
+    durationSeconds: data.durationSeconds,
+    claudeCodeVersion: data.claudeCodeVersion,
+    messages: data.messages.map((msg) => ({
+      uuid: msg.uuid,
+      role: msg.role,
+      timestamp: new Date(msg.timestamp),
+      content: msg.content,
+      toolCalls: msg.toolCalls,
+      tokenUsage: msg.tokenUsage,
+    })),
+    stats: data.stats,
+  };
+}
+
+/**
+ * Check if request is v2 format (pre-parsed)
+ */
+function isV2Request(body: AnalysisRequest): body is AnalysisRequestV2 {
+  return body.version === 2;
+}
+
+/**
  * Check if Supabase is configured
  */
 function isSupabaseConfigured(): boolean {
@@ -407,30 +494,51 @@ async function runAnalysis(
   userGeminiApiKey: string,
   write: (event: SSEEvent) => void
 ): Promise<void> {
-  // Progress: Starting
-  write({
-    type: "progress",
-    stage: "parsing",
-    progress: 10,
-    message: `Parsing ${body.sessions.length} session(s)...`,
-  });
-
-  // Parse sessions
+  // Parse sessions based on version
   const parsedSessions: ParsedSession[] = [];
 
-  for (let i = 0; i < body.sessions.length; i++) {
-    const parsed = parseRemoteSession(body.sessions[i]);
-    if (parsed) {
-      parsedSessions.push(parsed);
+  if (isV2Request(body)) {
+    // V2: Pre-parsed sessions - just deserialize dates
+    write({
+      type: "progress",
+      stage: "parsing",
+      progress: 10,
+      message: `Loading ${body.sessions.length} pre-parsed session(s)...`,
+    });
+
+    for (const session of body.sessions) {
+      parsedSessions.push(deserializeSessionV2(session));
     }
 
-    if (i % 3 === 0) {
-      write({
-        type: "progress",
-        stage: "parsing",
-        progress: 10 + Math.floor((i / body.sessions.length) * 20),
-        message: `Parsed ${i + 1}/${body.sessions.length} sessions`,
-      });
+    write({
+      type: "progress",
+      stage: "parsing",
+      progress: 30,
+      message: `Loaded ${parsedSessions.length} sessions`,
+    });
+  } else {
+    // V1: Legacy raw JSONL - parse each session
+    write({
+      type: "progress",
+      stage: "parsing",
+      progress: 10,
+      message: `Parsing ${body.sessions.length} session(s)...`,
+    });
+
+    for (let i = 0; i < body.sessions.length; i++) {
+      const parsed = parseRemoteSessionV1(body.sessions[i]);
+      if (parsed) {
+        parsedSessions.push(parsed);
+      }
+
+      if (i % 3 === 0) {
+        write({
+          type: "progress",
+          stage: "parsing",
+          progress: 10 + Math.floor((i / body.sessions.length) * 20),
+          message: `Parsed ${i + 1}/${body.sessions.length} sessions`,
+        });
+      }
     }
   }
 

@@ -2,18 +2,28 @@
  * Cost Estimator - Token counting and API cost calculation for CLI
  *
  * Estimates the cost of running analysis based on:
- * - Session content token count
- * - System prompt overhead
- * - Expected output tokens
+ * - Session content token count (with truncation matching actual stages)
+ * - System prompt overhead per stage
+ * - Expected output tokens per stage
  * - Model-specific pricing
+ *
+ * Three-stage pipeline:
+ * - Stage 1A: Data Analyst (input: sessions, output: StructuredAnalysisData)
+ * - Stage 1B: Personality Analyst (input: sessions, output: PersonalityProfile)
+ * - Stage 2: Content Writer (input: Stage 1A + 1B outputs, output: final report)
  */
 
 import pc from 'picocolors';
-import type { ScanResult } from './scanner.js';
+import type { ParsedSession } from './session-formatter.js';
+import {
+  countFormattedTokens,
+  DATA_ANALYST_FORMAT,
+  PERSONALITY_ANALYST_FORMAT,
+} from './session-formatter.js';
 
 /**
  * Model pricing configuration (per token)
- * Gemini 3 Flash is used for the two-stage analysis pipeline
+ * Gemini 3 Flash is used for the three-stage analysis pipeline
  */
 const GEMINI_PRICING = {
   'gemini-3-flash-preview': {
@@ -24,50 +34,78 @@ const GEMINI_PRICING = {
 };
 
 /**
- * Fixed overhead estimates
+ * System prompt tokens per stage (approximate)
  */
-const ESTIMATED_SYSTEM_PROMPT_TOKENS = 2500;
-const ESTIMATED_SCHEMA_OVERHEAD = 1500;
-const ESTIMATED_OUTPUT_TOKENS = 6000;
+const SYSTEM_PROMPT_TOKENS_PER_STAGE = 2500;
+
+/**
+ * Schema overhead tokens per stage
+ */
+const SCHEMA_OVERHEAD_PER_STAGE = 1500;
+
+/**
+ * Number of LLM stages in the pipeline
+ */
+const PIPELINE_STAGES = 3;
+
+/**
+ * Estimated output tokens per stage (generous 2x buffer)
+ * - Data Analyst: ~8000 (structured data extraction)
+ * - Personality Analyst: ~4000 (personality profile)
+ * - Content Writer: ~12000 (final narrative report)
+ */
+const ESTIMATED_OUTPUT_PER_STAGE = {
+  dataAnalyst: 8000,
+  personalityAnalyst: 4000,
+  contentWriter: 12000,
+};
+
+/**
+ * Content Writer receives Stage 1A + 1B outputs as input
+ * Estimate based on typical output sizes
+ */
+const CONTENT_WRITER_INPUT_FROM_STAGES = 12000;
+
+/**
+ * Stage-specific breakdown for cost estimation
+ */
+export interface StageBreakdown {
+  dataAnalystInput: number;
+  personalityAnalystInput: number;
+  contentWriterInput: number;
+  systemPromptOverhead: number;
+  schemaOverhead: number;
+}
 
 export interface CostEstimate {
   totalInputTokens: number;
   estimatedOutputTokens: number;
   totalCost: number;
-  breakdown: {
-    sessionTokens: number;
-    systemPromptTokens: number;
-    schemaOverhead: number;
-  };
+  breakdown: StageBreakdown;
   modelName: string;
 }
 
 /**
- * Count tokens using character-based heuristics
- * with adjustments for common patterns in JSONL content
+ * Legacy token counter for raw content (used during scanning)
+ * @deprecated Use countFormattedTokens for accurate estimation
  */
 export function countTokensAccurate(text: string): number {
   if (!text) return 0;
 
-  // Base estimate: ~4 chars per token for English
   let baseCount = text.length / 4;
 
-  // Adjustments for code (more tokens due to symbols)
   const codeBlockMatches = text.match(/```[\s\S]*?```/g);
   const codeBlockCount = codeBlockMatches ? codeBlockMatches.length : 0;
-  baseCount += codeBlockCount * 50; // Code blocks are token-heavy
+  baseCount += codeBlockCount * 50;
 
-  // JSON structure overhead
   const jsonBraceMatches = text.match(/[{}[\]]/g);
   const jsonBraceCount = jsonBraceMatches ? jsonBraceMatches.length : 0;
   baseCount += jsonBraceCount * 0.5;
 
-  // Newlines and whitespace
   const newlineMatches = text.match(/\n/g);
   const newlineCount = newlineMatches ? newlineMatches.length : 0;
   baseCount += newlineCount * 0.1;
 
-  // Special characters in code
   const specialCharMatches = text.match(/[<>()=;:,."'`]/g);
   const specialCharCount = specialCharMatches ? specialCharMatches.length : 0;
   baseCount += specialCharCount * 0.1;
@@ -76,31 +114,45 @@ export function countTokensAccurate(text: string): number {
 }
 
 /**
- * Estimate the cost of running analysis on scanned sessions
+ * Estimate the cost of running analysis on parsed sessions
+ * Uses the same truncation logic as actual analysis stages
  */
-export function estimateAnalysisCost(scanResult: ScanResult): CostEstimate {
+export function estimateAnalysisCost(sessions: ParsedSession[]): CostEstimate {
   const pricing = GEMINI_PRICING['gemini-3-flash-preview'];
 
-  // Calculate session content tokens from raw JSONL
-  let sessionTokens = 0;
-  for (const session of scanResult.sessions) {
-    sessionTokens += countTokensAccurate(session.content);
-  }
+  // Calculate session tokens using the same truncation as actual stages
+  const dataAnalystSessionTokens = countFormattedTokens(sessions, DATA_ANALYST_FORMAT);
+  const personalitySessionTokens = countFormattedTokens(sessions, PERSONALITY_ANALYST_FORMAT);
 
-  const totalInputTokens =
-    sessionTokens + ESTIMATED_SYSTEM_PROMPT_TOKENS + ESTIMATED_SCHEMA_OVERHEAD;
+  // System prompt and schema overhead for each stage
+  const systemPromptOverhead = SYSTEM_PROMPT_TOKENS_PER_STAGE * PIPELINE_STAGES;
+  const schemaOverhead = SCHEMA_OVERHEAD_PER_STAGE * PIPELINE_STAGES;
 
-  const totalCost =
-    totalInputTokens * pricing.input + ESTIMATED_OUTPUT_TOKENS * pricing.output;
+  // Total input tokens per stage
+  const dataAnalystInput = dataAnalystSessionTokens + SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
+  const personalityInput = personalitySessionTokens + SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
+  const contentWriterInput = CONTENT_WRITER_INPUT_FROM_STAGES + SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
+
+  const totalInputTokens = dataAnalystInput + personalityInput + contentWriterInput;
+
+  // Total output tokens
+  const totalOutputTokens =
+    ESTIMATED_OUTPUT_PER_STAGE.dataAnalyst +
+    ESTIMATED_OUTPUT_PER_STAGE.personalityAnalyst +
+    ESTIMATED_OUTPUT_PER_STAGE.contentWriter;
+
+  const totalCost = totalInputTokens * pricing.input + totalOutputTokens * pricing.output;
 
   return {
     totalInputTokens,
-    estimatedOutputTokens: ESTIMATED_OUTPUT_TOKENS,
+    estimatedOutputTokens: totalOutputTokens,
     totalCost,
     breakdown: {
-      sessionTokens,
-      systemPromptTokens: ESTIMATED_SYSTEM_PROMPT_TOKENS,
-      schemaOverhead: ESTIMATED_SCHEMA_OVERHEAD,
+      dataAnalystInput,
+      personalityAnalystInput: personalityInput,
+      contentWriterInput,
+      systemPromptOverhead,
+      schemaOverhead,
     },
     modelName: pricing.name,
   };
@@ -120,12 +172,16 @@ export function renderCostEstimate(
   lines.push('');
   lines.push(`  ${pc.dim('Sessions to analyze:')} ${pc.white(sessionCount.toString())}`);
   lines.push(`  ${pc.dim('Model:')} ${pc.white(estimate.modelName)}`);
+  lines.push(`  ${pc.dim('Pipeline:')} ${pc.white('3-stage (Data → Personality → Content)')}`);
   lines.push('');
   lines.push(`  ${pc.dim('Input tokens:')} ${pc.white(estimate.totalInputTokens.toLocaleString())}`);
-  lines.push(`    ${pc.dim('├─ Session content:')} ${estimate.breakdown.sessionTokens.toLocaleString()}`);
-  lines.push(`    ${pc.dim('├─ System prompt:')} ${estimate.breakdown.systemPromptTokens.toLocaleString()}`);
-  lines.push(`    ${pc.dim('└─ Schema overhead:')} ${estimate.breakdown.schemaOverhead.toLocaleString()}`);
+  lines.push(`    ${pc.dim('├─ Data Analyst:')} ${estimate.breakdown.dataAnalystInput.toLocaleString()}`);
+  lines.push(`    ${pc.dim('├─ Personality Analyst:')} ${estimate.breakdown.personalityAnalystInput.toLocaleString()}`);
+  lines.push(`    ${pc.dim('└─ Content Writer:')} ${estimate.breakdown.contentWriterInput.toLocaleString()}`);
   lines.push(`  ${pc.dim('Output tokens (est):')} ${pc.white(estimate.estimatedOutputTokens.toLocaleString())}`);
+  lines.push(`    ${pc.dim('├─ Data Analyst:')} ${ESTIMATED_OUTPUT_PER_STAGE.dataAnalyst.toLocaleString()}`);
+  lines.push(`    ${pc.dim('├─ Personality Analyst:')} ${ESTIMATED_OUTPUT_PER_STAGE.personalityAnalyst.toLocaleString()}`);
+  lines.push(`    ${pc.dim('└─ Content Writer:')} ${ESTIMATED_OUTPUT_PER_STAGE.contentWriter.toLocaleString()}`);
   lines.push('');
 
   // Cost box

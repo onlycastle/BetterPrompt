@@ -5,12 +5,13 @@
  * Supports SSE streaming for real-time progress updates
  * Uses gzip compression to reduce payload size
  *
- * For large payloads (>5MB), automatically uses Supabase Storage
- * to bypass Lambda Function URL's 6MB request limit.
+ * Sends pre-parsed session data to avoid redundant parsing on server.
+ * For large payloads (>5MB), automatically uses Supabase Storage.
  */
 
 import { gzipSync } from 'node:zlib';
 import type { ScanResult } from './scanner.js';
+import type { ParsedSession, ParsedMessage } from './session-formatter.js';
 
 /**
  * Debug mode - set NOSLOP_DEBUG=1 to enable verbose logging
@@ -22,9 +23,6 @@ function debugLog(...args: unknown[]) {
 
 /**
  * Lambda Function URL for analysis API
- * Calls Lambda directly to bypass Vercel's 4.5MB body size limit
- * - 15 minute timeout
- * - Supports Supabase Storage for large payloads
  */
 const DEFAULT_LAMBDA_URL = 'https://kgdby5xqjypfnlihknmcllqwgq0labzp.lambda-url.ap-northeast-2.on.aws';
 const LAMBDA_API_URL = process.env.NOSLOP_API_URL || DEFAULT_LAMBDA_URL;
@@ -36,77 +34,124 @@ const REPORT_BASE_URL = 'https://www.nomoreaislop.xyz';
 
 /**
  * Threshold for using Supabase Storage upload
- * Lambda Function URL has a hard 6MB request payload limit
- * Use Storage for anything larger than 5MB (with safety margin)
  */
 const USE_STORAGE_THRESHOLD = 5 * 1024 * 1024;
 
 /**
- * Maximum payload size (for truncation purposes)
- * This is effectively unlimited now since we use Storage for large payloads
+ * Maximum payload size
  */
 const PAYLOAD_LIMIT = 100 * 1024 * 1024;
 
 /**
- * Target content length per session after truncation (characters)
+ * Serialized message format for API
+ * Dates are serialized as ISO strings
  */
-const TRUNCATED_CONTENT_LENGTH = 150_000;
-
-/**
- * Truncate JSONL content to keep most recent messages
- * Preserves the structure while reducing size
- */
-function truncateSessionContent(content: string, maxLength: number): string {
-  if (content.length <= maxLength) return content;
-
-  const lines = content.split('\n');
-  const result: string[] = [];
-  let currentLength = 0;
-
-  // Keep lines from the end (most recent messages) up to maxLength
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const line = lines[i];
-    if (currentLength + line.length + 1 > maxLength) break;
-    result.unshift(line);
-    currentLength += line.length + 1;
-  }
-
-  return result.join('\n');
+interface SerializedMessage {
+  uuid: string;
+  role: 'user' | 'assistant';
+  timestamp: string; // ISO string
+  content: string;
+  toolCalls?: Array<{
+    id: string;
+    name: string;
+    input: Record<string, unknown>;
+    result?: string;
+    isError?: boolean;
+  }>;
+  tokenUsage?: {
+    input: number;
+    output: number;
+  };
 }
 
 /**
- * Result of payload preparation with size metrics for debugging
+ * Serialized session format for API
+ */
+interface SerializedSession {
+  sessionId: string;
+  projectPath: string;
+  projectName: string;
+  startTime: string; // ISO string
+  endTime: string; // ISO string
+  durationSeconds: number;
+  claudeCodeVersion: string;
+  messages: SerializedMessage[];
+  stats: {
+    userMessageCount: number;
+    assistantMessageCount: number;
+    toolCallCount: number;
+    uniqueToolsUsed: string[];
+    totalInputTokens: number;
+    totalOutputTokens: number;
+  };
+}
+
+/**
+ * API request payload
+ */
+interface AnalysisPayload {
+  sessions: SerializedSession[];
+  totalMessages: number;
+  totalDurationMinutes: number;
+  version: 2; // Protocol version for pre-parsed data
+}
+
+/**
+ * Serialize a message for API transmission
+ */
+function serializeMessage(msg: ParsedMessage): SerializedMessage {
+  return {
+    uuid: msg.uuid,
+    role: msg.role,
+    timestamp: msg.timestamp.toISOString(),
+    content: msg.content,
+    toolCalls: msg.toolCalls,
+    tokenUsage: msg.tokenUsage,
+  };
+}
+
+/**
+ * Serialize a session for API transmission
+ */
+function serializeSession(session: ParsedSession): SerializedSession {
+  return {
+    sessionId: session.sessionId,
+    projectPath: session.projectPath,
+    projectName: session.projectName,
+    startTime: session.startTime.toISOString(),
+    endTime: session.endTime.toISOString(),
+    durationSeconds: session.durationSeconds,
+    claudeCodeVersion: session.claudeCodeVersion,
+    messages: session.messages.map(serializeMessage),
+    stats: session.stats,
+  };
+}
+
+/**
+ * Result of payload preparation with size metrics
  */
 interface PreparePayloadResult {
   compressed: Buffer;
   truncated: boolean;
   droppedCount: number;
-  originalSizeBytes: number;      // Raw JSON size before any truncation
-  truncatedSizeBytes: number;     // JSON size after truncation (before compression)
-  compressedSizeBytes: number;    // Final gzip compressed size
+  originalSizeBytes: number;
+  compressedSizeBytes: number;
 }
 
 /**
- * Prepare payload with automatic truncation if needed
- * Returns compressed payload that fits within Lambda limits
+ * Prepare payload from parsed sessions
  */
 function preparePayload(scanResult: ScanResult): PreparePayloadResult {
-  // First attempt: full payload
-  let sessions = scanResult.sessions.map(s => ({
-    sessionId: s.metadata.sessionId,
-    projectName: s.metadata.projectName,
-    messageCount: s.metadata.messageCount,
-    durationMinutes: Math.round(s.metadata.durationSeconds / 60),
-    content: s.content,
-  }));
+  // Serialize all sessions
+  let serializedSessions = scanResult.sessions.map(s => serializeSession(s.parsed));
 
-  let payload = {
-    sessions,
+  const payload: AnalysisPayload = {
+    sessions: serializedSessions,
     totalMessages: scanResult.totalMessages,
     totalDurationMinutes: scanResult.totalDurationMinutes,
+    version: 2, // Indicates pre-parsed format
   };
 
-  // Track original size before any modifications
   const originalJson = JSON.stringify(payload);
   const originalSizeBytes = Buffer.byteLength(originalJson, 'utf-8');
 
@@ -118,62 +163,32 @@ function preparePayload(scanResult: ScanResult): PreparePayloadResult {
       truncated: false,
       droppedCount: 0,
       originalSizeBytes,
-      truncatedSizeBytes: originalSizeBytes,
       compressedSizeBytes: compressed.length,
     };
   }
 
-  // Second attempt: truncate session content
-  sessions = scanResult.sessions.map(s => ({
-    sessionId: s.metadata.sessionId,
-    projectName: s.metadata.projectName,
-    messageCount: s.metadata.messageCount,
-    durationMinutes: Math.round(s.metadata.durationSeconds / 60),
-    content: truncateSessionContent(s.content, TRUNCATED_CONTENT_LENGTH),
-  }));
-
-  payload = {
-    sessions,
-    totalMessages: scanResult.totalMessages,
-    totalDurationMinutes: scanResult.totalDurationMinutes,
-  };
-
-  let truncatedJson = JSON.stringify(payload);
-  compressed = gzipSync(Buffer.from(truncatedJson, 'utf-8'));
-
-  if (compressed.length <= PAYLOAD_LIMIT) {
-    return {
-      compressed,
-      truncated: true,
-      droppedCount: 0,
-      originalSizeBytes,
-      truncatedSizeBytes: Buffer.byteLength(truncatedJson, 'utf-8'),
-      compressedSizeBytes: compressed.length,
-    };
-  }
-
-  // Third attempt: drop sessions until it fits (keep most recent)
+  // If too large, drop sessions until it fits (keep most recent)
   let droppedCount = 0;
-  while (sessions.length > 1 && compressed.length > PAYLOAD_LIMIT) {
-    sessions.pop(); // Remove oldest session
+  while (serializedSessions.length > 1 && compressed.length > PAYLOAD_LIMIT) {
+    serializedSessions.pop();
     droppedCount++;
 
-    payload = {
-      sessions,
-      totalMessages: sessions.reduce((sum, s) => sum + s.messageCount, 0),
-      totalDurationMinutes: sessions.reduce((sum, s) => sum + s.durationMinutes, 0),
+    const reducedPayload: AnalysisPayload = {
+      sessions: serializedSessions,
+      totalMessages: serializedSessions.reduce((sum, s) => sum + s.stats.userMessageCount + s.stats.assistantMessageCount, 0),
+      totalDurationMinutes: Math.round(serializedSessions.reduce((sum, s) => sum + s.durationSeconds, 0) / 60),
+      version: 2,
     };
 
-    truncatedJson = JSON.stringify(payload);
-    compressed = gzipSync(Buffer.from(truncatedJson, 'utf-8'));
+    const reducedJson = JSON.stringify(reducedPayload);
+    compressed = gzipSync(Buffer.from(reducedJson, 'utf-8'));
   }
 
   return {
     compressed,
-    truncated: true,
+    truncated: droppedCount > 0,
     droppedCount,
     originalSizeBytes,
-    truncatedSizeBytes: Buffer.byteLength(truncatedJson, 'utf-8'),
     compressedSizeBytes: compressed.length,
   };
 }
@@ -223,7 +238,6 @@ function parseSSELine(line: string): SSEEvent | null {
   try {
     return JSON.parse(line.slice(6)) as SSEEvent;
   } catch (e) {
-    // Log parse failures but continue - might be incomplete chunk
     debugLog('SSE parse failed:', {
       line: line.slice(0, 100),
       error: (e as Error).message,
@@ -253,15 +267,13 @@ interface UploadUrlResponse {
 }
 
 /**
- * Upload large payload via Supabase Storage (presigned URL)
- * Used when payload exceeds Lambda Function URL's 6MB limit
+ * Upload large payload via Supabase Storage
  */
 async function uploadViaStorage(
   compressedBody: Buffer,
   apiKey: string,
   onProgress?: ProgressCallback
 ): Promise<{ storagePath: string }> {
-  // 1. Get signed upload URL from Lambda
   onProgress?.('preparing', 10, 'Getting upload URL...');
 
   const urlResponse = await fetch(`${LAMBDA_API_URL}/upload-url`, {
@@ -277,7 +289,6 @@ async function uploadViaStorage(
     throw new Error(`Failed to get upload URL: ${urlResponse.status} ${errorText}`);
   }
 
-  // Log response details for debugging (before parsing)
   const responseText = await urlResponse.text();
   debugLog('/upload-url response:', {
     status: urlResponse.status,
@@ -285,14 +296,12 @@ async function uploadViaStorage(
     bodyPreview: responseText.slice(0, 200),
   });
 
-  // Parse JSON - let errors propagate with full stack trace
   const urlData = JSON.parse(responseText) as UploadUrlResponse;
 
   if (urlData.error || !urlData.signedUrl || !urlData.storagePath) {
     throw new Error(urlData.error || 'Invalid upload URL response');
   }
 
-  // 2. Upload to Supabase Storage via signed URL
   onProgress?.('preparing', 30, `Uploading ${formatSize(compressedBody.length)} to secure storage...`);
 
   const uploadResponse = await fetch(urlData.signedUrl, {
@@ -313,36 +322,28 @@ async function uploadViaStorage(
 
 /**
  * Upload session data for analysis with streaming progress
- * Automatically uses Supabase Storage for large payloads (>5MB)
  */
 export async function uploadForAnalysis(
   scanResult: ScanResult,
   apiKey: string,
   onProgress?: ProgressCallback
 ): Promise<AnalysisResult> {
-  // Prepare payload with automatic truncation if needed
   const {
     compressed: compressedBody,
     truncated,
     droppedCount,
     originalSizeBytes,
-    truncatedSizeBytes,
     compressedSizeBytes,
   } = preparePayload(scanResult);
 
-  // Build size info string for user feedback
-  const sizeInfo = truncated
-    ? `${formatSize(originalSizeBytes)} → ${formatSize(truncatedSizeBytes)} (gzip: ${formatSize(compressedSizeBytes)})`
-    : `${formatSize(originalSizeBytes)} (gzip: ${formatSize(compressedSizeBytes)})`;
+  const sizeInfo = `${formatSize(originalSizeBytes)} (gzip: ${formatSize(compressedSizeBytes)})`;
 
   // Route based on payload size
   if (compressedSizeBytes > USE_STORAGE_THRESHOLD) {
-    // Large payload: Use Supabase Storage path
     onProgress?.('preparing', 0, `${sizeInfo} | Using secure storage for large payload`);
 
     const { storagePath } = await uploadViaStorage(compressedBody, apiKey, onProgress);
 
-    // Trigger analysis from storage
     debugLog('Calling /analyze with storagePath:', storagePath);
     const response = await fetch(`${LAMBDA_API_URL}/analyze`, {
       method: 'POST',
@@ -361,12 +362,9 @@ export async function uploadForAnalysis(
     return handleStreamingResponse(response, onProgress);
   }
 
-  // Small payload: Direct upload (legacy path)
+  // Small payload: Direct upload
   if (truncated) {
-    const truncationMsg = droppedCount > 0
-      ? `Truncated and excluded ${droppedCount} session(s)`
-      : 'Session content truncated';
-    onProgress?.('preparing', 0, `${sizeInfo} | ${truncationMsg}`);
+    onProgress?.('preparing', 0, `${sizeInfo} | Excluded ${droppedCount} session(s) to fit limit`);
   } else {
     onProgress?.('preparing', 0, sizeInfo);
   }
@@ -388,7 +386,6 @@ export async function uploadForAnalysis(
       const error = JSON.parse(responseText) as UploadError;
       errorMessage = error.message || errorMessage;
     } catch {
-      // Response is not JSON, include raw text for debugging
       if (responseText) {
         errorMessage = `${errorMessage} - ${responseText.slice(0, 200)}`;
       }
@@ -396,7 +393,6 @@ export async function uploadForAnalysis(
     throw new Error(errorMessage);
   }
 
-  // Lambda always returns SSE format for analysis endpoints
   return handleStreamingResponse(response, onProgress);
 }
 
@@ -407,7 +403,6 @@ async function handleStreamingResponse(
   response: Response,
   onProgress?: ProgressCallback
 ): Promise<AnalysisResult> {
-  // Log response headers for debugging
   debugLog('SSE response:', {
     status: response.status,
     contentType: response.headers.get('content-type'),
@@ -432,7 +427,6 @@ async function handleStreamingResponse(
 
       const chunk = decoder.decode(value, { stream: true });
 
-      // Log first chunk to see what we're receiving
       if (isFirstChunk && value) {
         debugLog('SSE first chunk:', {
           bytes: value.length,
@@ -443,9 +437,8 @@ async function handleStreamingResponse(
 
       buffer += chunk;
 
-      // Process complete lines
       const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // Keep incomplete line in buffer
+      buffer = lines.pop() || '';
 
       for (const line of lines) {
         const trimmed = line.trim();
@@ -472,7 +465,6 @@ async function handleStreamingResponse(
       }
     }
 
-    // Process any remaining buffer
     if (buffer.trim()) {
       const event = parseSSELine(buffer.trim());
       if (event?.type === 'result') {

@@ -246,7 +246,14 @@ async function main(): Promise<void> {
     console.log(pc.dim(`  Selected ${selectedSessions.length} session(s)\n`));
   }
 
-  // Create filtered ScanResult for cost estimation and upload
+  // Extract parsed sessions for cost estimation
+  const parsedSessions = selectedSessions.map(s => s.parsed);
+
+  // Estimate and display cost using parsed sessions
+  const costEstimate = estimateAnalysisCost(parsedSessions);
+  console.log(renderCostEstimate(costEstimate, selectedSessions.length));
+
+  // Create filtered ScanResult for upload
   const filteredResult = {
     sessions: selectedSessions,
     totalMessages: selectedSessions.reduce((sum, s) => sum + s.metadata.messageCount, 0),
@@ -255,10 +262,6 @@ async function main(): Promise<void> {
       0
     ),
   };
-
-  // Estimate and display cost
-  const costEstimate = estimateAnalysisCost(filteredResult);
-  console.log(renderCostEstimate(costEstimate, selectedSessions.length));
 
   // Show privacy notice and ask for consent
   displayPrivacyNotice();

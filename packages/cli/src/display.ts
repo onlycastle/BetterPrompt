@@ -7,7 +7,7 @@
 import pc from 'picocolors';
 import boxen from 'boxen';
 import type { AnalysisResult } from './uploader.js';
-import type { SessionWithTokens } from './scanner.js';
+import type { SessionWithParsed } from './scanner.js';
 
 const TYPE_COLORS: Record<string, (s: string) => string> = {
   architect: pc.blue,
@@ -123,20 +123,30 @@ export function displayNoSessions(): void {
 }
 
 /**
- * Estimate cost for a single session (simplified)
+ * Estimate cost for a single session based on message count
+ * Uses approximation based on average truncated message size
  */
-function estimateSingleSessionCost(tokenCount: number): number {
+function estimateSingleSessionCost(messageCount: number): number {
   const inputPrice = 0.5 / 1_000_000; // Gemini 3 Flash input
   const outputPrice = 3.0 / 1_000_000; // Gemini 3 Flash output
-  const overhead = 400; // Amortized system prompt + schema
-  const outputTokens = 600; // Amortized output per session
-  return (tokenCount + overhead) * inputPrice + outputTokens * outputPrice;
+
+  // Average truncated message: ~500 tokens (2000 chars / 4)
+  // 3 stages with different message counts
+  const avgTokensPerMessage = 500;
+  const dataAnalystTokens = messageCount * avgTokensPerMessage;
+  const personalityTokens = Math.ceil(messageCount / 2) * avgTokensPerMessage; // Only user messages
+  const stageOverhead = (2500 + 1500) * 3; // System prompt + schema per stage
+
+  const totalInput = dataAnalystTokens + personalityTokens + 16000 + stageOverhead;
+  const totalOutput = 8000 + 4000 + 12000; // Per stage output
+
+  return totalInput * inputPrice + totalOutput * outputPrice;
 }
 
 /**
  * Display session list for selection
  */
-export function displaySessionList(sessions: SessionWithTokens[]): void {
+export function displaySessionList(sessions: SessionWithParsed[]): void {
   console.log('');
   console.log(pc.bold(pc.cyan('  📋 Available Sessions (sorted by size)')));
   console.log('');
@@ -146,7 +156,7 @@ export function displaySessionList(sessions: SessionWithTokens[]): void {
     pc.dim('  #'.padEnd(6)) +
     pc.dim('Project'.padEnd(22)) +
     pc.dim('Session'.padEnd(14)) +
-    pc.dim('Tokens'.padStart(10)) +
+    pc.dim('Messages'.padStart(10)) +
     pc.dim('Est. Cost'.padStart(12))
   );
   console.log(pc.dim('  ' + '─'.repeat(60)));
@@ -157,10 +167,10 @@ export function displaySessionList(sessions: SessionWithTokens[]): void {
     const num = pc.bold(pc.white(`${i + 1}.`.padEnd(6)));
     const project = s.metadata.projectName.slice(0, 20).padEnd(22);
     const sessionId = s.metadata.sessionId.slice(0, 12).padEnd(14);
-    const tokens = s.tokenCount.toLocaleString().padStart(10);
-    const cost = `$${estimateSingleSessionCost(s.tokenCount).toFixed(4)}`.padStart(12);
+    const messages = s.parsed.messages.length.toLocaleString().padStart(10);
+    const cost = `$${estimateSingleSessionCost(s.parsed.messages.length).toFixed(4)}`.padStart(12);
 
-    console.log(`  ${num}${project}${sessionId}${pc.cyan(tokens)}${pc.yellow(cost)}`);
+    console.log(`  ${num}${project}${sessionId}${pc.cyan(messages)}${pc.yellow(cost)}`);
   }
 
   console.log('');
