@@ -21,9 +21,10 @@ npm test               # Run all tests
 
 ## Key Implementation Details
 
-**Two-Stage Pipeline**: Uses Gemini 3 Flash (`gemini-3-flash-preview`) for both analysis stages:
-- Stage 1 (Data Analyst): Extracts structured behavioral data
-- Stage 2 (Content Writer): Transforms data into personalized narrative
+**Three-Stage Pipeline**: Uses Gemini 3 Flash (`gemini-3-flash-preview`) for all analysis stages:
+- Module A (Data Analyst): Extracts structured behavioral data
+- Module B (Personality Analyst): Extracts personality profile for storytelling
+- Stage 2 (Content Writer): Transforms both outputs into personalized narrative
 - Prompts use PTCF framework (Persona · Task · Context · Format)
 - Temperature: 1.0 (Gemini's recommended default)
 
@@ -44,7 +45,7 @@ Commands in `commands/*.md` with YAML frontmatter:
 
 | Variable | Description |
 |----------|-------------|
-| `GOOGLE_GEMINI_API_KEY` | Required for two-stage pipeline (Gemini 3 Flash) |
+| `GOOGLE_GEMINI_API_KEY` | Required for three-stage pipeline (Gemini 3 Flash) |
 | `ANTHROPIC_API_KEY` | Required for legacy single-stage mode or fallback |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (client-side) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key (client-side) |
