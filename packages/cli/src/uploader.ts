@@ -366,39 +366,8 @@ export async function uploadForAnalysis(
     throw new Error(errorMessage);
   }
 
-  // Check if response is SSE stream
-  // First check Content-Type header, then fallback to content inspection
-  const contentType = response.headers.get('content-type') || '';
-
-  if (contentType.includes('text/event-stream')) {
-    // Handle SSE streaming response
-    return handleStreamingResponse(response, onProgress);
-  }
-
-  // Lambda Function URLs may not properly forward Content-Type headers
-  // Clone response to peek at the content without consuming it
-  const clonedResponse = response.clone();
-  const reader = clonedResponse.body?.getReader();
-
-  if (reader) {
-    const { value } = await reader.read();
-    reader.releaseLock();
-
-    if (value) {
-      const preview = new TextDecoder().decode(value.slice(0, 10));
-      // SSE format starts with "data: "
-      if (preview.startsWith('data: ')) {
-        return handleStreamingResponse(response, onProgress);
-      }
-    }
-  }
-
-  // Handle legacy JSON response (fallback)
-  const result = await response.json() as AnalysisResult;
-  return {
-    ...result,
-    reportUrl: `${REPORT_BASE_URL}/r/${result.resultId}`,
-  };
+  // Lambda always returns SSE format for analysis endpoints
+  return handleStreamingResponse(response, onProgress);
 }
 
 /**
@@ -475,12 +444,4 @@ async function handleStreamingResponse(
   } finally {
     reader.releaseLock();
   }
-}
-
-/**
- * Legacy upload function (non-streaming)
- * Kept for backward compatibility
- */
-export async function uploadForAnalysisLegacy(scanResult: ScanResult, apiKey: string): Promise<AnalysisResult> {
-  return uploadForAnalysis(scanResult, apiKey);
 }
