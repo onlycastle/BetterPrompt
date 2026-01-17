@@ -305,6 +305,27 @@ export class ContentWriterStage {
         }
       }
     }
+
+    // Top Focus Areas (from personalizedPriorities)
+    const hasPersonalizedPriorities =
+      analysisData.personalizedPriorities &&
+      analysisData.personalizedPriorities.topPriorities.length > 0;
+
+    if (hasPersonalizedPriorities && !response.topFocusAreas) {
+      // Fallback: Convert Stage 1 data directly if LLM didn't generate
+      const priorities = analysisData.personalizedPriorities!;
+      response.topFocusAreas = {
+        areas: priorities.topPriorities.map((p) => ({
+          rank: p.rank,
+          dimension: p.dimension,
+          title: p.focusArea,
+          narrative: p.rationale,
+          expectedImpact: p.expectedImpact,
+          priorityScore: p.priorityScore,
+        })),
+        summary: priorities.selectionRationale,
+      };
+    }
   }
 
   /**

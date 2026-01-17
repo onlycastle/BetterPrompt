@@ -466,6 +466,64 @@ export const PlanningAnalysisSchema = z.object({
 export type PlanningAnalysis = z.infer<typeof PlanningAnalysisSchema>;
 
 // ============================================================================
+// TOP FOCUS AREAS SCHEMA (Personalized Priorities from Stage 1)
+// ============================================================================
+
+/**
+ * Action steps for a focus area (START/STOP/CONTINUE framework)
+ */
+export const FocusAreaActionsSchema = z.object({
+  /** What to START doing */
+  start: z.string().max(200),
+  /** What to STOP doing */
+  stop: z.string().max(200),
+  /** What to CONTINUE doing */
+  continue: z.string().max(200),
+});
+export type FocusAreaActions = z.infer<typeof FocusAreaActionsSchema>;
+
+/**
+ * Single top focus area with personalized narrative
+ * Transformed from Stage 1's personalizedPriorities
+ */
+export const TopFocusAreaSchema = z.object({
+  /** Priority rank (1, 2, or 3) */
+  rank: z.number().min(1).max(3),
+
+  /** Which dimension this priority relates to */
+  dimension: DimensionNameEnumSchema,
+
+  /** Specific focus area title */
+  title: z.string().max(100),
+
+  /** WHY this matters for this developer (narrative) */
+  narrative: z.string().max(500),
+
+  /** Expected impact if they focus on this */
+  expectedImpact: z.string().max(200),
+
+  /** Priority score (0-100) from Stage 1 calculation */
+  priorityScore: z.number().min(0).max(100),
+
+  /** Specific action steps */
+  actions: FocusAreaActionsSchema.optional(),
+});
+export type TopFocusArea = z.infer<typeof TopFocusAreaSchema>;
+
+/**
+ * Top 3 Focus Areas section
+ * The MOST ACTIONABLE part of the report
+ */
+export const TopFocusAreasSchema = z.object({
+  /** Top 3 personalized priorities */
+  areas: z.array(TopFocusAreaSchema).max(3),
+
+  /** Overall summary explaining the selection */
+  summary: z.string().max(500),
+});
+export type TopFocusAreas = z.infer<typeof TopFocusAreasSchema>;
+
+// ============================================================================
 // PREMIUM TIER SCHEMAS (LOCKED)
 // ============================================================================
 
@@ -619,6 +677,10 @@ export const VerboseEvaluationSchema = z.object({
   planningAnalysis: PlanningAnalysisSchema.optional()
     .describe('Planning behaviors analysis'),
 
+  // NEW: Top 3 Focus Areas (from Stage 1 personalizedPriorities)
+  topFocusAreas: TopFocusAreasSchema.optional()
+    .describe('Top 3 personalized priorities - the MOST ACTIONABLE part'),
+
   // PREMIUM TIER - Locked content
   toolUsageDeepDive: z.array(ToolUsageInsightSchema).optional(),
   tokenEfficiency: TokenEfficiencySchema.optional(),
@@ -681,5 +743,9 @@ export const VerboseLLMResponseSchema = z.object({
   // NEW: Planning Analysis (Premium/Enterprise)
   planningAnalysis: PlanningAnalysisSchema.optional()
     .describe('Planning behaviors analysis'),
+
+  // NEW: Top 3 Focus Areas (from Stage 1 personalizedPriorities)
+  topFocusAreas: TopFocusAreasSchema.optional()
+    .describe('Top 3 personalized priorities - the MOST ACTIONABLE part'),
 });
 export type VerboseLLMResponse = z.infer<typeof VerboseLLMResponseSchema>;

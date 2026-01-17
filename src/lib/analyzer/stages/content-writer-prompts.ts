@@ -183,6 +183,21 @@ This is the MOST ACTIONABLE part of the report. Use personalizedPriorities from 
 
 Return VerboseLLMResponse with all sections populated.
 
+**Required fields:**
+- primaryType, controlLevel, distribution (from Stage 1 typeAnalysis)
+- personalitySummary (300-1500 chars)
+- dimensionInsights (exactly 6)
+- promptPatterns (5-12)
+- actionablePractices (practiced + opportunities)
+- antiPatternsAnalysis (if detectedAntiPatterns exists)
+- criticalThinkingAnalysis (if criticalThinkingMoments exists)
+- planningAnalysis (if planningBehaviors exists)
+- **topFocusAreas** (CRITICAL - transform personalizedPriorities into narrative):
+  - areas: array of 1-3 TopFocusArea objects
+    - rank, dimension, title, narrative (WHY this matters), expectedImpact, priorityScore
+    - actions: { start, stop, continue }
+  - summary: explanation of priority selection
+
 **Critical Rules:**
 - Use ACTUAL quotes from the input data. Do not invent quotes.
 - Every insight must be grounded in the provided data.
@@ -309,14 +324,18 @@ Using the extracted data above, create a VerboseLLMResponse:
    - If no /plan usage, recommend it in opportunities
    - Write summary emphasizing planning sophistication
 
-10. **Top 3 Focus Areas** (CRITICAL - from personalizedPriorities)
+10. **Top 3 Focus Areas** (CRITICAL - output to topFocusAreas field)
    - Use personalizedPriorities from Stage 1 data
-   - Transform each priority into engaging narrative with:
-     * WHY this matters (using insight.rootCause from related quotes)
-     * WHEN this happens (using context.situationType from related quotes)
-     * WHAT to do (specific START/STOP/CONTINUE actions)
-   - Make priorities feel personal and immediately actionable
-   - Connect to specific evidence from their sessions
+   - Output to topFocusAreas: { areas: [...], summary: string }
+   - For each priority in topPriorities, create a TopFocusArea:
+     * rank: same as priority.rank
+     * dimension: same as priority.dimension
+     * title: transform priority.focusArea into engaging title
+     * narrative: WHY this matters (use insight.rootCause from related quotes)
+     * expectedImpact: same as priority.expectedImpact
+     * priorityScore: same as priority.priorityScore
+     * actions: { start: "...", stop: "...", continue: "..." }
+   - summary: transform priority.selectionRationale into narrative
 
 Make this developer feel truly understood. Use their actual words.${koreanFinalReminder}`;
 }
