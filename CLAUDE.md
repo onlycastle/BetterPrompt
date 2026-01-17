@@ -58,6 +58,8 @@ Commands in `commands/*.md` with YAML frontmatter:
 
 **Lambda (SST)**: Push to `main` with changes in `lambda/`, `infra/`, or `sst.config.ts` → auto-deploys
 
+> ⚠️ **NEVER use local SST deployment** (`npx sst deploy`). Local SST has critical bugs causing routing failures and inconsistent deployments. Always use GitHub Actions for Lambda deployment.
+
 **NPM CLI Package** (`no-ai-slop`):
 
 Option 1 - Tag-based (recommended):

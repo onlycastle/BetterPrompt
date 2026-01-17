@@ -40,6 +40,9 @@ jobs:
           sudo rm -rf /usr/local/bin/pulumi* || true
           sudo rm -rf ~/.pulumi || true
 
+      - name: Unlock SST (clear stale locks)
+        run: npx sst unlock --stage production || true
+
       - name: Deploy with SST
         id: sst-deploy
         run: |
