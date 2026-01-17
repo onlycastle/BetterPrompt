@@ -164,24 +164,13 @@ node dist/index.js --use-cache
 
 **Option 1 - Tag-based (recommended):**
 ```bash
-cd packages/cli
-
-# 1. Update version in package.json FIRST
-npm version patch --no-git-tag-version  # or minor/major
-
-# 2. Commit the version bump
-git add packages/cli/package.json
-git commit -m "chore(cli): bump version to X.X.X"
-
-# 3. Create and push tag (must match package.json version)
-git tag cli-vX.X.X
-git push origin main --tags  # Triggers GitHub Actions → npm publish
+git tag cli-v0.7.0
+git push origin cli-v0.7.0  # Triggers GitHub Actions → npm publish
 ```
-
-⚠️ **Important**: Tag version must match package.json. GitHub Actions does NOT auto-update package.json.
+GitHub Actions will auto-sync package.json version from the tag name.
 
 **Option 2 - Manual GitHub Actions:**
-Go to Actions → "Publish CLI to npm" → Run workflow → Select version type (auto-bumps package.json)
+Go to Actions → "Publish CLI to npm" → Run workflow → Select version type
 
 **Option 3 - Local script (legacy):**
 ```bash

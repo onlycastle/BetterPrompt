@@ -29,6 +29,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Fetch full history for version sync commit
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -39,9 +42,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Build
-        run: npm run build
 
       - name: Get version info
         id: version
@@ -54,10 +54,27 @@ jobs:
             TAG_VERSION="${GITHUB_REF#refs/tags/cli-v}"
             echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
             echo "is_tag=true" >> $GITHUB_OUTPUT
+
+            # Check if versions match
+            if [[ "$CURRENT_VERSION" != "$TAG_VERSION" ]]; then
+              echo "mismatch=true" >> $GITHUB_OUTPUT
+              echo "⚠️ Version mismatch: package.json=$CURRENT_VERSION, tag=$TAG_VERSION"
+            else
+              echo "mismatch=false" >> $GITHUB_OUTPUT
+            fi
           else
             echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
             echo "is_tag=false" >> $GITHUB_OUTPUT
+            echo "mismatch=false" >> $GITHUB_OUTPUT
           fi
+
+      # Auto-sync package.json version from tag (prevents version mismatch errors)
+      - name: Sync version from tag
+        if: github.ref_type == 'tag' && steps.version.outputs.mismatch == 'true'
+        run: |
+          TAG_VERSION="${{ steps.version.outputs.version }}"
+          echo "📝 Updating package.json version to $TAG_VERSION"
+          npm version $TAG_VERSION --no-git-tag-version --allow-same-version
 
       - name: Bump version (manual trigger only)
         if: github.event_name == 'workflow_dispatch'
@@ -65,6 +82,9 @@ jobs:
           npm version ${{ inputs.version_type }} --no-git-tag-version
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+      - name: Build
+        run: npm run build
 
       - name: Publish to npm
         run: npm publish --access public
@@ -90,6 +110,26 @@ jobs:
             ```
           generate_release_notes: true
 
+      # Sync package.json back to main branch if it was auto-updated
+      - name: Sync version to main branch
+        if: github.ref_type == 'tag' && steps.version.outputs.mismatch == 'true'
+        run: |
+          cd ../..  # Go to repo root
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          git pull origin main
+
+          # Update package.json on main
+          cd packages/cli
+          npm version ${{ steps.version.outputs.version }} --no-git-tag-version --allow-same-version
+
+          cd ../..
+          git add packages/cli/package.json
+          git commit -m "chore(cli): sync version to ${{ steps.version.outputs.version }} [skip ci]" || echo "No changes to commit"
+          git push origin main
+
       - name: Commit version bump (manual trigger only)
         if: github.event_name == 'workflow_dispatch'
         uses: stefanzweifel/git-auto-commit-action@v5
@@ -104,6 +144,10 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Package:** no-ai-slop" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.version.outputs.mismatch }}" == "true" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Auto-synced**: package.json was updated from ${{ steps.version.outputs.current }} to ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Install" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
