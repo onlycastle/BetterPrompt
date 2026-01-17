@@ -84,16 +84,26 @@ export async function uploadForAnalysis(
   const response = await fetch(`${API_BASE_URL}/api/analysis/remote`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Content-Encoding': 'gzip',
+      'Content-Type': 'application/octet-stream',
+      'X-Content-Encoding': 'gzip',  // Custom header to bypass Vercel interception
       'X-Gemini-API-Key': apiKey,
     },
     body: compressedBody,
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({})) as UploadError;
-    throw new Error(error.message || `Server error: ${response.status}`);
+    const responseText = await response.text().catch(() => '');
+    let errorMessage = `Server error: ${response.status}`;
+    try {
+      const error = JSON.parse(responseText) as UploadError;
+      errorMessage = error.message || errorMessage;
+    } catch {
+      // Response is not JSON, include raw text for debugging
+      if (responseText) {
+        errorMessage = `${errorMessage} - ${responseText.slice(0, 200)}`;
+      }
+    }
+    throw new Error(errorMessage);
   }
 
   // Check if response is SSE stream

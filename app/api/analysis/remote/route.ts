@@ -382,8 +382,10 @@ export async function POST(request: NextRequest) {
         // Next.js App Router's request.json() has a 4MB default limit
         // Supports gzip compression from CLI
         console.log('[remote-analysis] Receiving request body...');
-        const contentEncoding = request.headers.get('content-encoding');
+        // Use custom header X-Content-Encoding to bypass Vercel's Content-Encoding interception
+        const contentEncoding = request.headers.get('x-content-encoding') || request.headers.get('content-encoding');
         const isGzipped = contentEncoding === 'gzip';
+        console.log(`[remote-analysis] Content-Encoding: ${contentEncoding}, isGzipped: ${isGzipped}`);
 
         let bodyText: string;
         if (isGzipped) {
