@@ -19,6 +19,10 @@ import {
   DIMENSION_DISPLAY_NAMES,
   type VerboseLLMResponse,
   type DimensionNameEnum,
+  parseStrengthsData,
+  parseGrowthAreasData,
+  parseExamplesData,
+  parseActionsData,
 } from '../../models/verbose-evaluation';
 import type { StructuredAnalysisData } from '../../models/analysis-data';
 import type { PersonalityProfile } from '../../models/personality';
@@ -84,12 +88,16 @@ export class ContentWriterStage {
    * @param analysisData - Module A output (behavioral analysis)
    * @param personalityProfile - Module B output (personality analysis)
    * @param sessions - Raw parsed sessions
+   *
+   * @returns VerboseLLMResponse with nested arrays (converted from flattened LLM format)
+   *          The LLM returns flattened strings, which are parsed back to nested arrays.
+   *          Return type is 'any' due to this runtime conversion.
    */
   async transform(
     analysisData: StructuredAnalysisData,
     personalityProfile: PersonalityProfile,
     sessions: ParsedSession[]
-  ): Promise<VerboseLLMResponse> {
+  ): Promise<any> {
     const structuredDataJson = JSON.stringify(analysisData, null, 2);
     const personalityDataJson = JSON.stringify(personalityProfile, null, 2);
 
@@ -117,13 +125,19 @@ export class ContentWriterStage {
 
   /**
    * Sanitize response and ensure consistency with Stage 1 data
+   *
+   * This method also converts flattened LLM response format back to nested format:
+   * - strengthsData (string) -> strengths (array)
+   * - growthAreasData (string) -> growthAreas (array)
+   * - examplesData (string) -> examples (array)
+   * - actionsData (string) -> actions (object)
    */
   private sanitizeResponse(
     input: VerboseLLMResponse,
     analysisData: StructuredAnalysisData
-  ): VerboseLLMResponse {
+  ): any {
     // Deep clone to avoid mutation
-    const sanitized = JSON.parse(JSON.stringify(input)) as VerboseLLMResponse;
+    const sanitized = JSON.parse(JSON.stringify(input)) as any;
 
     // Ensure type classification matches Stage 1 (Stage 1 is authoritative)
     sanitized.primaryType = analysisData.typeAnalysis.primaryType;
@@ -145,10 +159,25 @@ export class ContentWriterStage {
       }
     }
 
+    // Convert flattened dimensionInsights to nested format
+    if (Array.isArray(sanitized.dimensionInsights)) {
+      sanitized.dimensionInsights = sanitized.dimensionInsights.map((insight: any) => ({
+        dimension: insight.dimension,
+        dimensionDisplayName: insight.dimensionDisplayName,
+        // Parse flattened strings back to arrays
+        strengths: insight.strengthsData
+          ? parseStrengthsData(insight.strengthsData)
+          : (insight.strengths || []),
+        growthAreas: insight.growthAreasData
+          ? parseGrowthAreasData(insight.growthAreasData)
+          : (insight.growthAreas || []),
+      }));
+    }
+
     // Ensure dimensionInsights has exactly 6 items
     if (!Array.isArray(sanitized.dimensionInsights) || sanitized.dimensionInsights.length !== 6) {
       sanitized.dimensionInsights = DIMENSION_NAMES.map((dim) => {
-        const existing = sanitized.dimensionInsights?.find((d) => d.dimension === dim);
+        const existing = sanitized.dimensionInsights?.find((d: any) => d.dimension === dim);
         return (
           existing || {
             dimension: dim,
@@ -158,6 +187,21 @@ export class ContentWriterStage {
           }
         );
       });
+    }
+
+    // Convert flattened promptPatterns to nested format
+    if (Array.isArray(sanitized.promptPatterns)) {
+      sanitized.promptPatterns = sanitized.promptPatterns.map((pattern: any) => ({
+        patternName: pattern.patternName,
+        description: pattern.description,
+        frequency: pattern.frequency,
+        // Parse flattened examplesData back to array
+        examples: pattern.examplesData
+          ? parseExamplesData(pattern.examplesData)
+          : (pattern.examples || []),
+        effectiveness: pattern.effectiveness,
+        tip: pattern.tip,
+      }));
     }
 
     // Ensure promptPatterns has at least 3 items
@@ -176,6 +220,22 @@ export class ContentWriterStage {
       sanitized.promptPatterns = existing;
     }
 
+    // Convert flattened topFocusAreas to nested format
+    if (sanitized.topFocusAreas && Array.isArray(sanitized.topFocusAreas.areas)) {
+      sanitized.topFocusAreas.areas = sanitized.topFocusAreas.areas.map((area: any) => ({
+        rank: area.rank,
+        dimension: area.dimension,
+        title: area.title,
+        narrative: area.narrative,
+        expectedImpact: area.expectedImpact,
+        priorityScore: area.priorityScore,
+        // Parse flattened actionsData back to object
+        actions: area.actionsData
+          ? parseActionsData(area.actionsData)
+          : area.actions,
+      }));
+    }
+
     // Add evidence from Stage 1 data to dimension insights
     // NOTE: VerboseLLMResponse doesn't include evidence to reduce nesting depth
     // We add evidence here by matching quotes from Stage 1's extractedQuotes
@@ -191,7 +251,7 @@ export class ContentWriterStage {
    * Sanitize Premium/Enterprise sections and provide defaults if missing
    */
   private sanitizePremiumSections(
-    response: VerboseLLMResponse,
+    response: any,
     analysisData: StructuredAnalysisData
   ): void {
     // Anti-Patterns Analysis
@@ -384,9 +444,12 @@ export class ContentWriterStage {
   /**
    * Add evidence quotes from Stage 1 data to dimension insights
    * Uses clusterId-based matching to ensure unique quotes per section
+   *
+   * @param response - Converted response with nested arrays (strengths/growthAreas)
+   * @param analysisData - Stage 1 structured analysis data
    */
   private addEvidenceFromStage1(
-    response: VerboseLLMResponse,
+    response: any,
     analysisData: StructuredAnalysisData
   ): void {
     if (!Array.isArray(response.dimensionInsights)) return;

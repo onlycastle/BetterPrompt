@@ -30,6 +30,14 @@ npm test               # Run all tests
 
 **Structured Outputs**: Gemini stages use `responseJsonSchema` with `responseMimeType: "application/json"`. Zod schemas in `src/lib/models/` → JSON Schema via `zod-to-json-schema`. Legacy single-stage mode uses Anthropic's beta feature.
 
+> ⚠️ **Gemini Schema Nesting Limit**: Gemini API has a **maximum nesting depth of ~5 levels** for `responseJsonSchema`. When adding new Zod schemas:
+> - Avoid deeply nested objects (e.g., `array[].object.nested.field`)
+> - Flatten nested objects by inlining fields (e.g., `contextSituationType` instead of `context.situationType`)
+> - Use semicolon-separated strings instead of nested arrays (e.g., `signalsData: "type:evidence:confidence;..."`)
+> - Use comma-separated strings for ID lists (e.g., `clusterIds: "id1,id2,id3"`)
+>
+> Error symptom: `"A schema in GenerationConfig in the request exceeds the maximum allowed nesting depth"`
+
 **JSONL Parsing**: Session logs contain `user`, `assistant`, `queue-operation`, `file-history-snapshot` types. Only `user` and `assistant` are analyzed. Content blocks: `text`, `tool_use`, `tool_result`.
 
 **Path Encoding**: Claude Code encodes paths by replacing `/` with `-`. See `encodeProjectPath`/`decodeProjectPath` in `src/lib/parser/jsonl-reader.ts`.

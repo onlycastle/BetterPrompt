@@ -461,6 +461,9 @@ export class VerboseAnalyzer {
         const analyzedSessions = extractAnalyzedSessions(sessions);
 
         // Add metadata to create full VerboseEvaluation
+        // NOTE: Type assertion needed because legacy mode uses nested arrays while
+        // VerboseLLMResponseSchema was updated to flattened format for Gemini.
+        // TODO: Create separate schemas for Gemini vs Anthropic legacy mode.
         const evaluation: VerboseEvaluation = {
           sessionId: sessions[sessions.length - 1].sessionId,
           analyzedAt: new Date().toISOString(),
@@ -468,7 +471,7 @@ export class VerboseAnalyzer {
           avgPromptLength: Math.round(metrics.avgPromptLength),
           avgTurnsPerSession: Math.round(metrics.avgTurnsPerSession * 10) / 10,
           analyzedSessions,
-          ...parsed,
+          ...(parsed as any),
         };
 
         // Apply tier-based content filtering

@@ -82,7 +82,7 @@ export const GrowthAreaSchema = z.object({
 export type GrowthArea = z.infer<typeof GrowthAreaSchema>;
 
 /**
- * Prompt pattern analysis
+ * Prompt pattern analysis (full schema for storage/display)
  */
 export const PromptPatternSchema = z.object({
   patternName: z.string().max(80).describe('Distinctive name for this pattern'),
@@ -99,6 +99,33 @@ export const PromptPatternSchema = z.object({
   tip: z.string().max(400).optional().describe('Detailed tip with examples to improve or continue this pattern'),
 });
 export type PromptPattern = z.infer<typeof PromptPatternSchema>;
+
+/**
+ * LLM Prompt pattern - FLATTENED for Gemini API compatibility
+ * Uses semicolon-separated string for examples instead of nested array
+ */
+export const LLMPromptPatternSchema = z.object({
+  patternName: z.string().max(80).describe('Distinctive name for this pattern'),
+  description: z.string().max(500).describe('Detailed description of what this pattern is and why it matters'),
+  frequency: z.enum(['frequent', 'occasional', 'rare']),
+  /** Examples as "quote|analysis;quote|analysis;..." format */
+  examplesData: z.string().max(3000).optional()
+    .describe('Examples as "quote|analysis;quote|analysis;..." format'),
+  effectiveness: z.enum(['highly_effective', 'effective', 'could_improve']),
+  tip: z.string().max(400).optional().describe('Detailed tip with examples to improve or continue this pattern'),
+});
+export type LLMPromptPattern = z.infer<typeof LLMPromptPatternSchema>;
+
+/**
+ * Helper to parse examplesData string into array of {quote, analysis}
+ */
+export function parseExamplesData(data: string | undefined): Array<{ quote: string; analysis: string }> {
+  if (!data) return [];
+  return data.split(';').filter(Boolean).map((s) => {
+    const [quote, analysis] = s.split('|');
+    return { quote: quote || '', analysis: analysis || '' };
+  });
+}
 
 // ============================================================================
 // PER-DIMENSION INSIGHT SCHEMAS (Score-Free)
@@ -165,7 +192,7 @@ export const DimensionGrowthAreaSchema = z.object({
 export type DimensionGrowthArea = z.infer<typeof DimensionGrowthAreaSchema>;
 
 // ============================================================================
-// LLM-SPECIFIC SCHEMAS (Reduced nesting for Gemini API compatibility)
+// LLM-SPECIFIC SCHEMAS (FLATTENED for Gemini API max nesting depth ~4)
 // ============================================================================
 
 /**
@@ -188,18 +215,53 @@ export const LLMDimensionGrowthAreaSchema = z.object({
 });
 
 /**
- * Per-dimension insight for LLM response (reduced nesting)
+ * Per-dimension insight for LLM response - FLATTENED to reduce nesting
+ *
+ * Uses semicolon-separated strings instead of nested arrays to stay within
+ * Gemini API's max nesting depth limit (~4 levels).
+ *
+ * Format:
+ * - strengthsData: "title1|description1;title2|description2;..."
+ * - growthAreasData: "title1|description1|recommendation1;title2|..."
  */
 export const LLMPerDimensionInsightSchema = z.object({
   dimension: DimensionNameEnumSchema,
   dimensionDisplayName: z.string().max(60).describe('Human-readable dimension name'),
-  strengths: z
-    .array(LLMDimensionStrengthSchema)
-    .describe('0-8 strength clusters for comprehensive analysis'),
-  growthAreas: z
-    .array(LLMDimensionGrowthAreaSchema)
-    .describe('0-5 growth areas with detailed recommendations'),
+
+  /** Strengths as pipe-separated pairs, semicolon between items: "title|description;title|description;..." */
+  strengthsData: z.string().max(5000).optional()
+    .describe('0-8 strengths as "title|description;..." format'),
+
+  /** Growth areas as pipe-separated triplets: "title|description|recommendation;..." */
+  growthAreasData: z.string().max(5000).optional()
+    .describe('0-5 growth areas as "title|description|recommendation;..." format'),
 });
+
+/**
+ * Helper to parse strengthsData string into array of {title, description}
+ */
+export function parseStrengthsData(data: string | undefined): Array<{ title: string; description: string }> {
+  if (!data) return [];
+  return data.split(';').filter(Boolean).map((s) => {
+    const [title, description] = s.split('|');
+    return { title: title || '', description: description || '' };
+  });
+}
+
+/**
+ * Helper to parse growthAreasData string into array of {title, description, recommendation}
+ */
+export function parseGrowthAreasData(data: string | undefined): Array<{ title: string; description: string; recommendation: string }> {
+  if (!data) return [];
+  return data.split(';').filter(Boolean).map((s) => {
+    const [title, description, recommendation] = s.split('|');
+    return {
+      title: title || '',
+      description: description || '',
+      recommendation: recommendation || '',
+    };
+  });
+}
 
 /**
  * Per-dimension insight containing strengths and growth areas
@@ -464,6 +526,115 @@ export const PlanningAnalysisSchema = z.object({
   slashPlanStats: SlashPlanStatsSchema.optional(),
 });
 export type PlanningAnalysis = z.infer<typeof PlanningAnalysisSchema>;
+
+// ============================================================================
+// LLM-SPECIFIC PREMIUM SCHEMAS (No evidence fields for Gemini API)
+// Evidence is added in post-processing from Stage 1 data
+// ============================================================================
+
+/**
+ * LLM Anti-Pattern Insight - NO evidence field
+ */
+export const LLMAntiPatternInsightSchema = z.object({
+  antiPatternType: z.string().max(50),
+  displayName: z.string().max(50),
+  description: z.string().max(300),
+  occurrences: z.number(),
+  severity: z.enum(['mild', 'moderate', 'significant']),
+  growthOpportunity: z.string().max(400),
+  actionableTip: z.string().max(200),
+});
+
+/**
+ * LLM Anti-Patterns Analysis - Uses schema without evidence
+ */
+export const LLMAntiPatternsAnalysisSchema = z.object({
+  detected: z.array(LLMAntiPatternInsightSchema),
+  summary: z.string().max(400),
+  overallHealthScore: z.number().min(0).max(100),
+});
+
+/**
+ * LLM Critical Thinking Highlight - NO evidence field
+ */
+export const LLMCriticalThinkingHighlightSchema = z.object({
+  indicatorType: z.string().max(50),
+  displayName: z.string().max(50),
+  description: z.string().max(300),
+  frequency: z.number(),
+  quality: z.enum(['basic', 'intermediate', 'advanced']),
+  tip: z.string().max(200).optional(),
+});
+
+/**
+ * LLM Critical Thinking Analysis - Uses schema without evidence
+ */
+export const LLMCriticalThinkingAnalysisSchema = z.object({
+  strengths: z.array(LLMCriticalThinkingHighlightSchema),
+  opportunities: z.array(LLMCriticalThinkingHighlightSchema),
+  summary: z.string().max(400),
+  overallScore: z.number().min(0).max(100),
+});
+
+/**
+ * LLM Planning Insight - NO evidence field
+ */
+export const LLMPlanningInsightSchema = z.object({
+  behaviorType: z.string().max(50),
+  displayName: z.string().max(50),
+  description: z.string().max(300),
+  frequency: z.number(),
+  sophistication: z.enum(['basic', 'intermediate', 'advanced']),
+  tip: z.string().max(200).optional(),
+});
+
+/**
+ * LLM Planning Analysis - Uses schema without evidence
+ */
+export const LLMPlanningAnalysisSchema = z.object({
+  strengths: z.array(LLMPlanningInsightSchema),
+  opportunities: z.array(LLMPlanningInsightSchema),
+  summary: z.string().max(400),
+  planningMaturityLevel: z.enum(['reactive', 'emerging', 'structured', 'expert']),
+  slashPlanStats: SlashPlanStatsSchema.optional(),
+});
+
+/**
+ * LLM Top Focus Area - NO nested actions object for flatter structure
+ * Actions are added in post-processing
+ */
+export const LLMTopFocusAreaSchema = z.object({
+  rank: z.number().min(1).max(3),
+  dimension: DimensionNameEnumSchema,
+  title: z.string().max(100),
+  narrative: z.string().max(500),
+  expectedImpact: z.string().max(200),
+  priorityScore: z.number().min(0).max(100),
+  /** Flattened actions: "start|stop|continue" format */
+  actionsData: z.string().max(700).optional()
+    .describe('Actions as "start|stop|continue" format'),
+});
+
+/**
+ * LLM Top Focus Areas - Uses flattened schema
+ */
+export const LLMTopFocusAreasSchema = z.object({
+  areas: z.array(LLMTopFocusAreaSchema).max(3),
+  summary: z.string().max(500),
+});
+
+/**
+ * Helper to parse actionsData string into FocusAreaActions
+ */
+export function parseActionsData(data: string | undefined): { start: string; stop: string; continue: string } | undefined {
+  if (!data) return undefined;
+  const [start, stop, cont] = data.split('|');
+  return {
+    start: start || '',
+    stop: stop || '',
+    continue: cont || '',
+  };
+}
 
 // ============================================================================
 // TOP FOCUS AREAS SCHEMA (Personalized Priorities from Stage 1)
@@ -731,14 +902,15 @@ export const VerboseEvaluationSchema = z.object({
 export type VerboseEvaluation = z.infer<typeof VerboseEvaluationSchema>;
 
 /**
- * LLM Response schema - Simplified for Gemini API compatibility
+ * LLM Response schema - FLATTENED for Gemini API compatibility
  *
  * Key differences from VerboseEvaluation:
- * - Uses LLMPerDimensionInsightSchema (no evidence field to reduce nesting)
- * - Omits deprecated/premium fields
+ * - Uses LLMPerDimensionInsightSchema with flattened strengthsData/growthAreasData strings
+ * - Uses LLMPromptPatternSchema with flattened examplesData string
  * - Evidence is added in post-processing from Stage 1 data
  *
- * Max nesting depth: 4 (dimensionInsights → strengths → title/description)
+ * Gemini API max nesting depth: ~4 levels
+ * Flattened arrays use semicolon-separated string format to avoid deep nesting.
  */
 export const VerboseLLMResponseSchema = z.object({
   // Type classification
@@ -765,30 +937,30 @@ export const VerboseLLMResponseSchema = z.object({
     .length(6)
     .describe('Insights for each of the 6 analysis dimensions'),
 
-  // Prompt patterns
-  promptPatterns: z.array(PromptPatternSchema),
+  // Prompt patterns (FLATTENED: uses examplesData string instead of nested array)
+  promptPatterns: z.array(LLMPromptPatternSchema),
 
   // Actionable practices (transformed from Stage 1 actionablePatternMatches)
   actionablePractices: LLMActionablePracticesSchema.optional()
     .describe('Expert recommendations practiced/missed'),
 
-  // NEW: Anti-Patterns Analysis (Premium/Enterprise)
-  antiPatternsAnalysis: AntiPatternsAnalysisSchema.optional()
+  // Anti-Patterns Analysis (Premium/Enterprise) - LLM version without evidence
+  antiPatternsAnalysis: LLMAntiPatternsAnalysisSchema.optional()
     .describe('Anti-patterns detected with growth opportunities'),
 
-  // NEW: Critical Thinking Analysis (Premium/Enterprise)
-  criticalThinkingAnalysis: CriticalThinkingAnalysisSchema.optional()
+  // Critical Thinking Analysis (Premium/Enterprise) - LLM version without evidence
+  criticalThinkingAnalysis: LLMCriticalThinkingAnalysisSchema.optional()
     .describe('Critical thinking behaviors analysis'),
 
-  // NEW: Planning Analysis (Premium/Enterprise)
-  planningAnalysis: PlanningAnalysisSchema.optional()
+  // Planning Analysis (Premium/Enterprise) - LLM version without evidence
+  planningAnalysis: LLMPlanningAnalysisSchema.optional()
     .describe('Planning behaviors analysis'),
 
-  // NEW: Top 3 Focus Areas (from Stage 1 personalizedPriorities)
-  topFocusAreas: TopFocusAreasSchema.optional()
+  // Top 3 Focus Areas (from Stage 1) - LLM version with flattened actions
+  topFocusAreas: LLMTopFocusAreasSchema.optional()
     .describe('Top 3 personalized priorities - the MOST ACTIONABLE part'),
 
-  // NEW: Personality Insights (from Module B personalityProfile)
+  // Personality Insights (from Module B personalityProfile)
   personalityInsights: PersonalityInsightsSchema.optional()
     .describe('Personality-driven insights using 4 storytelling techniques'),
 });

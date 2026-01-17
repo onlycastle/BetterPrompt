@@ -226,19 +226,37 @@ Transform Module B's PersonalityProfile into conversational insights that make d
 
 Return VerboseLLMResponse with all sections populated.
 
+**IMPORTANT: FLATTENED FORMAT for nested data**
+To reduce nesting depth, use SEMICOLON-SEPARATED STRINGS instead of nested arrays:
+
+**dimensionInsights** - Use pipe-separated fields, semicolon between items:
+- strengthsData: "title1|description1;title2|description2;..." (NOT an array)
+- growthAreasData: "title1|description1|recommendation1;title2|..." (NOT an array)
+
+**promptPatterns** - Use pipe-separated fields, semicolon between items:
+- examplesData: "quote1|analysis1;quote2|analysis2;..." (NOT an array)
+
+**topFocusAreas.areas** - Use pipe-separated fields for actions:
+- actionsData: "start_action|stop_action|continue_action" (NOT an object)
+
 **Required fields:**
 - primaryType, controlLevel, distribution (from Stage 1 typeAnalysis)
 - personalitySummary (300-1500 chars)
-- dimensionInsights (exactly 6)
-- promptPatterns (5-12)
+- dimensionInsights (exactly 6):
+  - dimension, dimensionDisplayName
+  - strengthsData: "title|description;title|description;..." (0-8 items)
+  - growthAreasData: "title|description|recommendation;..." (0-5 items)
+- promptPatterns (5-12):
+  - patternName, description, frequency, effectiveness, tip
+  - examplesData: "quote|analysis;quote|analysis;..." (1-5 items)
 - actionablePractices (practiced + opportunities)
 - antiPatternsAnalysis (if detectedAntiPatterns exists)
 - criticalThinkingAnalysis (if criticalThinkingMoments exists)
 - planningAnalysis (if planningBehaviors exists)
 - **topFocusAreas** (transform personalizedPriorities into narrative):
-  - areas: array of 1-3 TopFocusArea objects
+  - areas: array of 1-3 objects with:
     - rank, dimension, title, narrative (WHY this matters), expectedImpact, priorityScore
-    - actions: { start, stop, continue }
+    - actionsData: "start_action|stop_action|continue_action"
   - summary: explanation of priority selection
 - **personalityInsights** (CRITICAL - the "wow" moment):
   - coreObservation: Evidence + "~시죠?/don't you?" pattern (100-300 chars)
@@ -250,7 +268,8 @@ Return VerboseLLMResponse with all sections populated.
 - Use ACTUAL quotes from the input data. Do not invent quotes.
 - Every insight must be grounded in the provided data.
 - Type classification values (primaryType, controlLevel, distribution) come from input data.
-- personalityInsights MUST use all 4 storytelling techniques. NO MBTI codes or scores.`;
+- personalityInsights MUST use all 4 storytelling techniques. NO MBTI codes or scores.
+- ESCAPE any pipe (|) or semicolon (;) characters within text fields with backslash.`;
 
 /**
  * Build the user prompt for Stage 2 content transformation

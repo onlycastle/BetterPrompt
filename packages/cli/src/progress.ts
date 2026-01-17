@@ -100,6 +100,7 @@ export class ProgressDisplay {
   private currentStage: string = '';
   private detailIndex: number = 0;
   private detailInterval: ReturnType<typeof setInterval> | null = null;
+  private lastProgress: number = 0; // Store server-sent progress to avoid fluctuation
   private readonly detailRotationMs = 2500; // Rotate details every 2.5 seconds
 
   constructor() {
@@ -123,6 +124,9 @@ export class ProgressDisplay {
    */
   update(stage: string, progress: number, message: string): void {
     const config = STAGE_CONFIGS[stage] || STAGE_CONFIGS.analyzing;
+
+    // Store server-sent progress for use in detail rotation
+    this.lastProgress = progress;
 
     // Track stage change
     if (stage !== this.currentStage) {
@@ -176,10 +180,9 @@ export class ProgressDisplay {
     const detail = ANALYSIS_DETAILS[this.detailIndex];
     const elapsed = this.formatElapsed();
 
-    // Calculate approximate progress based on detail index
-    // Analysis stage is 40-90%, so map detail index to that range
-    const detailProgress = 40 + Math.floor((this.detailIndex / ANALYSIS_DETAILS.length) * 50);
-    const progressBar = this.renderProgressBar(detailProgress);
+    // Use server-sent progress instead of calculating our own
+    // This prevents the percentage from jumping around
+    const progressBar = this.renderProgressBar(this.lastProgress);
 
     const mainLine = `${config.icon} ${config.color('Running deep analysis...')}`;
     const detailLine = pc.dim(`   → ${detail}`);

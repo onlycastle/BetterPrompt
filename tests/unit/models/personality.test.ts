@@ -6,76 +6,83 @@
  *
  * IMPORTANT: This schema is for INTERNAL use only.
  * Users never see MBTI codes or psychological labels directly.
+ *
+ * NOTE: DimensionSignalSchema was FLATTENED in Jan 2026 to avoid Gemini API nesting depth limits.
+ * The `signals` array was replaced with `signalsData` string (format: "type:evidence:confidence;...")
  */
 
 import { describe, it, expect } from 'vitest';
 import {
   PersonalityProfileSchema,
   DimensionAnalysisSchema,
-  DimensionSignalSchema,
   createDefaultPersonalityProfile,
+  parseSignalsData,
+  type DimensionSignal,
 } from '../../../src/lib/models/personality.js';
 
-describe('DimensionSignalSchema', () => {
-  const validSignal = {
-    type: 'message_brevity',
-    evidence: 'Average 87 chars per message, direct command style',
-    confidence: 0.8,
-  };
+describe('DimensionSignal type (legacy)', () => {
+  // DimensionSignal is now a TypeScript type, not a Zod schema
+  // These tests verify the parseSignalsData helper function
 
-  describe('valid signals', () => {
-    it('should accept a valid signal', () => {
-      const result = DimensionSignalSchema.safeParse(validSignal);
-      expect(result.success).toBe(true);
+  describe('parseSignalsData', () => {
+    it('should parse valid signalsData string', () => {
+      const signalsData = 'message_brevity:Concise communication:0.8;direct_commands:Uses imperative sentences:0.7';
+      const result = parseSignalsData(signalsData);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({
+        type: 'message_brevity',
+        evidence: 'Concise communication',
+        confidence: 0.8,
+      });
+      expect(result[1]).toEqual({
+        type: 'direct_commands',
+        evidence: 'Uses imperative sentences',
+        confidence: 0.7,
+      });
     });
 
-    it('should accept minimum confidence (0)', () => {
-      const signal = { ...validSignal, confidence: 0 };
-      const result = DimensionSignalSchema.safeParse(signal);
-      expect(result.success).toBe(true);
+    it('should return empty array for undefined signalsData', () => {
+      const result = parseSignalsData(undefined);
+      expect(result).toEqual([]);
     });
 
-    it('should accept maximum confidence (1)', () => {
-      const signal = { ...validSignal, confidence: 1 };
-      const result = DimensionSignalSchema.safeParse(signal);
-      expect(result.success).toBe(true);
-    });
-  });
-
-  describe('invalid signals', () => {
-    it('should FAIL when confidence is below 0', () => {
-      const signal = { ...validSignal, confidence: -0.1 };
-      const result = DimensionSignalSchema.safeParse(signal);
-      expect(result.success).toBe(false);
+    it('should return empty array for empty string', () => {
+      const result = parseSignalsData('');
+      expect(result).toEqual([]);
     });
 
-    it('should FAIL when confidence is above 1', () => {
-      const signal = { ...validSignal, confidence: 1.1 };
-      const result = DimensionSignalSchema.safeParse(signal);
-      expect(result.success).toBe(false);
+    it('should handle single signal', () => {
+      const signalsData = 'test_type:test_evidence:0.5';
+      const result = parseSignalsData(signalsData);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        type: 'test_type',
+        evidence: 'test_evidence',
+        confidence: 0.5,
+      });
     });
 
-    it('should FAIL when type is missing', () => {
-      const { type: _type, ...signalWithoutType } = validSignal;
-      const result = DimensionSignalSchema.safeParse(signalWithoutType);
-      expect(result.success).toBe(false);
-    });
+    it('should handle missing parts gracefully', () => {
+      const signalsData = 'type_only';
+      const result = parseSignalsData(signalsData);
 
-    it('should FAIL when evidence is missing', () => {
-      const { evidence: _evidence, ...signalWithoutEvidence } = validSignal;
-      const result = DimensionSignalSchema.safeParse(signalWithoutEvidence);
-      expect(result.success).toBe(false);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        type: 'type_only',
+        evidence: '',
+        confidence: 0,
+      });
     });
   });
 });
 
 describe('DimensionAnalysisSchema', () => {
+  // FLATTENED: signalsData is now a string, not an array
   const validDimension = {
     score: 35,
-    signals: [
-      { type: 'message_brevity', evidence: 'Concise communication style', confidence: 0.8 },
-      { type: 'direct_commands', evidence: 'Uses imperative sentences', confidence: 0.7 },
-    ],
+    signalsData: 'message_brevity:Concise communication style:0.8;direct_commands:Uses imperative sentences:0.7',
     insight: 'Prefers concise, direct communication over verbose explanations',
   };
 
@@ -103,9 +110,15 @@ describe('DimensionAnalysisSchema', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should accept empty signals array', () => {
-      const dimension = { ...validDimension, signals: [] };
+    it('should accept empty signalsData string', () => {
+      const dimension = { ...validDimension, signalsData: '' };
       const result = DimensionAnalysisSchema.safeParse(dimension);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept missing signalsData (optional)', () => {
+      const { signalsData: _, ...dimensionWithoutSignals } = validDimension;
+      const result = DimensionAnalysisSchema.safeParse(dimensionWithoutSignals);
       expect(result.success).toBe(true);
     });
   });
@@ -129,12 +142,6 @@ describe('DimensionAnalysisSchema', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should FAIL when signals is missing', () => {
-      const { signals: _signals, ...dimensionWithoutSignals } = validDimension;
-      const result = DimensionAnalysisSchema.safeParse(dimensionWithoutSignals);
-      expect(result.success).toBe(false);
-    });
-
     it('should FAIL when insight is missing', () => {
       const { insight: _insight, ...dimensionWithoutInsight } = validDimension;
       const result = DimensionAnalysisSchema.safeParse(dimensionWithoutInsight);
@@ -144,9 +151,10 @@ describe('DimensionAnalysisSchema', () => {
 });
 
 describe('PersonalityProfileSchema', () => {
+  // FLATTENED: signalsData is now a string, not an array
   const validDimension = {
     score: 50,
-    signals: [{ type: 'test_signal', evidence: 'Test evidence', confidence: 0.7 }],
+    signalsData: 'test_signal:Test evidence:0.7',
     insight: 'Test insight for this dimension',
   };
 
@@ -289,12 +297,12 @@ describe('createDefaultPersonalityProfile', () => {
     expect(profile.dimensions.jp.score).toBe(50);
   });
 
-  it('should have empty signals for all dimensions', () => {
+  it('should have empty signalsData for all dimensions', () => {
     const profile = createDefaultPersonalityProfile();
-    expect(profile.dimensions.ei.signals).toEqual([]);
-    expect(profile.dimensions.sn.signals).toEqual([]);
-    expect(profile.dimensions.tf.signals).toEqual([]);
-    expect(profile.dimensions.jp.signals).toEqual([]);
+    expect(profile.dimensions.ei.signalsData).toBe('');
+    expect(profile.dimensions.sn.signalsData).toBe('');
+    expect(profile.dimensions.tf.signalsData).toBe('');
+    expect(profile.dimensions.jp.signalsData).toBe('');
   });
 
   it('should have zero overall confidence', () => {
