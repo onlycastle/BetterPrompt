@@ -56,20 +56,28 @@ Commands in `commands/*.md` with YAML frontmatter:
 
 **Web/API (Vercel)**: Push to `main` → Vercel auto-deploys
 
+**Lambda (SST)**: Push to `main` with changes in `lambda/`, `infra/`, or `sst.config.ts` → auto-deploys
+
 **NPM CLI Package** (`no-ai-slop`):
+
+Option 1 - Tag-based (recommended):
 ```bash
-cd packages/cli
-npm run release          # patch bump (0.1.0 → 0.1.1)
-npm run release:minor    # minor bump (0.1.0 → 0.2.0)
-npm run release:major    # major bump (0.1.0 → 1.0.0)
+git tag cli-v0.5.0
+git push origin cli-v0.5.0  # Triggers GitHub Actions → npm publish
 ```
 
-After npm release, commit the version bump:
+Option 2 - Manual trigger:
+Go to Actions → "Publish CLI to npm" → Run workflow → Select version type
+
+Option 3 - Local script (legacy):
 ```bash
-git add packages/cli/package.json
-git commit -m "chore(cli): release vX.X.X"
-git push origin main
+cd packages/cli
+npm run release          # patch bump
+npm run release:minor    # minor bump
+npm run release:major    # major bump
 ```
+
+**Required GitHub Secret**: `NPM_TOKEN` - npm access token with publish permission
 
 ## Architecture
 
