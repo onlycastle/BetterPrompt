@@ -462,35 +462,37 @@ async function runAnalysis(
     message: "Running AI analysis (Stage 1: Data extraction)...",
   });
 
-  // Analysis progress messages
+  // Analysis progress messages (40% to 84% range)
   const analysisMessages = [
-    { progress: 42, message: "Extracting behavioral patterns from conversations..." },
-    { progress: 45, message: "Analyzing tool usage patterns (Read, Write, Edit)..." },
-    { progress: 48, message: "Mapping conversation flow and interaction style..." },
-    { progress: 51, message: "Running personality dimension analysis..." },
-    { progress: 54, message: "Analyzing communication style preferences..." },
-    { progress: 57, message: "Evaluating decision-making patterns..." },
-    { progress: 60, message: "Detecting AI collaboration techniques..." },
-    { progress: 63, message: "Measuring verification and validation habits..." },
-    { progress: 66, message: "Analyzing planning and task decomposition..." },
-    { progress: 69, message: "Building personality profile..." },
-    { progress: 72, message: "Generating personalized insights..." },
-    { progress: 75, message: "Crafting evidence-based observations..." },
-    { progress: 78, message: "Synthesizing findings into narrative..." },
-    { progress: 81, message: "Finalizing your developer profile..." },
-    { progress: 84, message: "Completing deep analysis..." },
+    "Extracting behavioral patterns from conversations...",
+    "Analyzing tool usage patterns (Read, Write, Edit)...",
+    "Mapping conversation flow and interaction style...",
+    "Running personality dimension analysis...",
+    "Analyzing communication style preferences...",
+    "Evaluating decision-making patterns...",
+    "Detecting AI collaboration techniques...",
+    "Measuring verification and validation habits...",
+    "Analyzing planning and task decomposition...",
+    "Building personality profile...",
+    "Generating personalized insights...",
+    "Crafting evidence-based observations...",
+    "Synthesizing findings into narrative...",
+    "Finalizing your developer profile...",
+    "Completing deep analysis...",
   ];
   let messageIndex = 0;
 
-  // Heartbeat interval
+  // Heartbeat interval - send progress updates every 3 seconds
+  // Progress is calculated from index (40% to 84%), capped at last message
   const heartbeatInterval = setInterval(() => {
     try {
-      const currentMsg = analysisMessages[messageIndex % analysisMessages.length];
+      const cappedIndex = Math.min(messageIndex, analysisMessages.length - 1);
+      const progress = 40 + Math.floor((cappedIndex / (analysisMessages.length - 1)) * 44);
       write({
         type: "progress",
         stage: "analyzing",
-        progress: currentMsg.progress,
-        message: currentMsg.message,
+        progress,
+        message: analysisMessages[cappedIndex],
       });
       messageIndex++;
     } catch {
