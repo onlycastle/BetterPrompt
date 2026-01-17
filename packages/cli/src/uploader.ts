@@ -129,6 +129,9 @@ async function handleStreamingResponse(
 
       buffer += decoder.decode(value, { stream: true });
 
+      // DEBUG: Log raw SSE data
+      console.error('[DEBUG] Raw chunk:', JSON.stringify(value ? decoder.decode(value) : 'empty'));
+
       // Process complete lines
       const lines = buffer.split('\n');
       buffer = lines.pop() || ''; // Keep incomplete line in buffer
@@ -138,6 +141,7 @@ async function handleStreamingResponse(
         if (!trimmed) continue;
 
         const event = parseSSELine(trimmed);
+        console.error('[DEBUG] Parsed event:', event ? event.type : 'null', trimmed.slice(0, 100));
         if (!event) continue;
 
         switch (event.type) {
@@ -172,6 +176,7 @@ async function handleStreamingResponse(
     }
 
     if (!result) {
+      console.error('[DEBUG] Stream ended without result. Final buffer:', buffer);
       throw new Error('No result received from server');
     }
 

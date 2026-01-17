@@ -504,9 +504,15 @@ export async function POST(request: NextRequest) {
 
         let evaluation: VerboseEvaluation;
         try {
+          console.log('[remote-analysis] Starting analyzeVerbose...');
           evaluation = await analyzer.analyzeVerbose(parsedSessions, metrics, {
             tier: 'enterprise',
           });
+          console.log('[remote-analysis] analyzeVerbose completed successfully');
+        } catch (analysisError) {
+          clearInterval(heartbeatInterval);
+          console.error('[remote-analysis] analyzeVerbose failed:', analysisError);
+          throw analysisError; // Re-throw to be caught by outer catch
         } finally {
           clearInterval(heartbeatInterval);
         }
