@@ -98,8 +98,20 @@ GROWTH AREAS:
 
 **Prompt Patterns** (5-12 patterns for comprehensive analysis)
 - Name each pattern distinctively based on its characteristics
+- **Description (600-800 chars):** Write a DEEP analysis that makes the developer feel truly understood:
+  - **WHAT**: Describe the observable behavior pattern concretely
+  - **WHY**: Explain what this pattern reveals about their mindset, values, or work philosophy
+  - **HOW**: Describe how this pattern affects their AI collaboration effectiveness and code quality
+  - Connect to their personality: "This reflects your tendency to..." or "이 패턴은 당신의 ~한 성향을 보여줍니다"
+  - Include the IMPACT: productivity, code quality, learning speed, or team dynamics
 - Show examples with actual quotes
-- Rate effectiveness and provide improvement tips
+- Rate effectiveness
+- **Tip (600-1000 chars):** Write expert-level coaching advice:
+  - Reference knowledge base insights with natural attribution: "Anthropic의 가이드에 따르면...", "Simon Willison의 조언처럼..."
+  - Include specific techniques or frameworks from expert sources
+  - Provide concrete "try this" examples the developer can apply immediately
+  - Connect to their actual behavior: "When you [quote], you could enhance this by..."
+  - For Korean output: Translate KB advice naturally, keep technical terms in English
 
 **Actionable Practices** (from actionablePatternMatches in Stage 1 data)
 - Transform practiced patterns into "practiced" array:
@@ -254,7 +266,7 @@ To reduce nesting depth, use SEMICOLON-SEPARATED STRINGS instead of nested array
   - strengthsData: "title|description;title|description;..." (0-8 items)
   - growthAreasData: "title|description|recommendation;..." (0-5 items)
 - promptPatterns (5-12):
-  - patternName, description, frequency, effectiveness, tip
+  - patternName, description (600-800 chars with WHAT-WHY-HOW), frequency, effectiveness, tip
   - examplesData: "quote|analysis;quote|analysis;..." (1-5 items)
 - actionablePractices (practiced + opportunities)
 - antiPatternsAnalysis (if detectedAntiPatterns exists)
@@ -279,6 +291,66 @@ To reduce nesting depth, use SEMICOLON-SEPARATED STRINGS instead of nested array
 - ESCAPE any pipe (|) or semicolon (;) characters within text fields with backslash.`;
 
 /**
+ * Knowledge context for tip generation
+ * Contains expert insights mapped to pattern types
+ */
+export interface KnowledgeContextItem {
+  title: string;
+  author: string;
+  keyTakeaway: string;
+  actionableAdvice: string[];
+}
+
+export interface PatternKnowledgeContext {
+  /** Pattern type -> related KB items */
+  [patternType: string]: KnowledgeContextItem[];
+}
+
+/**
+ * Build KB context section for the prompt
+ * Formats knowledge items for LLM consumption
+ */
+export function buildKnowledgeContextSection(
+  kbContext: PatternKnowledgeContext,
+  useKorean: boolean = false
+): string {
+  if (!kbContext || Object.keys(kbContext).length === 0) {
+    return '';
+  }
+
+  const header = useKorean
+    ? `## 전문가 지식 베이스 (Tip 생성용)\n\n다음 전문가 인사이트를 tip 작성 시 참조하세요. 자연어로 인용하세요: "Anthropic 가이드에 따르면...", "Simon Willison의 조언처럼..."\n`
+    : `## Knowledge Base Context (for tip generation)\n\nReference these expert insights when writing tips. Use natural attribution: "According to Anthropic's guide...", "As Simon Willison advises..."\n`;
+
+  const sections: string[] = [header];
+
+  const patternTypeLabels: Record<string, string> = {
+    communication_style: useKorean ? '커뮤니케이션 스타일' : 'Communication Style',
+    problem_solving: useKorean ? '문제 해결' : 'Problem Solving',
+    ai_interaction: useKorean ? 'AI 상호작용' : 'AI Interaction',
+    verification_habit: useKorean ? '검증 습관' : 'Verification Habit',
+    tool_usage: useKorean ? '도구 활용' : 'Tool Usage',
+  };
+
+  for (const [patternType, items] of Object.entries(kbContext)) {
+    if (items.length === 0) continue;
+
+    const label = patternTypeLabels[patternType] || patternType;
+    sections.push(`### ${label}\n`);
+
+    for (const item of items) {
+      sections.push(`- **"${item.title}"** (${item.author}): "${item.keyTakeaway}"`);
+      if (item.actionableAdvice.length > 0) {
+        sections.push(`  - Advice: ${item.actionableAdvice.slice(0, 2).join('; ')}`);
+      }
+    }
+    sections.push('');
+  }
+
+  return sections.join('\n');
+}
+
+/**
  * Build the user prompt for Stage 2 content transformation
  * Places data context before instructions (Gemini best practice)
  *
@@ -286,12 +358,14 @@ To reduce nesting depth, use SEMICOLON-SEPARATED STRINGS instead of nested array
  * @param personalityData - JSON string of personality profile (Module B)
  * @param sessionCount - Number of sessions analyzed
  * @param useKorean - Whether to generate content in Korean
+ * @param kbContext - Optional knowledge base context for tip generation
  */
 export function buildContentWriterUserPrompt(
   structuredData: string,
   personalityData: string,
   sessionCount: number,
-  useKorean: boolean = false
+  useKorean: boolean = false,
+  kbContext?: PatternKnowledgeContext
 ): string {
   // Korean-specific instructions for different sections
   const koreanHeader = useKorean
@@ -339,6 +413,11 @@ Do NOT write pattern names, descriptions, tips, or analysis in English.
 예시: "The Persona Anchor" ❌ → "페르소나 앵커" ✅`
     : '';
 
+  // Build KB context section if provided
+  const kbContextSection = kbContext
+    ? buildKnowledgeContextSection(kbContext, useKorean)
+    : '';
+
   return `# Context Data
 
 This developer has ${sessionCount} sessions analyzed.
@@ -348,7 +427,7 @@ ${structuredData}
 
 ## Personality Profile (from Module B - Personality Analysis)
 ${personalityData}
-
+${kbContextSection}
 # Transformation Instructions
 
 Using the extracted data above, create a VerboseLLMResponse:
@@ -371,8 +450,17 @@ Using the extracted data above, create a VerboseLLMResponse:
 
 4. **Prompt Patterns** (5-12 for comprehensive analysis)
    - Transform detectedPatterns into distinctively named patterns
+   - **Description (600-800 chars):** Write in-depth analysis using WHAT-WHY-HOW framework:
+     * WHAT: The concrete behavior pattern observed
+     * WHY: What this reveals about their mindset and work philosophy
+     * HOW: How this affects their AI collaboration and code quality
    - Include 2-5 example quotes each with detailed analysis
-   - Rate effectiveness and provide detailed improvement tips (max 400 chars)${koreanPatternReminder}
+   - Rate effectiveness
+   - **Tip (600-1000 chars):** Write expert coaching using Knowledge Base context below:
+     * Reference expert insights with natural attribution
+     * Include specific techniques from KB sources
+     * Provide concrete "try this" examples
+     * Connect to their behavior: "When you [quote], try..."${koreanPatternReminder}
 
 5. **Actionable Practices** (IMPORTANT - from actionablePatternMatches)
    - Split actionablePatternMatches by practiced=true/false

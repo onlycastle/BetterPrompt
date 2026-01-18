@@ -31,6 +31,7 @@ import {
   buildContentWriterUserPrompt,
   detectKoreanContent,
 } from './content-writer-prompts';
+import { buildPatternKnowledgeContext, extractPatternTypes } from './pattern-knowledge-mapping';
 
 /**
  * Configuration for the Content Writer stage
@@ -105,11 +106,18 @@ export class ContentWriterStage {
     const quotes = analysisData.extractedQuotes.map((q) => q.quote);
     const useKorean = detectKoreanContent(quotes);
 
+    // Build KB context from detected patterns for enriched tips
+    const patternTypes = analysisData.detectedPatterns
+      ? extractPatternTypes(analysisData.detectedPatterns)
+      : [];
+    const kbContext = buildPatternKnowledgeContext(patternTypes);
+
     const userPrompt = buildContentWriterUserPrompt(
       structuredDataJson,
       personalityDataJson,
       sessions.length,
-      useKorean
+      useKorean,
+      kbContext
     );
 
     const result = await this.client.generateStructured({

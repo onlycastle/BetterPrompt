@@ -99,7 +99,7 @@ export const PromptPatternSchema = z.object({
       })
     ),
   effectiveness: z.enum(['highly_effective', 'effective', 'could_improve']),
-  tip: z.string().max(400).optional().describe('Detailed tip with examples to improve or continue this pattern'),
+  tip: z.string().max(1000).optional().describe('Educational tip with expert insights (600-1000 chars) from knowledge base'),
 });
 export type PromptPattern = z.infer<typeof PromptPatternSchema>;
 
@@ -115,7 +115,7 @@ export const LLMPromptPatternSchema = z.object({
   examplesData: z.string().max(3000).optional()
     .describe('Examples as "quote|analysis;quote|analysis;..." format'),
   effectiveness: z.enum(['highly_effective', 'effective', 'could_improve']),
-  tip: z.string().max(400).optional().describe('Detailed tip with examples to improve or continue this pattern'),
+  tip: z.string().max(1000).optional().describe('Educational tip with expert insights (600-1000 chars) from knowledge base'),
 });
 export type LLMPromptPattern = z.infer<typeof LLMPromptPatternSchema>;
 
