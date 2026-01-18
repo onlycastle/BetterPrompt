@@ -64,6 +64,72 @@ function getProjectName(projectPath: string): string {
 }
 
 /**
+ * Select sessions with project diversity
+ *
+ * Algorithm:
+ * 1. Group sessions by project
+ * 2. Sort each project's sessions by message count (descending)
+ * 3. Pick top session from each project (ensures diversity)
+ * 4. Fill remaining slots with best remaining sessions by message count
+ *
+ * @param sessions - Pre-filtered sessions (already sorted by recency)
+ * @param targetCount - Number of sessions to select
+ * @returns Selected sessions with project diversity
+ */
+function selectWithProjectDiversity(
+  sessions: SessionMetadata[],
+  targetCount: number
+): SessionMetadata[] {
+  if (sessions.length <= targetCount) {
+    // Still sort by message count even when returning all sessions
+    return [...sessions].sort((a, b) => b.messageCount - a.messageCount);
+  }
+
+  // Group by project
+  const byProject = new Map<string, SessionMetadata[]>();
+  for (const session of sessions) {
+    const key = session.projectPath;
+    if (!byProject.has(key)) {
+      byProject.set(key, []);
+    }
+    byProject.get(key)!.push(session);
+  }
+
+  // Sort each project's sessions by message count (descending)
+  for (const projectSessions of byProject.values()) {
+    projectSessions.sort((a, b) => b.messageCount - a.messageCount);
+  }
+
+  const selected: SessionMetadata[] = [];
+  const selectedIds = new Set<string>();
+
+  // Phase 1: Pick best session from each project (diversity)
+  for (const projectSessions of byProject.values()) {
+    if (selected.length >= targetCount) break;
+    const best = projectSessions[0];
+    selected.push(best);
+    selectedIds.add(best.sessionId);
+  }
+
+  // Phase 2: Fill remaining slots with highest message count sessions
+  if (selected.length < targetCount) {
+    // Get all remaining sessions, sort by message count
+    const remaining = sessions.filter((s) => !selectedIds.has(s.sessionId));
+    remaining.sort((a, b) => b.messageCount - a.messageCount);
+
+    for (const session of remaining) {
+      if (selected.length >= targetCount) break;
+      selected.push(session);
+    }
+  }
+
+  // Sort final selection by message count for display consistency
+  selected.sort((a, b) => b.messageCount - a.messageCount);
+
+  return selected;
+}
+
+/**
  * Parse a single line of JSONL to extract basic info
  */
 function parseJSONLLine(line: string): { type: string; timestamp?: string } | null {
@@ -189,7 +255,7 @@ export async function listSessionFiles(projectDir: string): Promise<string[]> {
 /**
  * Scan all sessions and parse them for analysis
  */
-export async function scanSessions(maxSessions: number = 10): Promise<ScanResult> {
+export async function scanSessions(maxSessions: number = 20): Promise<ScanResult> {
   const projectDirs = await listProjectDirs();
   const allMetadata: SessionMetadata[] = [];
 
@@ -210,11 +276,10 @@ export async function scanSessions(maxSessions: number = 10): Promise<ScanResult
   // Step 2: Take top 50 most recent sessions
   const recentSessions = allMetadata.slice(0, 50);
 
-  // Step 3: Sort by message count (more messages = more meaningful)
-  recentSessions.sort((a, b) => b.messageCount - a.messageCount);
-
-  // Step 4: Select top 20 by message count (user picks from these)
-  const selected = recentSessions.slice(0, 20);
+  // Step 3: Project-diverse selection algorithm
+  // First, pick the best session from each unique project (diversity)
+  // Then fill remaining slots with highest message count sessions
+  const selected = selectWithProjectDiversity(recentSessions, maxSessions);
 
   // Read and parse content for selected sessions
   const sessions: SessionWithParsed[] = [];

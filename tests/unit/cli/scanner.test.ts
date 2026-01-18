@@ -300,117 +300,162 @@ describe('CLI Scanner', () => {
     });
 
     describe('session sorting', () => {
-      it('should sort by duration (longer sessions first)', async () => {
+      it('should sort by message count (more messages first)', async () => {
         const projectDir = join(CLAUDE_PROJECTS_DIR, '-Users-dev-project');
 
-        // Short session (30 seconds)
-        const shortSession = [
-          createUserLine('uuid-1', '2024-01-01T10:00:00.000Z', 'Quick'),
-          createAssistantLine('uuid-2', 'uuid-1', '2024-01-01T10:00:10.000Z', 'Fast'),
-          createUserLine('uuid-3', '2024-01-01T10:00:20.000Z', 'Done'),
-          createAssistantLine('uuid-4', 'uuid-3', '2024-01-01T10:00:30.000Z', 'Thanks'),
-          createUserLine('uuid-5', '2024-01-01T10:00:30.000Z', 'Bye'),
+        // Few messages session (5 messages, 2 min duration)
+        const fewMessages = [
+          createUserLine('uuid-1', '2024-01-01T10:00:00.000Z', 'Hello'),
+          createAssistantLine('uuid-2', 'uuid-1', '2024-01-01T10:00:30.000Z', 'Hi'),
+          createUserLine('uuid-3', '2024-01-01T10:01:00.000Z', 'Question'),
+          createAssistantLine('uuid-4', 'uuid-3', '2024-01-01T10:01:30.000Z', 'Answer'),
+          createUserLine('uuid-5', '2024-01-01T10:02:00.000Z', 'Thanks'),
         ].join('\n');
 
-        // Long session (10 minutes)
-        const longSession = [
-          createUserLine('uuid-6', '2024-01-01T11:00:00.000Z', 'Long'),
-          createAssistantLine('uuid-7', 'uuid-6', '2024-01-01T11:05:00.000Z', 'Taking'),
-          createUserLine('uuid-8', '2024-01-01T11:08:00.000Z', 'Time'),
-          createAssistantLine('uuid-9', 'uuid-8', '2024-01-01T11:09:00.000Z', 'Here'),
-          createUserLine('uuid-10', '2024-01-01T11:10:00.000Z', 'Done'),
+        // Many messages session (9 messages, 2 min duration)
+        const manyMessages = [
+          createUserLine('uuid-6', '2024-01-01T11:00:00.000Z', 'Hello'),
+          createAssistantLine('uuid-7', 'uuid-6', '2024-01-01T11:00:15.000Z', 'Hi'),
+          createUserLine('uuid-8', '2024-01-01T11:00:30.000Z', 'Q1'),
+          createAssistantLine('uuid-9', 'uuid-8', '2024-01-01T11:00:45.000Z', 'A1'),
+          createUserLine('uuid-10', '2024-01-01T11:01:00.000Z', 'Q2'),
+          createAssistantLine('uuid-11', 'uuid-10', '2024-01-01T11:01:15.000Z', 'A2'),
+          createUserLine('uuid-12', '2024-01-01T11:01:30.000Z', 'Q3'),
+          createAssistantLine('uuid-13', 'uuid-12', '2024-01-01T11:01:45.000Z', 'A3'),
+          createUserLine('uuid-14', '2024-01-01T11:02:00.000Z', 'Thanks'),
         ].join('\n');
 
-        // Medium session (2 minutes)
-        const mediumSession = [
-          createUserLine('uuid-11', '2024-01-01T12:00:00.000Z', 'Medium'),
-          createAssistantLine('uuid-12', 'uuid-11', '2024-01-01T12:00:30.000Z', 'Length'),
-          createUserLine('uuid-13', '2024-01-01T12:01:00.000Z', 'Session'),
-          createAssistantLine('uuid-14', 'uuid-13', '2024-01-01T12:01:30.000Z', 'Now'),
-          createUserLine('uuid-15', '2024-01-01T12:02:00.000Z', 'End'),
+        // Medium messages session (7 messages, 2 min duration)
+        const mediumMessages = [
+          createUserLine('uuid-15', '2024-01-01T12:00:00.000Z', 'Hello'),
+          createAssistantLine('uuid-16', 'uuid-15', '2024-01-01T12:00:20.000Z', 'Hi'),
+          createUserLine('uuid-17', '2024-01-01T12:00:40.000Z', 'Q1'),
+          createAssistantLine('uuid-18', 'uuid-17', '2024-01-01T12:01:00.000Z', 'A1'),
+          createUserLine('uuid-19', '2024-01-01T12:01:20.000Z', 'Q2'),
+          createAssistantLine('uuid-20', 'uuid-19', '2024-01-01T12:01:40.000Z', 'A2'),
+          createUserLine('uuid-21', '2024-01-01T12:02:00.000Z', 'Thanks'),
         ].join('\n');
 
         vol.fromJSON({
-          [join(projectDir, 'short.jsonl')]: shortSession,
-          [join(projectDir, 'long.jsonl')]: longSession,
-          [join(projectDir, 'medium.jsonl')]: mediumSession,
+          [join(projectDir, 'few.jsonl')]: fewMessages,
+          [join(projectDir, 'many.jsonl')]: manyMessages,
+          [join(projectDir, 'medium.jsonl')]: mediumMessages,
         });
 
         const result = await scanSessions(10);
 
         expect(result.sessions).toHaveLength(3);
-        // Should be sorted: long (600s), medium (120s), short (30s)
-        expect(result.sessions[0].metadata.sessionId).toBe('long');
+        // Should be sorted by message count: many (9), medium (7), few (5)
+        expect(result.sessions[0].metadata.sessionId).toBe('many');
         expect(result.sessions[1].metadata.sessionId).toBe('medium');
-        expect(result.sessions[2].metadata.sessionId).toBe('short');
+        expect(result.sessions[2].metadata.sessionId).toBe('few');
       });
 
-      it('should use recency as tiebreaker when durations are similar (within 60s)', async () => {
-        const projectDir = join(CLAUDE_PROJECTS_DIR, '-Users-dev-project');
+      it('should prioritize project diversity over message count', async () => {
+        const projectDir1 = join(CLAUDE_PROJECTS_DIR, '-Users-dev-project1');
+        const projectDir2 = join(CLAUDE_PROJECTS_DIR, '-Users-dev-project2');
 
-        // Older session (duration: 120s)
-        const olderSession = [
-          createUserLine('uuid-1', '2024-01-01T10:00:00.000Z', 'Older'),
-          createAssistantLine('uuid-2', 'uuid-1', '2024-01-01T10:00:30.000Z', 'Session'),
-          createUserLine('uuid-3', '2024-01-01T10:01:00.000Z', 'Here'),
-          createAssistantLine('uuid-4', 'uuid-3', '2024-01-01T10:01:30.000Z', 'Now'),
-          createUserLine('uuid-5', '2024-01-01T10:02:00.000Z', 'End'),
+        // Project1: Many messages (9 messages)
+        const project1Many = [
+          createUserLine('uuid-1', '2024-01-01T10:00:00.000Z', 'Hello'),
+          createAssistantLine('uuid-2', 'uuid-1', '2024-01-01T10:00:15.000Z', 'Hi'),
+          createUserLine('uuid-3', '2024-01-01T10:00:30.000Z', 'Q1'),
+          createAssistantLine('uuid-4', 'uuid-3', '2024-01-01T10:00:45.000Z', 'A1'),
+          createUserLine('uuid-5', '2024-01-01T10:01:00.000Z', 'Q2'),
+          createAssistantLine('uuid-6', 'uuid-5', '2024-01-01T10:01:15.000Z', 'A2'),
+          createUserLine('uuid-7', '2024-01-01T10:01:30.000Z', 'Q3'),
+          createAssistantLine('uuid-8', 'uuid-7', '2024-01-01T10:01:45.000Z', 'A3'),
+          createUserLine('uuid-9', '2024-01-01T10:02:00.000Z', 'Thanks'),
         ].join('\n');
 
-        // Newer session (duration: 150s - within 60s difference)
-        const newerSession = [
-          createUserLine('uuid-6', '2024-01-02T10:00:00.000Z', 'Newer'),
-          createAssistantLine('uuid-7', 'uuid-6', '2024-01-02T10:00:40.000Z', 'Session'),
-          createUserLine('uuid-8', '2024-01-02T10:01:20.000Z', 'Here'),
-          createAssistantLine('uuid-9', 'uuid-8', '2024-01-02T10:02:00.000Z', 'Now'),
-          createUserLine('uuid-10', '2024-01-02T10:02:30.000Z', 'End'),
+        // Project1: Medium messages (7 messages)
+        const project1Medium = [
+          createUserLine('uuid-10', '2024-01-01T11:00:00.000Z', 'Hello'),
+          createAssistantLine('uuid-11', 'uuid-10', '2024-01-01T11:00:20.000Z', 'Hi'),
+          createUserLine('uuid-12', '2024-01-01T11:00:40.000Z', 'Q1'),
+          createAssistantLine('uuid-13', 'uuid-12', '2024-01-01T11:01:00.000Z', 'A1'),
+          createUserLine('uuid-14', '2024-01-01T11:01:20.000Z', 'Q2'),
+          createAssistantLine('uuid-15', 'uuid-14', '2024-01-01T11:01:40.000Z', 'A2'),
+          createUserLine('uuid-16', '2024-01-01T11:02:00.000Z', 'Thanks'),
+        ].join('\n');
+
+        // Project2: Few messages (5 messages) - should still be included for diversity
+        const project2Few = [
+          createUserLine('uuid-17', '2024-01-01T12:00:00.000Z', 'Hello'),
+          createAssistantLine('uuid-18', 'uuid-17', '2024-01-01T12:00:30.000Z', 'Hi'),
+          createUserLine('uuid-19', '2024-01-01T12:01:00.000Z', 'Question'),
+          createAssistantLine('uuid-20', 'uuid-19', '2024-01-01T12:01:30.000Z', 'Answer'),
+          createUserLine('uuid-21', '2024-01-01T12:02:00.000Z', 'Thanks'),
         ].join('\n');
 
         vol.fromJSON({
-          [join(projectDir, 'older.jsonl')]: olderSession,
-          [join(projectDir, 'newer.jsonl')]: newerSession,
+          [join(projectDir1, 'many.jsonl')]: project1Many,
+          [join(projectDir1, 'medium.jsonl')]: project1Medium,
+          [join(projectDir2, 'few.jsonl')]: project2Few,
         });
 
-        const result = await scanSessions(10);
+        // Request only 2 sessions - should pick best from each project
+        const result = await scanSessions(2);
 
         expect(result.sessions).toHaveLength(2);
-        // Newer session should come first due to recency tiebreaker
-        expect(result.sessions[0].metadata.sessionId).toBe('newer');
-        expect(result.sessions[1].metadata.sessionId).toBe('older');
+        // Should include best from project1 (many) and best from project2 (few)
+        const sessionIds = result.sessions.map(s => s.metadata.sessionId);
+        expect(sessionIds).toContain('many');
+        expect(sessionIds).toContain('few');
       });
 
-      it('should prioritize duration over recency when difference > 60s', async () => {
-        const projectDir = join(CLAUDE_PROJECTS_DIR, '-Users-dev-project');
+      it('should fill remaining slots with best sessions after diversity', async () => {
+        const projectDir1 = join(CLAUDE_PROJECTS_DIR, '-Users-dev-project1');
+        const projectDir2 = join(CLAUDE_PROJECTS_DIR, '-Users-dev-project2');
 
-        // Recent but short session (duration: 60s)
-        const recentShort = [
-          createUserLine('uuid-1', '2024-01-02T10:00:00.000Z', 'Recent'),
-          createAssistantLine('uuid-2', 'uuid-1', '2024-01-02T10:00:15.000Z', 'Short'),
-          createUserLine('uuid-3', '2024-01-02T10:00:30.000Z', 'Quick'),
-          createAssistantLine('uuid-4', 'uuid-3', '2024-01-02T10:00:45.000Z', 'Done'),
-          createUserLine('uuid-5', '2024-01-02T10:01:00.000Z', 'End'),
-        ].join('\n');
+        // Project1: 2 sessions
+        const project1A = [
+          createUserLine('uuid-1', '2024-01-01T10:00:00.000Z', 'Hello'),
+          createAssistantLine('uuid-2', 'uuid-1', '2024-01-01T10:00:15.000Z', 'Hi'),
+          createUserLine('uuid-3', '2024-01-01T10:00:30.000Z', 'Q1'),
+          createAssistantLine('uuid-4', 'uuid-3', '2024-01-01T10:00:45.000Z', 'A1'),
+          createUserLine('uuid-5', '2024-01-01T10:01:00.000Z', 'Q2'),
+          createAssistantLine('uuid-6', 'uuid-5', '2024-01-01T10:01:15.000Z', 'A2'),
+          createUserLine('uuid-7', '2024-01-01T10:01:30.000Z', 'Q3'),
+          createAssistantLine('uuid-8', 'uuid-7', '2024-01-01T10:01:45.000Z', 'A3'),
+          createUserLine('uuid-9', '2024-01-01T10:02:00.000Z', 'Thanks'),
+        ].join('\n'); // 9 messages
 
-        // Older but long session (duration: 300s - 5 minutes)
-        const olderLong = [
-          createUserLine('uuid-6', '2024-01-01T10:00:00.000Z', 'Older'),
-          createAssistantLine('uuid-7', 'uuid-6', '2024-01-01T10:01:00.000Z', 'Longer'),
-          createUserLine('uuid-8', '2024-01-01T10:02:00.000Z', 'Taking'),
-          createAssistantLine('uuid-9', 'uuid-8', '2024-01-01T10:04:00.000Z', 'Time'),
-          createUserLine('uuid-10', '2024-01-01T10:05:00.000Z', 'End'),
-        ].join('\n');
+        const project1B = [
+          createUserLine('uuid-10', '2024-01-01T11:00:00.000Z', 'Hello'),
+          createAssistantLine('uuid-11', 'uuid-10', '2024-01-01T11:00:20.000Z', 'Hi'),
+          createUserLine('uuid-12', '2024-01-01T11:00:40.000Z', 'Q1'),
+          createAssistantLine('uuid-13', 'uuid-12', '2024-01-01T11:01:00.000Z', 'A1'),
+          createUserLine('uuid-14', '2024-01-01T11:01:20.000Z', 'Q2'),
+          createAssistantLine('uuid-15', 'uuid-14', '2024-01-01T11:01:40.000Z', 'A2'),
+          createUserLine('uuid-16', '2024-01-01T11:02:00.000Z', 'Thanks'),
+        ].join('\n'); // 7 messages
+
+        // Project2: 1 session
+        const project2A = [
+          createUserLine('uuid-17', '2024-01-01T12:00:00.000Z', 'Hello'),
+          createAssistantLine('uuid-18', 'uuid-17', '2024-01-01T12:00:30.000Z', 'Hi'),
+          createUserLine('uuid-19', '2024-01-01T12:01:00.000Z', 'Question'),
+          createAssistantLine('uuid-20', 'uuid-19', '2024-01-01T12:01:30.000Z', 'Answer'),
+          createUserLine('uuid-21', '2024-01-01T12:02:00.000Z', 'Thanks'),
+        ].join('\n'); // 5 messages
 
         vol.fromJSON({
-          [join(projectDir, 'recent-short.jsonl')]: recentShort,
-          [join(projectDir, 'older-long.jsonl')]: olderLong,
+          [join(projectDir1, 'sessionA.jsonl')]: project1A,
+          [join(projectDir1, 'sessionB.jsonl')]: project1B,
+          [join(projectDir2, 'sessionA.jsonl')]: project2A,
         });
 
-        const result = await scanSessions(10);
+        // Request 3 sessions
+        const result = await scanSessions(3);
 
-        expect(result.sessions).toHaveLength(2);
-        // Older but longer session should come first
-        expect(result.sessions[0].metadata.sessionId).toBe('older-long');
-        expect(result.sessions[1].metadata.sessionId).toBe('recent-short');
+        expect(result.sessions).toHaveLength(3);
+        // Phase 1: Pick best from each project (sessionA from p1, sessionA from p2)
+        // Phase 2: Fill remaining with best overall (sessionB from p1)
+        const sessionIds = result.sessions.map(s => s.metadata.sessionId);
+        expect(sessionIds).toContain('sessionA'); // from project1 (best)
+        expect(sessionIds).toContain('sessionB'); // from project1 (second best overall)
+        // project2's sessionA should also be included for diversity
       });
     });
 
@@ -461,17 +506,18 @@ describe('CLI Scanner', () => {
         expect(result.sessions).toHaveLength(2);
       });
 
-      it('should use default maxSessions of 10 when not specified', async () => {
+      it('should use default maxSessions of 20 when not specified', async () => {
         const projectDir = join(CLAUDE_PROJECTS_DIR, '-Users-dev-project');
 
-        // Create 15 sessions
-        for (let i = 1; i <= 15; i++) {
+        // Create 25 sessions
+        for (let i = 1; i <= 25; i++) {
+          const hour = String(i % 24).padStart(2, '0');
           const sessionContent = [
-            createUserLine(`uuid-${i}-1`, `2024-01-01T${String(i).padStart(2, '0')}:00:00.000Z`, 'Message 1'),
-            createAssistantLine(`uuid-${i}-2`, `uuid-${i}-1`, `2024-01-01T${String(i).padStart(2, '0')}:00:30.000Z`, 'Response 1'),
-            createUserLine(`uuid-${i}-3`, `2024-01-01T${String(i).padStart(2, '0')}:01:00.000Z`, 'Message 2'),
-            createAssistantLine(`uuid-${i}-4`, `uuid-${i}-3`, `2024-01-01T${String(i).padStart(2, '0')}:01:30.000Z`, 'Response 2'),
-            createUserLine(`uuid-${i}-5`, `2024-01-01T${String(i).padStart(2, '0')}:02:00.000Z`, 'Message 3'),
+            createUserLine(`uuid-${i}-1`, `2024-01-01T${hour}:00:00.000Z`, 'Message 1'),
+            createAssistantLine(`uuid-${i}-2`, `uuid-${i}-1`, `2024-01-01T${hour}:00:30.000Z`, 'Response 1'),
+            createUserLine(`uuid-${i}-3`, `2024-01-01T${hour}:01:00.000Z`, 'Message 2'),
+            createAssistantLine(`uuid-${i}-4`, `uuid-${i}-3`, `2024-01-01T${hour}:01:30.000Z`, 'Response 2'),
+            createUserLine(`uuid-${i}-5`, `2024-01-01T${hour}:02:00.000Z`, 'Message 3'),
           ].join('\n');
 
           vol.fromJSON({
@@ -481,7 +527,7 @@ describe('CLI Scanner', () => {
 
         const result = await scanSessions(); // No parameter
 
-        expect(result.sessions).toHaveLength(10);
+        expect(result.sessions).toHaveLength(20);
       });
     });
 
@@ -664,7 +710,7 @@ describe('CLI Scanner', () => {
     });
 
     describe('content inclusion', () => {
-      it('should include raw JSONL content in session data', async () => {
+      it('should include parsed session data', async () => {
         const projectDir = join(CLAUDE_PROJECTS_DIR, '-Users-dev-project');
 
         const sessionContent = [
@@ -682,7 +728,10 @@ describe('CLI Scanner', () => {
         const result = await scanSessions(10);
 
         expect(result.sessions).toHaveLength(1);
-        expect(result.sessions[0].content).toBe(sessionContent);
+        // Should have parsed session with messages
+        expect(result.sessions[0].parsed).toBeDefined();
+        expect(result.sessions[0].parsed.messages).toBeDefined();
+        expect(result.sessions[0].parsed.messages.length).toBeGreaterThan(0);
       });
 
       it('should handle unreadable files gracefully', async () => {
