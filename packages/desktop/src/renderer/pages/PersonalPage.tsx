@@ -149,35 +149,51 @@ function ProgressTabContent({ analytics }: { analytics?: ReturnType<typeof usePe
   );
 }
 
+function getInsightIcon(type: string): string {
+  switch (type) {
+    case 'strength':
+      return '💪';
+    case 'growth':
+      return '🌱';
+    case 'trend':
+      return '📈';
+    default:
+      return '💡';
+  }
+}
+
 function InsightsTabContent({ analytics }: { analytics?: ReturnType<typeof usePersonalAnalytics>['data'] }) {
   const insights = analytics?.insights || [];
+
+  if (insights.length === 0) {
+    return (
+      <div className={styles.tabContent}>
+        <h3>Personalized Insights</h3>
+        <p className={styles.noData}>Complete more analyses to get personalized insights</p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.tabContent}>
       <h3>Personalized Insights</h3>
-      {insights.length > 0 ? (
-        <div className={styles.insightsList}>
-          {insights.map((insight, i) => (
-            <div
-              key={i}
-              className={styles.insightCard}
-              data-type={insight.type}
-            >
-              <div className={styles.insightIcon}>
-                {insight.type === 'strength' && '💪'}
-                {insight.type === 'growth' && '🌱'}
-                {insight.type === 'trend' && '📈'}
-              </div>
-              <div className={styles.insightContent}>
-                <h4>{insight.title}</h4>
-                <p>{insight.description}</p>
-              </div>
+      <div className={styles.insightsList}>
+        {insights.map((insight, i) => (
+          <div
+            key={i}
+            className={styles.insightCard}
+            data-type={insight.type}
+          >
+            <div className={styles.insightIcon}>
+              {getInsightIcon(insight.type)}
             </div>
-          ))}
-        </div>
-      ) : (
-        <p className={styles.noData}>Complete more analyses to get personalized insights</p>
-      )}
+            <div className={styles.insightContent}>
+              <h4>{insight.title}</h4>
+              <p>{insight.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

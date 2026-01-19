@@ -18,6 +18,27 @@ const CATEGORY_LABELS: Record<string, string> = {
   'other': 'Other',
 };
 
+interface DistributionItem {
+  label: string;
+  value: number;
+}
+
+function capitalizeFirst(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function toDistribution(
+  data: Record<string, number> | undefined,
+  labelMap?: Record<string, string>
+): DistributionItem[] {
+  return Object.entries(data || {})
+    .map(([key, value]) => ({
+      label: labelMap?.[key] ?? capitalizeFirst(key),
+      value: value as number,
+    }))
+    .sort((a, b) => b.value - a.value);
+}
+
 export default function DashboardPage() {
   const { data: metrics, isLoading: metricsLoading } = useQualityMetrics();
   const { isLoading: statsLoading } = useKnowledgeStats();
@@ -38,22 +59,8 @@ export default function DashboardPage() {
   const avgScore = metrics?.averageRelevanceScore ?? 0;
   const scorePercent = Math.round(avgScore * 100);
 
-  // Calculate platform distribution
-  const platformData = Object.entries(metrics?.platformDistribution || {})
-    .map(([platform, count]) => ({
-      label: platform.charAt(0).toUpperCase() + platform.slice(1),
-      value: count as number,
-    }))
-    .sort((a, b) => b.value - a.value);
-
-  // Calculate category distribution
-  const categoryData = Object.entries(metrics?.categoryDistribution || {})
-    .map(([category, count]) => ({
-      label: CATEGORY_LABELS[category] || category,
-      value: count as number,
-    }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 6);
+  const platformData = toDistribution(metrics?.platformDistribution as Record<string, number> | undefined);
+  const categoryData = toDistribution(metrics?.categoryDistribution as Record<string, number> | undefined, CATEGORY_LABELS).slice(0, 6);
 
   const maxPlatformValue = Math.max(...platformData.map(d => d.value), 1);
   const maxCategoryValue = Math.max(...categoryData.map(d => d.value), 1);

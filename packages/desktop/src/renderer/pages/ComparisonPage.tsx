@@ -11,6 +11,45 @@ interface ComparisonPageProps {
   onBack?: () => void;
 }
 
+interface FeatureItemProps {
+  included: boolean;
+  label: string;
+  bold?: boolean;
+}
+
+function FeatureItem({ included, label, bold = false }: FeatureItemProps) {
+  return (
+    <li className={included ? styles.included : styles.excluded}>
+      <span className={included ? styles.check : styles.cross}>
+        {included ? '✓' : '—'}
+      </span>
+      {bold ? <strong>{label}</strong> : label}
+    </li>
+  );
+}
+
+const FREE_TIER_FEATURES = [
+  { label: 'AI Coding Style Type', included: true },
+  { label: 'Type Distribution Chart', included: true },
+  { label: 'Basic Personality Summary', included: true },
+  { label: '6 Dimension Analysis', included: false },
+  { label: 'Personalized Strengths', included: false },
+  { label: 'Growth Areas & Recommendations', included: false },
+  { label: 'Prompt Pattern Analysis', included: false },
+  { label: 'Tool Usage Deep Dive', included: false },
+];
+
+const PREMIUM_TIER_FEATURES = [
+  { label: 'AI Coding Style Type', included: true },
+  { label: 'Type Distribution Chart', included: true },
+  { label: 'Detailed Personality Summary', included: true },
+  { label: '6 Dimension Analysis', included: true, bold: true },
+  { label: 'Personalized Strengths', included: true, bold: true },
+  { label: 'Growth Areas & Recommendations', included: true, bold: true },
+  { label: 'Prompt Pattern Analysis', included: true, bold: true },
+  { label: 'Tool Usage Deep Dive', included: true, bold: true },
+];
+
 export default function ComparisonPage({ onBack }: ComparisonPageProps) {
   const { data: featureData, isLoading } = useFeatureComparison();
 
@@ -48,38 +87,9 @@ export default function ComparisonPage({ onBack }: ComparisonPageProps) {
           </div>
 
           <ul className={styles.featureList}>
-            <li className={styles.included}>
-              <span className={styles.check}>✓</span>
-              AI Coding Style Type
-            </li>
-            <li className={styles.included}>
-              <span className={styles.check}>✓</span>
-              Type Distribution Chart
-            </li>
-            <li className={styles.included}>
-              <span className={styles.check}>✓</span>
-              Basic Personality Summary
-            </li>
-            <li className={styles.excluded}>
-              <span className={styles.cross}>—</span>
-              6 Dimension Analysis
-            </li>
-            <li className={styles.excluded}>
-              <span className={styles.cross}>—</span>
-              Personalized Strengths
-            </li>
-            <li className={styles.excluded}>
-              <span className={styles.cross}>—</span>
-              Growth Areas & Recommendations
-            </li>
-            <li className={styles.excluded}>
-              <span className={styles.cross}>—</span>
-              Prompt Pattern Analysis
-            </li>
-            <li className={styles.excluded}>
-              <span className={styles.cross}>—</span>
-              Tool Usage Deep Dive
-            </li>
+            {FREE_TIER_FEATURES.map(({ label, included }) => (
+              <FeatureItem key={label} included={included} label={label} />
+            ))}
           </ul>
         </div>
 
@@ -95,38 +105,9 @@ export default function ComparisonPage({ onBack }: ComparisonPageProps) {
           </div>
 
           <ul className={styles.featureList}>
-            <li className={styles.included}>
-              <span className={styles.check}>✓</span>
-              AI Coding Style Type
-            </li>
-            <li className={styles.included}>
-              <span className={styles.check}>✓</span>
-              Type Distribution Chart
-            </li>
-            <li className={styles.included}>
-              <span className={styles.check}>✓</span>
-              Detailed Personality Summary
-            </li>
-            <li className={styles.included}>
-              <span className={styles.check}>✓</span>
-              <strong>6 Dimension Analysis</strong>
-            </li>
-            <li className={styles.included}>
-              <span className={styles.check}>✓</span>
-              <strong>Personalized Strengths</strong>
-            </li>
-            <li className={styles.included}>
-              <span className={styles.check}>✓</span>
-              <strong>Growth Areas & Recommendations</strong>
-            </li>
-            <li className={styles.included}>
-              <span className={styles.check}>✓</span>
-              <strong>Prompt Pattern Analysis</strong>
-            </li>
-            <li className={styles.included}>
-              <span className={styles.check}>✓</span>
-              <strong>Tool Usage Deep Dive</strong>
-            </li>
+            {PREMIUM_TIER_FEATURES.map(({ label, included, bold }) => (
+              <FeatureItem key={label} included={included} label={label} bold={bold} />
+            ))}
           </ul>
 
           <div className={styles.highlight}>

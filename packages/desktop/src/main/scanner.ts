@@ -86,6 +86,17 @@ function getProjectName(projectPath: string): string {
 }
 
 /**
+ * Extract project info from a session file path
+ * Returns decoded project path and project name
+ */
+function getProjectInfoFromPath(filePath: string): { projectPath: string; projectName: string } {
+  const projectDirName = basename(join(filePath, '..'));
+  const projectPath = decodeProjectPath(projectDirName);
+  const projectName = getProjectName(projectPath);
+  return { projectPath, projectName };
+}
+
+/**
  * Estimate token count from raw text content
  * Uses ~4 chars per token heuristic with adjustments
  */
@@ -254,8 +265,7 @@ async function getSessionMetadata(filePath: string): Promise<SessionMetadata | n
 
     if (!timestamps.first || !timestamps.last) return null;
 
-    const projectDirName = basename(join(filePath, '..'));
-    const projectPath = decodeProjectPath(projectDirName);
+    const { projectPath, projectName } = getProjectInfoFromPath(filePath);
     const durationSeconds = Math.floor(
       (timestamps.last.getTime() - timestamps.first.getTime()) / 1000
     );
@@ -266,7 +276,7 @@ async function getSessionMetadata(filePath: string): Promise<SessionMetadata | n
     return {
       sessionId: fileName,
       projectPath,
-      projectName: getProjectName(projectPath),
+      projectName,
       timestamp: timestamps.first,
       messageCount,
       durationSeconds,
@@ -416,9 +426,7 @@ export async function loadSessionsForAnalysis(
     try {
       const content = await readFile(filePath, 'utf-8');
       const fileName = basename(filePath, '.jsonl');
-      const projectDirName = basename(join(filePath, '..'));
-      const projectPath = decodeProjectPath(projectDirName);
-      const projectName = getProjectName(projectPath);
+      const { projectPath, projectName } = getProjectInfoFromPath(filePath);
 
       const parsed = parseSessionContent(fileName, projectPath, projectName, content);
 

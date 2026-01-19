@@ -5,6 +5,7 @@
 
 import { useState, useMemo } from 'react';
 import { useKnowledgeList } from '../hooks';
+import { AddKnowledgeDrawer } from '../components/AddKnowledgeDrawer';
 import type { SourcePlatform, TopicCategory } from '../api/types';
 import styles from './BrowsePage.module.css';
 
@@ -33,6 +34,7 @@ export default function BrowsePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [platform, setPlatform] = useState<SourcePlatform | ''>('');
   const [category, setCategory] = useState<TopicCategory | ''>('');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const queryParams = useMemo(() => ({
     query: searchQuery || undefined,
@@ -51,8 +53,14 @@ export default function BrowsePage() {
   ].filter(Boolean);
 
   const clearFilter = (type: 'platform' | 'category') => {
-    if (type === 'platform') setPlatform('');
-    if (type === 'category') setCategory('');
+    switch (type) {
+      case 'platform':
+        setPlatform('');
+        break;
+      case 'category':
+        setCategory('');
+        break;
+    }
   };
 
   const clearAllFilters = () => {
@@ -71,6 +79,14 @@ export default function BrowsePage() {
         <h1 className={styles.title}>Knowledge Base</h1>
         <p className={styles.subtitle}>{data?.total || 0} items curated</p>
       </header>
+
+      <AddKnowledgeDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        onSuccess={() => {
+          // Refetch knowledge list on successful add
+        }}
+      />
 
       {/* Hero Search */}
       <div className={styles.hero}>
@@ -132,21 +148,51 @@ export default function BrowsePage() {
             </button>
           </>
         )}
+
+        <button
+          className={styles.addButton}
+          onClick={() => setIsDrawerOpen(true)}
+          aria-label="Add knowledge"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path
+              d="M10 4V16M4 10H16"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+          </svg>
+          <span>Add</span>
+        </button>
       </div>
 
       {/* Content */}
-      {isLoading ? (
+      {renderContent()}
+    </div>
+  );
+
+  function renderContent() {
+    if (isLoading) {
+      return (
         <div className={styles.loading}>
           <div className={styles.spinner} />
           <p>Loading knowledge...</p>
         </div>
-      ) : error ? (
+      );
+    }
+
+    if (error) {
+      return (
         <div className={styles.error}>
           <span className={styles.errorIcon}>⚠️</span>
           <h3>Failed to load knowledge</h3>
           <p>{error instanceof Error ? error.message : 'Unknown error occurred'}</p>
         </div>
-      ) : data?.items.length === 0 ? (
+      );
+    }
+
+    if (data?.items.length === 0) {
+      return (
         <div className={styles.empty}>
           <span className={styles.emptyIcon}>📚</span>
           <h3>No knowledge found</h3>
@@ -155,30 +201,32 @@ export default function BrowsePage() {
             Clear filters
           </button>
         </div>
-      ) : (
-        <div className={styles.grid}>
-          {data?.items.map((item) => (
-            <article
-              key={item.id}
-              className={styles.card}
-              onClick={() => handleOpenUrl(item.source.url)}
-            >
-              <div className={styles.cardHeader}>
-                <span className={styles.platform}>{item.source.platform}</span>
-                <span className={styles.score}>{Math.round(item.relevance.score * 100)}%</span>
-              </div>
-              <h3 className={styles.cardTitle}>{item.title}</h3>
-              <p className={styles.cardSummary}>{item.summary}</p>
-              <div className={styles.cardFooter}>
-                <span className={styles.category}>{item.category}</span>
-                {item.source.author && (
-                  <span className={styles.author}>@{item.source.author}</span>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+      );
+    }
+
+    return (
+      <div className={styles.grid}>
+        {data?.items.map((item) => (
+          <article
+            key={item.id}
+            className={styles.card}
+            onClick={() => handleOpenUrl(item.source.url)}
+          >
+            <div className={styles.cardHeader}>
+              <span className={styles.platform}>{item.source.platform}</span>
+              <span className={styles.score}>{Math.round(item.relevance.score * 100)}%</span>
+            </div>
+            <h3 className={styles.cardTitle}>{item.title}</h3>
+            <p className={styles.cardSummary}>{item.summary}</p>
+            <div className={styles.cardFooter}>
+              <span className={styles.category}>{item.category}</span>
+              {item.source.author && (
+                <span className={styles.author}>@{item.source.author}</span>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    );
+  }
 }

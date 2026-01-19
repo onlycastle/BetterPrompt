@@ -11,7 +11,6 @@ export type AppRoute =
   | 'results'
   | 'dashboard'
   | 'browse'
-  | 'learn'
   | 'personal'
   | 'report'
   | 'comparison';
@@ -27,7 +26,6 @@ const NAV_ITEMS: Array<{ route: AppRoute; label: string }> = [
   { route: 'analyze', label: 'Analyze' },
   { route: 'dashboard', label: 'Dashboard' },
   { route: 'browse', label: 'Knowledge' },
-  { route: 'learn', label: 'Learn' },
   { route: 'personal', label: 'Personal' },
 ];
 

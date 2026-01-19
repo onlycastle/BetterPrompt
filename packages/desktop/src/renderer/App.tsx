@@ -8,7 +8,6 @@ import AnalyzePage from './pages/AnalyzePage';
 import ResultsPage from './pages/ResultsPage';
 import DashboardPage from './pages/DashboardPage';
 import BrowsePage from './pages/BrowsePage';
-import LearnPage from './pages/LearnPage';
 import PersonalPage from './pages/PersonalPage';
 import ComparisonPage from './pages/ComparisonPage';
 import './styles/global.css';
@@ -104,8 +103,6 @@ function AppContent() {
         return <DashboardPage />;
       case 'browse':
         return <BrowsePage />;
-      case 'learn':
-        return <LearnPage />;
       case 'personal':
         return (
           <PersonalPage

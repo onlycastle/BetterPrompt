@@ -38,6 +38,39 @@
   border-radius: var(--radius-lg);
 }
 
+/* Add Button - aligned with filter bar */
+.addButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  padding: 0.5rem 1rem;
+  background: var(--accent-primary);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
+  color: white;
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  box-shadow: 3px 3px 0 var(--ink-primary);
+  transition: all var(--transition-normal);
+  cursor: pointer;
+}
+
+.addButton:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink-primary);
+}
+
+.addButton:active {
+  transform: translate(0, 0);
+  box-shadow: 2px 2px 0 var(--ink-primary);
+}
+
+.addButton svg {
+  flex-shrink: 0;
+}
+
 .heroTitle {
   font-size: var(--text-2xl);
   font-weight: var(--weight-bold);
