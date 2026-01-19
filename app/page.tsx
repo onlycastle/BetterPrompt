@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import { LandingPage } from '@/views/LandingPage';
 
 export default function Home() {
-  redirect('/personal');
+  return <LandingPage />;
 }

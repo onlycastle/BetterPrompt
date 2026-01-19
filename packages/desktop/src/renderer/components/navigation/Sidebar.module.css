@@ -1,0 +1,122 @@
+/**
+ * Sidebar Navigation Styles
+ */
+
+.sidebar {
+  width: 220px;
+  height: 100vh;
+  background: var(--surface-1);
+  border-right: 1.5px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  padding-top: 3rem; /* Account for macOS titlebar */
+  -webkit-app-region: drag;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  margin-bottom: 1.5rem;
+  -webkit-app-region: no-drag;
+}
+
+.logoIcon {
+  font-size: 1.5rem;
+}
+
+.logoText {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--sketch-cyan-text);
+}
+
+.nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  -webkit-app-region: no-drag;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: var(--text-md);
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  text-align: left;
+}
+
+.navItem:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.navItem.active {
+  background: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan-text);
+  font-weight: var(--weight-semibold);
+}
+
+.navIcon {
+  font-size: 1.1rem;
+}
+
+.navLabel {
+  flex: 1;
+}
+
+.footer {
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-default);
+  -webkit-app-region: no-drag;
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.userIcon {
+  font-size: 1rem;
+}
+
+.userName {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signOut {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.signOut:hover {
+  background: var(--surface-2);
+  border-color: var(--sketch-red);
+  color: var(--sketch-red);
+}

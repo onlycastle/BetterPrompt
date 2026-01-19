@@ -1,0 +1,153 @@
+.section {
+  padding: var(--space-3xl) 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--glass-bg) 50%,
+    transparent 100%
+  );
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.headline {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  text-align: center;
+  margin-bottom: var(--space-md);
+}
+
+.description {
+  font-size: var(--text-base);
+  color: var(--ink-secondary);
+  text-align: center;
+  line-height: 1.6;
+  margin-bottom: var(--space-xl);
+}
+
+.downloadCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+  background: var(--glass-bg);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  margin-bottom: var(--space-xl);
+}
+
+.appInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.appIcon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-paper);
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border-default);
+  overflow: hidden;
+}
+
+.appDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.appName {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+}
+
+.appVersion {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  width: 100%;
+}
+
+.feature {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+}
+
+.featureIcon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sketch-cyan-soft);
+  border-radius: var(--radius-md);
+  color: var(--sketch-cyan-text);
+}
+
+.featureContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.featureTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+}
+
+.featureDescription {
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+  line-height: 1.4;
+}
+
+.requirements {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  text-align: center;
+  margin-top: var(--space-lg);
+}
+
+@media (max-width: 768px) {
+  .features {
+    grid-template-columns: 1fr;
+    gap: var(--space-sm);
+  }
+
+  .feature {
+    flex-direction: row;
+    text-align: left;
+  }
+
+  .featureContent {
+    align-items: flex-start;
+  }
+
+  .downloadCard {
+    padding: var(--space-lg);
+  }
+}

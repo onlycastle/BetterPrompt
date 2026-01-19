@@ -1,0 +1,82 @@
+.hero {
+  padding: var(--space-4xl) 0 var(--space-3xl);
+  text-align: center;
+}
+
+.content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.headline {
+  font-size: var(--text-4xl);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  line-height: var(--leading-tight);
+  margin-bottom: var(--space-lg);
+}
+
+.emDash {
+  color: var(--sketch-cyan);
+}
+
+.breakDesktop {
+  display: none;
+}
+
+.subheadline {
+  font-size: var(--text-lg);
+  color: var(--ink-secondary);
+  margin-bottom: var(--space-xl);
+}
+
+.cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.githubLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--ink-secondary);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.githubLink:hover {
+  color: var(--ink-primary);
+}
+
+@media (min-width: 768px) {
+  .headline {
+    font-size: var(--text-5xl);
+  }
+
+  .breakDesktop {
+    display: block;
+  }
+
+  .cta {
+    flex-direction: row;
+    justify-content: center;
+    gap: var(--space-lg);
+  }
+}
+
+@media (max-width: 480px) {
+  .hero {
+    padding: var(--space-2xl) 0 var(--space-xl);
+  }
+
+  .headline {
+    font-size: var(--text-2xl);
+  }
+
+  .subheadline {
+    font-size: var(--text-md);
+  }
+}

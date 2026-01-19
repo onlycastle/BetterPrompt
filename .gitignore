@@ -48,3 +48,12 @@ sst.config.ts.*.mjs
 
 # Claude Code local settings
 .claude/
+
+# Desktop app builds
+packages/desktop/release/
+packages/desktop/dist/
+*.dmg
+*.blockmap
+
+# Backup files
+*.bak

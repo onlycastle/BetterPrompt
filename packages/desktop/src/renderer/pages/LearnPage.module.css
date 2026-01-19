@@ -1,0 +1,232 @@
+/**
+ * Learn Page Styles
+ */
+
+.container {
+  min-height: 100%;
+  padding: 2rem;
+  background-color: var(--bg-paper);
+  background-image:
+    linear-gradient(var(--bg-grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-color) 1px, transparent 1px);
+  background-size: var(--bg-grid-size) var(--bg-grid-size);
+  color: var(--text-primary);
+}
+
+.header {
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: var(--text-md);
+}
+
+/* Cards */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.card {
+  padding: 1.5rem;
+  background: var(--surface-1);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: 3px 3px 0 var(--border-default);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.cardIcon {
+  font-size: 1.5rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  background: var(--sketch-cyan-soft);
+}
+
+.cardIcon[data-type="youtube"] {
+  background: rgba(255, 0, 0, 0.1);
+}
+
+.cardIcon[data-type="web"] {
+  background: var(--sketch-cyan-soft);
+}
+
+.cardTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  margin-bottom: 0.25rem;
+}
+
+.cardDescription {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* Form */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  color: var(--text-primary);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.checkbox input {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+.submitButton {
+  padding: 0.75rem 1.5rem;
+  background: var(--accent-primary);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
+  color: white;
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--ink-primary);
+  transition: all var(--transition-normal);
+}
+
+.submitButton:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink-primary);
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Toasts */
+.successToast,
+.errorToast {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  margin-top: 1rem;
+}
+
+.successToast {
+  background: var(--sketch-green-soft);
+  border: 1px solid var(--sketch-green);
+  color: var(--sketch-green-text);
+}
+
+.errorToast {
+  background: var(--sketch-red-soft);
+  border: 1px solid var(--sketch-red);
+  color: var(--sketch-red);
+}
+
+/* Tips Section */
+.tipsSection {
+  margin-top: 2rem;
+}
+
+.tipsToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 1rem;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.tipsIcon {
+  transition: transform var(--transition-normal);
+}
+
+.tipsIcon.open {
+  transform: rotate(180deg);
+}
+
+.tipsContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--surface-1);
+  border: 1.5px solid var(--border-default);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.tipCard {
+  padding: 1rem;
+  background: var(--sketch-cyan-soft);
+  border-left: 3px solid var(--sketch-cyan);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.tipCard strong {
+  color: var(--sketch-cyan-text);
+}
+
+@media (max-width: 900px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+}

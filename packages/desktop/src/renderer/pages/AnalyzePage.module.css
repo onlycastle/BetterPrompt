@@ -1,0 +1,303 @@
+/**
+ * AnalyzePage - Notebook Sketch Style
+ */
+
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-paper);
+  background-image:
+    linear-gradient(var(--bg-grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-color) 1px, transparent 1px);
+  background-size: var(--bg-grid-size) var(--bg-grid-size);
+  color: var(--text-primary);
+}
+
+.dragRegion {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  -webkit-app-region: drag;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  padding-top: 3rem; /* Account for drag region */
+  border-bottom: 2px dashed var(--border-default);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+}
+
+.logoText {
+  font-weight: var(--weight-bold);
+  color: var(--sketch-cyan);
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.email {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.signOutBtn {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.signOutBtn:hover {
+  background: var(--surface-2);
+  border-color: var(--ink-primary);
+  color: var(--text-primary);
+}
+
+.main {
+  flex: 1;
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.privacyNotice {
+  padding: 1rem;
+  background: var(--sketch-cyan-soft);
+  border: 1.5px solid var(--sketch-cyan);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  margin-bottom: 2rem;
+  color: var(--sketch-cyan-text);
+}
+
+.sessionSection {
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 4px 4px 0 var(--ink-primary);
+}
+
+.sessionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.sessionHeader h2 {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.sessionActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sessionActions button {
+  padding: 0.375rem 0.75rem;
+  background: transparent;
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.sessionActions button:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--ink-primary);
+  color: var(--text-primary);
+}
+
+.sessionActions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading,
+.empty {
+  padding: 3rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--border-default);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.hint {
+  font-size: var(--text-sm);
+  margin-top: 0.5rem;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+}
+
+.sessionList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.sessionItem {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-normal);
+  border: 1.5px solid transparent;
+}
+
+.sessionItem:hover {
+  background: var(--surface-2);
+  border-color: var(--border-default);
+}
+
+.sessionItem.selected {
+  background: var(--sketch-cyan-soft);
+  border-color: var(--sketch-cyan);
+}
+
+.checkbox {
+  width: 1.125rem;
+  height: 1.125rem;
+  cursor: pointer;
+  accent-color: var(--accent-primary);
+}
+
+.sessionInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sessionName {
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.sessionMeta {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.sessionDate {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.analyzeSection {
+  text-align: center;
+}
+
+.analyzeButton {
+  padding: 1rem 3rem;
+  background: var(--sketch-cyan);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
+  color: var(--ink-primary);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  box-shadow: 4px 4px 0 var(--ink-primary);
+}
+
+.analyzeButton:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink-primary);
+}
+
+.analyzeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.progress {
+  padding: 1.5rem;
+}
+
+.progressBar {
+  width: 100%;
+  height: 0.5rem;
+  background: var(--surface-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--sketch-cyan);
+  transition: width 0.3s ease;
+}
+
+.progressText {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.error {
+  color: var(--sketch-red);
+  font-size: var(--text-sm);
+  padding: 0.75rem;
+  background: var(--sketch-red-light);
+  border: 1.5px solid var(--sketch-red);
+  border-radius: var(--radius-md);
+  margin-top: 1rem;
+}

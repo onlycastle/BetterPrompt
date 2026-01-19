@@ -30,6 +30,7 @@ function getSupabaseAdmin() {
 
 export async function GET(request: NextRequest) {
   const checkoutId = request.nextUrl.searchParams.get('checkout_id');
+  const isDesktopApp = request.nextUrl.searchParams.get('desktop') === 'true';
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
 
   // Missing checkout ID
@@ -82,7 +83,14 @@ export async function GET(request: NextRequest) {
       console.log('Successfully updated is_paid for result:', resultId);
     }
 
-    // 5. Redirect to personal dashboard with success message
+    // 5. Redirect based on client type
+    if (isDesktopApp) {
+      // Deep link to desktop app with resultId
+      console.log('Redirecting to desktop app with resultId:', resultId);
+      return NextResponse.redirect(`nomoreaislop://payment/success?resultId=${resultId}`);
+    }
+
+    // Web: redirect to personal dashboard with success message
     return NextResponse.redirect(new URL('/personal?payment=success', baseUrl));
 
   } catch (error) {

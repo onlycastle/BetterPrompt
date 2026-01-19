@@ -1,0 +1,346 @@
+/**
+ * Session Scanner
+ *
+ * Scans ~/.claude/projects/ for Claude Code session logs,
+ * parses JSONL into structured sessions, and prepares for analysis.
+ * Based on CLI package implementation, adapted for Electron (CJS).
+ */
+
+import { readFile, readdir, stat } from 'node:fs/promises';
+import { join, basename } from 'node:path';
+import { homedir } from 'node:os';
+import { parseSessionContent, type ParsedSession } from './session-formatter';
+
+export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
+
+export interface SessionMetadata {
+  sessionId: string;
+  projectPath: string;
+  projectName: string;
+  timestamp: Date;
+  messageCount: number;
+  durationSeconds: number;
+  filePath: string;
+}
+
+/**
+ * Session with parsed content ready for analysis
+ */
+export interface SessionWithParsed {
+  metadata: SessionMetadata;
+  parsed: ParsedSession;
+}
+
+export interface ScanResult {
+  sessions: SessionWithParsed[];
+  totalMessages: number;
+  totalDurationMinutes: number;
+}
+
+/**
+ * Session info for UI display
+ */
+export interface SessionInfo {
+  id: string;
+  name: string;
+  path: string;
+  date: string;
+  messageCount: number;
+  durationMinutes: number;
+}
+
+/**
+ * Decode project path from Claude's encoding
+ * Claude encodes paths by replacing '/' with '-'
+ */
+function decodeProjectPath(encoded: string): string {
+  if (encoded.startsWith('-')) {
+    return encoded.replace(/-/g, '/');
+  }
+  return encoded;
+}
+
+/**
+ * Get project name from path
+ */
+function getProjectName(projectPath: string): string {
+  const parts = projectPath.split('/').filter(Boolean);
+  return parts[parts.length - 1] || 'unknown';
+}
+
+/**
+ * Select sessions with project diversity
+ */
+function selectWithProjectDiversity(
+  sessions: SessionMetadata[],
+  targetCount: number
+): SessionMetadata[] {
+  if (sessions.length <= targetCount) {
+    return [...sessions].sort((a, b) => b.messageCount - a.messageCount);
+  }
+
+  // Group by project
+  const byProject = new Map<string, SessionMetadata[]>();
+  for (const session of sessions) {
+    const key = session.projectPath;
+    if (!byProject.has(key)) {
+      byProject.set(key, []);
+    }
+    byProject.get(key)!.push(session);
+  }
+
+  // Sort each project's sessions by message count (descending)
+  for (const projectSessions of byProject.values()) {
+    projectSessions.sort((a, b) => b.messageCount - a.messageCount);
+  }
+
+  const selected: SessionMetadata[] = [];
+  const selectedIds = new Set<string>();
+
+  // Phase 1: Pick best session from each project (diversity)
+  for (const projectSessions of byProject.values()) {
+    if (selected.length >= targetCount) break;
+    const best = projectSessions[0];
+    selected.push(best);
+    selectedIds.add(best.sessionId);
+  }
+
+  // Phase 2: Fill remaining slots with highest message count sessions
+  if (selected.length < targetCount) {
+    const remaining = sessions.filter((s) => !selectedIds.has(s.sessionId));
+    remaining.sort((a, b) => b.messageCount - a.messageCount);
+
+    for (const session of remaining) {
+      if (selected.length >= targetCount) break;
+      selected.push(session);
+    }
+  }
+
+  // Sort final selection by message count for display consistency
+  selected.sort((a, b) => b.messageCount - a.messageCount);
+
+  return selected;
+}
+
+/**
+ * Parse a single line of JSONL to extract basic info
+ */
+function parseJSONLLine(line: string): { type: string; timestamp?: string } | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    return {
+      type: parsed.type,
+      timestamp: parsed.timestamp,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if a line is a conversation message
+ */
+function isConversationLine(parsed: { type: string } | null): boolean {
+  return parsed !== null && (parsed.type === 'user' || parsed.type === 'assistant');
+}
+
+/**
+ * Update timestamp bounds with a new timestamp
+ */
+function updateTimestampBounds(
+  timestamp: string,
+  bounds: { first: Date | null; last: Date | null }
+): void {
+  const ts = new Date(timestamp);
+  if (!bounds.first || ts < bounds.first) bounds.first = ts;
+  if (!bounds.last || ts > bounds.last) bounds.last = ts;
+}
+
+/**
+ * Get metadata for a session file (quick scan without full parsing)
+ */
+async function getSessionMetadata(filePath: string): Promise<SessionMetadata | null> {
+  try {
+    const content = await readFile(filePath, 'utf-8');
+    const lines = content.split('\n').filter((l) => l.trim());
+
+    if (lines.length === 0) return null;
+
+    const fileName = basename(filePath, '.jsonl');
+    let messageCount = 0;
+    const timestamps = { first: null as Date | null, last: null as Date | null };
+
+    for (const line of lines) {
+      const parsed = parseJSONLLine(line);
+      if (isConversationLine(parsed)) {
+        messageCount++;
+        if (parsed?.timestamp) {
+          updateTimestampBounds(parsed.timestamp, timestamps);
+        }
+      }
+    }
+
+    if (!timestamps.first || !timestamps.last) return null;
+
+    const projectDirName = basename(join(filePath, '..'));
+    const projectPath = decodeProjectPath(projectDirName);
+    const durationSeconds = Math.floor(
+      (timestamps.last.getTime() - timestamps.first.getTime()) / 1000
+    );
+
+    return {
+      sessionId: fileName,
+      projectPath,
+      projectName: getProjectName(projectPath),
+      timestamp: timestamps.first,
+      messageCount,
+      durationSeconds,
+      filePath,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * List all project directories
+ */
+export async function listProjectDirs(): Promise<string[]> {
+  try {
+    const entries = await readdir(CLAUDE_PROJECTS_DIR);
+    const dirs: string[] = [];
+
+    for (const entry of entries) {
+      const fullPath = join(CLAUDE_PROJECTS_DIR, entry);
+      try {
+        const stats = await stat(fullPath);
+        if (stats.isDirectory()) {
+          dirs.push(fullPath);
+        }
+      } catch {
+        // Skip inaccessible entries
+      }
+    }
+
+    return dirs;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * List session files in a directory
+ */
+export async function listSessionFiles(projectDir: string): Promise<string[]> {
+  try {
+    const files = await readdir(projectDir);
+    return files.filter((f) => f.endsWith('.jsonl')).map((f) => join(projectDir, f));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Quick scan to get session list for UI display
+ */
+export async function scanSessionsForUI(maxSessions: number = 20): Promise<SessionInfo[]> {
+  const projectDirs = await listProjectDirs();
+  const allMetadata: SessionMetadata[] = [];
+
+  for (const dir of projectDirs) {
+    const files = await listSessionFiles(dir);
+    for (const file of files) {
+      const metadata = await getSessionMetadata(file);
+      // Filter: at least 5 messages AND at least 60 seconds duration
+      if (metadata && metadata.messageCount >= 5 && metadata.durationSeconds >= 60) {
+        allMetadata.push(metadata);
+      }
+    }
+  }
+
+  // Sort by timestamp, most recent first
+  allMetadata.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+  // Take top 50 most recent sessions
+  const recentSessions = allMetadata.slice(0, 50);
+
+  // Project-diverse selection
+  const selected = selectWithProjectDiversity(recentSessions, maxSessions);
+
+  // Convert to UI format
+  return selected.map((s) => ({
+    id: s.sessionId,
+    name: s.projectName,
+    path: s.filePath,
+    date: s.timestamp.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+    messageCount: s.messageCount,
+    durationMinutes: Math.round(s.durationSeconds / 60),
+  }));
+}
+
+/**
+ * Load full session data for selected session IDs
+ */
+export async function loadSessionsForAnalysis(
+  sessionPaths: string[]
+): Promise<ScanResult> {
+  const sessions: SessionWithParsed[] = [];
+  let totalMessages = 0;
+  let totalDurationMinutes = 0;
+
+  for (const filePath of sessionPaths) {
+    try {
+      const content = await readFile(filePath, 'utf-8');
+      const fileName = basename(filePath, '.jsonl');
+      const projectDirName = basename(join(filePath, '..'));
+      const projectPath = decodeProjectPath(projectDirName);
+      const projectName = getProjectName(projectPath);
+
+      const parsed = parseSessionContent(fileName, projectPath, projectName, content);
+
+      if (parsed) {
+        const metadata: SessionMetadata = {
+          sessionId: fileName,
+          projectPath,
+          projectName,
+          timestamp: parsed.startTime,
+          messageCount: parsed.stats.userMessageCount + parsed.stats.assistantMessageCount,
+          durationSeconds: parsed.durationSeconds,
+          filePath,
+        };
+
+        sessions.push({ metadata, parsed });
+        totalMessages += metadata.messageCount;
+        totalDurationMinutes += Math.round(parsed.durationSeconds / 60);
+      }
+    } catch {
+      // Skip unreadable files
+    }
+  }
+
+  return {
+    sessions,
+    totalMessages,
+    totalDurationMinutes,
+  };
+}
+
+/**
+ * Check if Claude projects directory exists
+ */
+export async function hasClaudeProjects(): Promise<boolean> {
+  try {
+    await stat(CLAUDE_PROJECTS_DIR);
+    return true;
+  } catch {
+    return false;
+  }
+}

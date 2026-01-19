@@ -115,6 +115,7 @@ interface AnalysisRequestV2 {
   totalMessages: number;
   totalDurationMinutes: number;
   version: 2;
+  userId?: string; // Optional user ID for desktop app (pre-authenticated)
 }
 
 type AnalysisRequest = AnalysisRequestV1 | AnalysisRequestV2;
@@ -447,7 +448,8 @@ function getSupabaseClient() {
  */
 async function storeResult(
   resultId: string,
-  evaluation: VerboseEvaluation
+  evaluation: VerboseEvaluation,
+  userId?: string
 ): Promise<boolean> {
   if (!isSupabaseConfigured()) {
     console.warn("Supabase not configured, skipping result storage");
@@ -460,12 +462,20 @@ async function storeResult(
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
-    const { error } = await supabase.from("analysis_results").insert({
+    const insertData: Record<string, unknown> = {
       result_id: resultId,
       evaluation,
       is_paid: false,
       expires_at: expiresAt.toISOString(),
-    });
+    };
+
+    // Include user_id if provided (desktop app pre-authenticated flow)
+    if (userId) {
+      insertData.user_id = userId;
+      console.log(`[lambda] Storing result with user_id: ${userId}`);
+    }
+
+    const { error } = await supabase.from("analysis_results").insert(insertData);
 
     if (error) {
       console.error("Failed to store result:", error.message);
@@ -492,7 +502,8 @@ function formatSSE(event: SSEEvent): string {
 async function runAnalysis(
   body: AnalysisRequest,
   userGeminiApiKey: string,
-  write: (event: SSEEvent) => void
+  write: (event: SSEEvent) => void,
+  userId?: string
 ): Promise<void> {
   // Parse sessions based on version
   const parsedSessions: ParsedSession[] = [];
@@ -637,7 +648,7 @@ async function runAnalysis(
 
   // Generate result ID and store
   const resultId = generateResultId();
-  await storeResult(resultId, evaluation);
+  await storeResult(resultId, evaluation, userId);
 
   // Progress: Complete
   write({
@@ -739,15 +750,14 @@ async function handleAnalyzeFromStorage(
   const write = (evt: SSEEvent) => responseStream.write(formatSSE(evt));
 
   try {
-    // Get API key from header
-    const userGeminiApiKey =
-      event.headers["x-gemini-api-key"] || event.headers["X-Gemini-API-Key"];
+    // Use server-side API key (not from request headers)
+    const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY;
 
-    if (!userGeminiApiKey) {
+    if (!geminiApiKey) {
       write({
         type: "error",
-        code: "NO_API_KEY",
-        message: "Gemini API key is required.",
+        code: "SERVER_CONFIG_ERROR",
+        message: "Server API key not configured. Please contact support.",
       });
       responseStream.end();
       return;
@@ -847,8 +857,11 @@ async function handleAnalyzeFromStorage(
       return;
     }
 
+    // Extract userId if present (v2 desktop app flow)
+    const userId = isV2Request(body) ? body.userId : undefined;
+
     // Run the shared analysis logic
-    await runAnalysis(body, userGeminiApiKey, write);
+    await runAnalysis(body, geminiApiKey, write, userId);
 
     // Clean up: delete the uploaded file from storage
     try {
@@ -890,15 +903,14 @@ async function handleDirectUpload(
   const write = (evt: SSEEvent) => responseStream.write(formatSSE(evt));
 
   try {
-    // Get API key from header
-    const userGeminiApiKey =
-      event.headers["x-gemini-api-key"] || event.headers["X-Gemini-API-Key"];
+    // Use server-side API key (not from request headers)
+    const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY;
 
-    if (!userGeminiApiKey) {
+    if (!geminiApiKey) {
       write({
         type: "error",
-        code: "NO_API_KEY",
-        message: "Gemini API key is required. Pass --api-key flag or set GOOGLE_GEMINI_API_KEY environment variable.",
+        code: "SERVER_CONFIG_ERROR",
+        message: "Server API key not configured. Please contact support.",
       });
       responseStream.end();
       return;
@@ -962,8 +974,11 @@ async function handleDirectUpload(
       return;
     }
 
+    // Extract userId if present (v2 desktop app flow)
+    const userId = isV2Request(body) ? body.userId : undefined;
+
     // Run the shared analysis logic
-    await runAnalysis(body, userGeminiApiKey, write);
+    await runAnalysis(body, geminiApiKey, write, userId);
   } catch (error) {
     console.error("[lambda] Direct upload error:", error);
     write({
