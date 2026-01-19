@@ -8,7 +8,7 @@
 
 | Tier | Features |
 |------|----------|
-| **FREE** | Basic analysis (3/month), CLI + basic web report |
+| **FREE** | Basic analysis (3/month), basic web report |
 | **PRO** | Unlimited analysis, detailed recommendations, growth plan |
 | **PREMIUM** | Tracking dashboard, knowledge base access |
 | **ENTERPRISE** | Team management, customized knowledge base |
@@ -20,7 +20,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     PRESENTATION LAYER                          │
-│   CLI (commands/)  │  Next.js API (app/api/)  │  Next.js App (app/) │
+│  Desktop App (packages/desktop/)  │  Next.js API (app/api/)  │  Next.js App (app/) │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -56,7 +56,6 @@ Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation
 - **CostEstimator** (`src/lib/analyzer/cost-estimator.ts`) - Token counting and API cost calculation
 - **VerboseAnalyzer** (`src/lib/analyzer/verbose-analyzer.ts`) - LLM-powered hyper-personalized analysis
 - **VerbosePrompts** (`src/lib/analyzer/verbose-prompts.ts`) - Behavioral analyst prompts
-- **CostConfirmation** (`src/lib/cli/output/components/cost-confirmation.ts`) - Interactive cost approval
 - **Next.js App** (`app/`) - Unified web dashboard with analysis report view
 
 ### Hyper-Personalized Report Pipeline (NEW)
@@ -150,7 +149,7 @@ The UnifiedAnalyzer integrates all analysis components into a single orchestrato
 
 | Directory | Purpose | Layer |
 |-----------|---------|-------|
-| `commands/` | Claude Code plugin commands | Presentation |
+| `packages/desktop/` | Desktop app (Electron/Tauri) | Presentation |
 | `app/api/` | Next.js 15 API routes | Presentation |
 | `app/` | Next.js pages and layouts | Presentation |
 | `src/components/` | React UI components | Presentation |
@@ -164,7 +163,6 @@ The UnifiedAnalyzer integrates all analysis components into a single orchestrato
 | `src/lib/models/` | Zod schemas (unified-report, schema-bridge) | Domain |
 | `src/lib/parser/` | JSONL session parsing | Infrastructure |
 | `src/lib/search-agent/` | Knowledge curation system | Application |
-| `packages/cli/` | NPM CLI package (npx no-ai-slop) | Presentation |
 
 ### Next.js 15 App Router Architecture
 
@@ -225,34 +223,6 @@ src/hooks/
 - Premium content blur/unlock logic
 - Server Components for optimal performance
 - React hooks for client-side state management
-
-### CLI Package (NPM)
-
-The `packages/cli/` directory contains the standalone CLI tool published as `no-ai-slop` on npm:
-
-```
-packages/cli/
-├── src/
-│   ├── index.ts        # Main CLI entry point
-│   ├── scanner.ts      # Session directory scanning
-│   ├── uploader.ts     # API communication
-│   └── display.ts      # Terminal output formatting
-```
-
-**Usage:**
-```bash
-npx no-ai-slop          # Scan and analyze current project
-npx no-ai-slop --help   # Show help
-```
-
-**Key Features:**
-- Scans `~/.claude/projects/` for session JSONL files
-- Uploads session data to NoMoreAISlop API
-- Displays analysis results in terminal
-- Generates shareable report URLs
-- Zero configuration required
-
-**Published as:** `no-ai-slop` on npm registry
 
 ### Two-Stage Analysis Pipeline
 

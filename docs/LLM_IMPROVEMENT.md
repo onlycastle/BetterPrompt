@@ -39,15 +39,116 @@ ParsedSession[] → Module A (DataAnalyst) → Module B (Personality) → Stage 
 4. **Gemini 제약 준수**: 5-level nesting limit → flattened schemas 사용
 5. **네이밍 컨벤션**: 역할 기반 이름 (DataAnalyst, ContentWriter와 동일 패턴)
 
+---
+
+## 세션 데이터 가용성 분석
+
+> 실제 `~/.claude/projects/` 세션 파일을 분석하여 각 Agent의 실행 가능성을 검증함
+
+### 세션 데이터 구조
+
+```
+JSONL 포맷 (한 줄 = 하나의 JSON 객체)
+
+메시지 타입:
+- user: 사용자 메시지 또는 tool_result
+- assistant: Claude 응답 (토큰 사용량 포함)
+- queue-operation: 세션 관리
+- file-history-snapshot: 파일 백업
+
+핵심 필드:
+- sessionId, timestamp, cwd, gitBranch
+- message.usage.{input_tokens, output_tokens, cache_*}
+- message.content (string 또는 array)
+```
+
+### 추출 가능한 데이터
+
+| 데이터 | 경로 | Agent 활용 |
+|--------|------|-----------|
+| **토큰 사용량** | `message.usage.*` | Economist ✅ |
+| **캐시 효율** | `message.usage.cache_read_input_tokens` | Economist ✅ |
+| **모델 정보** | `message.model` | Economist ✅ |
+| **사용자 텍스트** | `message.content` (text type) | Communicator ✅ |
+| **명령어 패턴** | `<command-name>` 태그 | Communicator ✅ |
+| **도구 사용** | `message.content[].name` | 작업 패턴 분석 |
+| **Edit 데이터** | `input.{file_path, old_string, new_string}` | CodeReviewer ✅ |
+| **에러 메시지** | `tool_result.is_error: true` | Librarian/Educator ⚠️ |
+
+### Agent별 데이터 가용성
+
+| Agent | 데이터 가용성 | 실행 가능성 | 비고 |
+|-------|-------------|------------|------|
+| **Economist** | ✅ 풍부 | **4/5** | 토큰 데이터 완전, 비용 기준선만 외부 주입 필요 |
+| **Communicator** | ✅ 충분 | **3/5** | tool_result 필터링 필요, 다중 세션 집계 권장 |
+| **CodeReviewer** | ⚠️ 조건부 | **1-4/5** | 코드 Edit이 있는 세션에서만 동작 |
+| **Librarian** | ⚠️ 제한적 | **3/5** | 에러 없는 세션에서는 "어려움" 감지 불가 |
+| **Educator** | ❌ 부족 | **2/5** | 성공 세션에서 "성장 영역" 도출 어려움 |
+
+### 데이터 필터링 요구사항
+
+**Communicator - 실제 사용자 텍스트 추출:**
+```typescript
+// 필터 조건
+if (message.type === 'user') {
+  const content = message.content;
+  // tool_result 제외 (AI 도구 실행 결과)
+  if (isArray(content) && content[0]?.type === 'tool_result') continue;
+  // isMeta 제외 (시스템 주입 메시지)
+  if (message.isMeta) continue;
+  // 실제 사용자 텍스트
+  extractText(content);
+}
+```
+
+**CodeReviewer - 코드 세션 필터:**
+```typescript
+// Edit 도구 사용 중 코드 파일만
+const codeExtensions = ['.ts', '.js', '.py', '.tsx', '.jsx'];
+const hasCodeEdit = edits.some(e =>
+  codeExtensions.some(ext => e.file_path.endsWith(ext))
+);
+```
+
+**Librarian/Educator - 에러 세션 필터:**
+```typescript
+// is_error: true인 tool_result 존재 여부
+const hasErrors = toolResults.some(r => r.is_error === true);
+```
+
+### 발견된 에러 유형 (Librarian/Educator용)
+
+| 에러 타입 | 예시 | 분석 가치 |
+|----------|------|----------|
+| TypeScript 에러 | `error TS1205: Re-exporting...` | 기술 이해도 |
+| Edit 실패 | `String to replace not found` | 코드 이해 부족 |
+| 파일 동기화 | `File has been modified since read` | 워크플로우 |
+| 읽기 누락 | `File has not been read yet` | 프로세스 |
+
+### 권장 구현 우선순위
+
+**Phase 1 (데이터 풍부):**
+1. Economist - 토큰 데이터 완전 가용
+2. Communicator - 필터링 후 충분한 데이터
+
+**Phase 2 (조건부 실행):**
+3. CodeReviewer - 코드 세션에서만 실행
+
+**Phase 3 (재설계 검토 필요):**
+4. Librarian - 에러 세션 분석 또는 다중 세션 집계
+5. Educator - Librarian 통합 또는 별도 접근법
+
+---
+
 ## 5개의 새로운 Agent
 
-| Agent | 역할 | Min Tier | 실행 조건 |
-|-------|------|----------|-----------|
-| **Economist** | 토큰 효율성, 비용 분석, ROI | Premium | 항상 |
-| **CodeReviewer** | 보안 취약점, 코드 품질 | Enterprise | 코드 패턴 있을 때 |
-| **Librarian** | 지식 갭, 학습 패턴 분석 | Premium | 항상 |
-| **Educator** | 학습 가이드, 연습 문제 생성 | Premium | 성장 영역 감지 시 |
-| **Communicator** | 프롬프트 패턴, 커뮤니케이션 효과성 | Premium | 항상 |
+| Agent | 역할 | Min Tier | 실행 조건 | 데이터 가용성 |
+|-------|------|----------|-----------|--------------|
+| **Economist** | 토큰 효율성, 비용 분석, ROI | Premium | 항상 | ✅ 풍부 |
+| **Communicator** | 프롬프트 패턴, 커뮤니케이션 효과성 | Premium | 항상 | ✅ 충분 |
+| **CodeReviewer** | 보안 취약점, 코드 품질 | Enterprise | 코드 Edit 있을 때 | ⚠️ 조건부 |
+| **Librarian** | 지식 갭, 학습 패턴 분석 | Premium | 에러 있을 때 | ⚠️ 제한적 |
+| **Educator** | 학습 가이드, 연습 문제 생성 | Premium | 성장 영역 감지 시 | ❌ 재설계 필요 |
 
 ## Communicator Agent: Bottom-up 패턴 발견
 
@@ -232,12 +333,23 @@ MVP 이후 RAG 추가 시:
 3. Supabase pgvector로 벡터 검색 구현
 4. Agent 생성자에 KnowledgeLayer 주입
 
-## 구현 순서
+## 구현 순서 (데이터 가용성 기반)
 
-1. **Phase 1**: 스키마 & 인프라 (`agent-outputs.ts`, `base-agent.ts`)
-2. **Phase 2**: Agent 구현 (5개 파일)
-3. **Phase 3**: 파이프라인 통합 (`verbose-analyzer.ts` 수정)
-4. **Phase 4**: 테스트 & 검증
+### Phase 1: 인프라 & 데이터 풍부 Agent
+1. 스키마 & 인프라 (`agent-outputs.ts`, `base-agent.ts`)
+2. **Economist** - 토큰/비용 분석 (데이터 완전 가용)
+3. **Communicator** - 프롬프트 패턴 분석 (데이터 충분)
+
+### Phase 2: 조건부 실행 Agent
+4. **CodeReviewer** - 코드 품질 분석 (코드 세션에서만 실행)
+
+### Phase 3: 재설계 검토 후 결정
+5. **Librarian** - 지식 갭 분석 (에러 세션 분석 또는 다중 세션 집계 필요)
+6. **Educator** - 학습 가이드 (Librarian과 통합 검토)
+
+### Phase 4: 파이프라인 통합 & 테스트
+7. `verbose-analyzer.ts` 수정
+8. 테스트 & 검증
 
 ## 검증 방법
 

@@ -164,34 +164,7 @@ npm run sst:remove
 
 ---
 
-## 3. CLI 설정
-
-### 3.1 Lambda URL 설정
-
-배포 후 출력된 URL을 `.env` 파일에 추가:
-
-```bash
-# .env
-NOSLOP_LAMBDA_URL=https://abc123xyz.lambda-url.ap-northeast-2.on.aws
-```
-
-또는 shell 환경변수로 설정:
-
-```bash
-# ~/.zshrc 또는 ~/.bashrc에 추가
-export NOSLOP_LAMBDA_URL="https://abc123xyz.lambda-url.ap-northeast-2.on.aws"
-```
-
-### 3.2 테스트
-
-```bash
-# CLI 실행 - Lambda URL이 설정되어 있으면 자동으로 Lambda 사용
-npx no-ai-slop --api-key YOUR_GEMINI_API_KEY
-```
-
----
-
-## 4. 문제 해결
+## 3. 문제 해결
 
 ### AWS Credentials 에러
 
@@ -222,7 +195,7 @@ Access to fetch has been blocked by CORS policy
 
 ---
 
-## 5. 비용 정보
+## 4. 비용 정보
 
 Lambda 비용 (ap-northeast-2 기준):
 - **요청**: $0.20 / 1백만 요청
@@ -241,8 +214,8 @@ AWS Free Tier (12개월):
 
 ```
 ┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
-│   CLI       │────▶│  AWS Lambda      │────▶│  Supabase   │
-│  (no-ai-slop)    │  (SSE Streaming) │     │  (Storage)  │
+│ Desktop App │────▶│  AWS Lambda      │────▶│  Supabase   │
+│ (Electron)  │     │  (SSE Streaming) │     │  (Storage)  │
 └─────────────┘     └──────────────────┘     └─────────────┘
                             │
                             ▼
@@ -254,11 +227,11 @@ AWS Free Tier (12개월):
 
 ## Hybrid Setup
 
-Keep Vercel for web app, use Lambda only for heavy analysis:
+Keep Vercel for web app, use Lambda for desktop app analysis:
 
-- **Vercel**: `/`, `/r/[id]`, `/api/*` (except analysis)
-- **Lambda**: Analysis endpoint (via `NOSLOP_LAMBDA_URL`)
+- **Vercel**: `/`, `/r/[id]`, `/api/*` (web frontend)
+- **Lambda**: Heavy analysis endpoint (called by desktop app via `NOSLOP_LAMBDA_URL`)
 
 This gives you the best of both worlds:
 - Vercel's CDN and instant deployments for the web app
-- Lambda's higher limits and longer timeout for analysis
+- Lambda's higher limits and longer timeout for desktop app analysis
