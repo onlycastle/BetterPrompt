@@ -85,7 +85,7 @@ interface AnalysisPayload {
   totalMessages: number;
   totalDurationMinutes: number;
   version: 2;
-  userId?: string; // Desktop app includes user ID
+  userId?: string; // DEPRECATED: Server extracts userId from Authorization header now
 }
 
 /**
@@ -391,6 +391,7 @@ export async function uploadForAnalysis(
   scanResult: ScanResult,
   userId: string,
   mainWindow: BrowserWindow,
+  accessToken?: string,
   lambdaUrl: string = DEFAULT_LAMBDA_URL
 ): Promise<AnalysisResult> {
   const { compressed, truncated, droppedCount, originalSizeBytes, compressedSizeBytes } =
@@ -408,8 +409,9 @@ export async function uploadForAnalysis(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
       },
-      body: JSON.stringify({ storagePath, userId }),
+      body: JSON.stringify({ storagePath }),
     });
 
     if (!response.ok) {
@@ -432,6 +434,7 @@ export async function uploadForAnalysis(
     headers: {
       'Content-Type': 'application/octet-stream',
       'Content-Encoding': 'gzip',
+      ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
     },
     body: new Uint8Array(compressed),
   });

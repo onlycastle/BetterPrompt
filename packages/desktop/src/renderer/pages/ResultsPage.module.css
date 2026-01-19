@@ -3,7 +3,7 @@
  */
 
 .container {
-  min-height: 100vh;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   background-color: var(--bg-paper);
@@ -14,21 +14,11 @@
   color: var(--text-primary);
 }
 
-.dragRegion {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 32px;
-  -webkit-app-region: drag;
-}
-
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 1rem 2rem;
-  padding-top: 3rem; /* Account for drag region */
   border-bottom: 2px dashed var(--border-default);
 }
 
@@ -42,7 +32,6 @@
   font-family: var(--font-primary);
   cursor: pointer;
   transition: all var(--transition-normal);
-  -webkit-app-region: no-drag;
 }
 
 .backButton:hover {
@@ -51,16 +40,11 @@
   color: var(--text-primary);
 }
 
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1.25rem;
-}
-
-.logoText {
-  font-weight: var(--weight-bold);
-  color: var(--sketch-cyan);
+.pageTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
 }
 
 .spacer {

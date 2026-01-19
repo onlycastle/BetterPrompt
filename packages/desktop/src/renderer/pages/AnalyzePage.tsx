@@ -1,7 +1,8 @@
 /**
  * Analyze Page
  *
- * Main screen after login - shows session list and starts analysis.
+ * Main screen after login - shows session summary and starts analysis.
+ * Sessions are auto-selected based on recency, token count, and project diversity.
  */
 
 import { useEffect } from 'react';
@@ -14,20 +15,15 @@ interface AnalyzePageProps {
 }
 
 export default function AnalyzePage({ onAnalysisComplete }: AnalyzePageProps) {
-  const { user, signOut } = useAuth();
+  const { user, session } = useAuth();
   const {
-    sessions,
-    selectedSessions,
+    scanSummary,
     isScanning,
     scanError,
     isAnalyzing,
     analysisProgress,
     analysisError,
     scanSessions,
-    selectSession,
-    deselectSession,
-    selectAllSessions,
-    clearSelection,
     startAnalysis,
   } = useAnalysis();
 
@@ -39,107 +35,144 @@ export default function AnalyzePage({ onAnalysisComplete }: AnalyzePageProps) {
   const handleStartAnalysis = async () => {
     if (!user) return;
 
-    const resultId = await startAnalysis(user.id);
+    // Pass access token for server-side authentication
+    const resultId = await startAnalysis(user.id, session?.access_token);
     if (resultId) {
       onAnalysisComplete(resultId);
     }
   };
 
-  const toggleSession = (id: string) => {
-    if (selectedSessions.includes(id)) {
-      deselectSession(id);
-    } else {
-      selectSession(id);
-    }
-  };
-
   return (
     <div className={styles.container}>
-      {/* Drag region for macOS titlebar */}
-      <div className={styles.dragRegion} />
-
-      {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.logo}>
-          <span>🎯</span>
-          <span className={styles.logoText}>NoMoreAISlop</span>
-        </div>
-        <div className={styles.userInfo}>
-          <span className={styles.email}>{user?.email}</span>
-          <button className={styles.signOutBtn} onClick={signOut}>
-            Sign Out
-          </button>
-        </div>
-      </header>
-
       {/* Main content */}
       <main className={styles.main}>
-        <h1 className={styles.title}>Analyze Your Sessions</h1>
+        <h1 className={styles.title}>Know your AI mastery in 5 minutes</h1>
         <p className={styles.subtitle}>
-          Select the Claude Code sessions you want to analyze
+          Based on your real conversations, not a quiz
         </p>
 
         {/* Privacy notice */}
         <div className={styles.privacyNotice}>
-          🔒 Your data is analyzed in the cloud but <strong>not stored</strong> on our servers
+          Analyzed in the cloud, <strong>never stored</strong> — your sessions stay yours
         </div>
 
-        {/* Session list */}
+        {/* Session summary */}
         <div className={styles.sessionSection}>
-          <div className={styles.sessionHeader}>
-            <h2>Available Sessions</h2>
-            <div className={styles.sessionActions}>
-              <button onClick={selectAllSessions} disabled={isScanning}>
-                Select All
-              </button>
-              <button onClick={clearSelection} disabled={isScanning}>
-                Clear
-              </button>
-              <button onClick={scanSessions} disabled={isScanning}>
-                {isScanning ? 'Scanning...' : 'Refresh'}
-              </button>
-            </div>
-          </div>
-
           {scanError && <p className={styles.error}>{scanError}</p>}
 
           {isScanning ? (
             <div className={styles.loading}>
-              <div className={styles.spinner} />
-              <p>Scanning for sessions...</p>
+              <div className={styles.loadingContent}>
+                <span className={styles.scannerIcon}>🔍</span>
+                <p className={styles.loadingText}>Reading your history...</p>
+                <p className={styles.loadingSubtext}>
+                  Selecting the sessions that tell your story
+                </p>
+              </div>
             </div>
-          ) : sessions.length === 0 ? (
+          ) : !scanSummary || scanSummary.sessionCount === 0 ? (
             <div className={styles.empty}>
-              <p>No Claude Code sessions found.</p>
-              <p className={styles.hint}>
-                Sessions are stored in ~/.claude/projects/
-              </p>
+              <div className={styles.emptyContent}>
+                <span className={styles.emptyIcon}>📝</span>
+                <p className={styles.emptyTitle}>Nothing to analyze yet</p>
+                <p className={styles.emptyDescription}>
+                  Use Claude Code first — we&apos;ll be here when you&apos;re ready
+                </p>
+                <code className={styles.hint}>~/.claude/projects/</code>
+              </div>
             </div>
           ) : (
-            <ul className={styles.sessionList}>
-              {sessions.map((session) => (
-                <li
-                  key={session.id}
-                  className={`${styles.sessionItem} ${
-                    selectedSessions.includes(session.id) ? styles.selected : ''
-                  }`}
-                  onClick={() => toggleSession(session.id)}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedSessions.includes(session.id)}
-                    onChange={() => toggleSession(session.id)}
-                    className={styles.checkbox}
+            <div className={styles.previewCard}>
+              {/* Radar chart preview */}
+              <div className={styles.radarPreview}>
+                <svg viewBox="0 0 200 200" className={styles.radarChart}>
+                  {/* Background hexagon grid */}
+                  <polygon
+                    className={styles.radarGrid}
+                    points="100,20 166,50 166,130 100,160 34,130 34,50"
                   />
-                  <div className={styles.sessionInfo}>
-                    <span className={styles.sessionName}>{session.name}</span>
-                    <span className={styles.sessionMeta}>
-                      {session.date} · {session.messageCount} messages · {session.durationMinutes} min
-                    </span>
+                  <polygon
+                    className={styles.radarGrid}
+                    points="100,40 146,60 146,120 100,140 54,120 54,60"
+                  />
+                  <polygon
+                    className={styles.radarGrid}
+                    points="100,60 126,70 126,110 100,120 74,110 74,70"
+                  />
+                  {/* Data shape (mystery) */}
+                  <polygon
+                    className={styles.radarShape}
+                    points="100,35 150,55 160,115 100,145 50,100 45,55"
+                  />
+                  {/* Center dot */}
+                  <circle cx="100" cy="90" r="3" className={styles.radarCenter} />
+                </svg>
+                <div className={styles.radarBlur} />
+              </div>
+
+              {/* Type hint */}
+              <div className={styles.typeHint}>
+                <p className={styles.typeLabel}>You might be a...</p>
+                <p className={styles.typeName}>
+                  <span className={styles.typeBlurred}>The Architect</span>
+                </p>
+              </div>
+
+              {/* Dimension bars */}
+              <div className={styles.dimensionBars}>
+                <div className={styles.dimensionRow}>
+                  <span className={styles.dimensionName}>AI Control</span>
+                  <div className={styles.dimensionTrack}>
+                    <div className={styles.dimensionFill} style={{ width: '75%' }} />
                   </div>
-                </li>
-              ))}
-            </ul>
+                  <span className={styles.dimensionValue}>???</span>
+                </div>
+                <div className={styles.dimensionRow}>
+                  <span className={styles.dimensionName}>Context Quality</span>
+                  <div className={styles.dimensionTrack}>
+                    <div className={styles.dimensionFill} style={{ width: '60%' }} />
+                  </div>
+                  <span className={styles.dimensionValue}>???</span>
+                </div>
+                <div className={styles.dimensionRow}>
+                  <span className={styles.dimensionName}>Planning</span>
+                  <div className={styles.dimensionTrack}>
+                    <div className={styles.dimensionFill} style={{ width: '85%' }} />
+                  </div>
+                  <span className={styles.dimensionValue}>???</span>
+                </div>
+                {/* Faded hint rows */}
+                <div className={styles.dimensionFade}>
+                  <div className={styles.dimensionRow}>
+                    <span className={styles.dimensionName}>Tool Mastery</span>
+                    <div className={styles.dimensionTrack}>
+                      <div className={styles.dimensionFill} style={{ width: '45%' }} />
+                    </div>
+                    <span className={styles.dimensionValue}>???</span>
+                  </div>
+                  <div className={styles.dimensionRow}>
+                    <span className={styles.dimensionName}>+ 2 more</span>
+                    <div className={styles.dimensionTrack}>
+                      <div className={styles.dimensionFill} style={{ width: '70%' }} />
+                    </div>
+                    <span className={styles.dimensionValue}>???</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Subtext */}
+              <p className={styles.previewSubtext}>
+                Based on your real chat history
+              </p>
+
+              <button
+                className={styles.rescanLink}
+                onClick={scanSessions}
+                disabled={isScanning}
+              >
+                Rescan
+              </button>
+            </div>
           )}
         </div>
 
@@ -161,10 +194,9 @@ export default function AnalyzePage({ onAnalysisComplete }: AnalyzePageProps) {
             <button
               className={styles.analyzeButton}
               onClick={handleStartAnalysis}
-              disabled={selectedSessions.length === 0}
+              disabled={!scanSummary || scanSummary.sessionCount === 0}
             >
-              Analyze {selectedSessions.length} Session
-              {selectedSessions.length !== 1 ? 's' : ''}
+              Get My Report
             </button>
           )}
 

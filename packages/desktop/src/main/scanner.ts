@@ -3,6 +3,12 @@
  *
  * Scans ~/.claude/projects/ for Claude Code session logs,
  * parses JSONL into structured sessions, and prepares for analysis.
+ *
+ * Auto-selection algorithm combines three factors:
+ * 1. Recency (recent sessions show current patterns)
+ * 2. Token count (more content = richer analysis)
+ * 3. Project diversity (different projects = broader picture)
+ *
  * Based on CLI package implementation, adapted for Electron (CJS).
  */
 
@@ -13,6 +19,11 @@ import { parseSessionContent, type ParsedSession } from './session-formatter';
 
 export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
+/**
+ * Gemini 3 Flash pricing (per token)
+ */
+const GEMINI_INPUT_PRICE = 0.5 / 1_000_000; // $0.50 per 1M tokens
+
 export interface SessionMetadata {
   sessionId: string;
   projectPath: string;
@@ -21,6 +32,7 @@ export interface SessionMetadata {
   messageCount: number;
   durationSeconds: number;
   filePath: string;
+  tokenCount: number;  // Estimated raw token count from content
 }
 
 /**
@@ -38,15 +50,20 @@ export interface ScanResult {
 }
 
 /**
- * Session info for UI display
+ * Summary of auto-selected sessions for UI display
  */
-export interface SessionInfo {
-  id: string;
-  name: string;
-  path: string;
-  date: string;
-  messageCount: number;
-  durationMinutes: number;
+export interface ScanSummary {
+  sessionCount: number;
+  projectCount: number;
+  totalTokens: number;
+  totalMessages: number;
+  estimatedCost: string;
+  dateRange: {
+    oldest: string;
+    newest: string;
+  };
+  /** File paths for analysis */
+  sessionPaths: string[];
 }
 
 /**
@@ -69,14 +86,45 @@ function getProjectName(projectPath: string): string {
 }
 
 /**
- * Select sessions with project diversity
+ * Estimate token count from raw text content
+ * Uses ~4 chars per token heuristic with adjustments
  */
-function selectWithProjectDiversity(
+function estimateTokenCount(content: string): number {
+  if (!content) return 0;
+
+  let baseCount = content.length / 4;
+
+  // Code blocks are token-heavy
+  const codeBlockMatches = content.match(/```[\s\S]*?```/g);
+  if (codeBlockMatches) baseCount += codeBlockMatches.length * 50;
+
+  // JSON structure overhead
+  const jsonBraceMatches = content.match(/[{}[\]]/g);
+  if (jsonBraceMatches) baseCount += jsonBraceMatches.length * 0.5;
+
+  return Math.ceil(baseCount);
+}
+
+/**
+ * Format estimated cost for display
+ */
+function formatEstimatedCost(tokenCount: number): string {
+  const cost = tokenCount * GEMINI_INPUT_PRICE;
+  return `$${cost.toFixed(4)}`;
+}
+
+/**
+ * Auto-select optimal sessions combining:
+ * 1. Recency (recent sessions)
+ * 2. Token count (content-rich sessions)
+ * 3. Project diversity (different projects)
+ */
+function autoSelectSessions(
   sessions: SessionMetadata[],
-  targetCount: number
+  targetCount: number = 15
 ): SessionMetadata[] {
   if (sessions.length <= targetCount) {
-    return [...sessions].sort((a, b) => b.messageCount - a.messageCount);
+    return [...sessions];
   }
 
   // Group by project
@@ -89,35 +137,56 @@ function selectWithProjectDiversity(
     byProject.get(key)!.push(session);
   }
 
-  // Sort each project's sessions by message count (descending)
+  // Sort each project's sessions by combined score (tokens + recency)
+  const now = Date.now();
+  const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
+
   for (const projectSessions of byProject.values()) {
-    projectSessions.sort((a, b) => b.messageCount - a.messageCount);
+    projectSessions.sort((a, b) => {
+      // Recency score: 0-1 (1 = today, 0 = 30+ days old)
+      const recencyA = Math.max(0, 1 - (now - a.timestamp.getTime()) / maxAge);
+      const recencyB = Math.max(0, 1 - (now - b.timestamp.getTime()) / maxAge);
+
+      // Token score: normalize by max tokens in dataset
+      const maxTokens = Math.max(...projectSessions.map((s) => s.tokenCount));
+      const tokenScoreA = maxTokens > 0 ? a.tokenCount / maxTokens : 0;
+      const tokenScoreB = maxTokens > 0 ? b.tokenCount / maxTokens : 0;
+
+      // Combined score: 40% recency, 60% token count
+      const scoreA = recencyA * 0.4 + tokenScoreA * 0.6;
+      const scoreB = recencyB * 0.4 + tokenScoreB * 0.6;
+
+      return scoreB - scoreA;
+    });
   }
 
   const selected: SessionMetadata[] = [];
   const selectedIds = new Set<string>();
 
   // Phase 1: Pick best session from each project (diversity)
-  for (const projectSessions of byProject.values()) {
+  // Sort projects by their best session's score
+  const sortedProjects = Array.from(byProject.entries()).sort(([, a], [, b]) => {
+    return b[0].tokenCount - a[0].tokenCount;
+  });
+
+  for (const [, projectSessions] of sortedProjects) {
     if (selected.length >= targetCount) break;
     const best = projectSessions[0];
     selected.push(best);
     selectedIds.add(best.sessionId);
   }
 
-  // Phase 2: Fill remaining slots with highest message count sessions
+  // Phase 2: Fill remaining slots with highest token sessions
   if (selected.length < targetCount) {
-    const remaining = sessions.filter((s) => !selectedIds.has(s.sessionId));
-    remaining.sort((a, b) => b.messageCount - a.messageCount);
+    const remaining = sessions
+      .filter((s) => !selectedIds.has(s.sessionId))
+      .sort((a, b) => b.tokenCount - a.tokenCount);
 
     for (const session of remaining) {
       if (selected.length >= targetCount) break;
       selected.push(session);
     }
   }
-
-  // Sort final selection by message count for display consistency
-  selected.sort((a, b) => b.messageCount - a.messageCount);
 
   return selected;
 }
@@ -191,6 +260,9 @@ async function getSessionMetadata(filePath: string): Promise<SessionMetadata | n
       (timestamps.last.getTime() - timestamps.first.getTime()) / 1000
     );
 
+    // Estimate token count from raw content
+    const tokenCount = estimateTokenCount(content);
+
     return {
       sessionId: fileName,
       projectPath,
@@ -199,6 +271,7 @@ async function getSessionMetadata(filePath: string): Promise<SessionMetadata | n
       messageCount,
       durationSeconds,
       filePath,
+      tokenCount,
     };
   } catch {
     return null;
@@ -244,50 +317,93 @@ export async function listSessionFiles(projectDir: string): Promise<string[]> {
 }
 
 /**
- * Quick scan to get session list for UI display
+ * Auto-select optimal sessions and return summary for UI
+ *
+ * Selection criteria:
+ * - At least 5 messages
+ * - At least 60 seconds duration
+ * - Combines recency, token count, and project diversity
  */
-export async function scanSessionsForUI(maxSessions: number = 20): Promise<SessionInfo[]> {
+export async function scanAndSelectSessions(targetCount: number = 15): Promise<ScanSummary> {
+  console.log('[Scanner] Starting scan, target:', targetCount);
+  console.log('[Scanner] Projects dir:', CLAUDE_PROJECTS_DIR);
+
   const projectDirs = await listProjectDirs();
+  console.log('[Scanner] Found', projectDirs.length, 'project directories');
+
   const allMetadata: SessionMetadata[] = [];
 
   for (const dir of projectDirs) {
     const files = await listSessionFiles(dir);
+    let validCount = 0;
     for (const file of files) {
       const metadata = await getSessionMetadata(file);
       // Filter: at least 5 messages AND at least 60 seconds duration
       if (metadata && metadata.messageCount >= 5 && metadata.durationSeconds >= 60) {
         allMetadata.push(metadata);
+        validCount++;
       }
+    }
+    if (validCount > 0) {
+      console.log('[Scanner]', basename(dir), ':', validCount, 'valid sessions');
     }
   }
 
-  // Sort by timestamp, most recent first
+  console.log('[Scanner] Total valid sessions:', allMetadata.length);
+
+  if (allMetadata.length === 0) {
+    return {
+      sessionCount: 0,
+      projectCount: 0,
+      totalTokens: 0,
+      totalMessages: 0,
+      estimatedCost: '$0.0000',
+      dateRange: { oldest: '', newest: '' },
+      sessionPaths: [],
+    };
+  }
+
+  // Sort by timestamp, most recent first (for recency scoring)
   allMetadata.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
-  // Take top 50 most recent sessions
-  const recentSessions = allMetadata.slice(0, 50);
+  // Take top 50 most recent sessions as candidates
+  const candidates = allMetadata.slice(0, 50);
 
-  // Project-diverse selection
-  const selected = selectWithProjectDiversity(recentSessions, maxSessions);
+  // Auto-select optimal sessions
+  const selected = autoSelectSessions(candidates, targetCount);
 
-  // Convert to UI format
-  return selected.map((s) => ({
-    id: s.sessionId,
-    name: s.projectName,
-    path: s.filePath,
-    date: s.timestamp.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
-    messageCount: s.messageCount,
-    durationMinutes: Math.round(s.durationSeconds / 60),
-  }));
+  // Calculate summary stats
+  const projects = new Set(selected.map((s) => s.projectPath));
+  const totalTokens = selected.reduce((sum, s) => sum + s.tokenCount, 0);
+  const totalMessages = selected.reduce((sum, s) => sum + s.messageCount, 0);
+
+  // Date range
+  const timestamps = selected.map((s) => s.timestamp.getTime());
+  const oldest = new Date(Math.min(...timestamps));
+  const newest = new Date(Math.max(...timestamps));
+
+  const formatDate = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  const summary = {
+    sessionCount: selected.length,
+    projectCount: projects.size,
+    totalTokens,
+    totalMessages,
+    estimatedCost: formatEstimatedCost(totalTokens),
+    dateRange: {
+      oldest: formatDate(oldest),
+      newest: formatDate(newest),
+    },
+    sessionPaths: selected.map((s) => s.filePath),
+  };
+
+  console.log('[Scanner] Final selection:', summary.sessionCount, 'sessions from', summary.projectCount, 'projects');
+  return summary;
 }
 
 /**
- * Load full session data for selected session IDs
+ * Load full session data for selected session paths
  */
 export async function loadSessionsForAnalysis(
   sessionPaths: string[]
@@ -315,6 +431,7 @@ export async function loadSessionsForAnalysis(
           messageCount: parsed.stats.userMessageCount + parsed.stats.assistantMessageCount,
           durationSeconds: parsed.durationSeconds,
           filePath,
+          tokenCount: estimateTokenCount(content),
         };
 
         sessions.push({ metadata, parsed });

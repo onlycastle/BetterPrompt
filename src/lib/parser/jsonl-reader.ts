@@ -50,16 +50,17 @@ export async function readJSONLFile(filePath: string): Promise<JSONLLine[]> {
 }
 
 /**
- * Decode project path from Claude's encoding
- * Claude encodes paths by replacing '/' with '-'
+ * Decode project path from Claude's encoding.
+ * Claude encodes paths by replacing '/' with '-'.
+ *
+ * @example
+ * '-Users-dev-projects-myapp' -> '/Users/dev/projects/myapp'
  */
 export function decodeProjectPath(encoded: string): string {
-  // The encoded path starts with '-' for absolute paths
-  // e.g., '-Users-dev-projects-myapp' -> '/Users/dev/projects/myapp'
-  if (encoded.startsWith('-')) {
-    return encoded.replace(/-/g, '/');
+  if (!encoded.startsWith('-')) {
+    return encoded;
   }
-  return encoded;
+  return encoded.replace(/-/g, '/');
 }
 
 /**

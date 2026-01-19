@@ -115,7 +115,7 @@ interface AnalysisRequestV2 {
   totalMessages: number;
   totalDurationMinutes: number;
   version: 2;
-  userId?: string; // Optional user ID for desktop app (pre-authenticated)
+  userId?: string; // DEPRECATED: userId from body is ignored for security. Use Authorization header instead.
 }
 
 type AnalysisRequest = AnalysisRequestV1 | AnalysisRequestV2;
@@ -444,6 +444,45 @@ function getSupabaseClient() {
 }
 
 /**
+ * Validate Authorization header and extract user ID
+ *
+ * Security: userId must come from validated JWT, not from request body.
+ * This prevents spoofing where attackers claim another user's identity.
+ *
+ * @param authHeader - Authorization header value (Bearer token)
+ * @returns userId if valid, null if no auth or invalid
+ */
+async function validateAuthToken(
+  authHeader: string | undefined
+): Promise<{ userId: string } | null> {
+  // No auth header = anonymous request (CLI users)
+  if (!authHeader?.startsWith("Bearer ")) {
+    return null;
+  }
+
+  const token = authHeader.slice(7);
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const supabase = getSupabaseClient();
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      console.warn("[lambda] Auth validation failed:", error?.message);
+      return null;
+    }
+
+    console.log(`[lambda] Authenticated user: ${user.id}`);
+    return { userId: user.id };
+  } catch (error) {
+    console.error("[lambda] Auth validation error:", error);
+    return null;
+  }
+}
+
+/**
  * Store analysis result in Supabase
  */
 async function storeResult(
@@ -750,6 +789,11 @@ async function handleAnalyzeFromStorage(
   const write = (evt: SSEEvent) => responseStream.write(formatSSE(evt));
 
   try {
+    // Validate auth token and extract userId (optional - CLI users don't need auth)
+    const authHeader = event.headers?.authorization || event.headers?.Authorization;
+    const authResult = await validateAuthToken(authHeader);
+    const userId = authResult?.userId;
+
     // Use server-side API key (not from request headers)
     const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY;
 
@@ -857,10 +901,7 @@ async function handleAnalyzeFromStorage(
       return;
     }
 
-    // Extract userId if present (v2 desktop app flow)
-    const userId = isV2Request(body) ? body.userId : undefined;
-
-    // Run the shared analysis logic
+    // Run the shared analysis logic (userId from auth validation above)
     await runAnalysis(body, geminiApiKey, write, userId);
 
     // Clean up: delete the uploaded file from storage
@@ -903,6 +944,11 @@ async function handleDirectUpload(
   const write = (evt: SSEEvent) => responseStream.write(formatSSE(evt));
 
   try {
+    // Validate auth token and extract userId (optional - CLI users don't need auth)
+    const authHeader = event.headers?.authorization || event.headers?.Authorization;
+    const authResult = await validateAuthToken(authHeader);
+    const userId = authResult?.userId;
+
     // Use server-side API key (not from request headers)
     const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY;
 
@@ -974,10 +1020,7 @@ async function handleDirectUpload(
       return;
     }
 
-    // Extract userId if present (v2 desktop app flow)
-    const userId = isV2Request(body) ? body.userId : undefined;
-
-    // Run the shared analysis logic
+    // Run the shared analysis logic (userId from auth validation above)
     await runAnalysis(body, geminiApiKey, write, userId);
   } catch (error) {
     console.error("[lambda] Direct upload error:", error);

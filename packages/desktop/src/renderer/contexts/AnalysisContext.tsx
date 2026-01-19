@@ -2,17 +2,26 @@
  * Analysis Context
  *
  * Manages analysis state including session scanning, analysis progress, and results.
+ *
+ * Sessions are auto-selected based on recency, token count, and project diversity.
+ * Users don't manually select sessions - this improves privacy perception.
  */
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 
-interface Session {
-  id: string;
-  name: string;
-  path: string;
-  date: string;
-  messageCount: number;
-  durationMinutes: number;
+/**
+ * Summary of auto-selected sessions
+ */
+interface ScanSummary {
+  sessionCount: number;
+  projectCount: number;
+  totalTokens: number;
+  totalMessages: number;
+  estimatedCost: string;
+  dateRange: {
+    oldest: string;
+    newest: string;
+  };
 }
 
 interface AnalysisProgress {
@@ -22,9 +31,8 @@ interface AnalysisProgress {
 }
 
 interface AnalysisContextType {
-  // Session state
-  sessions: Session[];
-  selectedSessions: string[];
+  // Scan state
+  scanSummary: ScanSummary | null;
   isScanning: boolean;
   scanError: string | null;
 
@@ -35,19 +43,14 @@ interface AnalysisContextType {
 
   // Actions
   scanSessions: () => Promise<void>;
-  selectSession: (id: string) => void;
-  deselectSession: (id: string) => void;
-  selectAllSessions: () => void;
-  clearSelection: () => void;
-  startAnalysis: (userId: string) => Promise<string | null>;
+  startAnalysis: (userId: string, accessToken?: string) => Promise<string | null>;
 }
 
 const AnalysisContext = createContext<AnalysisContextType | null>(null);
 
 export function AnalysisProvider({ children }: { children: ReactNode }) {
-  // Session state
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
+  // Scan state
+  const [scanSummary, setScanSummary] = useState<ScanSummary | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
 
@@ -65,43 +68,22 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
       if (result.error) {
         setScanError(result.error);
-        setSessions([]);
+        setScanSummary(null);
       } else {
-        setSessions(result.sessions);
-        // Auto-select all sessions
-        setSelectedSessions(result.sessions.map((s) => s.id));
+        setScanSummary(result.summary);
       }
     } catch (error) {
       setScanError((error as Error).message);
-      setSessions([]);
+      setScanSummary(null);
     } finally {
       setIsScanning(false);
     }
   }, []);
 
-  const selectSession = useCallback((id: string) => {
-    setSelectedSessions((prev) => {
-      if (prev.includes(id)) return prev;
-      return [...prev, id];
-    });
-  }, []);
-
-  const deselectSession = useCallback((id: string) => {
-    setSelectedSessions((prev) => prev.filter((s) => s !== id));
-  }, []);
-
-  const selectAllSessions = useCallback(() => {
-    setSelectedSessions(sessions.map((s) => s.id));
-  }, [sessions]);
-
-  const clearSelection = useCallback(() => {
-    setSelectedSessions([]);
-  }, []);
-
   const startAnalysis = useCallback(
-    async (userId: string): Promise<string | null> => {
-      if (selectedSessions.length === 0) {
-        setAnalysisError('No sessions selected');
+    async (userId: string, accessToken?: string): Promise<string | null> => {
+      if (!scanSummary || scanSummary.sessionCount === 0) {
+        setAnalysisError('No sessions available');
         return null;
       }
 
@@ -115,10 +97,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       });
 
       try {
-        const result = await window.electronAPI.startAnalysis({
-          sessions: selectedSessions,
-          userId,
-        });
+        const result = await window.electronAPI.startAnalysis({ userId, accessToken });
 
         if (result.error) {
           setAnalysisError(result.error);
@@ -135,24 +114,19 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         unsubscribe();
       }
     },
-    [selectedSessions]
+    [scanSummary]
   );
 
   return (
     <AnalysisContext.Provider
       value={{
-        sessions,
-        selectedSessions,
+        scanSummary,
         isScanning,
         scanError,
         isAnalyzing,
         analysisProgress,
         analysisError,
         scanSessions,
-        selectSession,
-        deselectSession,
-        selectAllSessions,
-        clearSelection,
         startAnalysis,
       }}
     >

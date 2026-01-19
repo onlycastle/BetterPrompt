@@ -162,18 +162,12 @@ export default function ResultsPage({ resultId, onBack }: ResultsPageProps) {
 
   return (
     <div className={styles.container}>
-      {/* Drag region for macOS titlebar */}
-      <div className={styles.dragRegion} />
-
       {/* Header */}
       <header className={styles.header}>
         <button className={styles.backButton} onClick={onBack}>
           ← Back
         </button>
-        <div className={styles.logo}>
-          <span>🎯</span>
-          <span className={styles.logoText}>NoMoreAISlop</span>
-        </div>
+        <h1 className={styles.pageTitle}>Analysis Results</h1>
         <div className={styles.spacer} />
       </header>
 

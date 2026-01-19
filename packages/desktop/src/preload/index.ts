@@ -3,28 +3,23 @@
  *
  * Exposes a secure API to the renderer process via contextBridge.
  * This is the ONLY way renderer can communicate with main process.
+ *
+ * Sessions are auto-selected based on recency, token count, and project diversity.
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
 import type { DeepLinkData } from '../main/deep-link';
 
-// Cost estimate result type
-interface CostEstimateResult {
+// Scan summary - aggregate stats for auto-selected sessions
+export interface ScanSummary {
   sessionCount: number;
-  modelName: string;
-  pipeline: string;
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  totalCost: string;
-  breakdown: {
-    dataAnalyst: number;
-    personalityAnalyst: number;
-    contentWriter: number;
-  };
-  outputBreakdown: {
-    dataAnalyst: number;
-    personalityAnalyst: number;
-    contentWriter: number;
+  projectCount: number;
+  totalTokens: number;
+  totalMessages: number;
+  estimatedCost: string;
+  dateRange: {
+    oldest: string;
+    newest: string;
   };
 }
 
@@ -37,32 +32,20 @@ interface CacheInfo {
 
 // Type definitions for the exposed API
 export interface ElectronAPI {
-  // Session operations
+  // Session operations - auto-selects optimal sessions
   scanSessions: () => Promise<{
-    sessions: Array<{
-      id: string;
-      name: string;
-      path: string;
-      date: string;
-      messageCount: number;
-      durationMinutes: number;
-    }>;
+    summary: ScanSummary | null;
     error: string | null;
   }>;
   startAnalysis: (params: {
-    sessions: string[];
     userId: string;
+    accessToken?: string;
   }) => Promise<{ resultId: string | null; error: string | null }>;
 
   // Analysis progress listener
   onAnalysisProgress: (
     callback: (progress: { stage: string; percent: number; message: string }) => void
   ) => () => void;
-
-  // Cost estimation
-  getCostEstimate: (params: {
-    sessionIds: string[];
-  }) => Promise<{ estimate: CostEstimateResult | null; error: string | null }>;
 
   // Analysis cache
   saveAnalysisCache: (params: {
@@ -103,9 +86,9 @@ export interface ElectronAPI {
 
 // Expose API to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Session operations
+  // Session operations - auto-selects optimal sessions
   scanSessions: () => ipcRenderer.invoke('scan-sessions'),
-  startAnalysis: (params: { sessions: string[]; userId: string }) =>
+  startAnalysis: (params: { userId: string; accessToken?: string }) =>
     ipcRenderer.invoke('start-analysis', params),
 
   // Analysis progress listener
@@ -134,10 +117,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('store-tokens', params),
   getTokens: () => ipcRenderer.invoke('get-tokens'),
   clearTokens: () => ipcRenderer.invoke('clear-tokens'),
-
-  // Cost estimation
-  getCostEstimate: (params: { sessionIds: string[] }) =>
-    ipcRenderer.invoke('get-cost-estimate', params),
 
   // Analysis cache
   saveAnalysisCache: (params: { result: unknown }) =>

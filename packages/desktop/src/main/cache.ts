@@ -9,11 +9,12 @@
 
 import Store from 'electron-store';
 import type { AnalysisResult } from './uploader';
+import { getEncryptionKey } from './secure-storage';
 
-// Separate store for analysis cache
+// Separate store for analysis cache - uses OS keychain via safeStorage
 const cacheStore = new Store({
   name: 'nomoreaislop-cache',
-  encryptionKey: 'nomoreaislop-cache-key', // Consistent with main store
+  encryptionKey: getEncryptionKey('cache'),
 });
 
 interface AnalysisCache {

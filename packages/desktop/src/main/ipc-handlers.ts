@@ -3,73 +3,64 @@
  *
  * Bridge between renderer process and Node.js APIs.
  * Handles session scanning, analysis, and authentication.
+ *
+ * Sessions are auto-selected based on recency, token count, and project diversity.
+ * Users don't manually select sessions - this improves privacy perception.
  */
 
 import { ipcMain, shell, type BrowserWindow } from 'electron';
 import Store from 'electron-store';
-import { scanSessionsForUI, loadSessionsForAnalysis, type SessionInfo } from './scanner';
+import { scanAndSelectSessions, loadSessionsForAnalysis, type ScanSummary } from './scanner';
 import { uploadForAnalysis, type AnalysisResult } from './uploader';
-import { estimateAnalysisCost, formatCostEstimateForUI } from './cost-estimator';
 import { saveCache, loadCache, clearCache, getCacheInfo } from './cache';
+import { getEncryptionKey } from './secure-storage';
 
-// Secure store for tokens
+// Secure store for tokens - uses OS keychain via safeStorage
 const store = new Store({
   name: 'nomoreaislop-secure',
-  encryptionKey: 'nomoreaislop-desktop-key', // TODO: Use keychain in production
+  encryptionKey: getEncryptionKey('tokens'),
 });
 
-// Store session info map for quick lookup by ID
-const sessionInfoMap = new Map<string, SessionInfo>();
+// Store the latest scan summary for analysis
+let lastScanSummary: ScanSummary | null = null;
 
 /**
  * Set up all IPC handlers
  */
 export function setupIpcHandlers(getMainWindow: () => BrowserWindow | null): void {
-  // Session scanning
+  // Session scanning - auto-selects optimal sessions
   ipcMain.handle('scan-sessions', async () => {
     try {
-      console.log('[IPC] Scanning sessions...');
-      const sessions = await scanSessionsForUI(20);
+      console.log('[IPC] Scanning and auto-selecting sessions...');
+      const summary = await scanAndSelectSessions(15);
 
-      // Store session info for later lookup
-      sessionInfoMap.clear();
-      for (const session of sessions) {
-        sessionInfoMap.set(session.id, session);
-      }
+      // Store for later use in analysis
+      lastScanSummary = summary;
 
-      console.log(`[IPC] Found ${sessions.length} sessions`);
-      return { sessions, error: null };
+      console.log(`[IPC] Auto-selected ${summary.sessionCount} sessions from ${summary.projectCount} projects`);
+      return { summary, error: null };
     } catch (error) {
       console.error('[IPC] Session scan error:', error);
-      return { sessions: [], error: (error as Error).message };
+      return { summary: null, error: (error as Error).message };
     }
   });
 
-  // Start analysis
-  ipcMain.handle('start-analysis', async (_event, { sessions: sessionIds, userId }) => {
+  // Start analysis - uses auto-selected sessions
+  ipcMain.handle('start-analysis', async (_event, { userId, accessToken }) => {
     try {
-      console.log(`[IPC] Starting analysis for ${sessionIds.length} sessions, userId: ${userId}`);
+      if (!lastScanSummary || lastScanSummary.sessionCount === 0) {
+        throw new Error('No sessions available. Please scan first.');
+      }
+
+      console.log(`[IPC] Starting analysis for ${lastScanSummary.sessionCount} sessions, userId: ${userId}`);
 
       const mainWindow = getMainWindow();
       if (!mainWindow) {
         throw new Error('Main window not available');
       }
 
-      // Get file paths for selected session IDs
-      const sessionPaths: string[] = [];
-      for (const id of sessionIds) {
-        const info = sessionInfoMap.get(id);
-        if (info) {
-          sessionPaths.push(info.path);
-        }
-      }
-
-      if (sessionPaths.length === 0) {
-        throw new Error('No valid sessions selected');
-      }
-
-      // Load full session data
-      const scanResult = await loadSessionsForAnalysis(sessionPaths);
+      // Load full session data from auto-selected paths
+      const scanResult = await loadSessionsForAnalysis(lastScanSummary.sessionPaths);
 
       if (scanResult.sessions.length === 0) {
         throw new Error('Failed to load session data');
@@ -77,8 +68,8 @@ export function setupIpcHandlers(getMainWindow: () => BrowserWindow | null): voi
 
       console.log(`[IPC] Loaded ${scanResult.sessions.length} sessions, uploading...`);
 
-      // Upload and analyze
-      const result = await uploadForAnalysis(scanResult, userId, mainWindow);
+      // Upload and analyze (accessToken for server-side auth)
+      const result = await uploadForAnalysis(scanResult, userId, mainWindow, accessToken);
 
       console.log(`[IPC] Analysis complete, resultId: ${result.resultId}`);
       return { resultId: result.resultId, error: null };
@@ -142,46 +133,6 @@ export function setupIpcHandlers(getMainWindow: () => BrowserWindow | null): voi
     store.delete('accessToken');
     store.delete('refreshToken');
     return { success: true };
-  });
-
-  // Cost estimation
-  ipcMain.handle('get-cost-estimate', async (_event, { sessionIds }) => {
-    try {
-      console.log(`[IPC] Estimating cost for ${sessionIds.length} sessions`);
-
-      // Get file paths for selected session IDs
-      const sessionPaths: string[] = [];
-      for (const id of sessionIds) {
-        const info = sessionInfoMap.get(id);
-        if (info) {
-          sessionPaths.push(info.path);
-        }
-      }
-
-      if (sessionPaths.length === 0) {
-        throw new Error('No valid sessions selected');
-      }
-
-      // Load full session data for accurate estimation
-      const scanResult = await loadSessionsForAnalysis(sessionPaths);
-
-      if (scanResult.sessions.length === 0) {
-        throw new Error('Failed to load session data');
-      }
-
-      // Extract parsed sessions for cost estimation
-      const parsedSessions = scanResult.sessions.map(s => s.parsed);
-
-      // Calculate cost estimate
-      const estimate = estimateAnalysisCost(parsedSessions);
-      const formatted = formatCostEstimateForUI(estimate, sessionIds.length);
-
-      console.log(`[IPC] Cost estimate: ${formatted.totalCost}`);
-      return { estimate: formatted, error: null };
-    } catch (error) {
-      console.error('[IPC] Cost estimation error:', error);
-      return { estimate: null, error: (error as Error).message };
-    }
   });
 
   // Analysis cache
