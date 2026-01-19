@@ -397,56 +397,78 @@ export class ContentWriterStage {
 
     if (hasPersonalizedPriorities && !response.topFocusAreas) {
       // Fallback: Convert Stage 1 flattened data directly if LLM didn't generate
-      const areas: Array<{
-        rank: number;
-        dimension: DimensionNameEnum;
-        title: string;
-        narrative: string;
-        expectedImpact: string;
-        priorityScore: number;
-      }> = [];
-
-      // Priority 1
-      if (priorities.priority1Dimension && priorities.priority1FocusArea) {
-        areas.push({
-          rank: 1,
-          dimension: priorities.priority1Dimension,
-          title: priorities.priority1FocusArea,
-          narrative: priorities.priority1Rationale || '',
-          expectedImpact: priorities.priority1ExpectedImpact || '',
-          priorityScore: priorities.priority1Score || 0,
-        });
-      }
-
-      // Priority 2
-      if (priorities.priority2Dimension && priorities.priority2FocusArea) {
-        areas.push({
-          rank: 2,
-          dimension: priorities.priority2Dimension,
-          title: priorities.priority2FocusArea,
-          narrative: priorities.priority2Rationale || '',
-          expectedImpact: priorities.priority2ExpectedImpact || '',
-          priorityScore: priorities.priority2Score || 0,
-        });
-      }
-
-      // Priority 3
-      if (priorities.priority3Dimension && priorities.priority3FocusArea) {
-        areas.push({
-          rank: 3,
-          dimension: priorities.priority3Dimension,
-          title: priorities.priority3FocusArea,
-          narrative: priorities.priority3Rationale || '',
-          expectedImpact: priorities.priority3ExpectedImpact || '',
-          priorityScore: priorities.priority3Score || 0,
-        });
-      }
+      const areas = this.convertPrioritiesToFocusAreas(priorities);
 
       response.topFocusAreas = {
         areas,
         summary: priorities.selectionRationale,
       };
     }
+  }
+
+  /**
+   * Convert flattened priority data to focus areas array
+   */
+  private convertPrioritiesToFocusAreas(
+    priorities: NonNullable<StructuredAnalysisData['personalizedPriorities']>
+  ): Array<{
+    rank: number;
+    dimension: DimensionNameEnum;
+    title: string;
+    narrative: string;
+    expectedImpact: string;
+    priorityScore: number;
+  }> {
+    const areas: Array<{
+      rank: number;
+      dimension: DimensionNameEnum;
+      title: string;
+      narrative: string;
+      expectedImpact: string;
+      priorityScore: number;
+    }> = [];
+
+    const priorityConfigs = [
+      {
+        rank: 1,
+        dimension: priorities.priority1Dimension,
+        focusArea: priorities.priority1FocusArea,
+        rationale: priorities.priority1Rationale,
+        expectedImpact: priorities.priority1ExpectedImpact,
+        score: priorities.priority1Score,
+      },
+      {
+        rank: 2,
+        dimension: priorities.priority2Dimension,
+        focusArea: priorities.priority2FocusArea,
+        rationale: priorities.priority2Rationale,
+        expectedImpact: priorities.priority2ExpectedImpact,
+        score: priorities.priority2Score,
+      },
+      {
+        rank: 3,
+        dimension: priorities.priority3Dimension,
+        focusArea: priorities.priority3FocusArea,
+        rationale: priorities.priority3Rationale,
+        expectedImpact: priorities.priority3ExpectedImpact,
+        score: priorities.priority3Score,
+      },
+    ];
+
+    for (const config of priorityConfigs) {
+      if (config.dimension && config.focusArea) {
+        areas.push({
+          rank: config.rank,
+          dimension: config.dimension,
+          title: config.focusArea,
+          narrative: config.rationale || '',
+          expectedImpact: config.expectedImpact || '',
+          priorityScore: config.score || 0,
+        });
+      }
+    }
+
+    return areas;
   }
 
   /**

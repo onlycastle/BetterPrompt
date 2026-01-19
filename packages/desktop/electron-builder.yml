@@ -1,0 +1,83 @@
+# electron-builder configuration
+# https://www.electron.build/configuration/configuration
+
+appId: com.nomoreaislop.desktop
+productName: NoMoreAISlop
+copyright: Copyright © 2024 NoMoreAISlop
+
+# Directories
+directories:
+  output: release
+  buildResources: build
+
+# Files to include
+# Let electron-builder auto-detect production dependencies
+files:
+  - dist/**/*
+  - node_modules/**/*
+  - "!node_modules/*/{CHANGELOG.md,README.md,readme.md,readme}"
+  - "!node_modules/*/{test,__tests__,tests,powered-test,example,examples}"
+  - "!node_modules/*.d.ts"
+  - "!node_modules/.bin"
+  - "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}"
+  - "!.editorconfig"
+  - "!**/._*"
+  - "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}"
+
+# Custom URL protocol
+protocols:
+  - name: NoMoreAISlop
+    schemes:
+      - nomoreaislop
+
+# macOS Configuration
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.developer-tools
+  icon: build/icon.icns
+  entitlements: entitlements.mac.plist
+  entitlementsInherit: entitlements.mac.plist
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  # Notarization handled by afterSign hook
+  notarize: false
+
+# DMG Configuration
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+  window:
+    width: 540
+    height: 380
+  title: "Install NoMoreAISlop"
+  backgroundColor: "#0a0a0b"
+
+# Code Signing (configured via environment variables)
+# CSC_LINK: base64-encoded .p12 certificate
+# CSC_KEY_PASSWORD: certificate password
+# APPLE_ID: Apple ID email
+# APPLE_APP_SPECIFIC_PASSWORD: App-specific password
+# APPLE_TEAM_ID: Developer Team ID
+
+# After sign hook for notarization
+afterSign: scripts/notarize.js
+
+# Publish configuration (GitHub Releases)
+publish:
+  provider: github
+  owner: sungmancho
+  repo: nomoreaislop
+  releaseType: release
+  # Private repo requires GH_TOKEN
+
+# Auto-updater configuration
+# Uses electron-updater with GitHub releases

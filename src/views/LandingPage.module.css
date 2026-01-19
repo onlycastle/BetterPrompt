@@ -1,0 +1,19 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .main {
+    padding: 0 var(--space-md);
+  }
+}

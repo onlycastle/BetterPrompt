@@ -1,0 +1,147 @@
+/* AnalyzedSessions - Terminal Log Style */
+
+.container {
+  margin-top: var(--space-lg);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
+  box-shadow: 3px 3px 0 var(--ink-muted);
+  overflow: hidden;
+}
+
+/* Header - Clickable toggle */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-md) var(--space-lg);
+  background: none;
+  border: none;
+  border-bottom: 2px dashed var(--ink-muted);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  font-family: var(--font-primary);
+}
+
+.header:hover {
+  background: var(--sketch-cyan-soft);
+}
+
+.header:focus-visible {
+  outline: 2px solid var(--sketch-cyan);
+  outline-offset: -2px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.prompt {
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--sketch-cyan);
+}
+
+.title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.headerRight {
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+}
+
+/* Collapsed hint text */
+.collapsedHint {
+  padding: var(--space-md) var(--space-lg);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+/* Session list */
+.sessionList {
+  padding: var(--space-md) 0;
+}
+
+.sessionItem {
+  padding: var(--space-sm) var(--space-lg);
+  border-bottom: 1px dashed var(--border-subtle);
+  transition: background-color var(--transition-fast);
+}
+
+.sessionItem:last-child {
+  border-bottom: none;
+}
+
+.sessionItem:hover {
+  background: var(--sketch-cyan-soft);
+}
+
+/* File name row */
+.fileName {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--sketch-cyan);
+  margin-bottom: var(--space-xs);
+}
+
+.fileName svg {
+  flex-shrink: 0;
+}
+
+/* Metadata row */
+.metadata {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  padding-left: calc(14px + var(--space-sm)); /* Align with file name text */
+}
+
+.arrow {
+  color: var(--ink-light);
+}
+
+.project {
+  color: var(--ink-primary);
+  font-weight: var(--weight-medium);
+}
+
+.separator {
+  color: var(--ink-light);
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .header {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .sessionItem {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .metadata {
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    padding-left: 0;
+  }
+
+  .collapsedHint {
+    padding: var(--space-sm) var(--space-md);
+    font-size: var(--text-xs);
+  }
+}

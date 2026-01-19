@@ -14,23 +14,11 @@ NoMoreAISlop analyzes your Claude Code sessions to identify your AI collaboratio
 - **AI Coding Style Detection** - Architect, Scientist, Collaborator, Speedrunner, or Craftsman
 - **6-Dimension Analysis** - AI collaboration, context engineering, burnout risk, tool mastery, control index, skill resilience
 - **LLM-Powered Insights** - Hyper-personalized analysis with evidence quotes from your actual sessions
-- **Terminal-Aesthetic Web UI** - Next.js dashboard with macOS-style interface
+- **Desktop App** - Native macOS/Windows/Linux application with beautiful UI
 
 ---
 
 ## Quick Start
-
-### Analyze Your Sessions (Recommended)
-
-```bash
-# Run analysis directly (uses hosted API)
-npx no-ai-slop
-```
-
-This will:
-1. Scan your `~/.claude/projects/` for Claude Code sessions
-2. Upload session data for analysis
-3. Return your AI Coding Style type and a shareable report URL
 
 ### Run Locally
 
@@ -44,14 +32,8 @@ npm install
 cp .env.example .env
 # Edit .env with your API keys
 
-# Start development server
+# Start development server (web app)
 npm run dev
-
-# Run analysis against local server
-NOSLOP_API_URL=http://localhost:3000 npx no-ai-slop
-
-# Open the report URL returned by the CLI
-# Example: http://localhost:3000/r/abc123
 ```
 
 ### Environment Variables
@@ -77,6 +59,8 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 ## Development Commands
 
+### Web App
+
 ```bash
 npm run dev            # Start Next.js development server (port 3000)
 npm run build          # Build production bundle
@@ -84,6 +68,15 @@ npm run start          # Start production server
 npm run typecheck      # Type check
 npm run test           # Run tests
 npm run lint           # ESLint
+```
+
+### Desktop App
+
+```bash
+cd packages/desktop
+npm run dev            # Start Electron app in development mode
+npm run build          # Build desktop app for current platform
+npm run package        # Package app for distribution
 ```
 
 ---
@@ -120,9 +113,9 @@ nomoreaislop/
 │   ├── components/        # React UI components
 │   ├── hooks/             # React hooks
 │   └── views/             # Page view components
-├── packages/cli/          # NPM CLI package (npx no-ai-slop)
-├── scripts/               # CLI utilities
-├── commands/              # Claude Code plugin commands
+├── packages/
+│   └── desktop/           # Electron desktop application
+├── scripts/               # Utility scripts
 └── docs/                  # Documentation
 ```
 
@@ -141,48 +134,6 @@ npm run test:watch
 
 # Coverage
 npm run test:coverage
-```
-
----
-
-## CLI Development (`packages/cli/`)
-
-### Local Testing
-
-```bash
-cd packages/cli
-npm run build
-
-# Run analysis and save result to cache
-NOSLOP_API_URL=http://localhost:3000 node dist/index.js --save-cache
-
-# Use cached analysis result (no API costs)
-node dist/index.js --use-cache
-```
-
-### Deploy to NPM
-
-**Option 1 - Tag-based (recommended):**
-```bash
-git tag cli-v0.7.0
-git push origin cli-v0.7.0  # Triggers GitHub Actions → npm publish
-```
-GitHub Actions will auto-sync package.json version from the tag name.
-
-**Option 2 - Manual GitHub Actions:**
-Go to Actions → "Publish CLI to npm" → Run workflow → Select version type
-
-**Option 3 - Local script (legacy):**
-```bash
-cd packages/cli
-npm run release          # patch (0.1.0 → 0.1.1)
-npm run release:minor    # minor (0.1.0 → 0.2.0)
-```
-
-### Post-Deployment Test
-
-```bash
-npx no-ai-slop@latest --help
 ```
 
 ---

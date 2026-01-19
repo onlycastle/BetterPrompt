@@ -115,6 +115,7 @@ interface AnalysisRequestV2 {
   totalMessages: number;
   totalDurationMinutes: number;
   version: 2;
+  userId?: string; // DEPRECATED: userId from body is ignored for security. Use Authorization header instead.
 }
 
 type AnalysisRequest = AnalysisRequestV1 | AnalysisRequestV2;
@@ -443,11 +444,51 @@ function getSupabaseClient() {
 }
 
 /**
+ * Validate Authorization header and extract user ID
+ *
+ * Security: userId must come from validated JWT, not from request body.
+ * This prevents spoofing where attackers claim another user's identity.
+ *
+ * @param authHeader - Authorization header value (Bearer token)
+ * @returns userId if valid, null if no auth or invalid
+ */
+async function validateAuthToken(
+  authHeader: string | undefined
+): Promise<{ userId: string } | null> {
+  // No auth header = anonymous request (CLI users)
+  if (!authHeader?.startsWith("Bearer ")) {
+    return null;
+  }
+
+  const token = authHeader.slice(7);
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const supabase = getSupabaseClient();
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      console.warn("[lambda] Auth validation failed:", error?.message);
+      return null;
+    }
+
+    console.log(`[lambda] Authenticated user: ${user.id}`);
+    return { userId: user.id };
+  } catch (error) {
+    console.error("[lambda] Auth validation error:", error);
+    return null;
+  }
+}
+
+/**
  * Store analysis result in Supabase
  */
 async function storeResult(
   resultId: string,
-  evaluation: VerboseEvaluation
+  evaluation: VerboseEvaluation,
+  userId?: string
 ): Promise<boolean> {
   if (!isSupabaseConfigured()) {
     console.warn("Supabase not configured, skipping result storage");
@@ -460,12 +501,20 @@ async function storeResult(
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
-    const { error } = await supabase.from("analysis_results").insert({
+    const insertData: Record<string, unknown> = {
       result_id: resultId,
       evaluation,
       is_paid: false,
       expires_at: expiresAt.toISOString(),
-    });
+    };
+
+    // Include user_id if provided (desktop app pre-authenticated flow)
+    if (userId) {
+      insertData.user_id = userId;
+      console.log(`[lambda] Storing result with user_id: ${userId}`);
+    }
+
+    const { error } = await supabase.from("analysis_results").insert(insertData);
 
     if (error) {
       console.error("Failed to store result:", error.message);
@@ -492,7 +541,8 @@ function formatSSE(event: SSEEvent): string {
 async function runAnalysis(
   body: AnalysisRequest,
   userGeminiApiKey: string,
-  write: (event: SSEEvent) => void
+  write: (event: SSEEvent) => void,
+  userId?: string
 ): Promise<void> {
   // Parse sessions based on version
   const parsedSessions: ParsedSession[] = [];
@@ -637,7 +687,7 @@ async function runAnalysis(
 
   // Generate result ID and store
   const resultId = generateResultId();
-  await storeResult(resultId, evaluation);
+  await storeResult(resultId, evaluation, userId);
 
   // Progress: Complete
   write({
@@ -739,15 +789,19 @@ async function handleAnalyzeFromStorage(
   const write = (evt: SSEEvent) => responseStream.write(formatSSE(evt));
 
   try {
-    // Get API key from header
-    const userGeminiApiKey =
-      event.headers["x-gemini-api-key"] || event.headers["X-Gemini-API-Key"];
+    // Validate auth token and extract userId (optional - CLI users don't need auth)
+    const authHeader = event.headers?.authorization || event.headers?.Authorization;
+    const authResult = await validateAuthToken(authHeader);
+    const userId = authResult?.userId;
 
-    if (!userGeminiApiKey) {
+    // Use server-side API key (not from request headers)
+    const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY;
+
+    if (!geminiApiKey) {
       write({
         type: "error",
-        code: "NO_API_KEY",
-        message: "Gemini API key is required.",
+        code: "SERVER_CONFIG_ERROR",
+        message: "Server API key not configured. Please contact support.",
       });
       responseStream.end();
       return;
@@ -847,8 +901,8 @@ async function handleAnalyzeFromStorage(
       return;
     }
 
-    // Run the shared analysis logic
-    await runAnalysis(body, userGeminiApiKey, write);
+    // Run the shared analysis logic (userId from auth validation above)
+    await runAnalysis(body, geminiApiKey, write, userId);
 
     // Clean up: delete the uploaded file from storage
     try {
@@ -890,15 +944,19 @@ async function handleDirectUpload(
   const write = (evt: SSEEvent) => responseStream.write(formatSSE(evt));
 
   try {
-    // Get API key from header
-    const userGeminiApiKey =
-      event.headers["x-gemini-api-key"] || event.headers["X-Gemini-API-Key"];
+    // Validate auth token and extract userId (optional - CLI users don't need auth)
+    const authHeader = event.headers?.authorization || event.headers?.Authorization;
+    const authResult = await validateAuthToken(authHeader);
+    const userId = authResult?.userId;
 
-    if (!userGeminiApiKey) {
+    // Use server-side API key (not from request headers)
+    const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY;
+
+    if (!geminiApiKey) {
       write({
         type: "error",
-        code: "NO_API_KEY",
-        message: "Gemini API key is required. Pass --api-key flag or set GOOGLE_GEMINI_API_KEY environment variable.",
+        code: "SERVER_CONFIG_ERROR",
+        message: "Server API key not configured. Please contact support.",
       });
       responseStream.end();
       return;
@@ -962,8 +1020,8 @@ async function handleDirectUpload(
       return;
     }
 
-    // Run the shared analysis logic
-    await runAnalysis(body, userGeminiApiKey, write);
+    // Run the shared analysis logic (userId from auth validation above)
+    await runAnalysis(body, geminiApiKey, write, userId);
   } catch (error) {
     console.error("[lambda] Direct upload error:", error);
     write({

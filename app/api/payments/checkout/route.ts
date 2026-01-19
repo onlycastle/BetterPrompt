@@ -3,10 +3,12 @@
  *
  * Creates a Polar checkout session for premium report purchase.
  * Requires authenticated user.
+ * Supports both cookie auth (web) and Authorization header (desktop app).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { createClient, type User } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { getPolarClient, getProductId } from '@/lib/polar/client';
 
@@ -34,13 +36,45 @@ async function createSupabaseServerClient() {
   );
 }
 
+/**
+ * Get user from Authorization header (for desktop app)
+ */
+async function getUserFromAuthHeader(request: NextRequest): Promise<User | null> {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = authHeader.slice(7);
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) {
+    console.log('Auth header validation failed:', error?.message);
+    return null;
+  }
+
+  return data.user;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // 1. Verify user is authenticated
-    const supabase = await createSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // 1. Verify user is authenticated (try header first, then cookie)
+    let user: User | null = await getUserFromAuthHeader(request);
 
-    if (authError || !user) {
+    if (!user) {
+      // Fallback to cookie-based auth for web
+      const supabase = await createSupabaseServerClient();
+      const { data, error: authError } = await supabase.auth.getUser();
+      if (!authError && data.user) {
+        user = data.user;
+      }
+    }
+
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized', message: 'Please sign in to continue' },
         { status: 401 }
@@ -49,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Parse request body
     const body = await request.json();
-    const { resultId } = body;
+    const { resultId, desktopApp } = body;
 
     if (!resultId) {
       return NextResponse.json(
@@ -63,9 +97,14 @@ export async function POST(request: NextRequest) {
     const productId = getProductId();
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
 
+    // For desktop app, add flag to success URL for deep link redirect
+    const successUrl = desktopApp
+      ? `${baseUrl}/api/payments/success?checkout_id={CHECKOUT_ID}&desktop=true`
+      : `${baseUrl}/api/payments/success?checkout_id={CHECKOUT_ID}`;
+
     const checkout = await polar.checkouts.create({
       products: [productId],
-      successUrl: `${baseUrl}/api/payments/success?checkout_id={CHECKOUT_ID}`,
+      successUrl,
       customerEmail: user.email ?? undefined,
       metadata: {
         resultId,

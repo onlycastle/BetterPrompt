@@ -42,13 +42,6 @@ npm test               # Run all tests
 
 **Path Encoding**: Claude Code encodes paths by replacing `/` with `-`. See `encodeProjectPath`/`decodeProjectPath` in `src/lib/parser/jsonl-reader.ts`.
 
-## Plugin Commands
-
-Commands in `commands/*.md` with YAML frontmatter:
-- `/noslop` - Analyze current session
-- `/noslop:analyze <id>` - Analyze specific session
-- `/noslop:sessions` - List available sessions
-
 ## Environment Variables
 
 | Variable | Description |
@@ -67,28 +60,6 @@ Commands in `commands/*.md` with YAML frontmatter:
 **Lambda (SST)**: Push to `main` with changes in `lambda/`, `infra/`, or `sst.config.ts` → auto-deploys
 
 > ⚠️ **NEVER use local SST deployment** (`npx sst deploy`). Local SST has critical bugs causing routing failures and inconsistent deployments. Always use GitHub Actions for Lambda deployment.
-
-**NPM CLI Package** (`no-ai-slop`):
-
-Option 1 - Tag-based (recommended):
-```bash
-git tag cli-v0.7.0
-git push origin cli-v0.7.0  # Triggers GitHub Actions → npm publish
-```
-GitHub Actions will auto-sync package.json version from the tag name.
-
-Option 2 - Manual trigger:
-Go to Actions → "Publish CLI to npm" → Run workflow → Select version type
-
-Option 3 - Local script (legacy):
-```bash
-cd packages/cli
-npm run release          # patch bump
-npm run release:minor    # minor bump
-npm run release:major    # major bump
-```
-
-**Required GitHub Secret**: `NPM_TOKEN` - npm access token with publish permission
 
 ## Architecture
 

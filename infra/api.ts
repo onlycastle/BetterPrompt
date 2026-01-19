@@ -18,6 +18,7 @@ export const api = new sst.aws.Function("AnalysisFunction", {
     // These will be set via SST secrets or environment
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+    GOOGLE_GEMINI_API_KEY: process.env.GOOGLE_GEMINI_API_KEY || "",
   },
   nodejs: {
     // Bundle shared lib code

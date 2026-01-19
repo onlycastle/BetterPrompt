@@ -108,34 +108,6 @@ export {
 export { computeFileHash } from './lib/utils/hash';
 
 // ============================================================================
-// CLI (Verbose Mode - Default)
-// ============================================================================
-export {
-  // Utility components
-  createSpinner,
-  ProgressSpinner,
-  // Verbose Report renderer (default)
-  renderVerboseReport,
-  // Unified Report renderer
-  renderUnifiedReportCLI,
-  // v2.0 Style components
-  renderTypeResult,
-  renderDistribution,
-  renderMetricsSummary,
-  renderStrengths,
-  renderGrowthPoints,
-  renderStyleEvidence,
-  renderLockedTeaser,
-  renderWebLink,
-  // Utility components
-  renderRecommendations,
-  renderFooter,
-  confirmCost,
-  // Options
-  type RenderOptions,
-} from './lib/cli/index';
-
-// ============================================================================
 // Config
 // ============================================================================
 export {
