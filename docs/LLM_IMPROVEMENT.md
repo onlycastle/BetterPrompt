@@ -78,7 +78,7 @@
 1. **병렬 실행**: Agent들은 Module A/B와 동시에 실행 (순차 아님)
 2. **MVP 접근**: RAG/VectorDB 없이 Gemini 직접 분석
 3. **조건부 실행**: Tier와 세션 내용에 따라 실행 여부 결정
-4. **Gemini 제약 준수**: 5-level nesting limit → flattened schemas 사용
+4. **Gemini 제약 준수**: 4-level nesting limit → flattened schemas 사용
 5. **네이밍 컨벤션**: 역할 기반 이름 (DataAnalyst, ContentWriter와 동일 패턴)
 
 ---
@@ -271,7 +271,7 @@ src/lib/models/
 | `src/lib/analyzer/content-gateway.ts` | Tier별 Agent 필드 필터링 |
 | `src/lib/models/verbose-evaluation.ts` | Agent output 스키마 필드 추가 |
 
-## Zod 스키마 (Gemini 5-level nesting 준수)
+## Zod 스키마 (Gemini 4-level nesting 준수)
 
 ```typescript
 // Flattened schemas - semicolon-separated strings for nested data

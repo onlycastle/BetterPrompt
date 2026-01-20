@@ -30,7 +30,7 @@ npm test               # Run all tests
 
 **Structured Outputs**: Gemini stages use `responseJsonSchema` with `responseMimeType: "application/json"`. Zod schemas in `src/lib/models/` → JSON Schema via `zod-to-json-schema`. Legacy single-stage mode uses Anthropic's beta feature.
 
-> ⚠️ **Gemini Schema Nesting Limit**: Gemini API has a **maximum nesting depth of ~5 levels** for `responseJsonSchema`. When adding new Zod schemas:
+> ⚠️ **Gemini Schema Nesting Limit**: Gemini API has a **maximum nesting depth of ~4 levels** for `responseJsonSchema`. When adding new Zod schemas:
 > - Avoid deeply nested objects (e.g., `array[].object.nested.field`)
 > - Flatten nested objects by inlining fields (e.g., `contextSituationType` instead of `context.situationType`)
 > - Use semicolon-separated strings instead of nested arrays (e.g., `signalsData: "type:evidence:confidence;..."`)
