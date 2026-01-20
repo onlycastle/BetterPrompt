@@ -22,6 +22,8 @@ import type {
 const API_BASE = import.meta.env.VITE_APP_URL || 'https://www.nomoreaislop.xyz';
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
+  console.log('[API Client] Fetching:', url);
+
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -31,12 +33,54 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     credentials: 'include',
   });
 
+  const contentType = response.headers.get('content-type') || '';
+  console.log('[API Client] Response:', {
+    url,
+    status: response.status,
+    contentType,
+  });
+
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const errorText = await response.text().catch(() => response.statusText);
+    console.error('[API Client] Error response:', {
+      url,
+      status: response.status,
+      body: errorText.slice(0, 300),
+    });
+    try {
+      const error = JSON.parse(errorText);
+      throw new Error(error.message || `HTTP ${response.status}`);
+    } catch {
+      throw new Error(`HTTP ${response.status}: ${errorText.slice(0, 100)}`);
+    }
   }
 
-  return response.json();
+  // Validate Content-Type before parsing JSON
+  if (!contentType.includes('application/json')) {
+    const rawText = await response.text();
+    console.error('[API Client] Unexpected Content-Type:', {
+      url,
+      contentType,
+      body: rawText.slice(0, 300),
+    });
+    throw new Error(
+      `Unexpected response format from ${url}. Expected JSON, got ${contentType}. Body: ${rawText.slice(0, 100)}`
+    );
+  }
+
+  const text = await response.text();
+  console.log('[API Client] Response body preview:', text.slice(0, 200));
+
+  try {
+    return JSON.parse(text) as T;
+  } catch (parseError) {
+    console.error('[API Client] JSON parse error:', {
+      url,
+      error: parseError,
+      body: text.slice(0, 500),
+    });
+    throw new Error(`JSON parse error from ${url}: ${text.slice(0, 100)}`);
+  }
 }
 
 // Knowledge API
@@ -126,4 +170,40 @@ export async function getFeatureComparison(): Promise<FeatureComparisonResponse>
 // Personal Analytics API
 export async function getPersonalAnalytics(userId: string): Promise<PersonalAnalytics> {
   return fetchJson<PersonalAnalytics>(`${API_BASE}/api/enterprise/personal/tracking?userId=${userId}`);
+}
+
+// Credits API
+export interface CreditInfo {
+  userId: string;
+  credits: number;
+  totalUsed: number;
+  hasPaid: boolean;
+  firstPaidAt: string | null;
+}
+
+export interface UseCreditResult {
+  success: boolean;
+  alreadyUnlocked?: boolean;
+  reason?: 'insufficient_credits';
+  creditsRemaining: number;
+}
+
+export async function getCredits(accessToken?: string): Promise<CreditInfo> {
+  const headers: HeadersInit = {};
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+  return fetchJson<CreditInfo>(`${API_BASE}/api/credits`, { headers });
+}
+
+export async function useCredit(resultId: string, accessToken?: string): Promise<UseCreditResult> {
+  const headers: HeadersInit = {};
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+  return fetchJson<UseCreditResult>(`${API_BASE}/api/credits/use`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ resultId }),
+  });
 }

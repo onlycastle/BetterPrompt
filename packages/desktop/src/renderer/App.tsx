@@ -30,22 +30,30 @@ function AppContent() {
 
   // Handle deep links
   useEffect(() => {
+    console.log('[App] Registering deep link handler...');
     const unsubscribe = window.electronAPI.onDeepLink((data) => {
-      console.log('Deep link received:', data);
+      console.log('[App] ========== DEEP LINK RECEIVED ==========');
+      console.log('[App] Route:', data.route);
+      console.log('[App] Params:', data.params);
+      console.log('[App] Current route state:', route);
+      console.log('[App] Current resultId state:', resultId);
 
       if (data.route === 'auth-callback') {
         // Auth callback is handled by AuthContext
         // Just need to wait for auth state to update
+        console.log('[App] Auth callback - waiting for AuthContext');
       }
 
       if (data.route === 'payment-success' && data.params.resultId) {
+        console.log('[App] Payment success - setting resultId and navigating to results');
         setResultId(data.params.resultId);
         setRoute('results');
       }
     });
+    console.log('[App] Deep link handler registered');
 
     return unsubscribe;
-  }, []);
+  }, [route, resultId]);
 
   // Navigation functions
   const navigateToResults = (id: string) => {
