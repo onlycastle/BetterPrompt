@@ -5,6 +5,13 @@
  * Supports SSE streaming for real-time progress updates.
  * Uses gzip compression to reduce payload size.
  *
+ * Upload strategies:
+ * - Small payloads (≤5MB): Direct POST to Lambda
+ * - Large payloads (>5MB): S3 presigned URL upload
+ *   1. Get presigned PUT URL from Lambda
+ *   2. Upload directly to S3 (bypasses Lambda limits)
+ *   3. Call /analyze with s3Key for Lambda to process
+ *
  * Based on CLI package implementation, adapted for Electron (CJS).
  */
 
@@ -254,35 +261,52 @@ function sendProgress(
 }
 
 /**
- * Upload via Supabase Storage for large payloads
+ * Upload via S3 presigned URL for large payloads
+ *
+ * Flow:
+ * 1. Get presigned PUT URL from Lambda
+ * 2. Upload directly to S3 (bypasses Lambda payload limits)
+ * 3. Return s3Key for Lambda to read from S3
  */
-async function uploadViaStorage(
+async function uploadViaS3(
   compressedBody: Buffer,
   lambdaUrl: string,
   mainWindow: BrowserWindow
-): Promise<{ storagePath: string }> {
-  sendProgress(mainWindow, 'preparing', 10, 'Getting upload URL...');
+): Promise<{ s3Key: string }> {
+  const uploadUrlEndpoint = `${lambdaUrl}/upload-url`;
+  console.log('[Uploader] Getting S3 presigned URL from:', uploadUrlEndpoint);
+  sendProgress(mainWindow, 'preparing', 10, 'Getting S3 upload URL...');
 
-  const urlResponse = await fetch(`${lambdaUrl}/upload-url`, {
+  const urlResponse = await fetch(uploadUrlEndpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
   });
 
+  const contentType = urlResponse.headers.get('content-type') || '';
+  console.log('[Uploader] /upload-url response:', {
+    status: urlResponse.status,
+    contentType,
+    headers: Object.fromEntries(urlResponse.headers.entries()),
+  });
+
   if (!urlResponse.ok) {
     const errorText = await urlResponse.text().catch(() => '');
-    throw new Error(`Failed to get upload URL: ${urlResponse.status} ${errorText}`);
+    console.error('[Uploader] /upload-url failed:', {
+      status: urlResponse.status,
+      body: errorText.slice(0, 500),
+    });
+    throw new Error(`Failed to get S3 upload URL: ${urlResponse.status} ${errorText}`);
   }
 
   // Validate Content-Type before parsing - catch routing errors early
-  const contentType = urlResponse.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
     const rawText = await urlResponse.text();
     console.error('[Uploader] Routing error - expected JSON from /upload-url:', {
       contentType,
       status: urlResponse.status,
-      body: rawText.slice(0, 300),
+      body: rawText.slice(0, 500),
     });
     throw new Error(
       'Server routing error: /upload-url returned unexpected format. ' +
@@ -290,21 +314,42 @@ async function uploadViaStorage(
     );
   }
 
-  const urlData = (await urlResponse.json()) as {
+  const urlText = await urlResponse.text();
+  console.log('[Uploader] /upload-url response body:', urlText.slice(0, 300));
+
+  let urlData: {
     signedUrl?: string;
-    storagePath?: string;
+    s3Key?: string;
+    bucket?: string;
+    expiresIn?: number;
     error?: string;
   };
 
-  if (urlData.error || !urlData.signedUrl || !urlData.storagePath) {
-    throw new Error(urlData.error || 'Invalid upload URL response');
+  try {
+    urlData = JSON.parse(urlText);
+  } catch (parseError) {
+    console.error('[Uploader] JSON parse error for /upload-url:', {
+      error: parseError,
+      body: urlText.slice(0, 500),
+    });
+    throw new Error(`JSON parse error from /upload-url: ${urlText.slice(0, 100)}`);
   }
+
+  if (urlData.error || !urlData.signedUrl || !urlData.s3Key) {
+    throw new Error(urlData.error || 'Invalid S3 upload URL response');
+  }
+
+  console.log('[Uploader] S3 upload target:', {
+    bucket: urlData.bucket,
+    s3Key: urlData.s3Key,
+    expiresIn: urlData.expiresIn,
+  });
 
   sendProgress(
     mainWindow,
     'preparing',
     30,
-    `Uploading ${formatSize(compressedBody.length)} to secure storage...`
+    `Uploading ${formatSize(compressedBody.length)} to S3...`
   );
 
   const uploadResponse = await fetch(urlData.signedUrl, {
@@ -315,12 +360,13 @@ async function uploadViaStorage(
 
   if (!uploadResponse.ok) {
     const errorText = await uploadResponse.text().catch(() => '');
-    throw new Error(`Storage upload failed: ${uploadResponse.status} ${errorText}`);
+    throw new Error(`S3 upload failed: ${uploadResponse.status} ${errorText}`);
   }
 
+  console.log('[Uploader] S3 upload complete:', urlData.s3Key);
   sendProgress(mainWindow, 'preparing', 50, 'Upload complete, starting analysis...');
 
-  return { storagePath: urlData.storagePath };
+  return { s3Key: urlData.s3Key };
 }
 
 /**
@@ -409,28 +455,52 @@ export async function uploadForAnalysis(
   accessToken?: string,
   lambdaUrl: string = DEFAULT_LAMBDA_URL
 ): Promise<AnalysisResult> {
+  console.log('[Uploader] Starting upload for analysis');
+  console.log('[Uploader] Lambda URL:', lambdaUrl);
+  console.log('[Uploader] Sessions count:', scanResult.sessions.length);
+
   const { compressed, truncated, droppedCount, originalSizeBytes, compressedSizeBytes } =
     preparePayload(scanResult, userId);
 
   const sizeInfo = `${formatSize(originalSizeBytes)} (gzip: ${formatSize(compressedSizeBytes)})`;
+  console.log('[Uploader] Payload size:', {
+    original: formatSize(originalSizeBytes),
+    compressed: formatSize(compressedSizeBytes),
+    threshold: formatSize(USE_STORAGE_THRESHOLD),
+    useStorage: compressedSizeBytes > USE_STORAGE_THRESHOLD,
+  });
 
   // Route based on payload size
   if (compressedSizeBytes > USE_STORAGE_THRESHOLD) {
-    sendProgress(mainWindow, 'preparing', 0, `${sizeInfo} | Using secure storage for large payload`);
+    console.log('[Uploader] Using S3 upload path (payload > 5MB)');
+    sendProgress(mainWindow, 'preparing', 0, `${sizeInfo} | Using S3 for large payload`);
 
-    const { storagePath } = await uploadViaStorage(compressed, lambdaUrl, mainWindow);
+    const { s3Key } = await uploadViaS3(compressed, lambdaUrl, mainWindow);
+    console.log('[Uploader] S3 upload complete, s3Key:', s3Key);
 
-    const response = await fetch(`${lambdaUrl}/analyze`, {
+    const analyzeUrl = `${lambdaUrl}/analyze`;
+    console.log('[Uploader] Starting analysis with s3Key:', analyzeUrl);
+
+    const response = await fetch(analyzeUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
       },
-      body: JSON.stringify({ storagePath }),
+      body: JSON.stringify({ s3Key }),
+    });
+
+    console.log('[Uploader] /analyze response:', {
+      status: response.status,
+      contentType: response.headers.get('content-type'),
     });
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
+      console.error('[Uploader] /analyze failed:', {
+        status: response.status,
+        body: errorText.slice(0, 500),
+      });
       throw new Error(`Analysis request failed: ${response.status} ${errorText}`);
     }
 
@@ -438,6 +508,7 @@ export async function uploadForAnalysis(
   }
 
   // Small payload: Direct upload
+  console.log('[Uploader] Using DIRECT upload path (payload <= 5MB)');
   if (truncated) {
     sendProgress(mainWindow, 'preparing', 0, `${sizeInfo} | Excluded ${droppedCount} session(s) to fit limit`);
   } else {
