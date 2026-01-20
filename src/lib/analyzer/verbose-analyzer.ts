@@ -29,9 +29,17 @@ import {
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { DataAnalystStage, type DataAnalystConfig } from './stages/data-analyst';
 import { PersonalityAnalystStage, type PersonalityAnalystConfig } from './stages/personality-analyst';
+import { ProductivityAnalystStage, type ProductivityAnalystConfig } from './stages/productivity-analyst';
 import { ContentWriterStage, type ContentWriterConfig } from './stages/content-writer';
 import { ContentGateway, type Tier } from './content-gateway';
 import { createDefaultPersonalityProfile } from '../models/personality';
+import { createDefaultProductivityAnalysisData } from '../models/productivity-data';
+import {
+  type StageTokenUsage,
+  type PipelineTokenUsage,
+  aggregateTokenUsage,
+  formatActualUsage,
+} from './cost-estimator';
 
 // ============================================================================
 // STRING SANITIZATION - Truncate long strings from LLM responses
@@ -209,12 +217,14 @@ export type PipelineMode = 'single' | 'two-stage';
  *
  * - stage1 (Module A): Data Analyst - behavioral data extraction
  * - moduleB: Personality Analyst - personality profile extraction
+ * - moduleC: Productivity Analyst - productivity/efficiency metrics extraction
  * - stage2: Content Writer - narrative generation
  */
 export interface PipelineConfig {
   mode: PipelineMode;
   stage1?: DataAnalystConfig;
   moduleB?: PersonalityAnalystConfig;
+  moduleC?: ProductivityAnalystConfig;
   stage2?: ContentWriterConfig;
 }
 
@@ -290,6 +300,7 @@ export class VerboseAnalyzer {
   private config: Required<Omit<VerboseAnalyzerConfig, 'apiKey' | 'geminiApiKey'>> & { apiKey: string; geminiApiKey: string };
   private dataAnalyst: DataAnalystStage | null = null;
   private personalityAnalyst: PersonalityAnalystStage | null = null;
+  private productivityAnalyst: ProductivityAnalystStage | null = null;
   private contentWriter: ContentWriterStage | null = null;
   private contentGateway: ContentGateway;
 
@@ -316,6 +327,12 @@ export class VerboseAnalyzer {
       // Module B: Personality Analyst - personality profile extraction
       this.personalityAnalyst = new PersonalityAnalystStage({
         ...this.config.pipeline.moduleB,
+        apiKey: geminiApiKey,
+      });
+
+      // Module C: Productivity Analyst - productivity/efficiency metrics extraction
+      this.productivityAnalyst = new ProductivityAnalystStage({
+        ...this.config.pipeline.moduleC,
         apiKey: geminiApiKey,
       });
 
@@ -387,40 +404,89 @@ export class VerboseAnalyzer {
    * Three-stage analysis pipeline using Gemini 3 Flash
    *
    * Module A (Stage 1): Data Analyst - Extract structured behavioral data
-   * Module B: Personality Analyst - Extract personality profile
-   * Stage 2: Content Writer - Transform into engaging narrative using both outputs
+   * Module B: Personality Analyst - Extract personality profile (parallel with C)
+   * Module C: Productivity Analyst - Extract productivity metrics (parallel with B)
+   * Stage 2: Content Writer - Transform into engaging narrative using all outputs
    */
   private async analyzeTwoStage(
     sessions: ParsedSession[],
     metrics: SessionMetrics,
     tier: Tier
   ): Promise<VerboseEvaluation> {
-    if (!this.dataAnalyst || !this.personalityAnalyst || !this.contentWriter) {
+    if (!this.dataAnalyst || !this.personalityAnalyst || !this.productivityAnalyst || !this.contentWriter) {
       throw new VerboseAnalysisError(
-        'Three-stage pipeline not initialized',
+        'Pipeline not initialized (requires Module A, B, C, and Stage 2)',
         'PIPELINE_NOT_INITIALIZED'
       );
     }
 
-    // Module A (Stage 1): Extract structured behavioral data
-    const analysisData = await this.dataAnalyst.analyze(sessions, metrics);
+    // Track token usage across all stages
+    const stageUsages: StageTokenUsage[] = [];
 
-    // Module B: Extract personality profile using sessions + Module A output
-    let personalityProfile;
-    try {
-      personalityProfile = await this.personalityAnalyst.analyze(sessions, analysisData);
-    } catch (error) {
-      // Graceful degradation: use default profile if Module B fails
-      console.warn('Module B (Personality Analyst) failed, using default profile:', error);
-      personalityProfile = createDefaultPersonalityProfile();
+    // Module A (Stage 1): Extract structured behavioral data
+    const dataAnalystResult = await this.dataAnalyst.analyze(sessions, metrics);
+    const analysisData = dataAnalystResult.data;
+    stageUsages.push({
+      stage: 'Data Analyst (Module A)',
+      promptTokens: dataAnalystResult.usage.promptTokens,
+      completionTokens: dataAnalystResult.usage.completionTokens,
+      totalTokens: dataAnalystResult.usage.totalTokens,
+    });
+
+    // Module B + Module C: Run in parallel (both depend on Module A, not each other)
+    const [personalityResult, productivityResult] = await Promise.all([
+      // Module B: Extract personality profile
+      this.personalityAnalyst.analyze(sessions, analysisData).catch((error) => {
+        console.warn('Module B (Personality Analyst) failed, using default profile:', error);
+        return { data: createDefaultPersonalityProfile(), usage: null };
+      }),
+      // Module C: Extract productivity metrics
+      this.productivityAnalyst.analyze(sessions, analysisData).catch((error) => {
+        console.warn('Module C (Productivity Analyst) failed, using default data:', error);
+        return { data: createDefaultProductivityAnalysisData(), usage: null };
+      }),
+    ]);
+
+    // Track personality analyst usage if available
+    if (personalityResult.usage) {
+      stageUsages.push({
+        stage: 'Personality Analyst (Module B)',
+        promptTokens: personalityResult.usage.promptTokens,
+        completionTokens: personalityResult.usage.completionTokens,
+        totalTokens: personalityResult.usage.totalTokens,
+      });
     }
 
-    // Stage 2: Transform into narrative using Module A + Module B outputs
-    const verboseResponse = await this.contentWriter.transform(
+    // Track productivity analyst usage if available
+    if (productivityResult.usage) {
+      stageUsages.push({
+        stage: 'Productivity Analyst (Module C)',
+        promptTokens: productivityResult.usage.promptTokens,
+        completionTokens: productivityResult.usage.completionTokens,
+        totalTokens: productivityResult.usage.totalTokens,
+      });
+    }
+
+    // Stage 2: Transform into narrative using Module A + Module B + Module C outputs
+    const contentWriterResult = await this.contentWriter.transform(
       analysisData,
-      personalityProfile,
-      sessions
+      personalityResult.data,
+      sessions,
+      productivityResult.data
     );
+    stageUsages.push({
+      stage: 'Content Writer (Stage 2)',
+      promptTokens: contentWriterResult.usage.promptTokens,
+      completionTokens: contentWriterResult.usage.completionTokens,
+      totalTokens: contentWriterResult.usage.totalTokens,
+    });
+
+    // Aggregate and log token usage
+    const pipelineUsage = aggregateTokenUsage(
+      stageUsages,
+      this.config.pipeline.stage1?.model || 'gemini-3-flash-preview'
+    );
+    this.logTokenUsage(pipelineUsage);
 
     // Extract session file info for display
     const analyzedSessions = extractAnalyzedSessions(sessions);
@@ -433,11 +499,18 @@ export class VerboseAnalyzer {
       avgPromptLength: Math.round(metrics.avgPromptLength),
       avgTurnsPerSession: Math.round(metrics.avgTurnsPerSession * 10) / 10,
       analyzedSessions,
-      ...verboseResponse,
+      ...contentWriterResult.data,
     };
 
     // Apply tier-based content filtering
     return this.contentGateway.filter(evaluation, tier);
+  }
+
+  /**
+   * Log token usage summary to console
+   */
+  private logTokenUsage(usage: PipelineTokenUsage): void {
+    console.log('\n' + formatActualUsage(usage));
   }
 
   /**
@@ -624,4 +697,5 @@ export { buildVerboseUserPrompt } from './verbose-prompts';
 export { type Tier, ContentGateway, createContentGateway } from './content-gateway';
 export { DataAnalystStage, type DataAnalystConfig } from './stages/data-analyst';
 export { PersonalityAnalystStage, type PersonalityAnalystConfig } from './stages/personality-analyst';
+export { ProductivityAnalystStage, type ProductivityAnalystConfig } from './stages/productivity-analyst';
 export { ContentWriterStage, type ContentWriterConfig } from './stages/content-writer';
