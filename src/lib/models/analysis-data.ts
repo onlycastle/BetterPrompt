@@ -529,3 +529,56 @@ export const StructuredAnalysisDataSchema = z.object({
   }),
 });
 export type StructuredAnalysisData = z.infer<typeof StructuredAnalysisDataSchema>;
+
+// ============================================================================
+// Factory Function
+// ============================================================================
+
+/**
+ * Create a default/empty StructuredAnalysisData for fallback cases
+ *
+ * @returns Default StructuredAnalysisData with minimal valid data
+ */
+export function createDefaultStructuredAnalysisData(): StructuredAnalysisData {
+  const defaultDimensionSignals = [
+    { dimension: 'aiCollaboration' as const, strengthSignals: [], growthSignals: [] },
+    { dimension: 'contextEngineering' as const, strengthSignals: [], growthSignals: [] },
+    { dimension: 'toolMastery' as const, strengthSignals: [], growthSignals: [] },
+    { dimension: 'burnoutRisk' as const, strengthSignals: [], growthSignals: [] },
+    { dimension: 'aiControl' as const, strengthSignals: [], growthSignals: [] },
+    { dimension: 'skillResilience' as const, strengthSignals: [], growthSignals: [] },
+  ];
+
+  return {
+    typeAnalysis: {
+      primaryType: 'collaborator',
+      controlLevel: 'developing',
+      distribution: {
+        architect: 20,
+        scientist: 20,
+        collaborator: 20,
+        speedrunner: 20,
+        craftsman: 20,
+      },
+      reasoning: 'Default fallback - insufficient data for analysis',
+    },
+    extractedQuotes: [],
+    detectedPatterns: [],
+    detectedAntiPatterns: [],
+    criticalThinkingMoments: [],
+    planningBehaviors: [],
+    dimensionSignals: defaultDimensionSignals,
+    analysisMetadata: {
+      totalQuotesAnalyzed: 0,
+      coverageScores: [
+        { dimension: 'aiCollaboration' as const, score: 0 },
+        { dimension: 'contextEngineering' as const, score: 0 },
+        { dimension: 'toolMastery' as const, score: 0 },
+        { dimension: 'burnoutRisk' as const, score: 0 },
+        { dimension: 'aiControl' as const, score: 0 },
+        { dimension: 'skillResilience' as const, score: 0 },
+      ],
+      confidenceScore: 0,
+    },
+  };
+}
