@@ -25,3 +25,13 @@ export type { KnowledgeGapWorkerConfig } from './knowledge-gap-worker';
 
 export { ContextEfficiencyWorker, createContextEfficiencyWorker } from './context-efficiency-worker';
 export type { ContextEfficiencyWorkerConfig } from './context-efficiency-worker';
+
+// Phase 2 Workers (NEW - Metacognition + Temporal Analysis)
+export { MetacognitionWorker, createMetacognitionWorker } from './metacognition-worker';
+export type { MetacognitionWorkerConfig } from './metacognition-worker';
+
+export { TemporalAnalyzerWorker, createTemporalAnalyzerWorker } from './temporal-analyzer-worker';
+export type { TemporalAnalyzerWorkerConfig } from './temporal-analyzer-worker';
+
+export { MultitaskingAnalyzerWorker, createMultitaskingAnalyzerWorker } from './multitasking-analyzer-worker';
+export type { MultitaskingAnalyzerWorkerConfig } from './multitasking-analyzer-worker';

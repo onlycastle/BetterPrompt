@@ -26,6 +26,7 @@ import {
 } from '../../models/verbose-evaluation';
 import type { StructuredAnalysisData } from '../../models/analysis-data';
 import type { ProductivityAnalysisData } from '../../models/productivity-data';
+import type { AgentOutputs } from '../../models/agent-outputs';
 import {
   CONTENT_WRITER_SYSTEM_PROMPT,
   buildContentWriterUserPrompt,
@@ -98,6 +99,7 @@ export class ContentWriterStage {
    * @param analysisData - Module A output (behavioral analysis)
    * @param sessions - Raw parsed sessions
    * @param productivityData - Module C output (productivity metrics) - optional
+   * @param agentOutputs - Phase 2 agent outputs (insight generation) - optional
    *
    * @returns ContentWriterResult with VerboseLLMResponse (nested arrays) and token usage
    *          The LLM returns flattened strings, which are parsed back to nested arrays.
@@ -105,10 +107,12 @@ export class ContentWriterStage {
   async transform(
     analysisData: StructuredAnalysisData,
     sessions: ParsedSession[],
-    productivityData?: ProductivityAnalysisData
+    productivityData?: ProductivityAnalysisData,
+    agentOutputs?: AgentOutputs
   ): Promise<ContentWriterResult> {
     const structuredDataJson = JSON.stringify(analysisData, null, 2);
     const productivityDataJson = productivityData ? JSON.stringify(productivityData, null, 2) : undefined;
+    const agentOutputsJson = agentOutputs ? JSON.stringify(agentOutputs, null, 2) : undefined;
 
     // Detect if user's quotes are primarily in Korean
     const quotes = analysisData.extractedQuotes.map((q) => q.quote);
@@ -125,7 +129,8 @@ export class ContentWriterStage {
       sessions.length,
       useKorean,
       kbContext,
-      productivityDataJson
+      productivityDataJson,
+      agentOutputsJson
     );
 
     const result = await this.client.generateStructured({

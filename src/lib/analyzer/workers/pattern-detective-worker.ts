@@ -46,12 +46,12 @@ export interface PatternDetectiveWorkerConfig extends OrchestratorConfig {
  * Pattern Detective Worker - Discovers conversation patterns
  *
  * Phase 2 worker that analyzes communication style and patterns.
- * Requires Premium tier or higher.
+ * Available for all tiers (free and above).
  */
 export class PatternDetectiveWorker extends BaseWorker<PatternDetectiveOutput> {
   readonly name = 'PatternDetective';
   readonly phase = 2 as const;
-  readonly minTier: Tier = 'premium';
+  readonly minTier: Tier = 'free';
 
   private geminiClient: GeminiClient;
   private verbose: boolean;
