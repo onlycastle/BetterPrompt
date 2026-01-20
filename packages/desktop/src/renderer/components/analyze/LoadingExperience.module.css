@@ -1,0 +1,349 @@
+/**
+ * LoadingExperience Styles
+ *
+ * Maintains the "notebook sketch" aesthetic with:
+ * - Monospace typography (Fira Code)
+ * - Cyan accent color
+ * - Hand-drawn feel
+ */
+
+/* Container */
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px;
+  max-width: 800px;
+  margin: 0 auto;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==================== Scanning Phase ==================== */
+.scanningPhase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 32px;
+  text-align: center;
+}
+
+.scannerIcon {
+  font-size: 48px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+}
+
+.scanningTitle {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ink-primary, #1A1A2E);
+  margin: 16px 0 8px;
+}
+
+.scanningSubtext {
+  font-size: 14px;
+  color: var(--ink-secondary, #4A4A6A);
+  margin: 0;
+}
+
+.sessionCounter {
+  font-size: 16px;
+  color: var(--sketch-cyan, #00BCD4);
+  margin-top: 16px;
+  font-weight: 500;
+}
+
+/* ==================== Progress Header ==================== */
+.progressHeader {
+  text-align: center;
+  padding: 24px;
+  background: var(--surface-2, #F8F9FA);
+  border: 2px solid var(--ink-primary, #1A1A2E);
+  border-radius: 8px;
+}
+
+.progressTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink-primary, #1A1A2E);
+  margin: 0 0 16px;
+}
+
+.progressBar {
+  height: 12px;
+  background: var(--surface-3, #E9ECEF);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--ink-light, #CCC);
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--sketch-cyan, #00BCD4);
+  transition: width 0.3s ease;
+  animation: progressGlow 2s ease-in-out infinite;
+}
+
+@keyframes progressGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--sketch-cyan, #00BCD4);
+  }
+  50% {
+    box-shadow: 0 0 16px var(--sketch-cyan, #00BCD4);
+  }
+}
+
+.progressDetail {
+  font-size: 14px;
+  color: var(--ink-secondary, #4A4A6A);
+  margin: 12px 0 0;
+}
+
+/* ==================== 3-Panel Layout ==================== */
+.panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .panels {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  background: var(--surface-1, #FFFFFF);
+  border: 2px solid var(--ink-primary, #1A1A2E);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 3px 3px 0 var(--ink-primary, #1A1A2E);
+}
+
+.panelTitle {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ink-secondary, #4A4A6A);
+  margin: 0 0 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--ink-light, #CCC);
+}
+
+/* ==================== Type Teasers (Left Panel) ==================== */
+.typeList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.typeRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.typeRow.checking {
+  background: var(--sketch-cyan-soft, rgba(0, 188, 212, 0.1));
+}
+
+.typeEmoji {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.typeName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-primary, #1A1A2E);
+  min-width: 100px;
+}
+
+.typeBar {
+  flex: 1;
+  height: 8px;
+  background: var(--surface-3, #E9ECEF);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.emptyBar {
+  width: 0;
+  height: 100%;
+}
+
+.shimmerBar {
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--surface-3, #E9ECEF) 25%,
+    var(--sketch-cyan, #00BCD4) 50%,
+    var(--surface-3, #E9ECEF) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.checkingLabel {
+  font-size: 11px;
+  color: var(--sketch-cyan, #00BCD4);
+  font-style: italic;
+}
+
+/* ==================== Dimension Preview (Right Panel) ==================== */
+.dimensionList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dimensionRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  animation: staggerFadeIn 0.3s ease-out both;
+}
+
+@keyframes staggerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dimensionIcon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.dimensionName {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink-primary, #1A1A2E);
+}
+
+.dimensionValue {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-secondary, #4A4A6A);
+  animation: pulseSoft 2s ease-in-out infinite;
+}
+
+@keyframes pulseSoft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.tagline {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--ink-secondary, #4A4A6A);
+  margin: 16px 0 0;
+  text-align: center;
+  padding-top: 12px;
+  border-top: 1px dashed var(--ink-light, #CCC);
+}
+
+/* ==================== Fact Carousel (Bottom Panel) ==================== */
+.factPanel {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+  background: var(--surface-2, #F8F9FA);
+  border: 2px solid var(--ink-primary, #1A1A2E);
+  border-radius: 8px;
+  box-shadow: 3px 3px 0 var(--ink-primary, #1A1A2E);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.factIcon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.factContent {
+  flex: 1;
+}
+
+.factLabel {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--sketch-cyan, #00BCD4);
+  margin-bottom: 4px;
+}
+
+.factText {
+  font-size: 14px;
+  color: var(--ink-primary, #1A1A2E);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ==================== Reduced Motion ==================== */
+@media (prefers-reduced-motion: reduce) {
+  .scannerIcon,
+  .shimmerBar,
+  .progressFill,
+  .dimensionValue {
+    animation: none;
+  }
+
+  .container,
+  .dimensionRow,
+  .factPanel {
+    animation: none;
+  }
+
+  .progressFill {
+    transition: none;
+  }
+}
