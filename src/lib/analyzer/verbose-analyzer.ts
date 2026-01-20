@@ -500,6 +500,8 @@ export class VerboseAnalyzer {
       avgTurnsPerSession: Math.round(metrics.avgTurnsPerSession * 10) / 10,
       analyzedSessions,
       ...contentWriterResult.data,
+      // Include Module C (Productivity Analyst) output
+      productivityAnalysis: productivityResult.data,
     };
 
     // Apply tier-based content filtering

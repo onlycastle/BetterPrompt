@@ -11,6 +11,7 @@
 
 import { z } from 'zod';
 import { CodingStyleTypeSchema, AIControlLevelSchema } from './coding-style';
+import { ProductivityAnalysisDataSchema } from './productivity-data';
 
 // ============================================================================
 // ANALYZED SESSION INFO - Metadata about sessions included in analysis
@@ -921,6 +922,10 @@ export const VerboseEvaluationSchema = z.object({
   // NEW: Personality Insights (from Module B personalityProfile)
   personalityInsights: PersonalityInsightsSchema.optional()
     .describe('Personality-driven insights using 4 storytelling techniques'),
+
+  // NEW: Productivity Analysis (from Module C)
+  productivityAnalysis: ProductivityAnalysisDataSchema.optional()
+    .describe('Productivity metrics including iteration efficiency, learning velocity, and collaboration effectiveness'),
 
   // PREMIUM TIER - Locked content
   toolUsageDeepDive: z.array(ToolUsageInsightSchema).optional(),
