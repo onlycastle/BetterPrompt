@@ -17,3 +17,4 @@ export { ReportFooter } from './ReportFooter';
 export { PersonalityHeroSection } from './PersonalityHeroSection';
 export { TopFocusAreasSection } from './TopFocusAreasSection';
 export { EnhancedPatternCard } from './EnhancedPatternCard';
+export { ProductivitySection } from './ProductivitySection';
