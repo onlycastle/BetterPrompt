@@ -1,0 +1,234 @@
+/**
+ * Metacognition Worker - Detects metacognitive patterns in AI collaboration
+ *
+ * Discovers:
+ * - Self-awareness signals (pattern recognition, strategy verbalization, learning recognition)
+ * - Unawareness signals (repeated patterns without recognition, blind spots)
+ * - Growth mindset indicators (curiosity, experimentation, resilience)
+ *
+ * Phase 2 worker that requires Module A output.
+ *
+ * @module analyzer/workers/metacognition-worker
+ */
+
+import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker';
+import { GeminiClient, type GeminiClientConfig } from '../clients/gemini-client';
+import {
+  MetacognitionOutputSchema,
+  type MetacognitionOutput,
+  createDefaultMetacognitionOutput,
+} from '../../models/metacognition-data';
+import type { Tier } from '../content-gateway';
+import type { OrchestratorConfig } from '../orchestrator/types';
+import { formatSessionsForAnalysis } from '../shared/session-formatter';
+
+// ============================================================================
+// Session Formatting Configuration
+// ============================================================================
+
+/**
+ * Format preset for metacognition analysis
+ * - Include full user messages (for pattern detection)
+ * - Include assistant messages (for response analysis)
+ * - Longer content length for detailed analysis
+ */
+const METACOGNITION_FORMAT = {
+  maxContentLength: 2000,
+  includeAssistantMessages: true,
+  includeToolCalls: false, // Focus on communication, not tools
+  includeDuration: true,
+};
+
+// ============================================================================
+// Prompts
+// ============================================================================
+
+export const METACOGNITION_SYSTEM_PROMPT = `You are a Metacognition Analyst, a specialized AI focused on detecting self-awareness and self-regulation patterns in developer-AI collaboration.
+
+## PERSONA
+You are a cognitive psychologist who specializes in metacognition - the ability to think about one's own thinking. You detect moments of self-awareness, blind spots, and growth mindset indicators.
+
+## TASK
+Analyze the provided session data and Module A analysis to discover:
+1. **Awareness Signals**: Moments when the user explicitly recognizes their own patterns
+   - Self-reflection: "I notice I keep doing X", "패턴이 보여"
+   - Strategy verbalization: "This time I'll try differently", "이번엔 다르게"
+   - Learning recognition: "Ah now I understand", "이제 알겠다"
+
+2. **Unawareness Signals / Blind Spots**: Patterns the user repeats without recognition
+   - Same error 3+ times without mentioning awareness
+   - Same approach repeated without strategy mention
+   - No verification after repeated failures
+
+3. **Growth Mindset Indicators**:
+   - Curiosity: "왜 이렇게 되는 거야?", "why does this happen?"
+   - Experimentation: "한번 해볼게", "let me try"
+   - Resilience: "괜찮아, 다시 해보자", "let's try another way"
+
+## CONTEXT
+- Focus on USER messages (their self-awareness), not assistant responses
+- Look for patterns in BOTH Korean and English
+- Blind spots are patterns repeated without the user acknowledging them
+- Higher metacognitive awareness = better long-term learning
+
+## CRITICAL THINKING PATTERNS TO DETECT
+Look for these indicators of good critical engagement:
+- Counter-questioning: "왜?", "정말?", "확실해?", "why?", "are you sure?"
+- Critical interpretation: "근데 이거 맞아?", "이해가 안 되는데", "doesn't make sense"
+- Verification requests: "확인해 봐", "test this", "verify"
+
+## FORMAT
+Return a JSON object with:
+- \`awarenessInstancesData\`: "type|quote|context|implication;..." where type is self_reflection, strategy_verbalization, or learning_recognition
+- \`blindSpotsData\`: "pattern|frequency|sessionIds|linkedAntiPattern;..."
+- \`growthMindsetData\`: "curiosity:0-100|experimentation:0-100|resilience:0-100"
+- \`topInsights\`: Array of exactly 3 most impactful metacognition insights (max 200 chars each)
+- \`metacognitiveAwarenessScore\`: 0-100 overall metacognitive awareness score
+- \`confidenceScore\`: 0-1 confidence in the analysis
+
+## CRITICAL
+- Focus on patterns the user would be surprised to learn about
+- Blind spots should be specific and evidence-based
+- Awareness instances need actual quotes from user messages
+- Be encouraging - high metacognition is learnable`;
+
+export function buildMetacognitionUserPrompt(
+  sessionsFormatted: string,
+  moduleAOutput: string
+): string {
+  return `## SESSION DATA
+${sessionsFormatted}
+
+## MODULE A ANALYSIS (for cross-referencing patterns)
+${moduleAOutput}
+
+## INSTRUCTIONS
+Analyze the user's metacognitive patterns:
+1. Find moments of explicit self-awareness (with quotes)
+2. Identify blind spots (patterns repeated without recognition)
+3. Score growth mindset indicators
+4. Generate exactly 3 "wow moment" insights about their metacognition
+
+Focus on USER messages. Look for both Korean and English patterns.`;
+}
+
+// ============================================================================
+// Worker Implementation
+// ============================================================================
+
+export interface MetacognitionWorkerConfig extends OrchestratorConfig {
+  // Add any worker-specific config here if needed
+}
+
+/**
+ * Metacognition Worker
+ *
+ * Phase 2 worker that detects metacognitive patterns.
+ * Requires Module A output (from Phase 1).
+ * Available for all tiers (free and above).
+ */
+export class MetacognitionWorker extends BaseWorker<MetacognitionOutput> {
+  readonly name = 'MetacognitionWorker';
+  readonly phase = 2 as const;
+  readonly minTier: Tier = 'free';
+
+  private geminiClient: GeminiClient;
+  private verbose: boolean;
+
+  constructor(config: MetacognitionWorkerConfig) {
+    super();
+    this.geminiClient = new GeminiClient({
+      apiKey: config.geminiApiKey,
+      model: config.model ?? 'gemini-3-flash-preview',
+      temperature: config.temperature ?? 1.0,
+      maxRetries: config.maxRetries ?? 2,
+    } as GeminiClientConfig);
+    this.verbose = config.verbose ?? false;
+  }
+
+  canRun(context: WorkerContext): boolean {
+    // Check tier
+    if (!this.isTierSufficient(context.tier)) {
+      this.logMessage('Skipped: insufficient tier');
+      return false;
+    }
+
+    // Check dependencies
+    if (context.sessions.length === 0) {
+      this.logMessage('Skipped: no sessions');
+      return false;
+    }
+
+    if (!context.moduleAOutput) {
+      this.logMessage('Skipped: Module A output required');
+      return false;
+    }
+
+    return true;
+  }
+
+  async execute(context: WorkerContext): Promise<WorkerResult<MetacognitionOutput>> {
+    if (!context.moduleAOutput) {
+      return this.createFailedResult(
+        new Error('Module A output required'),
+        createDefaultMetacognitionOutput()
+      );
+    }
+
+    this.logMessage('Starting metacognition analysis...');
+
+    try {
+      // Format sessions
+      const sessionsFormatted = formatSessionsForAnalysis(
+        context.sessions,
+        METACOGNITION_FORMAT
+      );
+
+      // Prepare Module A output (for cross-referencing)
+      const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
+
+      // Build prompt
+      const userPrompt = buildMetacognitionUserPrompt(sessionsFormatted, moduleAJson);
+
+      // Call Gemini with structured output
+      const result = await this.geminiClient.generateStructured({
+        systemPrompt: METACOGNITION_SYSTEM_PROMPT,
+        userPrompt,
+        responseSchema: MetacognitionOutputSchema,
+        maxOutputTokens: 8192,
+      });
+
+      this.logMessage(
+        `Analysis complete. Awareness score: ${result.data.metacognitiveAwarenessScore}`
+      );
+
+      return this.createSuccessResult(result.data, result.usage);
+    } catch (error) {
+      this.logMessage(`Analysis failed: ${error}`);
+      return this.createFailedResult(
+        error instanceof Error ? error : new Error(String(error)),
+        createDefaultMetacognitionOutput()
+      );
+    }
+  }
+
+  private logMessage(message: string): void {
+    if (this.verbose) {
+      console.log(`[${this.name}] ${message}`);
+    }
+  }
+}
+
+// ============================================================================
+// Factory Function
+// ============================================================================
+
+/**
+ * Create a MetacognitionWorker instance
+ *
+ * @param config - Orchestrator configuration
+ * @returns MetacognitionWorker instance
+ */
+export function createMetacognitionWorker(config: MetacognitionWorkerConfig): MetacognitionWorker {
+  return new MetacognitionWorker(config);
+}
