@@ -132,7 +132,7 @@ function formatEstimatedCost(tokenCount: number): string {
  */
 function autoSelectSessions(
   sessions: SessionMetadata[],
-  targetCount: number = 15
+  targetCount: number = 10
 ): SessionMetadata[] {
   if (sessions.length <= targetCount) {
     return [...sessions];
@@ -334,7 +334,7 @@ export async function listSessionFiles(projectDir: string): Promise<string[]> {
  * - At least 60 seconds duration
  * - Combines recency, token count, and project diversity
  */
-export async function scanAndSelectSessions(targetCount: number = 15): Promise<ScanSummary> {
+export async function scanAndSelectSessions(targetCount: number = 10): Promise<ScanSummary> {
   console.log('[Scanner] Starting scan, target:', targetCount);
   console.log('[Scanner] Projects dir:', CLAUDE_PROJECTS_DIR);
 

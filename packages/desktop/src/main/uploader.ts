@@ -275,6 +275,21 @@ async function uploadViaStorage(
     throw new Error(`Failed to get upload URL: ${urlResponse.status} ${errorText}`);
   }
 
+  // Validate Content-Type before parsing - catch routing errors early
+  const contentType = urlResponse.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const rawText = await urlResponse.text();
+    console.error('[Uploader] Routing error - expected JSON from /upload-url:', {
+      contentType,
+      status: urlResponse.status,
+      body: rawText.slice(0, 300),
+    });
+    throw new Error(
+      'Server routing error: /upload-url returned unexpected format. ' +
+        'Please try again or contact support if the issue persists.'
+    );
+  }
+
   const urlData = (await urlResponse.json()) as {
     signedUrl?: string;
     storagePath?: string;

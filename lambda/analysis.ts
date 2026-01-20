@@ -1039,8 +1039,15 @@ async function handleDirectUpload(
  */
 export const handler = awslambda.streamifyResponse(
   async (event: LambdaEvent, responseStream: Writable) => {
+    // Diagnostic logging for routing issues
+    console.log('[lambda] Event routing debug:', JSON.stringify({
+      rawPath: event.rawPath,
+      path: event.path,
+      method: (event as { requestContext?: { http?: { method?: string } } }).requestContext?.http?.method,
+    }));
+
     const path = event.rawPath || event.path || "/";
-    console.log(`[lambda] Request path: ${path}`);
+    console.log(`[lambda] Resolved path: ${path}`);
 
     // Route: POST /upload-url - Generate Supabase Storage signed upload URL
     if (path === "/upload-url" || path.endsWith("/upload-url")) {
