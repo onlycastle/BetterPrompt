@@ -32,7 +32,7 @@ export function setupIpcHandlers(getMainWindow: () => BrowserWindow | null): voi
   ipcMain.handle('scan-sessions', async () => {
     try {
       console.log('[IPC] Scanning and auto-selecting sessions...');
-      const summary = await scanAndSelectSessions(15);
+      const summary = await scanAndSelectSessions(10);
 
       // Store for later use in analysis
       lastScanSummary = summary;
