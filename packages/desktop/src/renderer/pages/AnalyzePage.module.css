@@ -17,7 +17,7 @@
 .main {
   flex: 1;
   padding: 2rem;
-  max-width: 800px;
+  max-width: 1200px;
   margin: 0 auto;
   width: 100%;
 }
@@ -513,7 +513,7 @@
 .mainReport {
   flex: 1;
   padding: 2rem;
-  max-width: 960px;
+  max-width: 1400px;
   margin: 0 auto;
   width: 100%;
 }
@@ -641,7 +641,7 @@
 /* Unlock Button (use credit) */
 .unlockButton {
   padding: 1rem 3rem;
-  background: var(--sketch-green);
+  background: var(--sketch-blue);
   border: 2px solid var(--ink-primary);
   border-radius: var(--radius-md);
   color: var(--bg-paper);

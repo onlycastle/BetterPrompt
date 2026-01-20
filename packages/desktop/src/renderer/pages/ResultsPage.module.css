@@ -264,7 +264,7 @@
 /* Unlock Button (use credit) */
 .unlockButton {
   padding: 1rem 3rem;
-  background: var(--sketch-green);
+  background: var(--sketch-blue);
   border: 2px solid var(--ink-primary);
   border-radius: var(--radius-md);
   color: var(--bg-paper);
