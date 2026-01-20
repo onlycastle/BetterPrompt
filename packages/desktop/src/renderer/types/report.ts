@@ -206,28 +206,6 @@ export interface PerDimensionInsight {
 }
 
 // ============================================================================
-// Personality Insights (4 Storytelling Techniques)
-// ============================================================================
-
-/**
- * Personality insights using 4 storytelling techniques:
- * 1. Specific Evidence - "You said '/plan' 8 times..."
- * 2. Confirmation Pattern - "You like to see the whole picture, don't you?"
- * 3. Strength-Shadow Connection - "That speed is great, but sometimes..."
- * 4. Daily Life Bridge - "Probably your motto outside coding too, right?"
- */
-export interface PersonalityInsights {
-  /** Core observation with evidence and confirmation question */
-  coreObservation: string;
-  /** How their personality connects to coding strengths */
-  strengthConnection: string;
-  /** Growth opportunity framed through strength-shadow */
-  growthOpportunity: string;
-  /** Daily life connection for deeper rapport (optional) */
-  dailyLifeConnection?: string;
-}
-
-// ============================================================================
 // Top Focus Areas (Personalized Priorities)
 // ============================================================================
 
@@ -307,6 +285,101 @@ export interface ProductivityAnalysis {
 }
 
 // ============================================================================
+// Agent Outputs (4 Wow-Focused Agents - Premium Only)
+// ============================================================================
+
+/**
+ * Pattern Detective: Conversation Style Discovery
+ * Detects repeated questions, conversation patterns, request styles
+ */
+export interface PatternDetectiveOutput {
+  /** Repeated questions - "topic:count:example;..." */
+  repeatedQuestionsData: string;
+  /** Conversation style patterns - "pattern:frequency:example;..." */
+  conversationStyleData: string;
+  /** Request start patterns - "phrase:count;..." */
+  requestStartPatternsData: string;
+  /** Top 3 Wow Insights (displayed directly in UI) */
+  topInsights: string[];
+  /** Overall style summary */
+  overallStyleSummary: string;
+  /** Confidence score (0-1) */
+  confidenceScore: number;
+}
+
+/**
+ * Anti-Pattern Spotter: Bad Habit Detection
+ * Detects error loops, learning avoidance, repeated mistakes
+ */
+export interface AntiPatternSpotterOutput {
+  /** Error loops - "error_type:repeat_count:avg_turns:example;..." */
+  errorLoopsData: string;
+  /** Learning avoidance patterns - "pattern:evidence:severity;..." */
+  learningAvoidanceData: string;
+  /** Repeated mistakes - "mistake:count:sessions;..." */
+  repeatedMistakesData: string;
+  /** Top 3 Wow Insights */
+  topInsights: string[];
+  /** Overall health score (0-100) */
+  overallHealthScore: number;
+  /** Confidence score (0-1) */
+  confidenceScore: number;
+}
+
+/**
+ * Knowledge Gap Analyzer: Knowledge Gaps + Learning Suggestions
+ * Detects knowledge gaps, learning progress, recommends resources
+ */
+export interface KnowledgeGapOutput {
+  /** Knowledge gaps - "topic:question_count:depth:example;..." */
+  knowledgeGapsData: string;
+  /** Learning progress - "topic:start_level:current_level:evidence;..." */
+  learningProgressData: string;
+  /** Recommended resources - "topic:resource_type:url_or_name;..." */
+  recommendedResourcesData: string;
+  /** Top 3 Wow Insights */
+  topInsights: string[];
+  /** Overall knowledge score (0-100) */
+  overallKnowledgeScore: number;
+  /** Confidence score (0-1) */
+  confidenceScore: number;
+}
+
+/**
+ * Context Efficiency Analyzer: Token Inefficiency Patterns
+ * Detects context usage, inefficiency patterns, prompt length trends
+ */
+export interface ContextEfficiencyOutput {
+  /** Context usage pattern - "session_id:avg_fill_percent:compact_trigger_percent;..." */
+  contextUsagePatternData: string;
+  /** Inefficiency patterns - "pattern:frequency:impact:example;..." */
+  inefficiencyPatternsData: string;
+  /** Prompt length trend - "session_part:avg_length;..." */
+  promptLengthTrendData: string;
+  /** Redundant info patterns - "info_type:repeat_count;..." */
+  redundantInfoData: string;
+  /** Top 3 Wow Insights */
+  topInsights: string[];
+  /** Overall efficiency score (0-100) */
+  overallEfficiencyScore: number;
+  /** Average context fill percent (0-100) */
+  avgContextFillPercent: number;
+  /** Confidence score (0-1) */
+  confidenceScore: number;
+}
+
+/**
+ * Combined outputs from all 4 Wow-Focused Agents
+ * All fields are optional since agents may fail independently
+ */
+export interface AgentOutputs {
+  patternDetective?: PatternDetectiveOutput;
+  antiPatternSpotter?: AntiPatternSpotterOutput;
+  knowledgeGap?: KnowledgeGapOutput;
+  contextEfficiency?: ContextEfficiencyOutput;
+}
+
+// ============================================================================
 // Verbose Evaluation (from Lambda)
 // ============================================================================
 
@@ -335,14 +408,14 @@ export interface VerboseEvaluation {
   contextEfficiencyScore?: number;
   contextEfficiencyExplanation?: string;
 
-  // NEW: Personality Insights (4 storytelling techniques)
-  personalityInsights?: PersonalityInsights;
-
   // NEW: Top 3 Focus Areas (most actionable section)
   topFocusAreas?: TopFocusAreas;
 
   // NEW: Productivity Analysis (Module C output)
   productivityAnalysis?: ProductivityAnalysis;
+
+  // NEW: Agent Outputs (4 Wow Agents - Premium only)
+  agentOutputs?: AgentOutputs;
 }
 
 // ============================================================================

@@ -1,11 +1,11 @@
 /**
  * Content Writer Stage Implementation
  *
- * Stage 2 of the three-stage pipeline.
+ * Stage 2 of the two-module pipeline.
  * Uses Gemini 3 Flash for high-quality content writing.
  * Temperature: 1.0 (Gemini's recommended default).
  *
- * Input: Module A output (StructuredAnalysisData) + Module B output (PersonalityProfile)
+ * Input: Module A output (StructuredAnalysisData) + Module C output (ProductivityAnalysisData)
  * Output: VerboseLLMResponse
  *
  * @module analyzer/stages/content-writer
@@ -25,7 +25,6 @@ import {
   parseActionsData,
 } from '../../models/verbose-evaluation';
 import type { StructuredAnalysisData } from '../../models/analysis-data';
-import type { PersonalityProfile } from '../../models/personality';
 import type { ProductivityAnalysisData } from '../../models/productivity-data';
 import {
   CONTENT_WRITER_SYSTEM_PROMPT,
@@ -97,7 +96,6 @@ export class ContentWriterStage {
    * Returns both the response data and token usage metadata
    *
    * @param analysisData - Module A output (behavioral analysis)
-   * @param personalityProfile - Module B output (personality analysis)
    * @param sessions - Raw parsed sessions
    * @param productivityData - Module C output (productivity metrics) - optional
    *
@@ -106,12 +104,10 @@ export class ContentWriterStage {
    */
   async transform(
     analysisData: StructuredAnalysisData,
-    personalityProfile: PersonalityProfile,
     sessions: ParsedSession[],
     productivityData?: ProductivityAnalysisData
   ): Promise<ContentWriterResult> {
     const structuredDataJson = JSON.stringify(analysisData, null, 2);
-    const personalityDataJson = JSON.stringify(personalityProfile, null, 2);
     const productivityDataJson = productivityData ? JSON.stringify(productivityData, null, 2) : undefined;
 
     // Detect if user's quotes are primarily in Korean
@@ -126,7 +122,6 @@ export class ContentWriterStage {
 
     const userPrompt = buildContentWriterUserPrompt(
       structuredDataJson,
-      personalityDataJson,
       sessions.length,
       useKorean,
       kbContext,
@@ -278,147 +273,122 @@ export class ContentWriterStage {
     response: any,
     analysisData: StructuredAnalysisData
   ): void {
-    // Anti-Patterns Analysis
-    const hasAntiPatterns =
-      analysisData.detectedAntiPatterns && analysisData.detectedAntiPatterns.length > 0;
+    this.sanitizeAntiPatternsAnalysis(response, analysisData);
+    this.sanitizeCriticalThinkingAnalysis(response, analysisData);
+    this.sanitizePlanningAnalysis(response, analysisData);
+    this.sanitizeTopFocusAreas(response, analysisData);
+  }
 
-    if (hasAntiPatterns) {
-      if (!response.antiPatternsAnalysis) {
-        response.antiPatternsAnalysis = {
-          detected: [],
-          summary:
-            'Some growth opportunities were identified. These are common learning patterns that every developer experiences.',
-          overallHealthScore: 80,
-        };
-      }
-      // Ensure required fields
-      if (!Array.isArray(response.antiPatternsAnalysis.detected)) {
-        response.antiPatternsAnalysis.detected = [];
-      }
-      if (typeof response.antiPatternsAnalysis.overallHealthScore !== 'number') {
-        response.antiPatternsAnalysis.overallHealthScore = 80;
-      }
-    }
+  private sanitizeAntiPatternsAnalysis(response: any, analysisData: StructuredAnalysisData): void {
+    const hasData = analysisData.detectedAntiPatterns && analysisData.detectedAntiPatterns.length > 0;
+    if (!hasData) return;
 
-    // Critical Thinking Analysis
-    const hasCriticalThinking =
-      analysisData.criticalThinkingMoments && analysisData.criticalThinkingMoments.length > 0;
-
-    if (hasCriticalThinking) {
-      if (!response.criticalThinkingAnalysis) {
-        response.criticalThinkingAnalysis = {
-          strengths: [],
-          opportunities: [],
-          summary:
-            'Shows signs of critical evaluation when working with AI-generated content.',
-          overallScore: 70,
-        };
-      }
-      // Ensure required fields
-      if (!Array.isArray(response.criticalThinkingAnalysis.strengths)) {
-        response.criticalThinkingAnalysis.strengths = [];
-      }
-      if (!Array.isArray(response.criticalThinkingAnalysis.opportunities)) {
-        response.criticalThinkingAnalysis.opportunities = [];
-      }
-      if (typeof response.criticalThinkingAnalysis.overallScore !== 'number') {
-        response.criticalThinkingAnalysis.overallScore = 70;
-      }
-    }
-
-    // Planning Analysis
-    const hasPlanningBehaviors =
-      analysisData.planningBehaviors && analysisData.planningBehaviors.length > 0;
-
-    if (hasPlanningBehaviors) {
-      if (!response.planningAnalysis) {
-        // Determine maturity level from Stage 1 data
-        const hasSlashPlan = analysisData.planningBehaviors?.some(
-          (b) => b.behaviorType === 'slash_plan_usage'
-        );
-        const hasTodoWrite = analysisData.planningBehaviors?.some(
-          (b) => b.behaviorType === 'todowrite_usage'
-        );
-
-        let maturityLevel: 'reactive' | 'emerging' | 'structured' | 'expert' = 'emerging';
-        if (hasSlashPlan) {
-          // Check if /plan has detailed decomposition
-          const slashPlanBehavior = analysisData.planningBehaviors?.find(
-            (b) => b.behaviorType === 'slash_plan_usage'
-          );
-          if (
-            slashPlanBehavior?.planHasDecomposition &&
-            (slashPlanBehavior?.planStepsCount ?? 0) >= 3
-          ) {
-            maturityLevel = 'expert';
-          } else {
-            maturityLevel = 'structured';
-          }
-        } else if (hasTodoWrite) {
-          maturityLevel = 'emerging';
-        } else {
-          maturityLevel = 'reactive';
-        }
-
-        response.planningAnalysis = {
-          strengths: [],
-          opportunities: [],
-          summary:
-            'Shows planning awareness in development workflow.',
-          planningMaturityLevel: maturityLevel,
-        };
-      }
-
-      // Ensure required fields
-      if (!Array.isArray(response.planningAnalysis.strengths)) {
-        response.planningAnalysis.strengths = [];
-      }
-      if (!Array.isArray(response.planningAnalysis.opportunities)) {
-        response.planningAnalysis.opportunities = [];
-      }
-
-      // Add slashPlanStats from Stage 1 data if available
-      if (!response.planningAnalysis.slashPlanStats) {
-        const slashPlanBehaviors = analysisData.planningBehaviors?.filter(
-          (b) => b.behaviorType === 'slash_plan_usage'
-        );
-        if (slashPlanBehaviors && slashPlanBehaviors.length > 0) {
-          const totalUsage = slashPlanBehaviors.length;
-          const stepsArray = slashPlanBehaviors
-            .map((b) => b.planStepsCount)
-            .filter((s): s is number => typeof s === 'number');
-          const avgSteps =
-            stepsArray.length > 0
-              ? stepsArray.reduce((a, b) => a + b, 0) / stepsArray.length
-              : undefined;
-          const decompositionCount = slashPlanBehaviors.filter(
-            (b) => b.planHasDecomposition
-          ).length;
-          const decompositionRate =
-            totalUsage > 0 ? decompositionCount / totalUsage : undefined;
-
-          response.planningAnalysis.slashPlanStats = {
-            totalUsage,
-            avgStepsPerPlan: avgSteps,
-            problemDecompositionRate: decompositionRate,
-          };
-        }
-      }
-    }
-
-    // Top Focus Areas (from personalizedPriorities - FLATTENED structure)
-    const priorities = analysisData.personalizedPriorities;
-    const hasPersonalizedPriorities =
-      priorities && priorities.priority1Dimension;
-
-    if (hasPersonalizedPriorities && !response.topFocusAreas) {
-      // Fallback: Convert Stage 1 flattened data directly if LLM didn't generate
-      const areas = this.convertPrioritiesToFocusAreas(priorities);
-
-      response.topFocusAreas = {
-        areas,
-        summary: priorities.selectionRationale,
+    if (!response.antiPatternsAnalysis) {
+      response.antiPatternsAnalysis = {
+        detected: [],
+        summary: 'Some growth opportunities were identified. These are common learning patterns that every developer experiences.',
+        overallHealthScore: 80,
       };
+    }
+
+    this.ensureArrayField(response.antiPatternsAnalysis, 'detected');
+    this.ensureNumberField(response.antiPatternsAnalysis, 'overallHealthScore', 80);
+  }
+
+  private sanitizeCriticalThinkingAnalysis(response: any, analysisData: StructuredAnalysisData): void {
+    const hasData = analysisData.criticalThinkingMoments && analysisData.criticalThinkingMoments.length > 0;
+    if (!hasData) return;
+
+    if (!response.criticalThinkingAnalysis) {
+      response.criticalThinkingAnalysis = {
+        strengths: [],
+        opportunities: [],
+        summary: 'Shows signs of critical evaluation when working with AI-generated content.',
+        overallScore: 70,
+      };
+    }
+
+    this.ensureArrayField(response.criticalThinkingAnalysis, 'strengths');
+    this.ensureArrayField(response.criticalThinkingAnalysis, 'opportunities');
+    this.ensureNumberField(response.criticalThinkingAnalysis, 'overallScore', 70);
+  }
+
+  private sanitizePlanningAnalysis(response: any, analysisData: StructuredAnalysisData): void {
+    const behaviors = analysisData.planningBehaviors;
+    if (!behaviors || behaviors.length === 0) return;
+
+    if (!response.planningAnalysis) {
+      response.planningAnalysis = {
+        strengths: [],
+        opportunities: [],
+        summary: 'Shows planning awareness in development workflow.',
+        planningMaturityLevel: this.determinePlanningMaturityLevel(behaviors),
+      };
+    }
+
+    this.ensureArrayField(response.planningAnalysis, 'strengths');
+    this.ensureArrayField(response.planningAnalysis, 'opportunities');
+
+    if (!response.planningAnalysis.slashPlanStats) {
+      response.planningAnalysis.slashPlanStats = this.calculateSlashPlanStats(behaviors);
+    }
+  }
+
+  private determinePlanningMaturityLevel(
+    behaviors: NonNullable<StructuredAnalysisData['planningBehaviors']>
+  ): 'reactive' | 'emerging' | 'structured' | 'expert' {
+    const slashPlanBehavior = behaviors.find((b) => b.behaviorType === 'slash_plan_usage');
+
+    if (slashPlanBehavior) {
+      const hasDetailedDecomposition =
+        slashPlanBehavior.planHasDecomposition && (slashPlanBehavior.planStepsCount ?? 0) >= 3;
+      return hasDetailedDecomposition ? 'expert' : 'structured';
+    }
+
+    const hasTodoWrite = behaviors.some((b) => b.behaviorType === 'todowrite_usage');
+    return hasTodoWrite ? 'emerging' : 'reactive';
+  }
+
+  private calculateSlashPlanStats(
+    behaviors: NonNullable<StructuredAnalysisData['planningBehaviors']>
+  ): { totalUsage: number; avgStepsPerPlan?: number; problemDecompositionRate?: number } | undefined {
+    const slashPlanBehaviors = behaviors.filter((b) => b.behaviorType === 'slash_plan_usage');
+    if (slashPlanBehaviors.length === 0) return undefined;
+
+    const totalUsage = slashPlanBehaviors.length;
+    const stepsArray = slashPlanBehaviors
+      .map((b) => b.planStepsCount)
+      .filter((s): s is number => typeof s === 'number');
+
+    const avgStepsPerPlan = stepsArray.length > 0
+      ? stepsArray.reduce((a, b) => a + b, 0) / stepsArray.length
+      : undefined;
+
+    const decompositionCount = slashPlanBehaviors.filter((b) => b.planHasDecomposition).length;
+    const problemDecompositionRate = totalUsage > 0 ? decompositionCount / totalUsage : undefined;
+
+    return { totalUsage, avgStepsPerPlan, problemDecompositionRate };
+  }
+
+  private sanitizeTopFocusAreas(response: any, analysisData: StructuredAnalysisData): void {
+    const priorities = analysisData.personalizedPriorities;
+    if (!priorities?.priority1Dimension || response.topFocusAreas) return;
+
+    response.topFocusAreas = {
+      areas: this.convertPrioritiesToFocusAreas(priorities),
+      summary: priorities.selectionRationale,
+    };
+  }
+
+  private ensureArrayField(obj: any, field: string): void {
+    if (!Array.isArray(obj[field])) {
+      obj[field] = [];
+    }
+  }
+
+  private ensureNumberField(obj: any, field: string, defaultValue: number): void {
+    if (typeof obj[field] !== 'number') {
+      obj[field] = defaultValue;
     }
   }
 

@@ -297,6 +297,119 @@ describe('ContentGateway', () => {
           ],
         },
       ],
+
+      // Module C - Productivity Analysis
+      productivityAnalysis: {
+        iterationEfficiency: {
+          signalsData: 'rapid_iteration:session1:85;context_switching:session2:60',
+          patterns: [
+            {
+              patternName: 'Rapid Iteration',
+              frequency: 12,
+              effectiveness: 'high',
+              insight: 'Quick feedback loops lead to better outcomes',
+            },
+          ],
+          overallScore: 78,
+          narrative: 'You iterate quickly and effectively',
+        },
+        learningVelocity: {
+          signalsData: 'self_learning:session3:90;doc_exploration:session4:75',
+          patterns: [
+            {
+              patternName: 'Self-Directed Learning',
+              frequency: 8,
+              effectiveness: 'high',
+              insight: 'You proactively explore new concepts',
+            },
+          ],
+          overallScore: 82,
+          narrative: 'You learn at an impressive pace',
+        },
+        collaborationEffectiveness: {
+          signalsData: 'clear_requests:session5:88;feedback_incorporation:session6:92',
+          patterns: [
+            {
+              patternName: 'Clear Communication',
+              frequency: 15,
+              effectiveness: 'high',
+              insight: 'You communicate requirements clearly',
+            },
+          ],
+          overallScore: 85,
+          narrative: 'You collaborate effectively with AI',
+        },
+        overallProductivityScore: 82,
+        topProductivityStrengths: [
+          {
+            title: 'Fast Iteration',
+            description: 'You iterate quickly on solutions',
+            evidence: ['Made 3 refinements in 10 minutes'],
+          },
+        ],
+        topProductivityGrowthAreas: [
+          {
+            title: 'Context Switching',
+            description: 'Reduce context switching overhead',
+            evidence: ['Switched between 5 tasks in one session'],
+            recommendation: 'Focus on one task at a time',
+          },
+        ],
+      },
+
+      // Phase 2 - Agent Outputs (Wow Agents)
+      agentOutputs: {
+        patternDetective: {
+          repeatedQuestionsData: 'React hooks:5:useEffect cleanup;TypeScript:3:generics',
+          conversationStyleData: 'vague_request:23:just do it;proactive_context:15:provides context',
+          requestStartPatternsData: 'Can you:45;fix this:12;help me:8',
+          topInsights: [
+            'TypeScript generics questions appeared 12 times',
+            '67% of requests lack specific context',
+            'Just do it pattern detected 23 times',
+          ],
+          overallStyleSummary: 'Direct communicator who tends to skip context',
+          confidenceScore: 0.85,
+        },
+        antiPatternSpotter: {
+          errorLoopsData: 'TypeScript error:8:4.2:same error in 3 sessions',
+          learningAvoidanceData: 'copy_paste_no_read:copied without understanding:high',
+          repeatedMistakesData: 'ESLint ignore:12:session1,session3,session7',
+          topInsights: [
+            'ESLint errors repeated 8 times with 4.2 turns to resolve',
+            '34% of code copied without understanding',
+            'Same approach persisted 3+ times in 8 cases',
+          ],
+          overallHealthScore: 72,
+          confidenceScore: 0.78,
+        },
+        knowledgeGap: {
+          knowledgeGapsData: 'async/await:7:shallow:Promise chaining unclear',
+          learningProgressData: 'React hooks:shallow:moderate:useEffect questions decreased',
+          recommendedResourcesData: 'TypeScript:docs:typescriptlang.org',
+          topInsights: [
+            'async/await questions appeared 7 times',
+            'React hooks understanding: shallow to moderate',
+            'Recommended: TypeScript generics documentation',
+          ],
+          overallKnowledgeScore: 68,
+          confidenceScore: 0.82,
+        },
+        contextEfficiency: {
+          contextUsagePatternData: 'session1:85:92;session2:78:88',
+          inefficiencyPatternsData: 'late_compact:15:high:compacts at 90%+',
+          promptLengthTrendData: 'early:150;mid:280;late:450',
+          redundantInfoData: 'project_structure:5;tech_stack:3',
+          topInsights: [
+            'Average 85% context fill before compact',
+            'Prompt length increases 2.3x in late session',
+            'Project structure explained 5 times',
+          ],
+          overallEfficiencyScore: 65,
+          avgContextFillPercent: 84,
+          confidenceScore: 0.79,
+        },
+      },
     };
   });
 
@@ -352,6 +465,18 @@ describe('ContentGateway', () => {
         expect(filtered.sessionTrends).toBeUndefined();
       });
 
+      it('should have productivityAnalysis undefined', () => {
+        const filtered = gateway.filter(fullEvaluation, 'free');
+
+        expect(filtered.productivityAnalysis).toBeUndefined();
+      });
+
+      it('should have agentOutputs undefined', () => {
+        const filtered = gateway.filter(fullEvaluation, 'free');
+
+        expect(filtered.agentOutputs).toBeUndefined();
+      });
+
       it('should preserve metadata fields', () => {
         const filtered = gateway.filter(fullEvaluation, 'free');
 
@@ -375,7 +500,7 @@ describe('ContentGateway', () => {
         expect(filtered.promptPatterns.length).toBe(3);
       });
 
-      it('should have premium fields undefined (reserved for enterprise)', () => {
+      it('should have enterprise analytics fields undefined (reserved for enterprise)', () => {
         const filtered = gateway.filter(fullEvaluation, 'premium');
 
         expect(filtered.toolUsageDeepDive).toBeUndefined();
@@ -383,6 +508,24 @@ describe('ContentGateway', () => {
         expect(filtered.growthRoadmap).toBeUndefined();
         expect(filtered.comparativeInsights).toBeUndefined();
         expect(filtered.sessionTrends).toBeUndefined();
+      });
+
+      it('should include productivityAnalysis', () => {
+        const filtered = gateway.filter(fullEvaluation, 'premium');
+
+        expect(filtered.productivityAnalysis).toBeDefined();
+        expect(filtered.productivityAnalysis?.overallProductivityScore).toBe(82);
+        expect(filtered.productivityAnalysis?.iterationEfficiency.overallScore).toBe(78);
+      });
+
+      it('should include agentOutputs', () => {
+        const filtered = gateway.filter(fullEvaluation, 'premium');
+
+        expect(filtered.agentOutputs).toBeDefined();
+        expect(filtered.agentOutputs?.patternDetective?.confidenceScore).toBe(0.85);
+        expect(filtered.agentOutputs?.antiPatternSpotter?.overallHealthScore).toBe(72);
+        expect(filtered.agentOutputs?.knowledgeGap?.overallKnowledgeScore).toBe(68);
+        expect(filtered.agentOutputs?.contextEfficiency?.overallEfficiencyScore).toBe(65);
       });
 
       it('should keep type result and personality summary', () => {
@@ -400,7 +543,7 @@ describe('ContentGateway', () => {
         expect(filtered).toEqual(fullEvaluation);
       });
 
-      it('should include all premium fields', () => {
+      it('should include all enterprise analytics fields', () => {
         const filtered = gateway.filter(fullEvaluation, 'enterprise');
 
         expect(filtered.toolUsageDeepDive).toBeDefined();
@@ -409,6 +552,20 @@ describe('ContentGateway', () => {
         expect(filtered.growthRoadmap).toBeDefined();
         expect(filtered.comparativeInsights).toBeDefined();
         expect(filtered.sessionTrends).toBeDefined();
+      });
+
+      it('should include productivityAnalysis', () => {
+        const filtered = gateway.filter(fullEvaluation, 'enterprise');
+
+        expect(filtered.productivityAnalysis).toBeDefined();
+        expect(filtered.productivityAnalysis).toEqual(fullEvaluation.productivityAnalysis);
+      });
+
+      it('should include agentOutputs', () => {
+        const filtered = gateway.filter(fullEvaluation, 'enterprise');
+
+        expect(filtered.agentOutputs).toBeDefined();
+        expect(filtered.agentOutputs).toEqual(fullEvaluation.agentOutputs);
       });
     });
   });
@@ -490,20 +647,157 @@ describe('ContentGateway', () => {
       const premiumTier = gateway.filter(fullEvaluation, 'premium');
       const enterpriseTier = gateway.filter(fullEvaluation, 'enterprise');
 
-      // Free tier: 2 full dimensions, no prompt patterns
+      // Free tier: 2 full dimensions, no prompt patterns, no new fields
       expect(freeTier.dimensionInsights[2].strengths).toEqual([]);
       expect(freeTier.promptPatterns).toEqual([]);
       expect(freeTier.toolUsageDeepDive).toBeUndefined();
+      expect(freeTier.productivityAnalysis).toBeUndefined();
+      expect(freeTier.agentOutputs).toBeUndefined();
 
-      // Premium tier: all dimensions, prompt patterns, no analytics
+      // Premium tier: all dimensions, prompt patterns, productivity & agents, no analytics
       expect(premiumTier.dimensionInsights[2].strengths).toBeTruthy();
       expect(premiumTier.promptPatterns.length).toBeGreaterThan(0);
       expect(premiumTier.toolUsageDeepDive).toBeUndefined();
+      expect(premiumTier.productivityAnalysis).toBeDefined();
+      expect(premiumTier.agentOutputs).toBeDefined();
 
       // Enterprise tier: everything
       expect(enterpriseTier.dimensionInsights[2].strengths).toBeTruthy();
       expect(enterpriseTier.promptPatterns.length).toBeGreaterThan(0);
       expect(enterpriseTier.toolUsageDeepDive).toBeDefined();
+      expect(enterpriseTier.productivityAnalysis).toBeDefined();
+      expect(enterpriseTier.agentOutputs).toBeDefined();
+    });
+  });
+
+  describe('edge cases - null and undefined agent outputs', () => {
+    it('should handle evaluation with undefined productivityAnalysis', () => {
+      const evalWithoutProductivity: VerboseEvaluation = {
+        ...fullEvaluation,
+        productivityAnalysis: undefined,
+      };
+
+      const freeTier = gateway.filter(evalWithoutProductivity, 'free');
+      const premiumTier = gateway.filter(evalWithoutProductivity, 'premium');
+      const enterpriseTier = gateway.filter(evalWithoutProductivity, 'enterprise');
+
+      expect(freeTier.productivityAnalysis).toBeUndefined();
+      expect(premiumTier.productivityAnalysis).toBeUndefined();
+      expect(enterpriseTier.productivityAnalysis).toBeUndefined();
+    });
+
+    it('should handle evaluation with undefined agentOutputs', () => {
+      const evalWithoutAgents: VerboseEvaluation = {
+        ...fullEvaluation,
+        agentOutputs: undefined,
+      };
+
+      const freeTier = gateway.filter(evalWithoutAgents, 'free');
+      const premiumTier = gateway.filter(evalWithoutAgents, 'premium');
+      const enterpriseTier = gateway.filter(evalWithoutAgents, 'enterprise');
+
+      expect(freeTier.agentOutputs).toBeUndefined();
+      expect(premiumTier.agentOutputs).toBeUndefined();
+      expect(enterpriseTier.agentOutputs).toBeUndefined();
+    });
+
+    it('should handle evaluation with partial agentOutputs', () => {
+      const evalWithPartialAgents: VerboseEvaluation = {
+        ...fullEvaluation,
+        agentOutputs: {
+          patternDetective: fullEvaluation.agentOutputs?.patternDetective,
+          antiPatternSpotter: undefined,
+          knowledgeGap: undefined,
+          contextEfficiency: undefined,
+        },
+      };
+
+      const premiumTier = gateway.filter(evalWithPartialAgents, 'premium');
+
+      expect(premiumTier.agentOutputs).toBeDefined();
+      expect(premiumTier.agentOutputs?.patternDetective).toBeDefined();
+      expect(premiumTier.agentOutputs?.antiPatternSpotter).toBeUndefined();
+      expect(premiumTier.agentOutputs?.knowledgeGap).toBeUndefined();
+      expect(premiumTier.agentOutputs?.contextEfficiency).toBeUndefined();
+    });
+
+    it('should handle evaluation with empty agentOutputs object', () => {
+      const evalWithEmptyAgents: VerboseEvaluation = {
+        ...fullEvaluation,
+        agentOutputs: {},
+      };
+
+      const premiumTier = gateway.filter(evalWithEmptyAgents, 'premium');
+
+      expect(premiumTier.agentOutputs).toBeDefined();
+      expect(premiumTier.agentOutputs).toEqual({});
+    });
+
+    it('should correctly filter productivityAnalysis for free tier even when present', () => {
+      const filtered = gateway.filter(fullEvaluation, 'free');
+
+      // Ensure productivityAnalysis is removed for free tier
+      expect(filtered.productivityAnalysis).toBeUndefined();
+      // But ensure it was present in original
+      expect(fullEvaluation.productivityAnalysis).toBeDefined();
+    });
+
+    it('should correctly filter agentOutputs for free tier even when present', () => {
+      const filtered = gateway.filter(fullEvaluation, 'free');
+
+      // Ensure agentOutputs is removed for free tier
+      expect(filtered.agentOutputs).toBeUndefined();
+      // But ensure it was present in original
+      expect(fullEvaluation.agentOutputs).toBeDefined();
+    });
+  });
+
+  describe('new fields in tier progression', () => {
+    it('should not leak productivityAnalysis to free tier', () => {
+      const freeTier = gateway.filter(fullEvaluation, 'free');
+
+      // Free tier should have productivityAnalysis as undefined (not accessible)
+      expect(freeTier.productivityAnalysis).toBeUndefined();
+      // Verify the field exists in original
+      expect(fullEvaluation.productivityAnalysis).toBeDefined();
+    });
+
+    it('should not leak agentOutputs to free tier', () => {
+      const freeTier = gateway.filter(fullEvaluation, 'free');
+
+      // Free tier should have agentOutputs as undefined (not accessible)
+      expect(freeTier.agentOutputs).toBeUndefined();
+      // Verify the field exists in original
+      expect(fullEvaluation.agentOutputs).toBeDefined();
+    });
+
+    it('should preserve all agent output fields in premium tier', () => {
+      const premiumTier = gateway.filter(fullEvaluation, 'premium');
+
+      expect(premiumTier.agentOutputs?.patternDetective?.repeatedQuestionsData).toBe(
+        'React hooks:5:useEffect cleanup;TypeScript:3:generics'
+      );
+      expect(premiumTier.agentOutputs?.antiPatternSpotter?.errorLoopsData).toBe(
+        'TypeScript error:8:4.2:same error in 3 sessions'
+      );
+      expect(premiumTier.agentOutputs?.knowledgeGap?.knowledgeGapsData).toBe(
+        'async/await:7:shallow:Promise chaining unclear'
+      );
+      expect(premiumTier.agentOutputs?.contextEfficiency?.contextUsagePatternData).toBe(
+        'session1:85:92;session2:78:88'
+      );
+    });
+
+    it('should preserve all productivity analysis fields in premium tier', () => {
+      const premiumTier = gateway.filter(fullEvaluation, 'premium');
+
+      expect(premiumTier.productivityAnalysis?.iterationEfficiency.signalsData).toBe(
+        'rapid_iteration:session1:85;context_switching:session2:60'
+      );
+      expect(premiumTier.productivityAnalysis?.learningVelocity.overallScore).toBe(82);
+      expect(premiumTier.productivityAnalysis?.collaborationEffectiveness.narrative).toBe(
+        'You collaborate effectively with AI'
+      );
     });
   });
 });

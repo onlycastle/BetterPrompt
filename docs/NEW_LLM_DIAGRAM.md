@@ -1,70 +1,102 @@
+# Analysis Pipeline Class Diagram
+
+> ⚠️ **DEPRECATED**: This document has been superseded by [LLM_FLOW.md](./LLM_FLOW.md).
+>
+> The original Module B (PersonalityAnalyst) has been removed.
+> See LLM_FLOW.md for the current Orchestrator + Workers architecture.
+
+## Current Architecture (2025-01)
+
+```mermaid
 classDiagram
-    class SessionParser {
-        +String logPath
-        +parse(File) ParsedSession
-        -redactPII(String) String
+    class AnalysisOrchestrator {
+        +OrchestratorConfig config
+        +BaseWorker[] phase1Workers
+        +BaseWorker[] phase2Workers
+        +ContentWriterStage contentWriter
+        +analyze(sessions, metrics, tier) VerboseEvaluation
+        +registerPhase1Worker(worker)
+        +registerPhase2Worker(worker)
     }
 
-    class DataAnalyst {
-        +Model model
-        +analyze(ParsedSession) StructuredAnalysisData
-        -extractMetrics() SessionMetrics
-        -detectPatterns() List~Pattern~
-    }
-
-    class PersonalityAnalyst {
-        +MBTI_Framework mbti
-        +Saju_Framework saju
-        +profile(StructuredAnalysisData) PersonalityProfile
-    }
-
-    class KnowledgeLayer {
-        +VectorDB vectorDB
-        +retrieve(Query) List~Insight~
-        +getGuruQuotes(Context) List~String~
-    }
-
-    class BaseAgent {
+    class BaseWorker {
         <<abstract>>
-        +KnowledgeLayer knowledge
-        +process(StructuredAnalysisData) AgentInsight
+        +String name
+        +Phase phase
+        +execute(context) WorkerResult
+        +canRun(context) boolean
     }
 
-    class EconomicAgent {
-        +calculateROI() float
-        +findCostLeakage() List~Waste~
+    class DataAnalystWorker {
+        +phase: 1
+        +execute(context) StructuredAnalysisData
     }
 
-    class PeerReviewAgent {
-        +checkSecurity() List~Vulnerability~
-        +evaluateLogic() List~Advice~
+    class ProductivityAnalystWorker {
+        +phase: 1
+        +execute(context) ProductivityAnalysisData
     }
 
-    class ContextLibrarian {
-        +HistoryDB history
-        +findKnowledgeGaps() List~Gap~
-        +linkPreviousSessions() List~Link~
+    class PatternDetectiveWorker {
+        +phase: 2
+        +execute(context) PatternDetectiveOutput
     }
 
-    class ContentWriter {
-        +generateReport(AllInsights) VerboseEvaluation
-        -synthesizeNarrative() String
+    class AntiPatternSpotterWorker {
+        +phase: 2
+        +execute(context) AntiPatternSpotterOutput
     }
 
-    class LectureNoteGenerator {
-        +identifyRepeatedFailure() List~Topic~
-        +createStudyGuide(Topic) LectureNote
+    class KnowledgeGapWorker {
+        +phase: 2
+        +execute(context) KnowledgeGapOutput
+    }
+
+    class ContextEfficiencyWorker {
+        +phase: 2
+        +execute(context) ContextEfficiencyOutput
+    }
+
+    class ContentWriterStage {
+        +transform(data, sessions, productivity) VerboseLLMResponse
+    }
+
+    class ContentGateway {
+        +filter(evaluation, tier) VerboseEvaluation
     }
 
     %% Relationships
-    SessionParser ..> DataAnalyst : provides sanitized data
-    DataAnalyst --> SpecializedAgents : triggers
-    BaseAgent <|-- EconomicAgent
-    BaseAgent <|-- PeerReviewAgent
-    BaseAgent <|-- ContextLibrarian
-    BaseAgent o-- KnowledgeLayer : utilizes RAG
-    
-    ContentWriter o-- DataAnalyst
-    ContentWriter o-- PersonalityAnalyst
-    ContentWriter o-- BaseAgent : aggregates all
-    ContentWriter *-- LectureNoteGenerator : uses
+    AnalysisOrchestrator o-- BaseWorker : registers workers
+    BaseWorker <|-- DataAnalystWorker
+    BaseWorker <|-- ProductivityAnalystWorker
+    BaseWorker <|-- PatternDetectiveWorker
+    BaseWorker <|-- AntiPatternSpotterWorker
+    BaseWorker <|-- KnowledgeGapWorker
+    BaseWorker <|-- ContextEfficiencyWorker
+
+    AnalysisOrchestrator o-- ContentWriterStage
+    AnalysisOrchestrator ..> ContentGateway : uses for filtering
+```
+
+## Phase Execution Flow
+
+```
+Phase 1 (Parallel)
+├── DataAnalystWorker (Module A) ──→ StructuredAnalysisData
+└── ProductivityAnalystWorker (Module C) ──→ ProductivityAnalysisData
+         │
+         ▼
+Phase 2 (Parallel, Premium+ only)
+├── PatternDetectiveWorker ──→ PatternDetectiveOutput
+├── AntiPatternSpotterWorker ──→ AntiPatternSpotterOutput
+├── KnowledgeGapWorker ──→ KnowledgeGapOutput
+└── ContextEfficiencyWorker ──→ ContextEfficiencyOutput
+         │
+         ▼ (merged into AgentOutputs)
+
+Phase 3
+└── ContentWriterStage ──→ VerboseLLMResponse
+         │
+         ▼
+ContentGateway.filter(tier) ──→ VerboseEvaluation (final)
+```

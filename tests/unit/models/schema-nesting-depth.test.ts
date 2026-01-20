@@ -10,7 +10,6 @@
 import { describe, it, expect } from 'vitest';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { StructuredAnalysisDataSchema } from '../../../src/lib/models/analysis-data';
-import { PersonalityProfileSchema } from '../../../src/lib/models/personality';
 import { VerboseLLMResponseSchema } from '../../../src/lib/models/verbose-evaluation';
 
 /**
@@ -143,19 +142,6 @@ describe('Gemini Schema Nesting Depth', () => {
 
       // This test always passes, it's just for logging
       expect(maxDepth).toBeGreaterThan(0);
-    });
-  });
-
-  describe('PersonalityProfileSchema (Module B)', () => {
-    it(`should not exceed ${GEMINI_MAX_NESTING_DEPTH} levels of nesting`, () => {
-      const jsonSchema = zodToJsonSchema(PersonalityProfileSchema);
-      const maxDepth = calculateMaxNestingDepth(jsonSchema);
-      const deepestPath = findDeepestPath(jsonSchema);
-
-      expect(
-        maxDepth,
-        `Schema exceeds Gemini's max nesting depth.\nDeepest path: ${deepestPath.path}\nDepth: ${deepestPath.depth}\nMax allowed: ${GEMINI_MAX_NESTING_DEPTH}`
-      ).toBeLessThanOrEqual(GEMINI_MAX_NESTING_DEPTH);
     });
   });
 

@@ -12,6 +12,7 @@
 import { z } from 'zod';
 import { CodingStyleTypeSchema, AIControlLevelSchema } from './coding-style';
 import { ProductivityAnalysisDataSchema } from './productivity-data';
+import { AgentOutputsSchema } from './agent-outputs';
 
 // ============================================================================
 // ANALYZED SESSION INFO - Metadata about sessions included in analysis
@@ -723,45 +724,6 @@ export const TopFocusAreasSchema = z.object({
 export type TopFocusAreas = z.infer<typeof TopFocusAreasSchema>;
 
 // ============================================================================
-// PERSONALITY INSIGHTS SCHEMA (User-Facing - No Labels/Scores)
-// ============================================================================
-
-/**
- * Personality insights for the user
- * Uses 4 storytelling techniques to create "Oh wow, they really know me!" feeling
- *
- * IMPORTANT: NO MBTI codes, NO psychological terms, NO scores
- * Only natural, conversational observations
- *
- * 4 Techniques:
- * 1. Specific Evidence - "You said '/plan' 8 times..."
- * 2. Confirmation Pattern - "You like to see the whole picture, don't you?"
- * 3. Strength-Shadow Connection - "That speed is great, but sometimes..."
- * 4. Daily Life Bridge - "Probably your motto outside coding too, right?"
- */
-export const PersonalityInsightsSchema = z.object({
-  /** Core observation with evidence and "~시죠?/don't you?" pattern */
-  // NOTE: min constraint removed - Gemini doesn't reliably follow minimum length requirements
-  coreObservation: z.string().max(300)
-    .describe('Lead with specific evidence + confirmation question (target: 100-300 chars)'),
-
-  /** How their personality connects to their coding strengths */
-  // NOTE: min constraint removed for consistency with Gemini behavior
-  strengthConnection: z.string().max(300)
-    .describe('Connect personality trait to coding strength (target: 100-300 chars)'),
-
-  /** Growth opportunity framed through strength-shadow connection */
-  // NOTE: min constraint removed for consistency with Gemini behavior
-  growthOpportunity: z.string().max(300)
-    .describe('Frame growth as flip side of strength (target: 100-300 chars)'),
-
-  /** Daily life connection for deeper rapport (optional) */
-  dailyLifeConnection: z.string().max(150).optional()
-    .describe('Connect coding style to real life for "wow" moment'),
-});
-export type PersonalityInsights = z.infer<typeof PersonalityInsightsSchema>;
-
-// ============================================================================
 // PREMIUM TIER SCHEMAS (LOCKED)
 // ============================================================================
 
@@ -919,13 +881,13 @@ export const VerboseEvaluationSchema = z.object({
   topFocusAreas: TopFocusAreasSchema.optional()
     .describe('Top 3 personalized priorities - the MOST ACTIONABLE part'),
 
-  // NEW: Personality Insights (from Module B personalityProfile)
-  personalityInsights: PersonalityInsightsSchema.optional()
-    .describe('Personality-driven insights using 4 storytelling techniques'),
-
   // NEW: Productivity Analysis (from Module C)
   productivityAnalysis: ProductivityAnalysisDataSchema.optional()
     .describe('Productivity metrics including iteration efficiency, learning velocity, and collaboration effectiveness'),
+
+  // NEW: Agent Outputs (from Phase 2 Wow Agents - Premium only)
+  agentOutputs: AgentOutputsSchema.optional()
+    .describe('Insights from 4 Wow-Focused agents: Pattern Detective, Anti-Pattern Spotter, Knowledge Gap, Context Efficiency'),
 
   // PREMIUM TIER - Locked content
   toolUsageDeepDive: z.array(ToolUsageInsightSchema).optional(),
@@ -994,9 +956,5 @@ export const VerboseLLMResponseSchema = z.object({
   // Top 3 Focus Areas (from Stage 1) - LLM version with flattened actions
   topFocusAreas: LLMTopFocusAreasSchema.optional()
     .describe('Top 3 personalized priorities - the MOST ACTIONABLE part'),
-
-  // Personality Insights (from Module B personalityProfile)
-  personalityInsights: PersonalityInsightsSchema.optional()
-    .describe('Personality-driven insights using 4 storytelling techniques'),
 });
 export type VerboseLLMResponse = z.infer<typeof VerboseLLMResponseSchema>;

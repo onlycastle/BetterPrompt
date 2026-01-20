@@ -1,0 +1,446 @@
+/**
+ * AgentInsightsSection Styles - Terminal-inspired Notebook Style
+ * Displays 4 Wow Agent outputs in a grid of cards
+ */
+
+.container {
+  margin-top: var(--space-xl);
+}
+
+/* Header */
+.header {
+  margin-bottom: var(--space-lg);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.terminalIcon {
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  color: var(--sketch-cyan);
+  font-weight: var(--weight-bold);
+}
+
+.title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  margin: 0;
+  font-family: var(--font-primary);
+}
+
+.subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Agent Grid */
+.agentGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-md);
+}
+
+/* Agent Card */
+.agentCard {
+  background: var(--surface-1);
+  border: 1.5px solid var(--ink-muted);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.agentCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Color variants */
+.purple {
+  border-left: 4px solid var(--sketch-purple);
+}
+
+.purple .agentIcon {
+  background: var(--sketch-purple-light);
+}
+
+.red {
+  border-left: 4px solid var(--sketch-red);
+}
+
+.red .agentIcon {
+  background: var(--sketch-red-light);
+}
+
+.cyan {
+  border-left: 4px solid var(--sketch-cyan);
+}
+
+.cyan .agentIcon {
+  background: var(--sketch-cyan-soft);
+}
+
+.yellow {
+  border-left: 4px solid var(--sketch-yellow);
+}
+
+.yellow .agentIcon {
+  background: var(--sketch-yellow-light);
+}
+
+/* Card Header */
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-md);
+  gap: var(--space-sm);
+}
+
+.agentInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.agentIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+}
+
+.agentName {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+  font-family: var(--font-primary);
+}
+
+/* Score Gauge */
+.scoreGauge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.scoreValue {
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.scoreLabel {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.scoreGauge.high {
+  background: var(--sketch-green-light);
+}
+
+.scoreGauge.high .scoreValue {
+  color: var(--sketch-green-dark);
+}
+
+.scoreGauge.medium {
+  background: var(--sketch-yellow-light);
+}
+
+.scoreGauge.medium .scoreValue {
+  color: var(--sketch-yellow-dark);
+}
+
+.scoreGauge.low {
+  background: var(--sketch-red-light);
+}
+
+.scoreGauge.low .scoreValue {
+  color: var(--sketch-red);
+}
+
+/* Insights Box */
+.insightsBox {
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--ink-muted);
+}
+
+.insightsHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.sparkle {
+  font-size: var(--text-sm);
+}
+
+.insightsLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.insightsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.insightItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}
+
+.bullet {
+  color: var(--sketch-purple);
+  font-weight: var(--weight-bold);
+  flex-shrink: 0;
+}
+
+.insightText {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Summary Box */
+.summaryBox {
+  margin-bottom: var(--space-md);
+}
+
+.summaryText {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Expand Button */
+.expandButton {
+  width: 100%;
+  padding: var(--space-xs) var(--space-sm);
+  background: transparent;
+  border: 1px solid var(--ink-muted);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: var(--font-mono);
+}
+
+.expandButton:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border-color: var(--sketch-purple);
+}
+
+/* Details Box */
+.detailsBox {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px dashed var(--ink-muted);
+}
+
+.detailsContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* Detail Section */
+.detailSection {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm);
+}
+
+.detailSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--ink-muted);
+}
+
+.detailIcon {
+  font-size: var(--text-sm);
+}
+
+.detailTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.detailSectionContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+/* Detail Item */
+.detailItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.detailLabel {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: var(--weight-medium);
+}
+
+.detailValue {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  background: var(--surface-1);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.detailCode {
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--sketch-purple);
+  background: var(--surface-1);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.detailExample {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-style: italic;
+  flex-basis: 100%;
+  margin-top: 2px;
+}
+
+/* Badges */
+.depthBadge {
+  font-size: var(--text-xs);
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: capitalize;
+}
+
+.depthBadge.shallow {
+  background: var(--sketch-yellow-light);
+  color: var(--sketch-yellow-dark);
+}
+
+.depthBadge.moderate {
+  background: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan);
+}
+
+.depthBadge.deep {
+  background: var(--sketch-green-light);
+  color: var(--sketch-green-dark);
+}
+
+.impactBadge {
+  font-size: var(--text-xs);
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: capitalize;
+}
+
+.impactBadge.high {
+  background: var(--sketch-red-light);
+  color: var(--sketch-red);
+}
+
+.impactBadge.medium {
+  background: var(--sketch-yellow-light);
+  color: var(--sketch-yellow-dark);
+}
+
+.impactBadge.low {
+  background: var(--sketch-green-light);
+  color: var(--sketch-green-dark);
+}
+
+.resourceType {
+  font-size: var(--text-xs);
+  color: var(--sketch-cyan);
+  background: var(--sketch-cyan-soft);
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: capitalize;
+}
+
+/* Metric Row */
+.metricRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+
+.metricLabel {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.metricValue {
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .agentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cardHeader {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .scoreGauge {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .detailItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-xs);
+  }
+}
