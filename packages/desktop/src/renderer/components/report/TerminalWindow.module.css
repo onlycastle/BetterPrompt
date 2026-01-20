@@ -44,10 +44,17 @@
   border-radius: 50%;
   border: 1.5px solid var(--ink-primary);
   cursor: default;
+  padding: 0;
 }
 
 .terminalBtn.close {
   background: var(--sketch-red);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.terminalBtn.close:hover {
+  opacity: 0.8;
 }
 
 .terminalBtn.minimize {
@@ -69,6 +76,13 @@
 
 .terminalSpacer {
   width: 52px;
+}
+
+/* Content Area - Scrollable */
+.terminalContent {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Responsive Design */

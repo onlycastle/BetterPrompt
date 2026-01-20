@@ -161,24 +161,48 @@ export interface GrowthArea {
   resources?: string[];
 }
 
+export type PromptFrequency = 'frequent' | 'occasional' | 'rare';
+export type PromptEffectiveness = 'highly_effective' | 'effective' | 'could_improve';
+
 export interface PromptPattern {
   patternName: string;
   description: string;
-  frequency: 'frequent' | 'occasional' | 'rare';
+  frequency: PromptFrequency;
   examples: Array<{
     quote: string;
     analysis: string;
   }>;
-  impact: string;
-  isStrength: boolean;
+  effectiveness: PromptEffectiveness;
+  tip?: string;
+}
+
+// Dimension types matching backend schema
+export type DimensionName =
+  | 'aiCollaboration'
+  | 'contextEngineering'
+  | 'toolMastery'
+  | 'burnoutRisk'
+  | 'aiControl'
+  | 'skillResilience';
+
+export interface DimensionStrength {
+  title: string;
+  description: string;
+  evidence?: string[];
+}
+
+export interface DimensionGrowthArea {
+  title: string;
+  description: string;
+  evidence?: string[];
+  recommendation: string;
 }
 
 export interface PerDimensionInsight {
-  dimensionId: string;
-  overallScore: number;
-  interpretation: string;
-  strengths: Array<{ title: string; description: string }>;
-  growthAreas: Array<{ title: string; description: string; recommendation: string }>;
+  dimension: DimensionName;
+  dimensionDisplayName: string;
+  strengths: DimensionStrength[];
+  growthAreas: DimensionGrowthArea[];
 }
 
 export interface VerboseEvaluation {
@@ -200,7 +224,7 @@ export interface VerboseEvaluation {
   strengths: PersonalizedStrength[];
   growthAreas: GrowthArea[];
   promptPatterns: PromptPattern[];
-  perDimensionInsights?: PerDimensionInsight[];
+  dimensionInsights?: PerDimensionInsight[];
 
   // Context efficiency metrics
   contextEfficiencyScore?: number;

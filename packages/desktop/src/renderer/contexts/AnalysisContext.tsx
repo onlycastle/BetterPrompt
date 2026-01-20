@@ -8,6 +8,7 @@
  */
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { saveAnalysis } from '../utils/analysisStorage';
 
 /**
  * Summary of auto-selected sessions
@@ -102,6 +103,16 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         if (result.error) {
           setAnalysisError(result.error);
           return null;
+        }
+
+        // Save to localStorage for Personal page
+        if (result.resultId) {
+          saveAnalysis({
+            resultId: result.resultId,
+            completedAt: new Date().toISOString(),
+            sessionCount: scanSummary.sessionCount,
+            projectCount: scanSummary.projectCount,
+          });
         }
 
         return result.resultId;

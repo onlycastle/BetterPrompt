@@ -32,7 +32,7 @@ export function setupIpcHandlers(getMainWindow: () => BrowserWindow | null): voi
   ipcMain.handle('scan-sessions', async () => {
     try {
       console.log('[IPC] Scanning and auto-selecting sessions...');
-      const summary = await scanAndSelectSessions(15);
+      const summary = await scanAndSelectSessions(10);
 
       // Store for later use in analysis
       lastScanSummary = summary;
@@ -47,34 +47,54 @@ export function setupIpcHandlers(getMainWindow: () => BrowserWindow | null): voi
 
   // Start analysis - uses auto-selected sessions
   ipcMain.handle('start-analysis', async (_event, { userId, accessToken }) => {
+    console.log('[IPC] start-analysis called');
+    console.log('[IPC] userId:', userId);
+    console.log('[IPC] hasAccessToken:', !!accessToken);
+
     try {
       if (!lastScanSummary || lastScanSummary.sessionCount === 0) {
+        console.error('[IPC] No sessions available');
         throw new Error('No sessions available. Please scan first.');
       }
 
-      console.log(`[IPC] Starting analysis for ${lastScanSummary.sessionCount} sessions, userId: ${userId}`);
+      console.log('[IPC] lastScanSummary:', {
+        sessionCount: lastScanSummary.sessionCount,
+        projectCount: lastScanSummary.projectCount,
+        totalTokens: lastScanSummary.totalTokens,
+        totalMessages: lastScanSummary.totalMessages,
+      });
 
       const mainWindow = getMainWindow();
       if (!mainWindow) {
+        console.error('[IPC] Main window not available');
         throw new Error('Main window not available');
       }
 
-      // Load full session data from auto-selected paths
+      console.log('[IPC] Loading full session data from paths...');
       const scanResult = await loadSessionsForAnalysis(lastScanSummary.sessionPaths);
 
       if (scanResult.sessions.length === 0) {
+        console.error('[IPC] No sessions loaded from paths');
         throw new Error('Failed to load session data');
       }
 
-      console.log(`[IPC] Loaded ${scanResult.sessions.length} sessions, uploading...`);
+      console.log('[IPC] Session data loaded:', {
+        sessionsCount: scanResult.sessions.length,
+        totalMessages: scanResult.totalMessages,
+        totalDurationMinutes: scanResult.totalDurationMinutes,
+      });
 
-      // Upload and analyze (accessToken for server-side auth)
+      console.log('[IPC] Starting upload for analysis...');
       const result = await uploadForAnalysis(scanResult, userId, mainWindow, accessToken);
 
-      console.log(`[IPC] Analysis complete, resultId: ${result.resultId}`);
+      console.log('[IPC] Analysis complete:', {
+        resultId: result.resultId,
+        reportUrl: result.reportUrl,
+      });
       return { resultId: result.resultId, error: null };
     } catch (error) {
       console.error('[IPC] Analysis error:', error);
+      console.error('[IPC] Error stack:', (error as Error).stack);
       return { resultId: null, error: (error as Error).message };
     }
   });

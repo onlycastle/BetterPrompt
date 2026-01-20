@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePersonalAnalytics } from '../hooks';
+import { getStoredAnalyses, type StoredAnalysis } from '../utils/analysisStorage';
 import styles from './PersonalPage.module.css';
 
 interface PersonalPageProps {
@@ -75,21 +76,53 @@ export default function PersonalPage({ onViewReport }: PersonalPageProps) {
   );
 }
 
+function formatDate(isoString: string): string {
+  const date = new Date(isoString);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function ReportTabContent({ onViewReport }: { onViewReport?: (resultId: string) => void }) {
+  const analyses = getStoredAnalyses();
+
+  if (analyses.length === 0) {
+    return (
+      <div className={styles.tabContent}>
+        <div className={styles.emptyState}>
+          <span className={styles.emptyIcon}>📊</span>
+          <h3>No Analysis Reports Yet</h3>
+          <p>
+            Run your first analysis to see your AI coding insights here.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.tabContent}>
-      <div className={styles.emptyState}>
-        <span className={styles.emptyIcon}>📊</span>
-        <h3>Your Analysis Reports</h3>
-        <p>
-          View your past AI coding analyses and track your progress over time.
-        </p>
-        <button
-          className={styles.ctaButton}
-          onClick={() => onViewReport?.('latest')}
-        >
-          View Latest Analysis
-        </button>
+      <h3>Your Analysis Reports</h3>
+      <div className={styles.reportList}>
+        {analyses.map((analysis) => (
+          <button
+            key={analysis.resultId}
+            className={styles.reportCard}
+            onClick={() => onViewReport?.(analysis.resultId)}
+          >
+            <div className={styles.reportInfo}>
+              <span className={styles.reportDate}>{formatDate(analysis.completedAt)}</span>
+              <span className={styles.reportMeta}>
+                {analysis.sessionCount} sessions • {analysis.projectCount} projects
+              </span>
+            </div>
+            <span className={styles.reportArrow}>→</span>
+          </button>
+        ))}
       </div>
     </div>
   );

@@ -304,3 +304,59 @@
   color: var(--text-secondary);
   line-height: var(--leading-normal);
 }
+
+/* Report List */
+.reportList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.reportCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: var(--surface-1);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  font-family: var(--font-primary);
+  text-align: left;
+}
+
+.reportCard:hover {
+  background: var(--surface-2);
+  border-color: var(--ink-primary);
+  transform: translateX(4px);
+}
+
+.reportInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.reportDate {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.reportMeta {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.reportArrow {
+  font-size: 1.25rem;
+  color: var(--text-tertiary);
+  transition: transform var(--transition-normal);
+}
+
+.reportCard:hover .reportArrow {
+  transform: translateX(4px);
+  color: var(--accent-primary);
+}

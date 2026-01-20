@@ -2,11 +2,16 @@
  * Analysis Results API Route
  *
  * Fetches analysis result by ID for web UI
- * Implements tiered access: FREE users see preview data, PAID users see full data
+ * Implements tiered access:
+ * - FREE users see preview data
+ * - Users who unlocked with credits see full data
+ * - Legacy is_paid results still work (backwards compatible)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type User } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import type { VerboseEvaluation, PromptPattern, PerDimensionInsight } from '@/lib/models/verbose-evaluation';
 
 interface RouteContext {
@@ -107,17 +112,69 @@ function getPreviewMetadata(evaluation: VerboseEvaluation) {
 }
 
 /**
- * Get Supabase client
+ * Get Supabase admin client (service role)
  */
-function getSupabaseClient() {
+function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required');
   }
 
-  return createClient(supabaseUrl, supabaseKey);
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
+/**
+ * Create Supabase server client with cookie access
+ */
+async function createSupabaseServerClient() {
+  const cookieStore = await cookies();
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
+}
+
+/**
+ * Get user from Authorization header (for desktop app)
+ */
+async function getUserFromAuthHeader(request: NextRequest): Promise<User | null> {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = authHeader.slice(7);
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) {
+    return null;
+  }
+
+  return data.user;
 }
 
 /**
@@ -139,8 +196,9 @@ export async function GET(
       );
     }
 
-    const supabase = getSupabaseClient();
+    const supabase = getSupabaseAdmin();
 
+    // 1. Fetch the result
     const { data, error } = await supabase
       .from('analysis_results')
       .select('evaluation, is_paid')
@@ -156,14 +214,66 @@ export async function GET(
 
     const evaluation = data.evaluation as VerboseEvaluation;
 
-    // FREE users: return preview data only
-    if (!data.is_paid) {
+    // 2. Check if result is already paid (legacy or via credit unlock)
+    let isPaid = data.is_paid;
+
+    // 3. If not paid, check if current user has unlocked it via credits
+    if (!isPaid) {
+      // Try to get authenticated user
+      let user: User | null = await getUserFromAuthHeader(request);
+
+      if (!user) {
+        try {
+          const serverSupabase = await createSupabaseServerClient();
+          const { data: authData } = await serverSupabase.auth.getUser();
+          user = authData.user;
+        } catch {
+          // Cookie access might fail in some contexts, continue without user
+        }
+      }
+
+      if (user) {
+        // Check if user has unlocked this result via credits
+        const { data: hasUnlocked } = await supabase.rpc('has_unlocked_result', {
+          p_user_id: user.id,
+          p_result_id: resultId,
+        });
+
+        if (hasUnlocked) {
+          isPaid = true;
+        }
+      }
+    }
+
+    // 4. Get user's credit info if authenticated
+    let credits: number | null = null;
+    let user: User | null = await getUserFromAuthHeader(request);
+    if (!user) {
+      try {
+        const serverSupabase = await createSupabaseServerClient();
+        const { data: authData } = await serverSupabase.auth.getUser();
+        user = authData.user;
+      } catch {
+        // Continue without user
+      }
+    }
+
+    if (user) {
+      const { data: creditInfo } = await supabase.rpc('get_user_credit_info', {
+        p_user_id: user.id,
+      });
+      credits = creditInfo?.credits ?? null;
+    }
+
+    // 5. Return preview or full data
+    if (!isPaid) {
       const previewEvaluation = createPreviewEvaluation(evaluation);
       return NextResponse.json({
         resultId,
         isPaid: false,
         evaluation: previewEvaluation,
         preview: getPreviewMetadata(evaluation),
+        credits,
       });
     }
 
@@ -172,6 +282,7 @@ export async function GET(
       resultId,
       isPaid: true,
       evaluation,
+      credits,
     });
   } catch (error) {
     console.error('Error loading remote result:', error);

@@ -3,19 +3,33 @@
  *
  * AWS Lambda version of /api/analysis/remote with:
  * - Lambda Response Streaming for SSE
- * - Supabase Storage integration for large payloads (>6MB)
+ * - S3 presigned URL for large payloads (client uploads directly to S3)
  * - 15 minute timeout
  *
  * Routes:
- * - POST /upload-url: Generate Supabase Storage signed upload URL
- * - POST /analyze: Analyze from Supabase Storage
+ * - POST /upload-url: Generate S3 presigned upload URL
+ * - POST /analyze: Analyze from S3
  * - POST / (default): Direct upload (legacy, <6MB only)
+ *
+ * Architecture (S3 flow):
+ * 1. Client calls /upload-url → gets S3 presigned PUT URL
+ * 2. Client uploads directly to S3 (bypasses Lambda payload limits)
+ * 3. Client calls /analyze with s3Key
+ * 4. Lambda reads from S3 (same region = fast), runs analysis
+ * 5. Lambda streams SSE progress back to client
  */
 
 import { Writable } from "node:stream";
 import { gunzipSync } from "node:zlib";
 import * as crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 /**
  * Lambda event type
@@ -42,6 +56,13 @@ import {
 
 // Maximum body size - 50MB (Lambda supports up to 6MB sync, but streaming allows more)
 const MAX_BODY_SIZE = 50 * 1024 * 1024;
+
+// S3 client for large payload uploads (same region as Lambda for low latency)
+const s3Client = new S3Client({ region: process.env.AWS_REGION || "ap-northeast-2" });
+const UPLOAD_BUCKET = process.env.UPLOAD_BUCKET_NAME || "";
+
+// Presigned URL expiration (15 minutes - enough time for large uploads)
+const PRESIGNED_URL_EXPIRY = 15 * 60;
 
 /**
  * Session data from CLI (legacy v1 format - raw JSONL)
@@ -713,7 +734,12 @@ async function runAnalysis(
 }
 
 /**
- * Handle GET /upload-url - Generate Supabase Storage signed upload URL
+ * Handle GET /upload-url - Generate S3 presigned upload URL
+ *
+ * Uses AWS S3 in the same region as Lambda for:
+ * - Low latency uploads (same region)
+ * - Direct S3 access from Lambda (no external network)
+ * - Support for large files (up to 5GB with multipart)
  */
 async function handleGetUploadUrl(
   event: LambdaEvent,
@@ -729,38 +755,38 @@ async function handleGetUploadUrl(
   responseStream = awslambda.HttpResponseStream.from(responseStream, metadata);
 
   try {
-    if (!isSupabaseConfigured()) {
+    if (!UPLOAD_BUCKET) {
+      console.error("[lambda] UPLOAD_BUCKET_NAME not configured");
       responseStream.write(JSON.stringify({ error: "Storage not configured" }));
       responseStream.end();
       return;
     }
 
-    const supabase = getSupabaseClient();
     const uploadId = crypto.randomUUID();
-    const storagePath = `sessions/${uploadId}.json.gz`;
+    const s3Key = `sessions/${uploadId}.json.gz`;
 
-    console.log(`[lambda] Creating signed upload URL for: ${storagePath}`);
+    console.log(`[lambda] Creating S3 presigned URL for: ${s3Key} in bucket: ${UPLOAD_BUCKET}`);
 
-    const { data, error } = await supabase.storage
-      .from("uploads")
-      .createSignedUploadUrl(storagePath);
+    // Generate presigned PUT URL for direct client upload
+    const command = new PutObjectCommand({
+      Bucket: UPLOAD_BUCKET,
+      Key: s3Key,
+      ContentType: "application/octet-stream",
+    });
 
-    if (error) {
-      console.error("[lambda] Failed to create upload URL:", error);
-      responseStream.write(JSON.stringify({ error: error.message }));
-      responseStream.end();
-      return;
-    }
+    const signedUrl = await getSignedUrl(s3Client, command, {
+      expiresIn: PRESIGNED_URL_EXPIRY,
+    });
 
-    console.log(`[lambda] Upload URL created successfully`);
+    console.log(`[lambda] S3 presigned URL created successfully`);
     responseStream.write(JSON.stringify({
-      signedUrl: data.signedUrl,
-      token: data.token,
-      path: data.path,
-      storagePath,
+      signedUrl,
+      s3Key,
+      bucket: UPLOAD_BUCKET,
+      expiresIn: PRESIGNED_URL_EXPIRY,
     }));
   } catch (err) {
-    console.error("[lambda] Upload URL error:", err);
+    console.error("[lambda] S3 upload URL error:", err);
     responseStream.write(JSON.stringify({
       error: err instanceof Error ? err.message : "Unknown error",
     }));
@@ -769,7 +795,10 @@ async function handleGetUploadUrl(
 }
 
 /**
- * Handle POST /analyze - Analyze from Supabase Storage
+ * Handle POST /analyze - Analyze from S3
+ *
+ * Reads session data from S3 (same region as Lambda for low latency),
+ * runs analysis, and streams progress via SSE.
  */
 async function handleAnalyzeFromStorage(
   event: LambdaEvent,
@@ -787,6 +816,8 @@ async function handleAnalyzeFromStorage(
   responseStream = awslambda.HttpResponseStream.from(responseStream, metadata);
 
   const write = (evt: SSEEvent) => responseStream.write(formatSSE(evt));
+
+  let s3Key: string | undefined;
 
   try {
     // Validate auth token and extract userId (optional - CLI users don't need auth)
@@ -807,8 +838,18 @@ async function handleAnalyzeFromStorage(
       return;
     }
 
+    if (!UPLOAD_BUCKET) {
+      write({
+        type: "error",
+        code: "SERVER_CONFIG_ERROR",
+        message: "Storage not configured. Please contact support.",
+      });
+      responseStream.end();
+      return;
+    }
+
     // Parse request body
-    let requestBody: { storagePath: string };
+    let requestBody: { s3Key: string };
     try {
       if (event.isBase64Encoded) {
         requestBody = JSON.parse(Buffer.from(event.body, "base64").toString("utf-8"));
@@ -825,45 +866,52 @@ async function handleAnalyzeFromStorage(
       return;
     }
 
-    if (!requestBody.storagePath) {
+    if (!requestBody.s3Key) {
       write({
         type: "error",
         code: "INVALID_REQUEST",
-        message: "storagePath is required",
+        message: "s3Key is required",
       });
       responseStream.end();
       return;
     }
+
+    s3Key = requestBody.s3Key;
 
     write({
       type: "progress",
       stage: "preparing",
       progress: 5,
-      message: "Downloading from storage...",
+      message: "Downloading from S3...",
     });
 
-    // Download from Supabase Storage
-    const supabase = getSupabaseClient();
-    console.log(`[lambda] Downloading from storage: ${requestBody.storagePath}`);
+    // Download from S3 (same region = fast)
+    console.log(`[lambda] Downloading from S3: ${UPLOAD_BUCKET}/${s3Key}`);
 
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from("uploads")
-      .download(requestBody.storagePath);
+    const getCommand = new GetObjectCommand({
+      Bucket: UPLOAD_BUCKET,
+      Key: s3Key,
+    });
 
-    if (downloadError || !fileData) {
-      console.error("[lambda] Download error:", downloadError);
+    const s3Response = await s3Client.send(getCommand);
+
+    if (!s3Response.Body) {
       write({
         type: "error",
         code: "DOWNLOAD_FAILED",
-        message: downloadError?.message || "Failed to download from storage",
+        message: "Failed to download from S3: empty response",
       });
       responseStream.end();
       return;
     }
 
-    // Convert Blob to Buffer
-    const rawBuffer = Buffer.from(await fileData.arrayBuffer());
-    console.log(`[lambda] Downloaded ${rawBuffer.length} bytes from storage`);
+    // Convert stream to buffer
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of s3Response.Body as AsyncIterable<Uint8Array>) {
+      chunks.push(chunk);
+    }
+    const rawBuffer = Buffer.concat(chunks);
+    console.log(`[lambda] Downloaded ${rawBuffer.length} bytes from S3`);
 
     // Check for gzip and decompress
     let bodyText: string;
@@ -879,7 +927,7 @@ async function handleAnalyzeFromStorage(
     let body: AnalysisRequest;
     try {
       body = JSON.parse(bodyText) as AnalysisRequest;
-      console.log(`[lambda] Parsed ${body.sessions?.length || 0} sessions from storage`);
+      console.log(`[lambda] Parsed ${body.sessions?.length || 0} sessions from S3`);
     } catch (parseError) {
       write({
         type: "error",
@@ -904,15 +952,19 @@ async function handleAnalyzeFromStorage(
     // Run the shared analysis logic (userId from auth validation above)
     await runAnalysis(body, geminiApiKey, write, userId);
 
-    // Clean up: delete the uploaded file from storage
+    // Clean up: delete the uploaded file from S3
     try {
-      await supabase.storage.from("uploads").remove([requestBody.storagePath]);
-      console.log(`[lambda] Cleaned up storage file: ${requestBody.storagePath}`);
+      const deleteCommand = new DeleteObjectCommand({
+        Bucket: UPLOAD_BUCKET,
+        Key: s3Key,
+      });
+      await s3Client.send(deleteCommand);
+      console.log(`[lambda] Cleaned up S3 file: ${s3Key}`);
     } catch (cleanupError) {
-      console.warn("[lambda] Failed to cleanup storage file:", cleanupError);
+      console.warn("[lambda] Failed to cleanup S3 file:", cleanupError);
     }
   } catch (error) {
-    console.error("[lambda] Analysis from storage error:", error);
+    console.error("[lambda] Analysis from S3 error:", error);
     write({
       type: "error",
       code: "ANALYSIS_FAILED",
