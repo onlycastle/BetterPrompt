@@ -52,6 +52,20 @@ export const PERSONALITY_ANALYST_FORMAT: SessionFormatOptions = {
 };
 
 /**
+ * Preset for Productivity Analyst stage (Module C)
+ * - Both user and Claude messages (for iteration tracking)
+ * - Tool calls included (for context switch detection)
+ * - 1500 char content limit
+ * - Duration included (for efficiency metrics)
+ */
+export const PRODUCTIVITY_ANALYST_FORMAT: SessionFormatOptions = {
+  maxContentLength: 1500,
+  includeAssistantMessages: true,
+  includeToolCalls: true,
+  includeDuration: true,
+};
+
+/**
  * Format a single message for analysis
  */
 function formatMessage(

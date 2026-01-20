@@ -359,13 +359,15 @@ export function buildKnowledgeContextSection(
  * @param sessionCount - Number of sessions analyzed
  * @param useKorean - Whether to generate content in Korean
  * @param kbContext - Optional knowledge base context for tip generation
+ * @param productivityData - JSON string of productivity analysis (Module C) - optional
  */
 export function buildContentWriterUserPrompt(
   structuredData: string,
   personalityData: string,
   sessionCount: number,
   useKorean: boolean = false,
-  kbContext?: PatternKnowledgeContext
+  kbContext?: PatternKnowledgeContext,
+  productivityData?: string
 ): string {
   // Korean-specific instructions for different sections
   const koreanHeader = useKorean
@@ -418,6 +420,14 @@ Do NOT write pattern names, descriptions, tips, or analysis in English.
     ? buildKnowledgeContextSection(kbContext, useKorean)
     : '';
 
+  // Build productivity data section if provided
+  const productivityDataSection = productivityData
+    ? `
+## Productivity Analysis (from Module C - Efficiency Metrics)
+${productivityData}
+`
+    : '';
+
   return `# Context Data
 
 This developer has ${sessionCount} sessions analyzed.
@@ -427,7 +437,7 @@ ${structuredData}
 
 ## Personality Profile (from Module B - Personality Analysis)
 ${personalityData}
-${kbContextSection}
+${productivityDataSection}${kbContextSection}
 # Transformation Instructions
 
 Using the extracted data above, create a VerboseLLMResponse:

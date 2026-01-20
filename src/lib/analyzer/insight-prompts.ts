@@ -88,6 +88,28 @@ const DIMENSION_DESCRIPTIONS: Record<
     growthDesc:
       "Balancing AI assistance with skill practice protects your expertise and keeps you sharp.",
   },
+  // New dimensions (Phase 3 - Premium/Enterprise)
+  iterationEfficiency: {
+    name: 'Iteration Efficiency',
+    strengthDesc:
+      'You complete iteration cycles efficiently, resolving issues within 2-3 turns. Your targeted refinements minimize wasted effort.',
+    growthDesc:
+      'Improving iteration efficiency means clearer requirements and more targeted requests. Each cycle should move you closer to your goal.',
+  },
+  learningVelocity: {
+    name: 'Learning Velocity',
+    strengthDesc:
+      'You actively learn from AI interactions, asking "why" to build transferable knowledge. You grow stronger with each session.',
+    growthDesc:
+      'Increasing learning velocity means turning AI interactions into lasting knowledge. Ask "why" to understand, not just "how" to implement.',
+  },
+  scopeManagement: {
+    name: 'Scope Management',
+    strengthDesc:
+      'You maintain clear task boundaries, avoiding scope creep. Your focused requests lead to precise AI outputs.',
+    growthDesc:
+      'Better scope management means one task per request. "Also add X" often leads to lower quality results.',
+  },
 };
 
 // ============================================
@@ -170,6 +192,43 @@ const ADVICE_TEMPLATES: Record<DimensionName, AdviceTemplate> = {
       'Try implementing small features without AI once a week. This keeps your skills sharp.',
       'Before asking AI, spend 5 minutes thinking about the approach. Then compare with AI suggestions.',
       'Understand the WHY behind AI solutions, not just the WHAT. This transfers learning to you.',
+    ],
+  },
+  // New dimensions (Phase 3 - Premium/Enterprise)
+  iterationEfficiency: {
+    reinforcement: [
+      'Your targeted refinement approach minimizes wasted iterations. You specify exactly what to change.',
+      'The way you break down issues into specific fixes shows iteration mastery.',
+      'Your 2-3 turn resolution pattern is exactly what efficient AI collaboration looks like.',
+    ],
+    improvement: [
+      'Before asking for changes, specify exactly what to modify: "Only change the X function".',
+      'If the same error appears 3+ times, step back and try a fundamentally different approach.',
+      'After 4 turns on the same issue, consider whether your requirements are clear enough.',
+    ],
+  },
+  learningVelocity: {
+    reinforcement: [
+      'Your habit of asking "why" builds transferable knowledge. You learn from AI, not just use it.',
+      'The way you connect new patterns to existing knowledge accelerates your growth.',
+      'You treat AI as a learning accelerator, not a replacement for understanding.',
+    ],
+    improvement: [
+      'After AI gives you working code, ask "Why this approach?" to deepen understanding.',
+      'Document patterns you learn from AI. This builds a personal knowledge base.',
+      'Try implementing what AI taught you without AI assistance - this cements learning.',
+    ],
+  },
+  scopeManagement: {
+    reinforcement: [
+      'Your clear task boundaries lead to focused AI outputs. One task, one request - you get it.',
+      'The way you decompose complex tasks into manageable chunks shows professional discipline.',
+      'Your "only this" pattern prevents scope creep and improves AI accuracy.',
+    ],
+    improvement: [
+      'Try "먼저 X 하고, 그 다음 Y" instead of "X와 Y 둘 다 해줘". Sequential requests work better.',
+      'Complete one task before adding another. "Also add X" often degrades quality.',
+      'If your request has "and" 3+ times, consider splitting it into separate requests.',
     ],
   },
 };
