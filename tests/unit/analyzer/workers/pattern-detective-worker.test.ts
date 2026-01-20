@@ -140,8 +140,8 @@ describe('PatternDetectiveWorker', () => {
       expect(worker.phase).toBe(2);
     });
 
-    it('should require premium tier', () => {
-      expect(worker.minTier).toBe('premium');
+    it('should be available for free tier', () => {
+      expect(worker.minTier).toBe('free');
     });
   });
 
@@ -183,9 +183,9 @@ describe('PatternDetectiveWorker', () => {
       expect(worker.canRun(enterpriseContext)).toBe(true);
     });
 
-    it('should return false for free tier', () => {
+    it('should return true for free tier', () => {
       const freeContext = createMockContext('free');
-      expect(worker.canRun(freeContext)).toBe(false);
+      expect(worker.canRun(freeContext)).toBe(true);
     });
 
     it('should return false when moduleAOutput missing', () => {
