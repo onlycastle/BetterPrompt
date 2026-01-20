@@ -577,4 +577,109 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
     priority: 9,
     enabled: true,
   },
+  // ============================================================================
+  // New Dimension Insights (Phase 4) - iterationEfficiency, learningVelocity, scopeManagement
+  // ============================================================================
+  {
+    version: '1.0.0',
+    category: 'diagnosis',
+    title: 'Iteration Efficiency Assessment',
+    keyTakeaway:
+      '효율적인 개발자는 평균 2-3턴 내에 반복 사이클을 완료합니다. 5턴 이상은 불명확한 요구사항이나 잘못된 접근을 의미합니다.',
+    actionableAdvice: [
+      '반복 전 구체적으로 무엇을 바꿀지 명확히 하세요',
+      '4턴 넘으면 새로운 접근을 고려하세요',
+      '성공한 패턴을 문서화하세요',
+    ],
+    source: {
+      type: 'research',
+      url: 'https://nomoreaislop.com/insights/iteration-efficiency',
+      author: 'NoMoreAISlop Research',
+    },
+    applicableDimensions: ['iterationEfficiency'],
+    maxScore: 60,
+    priority: 8,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'diagnosis',
+    title: 'Learning Velocity in AI-Assisted Development',
+    keyTakeaway:
+      '최고의 개발자는 AI를 지식 대체가 아닌 학습 가속기로 사용합니다. "어떻게"만큼 자주 "왜"를 묻습니다.',
+    actionableAdvice: [
+      '"어떻게"를 물은 후 "왜 이 접근인지"를 물어보세요',
+      '반복되는 패턴을 기록하세요 - 학습 기회입니다',
+      '주기적으로 AI 없이 구현해보세요',
+    ],
+    source: {
+      type: 'research',
+      url: 'https://nomoreaislop.com/insights/learning-velocity',
+      author: 'Educational Research',
+    },
+    applicableDimensions: ['learningVelocity', 'skillResilience'],
+    priority: 9,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'trend',
+    title: 'Scope Management for AI Collaboration',
+    keyTakeaway:
+      '명확한 작업 범위가 AI 협업의 성공을 결정합니다. "이것만 해줘"가 "이것도 하고 저것도 해줘"보다 효과적입니다.',
+    actionableAdvice: [
+      '하나의 프롬프트에 하나의 작업만 요청하세요',
+      '작업을 완료하기 전에 새 작업을 추가하지 마세요',
+      '"먼저 X 하고, 그 다음 Y" 패턴을 사용하세요',
+    ],
+    source: {
+      type: 'research',
+      url: 'https://nomoreaislop.com/insights/scope-management',
+      author: 'NoMoreAISlop Research',
+    },
+    applicableDimensions: ['scopeManagement'],
+    priority: 8,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'type-specific',
+    title: 'Targeted Refinement vs Shotgun Debugging',
+    keyTakeaway:
+      'AI에게 "이 부분만 바꿔줘"라고 하면 더 정확한 수정이 나옵니다. 전체를 다시 요청하면 다른 곳도 바뀝니다.',
+    actionableAdvice: [
+      '수정 요청 시 정확한 위치를 지정하세요',
+      '"전체 다시 해줘" 대신 "이 함수만 수정해줘"',
+      '여러 수정이 필요하면 하나씩 요청하세요',
+    ],
+    source: {
+      type: 'x-post',
+      url: 'https://twitter.com/example/targeted-refinement',
+      author: 'AI Engineering',
+    },
+    applicableDimensions: ['iterationEfficiency', 'aiCollaboration'],
+    priority: 7,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'diagnosis',
+    title: 'The "Why" Question Test',
+    keyTakeaway:
+      '세션에서 "왜"를 물은 횟수를 세어보세요. 0번이면 지식 전이가 일어나지 않고 있습니다.',
+    actionableAdvice: [
+      '코드를 받은 후 "왜 이 방법을 선택했어?"라고 물어보세요',
+      '라이브러리를 사용할 때 "왜 이 라이브러리야?"라고 확인하세요',
+      '이해 안 되는 부분은 넘어가지 말고 질문하세요',
+    ],
+    source: {
+      type: 'research',
+      url: 'https://nomoreaislop.com/insights/why-question-test',
+      author: 'Educational Research',
+    },
+    applicableDimensions: ['learningVelocity'],
+    maxScore: 50,
+    priority: 9,
+    enabled: true,
+  },
 ];
