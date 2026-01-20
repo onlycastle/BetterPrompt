@@ -42,10 +42,12 @@ export default function AnalyzePage({ onAnalysisComplete }: AnalyzePageProps) {
     startAnalysis,
   } = useAnalysis();
 
-  // Scan sessions on mount
+  // Scan sessions on mount (only if not already scanned)
   useEffect(() => {
-    scanSessions();
-  }, [scanSessions]);
+    if (!scanSummary && !isScanning) {
+      scanSessions();
+    }
+  }, [scanSummary, isScanning, scanSessions]);
 
   const handleStartAnalysis = async () => {
     if (!user) return;

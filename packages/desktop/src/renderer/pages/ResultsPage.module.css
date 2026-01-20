@@ -238,6 +238,54 @@
   font-weight: var(--weight-bold);
 }
 
+/* Credit Balance */
+.creditBalance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--sketch-yellow-light);
+  border: 2px solid var(--sketch-yellow);
+  border-radius: var(--radius-md);
+}
+
+.creditIcon {
+  font-size: var(--text-xl);
+}
+
+.creditCount {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-yellow-dark);
+}
+
+/* Unlock Button (use credit) */
+.unlockButton {
+  padding: 1rem 3rem;
+  background: var(--sketch-green);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
+  color: var(--bg-paper);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  box-shadow: 4px 4px 0 var(--ink-primary);
+}
+
+.unlockButton:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink-primary);
+}
+
+.unlockButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 /* Strength Cards */
 .strengthsSection,
 .growthSection,
@@ -366,5 +414,61 @@
 
 .example span {
   color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+/* Pattern Badges */
+.patternBadges {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Effectiveness Badge */
+.effectiveness {
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  border: 1.5px solid;
+}
+
+.effectiveness.highly_effective {
+  background: var(--sketch-green-light);
+  color: var(--sketch-green-text);
+  border-color: var(--sketch-green);
+}
+
+.effectiveness.effective {
+  background: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan-text);
+  border-color: var(--sketch-cyan);
+}
+
+.effectiveness.could_improve {
+  background: var(--sketch-yellow-light);
+  color: var(--sketch-yellow-dark);
+  border-color: var(--sketch-yellow);
+}
+
+/* Pattern Tip */
+.patternTip {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--sketch-yellow-light);
+  border: 1.5px dashed var(--sketch-yellow);
+  border-radius: var(--radius-md);
+}
+
+.tipLabel {
+  font-weight: var(--weight-medium);
+  color: var(--sketch-yellow-dark);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.tipText {
+  color: var(--text-primary);
+  line-height: var(--leading-relaxed);
   font-size: var(--text-sm);
 }
