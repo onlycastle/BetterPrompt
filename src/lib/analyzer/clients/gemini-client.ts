@@ -32,6 +32,23 @@ export interface GeminiStructuredRequest<T> {
 }
 
 /**
+ * Token usage metadata from Gemini API response
+ */
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
+/**
+ * Result of structured generation including parsed data and usage metadata
+ */
+export interface GeminiStructuredResult<T> {
+  data: T;
+  usage: TokenUsage;
+}
+
+/**
  * Default configuration values
  */
 const DEFAULT_CONFIG = {
@@ -67,8 +84,9 @@ export class GeminiClient {
 
   /**
    * Generate structured content using Gemini with JSON schema validation
+   * Returns both the parsed data and token usage metadata
    */
-  async generateStructured<T>(request: GeminiStructuredRequest<T>): Promise<T> {
+  async generateStructured<T>(request: GeminiStructuredRequest<T>): Promise<GeminiStructuredResult<T>> {
     const jsonSchema = zodToJsonSchema(request.responseSchema, {
       $refStrategy: 'none',
     });
@@ -91,7 +109,10 @@ export class GeminiClient {
           },
         });
 
-        return this.parseResponse<T>(response, request.responseSchema);
+        const data = this.parseResponse<T>(response, request.responseSchema);
+        const usage = this.extractUsageMetadata(response);
+
+        return { data, usage };
       } catch (error) {
         lastError = error as Error;
 
@@ -105,6 +126,24 @@ export class GeminiClient {
     }
 
     throw lastError || new Error('Generation failed after retries');
+  }
+
+  /**
+   * Extract token usage metadata from Gemini response
+   */
+  private extractUsageMetadata(response: {
+    usageMetadata?: {
+      promptTokenCount?: number;
+      candidatesTokenCount?: number;
+      totalTokenCount?: number;
+    };
+  }): TokenUsage {
+    const metadata = response.usageMetadata;
+    return {
+      promptTokens: metadata?.promptTokenCount ?? 0,
+      completionTokens: metadata?.candidatesTokenCount ?? 0,
+      totalTokens: metadata?.totalTokenCount ?? 0,
+    };
   }
 
   /**
