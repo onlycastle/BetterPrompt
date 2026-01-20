@@ -360,3 +360,53 @@
   transform: translateX(4px);
   color: var(--accent-primary);
 }
+
+/* Progress Tab - Stats Row */
+.statsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .statsRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chartCard {
+  padding: 1.5rem;
+  background: var(--surface-1);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-lg);
+}
+
+.chartTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+}
+
+.chartSubtitle {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0 0 1rem 0;
+}
+
+.singleAnalysis {
+  margin-bottom: 1.5rem;
+}
+
+/* Insights Section */
+.insightsSection {
+  margin-top: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  margin: 0 0 1rem 0;
+  color: var(--text-primary);
+}

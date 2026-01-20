@@ -132,12 +132,83 @@ export interface FeatureComparisonResponse {
 }
 
 // Personal analytics types
+
+/** 6 dimension scores (0-100) */
+export interface DimensionScores {
+  aiCollaboration: number;
+  contextEngineering: number;
+  burnoutRisk: number;
+  toolMastery: number;
+  aiControl: number;
+  skillResilience: number;
+}
+
+/** Summary of a single analysis for comparison */
+export interface AnalysisSummary {
+  date: string;
+  score: number;
+  primaryType: string;
+  dimensions?: DimensionScores;
+}
+
+/** History entry for trend chart */
+export interface HistoryEntry {
+  date: string;
+  overallScore: number;
+  dimensions?: DimensionScores;
+}
+
+/** Growth area from analysis */
+export interface GrowthArea {
+  title: string;
+  description: string;
+  recommendation?: string;
+  evidence?: string[];
+}
+
+/** Legacy PersonalAnalytics (for backwards compatibility) */
 export interface PersonalAnalytics {
   history: Array<{
     date: string;
     score: number;
     promptCount: number;
   }>;
+  insights: Array<{
+    type: 'strength' | 'growth' | 'trend';
+    title: string;
+    description: string;
+  }>;
+  goals: Array<{
+    id: string;
+    title: string;
+    progress: number;
+    target: number;
+  }>;
+}
+
+/** Extended PersonalAnalytics with full journey data */
+export interface PersonalAnalyticsExtended {
+  // Journey header
+  currentType: string;
+  firstAnalysisDate: string;
+  analysisCount: number;
+  totalImprovement: number;
+
+  // Dimension tracking
+  currentDimensions?: DimensionScores;
+  dimensionImprovements?: DimensionScores;
+
+  // Comparison data
+  firstAnalysis: AnalysisSummary;
+  latestAnalysis: AnalysisSummary;
+
+  // Trend data
+  history: HistoryEntry[];
+
+  // Growth areas from latest analysis
+  growthAreas: GrowthArea[];
+
+  // Legacy compatibility
   insights: Array<{
     type: 'strength' | 'growth' | 'trend';
     title: string;
