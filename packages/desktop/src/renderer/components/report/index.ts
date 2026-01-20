@@ -14,7 +14,7 @@ export { UnlockSection } from './UnlockSection';
 export { ShareSection } from './ShareSection';
 export { AnalyzedSessions } from './AnalyzedSessions';
 export { ReportFooter } from './ReportFooter';
-export { PersonalityHeroSection } from './PersonalityHeroSection';
 export { TopFocusAreasSection } from './TopFocusAreasSection';
 export { EnhancedPatternCard } from './EnhancedPatternCard';
 export { ProductivitySection } from './ProductivitySection';
+export { AgentInsightsSection } from './AgentInsightsSection';

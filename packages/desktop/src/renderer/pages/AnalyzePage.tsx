@@ -17,9 +17,9 @@ import {
   TerminalWindow,
   TypeResultSection,
   DimensionInsightsTerminal,
-  PersonalityHeroSection,
   TopFocusAreasSection,
   EnhancedPatternCard,
+  AgentInsightsSection,
 } from '../components/report';
 import { FormattedText } from '../utils/textFormatting';
 import { useCredit } from '../api/client';
@@ -490,13 +490,8 @@ export default function AnalyzePage({ initialResultId }: AnalyzePageProps) {
                 />
               )}
 
-              {/* Personality Insights Hero - "Wow moment" section */}
-              {evaluation?.personalityInsights && (
-                <PersonalityHeroSection insights={evaluation.personalityInsights} />
-              )}
-
-              {/* Personality Summary (fallback if no insights) */}
-              {evaluation?.personalitySummary && !evaluation?.personalityInsights && (
+              {/* Personality Summary */}
+              {evaluation?.personalitySummary && (
                 <div className={styles.summarySection}>
                   <h2 className={styles.sectionTitle}>📝 Personality Summary</h2>
                   <FormattedText
@@ -622,6 +617,11 @@ export default function AnalyzePage({ initialResultId }: AnalyzePageProps) {
                       insights={evaluation.dimensionInsights}
                       sessionsAnalyzed={evaluation.sessionsAnalyzed}
                     />
+                  )}
+
+                  {/* Agent Insights - 4 Wow Agents (Premium only) */}
+                  {evaluation.agentOutputs && (
+                    <AgentInsightsSection agentOutputs={evaluation.agentOutputs} />
                   )}
                 </div>
               )}
