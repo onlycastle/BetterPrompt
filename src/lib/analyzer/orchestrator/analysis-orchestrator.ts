@@ -320,6 +320,8 @@ export class AnalysisOrchestrator {
       // NEW: Metacognition + Temporal Analysis agents
       metacognition: results['MetacognitionWorker']?.data as AgentOutputs['metacognition'],
       temporalAnalysis: results['TemporalAnalyzer']?.data as AgentOutputs['temporalAnalysis'],
+      // NEW: Multitasking Analysis
+      multitasking: results['MultitaskingAnalyzer']?.data as AgentOutputs['multitasking'],
     };
   }
 

@@ -6,7 +6,7 @@
  * - Context pollution (multiple unrelated tasks in one session)
  * - Work unit separation (research vs implementation sessions)
  *
- * Phase 1 worker that runs early (needs only session data).
+ * Phase 2 worker (Insight Generation). Does not require Module A output.
  *
  * @module analyzer/workers/multitasking-analyzer-worker
  */
@@ -262,13 +262,13 @@ export interface MultitaskingAnalyzerWorkerConfig extends OrchestratorConfig {
 /**
  * Multitasking Analyzer Worker
  *
- * Phase 1 worker that analyzes multi-session work patterns.
- * Runs early (no Module A dependency).
+ * Phase 2 worker that analyzes multi-session work patterns.
+ * Does not require Module A dependency.
  * Minimum tier: premium
  */
 export class MultitaskingAnalyzerWorker extends BaseWorker<MultitaskingAnalysisOutput> {
   readonly name = 'MultitaskingAnalyzer';
-  readonly phase = 1 as const;
+  readonly phase = 2 as const;
   readonly minTier: Tier = 'premium';
 
   private geminiClient: GeminiClient;
