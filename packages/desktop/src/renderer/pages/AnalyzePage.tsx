@@ -21,12 +21,35 @@ import {
   EnhancedPatternCard,
   AgentInsightsSection,
 } from '../components/report';
+import { LoadingExperience } from '../components/analyze/LoadingExperience';
 import { FormattedText } from '../utils/textFormatting';
 import { useCredit } from '../api/client';
 import type { AnalysisResultResponse } from '../types/report';
 import { saveAnalysisExtended, type StoredAnalysisExtended } from '../utils/analysisStorage';
 import { REPORT_TYPE_METADATA } from '../types/report';
 import styles from './AnalyzePage.module.css';
+
+/**
+ * Extract type result from evaluation for TypeResultSection component
+ */
+function extractTypeResult(evaluation: AnalysisResultResponse['evaluation'] | undefined) {
+  if (!evaluation) return null;
+
+  return {
+    primaryType: evaluation.primaryType,
+    distribution: evaluation.distribution,
+    sessionCount: evaluation.sessionsAnalyzed,
+    analyzedAt: evaluation.analyzedAt,
+    metrics: {
+      avgPromptLength: evaluation.avgPromptLength || 0,
+      avgFirstPromptLength: 0,
+      avgTurnsPerSession: evaluation.avgTurnsPerSession || 0,
+      questionFrequency: 0,
+      modificationRate: 0,
+      toolUsageHighlight: '',
+    },
+  };
+}
 
 /**
  * Reusable dimension bar for the preview card
@@ -52,13 +75,13 @@ export default function AnalyzePage({ initialResultId }: AnalyzePageProps) {
   const { user, session } = useAuth();
   const {
     scanSummary,
-    isScanning,
     scanError,
-    isAnalyzing,
     analysisProgress,
     analysisError,
+    currentPhase,
     scanSessions,
-    startAnalysis,
+    startFullAnalysis,
+    resetPhase,
   } = useAnalysis();
 
   // View mode: 'analyze' or 'report'
@@ -176,11 +199,12 @@ export default function AnalyzePage({ initialResultId }: AnalyzePageProps) {
     return unsubscribe;
   }, [resultId, fetchResult]);
 
-  // Handle starting analysis
+  // Handle starting full analysis (scan + analyze in one action)
   const handleStartAnalysis = async () => {
     if (!user) return;
 
-    const newResultId = await startAnalysis(user.id, session?.access_token);
+    // Use combined action that scans then analyzes
+    const newResultId = await startFullAnalysis(user.id, session?.access_token);
     if (newResultId) {
       setResultId(newResultId);
       await fetchResult(newResultId);
@@ -267,12 +291,39 @@ export default function AnalyzePage({ initialResultId }: AnalyzePageProps) {
     scanSessions();
   };
 
-  const hasSessions = scanSummary && scanSummary.sessionCount > 0;
-
   // ============================================
   // Render: Analyze View
   // ============================================
   function renderAnalyzeView() {
+    const isLoading = currentPhase === 'scanning' || currentPhase === 'analyzing';
+
+    // Show LoadingExperience during scanning or analyzing
+    if (isLoading) {
+      return (
+        <main className={styles.main}>
+          <LoadingExperience
+            phase={currentPhase as 'scanning' | 'analyzing'}
+            progress={analysisProgress}
+            sessionCount={scanSummary?.sessionCount}
+          />
+          {(scanError || analysisError) && (
+            <div className={styles.errorSection}>
+              <p className={styles.error}>{scanError || analysisError}</p>
+              <button
+                className={styles.retryButton}
+                onClick={() => {
+                  resetPhase();
+                }}
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+        </main>
+      );
+    }
+
+    // Initial state: Show CTA with preview teaser
     return (
       <main className={styles.main}>
         <h1 className={styles.title}>Know your AI mastery in 5 minutes</h1>
@@ -285,102 +336,33 @@ export default function AnalyzePage({ initialResultId }: AnalyzePageProps) {
           Analyzed in the cloud, <strong>never stored</strong> — your sessions stay yours
         </div>
 
-        {/* Session summary */}
+        {/* Preview teaser card */}
         <div className={styles.sessionSection}>
-          {scanError && <p className={styles.error}>{scanError}</p>}
-          {renderSessionContent()}
+          {renderPreviewTeaser()}
         </div>
 
-        {/* Analysis button */}
+        {/* Single CTA button */}
         <div className={styles.analyzeSection}>
-          {isAnalyzing ? (
-            <div className={styles.progress}>
-              <div className={styles.progressBar}>
-                <div
-                  className={styles.progressFill}
-                  style={{ width: `${analysisProgress?.percent || 0}%` }}
-                />
-              </div>
-              <p className={styles.progressText}>
-                {analysisProgress?.message || 'Analyzing...'}
-              </p>
-            </div>
-          ) : (
-            <button
-              className={styles.analyzeButton}
-              onClick={handleStartAnalysis}
-              disabled={!scanSummary || scanSummary.sessionCount === 0}
-            >
-              Get My Report
-            </button>
-          )}
+          <button
+            className={styles.analyzeButton}
+            onClick={handleStartAnalysis}
+            disabled={!user}
+          >
+            Get My Report
+          </button>
 
-          {analysisError && <p className={styles.error}>{analysisError}</p>}
+          {(scanError || analysisError) && (
+            <p className={styles.error}>{scanError || analysisError}</p>
+          )}
         </div>
       </main>
     );
   }
 
-  function renderSessionContent() {
-    if (isScanning) {
-      return (
-        <div className={styles.loading}>
-          <div className={styles.loadingContent}>
-            <span className={styles.scannerIcon}>🔍</span>
-            <p className={styles.loadingText}>Reading your history...</p>
-            <p className={styles.loadingSubtext}>
-              Selecting the sessions that tell your story
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    // Initial state: never scanned yet
-    if (!scanSummary && !scanError) {
-      return (
-        <div className={styles.empty}>
-          <div className={styles.emptyContent}>
-            <span className={styles.emptyIcon}>🔍</span>
-            <p className={styles.emptyTitle}>Ready to analyze</p>
-            <p className={styles.emptyDescription}>
-              Scan your Claude Code sessions to discover your AI collaboration style
-            </p>
-            <button
-              className={styles.scanButton}
-              onClick={scanSessions}
-              disabled={isScanning}
-            >
-              Scan Sessions
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    // Scanned but no sessions found
-    if (!hasSessions) {
-      return (
-        <div className={styles.empty}>
-          <div className={styles.emptyContent}>
-            <span className={styles.emptyIcon}>📝</span>
-            <p className={styles.emptyTitle}>Nothing to analyze yet</p>
-            <p className={styles.emptyDescription}>
-              Use Claude Code first — we&apos;ll be here when you&apos;re ready
-            </p>
-            <code className={styles.hint}>~/.claude/projects/</code>
-            <button
-              className={styles.rescanLink}
-              onClick={scanSessions}
-              disabled={isScanning}
-            >
-              Rescan
-            </button>
-          </div>
-        </div>
-      );
-    }
-
+  /**
+   * Preview teaser shown in initial state (before clicking Get My Report)
+   */
+  function renderPreviewTeaser() {
     return (
       <div className={styles.previewCard}>
         {/* Radar chart preview */}
@@ -427,14 +409,6 @@ export default function AnalyzePage({ initialResultId }: AnalyzePageProps) {
         </div>
 
         <p className={styles.previewSubtext}>Based on your real chat history</p>
-
-        <button
-          className={styles.rescanLink}
-          onClick={scanSessions}
-          disabled={isScanning}
-        >
-          Rescan
-        </button>
       </div>
     );
   }
@@ -445,23 +419,7 @@ export default function AnalyzePage({ initialResultId }: AnalyzePageProps) {
   function renderReportView() {
     const evaluation = result?.evaluation;
     const isPaid = result?.isPaid ?? false;
-
-    const typeResult = evaluation
-      ? {
-          primaryType: evaluation.primaryType,
-          distribution: evaluation.distribution,
-          sessionCount: evaluation.sessionsAnalyzed,
-          analyzedAt: evaluation.analyzedAt,
-          metrics: {
-            avgPromptLength: evaluation.avgPromptLength || 0,
-            avgFirstPromptLength: 0,
-            avgTurnsPerSession: evaluation.avgTurnsPerSession || 0,
-            questionFrequency: 0,
-            modificationRate: 0,
-            toolUsageHighlight: '',
-          },
-        }
-      : null;
+    const typeResult = extractTypeResult(evaluation);
 
     return (
       <main className={styles.mainReport}>
