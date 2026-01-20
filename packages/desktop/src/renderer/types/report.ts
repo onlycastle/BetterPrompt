@@ -253,6 +253,60 @@ export interface TopFocusAreas {
 }
 
 // ============================================================================
+// Productivity Analysis (Module C Output)
+// ============================================================================
+
+export type IterationTrigger = 'error_fix' | 'feature_refinement' | 'clarification' | 'exploration' | 'optimization';
+export type IterationResolution = 'resolved' | 'abandoned' | 'escalated' | 'deferred';
+export type IterationEfficiency = 'efficient' | 'normal' | 'inefficient';
+export type LearningCategory = 'new_api' | 'debugging_skill' | 'architecture' | 'tool_usage' | 'language_feature' | 'best_practice';
+export type LearningDepth = 'shallow' | 'moderate' | 'deep';
+export type LearningStyle = 'explorer' | 'deep_diver' | 'balanced' | 'reactive';
+export type EfficiencyInterpretation = 'excellent' | 'good' | 'average' | 'needs_improvement';
+
+export interface IterationSummary {
+  totalCycles: number;
+  avgTurnsPerCycle: number;
+  efficientCycleRate: number;
+  mostCommonTrigger: IterationTrigger;
+  predominantResolution: IterationResolution;
+}
+
+export interface LearningVelocity {
+  signalsPerSession: number;
+  avgDepth: LearningDepth;
+  learningStyle: LearningStyle;
+  overallTransferability: number;
+}
+
+export interface KeyIndicators {
+  firstTrySuccessRate: number;
+  contextSwitchFrequency: number;
+  productiveTurnRatio: number;
+  avgTurnsToFirstSolution: number;
+}
+
+export interface CollaborationEfficiency {
+  requestClarity: number;
+  specificationCompleteness: number;
+  proactiveVsReactiveRatio: number;
+  contextProvisionFrequency: number;
+}
+
+export interface ProductivityAnalysis {
+  iterationCyclesData?: string;
+  learningSignalsData?: string;
+  efficiencyMetricsData?: string;
+  iterationSummary: IterationSummary;
+  learningVelocity: LearningVelocity;
+  keyIndicators: KeyIndicators;
+  collaborationEfficiency: CollaborationEfficiency;
+  overallProductivityScore: number;
+  confidenceScore: number;
+  summary?: string;
+}
+
+// ============================================================================
 // Verbose Evaluation (from Lambda)
 // ============================================================================
 
@@ -286,6 +340,9 @@ export interface VerboseEvaluation {
 
   // NEW: Top 3 Focus Areas (most actionable section)
   topFocusAreas?: TopFocusAreas;
+
+  // NEW: Productivity Analysis (Module C output)
+  productivityAnalysis?: ProductivityAnalysis;
 }
 
 // ============================================================================
