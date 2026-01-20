@@ -53,7 +53,7 @@ export interface PremiumPreview {
   comparativeInsightsPreview?: string[];
   sessionTrendsPreview?: string[];
 
-  // Premium features preview (Anti-Patterns, Critical Thinking, Planning, Personality)
+  // Premium features preview (Anti-Patterns, Critical Thinking, Planning)
   antiPatternsPreview?: {
     count: number;
     healthScore: number;
@@ -65,11 +65,6 @@ export interface PremiumPreview {
   planningPreview?: {
     maturityLevel: string;
     slashPlanUsage?: number;
-  };
-  // Personality Insights preview (teaser for the "오!! 완전 나야!!" content)
-  personalityInsightsPreview?: {
-    available: boolean;
-    teaser?: string;
   };
 }
 
@@ -83,8 +78,7 @@ export interface PremiumPreview {
  * Tier Access Matrix:
  * - Free: Type result, personalitySummary, first 2 dimensionInsights (full detail), rest get empty arrays
  * - Premium: All dimensionInsights, promptPatterns, actionablePractices,
- *            antiPatternsAnalysis, criticalThinkingAnalysis, planningAnalysis,
- *            personalityInsights (the "오!! 완전 나야!!" storytelling content)
+ *            antiPatternsAnalysis, criticalThinkingAnalysis, planningAnalysis
  * - Enterprise: Everything including analytics (toolUsageDeepDive, tokenEfficiency, growthRoadmap, etc.)
  *
  * @example
@@ -179,18 +173,6 @@ export class ContentGateway {
       };
     }
 
-    // Personality Insights Preview (teaser for premium storytelling)
-    if (evaluation.personalityInsights) {
-      // Extract first ~50 chars of coreObservation as teaser
-      const teaser = evaluation.personalityInsights.coreObservation
-        ? evaluation.personalityInsights.coreObservation.slice(0, 50) + '...'
-        : undefined;
-      preview.personalityInsightsPreview = {
-        available: true,
-        teaser,
-      };
-    }
-
     return preview;
   }
 
@@ -204,7 +186,6 @@ export class ContentGateway {
    * - Remaining 4 dimensions get empty strengths/growthAreas arrays (teaser)
    * - No prompt patterns
    * - No actionable practices
-   * - No personality insights (premium storytelling)
    * - No anti-patterns/critical thinking/planning analysis
    * - No premium analytics fields
    */
@@ -221,10 +202,13 @@ export class ContentGateway {
     });
 
     return {
-      // Metadata
+      // Metadata (all tiers)
       sessionId: evaluation.sessionId,
       analyzedAt: evaluation.analyzedAt,
       sessionsAnalyzed: evaluation.sessionsAnalyzed,
+      avgPromptLength: evaluation.avgPromptLength,
+      avgTurnsPerSession: evaluation.avgTurnsPerSession,
+      analyzedSessions: evaluation.analyzedSessions,
 
       // Type result (free)
       primaryType: evaluation.primaryType,
@@ -251,9 +235,6 @@ export class ContentGateway {
       comparativeInsights: undefined,
       sessionTrends: undefined,
 
-      // Personality insights (locked for free - premium storytelling)
-      personalityInsights: undefined,
-
       // Premium/Enterprise analysis features (locked for free)
       antiPatternsAnalysis: undefined,
       criticalThinkingAnalysis: undefined,
@@ -261,6 +242,13 @@ export class ContentGateway {
 
       // Actionable practices (locked for free)
       actionablePractices: undefined,
+
+      // Module C outputs (locked for free)
+      productivityAnalysis: undefined,
+      topFocusAreas: undefined,
+
+      // Phase 2 Wow Agents outputs (locked for free)
+      agentOutputs: undefined,
     };
   }
 
@@ -272,7 +260,6 @@ export class ContentGateway {
    * - All 6 dimension insights (fully detailed)
    * - Prompt patterns
    * - Actionable practices (expert advice adoption)
-   * - Personality insights (premium storytelling - "오!! 완전 나야!!")
    * - Anti-patterns analysis (growth opportunities)
    * - Critical thinking analysis (verification habits)
    * - Planning analysis (/plan usage, maturity level)
@@ -280,10 +267,13 @@ export class ContentGateway {
    */
   private filterPremium(evaluation: VerboseEvaluation): VerboseEvaluation {
     return {
-      // Metadata
+      // Metadata (all tiers)
       sessionId: evaluation.sessionId,
       analyzedAt: evaluation.analyzedAt,
       sessionsAnalyzed: evaluation.sessionsAnalyzed,
+      avgPromptLength: evaluation.avgPromptLength,
+      avgTurnsPerSession: evaluation.avgTurnsPerSession,
+      analyzedSessions: evaluation.analyzedSessions,
 
       // Type result
       primaryType: evaluation.primaryType,
@@ -303,15 +293,12 @@ export class ContentGateway {
       // Prompt patterns (premium)
       promptPatterns: evaluation.promptPatterns,
 
-      // Premium analytics fields (locked for enterprise)
+      // Enterprise analytics fields (locked for premium)
       toolUsageDeepDive: undefined,
       tokenEfficiency: undefined,
       growthRoadmap: undefined,
       comparativeInsights: undefined,
       sessionTrends: undefined,
-
-      // Personality insights (premium - "오!! 완전 나야!!" storytelling)
-      personalityInsights: evaluation.personalityInsights,
 
       // Premium analysis features (Anti-Patterns, Critical Thinking, Planning)
       antiPatternsAnalysis: evaluation.antiPatternsAnalysis,
@@ -320,6 +307,13 @@ export class ContentGateway {
 
       // Actionable practices (premium)
       actionablePractices: evaluation.actionablePractices,
+
+      // Module C outputs (premium)
+      productivityAnalysis: evaluation.productivityAnalysis,
+      topFocusAreas: evaluation.topFocusAreas,
+
+      // Phase 2 Wow Agents outputs (premium)
+      agentOutputs: evaluation.agentOutputs,
     };
   }
 

@@ -3,11 +3,11 @@
  *
  * Supports two analysis modes:
  * 1. Single-stage (legacy): One LLM call with Anthropic Claude (requires ANTHROPIC_API_KEY)
- * 2. Three-stage pipeline: Module A + Module B + Stage 2 with Gemini 3 Flash (requires GOOGLE_GEMINI_API_KEY)
+ * 2. Two-module pipeline: Module A + Module C + Stage 2 with Gemini 3 Flash (requires GOOGLE_GEMINI_API_KEY)
  *
- * Three-stage pipeline:
+ * Two-module pipeline:
  * - Module A (Data Analyst): Extract structured behavioral data
- * - Module B (Personality Analyst): Extract personality profile
+ * - Module C (Productivity Analyst): Extract productivity metrics
  * - Stage 2 (Content Writer): Transform into engaging narrative using both outputs
  *
  * Single-stage legacy mode uses Anthropic's Structured Outputs.
@@ -27,19 +27,22 @@ import {
   getVerboseToolDefinition,
 } from './verbose-prompts';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { ContentGateway, type Tier } from './content-gateway';
+import { AnalysisOrchestrator, createAnalysisOrchestrator } from './orchestrator';
+import type { OrchestratorConfig } from './orchestrator/types';
+import {
+  createDataAnalystWorker,
+  createProductivityAnalystWorker,
+  createPatternDetectiveWorker,
+  createAntiPatternSpotterWorker,
+  createKnowledgeGapWorker,
+  createContextEfficiencyWorker,
+} from './workers';
+
+// Legacy imports for single-stage mode (kept for backward compatibility)
 import { DataAnalystStage, type DataAnalystConfig } from './stages/data-analyst';
-import { PersonalityAnalystStage, type PersonalityAnalystConfig } from './stages/personality-analyst';
 import { ProductivityAnalystStage, type ProductivityAnalystConfig } from './stages/productivity-analyst';
 import { ContentWriterStage, type ContentWriterConfig } from './stages/content-writer';
-import { ContentGateway, type Tier } from './content-gateway';
-import { createDefaultPersonalityProfile } from '../models/personality';
-import { createDefaultProductivityAnalysisData } from '../models/productivity-data';
-import {
-  type StageTokenUsage,
-  type PipelineTokenUsage,
-  aggregateTokenUsage,
-  formatActualUsage,
-} from './cost-estimator';
 
 // ============================================================================
 // STRING SANITIZATION - Truncate long strings from LLM responses
@@ -73,6 +76,13 @@ function truncate(str: string, max: number): string {
 }
 
 /**
+ * Truncate a string array with a given limit per item
+ */
+function truncateArray(items: string[], limit: number): string[] {
+  return items.map((item) => truncate(item, limit));
+}
+
+/**
  * Sanitize PromptPattern examples
  */
 function sanitizePatternExamples(
@@ -85,17 +95,15 @@ function sanitizePatternExamples(
 }
 
 /**
- * Sanitize evidence array (now string array, not object array)
- * NOTE: Evidence was flattened from {quote, sessionDate, context} objects to simple quote strings
- * to reduce nesting depth for Gemini API compatibility.
+ * Sanitize evidence array (string array for Gemini API compatibility)
  */
 function sanitizeEvidence(evidence: string[]): string[] {
-  return evidence.map((quote) => truncate(quote, EVIDENCE_QUOTE_LIMIT));
+  return truncateArray(evidence, EVIDENCE_QUOTE_LIMIT);
 }
 
 /**
  * Sanitize DimensionStrength
- * Note: evidence may be undefined when using LLMDimensionStrengthSchema (no evidence field)
+ * Evidence may be undefined when using LLMDimensionStrengthSchema
  */
 function sanitizeStrength(strength: {
   title: string;
@@ -111,7 +119,7 @@ function sanitizeStrength(strength: {
 
 /**
  * Sanitize DimensionGrowthArea
- * Note: evidence may be undefined when using LLMDimensionGrowthAreaSchema (no evidence field)
+ * Evidence may be undefined when using LLMDimensionGrowthAreaSchema
  */
 function sanitizeGrowthArea(area: {
   title: string;
@@ -128,6 +136,54 @@ function sanitizeGrowthArea(area: {
 }
 
 /**
+ * Truncate a string field if it exists and is a string
+ */
+function truncateStringField(
+  obj: Record<string, unknown>,
+  field: string,
+  limit: number
+): void {
+  if (typeof obj[field] === 'string') {
+    obj[field] = truncate(obj[field] as string, limit);
+  }
+}
+
+/**
+ * Sanitize a prompt pattern object
+ */
+function sanitizePromptPattern(pattern: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...pattern };
+  truncateStringField(result, 'patternName', STRING_LIMITS.patternName);
+  truncateStringField(result, 'description', STRING_LIMITS.description);
+  truncateStringField(result, 'tip', STRING_LIMITS.tip);
+
+  if (Array.isArray(result.examples)) {
+    result.examples = sanitizePatternExamples(
+      result.examples as Array<{ quote: string; analysis: string }>
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Sanitize a dimension insight object
+ */
+function sanitizeDimensionInsight(insight: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...insight };
+  truncateStringField(result, 'dimensionDisplayName', STRING_LIMITS.dimensionDisplayName);
+
+  if (Array.isArray(result.strengths)) {
+    result.strengths = result.strengths.map(sanitizeStrength);
+  }
+  if (Array.isArray(result.growthAreas)) {
+    result.growthAreas = result.growthAreas.map(sanitizeGrowthArea);
+  }
+
+  return result;
+}
+
+/**
  * Sanitize entire LLM response to ensure all strings are within schema limits.
  * This prevents schema validation failures from overly verbose LLM outputs.
  */
@@ -137,43 +193,14 @@ function sanitizeLLMResponse(input: unknown): unknown {
   const data = input as Record<string, unknown>;
   const result: Record<string, unknown> = { ...data };
 
-  // Sanitize personalitySummary
-  if (typeof result.personalitySummary === 'string') {
-    result.personalitySummary = truncate(result.personalitySummary, STRING_LIMITS.personalitySummary);
-  }
+  truncateStringField(result, 'personalitySummary', STRING_LIMITS.personalitySummary);
 
-  // Sanitize promptPatterns
   if (Array.isArray(result.promptPatterns)) {
-    result.promptPatterns = result.promptPatterns.map((pattern: Record<string, unknown>) => ({
-      ...pattern,
-      patternName:
-        typeof pattern.patternName === 'string'
-          ? truncate(pattern.patternName, STRING_LIMITS.patternName)
-          : pattern.patternName,
-      description:
-        typeof pattern.description === 'string'
-          ? truncate(pattern.description, STRING_LIMITS.description)
-          : pattern.description,
-      tip: typeof pattern.tip === 'string' ? truncate(pattern.tip, STRING_LIMITS.tip) : pattern.tip,
-      examples: Array.isArray(pattern.examples)
-        ? sanitizePatternExamples(pattern.examples as Array<{ quote: string; analysis: string }>)
-        : pattern.examples,
-    }));
+    result.promptPatterns = result.promptPatterns.map(sanitizePromptPattern);
   }
 
-  // Sanitize dimensionInsights
   if (Array.isArray(result.dimensionInsights)) {
-    result.dimensionInsights = result.dimensionInsights.map((insight: Record<string, unknown>) => ({
-      ...insight,
-      dimensionDisplayName:
-        typeof insight.dimensionDisplayName === 'string'
-          ? truncate(insight.dimensionDisplayName, STRING_LIMITS.dimensionDisplayName)
-          : insight.dimensionDisplayName,
-      strengths: Array.isArray(insight.strengths) ? insight.strengths.map(sanitizeStrength) : insight.strengths,
-      growthAreas: Array.isArray(insight.growthAreas)
-        ? insight.growthAreas.map(sanitizeGrowthArea)
-        : insight.growthAreas,
-    }));
+    result.dimensionInsights = result.dimensionInsights.map(sanitizeDimensionInsight);
   }
 
   return result;
@@ -213,17 +240,15 @@ export class VerboseAnalysisError extends Error {
 export type PipelineMode = 'single' | 'two-stage';
 
 /**
- * Three-stage pipeline configuration
+ * Two-module pipeline configuration
  *
  * - stage1 (Module A): Data Analyst - behavioral data extraction
- * - moduleB: Personality Analyst - personality profile extraction
  * - moduleC: Productivity Analyst - productivity/efficiency metrics extraction
  * - stage2: Content Writer - narrative generation
  */
 export interface PipelineConfig {
   mode: PipelineMode;
   stage1?: DataAnalystConfig;
-  moduleB?: PersonalityAnalystConfig;
   moduleC?: ProductivityAnalystConfig;
   stage2?: ContentWriterConfig;
 }
@@ -270,11 +295,6 @@ const DEFAULT_CONFIG: Required<Omit<VerboseAnalyzerConfig, 'apiKey' | 'geminiApi
       temperature: 1.0, // Gemini 3 strongly recommends 1.0
       maxOutputTokens: 65536,
     },
-    moduleB: {
-      model: 'gemini-3-flash-preview',
-      temperature: 1.0, // Gemini 3 strongly recommends 1.0
-      maxOutputTokens: 65536,
-    },
     stage2: {
       model: 'gemini-3-flash-preview',
       temperature: 1.0, // Gemini 3 strongly recommends 1.0
@@ -290,18 +310,15 @@ const DEFAULT_CONFIG: Required<Omit<VerboseAnalyzerConfig, 'apiKey' | 'geminiApi
  *
  * Supports two modes:
  * 1. Single-stage (legacy): One LLM call with Claude Sonnet (ANTHROPIC_API_KEY)
- * 2. Two-stage pipeline: Gemini 3 Flash for both stages (GOOGLE_GEMINI_API_KEY)
+ * 2. Two-stage pipeline: Orchestrator + Workers with Gemini 3 Flash (GOOGLE_GEMINI_API_KEY)
  *
- * Two-stage pipeline uses Gemini's structured JSON output.
+ * Two-stage pipeline uses AnalysisOrchestrator with registered workers.
  * Single-stage uses Anthropic's Structured Outputs feature.
  */
 export class VerboseAnalyzer {
   private client: Anthropic;
   private config: Required<Omit<VerboseAnalyzerConfig, 'apiKey' | 'geminiApiKey'>> & { apiKey: string; geminiApiKey: string };
-  private dataAnalyst: DataAnalystStage | null = null;
-  private personalityAnalyst: PersonalityAnalystStage | null = null;
-  private productivityAnalyst: ProductivityAnalystStage | null = null;
-  private contentWriter: ContentWriterStage | null = null;
+  private orchestrator: AnalysisOrchestrator | null = null;
   private contentGateway: ContentGateway;
 
   constructor(config: VerboseAnalyzerConfig = {}) {
@@ -313,34 +330,39 @@ export class VerboseAnalyzer {
 
     this.contentGateway = new ContentGateway();
 
-    // Initialize stages for three-stage pipeline (Module A + Module B + Stage 2)
+    // Initialize orchestrator for two-stage pipeline
     if (this.config.pipeline.mode === 'two-stage') {
-      // Use provided geminiApiKey or fall back to environment variable
       const geminiApiKey = config.geminiApiKey || process.env.GOOGLE_GEMINI_API_KEY;
 
-      // Module A: Data Analyst - behavioral data extraction
-      this.dataAnalyst = new DataAnalystStage({
-        ...this.config.pipeline.stage1,
-        apiKey: geminiApiKey,
-      });
+      if (!geminiApiKey) {
+        throw new VerboseAnalysisError(
+          'GOOGLE_GEMINI_API_KEY required for two-stage pipeline.',
+          'NO_API_KEY'
+        );
+      }
 
-      // Module B: Personality Analyst - personality profile extraction
-      this.personalityAnalyst = new PersonalityAnalystStage({
-        ...this.config.pipeline.moduleB,
-        apiKey: geminiApiKey,
-      });
+      // Create orchestrator config
+      const orchestratorConfig: OrchestratorConfig = {
+        geminiApiKey,
+        model: this.config.pipeline.stage1?.model ?? 'gemini-3-flash-preview',
+        temperature: this.config.pipeline.stage1?.temperature ?? 1.0,
+        maxOutputTokens: this.config.pipeline.stage1?.maxOutputTokens ?? 65536,
+        maxRetries: this.config.maxRetries,
+        verbose: false, // Can be exposed via config if needed
+      };
 
-      // Module C: Productivity Analyst - productivity/efficiency metrics extraction
-      this.productivityAnalyst = new ProductivityAnalystStage({
-        ...this.config.pipeline.moduleC,
-        apiKey: geminiApiKey,
-      });
+      // Create and configure orchestrator
+      this.orchestrator = createAnalysisOrchestrator(orchestratorConfig);
 
-      // Stage 2: Content Writer - narrative generation
-      this.contentWriter = new ContentWriterStage({
-        ...this.config.pipeline.stage2,
-        apiKey: geminiApiKey,
-      });
+      // Register Phase 1 workers (Module A, C)
+      this.orchestrator.registerPhase1Worker(createDataAnalystWorker(orchestratorConfig));
+      this.orchestrator.registerPhase1Worker(createProductivityAnalystWorker(orchestratorConfig));
+
+      // Register Phase 2 workers (4 Wow Agents - Premium+ only)
+      this.orchestrator.registerPhase2Worker(createPatternDetectiveWorker(orchestratorConfig));
+      this.orchestrator.registerPhase2Worker(createAntiPatternSpotterWorker(orchestratorConfig));
+      this.orchestrator.registerPhase2Worker(createKnowledgeGapWorker(orchestratorConfig));
+      this.orchestrator.registerPhase2Worker(createContextEfficiencyWorker(orchestratorConfig));
     }
 
     // Get Anthropic API key for legacy single-stage mode (or fallback)
@@ -364,8 +386,9 @@ export class VerboseAnalyzer {
    * Analyze multiple sessions and return a verbose evaluation
    *
    * Uses two-stage pipeline by default:
-   * 1. Stage 1 (Gemini 3 Flash): Extract structured behavioral data
-   * 2. Stage 2 (Gemini 3 Flash): Transform into engaging narrative
+   * - Phase 1: Module A (Data), Module B (Personality), Module C (Productivity) in parallel
+   * - Phase 2: 4 Wow Agents (Premium+ only) in parallel
+   * - Phase 3: Content Writer
    *
    * Falls back to single-stage (legacy with Claude) if two-stage fails and fallbackToLegacy is true.
    */
@@ -383,8 +406,8 @@ export class VerboseAnalyzer {
 
     const tier = options.tier ?? this.config.tier;
 
-    // Try two-stage pipeline if configured
-    if (this.config.pipeline.mode === 'two-stage' && this.dataAnalyst && this.contentWriter) {
+    // Try two-stage pipeline (orchestrator) if configured
+    if (this.config.pipeline.mode === 'two-stage' && this.orchestrator) {
       try {
         return await this.analyzeTwoStage(sessions, metrics, tier);
       } catch (error) {
@@ -401,118 +424,29 @@ export class VerboseAnalyzer {
   }
 
   /**
-   * Three-stage analysis pipeline using Gemini 3 Flash
+   * Multi-phase analysis pipeline using Orchestrator + Workers
    *
-   * Module A (Stage 1): Data Analyst - Extract structured behavioral data
-   * Module B: Personality Analyst - Extract personality profile (parallel with C)
-   * Module C: Productivity Analyst - Extract productivity metrics (parallel with B)
-   * Stage 2: Content Writer - Transform into engaging narrative using all outputs
+   * Delegates to AnalysisOrchestrator which coordinates:
+   * - Phase 1: Data Extraction (Module A, B, C in parallel)
+   * - Phase 2: Insight Generation (4 Wow Agents in parallel, Premium+ only)
+   * - Phase 3: Content Generation (ContentWriter)
+   *
+   * All token tracking and tier filtering is handled by the orchestrator.
    */
   private async analyzeTwoStage(
     sessions: ParsedSession[],
     metrics: SessionMetrics,
     tier: Tier
   ): Promise<VerboseEvaluation> {
-    if (!this.dataAnalyst || !this.personalityAnalyst || !this.productivityAnalyst || !this.contentWriter) {
+    if (!this.orchestrator) {
       throw new VerboseAnalysisError(
-        'Pipeline not initialized (requires Module A, B, C, and Stage 2)',
+        'Orchestrator not initialized (requires GOOGLE_GEMINI_API_KEY)',
         'PIPELINE_NOT_INITIALIZED'
       );
     }
 
-    // Track token usage across all stages
-    const stageUsages: StageTokenUsage[] = [];
-
-    // Module A (Stage 1): Extract structured behavioral data
-    const dataAnalystResult = await this.dataAnalyst.analyze(sessions, metrics);
-    const analysisData = dataAnalystResult.data;
-    stageUsages.push({
-      stage: 'Data Analyst (Module A)',
-      promptTokens: dataAnalystResult.usage.promptTokens,
-      completionTokens: dataAnalystResult.usage.completionTokens,
-      totalTokens: dataAnalystResult.usage.totalTokens,
-    });
-
-    // Module B + Module C: Run in parallel (both depend on Module A, not each other)
-    const [personalityResult, productivityResult] = await Promise.all([
-      // Module B: Extract personality profile
-      this.personalityAnalyst.analyze(sessions, analysisData).catch((error) => {
-        console.warn('Module B (Personality Analyst) failed, using default profile:', error);
-        return { data: createDefaultPersonalityProfile(), usage: null };
-      }),
-      // Module C: Extract productivity metrics
-      this.productivityAnalyst.analyze(sessions, analysisData).catch((error) => {
-        console.warn('Module C (Productivity Analyst) failed, using default data:', error);
-        return { data: createDefaultProductivityAnalysisData(), usage: null };
-      }),
-    ]);
-
-    // Track personality analyst usage if available
-    if (personalityResult.usage) {
-      stageUsages.push({
-        stage: 'Personality Analyst (Module B)',
-        promptTokens: personalityResult.usage.promptTokens,
-        completionTokens: personalityResult.usage.completionTokens,
-        totalTokens: personalityResult.usage.totalTokens,
-      });
-    }
-
-    // Track productivity analyst usage if available
-    if (productivityResult.usage) {
-      stageUsages.push({
-        stage: 'Productivity Analyst (Module C)',
-        promptTokens: productivityResult.usage.promptTokens,
-        completionTokens: productivityResult.usage.completionTokens,
-        totalTokens: productivityResult.usage.totalTokens,
-      });
-    }
-
-    // Stage 2: Transform into narrative using Module A + Module B + Module C outputs
-    const contentWriterResult = await this.contentWriter.transform(
-      analysisData,
-      personalityResult.data,
-      sessions,
-      productivityResult.data
-    );
-    stageUsages.push({
-      stage: 'Content Writer (Stage 2)',
-      promptTokens: contentWriterResult.usage.promptTokens,
-      completionTokens: contentWriterResult.usage.completionTokens,
-      totalTokens: contentWriterResult.usage.totalTokens,
-    });
-
-    // Aggregate and log token usage
-    const pipelineUsage = aggregateTokenUsage(
-      stageUsages,
-      this.config.pipeline.stage1?.model || 'gemini-3-flash-preview'
-    );
-    this.logTokenUsage(pipelineUsage);
-
-    // Extract session file info for display
-    const analyzedSessions = extractAnalyzedSessions(sessions);
-
-    // Create full evaluation with metadata
-    const evaluation: VerboseEvaluation = {
-      sessionId: sessions[sessions.length - 1].sessionId,
-      analyzedAt: new Date().toISOString(),
-      sessionsAnalyzed: sessions.length,
-      avgPromptLength: Math.round(metrics.avgPromptLength),
-      avgTurnsPerSession: Math.round(metrics.avgTurnsPerSession * 10) / 10,
-      analyzedSessions,
-      ...contentWriterResult.data,
-      // Include Module C (Productivity Analyst) output
-      productivityAnalysis: productivityResult.data,
-    };
-
-    // Apply tier-based content filtering
-    return this.contentGateway.filter(evaluation, tier);
-  }
-
-  /**
-   * Log token usage summary to console
-   */
-  private logTokenUsage(usage: PipelineTokenUsage): void {
-    console.log('\n' + formatActualUsage(usage));
+    // Delegate to orchestrator - it handles everything
+    return await this.orchestrator.analyze(sessions, metrics, tier);
   }
 
   /**
@@ -698,6 +632,5 @@ export function createVerboseAnalyzer(config?: VerboseAnalyzerConfig): VerboseAn
 export { buildVerboseUserPrompt } from './verbose-prompts';
 export { type Tier, ContentGateway, createContentGateway } from './content-gateway';
 export { DataAnalystStage, type DataAnalystConfig } from './stages/data-analyst';
-export { PersonalityAnalystStage, type PersonalityAnalystConfig } from './stages/personality-analyst';
 export { ProductivityAnalystStage, type ProductivityAnalystConfig } from './stages/productivity-analyst';
 export { ContentWriterStage, type ContentWriterConfig } from './stages/content-writer';
