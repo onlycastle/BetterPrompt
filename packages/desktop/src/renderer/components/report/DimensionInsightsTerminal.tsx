@@ -34,6 +34,36 @@ interface DimensionCardProps {
   insight: PerDimensionInsight;
 }
 
+/** Expandable evidence list component */
+function EvidenceList({ evidence, accentColor }: { evidence: string[]; accentColor?: string }) {
+  const [showAll, setShowAll] = useState(false);
+  const hasMore = evidence.length > 2;
+  const displayedEvidence = showAll ? evidence : evidence.slice(0, 2);
+
+  return (
+    <div className={styles.evidenceList}>
+      {displayedEvidence.map((quote, idx) => (
+        <blockquote
+          key={idx}
+          className={styles.itemQuote}
+          style={accentColor ? { borderLeftColor: accentColor } : undefined}
+        >
+          "{quote}"
+        </blockquote>
+      ))}
+      {hasMore && (
+        <button
+          className={styles.showMoreButton}
+          onClick={() => setShowAll(!showAll)}
+          type="button"
+        >
+          {showAll ? 'Show less' : `Show ${evidence.length - 2} more...`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function DimensionCard({ insight }: DimensionCardProps) {
   const [expanded, setExpanded] = useState(false);
   const style = DIMENSION_STYLES[insight.dimension] || DEFAULT_STYLE;
@@ -85,9 +115,7 @@ function DimensionCard({ insight }: DimensionCardProps) {
                   </div>
                   <p className={styles.itemDescription}>{strength.description}</p>
                   {strength.evidence && strength.evidence.length > 0 && (
-                    <blockquote className={styles.itemQuote}>
-                      "{strength.evidence[0]}"
-                    </blockquote>
+                    <EvidenceList evidence={strength.evidence} accentColor={style.accent} />
                   )}
                 </div>
               ))}
@@ -109,6 +137,10 @@ function DimensionCard({ insight }: DimensionCardProps) {
                     )}
                   </div>
                   <p className={styles.itemDescription}>{growth.description}</p>
+                  {/* Evidence for growth areas */}
+                  {growth.evidence && growth.evidence.length > 0 && (
+                    <EvidenceList evidence={growth.evidence} accentColor="var(--sketch-yellow)" />
+                  )}
                   {growth.recommendation && (
                     <div className={styles.recommendation}>
                       <span className={styles.recommendationLabel}>💡 Recommendation:</span>
