@@ -159,8 +159,10 @@ The UnifiedAnalyzer integrates all analysis components into a single orchestrato
 | `src/lib/domain/` | Domain models (Zod schemas, business rules) | Domain |
 | `src/lib/infrastructure/` | Supabase & local storage adapters | Infrastructure |
 | `src/lib/analyzer/` | LLM analysis (prompts, dimensions, insights) | Application |
-| `src/lib/analyzer/stages/` | Two-stage pipeline (data-analyst, content-writer) | Application |
-| `src/lib/models/` | Zod schemas (unified-report, schema-bridge) | Domain |
+| `src/lib/analyzer/orchestrator/` | 3-phase analysis orchestration | Application |
+| `src/lib/analyzer/workers/` | Phase 1 & Phase 2 workers (Module A, C, 4 Wow Agents) | Application |
+| `src/lib/analyzer/stages/` | Stage implementations (data-analyst, content-writer) | Application |
+| `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/parser/` | JSONL session parsing | Infrastructure |
 | `src/lib/search-agent/` | Knowledge curation system | Application |
 
@@ -224,26 +226,40 @@ src/hooks/
 - Server Components for optimal performance
 - React hooks for client-side state management
 
-### Two-Stage Analysis Pipeline
+### Orchestrator + Workers Analysis Pipeline
 
-The analyzer uses a two-stage Gemini pipeline for structured output. See [LLM_FLOW.md](./LLM_FLOW.md) for details.
+The analyzer uses a 3-phase Orchestrator + Workers pattern with Gemini. See [LLM_FLOW.md](./LLM_FLOW.md) for details.
 
-**Stage 1: Data Analyst** (`src/lib/analyzer/stages/data-analyst.ts`)
-- Extracts behavioral patterns from session data
-- Outputs structured JSON using `responseJsonSchema`
-- Temperature: 1.0 (Gemini's recommended default)
+**Architecture:**
+- **AnalysisOrchestrator** (`src/lib/analyzer/orchestrator/analysis-orchestrator.ts`) coordinates all phases
+- **Workers** (`src/lib/analyzer/workers/`) execute phase-specific analysis tasks
+- **Graceful Degradation**: Individual workers can fail independently
 
-**Stage 2: Content Writer** (`src/lib/analyzer/stages/content-writer.ts`)
-- Transforms behavioral data into personalized narrative
-- Generates dimension insights and recommendations
-- Outputs structured JSON using `responseJsonSchema`
+**Phase 1: Data Extraction (Parallel)**
+- **DataAnalystWorker** (Module A) - Extracts behavioral patterns
+- **ProductivityAnalystWorker** (Module C) - Extracts productivity metrics
+- Both run in parallel, outputs: `StructuredAnalysisData` + `ProductivityAnalysisData`
+
+**Phase 2: Insight Generation (Parallel, Premium+ only)**
+- 4 "Wow Agents" run in parallel:
+  - **PatternDetectiveWorker** - Cross-session pattern detection
+  - **AntiPatternSpotterWorker** - Inefficient pattern detection
+  - **KnowledgeGapWorker** - Knowledge gap identification
+  - **ContextEfficiencyWorker** - Context utilization analysis
+- Output: `AgentOutputs` (merged results)
+- Skipped for Free tier
+
+**Phase 3: Content Writer**
+- **ContentWriterStage** (`src/lib/analyzer/stages/content-writer.ts`)
+- Combines all phase outputs into personalized narrative
+- Output: `VerboseLLMResponse` → `VerboseEvaluation`
 
 **Prompt Engineering:**
 - Prompts in `src/lib/analyzer/stages/data-analyst-prompts.ts` and `content-writer-prompts.ts`
 - Uses PTCF framework (Persona · Task · Context · Format)
 - Zod schemas → JSON Schema via `zod-to-json-schema`
 
-**Model:** `gemini-3-flash-preview` for both stages
+**Model:** `gemini-3-flash-preview` for all phases
 
 ## Port Interfaces
 

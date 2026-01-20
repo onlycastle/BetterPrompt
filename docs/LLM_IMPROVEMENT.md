@@ -1,15 +1,57 @@
 # LLM Pipeline Improvement Plan
 
-> Specialized Agents (Economist, CodeReviewer, Librarian, Educator, Communicator)를 추가하여 분석 파이프라인 강화
+> ⚠️ **STATUS: PARTIALLY IMPLEMENTED** (2025-01 Update)
+>
+> - ✅ **IMPLEMENTED**: 4 Wow Agents (PatternDetective, AntiPatternSpotter, KnowledgeGap, ContextEfficiency)
+> - ✅ **IMPLEMENTED**: Orchestrator + Workers architecture (parallel execution)
+> - ✅ **IMPLEMENTED**: Module C (ProductivityAnalyst)
+> - ❌ **REMOVED**: Module B (Personality Analyst) - MBTI/사주 analysis removed
+> - ⏳ **DEFERRED**: Original 5 agents (Economist, CodeReviewer, Librarian, Educator, Communicator)
+>
+> See [LLM_FLOW.md](./LLM_FLOW.md) for current implementation.
 
-## 현재 구조 vs 개선 구조
+## Implemented Architecture
 
-**현재 (3-Stage Pipeline):**
+**Current (Orchestrator + Workers, 3-Phase):**
 ```
-ParsedSession[] → Module A (DataAnalyst) → Module B (Personality) → Stage 2 (ContentWriter)
+                    ┌─────────────────────────┐
+                    │    ParsedSession[]       │
+                    └───────────┬─────────────┘
+                                │
+                    ╔═══════════════════════════════════╗
+                    ║     ANALYSIS ORCHESTRATOR          ║
+                    ╠═══════════════════════════════════╣
+                    ║                                    ║
+                    ║  PHASE 1 (parallel):               ║
+                    ║  ┌──────────────┐ ┌──────────────┐ ║
+                    ║  │ Module A     │ │ Module C     │ ║
+                    ║  │ DataAnalyst  │ │ Productivity │ ║
+                    ║  └──────────────┘ └──────────────┘ ║
+                    ║           │               │        ║
+                    ║  PHASE 2 (parallel, Premium+):     ║
+                    ║  ┌────────┐ ┌────────┐             ║
+                    ║  │Pattern │ │AntiPat.│             ║
+                    ║  │Detect. │ │Spotter │             ║
+                    ║  └────────┘ └────────┘             ║
+                    ║  ┌────────┐ ┌────────┐             ║
+                    ║  │Knowled.│ │Context │             ║
+                    ║  │Gap     │ │Effic.  │             ║
+                    ║  └────────┘ └────────┘             ║
+                    ║                                    ║
+                    ║  PHASE 3:                          ║
+                    ║  ┌─────────────────────────┐       ║
+                    ║  │   ContentWriter          │       ║
+                    ║  └─────────────────────────┘       ║
+                    ╚═══════════════════════════════════╝
 ```
 
-**개선 (3-Stage + 5 Agents):**
+---
+
+## Original Plan (Legacy Reference)
+
+> The original 5-agent plan is preserved below for reference. Some concepts were adapted into the 4 Wow Agents.
+
+**Original Proposal (3-Stage + 5 Agents):**
 ```
                     ┌─────────────────────────┐
                     │    ParsedSession[]       │

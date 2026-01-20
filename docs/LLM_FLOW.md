@@ -1,32 +1,69 @@
-# Three-Stage LLM Pipeline
+# Orchestrator + Workers Analysis Pipeline
 
 > Developer-AI 협업 세션을 분석하여 개인화된 리포트를 생성하는 파이프라인
 
 ## Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              Analysis Pipeline                                   │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                  │
-│   Sessions (JSONL)                                                               │
-│        │                                                                         │
-│        ▼                                                                         │
-│   ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐   │
-│   │   Parse &   │────▶│  Module A:  │────▶│  Module B:  │────▶│  Stage 2:   │   │
-│   │  Aggregate  │     │Data Analyst │     │ Personality │     │Content Writer│   │
-│   └─────────────┘     └─────────────┘     │   Analyst   │     └─────────────┘   │
-│                              │            └──────┬──────┘            │           │
-│                              │                   │ (graceful         ▼           │
-│                              │                   │  fallback)  ┌─────────────┐   │
-│                              │                   │             │  Content    │   │
-│                              │                   │             │  Gateway    │   │
-│                              │                   │             └─────────────┘   │
-│                              ▼                   ▼                   │           │
-│                     StructuredData      PersonalityProfile    VerboseEvaluation  │
-│                     (intermediate)       (intermediate)           (final)        │
-│                                                                                  │
-└─────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│                        ANALYSIS ORCHESTRATOR PIPELINE                                 │
+├──────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                       │
+│   Sessions (JSONL)                                                                    │
+│        │                                                                              │
+│        ▼                                                                              │
+│   ┌─────────────┐                                                                     │
+│   │   Parse &   │                                                                     │
+│   │  Aggregate  │                                                                     │
+│   └──────┬──────┘                                                                     │
+│          │                                                                            │
+│          ▼                                                                            │
+│   ╔══════════════════════════════════════════════════════════════════════════════╗   │
+│   ║                        ANALYSIS ORCHESTRATOR                                  ║   │
+│   ║                                                                               ║   │
+│   ║  ┌─────────────────────────────────────────────────────────────────────────┐ ║   │
+│   ║  │ PHASE 1: Data Extraction (parallel)                                     │ ║   │
+│   ║  │ ┌─────────────────────┐     ┌─────────────────────┐                     │ ║   │
+│   ║  │ │ DataAnalystWorker   │     │ ProductivityWorker   │                    │ ║   │
+│   ║  │ │ (Module A)          │     │ (Module C)           │                    │ ║   │
+│   ║  │ └─────────┬───────────┘     └─────────┬───────────┘                     │ ║   │
+│   ║  │           │                           │                                  │ ║   │
+│   ║  │           ▼                           ▼                                  │ ║   │
+│   ║  │   StructuredAnalysisData    ProductivityAnalysisData                    │ ║   │
+│   ║  └─────────────────────────────────────────────────────────────────────────┘ ║   │
+│   ║                              │                                                ║   │
+│   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
+│   ║  │ PHASE 2: Insight Generation (parallel, Premium+ only)                  │   ║   │
+│   ║  │ ┌───────────────┐ ┌───────────────┐ ┌──────────────┐ ┌──────────────┐ │   ║   │
+│   ║  │ │ PatternDet.   │ │ AntiPattern   │ │ KnowledgeGap │ │ ContextEff.  │ │   ║   │
+│   ║  │ │ Worker        │ │ Spotter       │ │ Worker       │ │ Worker       │ │   ║   │
+│   ║  │ └───────┬───────┘ └───────┬───────┘ └──────┬───────┘ └──────┬───────┘ │   ║   │
+│   ║  │         │                 │                 │                │         │   ║   │
+│   ║  │         └─────────────────┴─────────────────┴────────────────┘         │   ║   │
+│   ║  │                                   │                                     │   ║   │
+│   ║  │                                   ▼                                     │   ║   │
+│   ║  │                            AgentOutputs                                 │   ║   │
+│   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
+│   ║                              │                                                ║   │
+│   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
+│   ║  │ PHASE 3: Content Generation                                            │   ║   │
+│   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
+│   ║  │ │ ContentWriter                                                    │   │   ║   │
+│   ║  │ │ (combines Module A + C + Agent outputs)                         │   │   ║   │
+│   ║  │ └─────────────────────────────────────────────────────────────────┘   │   ║   │
+│   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
+│   ╚══════════════════════════════════════════════════════════════════════════════╝   │
+│          │                                                                            │
+│          ▼                                                                            │
+│   ┌─────────────┐                                                                     │
+│   │  Content    │                                                                     │
+│   │  Gateway    │  ← Tier-based filtering (free/premium/enterprise)                   │
+│   └──────┬──────┘                                                                     │
+│          │                                                                            │
+│          ▼                                                                            │
+│   VerboseEvaluation (final)                                                           │
+│                                                                                       │
+└──────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -218,30 +255,22 @@ StructuredAnalysisData
 
 ---
 
-### Module B: Personality Analyst
+### Module C: Productivity Analyst
 
-**목적**: 행동 데이터로부터 성격 프로필 추출 (사용자에게 직접 노출되지 않음)
+**목적**: 생산성 지표 및 효율성 분석 추출
+
+> Module A와 병렬로 실행됨 (Phase 1)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    MODULE B: PERSONALITY ANALYST                         │
+│                    MODULE C: PRODUCTIVITY ANALYST                        │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌──────────────────────────────┐                                       │
 │  │  INPUT                        │                                       │
 │  │  - Sessions[]                 │                                       │
-│  │  - StructuredAnalysisData     │  ◀── Module A output                 │
+│  │  - Metrics                    │                                       │
 │  └────────────┬─────────────────┘                                       │
-│               │                                                          │
-│               ▼                                                          │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │  MINIMUM DATA CHECK                                              │    │
-│  │  - ≥5 extracted quotes                                          │    │
-│  │  - ≥1 detected pattern                                          │    │
-│  │  - typeAnalysis present                                         │    │
-│  │                                                                   │    │
-│  │  If insufficient → return defaultPersonalityProfile()           │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
 │               │                                                          │
 │               ▼                                                          │
 │  ┌────────────────────────────────────────────┐                         │
@@ -249,92 +278,157 @@ StructuredAnalysisData
 │  │  Model: gemini-3-flash-preview             │                         │
 │  │  Temperature: 1.0 (Gemini default)         │                         │
 │  │  Max Tokens: 65536                         │                         │
-│  │  Structured Output: PersonalityProfile     │                         │
+│  │  Structured Output: ProductivityAnalysisData│                        │
 │  └────────────────────────────────────────────┘                         │
 │               │                                                          │
 │               ▼                                                          │
 │  ┌──────────────────┐                                                   │
 │  │  OUTPUT          │     GRACEFUL DEGRADATION:                         │
-│  │  Personality     │     If LLM call fails, returns                    │
-│  │  Profile         │     defaultPersonalityProfile()                   │
+│  │  Productivity    │     If LLM call fails, returns                    │
+│  │  AnalysisData    │     defaultProductivityAnalysisData()             │
 │  └──────────────────┘                                                   │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-> ⚠️ **IMPORTANT**: Module B 데이터는 사용자에게 직접 노출되지 않습니다.
-> Stage 2 (Content Writer)에서 자연스러운 문장으로 변환됩니다.
-
-#### Module B Output Schema
+#### Module C Output Schema
 
 ```
-PersonalityProfile
+ProductivityAnalysisData
 │
-├── dimensions  ← MBTI 4-axis analysis (internal framework)
-│   │
-│   ├── ei  ← Extraversion/Introversion (communication style)
-│   │   ├── score: 0-100 (0=Extraverted, 100=Introverted)
-│   │   ├── signalsData: "type:evidence:confidence;..."  ← FLATTENED
-│   │   └── insight: "Prefers detailed context over brief prompts"
-│   │
-│   ├── sn  ← Sensing/Intuition (information processing)
-│   │   ├── score: 0-100 (0=Sensing, 100=Intuition)
-│   │   ├── signalsData: "..."
-│   │   └── insight: "Focuses on big-picture patterns"
-│   │
-│   ├── tf  ← Thinking/Feeling (decision making)
-│   │   ├── score: 0-100 (0=Thinking, 100=Feeling)
-│   │   ├── signalsData: "..."
-│   │   └── insight: "Logic-driven with some user empathy"
-│   │
-│   └── jp  ← Judging/Perceiving (work structure)
-│       ├── score: 0-100 (0=Judging, 100=Perceiving)
-│       ├── signalsData: "..."
-│       └── insight: "Structured approach with flexibility"
+├── sessionEfficiency
+│   ├── averageTimeToFirstCode: number  (minutes)
+│   ├── averageIterationCycles: number
+│   └── efficiencyScore: 0-100
 │
-├── yongsin: "용신 - What's missing/needed"
-│   └── Example: "Verification before committing changes"
+├── taskCompletionPatterns
+│   ├── completionRate: 0-100
+│   ├── averageTasksPerSession: number
+│   └── commonBlockers: string[]
 │
-├── gisin: "기신 - What's excessive"
-│   └── Example: "Over-reliance on AI suggestions"
+├── focusIndicators
+│   ├── deepWorkSessions: number
+│   ├── contextSwitchFrequency: number
+│   └── multitaskingScore: 0-100
 │
-├── gyeokguk: "격국 - Overall pattern type"
-│   └── Example: "Pragmatic Builder"
-│
-├── sangsaeng: []  ← 상생 - Synergistic skill combinations
-│   └── Example: ["Planning + Execution", "Context + Delegation"]
-│
-├── sanggeuk: []  ← 상극 - Conflicting skill combinations
-│   └── Example: ["Speed vs Quality tension"]
-│
-└── overallConfidence: 0.0-1.0
+└── workPatterns
+    ├── peakProductivityHours: string[]
+    ├── sessionDurationDistribution: { short, medium, long }
+    └── restPatterns: string[]
 ```
-
-**사주 (Four Pillars) Framework Mapping:**
-
-| 사주 용어 | 영문 | 목적 |
-|----------|------|------|
-| 용신 (用神) | yongsin | 부족한 것, 필요한 것 |
-| 기신 (忌神) | gisin | 과한 것, 줄여야 할 것 |
-| 격국 (格局) | gyeokguk | 전체 패턴 유형 |
-| 상생 (相生) | sangsaeng | 시너지 조합 |
-| 상극 (相剋) | sanggeuk | 충돌 조합 |
 
 ---
 
-### Stage 2: Content Writer
+### Phase 2: Insight Generation Agents (Premium+)
 
-**목적**: Module A + Module B 데이터를 개인화된 내러티브로 변환
+**목적**: Phase 1 결과를 바탕으로 심층 인사이트 생성
+
+> 4개의 전문 에이전트가 병렬로 실행됨. Free tier에서는 스킵됨.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                        CONTENT WRITER STAGE                              │
+│                    PHASE 2: 4 WOW AGENTS (PARALLEL)                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────────────────────┐                                       │
+│  │  INPUT (from Phase 1)        │                                       │
+│  │  - StructuredAnalysisData    │  ◀── Module A output                 │
+│  │  - ProductivityAnalysisData  │  ◀── Module C output                 │
+│  │  - Sessions[]                │                                       │
+│  │  - Metrics                   │                                       │
+│  └────────────┬─────────────────┘                                       │
+│               │                                                          │
+│  ┌────────────┴────────────┬────────────────┬────────────────┐          │
+│  ▼                         ▼                ▼                ▼          │
+│ ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│ │PatternDetect.│  │AntiPattern   │  │KnowledgeGap  │  │ContextEffic. │ │
+│ │Worker        │  │Spotter       │  │Worker        │  │Worker        │ │
+│ └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘ │
+│        ▼                 ▼                 ▼                 ▼          │
+│ ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│ │PatternDet.   │  │AntiPattern   │  │KnowledgeGap  │  │ContextEffic. │ │
+│ │Output        │  │Output        │  │Output        │  │Output        │ │
+│ └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘ │
+│        │                 │                 │                 │          │
+│        └─────────────────┴─────────────────┴─────────────────┘          │
+│                                   │                                      │
+│                                   ▼                                      │
+│                          ┌──────────────┐                               │
+│                          │ AgentOutputs │                               │
+│                          │ (merged)     │                               │
+│                          └──────────────┘                               │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Phase 2 Agent Descriptions
+
+| Agent | 목적 | Output Schema |
+|-------|------|---------------|
+| **PatternDetective** | 세션 간 반복되는 행동 패턴 탐지 | `PatternDetectiveOutput` |
+| **AntiPatternSpotter** | 비효율적 패턴 및 개선 기회 탐지 | `AntiPatternSpotterOutput` |
+| **KnowledgeGap** | 지식 격차 및 학습 기회 식별 | `KnowledgeGapOutput` |
+| **ContextEfficiency** | 컨텍스트 활용 효율성 분석 | `ContextEfficiencyOutput` |
+
+#### Agent Output Schema (AgentOutputs)
+
+```
+AgentOutputs
+│
+├── patternDetective
+│   ├── recurringPatterns[]
+│   │   ├── patternName: string
+│   │   ├── description: string
+│   │   ├── frequency: number
+│   │   ├── impact: "positive" | "negative" | "neutral"
+│   │   └── examples: string[]
+│   ├── crossSessionInsights[]
+│   └── recommendations[]
+│
+├── antiPatternSpotter
+│   ├── detectedAntiPatterns[]
+│   │   ├── antiPatternName: string
+│   │   ├── description: string
+│   │   ├── frequency: number
+│   │   ├── severity: "low" | "medium" | "high"
+│   │   └── remediationSuggestion: string
+│   ├── rootCauses[]
+│   └── prioritizedFixes[]
+│
+├── knowledgeGap
+│   ├── identifiedGaps[]
+│   │   ├── topic: string
+│   │   ├── evidence: string[]
+│   │   ├── severity: "minor" | "moderate" | "significant"
+│   │   └── learningResources: string[]
+│   ├── strengthAreas[]
+│   └── learningPath[]
+│
+└── contextEfficiency
+    ├── efficiencyMetrics
+    │   ├── contextUtilization: 0-100
+    │   ├── redundancyScore: 0-100
+    │   └── clarityScore: 0-100
+    ├── improvementAreas[]
+    └── bestPracticesSuggestions[]
+```
+
+---
+
+### Phase 3: Content Writer
+
+**목적**: Module A + Module C + Agent Outputs를 개인화된 내러티브로 변환
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    PHASE 3: CONTENT WRITER                               │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌──────────────────────────────┐                                       │
 │  │  INPUT                        │                                       │
 │  │  - StructuredAnalysisData     │  ◀── Module A output                 │
-│  │  - PersonalityProfile         │  ◀── Module B output                 │
+│  │  - ProductivityAnalysisData   │  ◀── Module C output                 │
+│  │  - AgentOutputs               │  ◀── Phase 2 outputs (Premium+)      │
 │  │  - Sessions[] (for language)  │                                       │
 │  └────────────┬─────────────────┘                                       │
 │               │                                                          │
@@ -349,10 +443,16 @@ PersonalityProfile
 │  │  typeAnalysis ────────────▶ (passed through unchanged)           │    │
 │  │  personalizedPriorities ──▶ topFocusAreas[]                      │    │
 │  │                                                                   │    │
-│  │  FROM MODULE B:                                                   │    │
-│  │  dimensions (MBTI) ───────▶ personalityInsights (natural lang)   │    │
-│  │  yongsin/gisin ───────────▶ growth narrative                     │    │
-│  │  sangsaeng/sanggeuk ──────▶ strength/conflict insights           │    │
+│  │  FROM MODULE C:                                                   │    │
+│  │  sessionEfficiency ───────▶ productivitySection                   │    │
+│  │  taskCompletionPatterns ──▶ workflowInsights                      │    │
+│  │  focusIndicators ─────────▶ focusAnalysis                         │    │
+│  │                                                                   │    │
+│  │  FROM PHASE 2 AGENTS (Premium+):                                  │    │
+│  │  patternDetective ────────▶ crossSessionPatterns                  │    │
+│  │  antiPatternSpotter ──────▶ growthOpportunities                   │    │
+│  │  knowledgeGap ────────────▶ learningRecommendations               │    │
+│  │  contextEfficiency ───────▶ communicationAnalysis                 │    │
 │  │                                                                   │    │
 │  │  TONE: "Your habit of saying 'let me think'..."                  │    │
 │  │    NOT: "You demonstrate good planning behaviors..."             │    │
@@ -428,20 +528,29 @@ personalizedPriorities                              topFocusAreas
 └───────────────────────┘                           │ summary: "..."                   │
                                                     └──────────────────────────────────┘
 
-Module B Output                                     Stage 2 Output
+Module C Output                                     Phase 3 Output
 ─────────────────                                   ─────────────────
 
-PersonalityProfile                                  personalityInsights
+ProductivityAnalysisData                           productivityInsights
 ┌───────────────────────┐                           ┌──────────────────────────────────┐
-│ dimensions: {         │                           │ coreObservation: "You tend to..."│
-│   ei: { score, ... }  │──────────────────────────▶│ strengthConnection: "This helps."│
-│   sn: { score, ... }  │     natural language      │ growthOpportunity: "Consider..." │
-│   tf: { score, ... }  │     transformation        │ dailyLifeConnection: "Like when."│
-│   jp: { score, ... }  │                           └──────────────────────────────────┘
-│ }                     │
-│ yongsin: "..."        │     (NO labels/scores exposed to user)
-│ gisin: "..."          │
+│ sessionEfficiency: {  │                           │ efficiencyNarrative: "Your..."   │
+│   score: 78           │──────────────────────────▶│ workflowInsights: "You excel..." │
+│   avgIterations: 3    │     natural language      │ focusAnalysis: "Deep work..."    │
+│ }                     │     transformation        │ productivityTips: [...]          │
+│ focusIndicators: {...}│                           └──────────────────────────────────┘
+│ workPatterns: {...}   │
 └───────────────────────┘
+
+Phase 2 Agent Outputs (Premium+)                   Phase 3 Output
+────────────────────────                           ─────────────────
+
+AgentOutputs                                       agentInsights
+┌───────────────────────┐                           ┌──────────────────────────────────┐
+│ patternDetective: {}  │                           │ patternInsights: "Across your..."│
+│ antiPatternSpotter: {}│──────────────────────────▶│ antiPatternFeedback: "We noted.."│
+│ knowledgeGap: {}      │     aggregate & narrate   │ learningRecommendations: [...]   │
+│ contextEfficiency: {} │                           │ efficiencyOpportunities: [...]   │
+└───────────────────────┘                           └──────────────────────────────────┘
 ```
 
 ---
@@ -493,8 +602,11 @@ PersonalityProfile                                  personalityInsights
 │  Top Focus Areas                 ✗          ✓           ✓               │  ← NEW
 │  (personalized priorities)                                               │
 │                                                                          │
-│  Personality Insights            ✗          ✓           ✓               │  ← NEW
-│  (from Module B)                                                         │
+│  Productivity Insights           ✗          ✓           ✓               │
+│  (from Module C)                                                         │
+│                                                                          │
+│  Agent Insights                  ✗          ✓           ✓               │
+│  (from Phase 2 Agents)                                                   │
 │                                                                          │
 │  Anti-Patterns Analysis          ✗          ✓           ✓               │  ← NEW
 │  (growth-framed feedback)                                                │
@@ -603,50 +715,61 @@ Module A에 주입되는 전문가 지식 구조:
                        │
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║                    MODULE A: DATA ANALYST                         ║
+  ║        PHASE 1: DATA EXTRACTION (Module A + C PARALLEL)           ║
+  ╠═══════════════════════════════════════════════════════════════════╣
   ║                                                                    ║
-  ║   Model: gemini-3-flash      Temp: 1.0    Tokens: 65536           ║
-  ║                                                                    ║
-  ║   INPUT:  Sessions + Metrics + Knowledge Context                   ║
-  ║   OUTPUT: StructuredAnalysisData                                   ║
-  ║           - 15-50 extracted quotes (with clusterId)                ║
-  ║           - 3-10 detected patterns                                 ║
-  ║           - 6 dimension signals (with cluster themes)              ║
-  ║           - Type classification                                    ║
-  ║           - Personalized priorities (top 3)                        ║
-  ║           - Anti-patterns, critical thinking, planning (Premium)   ║
+  ║  ┌─────────────────────────────┐  ┌─────────────────────────────┐ ║
+  ║  │     MODULE A: DATA ANALYST  │  │   MODULE C: PRODUCTIVITY    │ ║
+  ║  ├─────────────────────────────┤  ├─────────────────────────────┤ ║
+  ║  │ Model: gemini-3-flash       │  │ Model: gemini-3-flash       │ ║
+  ║  │ Temp: 1.0   Tokens: 65536   │  │ Temp: 1.0   Tokens: 65536   │ ║
+  ║  │                             │  │                             │ ║
+  ║  │ OUTPUT:                     │  │ OUTPUT:                     │ ║
+  ║  │ - 15-50 extracted quotes    │  │ - sessionEfficiency         │ ║
+  ║  │ - 3-10 detected patterns    │  │ - taskCompletionPatterns    │ ║
+  ║  │ - 6 dimension signals       │  │ - focusIndicators           │ ║
+  ║  │ - Type classification       │  │ - workPatterns              │ ║
+  ║  │ - Personalized priorities   │  │                             │ ║
+  ║  └─────────────────────────────┘  └─────────────────────────────┘ ║
+  ║                │                               │                   ║
+  ║                └───────────────┬───────────────┘                   ║
+  ║                                ▼                                   ║
+  ║            StructuredAnalysisData + ProductivityAnalysisData       ║
   ╚═══════════════════════════════════════════════════════════════════╝
                        │
-                       │ [4] Pass to Module B for personality extraction
+                       │ [4] Pass Phase 1 outputs to Phase 2 (Premium+ only)
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║                  MODULE B: PERSONALITY ANALYST                    ║
+  ║         PHASE 2: INSIGHT GENERATION (4 WOW AGENTS, Premium+)      ║
   ║                                                                    ║
-  ║   Model: gemini-3-flash      Temp: 1.0    Tokens: 65536           ║
+  ║   [4 parallel agents, skipped for Free tier]                       ║
   ║                                                                    ║
-  ║   INPUT:  Sessions + StructuredAnalysisData                        ║
-  ║   OUTPUT: PersonalityProfile                                       ║
-  ║           - MBTI 4-axis analysis (E/I, S/N, T/F, J/P)             ║
-  ║           - 사주: yongsin, gisin, gyeokguk, sangsaeng, sanggeuk    ║
+  ║   INPUT:  StructuredAnalysisData + ProductivityAnalysisData        ║
+  ║   OUTPUT: AgentOutputs (merged)                                    ║
+  ║           - PatternDetectiveWorker → recurring patterns            ║
+  ║           - AntiPatternSpotterWorker → inefficient patterns        ║
+  ║           - KnowledgeGapWorker → knowledge gaps                    ║
+  ║           - ContextEfficiencyWorker → context utilization          ║
   ║                                                                    ║
-  ║   GRACEFUL DEGRADATION: If fails → defaultPersonalityProfile()    ║
+  ║   GRACEFUL DEGRADATION: Individual agents can fail independently  ║
   ╚═══════════════════════════════════════════════════════════════════╝
                        │
-                       │ [5] Pass both outputs to Stage 2
+                       │ [5] Pass all outputs to Phase 3
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║                   STAGE 2: CONTENT WRITER                         ║
+  ║                   PHASE 3: CONTENT WRITER                         ║
   ║                                                                    ║
   ║   Model: gemini-3-flash      Temp: 1.0    Tokens: 65536           ║
   ║                                                                    ║
-  ║   INPUT:  StructuredAnalysisData + PersonalityProfile + Sessions   ║
+  ║   INPUT:  StructuredAnalysisData + ProductivityAnalysisData         ║
+  ║           + AgentOutputs + Sessions                                ║
   ║   OUTPUT: VerboseLLMResponse                                       ║
   ║           - Personality summary (300-1500 chars)                   ║
   ║           - 6 dimension insights (with evidence)                   ║
   ║           - 3-6 prompt patterns                                    ║
   ║           - Top focus areas (personalized)                         ║
-  ║           - Personality insights (natural language)                ║
-  ║           - Premium: anti-patterns, critical thinking, planning    ║
+  ║           - Productivity insights (from Module C)                  ║
+  ║           - Agent insights (from Phase 2, Premium+)                ║
   ╚═══════════════════════════════════════════════════════════════════╝
                        │
                        │ [6] Post-processing: evidence linking, flattening
@@ -704,26 +827,28 @@ Module A에 주입되는 전문가 지식 구조:
 │  │  Cost: ~$0.13 per analysis                               │           │
 │  └──────────────────────────────────────────────────────────┘           │
 │                                                                          │
-│  Three-Stage (Current - Gemini 3 Flash)                                  │
+│  Orchestrator Pipeline (Current - Gemini 3 Flash)                        │
 │  ┌──────────────────────────────────────────────────────────┐           │
-│  │  Module A: Gemini 3 Flash                                 │           │
-│  │  Input: ~15K tokens    Output: ~8K tokens                │           │
+│  │  PHASE 1 (Parallel): Module A + Module C                  │           │
+│  │  Module A: Input: ~15K tokens    Output: ~8K tokens      │           │
+│  │  Module C: Input: ~10K tokens    Output: ~3K tokens      │           │
 │  │                                                           │           │
-│  │  Module B: Gemini 3 Flash                                 │           │
-│  │  Input: ~20K tokens    Output: ~2K tokens                │           │
+│  │  PHASE 2 (Parallel, Premium+): 4 Wow Agents              │           │
+│  │  ~4K tokens per agent, ~16K total (Premium only)         │           │
 │  │                                                           │           │
-│  │  Stage 2: Gemini 3 Flash                                  │           │
+│  │  PHASE 3: Content Writer                                  │           │
 │  │  Input: ~12K tokens    Output: ~6K tokens                │           │
 │  │                                                           │           │
-│  │  Total Cost: ~$0.06 per analysis                         │           │
+│  │  Total Cost (Free):    ~$0.04 per analysis               │           │
+│  │  Total Cost (Premium): ~$0.07 per analysis               │           │
 │  └──────────────────────────────────────────────────────────┘           │
 │                                                                          │
-│  Result: Three-stage with Gemini provides BEST VALUE                    │
+│  Result: Orchestrator + Workers provides BEST VALUE                     │
 │  - Gemini 3 Flash: Pro-level intelligence at Flash pricing              │
 │  - 1M token context window for comprehensive analysis                   │
-│  - Unified model simplifies pipeline                                    │
-│  - Module B adds personality depth with minimal cost                    │
-│  - Graceful degradation prevents failures                               │
+│  - Parallel execution speeds up Phase 1 and Phase 2                     │
+│  - Graceful degradation: individual workers can fail independently      │
+│  - Tier-based Phase 2 skipping saves cost for Free users                │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -736,26 +861,34 @@ Module A에 주입되는 전문가 지식 구조:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Orchestrator | `src/lib/analyzer/verbose-analyzer.ts` | Three-stage 파이프라인 조율, 문자열 sanitization |
+| Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | 3-phase 파이프라인 조율, Worker 등록/실행 |
+| Orchestrator Types | `src/lib/analyzer/orchestrator/types.ts` | WorkerResult, WorkerContext, Phase 타입 |
+| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, Worker 등록, 문자열 sanitization |
 | Content Gateway | `src/lib/analyzer/content-gateway.ts` | 티어별 콘텐츠 필터링 (free/premium/enterprise) |
 
-### Module A: Data Analyst
+### Phase 1: Data Extraction Workers
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Stage Implementation | `src/lib/analyzer/stages/data-analyst.ts` | DataAnalystStage 클래스, Gemini 호출 |
-| Prompts (PTCF) | `src/lib/analyzer/stages/data-analyst-prompts.ts` | 시스템/유저 프롬프트 빌더 |
-| Output Schema | `src/lib/models/analysis-data.ts` | StructuredAnalysisData Zod 스키마 |
+| Base Worker | `src/lib/analyzer/workers/base-worker.ts` | BaseWorker 추상 클래스, runWorkerSafely |
+| Data Analyst Worker | `src/lib/analyzer/workers/data-analyst-worker.ts` | Module A - 행동 데이터 추출 |
+| Productivity Worker | `src/lib/analyzer/workers/productivity-analyst-worker.ts` | Module C - 생산성 지표 추출 |
+| Module A Stage | `src/lib/analyzer/stages/data-analyst.ts` | DataAnalystStage 클래스, Gemini 호출 |
+| Module A Prompts | `src/lib/analyzer/stages/data-analyst-prompts.ts` | 시스템/유저 프롬프트 빌더 |
+| Module A Schema | `src/lib/models/analysis-data.ts` | StructuredAnalysisData Zod 스키마 |
+| Module C Schema | `src/lib/models/productivity-data.ts` | ProductivityAnalysisData Zod 스키마 |
 
-### Module B: Personality Analyst
+### Phase 2: Insight Generation Workers (Premium+)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Stage Implementation | `src/lib/analyzer/stages/personality-analyst.ts` | PersonalityAnalystStage 클래스, Gemini 호출 |
-| Prompts (PTCF) | `src/lib/analyzer/stages/personality-analyst-prompts.ts` | MBTI/사주 분석 프롬프트 빌더 |
-| Output Schema | `src/lib/models/personality.ts` | PersonalityProfile Zod 스키마 |
+| Pattern Detective | `src/lib/analyzer/workers/pattern-detective-worker.ts` | 세션 간 반복 패턴 탐지 |
+| Anti-Pattern Spotter | `src/lib/analyzer/workers/anti-pattern-spotter-worker.ts` | 비효율적 패턴 탐지 |
+| Knowledge Gap | `src/lib/analyzer/workers/knowledge-gap-worker.ts` | 지식 격차 식별 |
+| Context Efficiency | `src/lib/analyzer/workers/context-efficiency-worker.ts` | 컨텍스트 활용 분석 |
+| Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | AgentOutputs, 4 agent output Zod 스키마 |
 
-### Stage 2: Content Writer
+### Phase 3: Content Writer
 
 | Component | File | Description |
 |-----------|------|-------------|
@@ -769,7 +902,7 @@ Module A에 주입되는 전문가 지식 구조:
 |-----------|------|-------------|
 | JSONL Reader | `src/lib/parser/jsonl-reader.ts` | JSONL 파싱, 경로 인코딩/디코딩 |
 | Session Selector | `src/lib/parser/session-selector.ts` | Duration-based 최적 세션 선정 (max 30) |
-| Session Formatter | `src/lib/analyzer/shared/session-formatter.ts` | 세션 데이터 포맷팅 (Module A/B 공유) |
+| Session Formatter | `src/lib/analyzer/shared/session-formatter.ts` | 세션 데이터 포맷팅 (Worker 공유) |
 | Session Types | `src/lib/models/session.ts` | JSONLLine, SessionMetadata 타입 |
 | Domain Types | `src/lib/domain/models/analysis.ts` | ParsedSession, SessionMetrics 타입 |
 
@@ -792,35 +925,42 @@ Module A에 주입되는 전문가 지식 구조:
 ## Configuration
 
 ```
-VerboseAnalyzerConfig
+OrchestratorConfig (src/lib/analyzer/orchestrator/types.ts)
+│
+├── geminiApiKey: string              ← Required for all phases
+├── model: 'gemini-3-flash-preview'   ← Used by all workers
+├── temperature: 1.0                  ← Gemini default (do not lower)
+├── maxOutputTokens: 65536
+├── maxRetries: 2                     ← Per-worker retry count
+├── continueOnWorkerFailure: true     ← Continue if individual worker fails
+└── verbose: false                    ← Log worker progress
+
+VerboseAnalyzerConfig (src/lib/analyzer/verbose-analyzer.ts)
 │
 ├── pipeline
-│   ├── mode: 'single' | 'two-stage'  ← default: 'two-stage' (runs 3 stages)
+│   ├── mode: 'single' | 'two-stage'  ← default: 'two-stage' (runs orchestrator)
 │   │
-│   ├── stage1 (Module A: Data Analyst - Gemini 3 Flash)
+│   ├── stage1 (Module A: Data Analyst config)
 │   │   ├── model: 'gemini-3-flash-preview'
-│   │   ├── temperature: 1.0  ← Gemini default (do not lower)
+│   │   ├── temperature: 1.0
 │   │   └── maxOutputTokens: 65536
 │   │
-│   ├── moduleB (Personality Analyst - Gemini 3 Flash)  ← NEW
-│   │   ├── model: 'gemini-3-flash-preview'
-│   │   ├── temperature: 1.0  ← Gemini default (do not lower)
-│   │   └── maxOutputTokens: 65536
-│   │
-│   └── stage2 (Content Writer - Gemini 3 Flash)
+│   └── stage2 (Phase 3: Content Writer config)
 │       ├── model: 'gemini-3-flash-preview'
-│       ├── temperature: 1.0  ← Gemini default (do not lower)
+│       ├── temperature: 1.0
 │       └── maxOutputTokens: 65536
 │
 ├── tier: 'free' | 'premium' | 'enterprise'  ← default: 'enterprise'
 │
-└── fallbackToLegacy: true  ← three-stage 실패시 Claude single로 폴백
+└── fallbackToLegacy: true  ← Orchestrator 실패시 Claude single로 폴백
 
 Environment Variables:
-├── GOOGLE_GEMINI_API_KEY  ← Required for three-stage pipeline
+├── GOOGLE_GEMINI_API_KEY  ← Required for orchestrator pipeline
 └── ANTHROPIC_API_KEY      ← Required for fallback/legacy mode
 
 Graceful Degradation:
-├── Module B fails → uses defaultPersonalityProfile()
-└── Three-stage fails + fallbackToLegacy: true → uses Claude single-stage
+├── Phase 1 worker fails → uses default data (createDefaultStructuredAnalysisData)
+├── Phase 2 worker fails → continues without that agent's output
+├── Phase 2 skipped for Free tier → AgentOutputs = empty
+└── Orchestrator fails + fallbackToLegacy: true → uses Claude single-stage
 ```
