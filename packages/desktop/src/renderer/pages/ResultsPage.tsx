@@ -18,6 +18,9 @@ import {
   AnalyzedSessions,
   ReportFooter,
   DimensionInsightsTerminal,
+  ProductivitySection,
+  PersonalityHeroSection,
+  TopFocusAreasSection,
 } from '../components/report';
 import { useCredit } from '../api/client';
 import type {
@@ -425,6 +428,21 @@ export default function ResultsPage({ resultId, onBack }: ResultsPageProps) {
                     insights={evaluation.dimensionInsights}
                     sessionsAnalyzed={evaluation.sessionsAnalyzed}
                   />
+                )}
+
+                {/* Personality Insights */}
+                {evaluation.personalityInsights && (
+                  <PersonalityHeroSection insights={evaluation.personalityInsights} />
+                )}
+
+                {/* Top Focus Areas */}
+                {evaluation.topFocusAreas && evaluation.topFocusAreas.areas.length > 0 && (
+                  <TopFocusAreasSection focusAreas={evaluation.topFocusAreas} />
+                )}
+
+                {/* Productivity Analysis */}
+                {evaluation.productivityAnalysis && (
+                  <ProductivitySection productivity={evaluation.productivityAnalysis} />
                 )}
               </div>
             )}
