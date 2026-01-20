@@ -8,7 +8,7 @@
  * @module analyzer/stages/data-analyst
  */
 
-import { GeminiClient, type GeminiClientConfig } from '../clients/gemini-client';
+import { GeminiClient, type GeminiClientConfig, type TokenUsage } from '../clients/gemini-client';
 import type { ParsedSession, SessionMetrics } from '../../domain/models/analysis';
 import {
   StructuredAnalysisDataSchema,
@@ -27,6 +27,14 @@ export interface DataAnalystConfig {
   temperature?: number;
   maxOutputTokens?: number;
   maxRetries?: number;
+}
+
+/**
+ * Result of data analyst stage including token usage
+ */
+export interface DataAnalystResult {
+  data: StructuredAnalysisData;
+  usage: TokenUsage;
 }
 
 /**
@@ -71,11 +79,12 @@ export class DataAnalystStage {
 
   /**
    * Analyze sessions and extract structured behavioral data
+   * Returns both the analysis data and token usage metadata
    */
   async analyze(
     sessions: ParsedSession[],
     metrics: SessionMetrics
-  ): Promise<StructuredAnalysisData> {
+  ): Promise<DataAnalystResult> {
     if (sessions.length === 0) {
       throw new Error('At least one session is required for analysis');
     }
@@ -92,7 +101,10 @@ export class DataAnalystStage {
     });
 
     // Sanitize the response to ensure schema compliance
-    return this.sanitizeResponse(result);
+    return {
+      data: this.sanitizeResponse(result.data),
+      usage: result.usage,
+    };
   }
 
   /**

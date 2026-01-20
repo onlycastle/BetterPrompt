@@ -10,7 +10,7 @@
  * @module analyzer/stages/personality-analyst
  */
 
-import { GeminiClient, type GeminiClientConfig } from '../clients/gemini-client';
+import { GeminiClient, type GeminiClientConfig, type TokenUsage } from '../clients/gemini-client';
 import type { ParsedSession } from '../../domain/models/analysis';
 import type { StructuredAnalysisData } from '../../models/analysis-data';
 import {
@@ -36,6 +36,14 @@ export interface PersonalityAnalystConfig {
   temperature?: number;
   maxOutputTokens?: number;
   maxRetries?: number;
+}
+
+/**
+ * Result of personality analyst stage including token usage
+ */
+export interface PersonalityAnalystResult {
+  data: PersonalityProfile;
+  usage: TokenUsage | null; // null if fallback to default profile
 }
 
 /**
@@ -79,6 +87,7 @@ export class PersonalityAnalystStage {
 
   /**
    * Analyze sessions and Module A output to extract personality profile
+   * Returns both the profile data and token usage metadata
    *
    * @param sessions - Raw parsed sessions
    * @param moduleAOutput - Output from Module A (Data Analyst stage)
@@ -86,15 +95,15 @@ export class PersonalityAnalystStage {
   async analyze(
     sessions: ParsedSession[],
     moduleAOutput: StructuredAnalysisData
-  ): Promise<PersonalityProfile> {
+  ): Promise<PersonalityAnalystResult> {
     if (sessions.length === 0) {
-      return createDefaultPersonalityProfile();
+      return { data: createDefaultPersonalityProfile(), usage: null };
     }
 
     // Check if Module A has sufficient data for personality analysis
     if (!this.hasMinimumData(moduleAOutput)) {
       console.warn('Insufficient data from Module A for personality analysis');
-      return createDefaultPersonalityProfile();
+      return { data: createDefaultPersonalityProfile(), usage: null };
     }
 
     const sessionsFormatted = this.formatSessions(sessions);
@@ -109,10 +118,13 @@ export class PersonalityAnalystStage {
         maxOutputTokens: this.config.maxOutputTokens,
       });
 
-      return this.sanitizeResponse(result);
+      return {
+        data: this.sanitizeResponse(result.data),
+        usage: result.usage,
+      };
     } catch (error) {
       console.error('Personality analysis failed:', error);
-      return createDefaultPersonalityProfile();
+      return { data: createDefaultPersonalityProfile(), usage: null };
     }
   }
 

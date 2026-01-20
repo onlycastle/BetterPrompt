@@ -249,3 +249,114 @@ export function formatCostEstimate(estimate: CostEstimate): string {
 
   return lines.join('\n');
 }
+
+// ============================================================================
+// ACTUAL TOKEN USAGE TRACKING (from API responses)
+// ============================================================================
+
+/**
+ * Token usage for a single stage
+ */
+export interface StageTokenUsage {
+  stage: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
+/**
+ * Aggregated token usage across all pipeline stages
+ */
+export interface PipelineTokenUsage {
+  stages: StageTokenUsage[];
+  totals: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  cost: {
+    inputCost: number;
+    outputCost: number;
+    totalCost: number;
+  };
+  model: string;
+  modelName: string;
+}
+
+/**
+ * Calculate actual cost from token usage
+ */
+export function calculateActualCost(
+  usage: { promptTokens: number; completionTokens: number },
+  model: string = 'gemini-3-flash-preview'
+): { inputCost: number; outputCost: number; totalCost: number } {
+  const pricing = ALL_PRICING[model] || GEMINI_PRICING['gemini-3-flash-preview'];
+
+  const inputCost = usage.promptTokens * pricing.input;
+  const outputCost = usage.completionTokens * pricing.output;
+  const totalCost = inputCost + outputCost;
+
+  return { inputCost, outputCost, totalCost };
+}
+
+/**
+ * Aggregate token usage from multiple stages into a single summary
+ */
+export function aggregateTokenUsage(
+  stages: StageTokenUsage[],
+  model: string = 'gemini-3-flash-preview'
+): PipelineTokenUsage {
+  const totals = stages.reduce(
+    (acc, stage) => ({
+      promptTokens: acc.promptTokens + stage.promptTokens,
+      completionTokens: acc.completionTokens + stage.completionTokens,
+      totalTokens: acc.totalTokens + stage.totalTokens,
+    }),
+    { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+  );
+
+  const cost = calculateActualCost(totals, model);
+  const pricing = ALL_PRICING[model] || GEMINI_PRICING['gemini-3-flash-preview'];
+
+  return {
+    stages,
+    totals,
+    cost,
+    model,
+    modelName: pricing.name,
+  };
+}
+
+/**
+ * Format actual token usage for logging
+ */
+export function formatActualUsage(usage: PipelineTokenUsage): string {
+  const lines: string[] = [];
+
+  lines.push('═══════════════════════════════════════════════════════════');
+  lines.push('  LLM PIPELINE TOKEN USAGE (Actual)');
+  lines.push('═══════════════════════════════════════════════════════════');
+  lines.push(`Model: ${usage.modelName}`);
+  lines.push('');
+  lines.push('Per-Stage Breakdown:');
+
+  for (const stage of usage.stages) {
+    lines.push(`  ${stage.stage}:`);
+    lines.push(`    Input:  ${stage.promptTokens.toLocaleString()} tokens`);
+    lines.push(`    Output: ${stage.completionTokens.toLocaleString()} tokens`);
+  }
+
+  lines.push('');
+  lines.push('Totals:');
+  lines.push(`  Input Tokens:  ${usage.totals.promptTokens.toLocaleString()}`);
+  lines.push(`  Output Tokens: ${usage.totals.completionTokens.toLocaleString()}`);
+  lines.push(`  Total Tokens:  ${usage.totals.totalTokens.toLocaleString()}`);
+  lines.push('');
+  lines.push('Cost:');
+  lines.push(`  Input Cost:  $${usage.cost.inputCost.toFixed(6)}`);
+  lines.push(`  Output Cost: $${usage.cost.outputCost.toFixed(6)}`);
+  lines.push(`  Total Cost:  $${usage.cost.totalCost.toFixed(6)}`);
+  lines.push('═══════════════════════════════════════════════════════════');
+
+  return lines.join('\n');
+}

@@ -205,6 +205,57 @@ export interface PerDimensionInsight {
   growthAreas: DimensionGrowthArea[];
 }
 
+// ============================================================================
+// Personality Insights (4 Storytelling Techniques)
+// ============================================================================
+
+/**
+ * Personality insights using 4 storytelling techniques:
+ * 1. Specific Evidence - "You said '/plan' 8 times..."
+ * 2. Confirmation Pattern - "You like to see the whole picture, don't you?"
+ * 3. Strength-Shadow Connection - "That speed is great, but sometimes..."
+ * 4. Daily Life Bridge - "Probably your motto outside coding too, right?"
+ */
+export interface PersonalityInsights {
+  /** Core observation with evidence and confirmation question */
+  coreObservation: string;
+  /** How their personality connects to coding strengths */
+  strengthConnection: string;
+  /** Growth opportunity framed through strength-shadow */
+  growthOpportunity: string;
+  /** Daily life connection for deeper rapport (optional) */
+  dailyLifeConnection?: string;
+}
+
+// ============================================================================
+// Top Focus Areas (Personalized Priorities)
+// ============================================================================
+
+export interface FocusAreaActions {
+  start: string;
+  stop: string;
+  continue: string;
+}
+
+export interface TopFocusArea {
+  rank: number;
+  dimension: DimensionName;
+  title: string;
+  narrative: string;
+  expectedImpact: string;
+  priorityScore: number;
+  actions?: FocusAreaActions;
+}
+
+export interface TopFocusAreas {
+  areas: TopFocusArea[];
+  summary: string;
+}
+
+// ============================================================================
+// Verbose Evaluation (from Lambda)
+// ============================================================================
+
 export interface VerboseEvaluation {
   // Metadata
   sessionId: string;
@@ -229,6 +280,12 @@ export interface VerboseEvaluation {
   // Context efficiency metrics
   contextEfficiencyScore?: number;
   contextEfficiencyExplanation?: string;
+
+  // NEW: Personality Insights (4 storytelling techniques)
+  personalityInsights?: PersonalityInsights;
+
+  // NEW: Top 3 Focus Areas (most actionable section)
+  topFocusAreas?: TopFocusAreas;
 }
 
 // ============================================================================
@@ -243,5 +300,7 @@ export interface AnalysisResultResponse {
     totalPromptPatterns: number;
     totalGrowthAreas: number;
     previewCount: number;
+    hasPartialItem?: boolean;
   };
+  credits?: number | null;
 }

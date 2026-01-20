@@ -1,0 +1,247 @@
+/**
+ * EnhancedPatternCard Styles - Notebook Sketch Style
+ * Rich pattern display with expandable examples and tips
+ */
+
+.card {
+  background: var(--surface-1);
+  border: 1.5px solid var(--ink-muted);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  transition: border-color 0.15s ease;
+}
+
+.card:hover {
+  border-color: var(--sketch-purple);
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.patternIndex {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--sketch-purple);
+  font-family: var(--font-mono);
+}
+
+.patternName {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+  font-family: var(--font-primary);
+}
+
+/* Badges */
+.badges {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.badge {
+  font-size: var(--text-xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: var(--weight-medium);
+  text-transform: capitalize;
+}
+
+/* Frequency badges */
+.frequent {
+  background: var(--sketch-purple-light);
+  color: var(--sketch-purple);
+  border: 1px solid var(--sketch-purple);
+}
+
+.occasional {
+  background: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan);
+  border: 1px solid var(--sketch-cyan);
+}
+
+.rare {
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  border: 1px solid var(--ink-muted);
+}
+
+/* Effectiveness badges */
+.highly_effective {
+  background: var(--sketch-green-light);
+  color: var(--sketch-green-dark);
+  border: 1px solid var(--sketch-green);
+}
+
+.effective {
+  background: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan);
+  border: 1px solid var(--sketch-cyan);
+}
+
+.could_improve {
+  background: var(--sketch-yellow-light);
+  color: var(--sketch-yellow-dark);
+  border: 1px solid var(--sketch-yellow);
+}
+
+/* Description */
+.description {
+  margin-bottom: var(--space-md);
+}
+
+.description p {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* Examples Section */
+.examplesSection {
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+
+.examplesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.examplesLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.expandButton {
+  font-size: var(--text-xs);
+  color: var(--sketch-purple);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease;
+}
+
+.expandButton:hover {
+  background: var(--sketch-purple-light);
+}
+
+/* Examples List */
+.examplesList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.exampleItem {
+  padding: var(--space-sm);
+  background: var(--surface-1);
+  border: 1px dashed var(--ink-muted);
+  border-radius: var(--radius-sm);
+}
+
+.quoteBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin-bottom: var(--space-xs);
+}
+
+.quoteIcon {
+  font-size: var(--text-lg);
+  color: var(--sketch-purple);
+  font-family: Georgia, serif;
+  line-height: 1;
+}
+
+.quoteText {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  background: transparent;
+  padding: 0;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.analysisBox {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  padding-left: var(--space-md);
+  border-left: 2px solid var(--sketch-cyan);
+}
+
+/* Tip Section */
+.tipSection {
+  padding: var(--space-md);
+  background: linear-gradient(
+    135deg,
+    var(--sketch-yellow-light) 0%,
+    var(--surface-1) 100%
+  );
+  border: 1px solid var(--sketch-yellow);
+  border-radius: var(--radius-sm);
+}
+
+.tipHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.tipIcon {
+  font-size: var(--text-base);
+}
+
+.tipLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-yellow-dark);
+}
+
+.tipContent p {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: 1.7;
+  margin: 0 0 var(--space-xs) 0;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .header {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .quoteBox {
+    flex-direction: column;
+  }
+
+  .quoteIcon {
+    display: none;
+  }
+}

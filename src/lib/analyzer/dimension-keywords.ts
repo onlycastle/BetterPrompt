@@ -212,6 +212,97 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
       searchQuery: 'skill atrophy prevention VCP cold start practice',
     },
   },
+
+  // ============================================================================
+  // New Dimensions (Phase 3) - Premium/Enterprise
+  // ============================================================================
+
+  iterationEfficiency: {
+    reinforcement: {
+      keywords: [
+        'targeted refinement',
+        'specific changes',
+        'focused iteration',
+        'efficient debugging',
+        'systematic approach',
+      ],
+      categories: ['best-practices', 'prompt-engineering'],
+      professionalInsightIds: ['pi-iteration-efficiency'],
+      level: 'advanced',
+      searchQuery: 'efficient iteration targeted debugging systematic approach',
+    },
+    improvement: {
+      keywords: [
+        'iteration cycles',
+        'shotgun debugging',
+        'retry patterns',
+        'vague requests',
+        'unclear requirements',
+      ],
+      categories: ['best-practices', 'prompt-engineering'],
+      professionalInsightIds: ['pi-iteration-efficiency'],
+      level: 'beginner',
+      searchQuery: 'reduce iteration cycles clear requirements targeted requests',
+    },
+  },
+
+  learningVelocity: {
+    reinforcement: {
+      keywords: [
+        'asking why',
+        'deep understanding',
+        'knowledge transfer',
+        'pattern recognition',
+        'independent application',
+      ],
+      categories: ['best-practices'],
+      professionalInsightIds: ['pi-learning-velocity'],
+      level: 'advanced',
+      searchQuery: 'deep learning AI understanding knowledge transfer patterns',
+    },
+    improvement: {
+      keywords: [
+        'shallow learning',
+        'copy paste',
+        'repeated questions',
+        'AI dependency',
+        'surface understanding',
+      ],
+      categories: ['best-practices'],
+      professionalInsightIds: ['pi-learning-velocity'],
+      level: 'beginner',
+      searchQuery: 'learning from AI deep understanding avoid dependency',
+    },
+  },
+
+  scopeManagement: {
+    reinforcement: {
+      keywords: [
+        'clear scope',
+        'task boundaries',
+        'step by step',
+        'proper decomposition',
+        'focused requests',
+      ],
+      categories: ['best-practices', 'prompt-engineering'],
+      professionalInsightIds: [],
+      level: 'advanced',
+      searchQuery: 'scope management task decomposition focused requests',
+    },
+    improvement: {
+      keywords: [
+        'scope creep',
+        'monolithic requests',
+        'unclear boundaries',
+        'expanding requirements',
+        'kitchen sink prompts',
+      ],
+      categories: ['best-practices', 'prompt-engineering'],
+      professionalInsightIds: [],
+      level: 'beginner',
+      searchQuery: 'avoid scope creep clear boundaries task decomposition',
+    },
+  },
 };
 
 /**

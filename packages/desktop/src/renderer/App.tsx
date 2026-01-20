@@ -45,9 +45,10 @@ function AppContent() {
       }
 
       if (data.route === 'payment-success' && data.params.resultId) {
-        console.log('[App] Payment success - setting resultId and navigating to results');
+        console.log('[App] Payment success - setting resultId and navigating to analyze');
         setResultId(data.params.resultId);
-        setRoute('results');
+        // Navigate to analyze page - it now handles inline report display
+        setRoute('analyze');
       }
     });
     console.log('[App] Deep link handler registered');
@@ -55,10 +56,9 @@ function AppContent() {
     return unsubscribe;
   }, [route, resultId]);
 
-  // Navigation functions
-  const navigateToResults = (id: string) => {
-    setResultId(id);
-    setRoute('results');
+  // Clear resultId when navigating away from analyze page
+  const clearResultId = () => {
+    setResultId(null);
   };
 
   const handleSignOut = async () => {
@@ -99,12 +99,17 @@ function AppContent() {
   function renderPage() {
     switch (route) {
       case 'analyze':
-        return <AnalyzePage onAnalysisComplete={navigateToResults} />;
+        // Pass initialResultId for deep link handling (e.g., payment-success)
+        return <AnalyzePage initialResultId={resultId} />;
       case 'results':
+        // Keep ResultsPage for backward compatibility (PersonalPage uses it)
         return (
           <ResultsPage
             resultId={resultId!}
-            onBack={() => setRoute('analyze')}
+            onBack={() => {
+              clearResultId();
+              setRoute('analyze');
+            }}
           />
         );
       case 'dashboard':
@@ -116,7 +121,8 @@ function AppContent() {
           <PersonalPage
             onViewReport={(id) => {
               setResultId(id);
-              setRoute('results');
+              // Navigate to analyze page with inline report
+              setRoute('analyze');
             }}
           />
         );
@@ -124,11 +130,11 @@ function AppContent() {
         return (
           <ComparisonPage
             reportId={resultId}
-            onBack={() => setRoute('results')}
+            onBack={() => setRoute('analyze')}
           />
         );
       default:
-        return <AnalyzePage onAnalysisComplete={navigateToResults} />;
+        return <AnalyzePage initialResultId={resultId} />;
     }
   }
 }

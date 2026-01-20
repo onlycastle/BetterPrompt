@@ -37,12 +37,21 @@ export type TypeDistribution = z.infer<typeof TypeDistributionSchema>;
  * Now inlined into ExtractedQuoteSchema to reduce nesting depth
  */
 export const SituationTypeEnum = z.enum([
+  // Original types
   'complex_decision', // 복잡한 결정 상황
   'debugging', // 디버깅 중
   'feature_building', // 기능 구현
   'refactoring', // 리팩토링
   'code_review', // 코드 리뷰
   'learning', // 학습/탐색
+  // New types (Phase 2)
+  'initial_planning', // 새 작업 시작
+  'mid_task_pivot', // 중간에 방향 전환
+  'error_recovery', // AI 오류 복구
+  'optimization', // 최적화
+  'integration', // 통합
+  'documentation', // 문서화
+  'testing', // 테스트
 ]);
 
 export const TriggerEnum = z.enum([
@@ -148,11 +157,25 @@ export const DetectedPatternSchema = z.object({
 
   /** Category of this pattern */
   patternType: z.enum([
+    // Original types
     'communication_style',
     'problem_solving',
     'ai_interaction',
     'verification_habit',
     'tool_usage',
+    // New types - Scope Management (Phase 2)
+    'scope_discipline', // 작업 범위 유지
+    'proper_decomposition', // 적절한 분해
+    // New types - Learning Behavior (Phase 2)
+    'ask_why', // "왜"를 묻는 습관
+    'pattern_recognition', // 패턴 인식
+    'knowledge_synthesis', // 지식 융합
+    // New types - Context Management (Phase 2)
+    'context_awareness', // 컨텍스트 인식
+    'strategic_reset', // 전략적 리셋
+    // New types - Iteration Efficiency (Phase 2)
+    'efficient_refinement', // 효율적 수정
+    'systematic_debugging', // 체계적 디버깅
   ]),
 
   /** How many times this pattern was observed */
@@ -207,10 +230,18 @@ export const DetectedAntiPatternSchema = z.object({
 
   /** Type of anti-pattern detected */
   patternType: z.enum([
+    // Original types
     'sunk_cost_loop', // Continuing failed approach too long (same error + same prompt 3+ times)
     'emotional_escalation', // Frustration affecting prompts
     'blind_retry', // Retrying without changing approach
     'passive_acceptance', // Accepting AI output without verification
+    // New types (Phase 2)
+    'scope_creep', // 요구사항 계속 확장
+    'context_bloat', // 컨텍스트 관리 안함
+    'premature_optimization', // 동작 전 최적화
+    'copy_paste_dependency', // 이해 없이 복사
+    'tunnel_vision', // 한 접근법에 고착
+    'over_delegation', // AI에 과도한 위임
   ]),
 
   /** How many times this pattern was observed */
@@ -241,11 +272,18 @@ export const CriticalThinkingMomentSchema = z.object({
 
   /** Type of critical thinking behavior */
   type: z.enum([
+    // Original types
     'verification_request', // "Are you sure?", "Is that correct?"
     'output_validation', // Running tests, checking results
     'assumption_questioning', // Challenging AI assumptions
     'alternative_exploration', // Asking for different approaches
     'security_check', // Checking for security/performance issues
+    // New types (Phase 2)
+    'edge_case_consideration', // 엣지 케이스 고려
+    'performance_awareness', // 성능 영향 인식
+    'maintainability_check', // 유지보수성 체크
+    'test_driven_thinking', // 테스트 먼저 사고
+    'architecture_evaluation', // 아키텍처 평가
   ]),
 
   /** What result this critical thinking led to */

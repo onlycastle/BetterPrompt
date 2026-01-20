@@ -135,15 +135,20 @@ export function parseExamplesData(data: string | undefined): Array<{ quote: stri
 // ============================================================================
 
 /**
- * The 6 analysis dimensions
+ * The 9 analysis dimensions (6 original + 3 new Premium/Enterprise)
  */
 export const DimensionNameEnumSchema = z.enum([
+  // Original 6 dimensions
   'aiCollaboration',
   'contextEngineering',
   'toolMastery',
   'burnoutRisk',
   'aiControl',
   'skillResilience',
+  // New 3 dimensions (Phase 3 - Premium/Enterprise)
+  'iterationEfficiency',
+  'learningVelocity',
+  'scopeManagement',
 ]);
 export type DimensionNameEnum = z.infer<typeof DimensionNameEnumSchema>;
 
@@ -157,12 +162,17 @@ export const DIMENSION_NAMES = DimensionNameEnumSchema.options;
  * Human-readable display names for each dimension
  */
 export const DIMENSION_DISPLAY_NAMES: Record<DimensionNameEnum, string> = {
+  // Original 6 dimensions
   aiCollaboration: 'AI Collaboration Mastery',
   contextEngineering: 'Context Engineering',
   toolMastery: 'Tool Mastery',
   burnoutRisk: 'Burnout Risk Assessment',
   aiControl: 'AI Control Index',
   skillResilience: 'Skill Resilience',
+  // New 3 dimensions (Phase 3 - Premium/Enterprise)
+  iterationEfficiency: 'Iteration Efficiency',
+  learningVelocity: 'Learning Velocity',
+  scopeManagement: 'Scope Management',
 };
 
 /**

@@ -11,7 +11,7 @@
  * @module analyzer/stages/content-writer
  */
 
-import { GeminiClient, type GeminiClientConfig } from '../clients/gemini-client';
+import { GeminiClient, type GeminiClientConfig, type TokenUsage } from '../clients/gemini-client';
 import type { ParsedSession } from '../../domain/models/analysis';
 import {
   VerboseLLMResponseSchema,
@@ -26,6 +26,7 @@ import {
 } from '../../models/verbose-evaluation';
 import type { StructuredAnalysisData } from '../../models/analysis-data';
 import type { PersonalityProfile } from '../../models/personality';
+import type { ProductivityAnalysisData } from '../../models/productivity-data';
 import {
   CONTENT_WRITER_SYSTEM_PROMPT,
   buildContentWriterUserPrompt,
@@ -42,6 +43,14 @@ export interface ContentWriterConfig {
   temperature?: number;
   maxOutputTokens?: number;
   maxRetries?: number;
+}
+
+/**
+ * Result of content writer stage including token usage
+ */
+export interface ContentWriterResult {
+  data: any; // VerboseLLMResponse with nested arrays
+  usage: TokenUsage;
 }
 
 /**
@@ -85,22 +94,25 @@ export class ContentWriterStage {
 
   /**
    * Transform structured analysis data into engaging content
+   * Returns both the response data and token usage metadata
    *
    * @param analysisData - Module A output (behavioral analysis)
    * @param personalityProfile - Module B output (personality analysis)
    * @param sessions - Raw parsed sessions
+   * @param productivityData - Module C output (productivity metrics) - optional
    *
-   * @returns VerboseLLMResponse with nested arrays (converted from flattened LLM format)
+   * @returns ContentWriterResult with VerboseLLMResponse (nested arrays) and token usage
    *          The LLM returns flattened strings, which are parsed back to nested arrays.
-   *          Return type is 'any' due to this runtime conversion.
    */
   async transform(
     analysisData: StructuredAnalysisData,
     personalityProfile: PersonalityProfile,
-    sessions: ParsedSession[]
-  ): Promise<any> {
+    sessions: ParsedSession[],
+    productivityData?: ProductivityAnalysisData
+  ): Promise<ContentWriterResult> {
     const structuredDataJson = JSON.stringify(analysisData, null, 2);
     const personalityDataJson = JSON.stringify(personalityProfile, null, 2);
+    const productivityDataJson = productivityData ? JSON.stringify(productivityData, null, 2) : undefined;
 
     // Detect if user's quotes are primarily in Korean
     const quotes = analysisData.extractedQuotes.map((q) => q.quote);
@@ -117,7 +129,8 @@ export class ContentWriterStage {
       personalityDataJson,
       sessions.length,
       useKorean,
-      kbContext
+      kbContext,
+      productivityDataJson
     );
 
     const result = await this.client.generateStructured({
@@ -128,7 +141,10 @@ export class ContentWriterStage {
     });
 
     // Sanitize and merge with Stage 1 data
-    return this.sanitizeResponse(result, analysisData);
+    return {
+      data: this.sanitizeResponse(result.data, analysisData),
+      usage: result.usage,
+    };
   }
 
   /**

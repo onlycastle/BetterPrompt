@@ -6,7 +6,15 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePersonalAnalytics } from '../hooks';
-import { getStoredAnalyses, type StoredAnalysis } from '../utils/analysisStorage';
+import { getStoredAnalyses } from '../utils/analysisStorage';
+import {
+  JourneyHeader,
+  ScoreComparisonCard,
+  TrendLineChart,
+  DimensionBreakdown,
+  GrowthAreasSection,
+} from '../components/personal';
+import type { PersonalAnalyticsExtended } from '../api/types';
 import styles from './PersonalPage.module.css';
 
 interface PersonalPageProps {
@@ -128,56 +136,55 @@ function ReportTabContent({ onViewReport }: { onViewReport?: (resultId: string) 
   );
 }
 
-function ProgressTabContent({ analytics }: { analytics?: ReturnType<typeof usePersonalAnalytics>['data'] }) {
-  const history = analytics?.history || [];
-  const goals = analytics?.goals || [];
+function ProgressTabContent({ analytics }: { analytics?: PersonalAnalyticsExtended | null }) {
+  // Empty state when no analyses
+  if (!analytics) {
+    return (
+      <div className={styles.tabContent}>
+        <div className={styles.emptyState}>
+          <span className={styles.emptyIcon}>📈</span>
+          <h3>No Progress Data Yet</h3>
+          <p>
+            Complete your first analysis to start tracking your growth journey.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.tabContent}>
-      {/* Progress Chart */}
-      <div className={styles.chartSection}>
-        <h3>Score History</h3>
-        {history.length > 0 ? (
-          <div className={styles.chartContainer}>
-            {history.map((entry, i) => (
-              <div key={i} className={styles.chartBar}>
-                <div
-                  className={styles.chartFill}
-                  style={{ height: `${entry.score}%` }}
-                />
-                <span className={styles.chartLabel}>{entry.date.split('-').slice(1).join('/')}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className={styles.noData}>No history data available yet</p>
-        )}
-      </div>
+      {/* Journey Header */}
+      <JourneyHeader analytics={analytics} />
 
-      {/* Goals */}
-      <div className={styles.goalsSection}>
-        <h3>Goals</h3>
-        {goals.length > 0 ? (
-          <div className={styles.goalsList}>
-            {goals.map((goal) => (
-              <div key={goal.id} className={styles.goalCard}>
-                <div className={styles.goalHeader}>
-                  <span>{goal.title}</span>
-                  <span className={styles.goalProgress}>{goal.progress}%</span>
-                </div>
-                <div className={styles.goalBar}>
-                  <div
-                    className={styles.goalFill}
-                    style={{ width: `${goal.progress}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+      {/* Score Comparison (only show if 2+ analyses) */}
+      {analytics.analysisCount >= 2 && (
+        <div className={styles.statsRow}>
+          <ScoreComparisonCard analytics={analytics} />
+          <div className={styles.chartCard}>
+            <h3 className={styles.chartTitle}>Progress Over Time</h3>
+            <TrendLineChart data={analytics.history} height={220} />
           </div>
-        ) : (
-          <p className={styles.noData}>No goals set yet</p>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Single analysis: just show the chart */}
+      {analytics.analysisCount === 1 && (
+        <div className={styles.singleAnalysis}>
+          <div className={styles.chartCard}>
+            <h3 className={styles.chartTitle}>Your First Analysis</h3>
+            <p className={styles.chartSubtitle}>
+              Complete more analyses to see your progress over time
+            </p>
+            <TrendLineChart data={analytics.history} height={180} />
+          </div>
+        </div>
+      )}
+
+      {/* Dimension Breakdown */}
+      {analytics.currentDimensions && (
+        <DimensionBreakdown analytics={analytics} />
+      )}
     </div>
   );
 }
@@ -195,38 +202,55 @@ function getInsightIcon(type: string): string {
   }
 }
 
-function InsightsTabContent({ analytics }: { analytics?: ReturnType<typeof usePersonalAnalytics>['data'] }) {
+function InsightsTabContent({ analytics }: { analytics?: PersonalAnalyticsExtended | null }) {
+  const growthAreas = analytics?.growthAreas || [];
   const insights = analytics?.insights || [];
 
-  if (insights.length === 0) {
+  // Empty state when no insights or growth areas
+  if (growthAreas.length === 0 && insights.length === 0) {
     return (
       <div className={styles.tabContent}>
-        <h3>Personalized Insights</h3>
-        <p className={styles.noData}>Complete more analyses to get personalized insights</p>
+        <div className={styles.emptyState}>
+          <span className={styles.emptyIcon}>💡</span>
+          <h3>No Insights Yet</h3>
+          <p>
+            Unlock a report to see personalized growth areas and recommendations.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className={styles.tabContent}>
-      <h3>Personalized Insights</h3>
-      <div className={styles.insightsList}>
-        {insights.map((insight, i) => (
-          <div
-            key={i}
-            className={styles.insightCard}
-            data-type={insight.type}
-          >
-            <div className={styles.insightIcon}>
-              {getInsightIcon(insight.type)}
-            </div>
-            <div className={styles.insightContent}>
-              <h4>{insight.title}</h4>
-              <p>{insight.description}</p>
-            </div>
+      {/* Growth Areas from analysis */}
+      {growthAreas.length > 0 && (
+        <GrowthAreasSection areas={growthAreas} />
+      )}
+
+      {/* Generated insights (fallback/additional) */}
+      {insights.length > 0 && (
+        <div className={styles.insightsSection}>
+          <h3 className={styles.sectionTitle}>Your Insights</h3>
+          <div className={styles.insightsList}>
+            {insights.map((insight, i) => (
+              <div
+                key={i}
+                className={styles.insightCard}
+                data-type={insight.type}
+              >
+                <div className={styles.insightIcon}>
+                  {getInsightIcon(insight.type)}
+                </div>
+                <div className={styles.insightContent}>
+                  <h4>{insight.title}</h4>
+                  <p>{insight.description}</p>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
