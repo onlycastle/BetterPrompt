@@ -37,6 +37,11 @@ import {
   createAntiPatternSpotterWorker,
   createKnowledgeGapWorker,
   createContextEfficiencyWorker,
+  // NEW: Metacognition + Temporal Analysis workers
+  createMetacognitionWorker,
+  createTemporalAnalyzerWorker,
+  // NEW: Multitasking Analysis worker
+  createMultitaskingAnalyzerWorker,
 } from './workers';
 
 // Legacy imports for single-stage mode (kept for backward compatibility)
@@ -354,15 +359,18 @@ export class VerboseAnalyzer {
       // Create and configure orchestrator
       this.orchestrator = createAnalysisOrchestrator(orchestratorConfig);
 
-      // Register Phase 1 workers (Module A, C)
+      // Register Phase 1 workers (Module A, C - Data Extraction)
       this.orchestrator.registerPhase1Worker(createDataAnalystWorker(orchestratorConfig));
       this.orchestrator.registerPhase1Worker(createProductivityAnalystWorker(orchestratorConfig));
 
-      // Register Phase 2 workers (4 Wow Agents - Premium+ only)
+      // Register Phase 2 workers (Insight Generation - Premium+ only)
       this.orchestrator.registerPhase2Worker(createPatternDetectiveWorker(orchestratorConfig));
       this.orchestrator.registerPhase2Worker(createAntiPatternSpotterWorker(orchestratorConfig));
       this.orchestrator.registerPhase2Worker(createKnowledgeGapWorker(orchestratorConfig));
       this.orchestrator.registerPhase2Worker(createContextEfficiencyWorker(orchestratorConfig));
+      this.orchestrator.registerPhase2Worker(createMetacognitionWorker(orchestratorConfig));
+      this.orchestrator.registerPhase2Worker(createTemporalAnalyzerWorker(orchestratorConfig));
+      this.orchestrator.registerPhase2Worker(createMultitaskingAnalyzerWorker(orchestratorConfig));
     }
 
     // Get Anthropic API key for legacy single-stage mode (or fallback)

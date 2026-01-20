@@ -167,11 +167,12 @@ export class AnalysisOrchestrator {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Phase 2: Insight Generation (parallel, Premium+ only)
+    // Phase 2: Insight Generation (parallel)
+    // Workers check their own minTier via canRun() - some workers may be free tier
     // ─────────────────────────────────────────────────────────────────────
     let agentOutputs: AgentOutputs = createEmptyAgentOutputs();
 
-    if (tier !== 'free' && this.phase2Workers.length > 0) {
+    if (this.phase2Workers.length > 0) {
       this.log('Phase 2: Insight Generation...');
       const phase2Context: WorkerContext = {
         ...baseContext,
@@ -192,17 +193,18 @@ export class AnalysisOrchestrator {
         }
       }
     } else {
-      this.log('Phase 2: Skipped (free tier or no workers registered)');
+      this.log('Phase 2: Skipped (no workers registered)');
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Phase 3: Content Generation
+    // Phase 3: Content Generation (with Phase 2 agent outputs)
     // ─────────────────────────────────────────────────────────────────────
     this.log('Phase 3: Content Generation...');
     const contentResult = await this.contentWriter.transform(
       phase1Results.dataAnalyst.data,
       sessions,
-      phase1Results.productivityAnalyst.data
+      phase1Results.productivityAnalyst.data,
+      agentOutputs
     );
 
     stageUsages.push({
@@ -310,10 +312,16 @@ export class AnalysisOrchestrator {
    */
   private mergeAgentOutputs(results: Record<string, WorkerResult<unknown> | undefined>): AgentOutputs {
     return {
+      // Original 4 agents
       patternDetective: results['PatternDetective']?.data as AgentOutputs['patternDetective'],
       antiPatternSpotter: results['AntiPatternSpotter']?.data as AgentOutputs['antiPatternSpotter'],
       knowledgeGap: results['KnowledgeGap']?.data as AgentOutputs['knowledgeGap'],
       contextEfficiency: results['ContextEfficiency']?.data as AgentOutputs['contextEfficiency'],
+      // NEW: Metacognition + Temporal Analysis agents
+      metacognition: results['MetacognitionWorker']?.data as AgentOutputs['metacognition'],
+      temporalAnalysis: results['TemporalAnalyzer']?.data as AgentOutputs['temporalAnalysis'],
+      // NEW: Multitasking Analysis
+      multitasking: results['MultitaskingAnalyzer']?.data as AgentOutputs['multitasking'],
     };
   }
 

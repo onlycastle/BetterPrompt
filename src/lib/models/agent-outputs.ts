@@ -8,7 +8,7 @@
  * - Context Efficiency Analyzer: Token inefficiency patterns
  *
  * Schemas use flattened semicolon-separated strings to comply with
- * Gemini's 5-level nesting limit.
+ * Gemini's 4-level nesting limit.
  *
  * @module models/agent-outputs
  */
@@ -225,19 +225,61 @@ export const ContextEfficiencyOutputSchema = z.object({
 export type ContextEfficiencyOutput = z.infer<typeof ContextEfficiencyOutputSchema>;
 
 // ============================================================================
+// Metacognition Output (NEW)
+// ============================================================================
+
+// Import from dedicated schema file
+import { MetacognitionOutputSchema, type MetacognitionOutput } from './metacognition-data';
+export { MetacognitionOutputSchema, type MetacognitionOutput };
+
+// ============================================================================
+// Temporal Analysis Output (NEW)
+// ============================================================================
+
+// Import from dedicated schema file
+import { TemporalAnalysisOutputSchema, type TemporalAnalysisOutput } from './temporal-data';
+export { TemporalAnalysisOutputSchema, type TemporalAnalysisOutput };
+
+// ============================================================================
+// Multitasking Analysis Output (NEW)
+// ============================================================================
+
+// Import from dedicated schema file
+import { MultitaskingAnalysisOutputSchema, type MultitaskingAnalysisOutput } from './multitasking-data';
+export { MultitaskingAnalysisOutputSchema, type MultitaskingAnalysisOutput };
+
+// ============================================================================
 // Combined Agent Outputs
 // ============================================================================
 
 /**
- * Combined outputs from all 4 Wow-Focused Agents
+ * Combined outputs from all Wow-Focused Agents
+ *
+ * Original 4 agents:
+ * - Pattern Detective: Conversation patterns, repeated questions
+ * - Anti-Pattern Spotter: Error loops, bad habits
+ * - Knowledge Gap: Knowledge gaps + learning suggestions
+ * - Context Efficiency: Token inefficiency patterns
+ *
+ * NEW agents (Premium+):
+ * - Metacognition: Self-awareness patterns, blind spots, growth mindset
+ * - Temporal Analyzer: Time-based quality patterns, fatigue signals
  *
  * All fields are optional since agents may fail independently.
  */
 export const AgentOutputsSchema = z.object({
+  // Original 4 agents
   patternDetective: PatternDetectiveOutputSchema.optional(),
   antiPatternSpotter: AntiPatternSpotterOutputSchema.optional(),
   knowledgeGap: KnowledgeGapOutputSchema.optional(),
   contextEfficiency: ContextEfficiencyOutputSchema.optional(),
+
+  // NEW: Metacognition + Temporal Analysis agents
+  metacognition: MetacognitionOutputSchema.optional(),
+  temporalAnalysis: TemporalAnalysisOutputSchema.optional(),
+
+  // NEW: Multitasking Analysis
+  multitasking: MultitaskingAnalysisOutputSchema.optional(),
 });
 
 export type AgentOutputs = z.infer<typeof AgentOutputsSchema>;
@@ -261,7 +303,10 @@ export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
     outputs.patternDetective ||
     outputs.antiPatternSpotter ||
     outputs.knowledgeGap ||
-    outputs.contextEfficiency
+    outputs.contextEfficiency ||
+    outputs.metacognition ||
+    outputs.temporalAnalysis ||
+    outputs.multitasking
   );
 }
 
@@ -282,6 +327,17 @@ export function getAllTopInsights(outputs: AgentOutputs): string[] {
   }
   if (outputs.contextEfficiency?.topInsights) {
     insights.push(...outputs.contextEfficiency.topInsights);
+  }
+  // NEW: Include metacognition and temporal insights
+  if (outputs.metacognition?.topInsights) {
+    insights.push(...outputs.metacognition.topInsights);
+  }
+  if (outputs.temporalAnalysis?.topInsights) {
+    insights.push(...outputs.temporalAnalysis.topInsights);
+  }
+  // NEW: Include multitasking insights
+  if (outputs.multitasking?.topInsights) {
+    insights.push(...outputs.multitasking.topInsights);
   }
 
   return insights;

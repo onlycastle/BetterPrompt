@@ -160,7 +160,7 @@ The UnifiedAnalyzer integrates all analysis components into a single orchestrato
 | `src/lib/infrastructure/` | Supabase & local storage adapters | Infrastructure |
 | `src/lib/analyzer/` | LLM analysis (prompts, dimensions, insights) | Application |
 | `src/lib/analyzer/orchestrator/` | 3-phase analysis orchestration | Application |
-| `src/lib/analyzer/workers/` | Phase 1 & Phase 2 workers (Module A, C, 4 Wow Agents) | Application |
+| `src/lib/analyzer/workers/` | Phase 1 & Phase 2 workers (Module A, C, Multitasking, 6 Wow Agents) | Application |
 | `src/lib/analyzer/stages/` | Stage implementations (data-analyst, content-writer) | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/parser/` | JSONL session parsing | Infrastructure |
@@ -238,14 +238,17 @@ The analyzer uses a 3-phase Orchestrator + Workers pattern with Gemini. See [LLM
 **Phase 1: Data Extraction (Parallel)**
 - **DataAnalystWorker** (Module A) - Extracts behavioral patterns
 - **ProductivityAnalystWorker** (Module C) - Extracts productivity metrics
-- Both run in parallel, outputs: `StructuredAnalysisData` + `ProductivityAnalysisData`
+- **MultitaskingAnalyzerWorker** (NEW) - Analyzes multi-session work patterns
+- All run in parallel, outputs: `StructuredAnalysisData` + `ProductivityAnalysisData` + `MultitaskingAnalysisOutput`
 
 **Phase 2: Insight Generation (Parallel, Premium+ only)**
-- 4 "Wow Agents" run in parallel:
+- 6 "Wow Agents" run in parallel:
   - **PatternDetectiveWorker** - Cross-session pattern detection
   - **AntiPatternSpotterWorker** - Inefficient pattern detection
   - **KnowledgeGapWorker** - Knowledge gap identification
   - **ContextEfficiencyWorker** - Context utilization analysis
+  - **MetacognitionWorker** (NEW) - Self-awareness patterns, blind spots
+  - **TemporalAnalyzerWorker** (NEW) - Time-based quality and fatigue analysis
 - Output: `AgentOutputs` (merged results)
 - Skipped for Free tier
 

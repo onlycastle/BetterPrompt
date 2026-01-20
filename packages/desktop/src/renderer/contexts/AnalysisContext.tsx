@@ -31,6 +31,8 @@ interface AnalysisProgress {
   message: string;
 }
 
+type AnalysisPhase = 'idle' | 'scanning' | 'analyzing' | 'complete';
+
 interface AnalysisContextType {
   // Scan state
   scanSummary: ScanSummary | null;
@@ -42,9 +44,14 @@ interface AnalysisContextType {
   analysisProgress: AnalysisProgress | null;
   analysisError: string | null;
 
+  // Combined flow state
+  currentPhase: AnalysisPhase;
+
   // Actions
   scanSessions: () => Promise<void>;
   startAnalysis: (userId: string, accessToken?: string) => Promise<string | null>;
+  startFullAnalysis: (userId: string, accessToken?: string) => Promise<string | null>;
+  resetPhase: () => void;
 }
 
 const AnalysisContext = createContext<AnalysisContextType | null>(null);
@@ -60,25 +67,67 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
+  // Combined flow state
+  const [currentPhase, setCurrentPhase] = useState<AnalysisPhase>('idle');
+
+  /**
+   * Handle scan failure - sets error state and resets to idle
+   */
+  const handleScanFailure = useCallback((errorMessage: string) => {
+    setScanError(errorMessage);
+    setScanSummary(null);
+    setCurrentPhase('idle');
+  }, []);
+
   const scanSessions = useCallback(async () => {
     setIsScanning(true);
+    setCurrentPhase('scanning');
     setScanError(null);
 
     try {
       const result = await window.electronAPI.scanSessions();
 
       if (result.error) {
-        setScanError(result.error);
-        setScanSummary(null);
+        handleScanFailure(result.error);
       } else {
         setScanSummary(result.summary);
+        setCurrentPhase('idle');
       }
     } catch (error) {
-      setScanError((error as Error).message);
-      setScanSummary(null);
+      handleScanFailure((error as Error).message);
     } finally {
       setIsScanning(false);
     }
+  }, [handleScanFailure]);
+
+  /**
+   * Handle analysis failure - sets error state and resets to idle
+   */
+  const handleAnalysisFailure = useCallback((errorMessage: string) => {
+    setAnalysisError(errorMessage);
+    setCurrentPhase('idle');
+  }, []);
+
+  /**
+   * Start analyzing phase with progress subscription
+   */
+  const beginAnalyzing = useCallback(() => {
+    setIsAnalyzing(true);
+    setCurrentPhase('analyzing');
+    setAnalysisProgress({ stage: 'starting', percent: 0, message: 'Starting analysis...' });
+    setAnalysisError(null);
+    return window.electronAPI.onAnalysisProgress((progress) => {
+      setAnalysisProgress(progress);
+    });
+  }, []);
+
+  /**
+   * Cleanup after analysis completes (success or failure)
+   */
+  const cleanupAnalysis = useCallback((unsubscribe: () => void) => {
+    setIsAnalyzing(false);
+    setAnalysisProgress(null);
+    unsubscribe();
   }, []);
 
   const startAnalysis = useCallback(
@@ -88,20 +137,13 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         return null;
       }
 
-      setIsAnalyzing(true);
-      setAnalysisProgress({ stage: 'starting', percent: 0, message: 'Starting analysis...' });
-      setAnalysisError(null);
-
-      // Subscribe to progress updates
-      const unsubscribe = window.electronAPI.onAnalysisProgress((progress) => {
-        setAnalysisProgress(progress);
-      });
+      const unsubscribe = beginAnalyzing();
 
       try {
         const result = await window.electronAPI.startAnalysis({ userId, accessToken });
 
         if (result.error) {
-          setAnalysisError(result.error);
+          handleAnalysisFailure(result.error);
           return null;
         }
 
@@ -115,18 +157,87 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
           });
         }
 
+        setCurrentPhase('complete');
         return result.resultId;
       } catch (error) {
-        setAnalysisError((error as Error).message);
+        handleAnalysisFailure((error as Error).message);
         return null;
       } finally {
-        setIsAnalyzing(false);
-        setAnalysisProgress(null);
-        unsubscribe();
+        cleanupAnalysis(unsubscribe);
       }
     },
-    [scanSummary]
+    [scanSummary, beginAnalyzing, handleAnalysisFailure, cleanupAnalysis]
   );
+
+  /**
+   * Combined action: scan sessions then start analysis automatically
+   */
+  const startFullAnalysis = useCallback(
+    async (userId: string, accessToken?: string): Promise<string | null> => {
+      // Phase 1: Scanning
+      setCurrentPhase('scanning');
+      setIsScanning(true);
+      setScanError(null);
+
+      let summary: ScanSummary | null = null;
+
+      try {
+        const result = await window.electronAPI.scanSessions();
+
+        if (result.error) {
+          handleScanFailure(result.error);
+          return null;
+        }
+
+        summary = result.summary;
+        setScanSummary(summary);
+
+        if (!summary || summary.sessionCount === 0) {
+          handleScanFailure('No sessions found');
+          return null;
+        }
+      } catch (error) {
+        handleScanFailure((error as Error).message);
+        return null;
+      } finally {
+        setIsScanning(false);
+      }
+
+      // Phase 2: Analyzing (scanSummary is now set)
+      const unsubscribe = beginAnalyzing();
+
+      try {
+        const result = await window.electronAPI.startAnalysis({ userId, accessToken });
+
+        if (result.error) {
+          handleAnalysisFailure(result.error);
+          return null;
+        }
+
+        if (result.resultId && summary) {
+          saveAnalysis({
+            resultId: result.resultId,
+            completedAt: new Date().toISOString(),
+            sessionCount: summary.sessionCount,
+            projectCount: summary.projectCount,
+          });
+        }
+
+        setCurrentPhase('complete');
+        return result.resultId;
+      } catch (error) {
+        handleAnalysisFailure((error as Error).message);
+        return null;
+      } finally {
+        cleanupAnalysis(unsubscribe);
+      }
+    },
+    [handleScanFailure, beginAnalyzing, handleAnalysisFailure, cleanupAnalysis]
+  );
+
+  const resetPhase = useCallback(() => {
+    setCurrentPhase('idle');
+  }, []);
 
   return (
     <AnalysisContext.Provider
@@ -137,8 +248,11 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         isAnalyzing,
         analysisProgress,
         analysisError,
+        currentPhase,
         scanSessions,
         startAnalysis,
+        startFullAnalysis,
+        resetPhase,
       }}
     >
       {children}

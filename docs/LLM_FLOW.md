@@ -23,13 +23,13 @@
 │   ║                                                                               ║   │
 │   ║  ┌─────────────────────────────────────────────────────────────────────────┐ ║   │
 │   ║  │ PHASE 1: Data Extraction (parallel)                                     │ ║   │
-│   ║  │ ┌─────────────────────┐     ┌─────────────────────┐                     │ ║   │
-│   ║  │ │ DataAnalystWorker   │     │ ProductivityWorker   │                    │ ║   │
-│   ║  │ │ (Module A)          │     │ (Module C)           │                    │ ║   │
-│   ║  │ └─────────┬───────────┘     └─────────┬───────────┘                     │ ║   │
-│   ║  │           │                           │                                  │ ║   │
-│   ║  │           ▼                           ▼                                  │ ║   │
-│   ║  │   StructuredAnalysisData    ProductivityAnalysisData                    │ ║   │
+│   ║  │ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐             │ ║   │
+│   ║  │ │ DataAnalyst     │ │ Productivity    │ │ Multitasking    │             │ ║   │
+│   ║  │ │ Worker (A)      │ │ Worker (C)      │ │ Analyzer        │             │ ║   │
+│   ║  │ └───────┬─────────┘ └───────┬─────────┘ └───────┬─────────┘             │ ║   │
+│   ║  │         │                   │                   │                        │ ║   │
+│   ║  │         ▼                   ▼                   ▼                        │ ║   │
+│   ║  │  StructuredData      ProductivityData    MultitaskingData               │ ║   │
 │   ║  └─────────────────────────────────────────────────────────────────────────┘ ║   │
 │   ║                              │                                                ║   │
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
@@ -323,34 +323,37 @@ ProductivityAnalysisData
 
 **목적**: Phase 1 결과를 바탕으로 심층 인사이트 생성
 
-> 4개의 전문 에이전트가 병렬로 실행됨. Free tier에서는 스킵됨.
+> 6개의 전문 에이전트가 병렬로 실행됨. Free tier에서는 스킵됨.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    PHASE 2: 4 WOW AGENTS (PARALLEL)                     │
+│                    PHASE 2: 6 WOW AGENTS (PARALLEL)                     │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌──────────────────────────────┐                                       │
 │  │  INPUT (from Phase 1)        │                                       │
 │  │  - StructuredAnalysisData    │  ◀── Module A output                 │
 │  │  - ProductivityAnalysisData  │  ◀── Module C output                 │
+│  │  - MultitaskingAnalysisData  │  ◀── Multitasking output (NEW)       │
 │  │  - Sessions[]                │                                       │
 │  │  - Metrics                   │                                       │
 │  └────────────┬─────────────────┘                                       │
 │               │                                                          │
-│  ┌────────────┴────────────┬────────────────┬────────────────┐          │
-│  ▼                         ▼                ▼                ▼          │
-│ ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
-│ │PatternDetect.│  │AntiPattern   │  │KnowledgeGap  │  │ContextEffic. │ │
-│ │Worker        │  │Spotter       │  │Worker        │  │Worker        │ │
-│ └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘ │
-│        ▼                 ▼                 ▼                 ▼          │
-│ ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
-│ │PatternDet.   │  │AntiPattern   │  │KnowledgeGap  │  │ContextEffic. │ │
-│ │Output        │  │Output        │  │Output        │  │Output        │ │
-│ └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘ │
-│        │                 │                 │                 │          │
-│        └─────────────────┴─────────────────┴─────────────────┘          │
+│  ┌────────────┴────────────┬──────────────┬──────────────┐              │
+│  ▼                         ▼              ▼              ▼              │
+│ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐            │
+│ │Pattern     │ │AntiPattern │ │KnowledgeGap│ │ContextEff. │            │
+│ │Detective   │ │Spotter     │ │Worker      │ │Worker      │            │
+│ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘            │
+│       │              │              │              │                    │
+│ ┌─────┴──────────────┴──────────────┴──────────────┘                   │
+│ │                                                                       │
+│ │  ┌────────────────┐  ┌────────────────┐  (NEW Premium+ Workers)      │
+│ │  │ Metacognition  │  │ Temporal       │                              │
+│ │  │ Worker         │  │ Analyzer       │                              │
+│ │  └───────┬────────┘  └───────┬────────┘                              │
+│ │          │                   │                                        │
+│ └──────────┴───────────────────┴───────────────────────────────────────┤
 │                                   │                                      │
 │                                   ▼                                      │
 │                          ┌──────────────┐                               │
@@ -369,6 +372,8 @@ ProductivityAnalysisData
 | **AntiPatternSpotter** | 비효율적 패턴 및 개선 기회 탐지 | `AntiPatternSpotterOutput` |
 | **KnowledgeGap** | 지식 격차 및 학습 기회 식별 | `KnowledgeGapOutput` |
 | **ContextEfficiency** | 컨텍스트 활용 효율성 분석 | `ContextEfficiencyOutput` |
+| **Metacognition** (NEW) | 자기 인식 패턴, 블라인드 스팟 탐지 | `MetacognitionOutput` |
+| **TemporalAnalyzer** (NEW) | 시간대별 프롬프트 품질 및 피로도 분석 | `TemporalAnalysisOutput` |
 
 #### Agent Output Schema (AgentOutputs)
 
@@ -404,13 +409,41 @@ AgentOutputs
 │   ├── strengthAreas[]
 │   └── learningPath[]
 │
-└── contextEfficiency
-    ├── efficiencyMetrics
-    │   ├── contextUtilization: 0-100
-    │   ├── redundancyScore: 0-100
-    │   └── clarityScore: 0-100
-    ├── improvementAreas[]
-    └── bestPracticesSuggestions[]
+├── contextEfficiency
+│   ├── efficiencyMetrics
+│   │   ├── contextUtilization: 0-100
+│   │   ├── redundancyScore: 0-100
+│   │   └── clarityScore: 0-100
+│   ├── improvementAreas[]
+│   └── bestPracticesSuggestions[]
+│
+├── metacognition (NEW - Premium+)
+│   ├── awarenessInstancesData: string  ← semicolon-separated
+│   ├── blindSpotsData: string
+│   ├── growthMindsetData: string
+│   ├── metacognitiveAwarenessScore: 0-100
+│   ├── topInsights: string[3]
+│   └── confidenceScore: 0-1
+│
+├── temporalAnalysis (NEW - Premium+)
+│   ├── hourlyPatternsData: string  ← semicolon-separated
+│   ├── peakHoursData: string
+│   ├── cautionHoursData: string
+│   ├── fatiguePatternsData: string
+│   ├── qualitativeInsightsData: string
+│   ├── topInsights: string[3]
+│   └── confidenceScore: 0-1
+│
+└── multitasking (NEW - Phase 1)
+    ├── sessionFocusData: string  ← semicolon-separated
+    ├── contextPollutionData: string
+    ├── workUnitSeparationData: string
+    ├── avgGoalCoherence: 0-100
+    ├── avgContextPollutionScore: 0-100
+    ├── workUnitSeparationScore: 0-100
+    ├── multitaskingEfficiencyScore: 0-100
+    ├── topInsights: string[3]
+    └── confidenceScore: 0-1
 ```
 
 ---
@@ -715,41 +748,43 @@ Module A에 주입되는 전문가 지식 구조:
                        │
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║        PHASE 1: DATA EXTRACTION (Module A + C PARALLEL)           ║
+  ║     PHASE 1: DATA EXTRACTION (Module A + C + Multitasking)        ║
   ╠═══════════════════════════════════════════════════════════════════╣
   ║                                                                    ║
-  ║  ┌─────────────────────────────┐  ┌─────────────────────────────┐ ║
-  ║  │     MODULE A: DATA ANALYST  │  │   MODULE C: PRODUCTIVITY    │ ║
-  ║  ├─────────────────────────────┤  ├─────────────────────────────┤ ║
-  ║  │ Model: gemini-3-flash       │  │ Model: gemini-3-flash       │ ║
-  ║  │ Temp: 1.0   Tokens: 65536   │  │ Temp: 1.0   Tokens: 65536   │ ║
-  ║  │                             │  │                             │ ║
-  ║  │ OUTPUT:                     │  │ OUTPUT:                     │ ║
-  ║  │ - 15-50 extracted quotes    │  │ - sessionEfficiency         │ ║
-  ║  │ - 3-10 detected patterns    │  │ - taskCompletionPatterns    │ ║
-  ║  │ - 6 dimension signals       │  │ - focusIndicators           │ ║
-  ║  │ - Type classification       │  │ - workPatterns              │ ║
-  ║  │ - Personalized priorities   │  │                             │ ║
-  ║  └─────────────────────────────┘  └─────────────────────────────┘ ║
-  ║                │                               │                   ║
-  ║                └───────────────┬───────────────┘                   ║
-  ║                                ▼                                   ║
-  ║            StructuredAnalysisData + ProductivityAnalysisData       ║
+  ║  ┌───────────────────┐ ┌───────────────────┐ ┌───────────────────┐║
+  ║  │  MODULE A: DATA   │ │  MODULE C: PROD.  │ │  MULTITASKING     │║
+  ║  │  ANALYST          │ │  ANALYST          │ │  ANALYZER (NEW)   │║
+  ║  ├───────────────────┤ ├───────────────────┤ ├───────────────────┤║
+  ║  │ Model: gemini-3   │ │ Model: gemini-3   │ │ Model: gemini-3   │║
+  ║  │ Temp: 1.0         │ │ Temp: 1.0         │ │ Temp: 1.0         │║
+  ║  │                   │ │                   │ │                   │║
+  ║  │ OUTPUT:           │ │ OUTPUT:           │ │ OUTPUT:           │║
+  ║  │ - quotes (15-50)  │ │ - efficiency      │ │ - sessionFocus    │║
+  ║  │ - patterns (3-10) │ │ - completion      │ │ - pollution       │║
+  ║  │ - 6 dim signals   │ │ - focus           │ │ - workUnits       │║
+  ║  │ - type            │ │ - workPatterns    │ │ - strategy        │║
+  ║  └─────────┬─────────┘ └─────────┬─────────┘ └─────────┬─────────┘║
+  ║            │                     │                     │          ║
+  ║            └─────────────────────┼─────────────────────┘          ║
+  ║                                  ▼                                 ║
+  ║    StructuredData + ProductivityData + MultitaskingData           ║
   ╚═══════════════════════════════════════════════════════════════════╝
                        │
                        │ [4] Pass Phase 1 outputs to Phase 2 (Premium+ only)
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║         PHASE 2: INSIGHT GENERATION (4 WOW AGENTS, Premium+)      ║
+  ║         PHASE 2: INSIGHT GENERATION (6 WOW AGENTS, Premium+)      ║
   ║                                                                    ║
-  ║   [4 parallel agents, skipped for Free tier]                       ║
+  ║   [6 parallel agents, skipped for Free tier]                       ║
   ║                                                                    ║
-  ║   INPUT:  StructuredAnalysisData + ProductivityAnalysisData        ║
+  ║   INPUT:  StructuredData + ProductivityData + MultitaskingData     ║
   ║   OUTPUT: AgentOutputs (merged)                                    ║
   ║           - PatternDetectiveWorker → recurring patterns            ║
   ║           - AntiPatternSpotterWorker → inefficient patterns        ║
   ║           - KnowledgeGapWorker → knowledge gaps                    ║
   ║           - ContextEfficiencyWorker → context utilization          ║
+  ║           - MetacognitionWorker → self-awareness patterns (NEW)    ║
+  ║           - TemporalAnalyzerWorker → time-based quality (NEW)      ║
   ║                                                                    ║
   ║   GRACEFUL DEGRADATION: Individual agents can fail independently  ║
   ╚═══════════════════════════════════════════════════════════════════╝
@@ -873,10 +908,12 @@ Module A에 주입되는 전문가 지식 구조:
 | Base Worker | `src/lib/analyzer/workers/base-worker.ts` | BaseWorker 추상 클래스, runWorkerSafely |
 | Data Analyst Worker | `src/lib/analyzer/workers/data-analyst-worker.ts` | Module A - 행동 데이터 추출 |
 | Productivity Worker | `src/lib/analyzer/workers/productivity-analyst-worker.ts` | Module C - 생산성 지표 추출 |
+| **Multitasking Worker** | `src/lib/analyzer/workers/multitasking-analyzer-worker.ts` | 멀티세션 작업 패턴 분석 (NEW) |
 | Module A Stage | `src/lib/analyzer/stages/data-analyst.ts` | DataAnalystStage 클래스, Gemini 호출 |
 | Module A Prompts | `src/lib/analyzer/stages/data-analyst-prompts.ts` | 시스템/유저 프롬프트 빌더 |
 | Module A Schema | `src/lib/models/analysis-data.ts` | StructuredAnalysisData Zod 스키마 |
 | Module C Schema | `src/lib/models/productivity-data.ts` | ProductivityAnalysisData Zod 스키마 |
+| **Multitasking Schema** | `src/lib/models/multitasking-data.ts` | MultitaskingAnalysisData Zod 스키마 (NEW) |
 
 ### Phase 2: Insight Generation Workers (Premium+)
 
@@ -886,7 +923,12 @@ Module A에 주입되는 전문가 지식 구조:
 | Anti-Pattern Spotter | `src/lib/analyzer/workers/anti-pattern-spotter-worker.ts` | 비효율적 패턴 탐지 |
 | Knowledge Gap | `src/lib/analyzer/workers/knowledge-gap-worker.ts` | 지식 격차 식별 |
 | Context Efficiency | `src/lib/analyzer/workers/context-efficiency-worker.ts` | 컨텍스트 활용 분석 |
-| Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | AgentOutputs, 4 agent output Zod 스키마 |
+| **Metacognition Worker** | `src/lib/analyzer/workers/metacognition-worker.ts` | 자기 인식 패턴, 블라인드 스팟 탐지 (NEW) |
+| **Temporal Analyzer** | `src/lib/analyzer/workers/temporal-analyzer-worker.ts` | 시간대별 품질 및 피로도 분석 (NEW) |
+| Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | AgentOutputs, 7 agent output Zod 스키마 |
+| **Metacognition Schema** | `src/lib/models/metacognition-data.ts` | MetacognitionOutput Zod 스키마 (NEW) |
+| **Temporal Schema** | `src/lib/models/temporal-data.ts` | TemporalAnalysisOutput Zod 스키마 (NEW) |
+| **Risk Signal Schema** | `src/lib/models/risk-signal.ts` | RiskSignal Zod 스키마 (NEW) |
 
 ### Phase 3: Content Writer
 
