@@ -522,6 +522,11 @@ async function storeResult(
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
+    // Debug: log agentOutputs status before storage
+    console.log(`[lambda] storeResult - hasAgentOutputs: ${!!evaluation.agentOutputs}`);
+    console.log(`[lambda] storeResult - agentOutputs keys: ${evaluation.agentOutputs ? Object.keys(evaluation.agentOutputs).join(', ') : 'none'}`);
+    console.log(`[lambda] storeResult - typeSynthesis: ${evaluation.agentOutputs?.typeSynthesis ? 'present' : 'null'}`);
+
     const insertData: Record<string, unknown> = {
       result_id: resultId,
       evaluation,
