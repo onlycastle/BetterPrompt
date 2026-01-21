@@ -283,7 +283,7 @@ const INITIAL_PROFESSIONAL_INSIGHTS: ProfessionalInsight[] = [
     },
     applicableDimensions: ['contextEngineering'],
     maxScore: 70,
-    priority: 7,
+    priority: 9,
     enabled: true,
   },
   // Claude Code Best Practices (from ykdojo/claude-code-tips, Anthropic Engineering)

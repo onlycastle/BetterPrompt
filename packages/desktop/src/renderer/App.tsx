@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AnalysisProvider } from './contexts/AnalysisContext';
 import { QueryProvider } from './providers/QueryProvider';
 import { Sidebar, type AppRoute } from './components/navigation';
+import { useCredits } from './hooks';
 import LoginPage from './pages/LoginPage';
 import AnalyzePage from './pages/AnalyzePage';
 import ResultsPage from './pages/ResultsPage';
@@ -14,6 +15,7 @@ import './styles/global.css';
 
 function AppContent() {
   const { isAuthenticated, isLoading, user, signOut } = useAuth();
+  const { credits } = useCredits();
   const [route, setRoute] = useState<AppRoute>('login');
   const [resultId, setResultId] = useState<string | null>(null);
 
@@ -89,6 +91,7 @@ function AppContent() {
         onNavigate={setRoute}
         onSignOut={handleSignOut}
         userName={user?.email?.split('@')[0]}
+        credits={credits}
       />
       <main className="app-main">
         {renderPage()}

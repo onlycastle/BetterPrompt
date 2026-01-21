@@ -20,6 +20,7 @@ interface SidebarProps {
   onNavigate: (route: AppRoute) => void;
   onSignOut: () => void;
   userName?: string;
+  credits?: number | null;
 }
 
 const NAV_ITEMS: Array<{ route: AppRoute; label: string }> = [
@@ -29,7 +30,7 @@ const NAV_ITEMS: Array<{ route: AppRoute; label: string }> = [
   { route: 'personal', label: 'Personal' },
 ];
 
-export function Sidebar({ currentRoute, onNavigate, onSignOut, userName }: SidebarProps) {
+export function Sidebar({ currentRoute, onNavigate, onSignOut, userName, credits }: SidebarProps) {
   return (
     <nav className={styles.sidebar}>
       <div className={styles.logo}>
@@ -57,6 +58,11 @@ export function Sidebar({ currentRoute, onNavigate, onSignOut, userName }: Sideb
         {userName && (
           <div className={styles.user}>
             <span className={styles.userName}>{userName}</span>
+            {credits !== null && credits !== undefined && (
+              <span className={styles.credits}>
+                🟡 {credits} credit{credits !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
         )}
         <button className={styles.signOut} onClick={onSignOut}>

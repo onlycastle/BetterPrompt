@@ -112,6 +112,11 @@ body,
   --sketch-blue-light: rgba(59, 130, 246, 0.15);
   --sketch-blue-soft: rgba(59, 130, 246, 0.08);
 
+  --sketch-purple: #9C7CF4;
+  --sketch-purple-light: rgba(156, 124, 244, 0.15);
+  --sketch-purple-soft: rgba(156, 124, 244, 0.08);
+  --sketch-purple-dark: #6B5BB3;
+
   --sketch-orange: #FB923C;
   --sketch-orange-light: rgba(251, 146, 60, 0.15);
   --sketch-orange-soft: rgba(251, 146, 60, 0.08);

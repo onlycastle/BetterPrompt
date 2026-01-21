@@ -12,6 +12,37 @@ import type { TypeDistribution } from './report';
 export type { CodingStyleType, AIControlLevel, TypeDistribution };
 
 // ============================================================================
+// Matrix Distribution (5 types × 3 levels = 15 combinations)
+// ============================================================================
+
+/**
+ * Key format for the 5×3 matrix: type_controlLevel
+ */
+export type MatrixKey = `${CodingStyleType}_${AIControlLevel}`;
+
+/**
+ * Distribution across all 15 matrix combinations
+ * Each value is 0-100, representing percentage
+ */
+export interface MatrixDistribution {
+  'architect_vibe-coder': number;
+  'architect_developing': number;
+  'architect_ai-master': number;
+  'scientist_vibe-coder': number;
+  'scientist_developing': number;
+  'scientist_ai-master': number;
+  'collaborator_vibe-coder': number;
+  'collaborator_developing': number;
+  'collaborator_ai-master': number;
+  'speedrunner_vibe-coder': number;
+  'speedrunner_developing': number;
+  'speedrunner_ai-master': number;
+  'craftsman_vibe-coder': number;
+  'craftsman_developing': number;
+  'craftsman_ai-master': number;
+}
+
+// ============================================================================
 // Analyzed Session Info - Metadata about sessions included in analysis
 // ============================================================================
 
@@ -106,6 +137,8 @@ export interface VerboseAnalysisData {
   personalitySummary: string;
   dimensionInsights: PerDimensionInsight[];
   promptPatterns: PromptPattern[];
+  // Agent outputs (from Wow Agents - Premium)
+  agentOutputs?: import('../lib/models/agent-outputs').AgentOutputs;
   // Premium fields (optional)
   toolUsageDeepDive?: unknown[];
   tokenEfficiency?: unknown;

@@ -5,27 +5,29 @@
 
 import { Card } from '../../ui/Card';
 import { VERBOSE_TYPE_METADATA } from '../../../types/verbose';
-import type { CodingStyleType, TypeDistribution } from '../../../types/verbose';
+import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixDistribution } from '../../../types/verbose';
+import { MatrixDistributionDisplay } from './MatrixDistributionDisplay';
 import styles from './TypeResultMinimal.module.css';
 
 interface TypeResultMinimalProps {
   primaryType: CodingStyleType;
   distribution: TypeDistribution;
   sessionsAnalyzed: number;
+  /** User's control level (optional, defaults to 'developing') */
+  controlLevel?: AIControlLevel;
+  /** Control score 0-100 (optional, defaults to 50) */
+  controlScore?: number;
+  /** Pre-computed matrix distribution (optional, will derive if not provided) */
+  matrixDistribution?: MatrixDistribution;
 }
-
-const STYLE_TYPES: CodingStyleType[] = [
-  'architect',
-  'scientist',
-  'collaborator',
-  'speedrunner',
-  'craftsman',
-];
 
 export function TypeResultMinimal({
   primaryType,
   distribution,
   sessionsAnalyzed,
+  controlLevel = 'developing',
+  controlScore = 50,
+  matrixDistribution,
 }: TypeResultMinimalProps) {
   const meta = VERBOSE_TYPE_METADATA[primaryType];
 
@@ -52,34 +54,14 @@ export function TypeResultMinimal({
         ))}
       </div>
 
-      {/* Distribution */}
-      <div className={styles.distributionSection}>
-        <h4 className={styles.sectionLabel}>Style Distribution</h4>
-        <div className={styles.distributionList}>
-          {STYLE_TYPES.map((type) => {
-            const typeMeta = VERBOSE_TYPE_METADATA[type];
-            const pct = distribution[type] || 0;
-            const isPrimary = type === primaryType;
-
-            return (
-              <div
-                key={type}
-                className={`${styles.distributionRow} ${isPrimary ? styles.primary : ''}`}
-              >
-                <span className={styles.distEmoji}>{typeMeta.emoji}</span>
-                <span className={styles.distName}>{typeMeta.name}</span>
-                <div className={styles.distBar}>
-                  <div
-                    className={styles.distFill}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <span className={styles.distPct}>{pct}%</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* Matrix Distribution (5×3) */}
+      <MatrixDistributionDisplay
+        distribution={distribution}
+        primaryType={primaryType}
+        controlLevel={controlLevel}
+        controlScore={controlScore}
+        matrixDistribution={matrixDistribution}
+      />
 
       {/* Sessions analyzed */}
       <div className={styles.footer}>
