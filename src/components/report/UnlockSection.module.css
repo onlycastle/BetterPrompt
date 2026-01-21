@@ -3,13 +3,16 @@
   text-align: center;
 }
 
-/* Unlocked Badge */
+/* ========================================
+   UNLOCKED STATE
+   ======================================== */
+
 .unlockedBadge {
   margin-bottom: 32px;
 }
 
 .badgeIcon {
-  font-size: 48px;
+  color: var(--neon-green);
   margin-bottom: 16px;
 }
 
@@ -25,152 +28,274 @@
   margin-bottom: 0;
 }
 
-/* Locked Content */
+/* ========================================
+   LOCKED STATE - PAYWALL
+   ======================================== */
+
 .lockedContent {
   border: 2px dashed var(--text-muted);
   border-radius: 12px;
   padding: 48px 32px;
-  margin-bottom: 32px;
+}
+
+.lockIcon {
+  color: var(--text-muted);
+  margin-bottom: 16px;
 }
 
 .lockedTitle {
   font-size: 24px;
-  margin-bottom: 20px;
-  color: var(--text-secondary);
+  margin-bottom: 12px;
+  color: var(--text-primary);
 }
 
 .lockedDescription {
   color: var(--text-secondary);
-  margin-bottom: 24px;
-  max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
+  margin-bottom: 32px;
   font-size: 14px;
   line-height: 1.6;
 }
 
-.featureList {
-  list-style: none;
-  margin: 32px auto;
+/* ========================================
+   BENEFITS GRID - 2x2 Categories
+   ======================================== */
+
+.benefitsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
   text-align: left;
-  max-width: 400px;
-  padding: 0;
 }
 
-.featureList li {
-  padding: 8px 0;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-/* CTA Box */
-.ctaBox {
+.categoryCard {
   background: var(--terminal-elevated);
-  border: 2px solid var(--neon-yellow);
+  border: 2px solid var(--border-subtle);
   border-radius: 8px;
-  padding: 24px 32px;
-  display: inline-block;
-  box-shadow: 0 0 30px rgba(255, 204, 0, 0.2);
-  margin: 16px 0;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
 }
 
-.ctaPrice {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--neon-yellow);
-  text-shadow: 0 0 20px var(--neon-yellow);
-  margin-bottom: 8px;
+/* Color accent bar at top */
+.categoryCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--neon-cyan);
 }
 
-.ctaSubtitle {
-  font-size: 12px;
+.categoryCard[data-color="cyan"]::before {
+  background: var(--neon-cyan);
+}
+
+.categoryCard[data-color="pink"]::before {
+  background: var(--neon-pink);
+}
+
+.categoryCard[data-color="green"]::before {
+  background: var(--neon-green);
+}
+
+.categoryCard[data-color="yellow"]::before {
+  background: var(--neon-yellow);
+}
+
+.categoryHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.categoryIcon {
   color: var(--text-secondary);
 }
 
-.proNote {
-  color: var(--text-muted);
-  margin-top: 16px;
-  font-size: 11px;
-}
-
-.proHighlight {
+.categoryCard[data-color="cyan"] .categoryIcon {
   color: var(--neon-cyan);
 }
 
-/* Dashboard Divider */
-.dashboardDivider {
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 1px solid var(--border-subtle);
+.categoryCard[data-color="pink"] .categoryIcon {
+  color: var(--neon-pink);
 }
 
-.dashboardPrompt {
-  color: var(--text-secondary);
-  font-size: 13px;
+.categoryCard[data-color="green"] .categoryIcon {
+  color: var(--neon-green);
+}
+
+.categoryCard[data-color="yellow"] .categoryIcon {
+  color: var(--neon-yellow);
+}
+
+.categoryTitle {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.categoryItems {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.categoryItems li {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px 0;
+  padding-left: 12px;
+  position: relative;
+}
+
+.categoryItems li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--text-muted);
+}
+
+/* ========================================
+   PRICING CARDS - ONE-TIME + PRO
+   ======================================== */
+
+.pricingCards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.pricingCard {
+  border-radius: 12px;
+  padding: 24px 20px;
+  text-align: center;
+}
+
+/* PRIMARY Card (ONE-TIME) - Gradient background */
+.pricingCard.primary {
+  background: linear-gradient(135deg, #00d4ff, #ff00ff);
+  color: #0a0a0a;
+  box-shadow:
+    0 4px 20px rgba(0, 212, 255, 0.4),
+    3px 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* SECONDARY Card (PRO) - Outline style */
+.pricingCard.secondary {
+  background: transparent;
+  border: 2px solid var(--neon-cyan);
+  color: var(--text-primary);
+}
+
+.pricingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.pricingCard.secondary .pricingHeader {
+  color: var(--neon-cyan);
+}
+
+.pricingAmount {
+  font-size: 32px;
+  font-weight: 700;
   margin-bottom: 16px;
 }
 
-/* Dashboard Buttons */
-.dashboardButtons {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.dashboardBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 28px;
-  font-weight: 600;
+.pricingAmount span {
   font-size: 14px;
-  border-radius: 8px;
-  text-decoration: none;
-  transition: transform 0.2s, box-shadow 0.2s;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.pricingCard.secondary .pricingAmount {
+  color: var(--text-primary);
+}
+
+.pricingNote {
+  font-size: 11px;
+  margin-top: 12px;
+  opacity: 0.8;
+}
+
+.proFeatures {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+/* CTA Buttons */
+.unlockCta {
+  width: 100%;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 700;
   font-family: var(--font-mono);
+  background: #0a0a0a;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.dashboardBtn svg {
-  flex-shrink: 0;
+.unlockCta:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.dashboardBtn.personal {
-  background: linear-gradient(135deg, #00d4ff, #ff00ff);
+.subscribeCta {
+  width: 100%;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  background: transparent;
+  color: var(--neon-cyan);
+  border: 2px solid var(--neon-cyan);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.2s;
+}
+
+.subscribeCta:hover {
+  background: var(--neon-cyan);
   color: #0a0a0a;
-  box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+  transform: scale(1.02);
 }
 
-.dashboardBtn.personal:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 25px rgba(0, 212, 255, 0.6);
-}
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
 
-.dashboardBtn.enterprise {
-  background: linear-gradient(135deg, #00ff88, #00d4ff);
-  color: #0a0a0a;
-  box-shadow: 0 4px 20px rgba(0, 255, 136, 0.4);
-}
-
-.dashboardBtn.enterprise:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 25px rgba(0, 255, 136, 0.6);
-}
-
-/* Responsive Design */
-@media (max-width: 600px) {
-  .dashboardButtons {
-    flex-direction: column;
-    align-items: center;
+@media (max-width: 768px) {
+  .benefitsGrid {
+    grid-template-columns: 1fr;
   }
 
-  .dashboardBtn {
-    width: 100%;
-    max-width: 280px;
-    justify-content: center;
+  .pricingCards {
+    grid-template-columns: 1fr;
+    max-width: 300px;
   }
 
   .lockedContent {
     padding: 32px 20px;
+  }
+
+  .lockedTitle {
+    font-size: 20px;
   }
 }

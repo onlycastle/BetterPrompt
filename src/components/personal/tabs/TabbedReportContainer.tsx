@@ -103,6 +103,7 @@ export function TabbedReportContainer({
           distribution={analysis.distribution}
           sessionsAnalyzed={analysis.sessionsAnalyzed}
           controlLevel={analysis.controlLevel}
+          controlScore={analysis.controlScore}
         />
 
         {/* Personality Summary */}
