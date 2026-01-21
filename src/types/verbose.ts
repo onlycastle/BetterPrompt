@@ -133,6 +133,8 @@ export interface VerboseAnalysisData {
   analyzedSessions?: AnalyzedSessionInfo[];
   primaryType: CodingStyleType;
   controlLevel: AIControlLevel;
+  /** Raw control score (0-100) for matrix distribution calculation */
+  controlScore?: number;
   distribution: TypeDistribution;
   personalitySummary: string;
   dimensionInsights: PerDimensionInsight[];
