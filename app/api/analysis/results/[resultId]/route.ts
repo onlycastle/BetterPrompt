@@ -13,6 +13,8 @@ import { createClient, type User } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { VerboseEvaluation, PromptPattern, PerDimensionInsight } from '@/lib/models/verbose-evaluation';
+import type { AgentOutputs } from '@/lib/models/agent-outputs';
+import { createAgentTeasers } from '@/lib/models/agent-teasers';
 
 interface RouteContext {
   params: Promise<{ resultId: string }>;
@@ -94,6 +96,11 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
     growthRoadmap: undefined,
     comparativeInsights: undefined,
     sessionTrends: undefined,
+
+    // Agent outputs - teasers for free users
+    // FREE agents (patternDetective, metacognition) show full data
+    // PREMIUM agents show 1 insight + scores only
+    agentOutputs: createAgentTeasers(evaluation.agentOutputs),
   };
 }
 
