@@ -17,7 +17,6 @@ import { uploadForAnalysis } from './uploader.js';
 import {
   displayError,
   displayNoSessions,
-  displayAnalysisSummary,
   confirmWithPrivacy,
   displayResultsWithCelebration,
 } from './display.js';
@@ -263,17 +262,14 @@ async function runAnalysis(): Promise<void> {
     process.exit(1);
   }
 
-  scanSpinner.succeed(
-    `Found ${pc.bold(String(scanResult.sessions.length))} sessions to analyze`
-  );
+  scanSpinner.succeed('Sessions loaded');
 
   // Auto-select all sessions (no manual selection)
   const selectedSessions = scanResult.sessions;
 
-  // Estimate cost and show compact summary
+  // Estimate cost (used internally for logging, not displayed to user)
   const parsedSessions = selectedSessions.map(s => s.parsed);
   const costEstimate = estimateAnalysisCost(parsedSessions);
-  displayAnalysisSummary(selectedSessions, costEstimate);
 
   // Create filtered ScanResult for upload
   const filteredResult = {

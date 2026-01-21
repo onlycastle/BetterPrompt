@@ -247,6 +247,93 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
   );
 }
 
+/**
+ * KPT Analysis derivation helpers
+ * Classifies insights into Keep/Problem/Try based on keywords
+ */
+const POSITIVE_KEYWORDS = ['well', 'good', 'efficient', 'consistent', 'strong', 'clear', 'effective', 'proficient', 'successfully', 'excellent'];
+const PROBLEM_KEYWORDS = ['struggle', 'lack', 'miss', 'error', 'loop', 'repeat', 'fail', 'weak', 'poor', 'confus', 'unclear', 'inefficient', 'forgot'];
+const SUGGESTION_KEYWORDS = ['try', 'consider', 'could', 'should', 'recommend', 'suggest', 'would benefit', 'might', 'may want'];
+
+function isPositiveInsight(insight: string): boolean {
+  const lower = insight.toLowerCase();
+  return POSITIVE_KEYWORDS.some(kw => lower.includes(kw)) &&
+         !PROBLEM_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+function isProblemInsight(insight: string): boolean {
+  const lower = insight.toLowerCase();
+  return PROBLEM_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+function isSuggestionInsight(insight: string): boolean {
+  const lower = insight.toLowerCase();
+  return SUGGESTION_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+interface KPTResult {
+  keep: string[];
+  problem: string[];
+  try: string[];
+}
+
+function deriveAgentKPT(data: unknown): KPTResult {
+  const insights = (data as { topInsights?: string[] }).topInsights || [];
+
+  return {
+    keep: insights.filter(i => isPositiveInsight(i)).slice(0, 2),
+    problem: insights.filter(i => isProblemInsight(i)).slice(0, 2),
+    try: insights.filter(i => isSuggestionInsight(i)).slice(0, 2),
+  };
+}
+
+/**
+ * Agent KPT Summary Component
+ */
+function AgentKPTSummary({ data }: { data: unknown }) {
+  const kpt = deriveAgentKPT(data);
+
+  // Don't render if no KPT items found
+  if (kpt.keep.length === 0 && kpt.problem.length === 0 && kpt.try.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className={styles.kptSection}>
+      <div className={styles.kptHeader}>
+        <span className={styles.kptIcon}>📋</span>
+        <span className={styles.kptTitle}>KPT Analysis</span>
+      </div>
+      <div className={styles.kptGrid}>
+        {kpt.keep.length > 0 && (
+          <div className={styles.kptColumn}>
+            <span className={styles.kptLabelKeep}>K - 지킬것</span>
+            <ul className={styles.kptList}>
+              {kpt.keep.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </div>
+        )}
+        {kpt.problem.length > 0 && (
+          <div className={styles.kptColumn}>
+            <span className={styles.kptLabelProblem}>P - 문제점</span>
+            <ul className={styles.kptList}>
+              {kpt.problem.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </div>
+        )}
+        {kpt.try.length > 0 && (
+          <div className={styles.kptColumn}>
+            <span className={styles.kptLabelTry}>T - 시도할것</span>
+            <ul className={styles.kptList}>
+              {kpt.try.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Sub-component for expanded details
 interface AgentDetailsProps {
   agentId: keyof AgentOutputs;
@@ -282,6 +369,8 @@ function PatternDetectiveDetails({ data }: { data: AgentOutputs['patternDetectiv
 
   return (
     <div className={styles.detailsContent}>
+      {/* KPT Analysis */}
+      <AgentKPTSummary data={data} />
       {repeatedQuestions.length > 0 && (
         <DetailSection title="Repeated Questions" icon="🔁">
           {repeatedQuestions.map((item, i) => (
@@ -315,6 +404,8 @@ function AntiPatternDetails({ data }: { data: AgentOutputs['antiPatternSpotter']
 
   return (
     <div className={styles.detailsContent}>
+      {/* KPT Analysis */}
+      <AgentKPTSummary data={data} />
       {errorLoops.length > 0 && (
         <DetailSection title="Error Loops Detected" icon="🔄">
           {errorLoops.map((item, i) => (
@@ -349,6 +440,8 @@ function KnowledgeGapDetails({ data }: { data: AgentOutputs['knowledgeGap'] }) {
 
   return (
     <div className={styles.detailsContent}>
+      {/* KPT Analysis */}
+      <AgentKPTSummary data={data} />
       {gaps.length > 0 && (
         <DetailSection title="Knowledge Gaps" icon="📖">
           {gaps.map((item, i) => (
@@ -384,6 +477,9 @@ function ContextEfficiencyDetails({ data }: { data: AgentOutputs['contextEfficie
 
   return (
     <div className={styles.detailsContent}>
+      {/* KPT Analysis */}
+      <AgentKPTSummary data={data} />
+
       <div className={styles.metricRow}>
         <span className={styles.metricLabel}>Avg Context Fill</span>
         <span className={styles.metricValue}>{data.avgContextFillPercent}%</span>
@@ -429,6 +525,9 @@ function MetacognitionDetails({ data }: { data: AgentOutputs['metacognition'] })
 
   return (
     <div className={styles.detailsContent}>
+      {/* KPT Analysis */}
+      <AgentKPTSummary data={data} />
+
       <div className={styles.metricRow}>
         <span className={styles.metricLabel}>Awareness Score</span>
         <span className={styles.metricValue}>{data.metacognitiveAwarenessScore}/100</span>
@@ -475,6 +574,8 @@ function TemporalAnalysisDetails({ data }: { data: AgentOutputs['temporalAnalysi
 
   return (
     <div className={styles.detailsContent}>
+      {/* KPT Analysis */}
+      <AgentKPTSummary data={data} />
       {peakHours && (
         <DetailSection title="Peak Performance Hours" icon="🌟">
           <div className={styles.detailItem}>
@@ -515,6 +616,9 @@ function MultitaskingDetails({ data }: { data: AgentOutputs['multitasking'] }) {
 
   return (
     <div className={styles.detailsContent}>
+      {/* KPT Analysis */}
+      <AgentKPTSummary data={data} />
+
       <div className={styles.metricRow}>
         <span className={styles.metricLabel}>Goal Coherence</span>
         <span className={styles.metricValue}>{data.avgGoalCoherence}%</span>

@@ -9,6 +9,7 @@ import styles from './PromptPatternsClean.module.css';
 
 interface PromptPatternsCleanProps {
   patterns: PromptPattern[];
+  isPaid?: boolean;
 }
 
 const FREQUENCY_STYLES: Record<PromptFrequency, { label: string; className: string }> = {
@@ -23,14 +24,18 @@ const EFFECTIVENESS_STYLES: Record<PromptEffectiveness, { label: string; classNa
   could_improve: { label: 'Could Improve', className: styles.effectivenessLow },
 };
 
-export function PromptPatternsClean({ patterns }: PromptPatternsCleanProps) {
+export function PromptPatternsClean({ patterns, isPaid = false }: PromptPatternsCleanProps) {
   if (!patterns || patterns.length === 0) {
     return null;
   }
 
+  // Free users see only first 3 patterns
+  const displayPatterns = isPaid ? patterns : patterns.slice(0, 3);
+  const hiddenCount = patterns.length - displayPatterns.length;
+
   return (
     <div className={styles.container}>
-      {patterns.map((pattern, idx) => (
+      {displayPatterns.map((pattern, idx) => (
         <Card key={idx} padding="md" className={styles.patternCard}>
           <div className={styles.header}>
             <h4 className={styles.patternName}>{pattern.patternName}</h4>
@@ -66,6 +71,14 @@ export function PromptPatternsClean({ patterns }: PromptPatternsCleanProps) {
           )}
         </Card>
       ))}
+
+      {/* Teaser for free users */}
+      {!isPaid && hiddenCount > 0 && (
+        <div className={styles.teaser}>
+          <span className={styles.teaserIcon}>🔒</span>
+          <span className={styles.teaserText}>+{hiddenCount} more patterns in premium</span>
+        </div>
+      )}
     </div>
   );
 }

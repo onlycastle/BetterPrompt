@@ -67,6 +67,24 @@ export function MatrixDistributionDisplay({
     return deriveMatrixDistribution(distribution, controlLevel, controlScore);
   }, [distribution, controlLevel, controlScore, matrixDistribution]);
 
+  // Find the highest percentage control level for the primary type
+  const primaryTypeHighestLevel = useMemo(() => {
+    const levels: AIControlLevel[] = ['cartographer', 'navigator', 'explorer'];
+    let maxLevel: AIControlLevel = controlLevel;
+    let maxPct = -1;
+
+    for (const level of levels) {
+      const matrixKey = `${primaryType}_${level}` as keyof MatrixDistribution;
+      const pct = matrix[matrixKey] || 0;
+      if (pct > maxPct) {
+        maxPct = pct;
+        maxLevel = level;
+      }
+    }
+
+    return maxLevel;
+  }, [matrix, primaryType, controlLevel]);
+
   const toggleExpand = (type: CodingStyleType) => {
     setExpandedTypes((prev) => {
       const next = new Set(prev);
@@ -148,7 +166,7 @@ export function MatrixDistributionDisplay({
                     const matrixKey = `${type}_${level}` as keyof MatrixDistribution;
                     const levelPct = matrix[matrixKey] || 0;
                     const matrixName = MATRIX_NAMES[type][level];
-                    const isSelectedCombo = isPrimaryType && level === controlLevel;
+                    const isSelectedCombo = isPrimaryType && level === primaryTypeHighestLevel;
 
                     return (
                       <div

@@ -33,10 +33,36 @@ const LEVEL_COLORS: Record<string, (s: string) => string> = {
   cartographer: pc.green,
 };
 
-const LEVEL_EMOJIS: Record<string, string> = {
-  explorer: '🧭',
-  navigator: '🗺️',
-  cartographer: '📍',
+/**
+ * Matrix names for each Style × Control combination
+ * Mirrors the MATRIX_NAMES from coding-style.ts
+ */
+const MATRIX_NAMES: Record<string, Record<string, string>> = {
+  architect: {
+    explorer: 'Visionary',
+    navigator: 'Strategist',
+    cartographer: 'Systems Architect',
+  },
+  scientist: {
+    explorer: 'Questioner',
+    navigator: 'Analyst',
+    cartographer: 'Research Lead',
+  },
+  collaborator: {
+    explorer: 'Conversationalist',
+    navigator: 'Team Player',
+    cartographer: 'Facilitator',
+  },
+  speedrunner: {
+    explorer: 'Experimenter',
+    navigator: 'Rapid Prototyper',
+    cartographer: 'Velocity Expert',
+  },
+  craftsman: {
+    explorer: 'Detail Lover',
+    navigator: 'Quality Crafter',
+    cartographer: 'Master Artisan',
+  },
 };
 
 /**
@@ -49,10 +75,14 @@ function progressBar(value: number, width: number = 10, colorFn: (s: string) => 
 }
 
 /**
- * Compute level distribution from controlScore
+ * Compute matrix distribution for a type from controlScore
  * Uses same logic as deriveMatrixDistribution in coding-style.ts
+ * Returns percentages that sum to the type's distribution percentage
  */
-function computeLevelDistribution(controlScore: number): Record<string, number> {
+function computeMatrixDistribution(
+  typeDistribution: number,
+  controlScore: number
+): { explorer: number; navigator: number; cartographer: number } {
   const score = Math.max(0, Math.min(100, controlScore));
   let explorerWeight: number;
   let navigatorWeight: number;
@@ -79,10 +109,13 @@ function computeLevelDistribution(controlScore: number): Record<string, number> 
   }
 
   const total = explorerWeight + navigatorWeight + cartographerWeight;
+  const calcPct = (weight: number): number =>
+    Math.round(typeDistribution * (weight / total) * 10) / 10;
+
   return {
-    explorer: Math.round((explorerWeight / total) * 100),
-    navigator: Math.round((navigatorWeight / total) * 100),
-    cartographer: Math.round((cartographerWeight / total) * 100),
+    explorer: calcPct(explorerWeight),
+    navigator: calcPct(navigatorWeight),
+    cartographer: calcPct(cartographerWeight),
   };
 }
 
@@ -119,9 +152,8 @@ export function displayResults(result: AnalysisResult): void {
   lines.push(pc.dim(`(${result.primaryType.charAt(0).toUpperCase() + result.primaryType.slice(1)} × ${formatControlLevel(result.controlLevel)})`));
   lines.push('');
 
-  // Distribution bars with level bars under primary type
+  // Distribution bars with matrix sub-types under primary type
   const types = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'] as const;
-  const levelDist = computeLevelDistribution(result.controlScore);
 
   for (const type of types) {
     const value = result.distribution[type];
@@ -129,23 +161,36 @@ export function displayResults(result: AnalysisResult): void {
     const bar = progressBar(value);
     lines.push(`${pc.dim(label.padEnd(12))} ${bar} ${pc.dim(`${value}%`)}`);
 
-    // Add level bars under the primary type only
+    // Add matrix sub-type bars under the primary type only
     if (type === result.primaryType.toLowerCase()) {
+      const matrixDist = computeMatrixDistribution(value, result.controlScore);
       const levels = ['explorer', 'navigator', 'cartographer'] as const;
+
+      // Find the highest percentage level for this type
+      let highestLevel: typeof levels[number] = levels[0];
+      let highestPct = matrixDist[levels[0]];
       for (const level of levels) {
-        const levelValue = levelDist[level];
-        const levelLabel = level === 'explorer' ? 'Explorer' :
-                           level === 'cartographer' ? 'Cartographer' : 'Navigator';
-        const colorFn = LEVEL_COLORS[level];
-        const levelBar = progressBar(levelValue, 10, colorFn);
-
-        // Highlight the user's actual level
-        const isCurrentLevel = level === result.controlLevel;
-        const marker = isCurrentLevel ? pc.cyan(' ← Your Level') : '';
-
-        lines.push(`  └ ${pc.dim(levelLabel.padEnd(12))} ${levelBar} ${pc.dim(`${levelValue}%`)}${marker}`);
+        if (matrixDist[level] > highestPct) {
+          highestPct = matrixDist[level];
+          highestLevel = level;
+        }
       }
-      lines.push(''); // Blank line after level bars
+
+      for (const level of levels) {
+        const levelValue = matrixDist[level];
+        const matrixName = MATRIX_NAMES[type][level];
+        const colorFn = LEVEL_COLORS[level];
+        // Scale bar to type's max percentage for better visualization
+        const barScale = value > 0 ? Math.min((levelValue / value) * 100, 100) : 0;
+        const levelBar = progressBar(barScale, 10, colorFn);
+
+        // Highlight the highest percentage matrix combo
+        const isHighest = level === highestLevel;
+        const marker = isHighest ? pc.cyan(' ← Your Type') : '';
+
+        lines.push(`  └ ${pc.dim(matrixName.padEnd(16))} ${levelBar} ${pc.dim(`${levelValue.toFixed(1)}%`)}${marker}`);
+      }
+      lines.push(''); // Blank line after matrix bars
     }
   }
 
@@ -304,13 +349,13 @@ export function displayAnalysisSummary(
 export async function confirmWithPrivacy(): Promise<boolean> {
   // Privacy notice box
   const privacyBox = boxen(
-    pc.dim('🔒 Your data is analyzed then immediately\n') +
-    pc.dim('   deleted. We never store your conversations.'),
+    pc.green('🔒 Your data is analyzed then immediately\n') +
+    pc.green('   deleted. ') + pc.green(pc.bold('We never store your conversations.')),
     {
       padding: { top: 0, bottom: 0, left: 1, right: 1 },
       margin: { top: 0, bottom: 0, left: 1, right: 0 },
       borderStyle: 'round',
-      borderColor: 'gray',
+      borderColor: 'green',
     }
   );
   console.log(privacyBox);
