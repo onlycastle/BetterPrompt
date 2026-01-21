@@ -79,57 +79,34 @@ export class KnowledgeGapWorker extends BaseWorker<KnowledgeGapOutput> {
 
   /**
    * Execute knowledge gap analysis
+   * NO FALLBACK: Errors propagate to fail the analysis
    */
   async execute(context: WorkerContext): Promise<WorkerResult<KnowledgeGapOutput>> {
     if (!context.moduleAOutput) {
-      return this.createFailedResult(
-        new Error('Module A output required'),
-        this.createDefaultOutput()
-      );
+      throw new Error('Module A output required for KnowledgeGap');
     }
 
     this.logMessage('Analyzing knowledge gaps and learning progress...');
 
-    try {
-      const sessionsFormatted = formatSessionsForAnalysis(
-        context.sessions,
-        KNOWLEDGE_GAP_FORMAT
-      );
-      const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
-      const userPrompt = buildKnowledgeGapUserPrompt(sessionsFormatted, moduleAJson);
+    // NO try-catch: let errors propagate
+    const sessionsFormatted = formatSessionsForAnalysis(
+      context.sessions,
+      KNOWLEDGE_GAP_FORMAT
+    );
+    const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
+    const userPrompt = buildKnowledgeGapUserPrompt(sessionsFormatted, moduleAJson);
 
-      const result = await this.geminiClient.generateStructured({
-        systemPrompt: KNOWLEDGE_GAP_SYSTEM_PROMPT,
-        userPrompt,
-        responseSchema: KnowledgeGapOutputSchema,
-        maxOutputTokens: 8192,
-      });
+    const result = await this.geminiClient.generateStructured({
+      systemPrompt: KNOWLEDGE_GAP_SYSTEM_PROMPT,
+      userPrompt,
+      responseSchema: KnowledgeGapOutputSchema,
+      maxOutputTokens: 8192,
+    });
 
-      this.logMessage(`Knowledge score: ${result.data.overallKnowledgeScore}`);
-      this.logMessage(`Found ${result.data.topInsights.length} knowledge insights`);
+    this.logMessage(`Knowledge score: ${result.data.overallKnowledgeScore}`);
+    this.logMessage(`Found ${result.data.topInsights.length} knowledge insights`);
 
-      return this.createSuccessResult(result.data, result.usage);
-    } catch (error) {
-      this.logMessage(`Analysis failed: ${error}`);
-      return this.createFailedResult(
-        error instanceof Error ? error : new Error(String(error)),
-        this.createDefaultOutput()
-      );
-    }
-  }
-
-  /**
-   * Create default output for fallback
-   */
-  private createDefaultOutput(): KnowledgeGapOutput {
-    return {
-      knowledgeGapsData: '',
-      learningProgressData: '',
-      recommendedResourcesData: '',
-      topInsights: [],
-      overallKnowledgeScore: 50, // Neutral default
-      confidenceScore: 0,
-    };
+    return this.createSuccessResult(result.data, result.usage);
   }
 
   /**

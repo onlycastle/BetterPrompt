@@ -308,36 +308,30 @@ describe('AnalysisOrchestrator', () => {
         expect(result.productivityAnalysis).toBeDefined();
       });
 
-      it('should use fallback data when DataAnalyst worker is not registered', async () => {
+      // NO FALLBACK POLICY: Workers must be registered
+      it('should throw when DataAnalyst worker is not registered', async () => {
         const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
         orchestrator.registerPhase1Worker(productivityWorker);
 
-        const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
-
-        // Should still complete with default data
-        expect(result).toBeDefined();
-        expect(result.primaryType).toBeDefined();
+        await expect(orchestrator.analyze(mockSessions, mockMetrics, 'free')).rejects.toThrow(
+          'DataAnalyst worker not registered'
+        );
       });
 
-      it('should use fallback data when ProductivityAnalyst worker is not registered', async () => {
+      it('should throw when ProductivityAnalyst worker is not registered', async () => {
         const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
         orchestrator.registerPhase1Worker(dataWorker);
 
-        const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
-
-        // Should still complete with default productivity data
-        expect(result).toBeDefined();
-        expect(result.productivityAnalysis).toBeDefined();
+        await expect(orchestrator.analyze(mockSessions, mockMetrics, 'free')).rejects.toThrow(
+          'ProductivityAnalyst worker not registered'
+        );
       });
 
-      it('should handle empty Phase 1 worker registry', async () => {
+      it('should throw when no Phase 1 workers are registered', async () => {
         // No workers registered
-        const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
-
-        // Should complete with all fallback data
-        expect(result).toBeDefined();
-        expect(result.primaryType).toBeDefined();
-        expect(result.productivityAnalysis).toBeDefined();
+        await expect(orchestrator.analyze(mockSessions, mockMetrics, 'free')).rejects.toThrow(
+          'DataAnalyst worker not registered'
+        );
       });
     });
 
@@ -456,7 +450,8 @@ describe('AnalysisOrchestrator', () => {
     });
   });
 
-  describe('Graceful Degradation', () => {
+  // NO FALLBACK POLICY: Worker failures now propagate as errors
+  describe('Error Propagation (NO FALLBACK)', () => {
     beforeEach(() => {
       // Register Phase 1 workers
       const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
@@ -466,22 +461,18 @@ describe('AnalysisOrchestrator', () => {
         .registerPhase1Worker(productivityWorker);
     });
 
-    it('should continue when a Phase 2 worker fails', async () => {
+    it('should throw when a Phase 2 worker fails', async () => {
       const failingWorker = new FailingWorker();
-      const successfulWorker = new MockPhase2Worker();
 
-      orchestrator
-        .registerPhase2Worker(failingWorker)
-        .registerPhase2Worker(successfulWorker);
+      orchestrator.registerPhase2Worker(failingWorker);
 
-      // Should complete without throwing
-      const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
-
-      expect(result).toBeDefined();
-      expect(result.primaryType).toBe('architect');
+      // Should throw - NO FALLBACK
+      await expect(orchestrator.analyze(mockSessions, mockMetrics, 'premium')).rejects.toThrow(
+        'Worker intentionally failed'
+      );
     });
 
-    it('should handle worker that cannot run', async () => {
+    it('should skip worker that cannot run (canRun returns false)', async () => {
       class CannotRunWorker extends BaseWorker<any> {
         readonly name = 'CannotRun';
         readonly phase = 2 as const;
@@ -499,36 +490,21 @@ describe('AnalysisOrchestrator', () => {
       const cannotRunWorker = new CannotRunWorker();
       orchestrator.registerPhase2Worker(cannotRunWorker);
 
-      // Should complete without calling execute
+      // Should complete - worker is skipped because canRun() returns false
       const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
 
       expect(result).toBeDefined();
     });
 
-    it('should complete analysis even if all Phase 2 workers fail', async () => {
+    it('should throw when all Phase 2 workers fail', async () => {
       const failing1 = new FailingWorker();
-      const failing2 = new FailingWorker();
 
-      orchestrator
-        .registerPhase2Worker(failing1)
-        .registerPhase2Worker(failing2);
+      orchestrator.registerPhase2Worker(failing1);
 
-      // Should complete with Phase 1 and Phase 3 data
-      const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
-
-      expect(result).toBeDefined();
-      expect(result.primaryType).toBe('architect');
-    });
-
-    it('should use fallback data when worker fails', async () => {
-      const failingWorker = new FailingWorker();
-      orchestrator.registerPhase2Worker(failingWorker);
-
-      const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
-
-      expect(result).toBeDefined();
-      // agentOutputs should exist but may be incomplete
-      expect(result.agentOutputs).toBeDefined();
+      // Should throw - NO FALLBACK
+      await expect(orchestrator.analyze(mockSessions, mockMetrics, 'premium')).rejects.toThrow(
+        'Worker intentionally failed'
+      );
     });
   });
 
@@ -581,16 +557,25 @@ describe('AnalysisOrchestrator', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should not log when verbose is false', async () => {
+    it('should not log verbose messages when verbose is false', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation();
 
+      // Must register both required workers
       const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-      orchestrator.registerPhase1Worker(dataWorker);
+      const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
+      orchestrator
+        .registerPhase1Worker(dataWorker)
+        .registerPhase1Worker(productivityWorker);
 
       await orchestrator.analyze(mockSessions, mockMetrics, 'free');
 
-      // Should not log anything
-      expect(consoleSpy).not.toHaveBeenCalled();
+      // Verbose logs (from this.log()) should not be present
+      // Note: Debug logs (console.log('[Orchestrator]...')) may still appear
+      // as they are unconditional for debugging purposes
+      const verboseLogs = consoleSpy.mock.calls.filter(
+        call => call[0]?.includes?.('Phase 1') || call[0]?.includes?.('Pipeline Summary')
+      );
+      expect(verboseLogs.length).toBe(0);
 
       consoleSpy.mockRestore();
     });
@@ -699,10 +684,16 @@ describe('AnalysisOrchestrator', () => {
   });
 
   describe('Edge Cases', () => {
-    it('should handle empty sessions array', async () => {
+    beforeEach(() => {
+      // Always register required workers for edge case tests
       const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-      orchestrator.registerPhase1Worker(dataWorker);
+      const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
+      orchestrator
+        .registerPhase1Worker(dataWorker)
+        .registerPhase1Worker(productivityWorker);
+    });
 
+    it('should handle empty sessions array', async () => {
       // Workers check for empty sessions in canRun()
       const result = await orchestrator.analyze([], mockMetrics, 'free');
 
@@ -710,13 +701,6 @@ describe('AnalysisOrchestrator', () => {
     });
 
     it('should handle multiple sessions', async () => {
-      const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-      const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
-
-      orchestrator
-        .registerPhase1Worker(dataWorker)
-        .registerPhase1Worker(productivityWorker);
-
       const multipleSessions = [
         ...mockSessions,
         {
@@ -737,9 +721,6 @@ describe('AnalysisOrchestrator', () => {
     });
 
     it('should use last session ID as evaluation session ID', async () => {
-      const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-      orchestrator.registerPhase1Worker(dataWorker);
-
       const multipleSessions = [
         { ...mockSessions[0], sessionId: 'first' },
         { ...mockSessions[0], sessionId: 'second' },
@@ -752,9 +733,6 @@ describe('AnalysisOrchestrator', () => {
     });
 
     it('should handle unknown session ID gracefully', async () => {
-      const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-      orchestrator.registerPhase1Worker(dataWorker);
-
       const result = await orchestrator.analyze([], mockMetrics, 'free');
 
       expect(result.sessionId).toBe('unknown');

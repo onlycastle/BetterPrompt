@@ -471,10 +471,20 @@ describe('ContentGateway', () => {
         expect(filtered.productivityAnalysis).toBeUndefined();
       });
 
-      it('should have agentOutputs undefined', () => {
+      it('should have agentOutputs with teaser data (typeSynthesis preserved)', () => {
         const filtered = gateway.filter(fullEvaluation, 'free');
 
-        expect(filtered.agentOutputs).toBeUndefined();
+        // Free tier gets teaser version of agentOutputs
+        expect(filtered.agentOutputs).toBeDefined();
+        // patternDetective is a free agent - full data
+        expect(filtered.agentOutputs?.patternDetective).toEqual(fullEvaluation.agentOutputs?.patternDetective);
+        // Premium agents get teaser (1 insight + scores only)
+        expect(filtered.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(1);
+        expect(filtered.agentOutputs?.antiPatternSpotter?.errorLoopsData).toBe('');
+        expect(filtered.agentOutputs?.knowledgeGap?.topInsights).toHaveLength(1);
+        expect(filtered.agentOutputs?.knowledgeGap?.knowledgeGapsData).toBe('');
+        expect(filtered.agentOutputs?.contextEfficiency?.topInsights).toHaveLength(1);
+        expect(filtered.agentOutputs?.contextEfficiency?.contextUsagePatternData).toBe('');
       });
 
       it('should preserve metadata fields', () => {
@@ -647,12 +657,15 @@ describe('ContentGateway', () => {
       const premiumTier = gateway.filter(fullEvaluation, 'premium');
       const enterpriseTier = gateway.filter(fullEvaluation, 'enterprise');
 
-      // Free tier: 2 full dimensions, no prompt patterns, no new fields
+      // Free tier: 2 full dimensions, no prompt patterns, teaser agentOutputs
       expect(freeTier.dimensionInsights[2].strengths).toEqual([]);
       expect(freeTier.promptPatterns).toEqual([]);
       expect(freeTier.toolUsageDeepDive).toBeUndefined();
       expect(freeTier.productivityAnalysis).toBeUndefined();
-      expect(freeTier.agentOutputs).toBeUndefined();
+      // Free tier gets teaser agentOutputs (patternDetective full, premium agents limited)
+      expect(freeTier.agentOutputs).toBeDefined();
+      expect(freeTier.agentOutputs?.patternDetective).toBeDefined();
+      expect(freeTier.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(1);
 
       // Premium tier: all dimensions, prompt patterns, productivity & agents, no analytics
       expect(premiumTier.dimensionInsights[2].strengths).toBeTruthy();
@@ -742,13 +755,17 @@ describe('ContentGateway', () => {
       expect(fullEvaluation.productivityAnalysis).toBeDefined();
     });
 
-    it('should correctly filter agentOutputs for free tier even when present', () => {
+    it('should correctly filter agentOutputs to teaser for free tier', () => {
       const filtered = gateway.filter(fullEvaluation, 'free');
 
-      // Ensure agentOutputs is removed for free tier
-      expect(filtered.agentOutputs).toBeUndefined();
-      // But ensure it was present in original
+      // Free tier gets teaser version (not undefined, not full)
+      expect(filtered.agentOutputs).toBeDefined();
+      // Premium agents have limited data
+      expect(filtered.agentOutputs?.antiPatternSpotter?.errorLoopsData).toBe('');
+      expect(filtered.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(1);
+      // But ensure full version was present in original
       expect(fullEvaluation.agentOutputs).toBeDefined();
+      expect(fullEvaluation.agentOutputs?.antiPatternSpotter?.topInsights?.length).toBeGreaterThan(1);
     });
   });
 
@@ -762,13 +779,18 @@ describe('ContentGateway', () => {
       expect(fullEvaluation.productivityAnalysis).toBeDefined();
     });
 
-    it('should not leak agentOutputs to free tier', () => {
+    it('should provide teaser agentOutputs to free tier (not full access)', () => {
       const freeTier = gateway.filter(fullEvaluation, 'free');
 
-      // Free tier should have agentOutputs as undefined (not accessible)
-      expect(freeTier.agentOutputs).toBeUndefined();
-      // Verify the field exists in original
-      expect(fullEvaluation.agentOutputs).toBeDefined();
+      // Free tier gets teaser agentOutputs (limited data for premium agents)
+      expect(freeTier.agentOutputs).toBeDefined();
+      // Free agents (patternDetective) get full data
+      expect(freeTier.agentOutputs?.patternDetective).toEqual(fullEvaluation.agentOutputs?.patternDetective);
+      // Premium agents get teaser (limited insights, empty data fields)
+      expect(freeTier.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(1);
+      expect(freeTier.agentOutputs?.antiPatternSpotter?.errorLoopsData).toBe('');
+      // Verify the full version exists in original
+      expect(fullEvaluation.agentOutputs?.antiPatternSpotter?.topInsights?.length).toBeGreaterThan(1);
     });
 
     it('should preserve all agent output fields in premium tier', () => {

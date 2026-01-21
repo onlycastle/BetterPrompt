@@ -16,7 +16,6 @@ import { GeminiClient, type GeminiClientConfig } from '../clients/gemini-client'
 import {
   MetacognitionOutputSchema,
   type MetacognitionOutput,
-  createDefaultMetacognitionOutput,
 } from '../../models/metacognition-data';
 import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
@@ -167,49 +166,42 @@ export class MetacognitionWorker extends BaseWorker<MetacognitionOutput> {
     return true;
   }
 
+  /**
+   * NO FALLBACK: Errors propagate to fail the analysis
+   */
   async execute(context: WorkerContext): Promise<WorkerResult<MetacognitionOutput>> {
     if (!context.moduleAOutput) {
-      return this.createFailedResult(
-        new Error('Module A output required'),
-        createDefaultMetacognitionOutput()
-      );
+      throw new Error('Module A output required for Metacognition');
     }
 
     this.logMessage('Starting metacognition analysis...');
 
-    try {
-      // Format sessions
-      const sessionsFormatted = formatSessionsForAnalysis(
-        context.sessions,
-        METACOGNITION_FORMAT
-      );
+    // NO try-catch: let errors propagate
+    // Format sessions
+    const sessionsFormatted = formatSessionsForAnalysis(
+      context.sessions,
+      METACOGNITION_FORMAT
+    );
 
-      // Prepare Module A output (for cross-referencing)
-      const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
+    // Prepare Module A output (for cross-referencing)
+    const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
 
-      // Build prompt
-      const userPrompt = buildMetacognitionUserPrompt(sessionsFormatted, moduleAJson);
+    // Build prompt
+    const userPrompt = buildMetacognitionUserPrompt(sessionsFormatted, moduleAJson);
 
-      // Call Gemini with structured output
-      const result = await this.geminiClient.generateStructured({
-        systemPrompt: METACOGNITION_SYSTEM_PROMPT,
-        userPrompt,
-        responseSchema: MetacognitionOutputSchema,
-        maxOutputTokens: 8192,
-      });
+    // Call Gemini with structured output
+    const result = await this.geminiClient.generateStructured({
+      systemPrompt: METACOGNITION_SYSTEM_PROMPT,
+      userPrompt,
+      responseSchema: MetacognitionOutputSchema,
+      maxOutputTokens: 8192,
+    });
 
-      this.logMessage(
-        `Analysis complete. Awareness score: ${result.data.metacognitiveAwarenessScore}`
-      );
+    this.logMessage(
+      `Analysis complete. Awareness score: ${result.data.metacognitiveAwarenessScore}`
+    );
 
-      return this.createSuccessResult(result.data, result.usage);
-    } catch (error) {
-      this.logMessage(`Analysis failed: ${error}`);
-      return this.createFailedResult(
-        error instanceof Error ? error : new Error(String(error)),
-        createDefaultMetacognitionOutput()
-      );
-    }
+    return this.createSuccessResult(result.data, result.usage);
   }
 
   private logMessage(message: string): void {

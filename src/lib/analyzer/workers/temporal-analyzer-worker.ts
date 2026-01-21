@@ -17,7 +17,6 @@ import { GeminiClient, type GeminiClientConfig } from '../clients/gemini-client'
 import {
   TemporalAnalysisOutputSchema,
   type TemporalAnalysisOutput,
-  createDefaultTemporalAnalysisOutput,
 } from '../../models/temporal-data';
 import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
@@ -197,47 +196,40 @@ export class TemporalAnalyzerWorker extends BaseWorker<TemporalAnalysisOutput> {
     return true;
   }
 
+  /**
+   * NO FALLBACK: Errors propagate to fail the analysis
+   */
   async execute(context: WorkerContext): Promise<WorkerResult<TemporalAnalysisOutput>> {
     if (!context.moduleAOutput) {
-      return this.createFailedResult(
-        new Error('Module A output required'),
-        createDefaultTemporalAnalysisOutput()
-      );
+      throw new Error('Module A output required for TemporalAnalyzer');
     }
 
     this.logMessage('Starting temporal analysis...');
 
-    try {
-      // Format sessions with timestamps
-      const sessionsFormatted = formatSessionsForAnalysis(
-        context.sessions,
-        TEMPORAL_FORMAT
-      );
+    // NO try-catch: let errors propagate
+    // Format sessions with timestamps
+    const sessionsFormatted = formatSessionsForAnalysis(
+      context.sessions,
+      TEMPORAL_FORMAT
+    );
 
-      // Prepare Module A output
-      const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
+    // Prepare Module A output
+    const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
 
-      // Build prompt
-      const userPrompt = buildTemporalUserPrompt(sessionsFormatted, moduleAJson);
+    // Build prompt
+    const userPrompt = buildTemporalUserPrompt(sessionsFormatted, moduleAJson);
 
-      // Call Gemini with structured output
-      const result = await this.geminiClient.generateStructured({
-        systemPrompt: TEMPORAL_SYSTEM_PROMPT,
-        userPrompt,
-        responseSchema: TemporalAnalysisOutputSchema,
-        maxOutputTokens: 8192,
-      });
+    // Call Gemini with structured output
+    const result = await this.geminiClient.generateStructured({
+      systemPrompt: TEMPORAL_SYSTEM_PROMPT,
+      userPrompt,
+      responseSchema: TemporalAnalysisOutputSchema,
+      maxOutputTokens: 8192,
+    });
 
-      this.logMessage('Temporal analysis complete');
+    this.logMessage('Temporal analysis complete');
 
-      return this.createSuccessResult(result.data, result.usage);
-    } catch (error) {
-      this.logMessage(`Analysis failed: ${error}`);
-      return this.createFailedResult(
-        error instanceof Error ? error : new Error(String(error)),
-        createDefaultTemporalAnalysisOutput()
-      );
-    }
+    return this.createSuccessResult(result.data, result.usage);
   }
 
   private logMessage(message: string): void {

@@ -183,21 +183,6 @@ export abstract class BaseWorker<TOutput> {
   }
 
   /**
-   * Create a failed result
-   *
-   * @param error - Error that occurred
-   * @param fallbackData - Fallback data to return
-   * @returns WorkerResult with error
-   */
-  protected createFailedResult(error: Error, fallbackData: TOutput): WorkerResult<TOutput> {
-    return {
-      data: fallbackData,
-      usage: null,
-      error,
-    };
-  }
-
-  /**
    * Create a successful result
    *
    * @param data - Worker output data
@@ -242,66 +227,13 @@ export interface WorkerRegistryEntry<TOutput = unknown> {
 }
 
 // ============================================================================
-// Utility Functions
+// Utility Functions - NO FALLBACK POLICY
 // ============================================================================
-
-/**
- * Run a worker with error handling
- *
- * @param worker - Worker to run
- * @param context - Worker context
- * @param fallbackData - Fallback data if worker fails
- * @returns WorkerResult
- */
-export async function runWorkerSafely<TOutput>(
-  worker: BaseWorker<TOutput>,
-  context: WorkerContext,
-  fallbackData: TOutput
-): Promise<WorkerResult<TOutput>> {
-  try {
-    // Check if worker can run
-    if (!worker.canRun(context)) {
-      return {
-        data: fallbackData,
-        usage: null,
-        error: new Error(`Worker ${worker.name} cannot run with current context`),
-      };
-    }
-
-    // Execute the worker
-    return await worker.execute(context);
-  } catch (error) {
-    console.error(`Worker ${worker.name} failed:`, error);
-    return {
-      data: fallbackData,
-      usage: null,
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
-  }
-}
-
-/**
- * Run multiple workers in parallel
- *
- * @param workers - Workers to run
- * @param context - Shared context
- * @param fallbackDataFactory - Function to create fallback data for each worker
- * @returns Map of worker name to result
- */
-export async function runWorkersInParallel<TOutput>(
-  workers: BaseWorker<TOutput>[],
-  context: WorkerContext,
-  fallbackDataFactory: (workerName: string) => TOutput
-): Promise<Map<string, WorkerResult<TOutput>>> {
-  const results = new Map<string, WorkerResult<TOutput>>();
-
-  const promises = workers.map(async (worker) => {
-    const fallbackData = fallbackDataFactory(worker.name);
-    const result = await runWorkerSafely(worker, context, fallbackData);
-    results.set(worker.name, result);
-  });
-
-  await Promise.allSettled(promises);
-
-  return results;
-}
+//
+// Removed: runWorkerSafely, runWorkersInParallel
+//
+// These functions were designed for fallback behavior, returning default data
+// when workers fail. This hides errors and makes debugging difficult.
+//
+// Workers should throw errors that propagate to the orchestrator.
+// The orchestrator uses Promise.all() to fail fast on any worker error.

@@ -260,55 +260,47 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
 
   /**
    * Execute type synthesis analysis
+   * NO FALLBACK on errors - errors propagate to fail the analysis
+   * Note: When no agent data is available, we use initial classification (this is expected behavior, not fallback)
    */
   async execute(context: WorkerContext): Promise<WorkerResult<TypeSynthesisOutput>> {
     this.logMessage('Synthesizing type classification from agent insights...');
 
-    try {
-      // Get or compute initial classification
-      const { distribution, controlLevel } = this.getInitialClassification(context);
+    // Get or compute initial classification
+    const { distribution, controlLevel } = this.getInitialClassification(context);
 
-      // Get agent outputs from context (cast to extended context type)
-      const extendedContext = context as TypeSynthesisWorkerContext;
-      const agentOutputs = extendedContext.agentOutputs || {};
+    // Get agent outputs from context (cast to extended context type)
+    const extendedContext = context as TypeSynthesisWorkerContext;
+    const agentOutputs = extendedContext.agentOutputs || {};
 
-      // Check if we have any agent outputs to synthesize
-      const hasAgentData = this.hasUsefulAgentData(agentOutputs);
+    // Check if we have any agent outputs to synthesize
+    const hasAgentData = this.hasUsefulAgentData(agentOutputs);
 
-      if (!hasAgentData) {
-        this.logMessage('No agent outputs available, using initial classification');
-        return this.createSuccessResult(
-          this.createFallbackFromInitial(distribution, controlLevel),
-          null
-        );
-      }
-
-      // Build prompt and call LLM
-      const userPrompt = buildTypeSynthesisUserPrompt(distribution, controlLevel, agentOutputs);
-
-      const result = await this.geminiClient.generateStructured({
-        systemPrompt: TYPE_SYNTHESIS_SYSTEM_PROMPT,
-        userPrompt,
-        responseSchema: TypeSynthesisOutputSchema,
-        maxOutputTokens: 4096,
-      });
-
-      this.logMessage(`Refined type: ${result.data.refinedPrimaryType} (${result.data.matrixName})`);
-      this.logMessage(`Control level: ${result.data.refinedControlLevel}`);
-      this.logMessage(`Confidence boost: +${(result.data.confidenceBoost * 100).toFixed(0)}%`);
-
-      return this.createSuccessResult(result.data, result.usage);
-    } catch (error) {
-      this.logMessage(`Synthesis failed: ${error}`);
-
-      // Fall back to initial classification
-      const { distribution, controlLevel } = this.getInitialClassification(context);
-
-      return this.createFailedResult(
-        error instanceof Error ? error : new Error(String(error)),
-        this.createFallbackFromInitial(distribution, controlLevel)
+    if (!hasAgentData) {
+      // This is expected behavior, not an error fallback
+      // When other agents haven't run or produced no data, we use initial classification
+      this.logMessage('No agent outputs available, using initial classification');
+      return this.createSuccessResult(
+        this.createOutputFromInitial(distribution, controlLevel),
+        null
       );
     }
+
+    // Build prompt and call LLM - NO try-catch, let errors propagate
+    const userPrompt = buildTypeSynthesisUserPrompt(distribution, controlLevel, agentOutputs);
+
+    const result = await this.geminiClient.generateStructured({
+      systemPrompt: TYPE_SYNTHESIS_SYSTEM_PROMPT,
+      userPrompt,
+      responseSchema: TypeSynthesisOutputSchema,
+      maxOutputTokens: 4096,
+    });
+
+    this.logMessage(`Refined type: ${result.data.refinedPrimaryType} (${result.data.matrixName})`);
+    this.logMessage(`Control level: ${result.data.refinedControlLevel}`);
+    this.logMessage(`Confidence boost: +${(result.data.confidenceBoost * 100).toFixed(0)}%`);
+
+    return this.createSuccessResult(result.data, result.usage);
   }
 
   /**
@@ -385,9 +377,10 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
   }
 
   /**
-   * Create fallback output from initial classification
+   * Create output from initial classification when no agent data is available
+   * This is NOT a fallback - it's a legitimate output path when Phase 2 agents haven't run
    */
-  private createFallbackFromInitial(
+  private createOutputFromInitial(
     distribution: TypeDistribution,
     controlLevel: AIControlLevel
   ): TypeSynthesisOutput {
@@ -401,10 +394,10 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
       refinedControlLevel: controlLevel,
       matrixName,
       matrixEmoji,
-      adjustmentReasons: ['No agent insights available - using initial pattern-based classification'],
+      adjustmentReasons: ['Using initial pattern-based classification (no agent insights available)'],
       confidenceScore: 0.5,
       confidenceBoost: 0,
-      synthesisEvidence: 'fallback:no_agent_data:using_initial_classification',
+      synthesisEvidence: 'initial:no_agent_data:pattern_based_classification',
     };
   }
 

@@ -80,58 +80,36 @@ export class PatternDetectiveWorker extends BaseWorker<PatternDetectiveOutput> {
 
   /**
    * Execute pattern detection analysis
+   * NO FALLBACK: Errors propagate to fail the analysis
    */
   async execute(context: WorkerContext): Promise<WorkerResult<PatternDetectiveOutput>> {
     if (!context.moduleAOutput) {
-      return this.createFailedResult(
-        new Error('Module A output required'),
-        this.createDefaultOutput()
-      );
+      throw new Error('Module A output required for PatternDetective');
     }
 
     this.logMessage('Analyzing conversation patterns...');
 
-    try {
-      const sessionsFormatted = formatSessionsForAnalysis(
-        context.sessions,
-        PATTERN_DETECTIVE_FORMAT
-      );
-      const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
-      const userPrompt = buildPatternDetectiveUserPrompt(sessionsFormatted, moduleAJson);
+    // NO try-catch: let errors propagate
+    const sessionsFormatted = formatSessionsForAnalysis(
+      context.sessions,
+      PATTERN_DETECTIVE_FORMAT
+    );
+    const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
+    const userPrompt = buildPatternDetectiveUserPrompt(sessionsFormatted, moduleAJson);
 
-      const result = await this.geminiClient.generateStructured({
-        systemPrompt: PATTERN_DETECTIVE_SYSTEM_PROMPT,
-        userPrompt,
-        responseSchema: PatternDetectiveOutputSchema,
-        maxOutputTokens: 8192,
-      });
+    const result = await this.geminiClient.generateStructured({
+      systemPrompt: PATTERN_DETECTIVE_SYSTEM_PROMPT,
+      userPrompt,
+      responseSchema: PatternDetectiveOutputSchema,
+      maxOutputTokens: 8192,
+    });
 
-      this.logMessage(`Found ${result.data.topInsights.length} insights`);
-      this.logMessage(`Confidence: ${(result.data.confidenceScore * 100).toFixed(0)}%`);
+    this.logMessage(`Found ${result.data.topInsights.length} insights`);
+    this.logMessage(`Confidence: ${(result.data.confidenceScore * 100).toFixed(0)}%`);
 
-      return this.createSuccessResult(result.data, result.usage);
-    } catch (error) {
-      this.logMessage(`Analysis failed: ${error}`);
-      return this.createFailedResult(
-        error instanceof Error ? error : new Error(String(error)),
-        this.createDefaultOutput()
-      );
-    }
+    return this.createSuccessResult(result.data, result.usage);
   }
 
-  /**
-   * Create default output for fallback
-   */
-  private createDefaultOutput(): PatternDetectiveOutput {
-    return {
-      repeatedQuestionsData: '',
-      conversationStyleData: '',
-      requestStartPatternsData: '',
-      topInsights: [],
-      overallStyleSummary: 'Unable to analyze patterns',
-      confidenceScore: 0,
-    };
-  }
 
   /**
    * Log message if verbose mode enabled

@@ -212,19 +212,15 @@ describe('DataAnalystWorker', () => {
   });
 
   describe('execute()', () => {
-    it('should return error when metrics missing', async () => {
+    it('should throw when metrics missing', async () => {
       const contextWithoutMetrics = {
         ...context,
         metrics: undefined as any,
       };
 
-      const result = await worker.execute(contextWithoutMetrics);
-
-      expect(result.data).toBeDefined();
-      expect(result.data.extractedQuotes).toEqual([]);
-      expect(result.usage).toBeNull();
-      expect(result.error).toBeDefined();
-      expect(result.error?.message).toBe('Metrics required for data analysis');
+      await expect(worker.execute(contextWithoutMetrics)).rejects.toThrow(
+        'Metrics required for data analysis'
+      );
     });
 
     it('should execute stage and return result', async () => {
@@ -271,45 +267,17 @@ describe('DataAnalystWorker', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle stage execution failure', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const verboseWorker = new DataAnalystWorker({ verbose: true });
-
+    it('should throw on stage execution failure (NO FALLBACK policy)', async () => {
       const error = new Error('Stage execution failed');
       mockAnalyze.mockRejectedValue(error);
 
-      const result = await verboseWorker.execute(context);
-
-      expect(result.data).toBeDefined();
-      expect(result.data.extractedQuotes).toEqual([]);
-      expect(result.usage).toBeNull();
-      expect(result.error).toBe(error);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Analysis failed: Error: Stage execution failed')
-      );
-
-      consoleSpy.mockRestore();
+      await expect(worker.execute(context)).rejects.toThrow('Stage execution failed');
     });
 
-    it('should handle non-Error throws', async () => {
+    it('should throw on non-Error throws (NO FALLBACK policy)', async () => {
       mockAnalyze.mockRejectedValue('string error');
 
-      const result = await worker.execute(context);
-
-      expect(result.data).toBeDefined();
-      expect(result.usage).toBeNull();
-      expect(result.error).toBeDefined();
-      expect(result.error?.message).toBe('string error');
-    });
-
-    it('should return data with empty arrays for default fallback', async () => {
-      mockAnalyze.mockRejectedValue(new Error('Failed'));
-
-      const result = await worker.execute(context);
-
-      expect(result.data.extractedQuotes).toEqual([]);
-      expect(result.data.detectedPatterns).toEqual([]);
-      expect(result.data.dimensionSignals).toHaveLength(6);
+      await expect(worker.execute(context)).rejects.toBe('string error');
     });
   });
 

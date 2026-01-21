@@ -1,14 +1,16 @@
 /**
  * BaseWorker Tests
  *
- * Tests for the abstract BaseWorker class and utility functions.
+ * Tests for the abstract BaseWorker class.
+ *
+ * NOTE: runWorkerSafely and runWorkersInParallel functions were removed
+ * as part of the NO FALLBACK policy. Workers now throw errors instead
+ * of returning fallback data.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   BaseWorker,
-  runWorkerSafely,
-  runWorkersInParallel,
   type WorkerContext,
   type WorkerResult,
 } from '../../../../src/lib/analyzer/workers/base-worker.js';
@@ -170,14 +172,18 @@ describe('BaseWorker', () => {
   });
 
   describe('checkBasicPreconditions()', () => {
+    // NOTE: Tier check was removed from checkBasicPreconditions
+    // All workers now run for all tiers - tier filtering happens at API/Gateway level
     it('should pass for valid context with free tier', () => {
       const result = (mockWorker as any).checkBasicPreconditions(context);
       expect(result).toBe(true);
     });
 
-    it('should fail for insufficient tier', () => {
+    it('should pass for premium worker with free tier (tier check removed)', () => {
+      // Tier check removed - all workers always run
+      // Premium agents show teasers for free users, full data after payment
       const result = (premiumWorker as any).checkBasicPreconditions(context);
-      expect(result).toBe(false);
+      expect(result).toBe(true);
     });
 
     it('should fail for empty sessions', () => {
@@ -215,17 +221,8 @@ describe('BaseWorker', () => {
     });
   });
 
-  describe('createFailedResult()', () => {
-    it('should create failed result with error', () => {
-      const error = new Error('Test error');
-      const fallback = 'fallback data';
-      const result = (mockWorker as any).createFailedResult(error, fallback);
-
-      expect(result.data).toBe(fallback);
-      expect(result.usage).toBeNull();
-      expect(result.error).toBe(error);
-    });
-  });
+  // NOTE: createFailedResult was removed as part of NO FALLBACK policy
+  // Workers now throw errors instead of returning fallback data
 
   describe('createSuccessResult()', () => {
     it('should create success result with usage', () => {
@@ -253,8 +250,10 @@ describe('BaseWorker', () => {
       expect(mockWorker.canRun(context)).toBe(true);
     });
 
-    it('should return false for premium worker with free tier', () => {
-      expect(premiumWorker.canRun(context)).toBe(false);
+    it('should return true for premium worker with free tier (tier check removed from checkBasicPreconditions)', () => {
+      // NOTE: canRun uses checkBasicPreconditions which no longer checks tier
+      // If your worker needs tier checking, implement it in canRun directly
+      expect(premiumWorker.canRun(context)).toBe(true);
     });
 
     it('should return false for empty sessions', () => {
@@ -278,178 +277,15 @@ describe('BaseWorker', () => {
       });
       expect(result.error).toBeUndefined();
     });
-  });
-});
 
-describe('runWorkerSafely', () => {
-  let context: WorkerContext;
-
-  beforeEach(() => {
-    context = createMockContext();
-  });
-
-  it('should return success result for successful worker', async () => {
-    const worker = new MockWorker();
-    const fallbackData = 'fallback';
-    const result = await runWorkerSafely(worker, context, fallbackData);
-
-    expect(result.data).toBe('mock data');
-    expect(result.usage).toEqual({
-      promptTokens: 100,
-      completionTokens: 50,
-      totalTokens: 150,
+    it('should throw error for failing worker (NO FALLBACK policy)', async () => {
+      const failingWorker = new FailingWorker();
+      await expect(failingWorker.execute(context)).rejects.toThrow('Worker execution failed');
     });
-    expect(result.error).toBeUndefined();
-  });
-
-  it('should return fallback result when canRun returns false', async () => {
-    const worker = new PremiumWorker();
-    const fallbackData = 'fallback';
-    const result = await runWorkerSafely(worker, context, fallbackData);
-
-    expect(result.data).toBe(fallbackData);
-    expect(result.usage).toBeNull();
-    expect(result.error).toBeDefined();
-    expect(result.error?.message).toContain('cannot run with current context');
-  });
-
-  it('should catch and return fallback for failing worker', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const worker = new FailingWorker();
-    const fallbackData = 'fallback';
-    const result = await runWorkerSafely(worker, context, fallbackData);
-
-    expect(result.data).toBe(fallbackData);
-    expect(result.usage).toBeNull();
-    expect(result.error).toBeDefined();
-    expect(result.error?.message).toBe('Worker execution failed');
-    expect(consoleSpy).toHaveBeenCalled();
-    consoleSpy.mockRestore();
-  });
-
-  it('should handle non-Error throws', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    class StringThrowWorker extends BaseWorker<string> {
-      readonly name = 'StringThrowWorker';
-      readonly phase = 1 as const;
-      readonly minTier = 'free' as const;
-
-      canRun(_context: WorkerContext): boolean {
-        return true;
-      }
-
-      async execute(_context: WorkerContext): Promise<WorkerResult<string>> {
-        throw 'string error';
-      }
-    }
-
-    const worker = new StringThrowWorker();
-    const fallbackData = 'fallback';
-    const result = await runWorkerSafely(worker, context, fallbackData);
-
-    expect(result.data).toBe(fallbackData);
-    expect(result.usage).toBeNull();
-    expect(result.error).toBeDefined();
-    expect(result.error?.message).toBe('string error');
-    consoleSpy.mockRestore();
   });
 });
 
-describe('runWorkersInParallel', () => {
-  let context: WorkerContext;
-
-  beforeEach(() => {
-    context = createMockContext();
-  });
-
-  it('should run multiple workers in parallel', async () => {
-    const worker1 = new MockWorker();
-    const worker2 = new PremiumWorker();
-    const workers = [worker1, worker2];
-
-    const premiumContext = createMockContext('premium');
-    const results = await runWorkersInParallel(workers, premiumContext, (name) => `fallback-${name}`);
-
-    expect(results.size).toBe(2);
-    expect(results.get('MockWorker')).toBeDefined();
-    expect(results.get('PremiumWorker')).toBeDefined();
-    expect(results.get('MockWorker')?.data).toBe('mock data');
-    expect(results.get('PremiumWorker')?.data).toBe('premium data');
-  });
-
-  it('should handle mixed success and failure', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const successWorker = new MockWorker();
-    const failWorker = new FailingWorker();
-    const workers = [successWorker, failWorker];
-
-    const results = await runWorkersInParallel(workers, context, (name) => `fallback-${name}`);
-
-    expect(results.size).toBe(2);
-
-    const successResult = results.get('MockWorker');
-    expect(successResult?.data).toBe('mock data');
-    expect(successResult?.error).toBeUndefined();
-
-    const failResult = results.get('FailingWorker');
-    expect(failResult?.data).toBe('fallback-FailingWorker');
-    expect(failResult?.error).toBeDefined();
-
-    consoleSpy.mockRestore();
-  });
-
-  it('should use fallback factory for each worker', async () => {
-    const worker1 = new MockWorker();
-    const worker2 = new FailingWorker();
-    const workers = [worker1, worker2];
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    const results = await runWorkersInParallel(
-      workers,
-      context,
-      (name) => `custom-fallback-${name}`
-    );
-
-    expect(results.size).toBe(2);
-    const failResult = results.get('FailingWorker');
-    expect(failResult?.data).toBe('custom-fallback-FailingWorker');
-
-    consoleSpy.mockRestore();
-  });
-
-  it('should handle empty worker array', async () => {
-    const results = await runWorkersInParallel([], context, (name) => `fallback-${name}`);
-
-    expect(results.size).toBe(0);
-  });
-
-  it('should complete all workers even if some fail', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    class SlowWorker extends BaseWorker<string> {
-      readonly name = 'SlowWorker';
-      readonly phase = 1 as const;
-      readonly minTier = 'free' as const;
-
-      canRun(_context: WorkerContext): boolean {
-        return true;
-      }
-
-      async execute(_context: WorkerContext): Promise<WorkerResult<string>> {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        return this.createSuccessResult('slow data', null);
-      }
-    }
-
-    const workers = [new MockWorker(), new FailingWorker(), new SlowWorker()];
-
-    const results = await runWorkersInParallel(workers, context, (name) => `fallback-${name}`);
-
-    expect(results.size).toBe(3);
-    expect(results.get('MockWorker')?.data).toBe('mock data');
-    expect(results.get('FailingWorker')?.data).toBe('fallback-FailingWorker');
-    expect(results.get('SlowWorker')?.data).toBe('slow data');
-
-    consoleSpy.mockRestore();
-  });
-});
+// NOTE: runWorkerSafely and runWorkersInParallel tests removed
+// These functions were removed as part of the NO FALLBACK policy.
+// Workers now throw errors that propagate to the orchestrator.
+// The orchestrator uses Promise.all() to fail fast on any worker error.

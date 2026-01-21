@@ -11,15 +11,13 @@
 
 import type { ParsedSession, SessionMetrics } from '../../domain/models/analysis';
 import type { StructuredAnalysisData } from '../../models/analysis-data';
-import { createDefaultStructuredAnalysisData } from '../../models/analysis-data';
 import type { ProductivityAnalysisData } from '../../models/productivity-data';
 import type { VerboseEvaluation } from '../../models/verbose-evaluation';
 import type { AgentOutputs } from '../../models/agent-outputs';
 import { createEmptyAgentOutputs } from '../../models/agent-outputs';
-import { createDefaultProductivityAnalysisData } from '../../models/productivity-data';
 import { ContentWriterStage } from '../stages/content-writer';
 import { ContentGateway, type Tier } from '../content-gateway';
-import { BaseWorker, runWorkerSafely } from '../workers/base-worker';
+import { BaseWorker } from '../workers/base-worker';
 import type {
   WorkerResult,
   WorkerContext,
@@ -316,18 +314,22 @@ export class AnalysisOrchestrator {
    * Workers run in parallel. Results are keyed by worker name.
    */
   private async runPhase1(context: WorkerContext): Promise<Phase1Results> {
-    // Find workers by name
+    // Find workers by name - NO FALLBACK: workers must be registered
     const dataAnalystWorker = this.phase1Workers.find((w) => w.name === 'DataAnalyst');
     const productivityWorker = this.phase1Workers.find((w) => w.name === 'ProductivityAnalyst');
 
-    // Run workers in parallel
+    // Fail fast if required workers are not registered
+    if (!dataAnalystWorker) {
+      throw new Error('DataAnalyst worker not registered. Cannot proceed without data analysis.');
+    }
+    if (!productivityWorker) {
+      throw new Error('ProductivityAnalyst worker not registered. Cannot proceed without productivity analysis.');
+    }
+
+    // Run workers in parallel - errors propagate up
     const [dataResult, productivityResult] = await Promise.all([
-      dataAnalystWorker
-        ? runWorkerSafely(dataAnalystWorker, context, this.createDefaultAnalysisData())
-        : this.createFallbackDataAnalystResult(),
-      productivityWorker
-        ? runWorkerSafely(productivityWorker, context, createDefaultProductivityAnalysisData())
-        : this.createFallbackProductivityResult(),
+      dataAnalystWorker.execute(context),
+      productivityWorker.execute(context),
     ]);
 
     return {
@@ -340,34 +342,28 @@ export class AnalysisOrchestrator {
    * Run Phase 2 workers (Insight Generation)
    *
    * Workers run in parallel. Results are keyed by worker name.
+   * NO FALLBACK: Worker failures propagate as errors.
    */
   private async runPhase2(
     context: WorkerContext
   ): Promise<Record<string, WorkerResult<unknown> | undefined>> {
     const results: Record<string, WorkerResult<unknown> | undefined> = {};
 
-    // Run all Phase 2 workers in parallel
+    // Run all Phase 2 workers in parallel - errors will propagate
     const workerPromises = this.phase2Workers.map(async (worker) => {
       if (!worker.canRun(context)) {
         this.log(`Worker ${worker.name} skipped (cannot run)`);
         return;
       }
 
-      try {
-        const result = await worker.execute(context);
-        results[worker.name] = result;
-        this.log(`Worker ${worker.name} completed`);
-      } catch (error) {
-        this.log(`Worker ${worker.name} failed: ${error}`);
-        results[worker.name] = {
-          data: null,
-          usage: null,
-          error: error instanceof Error ? error : new Error(String(error)),
-        };
-      }
+      // NO try-catch: let errors propagate to identify issues
+      const result = await worker.execute(context);
+      results[worker.name] = result;
+      this.log(`Worker ${worker.name} completed`);
     });
 
-    await Promise.allSettled(workerPromises);
+    // Use Promise.all instead of Promise.allSettled to propagate errors
+    await Promise.all(workerPromises);
 
     return results;
   }
@@ -377,6 +373,7 @@ export class AnalysisOrchestrator {
    *
    * These workers run AFTER Phase 2 completes and receive all agent outputs.
    * They refine type classification using semantic analysis from other agents.
+   * NO FALLBACK: Worker failures propagate as errors.
    */
   private async runPhase2Point5(
     context: WorkerContext,
@@ -390,28 +387,21 @@ export class AnalysisOrchestrator {
       agentOutputs,
     };
 
-    // Run Phase 2.5 workers (typically just TypeSynthesis, but supports multiple)
+    // Run Phase 2.5 workers - errors will propagate
     const workerPromises = this.phase2Point5Workers.map(async (worker) => {
       if (!worker.canRun(extendedContext)) {
         this.log(`Worker ${worker.name} skipped (cannot run)`);
         return;
       }
 
-      try {
-        const result = await worker.execute(extendedContext);
-        results[worker.name] = result;
-        this.log(`Worker ${worker.name} completed`);
-      } catch (error) {
-        this.log(`Worker ${worker.name} failed: ${error}`);
-        results[worker.name] = {
-          data: null,
-          usage: null,
-          error: error instanceof Error ? error : new Error(String(error)),
-        };
-      }
+      // NO try-catch: let errors propagate to identify issues
+      const result = await worker.execute(extendedContext);
+      results[worker.name] = result;
+      this.log(`Worker ${worker.name} completed`);
     });
 
-    await Promise.allSettled(workerPromises);
+    // Use Promise.all instead of Promise.allSettled to propagate errors
+    await Promise.all(workerPromises);
 
     return results;
   }
@@ -467,35 +457,6 @@ export class AnalysisOrchestrator {
   }
 
   /**
-   * Create default/fallback analysis data
-   * Delegates to the factory function in analysis-data.ts for consistency
-   */
-  private createDefaultAnalysisData(): StructuredAnalysisData {
-    return createDefaultStructuredAnalysisData();
-  }
-
-  /**
-   * Create fallback result when DataAnalyst worker is not registered
-   */
-  private createFallbackDataAnalystResult(): WorkerResult<StructuredAnalysisData> {
-    return {
-      data: this.createDefaultAnalysisData(),
-      usage: null,
-      error: new Error('DataAnalyst worker not registered'),
-    };
-  }
-
-  /**
-   * Create fallback result when ProductivityAnalyst worker is not registered
-   */
-  private createFallbackProductivityResult(): WorkerResult<ProductivityAnalysisData> {
-    return {
-      data: createDefaultProductivityAnalysisData(),
-      usage: null,
-      error: new Error('ProductivityAnalyst worker not registered'),
-    };
-  }
-
   /**
    * Log a message if verbose mode is enabled
    */
