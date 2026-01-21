@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { Download, Shield, RefreshCw, Terminal } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { TerminalCommand } from './TerminalCommand';
 import styles from './DownloadSection.module.css';
 
 const features = [
@@ -66,6 +67,14 @@ export function DownloadSection() {
           >
             Download for macOS
           </Button>
+
+          <div className={styles.divider}>
+            <span className={styles.dividerLine} />
+            <span className={styles.dividerText}>or use the CLI</span>
+            <span className={styles.dividerLine} />
+          </div>
+
+          <TerminalCommand command="npx no-ai-slop" />
         </div>
 
         <div className={styles.features}>
