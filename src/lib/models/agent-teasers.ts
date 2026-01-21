@@ -89,7 +89,21 @@ export function createAgentTeasers(agentOutputs: AgentOutputs | undefined): Agen
         }
       : undefined,
 
-    // Type synthesis - hidden for free tier (premium feature)
-    typeSynthesis: undefined,
+    // Type synthesis - show basic type info, hide detailed evidence
+    // FREE tier needs matrixName/emoji for display, but detailed analysis is premium
+    typeSynthesis: agentOutputs.typeSynthesis
+      ? {
+          refinedPrimaryType: agentOutputs.typeSynthesis.refinedPrimaryType,
+          refinedControlLevel: agentOutputs.typeSynthesis.refinedControlLevel,
+          matrixName: agentOutputs.typeSynthesis.matrixName,
+          matrixEmoji: agentOutputs.typeSynthesis.matrixEmoji,
+          confidenceScore: agentOutputs.typeSynthesis.confidenceScore,
+          // Premium-only fields - hide detailed analysis
+          refinedDistribution: '', // Hidden
+          adjustmentReasons: [], // Hidden
+          confidenceBoost: 0, // Hidden
+          synthesisEvidence: '', // Hidden
+        }
+      : undefined,
   };
 }
