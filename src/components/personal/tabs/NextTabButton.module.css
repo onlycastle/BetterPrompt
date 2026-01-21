@@ -1,0 +1,117 @@
+/**
+ * NextTabButton Styles
+ * Smart navigation button with fade-in animation
+ */
+
+.container {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-lg);
+  border-top: 1px dashed var(--ink-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Visibility states */
+.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.hidden {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+/* Button */
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--surface-1);
+  border: 2px solid var(--sketch-cyan);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-primary);
+}
+
+.button:hover:not(:disabled) {
+  background: var(--sketch-cyan-soft);
+  transform: translateX(4px);
+}
+
+.button:active:not(:disabled) {
+  transform: translateX(2px);
+}
+
+.button:disabled {
+  cursor: default;
+}
+
+/* Button Content */
+.buttonContent {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-cyan-dark);
+}
+
+.icon {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.arrow {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--sketch-cyan);
+  transition: transform 0.2s ease;
+}
+
+.button:hover:not(:disabled) .arrow {
+  transform: translateX(4px);
+}
+
+/* Progress Bar */
+.progressBar {
+  width: 100%;
+  max-width: 200px;
+  height: 3px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--sketch-cyan);
+  border-radius: 2px;
+  transition: width 0.15s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .button {
+    width: 100%;
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .label {
+    font-size: var(--text-xs);
+  }
+
+  .progressBar {
+    max-width: 150px;
+  }
+}

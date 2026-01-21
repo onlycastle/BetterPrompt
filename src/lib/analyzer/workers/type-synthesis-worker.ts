@@ -92,8 +92,20 @@ Return JSON with:
 function buildTypeSynthesisUserPrompt(
   initialDistribution: TypeDistribution,
   initialControlLevel: AIControlLevel,
-  agentOutputs: AgentOutputs
+  agentOutputs: AgentOutputs,
+  useKorean: boolean = false
 ): string {
+  const koreanInstructions = useKorean
+    ? `
+## 🇰🇷 CRITICAL: Korean Output Required
+
+**adjustmentReasons를 한국어로 작성하세요.**
+
+The developer's content is in Korean. Write the \`adjustmentReasons\` field in **Korean (한국어)**.
+Keep type names (architect, scientist, etc.) and technical terms in English.
+
+`
+    : '';
   // Format initial classification
   const initialClassification = `
 ## INITIAL CLASSIFICATION (Pattern-Based)
@@ -185,14 +197,14 @@ Control Level: ${initialControlLevel}`;
 
   return `${initialClassification}
 ${agentOutputsSection}
-
+${koreanInstructions}
 ## INSTRUCTIONS
 1. Analyze the initial classification and agent insights
 2. Determine if the initial classification should be adjusted based on agent signals
 3. Calculate the refined distribution (must sum to 100%)
 4. Determine the refined control level
 5. Provide the combined matrix name and emoji
-6. Explain your adjustments with specific evidence
+6. Explain your adjustments with specific evidence${useKorean ? ' (adjustmentReasons를 한국어로 작성)' : ''}
 
 Be specific about WHY you made changes. If no changes are needed, explain why the initial classification is accurate.`;
 }
@@ -287,7 +299,7 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
     }
 
     // Build prompt and call LLM - NO try-catch, let errors propagate
-    const userPrompt = buildTypeSynthesisUserPrompt(distribution, controlLevel, agentOutputs);
+    const userPrompt = buildTypeSynthesisUserPrompt(distribution, controlLevel, agentOutputs, context.useKorean);
 
     const result = await this.geminiClient.generateStructured({
       systemPrompt: TYPE_SYNTHESIS_SYSTEM_PROMPT,

@@ -94,7 +94,7 @@ export class AntiPatternSpotterWorker extends BaseWorker<AntiPatternSpotterOutpu
       ANTI_PATTERN_FORMAT
     );
     const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
-    const userPrompt = buildAntiPatternSpotterUserPrompt(sessionsFormatted, moduleAJson);
+    const userPrompt = buildAntiPatternSpotterUserPrompt(sessionsFormatted, moduleAJson, context.useKorean);
 
     const result = await this.geminiClient.generateStructured({
       systemPrompt: ANTI_PATTERN_SPOTTER_SYSTEM_PROMPT,

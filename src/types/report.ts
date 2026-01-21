@@ -23,6 +23,33 @@ export interface TypeDistribution {
   craftsman: number;
 }
 
+/**
+ * Key format for the 5×3 matrix: type_controlLevel
+ */
+export type MatrixKey = `${CodingStyleType}_${AIControlLevel}`;
+
+/**
+ * Distribution across all 15 matrix combinations
+ * Each value is 0-100, representing percentage
+ */
+export interface MatrixDistribution {
+  'architect_vibe-coder': number;
+  'architect_developing': number;
+  'architect_ai-master': number;
+  'scientist_vibe-coder': number;
+  'scientist_developing': number;
+  'scientist_ai-master': number;
+  'collaborator_vibe-coder': number;
+  'collaborator_developing': number;
+  'collaborator_ai-master': number;
+  'speedrunner_vibe-coder': number;
+  'speedrunner_developing': number;
+  'speedrunner_ai-master': number;
+  'craftsman_vibe-coder': number;
+  'craftsman_developing': number;
+  'craftsman_ai-master': number;
+}
+
 export interface TypeMetrics {
   avgPromptLength: number;
   avgFirstPromptLength: number;

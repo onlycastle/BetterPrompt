@@ -1,12 +1,9 @@
 /**
  * ReportTab Component
- * Displays the latest analysis report in Notion/Linear style
+ * Displays the latest analysis report with tabbed navigation
  */
 
-import { TypeResultMinimal } from './TypeResultMinimal';
-import { PersonalitySummaryClean } from './PersonalitySummaryClean';
-import { PromptPatternsClean } from './PromptPatternsClean';
-import { DimensionInsightsClean } from './DimensionInsightsClean';
+import { TabbedReportContainer } from './TabbedReportContainer';
 import { EmptyStatePrompt } from './EmptyStatePrompt';
 import type { VerboseAnalysisData } from '../../../types/verbose';
 import styles from './ReportTab.module.css';
@@ -14,47 +11,22 @@ import styles from './ReportTab.module.css';
 interface ReportTabProps {
   analysis: VerboseAnalysisData | null;
   hasAnalysis: boolean;
+  /** Whether the user has unlocked premium content */
+  isPaid?: boolean;
 }
 
-export function ReportTab({ analysis, hasAnalysis }: ReportTabProps) {
+export function ReportTab({ analysis, hasAnalysis, isPaid = false }: ReportTabProps) {
   if (!hasAnalysis || !analysis) {
     return <EmptyStatePrompt />;
   }
 
   return (
     <div className={styles.container}>
-      {/* Type Result */}
-      <TypeResultMinimal
-        primaryType={analysis.primaryType}
-        distribution={analysis.distribution}
-        sessionsAnalyzed={analysis.sessionsAnalyzed}
+      <TabbedReportContainer
+        analysis={analysis}
+        agentOutputs={analysis.agentOutputs}
+        isPaid={isPaid}
       />
-
-      {/* Personality Summary */}
-      {analysis.personalitySummary && (
-        <section className={styles.section}>
-          <h3 className={styles.sectionTitle}>Your AI Coding Personality</h3>
-          <PersonalitySummaryClean summary={analysis.personalitySummary} />
-        </section>
-      )}
-
-      {/* Prompt Patterns */}
-      {analysis.promptPatterns && analysis.promptPatterns.length > 0 && (
-        <section className={styles.section}>
-          <h3 className={styles.sectionTitle}>Communication Patterns</h3>
-          <PromptPatternsClean patterns={analysis.promptPatterns} />
-        </section>
-      )}
-
-      {/* Dimension Insights */}
-      {analysis.dimensionInsights && analysis.dimensionInsights.length > 0 && (
-        <section className={styles.section}>
-          <DimensionInsightsClean
-            insights={analysis.dimensionInsights}
-            sessionsAnalyzed={analysis.sessionsAnalyzed}
-          />
-        </section>
-      )}
     </div>
   );
 }

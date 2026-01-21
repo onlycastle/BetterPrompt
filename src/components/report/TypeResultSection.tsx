@@ -1,5 +1,6 @@
 import styles from './TypeResultSection.module.css';
-import type { CodingStyleType, TypeDistribution } from '../../types/report';
+import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixDistribution } from '../../types/report';
+import { MatrixDistributionDisplay } from '../personal/tabs/MatrixDistributionDisplay';
 
 interface TypeResult {
   primaryType: CodingStyleType;
@@ -26,15 +27,26 @@ interface TypeMetadata {
 interface TypeResultSectionProps {
   typeResult: TypeResult;
   typeMetadata: Record<CodingStyleType, TypeMetadata>;
+  /** User's control level (optional, defaults to 'developing') */
+  controlLevel?: AIControlLevel;
+  /** Control score 0-100 (optional, defaults to 50) */
+  controlScore?: number;
+  /** Pre-computed matrix distribution (optional) */
+  matrixDistribution?: MatrixDistribution;
 }
 
 /**
  * Main type result display with emoji, title, and distribution chart
  * The hero section showing "YOU ARE THE ARCHITECT"
  */
-export function TypeResultSection({ typeResult, typeMetadata }: TypeResultSectionProps) {
+export function TypeResultSection({
+  typeResult,
+  typeMetadata,
+  controlLevel = 'developing',
+  controlScore = 50,
+  matrixDistribution,
+}: TypeResultSectionProps) {
   const meta = typeMetadata[typeResult.primaryType];
-  const types: CodingStyleType[] = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'];
 
   return (
     <div className={styles.resultBox}>
@@ -43,32 +55,17 @@ export function TypeResultSection({ typeResult, typeMetadata }: TypeResultSectio
       <div className={styles.resultTitle}>YOU ARE {meta.name.toUpperCase()}</div>
       <div className={styles.resultTagline}>"{meta.tagline}"</div>
 
-      {/* Distribution Chart */}
+      {/* Matrix Distribution (5×3) */}
       <div className={styles.distribution}>
-        <div className={styles.subsectionTitle}>📊 Style Distribution</div>
-        {types.map((type) => {
-          const typeMeta = typeMetadata[type];
-          const pct = typeResult.distribution[type] || 0;
-          const isPrimary = type === typeResult.primaryType;
-
-          return (
-            <div
-              key={type}
-              className={`${styles.distributionRow} ${isPrimary ? styles.primary : ''}`}
-            >
-              <span className={styles.distributionEmoji}>{typeMeta.emoji}</span>
-              <span className={styles.distributionName}>{typeMeta.name}</span>
-              <div className={styles.distributionBar}>
-                <div
-                  className={styles.distributionFill}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <span className={styles.distributionPct}>{pct}%</span>
-              <span className={styles.distributionMarker}>{isPrimary ? '◀' : ''}</span>
-            </div>
-          );
-        })}
+        <div className={styles.subsectionTitle}>📊 Style Matrix</div>
+        <MatrixDistributionDisplay
+          distribution={typeResult.distribution}
+          primaryType={typeResult.primaryType}
+          controlLevel={controlLevel}
+          controlScore={controlScore}
+          matrixDistribution={matrixDistribution}
+          compact
+        />
       </div>
 
       {/* Session Metrics */}

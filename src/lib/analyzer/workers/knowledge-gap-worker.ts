@@ -94,7 +94,7 @@ export class KnowledgeGapWorker extends BaseWorker<KnowledgeGapOutput> {
       KNOWLEDGE_GAP_FORMAT
     );
     const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
-    const userPrompt = buildKnowledgeGapUserPrompt(sessionsFormatted, moduleAJson);
+    const userPrompt = buildKnowledgeGapUserPrompt(sessionsFormatted, moduleAJson, context.useKorean);
 
     const result = await this.geminiClient.generateStructured({
       systemPrompt: KNOWLEDGE_GAP_SYSTEM_PROMPT,

@@ -19,13 +19,15 @@ interface DimensionStyle {
   bg: string;
 }
 
+// Unified cyan accent for visual consistency
+// Color differentiation now only for semantic states (score gauges)
 const DIMENSION_STYLES: Record<DimensionName, DimensionStyle> = {
-  aiCollaboration: { accent: 'var(--accent-emerald)', bg: 'var(--accent-emerald-soft)' },
-  contextEngineering: { accent: 'var(--accent-primary)', bg: 'var(--accent-primary-soft)' },
-  toolMastery: { accent: '#ff6b35', bg: 'rgba(255, 107, 53, 0.08)' },
-  burnoutRisk: { accent: 'var(--accent-rose)', bg: 'var(--accent-rose-soft)' },
-  aiControl: { accent: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.08)' },
-  skillResilience: { accent: 'var(--accent-amber)', bg: 'var(--accent-amber-soft)' },
+  aiCollaboration: { accent: 'var(--sketch-cyan)', bg: 'var(--sketch-cyan-soft)' },
+  contextEngineering: { accent: 'var(--sketch-cyan)', bg: 'var(--sketch-cyan-soft)' },
+  toolMastery: { accent: 'var(--sketch-cyan)', bg: 'var(--sketch-cyan-soft)' },
+  burnoutRisk: { accent: 'var(--sketch-cyan)', bg: 'var(--sketch-cyan-soft)' },
+  aiControl: { accent: 'var(--sketch-cyan)', bg: 'var(--sketch-cyan-soft)' },
+  skillResilience: { accent: 'var(--sketch-cyan)', bg: 'var(--sketch-cyan-soft)' },
 };
 
 const DEFAULT_STYLE: DimensionStyle = { accent: 'var(--text-secondary)', bg: 'var(--surface-2)' };

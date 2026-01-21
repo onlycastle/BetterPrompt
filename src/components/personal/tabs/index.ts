@@ -13,3 +13,8 @@ export { PromptPatternsClean } from './PromptPatternsClean';
 export { DimensionInsightsClean } from './DimensionInsightsClean';
 export { GrowthAreasSection } from './GrowthAreasSection';
 export { EmptyStatePrompt } from './EmptyStatePrompt';
+
+// New tabbed components
+export { TabbedReportContainer } from './TabbedReportContainer';
+export { AgentInsightsSection } from './AgentInsightsSection';
+export { NextTabButton } from './NextTabButton';

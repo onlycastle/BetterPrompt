@@ -93,20 +93,38 @@ Return a JSON object with:
 
 export function buildMetacognitionUserPrompt(
   sessionsFormatted: string,
-  moduleAOutput: string
+  moduleAOutput: string,
+  useKorean: boolean = false
 ): string {
+  const koreanInstructions = useKorean
+    ? `
+## 🇰🇷 CRITICAL: Korean Output Required
+
+**모든 출력은 한국어로 작성하세요.**
+
+The developer's content is in Korean. You MUST write ALL fields in **Korean (한국어)**:
+- topInsights: 한국어로 작성
+- Awareness signal descriptions: 한국어로 작성
+- Blind spot explanations: 한국어로 작성
+
+Keep technical terms in English.
+Be encouraging and supportive in Korean.
+
+`
+    : '';
+
   return `## SESSION DATA
 ${sessionsFormatted}
 
 ## MODULE A ANALYSIS (for cross-referencing patterns)
 ${moduleAOutput}
-
+${koreanInstructions}
 ## INSTRUCTIONS
 Analyze the user's metacognitive patterns:
 1. Find moments of explicit self-awareness (with quotes)
 2. Identify blind spots (patterns repeated without recognition)
 3. Score growth mindset indicators
-4. Generate exactly 3 "wow moment" insights about their metacognition
+4. Generate exactly 3 "wow moment" insights about their metacognition${useKorean ? ' (한국어로 작성)' : ''}
 
 Focus on USER messages. Look for both Korean and English patterns.`;
 }
@@ -187,7 +205,7 @@ export class MetacognitionWorker extends BaseWorker<MetacognitionOutput> {
     const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
 
     // Build prompt
-    const userPrompt = buildMetacognitionUserPrompt(sessionsFormatted, moduleAJson);
+    const userPrompt = buildMetacognitionUserPrompt(sessionsFormatted, moduleAJson, context.useKorean);
 
     // Call Gemini with structured output
     const result = await this.geminiClient.generateStructured({

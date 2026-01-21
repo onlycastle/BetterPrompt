@@ -110,14 +110,32 @@ Return a JSON object with:
 
 export function buildTemporalUserPrompt(
   sessionsFormatted: string,
-  moduleAOutput: string
+  moduleAOutput: string,
+  useKorean: boolean = false
 ): string {
+  const koreanInstructions = useKorean
+    ? `
+## 🇰🇷 CRITICAL: Korean Output Required
+
+**모든 출력은 한국어로 작성하세요.**
+
+The developer's content is in Korean. You MUST write ALL fields in **Korean (한국어)**:
+- topInsights: 한국어로 작성
+- Peak/Caution hour descriptions: 한국어로 작성
+- Fatigue pattern explanations: 한국어로 작성
+- Recommendations: 한국어로 작성
+
+Keep technical terms and time formats in English.
+
+`
+    : '';
+
   return `## SESSION DATA (with timestamps)
 ${sessionsFormatted}
 
 ## MODULE A ANALYSIS (for context)
 ${moduleAOutput}
-
+${koreanInstructions}
 ## INSTRUCTIONS
 Analyze time-based prompt quality patterns:
 1. Calculate hourly quality metrics (counter-questioning, critical interpretation, verification)
@@ -126,7 +144,7 @@ Analyze time-based prompt quality patterns:
 4. Find caution hours (lowest critical thinking / highest fatigue)
 5. Detect specific fatigue patterns (late_night_drop, typo_spike, etc.)
 
-Generate exactly 3 actionable temporal insights.
+Generate exactly 3 actionable temporal insights.${useKorean ? ' (한국어로 작성)' : ''}
 
 IMPORTANT: Use QUALITATIVE metrics (역질문, 비판적 해석, 검증 요청) rather than simple prompt length.`;
 }
@@ -217,7 +235,7 @@ export class TemporalAnalyzerWorker extends BaseWorker<TemporalAnalysisOutput> {
     const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
 
     // Build prompt
-    const userPrompt = buildTemporalUserPrompt(sessionsFormatted, moduleAJson);
+    const userPrompt = buildTemporalUserPrompt(sessionsFormatted, moduleAJson, context.useKorean);
 
     // Call Gemini with structured output
     const result = await this.geminiClient.generateStructured({

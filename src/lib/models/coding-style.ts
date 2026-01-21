@@ -545,3 +545,154 @@ export const CONTROL_LEVEL_METADATA: Record<
     scoreRange: '65-100',
   },
 };
+
+// ============================================================================
+// Matrix Distribution (5 types × 3 levels = 15 combinations)
+// ============================================================================
+
+/**
+ * Key format for the 5×3 matrix
+ */
+export type MatrixKey = `${CodingStyleType}_${AIControlLevel}`;
+
+/**
+ * All 15 matrix keys
+ */
+export const ALL_MATRIX_KEYS: MatrixKey[] = [
+  'architect_vibe-coder', 'architect_developing', 'architect_ai-master',
+  'scientist_vibe-coder', 'scientist_developing', 'scientist_ai-master',
+  'collaborator_vibe-coder', 'collaborator_developing', 'collaborator_ai-master',
+  'speedrunner_vibe-coder', 'speedrunner_developing', 'speedrunner_ai-master',
+  'craftsman_vibe-coder', 'craftsman_developing', 'craftsman_ai-master',
+];
+
+/**
+ * Distribution across all 15 matrix combinations
+ * Each value is 0-100, and all 15 should sum to 100
+ */
+export interface MatrixDistribution {
+  'architect_vibe-coder': number;
+  'architect_developing': number;
+  'architect_ai-master': number;
+  'scientist_vibe-coder': number;
+  'scientist_developing': number;
+  'scientist_ai-master': number;
+  'collaborator_vibe-coder': number;
+  'collaborator_developing': number;
+  'collaborator_ai-master': number;
+  'speedrunner_vibe-coder': number;
+  'speedrunner_developing': number;
+  'speedrunner_ai-master': number;
+  'craftsman_vibe-coder': number;
+  'craftsman_developing': number;
+  'craftsman_ai-master': number;
+}
+
+/**
+ * Zod schema for MatrixDistribution
+ */
+export const MatrixDistributionSchema = z.object({
+  'architect_vibe-coder': z.number().min(0).max(100),
+  'architect_developing': z.number().min(0).max(100),
+  'architect_ai-master': z.number().min(0).max(100),
+  'scientist_vibe-coder': z.number().min(0).max(100),
+  'scientist_developing': z.number().min(0).max(100),
+  'scientist_ai-master': z.number().min(0).max(100),
+  'collaborator_vibe-coder': z.number().min(0).max(100),
+  'collaborator_developing': z.number().min(0).max(100),
+  'collaborator_ai-master': z.number().min(0).max(100),
+  'speedrunner_vibe-coder': z.number().min(0).max(100),
+  'speedrunner_developing': z.number().min(0).max(100),
+  'speedrunner_ai-master': z.number().min(0).max(100),
+  'craftsman_vibe-coder': z.number().min(0).max(100),
+  'craftsman_developing': z.number().min(0).max(100),
+  'craftsman_ai-master': z.number().min(0).max(100),
+});
+
+/**
+ * Derive a 15-value matrix distribution from:
+ * - typeDistribution: 5-value distribution across types
+ * - controlScore: 0-100 score for control
+ *
+ * Logic: Distributes each type's percentage across 3 levels based on controlScore.
+ * Higher controlScore = more weight on ai-master, lower = more weight on vibe-coder.
+ *
+ * @param typeDistribution - 5-value distribution across types
+ * @param _controlLevel - User's primary control level (unused, kept for API compatibility)
+ * @param controlScore - 0-100 score for control
+ */
+export function deriveMatrixDistribution(
+  typeDistribution: TypeDistribution,
+  _controlLevel: AIControlLevel,
+  controlScore: number
+): MatrixDistribution {
+  // Clamp score to 0-100
+  const score = Math.max(0, Math.min(100, controlScore));
+
+  // Calculate weights for each control level based on score
+  // Score 0-34: mostly vibe-coder
+  // Score 35-64: mostly developing
+  // Score 65-100: mostly ai-master
+  let vibeWeight: number;
+  let developingWeight: number;
+  let masterWeight: number;
+
+  if (score <= 34) {
+    // Vibe-coder dominant: 60-80% vibe, rest split
+    vibeWeight = 0.6 + (34 - score) / 85; // 0.6 to 1.0
+    developingWeight = (1 - vibeWeight) * 0.7;
+    masterWeight = (1 - vibeWeight) * 0.3;
+  } else if (score <= 64) {
+    // Developing dominant: peaked in middle
+    const distFromCenter = Math.abs(score - 50) / 15;
+    developingWeight = 0.5 + (1 - distFromCenter) * 0.3; // 0.5 to 0.8
+    if (score < 50) {
+      vibeWeight = (1 - developingWeight) * 0.6;
+      masterWeight = (1 - developingWeight) * 0.4;
+    } else {
+      vibeWeight = (1 - developingWeight) * 0.4;
+      masterWeight = (1 - developingWeight) * 0.6;
+    }
+  } else {
+    // AI-master dominant: 60-80% master, rest split
+    masterWeight = 0.6 + (score - 65) / 87.5; // 0.6 to 1.0
+    developingWeight = (1 - masterWeight) * 0.7;
+    vibeWeight = (1 - masterWeight) * 0.3;
+  }
+
+  // Normalize weights to sum to 1
+  const totalWeight = vibeWeight + developingWeight + masterWeight;
+  vibeWeight /= totalWeight;
+  developingWeight /= totalWeight;
+  masterWeight /= totalWeight;
+
+  // Apply weights to each type's distribution
+  // Helper to calculate rounded percentage
+  const calcPct = (typePct: number, weight: number): number =>
+    Math.round(typePct * weight * 10) / 10;
+
+  return {
+    'architect_vibe-coder': calcPct(typeDistribution.architect || 0, vibeWeight),
+    'architect_developing': calcPct(typeDistribution.architect || 0, developingWeight),
+    'architect_ai-master': calcPct(typeDistribution.architect || 0, masterWeight),
+    'scientist_vibe-coder': calcPct(typeDistribution.scientist || 0, vibeWeight),
+    'scientist_developing': calcPct(typeDistribution.scientist || 0, developingWeight),
+    'scientist_ai-master': calcPct(typeDistribution.scientist || 0, masterWeight),
+    'collaborator_vibe-coder': calcPct(typeDistribution.collaborator || 0, vibeWeight),
+    'collaborator_developing': calcPct(typeDistribution.collaborator || 0, developingWeight),
+    'collaborator_ai-master': calcPct(typeDistribution.collaborator || 0, masterWeight),
+    'speedrunner_vibe-coder': calcPct(typeDistribution.speedrunner || 0, vibeWeight),
+    'speedrunner_developing': calcPct(typeDistribution.speedrunner || 0, developingWeight),
+    'speedrunner_ai-master': calcPct(typeDistribution.speedrunner || 0, masterWeight),
+    'craftsman_vibe-coder': calcPct(typeDistribution.craftsman || 0, vibeWeight),
+    'craftsman_developing': calcPct(typeDistribution.craftsman || 0, developingWeight),
+    'craftsman_ai-master': calcPct(typeDistribution.craftsman || 0, masterWeight),
+  };
+}
+
+/**
+ * Get matrix key from type and control level
+ */
+export function getMatrixKey(type: CodingStyleType, level: AIControlLevel): MatrixKey {
+  return `${type}_${level}`;
+}

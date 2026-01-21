@@ -95,7 +95,7 @@ export class PatternDetectiveWorker extends BaseWorker<PatternDetectiveOutput> {
       PATTERN_DETECTIVE_FORMAT
     );
     const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
-    const userPrompt = buildPatternDetectiveUserPrompt(sessionsFormatted, moduleAJson);
+    const userPrompt = buildPatternDetectiveUserPrompt(sessionsFormatted, moduleAJson, context.useKorean);
 
     const result = await this.geminiClient.generateStructured({
       systemPrompt: PATTERN_DETECTIVE_SYSTEM_PROMPT,
