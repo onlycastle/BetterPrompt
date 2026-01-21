@@ -6,6 +6,7 @@ import {
   scoresToDistribution,
   getPrimaryType,
   getToolUsageHighlight,
+  applyArchitectDampening,
 } from '../../../src/lib/analyzer/type-detector.js';
 import type { ParsedSession, ParsedMessage } from '../../../src/lib/models/session.js';
 
@@ -374,6 +375,129 @@ describe('Type Detector', () => {
       const lowTurnScores = calculateTypeScores(lowTurnMetrics);
 
       expect(highTurnScores.collaborator).toBeGreaterThan(lowTurnScores.collaborator);
+    });
+
+    it('should score architect higher for planning keywords', () => {
+      const planningSession = createMockSession({
+        messages: [
+          createMockMessage('user', 'First, let me plan the approach. Then we design the architecture. Next, we implement step by step.'),
+          createMockMessage('assistant', 'done'),
+        ],
+      });
+      const noPlanningSesison = createMockSession({
+        messages: [
+          createMockMessage('user', 'do this thing for me'),
+          createMockMessage('assistant', 'done'),
+        ],
+      });
+
+      const planningMetrics = extractSessionMetrics(planningSession);
+      const noPlanningMetrics = extractSessionMetrics(noPlanningSesison);
+
+      // Verify planning keywords are extracted
+      expect(planningMetrics.planningKeywordCount).toBeGreaterThan(0);
+      expect(noPlanningMetrics.planningKeywordCount).toBe(0);
+
+      const planningScores = calculateTypeScores(planningMetrics);
+      const noPlanningScores = calculateTypeScores(noPlanningMetrics);
+
+      expect(planningScores.architect).toBeGreaterThan(noPlanningScores.architect);
+    });
+
+    it('should detect step patterns like numbered lists', () => {
+      const stepSession = createMockSession({
+        messages: [
+          createMockMessage('user', '1. Set up the project. 2. Add the components. 3. Write tests.'),
+          createMockMessage('assistant', 'done'),
+        ],
+      });
+
+      const metrics = extractSessionMetrics(stepSession);
+
+      expect(metrics.stepPatternCount).toBeGreaterThanOrEqual(3);
+    });
+
+    it('should not give architect points for moderate prompt length', () => {
+      // 350 chars is a moderate prompt - should NOT trigger architect bonus anymore
+      const moderatePromptSession = createMockSession({
+        messages: [
+          createMockMessage('user', 'A'.repeat(350)),
+          createMockMessage('assistant', 'done'),
+        ],
+      });
+
+      const metrics = extractSessionMetrics(moderatePromptSession);
+      const scores = calculateTypeScores(metrics);
+
+      // With the raised threshold (>500), a 350-char prompt should not give architect points
+      // The only signal here is low turns (<2) and low modification rate (<0.05)
+      // But those are stricter now, so architect score should be minimal
+      expect(scores.architect).toBeLessThanOrEqual(2);
+    });
+  });
+
+  describe('applyArchitectDampening', () => {
+    it('should dampen architect score when close to second highest', () => {
+      const scores = {
+        architect: 5,
+        scientist: 4, // Only 1 point behind
+        collaborator: 2,
+        speedrunner: 1,
+        craftsman: 1,
+      };
+
+      const dampened = applyArchitectDampening(scores);
+
+      // With 1-point advantage, dampening factor is 0.6
+      // 5 * 0.6 = 3
+      expect(dampened.architect).toBe(3);
+      // Other scores unchanged
+      expect(dampened.scientist).toBe(4);
+    });
+
+    it('should apply moderate dampening for 2-3 point advantage', () => {
+      const scores = {
+        architect: 6,
+        scientist: 3, // 3 points behind
+        collaborator: 2,
+        speedrunner: 1,
+        craftsman: 1,
+      };
+
+      const dampened = applyArchitectDampening(scores);
+
+      // With 3-point advantage, dampening factor is 0.8
+      // 6 * 0.8 = 4.8 → 5
+      expect(dampened.architect).toBe(5);
+    });
+
+    it('should not dampen when architect has clear advantage', () => {
+      const scores = {
+        architect: 10,
+        scientist: 3, // 7 points behind (> 3)
+        collaborator: 2,
+        speedrunner: 1,
+        craftsman: 1,
+      };
+
+      const dampened = applyArchitectDampening(scores);
+
+      // No dampening when advantage > 3
+      expect(dampened.architect).toBe(10);
+    });
+
+    it('should not dampen when other scores are zero', () => {
+      const scores = {
+        architect: 5,
+        scientist: 0,
+        collaborator: 0,
+        speedrunner: 0,
+        craftsman: 0,
+      };
+
+      const dampened = applyArchitectDampening(scores);
+
+      expect(dampened.architect).toBe(5);
     });
   });
 

@@ -88,6 +88,15 @@ export function extractSessionMetrics(session: ParsedSession): SessionMetrics {
     "don't",
   ]);
 
+  // Planning patterns (Architect-specific)
+  const planningKeywordCount = countKeywordMatches(
+    allUserContent,
+    PATTERN_KEYWORDS.planning
+  );
+  // Step patterns: numbered lists (1., 2., 3.) or sequential words (first, then, finally)
+  const stepPatterns = /\b(1\.|2\.|3\.|first,|then,|next,|finally,|step\s*\d)/gi;
+  const stepPatternCount = (allUserContent.match(stepPatterns) || []).length;
+
   // Time patterns
   const avgCycleTimeSeconds = calculateAvgCycleTime(session.messages);
   const sessionDurationSeconds = session.durationSeconds;
@@ -108,6 +117,8 @@ export function extractSessionMetrics(session: ParsedSession): SessionMetrics {
     qualityTermCount,
     positiveFeedbackCount,
     negativeFeedbackCount,
+    planningKeywordCount,
+    stepPatternCount,
     avgCycleTimeSeconds,
     sessionDurationSeconds,
   };
@@ -152,6 +163,8 @@ export function aggregateMetrics(sessions: ParsedSession[]): SessionMetrics {
     qualityTermCount: sum(sessionMetrics.map((m) => m.qualityTermCount)),
     positiveFeedbackCount: sum(sessionMetrics.map((m) => m.positiveFeedbackCount)),
     negativeFeedbackCount: sum(sessionMetrics.map((m) => m.negativeFeedbackCount)),
+    planningKeywordCount: sum(sessionMetrics.map((m) => m.planningKeywordCount)),
+    stepPatternCount: sum(sessionMetrics.map((m) => m.stepPatternCount)),
     avgCycleTimeSeconds: avg(sessionMetrics.map((m) => m.avgCycleTimeSeconds)),
     sessionDurationSeconds: avg(
       sessionMetrics.map((m) => m.sessionDurationSeconds)
@@ -179,27 +192,42 @@ export function calculateTypeScores(metrics: SessionMetrics): TypeScores {
   };
 
   // ========== ARCHITECT SIGNALS ==========
-  // Long, structured initial prompts
-  if (metrics.avgFirstPromptLength > 500) scores.architect += 3;
-  else if (metrics.avgFirstPromptLength > 300) scores.architect += 2;
-  else if (metrics.avgFirstPromptLength > 150) scores.architect += 1;
+  // Long, structured initial prompts (raised thresholds to reduce bias)
+  if (metrics.avgFirstPromptLength > 800) scores.architect += 2;
+  else if (metrics.avgFirstPromptLength > 500) scores.architect += 1;
+  // Removed >150 tier (too low - most normal messages hit this)
 
-  // High Task/Plan tool usage
+  // High Task/Plan tool usage (raised thresholds)
   const planningToolRatio =
     metrics.toolUsage.total > 0
       ? (metrics.toolUsage.task + metrics.toolUsage.plan) / metrics.toolUsage.total
       : 0;
-  if (planningToolRatio > 0.3) scores.architect += 3;
-  else if (planningToolRatio > 0.15) scores.architect += 2;
-  else if (planningToolRatio > 0.05) scores.architect += 1;
+  if (planningToolRatio > 0.4) scores.architect += 2;
+  else if (planningToolRatio > 0.25) scores.architect += 1;
+  // Removed >5% tier (too low - incidental usage triggers this)
 
-  // Low turns (gets it right first time)
-  if (metrics.avgTurnsPerSession < 3) scores.architect += 2;
-  else if (metrics.avgTurnsPerSession < 5) scores.architect += 1;
+  // Low turns (gets it right first time) - stricter threshold
+  if (metrics.avgTurnsPerSession < 2) scores.architect += 1;
+  // Removed <5 tier (too common for efficient users)
 
-  // Low modification rate
-  if (metrics.modificationRate < 0.1) scores.architect += 2;
-  else if (metrics.modificationRate < 0.2) scores.architect += 1;
+  // Low modification rate - stricter threshold
+  if (metrics.modificationRate < 0.05) scores.architect += 1;
+  // Removed <20% tier (too common for clear communicators)
+
+  // Planning language usage (distinguishes true architects)
+  const planningKeywordRatio =
+    metrics.totalTurns > 0
+      ? metrics.planningKeywordCount / metrics.totalTurns
+      : 0;
+  if (planningKeywordRatio > 1.5) scores.architect += 3;
+  else if (planningKeywordRatio > 0.8) scores.architect += 2;
+  else if (planningKeywordRatio > 0.4) scores.architect += 1;
+
+  // Step-by-step structure detection (1., 2., first...then...finally)
+  const stepRatio =
+    metrics.totalTurns > 0 ? metrics.stepPatternCount / metrics.totalTurns : 0;
+  if (stepRatio > 0.5) scores.architect += 2;
+  else if (stepRatio > 0.2) scores.architect += 1;
 
   // ========== SCIENTIST SIGNALS ==========
   // High question frequency
@@ -303,15 +331,43 @@ export function calculateTypeScores(metrics: SessionMetrics): TypeScores {
 }
 
 /**
+ * Apply dampening to Architect scores when close to other types.
+ * This distinguishes "generally good users" from "true architects"
+ * by reducing Architect scores when other types are competitive.
+ */
+export function applyArchitectDampening(scores: TypeScores): TypeScores {
+  const dampened = { ...scores };
+
+  const otherTypes = ['scientist', 'collaborator', 'speedrunner', 'craftsman'] as const;
+  const secondHighest = Math.max(...otherTypes.map((t) => scores[t]));
+
+  if (scores.architect > 0 && secondHighest > 0) {
+    const architectAdvantage = scores.architect - secondHighest;
+
+    // When Architect is within 3 points of another type, apply dampening
+    // This prevents Architect from winning tie-breakers in mixed profiles
+    if (architectAdvantage <= 3) {
+      const dampeningFactor = architectAdvantage <= 1 ? 0.6 : 0.8;
+      dampened.architect = Math.round(scores.architect * dampeningFactor);
+    }
+  }
+
+  return dampened;
+}
+
+/**
  * Convert raw scores to percentage distribution (sum to 100)
  */
 export function scoresToDistribution(scores: TypeScores): TypeDistribution {
+  // Apply Architect dampening to reduce bias toward "good user" = "architect"
+  const dampened = applyArchitectDampening(scores);
+
   const total =
-    scores.architect +
-    scores.scientist +
-    scores.collaborator +
-    scores.speedrunner +
-    scores.craftsman;
+    dampened.architect +
+    dampened.scientist +
+    dampened.collaborator +
+    dampened.speedrunner +
+    dampened.craftsman;
 
   if (total === 0) {
     // Equal distribution if no signals
@@ -325,11 +381,11 @@ export function scoresToDistribution(scores: TypeScores): TypeDistribution {
   }
 
   const distribution: TypeDistribution = {
-    architect: Math.round((scores.architect / total) * 100),
-    scientist: Math.round((scores.scientist / total) * 100),
-    collaborator: Math.round((scores.collaborator / total) * 100),
-    speedrunner: Math.round((scores.speedrunner / total) * 100),
-    craftsman: Math.round((scores.craftsman / total) * 100),
+    architect: Math.round((dampened.architect / total) * 100),
+    scientist: Math.round((dampened.scientist / total) * 100),
+    collaborator: Math.round((dampened.collaborator / total) * 100),
+    speedrunner: Math.round((dampened.speedrunner / total) * 100),
+    craftsman: Math.round((dampened.craftsman / total) * 100),
   };
 
   // Ensure sum is exactly 100 (adjust highest value for rounding errors)
@@ -492,6 +548,8 @@ function createEmptyMetrics(): SessionMetrics {
     qualityTermCount: 0,
     positiveFeedbackCount: 0,
     negativeFeedbackCount: 0,
+    planningKeywordCount: 0,
+    stepPatternCount: 0,
     avgCycleTimeSeconds: 0,
     sessionDurationSeconds: 0,
   };
