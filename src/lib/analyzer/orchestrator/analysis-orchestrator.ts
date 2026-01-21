@@ -67,6 +67,7 @@ export class AnalysisOrchestrator {
   private config: Required<OrchestratorConfig>;
   private phase1Workers: BaseWorker<unknown>[] = [];
   private phase2Workers: BaseWorker<unknown>[] = [];
+  private phase2Point5Workers: BaseWorker<unknown>[] = []; // Type Synthesis workers
   private contentWriter: ContentWriterStage;
   private contentGateway: ContentGateway;
 
@@ -113,6 +114,21 @@ export class AnalysisOrchestrator {
       throw new Error(`Worker ${worker.name} has phase ${worker.phase}, expected 2`);
     }
     this.phase2Workers.push(worker);
+    return this;
+  }
+
+  /**
+   * Register a Phase 2.5 worker (Type Synthesis - runs after Phase 2)
+   *
+   * Phase 2.5 workers receive all Phase 2 agent outputs and can refine
+   * classifications based on semantic analysis from other agents.
+   */
+  registerPhase2Point5Worker(worker: BaseWorker<unknown>): this {
+    // Phase 2.5 workers are marked as phase 2 but run separately after Phase 2
+    if (worker.phase !== 2) {
+      throw new Error(`Worker ${worker.name} has phase ${worker.phase}, expected 2 (for Phase 2.5)`);
+    }
+    this.phase2Point5Workers.push(worker);
     return this;
   }
 
@@ -194,6 +210,45 @@ export class AnalysisOrchestrator {
       }
     } else {
       this.log('Phase 2: Skipped (no workers registered)');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Phase 2.5: Type Synthesis (after Phase 2, uses agent outputs)
+    // Refines type classification using insights from all Phase 2 agents
+    // ─────────────────────────────────────────────────────────────────────
+    if (this.phase2Point5Workers.length > 0) {
+      this.log('Phase 2.5: Type Synthesis...');
+      const phase2Point5Context: WorkerContext = {
+        ...baseContext,
+        moduleAOutput: phase1Results.dataAnalyst.data,
+        moduleCOutput: phase1Results.productivityAnalyst.data,
+      };
+
+      const phase2Point5Results = await this.runPhase2Point5(
+        phase2Point5Context,
+        agentOutputs
+      );
+
+      // TypeSynthesis is REQUIRED for 15-type matrix classification
+      // Fail the entire analysis if TypeSynthesis fails
+      const typeSynthesisResult = phase2Point5Results['TypeSynthesis'];
+      if (!typeSynthesisResult?.data) {
+        const errorMessage = typeSynthesisResult?.error?.message || 'Unknown error';
+        throw new Error(`TypeSynthesis failed: ${errorMessage}. Analysis cannot proceed without type classification.`);
+      }
+
+      // Merge Type Synthesis results into agentOutputs
+      agentOutputs = this.mergeTypeSynthesisOutputs(agentOutputs, phase2Point5Results);
+
+      // Track Phase 2.5 token usage
+      for (const [workerName, result] of Object.entries(phase2Point5Results)) {
+        if (result?.usage) {
+          stageUsages.push({
+            stage: `${workerName} (Synthesis)`,
+            ...result.usage,
+          });
+        }
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -303,6 +358,50 @@ export class AnalysisOrchestrator {
     return results;
   }
 
+  /**
+   * Run Phase 2.5 workers (Type Synthesis)
+   *
+   * These workers run AFTER Phase 2 completes and receive all agent outputs.
+   * They refine type classification using semantic analysis from other agents.
+   */
+  private async runPhase2Point5(
+    context: WorkerContext,
+    agentOutputs: AgentOutputs
+  ): Promise<Record<string, WorkerResult<unknown> | undefined>> {
+    const results: Record<string, WorkerResult<unknown> | undefined> = {};
+
+    // Create extended context with agent outputs
+    const extendedContext = {
+      ...context,
+      agentOutputs,
+    };
+
+    // Run Phase 2.5 workers (typically just TypeSynthesis, but supports multiple)
+    const workerPromises = this.phase2Point5Workers.map(async (worker) => {
+      if (!worker.canRun(extendedContext)) {
+        this.log(`Worker ${worker.name} skipped (cannot run)`);
+        return;
+      }
+
+      try {
+        const result = await worker.execute(extendedContext);
+        results[worker.name] = result;
+        this.log(`Worker ${worker.name} completed`);
+      } catch (error) {
+        this.log(`Worker ${worker.name} failed: ${error}`);
+        results[worker.name] = {
+          data: null,
+          usage: null,
+          error: error instanceof Error ? error : new Error(String(error)),
+        };
+      }
+    });
+
+    await Promise.allSettled(workerPromises);
+
+    return results;
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // Helper Methods
   // ─────────────────────────────────────────────────────────────────────────
@@ -322,6 +421,20 @@ export class AnalysisOrchestrator {
       temporalAnalysis: results['TemporalAnalyzer']?.data as AgentOutputs['temporalAnalysis'],
       // NEW: Multitasking Analysis
       multitasking: results['MultitaskingAnalyzer']?.data as AgentOutputs['multitasking'],
+    };
+  }
+
+  /**
+   * Merge Phase 2.5 Type Synthesis results into AgentOutputs
+   */
+  private mergeTypeSynthesisOutputs(
+    agentOutputs: AgentOutputs,
+    phase2Point5Results: Record<string, WorkerResult<unknown> | undefined>
+  ): AgentOutputs {
+    return {
+      ...agentOutputs,
+      // Type Synthesis output
+      typeSynthesis: phase2Point5Results['TypeSynthesis']?.data as AgentOutputs['typeSynthesis'],
     };
   }
 

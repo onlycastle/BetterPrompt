@@ -42,6 +42,8 @@ import {
   createTemporalAnalyzerWorker,
   // NEW: Multitasking Analysis worker
   createMultitaskingAnalyzerWorker,
+  // NEW: Type Synthesis worker (Phase 2.5)
+  createTypeSynthesisWorker,
 } from './workers';
 
 // Legacy imports for single-stage mode (kept for backward compatibility)
@@ -371,6 +373,9 @@ export class VerboseAnalyzer {
       this.orchestrator.registerPhase2Worker(createMetacognitionWorker(orchestratorConfig));
       this.orchestrator.registerPhase2Worker(createTemporalAnalyzerWorker(orchestratorConfig));
       this.orchestrator.registerPhase2Worker(createMultitaskingAnalyzerWorker(orchestratorConfig));
+
+      // Register Phase 2.5 worker (Type Synthesis - refines classification using agent outputs)
+      this.orchestrator.registerPhase2Point5Worker(createTypeSynthesisWorker(orchestratorConfig));
     }
 
     // Get Anthropic API key for legacy single-stage mode (or fallback)
