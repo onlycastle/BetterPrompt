@@ -45,9 +45,18 @@ jobs:
 
       - name: Deploy with SST
         id: sst-deploy
+        shell: bash
         run: |
+          set -o pipefail  # Critical: Make pipeline respect exit codes
+
           # Deploy and capture output
           npx sst deploy --stage production 2>&1 | tee sst-output.txt
+
+          # Double-check: Verify SST reported success
+          if grep -q "✕  Failed" sst-output.txt; then
+            echo "::error::SST deployment failed!"
+            exit 1
+          fi
 
           # Extract API URL from SST output
           API_URL=$(grep -oP 'apiUrl:\s*\K(https://[^\s]+)' sst-output.txt || true)
