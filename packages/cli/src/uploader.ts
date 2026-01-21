@@ -6,7 +6,7 @@
  * Uses gzip compression to reduce payload size
  *
  * Sends pre-parsed session data to avoid redundant parsing on server.
- * For large payloads (>5MB), automatically uses Supabase Storage.
+ * For large payloads (>5MB), automatically uses S3 Storage.
  */
 
 import { gzipSync } from 'node:zlib';
@@ -33,7 +33,7 @@ const LAMBDA_API_URL = process.env.NOSLOP_API_URL || DEFAULT_LAMBDA_URL;
 const REPORT_BASE_URL = 'https://www.nomoreaislop.xyz';
 
 /**
- * Threshold for using Supabase Storage upload
+ * Threshold for using S3 Storage upload
  */
 const USE_STORAGE_THRESHOLD = 5 * 1024 * 1024;
 
@@ -44,12 +44,11 @@ const PAYLOAD_LIMIT = 100 * 1024 * 1024;
 
 /**
  * Serialized message format for API
- * Dates are serialized as ISO strings
  */
 interface SerializedMessage {
   uuid: string;
   role: 'user' | 'assistant';
-  timestamp: string; // ISO string
+  timestamp: string;
   content: string;
   toolCalls?: Array<{
     id: string;
@@ -71,8 +70,8 @@ interface SerializedSession {
   sessionId: string;
   projectPath: string;
   projectName: string;
-  startTime: string; // ISO string
-  endTime: string; // ISO string
+  startTime: string;
+  endTime: string;
   durationSeconds: number;
   claudeCodeVersion: string;
   messages: SerializedMessage[];
@@ -93,7 +92,7 @@ interface AnalysisPayload {
   sessions: SerializedSession[];
   totalMessages: number;
   totalDurationMinutes: number;
-  version: 2; // Protocol version for pre-parsed data
+  version: 2;
 }
 
 /**
@@ -128,7 +127,7 @@ function serializeSession(session: ParsedSession): SerializedSession {
 }
 
 /**
- * Result of payload preparation with size metrics
+ * Result of payload preparation
  */
 interface PreparePayloadResult {
   compressed: Buffer;
@@ -142,14 +141,13 @@ interface PreparePayloadResult {
  * Prepare payload from parsed sessions
  */
 function preparePayload(scanResult: ScanResult): PreparePayloadResult {
-  // Serialize all sessions
   let serializedSessions = scanResult.sessions.map(s => serializeSession(s.parsed));
 
   const payload: AnalysisPayload = {
     sessions: serializedSessions,
     totalMessages: scanResult.totalMessages,
     totalDurationMinutes: scanResult.totalDurationMinutes,
-    version: 2, // Indicates pre-parsed format
+    version: 2,
   };
 
   const originalJson = JSON.stringify(payload);
@@ -167,7 +165,7 @@ function preparePayload(scanResult: ScanResult): PreparePayloadResult {
     };
   }
 
-  // If too large, drop sessions until it fits (keep most recent)
+  // If too large, drop sessions until it fits
   let droppedCount = 0;
   while (serializedSessions.length > 1 && compressed.length > PAYLOAD_LIMIT) {
     serializedSessions.pop();
@@ -260,27 +258,25 @@ function formatSize(bytes: number): string {
  */
 interface UploadUrlResponse {
   signedUrl?: string;
-  storagePath?: string;
-  token?: string;
-  path?: string;
+  s3Key?: string;
   error?: string;
 }
 
 /**
- * Upload large payload via Supabase Storage
+ * Upload large payload via S3 Storage
  */
 async function uploadViaStorage(
   compressedBody: Buffer,
-  apiKey: string,
+  accessToken: string,
   onProgress?: ProgressCallback
-): Promise<{ storagePath: string }> {
+): Promise<{ s3Key: string }> {
   onProgress?.('preparing', 10, 'Getting upload URL...');
 
   const urlResponse = await fetch(`${LAMBDA_API_URL}/upload-url`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Gemini-API-Key': apiKey,
+      'Authorization': `Bearer ${accessToken}`,
     },
   });
 
@@ -289,16 +285,9 @@ async function uploadViaStorage(
     throw new Error(`Failed to get upload URL: ${urlResponse.status} ${errorText}`);
   }
 
-  const responseText = await urlResponse.text();
-  debugLog('/upload-url response:', {
-    status: urlResponse.status,
-    contentType: urlResponse.headers.get('content-type'),
-    bodyPreview: responseText.slice(0, 200),
-  });
+  const urlData = await urlResponse.json() as UploadUrlResponse;
 
-  const urlData = JSON.parse(responseText) as UploadUrlResponse;
-
-  if (urlData.error || !urlData.signedUrl || !urlData.storagePath) {
+  if (urlData.error || !urlData.signedUrl || !urlData.s3Key) {
     throw new Error(urlData.error || 'Invalid upload URL response');
   }
 
@@ -317,7 +306,7 @@ async function uploadViaStorage(
 
   onProgress?.('preparing', 50, 'Upload complete, starting analysis...');
 
-  return { storagePath: urlData.storagePath };
+  return { s3Key: urlData.s3Key };
 }
 
 /**
@@ -325,7 +314,7 @@ async function uploadViaStorage(
  */
 export async function uploadForAnalysis(
   scanResult: ScanResult,
-  apiKey: string,
+  accessToken: string,
   onProgress?: ProgressCallback
 ): Promise<AnalysisResult> {
   const {
@@ -342,16 +331,16 @@ export async function uploadForAnalysis(
   if (compressedSizeBytes > USE_STORAGE_THRESHOLD) {
     onProgress?.('preparing', 0, `${sizeInfo} | Using secure storage for large payload`);
 
-    const { storagePath } = await uploadViaStorage(compressedBody, apiKey, onProgress);
+    const { s3Key } = await uploadViaStorage(compressedBody, accessToken, onProgress);
 
-    debugLog('Calling /analyze with storagePath:', storagePath);
+    debugLog('Calling /analyze with s3Key:', s3Key);
     const response = await fetch(`${LAMBDA_API_URL}/analyze`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Gemini-API-Key': apiKey,
+        'Authorization': `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ storagePath }),
+      body: JSON.stringify({ s3Key }),
     });
 
     if (!response.ok) {
@@ -373,8 +362,8 @@ export async function uploadForAnalysis(
     method: 'POST',
     headers: {
       'Content-Type': 'application/octet-stream',
-      'X-Content-Encoding': 'gzip',
-      'X-Gemini-API-Key': apiKey,
+      'Content-Encoding': 'gzip',
+      'Authorization': `Bearer ${accessToken}`,
     },
     body: new Uint8Array(compressedBody),
   });

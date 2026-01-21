@@ -3,9 +3,13 @@
  * no-ai-slop CLI
  *
  * Analyze your AI collaboration style with Claude Code
+ *
+ * Usage:
+ *   npx no-ai-slop          # Analyze sessions (login required)
+ *   npx no-ai-slop logout   # Sign out
+ *   npx no-ai-slop status   # Check login status
  */
 
-import { createInterface } from 'node:readline';
 import pc from 'picocolors';
 import ora from 'ora';
 import { scanSessions, hasClaudeProjects } from './scanner.js';
@@ -19,126 +23,51 @@ import {
   displaySelectionHelp,
 } from './display.js';
 import { estimateAnalysisCost, renderCostEstimate } from './cost-estimator.js';
-import { saveCache, loadCache, displayCacheHelp } from './cache.js';
 import { createProgressDisplay } from './progress.js';
+import {
+  storeTokens,
+  getStoredAccessToken,
+  getStoredUserEmail,
+  clearTokens,
+  hasStoredTokens,
+} from './auth/token-store.js';
+import {
+  startDeviceFlow,
+  pollForToken,
+  getUserInfo,
+} from './auth/device-flow.js';
 
 /**
- * Parse CLI arguments
+ * Display device flow code and URL
  */
-function parseArgs(): { saveCache: boolean; useCache: boolean; help: boolean; apiKey?: string } {
-  const args = process.argv.slice(2);
-
-  // Parse --api-key flag
-  let apiKey: string | undefined;
-  const apiKeyIndex = args.findIndex(arg => arg === '--api-key' || arg.startsWith('--api-key='));
-  if (apiKeyIndex !== -1) {
-    const arg = args[apiKeyIndex];
-    if (arg.includes('=')) {
-      apiKey = arg.split('=')[1];
-    } else if (args[apiKeyIndex + 1] && !args[apiKeyIndex + 1].startsWith('-')) {
-      apiKey = args[apiKeyIndex + 1];
-    }
-  }
-
-  // Also check environment variable
-  if (!apiKey) {
-    apiKey = process.env.GOOGLE_GEMINI_API_KEY;
-  }
-
-  return {
-    saveCache: args.includes('--save-cache'),
-    useCache: args.includes('--use-cache'),
-    help: args.includes('--help') || args.includes('-h'),
-    apiKey,
-  };
-}
-
-/**
- * Display help message
- */
-function displayHelp(): void {
+function displayDeviceCode(userCode: string, verificationUri: string): void {
   console.log('');
-  console.log(pc.bold(pc.cyan('Usage:')) + ' npx no-ai-slop [options]');
+  console.log(pc.bold(pc.cyan('  📱 Visit: ')) + pc.underline(verificationUri));
+  console.log(pc.bold(pc.cyan('     Enter code: ')) + pc.bold(pc.white(userCode)));
   console.log('');
-  console.log(pc.bold('Options:'));
-  console.log('  --api-key KEY   Your Google Gemini API key (or set GOOGLE_GEMINI_API_KEY env)');
-  console.log('  --save-cache    Run analysis and save result to local cache');
-  console.log('  --use-cache     Use cached analysis result (skip API call)');
-  console.log('  --help, -h      Show this help message');
-  console.log('');
-  console.log(pc.bold('Environment Variables:'));
-  console.log('  GOOGLE_GEMINI_API_KEY    Your Gemini API key (alternative to --api-key)');
-  console.log('');
-  console.log(pc.dim('Get your API key at: https://aistudio.google.com/app/apikey'));
-  console.log('');
-}
-
-/**
- * Prompt user for API key
- */
-async function promptApiKey(): Promise<string> {
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  console.log('');
-  console.log(pc.yellow('⚠️  No API key found.'));
-  console.log(pc.dim('  Get your free Gemini API key at: https://aistudio.google.com/app/apikey'));
-  console.log('');
-
-  return new Promise((resolve) => {
-    rl.question(pc.cyan('Enter your Gemini API key: '), (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
-}
-
-/**
- * Prompt user for confirmation
- */
-async function confirm(message: string): Promise<boolean> {
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    rl.question(`${message} (Y/n): `, (answer) => {
-      rl.close();
-      const normalized = answer.trim().toLowerCase();
-      resolve(normalized === '' || normalized === 'y' || normalized === 'yes');
-    });
-  });
 }
 
 /**
  * Parse session selection string into indices
- * Supports: "1,3,5", "1-5", "1-3,5,7-10"
  */
 function parseSessionSelection(input: string, max: number): number[] {
   const indices = new Set<number>();
-
-  // Split by comma
   const parts = input.split(',').map(p => p.trim());
 
   for (const part of parts) {
     if (part.includes('-')) {
-      // Range: "1-5"
       const [startStr, endStr] = part.split('-');
       const start = parseInt(startStr, 10);
       const end = parseInt(endStr, 10);
       if (!isNaN(start) && !isNaN(end)) {
         for (let i = start; i <= end; i++) {
-          if (i >= 1 && i <= max) indices.add(i - 1); // Convert to 0-based
+          if (i >= 1 && i <= max) indices.add(i - 1);
         }
       }
     } else {
-      // Single number
       const num = parseInt(part, 10);
       if (!isNaN(num) && num >= 1 && num <= max) {
-        indices.add(num - 1); // Convert to 0-based
+        indices.add(num - 1);
       }
     }
   }
@@ -150,6 +79,7 @@ function parseSessionSelection(input: string, max: number): number[] {
  * Prompt user for session selection
  */
 async function promptSessionSelection(maxSessions: number): Promise<number[] | 'all'> {
+  const { createInterface } = await import('node:readline');
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -171,40 +101,145 @@ async function promptSessionSelection(maxSessions: number): Promise<number[] | '
 }
 
 /**
- * Main CLI entry point
+ * Prompt for yes/no confirmation
  */
-async function main(): Promise<void> {
-  const args = parseArgs();
+async function confirm(message: string): Promise<boolean> {
+  const { createInterface } = await import('node:readline');
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
 
-  // Handle help flag
-  if (args.help) {
-    displayHelp();
-    process.exit(0);
+  return new Promise((resolve) => {
+    rl.question(`${message} (Y/n): `, (answer) => {
+      rl.close();
+      const normalized = answer.trim().toLowerCase();
+      resolve(normalized === '' || normalized === 'y' || normalized === 'yes');
+    });
+  });
+}
+
+/**
+ * Handle logout command
+ */
+async function handleLogout(): Promise<void> {
+  const spinner = ora('Signing out...').start();
+
+  try {
+    await clearTokens();
+    spinner.succeed('Signed out successfully');
+  } catch {
+    spinner.fail('Failed to sign out');
+  }
+}
+
+/**
+ * Handle status command
+ */
+async function handleStatus(): Promise<void> {
+  const hasTokens = await hasStoredTokens();
+
+  if (!hasTokens) {
+    console.log('');
+    console.log(pc.yellow('  Not signed in'));
+    console.log(pc.dim('  Run "npx no-ai-slop" to sign in and analyze your sessions'));
+    console.log('');
+    return;
   }
 
+  const email = await getStoredUserEmail();
+  console.log('');
+  console.log(pc.green('  ✓ Signed in') + (email ? pc.dim(` as ${email}`) : ''));
+  console.log('');
+}
+
+/**
+ * Perform device flow authentication
+ */
+async function performDeviceFlowAuth(): Promise<string> {
+  console.log(pc.bold(pc.yellow('🔐 Sign in required')));
+
+  const spinner = ora('Starting authentication...').start();
+
+  try {
+    const deviceFlow = await startDeviceFlow();
+    spinner.stop();
+
+    displayDeviceCode(deviceFlow.userCode, deviceFlow.verificationUri);
+
+    const pollSpinner = ora('Waiting for authorization...').start();
+    let pollCount = 0;
+
+    while (true) {
+      await sleep(deviceFlow.interval * 1000);
+      pollCount++;
+
+      // Update spinner text
+      pollSpinner.text = `Waiting for authorization${'.'.repeat(pollCount % 4)}`;
+
+      const result = await pollForToken(deviceFlow.deviceCode);
+
+      if (result.status === 'success') {
+        pollSpinner.succeed('Authorized!');
+
+        // Get user info and store tokens
+        const userInfo = await getUserInfo(result.tokens.accessToken);
+        await storeTokens({
+          accessToken: result.tokens.accessToken,
+          refreshToken: result.tokens.refreshToken,
+          email: userInfo.email,
+        });
+
+        console.log(pc.dim(`  Signed in as ${userInfo.email}`));
+        console.log('');
+
+        return result.tokens.accessToken;
+      }
+
+      if (result.status === 'error') {
+        pollSpinner.fail('Authorization failed');
+        throw new Error(result.message);
+      }
+
+      // Check timeout (15 minutes)
+      if (pollCount * deviceFlow.interval > 900) {
+        pollSpinner.fail('Authorization timed out');
+        throw new Error('Device authorization timed out. Please try again.');
+      }
+    }
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * Main analysis flow
+ */
+async function runAnalysis(): Promise<void> {
   console.log('');
   console.log(pc.bold(pc.cyan('🚀 no-ai-slop')) + pc.dim(' - AI Collaboration Style Analyzer'));
   console.log('');
 
-  // Try to use cached analysis result if requested
-  if (args.useCache) {
-    console.log(pc.dim('  Checking analysis cache...'));
-    const cachedResult = await loadCache();
-    if (cachedResult) {
-      displayResults(cachedResult);
-      return;
-    }
-    console.log(pc.dim('  No cached analysis found, running fresh analysis...'));
+  // 1. Check for existing token
+  let accessToken = await getStoredAccessToken();
+
+  if (accessToken) {
+    const email = await getStoredUserEmail();
+    console.log(pc.green('✓ Signed in') + (email ? pc.dim(` as ${email}`) : ''));
+    console.log('');
+  } else {
+    // 2. Perform device flow authentication
+    accessToken = await performDeviceFlowAuth();
   }
 
-  // Check if Claude projects directory exists
+  // 3. Check if Claude projects directory exists
   const hasProjects = await hasClaudeProjects();
   if (!hasProjects) {
     displayNoSessions();
     process.exit(1);
   }
 
-  // Scan sessions
+  // 4. Scan sessions
   const scanSpinner = ora('Scanning Claude Code sessions...').start();
 
   let scanResult;
@@ -226,14 +261,13 @@ async function main(): Promise<void> {
     `Found ${pc.bold(String(scanResult.sessions.length))} sessions`
   );
 
-  // Display session list for selection
+  // 5. Display session list for selection
   displaySessionList(scanResult.sessions);
   displaySelectionHelp();
 
-  // Prompt for selection
+  // 6. Prompt for selection
   const selection = await promptSessionSelection(scanResult.sessions.length);
 
-  // Filter sessions based on selection
   let selectedSessions;
   if (selection === 'all') {
     selectedSessions = scanResult.sessions;
@@ -246,14 +280,12 @@ async function main(): Promise<void> {
     console.log(pc.dim(`  Selected ${selectedSessions.length} session(s)\n`));
   }
 
-  // Extract parsed sessions for cost estimation
+  // 7. Estimate and display cost
   const parsedSessions = selectedSessions.map(s => s.parsed);
-
-  // Estimate and display cost using parsed sessions
   const costEstimate = estimateAnalysisCost(parsedSessions);
   console.log(renderCostEstimate(costEstimate, selectedSessions.length));
 
-  // Create filtered ScanResult for upload
+  // 8. Create filtered ScanResult for upload
   const filteredResult = {
     sessions: selectedSessions,
     totalMessages: selectedSessions.reduce((sum, s) => sum + s.metadata.messageCount, 0),
@@ -263,7 +295,7 @@ async function main(): Promise<void> {
     ),
   };
 
-  // Show privacy notice and ask for consent
+  // 9. Show privacy notice and ask for consent
   displayPrivacyNotice();
 
   const consent = await confirm('Proceed with analysis?');
@@ -272,38 +304,72 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  // Get API key (from args, env, or prompt)
-  let apiKey = args.apiKey;
-  if (!apiKey) {
-    apiKey = await promptApiKey();
-    if (!apiKey) {
-      console.log(pc.red('\n❌ API key is required for analysis.'));
-      process.exit(1);
-    }
-  }
-
-  // Upload and analyze with rich progress display
+  // 10. Upload and analyze with progress display
   const progressDisplay = createProgressDisplay();
   progressDisplay.start();
 
   try {
-    const result = await uploadForAnalysis(filteredResult, apiKey, (stage, progress, message) => {
-      // Update progress display with detailed info
+    const result = await uploadForAnalysis(filteredResult, accessToken, (stage, progress, message) => {
       progressDisplay.update(stage, progress, message);
     });
     progressDisplay.succeed('Analysis complete!');
 
-    // Save to cache if requested
-    if (args.saveCache) {
-      await saveCache(result);
-    }
-
-    // Display results
+    // 11. Display results
     displayResults(result);
   } catch (error) {
     progressDisplay.fail('Analysis failed');
-    displayError(error instanceof Error ? error.message : 'Unknown error');
+
+    // If auth error, clear tokens and suggest re-login
+    if (error instanceof Error && error.message.includes('401')) {
+      await clearTokens();
+      console.log(pc.dim('\n  Session expired. Please run again to re-authenticate.'));
+    } else {
+      displayError(error instanceof Error ? error.message : 'Unknown error');
+    }
+
     process.exit(1);
+  }
+}
+
+/**
+ * Sleep helper
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Main entry point
+ */
+async function main(): Promise<void> {
+  const command = process.argv[2];
+
+  switch (command) {
+    case 'logout':
+      await handleLogout();
+      break;
+
+    case 'status':
+      await handleStatus();
+      break;
+
+    case 'help':
+    case '--help':
+    case '-h':
+      console.log('');
+      console.log(pc.bold(pc.cyan('Usage:')) + ' npx no-ai-slop [command]');
+      console.log('');
+      console.log(pc.bold('Commands:'));
+      console.log('  (default)    Analyze your Claude Code sessions');
+      console.log('  logout       Sign out from NoMoreAISlop');
+      console.log('  status       Check your login status');
+      console.log('  help         Show this help message');
+      console.log('');
+      break;
+
+    default:
+      await runAnalysis();
+      break;
   }
 }
 
