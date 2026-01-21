@@ -96,17 +96,20 @@ export class ProgressDisplay {
     // Get 3-line chip character with pixel dust animation
     const chipLines = getChipCharacter(expression, this.tick);
 
-    // Main status line with server message
-    const mainLine = `${config.icon} ${config.color(message)}`;
+    // Main status line with server message (icon only if present)
+    const iconPart = config.icon ? `${config.icon} ` : '';
+    const mainLine = `${iconPart}${config.color(message)}`;
 
     // Progress bar line with elapsed time
     const progressLine = `${progressBar} ${pc.dim(elapsed)}`;
 
-    // Build multiline output: chip character on left, status on right
+    // Build multiline output: status on first line (with spinner), chip below
+    // This prevents the spinner from colliding with Unicode box-drawing characters
     this.spinner.text = [
-      `${chipLines[0]}`,
-      `${chipLines[1]}   ${mainLine}`,
-      `${chipLines[2]}   ${progressLine}`,
+      `${mainLine}`,
+      `  ${chipLines[0]}`,
+      `  ${chipLines[1]}   ${progressLine}`,
+      `  ${chipLines[2]}`,
     ].join('\n');
   }
 
