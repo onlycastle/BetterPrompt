@@ -266,11 +266,11 @@ export { MultitaskingAnalysisOutputSchema, type MultitaskingAnalysisOutput };
  * {
  *   "refinedPrimaryType": "architect",
  *   "refinedDistribution": "architect:42;scientist:25;craftsman:18;collaborator:10;speedrunner:5",
- *   "refinedControlLevel": "ai-master",
+ *   "refinedControlLevel": "cartographer",
  *   "matrixName": "Systems Architect",
  *   "matrixEmoji": "🏛️",
  *   "adjustmentReasons": [
- *     "High metacognition score (78) elevated control level from developing to ai-master",
+ *     "High metacognition score (78) elevated control level from navigator to cartographer",
  *     "Low error loop count supports architect classification",
  *     "Strong context efficiency patterns reinforce systematic approach"
  *   ],
@@ -287,8 +287,11 @@ export const TypeSynthesisOutputSchema = z.object({
   // Refined distribution - "type:percent;..." format (sum to 100)
   refinedDistribution: z.string().max(200),
 
-  // Refined control level based on agent insights
-  refinedControlLevel: z.enum(['vibe-coder', 'developing', 'ai-master']),
+  // Refined control level based on agent insights (exploration metaphor)
+  refinedControlLevel: z.enum(['explorer', 'navigator', 'cartographer']),
+
+  // Raw control score (0-100) for level distribution calculation
+  controlScore: z.number().min(0).max(100).optional(),
 
   // Combined matrix name (e.g., "Systems Architect", "Yolo Coder")
   matrixName: z.string().max(50),

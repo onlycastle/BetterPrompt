@@ -142,7 +142,7 @@ export class ContentWriterStage {
 
     // Sanitize and merge with Stage 1 data
     return {
-      data: this.sanitizeResponse(result.data, analysisData),
+      data: this.sanitizeResponse(result.data, analysisData, agentOutputs),
       usage: result.usage,
     };
   }
@@ -158,7 +158,8 @@ export class ContentWriterStage {
    */
   private sanitizeResponse(
     input: VerboseLLMResponse,
-    analysisData: StructuredAnalysisData
+    analysisData: StructuredAnalysisData,
+    agentOutputs?: AgentOutputs
   ): any {
     // Deep clone to avoid mutation
     const sanitized = JSON.parse(JSON.stringify(input)) as any;
@@ -167,6 +168,12 @@ export class ContentWriterStage {
     sanitized.primaryType = analysisData.typeAnalysis.primaryType;
     sanitized.controlLevel = analysisData.typeAnalysis.controlLevel;
     sanitized.distribution = analysisData.typeAnalysis.distribution;
+
+    // Get controlScore from TypeSynthesis worker (Phase 2.5) if available,
+    // otherwise fall back to Stage 1 data or default to 50
+    sanitized.controlScore = agentOutputs?.typeSynthesis?.controlScore
+      ?? analysisData.typeAnalysis.controlScore
+      ?? 50;
 
     // Truncate strings that exceed limits (preserving bold markers)
     if (sanitized.personalitySummary && typeof sanitized.personalitySummary === 'string') {

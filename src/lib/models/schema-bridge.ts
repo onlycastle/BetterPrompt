@@ -80,15 +80,16 @@ const LEVEL_MAPPINGS: Record<string, DimensionLevel> = {
   // Developing levels
   developing: 'developing',
   elevated: 'developing',
-  'vibe-coder': 'developing',
+  explorer: 'developing',
   // Proficient levels
   proficient: 'proficient',
   moderate: 'proficient',
+  navigator: 'proficient',
   // Expert levels (includes burnout risk 'low' = good)
   expert: 'expert',
   resilient: 'expert',
   low: 'expert',
-  'ai-master': 'expert',
+  cartographer: 'expert',
 };
 
 /**
@@ -599,18 +600,18 @@ export interface ConversionInput {
 }
 
 /**
- * Control level mappings
+ * Control level mappings (exploration metaphor)
  */
 const CONTROL_LEVEL_MAPPINGS: Record<string, ControlLevel> = {
-  'ai-master': 'ai-master',
-  'vibe-coder': 'vibe-coder',
+  cartographer: 'cartographer',
+  explorer: 'explorer',
 };
 
 /**
  * Derive control level from AI control analysis level
  */
 function deriveControlLevel(level: string): ControlLevel {
-  return CONTROL_LEVEL_MAPPINGS[level] ?? 'developing';
+  return CONTROL_LEVEL_MAPPINGS[level] ?? 'navigator';
 }
 
 /**

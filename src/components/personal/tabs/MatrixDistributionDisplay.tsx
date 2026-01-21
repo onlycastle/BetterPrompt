@@ -35,15 +35,15 @@ const STYLE_TYPES: CodingStyleType[] = [
 ];
 
 const CONTROL_LEVELS: AIControlLevel[] = [
-  'ai-master',
-  'developing',
-  'vibe-coder',
+  'cartographer',
+  'navigator',
+  'explorer',
 ];
 
 const CONTROL_LEVEL_LABELS: Record<AIControlLevel, string> = {
-  'ai-master': 'Master',
-  'developing': 'Dev',
-  'vibe-coder': 'Vibe',
+  cartographer: 'Cartographer',
+  navigator: 'Navigator',
+  explorer: 'Explorer',
 };
 
 export function MatrixDistributionDisplay({

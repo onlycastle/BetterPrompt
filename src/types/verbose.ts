@@ -25,21 +25,21 @@ export type MatrixKey = `${CodingStyleType}_${AIControlLevel}`;
  * Each value is 0-100, representing percentage
  */
 export interface MatrixDistribution {
-  'architect_vibe-coder': number;
-  'architect_developing': number;
-  'architect_ai-master': number;
-  'scientist_vibe-coder': number;
-  'scientist_developing': number;
-  'scientist_ai-master': number;
-  'collaborator_vibe-coder': number;
-  'collaborator_developing': number;
-  'collaborator_ai-master': number;
-  'speedrunner_vibe-coder': number;
-  'speedrunner_developing': number;
-  'speedrunner_ai-master': number;
-  'craftsman_vibe-coder': number;
-  'craftsman_developing': number;
-  'craftsman_ai-master': number;
+  architect_explorer: number;
+  architect_navigator: number;
+  architect_cartographer: number;
+  scientist_explorer: number;
+  scientist_navigator: number;
+  scientist_cartographer: number;
+  collaborator_explorer: number;
+  collaborator_navigator: number;
+  collaborator_cartographer: number;
+  speedrunner_explorer: number;
+  speedrunner_navigator: number;
+  speedrunner_cartographer: number;
+  craftsman_explorer: number;
+  craftsman_navigator: number;
+  craftsman_cartographer: number;
 }
 
 // ============================================================================

@@ -44,7 +44,7 @@ export const MOCK_TEAM_MEMBERS: TeamMemberAnalysis[] = [
     role: 'Senior Engineer',
     department: 'Platform',
     primaryType: 'architect',
-    controlLevel: 'ai-master',
+    controlLevel: 'cartographer',
     overallScore: 82,
     dimensions: {
       aiCollaboration: 85,
@@ -65,7 +65,7 @@ export const MOCK_TEAM_MEMBERS: TeamMemberAnalysis[] = [
     role: 'Staff Engineer',
     department: 'Backend',
     primaryType: 'scientist',
-    controlLevel: 'ai-master',
+    controlLevel: 'cartographer',
     overallScore: 78,
     dimensions: {
       aiCollaboration: 72,
@@ -86,7 +86,7 @@ export const MOCK_TEAM_MEMBERS: TeamMemberAnalysis[] = [
     role: 'Frontend Lead',
     department: 'Frontend',
     primaryType: 'collaborator',
-    controlLevel: 'developing',
+    controlLevel: 'navigator',
     overallScore: 68,
     dimensions: {
       aiCollaboration: 82,
@@ -107,7 +107,7 @@ export const MOCK_TEAM_MEMBERS: TeamMemberAnalysis[] = [
     role: 'Data Engineer',
     department: 'Data',
     primaryType: 'craftsman',
-    controlLevel: 'ai-master',
+    controlLevel: 'cartographer',
     overallScore: 85,
     dimensions: {
       aiCollaboration: 80,
@@ -128,7 +128,7 @@ export const MOCK_TEAM_MEMBERS: TeamMemberAnalysis[] = [
     role: 'Junior Engineer',
     department: 'Frontend',
     primaryType: 'speedrunner',
-    controlLevel: 'vibe-coder',
+    controlLevel: 'explorer',
     overallScore: 52,
     dimensions: {
       aiCollaboration: 70,
@@ -149,7 +149,7 @@ export const MOCK_TEAM_MEMBERS: TeamMemberAnalysis[] = [
     role: 'Senior Engineer',
     department: 'Backend',
     primaryType: 'architect',
-    controlLevel: 'developing',
+    controlLevel: 'navigator',
     overallScore: 71,
     dimensions: {
       aiCollaboration: 75,
@@ -170,7 +170,7 @@ export const MOCK_TEAM_MEMBERS: TeamMemberAnalysis[] = [
     role: 'Tech Lead',
     department: 'Platform',
     primaryType: 'scientist',
-    controlLevel: 'ai-master',
+    controlLevel: 'cartographer',
     overallScore: 88,
     dimensions: {
       aiCollaboration: 90,
@@ -191,7 +191,7 @@ export const MOCK_TEAM_MEMBERS: TeamMemberAnalysis[] = [
     role: 'Engineer',
     department: 'Data',
     primaryType: 'collaborator',
-    controlLevel: 'developing',
+    controlLevel: 'navigator',
     overallScore: 65,
     dimensions: {
       aiCollaboration: 78,
@@ -227,9 +227,9 @@ function calculateTypeDistribution(members: TeamMemberAnalysis[]): Record<Coding
 // Calculate control level distribution
 function calculateControlDistribution(members: TeamMemberAnalysis[]): Record<AIControlLevel, number> {
   const dist: Record<AIControlLevel, number> = {
-    'vibe-coder': 0,
-    'developing': 0,
-    'ai-master': 0,
+    'explorer': 0,
+    'navigator': 0,
+    'cartographer': 0,
   };
 
   members.forEach(m => {

@@ -60,14 +60,14 @@ Refine the initial type classification (5 coding styles × 3 control levels = 15
 - **speedrunner**: Fast executors, short prompts, Bash/Write focused, quick cycles
 - **craftsman**: Quality artisans, refactoring focus, test/type/doc mentions, Edit tool heavy
 
-## THE 3 CONTROL LEVELS
-- **vibe-coder** (0-34): High AI dependency, accepts output without much modification
-- **developing** (35-64): Learning balance, building control habits
-- **ai-master** (65-100): Strategic control, directs AI effectively as a tool
+## THE 3 CONTROL LEVELS (Exploration Metaphor)
+- **explorer** (0-34): Open exploration, discovering solutions through experimentation
+- **navigator** (35-64): Balanced navigation, combining exploration with route planning
+- **cartographer** (65-100): Strategic mapping, charting territory before advancing
 
 ## SYNTHESIS RULES
-1. If antiPatternSpotter shows many error loops + low metacognition → likely vibe-coder
-2. If metacognition score > 70 → likely ai-master or developing
+1. If antiPatternSpotter shows many error loops + low metacognition → likely explorer
+2. If metacognition score > 70 → likely cartographer or navigator
 3. If patternDetective shows many repeated questions on same topic → scientist tendency
 4. If multitasking shows high focus → architect tendency; scattered → speedrunner
 5. If contextEfficiency is high → architect or craftsman (systematic approach)
@@ -278,8 +278,8 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
   async execute(context: WorkerContext): Promise<WorkerResult<TypeSynthesisOutput>> {
     this.logMessage('Synthesizing type classification from agent insights...');
 
-    // Get or compute initial classification
-    const { distribution, controlLevel } = this.getInitialClassification(context);
+    // Get or compute initial classification (now includes controlScore)
+    const { distribution, controlLevel, controlScore } = this.getInitialClassification(context);
 
     // Get agent outputs from context (cast to extended context type)
     const extendedContext = context as TypeSynthesisWorkerContext;
@@ -293,7 +293,7 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
       // When other agents haven't run or produced no data, we use initial classification
       this.logMessage('No agent outputs available, using initial classification');
       return this.createSuccessResult(
-        this.createOutputFromInitial(distribution, controlLevel),
+        this.createOutputFromInitial(distribution, controlLevel, controlScore),
         null
       );
     }
@@ -312,7 +312,13 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
     this.logMessage(`Control level: ${result.data.refinedControlLevel}`);
     this.logMessage(`Confidence boost: +${(result.data.confidenceBoost * 100).toFixed(0)}%`);
 
-    return this.createSuccessResult(result.data, result.usage);
+    // Ensure controlScore is included (LLM might not return it, use computed value)
+    const outputWithScore: TypeSynthesisOutput = {
+      ...result.data,
+      controlScore: result.data.controlScore ?? controlScore,
+    };
+
+    return this.createSuccessResult(outputWithScore, result.usage);
   }
 
   /**
@@ -321,14 +327,19 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
   private getInitialClassification(context: WorkerContext): {
     distribution: TypeDistribution;
     controlLevel: AIControlLevel;
+    controlScore: number;
   } {
     const extendedContext = context as TypeSynthesisWorkerContext;
+
+    // Estimate control score from metrics
+    const controlScore = this.estimateControlScore(context);
 
     // Use provided values if available
     if (extendedContext.initialDistribution && extendedContext.initialControlLevel) {
       return {
         distribution: extendedContext.initialDistribution,
         controlLevel: extendedContext.initialControlLevel,
+        controlScore,
       };
     }
 
@@ -337,20 +348,19 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
     const scores = calculateTypeScores(metrics);
     const distribution = scoresToDistribution(scores);
 
-    // Estimate control level from metrics (simplified)
-    const controlScore = this.estimateControlScore(context);
+    // Derive control level from score
     const controlLevel = this.controlScoreToLevel(controlScore);
 
-    return { distribution, controlLevel };
+    return { distribution, controlLevel, controlScore };
   }
 
   /**
    * Convert numeric control score to AIControlLevel
    */
   private controlScoreToLevel(score: number): AIControlLevel {
-    if (score >= 65) return 'ai-master';
-    if (score >= 35) return 'developing';
-    return 'vibe-coder';
+    if (score >= 65) return 'cartographer';
+    if (score >= 35) return 'navigator';
+    return 'explorer';
   }
 
   /**
@@ -394,7 +404,8 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
    */
   private createOutputFromInitial(
     distribution: TypeDistribution,
-    controlLevel: AIControlLevel
+    controlLevel: AIControlLevel,
+    controlScore: number
   ): TypeSynthesisOutput {
     const primaryType = getPrimaryType(distribution);
     const matrixName = MATRIX_NAMES[primaryType][controlLevel];
@@ -404,6 +415,7 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
       refinedPrimaryType: primaryType,
       refinedDistribution: `architect:${distribution.architect};scientist:${distribution.scientist};collaborator:${distribution.collaborator};speedrunner:${distribution.speedrunner};craftsman:${distribution.craftsman}`,
       refinedControlLevel: controlLevel,
+      controlScore,
       matrixName,
       matrixEmoji,
       adjustmentReasons: ['Using initial pattern-based classification (no agent insights available)'],

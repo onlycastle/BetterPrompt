@@ -11,8 +11,8 @@ export type CodingStyleType =
   | 'speedrunner'
   | 'craftsman';
 
-// AI Control levels
-export type AIControlLevel = 'vibe-coder' | 'developing' | 'ai-master';
+// AI Control levels (exploration metaphor)
+export type AIControlLevel = 'explorer' | 'navigator' | 'cartographer';
 
 // Dimension scores (0-100 scale)
 export interface DimensionScores {

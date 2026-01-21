@@ -25,7 +25,7 @@ export function TypeResultMinimal({
   primaryType,
   distribution,
   sessionsAnalyzed,
-  controlLevel = 'developing',
+  controlLevel = 'navigator',
   controlScore = 50,
   matrixDistribution,
 }: TypeResultMinimalProps) {

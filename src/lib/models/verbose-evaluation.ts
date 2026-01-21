@@ -833,6 +833,8 @@ export const VerboseEvaluationSchema = z.object({
   // Type result (same as before)
   primaryType: CodingStyleTypeSchema,
   controlLevel: AIControlLevelSchema,
+  controlScore: z.number().min(0).max(100).optional()
+    .describe('Raw control score (0-100) for level distribution calculation'),
   distribution: z.object({
     architect: z.number().min(0).max(100),
     scientist: z.number().min(0).max(100),
@@ -913,6 +915,8 @@ export const VerboseLLMResponseSchema = z.object({
   // Type classification
   primaryType: CodingStyleTypeSchema,
   controlLevel: AIControlLevelSchema,
+  controlScore: z.number().min(0).max(100).optional()
+    .describe('Raw control score (0-100) for level distribution calculation'),
   distribution: z.object({
     architect: z.number().min(0).max(100),
     scientist: z.number().min(0).max(100),

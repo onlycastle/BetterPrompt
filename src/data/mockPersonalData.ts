@@ -12,7 +12,7 @@ import type {
 /**
  * Generate realistic growth progression over 12 analyses (~6 weeks)
  * Shows evolution from speedrunner (52) -> architect (74)
- * Control level: vibe-coder -> developing
+ * Control level: explorer -> developing
  */
 function generateRealisticHistory(): HistoryEntry[] {
   const baseDate = new Date('2025-12-02'); // ~6 weeks ago
@@ -280,7 +280,7 @@ export const MOCK_PERSONAL_DATA: PersonalAnalytics = {
     score: firstEntry.overallScore,
     overallScore: firstEntry.overallScore,
     primaryType: 'speedrunner',
-    controlLevel: 'vibe-coder',
+    controlLevel: 'explorer',
     dimensions: firstEntry.dimensions!,
   },
   latestAnalysis: {
@@ -288,7 +288,7 @@ export const MOCK_PERSONAL_DATA: PersonalAnalytics = {
     score: latestEntry.overallScore,
     overallScore: latestEntry.overallScore,
     primaryType: 'architect',
-    controlLevel: 'developing',
+    controlLevel: 'navigator',
     dimensions: latestEntry.dimensions!,
   },
 

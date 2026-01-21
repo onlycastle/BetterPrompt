@@ -335,12 +335,12 @@ export const PATTERN_KEYWORDS = {
 
 /**
  * AI Control Level - measures how well you control AI vs depend on it
- * Based on: elvis ("Professional developers don't vibe, they control")
+ * Uses exploration metaphor: all levels are positive journeys
  */
 export const AIControlLevelSchema = z.enum([
-  'vibe-coder',  // High AI dependency
-  'developing',  // Learning balance
-  'ai-master',   // Strategic AI control
+  'explorer',      // Open exploration, discovering solutions
+  'navigator',     // Balancing exploration and route planning
+  'cartographer',  // Mapping territory before advancing
 ]);
 export type AIControlLevel = z.infer<typeof AIControlLevelSchema>;
 
@@ -356,33 +356,33 @@ export interface CodingStyleMatrix {
 
 /**
  * Matrix names for each Style × Control combination
- * Creates memorable personalities like "Systems Architect" or "Yolo Coder"
+ * Creates memorable personalities with exploration theme and style-specific character
  */
 export const MATRIX_NAMES: Record<CodingStyleType, Record<AIControlLevel, string>> = {
   architect: {
-    'vibe-coder': 'Dreamer',
-    developing: 'Planner',
-    'ai-master': 'Systems Architect',
+    explorer: 'Visionary',
+    navigator: 'Strategist',
+    cartographer: 'Systems Architect',
   },
   scientist: {
-    'vibe-coder': 'Curious',
-    developing: 'Investigator',
-    'ai-master': 'Research Master',
+    explorer: 'Questioner',
+    navigator: 'Analyst',
+    cartographer: 'Research Lead',
   },
   collaborator: {
-    'vibe-coder': 'Follower',
-    developing: 'Partner',
-    'ai-master': 'Conductor',
+    explorer: 'Conversationalist',
+    navigator: 'Team Player',
+    cartographer: 'Facilitator',
   },
   speedrunner: {
-    'vibe-coder': 'Yolo Coder',
-    developing: 'Fast Learner',
-    'ai-master': 'Efficient Master',
+    explorer: 'Experimenter',
+    navigator: 'Rapid Prototyper',
+    cartographer: 'Velocity Expert',
   },
   craftsman: {
-    'vibe-coder': 'Perfectionist',
-    developing: 'Quality Seeker',
-    'ai-master': 'Code Artisan',
+    explorer: 'Detail Lover',
+    navigator: 'Quality Crafter',
+    cartographer: 'Master Artisan',
   },
 };
 
@@ -402,101 +402,101 @@ export const MATRIX_METADATA: Record<
   >
 > = {
   architect: {
-    'vibe-coder': {
+    explorer: {
       emoji: '💭',
-      description: 'You plan well but tend to let AI take over implementation.',
-      keyStrength: 'Clear vision and planning',
+      description: 'You explore solutions through open-ended planning and vision.',
+      keyStrength: 'Clear vision and creative planning',
       growthPath: 'Try validating AI output against your plans more actively',
     },
-    developing: {
+    navigator: {
       emoji: '📐',
-      description: 'You balance planning with hands-on verification.',
-      keyStrength: 'Structured approach with growing control',
+      description: 'You balance strategic planning with hands-on verification.',
+      keyStrength: 'Structured approach with balanced control',
       growthPath: 'Keep building verification habits',
     },
-    'ai-master': {
+    cartographer: {
       emoji: '🏛️',
-      description: 'You orchestrate AI with precision, using plans as control mechanisms.',
+      description: 'You map out the territory completely before advancing.',
       keyStrength: 'Strategic AI orchestration with full control',
       growthPath: 'Share your planning techniques with others',
     },
   },
   scientist: {
-    'vibe-coder': {
+    explorer: {
       emoji: '🔎',
-      description: 'You ask questions but may accept answers too readily.',
+      description: 'You explore through curious questioning and open inquiry.',
       keyStrength: 'Curious mind and questioning attitude',
       growthPath: 'Try challenging AI responses more often',
     },
-    developing: {
+    navigator: {
       emoji: '🧪',
-      description: 'You verify AI output and are building critical thinking habits.',
+      description: 'You navigate through hypothesis and verification.',
       keyStrength: 'Growing verification skills',
       growthPath: 'Add systematic testing to your workflow',
     },
-    'ai-master': {
+    cartographer: {
       emoji: '🔬',
-      description: 'You treat every AI output as a hypothesis to be tested.',
+      description: 'You map every hypothesis systematically before proceeding.',
       keyStrength: 'Rigorous verification and error detection',
       growthPath: 'Help others develop critical thinking habits',
     },
   },
   collaborator: {
-    'vibe-coder': {
+    explorer: {
       emoji: '👥',
-      description: 'You converse with AI but let it lead the dialogue.',
+      description: 'You explore solutions through rich dialogue and conversation.',
       keyStrength: 'Open communication style',
       growthPath: 'Try directing conversations more actively',
     },
-    developing: {
+    navigator: {
       emoji: '🤝',
-      description: 'You engage in balanced dialogue with AI.',
+      description: 'You navigate through balanced, productive dialogue.',
       keyStrength: 'Effective back-and-forth refinement',
       growthPath: 'Focus on asking more probing questions',
     },
-    'ai-master': {
+    cartographer: {
       emoji: '🎭',
-      description: 'You conduct AI like an orchestra, directing every iteration.',
+      description: 'You facilitate and direct collaborative sessions masterfully.',
       keyStrength: 'Masterful iterative refinement',
       growthPath: 'Document your collaboration patterns for others',
     },
   },
   speedrunner: {
-    'vibe-coder': {
+    explorer: {
       emoji: '🎲',
-      description: 'You move fast but may skip important verifications.',
+      description: 'You explore through rapid experimentation and iteration.',
       keyStrength: 'High velocity and experimentation',
       growthPath: 'Add quick sanity checks to your workflow',
     },
-    developing: {
+    navigator: {
       emoji: '🏃',
-      description: 'You balance speed with growing verification habits.',
+      description: 'You navigate quickly while building verification habits.',
       keyStrength: 'Fast iteration with increasing quality awareness',
       growthPath: 'Build quick-check routines into your speed',
     },
-    'ai-master': {
+    cartographer: {
       emoji: '⚡',
-      description: 'You achieve maximum velocity through strategic AI delegation.',
-      keyStrength: 'Efficient mastery - fast AND accurate',
+      description: 'You achieve maximum velocity through strategic optimization.',
+      keyStrength: 'Efficient expertise - fast AND accurate',
       growthPath: 'Teach efficient verification techniques to others',
     },
   },
   craftsman: {
-    'vibe-coder': {
+    explorer: {
       emoji: '🎨',
-      description: 'You care about quality but rely heavily on AI to achieve it.',
+      description: 'You explore quality through attention to detail and aesthetics.',
       keyStrength: 'High standards and attention to detail',
       growthPath: 'Practice writing quality code without AI assistance',
     },
-    developing: {
+    navigator: {
       emoji: '🔧',
-      description: 'You actively refine AI output to meet your quality standards.',
+      description: 'You navigate toward quality through active refinement.',
       keyStrength: 'Active quality improvement process',
       growthPath: 'Keep developing your manual coding skills',
     },
-    'ai-master': {
+    cartographer: {
       emoji: '💎',
-      description: 'You use AI as a precision tool to achieve exceptional quality.',
+      description: 'You craft with precision, using AI as an expert tool.',
       keyStrength: 'Masterful quality control with AI assistance',
       growthPath: 'Set quality benchmarks for your team',
     },
@@ -529,19 +529,19 @@ export const CONTROL_LEVEL_METADATA: Record<
     scoreRange: string;
   }
 > = {
-  'vibe-coder': {
-    name: 'Vibe Coder',
-    description: 'High AI dependency - you tend to accept AI output without much modification',
+  explorer: {
+    name: 'Explorer',
+    description: 'Open exploration - you discover solutions through experimentation',
     scoreRange: '0-34',
   },
-  developing: {
-    name: 'Developing',
-    description: 'Learning balance - you are building control habits over AI',
+  navigator: {
+    name: 'Navigator',
+    description: 'Balanced navigation - you balance exploration with route planning',
     scoreRange: '35-64',
   },
-  'ai-master': {
-    name: 'AI Master',
-    description: 'Strategic control - you direct AI effectively as a tool',
+  cartographer: {
+    name: 'Cartographer',
+    description: 'Strategic mapping - you chart the territory before advancing',
     scoreRange: '65-100',
   },
 };
@@ -559,11 +559,11 @@ export type MatrixKey = `${CodingStyleType}_${AIControlLevel}`;
  * All 15 matrix keys
  */
 export const ALL_MATRIX_KEYS: MatrixKey[] = [
-  'architect_vibe-coder', 'architect_developing', 'architect_ai-master',
-  'scientist_vibe-coder', 'scientist_developing', 'scientist_ai-master',
-  'collaborator_vibe-coder', 'collaborator_developing', 'collaborator_ai-master',
-  'speedrunner_vibe-coder', 'speedrunner_developing', 'speedrunner_ai-master',
-  'craftsman_vibe-coder', 'craftsman_developing', 'craftsman_ai-master',
+  'architect_explorer', 'architect_navigator', 'architect_cartographer',
+  'scientist_explorer', 'scientist_navigator', 'scientist_cartographer',
+  'collaborator_explorer', 'collaborator_navigator', 'collaborator_cartographer',
+  'speedrunner_explorer', 'speedrunner_navigator', 'speedrunner_cartographer',
+  'craftsman_explorer', 'craftsman_navigator', 'craftsman_cartographer',
 ];
 
 /**
@@ -571,42 +571,42 @@ export const ALL_MATRIX_KEYS: MatrixKey[] = [
  * Each value is 0-100, and all 15 should sum to 100
  */
 export interface MatrixDistribution {
-  'architect_vibe-coder': number;
-  'architect_developing': number;
-  'architect_ai-master': number;
-  'scientist_vibe-coder': number;
-  'scientist_developing': number;
-  'scientist_ai-master': number;
-  'collaborator_vibe-coder': number;
-  'collaborator_developing': number;
-  'collaborator_ai-master': number;
-  'speedrunner_vibe-coder': number;
-  'speedrunner_developing': number;
-  'speedrunner_ai-master': number;
-  'craftsman_vibe-coder': number;
-  'craftsman_developing': number;
-  'craftsman_ai-master': number;
+  architect_explorer: number;
+  architect_navigator: number;
+  architect_cartographer: number;
+  scientist_explorer: number;
+  scientist_navigator: number;
+  scientist_cartographer: number;
+  collaborator_explorer: number;
+  collaborator_navigator: number;
+  collaborator_cartographer: number;
+  speedrunner_explorer: number;
+  speedrunner_navigator: number;
+  speedrunner_cartographer: number;
+  craftsman_explorer: number;
+  craftsman_navigator: number;
+  craftsman_cartographer: number;
 }
 
 /**
  * Zod schema for MatrixDistribution
  */
 export const MatrixDistributionSchema = z.object({
-  'architect_vibe-coder': z.number().min(0).max(100),
-  'architect_developing': z.number().min(0).max(100),
-  'architect_ai-master': z.number().min(0).max(100),
-  'scientist_vibe-coder': z.number().min(0).max(100),
-  'scientist_developing': z.number().min(0).max(100),
-  'scientist_ai-master': z.number().min(0).max(100),
-  'collaborator_vibe-coder': z.number().min(0).max(100),
-  'collaborator_developing': z.number().min(0).max(100),
-  'collaborator_ai-master': z.number().min(0).max(100),
-  'speedrunner_vibe-coder': z.number().min(0).max(100),
-  'speedrunner_developing': z.number().min(0).max(100),
-  'speedrunner_ai-master': z.number().min(0).max(100),
-  'craftsman_vibe-coder': z.number().min(0).max(100),
-  'craftsman_developing': z.number().min(0).max(100),
-  'craftsman_ai-master': z.number().min(0).max(100),
+  architect_explorer: z.number().min(0).max(100),
+  architect_navigator: z.number().min(0).max(100),
+  architect_cartographer: z.number().min(0).max(100),
+  scientist_explorer: z.number().min(0).max(100),
+  scientist_navigator: z.number().min(0).max(100),
+  scientist_cartographer: z.number().min(0).max(100),
+  collaborator_explorer: z.number().min(0).max(100),
+  collaborator_navigator: z.number().min(0).max(100),
+  collaborator_cartographer: z.number().min(0).max(100),
+  speedrunner_explorer: z.number().min(0).max(100),
+  speedrunner_navigator: z.number().min(0).max(100),
+  speedrunner_cartographer: z.number().min(0).max(100),
+  craftsman_explorer: z.number().min(0).max(100),
+  craftsman_navigator: z.number().min(0).max(100),
+  craftsman_cartographer: z.number().min(0).max(100),
 });
 
 /**
@@ -615,7 +615,7 @@ export const MatrixDistributionSchema = z.object({
  * - controlScore: 0-100 score for control
  *
  * Logic: Distributes each type's percentage across 3 levels based on controlScore.
- * Higher controlScore = more weight on ai-master, lower = more weight on vibe-coder.
+ * Higher controlScore = more weight on cartographer, lower = more weight on explorer.
  *
  * @param typeDistribution - 5-value distribution across types
  * @param _controlLevel - User's primary control level (unused, kept for API compatibility)
@@ -630,41 +630,41 @@ export function deriveMatrixDistribution(
   const score = Math.max(0, Math.min(100, controlScore));
 
   // Calculate weights for each control level based on score
-  // Score 0-34: mostly vibe-coder
-  // Score 35-64: mostly developing
-  // Score 65-100: mostly ai-master
-  let vibeWeight: number;
-  let developingWeight: number;
-  let masterWeight: number;
+  // Score 0-34: mostly explorer
+  // Score 35-64: mostly navigator
+  // Score 65-100: mostly cartographer
+  let explorerWeight: number;
+  let navigatorWeight: number;
+  let cartographerWeight: number;
 
   if (score <= 34) {
-    // Vibe-coder dominant: 60-80% vibe, rest split
-    vibeWeight = 0.6 + (34 - score) / 85; // 0.6 to 1.0
-    developingWeight = (1 - vibeWeight) * 0.7;
-    masterWeight = (1 - vibeWeight) * 0.3;
+    // Explorer dominant: 60-80% explorer, rest split
+    explorerWeight = 0.6 + (34 - score) / 85; // 0.6 to 1.0
+    navigatorWeight = (1 - explorerWeight) * 0.7;
+    cartographerWeight = (1 - explorerWeight) * 0.3;
   } else if (score <= 64) {
-    // Developing dominant: peaked in middle
+    // Navigator dominant: peaked in middle
     const distFromCenter = Math.abs(score - 50) / 15;
-    developingWeight = 0.5 + (1 - distFromCenter) * 0.3; // 0.5 to 0.8
+    navigatorWeight = 0.5 + (1 - distFromCenter) * 0.3; // 0.5 to 0.8
     if (score < 50) {
-      vibeWeight = (1 - developingWeight) * 0.6;
-      masterWeight = (1 - developingWeight) * 0.4;
+      explorerWeight = (1 - navigatorWeight) * 0.6;
+      cartographerWeight = (1 - navigatorWeight) * 0.4;
     } else {
-      vibeWeight = (1 - developingWeight) * 0.4;
-      masterWeight = (1 - developingWeight) * 0.6;
+      explorerWeight = (1 - navigatorWeight) * 0.4;
+      cartographerWeight = (1 - navigatorWeight) * 0.6;
     }
   } else {
-    // AI-master dominant: 60-80% master, rest split
-    masterWeight = 0.6 + (score - 65) / 87.5; // 0.6 to 1.0
-    developingWeight = (1 - masterWeight) * 0.7;
-    vibeWeight = (1 - masterWeight) * 0.3;
+    // Cartographer dominant: 60-80% cartographer, rest split
+    cartographerWeight = 0.6 + (score - 65) / 87.5; // 0.6 to 1.0
+    navigatorWeight = (1 - cartographerWeight) * 0.7;
+    explorerWeight = (1 - cartographerWeight) * 0.3;
   }
 
   // Normalize weights to sum to 1
-  const totalWeight = vibeWeight + developingWeight + masterWeight;
-  vibeWeight /= totalWeight;
-  developingWeight /= totalWeight;
-  masterWeight /= totalWeight;
+  const totalWeight = explorerWeight + navigatorWeight + cartographerWeight;
+  explorerWeight /= totalWeight;
+  navigatorWeight /= totalWeight;
+  cartographerWeight /= totalWeight;
 
   // Apply weights to each type's distribution
   // Helper to calculate rounded percentage
@@ -672,21 +672,21 @@ export function deriveMatrixDistribution(
     Math.round(typePct * weight * 10) / 10;
 
   return {
-    'architect_vibe-coder': calcPct(typeDistribution.architect || 0, vibeWeight),
-    'architect_developing': calcPct(typeDistribution.architect || 0, developingWeight),
-    'architect_ai-master': calcPct(typeDistribution.architect || 0, masterWeight),
-    'scientist_vibe-coder': calcPct(typeDistribution.scientist || 0, vibeWeight),
-    'scientist_developing': calcPct(typeDistribution.scientist || 0, developingWeight),
-    'scientist_ai-master': calcPct(typeDistribution.scientist || 0, masterWeight),
-    'collaborator_vibe-coder': calcPct(typeDistribution.collaborator || 0, vibeWeight),
-    'collaborator_developing': calcPct(typeDistribution.collaborator || 0, developingWeight),
-    'collaborator_ai-master': calcPct(typeDistribution.collaborator || 0, masterWeight),
-    'speedrunner_vibe-coder': calcPct(typeDistribution.speedrunner || 0, vibeWeight),
-    'speedrunner_developing': calcPct(typeDistribution.speedrunner || 0, developingWeight),
-    'speedrunner_ai-master': calcPct(typeDistribution.speedrunner || 0, masterWeight),
-    'craftsman_vibe-coder': calcPct(typeDistribution.craftsman || 0, vibeWeight),
-    'craftsman_developing': calcPct(typeDistribution.craftsman || 0, developingWeight),
-    'craftsman_ai-master': calcPct(typeDistribution.craftsman || 0, masterWeight),
+    architect_explorer: calcPct(typeDistribution.architect || 0, explorerWeight),
+    architect_navigator: calcPct(typeDistribution.architect || 0, navigatorWeight),
+    architect_cartographer: calcPct(typeDistribution.architect || 0, cartographerWeight),
+    scientist_explorer: calcPct(typeDistribution.scientist || 0, explorerWeight),
+    scientist_navigator: calcPct(typeDistribution.scientist || 0, navigatorWeight),
+    scientist_cartographer: calcPct(typeDistribution.scientist || 0, cartographerWeight),
+    collaborator_explorer: calcPct(typeDistribution.collaborator || 0, explorerWeight),
+    collaborator_navigator: calcPct(typeDistribution.collaborator || 0, navigatorWeight),
+    collaborator_cartographer: calcPct(typeDistribution.collaborator || 0, cartographerWeight),
+    speedrunner_explorer: calcPct(typeDistribution.speedrunner || 0, explorerWeight),
+    speedrunner_navigator: calcPct(typeDistribution.speedrunner || 0, navigatorWeight),
+    speedrunner_cartographer: calcPct(typeDistribution.speedrunner || 0, cartographerWeight),
+    craftsman_explorer: calcPct(typeDistribution.craftsman || 0, explorerWeight),
+    craftsman_navigator: calcPct(typeDistribution.craftsman || 0, navigatorWeight),
+    craftsman_cartographer: calcPct(typeDistribution.craftsman || 0, cartographerWeight),
   };
 }
 

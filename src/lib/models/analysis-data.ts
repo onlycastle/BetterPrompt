@@ -477,8 +477,11 @@ export const StructuredAnalysisDataSchema = z.object({
     /** Primary coding style type */
     primaryType: CodingStyleTypeSchema,
 
-    /** AI control level (vibe-coder | developing | ai-master) */
+    /** AI control level (explorer | navigator | cartographer) */
     controlLevel: AIControlLevelSchema,
+
+    /** Raw control score (0-100) for level distribution calculation */
+    controlScore: z.number().min(0).max(100).optional(),
 
     /** Percentage distribution across all 5 types */
     distribution: TypeDistributionSchema,
@@ -552,7 +555,7 @@ export function createDefaultStructuredAnalysisData(): StructuredAnalysisData {
   return {
     typeAnalysis: {
       primaryType: 'collaborator',
-      controlLevel: 'developing',
+      controlLevel: 'navigator',
       distribution: {
         architect: 20,
         scientist: 20,

@@ -42,7 +42,7 @@ interface TypeResultSectionProps {
 export function TypeResultSection({
   typeResult,
   typeMetadata,
-  controlLevel = 'developing',
+  controlLevel = 'navigator',
   controlScore = 50,
   matrixDistribution,
 }: TypeResultSectionProps) {

@@ -22,7 +22,7 @@ export const CodingStyleTypeSchema = z.enum([
   'craftsman',
 ]);
 
-export const ControlLevelSchema = z.enum(['vibe-coder', 'developing', 'ai-master']);
+export const ControlLevelSchema = z.enum(['explorer', 'navigator', 'cartographer']);
 
 export const DimensionLevelSchema = z.enum(['novice', 'developing', 'proficient', 'expert']);
 
@@ -350,28 +350,28 @@ export const STRENGTH_THRESHOLD = 70;
 
 export const MATRIX_NAMES: Record<CodingStyleType, Record<ControlLevel, { name: string; emoji: string }>> = {
   architect: {
-    'vibe-coder': { name: 'Dreamer', emoji: '💭' },
-    developing: { name: 'Planner', emoji: '📐' },
-    'ai-master': { name: 'Systems Architect', emoji: '🏛️' },
+    explorer: { name: 'Visionary', emoji: '💭' },
+    navigator: { name: 'Strategist', emoji: '📐' },
+    cartographer: { name: 'Systems Architect', emoji: '🏛️' },
   },
   scientist: {
-    'vibe-coder': { name: 'Skeptic', emoji: '🤨' },
-    developing: { name: 'Researcher', emoji: '🔬' },
-    'ai-master': { name: 'Chief Scientist', emoji: '🧪' },
+    explorer: { name: 'Questioner', emoji: '🔎' },
+    navigator: { name: 'Analyst', emoji: '🧪' },
+    cartographer: { name: 'Research Lead', emoji: '🔬' },
   },
   collaborator: {
-    'vibe-coder': { name: 'Chatter', emoji: '💬' },
-    developing: { name: 'Partner', emoji: '🤝' },
-    'ai-master': { name: 'Synergist', emoji: '🌟' },
+    explorer: { name: 'Conversationalist', emoji: '👥' },
+    navigator: { name: 'Team Player', emoji: '🤝' },
+    cartographer: { name: 'Facilitator', emoji: '🎭' },
   },
   speedrunner: {
-    'vibe-coder': { name: 'Yolo Coder', emoji: '🎲' },
-    developing: { name: 'Sprinter', emoji: '🏃' },
-    'ai-master': { name: 'Speed Demon', emoji: '⚡' },
+    explorer: { name: 'Experimenter', emoji: '🎲' },
+    navigator: { name: 'Rapid Prototyper', emoji: '🏃' },
+    cartographer: { name: 'Velocity Expert', emoji: '⚡' },
   },
   craftsman: {
-    'vibe-coder': { name: 'Perfectionist', emoji: '🎯' },
-    developing: { name: 'Artisan', emoji: '🔧' },
-    'ai-master': { name: 'Code Artisan', emoji: '💎' },
+    explorer: { name: 'Detail Lover', emoji: '🎨' },
+    navigator: { name: 'Quality Crafter', emoji: '🔧' },
+    cartographer: { name: 'Master Artisan', emoji: '💎' },
   },
 };
