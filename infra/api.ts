@@ -15,7 +15,7 @@ export const uploadBucket = new sst.aws.Bucket("UploadBucket", {
       lifecycleRules: [
         {
           enabled: true,
-          expiration: { days: 1 },
+          expirations: [{ days: 1 }],
           id: "auto-cleanup",
         },
       ],
