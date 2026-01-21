@@ -165,7 +165,7 @@ async function performDeviceFlowAuth(): Promise<string> {
     const deviceFlow = await startDeviceFlow();
     spinner.stop();
 
-    displayDeviceCode(deviceFlow.userCode, deviceFlow.verificationUri);
+    displayDeviceCode(deviceFlow.userCode, deviceFlow.verificationUriComplete || deviceFlow.verificationUri);
 
     const pollSpinner = ora('Waiting for authorization...').start();
     let pollCount = 0;
