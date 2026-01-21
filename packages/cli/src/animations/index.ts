@@ -10,6 +10,7 @@ export {
   getChippyFull,
   getChippyWithIndicator,
   getChippyLarge,
+  getChipCharacter,
   THINKING_FRAMES,
   CELEBRATION_FRAMES,
   getAnimationFrame,

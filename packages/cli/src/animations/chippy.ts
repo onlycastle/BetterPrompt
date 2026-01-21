@@ -20,6 +20,83 @@ const CHIPPY_FACES: Record<ChippyExpression, { leftEye: string; rightEye: string
 };
 
 /**
+ * Chip character frames (3 lines each)
+ * Represents a microchip with pins extending outward
+ */
+const CHIP_FRAMES: Record<ChippyExpression, string[]> = {
+  neutral: [
+    '┬─┬─┬',
+    '├○ ○├',
+    '┴───┴',
+  ],
+  blink: [
+    '┬─┬─┬',
+    '├─ ─├',
+    '┴───┴',
+  ],
+  happy: [
+    '┬─┬─┬',
+    '├◉ ◉├',
+    '┴◡◡◡┴',
+  ],
+  thinking: [
+    '┬─┬─┬',
+    '├◉ ◉├',
+    '┴~~~┴',
+  ],
+  excited: [
+    '┬─┬─┬',
+    '├★ ★├',
+    '┴◡◡◡┴',
+  ],
+  wink: [
+    '┬─┬─┬',
+    '├◉ ─├',
+    '┴◡◡◡┴',
+  ],
+};
+
+/**
+ * Pixel dust patterns for animation
+ */
+const DUST_PATTERNS = ['▪', '▫', '·', '✧', ' '];
+
+/**
+ * Generate animated pixel dust around the character
+ * Returns 3 strings (one for each line) with varying dust positions
+ */
+function generateDust(tick: number): string[] {
+  // Create a deterministic but varied pattern based on tick
+  const dustLine = (offset: number): string => {
+    const idx1 = (tick + offset) % DUST_PATTERNS.length;
+    const idx2 = (tick + offset + 2) % DUST_PATTERNS.length;
+    // Spacing varies to create movement illusion
+    const spacing = (tick + offset) % 3 === 0 ? '  ' : ' ';
+    return `${spacing}${DUST_PATTERNS[idx1]}${spacing}${DUST_PATTERNS[idx2]}`;
+  };
+
+  return [
+    dustLine(0),
+    dustLine(1),
+    dustLine(2),
+  ];
+}
+
+/**
+ * Get the chip character with animated pixel dust
+ * Returns 3-line array for multiline display
+ */
+export function getChipCharacter(expression: ChippyExpression, tick: number): string[] {
+  const frame = CHIP_FRAMES[expression];
+  const dust = generateDust(tick);
+  return [
+    frame[0] + dust[0],
+    frame[1] + dust[1],
+    frame[2] + dust[2],
+  ];
+}
+
+/**
  * Get a single-line Chippy face for inline display
  */
 export function getChippyInline(expression: ChippyExpression = 'neutral'): string {

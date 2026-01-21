@@ -12,9 +12,9 @@ import { getChippyLarge } from './chippy.js';
 
 /**
  * Custom gradient for NoMoreAISlop branding
- * Blue to purple to pink gradient
+ * Solid cyan matching brand primary color
  */
-const brandGradient = gradient(['#00d4ff', '#7c3aed', '#ec4899']);
+const brandGradient = gradient(['#00BCD4', '#00BCD4']);
 
 /**
  * Generate the welcome banner with ASCII art title
