@@ -1,6 +1,6 @@
 {
   "name": "no-ai-slop",
-  "version": "0.6.5",
+  "version": "0.7.0",
   "description": "Analyze your AI collaboration style with Claude Code",
   "type": "module",
   "bin": {
@@ -40,12 +40,13 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "picocolors": "^1.1.1",
+    "boxen": "^8.0.1",
+    "keytar": "^7.9.0",
     "ora": "^8.1.1",
-    "boxen": "^8.0.1"
+    "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
   }
 }
