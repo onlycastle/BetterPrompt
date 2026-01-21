@@ -160,6 +160,10 @@ export interface SessionMetrics {
   positiveFeedbackCount: number;
   negativeFeedbackCount: number;
 
+  // Planning patterns (Architect-specific signals)
+  planningKeywordCount: number; // first, then, step, plan, design, etc.
+  stepPatternCount: number; // numbered lists, "first...then" structures
+
   // Time patterns
   avgCycleTimeSeconds: number;
   sessionDurationSeconds: number;
