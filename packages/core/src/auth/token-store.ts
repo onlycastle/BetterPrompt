@@ -9,16 +9,27 @@
  * environments that don't support native modules (e.g., Vercel).
  */
 
+/**
+ * Keytar module interface
+ * Defines the subset of keytar API used by this module.
+ * This avoids compile-time dependency on keytar types.
+ */
+interface KeytarModule {
+  getPassword(service: string, account: string): Promise<string | null>;
+  setPassword(service: string, account: string, password: string): Promise<void>;
+  deletePassword(service: string, account: string): Promise<boolean>;
+}
+
 const SERVICE_NAME = 'no-ai-slop';
 
 // Lazy-loaded keytar instance
-let keytarModule: typeof import('keytar') | null = null;
+let keytarModule: KeytarModule | null = null;
 
 /**
  * Get keytar module (lazy loaded)
  * Throws clear error if keytar is not available
  */
-async function getKeytar(): Promise<typeof import('keytar')> {
+async function getKeytar(): Promise<KeytarModule> {
   if (keytarModule) {
     return keytarModule;
   }
