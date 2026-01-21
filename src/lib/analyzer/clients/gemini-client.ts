@@ -12,6 +12,35 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { ZodSchema } from 'zod';
 
 /**
+ * Recursively remove additionalProperties from JSON schema
+ *
+ * The @google/genai SDK rejects schemas with additionalProperties, even though
+ * the Gemini API itself supports it since November 2025. zodToJsonSchema adds
+ * additionalProperties: false by default, causing INVALID_ARGUMENT errors.
+ *
+ * @see https://github.com/googleapis/python-genai/issues/1815
+ */
+function removeAdditionalProperties(obj: unknown): unknown {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(removeAdditionalProperties);
+  }
+
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    // Skip additionalProperties field
+    if (key === 'additionalProperties') {
+      continue;
+    }
+    result[key] = removeAdditionalProperties(value);
+  }
+  return result;
+}
+
+/**
  * Configuration for Gemini client
  */
 export interface GeminiClientConfig {
@@ -91,8 +120,10 @@ export class GeminiClient {
       $refStrategy: 'none',
     });
 
-    // Remove $schema field (not needed for Gemini)
-    const { $schema: _$schema, ...responseSchema } = jsonSchema as Record<string, unknown>;
+    // Remove $schema and additionalProperties fields
+    // Gemini SDK rejects additionalProperties even though the API supports it
+    const { $schema: _$schema, ...schemaWithoutMeta } = jsonSchema as Record<string, unknown>;
+    const responseSchema = removeAdditionalProperties(schemaWithoutMeta);
 
     let lastError: Error | null = null;
 
