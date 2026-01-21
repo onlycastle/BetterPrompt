@@ -1,0 +1,337 @@
+/**
+ * Remote Report Page - Notebook Sketch Style
+ * Full-page layout for viewing analysis results via shareable link
+ */
+
+/* ============================================
+   Page Layout
+   ============================================ */
+.page {
+  min-height: 100vh;
+  background: var(--bg-paper);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-lg);
+
+  /* Graph paper background effect */
+  background-image:
+    linear-gradient(var(--bg-grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-color) 1px, transparent 1px);
+  background-size: var(--bg-grid-size) var(--bg-grid-size);
+}
+
+.container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ============================================
+   Loading State
+   ============================================ */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: var(--space-lg);
+}
+
+.spinner {
+  width: 64px;
+  height: 64px;
+  border: 4px solid var(--border-default);
+  border-top-color: var(--sketch-cyan);
+  border-radius: var(--radius-full);
+  animation: spin 1s linear infinite;
+}
+
+.smallSpinner {
+  width: 32px;
+  height: 32px;
+  border-width: 2px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loadingText {
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ============================================
+   Error States
+   ============================================ */
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: var(--space-xl);
+}
+
+.errorCard {
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2xl);
+  box-shadow: 4px 4px 0 var(--ink-muted);
+  text-align: center;
+  max-width: 450px;
+  width: 100%;
+}
+
+.errorIcon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--space-lg);
+  background: var(--sketch-red-light);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-2xl);
+}
+
+.errorTitle {
+  font-family: var(--font-primary);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  margin: 0 0 var(--space-sm) 0;
+}
+
+.errorMessage {
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-xl) 0;
+  line-height: var(--leading-relaxed);
+}
+
+.errorActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.primaryButton {
+  width: 100%;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--sketch-cyan);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--bg-paper);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 3px 3px 0 var(--ink-primary);
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.primaryButton:hover {
+  background: var(--accent-primary-hover);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink-primary);
+}
+
+.primaryButton:active {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 var(--ink-primary);
+}
+
+.secondaryButton {
+  width: 100%;
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--surface-1);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.secondaryButton:hover {
+  border-color: var(--ink-muted);
+  color: var(--ink-primary);
+}
+
+/* ============================================
+   Report Container
+   ============================================ */
+.reportWrapper {
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: 4px 4px 0 var(--ink-muted);
+  overflow: hidden;
+}
+
+/* ============================================
+   Unlock Section Wrapper
+   ============================================ */
+.unlockWrapper {
+  margin-top: var(--space-xl);
+}
+
+/* ============================================
+   Header / Branding
+   ============================================ */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) 0;
+  margin-bottom: var(--space-lg);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  text-decoration: none;
+  color: var(--ink-primary);
+}
+
+.logoIcon {
+  font-size: var(--text-xl);
+}
+
+.logoText {
+  font-family: var(--font-primary);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.headerButton {
+  padding: var(--space-xs) var(--space-md);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 2px 2px 0 var(--ink-muted);
+  text-decoration: none;
+}
+
+.headerButton:hover {
+  background: var(--sketch-cyan-soft);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink-primary);
+}
+
+/* ============================================
+   Preview Banner
+   ============================================ */
+.previewBanner {
+  background: var(--sketch-yellow-light);
+  border: 2px solid var(--sketch-yellow);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.previewIcon {
+  font-size: var(--text-xl);
+  flex-shrink: 0;
+}
+
+.previewContent {
+  flex: 1;
+}
+
+.previewTitle {
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.previewText {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ============================================
+   Responsive Adjustments
+   ============================================ */
+@media (max-width: 640px) {
+  .page {
+    padding: var(--space-md);
+  }
+
+  .errorCard {
+    padding: var(--space-xl);
+  }
+
+  .header {
+    flex-direction: column;
+    gap: var(--space-md);
+    text-align: center;
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .previewBanner {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 400px) {
+  .page {
+    padding: var(--space-sm);
+  }
+
+  .reportWrapper {
+    border-radius: var(--radius-md);
+  }
+
+  .errorCard {
+    padding: var(--space-lg);
+  }
+
+  .errorTitle {
+    font-size: var(--text-lg);
+  }
+
+  .errorMessage {
+    font-size: var(--text-sm);
+  }
+}

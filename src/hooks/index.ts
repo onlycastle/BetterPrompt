@@ -10,3 +10,5 @@ export * from './useEnterprise';
 export * from './useComparison';
 export * from './useScrollNavigation';
 export * from './useAnalysisReport';
+export * from './useRemoteResult';
+export * from './useLatestAnalysis';
