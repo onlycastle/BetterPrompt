@@ -51,12 +51,13 @@ export function TypeResultSection({ typeResult, typeMetadata }: TypeResultSectio
   // Check if this is legacy data (analyzed before TypeSynthesis was introduced)
   const isLegacyData = new Date(analyzedAt) < new Date(TYPE_SYNTHESIS_RELEASE_DATE);
 
-  // For NEW data (post-release), typeSynthesis is REQUIRED
-  // This ensures consistent 15-type matrix classification
+  // For NEW data (post-release), typeSynthesis SHOULD be present
+  // If missing, log a warning and fall back to static mapping
   if (!isLegacyData && !typeSynthesis) {
-    throw new Error(
-      'TypeSynthesis data is missing for new analysis result. ' +
-      'This indicates a backend error - analysis should have failed if TypeSynthesis was unavailable.'
+    console.warn(
+      '[TypeResultSection] TypeSynthesis data is missing for new analysis result (analyzedAt: %s). ' +
+      'Falling back to static mapping. This may indicate a backend issue.',
+      analyzedAt
     );
   }
 

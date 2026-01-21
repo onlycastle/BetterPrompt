@@ -173,10 +173,18 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
           const summary = (data as { overallStyleSummary?: string }).overallStyleSummary;
           const isExpanded = expandedAgent === config.id;
 
-          // Determine if this is a teaser (premium agent + not paid)
-          const isTeaser = config.tier === 'premium' && !isPaid;
-          // For teasers, show "+2 more" indicator (since we show 1 of 3 insights)
-          const hiddenInsightsCount = isTeaser ? 2 : 0;
+          // Premium agents normally have 3 insights, teasers show 1
+          const FULL_INSIGHTS_COUNT = 3;
+
+          // Determine if this is a teaser based on:
+          // 1. Premium tier agent
+          // 2. User hasn't paid
+          // 3. We don't have full data (if we have 3 insights, we have full data regardless of isPaid flag)
+          const hasFullData = insights.length >= FULL_INSIGHTS_COUNT;
+          const isTeaser = config.tier === 'premium' && !isPaid && !hasFullData;
+
+          // Calculate hidden insights based on actual data difference
+          const hiddenInsightsCount = isTeaser ? Math.max(0, FULL_INSIGHTS_COUNT - insights.length) : 0;
 
           return (
             <div
