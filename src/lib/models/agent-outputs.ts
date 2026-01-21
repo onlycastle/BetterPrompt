@@ -249,6 +249,69 @@ import { MultitaskingAnalysisOutputSchema, type MultitaskingAnalysisOutput } fro
 export { MultitaskingAnalysisOutputSchema, type MultitaskingAnalysisOutput };
 
 // ============================================================================
+// Type Synthesis Output (NEW) - Agent-Informed Classification
+// ============================================================================
+
+/**
+ * Type Synthesis Output Schema
+ *
+ * Refines the initial pattern-based type classification using insights
+ * from all other agents (Pattern Detective, Anti-Pattern Spotter, etc.)
+ *
+ * This creates a more accurate 15-combination matrix (5 styles × 3 control levels)
+ * by incorporating semantic information from LLM analysis.
+ *
+ * @example
+ * ```json
+ * {
+ *   "refinedPrimaryType": "architect",
+ *   "refinedDistribution": "architect:42;scientist:25;craftsman:18;collaborator:10;speedrunner:5",
+ *   "refinedControlLevel": "ai-master",
+ *   "matrixName": "Systems Architect",
+ *   "matrixEmoji": "🏛️",
+ *   "adjustmentReasons": [
+ *     "High metacognition score (78) elevated control level from developing to ai-master",
+ *     "Low error loop count supports architect classification",
+ *     "Strong context efficiency patterns reinforce systematic approach"
+ *   ],
+ *   "confidenceScore": 0.85,
+ *   "confidenceBoost": 0.15,
+ *   "synthesisEvidence": "metacognition:78:self-aware patterns;antiPattern:low_error_loops;context:high_efficiency"
+ * }
+ * ```
+ */
+export const TypeSynthesisOutputSchema = z.object({
+  // Refined primary type after agent synthesis
+  refinedPrimaryType: z.enum(['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman']),
+
+  // Refined distribution - "type:percent;..." format (sum to 100)
+  refinedDistribution: z.string().max(200),
+
+  // Refined control level based on agent insights
+  refinedControlLevel: z.enum(['vibe-coder', 'developing', 'ai-master']),
+
+  // Combined matrix name (e.g., "Systems Architect", "Yolo Coder")
+  matrixName: z.string().max(50),
+
+  // Combined matrix emoji
+  matrixEmoji: z.string().max(10),
+
+  // Reasons for adjustments from initial classification
+  adjustmentReasons: z.array(z.string().max(200)).max(5),
+
+  // Final confidence score (0-1)
+  confidenceScore: z.number().min(0).max(1),
+
+  // How much confidence increased from agent synthesis (0-1)
+  confidenceBoost: z.number().min(0).max(1),
+
+  // Evidence from agent outputs - "agent:key_signal:detail;..."
+  synthesisEvidence: z.string().max(1000),
+});
+
+export type TypeSynthesisOutput = z.infer<typeof TypeSynthesisOutputSchema>;
+
+// ============================================================================
 // Combined Agent Outputs
 // ============================================================================
 
@@ -280,6 +343,9 @@ export const AgentOutputsSchema = z.object({
 
   // NEW: Multitasking Analysis
   multitasking: MultitaskingAnalysisOutputSchema.optional(),
+
+  // NEW: Type Synthesis (Agent-Informed Classification)
+  typeSynthesis: TypeSynthesisOutputSchema.optional(),
 });
 
 export type AgentOutputs = z.infer<typeof AgentOutputsSchema>;
@@ -306,7 +372,8 @@ export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
     outputs.contextEfficiency ||
     outputs.metacognition ||
     outputs.temporalAnalysis ||
-    outputs.multitasking
+    outputs.multitasking ||
+    outputs.typeSynthesis
   );
 }
 
