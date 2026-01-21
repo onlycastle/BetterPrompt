@@ -129,10 +129,10 @@ describe('Report Types', () => {
 
   describe('AIControlLevel', () => {
     it('should accept valid levels', () => {
-      const levels: AIControlLevel[] = ['vibe-coder', 'developing', 'ai-master'];
+      const levels: AIControlLevel[] = ['explorer', 'navigator', 'cartographer'];
 
       levels.forEach((level) => {
-        expect(['vibe-coder', 'developing', 'ai-master']).toContain(level);
+        expect(['explorer', 'navigator', 'cartographer']).toContain(level);
       });
     });
   });
@@ -346,7 +346,7 @@ describe('Report Types', () => {
           },
           aiControl: {
             score: 70,
-            level: 'developing',
+            level: 'navigator',
             breakdown: {
               verificationRate: 0.7,
               constraintSpecification: 0.65,

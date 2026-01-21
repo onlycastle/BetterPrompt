@@ -33,7 +33,7 @@ const mockVerboseEvaluation: VerboseEvaluation = {
   analyzedAt: '2024-01-15T10:30:00Z',
   sessionsAnalyzed: 5,
   primaryType: 'architect',
-  controlLevel: 'ai-master',
+  controlLevel: 'cartographer',
   distribution: {
     architect: 45,
     scientist: 25,
@@ -194,7 +194,7 @@ describe('UnifiedReportSchema', () => {
     it('should validate a valid profile', () => {
       const profile = {
         primaryType: 'architect',
-        controlLevel: 'ai-master',
+        controlLevel: 'cartographer',
         matrixName: 'Systems Architect',
         matrixEmoji: '🏛️',
         distribution: {
@@ -216,7 +216,7 @@ describe('UnifiedReportSchema', () => {
     it('should reject invalid coding style type', () => {
       const profile = {
         primaryType: 'invalid',
-        controlLevel: 'ai-master',
+        controlLevel: 'cartographer',
         matrixName: 'Test',
         matrixEmoji: '🏛️',
         distribution: { architect: 100, scientist: 0, collaborator: 0, speedrunner: 0, craftsman: 0 },
@@ -295,7 +295,7 @@ describe('Schema Bridge', () => {
       const profile = verboseToProfile(mockVerboseEvaluation);
 
       expect(profile.primaryType).toBe('architect');
-      expect(profile.controlLevel).toBe('ai-master');
+      expect(profile.controlLevel).toBe('cartographer');
       expect(profile.matrixName).toBe('Systems Architect');
       expect(profile.matrixEmoji).toBe('🏛️');
       expect(profile.distribution.architect).toBe(45);
@@ -430,16 +430,16 @@ describe('Schema Bridge', () => {
 
   describe('getMatrixInfo', () => {
     it('should return correct matrix info for all combinations', () => {
-      expect(getMatrixInfo('architect', 'ai-master')).toEqual({
+      expect(getMatrixInfo('architect', 'cartographer')).toEqual({
         name: 'Systems Architect',
         emoji: '🏛️',
       });
-      expect(getMatrixInfo('speedrunner', 'vibe-coder')).toEqual({
-        name: 'Yolo Coder',
+      expect(getMatrixInfo('speedrunner', 'explorer')).toEqual({
+        name: 'Experimenter',
         emoji: '🎲',
       });
-      expect(getMatrixInfo('craftsman', 'developing')).toEqual({
-        name: 'Artisan',
+      expect(getMatrixInfo('craftsman', 'navigator')).toEqual({
+        name: 'Quality Crafter',
         emoji: '🔧',
       });
     });
@@ -477,7 +477,7 @@ describe('Constants', () => {
   describe('MATRIX_NAMES', () => {
     it('should have all 15 combinations (5 styles × 3 levels)', () => {
       const styles = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'] as const;
-      const levels = ['vibe-coder', 'developing', 'ai-master'] as const;
+      const levels = ['explorer', 'navigator', 'cartographer'] as const;
 
       for (const style of styles) {
         for (const level of levels) {

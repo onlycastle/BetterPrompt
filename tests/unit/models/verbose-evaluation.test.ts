@@ -52,7 +52,7 @@ describe('VerboseLLMResponseSchema', () => {
 
   const createValidResponse = () => ({
     primaryType: 'architect' as const,
-    controlLevel: 'ai-master' as const,
+    controlLevel: 'cartographer' as const,
     distribution: {
       architect: 40,
       scientist: 25,
