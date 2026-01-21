@@ -9,6 +9,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
 import { parseSessionContent, type ParsedSession } from './session-formatter.js';
+import { extractQualityMetrics, calculateQualityScore } from './session-scoring.js';
 
 export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
@@ -20,6 +21,7 @@ export interface SessionMetadata {
   messageCount: number;
   durationSeconds: number;
   filePath: string;
+  qualityScore?: number;
 }
 
 /**
@@ -101,52 +103,6 @@ function updateTimestampBounds(
 }
 
 /**
- * Get metadata for a session file (quick scan without full parsing)
- */
-async function getSessionMetadata(filePath: string): Promise<SessionMetadata | null> {
-  try {
-    const content = await readFile(filePath, 'utf-8');
-    const lines = content.split('\n').filter(l => l.trim());
-
-    if (lines.length === 0) return null;
-
-    const fileName = basename(filePath, '.jsonl');
-    let messageCount = 0;
-    const timestamps = { first: null as Date | null, last: null as Date | null };
-
-    for (const line of lines) {
-      const parsed = parseJSONLLine(line);
-      if (isConversationLine(parsed)) {
-        messageCount++;
-        if (parsed?.timestamp) {
-          updateTimestampBounds(parsed.timestamp, timestamps);
-        }
-      }
-    }
-
-    if (!timestamps.first || !timestamps.last) return null;
-
-    const projectDirName = basename(join(filePath, '..'));
-    const projectPath = decodeProjectPath(projectDirName);
-    const durationSeconds = Math.floor(
-      (timestamps.last.getTime() - timestamps.first.getTime()) / 1000
-    );
-
-    return {
-      sessionId: fileName,
-      projectPath,
-      projectName: getProjectName(projectPath),
-      timestamp: timestamps.first,
-      messageCount,
-      durationSeconds,
-      filePath,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/**
  * List all project directories
  */
 export async function listProjectDirs(): Promise<string[]> {
@@ -188,53 +144,60 @@ export async function listSessionFiles(projectDir: string): Promise<string[]> {
 
 /**
  * Scan all sessions and parse them for analysis
+ * Uses quality-based scoring to select the most meaningful sessions
  */
-export async function scanSessions(maxSessions: number = 10): Promise<ScanResult> {
+export async function scanSessions(maxSessions: number = 15): Promise<ScanResult> {
   const projectDirs = await listProjectDirs();
-  const allMetadata: SessionMetadata[] = [];
+  const allMetadataWithContent: Array<{ metadata: SessionMetadata; content: string }> = [];
 
+  // First pass: collect metadata and content for quality scoring
   for (const dir of projectDirs) {
     const files = await listSessionFiles(dir);
     for (const file of files) {
-      const metadata = await getSessionMetadata(file);
-      if (metadata && metadata.messageCount >= 5) {
-        allMetadata.push(metadata);
+      try {
+        const content = await readFile(file, 'utf-8');
+        const metadata = extractMetadataFromContent(file, content);
+
+        if (metadata && metadata.messageCount >= 5) {
+          // Calculate quality score
+          const qualityMetrics = extractQualityMetrics(content);
+          metadata.qualityScore = calculateQualityScore(qualityMetrics);
+          allMetadataWithContent.push({ metadata, content });
+        }
+      } catch {
+        // Skip unreadable files
       }
     }
   }
 
-  // Sort by duration (longer sessions first) then by recency
-  allMetadata.sort((a, b) => {
-    const durationDiff = b.durationSeconds - a.durationSeconds;
-    if (Math.abs(durationDiff) > 60) return durationDiff;
-    return b.timestamp.getTime() - a.timestamp.getTime();
+  // Sort by quality score (higher is better), then by recency as tiebreaker
+  allMetadataWithContent.sort((a, b) => {
+    const scoreDiff = (b.metadata.qualityScore ?? 0) - (a.metadata.qualityScore ?? 0);
+    // Only use recency as tiebreaker if scores are within 5 points
+    if (Math.abs(scoreDiff) > 5) return scoreDiff;
+    return b.metadata.timestamp.getTime() - a.metadata.timestamp.getTime();
   });
 
   // Select top sessions
-  const selected = allMetadata.slice(0, maxSessions);
+  const selected = allMetadataWithContent.slice(0, maxSessions);
 
-  // Read and parse content for selected sessions
+  // Parse content for selected sessions
   const sessions: SessionWithParsed[] = [];
   let totalMessages = 0;
   let totalDurationMinutes = 0;
 
-  for (const metadata of selected) {
-    try {
-      const content = await readFile(metadata.filePath, 'utf-8');
-      const parsed = parseSessionContent(
-        metadata.sessionId,
-        metadata.projectPath,
-        metadata.projectName,
-        content
-      );
+  for (const { metadata, content } of selected) {
+    const parsed = parseSessionContent(
+      metadata.sessionId,
+      metadata.projectPath,
+      metadata.projectName,
+      content
+    );
 
-      if (parsed) {
-        sessions.push({ metadata, parsed });
-        totalMessages += metadata.messageCount;
-        totalDurationMinutes += Math.round(metadata.durationSeconds / 60);
-      }
-    } catch {
-      // Skip unreadable files
+    if (parsed) {
+      sessions.push({ metadata, parsed });
+      totalMessages += metadata.messageCount;
+      totalDurationMinutes += Math.round(metadata.durationSeconds / 60);
     }
   }
 
@@ -242,6 +205,47 @@ export async function scanSessions(maxSessions: number = 10): Promise<ScanResult
     sessions,
     totalMessages,
     totalDurationMinutes,
+  };
+}
+
+/**
+ * Extract metadata from already-read content (avoids double file read)
+ */
+function extractMetadataFromContent(filePath: string, content: string): SessionMetadata | null {
+  const lines = content.split('\n').filter(l => l.trim());
+
+  if (lines.length === 0) return null;
+
+  const fileName = basename(filePath, '.jsonl');
+  let messageCount = 0;
+  const timestamps = { first: null as Date | null, last: null as Date | null };
+
+  for (const line of lines) {
+    const parsed = parseJSONLLine(line);
+    if (isConversationLine(parsed)) {
+      messageCount++;
+      if (parsed?.timestamp) {
+        updateTimestampBounds(parsed.timestamp, timestamps);
+      }
+    }
+  }
+
+  if (!timestamps.first || !timestamps.last) return null;
+
+  const projectDirName = basename(join(filePath, '..'));
+  const projectPath = decodeProjectPath(projectDirName);
+  const durationSeconds = Math.floor(
+    (timestamps.last.getTime() - timestamps.first.getTime()) / 1000
+  );
+
+  return {
+    sessionId: fileName,
+    projectPath,
+    projectName: getProjectName(projectPath),
+    timestamp: timestamps.first,
+    messageCount,
+    durationSeconds,
+    filePath,
   };
 }
 
