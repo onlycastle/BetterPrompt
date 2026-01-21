@@ -182,6 +182,8 @@
   border-radius: var(--radius-lg);
   box-shadow: 4px 4px 0 var(--ink-muted);
   overflow: hidden;
+  margin-top: var(--space-md);
+  margin-bottom: var(--space-md);
 }
 
 /* ============================================
