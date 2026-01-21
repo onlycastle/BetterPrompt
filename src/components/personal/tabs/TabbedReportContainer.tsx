@@ -137,7 +137,7 @@ export function TabbedReportContainer({
         {activeTab === 'patterns' && hasPatterns && (
           <div className={styles.tabPanel}>
             <h3 className={styles.sectionTitle}>Communication Patterns</h3>
-            <PromptPatternsClean patterns={analysis.promptPatterns} />
+            <PromptPatternsClean patterns={analysis.promptPatterns} isPaid={isPaid} />
           </div>
         )}
 
@@ -147,6 +147,7 @@ export function TabbedReportContainer({
             <DimensionInsightsClean
               insights={analysis.dimensionInsights}
               sessionsAnalyzed={analysis.sessionsAnalyzed}
+              isPaid={isPaid}
             />
           </div>
         )}
