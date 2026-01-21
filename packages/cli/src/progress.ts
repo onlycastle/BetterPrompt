@@ -9,6 +9,12 @@
 
 import pc from 'picocolors';
 import ora, { type Ora } from 'ora';
+import {
+  getChippyWithIndicator,
+  THINKING_FRAMES,
+  getAnimationFrame,
+  type ChippyExpression,
+} from './animations/index.js';
 
 /**
  * Analysis stages with their display configurations
@@ -55,6 +61,7 @@ const STAGE_CONFIGS: Record<string, StageConfig> = {
 export class ProgressDisplay {
   private spinner: Ora;
   private startTime: number;
+  private tick: number;
 
   constructor() {
     this.spinner = ora({
@@ -62,6 +69,7 @@ export class ProgressDisplay {
       spinner: 'dots12',
     });
     this.startTime = Date.now();
+    this.tick = 0;
   }
 
   /**
@@ -76,17 +84,25 @@ export class ProgressDisplay {
    * Update progress with server-sent stage/message
    */
   update(stage: string, progress: number, message: string): void {
+    this.tick++;
     const config = STAGE_CONFIGS[stage] || STAGE_CONFIGS.analyzing;
     const elapsed = this.formatElapsed();
     const progressBar = this.renderProgressBar(progress);
 
+    // Get Chippy expression based on stage
+    const expression: ChippyExpression =
+      stage === 'complete' ? 'excited' : getAnimationFrame(THINKING_FRAMES, this.tick);
+
+    // Chippy face with stage indicator
+    const chippyLine = getChippyWithIndicator(expression, config.icon);
+
     // Main status line with server message
     const mainLine = `${config.icon} ${config.color(message)}`;
 
-    // Secondary info line (progress bar + elapsed time)
-    const infoLine = pc.dim(`   ${progressBar} ${elapsed}`);
+    // Progress bar line with elapsed time
+    const progressLine = pc.dim(`              ${progressBar} ${elapsed}`);
 
-    this.spinner.text = `${mainLine}\n${infoLine}`;
+    this.spinner.text = `${chippyLine}   ${mainLine}\n${progressLine}`;
   }
 
   /**

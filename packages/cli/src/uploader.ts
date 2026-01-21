@@ -195,6 +195,9 @@ export interface AnalysisResult {
   resultId: string;
   primaryType: string;
   controlLevel: string;
+  controlScore: number;
+  matrixName: string;
+  matrixEmoji: string;
   distribution: {
     architect: number;
     scientist: number;

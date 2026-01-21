@@ -15,14 +15,13 @@ import ora from 'ora';
 import { scanSessions, hasClaudeProjects } from './scanner.js';
 import { uploadForAnalysis } from './uploader.js';
 import {
-  displayResults,
-  displayPrivacyNotice,
   displayError,
   displayNoSessions,
-  displaySessionList,
-  displaySelectionHelp,
+  displayAnalysisSummary,
+  confirmWithPrivacy,
+  displayResultsWithCelebration,
 } from './display.js';
-import { estimateAnalysisCost, renderCostEstimate } from './cost-estimator.js';
+import { estimateAnalysisCost } from './cost-estimator.js';
 import { createProgressDisplay } from './progress.js';
 import {
   storeTokens,
@@ -36,11 +35,19 @@ import {
   pollForToken,
   getUserInfo,
 } from './auth/device-flow.js';
+import {
+  generateWelcomeBanner,
+  getChippyFull,
+  getWaitingMessage,
+} from './animations/index.js';
 
 /**
- * Display device flow code and URL
+ * Display device flow code and URL with Chippy
  */
 function displayDeviceCode(userCode: string, verificationUri: string): void {
+  const chippy = getChippyFull('neutral');
+  console.log('');
+  chippy.forEach(line => console.log(line));
   console.log('');
   console.log(pc.bold(pc.cyan('  📱 Visit: ')) + pc.underline(verificationUri));
   console.log(pc.bold(pc.cyan('     Enter code: ')) + pc.bold(pc.white(userCode)));
@@ -174,8 +181,8 @@ async function performDeviceFlowAuth(): Promise<string> {
       await sleep(deviceFlow.interval * 1000);
       pollCount++;
 
-      // Update spinner text
-      pollSpinner.text = `Waiting for authorization${'.'.repeat(pollCount % 4)}`;
+      // Update spinner with animated message
+      pollSpinner.text = getWaitingMessage(pollCount);
 
       const result = await pollForToken(deviceFlow.deviceCode);
 
@@ -213,33 +220,32 @@ async function performDeviceFlowAuth(): Promise<string> {
 }
 
 /**
- * Main analysis flow
+ * Main analysis flow - Simplified 3-step UX
  */
 async function runAnalysis(): Promise<void> {
-  console.log('');
-  console.log(pc.bold(pc.cyan('🚀 no-ai-slop')) + pc.dim(' - AI Collaboration Style Analyzer'));
-  console.log('');
+  // Step 1: Welcome banner with Chippy mascot
+  console.log(generateWelcomeBanner());
 
-  // 1. Check for existing token
+  // Step 2: Auth check
   let accessToken = await getStoredAccessToken();
 
   if (accessToken) {
     const email = await getStoredUserEmail();
-    console.log(pc.green('✓ Signed in') + (email ? pc.dim(` as ${email}`) : ''));
+    console.log(pc.green('✓ Welcome back') + (email ? pc.dim(` ${email}`) : ''));
     console.log('');
   } else {
-    // 2. Perform device flow authentication
+    // Perform device flow authentication
     accessToken = await performDeviceFlowAuth();
   }
 
-  // 3. Check if Claude projects directory exists
+  // Check if Claude projects directory exists
   const hasProjects = await hasClaudeProjects();
   if (!hasProjects) {
     displayNoSessions();
     process.exit(1);
   }
 
-  // 4. Scan sessions
+  // Step 3: Auto-scan sessions and show summary
   const scanSpinner = ora('Scanning Claude Code sessions...').start();
 
   let scanResult;
@@ -258,34 +264,18 @@ async function runAnalysis(): Promise<void> {
   }
 
   scanSpinner.succeed(
-    `Found ${pc.bold(String(scanResult.sessions.length))} sessions`
+    `Found ${pc.bold(String(scanResult.sessions.length))} sessions to analyze`
   );
 
-  // 5. Display session list for selection
-  displaySessionList(scanResult.sessions);
-  displaySelectionHelp();
+  // Auto-select all sessions (no manual selection)
+  const selectedSessions = scanResult.sessions;
 
-  // 6. Prompt for selection
-  const selection = await promptSessionSelection(scanResult.sessions.length);
-
-  let selectedSessions;
-  if (selection === 'all') {
-    selectedSessions = scanResult.sessions;
-    console.log(pc.dim(`  Selected all ${selectedSessions.length} sessions\n`));
-  } else if (selection.length === 0) {
-    console.log(pc.yellow('\n  No valid sessions selected.\n'));
-    process.exit(0);
-  } else {
-    selectedSessions = selection.map(i => scanResult.sessions[i]);
-    console.log(pc.dim(`  Selected ${selectedSessions.length} session(s)\n`));
-  }
-
-  // 7. Estimate and display cost
+  // Estimate cost and show compact summary
   const parsedSessions = selectedSessions.map(s => s.parsed);
   const costEstimate = estimateAnalysisCost(parsedSessions);
-  console.log(renderCostEstimate(costEstimate, selectedSessions.length));
+  displayAnalysisSummary(selectedSessions, costEstimate);
 
-  // 8. Create filtered ScanResult for upload
+  // Create filtered ScanResult for upload
   const filteredResult = {
     sessions: selectedSessions,
     totalMessages: selectedSessions.reduce((sum, s) => sum + s.metadata.messageCount, 0),
@@ -295,16 +285,16 @@ async function runAnalysis(): Promise<void> {
     ),
   };
 
-  // 9. Show privacy notice and ask for consent
-  displayPrivacyNotice();
-
-  const consent = await confirm('Proceed with analysis?');
+  // Single confirmation with inline privacy notice
+  const consent = await confirmWithPrivacy();
   if (!consent) {
     console.log(pc.dim('\nAnalysis cancelled.'));
     process.exit(0);
   }
 
-  // 10. Upload and analyze with progress display
+  console.log('');
+
+  // Step 4: Analysis with Chippy progress animation
   const progressDisplay = createProgressDisplay();
   progressDisplay.start();
 
@@ -314,8 +304,8 @@ async function runAnalysis(): Promise<void> {
     });
     progressDisplay.succeed('Analysis complete!');
 
-    // 11. Display results
-    displayResults(result);
+    // Step 5: Results with celebration
+    displayResultsWithCelebration(result);
   } catch (error) {
     progressDisplay.fail('Analysis failed');
 

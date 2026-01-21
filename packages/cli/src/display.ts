@@ -8,6 +8,8 @@ import pc from 'picocolors';
 import boxen from 'boxen';
 import type { AnalysisResult } from './uploader.js';
 import type { SessionWithParsed } from './scanner.js';
+import type { CostEstimate } from './cost-estimator.js';
+import { generateCelebrationBanner } from './animations/index.js';
 
 const TYPE_COLORS: Record<string, (s: string) => string> = {
   architect: pc.blue,
@@ -25,13 +27,75 @@ const TYPE_EMOJIS: Record<string, string> = {
   craftsman: '🔧',
 };
 
+const LEVEL_COLORS: Record<string, (s: string) => string> = {
+  explorer: pc.yellow,
+  navigator: pc.cyan,
+  cartographer: pc.green,
+};
+
+const LEVEL_EMOJIS: Record<string, string> = {
+  explorer: '🧭',
+  navigator: '🗺️',
+  cartographer: '📍',
+};
+
 /**
- * Create a progress bar
+ * Create a progress bar with optional color function
  */
-function progressBar(value: number, width: number = 10): string {
+function progressBar(value: number, width: number = 10, colorFn: (s: string) => string = pc.green): string {
   const filled = Math.round((value / 100) * width);
   const empty = width - filled;
-  return pc.green('█'.repeat(filled)) + pc.dim('░'.repeat(empty));
+  return colorFn('█'.repeat(filled)) + pc.dim('░'.repeat(empty));
+}
+
+/**
+ * Compute level distribution from controlScore
+ * Uses same logic as deriveMatrixDistribution in coding-style.ts
+ */
+function computeLevelDistribution(controlScore: number): Record<string, number> {
+  const score = Math.max(0, Math.min(100, controlScore));
+  let explorerWeight: number;
+  let navigatorWeight: number;
+  let cartographerWeight: number;
+
+  if (score <= 34) {
+    explorerWeight = 0.6 + (34 - score) / 85;
+    navigatorWeight = (1 - explorerWeight) * 0.7;
+    cartographerWeight = (1 - explorerWeight) * 0.3;
+  } else if (score <= 64) {
+    const distFromCenter = Math.abs(score - 50) / 15;
+    navigatorWeight = 0.5 + (1 - distFromCenter) * 0.3;
+    if (score < 50) {
+      explorerWeight = (1 - navigatorWeight) * 0.6;
+      cartographerWeight = (1 - navigatorWeight) * 0.4;
+    } else {
+      explorerWeight = (1 - navigatorWeight) * 0.4;
+      cartographerWeight = (1 - navigatorWeight) * 0.6;
+    }
+  } else {
+    cartographerWeight = 0.6 + (score - 65) / 87.5;
+    navigatorWeight = (1 - cartographerWeight) * 0.7;
+    explorerWeight = (1 - cartographerWeight) * 0.3;
+  }
+
+  const total = explorerWeight + navigatorWeight + cartographerWeight;
+  return {
+    explorer: Math.round((explorerWeight / total) * 100),
+    navigator: Math.round((navigatorWeight / total) * 100),
+    cartographer: Math.round((cartographerWeight / total) * 100),
+  };
+}
+
+/**
+ * Format control level for display
+ */
+function formatControlLevel(level: string): string {
+  switch (level) {
+    case 'explorer': return 'Explorer';
+    case 'navigator': return 'Navigator';
+    case 'cartographer': return 'Cartographer';
+    default: return level;
+  }
 }
 
 /**
@@ -49,20 +113,42 @@ function formatTypeName(type: string): string {
 export function displayResults(result: AnalysisResult): void {
   const lines: string[] = [];
 
-  // Header
-  lines.push(pc.bold(`Your AI Collaboration Type: ${formatTypeName(result.primaryType)}`));
+  // Header - show matrix name (5×3 combination)
+  const emoji = result.matrixEmoji || TYPE_EMOJIS[result.primaryType.toLowerCase()] || '🎯';
+  lines.push(pc.bold(`Your AI Collaboration Type: ${emoji} ${pc.cyan(result.matrixName.toUpperCase())}`));
+  lines.push(pc.dim(`(${result.primaryType.charAt(0).toUpperCase() + result.primaryType.slice(1)} × ${formatControlLevel(result.controlLevel)})`));
   lines.push('');
 
-  // Distribution bars
+  // Distribution bars with level bars under primary type
   const types = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'] as const;
+  const levelDist = computeLevelDistribution(result.controlScore);
+
   for (const type of types) {
     const value = result.distribution[type];
     const label = type.charAt(0).toUpperCase() + type.slice(1);
     const bar = progressBar(value);
     lines.push(`${pc.dim(label.padEnd(12))} ${bar} ${pc.dim(`${value}%`)}`);
+
+    // Add level bars under the primary type only
+    if (type === result.primaryType.toLowerCase()) {
+      const levels = ['explorer', 'navigator', 'cartographer'] as const;
+      for (const level of levels) {
+        const levelValue = levelDist[level];
+        const levelLabel = level === 'explorer' ? 'Explorer' :
+                           level === 'cartographer' ? 'Cartographer' : 'Navigator';
+        const colorFn = LEVEL_COLORS[level];
+        const levelBar = progressBar(levelValue, 10, colorFn);
+
+        // Highlight the user's actual level
+        const isCurrentLevel = level === result.controlLevel;
+        const marker = isCurrentLevel ? pc.cyan(' ← Your Level') : '';
+
+        lines.push(`  └ ${pc.dim(levelLabel.padEnd(12))} ${levelBar} ${pc.dim(`${levelValue}%`)}${marker}`);
+      }
+      lines.push(''); // Blank line after level bars
+    }
   }
 
-  lines.push('');
   lines.push(pc.dim('─'.repeat(45)));
   lines.push('');
 
@@ -185,4 +271,77 @@ export function displaySelectionHelp(): void {
   console.log(pc.dim('    • "all" to select all sessions'));
   console.log(pc.dim('    • Press Enter for default (all)'));
   console.log('');
+}
+
+/**
+ * Display compact analysis summary (replaces session table)
+ */
+export function displayAnalysisSummary(
+  sessions: SessionWithParsed[],
+  cost: CostEstimate
+): void {
+  const totalMessages = sessions.reduce(
+    (sum, s) => sum + s.parsed.messages.length,
+    0
+  );
+  const costStr = `$${cost.totalCost.toFixed(2)}`;
+
+  console.log('');
+  console.log(
+    pc.dim('  📊 ') +
+    pc.white(`${sessions.length} sessions`) +
+    pc.dim(' · ') +
+    pc.white(`${totalMessages.toLocaleString()} messages`) +
+    pc.dim(' · Est. ') +
+    pc.yellow(costStr)
+  );
+  console.log('');
+}
+
+/**
+ * Display privacy notice box and prompt for confirmation
+ */
+export async function confirmWithPrivacy(): Promise<boolean> {
+  // Privacy notice box
+  const privacyBox = boxen(
+    pc.dim('🔒 Your data is analyzed then immediately\n') +
+    pc.dim('   deleted. We never store your conversations.'),
+    {
+      padding: { top: 0, bottom: 0, left: 1, right: 1 },
+      margin: { top: 0, bottom: 0, left: 1, right: 0 },
+      borderStyle: 'round',
+      borderColor: 'gray',
+    }
+  );
+  console.log(privacyBox);
+  console.log('');
+
+  // Prompt for confirmation
+  const { createInterface } = await import('node:readline');
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(
+      pc.cyan('Ready to discover your AI style? ') + pc.dim('(Y/n): '),
+      (answer) => {
+        rl.close();
+        const normalized = answer.trim().toLowerCase();
+        resolve(normalized === '' || normalized === 'y' || normalized === 'yes');
+      }
+    );
+  });
+}
+
+/**
+ * Display results with celebration animation
+ */
+export function displayResultsWithCelebration(result: AnalysisResult): void {
+  // Show celebration banner
+  console.log(generateCelebrationBanner());
+
+  // Show regular results
+  displayResults(result);
 }
