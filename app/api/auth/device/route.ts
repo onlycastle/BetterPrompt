@@ -11,18 +11,25 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
 
-// Supabase admin client
+// Supabase admin client with defensive env validation
 function getSupabaseAdmin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceKey) {
+    console.error('[DeviceFlow] Missing required env vars:', {
+      hasUrl: !!url,
+      hasServiceKey: !!serviceKey,
+    });
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required');
+  }
+
+  return createClient(url, serviceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 }
 
 /**
@@ -81,6 +88,11 @@ export async function POST() {
         { status: 500 }
       );
     }
+
+    console.log('[DeviceFlow] Device code created successfully:', {
+      userCode,
+      expiresAt,
+    });
 
     // Return RFC 8628 compliant response
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.nomoreaislop.xyz';
