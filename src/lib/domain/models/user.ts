@@ -16,7 +16,7 @@ import { z } from 'zod';
 /**
  * User subscription tiers
  */
-export const UserTierSchema = z.enum(['free', 'pro', 'premium', 'enterprise']);
+export const UserTierSchema = z.enum(['free', 'paid', 'pro', 'premium', 'enterprise']);
 export type UserTier = z.infer<typeof UserTierSchema>;
 
 /**
@@ -34,6 +34,15 @@ export const TIER_LIMITS: Record<
   }
 > = {
   free: {
+    analysesPerMonth: 3,
+    trackingEnabled: false,
+    knowledgeBaseAccess: false,
+    teamManagement: false,
+    customKnowledgeBase: false,
+    apiAccess: false,
+  },
+  paid: {
+    // Same as free for now - users who made one-time credit purchase
     analysesPerMonth: 3,
     trackingEnabled: false,
     knowledgeBaseAccess: false,

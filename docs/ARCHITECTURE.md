@@ -252,6 +252,15 @@ The analyzer uses a 3-phase Orchestrator + Workers pattern with Gemini. See [LLM
 - Output: `AgentOutputs` (merged results)
 - Skipped for Free tier
 
+**Phase 2.5: Type Synthesis (NEW)**
+- **TypeSynthesisWorker** - Refines initial type classification using all agent outputs
+- Uses semantic analysis from Phase 2 agents to improve accuracy of:
+  - 5 coding styles: architect, scientist, collaborator, speedrunner, craftsman
+  - 3 control levels: vibe-coder, developing, ai-master
+  - 15 combination matrix (5×3 = unique personalities)
+- Output: `TypeSynthesisOutput` with refined classification and evidence
+- Available for all tiers (free and above)
+
 **Phase 3: Content Writer**
 - **ContentWriterStage** (`src/lib/analyzer/stages/content-writer.ts`)
 - Combines all phase outputs into personalized narrative

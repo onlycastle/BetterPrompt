@@ -444,3 +444,69 @@
     gap: var(--space-xs);
   }
 }
+
+/* ============================================================================
+   NEW: Additional Color Variants for New Agents
+   ============================================================================ */
+
+.indigo {
+  border-left: 4px solid #6366f1;
+}
+
+.indigo .agentIcon {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+.orange {
+  border-left: 4px solid #f97316;
+}
+
+.orange .agentIcon {
+  background: rgba(249, 115, 22, 0.15);
+}
+
+.green {
+  border-left: 4px solid #22c55e;
+}
+
+.green .agentIcon {
+  background: rgba(34, 197, 94, 0.15);
+}
+
+/* ============================================================================
+   NEW: Teaser Styles (Premium agents when not paid)
+   ============================================================================ */
+
+/* Teaser card has subtle visual treatment */
+.teaser {
+  position: relative;
+}
+
+/* Lock icon next to agent name */
+.lockIcon {
+  font-size: var(--text-sm);
+  opacity: 0.7;
+  margin-left: var(--space-xs);
+}
+
+/* "See more" teaser section at bottom of insights */
+.teaserMore {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  background: linear-gradient(90deg, var(--surface-1) 0%, transparent 100%);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--sketch-purple);
+}
+
+.unlockIcon {
+  font-size: var(--text-sm);
+}
+
+.teaserMoreText {
+  font-size: var(--text-xs);
+  color: var(--sketch-purple);
+  font-weight: var(--weight-medium);
+}

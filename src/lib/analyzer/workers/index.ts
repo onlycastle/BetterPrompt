@@ -35,3 +35,7 @@ export type { TemporalAnalyzerWorkerConfig } from './temporal-analyzer-worker';
 
 export { MultitaskingAnalyzerWorker, createMultitaskingAnalyzerWorker } from './multitasking-analyzer-worker';
 export type { MultitaskingAnalyzerWorkerConfig } from './multitasking-analyzer-worker';
+
+// Phase 2.5 Worker (Type Synthesis - runs after other Phase 2 workers)
+export { TypeSynthesisWorker, createTypeSynthesisWorker } from './type-synthesis-worker';
+export type { TypeSynthesisWorkerConfig, TypeSynthesisWorkerContext } from './type-synthesis-worker';

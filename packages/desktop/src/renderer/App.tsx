@@ -45,10 +45,10 @@ function AppContent() {
       }
 
       if (data.route === 'payment-success' && data.params.resultId) {
-        console.log('[App] Payment success - setting resultId and navigating to analyze');
+        console.log('[App] Payment success - setting resultId and navigating to results');
         setResultId(data.params.resultId);
-        // Navigate to analyze page - it now handles inline report display
-        setRoute('analyze');
+        // Navigate to results page to show the unlocked paid report
+        setRoute('results');
       }
     });
     console.log('[App] Deep link handler registered');

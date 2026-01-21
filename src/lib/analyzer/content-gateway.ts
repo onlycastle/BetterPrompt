@@ -33,6 +33,8 @@ import type {
   VerboseEvaluation,
   PerDimensionInsight,
 } from '../models/verbose-evaluation';
+import type { AgentOutputs } from '../models/agent-outputs';
+import { createAgentTeasers } from '../models/agent-teasers';
 
 // ============================================================================
 // Types
@@ -247,8 +249,10 @@ export class ContentGateway {
       productivityAnalysis: undefined,
       topFocusAreas: undefined,
 
-      // Phase 2 Wow Agents outputs (locked for free)
-      agentOutputs: undefined,
+      // Phase 2 Wow Agents outputs - TEASERS for free users
+      // Free agents (patternDetective, metacognition) show full data
+      // Premium agents show 1 insight + scores only
+      agentOutputs: createAgentTeasers(evaluation.agentOutputs),
     };
   }
 
@@ -328,6 +332,7 @@ export class ContentGateway {
       growthAreas: [], // Empty - locked for free tier
     };
   }
+
 }
 
 // ============================================================================

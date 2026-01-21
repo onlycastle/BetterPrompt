@@ -20,7 +20,10 @@ import styles from './AgentInsightsSection.module.css';
 
 interface AgentInsightsSectionProps {
   agentOutputs: AgentOutputs;
+  isPaid?: boolean; // Whether user has unlocked full content
 }
+
+type AgentTier = 'free' | 'premium';
 
 interface AgentCardConfig {
   id: keyof AgentOutputs;
@@ -28,11 +31,13 @@ interface AgentCardConfig {
   icon: string;
   color: string;
   scoreLabel: string;
-  scoreKey: 'confidenceScore' | 'overallHealthScore' | 'overallKnowledgeScore' | 'overallEfficiencyScore';
+  scoreKey: string;
   scoreMax: number;
+  tier: AgentTier;
 }
 
 const AGENT_CONFIGS: AgentCardConfig[] = [
+  // FREE tier agents - show full data for all users
   {
     id: 'patternDetective',
     name: 'Pattern Detective',
@@ -41,7 +46,20 @@ const AGENT_CONFIGS: AgentCardConfig[] = [
     scoreLabel: 'Confidence',
     scoreKey: 'confidenceScore',
     scoreMax: 1,
+    tier: 'free',
   },
+  {
+    id: 'metacognition',
+    name: 'Metacognition',
+    icon: '🧠',
+    color: 'indigo',
+    scoreLabel: 'Awareness',
+    scoreKey: 'metacognitiveAwarenessScore',
+    scoreMax: 100,
+    tier: 'free',
+  },
+
+  // PREMIUM tier agents - show teaser for free users
   {
     id: 'antiPatternSpotter',
     name: 'Anti-Pattern Spotter',
@@ -50,15 +68,17 @@ const AGENT_CONFIGS: AgentCardConfig[] = [
     scoreLabel: 'Health Score',
     scoreKey: 'overallHealthScore',
     scoreMax: 100,
+    tier: 'premium',
   },
   {
     id: 'knowledgeGap',
-    name: 'Knowledge Gap Analyzer',
+    name: 'Knowledge Gap',
     icon: '📚',
     color: 'cyan',
     scoreLabel: 'Knowledge Score',
     scoreKey: 'overallKnowledgeScore',
     scoreMax: 100,
+    tier: 'premium',
   },
   {
     id: 'contextEfficiency',
@@ -68,6 +88,27 @@ const AGENT_CONFIGS: AgentCardConfig[] = [
     scoreLabel: 'Efficiency Score',
     scoreKey: 'overallEfficiencyScore',
     scoreMax: 100,
+    tier: 'premium',
+  },
+  {
+    id: 'temporalAnalysis',
+    name: 'Temporal Analysis',
+    icon: '⏱️',
+    color: 'orange',
+    scoreLabel: 'Confidence',
+    scoreKey: 'confidenceScore',
+    scoreMax: 1,
+    tier: 'premium',
+  },
+  {
+    id: 'multitasking',
+    name: 'Multitasking',
+    icon: '🔄',
+    color: 'green',
+    scoreLabel: 'Efficiency',
+    scoreKey: 'multitaskingEfficiencyScore',
+    scoreMax: 100,
+    tier: 'premium',
   },
 ];
 
@@ -92,7 +133,7 @@ function getScoreColor(value: number, max: number): string {
   return 'low';
 }
 
-export function AgentInsightsSection({ agentOutputs }: AgentInsightsSectionProps) {
+export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsightsSectionProps) {
   const [expandedAgent, setExpandedAgent] = useState<keyof AgentOutputs | null>(null);
 
   // Check if any agent has data
@@ -105,6 +146,9 @@ export function AgentInsightsSection({ agentOutputs }: AgentInsightsSectionProps
     setExpandedAgent(expandedAgent === agentId ? null : agentId);
   };
 
+  // Count how many agents have data to show
+  const activeAgents = AGENT_CONFIGS.filter(c => agentOutputs[c.id]);
+
   return (
     <div className={styles.container}>
       {/* Header */}
@@ -114,7 +158,7 @@ export function AgentInsightsSection({ agentOutputs }: AgentInsightsSectionProps
           <h2 className={styles.title}>AI Agent Insights</h2>
         </div>
         <p className={styles.subtitle}>
-          4 specialized agents analyzed your coding patterns to discover hidden habits
+          {activeAgents.length} specialized agents analyzed your coding patterns to discover hidden habits
         </p>
       </div>
 
@@ -129,16 +173,22 @@ export function AgentInsightsSection({ agentOutputs }: AgentInsightsSectionProps
           const summary = (data as { overallStyleSummary?: string }).overallStyleSummary;
           const isExpanded = expandedAgent === config.id;
 
+          // Determine if this is a teaser (premium agent + not paid)
+          const isTeaser = config.tier === 'premium' && !isPaid;
+          // For teasers, show "+2 more" indicator (since we show 1 of 3 insights)
+          const hiddenInsightsCount = isTeaser ? 2 : 0;
+
           return (
             <div
               key={config.id}
-              className={`${styles.agentCard} ${styles[config.color]}`}
+              className={`${styles.agentCard} ${styles[config.color]} ${isTeaser ? styles.teaser : ''}`}
             >
               {/* Card Header */}
               <div className={styles.cardHeader}>
                 <div className={styles.agentInfo}>
                   <span className={styles.agentIcon}>{config.icon}</span>
                   <h3 className={styles.agentName}>{config.name}</h3>
+                  {isTeaser && <span className={styles.lockIcon}>🔒</span>}
                 </div>
                 <div className={`${styles.scoreGauge} ${styles[getScoreColor(score, config.scoreMax)]}`}>
                   <span className={styles.scoreValue}>
@@ -163,6 +213,16 @@ export function AgentInsightsSection({ agentOutputs }: AgentInsightsSectionProps
                       </li>
                     ))}
                   </ul>
+
+                  {/* Teaser: Show "see more" indicator */}
+                  {isTeaser && hiddenInsightsCount > 0 && (
+                    <div className={styles.teaserMore}>
+                      <span className={styles.unlockIcon}>🔓</span>
+                      <span className={styles.teaserMoreText}>
+                        +{hiddenInsightsCount} more insights (unlock to see)
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -173,16 +233,18 @@ export function AgentInsightsSection({ agentOutputs }: AgentInsightsSectionProps
                 </div>
               )}
 
-              {/* Expand/Collapse Button */}
-              <button
-                className={styles.expandButton}
-                onClick={() => toggleExpand(config.id)}
-              >
-                {isExpanded ? 'Hide Details ▲' : 'Show Details ▼'}
-              </button>
+              {/* Expand/Collapse Button - only for paid users or free agents */}
+              {!isTeaser && (
+                <button
+                  className={styles.expandButton}
+                  onClick={() => toggleExpand(config.id)}
+                >
+                  {isExpanded ? 'Hide Details ▲' : 'Show Details ▼'}
+                </button>
+              )}
 
-              {/* Expanded Details */}
-              {isExpanded && (
+              {/* Expanded Details - only for paid users or free agents */}
+              {!isTeaser && isExpanded && (
                 <div className={styles.detailsBox}>
                   <AgentDetails agentId={config.id} data={data} />
                 </div>
@@ -211,6 +273,12 @@ function AgentDetails({ agentId, data }: AgentDetailsProps) {
       return <KnowledgeGapDetails data={data as AgentOutputs['knowledgeGap']} />;
     case 'contextEfficiency':
       return <ContextEfficiencyDetails data={data as AgentOutputs['contextEfficiency']} />;
+    case 'metacognition':
+      return <MetacognitionDetails data={data as AgentOutputs['metacognition']} />;
+    case 'temporalAnalysis':
+      return <TemporalAnalysisDetails data={data as AgentOutputs['temporalAnalysis']} />;
+    case 'multitasking':
+      return <MultitaskingDetails data={data as AgentOutputs['multitasking']} />;
     default:
       return null;
   }
@@ -447,5 +515,174 @@ function parseInefficiencyData(data: string) {
     data,
     ['pattern', 'frequency', 'impact'],
     { pattern: '' }
+  );
+}
+
+// ============================================================================
+// Pipe-Delimited Data Parsing Helpers
+// ============================================================================
+
+/**
+ * Parse pipe-delimited data string into array of objects
+ * Splits by semicolon, then by pipe, and maps to specified fields
+ */
+function parsePipeDelimitedData<T extends Record<string, string>>(
+  data: string | undefined,
+  fieldNames: (keyof T)[]
+): T[] {
+  if (!data || data.trim() === '') return [];
+
+  return data.split(';').filter(Boolean).map((entry) => {
+    const parts = entry.split('|');
+    const result = {} as T;
+
+    fieldNames.forEach((field, index) => {
+      (result as Record<string, string>)[field as string] = parts[index] || '';
+    });
+
+    return result;
+  });
+}
+
+/**
+ * Parse single pipe-delimited entry (not semicolon-separated list)
+ */
+function parseSinglePipeEntry(data: string | undefined): string[] {
+  if (!data) return [];
+  return data.split('|');
+}
+
+// ============================================================================
+// NEW Agent Details Components
+// ============================================================================
+
+function MetacognitionDetails({ data }: { data: AgentOutputs['metacognition'] }) {
+  if (!data) return null;
+
+  const awarenessInstances = parsePipeDelimitedData<{ type: string; quote: string; context: string }>(
+    data.awarenessInstancesData,
+    ['type', 'quote', 'context']
+  );
+
+  const blindSpots = parsePipeDelimitedData<{ pattern: string; frequency: string }>(
+    data.blindSpotsData,
+    ['pattern', 'frequency']
+  );
+
+  return (
+    <div className={styles.detailsContent}>
+      <div className={styles.metricRow}>
+        <span className={styles.metricLabel}>Awareness Score</span>
+        <span className={styles.metricValue}>{data.metacognitiveAwarenessScore}/100</span>
+      </div>
+      {awarenessInstances.length > 0 && (
+        <DetailSection title="Self-Awareness Moments" icon="🔍">
+          {awarenessInstances.slice(0, 3).map((item, i) => (
+            <div key={i} className={styles.detailItem}>
+              <span className={styles.detailLabel}>{item.type}</span>
+              {item.quote && <span className={styles.detailExample}>"{item.quote}"</span>}
+            </div>
+          ))}
+        </DetailSection>
+      )}
+      {blindSpots.length > 0 && (
+        <DetailSection title="Blind Spots" icon="👁️">
+          {blindSpots.slice(0, 3).map((item, i) => (
+            <div key={i} className={styles.detailItem}>
+              <span className={styles.detailLabel}>{item.pattern}</span>
+              <span className={styles.detailValue}>{item.frequency}x</span>
+            </div>
+          ))}
+        </DetailSection>
+      )}
+    </div>
+  );
+}
+
+function TemporalAnalysisDetails({ data }: { data: AgentOutputs['temporalAnalysis'] }) {
+  if (!data) return null;
+
+  const peakHoursParts = parseSinglePipeEntry(data.peakHoursData);
+  const peakHours = peakHoursParts[0] || '';
+  const peakCharacteristics = peakHoursParts[1] || '';
+
+  const cautionHoursParts = parseSinglePipeEntry(data.cautionHoursData);
+  const cautionHours = cautionHoursParts[0] || '';
+  const cautionCharacteristics = cautionHoursParts[1] || '';
+
+  const fatiguePatterns = parsePipeDelimitedData<{ type: string; hours: string; evidence: string; recommendation: string }>(
+    data.fatiguePatternsData,
+    ['type', 'hours', 'evidence', 'recommendation']
+  );
+
+  return (
+    <div className={styles.detailsContent}>
+      {peakHours && (
+        <DetailSection title="Peak Performance Hours" icon="🌟">
+          <div className={styles.detailItem}>
+            <span className={styles.detailLabel}>Hours: {peakHours}</span>
+            {peakCharacteristics && <span className={styles.detailExample}>{peakCharacteristics}</span>}
+          </div>
+        </DetailSection>
+      )}
+      {cautionHours && (
+        <DetailSection title="Caution Hours" icon="⚠️">
+          <div className={styles.detailItem}>
+            <span className={styles.detailLabel}>Hours: {cautionHours}</span>
+            {cautionCharacteristics && <span className={styles.detailExample}>{cautionCharacteristics}</span>}
+          </div>
+        </DetailSection>
+      )}
+      {fatiguePatterns.length > 0 && (
+        <DetailSection title="Fatigue Patterns" icon="😴">
+          {fatiguePatterns.slice(0, 3).map((item, i) => (
+            <div key={i} className={styles.detailItem}>
+              <span className={styles.detailLabel}>{item.type}</span>
+              <span className={styles.detailValue}>@ {item.hours}</span>
+            </div>
+          ))}
+        </DetailSection>
+      )}
+    </div>
+  );
+}
+
+function MultitaskingDetails({ data }: { data: AgentOutputs['multitasking'] }) {
+  if (!data) return null;
+
+  const strategies = parsePipeDelimitedData<{ type: string; evidence: string; recommendation: string }>(
+    data.strategyEvaluationData,
+    ['type', 'evidence', 'recommendation']
+  );
+
+  return (
+    <div className={styles.detailsContent}>
+      <div className={styles.metricRow}>
+        <span className={styles.metricLabel}>Goal Coherence</span>
+        <span className={styles.metricValue}>{data.avgGoalCoherence}%</span>
+      </div>
+      <div className={styles.metricRow}>
+        <span className={styles.metricLabel}>Context Pollution</span>
+        <span className={styles.metricValue}>{data.avgContextPollutionScore}%</span>
+      </div>
+      <div className={styles.metricRow}>
+        <span className={styles.metricLabel}>Work Unit Separation</span>
+        <span className={styles.metricValue}>{data.workUnitSeparationScore}%</span>
+      </div>
+      <div className={styles.metricRow}>
+        <span className={styles.metricLabel}>Sessions Analyzed</span>
+        <span className={styles.metricValue}>{data.totalSessionsAnalyzed}</span>
+      </div>
+      {strategies.length > 0 && (
+        <DetailSection title="Strategy Evaluation" icon="📊">
+          {strategies.slice(0, 2).map((item, i) => (
+            <div key={i} className={styles.detailItem}>
+              <span className={styles.detailLabel}>{item.type}</span>
+              {item.evidence && <span className={styles.detailExample}>{item.evidence}</span>}
+            </div>
+          ))}
+        </DetailSection>
+      )}
+    </div>
   );
 }
