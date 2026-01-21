@@ -682,4 +682,216 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
     priority: 9,
     enabled: true,
   },
+  // ============================================================================
+  // Claude Code Best Practices (from ykdojo/claude-code-tips, Anthropic Engineering)
+  // ============================================================================
+  {
+    version: '1.0.0',
+    category: 'tool',
+    title: 'Fresh Sessions Outperform Continued Context',
+    keyTakeaway:
+      'Starting new sessions often yields better results than continuing degraded context. Use /compact or restart when AI responses become incoherent.',
+    actionableAdvice: [
+      'Start fresh sessions for new distinct tasks',
+      'Use /compact to summarize and clear when context degrades',
+      'Recognize context exhaustion: repetitive errors, ignoring instructions',
+    ],
+    source: {
+      type: 'blog',
+      url: 'https://github.com/ykdojo/claude-code-tips',
+      author: 'Claude Code Tips',
+    },
+    applicableDimensions: ['contextEngineering', 'iterationEfficiency'],
+    maxScore: 60,
+    priority: 9,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'trend',
+    title: 'Task Decomposition: The A→A1→A2→A3→B Pattern',
+    keyTakeaway:
+      'Break complex tasks into numbered subtasks. Complete each subtask before moving to the next. This prevents scope creep and improves AI focus.',
+    actionableAdvice: [
+      'Decompose tasks: "First do A1, then A2, then A3, then B"',
+      'Verify each subtask completion before proceeding',
+      'Keep subtasks small enough to complete in 1-2 AI turns',
+    ],
+    source: {
+      type: 'blog',
+      url: 'https://github.com/ykdojo/claude-code-tips',
+      author: 'Claude Code Tips',
+    },
+    applicableDimensions: ['scopeManagement', 'aiCollaboration'],
+    priority: 8,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'tool',
+    title: 'Keep MCP Servers Under 10 for Optimal Context',
+    keyTakeaway:
+      'Each MCP server consumes context window tokens. More than 10 servers can significantly degrade performance by reducing available context for actual work.',
+    actionableAdvice: [
+      'Audit your MCP configuration regularly',
+      'Remove unused or rarely-used MCP servers',
+      'Consolidate related functionality into fewer servers',
+    ],
+    source: {
+      type: 'blog',
+      url: 'https://github.com/affaan-m/everything-claude-code',
+      author: 'Everything Claude Code',
+    },
+    applicableDimensions: ['contextEngineering', 'toolMastery'],
+    priority: 7,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'tool',
+    title: 'Keep CLAUDE.md Minimal and Focused',
+    keyTakeaway:
+      'CLAUDE.md is loaded into every conversation. Bloated instructions waste context. Focus on project-specific rules, not general coding advice.',
+    actionableAdvice: [
+      'Include only project-specific conventions and rules',
+      'Avoid generic coding best practices (Claude already knows them)',
+      'Review and prune CLAUDE.md monthly',
+      'Use .cursorrules or .windsurfrules for editor-specific config',
+    ],
+    source: {
+      type: 'blog',
+      url: 'https://github.com/ykdojo/claude-code-tips',
+      author: 'Claude Code Tips',
+    },
+    applicableDimensions: ['contextEngineering'],
+    minScore: 50,
+    priority: 8,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'type-specific',
+    title: 'The Write-Test-Verify Cycle',
+    keyTakeaway:
+      'After AI generates code, always run tests before accepting. This catches hallucinations and ensures the code actually works.',
+    actionableAdvice: [
+      'Run "npm test" or equivalent after each significant change',
+      'Ask AI to write tests first, then implement',
+      'Never merge AI code without running the full test suite',
+    ],
+    source: {
+      type: 'official',
+      url: 'https://www.anthropic.com/engineering/claude-code-best-practices',
+      author: 'Anthropic Engineering',
+    },
+    applicableDimensions: ['aiControl', 'skillResilience'],
+    priority: 9,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'trend',
+    title: 'Cascade Pattern: Parallel AI Instances',
+    keyTakeaway:
+      'Run multiple Claude instances in parallel for independent tasks. One researches while another implements. Use terminal multiplexers like tmux.',
+    actionableAdvice: [
+      'Use tmux/screen to manage multiple Claude sessions',
+      'Split independent tasks across parallel sessions',
+      'Let one session research while another codes',
+    ],
+    source: {
+      type: 'blog',
+      url: 'https://github.com/ykdojo/claude-code-tips',
+      author: 'Claude Code Tips',
+    },
+    applicableDimensions: ['iterationEfficiency', 'toolMastery'],
+    minScore: 70,
+    priority: 7,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'tool',
+    title: 'Terminal Aliases Reduce Friction',
+    keyTakeaway:
+      'Create short aliases for common Claude commands. "cc" for "claude", "ccc" for "claude --continue". Small friction reductions compound.',
+    actionableAdvice: [
+      'Add "alias cc=claude" to your shell config',
+      'Create "ccc" for --continue, "ccr" for --resume',
+      'Document aliases in your personal notes for consistency',
+    ],
+    source: {
+      type: 'blog',
+      url: 'https://github.com/ykdojo/claude-code-tips',
+      author: 'Claude Code Tips',
+    },
+    applicableDimensions: ['toolMastery'],
+    priority: 6,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'trend',
+    title: 'Simple Agents Beat Complex Ones',
+    keyTakeaway:
+      'Research from Anthropic shows simple, well-prompted agents outperform complex multi-step frameworks. Invest in prompts, not orchestration complexity.',
+    actionableAdvice: [
+      'Start with the simplest agent architecture that works',
+      'Add complexity only when simple approaches fail',
+      'Prefer explicit instructions over implicit inference',
+    ],
+    source: {
+      type: 'official',
+      url: 'https://www.anthropic.com/engineering/building-effective-agents',
+      author: 'Anthropic Engineering',
+    },
+    applicableDimensions: ['aiCollaboration', 'toolMastery'],
+    minScore: 60,
+    priority: 8,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'diagnosis',
+    title: 'Treat Context Like Memory Allocation',
+    keyTakeaway:
+      'Context window is like RAM - finite and precious. Loading unnecessary files or long chat history causes "context OOM". Be deliberate about what you load.',
+    actionableAdvice: [
+      'Only read files you actually need',
+      'Use /compact before context becomes bloated',
+      'Clear context when switching tasks',
+      'Monitor for signs of context exhaustion: repeated mistakes, forgotten instructions',
+    ],
+    source: {
+      type: 'official',
+      url: 'https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents',
+      author: 'Anthropic',
+    },
+    applicableDimensions: ['contextEngineering'],
+    maxScore: 70,
+    priority: 9,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'tool',
+    title: 'Reduce System Prompt to Recover 10k+ Tokens',
+    keyTakeaway:
+      'Heavy system prompts (CLAUDE.md, MCP tools) can consume 10k+ tokens before you even start. Audit and trim for meaningful context gains.',
+    actionableAdvice: [
+      'Use /cost command to check token usage',
+      'Remove redundant MCP servers from configuration',
+      'Keep CLAUDE.md under 500 lines',
+      'Prefer project-level over global CLAUDE.md rules',
+    ],
+    source: {
+      type: 'blog',
+      url: 'https://github.com/ykdojo/claude-code-tips',
+      author: 'Claude Code Tips',
+    },
+    applicableDimensions: ['contextEngineering', 'toolMastery'],
+    minScore: 70,
+    priority: 8,
+    enabled: true,
+  },
 ];
