@@ -10,7 +10,7 @@
 import pc from 'picocolors';
 import ora, { type Ora } from 'ora';
 import {
-  getChippyWithIndicator,
+  getChipCharacter,
   THINKING_FRAMES,
   getAnimationFrame,
   type ChippyExpression,
@@ -37,7 +37,7 @@ const STAGE_CONFIGS: Record<string, StageConfig> = {
     baseMessage: 'Processing session data',
   },
   analyzing: {
-    icon: '🧠',
+    icon: '',
     color: pc.yellow,
     baseMessage: 'Running AI analysis',
   },
@@ -93,16 +93,21 @@ export class ProgressDisplay {
     const expression: ChippyExpression =
       stage === 'complete' ? 'excited' : getAnimationFrame(THINKING_FRAMES, this.tick);
 
-    // Chippy face with stage indicator
-    const chippyLine = getChippyWithIndicator(expression, config.icon);
+    // Get 3-line chip character with pixel dust animation
+    const chipLines = getChipCharacter(expression, this.tick);
 
     // Main status line with server message
     const mainLine = `${config.icon} ${config.color(message)}`;
 
     // Progress bar line with elapsed time
-    const progressLine = pc.dim(`              ${progressBar} ${elapsed}`);
+    const progressLine = `${progressBar} ${pc.dim(elapsed)}`;
 
-    this.spinner.text = `${chippyLine}   ${mainLine}\n${progressLine}`;
+    // Build multiline output: chip character on left, status on right
+    this.spinner.text = [
+      `${chipLines[0]}`,
+      `${chipLines[1]}   ${mainLine}`,
+      `${chipLines[2]}   ${progressLine}`,
+    ].join('\n');
   }
 
   /**
