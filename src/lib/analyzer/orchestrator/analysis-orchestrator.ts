@@ -16,6 +16,7 @@ import type { VerboseEvaluation } from '../../models/verbose-evaluation';
 import type { AgentOutputs } from '../../models/agent-outputs';
 import { createEmptyAgentOutputs } from '../../models/agent-outputs';
 import { ContentWriterStage } from '../stages/content-writer';
+import { detectKoreanContent } from '../stages/content-writer-prompts';
 import { ContentGateway, type Tier } from '../content-gateway';
 import { BaseWorker } from '../workers/base-worker';
 import type {
@@ -181,6 +182,16 @@ export class AnalysisOrchestrator {
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // Language Detection (for Phase 2+ i18n support)
+    // Uses same logic as Content Writer - detect from extracted quotes
+    // ─────────────────────────────────────────────────────────────────────
+    const quotes = phase1Results.dataAnalyst.data.extractedQuotes?.map((q) => q.quote) ?? [];
+    const useKorean = detectKoreanContent(quotes);
+    if (useKorean) {
+      this.log('Korean content detected - agents will respond in Korean');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // Phase 2: Insight Generation (parallel)
     // Workers check their own minTier via canRun() - some workers may be free tier
     // ─────────────────────────────────────────────────────────────────────
@@ -191,10 +202,12 @@ export class AnalysisOrchestrator {
 
     if (this.phase2Workers.length > 0) {
       this.log('Phase 2: Insight Generation...');
+
       const phase2Context: WorkerContext = {
         ...baseContext,
         moduleAOutput: phase1Results.dataAnalyst.data,
         moduleCOutput: phase1Results.productivityAnalyst.data,
+        useKorean,
       };
 
       console.log(`[Orchestrator] Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasModuleA: ${!!phase2Context.moduleAOutput}`);
@@ -230,6 +243,7 @@ export class AnalysisOrchestrator {
         ...baseContext,
         moduleAOutput: phase1Results.dataAnalyst.data,
         moduleCOutput: phase1Results.productivityAnalyst.data,
+        useKorean,
       };
 
       const phase2Point5Results = await this.runPhase2Point5(

@@ -221,8 +221,26 @@ Return a JSON object with:
 
 export function buildMultitaskingUserPrompt(
   sessionsFormatted: string,
-  concurrentGroups: ConcurrentGroup[]
+  concurrentGroups: ConcurrentGroup[],
+  useKorean: boolean = false
 ): string {
+  const koreanInstructions = useKorean
+    ? `
+## 🇰🇷 CRITICAL: Korean Output Required
+
+**모든 출력은 한국어로 작성하세요.**
+
+The developer's content is in Korean. You MUST write ALL fields in **Korean (한국어)**:
+- topInsights: 한국어로 작성
+- Work descriptions: 한국어로 작성
+- Strategy evaluations: 한국어로 작성
+- Recommendations: 한국어로 작성
+
+Keep technical terms, session IDs, and file paths in English.
+
+`
+    : '';
+
   const concurrentInfo =
     concurrentGroups.length > 0
       ? `
@@ -236,7 +254,7 @@ No concurrent sessions detected (sessions were sequential).
 
   return `## SESSION DATA
 ${sessionsFormatted}
-${concurrentInfo}
+${concurrentInfo}${koreanInstructions}
 ## INSTRUCTIONS
 Analyze the multi-session work patterns:
 1. Evaluate each session's focus and goal coherence
@@ -245,7 +263,7 @@ Analyze the multi-session work patterns:
 4. Evaluate the overall multitasking strategy
 5. Calculate metrics: avgGoalCoherence, avgContextPollutionScore, workUnitSeparationScore, fileOverlapRate
 
-Generate exactly 3 actionable insights about the user's multitasking patterns.
+Generate exactly 3 actionable insights about the user's multitasking patterns.${useKorean ? ' (한국어로 작성)' : ''}
 
 IMPORTANT: Look for context pollution signals in BOTH Korean and English.`;
 }
@@ -315,7 +333,7 @@ export class MultitaskingAnalyzerWorker extends BaseWorker<MultitaskingAnalysisO
     const sessionsFormatted = formatSessionsForMultitasking(context.sessions);
 
     // Build prompt
-    const userPrompt = buildMultitaskingUserPrompt(sessionsFormatted, concurrentGroups);
+    const userPrompt = buildMultitaskingUserPrompt(sessionsFormatted, concurrentGroups, context.useKorean);
 
     // Call Gemini with structured output
     const result = await this.geminiClient.generateStructured({

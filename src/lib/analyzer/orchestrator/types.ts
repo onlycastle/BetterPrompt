@@ -101,6 +101,13 @@ export interface WorkerContext {
   tier: Tier;
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Language Detection (for i18n support)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Whether content is primarily Korean (detected from user prompts) */
+  useKorean?: boolean;
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Phase 1 Outputs (available in Phase 2+)
   // ─────────────────────────────────────────────────────────────────────────
 
