@@ -7,16 +7,20 @@
 
 ## Current Architecture (2025-01)
 
+> **UPDATE (2026-01)**: Phase 2.5 (TypeSynthesis) added for agent-informed classification refinement.
+
 ```mermaid
 classDiagram
     class AnalysisOrchestrator {
         +OrchestratorConfig config
         +BaseWorker[] phase1Workers
         +BaseWorker[] phase2Workers
+        +BaseWorker[] phase2Point5Workers
         +ContentWriterStage contentWriter
         +analyze(sessions, metrics, tier) VerboseEvaluation
         +registerPhase1Worker(worker)
         +registerPhase2Worker(worker)
+        +registerPhase2Point5Worker(worker)
     }
 
     class BaseWorker {
@@ -57,6 +61,12 @@ classDiagram
         +execute(context) ContextEfficiencyOutput
     }
 
+    class TypeSynthesisWorker {
+        +phase: 2
+        +execute(context) TypeSynthesisOutput
+        Note: Runs as Phase 2.5 after other Phase 2 workers
+    }
+
     class ContentWriterStage {
         +transform(data, sessions, productivity) VerboseLLMResponse
     }
@@ -73,6 +83,7 @@ classDiagram
     BaseWorker <|-- AntiPatternSpotterWorker
     BaseWorker <|-- KnowledgeGapWorker
     BaseWorker <|-- ContextEfficiencyWorker
+    BaseWorker <|-- TypeSynthesisWorker
 
     AnalysisOrchestrator o-- ContentWriterStage
     AnalysisOrchestrator ..> ContentGateway : uses for filtering
@@ -83,16 +94,26 @@ classDiagram
 ```
 Phase 1 (Parallel)
 ├── DataAnalystWorker (Module A) ──→ StructuredAnalysisData
-└── ProductivityAnalystWorker (Module C) ──→ ProductivityAnalysisData
+├── ProductivityAnalystWorker (Module C) ──→ ProductivityAnalysisData
+└── MultitaskingAnalyzerWorker ──→ MultitaskingAnalysisData
          │
          ▼
 Phase 2 (Parallel, Premium+ only)
 ├── PatternDetectiveWorker ──→ PatternDetectiveOutput
 ├── AntiPatternSpotterWorker ──→ AntiPatternSpotterOutput
 ├── KnowledgeGapWorker ──→ KnowledgeGapOutput
-└── ContextEfficiencyWorker ──→ ContextEfficiencyOutput
+├── ContextEfficiencyWorker ──→ ContextEfficiencyOutput
+├── MetacognitionWorker ──→ MetacognitionOutput
+└── TemporalAnalyzerWorker ──→ TemporalAnalysisOutput
          │
          ▼ (merged into AgentOutputs)
+
+Phase 2.5 (NEW - Agent-Informed Classification)
+└── TypeSynthesisWorker ──→ TypeSynthesisOutput
+    - Refines initial type classification using all agent insights
+    - Produces: refinedPrimaryType, refinedControlLevel, matrixName
+         │
+         ▼
 
 Phase 3
 └── ContentWriterStage ──→ VerboseLLMResponse

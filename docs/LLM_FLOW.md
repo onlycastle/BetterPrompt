@@ -46,6 +46,14 @@
 │   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
 │   ║                              │                                                ║   │
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
+│   ║  │ PHASE 2.5: Type Synthesis (Agent-Informed Classification Refinement)  │   ║   │
+│   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
+│   ║  │ │ TypeSynthesisWorker                                              │   │   ║   │
+│   ║  │ │ (refines initial type classification using all agent outputs)    │   │   ║   │
+│   ║  │ └─────────────────────────────────────────────────────────────────┘   │   ║   │
+│   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
+│   ║                              │                                                ║   │
+│   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
 │   ║  │ PHASE 3: Content Generation                                            │   ║   │
 │   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
 │   ║  │ │ ContentWriter                                                    │   │   ║   │
@@ -434,16 +442,116 @@ AgentOutputs
 │   ├── topInsights: string[3]
 │   └── confidenceScore: 0-1
 │
-└── multitasking (NEW - Phase 1)
-    ├── sessionFocusData: string  ← semicolon-separated
-    ├── contextPollutionData: string
-    ├── workUnitSeparationData: string
-    ├── avgGoalCoherence: 0-100
-    ├── avgContextPollutionScore: 0-100
-    ├── workUnitSeparationScore: 0-100
-    ├── multitaskingEfficiencyScore: 0-100
-    ├── topInsights: string[3]
-    └── confidenceScore: 0-1
+├── multitasking (NEW - Phase 1)
+│   ├── sessionFocusData: string  ← semicolon-separated
+│   ├── contextPollutionData: string
+│   ├── workUnitSeparationData: string
+│   ├── avgGoalCoherence: 0-100
+│   ├── avgContextPollutionScore: 0-100
+│   ├── workUnitSeparationScore: 0-100
+│   ├── multitaskingEfficiencyScore: 0-100
+│   ├── topInsights: string[3]
+│   └── confidenceScore: 0-1
+│
+└── typeSynthesis (NEW - Phase 2.5)  ← Refined classification using all agent outputs
+    ├── refinedPrimaryType: "architect" | "scientist" | "collaborator" | "speedrunner" | "craftsman"
+    ├── refinedDistribution: string  ← "type:percent;..." format
+    ├── refinedControlLevel: "vibe-coder" | "developing" | "ai-master"
+    ├── matrixName: string  ← Combined name (e.g., "Systems Architect", "Yolo Coder")
+    ├── matrixEmoji: string
+    ├── adjustmentReasons: string[]  ← Why classification was adjusted
+    ├── confidenceScore: 0-1
+    ├── confidenceBoost: 0-1  ← How much confidence improved from synthesis
+    └── synthesisEvidence: string  ← "agent:signal:detail;..." format
+```
+
+---
+
+### Phase 2.5: Type Synthesis (NEW)
+
+**목적**: Phase 2 에이전트 출력을 활용하여 초기 타입 분류 정제
+
+> Phase 2 이후, Phase 3 이전에 실행됨. 모든 티어에서 사용 가능.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    PHASE 2.5: TYPE SYNTHESIS                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────────────────────┐                                       │
+│  │  INPUT (from Phase 1 + 2)    │                                       │
+│  │  - Initial TypeDistribution  │  ◀── Pattern-based from sessions     │
+│  │  - Initial ControlLevel      │                                       │
+│  │  - AgentOutputs              │  ◀── All Phase 2 agent results       │
+│  │    ├── patternDetective      │                                       │
+│  │    ├── antiPatternSpotter    │                                       │
+│  │    ├── metacognition         │                                       │
+│  │    ├── multitasking          │                                       │
+│  │    ├── temporalAnalysis      │                                       │
+│  │    └── contextEfficiency     │                                       │
+│  └────────────┬─────────────────┘                                       │
+│               │                                                          │
+│               ▼                                                          │
+│  ┌────────────────────────────────────────────┐                         │
+│  │  LLM CALL                                   │                         │
+│  │  Model: gemini-3-flash-preview             │                         │
+│  │  Temperature: 1.0 (Gemini default)         │                         │
+│  │  Max Tokens: 4096                          │                         │
+│  │  Structured Output: TypeSynthesisOutput    │                         │
+│  └────────────────────────────────────────────┘                         │
+│               │                                                          │
+│               ▼                                                          │
+│  ┌──────────────────┐                                                   │
+│  │  OUTPUT          │     SYNTHESIS RULES:                              │
+│  │  TypeSynthesis   │     - Error loops + low metacognition → vibe-coder│
+│  │  Output          │     - High metacognition score → ai-master        │
+│  │                  │     - Repeated questions → scientist tendency     │
+│  │  - Refined type  │     - High focus → architect; scattered → speedrun│
+│  │  - Matrix name   │     - High context efficiency → architect/craftsm │
+│  │  - Evidence      │                                                   │
+│  └──────────────────┘                                                   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Type Synthesis Process
+
+1. **Initial Classification** (from `type-detector.ts`):
+   - Pattern-based scoring from raw session metrics
+   - 5 coding styles: architect, scientist, collaborator, speedrunner, craftsman
+   - 3 control levels: vibe-coder, developing, ai-master
+
+2. **Agent Insights Collection**:
+   - PatternDetective: repeated questions, conversation style
+   - AntiPatternSpotter: error loops, learning avoidance, health score
+   - Metacognition: awareness instances, blind spots, metacognitive score
+   - Multitasking: session focus, context pollution, goal coherence
+   - TemporalAnalysis: peak hours, fatigue patterns
+   - ContextEfficiency: inefficiency patterns, efficiency score
+
+3. **LLM Synthesis**:
+   - Analyzes initial classification against agent insights
+   - Adjusts type distribution and control level based on semantic evidence
+   - Provides adjustment reasons with specific evidence citations
+   - Calculates confidence boost from synthesis
+
+4. **Output**:
+   - Refined type and control level
+   - Combined matrix name (e.g., "Systems Architect", "Curious Scientist")
+   - Matrix emoji
+   - Evidence trail for transparency
+
+#### TypeSynthesisWorker
+
+```typescript
+export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
+  readonly name = 'TypeSynthesis';
+  readonly phase = 2 as const;  // Runs as Phase 2.5 (after other Phase 2 workers)
+  readonly minTier: Tier = 'free';
+
+  canRun(context: WorkerContext): boolean;
+  execute(context: WorkerContext): Promise<WorkerResult<TypeSynthesisOutput>>;
+}
 ```
 
 ---
@@ -789,7 +897,31 @@ Module A에 주입되는 전문가 지식 구조:
   ║   GRACEFUL DEGRADATION: Individual agents can fail independently  ║
   ╚═══════════════════════════════════════════════════════════════════╝
                        │
-                       │ [5] Pass all outputs to Phase 3
+                       │ [5] Pass agent outputs to Phase 2.5
+                       ▼
+  ╔═══════════════════════════════════════════════════════════════════╗
+  ║      PHASE 2.5: TYPE SYNTHESIS (Agent-Informed Classification)   ║
+  ║                                                                    ║
+  ║   [TypeSynthesisWorker - runs after Phase 2, before Phase 3]      ║
+  ║                                                                    ║
+  ║   INPUT:  Initial TypeDistribution + ControlLevel                 ║
+  ║           + AgentOutputs (all Phase 2 results)                    ║
+  ║   OUTPUT: TypeSynthesisOutput                                      ║
+  ║           - refinedPrimaryType + refinedDistribution               ║
+  ║           - refinedControlLevel                                    ║
+  ║           - matrixName + matrixEmoji                               ║
+  ║           - adjustmentReasons + synthesisEvidence                  ║
+  ║                                                                    ║
+  ║   SYNTHESIS RULES:                                                 ║
+  ║   - Error loops + low metacognition → vibe-coder tendency          ║
+  ║   - High metacognition (>70) → ai-master tendency                  ║
+  ║   - Repeated questions → scientist tendency                        ║
+  ║   - High focus → architect; scattered → speedrunner                ║
+  ║                                                                    ║
+  ║   FALLBACK: Uses initial classification if no agent data available ║
+  ╚═══════════════════════════════════════════════════════════════════╝
+                       │
+                       │ [6] Pass all outputs to Phase 3
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
   ║                   PHASE 3: CONTENT WRITER                         ║
@@ -797,7 +929,7 @@ Module A에 주입되는 전문가 지식 구조:
   ║   Model: gemini-3-flash      Temp: 1.0    Tokens: 65536           ║
   ║                                                                    ║
   ║   INPUT:  StructuredAnalysisData + ProductivityAnalysisData         ║
-  ║           + AgentOutputs + Sessions                                ║
+  ║           + AgentOutputs (with TypeSynthesis) + Sessions           ║
   ║   OUTPUT: VerboseLLMResponse                                       ║
   ║           - Personality summary (300-1500 chars)                   ║
   ║           - 6 dimension insights (with evidence)                   ║
@@ -896,7 +1028,7 @@ Module A에 주입되는 전문가 지식 구조:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | 3-phase 파이프라인 조율, Worker 등록/실행 |
+| Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | 4-phase 파이프라인 조율 (1→2→2.5→3), Worker 등록/실행 |
 | Orchestrator Types | `src/lib/analyzer/orchestrator/types.ts` | WorkerResult, WorkerContext, Phase 타입 |
 | Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, Worker 등록, 문자열 sanitization |
 | Content Gateway | `src/lib/analyzer/content-gateway.ts` | 티어별 콘텐츠 필터링 (free/premium/enterprise) |
@@ -929,6 +1061,15 @@ Module A에 주입되는 전문가 지식 구조:
 | **Metacognition Schema** | `src/lib/models/metacognition-data.ts` | MetacognitionOutput Zod 스키마 (NEW) |
 | **Temporal Schema** | `src/lib/models/temporal-data.ts` | TemporalAnalysisOutput Zod 스키마 (NEW) |
 | **Risk Signal Schema** | `src/lib/models/risk-signal.ts` | RiskSignal Zod 스키마 (NEW) |
+
+### Phase 2.5: Type Synthesis (NEW)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| **TypeSynthesis Worker** | `src/lib/analyzer/workers/type-synthesis-worker.ts` | Phase 2.5 - 에이전트 인사이트 기반 타입 분류 정제 (NEW) |
+| Type Detector | `src/lib/analyzer/type-detector.ts` | Initial pattern-based type detection |
+| Coding Style Types | `src/lib/models/coding-style.ts` | 5×3 matrix types (15 combinations) |
+| AI Control Dimension | `src/lib/analyzer/dimensions/ai-control.ts` | Control level calculation |
 
 ### Phase 3: Content Writer
 
