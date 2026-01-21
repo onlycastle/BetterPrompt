@@ -9,10 +9,7 @@
 
 import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker';
 import { DataAnalystStage, type DataAnalystConfig } from '../stages/data-analyst';
-import {
-  createDefaultStructuredAnalysisData,
-  type StructuredAnalysisData,
-} from '../../models/analysis-data';
+import type { StructuredAnalysisData } from '../../models/analysis-data';
 import type { Tier } from '../content-gateway';
 
 /**
@@ -58,31 +55,22 @@ export class DataAnalystWorker extends BaseWorker<StructuredAnalysisData> {
 
   /**
    * Execute the data analyst stage
+   * NO FALLBACK: Errors propagate to fail the analysis
    */
   async execute(context: WorkerContext): Promise<WorkerResult<StructuredAnalysisData>> {
     if (!context.metrics) {
-      return this.createFailedResult(
-        new Error('Metrics required for data analysis'),
-        createDefaultStructuredAnalysisData()
-      );
+      throw new Error('Metrics required for data analysis');
     }
 
     this.logMessage('Analyzing sessions for behavioral patterns...');
 
-    try {
-      const result = await this.stage.analyze(context.sessions, context.metrics);
+    // NO try-catch: let errors propagate
+    const result = await this.stage.analyze(context.sessions, context.metrics);
 
-      this.logMessage(`Extracted ${result.data.extractedQuotes.length} quotes`);
-      this.logMessage(`Detected ${result.data.detectedPatterns.length} patterns`);
+    this.logMessage(`Extracted ${result.data.extractedQuotes.length} quotes`);
+    this.logMessage(`Detected ${result.data.detectedPatterns.length} patterns`);
 
-      return this.createSuccessResult(result.data, result.usage);
-    } catch (error) {
-      this.logMessage(`Analysis failed: ${error}`);
-      return this.createFailedResult(
-        error instanceof Error ? error : new Error(String(error)),
-        createDefaultStructuredAnalysisData()
-      );
-    }
+    return this.createSuccessResult(result.data, result.usage);
   }
 
   /**

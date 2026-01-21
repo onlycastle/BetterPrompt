@@ -81,59 +81,34 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
 
   /**
    * Execute context efficiency analysis
+   * NO FALLBACK: Errors propagate to fail the analysis
    */
   async execute(context: WorkerContext): Promise<WorkerResult<ContextEfficiencyOutput>> {
     if (!context.moduleAOutput) {
-      return this.createFailedResult(
-        new Error('Module A output required'),
-        this.createDefaultOutput()
-      );
+      throw new Error('Module A output required for ContextEfficiency');
     }
 
     this.logMessage('Analyzing context and token efficiency...');
 
-    try {
-      const sessionsFormatted = formatSessionsForAnalysis(
-        context.sessions,
-        CONTEXT_EFFICIENCY_FORMAT
-      );
-      const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
-      const userPrompt = buildContextEfficiencyUserPrompt(sessionsFormatted, moduleAJson);
+    // NO try-catch: let errors propagate
+    const sessionsFormatted = formatSessionsForAnalysis(
+      context.sessions,
+      CONTEXT_EFFICIENCY_FORMAT
+    );
+    const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
+    const userPrompt = buildContextEfficiencyUserPrompt(sessionsFormatted, moduleAJson);
 
-      const result = await this.geminiClient.generateStructured({
-        systemPrompt: CONTEXT_EFFICIENCY_SYSTEM_PROMPT,
-        userPrompt,
-        responseSchema: ContextEfficiencyOutputSchema,
-        maxOutputTokens: 8192,
-      });
+    const result = await this.geminiClient.generateStructured({
+      systemPrompt: CONTEXT_EFFICIENCY_SYSTEM_PROMPT,
+      userPrompt,
+      responseSchema: ContextEfficiencyOutputSchema,
+      maxOutputTokens: 8192,
+    });
 
-      this.logMessage(`Efficiency score: ${result.data.overallEfficiencyScore}`);
-      this.logMessage(`Avg context fill: ${result.data.avgContextFillPercent}%`);
+    this.logMessage(`Efficiency score: ${result.data.overallEfficiencyScore}`);
+    this.logMessage(`Avg context fill: ${result.data.avgContextFillPercent}%`);
 
-      return this.createSuccessResult(result.data, result.usage);
-    } catch (error) {
-      this.logMessage(`Analysis failed: ${error}`);
-      return this.createFailedResult(
-        error instanceof Error ? error : new Error(String(error)),
-        this.createDefaultOutput()
-      );
-    }
-  }
-
-  /**
-   * Create default output for fallback
-   */
-  private createDefaultOutput(): ContextEfficiencyOutput {
-    return {
-      contextUsagePatternData: '',
-      inefficiencyPatternsData: '',
-      promptLengthTrendData: '',
-      redundantInfoData: '',
-      topInsights: [],
-      overallEfficiencyScore: 50, // Neutral default
-      avgContextFillPercent: 50, // Neutral default
-      confidenceScore: 0,
-    };
+    return this.createSuccessResult(result.data, result.usage);
   }
 
   /**

@@ -79,57 +79,34 @@ export class AntiPatternSpotterWorker extends BaseWorker<AntiPatternSpotterOutpu
 
   /**
    * Execute anti-pattern detection
+   * NO FALLBACK: Errors propagate to fail the analysis
    */
   async execute(context: WorkerContext): Promise<WorkerResult<AntiPatternSpotterOutput>> {
     if (!context.moduleAOutput) {
-      return this.createFailedResult(
-        new Error('Module A output required'),
-        this.createDefaultOutput()
-      );
+      throw new Error('Module A output required for AntiPatternSpotter');
     }
 
     this.logMessage('Detecting anti-patterns and bad habits...');
 
-    try {
-      const sessionsFormatted = formatSessionsForAnalysis(
-        context.sessions,
-        ANTI_PATTERN_FORMAT
-      );
-      const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
-      const userPrompt = buildAntiPatternSpotterUserPrompt(sessionsFormatted, moduleAJson);
+    // NO try-catch: let errors propagate
+    const sessionsFormatted = formatSessionsForAnalysis(
+      context.sessions,
+      ANTI_PATTERN_FORMAT
+    );
+    const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
+    const userPrompt = buildAntiPatternSpotterUserPrompt(sessionsFormatted, moduleAJson);
 
-      const result = await this.geminiClient.generateStructured({
-        systemPrompt: ANTI_PATTERN_SPOTTER_SYSTEM_PROMPT,
-        userPrompt,
-        responseSchema: AntiPatternSpotterOutputSchema,
-        maxOutputTokens: 8192,
-      });
+    const result = await this.geminiClient.generateStructured({
+      systemPrompt: ANTI_PATTERN_SPOTTER_SYSTEM_PROMPT,
+      userPrompt,
+      responseSchema: AntiPatternSpotterOutputSchema,
+      maxOutputTokens: 8192,
+    });
 
-      this.logMessage(`Health score: ${result.data.overallHealthScore}`);
-      this.logMessage(`Found ${result.data.topInsights.length} anti-pattern insights`);
+    this.logMessage(`Health score: ${result.data.overallHealthScore}`);
+    this.logMessage(`Found ${result.data.topInsights.length} anti-pattern insights`);
 
-      return this.createSuccessResult(result.data, result.usage);
-    } catch (error) {
-      this.logMessage(`Analysis failed: ${error}`);
-      return this.createFailedResult(
-        error instanceof Error ? error : new Error(String(error)),
-        this.createDefaultOutput()
-      );
-    }
-  }
-
-  /**
-   * Create default output for fallback
-   */
-  private createDefaultOutput(): AntiPatternSpotterOutput {
-    return {
-      errorLoopsData: '',
-      learningAvoidanceData: '',
-      repeatedMistakesData: '',
-      topInsights: [],
-      overallHealthScore: 100, // Default to healthy
-      confidenceScore: 0,
-    };
+    return this.createSuccessResult(result.data, result.usage);
   }
 
   /**

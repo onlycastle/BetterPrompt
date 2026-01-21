@@ -193,20 +193,15 @@ describe('AntiPatternSpotterWorker', () => {
   });
 
   describe('execute()', () => {
-    it('should return error when moduleAOutput missing', async () => {
+    it('should throw when moduleAOutput missing', async () => {
       const contextWithoutModuleA = {
         ...context,
         moduleAOutput: undefined,
       };
 
-      const result = await worker.execute(contextWithoutModuleA);
-
-      expect(result.data).toBeDefined();
-      expect(result.data.topInsights).toEqual([]);
-      expect(result.data.overallHealthScore).toBe(100);
-      expect(result.usage).toBeNull();
-      expect(result.error).toBeDefined();
-      expect(result.error?.message).toBe('Module A output required');
+      await expect(worker.execute(contextWithoutModuleA)).rejects.toThrow(
+        'Module A output required for AntiPatternSpotter'
+      );
     });
 
     it('should execute analysis and return result', async () => {
@@ -263,41 +258,11 @@ describe('AntiPatternSpotterWorker', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle analysis failure', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const verboseConfig: AntiPatternSpotterWorkerConfig = {
-        geminiApiKey: 'test-key',
-        verbose: true,
-      };
-      const verboseWorker = new AntiPatternSpotterWorker(verboseConfig);
-
+    it('should throw on analysis failure (NO FALLBACK policy)', async () => {
       const error = new Error('Analysis failed');
       mockGenerateStructured.mockRejectedValue(error);
 
-      const result = await verboseWorker.execute(context);
-
-      expect(result.data).toBeDefined();
-      expect(result.data.topInsights).toEqual([]);
-      expect(result.usage).toBeNull();
-      expect(result.error).toBe(error);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Analysis failed: Error: Analysis failed')
-      );
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should return default healthy output on failure', async () => {
-      mockGenerateStructured.mockRejectedValue(new Error('Failed'));
-
-      const result = await worker.execute(context);
-
-      expect(result.data.errorLoopsData).toBe('');
-      expect(result.data.learningAvoidanceData).toBe('');
-      expect(result.data.repeatedMistakesData).toBe('');
-      expect(result.data.topInsights).toEqual([]);
-      expect(result.data.overallHealthScore).toBe(100); // Default to healthy
-      expect(result.data.confidenceScore).toBe(0);
+      await expect(worker.execute(context)).rejects.toThrow('Analysis failed');
     });
   });
 

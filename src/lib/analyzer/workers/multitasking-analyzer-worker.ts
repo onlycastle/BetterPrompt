@@ -16,7 +16,6 @@ import { GeminiClient, type GeminiClientConfig } from '../clients/gemini-client'
 import {
   MultitaskingAnalysisOutputSchema,
   type MultitaskingAnalysisOutput,
-  createDefaultMultitaskingAnalysisOutput,
 } from '../../models/multitasking-data';
 import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
@@ -301,40 +300,36 @@ export class MultitaskingAnalyzerWorker extends BaseWorker<MultitaskingAnalysisO
     return true;
   }
 
+  /**
+   * NO FALLBACK: Errors propagate to fail the analysis
+   */
   async execute(context: WorkerContext): Promise<WorkerResult<MultitaskingAnalysisOutput>> {
     this.logMessage(`Starting multitasking analysis for ${context.sessions.length} sessions...`);
 
-    try {
-      // Pre-process: detect concurrent session groups
-      const concurrentGroups = detectConcurrentGroups(context.sessions);
-      this.logMessage(`Found ${concurrentGroups.length} concurrent session groups`);
+    // NO try-catch: let errors propagate
+    // Pre-process: detect concurrent session groups
+    const concurrentGroups = detectConcurrentGroups(context.sessions);
+    this.logMessage(`Found ${concurrentGroups.length} concurrent session groups`);
 
-      // Format sessions with multitasking-specific info
-      const sessionsFormatted = formatSessionsForMultitasking(context.sessions);
+    // Format sessions with multitasking-specific info
+    const sessionsFormatted = formatSessionsForMultitasking(context.sessions);
 
-      // Build prompt
-      const userPrompt = buildMultitaskingUserPrompt(sessionsFormatted, concurrentGroups);
+    // Build prompt
+    const userPrompt = buildMultitaskingUserPrompt(sessionsFormatted, concurrentGroups);
 
-      // Call Gemini with structured output
-      const result = await this.geminiClient.generateStructured({
-        systemPrompt: MULTITASKING_SYSTEM_PROMPT,
-        userPrompt,
-        responseSchema: MultitaskingAnalysisOutputSchema,
-        maxOutputTokens: 8192,
-      });
+    // Call Gemini with structured output
+    const result = await this.geminiClient.generateStructured({
+      systemPrompt: MULTITASKING_SYSTEM_PROMPT,
+      userPrompt,
+      responseSchema: MultitaskingAnalysisOutputSchema,
+      maxOutputTokens: 8192,
+    });
 
-      this.logMessage(
-        `Analysis complete. Efficiency score: ${result.data.multitaskingEfficiencyScore}`
-      );
+    this.logMessage(
+      `Analysis complete. Efficiency score: ${result.data.multitaskingEfficiencyScore}`
+    );
 
-      return this.createSuccessResult(result.data, result.usage);
-    } catch (error) {
-      this.logMessage(`Analysis failed: ${error}`);
-      return this.createFailedResult(
-        error instanceof Error ? error : new Error(String(error)),
-        createDefaultMultitaskingAnalysisOutput()
-      );
-    }
+    return this.createSuccessResult(result.data, result.usage);
   }
 
   private logMessage(message: string): void {

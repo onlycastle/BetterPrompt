@@ -274,8 +274,6 @@ export interface VerboseAnalyzerConfig {
   pipeline?: PipelineConfig;
   /** User tier for content filtering */
   tier?: Tier;
-  /** Fallback to legacy mode if two-stage fails */
-  fallbackToLegacy?: boolean;
 }
 
 /**
@@ -309,7 +307,6 @@ const DEFAULT_CONFIG: Required<Omit<VerboseAnalyzerConfig, 'apiKey' | 'geminiApi
     },
   },
   tier: 'enterprise', // Generate full content by default
-  fallbackToLegacy: true,
 };
 
 /**
@@ -378,20 +375,20 @@ export class VerboseAnalyzer {
       this.orchestrator.registerPhase2Point5Worker(createTypeSynthesisWorker(orchestratorConfig));
     }
 
-    // Get Anthropic API key for legacy single-stage mode (or fallback)
+    // Get Anthropic API key for legacy single-stage mode only
     const anthropicApiKey = this.config.apiKey || process.env.ANTHROPIC_API_KEY;
 
-    // Only require Anthropic key if single-stage mode or fallback is enabled
-    if (this.config.pipeline.mode === 'single' || this.config.fallbackToLegacy) {
+    // Only require Anthropic key if single-stage mode is explicitly configured
+    if (this.config.pipeline.mode === 'single') {
       if (!anthropicApiKey) {
-        const message = this.config.pipeline.mode === 'single'
-          ? 'ANTHROPIC_API_KEY required for single-stage mode.'
-          : 'ANTHROPIC_API_KEY required for fallback. Set fallbackToLegacy: false to disable.';
-        throw new VerboseAnalysisError(message, 'NO_API_KEY');
+        throw new VerboseAnalysisError(
+          'ANTHROPIC_API_KEY required for single-stage mode.',
+          'NO_API_KEY'
+        );
       }
     }
 
-    // Initialize Anthropic client for legacy mode (may be unused in two-stage)
+    // Initialize Anthropic client for legacy mode (unused in two-stage)
     this.client = new Anthropic({ apiKey: anthropicApiKey || '' });
   }
 
@@ -403,7 +400,7 @@ export class VerboseAnalyzer {
    * - Phase 2: 4 Wow Agents (Premium+ only) in parallel
    * - Phase 3: Content Writer
    *
-   * Falls back to single-stage (legacy with Claude) if two-stage fails and fallbackToLegacy is true.
+   * NO FALLBACK: Errors are thrown immediately to identify root causes.
    */
   async analyzeVerbose(
     sessions: ParsedSession[],
@@ -419,20 +416,18 @@ export class VerboseAnalyzer {
 
     const tier = options.tier ?? this.config.tier;
 
-    // Try two-stage pipeline (orchestrator) if configured
+    // Use two-stage pipeline (orchestrator) - NO FALLBACK
+    // Errors must be thrown to identify and fix root causes
+    console.log(`[VerboseAnalyzer] Pipeline mode: ${this.config.pipeline.mode}, hasOrchestrator: ${!!this.orchestrator}`);
     if (this.config.pipeline.mode === 'two-stage' && this.orchestrator) {
-      try {
-        return await this.analyzeTwoStage(sessions, metrics, tier);
-      } catch (error) {
-        if (this.config.fallbackToLegacy) {
-          console.warn('Two-stage pipeline failed, falling back to legacy mode:', error);
-          return await this.analyzeSingleStage(sessions, metrics, tier);
-        }
-        throw error;
-      }
+      console.log('[VerboseAnalyzer] Using TWO-STAGE pipeline with orchestrator');
+      const result = await this.analyzeTwoStage(sessions, metrics, tier);
+      console.log(`[VerboseAnalyzer] Two-stage complete. hasAgentOutputs: ${!!result.agentOutputs}, typeSynthesis: ${!!result.agentOutputs?.typeSynthesis}`);
+      return result;
     }
 
-    // Use single-stage (legacy) mode
+    // Use single-stage (legacy) mode - only if explicitly configured
+    console.log('[VerboseAnalyzer] Using SINGLE-STAGE (legacy) pipeline');
     return await this.analyzeSingleStage(sessions, metrics, tier);
   }
 

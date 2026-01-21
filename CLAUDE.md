@@ -42,12 +42,45 @@ npm test               # Run all tests
 
 **Path Encoding**: Claude Code encodes paths by replacing `/` with `-`. See `encodeProjectPath`/`decodeProjectPath` in `src/lib/parser/jsonl-reader.ts`.
 
+## No Fallback Policy
+
+> ⚠️ **CRITICAL**: This codebase follows a strict "No Fallback" policy.
+
+**Principle**: When errors occur, they must be thrown immediately. Never silently hide errors by returning default/empty data.
+
+**Why**:
+- Fallbacks hide bugs and make debugging extremely difficult
+- Silent failures lead to incorrect analysis results being stored in the database
+- Users get misleading data without knowing something went wrong
+
+**Implementation**:
+- Workers throw errors instead of returning empty data via `createFailedResult`
+- Orchestrator uses `Promise.all()` (not `Promise.allSettled()`) to fail fast
+- No `fallbackToLegacy` option - if the pipeline fails, the entire analysis fails
+- Frontend should show clear error states, not fake/empty results
+
+**Do NOT**:
+```typescript
+// BAD: Silent fallback hides errors
+try {
+  return await analyze();
+} catch (error) {
+  return createDefaultOutput(); // User gets empty data, thinks analysis succeeded
+}
+```
+
+**Do**:
+```typescript
+// GOOD: Let errors propagate
+return await analyze(); // Error surfaces to user, root cause can be identified
+```
+
 ## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
 | `GOOGLE_GEMINI_API_KEY` | Required for three-stage pipeline (Gemini 3 Flash) |
-| `ANTHROPIC_API_KEY` | Required for legacy single-stage mode or fallback |
+| `ANTHROPIC_API_KEY` | Required for legacy single-stage mode only |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (client-side) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key (client-side) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
