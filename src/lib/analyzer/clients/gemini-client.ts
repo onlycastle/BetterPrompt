@@ -12,30 +12,31 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { ZodSchema } from 'zod';
 
 /**
- * Recursively remove additionalProperties from JSON schema
+ * Recursively clean JSON schema for Gemini API compatibility
  *
- * The @google/genai SDK rejects schemas with additionalProperties, even though
- * the Gemini API itself supports it since November 2025. zodToJsonSchema adds
- * additionalProperties: false by default, causing INVALID_ARGUMENT errors.
+ * Removes fields that cause INVALID_ARGUMENT errors:
+ * 1. additionalProperties - SDK rejects this even though API supports it since Nov 2025
+ * 2. minItems/maxItems - Gemini has undocumented limits on array size constraints
+ *    in complex schemas (fails when schema exceeds ~8000 chars with these fields)
  *
  * @see https://github.com/googleapis/python-genai/issues/1815
  */
-function removeAdditionalProperties(obj: unknown): unknown {
+function cleanSchemaForGemini(obj: unknown): unknown {
   if (obj === null || typeof obj !== 'object') {
     return obj;
   }
 
   if (Array.isArray(obj)) {
-    return obj.map(removeAdditionalProperties);
+    return obj.map(cleanSchemaForGemini);
   }
 
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
-    // Skip additionalProperties field
-    if (key === 'additionalProperties') {
-      continue;
-    }
-    result[key] = removeAdditionalProperties(value);
+    // Skip problematic fields
+    if (key === 'additionalProperties') continue;
+    if (key === 'minItems') continue;
+    if (key === 'maxItems') continue;
+    result[key] = cleanSchemaForGemini(value);
   }
   return result;
 }
@@ -120,10 +121,10 @@ export class GeminiClient {
       $refStrategy: 'none',
     });
 
-    // Remove $schema and additionalProperties fields
-    // Gemini SDK rejects additionalProperties even though the API supports it
+    // Remove $schema and clean problematic fields
+    // Gemini SDK rejects additionalProperties, and minItems/maxItems cause issues in large schemas
     const { $schema: _$schema, ...schemaWithoutMeta } = jsonSchema as Record<string, unknown>;
-    const responseSchema = removeAdditionalProperties(schemaWithoutMeta);
+    const responseSchema = cleanSchemaForGemini(schemaWithoutMeta);
 
     let lastError: Error | null = null;
 
