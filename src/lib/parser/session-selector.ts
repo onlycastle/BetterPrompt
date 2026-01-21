@@ -1,33 +1,41 @@
 /**
- * Session Selector - Duration-based optimal session selection
+ * Session Selector - Context-aware optimal session selection
  *
  * Selects the most informative sessions for analysis based on:
- * - Duration (weight: 0.6) - longer sessions have more behavioral data
- * - Recency (weight: 0.3) - recent sessions are more relevant
- * - Message count (weight: 0.1) - more messages = richer context
+ * - Message count (weight: 0.5) - more messages = richer behavioral data
+ * - Context optimality (weight: 0.25) - lower utilization = cleaner AI responses
+ * - Recency (weight: 0.25) - recent sessions are more relevant
+ *
+ * Context optimality: Sessions with avg context utilization <60% are preferred
+ * because high utilization (>60%) correlates with AI confusion/hallucinations.
  */
 
 import { type SessionMetadata } from '../domain/models/analysis';
 
+/**
+ * Context utilization threshold - sessions above this may have degraded AI quality
+ */
+const CONTEXT_OPTIMAL_THRESHOLD = 60;
+
 export interface SessionSelectionConfig {
   maxSessions: number;
-  minDurationSeconds: number;
+  minMessageCount: number;
   recencyWindowDays: number;
   priorityWeight: {
-    duration: number;
-    recency: number;
     messageCount: number;
+    contextOptimality: number;
+    recency: number;
   };
 }
 
 export const DEFAULT_SELECTION_CONFIG: SessionSelectionConfig = {
   maxSessions: 30,
-  minDurationSeconds: 300, // 5 minutes minimum
+  minMessageCount: 10, // Minimum 10 messages for meaningful analysis
   recencyWindowDays: 90,
   priorityWeight: {
-    duration: 0.6,
-    recency: 0.3,
-    messageCount: 0.1,
+    messageCount: 0.5,
+    contextOptimality: 0.25,
+    recency: 0.25,
   },
 };
 
@@ -35,9 +43,9 @@ interface ScoredSession {
   session: SessionMetadata;
   score: number;
   breakdown: {
-    durationScore: number;
-    recencyScore: number;
     messageScore: number;
+    contextOptimalityScore: number;
+    recencyScore: number;
   };
 }
 
@@ -48,16 +56,32 @@ function calculateSessionScore(
   session: SessionMetadata,
   weights: SessionSelectionConfig['priorityWeight'],
   stats: {
-    maxDuration: number;
     minTimestamp: number;
     maxTimestamp: number;
     maxMessages: number;
   }
 ): ScoredSession {
-  // Normalize duration (0-1 scale)
-  const durationScore = stats.maxDuration > 0
-    ? session.durationSeconds / stats.maxDuration
+  // Normalize message count (0-1 scale, more = better)
+  const messageScore = stats.maxMessages > 0
+    ? session.messageCount / stats.maxMessages
     : 0;
+
+  // Context optimality: Lower utilization = better score
+  // Score 1.0 if utilization <= 60%, decreasing linearly to 0 at 100%
+  let contextOptimalityScore: number;
+  if (session.avgContextUtilization === undefined) {
+    // Fallback: neutral score if no utilization data
+    contextOptimalityScore = 0.5;
+  } else if (session.avgContextUtilization <= CONTEXT_OPTIMAL_THRESHOLD) {
+    // Below threshold: full score
+    contextOptimalityScore = 1.0;
+  } else {
+    // Above threshold: linear penalty (60% → 1.0, 100% → 0.0)
+    contextOptimalityScore = Math.max(
+      0,
+      1 - (session.avgContextUtilization - CONTEXT_OPTIMAL_THRESHOLD) / (100 - CONTEXT_OPTIMAL_THRESHOLD)
+    );
+  }
 
   // Normalize recency (0-1, more recent = higher)
   const sessionTime = session.timestamp.getTime();
@@ -66,29 +90,24 @@ function calculateSessionScore(
     ? (sessionTime - stats.minTimestamp) / timeRange
     : 1;
 
-  // Normalize message count
-  const messageScore = stats.maxMessages > 0
-    ? session.messageCount / stats.maxMessages
-    : 0;
-
   const score =
-    weights.duration * durationScore +
-    weights.recency * recencyScore +
-    weights.messageCount * messageScore;
+    weights.messageCount * messageScore +
+    weights.contextOptimality * contextOptimalityScore +
+    weights.recency * recencyScore;
 
   return {
     session,
     score,
     breakdown: {
-      durationScore,
-      recencyScore,
       messageScore,
+      contextOptimalityScore,
+      recencyScore,
     },
   };
 }
 
 /**
- * Select optimal sessions for analysis based on duration, recency, and message count
+ * Select optimal sessions for analysis based on message count, context optimality, and recency
  *
  * @param allSessions - All available sessions
  * @param config - Selection configuration
@@ -100,19 +119,19 @@ export function selectOptimalSessions(
 ): SessionMetadata[] {
   const opts = { ...DEFAULT_SELECTION_CONFIG, ...config };
 
-  // 1. Filter by recency window
+  // 1. Filter by recency window and minimum message count
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - opts.recencyWindowDays);
 
   const eligibleSessions = allSessions.filter(
     (s) =>
-      s.timestamp >= cutoffDate && s.durationSeconds >= opts.minDurationSeconds
+      s.timestamp >= cutoffDate && s.messageCount >= opts.minMessageCount
   );
 
   if (eligibleSessions.length === 0) {
-    // Fallback: if no sessions meet criteria, relax duration filter
+    // Fallback: if no sessions meet criteria, relax message count filter
     const relaxedSessions = allSessions.filter(
-      (s) => s.timestamp >= cutoffDate && s.durationSeconds >= 60
+      (s) => s.timestamp >= cutoffDate && s.messageCount >= 5
     );
     if (relaxedSessions.length === 0) {
       return allSessions.slice(0, opts.maxSessions);
@@ -122,7 +141,6 @@ export function selectOptimalSessions(
 
   // 2. Calculate stats for normalization
   const stats = {
-    maxDuration: Math.max(...eligibleSessions.map((s) => s.durationSeconds)),
     minTimestamp: Math.min(
       ...eligibleSessions.map((s) => s.timestamp.getTime())
     ),

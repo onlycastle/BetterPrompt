@@ -121,6 +121,12 @@ export async function listProjectDirs(): Promise<string[]> {
 }
 
 /**
+ * Claude's context window size (tokens)
+ * Used for calculating context utilization percentage
+ */
+const CONTEXT_WINDOW_SIZE = 200_000;
+
+/**
  * Get metadata for a session file without fully parsing it
  * Reads only the first and last few lines for efficiency
  */
@@ -138,10 +144,11 @@ export async function getSessionMetadata(
     // Get session ID from filename
     const fileName = basename(filePath, '.jsonl');
 
-    // Count messages (scan entire file - don't rely on first line type)
+    // Count messages and track token usage for context utilization
     let messageCount = 0;
     let firstTimestamp: Date | null = null;
     let lastTimestamp: Date | null = null;
+    const inputTokenCounts: number[] = [];
 
     for (const line of lines) {
       const parsed = parseJSONLLine(line);
@@ -154,6 +161,11 @@ export async function getSessionMetadata(
         }
         if (!lastTimestamp || ts > lastTimestamp) {
           lastTimestamp = ts;
+        }
+
+        // Track input tokens from assistant messages (they have usage data)
+        if (parsed.type === 'assistant' && parsed.message.usage?.input_tokens) {
+          inputTokenCounts.push(parsed.message.usage.input_tokens);
         }
       }
     }
@@ -170,6 +182,19 @@ export async function getSessionMetadata(
       (lastTimestamp.getTime() - firstTimestamp.getTime()) / 1000
     );
 
+    // Calculate context utilization metrics
+    let avgContextUtilization: number | undefined;
+    let maxContextUtilization: number | undefined;
+
+    if (inputTokenCounts.length > 0) {
+      const avgTokens =
+        inputTokenCounts.reduce((sum, t) => sum + t, 0) / inputTokenCounts.length;
+      const maxTokens = Math.max(...inputTokenCounts);
+
+      avgContextUtilization = Math.round((avgTokens / CONTEXT_WINDOW_SIZE) * 100);
+      maxContextUtilization = Math.round((maxTokens / CONTEXT_WINDOW_SIZE) * 100);
+    }
+
     return {
       sessionId: fileName,
       projectPath,
@@ -178,6 +203,8 @@ export async function getSessionMetadata(
       messageCount,
       durationSeconds,
       filePath,
+      avgContextUtilization,
+      maxContextUtilization,
     };
   } catch {
     return null;

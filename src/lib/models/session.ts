@@ -207,6 +207,9 @@ export interface SessionMetadata {
   messageCount: number;
   durationSeconds: number;
   filePath: string; // Full path to JSONL file
+  // Context utilization metrics (0-100)
+  avgContextUtilization?: number; // Average context window usage %
+  maxContextUtilization?: number; // Peak context window usage %
 }
 
 // ============================================================================
