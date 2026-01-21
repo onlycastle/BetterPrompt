@@ -188,6 +188,9 @@ export class AnalysisOrchestrator {
     // ─────────────────────────────────────────────────────────────────────
     let agentOutputs: AgentOutputs = createEmptyAgentOutputs();
 
+    console.log(`[Orchestrator] Phase 2 workers registered: ${this.phase2Workers.length}`);
+    console.log(`[Orchestrator] Worker names: ${this.phase2Workers.map(w => w.name).join(', ')}`);
+
     if (this.phase2Workers.length > 0) {
       this.log('Phase 2: Insight Generation...');
       const phase2Context: WorkerContext = {
@@ -196,8 +199,14 @@ export class AnalysisOrchestrator {
         moduleCOutput: phase1Results.productivityAnalyst.data,
       };
 
+      console.log(`[Orchestrator] Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasModuleA: ${!!phase2Context.moduleAOutput}`);
+
       const phase2Results = await this.runPhase2(phase2Context);
+      console.log(`[Orchestrator] Phase 2 results keys: ${Object.keys(phase2Results).join(', ')}`);
+
       agentOutputs = this.mergeAgentOutputs(phase2Results);
+      console.log(`[Orchestrator] Merged agentOutputs keys: ${Object.keys(agentOutputs).join(', ')}`);
+      console.log(`[Orchestrator] agentOutputs.patternDetective: ${agentOutputs.patternDetective ? 'present' : 'null'}`);
 
       // Track Phase 2 token usage
       for (const [workerName, result] of Object.entries(phase2Results)) {
@@ -216,6 +225,7 @@ export class AnalysisOrchestrator {
     // Phase 2.5: Type Synthesis (after Phase 2, uses agent outputs)
     // Refines type classification using insights from all Phase 2 agents
     // ─────────────────────────────────────────────────────────────────────
+    console.log(`[Orchestrator] Phase 2.5 workers registered: ${this.phase2Point5Workers.length}`);
     if (this.phase2Point5Workers.length > 0) {
       this.log('Phase 2.5: Type Synthesis...');
       const phase2Point5Context: WorkerContext = {
@@ -283,6 +293,10 @@ export class AnalysisOrchestrator {
       productivityAnalysis: phase1Results.productivityAnalyst.data,
       agentOutputs: agentOutputs,
     };
+
+    console.log(`[Orchestrator] Final evaluation - hasAgentOutputs: ${!!evaluation.agentOutputs}`);
+    console.log(`[Orchestrator] Final agentOutputs keys: ${evaluation.agentOutputs ? Object.keys(evaluation.agentOutputs).join(', ') : 'none'}`);
+    console.log(`[Orchestrator] Final typeSynthesis: ${evaluation.agentOutputs?.typeSynthesis ? 'present' : 'null'}`);
 
     // Log pipeline summary
     const totalTime = Date.now() - startTime;
