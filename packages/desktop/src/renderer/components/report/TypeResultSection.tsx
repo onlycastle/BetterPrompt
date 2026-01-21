@@ -1,8 +1,15 @@
 import styles from './TypeResultSection.module.css';
-import type { CodingStyleType, TypeDistribution } from '../../types/report';
+import type {
+  CodingStyleType,
+  TypeDistribution,
+  AIControlLevel,
+  TypeSynthesisOutput,
+} from '../../types/report';
+import { MATRIX_NAMES, MATRIX_METADATA, CONTROL_LEVEL_METADATA } from '../../types/report';
 
 interface TypeResult {
   primaryType: CodingStyleType;
+  controlLevel: AIControlLevel;
   distribution: TypeDistribution;
   metrics: {
     avgPromptLength: number;
@@ -14,6 +21,8 @@ interface TypeResult {
   };
   sessionCount: number;
   analyzedAt: string;
+  /** Optional TypeSynthesis output for refined classification */
+  typeSynthesis?: TypeSynthesisOutput;
 }
 
 interface TypeMetadata {
@@ -28,20 +37,46 @@ interface TypeResultSectionProps {
   typeMetadata: Record<CodingStyleType, TypeMetadata>;
 }
 
+// TypeSynthesis was introduced on 2025-01-20
+// Results analyzed before this date don't have typeSynthesis and should use fallback
+const TYPE_SYNTHESIS_RELEASE_DATE = '2025-01-20T00:00:00Z';
+
 /**
- * Main type result display with emoji, title, and distribution chart
- * The hero section showing "YOU ARE THE ARCHITECT"
+ * Main type result display with 15-type matrix classification
+ * Shows matrix name (e.g., "Systems Architect") instead of just base type
  */
 export function TypeResultSection({ typeResult, typeMetadata }: TypeResultSectionProps) {
-  const meta = typeMetadata[typeResult.primaryType];
+  const { primaryType, controlLevel, typeSynthesis, analyzedAt } = typeResult;
+
+  // Check if this is legacy data (analyzed before TypeSynthesis was introduced)
+  const isLegacyData = new Date(analyzedAt) < new Date(TYPE_SYNTHESIS_RELEASE_DATE);
+
+  // For NEW data (post-release), typeSynthesis is REQUIRED
+  // This ensures consistent 15-type matrix classification
+  if (!isLegacyData && !typeSynthesis) {
+    throw new Error(
+      'TypeSynthesis data is missing for new analysis result. ' +
+      'This indicates a backend error - analysis should have failed if TypeSynthesis was unavailable.'
+    );
+  }
+
+  // Use TypeSynthesis output if available, otherwise fall back to static mapping (legacy data only)
+  const matrixName = typeSynthesis?.matrixName ?? MATRIX_NAMES[primaryType][controlLevel];
+  const matrixEmoji = typeSynthesis?.matrixEmoji ?? MATRIX_METADATA[primaryType][controlLevel].emoji;
+  const matrixDescription = MATRIX_METADATA[primaryType][controlLevel].description;
+  const controlMeta = CONTROL_LEVEL_METADATA[controlLevel];
+
   const types: CodingStyleType[] = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'];
 
   return (
     <div className={styles.resultBox}>
-      {/* Main Type Display */}
-      <div className={styles.resultEmoji}>{meta.emoji}</div>
-      <div className={styles.resultTitle}>YOU ARE {meta.name.toUpperCase()}</div>
-      <div className={styles.resultTagline}>"{meta.tagline}"</div>
+      {/* Main Type Display - 15-Type Matrix */}
+      <div className={styles.resultEmoji}>{matrixEmoji}</div>
+      <div className={styles.resultTitle}>YOU ARE THE {matrixName.toUpperCase()}</div>
+      <div className={styles.controlBadge} data-level={controlLevel}>
+        {controlMeta.name}
+      </div>
+      <div className={styles.resultTagline}>"{matrixDescription}"</div>
 
       {/* Distribution Chart */}
       <div className={styles.distribution}>
