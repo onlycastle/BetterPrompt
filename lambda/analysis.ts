@@ -1019,6 +1019,17 @@ async function handleDirectUpload(
       return;
     }
 
+    // Validate request body exists
+    if (!event.body) {
+      write({
+        type: "error",
+        code: "INVALID_REQUEST",
+        message: "Request body is required. Use POST with session data.",
+      });
+      responseStream.end();
+      return;
+    }
+
     // Decode body
     let rawBuffer: Buffer;
     if (event.isBase64Encoded) {
@@ -1105,6 +1116,18 @@ export const handler = awslambda.streamifyResponse(
 
     const path = event.rawPath || event.path || "/";
     console.log(`[lambda] Resolved path: ${path}`);
+
+    // Route: GET /health - Health check for load balancers and monitoring
+    if (path === "/health" || path.endsWith("/health")) {
+      const metadata = {
+        statusCode: 200,
+        headers: { "Content-Type": "application/json" },
+      };
+      responseStream = awslambda.HttpResponseStream.from(responseStream, metadata);
+      responseStream.write(JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }));
+      responseStream.end();
+      return;
+    }
 
     // Route: POST /upload-url - Generate Supabase Storage signed upload URL
     if (path === "/upload-url" || path.endsWith("/upload-url")) {
