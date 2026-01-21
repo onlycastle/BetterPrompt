@@ -16,6 +16,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { Github, Mail, CheckCircle, XCircle, Terminal } from 'lucide-react';
+import styles from './page.module.css';
 
 function DeviceAuthContent() {
   const searchParams = useSearchParams();
@@ -107,56 +108,46 @@ function DeviceAuthContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <div className={styles.page}>
+        <div className={`${styles.spinner} ${styles.smallSpinner}`} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
+    <div className={styles.page}>
+      <div className={styles.container}>
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto mb-4 bg-zinc-900 rounded-2xl flex items-center justify-center border border-zinc-800">
-            <Terminal className="w-8 h-8 text-emerald-500" />
+        <header className={styles.header}>
+          <div className={styles.iconWrapper}>
+            <Terminal className={styles.icon} />
           </div>
-          <h1 className="text-2xl font-semibold text-white mb-2">
-            Authorize CLI
-          </h1>
-          <p className="text-zinc-400">
-            Connect your terminal to NoMoreAISlop
-          </p>
-        </div>
+          <h1 className={styles.title}>Authorize CLI</h1>
+          <p className={styles.subtitle}>Connect your terminal to NoMoreAISlop</p>
+        </header>
 
         {/* Success State */}
         {status === 'success' && (
-          <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-8 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-emerald-500/20 rounded-full flex items-center justify-center">
-              <CheckCircle className="w-8 h-8 text-emerald-500" />
+          <div className={styles.card}>
+            <div className={`${styles.statusIcon} ${styles.statusIconSuccess}`}>
+              <CheckCircle className={styles.iconInner} />
             </div>
-            <h2 className="text-xl font-semibold text-white mb-2">
-              Device Authorized!
-            </h2>
-            <p className="text-zinc-400 mb-6">
+            <h2 className={styles.statusTitle}>Device Authorized!</h2>
+            <p className={styles.statusMessage}>
               You can now return to your terminal. The CLI will continue automatically.
             </p>
-            <p className="text-zinc-500 text-sm">
-              You can close this browser tab.
-            </p>
+            <p className={styles.statusHint}>You can close this browser tab.</p>
           </div>
         )}
 
         {/* Error State */}
         {status === 'error' && (
-          <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-8 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
-              <XCircle className="w-8 h-8 text-red-500" />
+          <div className={styles.card}>
+            <div className={`${styles.statusIcon} ${styles.statusIconError}`}>
+              <XCircle className={styles.iconInner} />
             </div>
-            <h2 className="text-xl font-semibold text-white mb-2">
-              Authorization Failed
-            </h2>
-            <p className="text-zinc-400 mb-6">
+            <h2 className={styles.statusTitle}>Authorization Failed</h2>
+            <p className={styles.statusMessage}>
               {errorMessage || 'Something went wrong. Please try again.'}
             </p>
             <button
@@ -164,7 +155,7 @@ function DeviceAuthContent() {
                 setStatus('input');
                 setErrorMessage(null);
               }}
-              className="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg transition-colors"
+              className={styles.retryButton}
             >
               Try Again
             </button>
@@ -173,58 +164,54 @@ function DeviceAuthContent() {
 
         {/* Authorizing State */}
         {status === 'authorizing' && (
-          <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-8 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 border-4 border-zinc-700 border-t-emerald-500 rounded-full animate-spin" />
-            <h2 className="text-xl font-semibold text-white mb-2">
-              Authorizing...
-            </h2>
-            <p className="text-zinc-400">
-              Connecting your device
-            </p>
+          <div className={styles.card}>
+            <div className={styles.spinner} />
+            <h2 className={styles.statusTitle}>Authorizing...</h2>
+            <p className={styles.statusMessage}>Connecting your device</p>
           </div>
         )}
 
         {/* Input State */}
         {status === 'input' && (
-          <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+          <div className={styles.card}>
             {!user ? (
               <>
                 {/* Not logged in - Show OAuth options */}
-                <p className="text-zinc-300 text-center mb-6">
+                <p className={styles.oauthDescription}>
                   Sign in to authorize your CLI
                 </p>
-                <div className="space-y-3">
+                <div className={styles.oauthButtons}>
                   <button
                     onClick={() => handleOAuth('github')}
-                    className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg transition-colors"
+                    className={styles.oauthButton}
                   >
-                    <Github className="w-5 h-5" />
+                    <Github className={styles.oauthIcon} />
                     Continue with GitHub
                   </button>
                   <button
                     onClick={() => handleOAuth('google')}
-                    className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg transition-colors"
+                    className={styles.oauthButton}
                   >
-                    <Mail className="w-5 h-5" />
+                    <Mail className={styles.oauthIcon} />
                     Continue with Google
                   </button>
                 </div>
 
                 {userCode && (
-                  <p className="text-zinc-500 text-sm text-center mt-6">
-                    Code <span className="font-mono text-emerald-500">{userCode}</span> will be authorized after sign in
+                  <p className={styles.codePreview}>
+                    Code <span className={styles.codeHighlight}>{userCode}</span> will be authorized after sign in
                   </p>
                 )}
               </>
             ) : (
               <>
                 {/* Logged in - Show code input */}
-                <p className="text-zinc-400 text-sm text-center mb-4">
-                  Signed in as <span className="text-white">{user.email}</span>
+                <p className={styles.userInfo}>
+                  Signed in as <span className={styles.userEmail}>{user.email}</span>
                 </p>
 
-                <form onSubmit={handleSubmit}>
-                  <label className="block text-zinc-300 text-sm font-medium mb-2">
+                <form onSubmit={handleSubmit} className={styles.form}>
+                  <label className={styles.formLabel}>
                     Enter the code from your terminal
                   </label>
                   <input
@@ -232,22 +219,20 @@ function DeviceAuthContent() {
                     value={userCode}
                     onChange={(e) => setUserCode(e.target.value.toUpperCase())}
                     placeholder="ABCD-1234"
-                    className="w-full px-4 py-3 bg-zinc-950 border border-zinc-700 rounded-lg text-white text-center text-2xl font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500"
+                    className={styles.codeInput}
                     maxLength={9}
                     autoComplete="off"
                     autoFocus
                   />
 
                   {errorMessage && (
-                    <p className="text-red-400 text-sm mt-2 text-center">
-                      {errorMessage}
-                    </p>
+                    <p className={styles.errorMessage}>{errorMessage}</p>
                   )}
 
                   <button
                     type="submit"
                     disabled={!userCode.trim()}
-                    className="w-full mt-4 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                    className={styles.submitButton}
                   >
                     Authorize Device
                   </button>
@@ -258,7 +243,7 @@ function DeviceAuthContent() {
                     await supabase.auth.signOut();
                     setUser(null);
                   }}
-                  className="w-full mt-3 text-zinc-500 hover:text-zinc-400 text-sm transition-colors"
+                  className={styles.signOutButton}
                 >
                   Sign out
                 </button>
@@ -268,8 +253,8 @@ function DeviceAuthContent() {
         )}
 
         {/* Help text */}
-        <p className="text-zinc-500 text-sm text-center mt-6">
-          Run <code className="bg-zinc-900 px-2 py-1 rounded font-mono">npx no-ai-slop</code> to get started
+        <p className={styles.helpText}>
+          Run <code className={styles.codeSnippet}>npx no-ai-slop</code> to get started
         </p>
       </div>
     </div>
@@ -279,8 +264,8 @@ function DeviceAuthContent() {
 export default function DeviceAuthPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <div className={styles.page}>
+        <div className={`${styles.spinner} ${styles.smallSpinner}`} />
       </div>
     }>
       <DeviceAuthContent />

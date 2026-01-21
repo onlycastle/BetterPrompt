@@ -1,0 +1,386 @@
+/**
+ * Device Authorization Page - Notebook Sketch Style
+ * Full-page layout for CLI device authorization flow
+ */
+
+/* ============================================
+   Page Layout
+   ============================================ */
+.page {
+  min-height: 100vh;
+  background: var(--bg-paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+
+  /* Graph paper background effect */
+  background-image:
+    linear-gradient(var(--bg-grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-color) 1px, transparent 1px);
+  background-size: var(--bg-grid-size) var(--bg-grid-size);
+}
+
+.container {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* ============================================
+   Header Section
+   ============================================ */
+.header {
+  text-align: center;
+  margin-bottom: var(--space-xl);
+}
+
+.iconWrapper {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--space-md);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 3px 3px 0 var(--ink-muted);
+}
+
+.icon {
+  width: 32px;
+  height: 32px;
+  color: var(--sketch-cyan);
+}
+
+.title {
+  font-family: var(--font-primary);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  margin: 0 0 var(--space-sm) 0;
+}
+
+.subtitle {
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ============================================
+   Card Container
+   ============================================ */
+.card {
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: 4px 4px 0 var(--ink-muted);
+  text-align: center;
+}
+
+/* ============================================
+   Status States
+   ============================================ */
+.statusIcon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--space-md);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.statusIconSuccess {
+  background: var(--sketch-green-light);
+}
+
+.statusIconSuccess .iconInner {
+  color: var(--sketch-green-text);
+}
+
+.statusIconError {
+  background: var(--sketch-red-light);
+}
+
+.statusIconError .iconInner {
+  color: var(--sketch-red);
+}
+
+.iconInner {
+  width: 32px;
+  height: 32px;
+}
+
+.statusTitle {
+  font-family: var(--font-primary);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  margin: 0 0 var(--space-sm) 0;
+}
+
+.statusMessage {
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-lg) 0;
+  line-height: var(--leading-relaxed);
+}
+
+.statusHint {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+/* ============================================
+   Spinner / Loading
+   ============================================ */
+.spinner {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--space-md);
+  border: 4px solid var(--border-default);
+  border-top-color: var(--sketch-cyan);
+  border-radius: var(--radius-full);
+  animation: spin 1s linear infinite;
+}
+
+.smallSpinner {
+  width: 32px;
+  height: 32px;
+  border-width: 2px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   OAuth Section (Not logged in)
+   ============================================ */
+.oauthDescription {
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  color: var(--ink-secondary);
+  text-align: center;
+  margin: 0 0 var(--space-lg) 0;
+}
+
+.oauthButtons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.oauthButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--ink-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 2px 2px 0 var(--ink-muted);
+}
+
+.oauthButton:hover {
+  background: var(--sketch-cyan-soft);
+  border-color: var(--sketch-cyan);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink-primary);
+}
+
+.oauthButton:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink-muted);
+}
+
+.oauthIcon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.codePreview {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  text-align: center;
+  margin: var(--space-lg) 0 0 0;
+}
+
+.codeHighlight {
+  font-family: var(--font-mono);
+  color: var(--sketch-cyan-text);
+  font-weight: var(--weight-medium);
+}
+
+/* ============================================
+   Code Input Form (Logged in)
+   ============================================ */
+.userInfo {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0 0 var(--space-md) 0;
+}
+
+.userEmail {
+  color: var(--ink-primary);
+  font-weight: var(--weight-medium);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.formLabel {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-secondary);
+  text-align: left;
+}
+
+.codeInput {
+  width: 100%;
+  padding: var(--space-md);
+  background: var(--surface-2);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-medium);
+  color: var(--ink-primary);
+  text-align: center;
+  letter-spacing: 0.1em;
+  transition: all var(--transition-fast);
+  box-shadow: 2px 2px 0 var(--ink-muted);
+}
+
+.codeInput::placeholder {
+  color: var(--text-tertiary);
+  font-size: var(--text-lg);
+}
+
+.codeInput:focus {
+  outline: none;
+  border-color: var(--sketch-cyan);
+  box-shadow: 3px 3px 0 var(--sketch-cyan);
+}
+
+.errorMessage {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--sketch-red);
+  text-align: center;
+  margin: 0;
+}
+
+.submitButton {
+  width: 100%;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--sketch-cyan);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--bg-paper);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 3px 3px 0 var(--ink-primary);
+}
+
+.submitButton:hover:not(:disabled) {
+  background: var(--accent-primary-hover);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink-primary);
+}
+
+.submitButton:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 var(--ink-primary);
+}
+
+.submitButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.signOutButton {
+  width: 100%;
+  padding: var(--space-sm);
+  background: transparent;
+  border: none;
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.signOutButton:hover {
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   Try Again Button
+   ============================================ */
+.retryButton {
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--ink-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 2px 2px 0 var(--ink-muted);
+}
+
+.retryButton:hover {
+  background: var(--sketch-cyan-soft);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink-primary);
+}
+
+/* ============================================
+   Footer Help Text
+   ============================================ */
+.helpText {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  text-align: center;
+  margin: var(--space-lg) 0 0 0;
+}
+
+.codeSnippet {
+  display: inline-block;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
