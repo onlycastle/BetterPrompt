@@ -80,15 +80,13 @@ import { DimensionSection } from '@/components/report';
 
 ### UnlockSection
 
-CTA section showing unlock badge (premium) or paywall (free). Always shows dual dashboard buttons.
+CTA section showing unlock badge (premium) or paywall with pricing cards (free).
+Features a 2x2 benefit category grid and side-by-side ONE-TIME/PRO pricing options.
 
 ```tsx
 import { UnlockSection } from '@/components/report';
 
-<UnlockSection
-  isUnlocked={false}
-  dashboardBaseUrl="https://www.nomoreaislop.xyz"
-/>
+<UnlockSection isUnlocked={false} />
 ```
 
 ## Full Example

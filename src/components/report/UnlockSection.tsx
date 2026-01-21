@@ -1,109 +1,147 @@
+import { BarChart3, Target, Users, Gift, Coffee, Zap, Lock, Sparkles } from 'lucide-react';
 import styles from './UnlockSection.module.css';
 
 interface UnlockSectionProps {
   isUnlocked: boolean;
-  dashboardBaseUrl?: string;
 }
 
 /**
- * CTA section for locked/unlocked states
- * Shows unlock badge when premium, paywall when free
- * ALWAYS shows dual dashboard buttons (My Dashboard + Enterprise)
+ * Benefit categories for the unlock section
+ * Grouped into 4 categories for a clean 2x2 grid layout
  */
-export function UnlockSection({
-  isUnlocked,
-  dashboardBaseUrl = 'https://www.nomoreaislop.xyz',
-}: UnlockSectionProps) {
-  const personalUrl = `${dashboardBaseUrl}/personal`;
-  const enterpriseUrl = `${dashboardBaseUrl}/enterprise`;
+const benefitCategories = [
+  {
+    id: 'insights',
+    icon: BarChart3,
+    title: 'Deep Insights',
+    color: 'cyan',
+    items: [
+      'AI Collaboration breakdown',
+      'Control Index deep-dive',
+      'Skill Resilience analysis',
+    ],
+  },
+  {
+    id: 'tips',
+    icon: Target,
+    title: 'Improvement Tips',
+    color: 'pink',
+    items: [
+      'Best & worst prompt examples',
+      'Personalized growth roadmap',
+      'Practice exercises',
+    ],
+  },
+  {
+    id: 'comparison',
+    icon: Users,
+    title: 'Peer Comparison',
+    color: 'green',
+    items: [
+      'Percentile rankings (vs 10K+ users)',
+      'Learning velocity tracking',
+    ],
+  },
+  {
+    id: 'extras',
+    icon: Gift,
+    title: 'Extras',
+    color: 'yellow',
+    items: [
+      'Downloadable PDF report',
+      'Shareable profile badge',
+      'All conversation evidence',
+    ],
+  },
+] as const;
 
+/**
+ * CTA section for locked/unlocked states
+ * Shows unlock badge when premium, paywall with pricing cards when free
+ */
+export function UnlockSection({ isUnlocked }: UnlockSectionProps) {
   return (
     <div className={styles.unlockSection}>
       {isUnlocked ? (
-        <>
-          {/* Unlocked State */}
-          <div className={styles.unlockedBadge}>
-            <div className={styles.badgeIcon}>✨</div>
-            <h3 className={styles.badgeTitle}>Full Analysis Unlocked</h3>
-            <p className={styles.badgeSubtitle}>
-              You have access to all premium features and detailed breakdowns.
-            </p>
+        <div className={styles.unlockedBadge}>
+          <div className={styles.badgeIcon}>
+            <Sparkles size={48} />
           </div>
-        </>
+          <h3 className={styles.badgeTitle}>Full Analysis Unlocked</h3>
+          <p className={styles.badgeSubtitle}>
+            You have access to all premium features and detailed breakdowns.
+          </p>
+        </div>
       ) : (
-        <>
-          {/* Locked State - Paywall */}
-          <div className={styles.lockedContent}>
-            <h3 className={styles.lockedTitle}>🔒 Unlock Detailed Analysis</h3>
-            <p className={styles.lockedDescription}>
-              Get the complete picture of your AI collaboration patterns with detailed breakdowns,
-              personalized recommendations, and professional insights.
-            </p>
+        <div className={styles.lockedContent}>
+          {/* Header */}
+          <div className={styles.lockIcon}>
+            <Lock size={32} />
+          </div>
+          <h3 className={styles.lockedTitle}>Unlock Your Full Analysis</h3>
+          <p className={styles.lockedDescription}>
+            See the complete picture of your AI collaboration patterns
+          </p>
 
-            <ul className={styles.featureList}>
-              <li>🤝 Full AI Collaboration breakdown + improvement strategies</li>
-              <li>🎯 Best & worst prompt examples with improvement tips</li>
-              <li>🔥 Complete burnout risk analysis + time patterns</li>
-              <li>🛠️ All tool mastery data + optimization strategies</li>
-              <li>🎮 AI Control Index deep-dive + professional tips</li>
-              <li>💪 Skill Resilience analysis + practice exercises</li>
-              <li>📊 Peer comparison percentiles (vs 10,000+ users)</li>
-              <li>📈 Learning velocity tracking</li>
-              <li>💬 All conversation evidence examples</li>
-              <li>🎯 Personalized growth roadmap</li>
-              <li>📄 Downloadable PDF report</li>
-              <li>🏷️ Shareable badge for your profile</li>
-            </ul>
+          {/* Benefits Grid - 2x2 Categories */}
+          <div className={styles.benefitsGrid}>
+            {benefitCategories.map((category) => {
+              const IconComponent = category.icon;
+              return (
+                <div
+                  key={category.id}
+                  className={styles.categoryCard}
+                  data-color={category.color}
+                >
+                  <div className={styles.categoryHeader}>
+                    <IconComponent size={20} className={styles.categoryIcon} />
+                    <span className={styles.categoryTitle}>{category.title}</span>
+                  </div>
+                  <ul className={styles.categoryItems}>
+                    {category.items.map((item, index) => (
+                      <li key={index}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
 
-            <div className={styles.ctaBox}>
-              <div className={styles.ctaPrice}>☕ ONE-TIME: $4.99</div>
-              <div className={styles.ctaSubtitle}>
-                Less than a coffee • Unlock this analysis forever
+          {/* Pricing Cards - ONE-TIME + PRO */}
+          <div className={styles.pricingCards}>
+            {/* ONE-TIME Card (Primary) */}
+            <div className={`${styles.pricingCard} ${styles.primary}`}>
+              <div className={styles.pricingHeader}>
+                <Coffee size={20} />
+                <span>ONE-TIME</span>
+              </div>
+              <div className={styles.pricingAmount}>$4.99</div>
+              <button className={styles.unlockCta}>
+                Unlock Full Report
+              </button>
+              <div className={styles.pricingNote}>
+                Less than a coffee • Yours forever
               </div>
             </div>
 
-            <p className={styles.proNote}>
-              Want unlimited analyses + trend tracking?{' '}
-              <span className={styles.proHighlight}>PRO: $6.99/month</span>
-            </p>
-
-            <div className={styles.dashboardDivider}>
-              <p className={styles.dashboardPrompt}>
-                Track your growth or manage your team
-              </p>
+            {/* PRO Card (Secondary) */}
+            <div className={`${styles.pricingCard} ${styles.secondary}`}>
+              <div className={styles.pricingHeader}>
+                <Zap size={20} />
+                <span>PRO</span>
+              </div>
+              <div className={styles.pricingAmount}>$6.99<span>/month</span></div>
+              <div className={styles.proFeatures}>
+                <div>Unlimited analyses</div>
+                <div>+ Trend tracking</div>
+              </div>
+              <button className={styles.subscribeCta}>
+                Subscribe →
+              </button>
             </div>
           </div>
-        </>
+        </div>
       )}
-
-      {/* Dashboard Buttons - ALWAYS SHOWN */}
-      <div className={styles.dashboardButtons}>
-        <a
-          href={personalUrl}
-          className={`${styles.dashboardBtn} ${styles.personal}`}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-          My Dashboard
-        </a>
-        <a
-          href={enterpriseUrl}
-          className={`${styles.dashboardBtn} ${styles.enterprise}`}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 21h18" />
-            <path d="M5 21V7l8-4v18" />
-            <path d="M19 21V11l-6-4" />
-            <path d="M9 9v.01" />
-            <path d="M9 12v.01" />
-            <path d="M9 15v.01" />
-            <path d="M9 18v.01" />
-          </svg>
-          Enterprise
-        </a>
-      </div>
     </div>
   );
 }
