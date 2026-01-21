@@ -26,30 +26,9 @@ import { FormattedText } from '../utils/textFormatting';
 import { useCredit } from '../api/client';
 import type { AnalysisResultResponse } from '../types/report';
 import { saveAnalysisExtended, type StoredAnalysisExtended } from '../utils/analysisStorage';
+import { extractTypeResult } from '../utils/reportHelpers';
 import { REPORT_TYPE_METADATA } from '../types/report';
 import styles from './AnalyzePage.module.css';
-
-/**
- * Extract type result from evaluation for TypeResultSection component
- */
-function extractTypeResult(evaluation: AnalysisResultResponse['evaluation'] | undefined) {
-  if (!evaluation) return null;
-
-  return {
-    primaryType: evaluation.primaryType,
-    distribution: evaluation.distribution,
-    sessionCount: evaluation.sessionsAnalyzed,
-    analyzedAt: evaluation.analyzedAt,
-    metrics: {
-      avgPromptLength: evaluation.avgPromptLength || 0,
-      avgFirstPromptLength: 0,
-      avgTurnsPerSession: evaluation.avgTurnsPerSession || 0,
-      questionFrequency: 0,
-      modificationRate: 0,
-      toolUsageHighlight: '',
-    },
-  };
-}
 
 /**
  * Reusable dimension bar for the preview card

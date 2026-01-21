@@ -19,15 +19,13 @@ import {
   ReportFooter,
   DimensionInsightsTerminal,
   ProductivitySection,
-  PersonalityHeroSection,
   TopFocusAreasSection,
+  AgentInsightsSection,
 } from '../components/report';
 import { useCredit } from '../api/client';
-import type {
-  VerboseEvaluation,
-  AnalysisResultResponse,
-} from '../types/report';
+import type { AnalysisResultResponse } from '../types/report';
 import { REPORT_TYPE_METADATA } from '../types/report';
+import { extractTypeResult } from '../utils/reportHelpers';
 import styles from './ResultsPage.module.css';
 
 interface ResultsPageProps {
@@ -238,24 +236,7 @@ export default function ResultsPage({ resultId, onBack }: ResultsPageProps) {
 
   const evaluation = result?.evaluation;
   const isPaid = result?.isPaid ?? false;
-
-  // Construct typeResult for TypeResultSection
-  const typeResult = evaluation
-    ? {
-        primaryType: evaluation.primaryType,
-        distribution: evaluation.distribution,
-        sessionCount: evaluation.sessionsAnalyzed,
-        analyzedAt: evaluation.analyzedAt,
-        metrics: {
-          avgPromptLength: evaluation.avgPromptLength || 0,
-          avgFirstPromptLength: 0,
-          avgTurnsPerSession: evaluation.avgTurnsPerSession || 0,
-          questionFrequency: 0,
-          modificationRate: 0,
-          toolUsageHighlight: '',
-        },
-      }
-    : null;
+  const typeResult = extractTypeResult(evaluation);
 
   return (
     <div className={styles.container}>
@@ -290,6 +271,14 @@ export default function ResultsPage({ resultId, onBack }: ResultsPageProps) {
 
             {/* Analyzed Sessions */}
             <AnalyzedSessions sessions={evaluation?.analyzedSessions} />
+
+            {/* Agent Insights Section - Shows for ALL users (teaser for free, full for paid) */}
+            {evaluation?.agentOutputs && (
+              <AgentInsightsSection
+                agentOutputs={evaluation.agentOutputs}
+                isPaid={isPaid}
+              />
+            )}
 
             {/* Unlock Section */}
             {!isPaid && (
@@ -428,11 +417,6 @@ export default function ResultsPage({ resultId, onBack }: ResultsPageProps) {
                     insights={evaluation.dimensionInsights}
                     sessionsAnalyzed={evaluation.sessionsAnalyzed}
                   />
-                )}
-
-                {/* Personality Insights */}
-                {evaluation.personalityInsights && (
-                  <PersonalityHeroSection insights={evaluation.personalityInsights} />
                 )}
 
                 {/* Top Focus Areas */}
