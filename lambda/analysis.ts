@@ -53,6 +53,12 @@ import {
   type UserMessage,
   type AssistantMessage,
 } from "../src/lib/domain/models/analysis";
+import {
+  MATRIX_NAMES,
+  MATRIX_METADATA,
+  type CodingStyleType,
+  type AIControlLevel,
+} from "../src/lib/models/coding-style";
 
 // Maximum body size - 50MB (Lambda supports up to 6MB sync, but streaming allows more)
 const MAX_BODY_SIZE = 50 * 1024 * 1024;
@@ -148,6 +154,9 @@ interface AnalysisResponse {
   resultId: string;
   primaryType: string;
   controlLevel: string;
+  controlScore: number;
+  matrixName: string;
+  matrixEmoji: string;
   distribution: {
     architect: number;
     scientist: number;
@@ -723,11 +732,29 @@ async function runAnalysis(
     message: "Analysis complete!",
   });
 
+  // Get type and level for matrix lookup
+  const primaryType = evaluation.primaryType as CodingStyleType;
+  const controlLevel = (evaluation.controlLevel || "developing") as AIControlLevel;
+
+  // Get controlScore, matrixName, matrixEmoji from TypeSynthesis agent or compute from constants
+  const controlScore = evaluation.controlScore
+    ?? evaluation.agentOutputs?.typeSynthesis?.controlScore
+    ?? 50;
+  const matrixName = evaluation.agentOutputs?.typeSynthesis?.matrixName
+    ?? MATRIX_NAMES[primaryType]?.[controlLevel]
+    ?? `${primaryType} ${controlLevel}`;
+  const matrixEmoji = evaluation.agentOutputs?.typeSynthesis?.matrixEmoji
+    ?? MATRIX_METADATA[primaryType]?.[controlLevel]?.emoji
+    ?? '🎯';
+
   // Send final result
   const response: AnalysisResponse = {
     resultId,
-    primaryType: evaluation.primaryType,
-    controlLevel: evaluation.controlLevel || "developing",
+    primaryType,
+    controlLevel,
+    controlScore,
+    matrixName,
+    matrixEmoji,
     distribution: evaluation.distribution,
     personalitySummary: evaluation.personalitySummary,
   };
