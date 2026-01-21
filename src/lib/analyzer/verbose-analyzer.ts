@@ -420,10 +420,15 @@ export class VerboseAnalyzer {
     const tier = options.tier ?? this.config.tier;
 
     // Try two-stage pipeline (orchestrator) if configured
+    console.log(`[VerboseAnalyzer] Pipeline mode: ${this.config.pipeline.mode}, hasOrchestrator: ${!!this.orchestrator}`);
     if (this.config.pipeline.mode === 'two-stage' && this.orchestrator) {
       try {
-        return await this.analyzeTwoStage(sessions, metrics, tier);
+        console.log('[VerboseAnalyzer] Using TWO-STAGE pipeline with orchestrator');
+        const result = await this.analyzeTwoStage(sessions, metrics, tier);
+        console.log(`[VerboseAnalyzer] Two-stage complete. hasAgentOutputs: ${!!result.agentOutputs}, typeSynthesis: ${!!result.agentOutputs?.typeSynthesis}`);
+        return result;
       } catch (error) {
+        console.error('[VerboseAnalyzer] Two-stage pipeline error:', error);
         if (this.config.fallbackToLegacy) {
           console.warn('Two-stage pipeline failed, falling back to legacy mode:', error);
           return await this.analyzeSingleStage(sessions, metrics, tier);
@@ -433,6 +438,7 @@ export class VerboseAnalyzer {
     }
 
     // Use single-stage (legacy) mode
+    console.log('[VerboseAnalyzer] Using SINGLE-STAGE (legacy) pipeline');
     return await this.analyzeSingleStage(sessions, metrics, tier);
   }
 
