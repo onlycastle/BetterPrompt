@@ -1,0 +1,182 @@
+# CLI Publish Workflow
+#
+# Triggers:
+# 1. Push to main with changes in packages/cli/** → Auto patch bump + publish
+# 2. Push tag: cli-v* (e.g., cli-v0.7.0) → Publish specified version
+# 3. Manual workflow dispatch → Choose version bump type
+#
+# Required Secrets:
+# - NPM_TOKEN: npm access token with publish permission
+
+name: Publish CLI to npm
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/cli/**'
+      - 'packages/core/**'  # Core changes affect CLI
+    tags:
+      - 'cli-v*'
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-dev
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install core dependencies
+        working-directory: packages/core
+        run: npm ci
+
+      - name: Build core package
+        working-directory: packages/core
+        run: npm run build
+
+      - name: Install CLI dependencies
+        working-directory: packages/cli
+        run: npm ci
+
+      - name: Determine version strategy
+        id: version
+        working-directory: packages/cli
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            # Tag-based release: extract version from tag
+            TAG_VERSION="${GITHUB_REF#refs/tags/cli-v}"
+            echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
+            echo "strategy=tag" >> $GITHUB_OUTPUT
+            echo "📦 Tag release: v$TAG_VERSION"
+
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger: bump as specified
+            echo "strategy=manual" >> $GITHUB_OUTPUT
+            echo "bump_type=${{ inputs.version_type }}" >> $GITHUB_OUTPUT
+            echo "📦 Manual release: ${{ inputs.version_type }} bump"
+
+          else
+            # Main branch push: auto patch bump
+            echo "strategy=auto" >> $GITHUB_OUTPUT
+            echo "bump_type=patch" >> $GITHUB_OUTPUT
+            echo "📦 Auto release: patch bump from $CURRENT_VERSION"
+          fi
+
+      - name: Bump version (auto/manual)
+        if: steps.version.outputs.strategy != 'tag'
+        working-directory: packages/cli
+        run: |
+          BUMP_TYPE="${{ steps.version.outputs.bump_type }}"
+          npm version $BUMP_TYPE --no-git-tag-version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "📝 Version bumped to $NEW_VERSION"
+
+      - name: Sync version from tag
+        if: steps.version.outputs.strategy == 'tag'
+        working-directory: packages/cli
+        run: |
+          TAG_VERSION="${{ steps.version.outputs.version }}"
+          npm version $TAG_VERSION --no-git-tag-version --allow-same-version
+          echo "NEW_VERSION=$TAG_VERSION" >> $GITHUB_ENV
+          echo "📝 Version synced to $TAG_VERSION"
+
+      - name: Build CLI
+        working-directory: packages/cli
+        run: npm run build
+
+      - name: Publish to npm
+        working-directory: packages/cli
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create git tag (auto release)
+        if: steps.version.outputs.strategy == 'auto'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "cli-v${{ env.NEW_VERSION }}"
+          git push origin "cli-v${{ env.NEW_VERSION }}"
+
+      - name: Commit version bump
+        if: steps.version.outputs.strategy != 'tag'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packages/cli/package.json
+          git commit -m "chore(cli): release v${{ env.NEW_VERSION }} [skip ci]" || echo "No changes to commit"
+          git push origin HEAD:main
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: cli-v${{ env.NEW_VERSION }}
+          name: CLI v${{ env.NEW_VERSION }}
+          body: |
+            ## no-ai-slop CLI v${{ env.NEW_VERSION }}
+
+            ### Install or Update
+            ```bash
+            npx no-ai-slop@${{ env.NEW_VERSION }}
+            ```
+
+            ### Global Install
+            ```bash
+            npm install -g no-ai-slop@${{ env.NEW_VERSION }}
+            ```
+
+            ### What's New
+            ${{ steps.version.outputs.strategy == 'auto' && 'Automatic release from main branch changes.' || 'See release notes below.' }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+      - name: Summary
+        run: |
+          echo "## CLI Published to npm 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Package:** [no-ai-slop](https://www.npmjs.com/package/no-ai-slop)" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ env.NEW_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Strategy:** ${{ steps.version.outputs.strategy }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Install" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "npx no-ai-slop" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
