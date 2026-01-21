@@ -45,62 +45,6 @@
   margin-bottom: var(--space-xl);
 }
 
-.appInfo {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-}
-
-.appIcon {
-  width: 64px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-paper);
-  border-radius: var(--radius-lg);
-  border: 1.5px solid var(--border-default);
-  overflow: hidden;
-}
-
-.appDetails {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.appName {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
-  color: var(--ink-primary);
-}
-
-.appVersion {
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-}
-
-/* Divider between download button and terminal */
-.divider {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  width: 100%;
-  margin: var(--space-sm) 0;
-}
-
-.dividerLine {
-  flex: 1;
-  height: 0;
-  border-top: 1px dashed var(--border-default);
-}
-
-.dividerText {
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-  white-space: nowrap;
-}
-
 .features {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

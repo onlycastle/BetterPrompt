@@ -1,7 +1,6 @@
 'use client';
 
-import { Download } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { TerminalCommand } from './TerminalCommand';
 import styles from './HeroSection.module.css';
 
 export function HeroSection() {
@@ -20,16 +19,7 @@ export function HeroSection() {
         </p>
 
         <div className={styles.cta}>
-          <Button
-            variant="primary"
-            size="lg"
-            icon={<Download size={20} />}
-            onClick={() => {
-              // TODO: Connect to desktop app download
-            }}
-          >
-            Download for macOS
-          </Button>
+          <TerminalCommand command="npx no-ai-slop" />
         </div>
       </div>
     </section>
