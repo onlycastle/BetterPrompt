@@ -152,14 +152,16 @@ export abstract class BaseWorker<TOutput> {
   /**
    * Check basic preconditions for running
    *
+   * NOTE: Tier check removed - all workers now run for all tiers.
+   * Tier-based filtering happens at the ContentGateway/API level,
+   * allowing premium agent outputs to be stored and shown as teasers.
+   *
    * @param context - Worker context
    * @returns true if basic preconditions are met
    */
   protected checkBasicPreconditions(context: WorkerContext): boolean {
-    // Check tier
-    if (!this.isTierSufficient(context.tier)) {
-      return false;
-    }
+    // Tier check removed - all workers always run
+    // Premium agents show teasers for free users, full data after payment
 
     // Check sessions exist
     if (context.sessions.length === 0) {
