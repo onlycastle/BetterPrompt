@@ -1,0 +1,173 @@
+/* WaitlistModal - Sketch-style waitlist signup modal */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-md);
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  padding: var(--space-xl) !important;
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.closeButton {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  padding: var(--space-xs);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.closeButton:hover {
+  color: var(--text-primary);
+}
+
+.title {
+  font-family: var(--font-primary);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  text-align: center;
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.subtitle {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0 0 var(--space-lg) 0;
+  line-height: 1.5;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.disclaimer {
+  font-family: var(--font-primary);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-align: center;
+  margin: var(--space-md) 0 0 0;
+}
+
+.error {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--accent-rose);
+  text-align: center;
+  margin: 0;
+  padding: var(--space-sm);
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-sm);
+}
+
+.alreadyOnList {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--sketch-cyan);
+  text-align: center;
+  margin: 0;
+  padding: var(--space-sm);
+  background: rgba(0, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+}
+
+/* Success State */
+.successState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-lg) 0;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.checkmark {
+  width: 48px;
+  height: 48px;
+  color: var(--sketch-cyan);
+  margin-bottom: var(--space-md);
+  animation: scaleIn 0.3s ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.successTitle {
+  font-family: var(--font-primary);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.successMessage {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Early Bird Banner - PRO waitlist highlight */
+.earlyBirdBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.1));
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--sketch-yellow-text, #d4a000);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  margin-bottom: var(--space-md);
+}
