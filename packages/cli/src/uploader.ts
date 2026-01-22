@@ -191,6 +191,35 @@ function preparePayload(scanResult: ScanResult): PreparePayloadResult {
   };
 }
 
+/**
+ * Token usage for a single stage
+ */
+export interface StageTokenUsage {
+  stage: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
+/**
+ * Pipeline token usage from LLM API responses
+ */
+export interface PipelineTokenUsage {
+  stages: StageTokenUsage[];
+  totals: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  cost: {
+    inputCost: number;
+    outputCost: number;
+    totalCost: number;
+  };
+  model: string;
+  modelName: string;
+}
+
 export interface AnalysisResult {
   resultId: string;
   primaryType: string;
@@ -207,6 +236,8 @@ export interface AnalysisResult {
   };
   personalitySummary: string;
   reportUrl: string;
+  /** Actual token usage from LLM pipeline (available when DEBUG_COST is set) */
+  tokenUsage?: PipelineTokenUsage;
 }
 
 export interface UploadError {

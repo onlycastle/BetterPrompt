@@ -1,6 +1,6 @@
 # Orchestrator + Workers Analysis Pipeline
 
-> Developer-AI 협업 세션을 분석하여 개인화된 리포트를 생성하는 파이프라인
+> Pipeline that analyzes developer-AI collaboration sessions and generates personalized reports
 
 ## Overview
 
@@ -83,7 +83,7 @@
 ```
 ~/.claude/projects/
 ├── -Users-dev-projectA/
-│   ├── abc123.jsonl    ◀── Claude Code 세션 로그
+│   ├── abc123.jsonl    ◀── Claude Code session logs
 │   └── def456.jsonl
 └── -Users-dev-projectB/
     └── ghi789.jsonl
@@ -105,7 +105,7 @@
 └─────────────────────────────────────────────────┘
 
          │
-         │  selectOptimalSessions() - 최대 30개 선정
+         │  selectOptimalSessions() - select up to 30 sessions
          │  aggregateMetrics()
          ▼
 
@@ -124,7 +124,7 @@
 
 ### Module A: Data Analyst
 
-**목적**: 정확한 행동 데이터 추출 (내러티브 없음)
+**Purpose**: Extract accurate behavioral data (no narrative)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -265,9 +265,9 @@ StructuredAnalysisData
 
 ### Module C: Productivity Analyst
 
-**목적**: 생산성 지표 및 효율성 분석 추출
+**Purpose**: Extract productivity metrics and efficiency analysis
 
-> Module A와 병렬로 실행됨 (Phase 1)
+> Runs in parallel with Module A (Phase 1)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -329,9 +329,9 @@ ProductivityAnalysisData
 
 ### Phase 2: Insight Generation Agents (Premium+)
 
-**목적**: Phase 1 결과를 바탕으로 심층 인사이트 생성
+**Purpose**: Generate deep insights based on Phase 1 results
 
-> 6개의 전문 에이전트가 병렬로 실행됨. Free tier에서는 스킵됨.
+> 6 specialized agents run in parallel. Skipped for Free tier.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -374,14 +374,14 @@ ProductivityAnalysisData
 
 #### Phase 2 Agent Descriptions
 
-| Agent | 목적 | Output Schema |
-|-------|------|---------------|
-| **PatternDetective** | 세션 간 반복되는 행동 패턴 탐지 | `PatternDetectiveOutput` |
-| **AntiPatternSpotter** | 비효율적 패턴 및 개선 기회 탐지 | `AntiPatternSpotterOutput` |
-| **KnowledgeGap** | 지식 격차 및 학습 기회 식별 | `KnowledgeGapOutput` |
-| **ContextEfficiency** | 컨텍스트 활용 효율성 분석 | `ContextEfficiencyOutput` |
-| **Metacognition** (NEW) | 자기 인식 패턴, 블라인드 스팟 탐지 | `MetacognitionOutput` |
-| **TemporalAnalyzer** (NEW) | 시간대별 프롬프트 품질 및 피로도 분석 | `TemporalAnalysisOutput` |
+| Agent | Purpose | Output Schema |
+|-------|---------|---------------|
+| **PatternDetective** | Detect recurring behavioral patterns across sessions | `PatternDetectiveOutput` |
+| **AntiPatternSpotter** | Detect inefficient patterns and improvement opportunities | `AntiPatternSpotterOutput` |
+| **KnowledgeGap** | Identify knowledge gaps and learning opportunities | `KnowledgeGapOutput` |
+| **ContextEfficiency** | Analyze context utilization efficiency | `ContextEfficiencyOutput` |
+| **Metacognition** (NEW) | Detect self-awareness patterns and blind spots | `MetacognitionOutput` |
+| **TemporalAnalyzer** (NEW) | Analyze prompt quality and fatigue by time of day | `TemporalAnalysisOutput` |
 
 #### Agent Output Schema (AgentOutputs)
 
@@ -469,9 +469,9 @@ AgentOutputs
 
 ### Phase 2.5: Type Synthesis (NEW)
 
-**목적**: Phase 2 에이전트 출력을 활용하여 초기 타입 분류 정제
+**Purpose**: Refine initial type classification using Phase 2 agent outputs
 
-> Phase 2 이후, Phase 3 이전에 실행됨. 모든 티어에서 사용 가능.
+> Runs after Phase 2, before Phase 3. Available for all tiers.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -558,7 +558,7 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
 
 ### Phase 3: Content Writer
 
-**목적**: Module A + Module C + Agent Outputs를 개인화된 내러티브로 변환
+**Purpose**: Transform Module A + Module C + Agent Outputs into personalized narrative
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -771,7 +771,7 @@ AgentOutputs                                       agentInsights
 
 ## Knowledge Context Injection
 
-Module A에 주입되는 전문가 지식 구조:
+Expert knowledge structure injected into Module A:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -1028,45 +1028,45 @@ Module A에 주입되는 전문가 지식 구조:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | 4-phase 파이프라인 조율 (1→2→2.5→3), Worker 등록/실행 |
-| Orchestrator Types | `src/lib/analyzer/orchestrator/types.ts` | WorkerResult, WorkerContext, Phase 타입 |
-| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, Worker 등록, 문자열 sanitization |
-| Content Gateway | `src/lib/analyzer/content-gateway.ts` | 티어별 콘텐츠 필터링 (free/premium/enterprise) |
+| Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | 4-phase pipeline coordination (1→2→2.5→3), Worker registration/execution |
+| Orchestrator Types | `src/lib/analyzer/orchestrator/types.ts` | WorkerResult, WorkerContext, Phase types |
+| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, Worker registration, string sanitization |
+| Content Gateway | `src/lib/analyzer/content-gateway.ts` | Tier-based content filtering (free/premium/enterprise) |
 
 ### Phase 1: Data Extraction Workers
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Base Worker | `src/lib/analyzer/workers/base-worker.ts` | BaseWorker 추상 클래스, runWorkerSafely |
-| Data Analyst Worker | `src/lib/analyzer/workers/data-analyst-worker.ts` | Module A - 행동 데이터 추출 |
-| Productivity Worker | `src/lib/analyzer/workers/productivity-analyst-worker.ts` | Module C - 생산성 지표 추출 |
-| **Multitasking Worker** | `src/lib/analyzer/workers/multitasking-analyzer-worker.ts` | 멀티세션 작업 패턴 분석 (NEW) |
-| Module A Stage | `src/lib/analyzer/stages/data-analyst.ts` | DataAnalystStage 클래스, Gemini 호출 |
-| Module A Prompts | `src/lib/analyzer/stages/data-analyst-prompts.ts` | 시스템/유저 프롬프트 빌더 |
-| Module A Schema | `src/lib/models/analysis-data.ts` | StructuredAnalysisData Zod 스키마 |
-| Module C Schema | `src/lib/models/productivity-data.ts` | ProductivityAnalysisData Zod 스키마 |
-| **Multitasking Schema** | `src/lib/models/multitasking-data.ts` | MultitaskingAnalysisData Zod 스키마 (NEW) |
+| Base Worker | `src/lib/analyzer/workers/base-worker.ts` | BaseWorker abstract class, runWorkerSafely |
+| Data Analyst Worker | `src/lib/analyzer/workers/data-analyst-worker.ts` | Module A - behavioral data extraction |
+| Productivity Worker | `src/lib/analyzer/workers/productivity-analyst-worker.ts` | Module C - productivity metrics extraction |
+| **Multitasking Worker** | `src/lib/analyzer/workers/multitasking-analyzer-worker.ts` | Multi-session work pattern analysis (NEW) |
+| Module A Stage | `src/lib/analyzer/stages/data-analyst.ts` | DataAnalystStage class, Gemini call |
+| Module A Prompts | `src/lib/analyzer/stages/data-analyst-prompts.ts` | System/user prompt builders |
+| Module A Schema | `src/lib/models/analysis-data.ts` | StructuredAnalysisData Zod schema |
+| Module C Schema | `src/lib/models/productivity-data.ts` | ProductivityAnalysisData Zod schema |
+| **Multitasking Schema** | `src/lib/models/multitasking-data.ts` | MultitaskingAnalysisData Zod schema (NEW) |
 
 ### Phase 2: Insight Generation Workers (Premium+)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Pattern Detective | `src/lib/analyzer/workers/pattern-detective-worker.ts` | 세션 간 반복 패턴 탐지 |
-| Anti-Pattern Spotter | `src/lib/analyzer/workers/anti-pattern-spotter-worker.ts` | 비효율적 패턴 탐지 |
-| Knowledge Gap | `src/lib/analyzer/workers/knowledge-gap-worker.ts` | 지식 격차 식별 |
-| Context Efficiency | `src/lib/analyzer/workers/context-efficiency-worker.ts` | 컨텍스트 활용 분석 |
-| **Metacognition Worker** | `src/lib/analyzer/workers/metacognition-worker.ts` | 자기 인식 패턴, 블라인드 스팟 탐지 (NEW) |
-| **Temporal Analyzer** | `src/lib/analyzer/workers/temporal-analyzer-worker.ts` | 시간대별 품질 및 피로도 분석 (NEW) |
-| Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | AgentOutputs, 7 agent output Zod 스키마 |
-| **Metacognition Schema** | `src/lib/models/metacognition-data.ts` | MetacognitionOutput Zod 스키마 (NEW) |
-| **Temporal Schema** | `src/lib/models/temporal-data.ts` | TemporalAnalysisOutput Zod 스키마 (NEW) |
-| **Risk Signal Schema** | `src/lib/models/risk-signal.ts` | RiskSignal Zod 스키마 (NEW) |
+| Pattern Detective | `src/lib/analyzer/workers/pattern-detective-worker.ts` | Detect recurring patterns across sessions |
+| Anti-Pattern Spotter | `src/lib/analyzer/workers/anti-pattern-spotter-worker.ts` | Detect inefficient patterns |
+| Knowledge Gap | `src/lib/analyzer/workers/knowledge-gap-worker.ts` | Identify knowledge gaps |
+| Context Efficiency | `src/lib/analyzer/workers/context-efficiency-worker.ts` | Analyze context utilization |
+| **Metacognition Worker** | `src/lib/analyzer/workers/metacognition-worker.ts` | Detect self-awareness patterns and blind spots (NEW) |
+| **Temporal Analyzer** | `src/lib/analyzer/workers/temporal-analyzer-worker.ts` | Analyze quality and fatigue by time of day (NEW) |
+| Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | AgentOutputs, 7 agent output Zod schemas |
+| **Metacognition Schema** | `src/lib/models/metacognition-data.ts` | MetacognitionOutput Zod schema (NEW) |
+| **Temporal Schema** | `src/lib/models/temporal-data.ts` | TemporalAnalysisOutput Zod schema (NEW) |
+| **Risk Signal Schema** | `src/lib/models/risk-signal.ts` | RiskSignal Zod schema (NEW) |
 
 ### Phase 2.5: Type Synthesis (NEW)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| **TypeSynthesis Worker** | `src/lib/analyzer/workers/type-synthesis-worker.ts` | Phase 2.5 - 에이전트 인사이트 기반 타입 분류 정제 (NEW) |
+| **TypeSynthesis Worker** | `src/lib/analyzer/workers/type-synthesis-worker.ts` | Phase 2.5 - Refine type classification based on agent insights (NEW) |
 | Type Detector | `src/lib/analyzer/type-detector.ts` | Initial pattern-based type detection |
 | Coding Style Types | `src/lib/models/coding-style.ts` | 5×3 matrix types (15 combinations) |
 | AI Control Dimension | `src/lib/analyzer/dimensions/ai-control.ts` | Control level calculation |
@@ -1075,33 +1075,33 @@ Module A에 주입되는 전문가 지식 구조:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Stage Implementation | `src/lib/analyzer/stages/content-writer.ts` | ContentWriterStage 클래스, 내러티브 변환, evidence linking |
-| Prompts (PTCF) | `src/lib/analyzer/stages/content-writer-prompts.ts` | 시스템/유저 프롬프트 빌더 |
-| Output Schema | `src/lib/models/verbose-evaluation.ts` | VerboseLLMResponse, VerboseEvaluation 스키마 |
+| Stage Implementation | `src/lib/analyzer/stages/content-writer.ts` | ContentWriterStage class, narrative transformation, evidence linking |
+| Prompts (PTCF) | `src/lib/analyzer/stages/content-writer-prompts.ts` | System/user prompt builders |
+| Output Schema | `src/lib/models/verbose-evaluation.ts` | VerboseLLMResponse, VerboseEvaluation schema |
 
 ### Session Parsing (Stage 0)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| JSONL Reader | `src/lib/parser/jsonl-reader.ts` | JSONL 파싱, 경로 인코딩/디코딩 |
-| Session Selector | `src/lib/parser/session-selector.ts` | Duration-based 최적 세션 선정 (max 30) |
-| Session Formatter | `src/lib/analyzer/shared/session-formatter.ts` | 세션 데이터 포맷팅 (Worker 공유) |
-| Session Types | `src/lib/models/session.ts` | JSONLLine, SessionMetadata 타입 |
-| Domain Types | `src/lib/domain/models/analysis.ts` | ParsedSession, SessionMetrics 타입 |
+| JSONL Reader | `src/lib/parser/jsonl-reader.ts` | JSONL parsing, path encoding/decoding |
+| Session Selector | `src/lib/parser/session-selector.ts` | Duration-based optimal session selection (max 30) |
+| Session Formatter | `src/lib/analyzer/shared/session-formatter.ts` | Session data formatting (shared by Workers) |
+| Session Types | `src/lib/models/session.ts` | JSONLLine, SessionMetadata types |
+| Domain Types | `src/lib/domain/models/analysis.ts` | ParsedSession, SessionMetrics types |
 
 ### Knowledge Context
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Context Builder | `src/lib/analyzer/verbose-knowledge-context.ts` | XML 형태의 전문가 지식 빌더 |
-| Research Insights | `src/lib/domain/models/knowledge.ts` | INITIAL_INSIGHTS 전문가 인사이트 정의 |
-| Behavioral Signals | `src/lib/analyzer/dimension-keywords.ts` | DIMENSION_KEYWORDS 행동 시그널 매핑 |
+| Context Builder | `src/lib/analyzer/verbose-knowledge-context.ts` | XML-formatted expert knowledge builder |
+| Research Insights | `src/lib/domain/models/knowledge.ts` | INITIAL_INSIGHTS expert insight definitions |
+| Behavioral Signals | `src/lib/analyzer/dimension-keywords.ts` | DIMENSION_KEYWORDS behavioral signal mapping |
 
 ### API Client
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Gemini Client | `src/lib/analyzer/clients/gemini-client.ts` | @google/genai SDK 래퍼, structured output 지원 |
+| Gemini Client | `src/lib/analyzer/clients/gemini-client.ts` | @google/genai SDK wrapper, structured output support |
 
 ---
 
@@ -1133,17 +1133,14 @@ VerboseAnalyzerConfig (src/lib/analyzer/verbose-analyzer.ts)
 │       ├── temperature: 1.0
 │       └── maxOutputTokens: 65536
 │
-├── tier: 'free' | 'premium' | 'enterprise'  ← default: 'enterprise'
-│
-└── fallbackToLegacy: true  ← Orchestrator 실패시 Claude single로 폴백
+└── tier: 'free' | 'premium' | 'enterprise'  ← default: 'enterprise'
 
 Environment Variables:
-├── GOOGLE_GEMINI_API_KEY  ← Required for orchestrator pipeline
-└── ANTHROPIC_API_KEY      ← Required for fallback/legacy mode
+└── GOOGLE_GEMINI_API_KEY  ← Required for orchestrator pipeline
 
-Graceful Degradation:
-├── Phase 1 worker fails → uses default data (createDefaultStructuredAnalysisData)
-├── Phase 2 worker fails → continues without that agent's output
-├── Phase 2 skipped for Free tier → AgentOutputs = empty
-└── Orchestrator fails + fallbackToLegacy: true → uses Claude single-stage
+Error Handling (No Fallback Policy):
+├── All errors are thrown immediately, never silently hidden
+├── Workers throw errors instead of returning empty data
+├── Orchestrator uses Promise.all() to fail fast
+└── Frontend shows clear error states, not fake/empty results
 ```

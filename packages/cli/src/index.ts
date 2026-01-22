@@ -20,7 +20,7 @@ import {
   confirmWithPrivacy,
   displayResultsWithCelebration,
 } from './display.js';
-import { estimateAnalysisCost } from './cost-estimator.js';
+import { estimateAnalysisCost, renderCostEstimate } from './cost-estimator.js';
 import { createProgressDisplay } from './progress.js';
 import {
   storeTokens,
@@ -213,8 +213,6 @@ async function performDeviceFlowAuth(): Promise<string> {
         throw new Error('Device authorization timed out. Please try again.');
       }
     }
-  } catch (error) {
-    throw error;
   }
 }
 
@@ -267,9 +265,14 @@ async function runAnalysis(): Promise<void> {
   // Auto-select all sessions (no manual selection)
   const selectedSessions = scanResult.sessions;
 
-  // Estimate cost (used internally for logging, not displayed to user)
+  // Estimate cost (displayed when DEBUG_COST=1)
   const parsedSessions = selectedSessions.map(s => s.parsed);
   const costEstimate = estimateAnalysisCost(parsedSessions);
+
+  // Display cost estimate for developers when DEBUG_COST is set
+  if (process.env.DEBUG_COST) {
+    console.log(renderCostEstimate(costEstimate, selectedSessions.length));
+  }
 
   // Create filtered ScanResult for upload
   const filteredResult = {

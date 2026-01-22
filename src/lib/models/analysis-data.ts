@@ -38,41 +38,41 @@ export type TypeDistribution = z.infer<typeof TypeDistributionSchema>;
  */
 export const SituationTypeEnum = z.enum([
   // Original types
-  'complex_decision', // 복잡한 결정 상황
-  'debugging', // 디버깅 중
-  'feature_building', // 기능 구현
-  'refactoring', // 리팩토링
-  'code_review', // 코드 리뷰
-  'learning', // 학습/탐색
+  'complex_decision', // Complex decision situation
+  'debugging', // Debugging
+  'feature_building', // Feature implementation
+  'refactoring', // Refactoring
+  'code_review', // Code review
+  'learning', // Learning/exploration
   // New types (Phase 2)
-  'initial_planning', // 새 작업 시작
-  'mid_task_pivot', // 중간에 방향 전환
-  'error_recovery', // AI 오류 복구
-  'optimization', // 최적화
-  'integration', // 통합
-  'documentation', // 문서화
-  'testing', // 테스트
+  'initial_planning', // Starting new work
+  'mid_task_pivot', // Changing direction mid-task
+  'error_recovery', // Recovering from AI error
+  'optimization', // Optimization
+  'integration', // Integration
+  'documentation', // Documentation
+  'testing', // Testing
 ]);
 
 export const TriggerEnum = z.enum([
-  'uncertainty', // 불확실성
-  'previous_failure', // 이전 실패
-  'time_pressure', // 시간 압박
-  'complexity', // 복잡성
-  'unfamiliarity', // 익숙하지 않음
+  'uncertainty', // Uncertainty
+  'previous_failure', // Previous failure
+  'time_pressure', // Time pressure
+  'complexity', // Complexity
+  'unfamiliarity', // Unfamiliarity
 ]);
 
 export const OutcomeEnum = z.enum([
-  'successful', // 성공적
-  'partially_successful', // 부분적 성공
-  'unsuccessful', // 실패
-  'unknown', // 알 수 없음
+  'successful', // Successful
+  'partially_successful', // Partially successful
+  'unsuccessful', // Unsuccessful
+  'unknown', // Unknown
 ]);
 
 export const GrowthSignalEnum = z.enum([
-  'deliberate', // 의도적으로 선택한 행동
-  'reactive', // 상황에 반응한 행동
-  'habitual', // 습관화된 행동
+  'deliberate', // Deliberately chosen behavior
+  'reactive', // Reactive behavior to situation
+  'habitual', // Habitualized behavior
 ]);
 
 // Legacy type exports for backward compatibility
@@ -164,18 +164,18 @@ export const DetectedPatternSchema = z.object({
     'verification_habit',
     'tool_usage',
     // New types - Scope Management (Phase 2)
-    'scope_discipline', // 작업 범위 유지
-    'proper_decomposition', // 적절한 분해
+    'scope_discipline', // Maintaining work scope
+    'proper_decomposition', // Proper decomposition
     // New types - Learning Behavior (Phase 2)
-    'ask_why', // "왜"를 묻는 습관
-    'pattern_recognition', // 패턴 인식
-    'knowledge_synthesis', // 지식 융합
+    'ask_why', // Habit of asking "why"
+    'pattern_recognition', // Pattern recognition
+    'knowledge_synthesis', // Knowledge synthesis
     // New types - Context Management (Phase 2)
-    'context_awareness', // 컨텍스트 인식
-    'strategic_reset', // 전략적 리셋
+    'context_awareness', // Context awareness
+    'strategic_reset', // Strategic reset
     // New types - Iteration Efficiency (Phase 2)
-    'efficient_refinement', // 효율적 수정
-    'systematic_debugging', // 체계적 디버깅
+    'efficient_refinement', // Efficient refinement
+    'systematic_debugging', // Systematic debugging
   ]),
 
   /** How many times this pattern was observed */
@@ -236,12 +236,12 @@ export const DetectedAntiPatternSchema = z.object({
     'blind_retry', // Retrying without changing approach
     'passive_acceptance', // Accepting AI output without verification
     // New types (Phase 2)
-    'scope_creep', // 요구사항 계속 확장
-    'context_bloat', // 컨텍스트 관리 안함
-    'premature_optimization', // 동작 전 최적화
-    'copy_paste_dependency', // 이해 없이 복사
-    'tunnel_vision', // 한 접근법에 고착
-    'over_delegation', // AI에 과도한 위임
+    'scope_creep', // Requirements keep expanding
+    'context_bloat', // Not managing context
+    'premature_optimization', // Optimizing before it works
+    'copy_paste_dependency', // Copying without understanding
+    'tunnel_vision', // Stuck on one approach
+    'over_delegation', // Excessive delegation to AI
   ]),
 
   /** How many times this pattern was observed */
@@ -279,11 +279,11 @@ export const CriticalThinkingMomentSchema = z.object({
     'alternative_exploration', // Asking for different approaches
     'security_check', // Checking for security/performance issues
     // New types (Phase 2)
-    'edge_case_consideration', // 엣지 케이스 고려
-    'performance_awareness', // 성능 영향 인식
-    'maintainability_check', // 유지보수성 체크
-    'test_driven_thinking', // 테스트 먼저 사고
-    'architecture_evaluation', // 아키텍처 평가
+    'edge_case_consideration', // Considering edge cases
+    'performance_awareness', // Performance impact awareness
+    'maintainability_check', // Maintainability check
+    'test_driven_thinking', // Test-first thinking
+    'architecture_evaluation', // Architecture evaluation
   ]),
 
   /** What result this critical thinking led to */
@@ -356,7 +356,7 @@ export type ClusterDefinition = {
 };
 
 // ============================================================================
-// Personalized Priority Schema (B: 개인화된 우선순위)
+// Personalized Priority Schema (B: Personalized Priorities)
 // ============================================================================
 
 /**

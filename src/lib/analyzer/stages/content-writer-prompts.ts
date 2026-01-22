@@ -10,7 +10,7 @@
 
 /**
  * Detect if the given quotes contain significant Korean text
- * Returns true if Korean characters make up >= 30% of alphanumeric content
+ * Returns true if Korean characters make up >= 80% of alphanumeric content
  */
 export function detectKoreanContent(quotes: string[]): boolean {
   if (quotes.length === 0) return false;
@@ -30,7 +30,7 @@ export function detectKoreanContent(quotes: string[]): boolean {
   if (totalCount === 0) return false;
 
   const koreanRatio = koreanCount / totalCount;
-  return koreanRatio >= 0.3; // 30% threshold
+  return koreanRatio >= 0.8; // 80% threshold
 }
 
 /**
@@ -269,18 +269,16 @@ export function buildKnowledgeContextSection(
     return '';
   }
 
-  const header = useKorean
-    ? `## 전문가 지식 베이스 (Tip 생성용)\n\n다음 전문가 인사이트를 tip 작성 시 참조하세요. 자연어로 인용하세요: "Anthropic 가이드에 따르면...", "Simon Willison의 조언처럼..."\n`
-    : `## Knowledge Base Context (for tip generation)\n\nReference these expert insights when writing tips. Use natural attribution: "According to Anthropic's guide...", "As Simon Willison advises..."\n`;
+  const header = `## Knowledge Base Context (for tip generation)\n\nReference these expert insights when writing tips. Use natural attribution: "According to Anthropic's guide...", "As Simon Willison advises..."\n`;
 
   const sections: string[] = [header];
 
   const patternTypeLabels: Record<string, string> = {
-    communication_style: useKorean ? '커뮤니케이션 스타일' : 'Communication Style',
-    problem_solving: useKorean ? '문제 해결' : 'Problem Solving',
-    ai_interaction: useKorean ? 'AI 상호작용' : 'AI Interaction',
-    verification_habit: useKorean ? '검증 습관' : 'Verification Habit',
-    tool_usage: useKorean ? '도구 활용' : 'Tool Usage',
+    communication_style: 'Communication Style',
+    problem_solving: 'Problem Solving',
+    ai_interaction: 'AI Interaction',
+    verification_habit: 'Verification Habit',
+    tool_usage: 'Tool Usage',
   };
 
   for (const [patternType, items] of Object.entries(kbContext)) {
@@ -323,19 +321,19 @@ export function buildContentWriterUserPrompt(
   // Korean-specific instructions for different sections
   const koreanHeader = useKorean
     ? `
-## 🇰🇷 CRITICAL: Korean Output Required
+## CRITICAL: Korean Output Required
 
-**모든 출력은 한국어로 작성하세요.**
+**Write all output in Korean.**
 
-The developer's quotes are in Korean. You MUST write EVERY field in **Korean (한국어)**:
-- personalitySummary: 한국어로 작성
-- patternName: 한국어로 작성 (예: "페르소나 앵커링", "깃 타임머신")
-- pattern description: 한국어로 작성
-- pattern tip: 한국어로 작성
-- example analysis: 한국어로 작성
-- strength/growth titles: 한국어로 작성
-- strength/growth descriptions: 한국어로 작성
-- ALL recommendations: 한국어로 작성
+The developer's quotes are in Korean. You MUST write EVERY field in **Korean**:
+- personalitySummary: Write in Korean
+- patternName: Write in Korean (e.g., "Persona Anchoring", "Git Time Machine" → translate to Korean)
+- pattern description: Write in Korean
+- pattern tip: Write in Korean
+- example analysis: Write in Korean
+- strength/growth titles: Write in Korean
+- strength/growth descriptions: Write in Korean
+- ALL recommendations: Write in Korean
 
 Keep technical terms in English (AI, IDE, debugging, Git, commit).
 Match the developer's casual Korean style from their quotes.
@@ -344,26 +342,26 @@ Match the developer's casual Korean style from their quotes.
 
   const koreanPatternReminder = useKorean
     ? `
-   - ⚠️ **한국어로 작성**: patternName, description, tip, analysis 모두 한국어로`
+   - ⚠️ **Write in Korean**: patternName, description, tip, analysis must all be in Korean`
     : '';
 
   const koreanDimensionReminder = useKorean
     ? `
-   - ⚠️ **한국어로 작성**: title, description, recommendation 모두 한국어로`
+   - ⚠️ **Write in Korean**: title, description, recommendation must all be in Korean`
     : '';
 
   const koreanSummaryReminder = useKorean
     ? `
-   - ⚠️ **한국어로 작성**`
+   - ⚠️ **Write in Korean**`
     : '';
 
   const koreanFinalReminder = useKorean
     ? `
 
 ---
-## ⚠️ Final Reminder: 모든 출력 필드를 한국어로 작성하세요!
+## ⚠️ Final Reminder: Write all output fields in Korean!
 Do NOT write pattern names, descriptions, tips, or analysis in English.
-예시: "The Persona Anchor" ❌ → "페르소나 앵커" ✅`
+Example: "The Persona Anchor" in English should be translated to Korean equivalent.`
     : '';
 
   // Build KB context section if provided

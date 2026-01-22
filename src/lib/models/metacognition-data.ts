@@ -30,7 +30,7 @@ import { z } from 'zod';
  * @example
  * ```json
  * {
- *   "awarenessInstancesData": "self_reflection|내가 자꾸 이러는 것 같아|error handling|Shows pattern awareness;strategy_verbalization|이번엔 다르게 해볼게|debugging|Adapts approach",
+ *   "awarenessInstancesData": "self_reflection|I keep doing this|error handling|Shows pattern awareness;strategy_verbalization|Let me try differently this time|debugging|Adapts approach",
  *   "blindSpotsData": "no_error_analysis|5|session1,session2,session3|sunk_cost_loop;skip_testing|3|session2,session4|quality_neglect",
  *   "growthMindsetData": "curiosity:75|experimentation:60|resilience:80",
  *   "topInsights": [

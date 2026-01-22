@@ -53,10 +53,10 @@ export type MultitaskingStrategyType =
  * @example
  * ```json
  * {
- *   "sessionFocusData": "sess-001|main_development|85|15|API 엔드포인트 구현;sess-002|research_experiment|90|10|새 라이브러리 테스트",
- *   "contextPollutionData": "sess-003|백엔드 API|프론트엔드 CSS|아 그거 말고 이것도|12",
+ *   "sessionFocusData": "sess-001|main_development|85|15|API endpoint implementation;sess-002|research_experiment|90|10|New library testing",
+ *   "contextPollutionData": "sess-003|Backend API|Frontend CSS|oh wait, also do this|12",
  *   "workUnitSeparationData": "project-alpha|sess-001|main_development|src/api/user.ts,src/api/auth.ts;project-alpha|sess-002|research_experiment|experiments/test.ts",
- *   "strategyEvaluationData": "effective_parallel|메인 개발과 리서치를 별도 세션으로 분리|독립 작업 단위별 세션 분리가 효과적입니다",
+ *   "strategyEvaluationData": "effective_parallel|Main dev and research separated into different sessions|Separating independent work units into sessions is effective",
  *   "avgGoalCoherence": 87,
  *   "avgContextPollutionScore": 12,
  *   "workUnitSeparationScore": 92,
@@ -65,9 +65,9 @@ export type MultitaskingStrategyType =
  *   "totalSessionsAnalyzed": 5,
  *   "projectGroupCount": 2,
  *   "topInsights": [
- *     "메인 개발과 리서치를 별도 세션으로 효과적으로 분리하고 있습니다",
- *     "세션 3에서 작업 전환이 잦아 컨텍스트 오염이 발생했습니다",
- *     "파일 중복 5%로 작업 경계가 명확합니다"
+ *     "Effectively separating main development and research into different sessions",
+ *     "Context pollution occurred in session 3 due to frequent task switching",
+ *     "File overlap 5% indicates clear work boundaries"
  *   ],
  *   "confidenceScore": 0.82
  * }
@@ -158,7 +158,7 @@ export interface ContextPollutionInstance {
   sessionId: string;
   fromTask: string;
   toTask: string;
-  pollutionSignal: string;    // e.g., "아 그거 말고 이것도"
+  pollutionSignal: string;    // e.g., "oh wait, also do this"
   messageIndex: number;
 }
 

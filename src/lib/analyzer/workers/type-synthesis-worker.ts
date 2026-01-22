@@ -97,11 +97,11 @@ function buildTypeSynthesisUserPrompt(
 ): string {
   const koreanInstructions = useKorean
     ? `
-## 🇰🇷 CRITICAL: Korean Output Required
+## CRITICAL: Korean Output Required
 
-**adjustmentReasons를 한국어로 작성하세요.**
+**Write adjustmentReasons in Korean.**
 
-The developer's content is in Korean. Write the \`adjustmentReasons\` field in **Korean (한국어)**.
+The developer's content is in Korean. Write the \`adjustmentReasons\` field in **Korean**.
 Keep type names (architect, scientist, etc.) and technical terms in English.
 
 `
@@ -204,7 +204,7 @@ ${koreanInstructions}
 3. Calculate the refined distribution (must sum to 100%)
 4. Determine the refined control level
 5. Provide the combined matrix name and emoji
-6. Explain your adjustments with specific evidence${useKorean ? ' (adjustmentReasons를 한국어로 작성)' : ''}
+6. Explain your adjustments with specific evidence${useKorean ? ' (write adjustmentReasons in Korean)' : ''}
 
 Be specific about WHY you made changes. If no changes are needed, explain why the initial classification is accurate.`;
 }

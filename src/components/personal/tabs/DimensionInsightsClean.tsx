@@ -38,11 +38,11 @@ const DEFAULT_STYLE: DimensionStyle = { accent: 'var(--text-secondary)', bg: 'va
  * Derives Keep/Problem/Try from existing strengths and growthAreas data
  */
 function KPTSummary({ insight }: { insight: PerDimensionInsight }) {
-  // K (Keep/지킬것) = strengths (what you're doing well)
+  // K (Keep) = strengths (what you're doing well)
   const keepItems = insight.strengths.slice(0, 2).map(s => s.title);
-  // P (Problem/문제점) = growthAreas title/description (areas needing improvement)
+  // P (Problem) = growthAreas title/description (areas needing improvement)
   const problemItems = insight.growthAreas.slice(0, 2).map(g => g.title);
-  // T (Try/시도할것) = growthAreas recommendation (what to try next)
+  // T (Try) = growthAreas recommendation (what to try next)
   const tryItems = insight.growthAreas
     .slice(0, 2)
     .map(g => g.recommendation)
@@ -59,7 +59,7 @@ function KPTSummary({ insight }: { insight: PerDimensionInsight }) {
       <div className={styles.kptGrid}>
         {keepItems.length > 0 && (
           <div className={styles.kptColumn}>
-            <span className={styles.kptLabelKeep}>K - 지킬것</span>
+            <span className={styles.kptLabelKeep}>K - Keep</span>
             <ul className={styles.kptList}>
               {keepItems.map((item, i) => <li key={i}>{item}</li>)}
             </ul>
@@ -67,7 +67,7 @@ function KPTSummary({ insight }: { insight: PerDimensionInsight }) {
         )}
         {problemItems.length > 0 && (
           <div className={styles.kptColumn}>
-            <span className={styles.kptLabelProblem}>P - 문제점</span>
+            <span className={styles.kptLabelProblem}>P - Problem</span>
             <ul className={styles.kptList}>
               {problemItems.map((item, i) => <li key={i}>{item}</li>)}
             </ul>
@@ -75,7 +75,7 @@ function KPTSummary({ insight }: { insight: PerDimensionInsight }) {
         )}
         {tryItems.length > 0 && (
           <div className={styles.kptColumn}>
-            <span className={styles.kptLabelTry}>T - 시도할것</span>
+            <span className={styles.kptLabelTry}>T - Try</span>
             <ul className={styles.kptList}>
               {tryItems.map((item, i) => <li key={i}>{item}</li>)}
             </ul>

@@ -1,10 +1,10 @@
 # Knowledge Base Architecture
 
-이 문서는 NoMoreAISlop의 Knowledge Base (KB) 시스템 아키텍처와 Professional Insights가 분석 리포트에 통합되는 흐름을 설명합니다.
+This document explains the NoMoreAISlop Knowledge Base (KB) system architecture and how Professional Insights are integrated into analysis reports.
 
 ## Overview
 
-Knowledge Base는 개발자의 AI 활용 분석 결과에 따라 **맞춤형 인사이트와 학습 리소스**를 제공합니다. 분석 차원(dimension)의 점수에 따라 강점 강화(reinforcement) 또는 개선(improvement) 인사이트가 선택됩니다.
+The Knowledge Base provides **personalized insights and learning resources** based on the developer's AI collaboration analysis results. Depending on the dimension score, either reinforcement (for strengths) or improvement insights are selected.
 
 ## Architecture Diagram
 
@@ -120,8 +120,8 @@ sequenceDiagram
 
 ### 1. Data Sources
 
-| File | Purpose | 사용 시점 |
-|------|---------|----------|
+| File | Purpose | Usage Context |
+|------|---------|---------------|
 | `knowledge.ts` | Primary source of truth (INITIAL_INSIGHTS) | Documentation & future Supabase migration |
 | `knowledge-linker.ts` | Runtime fallback (INITIAL_PROFESSIONAL_INSIGHTS) | MockKnowledgeSource (dev/test) |
 | `supabase-knowledge-source.ts` | Runtime fallback (FALLBACK_PROFESSIONAL_INSIGHTS) | SupabaseKnowledgeSource (production) |
@@ -132,9 +132,9 @@ sequenceDiagram
 ```typescript
 interface ProfessionalInsight {
   id: string;                      // e.g., 'pi-011'
-  title: string;                   // 짧은 제목
-  keyTakeaway: string;             // 핵심 메시지
-  actionableAdvice: string[];      // 실행 가능한 조언 (1-5개)
+  title: string;                   // Short title
+  keyTakeaway: string;             // Core message
+  actionableAdvice: string[];      // Actionable advice (1-5 items)
   source: {
     type: 'arxiv' | 'blog' | 'official' | 'research' | 'x-post';
     author: string;
@@ -142,20 +142,20 @@ interface ProfessionalInsight {
   };
 
   // Filtering criteria
-  applicableDimensions?: string[]; // 적용 대상 차원
-  minScore?: number;               // 최소 점수 (이상일 때만 표시)
-  maxScore?: number;               // 최대 점수 (이하일 때만 표시)
+  applicableDimensions?: string[]; // Target dimensions
+  minScore?: number;               // Minimum score (show only if above)
+  maxScore?: number;               // Maximum score (show only if below)
 
-  priority: number;                // 1-10 (높을수록 먼저 표시)
-  enabled: boolean;                // 활성화 여부
+  priority: number;                // 1-10 (higher = shown first)
+  enabled: boolean;                // Active status
 }
 ```
 
 ### 3. Filtering Logic
 
 ```
-Score >= 70 → mode = 'reinforcement' (강점 강화)
-Score < 70  → mode = 'improvement' (개선 필요)
+Score >= 70 → mode = 'reinforcement' (strength reinforcement)
+Score < 70  → mode = 'improvement' (needs improvement)
 
 Insight Selection:
   1. enabled === true
@@ -282,34 +282,34 @@ src/lib/
 
 ## Future Improvements
 
-1. **Database Migration**: `professional_insights` Supabase 테이블 생성하여 런타임에 Supabase에서 직접 조회
-2. **Deduplication**: `knowledge.ts`에서 fallback 배열을 import하여 중복 제거
-3. **Admin UI**: Supabase Studio 또는 커스텀 UI로 인사이트 관리
-4. **A/B Testing**: 인사이트 효과 측정을 위한 실험 프레임워크
-5. **RAG Integration**: 의미 기반 검색으로 더 정확한 인사이트 매칭 (아래 섹션 참조)
+1. **Database Migration**: Create `professional_insights` Supabase table to query directly from Supabase at runtime
+2. **Deduplication**: Import fallback arrays from `knowledge.ts` to eliminate duplication
+3. **Admin UI**: Manage insights via Supabase Studio or custom UI
+4. **A/B Testing**: Experiment framework to measure insight effectiveness
+5. **RAG Integration**: Semantic search for more accurate insight matching (see section below)
 
 ---
 
-## RAG (Retrieval Augmented Generation) 활용 계획
+## RAG (Retrieval Augmented Generation) Integration Plan
 
 ### Why RAG?
 
-현재 시스템의 한계:
+Current system limitations:
 
-| 현재 방식 | 문제점 |
-|-----------|--------|
-| `applicableDimensions` 필터링 | 하드코딩된 매핑, 새 차원 추가 시 모든 인사이트 수정 필요 |
-| `professionalInsightIds` 지정 | 수동 매핑, 확장성 제한 |
-| Keyword 기반 검색 | 의미적 유사성 무시, 동의어/유사 개념 매칭 실패 |
+| Current Approach | Problem |
+|------------------|---------|
+| `applicableDimensions` filtering | Hardcoded mapping, requires modifying all insights when adding new dimensions |
+| `professionalInsightIds` specification | Manual mapping, limited scalability |
+| Keyword-based search | Ignores semantic similarity, fails on synonyms/similar concepts |
 
-RAG 도입 시 장점:
+Benefits of RAG adoption:
 
-| RAG 방식 | 이점 |
-|----------|------|
-| Semantic Search | 사용자 대화 내용과 **의미적으로 유사한** 인사이트 자동 매칭 |
-| Dynamic Retrieval | 하드코딩 없이 관련 콘텐츠 동적 검색 |
-| Scalability | 인사이트 100개 → 10,000개로 확장해도 성능 유지 |
-| Context-Aware | 사용자의 실제 문제 상황에 맞는 조언 제공 |
+| RAG Approach | Benefit |
+|--------------|---------|
+| Semantic Search | Automatically matches insights **semantically similar** to user conversation |
+| Dynamic Retrieval | Dynamically searches relevant content without hardcoding |
+| Scalability | Performance maintained when scaling from 100 to 10,000 insights |
+| Context-Aware | Provides advice tailored to user's actual problem context |
 
 ### RAG Architecture (Future State)
 
@@ -383,7 +383,7 @@ RAG 도입 시 장점:
 
 #### Phase 1: Vector Database Setup (Supabase pgvector)
 
-Supabase는 이미 사용 중이므로 **pgvector extension**을 활용하는 것이 가장 효율적입니다.
+Since Supabase is already in use, leveraging the **pgvector extension** is most efficient.
 
 ```sql
 -- Enable pgvector extension
@@ -588,13 +588,13 @@ $$;
 
 ### Use Cases for RAG
 
-| Use Case | 현재 방식 | RAG 방식 |
-|----------|-----------|----------|
-| **새 인사이트 추가** | `applicableDimensions` 수동 지정 | 자동으로 관련 검색어와 매칭 |
-| **사용자 맥락 반영** | dimension + score만 고려 | 실제 대화 내용 기반 검색 |
-| **유사 문제 매칭** | Keyword 일치 필요 | "context exhaustion" ≈ "컨텍스트 고갈" 자동 매칭 |
-| **다국어 지원** | 언어별 키워드 필요 | Embedding이 의미 기반으로 매칭 |
-| **롱테일 콘텐츠** | 상위 N개만 노출 | 관련성 높은 콘텐츠 동적 발굴 |
+| Use Case | Current Approach | RAG Approach |
+|----------|------------------|--------------|
+| **Adding new insights** | Manually specify `applicableDimensions` | Automatically matches related search terms |
+| **User context reflection** | Only considers dimension + score | Searches based on actual conversation content |
+| **Similar problem matching** | Requires keyword match | Automatically matches "context exhaustion" ≈ "context depletion" |
+| **Multilingual support** | Requires language-specific keywords | Embedding-based semantic matching |
+| **Long-tail content** | Only shows top N | Dynamically discovers relevant content |
 
 ### RAG Query Examples
 
@@ -661,23 +661,23 @@ Phase 4 (Ongoing): Content Expansion
 | **Query embeddings** | ~$0.00002/query | Negligible for typical usage |
 | **Cohere Rerank (optional)** | $1/1000 queries | Only if re-ranking needed |
 
-총 예상 비용: 분석당 **< $0.001** (임베딩 쿼리 비용)
+Total estimated cost: **< $0.001** per analysis (embedding query cost)
 
 ## Troubleshooting
 
-### Insight가 리포트에 나타나지 않음
+### Insight not appearing in report
 
-1. `enabled: true` 확인
-2. `applicableDimensions`에 해당 차원이 포함되어 있는지 확인
-3. 사용자의 점수가 `minScore`/`maxScore` 범위 내인지 확인
-4. Fallback 배열에 추가되어 있는지 확인 (INITIAL_INSIGHTS만 있으면 런타임에서 사용 안 됨)
+1. Verify `enabled: true`
+2. Check if `applicableDimensions` includes the dimension
+3. Verify user's score is within `minScore`/`maxScore` range
+4. Confirm it's added to fallback arrays (INITIAL_INSIGHTS alone won't be used at runtime)
 
-### TypeCheck 실패
+### TypeCheck failures
 
 ```bash
 npm run typecheck
 ```
 
-- `version: '1.0.0'` 필수
-- `source.type`은 `'arxiv' | 'blog' | 'official' | 'research' | 'x-post'` 중 하나
-- `priority`는 1-10 사이
+- `version: '1.0.0'` is required
+- `source.type` must be one of `'arxiv' | 'blog' | 'official' | 'research' | 'x-post'`
+- `priority` must be between 1-10

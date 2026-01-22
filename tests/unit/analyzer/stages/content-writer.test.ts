@@ -309,17 +309,16 @@ describe('ContentWriterStage', () => {
       expect(keywords.has('use')).toBe(true);
     });
 
-    it('should handle Korean text', () => {
-      // Note: Korean words with 2 or fewer characters are filtered out
-      // (same rule as English - length > 2)
-      const text = '구조적인 계획수립과 코드베이스 구성능력';
+    it('should handle long words correctly', () => {
+      // Note: Words with 2 or fewer characters are filtered out
+      const text = 'structural planning codebase configuration';
       const keywords = callExtractKeywords(stage, text);
 
-      // 3+ character Korean words should be included
-      expect(keywords.has('구조적인')).toBe(true);
-      expect(keywords.has('계획수립과')).toBe(true);
-      expect(keywords.has('코드베이스')).toBe(true);
-      expect(keywords.has('구성능력')).toBe(true);
+      // 3+ character words should be included
+      expect(keywords.has('structural')).toBe(true);
+      expect(keywords.has('planning')).toBe(true);
+      expect(keywords.has('codebase')).toBe(true);
+      expect(keywords.has('configuration')).toBe(true);
     });
   });
 

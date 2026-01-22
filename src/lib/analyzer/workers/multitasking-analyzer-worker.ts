@@ -150,7 +150,7 @@ You analyze how developers manage multiple Claude Code sessions to maximize effe
 ## TASK
 Analyze the provided session data to discover multi-session work patterns:
 
-### 1. SESSION FOCUS ANALYSIS (세션별 목표 집중도)
+### 1. SESSION FOCUS ANALYSIS (Per-session Goal Focus)
 For each session, evaluate:
 - **Work Type**: main_development, research_experiment, debugging, refactoring, documentation, or mixed
 - **Goal Coherence** (0-100): How focused is the session on a single goal?
@@ -162,13 +162,13 @@ For each session, evaluate:
   - 50 = Some task shifts
   - 100 = Chaotic, unrelated tasks mixed
 
-### 2. CONTEXT POLLUTION DETECTION (컨텍스트 오염 탐지)
+### 2. CONTEXT POLLUTION DETECTION
 Detect when user requests unrelated tasks within one session:
-- Task shift signals: "아 그거 말고", "잠깐 이것도", "actually", "let's do something else", "그건 됐고"
+- Task shift signals: "oh not that", "wait, also do this", "actually", "let's do something else", "never mind that"
 - Topic jumps without proper context setup
 - File pattern sudden changes (e.g., API files → UI files → test files)
 
-### 3. WORK UNIT SEPARATION (작업 단위 분리)
+### 3. WORK UNIT SEPARATION (Work Unit Partitioning)
 Within the SAME PROJECT, analyze:
 - Are independent work units separated into different sessions?
 - Good pattern: Session A = main development, Session B = research/experiment
@@ -192,12 +192,12 @@ Classify the overall strategy:
 ## CONTEXT POLLUTION SIGNALS (Examples)
 
 ### BAD (Context Pollution)
-- "아 그거 말고 이것도 해줘" / "oh wait, also do this"
-- Same session: "API 만들어줘" → "CSS 수정해줘" → "테스트 작성해"
+- "oh wait, also do this" or "never mind that, do this instead"
+- Same session: "create the API" → "fix the CSS" → "write tests"
 - File access pattern: src/api/*.ts → src/components/*.tsx → tests/*.spec.ts
 
 ### GOOD (Effective Separation)
-- "이 세션에서는 백엔드만 작업할게" / "this session is for backend"
+- "this session is for backend only"
 - Session A focuses on src/api/*, Session B focuses on experiments/*
 - Clear role: research session → findings → implementation session applies them
 
@@ -226,15 +226,15 @@ export function buildMultitaskingUserPrompt(
 ): string {
   const koreanInstructions = useKorean
     ? `
-## 🇰🇷 CRITICAL: Korean Output Required
+## CRITICAL: Korean Output Required
 
-**모든 출력은 한국어로 작성하세요.**
+**Write all output in Korean.**
 
-The developer's content is in Korean. You MUST write ALL fields in **Korean (한국어)**:
-- topInsights: 한국어로 작성
-- Work descriptions: 한국어로 작성
-- Strategy evaluations: 한국어로 작성
-- Recommendations: 한국어로 작성
+The developer's content is in Korean. You MUST write ALL fields in **Korean**:
+- topInsights: Write in Korean
+- Work descriptions: Write in Korean
+- Strategy evaluations: Write in Korean
+- Recommendations: Write in Korean
 
 Keep technical terms, session IDs, and file paths in English.
 
@@ -263,7 +263,7 @@ Analyze the multi-session work patterns:
 4. Evaluate the overall multitasking strategy
 5. Calculate metrics: avgGoalCoherence, avgContextPollutionScore, workUnitSeparationScore, fileOverlapRate
 
-Generate exactly 3 actionable insights about the user's multitasking patterns.${useKorean ? ' (한국어로 작성)' : ''}
+Generate exactly 3 actionable insights about the user's multitasking patterns.${useKorean ? ' (write in Korean)' : ''}
 
 IMPORTANT: Look for context pollution signals in BOTH Korean and English.`;
 }

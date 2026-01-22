@@ -12,49 +12,49 @@ This guide covers deploying the heavy analysis API to AWS Lambda using SST.
 
 ## Prerequisites
 
-1. AWS Account (크레딧 있으면 더 좋음)
+1. AWS Account (free tier credits are helpful)
 2. Node.js 20+
-3. AWS CLI (선택사항, SST가 직접 설정도 가능)
+3. AWS CLI (optional, SST can configure directly)
 
 ---
 
-## 1. AWS 계정 설정
+## 1. AWS Account Setup
 
-### 1.1 IAM User 생성
+### 1.1 Create IAM User
 
-1. [AWS Console](https://console.aws.amazon.com) 로그인
+1. Log in to [AWS Console](https://console.aws.amazon.com)
 2. **IAM** → **Users** → **Create user**
 3. User name: `nomoreaislop-deploy`
-4. **Attach policies directly** 선택 후 아래 정책 추가:
-   - `AdministratorAccess` (개발용, 프로덕션에선 더 제한적인 권한 권장)
+4. Select **Attach policies directly** and add the following policy:
+   - `AdministratorAccess` (for development, use more restrictive permissions in production)
 
-5. **Create user** → **Security credentials** 탭
+5. **Create user** → **Security credentials** tab
 6. **Create access key** → **Command Line Interface (CLI)**
-7. Access key와 Secret access key 저장 (한 번만 보임!)
+7. Save the Access key and Secret access key (shown only once!)
 
-### 1.2 AWS Credentials 설정
+### 1.2 AWS Credentials Setup
 
-**Option A: 환경변수**
+**Option A: Environment Variables**
 
 ```bash
-# ~/.zshrc 또는 ~/.bashrc에 추가
+# Add to ~/.zshrc or ~/.bashrc
 export AWS_ACCESS_KEY_ID="AKIA..."
 export AWS_SECRET_ACCESS_KEY="..."
 export AWS_REGION="ap-northeast-2"
 ```
 
 ```bash
-# 적용
+# Apply changes
 source ~/.zshrc
 ```
 
-**Option B: AWS CLI 설정**
+**Option B: AWS CLI Setup**
 
 ```bash
-# AWS CLI 설치 (macOS)
+# Install AWS CLI (macOS)
 brew install awscli
 
-# credentials 설정
+# Configure credentials
 aws configure
 # AWS Access Key ID: AKIA...
 # AWS Secret Access Key: ...
@@ -62,7 +62,7 @@ aws configure
 # Default output format: json
 ```
 
-**Option C: AWS Profile 사용 (권장)**
+**Option C: AWS Profile (Recommended)**
 
 ```bash
 # ~/.aws/credentials
@@ -75,26 +75,26 @@ aws_secret_access_key = ...
 region = ap-northeast-2
 ```
 
-`.env` 파일에 프로필 지정:
+Specify the profile in `.env` file:
 
 ```bash
 # .env
 AWS_PROFILE=nomoreaislop
 ```
 
-또는 배포 시 직접 지정:
+Or specify directly during deployment:
 
 ```bash
 AWS_PROFILE=nomoreaislop npm run sst:deploy
 ```
 
-### 1.3 AWS 설정 확인
+### 1.3 Verify AWS Setup
 
 ```bash
-# credentials 확인
+# Verify credentials
 aws sts get-caller-identity
 
-# 출력 예시:
+# Example output:
 # {
 #   "UserId": "AIDA...",
 #   "Account": "123456789012",
@@ -104,21 +104,21 @@ aws sts get-caller-identity
 
 ---
 
-## 2. SST 설치 및 배포
+## 2. SST Installation and Deployment
 
-### 2.1 의존성 설치
+### 2.1 Install Dependencies
 
 ```bash
-# 프로젝트 의존성 설치
+# Install project dependencies
 npm install
 
-# SST 글로벌 설치 (선택, npx로도 사용 가능)
+# Install SST globally (optional, can use npx)
 npm install -g sst
 ```
 
-### 2.2 Environment Variables 설정
+### 2.2 Environment Variables Setup
 
-프로젝트 루트의 `.env` 파일에 필요한 환경변수 설정:
+Set required environment variables in the `.env` file at project root:
 
 ```bash
 # .env
@@ -137,26 +137,26 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIs...
 # AWS Profile (credentials in ~/.aws/credentials)
 AWS_PROFILE=nomoreaislop
 
-# Lambda URL (배포 후 여기에 URL 입력)
+# Lambda URL (enter URL here after deployment)
 NOSLOP_LAMBDA_URL=
 ```
 
-> **Note**: SST는 배포 시 `.env`에서 환경변수를 읽어 Lambda에 주입합니다.
+> **Note**: SST reads environment variables from `.env` and injects them into Lambda during deployment.
 
-### 2.3 배포
+### 2.3 Deployment
 
 ```bash
-# 개발 환경 (로컬 테스트, 변경사항 실시간 반영)
+# Development environment (local testing, live reload on changes)
 npm run sst:dev
 
-# 프로덕션 배포
+# Production deployment
 npm run sst:deploy
 
-# 배포 삭제 (리소스 정리)
+# Remove deployment (cleanup resources)
 npm run sst:remove
 ```
 
-배포 성공 시 출력:
+Successful deployment output:
 ```
 ✔ Complete
    apiUrl: https://abc123xyz.lambda-url.ap-northeast-2.on.aws
@@ -164,15 +164,15 @@ npm run sst:remove
 
 ---
 
-## 3. 문제 해결
+## 3. Troubleshooting
 
-### AWS Credentials 에러
+### AWS Credentials Error
 
 ```
 Error: Could not load credentials from any providers
 ```
 
-**해결**: AWS credentials 설정 확인
+**Solution**: Verify AWS credentials setup
 ```bash
 aws sts get-caller-identity
 ```
@@ -183,32 +183,32 @@ aws sts get-caller-identity
 Task timed out after 15.00 seconds
 ```
 
-**해결**: `infra/api.ts`에서 timeout 증가 (최대 15분)
+**Solution**: Increase timeout in `infra/api.ts` (max 15 minutes)
 
-### CORS 에러
+### CORS Error
 
 ```
 Access to fetch has been blocked by CORS policy
 ```
 
-**해결**: `infra/api.ts`의 CORS 설정 확인
+**Solution**: Check CORS settings in `infra/api.ts`
 
 ---
 
-## 4. 비용 정보
+## 4. Cost Information
 
-Lambda 비용 (ap-northeast-2 기준):
-- **요청**: $0.20 / 1백만 요청
-- **실행 시간**: $0.0000166667 / GB-초
+Lambda costs (ap-northeast-2 region):
+- **Requests**: $0.20 / 1 million requests
+- **Execution time**: $0.0000166667 / GB-second
 
-예상 비용 (월 1,000회 분석, 각 30초):
-- 요청: $0.0002
-- 실행: 1,000 × 30초 × 1GB × $0.0000166667 = ~$0.50
-- **총: 월 $1 미만**
+Estimated cost (1,000 analyses per month, 30 seconds each):
+- Requests: $0.0002
+- Execution: 1,000 × 30 seconds × 1GB × $0.0000166667 = ~$0.50
+- **Total: Less than $1/month**
 
-AWS Free Tier (12개월):
-- 월 1백만 요청 무료
-- 월 40만 GB-초 무료
+AWS Free Tier (12 months):
+- 1 million requests per month free
+- 400,000 GB-seconds per month free
 
 ## Architecture
 
