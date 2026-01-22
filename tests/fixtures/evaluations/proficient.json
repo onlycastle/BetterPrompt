@@ -49,7 +49,7 @@
   },
   "aiControl": {
     "score": 74,
-    "level": "ai-master",
+    "level": "cartographer",
     "interpretation": "You maintain strategic control while leveraging AI capabilities effectively.",
     "breakdown": {
       "guidance": { "score": 78, "signals": ["Clear direction", "Iterative refinement"] },

@@ -77,8 +77,8 @@
   },
   "aiControl": {
     "score": 90,
-    "level": "ai-master",
-    "interpretation": "You are an AI Master. You maintain strategic control over AI outputs, provide clear constraints, and verify critically. This is the hallmark of a professional AI-assisted developer.",
+    "level": "cartographer",
+    "interpretation": "You are a Cartographer. You strategically map AI outputs, provide clear constraints, and verify critically. This is the hallmark of a professional AI-assisted developer.",
     "breakdown": {
       "verificationRate": 92,
       "constraintSpecification": 88,

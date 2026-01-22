@@ -24,7 +24,7 @@ describe('ContentGateway', () => {
 
       // Type result
       primaryType: 'architect',
-      controlLevel: 'ai-master',
+      controlLevel: 'cartographer',
       distribution: {
         architect: 40,
         scientist: 25,
@@ -419,7 +419,7 @@ describe('ContentGateway', () => {
         const filtered = gateway.filter(fullEvaluation, 'free');
 
         expect(filtered.primaryType).toBe('architect');
-        expect(filtered.controlLevel).toBe('ai-master');
+        expect(filtered.controlLevel).toBe('cartographer');
         expect(filtered.distribution).toEqual(fullEvaluation.distribution);
         expect(filtered.personalitySummary).toBe(fullEvaluation.personalitySummary);
       });

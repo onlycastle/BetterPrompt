@@ -49,7 +49,7 @@
   },
   "aiControl": {
     "score": 32,
-    "level": "vibe-coder",
+    "level": "explorer",
     "interpretation": "High AI dependency observed. Focus on building verification habits.",
     "breakdown": {
       "guidance": { "score": 35, "signals": ["Minimal direction"] },

@@ -51,7 +51,7 @@ function createMockAnalysisData(): StructuredAnalysisData {
   return {
     typeAnalysis: {
       primaryType: 'architect',
-      controlLevel: 'ai-master',
+      controlLevel: 'cartographer',
       distribution: {
         architect: 40,
         scientist: 20,
