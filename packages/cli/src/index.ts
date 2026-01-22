@@ -41,6 +41,22 @@ import {
 } from './animations/index.js';
 
 /**
+ * Web app base URL for dashboard links
+ */
+const WEB_APP_URL = 'https://www.nomoreaislop.xyz';
+
+interface UserAnalysis {
+  id: string;
+  resultId: string;
+  evaluation: {
+    primaryType?: string;
+    sessionsAnalyzed?: number;
+  } | null;
+  isPaid: boolean;
+  claimedAt: string;
+}
+
+/**
  * Display device flow code and URL with Chippy
  */
 function displayDeviceCode(userCode: string, verificationUri: string): void {
@@ -123,6 +139,100 @@ async function confirm(message: string): Promise<boolean> {
       resolve(normalized === '' || normalized === 'y' || normalized === 'yes');
     });
   });
+}
+
+/**
+ * Prompt user to choose between new analysis or dashboard
+ */
+async function promptExistingAnalysis(analyses: UserAnalysis[]): Promise<'new' | 'dashboard'> {
+  const { createInterface } = await import('node:readline');
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  console.log('');
+  console.log(pc.bold(pc.cyan('📊 You have existing analyses!')));
+  console.log('');
+
+  // Show summary of most recent analysis
+  const latest = analyses[0];
+  const latestType = latest.evaluation?.primaryType || 'Analysis';
+  const latestDate = new Date(latest.claimedAt).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  console.log(pc.dim(`  Latest: ${latestType} (${latestDate})`));
+  console.log(pc.dim(`  Total: ${analyses.length} analysis${analyses.length > 1 ? 'es' : ''}`));
+  console.log('');
+
+  console.log('  ' + pc.bold('1)') + ' 🔄 Run a new analysis');
+  console.log('  ' + pc.bold('2)') + ' 📊 Open dashboard in browser');
+  console.log('');
+
+  return new Promise((resolve) => {
+    rl.question(pc.cyan('Choose an option (1 or 2): '), (answer) => {
+      rl.close();
+      const choice = answer.trim();
+      if (choice === '2') {
+        resolve('dashboard');
+      } else {
+        resolve('new');
+      }
+    });
+  });
+}
+
+/**
+ * Fetch user's existing analyses from the API
+ */
+async function fetchUserAnalyses(accessToken: string): Promise<UserAnalysis[]> {
+  try {
+    const response = await fetch(`${WEB_APP_URL}/api/analysis/user?limit=5`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      // Silently fail - don't block the user if API is down
+      return [];
+    }
+
+    const data = await response.json() as { analyses?: UserAnalysis[] };
+    return data.analyses || [];
+  } catch {
+    // Network error - silently fail
+    return [];
+  }
+}
+
+/**
+ * Open URL in user's default browser
+ */
+async function openBrowser(url: string): Promise<void> {
+  const { exec } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const execAsync = promisify(exec);
+
+  const platform = process.platform;
+  let command: string;
+
+  if (platform === 'darwin') {
+    command = `open "${url}"`;
+  } else if (platform === 'win32') {
+    command = `start "" "${url}"`;
+  } else {
+    command = `xdg-open "${url}"`;
+  }
+
+  try {
+    await execAsync(command);
+  } catch {
+    // If browser open fails, just print the URL
+    console.log(pc.cyan(`  Open in browser: ${url}`));
+  }
 }
 
 /**
@@ -233,6 +343,23 @@ async function runAnalysis(): Promise<void> {
     const email = await getStoredUserEmail();
     console.log(pc.green('✓ Welcome back') + (email ? pc.dim(` ${email}`) : ''));
     console.log('');
+
+    // Check for existing analyses
+    const existingAnalyses = await fetchUserAnalyses(accessToken);
+    if (existingAnalyses.length > 0) {
+      const choice = await promptExistingAnalysis(existingAnalyses);
+
+      if (choice === 'dashboard') {
+        console.log('');
+        console.log(pc.bold(pc.green('📊 Opening your dashboard...')));
+        console.log(pc.dim(`  ${WEB_APP_URL}/dashboard/personal`));
+        console.log('');
+        await openBrowser(`${WEB_APP_URL}/dashboard/personal`);
+        process.exit(0);
+      }
+      // Continue with new analysis if choice === 'new'
+      console.log('');
+    }
   } else {
     // Perform device flow authentication
     accessToken = await performDeviceFlowAuth();
