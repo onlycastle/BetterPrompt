@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BarChart3, Target, Users, Gift, Coffee, Zap, Lock, Sparkles, Loader2, Coins } from 'lucide-react';
+import { BarChart3, Target, Users, Gift, Coffee, Zap, Lock, Loader2, Coins } from 'lucide-react';
 import { WaitlistModal, waitlistConfigs } from '@/components/landing';
 import styles from './UnlockSection.module.css';
 
@@ -172,20 +172,14 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: 
       setIsLoading(false);
     }
   };
+  // Don't render anything when already unlocked - the badge adds no value
+  if (isUnlocked) {
+    return null;
+  }
+
   return (
     <div className={styles.unlockSection}>
-      {isUnlocked ? (
-        <div className={styles.unlockedBadge}>
-          <div className={styles.badgeIcon}>
-            <Sparkles size={48} />
-          </div>
-          <h3 className={styles.badgeTitle}>Full Analysis Unlocked</h3>
-          <p className={styles.badgeSubtitle}>
-            You have access to all premium features and detailed breakdowns.
-          </p>
-        </div>
-      ) : (
-        <div className={styles.lockedContent}>
+      <div className={styles.lockedContent}>
           {/* Header */}
           <div className={styles.lockIcon}>
             <Lock size={32} />
@@ -334,7 +328,6 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: 
             </a>
           </div>
         </div>
-      )}
 
       {/* PRO Waitlist Modal */}
       <WaitlistModal

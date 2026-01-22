@@ -33,58 +33,8 @@ const DIMENSION_STYLES: Record<DimensionName, DimensionStyle> = {
 
 const DEFAULT_STYLE: DimensionStyle = { accent: 'var(--text-secondary)', bg: 'var(--surface-2)' };
 
-/**
- * KPT Summary Component
- * Derives Keep/Problem/Try from existing strengths and growthAreas data
- */
-function KPTSummary({ insight }: { insight: PerDimensionInsight }) {
-  // K (Keep) = strengths (what you're doing well)
-  const keepItems = insight.strengths.slice(0, 2).map(s => s.title);
-  // P (Problem) = growthAreas title/description (areas needing improvement)
-  const problemItems = insight.growthAreas.slice(0, 2).map(g => g.title);
-  // T (Try) = growthAreas recommendation (what to try next)
-  const tryItems = insight.growthAreas
-    .slice(0, 2)
-    .map(g => g.recommendation)
-    .filter((r): r is string => Boolean(r));
-
-  // Don't render if no data
-  if (keepItems.length === 0 && problemItems.length === 0 && tryItems.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className={styles.kptSection}>
-      <div className={styles.kptHeader}>KPT Analysis</div>
-      <div className={styles.kptGrid}>
-        {keepItems.length > 0 && (
-          <div className={styles.kptColumn}>
-            <span className={styles.kptLabelKeep}>K - Keep</span>
-            <ul className={styles.kptList}>
-              {keepItems.map((item, i) => <li key={i}>{item}</li>)}
-            </ul>
-          </div>
-        )}
-        {problemItems.length > 0 && (
-          <div className={styles.kptColumn}>
-            <span className={styles.kptLabelProblem}>P - Problem</span>
-            <ul className={styles.kptList}>
-              {problemItems.map((item, i) => <li key={i}>{item}</li>)}
-            </ul>
-          </div>
-        )}
-        {tryItems.length > 0 && (
-          <div className={styles.kptColumn}>
-            <span className={styles.kptLabelTry}>T - Try</span>
-            <ul className={styles.kptList}>
-              {tryItems.map((item, i) => <li key={i}>{item}</li>)}
-            </ul>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+/** Maximum number of evidence quotes to display per item */
+const MAX_EVIDENCE_QUOTES = 3;
 
 interface DimensionCardProps {
   insight: PerDimensionInsight;
@@ -138,10 +88,15 @@ function DimensionCard({ insight }: DimensionCardProps) {
                     </span>
                   </div>
                   <p className={styles.itemDescription}>{strength.description}</p>
+                  {/* Show up to MAX_EVIDENCE_QUOTES quotes for richer evidence display */}
                   {strength.evidence.length > 0 && (
-                    <blockquote className={styles.itemQuote}>
-                      "{strength.evidence[0]}"
-                    </blockquote>
+                    <div className={styles.evidenceQuotes}>
+                      {strength.evidence.slice(0, MAX_EVIDENCE_QUOTES).map((quote, qIdx) => (
+                        <blockquote key={qIdx} className={styles.itemQuote}>
+                          "{quote}"
+                        </blockquote>
+                      ))}
+                    </div>
                   )}
                 </div>
               ))}
@@ -161,9 +116,20 @@ function DimensionCard({ insight }: DimensionCardProps) {
                     </span>
                   </div>
                   <p className={styles.itemDescription}>{growth.description}</p>
+                  {/* Show up to MAX_EVIDENCE_QUOTES quotes for richer evidence display */}
+                  {growth.evidence.length > 0 && (
+                    <div className={styles.evidenceQuotes}>
+                      {growth.evidence.slice(0, MAX_EVIDENCE_QUOTES).map((quote, qIdx) => (
+                        <blockquote key={qIdx} className={styles.itemQuote}>
+                          "{quote}"
+                        </blockquote>
+                      ))}
+                    </div>
+                  )}
+                  {/* Prominent recommendation display */}
                   {growth.recommendation && (
                     <div className={styles.recommendation}>
-                      <span className={styles.recommendationLabel}>Recommendation:</span>
+                      <span className={styles.recommendationLabel}>Try this:</span>
                       <span className={styles.recommendationText}>{growth.recommendation}</span>
                     </div>
                   )}
@@ -171,9 +137,6 @@ function DimensionCard({ insight }: DimensionCardProps) {
               ))}
             </div>
           )}
-
-          {/* KPT Analysis */}
-          <KPTSummary insight={insight} />
         </div>
       )}
     </Card>
