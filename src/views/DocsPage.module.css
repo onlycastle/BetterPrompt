@@ -1,0 +1,285 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hero Section */
+.hero {
+  padding: var(--space-3xl) var(--space-lg) var(--space-2xl);
+  text-align: center;
+  border-bottom: 1px dashed var(--border-default);
+}
+
+.title {
+  font-size: var(--text-4xl);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.subtitle {
+  font-size: var(--text-lg);
+  color: var(--ink-secondary);
+}
+
+/* Layout */
+.layout {
+  display: flex;
+  flex: 1;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.content {
+  flex: 1;
+  max-width: 720px;
+  padding: var(--space-2xl) var(--space-xl);
+  margin-left: 240px;
+}
+
+/* Typography */
+.heading3 {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  margin-top: var(--space-xl);
+  margin-bottom: var(--space-md);
+}
+
+.heading3:first-child {
+  margin-top: 0;
+}
+
+.heading4 {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--ink-primary);
+  margin-top: var(--space-lg);
+  margin-bottom: var(--space-sm);
+}
+
+.paragraph {
+  font-size: var(--text-md);
+  color: var(--ink-secondary);
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--space-md);
+}
+
+.inlineCode {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan-text);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+/* Lists */
+.list {
+  list-style: disc;
+  margin-left: var(--space-lg);
+  margin-bottom: var(--space-md);
+  color: var(--ink-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.list li {
+  margin-bottom: var(--space-xs);
+}
+
+.orderedList {
+  list-style: decimal;
+  margin-left: var(--space-lg);
+  margin-bottom: var(--space-md);
+  color: var(--ink-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.orderedList li {
+  margin-bottom: var(--space-sm);
+}
+
+/* Module Cards */
+.moduleCard {
+  background: var(--glass-bg);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.moduleTitle {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-cyan-text);
+  margin-bottom: var(--space-xs);
+}
+
+.moduleDescription {
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  line-height: var(--leading-normal);
+}
+
+/* Agent Grid */
+.agentGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.agentCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.agentName {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-primary);
+}
+
+.agentDesc {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+/* Pipeline Diagram */
+.pipelineDiagram {
+  background: var(--surface-3);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  margin: var(--space-lg) 0;
+  overflow-x: auto;
+}
+
+.asciiDiagram {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink-primary);
+  line-height: 1.4;
+  white-space: pre;
+  margin: 0;
+}
+
+/* Tables */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--space-lg);
+  font-size: var(--text-sm);
+}
+
+.table th {
+  text-align: left;
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  background: var(--surface-3);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.table td {
+  padding: var(--space-sm) var(--space-md);
+  color: var(--ink-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.table tr:nth-child(even) td {
+  background: var(--surface-2);
+}
+
+.tableEmoji {
+  font-weight: var(--weight-medium);
+  color: var(--ink-primary);
+}
+
+/* Blockquote */
+.blockquote {
+  font-size: var(--text-xl);
+  font-style: italic;
+  color: var(--ink-primary);
+  border-left: 3px solid var(--sketch-cyan);
+  padding-left: var(--space-lg);
+  margin: var(--space-xl) 0;
+}
+
+/* Values Grid */
+.valuesGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+.valueCard {
+  background: var(--glass-bg);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+}
+
+.valueTitle {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-cyan-text);
+  margin-bottom: var(--space-xs);
+}
+
+.valueDescription {
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  line-height: var(--leading-normal);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .content {
+    margin-left: 0;
+    padding: var(--space-xl) var(--space-lg);
+  }
+}
+
+@media (max-width: 768px) {
+  .hero {
+    padding: var(--space-2xl) var(--space-md) var(--space-xl);
+  }
+
+  .title {
+    font-size: var(--text-2xl);
+  }
+
+  .subtitle {
+    font-size: var(--text-md);
+  }
+
+  .content {
+    padding: var(--space-lg) var(--space-md);
+    max-width: 100%;
+  }
+
+  .agentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .valuesGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pipelineDiagram {
+    padding: var(--space-md);
+  }
+
+  .asciiDiagram {
+    font-size: var(--text-xs);
+  }
+}
