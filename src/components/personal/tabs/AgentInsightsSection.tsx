@@ -15,6 +15,12 @@
 
 import { useState } from 'react';
 import type { AgentOutputs } from '../../../lib/models/agent-outputs';
+import {
+  parseStrengthsData,
+  parseGrowthAreasData,
+  type AgentStrength,
+  type AgentGrowthArea,
+} from '../../../lib/models/agent-outputs';
 import styles from './AgentInsightsSection.module.css';
 
 interface AgentInsightsSectionProps {
@@ -190,32 +196,8 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
                 </div>
               </div>
 
-              {/* Top Insights */}
-              {insights.length > 0 && (
-                <div className={styles.insightsBox}>
-                  <div className={styles.insightsHeader}>
-                    <span className={styles.sparkle}>✨</span>
-                    <span className={styles.insightsLabel}>Key Discoveries</span>
-                  </div>
-                  <ul className={styles.insightsList}>
-                    {insights.map((insight, idx) => (
-                      <li key={idx} className={styles.insightItem}>
-                        <span className={styles.bullet}>•</span>
-                        <span className={styles.insightText}>{insight}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {isTeaser && hiddenInsightsCount > 0 && (
-                    <div className={styles.teaserMore}>
-                      <span className={styles.unlockIcon}>🔓</span>
-                      <span className={styles.teaserMoreText}>
-                        +{hiddenInsightsCount} more insights (unlock to see)
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Strengths & Growth Areas (NEW) */}
+              <AgentStrengthsGrowthAreas data={data} isTeaser={isTeaser} />
 
               {/* Summary */}
               {summary && (
@@ -347,8 +329,122 @@ function deriveAgentKPT(data: unknown): KPTResult {
   };
 }
 
+// ============================================================================
+// Strengths & Growth Areas Derivation (NEW)
+// ============================================================================
+
+interface AgentInsightsData {
+  strengthsData?: string;
+  growthAreasData?: string;
+  topInsights?: string[];
+  kptKeep?: string[];
+  kptProblem?: string[];
+  kptTry?: string[];
+}
+
 /**
- * Agent KPT Summary Component
+ * Get strengths from agent data
+ * Priority: new strengthsData > fallback from kptKeep/positive insights
+ */
+function getAgentStrengths(data: unknown): AgentStrength[] {
+  const d = data as AgentInsightsData;
+
+  // 1. Use new strengthsData if available
+  if (d.strengthsData) {
+    const parsed = parseStrengthsData(d.strengthsData);
+    if (parsed.length > 0) return parsed;
+  }
+
+  // 2. Fallback: derive from kptKeep or positive insights
+  const keepItems = d.kptKeep || [];
+  const positiveInsights = (d.topInsights || []).filter(i => isPositiveInsight(i));
+  const sources = [...keepItems, ...positiveInsights].slice(0, 2);
+
+  return sources.map(text => ({
+    title: extractTitleFromText(text),
+    description: text,
+    evidence: [],
+  }));
+}
+
+/**
+ * Get growth areas from agent data
+ * Priority: new growthAreasData > fallback from kptProblem+kptTry/negative insights
+ */
+function getAgentGrowthAreas(data: unknown): AgentGrowthArea[] {
+  const d = data as AgentInsightsData;
+
+  // 1. Use new growthAreasData if available
+  if (d.growthAreasData) {
+    const parsed = parseGrowthAreasData(d.growthAreasData);
+    if (parsed.length > 0) return parsed;
+  }
+
+  // 2. Fallback: derive from kptProblem/kptTry or negative insights
+  const problemItems = d.kptProblem || [];
+  const tryItems = d.kptTry || [];
+  const negativeInsights = (d.topInsights || []).filter(i => isProblemInsight(i) || isSuggestionInsight(i));
+
+  // Combine problems with try items as recommendations
+  const result: AgentGrowthArea[] = [];
+
+  problemItems.forEach((problem, idx) => {
+    result.push({
+      title: extractTitleFromText(problem),
+      description: problem,
+      evidence: [],
+      recommendation: tryItems[idx] || '',
+    });
+  });
+
+  // Add remaining try items as growth areas
+  const remainingTry = tryItems.slice(problemItems.length);
+  remainingTry.forEach(item => {
+    result.push({
+      title: extractTitleFromText(item),
+      description: item,
+      evidence: [],
+      recommendation: '',
+    });
+  });
+
+  // If still empty, use negative insights
+  if (result.length === 0) {
+    negativeInsights.slice(0, 2).forEach(text => {
+      result.push({
+        title: extractTitleFromText(text),
+        description: text,
+        evidence: [],
+        recommendation: '',
+      });
+    });
+  }
+
+  return result.slice(0, 3);
+}
+
+/**
+ * Extract a short title from a longer text
+ * Looks for patterns like "**text**" or takes first few words
+ */
+function extractTitleFromText(text: string): string {
+  // Try to extract bold text first
+  const boldMatch = text.match(/\*\*([^*]+)\*\*/);
+  if (boldMatch) {
+    return boldMatch[1].slice(0, 50);
+  }
+
+  // Otherwise take first few words (up to 5 or 50 chars)
+  const words = text.split(/\s+/).slice(0, 5);
+  let title = words.join(' ');
+  if (title.length > 50) {
+    title = title.slice(0, 47) + '...';
+  }
+  return title;
+}
+
+/**
+ * Agent KPT Summary Component (Legacy - kept for backward compatibility in details)
  */
 function AgentKPTSummary({ data }: { data: unknown }) {
   const kpt = deriveAgentKPT(data);
@@ -390,6 +486,89 @@ function AgentKPTSummary({ data }: { data: unknown }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Agent Strengths & Growth Areas Component (NEW)
+ * Replaces Key Discoveries with richer, structured insights
+ */
+function AgentStrengthsGrowthAreas({ data, isTeaser }: { data: unknown; isTeaser: boolean }) {
+  const strengths = getAgentStrengths(data);
+  const growthAreas = getAgentGrowthAreas(data);
+
+  // Don't render if no data
+  if (strengths.length === 0 && growthAreas.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className={styles.strengthsGrowthContainer}>
+      {/* Strengths Section */}
+      {strengths.length > 0 && (
+        <div className={styles.strengthsSection}>
+          <div className={styles.sectionHeader}>
+            <span className={styles.strengthIcon}>💪</span>
+            <span className={styles.sectionLabel}>Strengths</span>
+          </div>
+          {strengths.map((s, idx) => (
+            <div key={idx} className={styles.insightCard}>
+              <h4 className={styles.insightTitle}>{s.title}</h4>
+              <p className={styles.insightDescription}>{s.description}</p>
+              {s.evidence.length > 0 && (
+                <div className={styles.evidenceList}>
+                  {s.evidence.slice(0, 2).map((quote, i) => (
+                    <blockquote key={i} className={styles.evidenceQuote}>
+                      &ldquo;{quote}&rdquo;
+                    </blockquote>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Growth Areas Section */}
+      {growthAreas.length > 0 && (
+        <div className={styles.growthSection}>
+          <div className={styles.sectionHeader}>
+            <span className={styles.growthIcon}>🌱</span>
+            <span className={styles.sectionLabel}>Growth Areas</span>
+          </div>
+          {growthAreas.map((g, idx) => (
+            <div key={idx} className={styles.insightCard}>
+              <h4 className={styles.insightTitle}>{g.title}</h4>
+              <p className={styles.insightDescription}>{g.description}</p>
+              {g.evidence.length > 0 && (
+                <div className={styles.evidenceList}>
+                  {g.evidence.slice(0, 2).map((quote, i) => (
+                    <blockquote key={i} className={styles.evidenceQuote}>
+                      &ldquo;{quote}&rdquo;
+                    </blockquote>
+                  ))}
+                </div>
+              )}
+              {g.recommendation && (
+                <div className={styles.recommendation}>
+                  <span className={styles.recLabel}>💡 Recommendation:</span>
+                  <span className={styles.recText}>{g.recommendation}</span>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {isTeaser && (
+            <div className={styles.teaserMore}>
+              <span className={styles.unlockIcon}>🔓</span>
+              <span className={styles.teaserMoreText}>
+                Unlock to see more insights
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
