@@ -308,6 +308,85 @@
 }
 
 /* ========================================
+   DISCORD COMMUNITY CTA
+   ======================================== */
+
+.discord {
+  margin-top: 32px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  background: var(--sketch-cyan-soft);
+  border-left: 3px solid var(--sketch-cyan);
+  border-radius: 8px;
+}
+
+.discordQuote {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink-primary);
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-style: normal;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.discordLine1 {
+  display: block;
+}
+
+.discordLine1::before {
+  content: '"';
+  color: var(--sketch-cyan);
+}
+
+.discordLine2 {
+  display: block;
+  color: var(--ink-secondary);
+  font-weight: 400;
+}
+
+.discordLine2::after {
+  content: '"';
+  color: var(--sketch-cyan);
+}
+
+.discordLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--bg-paper);
+  border: 2px solid var(--sketch-cyan);
+  border-radius: 8px;
+  color: var(--sketch-cyan);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.discordLink:hover {
+  background: var(--sketch-cyan);
+  color: var(--bg-paper);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.discordIcon {
+  width: 20px;
+  height: 20px;
+}
+
+/* ========================================
    RESPONSIVE DESIGN
    ======================================== */
 
@@ -327,5 +406,19 @@
 
   .lockedTitle {
     font-size: 20px;
+  }
+
+  .discord {
+    margin-top: 24px;
+    padding: 20px 16px;
+  }
+
+  .discordQuote {
+    font-size: 14px;
+  }
+
+  .discordLink {
+    font-size: 13px;
+    padding: 8px 16px;
   }
 }

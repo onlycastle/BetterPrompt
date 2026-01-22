@@ -3,7 +3,6 @@
  * Notion/Linear style minimal type result display
  */
 
-import { Card } from '../../ui/Card';
 import { VERBOSE_TYPE_METADATA } from '../../../types/verbose';
 import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixDistribution } from '../../../types/verbose';
 import { MatrixDistributionDisplay } from './MatrixDistributionDisplay';
@@ -32,7 +31,7 @@ export function TypeResultMinimal({
   const meta = VERBOSE_TYPE_METADATA[primaryType];
 
   return (
-    <Card padding="lg" className={styles.container}>
+    <div className={styles.container}>
       {/* Hero Section */}
       <div className={styles.hero}>
         <div className={styles.emoji}>{meta.emoji}</div>
@@ -69,7 +68,7 @@ export function TypeResultMinimal({
           Based on {sessionsAnalyzed} session{sessionsAnalyzed !== 1 ? 's' : ''} analyzed
         </span>
       </div>
-    </Card>
+    </div>
   );
 }
 

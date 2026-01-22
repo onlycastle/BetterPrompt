@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
   // Missing checkout ID
   if (!checkoutId) {
     console.error('Payment success called without checkout_id');
-    return NextResponse.redirect(new URL('/personal?error=missing_checkout', baseUrl));
+    return NextResponse.redirect(new URL('/dashboard/personal?error=missing_checkout', baseUrl));
   }
 
   try {
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     if (checkout.status !== 'succeeded') {
       console.log('Payment not succeeded. Status:', checkout.status);
       return NextResponse.redirect(
-        new URL(`/personal?error=payment_incomplete&status=${checkout.status}`, baseUrl)
+        new URL(`/dashboard/personal?error=payment_incomplete&status=${checkout.status}`, baseUrl)
       );
     }
 
@@ -139,14 +139,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`nomoreaislop://payment/success?resultId=${resultId}`);
     }
 
-    // Web: redirect to personal dashboard with success message
-    return NextResponse.redirect(new URL('/personal?payment=success', baseUrl));
+    // Web: redirect to dashboard with success message
+    // If resultId is available, redirect directly to the report
+    if (resultId) {
+      return NextResponse.redirect(
+        new URL(`/dashboard/personal/r/${resultId}?payment=success`, baseUrl)
+      );
+    }
+    // Fallback to personal tab if no resultId
+    return NextResponse.redirect(new URL('/dashboard/personal?payment=success', baseUrl));
 
   } catch (error) {
     console.error('Payment verification error:', error);
     // Don't expose internal errors to user
     return NextResponse.redirect(
-      new URL('/personal?error=verification_failed', baseUrl)
+      new URL('/dashboard/personal?error=verification_failed', baseUrl)
     );
   }
 }

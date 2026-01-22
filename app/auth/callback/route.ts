@@ -15,6 +15,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { sendSlackNotification, formatKoreanTime } from '@/lib/slack';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -63,6 +64,22 @@ export async function GET(request: Request) {
   }
 
   console.log('[Auth Callback] Session created, redirecting to:', safeNext);
+
+  // Send Slack notification for new signups only (fire and forget)
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user?.created_at) {
+    const createdAt = new Date(user.created_at).getTime();
+    const now = Date.now();
+    const ONE_MINUTE = 60 * 1000;
+
+    // Only notify if user was created within the last minute (new signup)
+    if (now - createdAt < ONE_MINUTE) {
+      const provider = user.app_metadata?.provider || 'email';
+      sendSlackNotification({
+        text: `👤 새 회원가입!\n• 이메일: ${user.email}\n• Provider: ${provider}\n• 시간: ${formatKoreanTime()}`,
+      });
+    }
+  }
 
   // Redirect to the target page
   return NextResponse.redirect(`${origin}${safeNext}`);

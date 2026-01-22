@@ -194,7 +194,7 @@ async function main() {
 
   // Step 2: Select optimal sessions based on duration
   console.log(pc.dim('  ⏳ Selecting optimal sessions for analysis...'));
-  const sessionsToAnalyze = selectOptimalSessions(sessions, { maxSessions: 10 });
+  const sessionsToAnalyze = selectOptimalSessions(sessions, { maxSessions: 30 });
   console.log(pc.dim(`     Selected ${sessionsToAnalyze.length} sessions (duration-based)`));
 
   const parsedSessions = [];

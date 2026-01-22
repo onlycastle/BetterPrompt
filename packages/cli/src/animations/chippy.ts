@@ -46,7 +46,7 @@ const CHIP_FRAMES: Record<ChippyExpression, string[]> = {
   ],
   excited: [
     '┬─┬─┬',
-    '├★ ★├',
+    '├✱ ✱├',
     '┴◡◡◡┴',
   ],
   wink: [
