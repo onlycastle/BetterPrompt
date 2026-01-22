@@ -256,14 +256,31 @@ interface ToolWithFile {
 }
 
 /**
+ * Get content blocks from a message (handles nested message.content structure)
+ */
+function getContentBlocks(message: unknown): unknown[] {
+  if (!message) return [];
+
+  // Direct array of content blocks
+  if (Array.isArray(message)) return message;
+
+  // Nested structure: message.content is the array
+  if (typeof message === 'object' && 'content' in message) {
+    const content = (message as { content: unknown }).content;
+    if (Array.isArray(content)) return content;
+  }
+
+  return [];
+}
+
+/**
  * Extract tool names and file paths from an assistant message
  */
 function extractToolsWithFiles(message: unknown): ToolWithFile[] {
   const tools: ToolWithFile[] = [];
+  const blocks = getContentBlocks(message);
 
-  if (!message || !Array.isArray(message)) return tools;
-
-  for (const block of message) {
+  for (const block of blocks) {
     if (
       block &&
       typeof block === 'object' &&
@@ -296,9 +313,9 @@ function extractToolsWithFiles(message: unknown): ToolWithFile[] {
  * Check if a message contains tool errors
  */
 function hasToolErrors(message: unknown): boolean {
-  if (!message || !Array.isArray(message)) return false;
+  const blocks = getContentBlocks(message);
 
-  for (const block of message) {
+  for (const block of blocks) {
     if (
       block &&
       typeof block === 'object' &&

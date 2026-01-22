@@ -27,17 +27,20 @@ export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
  */
 const PREFILTER_CONFIG = {
   // Files smaller than this are likely too short to be meaningful
-  MIN_FILE_SIZE: 10 * 1024, // 10KB
+  MIN_FILE_SIZE: 5 * 1024, // 5KB (relaxed from 10KB to include shorter meaningful sessions)
   // Files larger than this are suspicious or would dominate memory
   MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB
   // How many candidates to fully read for quality scoring
-  MAX_CANDIDATES: 100,
+  MAX_CANDIDATES: 150, // Increased from 100 to ensure 30 sessions can be found
   // Weight for size score vs recency score in pre-filtering
   SIZE_WEIGHT: 0.3,
   RECENCY_WEIGHT: 0.7,
   // Ideal file size range for size scoring (100KB - 5MB)
   IDEAL_SIZE_MIN: 100 * 1024,
   IDEAL_SIZE_MAX: 5 * 1024 * 1024,
+  // Project diversity in pre-filter
+  MIN_PROJECTS_IN_PREFILTER: 5, // Ensure at least 5 projects in candidates
+  MAX_PER_PROJECT_IN_PREFILTER: 50, // Cap per project to ensure diversity
 };
 
 /**
@@ -45,15 +48,17 @@ const PREFILTER_CONFIG = {
  */
 const SELECTION_CONFIG = {
   // Time distribution
-  RECENCY_WINDOW_DAYS: 14, // 2-week window
-  TIME_BUCKETS: 4, // Divide into 4 buckets (3.5 days each)
+  RECENCY_WINDOW_DAYS: 14, // Initial window (dynamically expands if needed)
+  TIME_BUCKETS: 4, // Divide into 4 buckets
+  // Dynamic window expansion: 14 → 30 → 60 → 90 days
+  RECENCY_WINDOW_OPTIONS: [14, 30, 60, 90],
 
   // Project diversity
   MIN_PROJECTS: 3, // Target minimum 3 projects
-  MAX_PER_PROJECT: 10, // Maximum sessions per project (for 30 total)
+  MAX_PER_PROJECT: 15, // Relaxed from 10 to allow more sessions per project
 
   // Quality thresholds
-  MIN_MESSAGE_COUNT: 5, // Minimum messages to consider
+  MIN_MESSAGE_COUNT: 3, // Relaxed from 5 to include shorter meaningful sessions
 
   // Final selection
   MAX_SESSIONS: 30, // Default max sessions
@@ -261,6 +266,11 @@ function calculatePrefilterScore(file: FileMetadata, newestMtime: number, oldest
 /**
  * Phase 2: Pre-filter files to top candidates based on size + recency heuristics.
  * This dramatically reduces the number of files we need to fully read.
+ *
+ * Uses project-aware selection to ensure diversity:
+ * 1. Score all files
+ * 2. Select top files from each project (capped at MAX_PER_PROJECT_IN_PREFILTER)
+ * 3. Merge and take top MAX_CANDIDATES
  */
 function prefilterCandidates(allFiles: FileMetadata[]): FileMetadata[] {
   // Filter out files that are too small or too large
@@ -276,16 +286,33 @@ function prefilterCandidates(allFiles: FileMetadata[]): FileMetadata[] {
   const newestMtime = Math.max(...mtimes);
   const oldestMtime = Math.min(...mtimes);
 
-  // Score and sort candidates
+  // Score all files
   const scored = validFiles.map(file => ({
     file,
     score: calculatePrefilterScore(file, newestMtime, oldestMtime),
   }));
 
-  scored.sort((a, b) => b.score - a.score);
+  // Group by project
+  const byProject = new Map<string, Array<{ file: FileMetadata; score: number }>>();
+  for (const item of scored) {
+    const project = item.file.projectDirName;
+    if (!byProject.has(project)) {
+      byProject.set(project, []);
+    }
+    byProject.get(project)!.push(item);
+  }
 
-  // Return top candidates
-  return scored
+  // Sort each project's files by score and cap at MAX_PER_PROJECT_IN_PREFILTER
+  const projectCandidates: Array<{ file: FileMetadata; score: number }> = [];
+  for (const [_project, files] of byProject) {
+    files.sort((a, b) => b.score - a.score);
+    projectCandidates.push(...files.slice(0, PREFILTER_CONFIG.MAX_PER_PROJECT_IN_PREFILTER));
+  }
+
+  // Sort all candidates by score and take top MAX_CANDIDATES
+  projectCandidates.sort((a, b) => b.score - a.score);
+
+  return projectCandidates
     .slice(0, PREFILTER_CONFIG.MAX_CANDIDATES)
     .map(s => s.file);
 }
@@ -304,7 +331,7 @@ async function scoreCandidates(
       const content = await readFile(file.filePath, 'utf-8');
       const metadata = extractMetadataFromContent(file.filePath, content);
 
-      if (metadata && metadata.messageCount >= 5) {
+      if (metadata && metadata.messageCount >= SELECTION_CONFIG.MIN_MESSAGE_COUNT) {
         // Calculate quality score
         const qualityMetrics = extractQualityMetrics(content);
         metadata.qualityScore = calculateQualityScore(qualityMetrics);
@@ -328,31 +355,49 @@ interface ScoredSession {
 
 /**
  * Distribute sessions across time buckets for temporal diversity.
- * Divides the recency window into equal buckets and selects from each.
+ * Uses dynamic time window expansion (14 → 30 → 60 → 90 days) to ensure
+ * enough sessions are found even when recent activity is sparse.
  */
 function distributeByTimeBuckets(
   sessions: ScoredSession[],
   maxSessions: number
 ): ScoredSession[] {
   const now = Date.now();
-  const cutoffMs = SELECTION_CONFIG.RECENCY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-  const cutoffDate = now - cutoffMs;
 
-  // Filter to recent sessions only
-  const recentSessions = sessions.filter(
-    s => s.metadata.timestamp.getTime() >= cutoffDate
-  );
+  // Dynamic time window: progressively expand until we have enough sessions
+  let recentSessions: ScoredSession[] = [];
+  let usedWindowDays = SELECTION_CONFIG.RECENCY_WINDOW_OPTIONS[0];
 
-  // If not enough recent sessions, include all
+  for (const windowDays of SELECTION_CONFIG.RECENCY_WINDOW_OPTIONS) {
+    const cutoffMs = windowDays * 24 * 60 * 60 * 1000;
+    const cutoffDate = now - cutoffMs;
+
+    recentSessions = sessions.filter(
+      s => s.metadata.timestamp.getTime() >= cutoffDate
+    );
+    usedWindowDays = windowDays;
+
+    // Stop expanding if we have enough sessions
+    if (recentSessions.length >= maxSessions) {
+      break;
+    }
+  }
+
+  // If still not enough after max window, use all available sessions
+  if (recentSessions.length < maxSessions && recentSessions.length < sessions.length) {
+    recentSessions = [...sessions];
+  }
+
+  // If we have fewer or equal to maxSessions, return all sorted by quality
   if (recentSessions.length <= maxSessions) {
-    // Sort by quality within each bucket, but return all
     recentSessions.sort((a, b) =>
       (b.metadata.qualityScore ?? 0) - (a.metadata.qualityScore ?? 0)
     );
     return recentSessions;
   }
 
-  // Create time buckets
+  // Create time buckets based on the window we actually used
+  const cutoffMs = usedWindowDays * 24 * 60 * 60 * 1000;
   const bucketSizeMs = cutoffMs / SELECTION_CONFIG.TIME_BUCKETS;
   const buckets: ScoredSession[][] = Array.from(
     { length: SELECTION_CONFIG.TIME_BUCKETS },
@@ -389,6 +434,9 @@ function distributeByTimeBuckets(
 /**
  * Distribute sessions across projects using round-robin selection.
  * Ensures diversity across different codebases.
+ *
+ * If round-robin can't fill maxSessions (due to limited projects),
+ * falls back to quality-based filling from remaining sessions.
  */
 function distributeByProjects(
   sessions: ScoredSession[],
@@ -412,8 +460,9 @@ function distributeByProjects(
     );
   }
 
-  // Round-robin selection across projects
+  // Phase 1: Round-robin selection with MAX_PER_PROJECT limit
   const selected: ScoredSession[] = [];
+  const selectedIds = new Set<string>();
   const projects = Array.from(byProject.keys());
   let round = 0;
 
@@ -426,7 +475,9 @@ function distributeByProjects(
         round < projectSessions.length &&
         round < SELECTION_CONFIG.MAX_PER_PROJECT
       ) {
-        selected.push(projectSessions[round]);
+        const session = projectSessions[round];
+        selected.push(session);
+        selectedIds.add(session.metadata.sessionId);
         addedThisRound = true;
 
         if (selected.length >= maxSessions) break;
@@ -435,6 +486,20 @@ function distributeByProjects(
 
     if (!addedThisRound) break;
     round++;
+  }
+
+  // Phase 2: If still short, fill with remaining high-quality sessions
+  // This handles cases where few projects exist but have many sessions
+  if (selected.length < maxSessions) {
+    // Collect all unselected sessions and sort by quality
+    const remaining = sessions
+      .filter(s => !selectedIds.has(s.metadata.sessionId))
+      .sort((a, b) => (b.metadata.qualityScore ?? 0) - (a.metadata.qualityScore ?? 0));
+
+    for (const session of remaining) {
+      if (selected.length >= maxSessions) break;
+      selected.push(session);
+    }
   }
 
   return selected;
