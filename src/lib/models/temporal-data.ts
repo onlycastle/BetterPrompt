@@ -22,23 +22,23 @@ import { z } from 'zod';
  * Temporal Analysis Output Schema
  *
  * Analyzes time-based prompt quality using QUALITATIVE metrics:
- * - Counter-questioning rate (역질문)
- * - Critical interpretation rate (비판적 해석)
- * - Verification request rate (검증 요청)
- * - Typo rate & passive acceptance (피로 지표)
+ * - Counter-questioning rate
+ * - Critical interpretation rate
+ * - Verification request rate
+ * - Typo rate & passive acceptance (fatigue indicators)
  *
  * @example
  * ```json
  * {
  *   "hourlyPatternsData": "10:25:0.35:0.28:0.22:0.05:0.08;11:30:0.32:0.25:0.20:0.06:0.10;22:15:0.12:0.08:0.05:0.18:0.35",
- *   "peakHoursData": "10,11,14,15|오전 10-11시에 AI에게 가장 많이 역질문하고 비판적으로 검토함|0.35:0.28:0.22",
- *   "cautionHoursData": "22,23,0,1|야간에 AI 출력을 그냥 수용하는 비율 증가|0.35:0.18:-0.60",
- *   "fatiguePatternsData": "late_night_drop|22,23,0,1|역질문 빈도 60% 감소, 오타 2배 증가|중요한 결정은 피크 시간대로 미루세요;typo_spike|23,0|23시 이후 오타율 200% 증가|충분한 휴식 후 작업하세요",
- *   "qualitativeInsightsData": "strength|오전에 AI의 제안을 꼼꼼히 검토하는 습관|역질문 빈도 35%|10,11;improvement|야간 검증 부족|검증 요청 빈도 5%로 하락|22,23",
+ *   "peakHoursData": "10,11,14,15|Most counter-questioning and critical review of AI at 10-11 AM|0.35:0.28:0.22",
+ *   "cautionHoursData": "22,23,0,1|Higher passive acceptance of AI output at night|0.35:0.18:-0.60",
+ *   "fatiguePatternsData": "late_night_drop|22,23,0,1|Counter-questioning 60% decrease, typos doubled|Defer important decisions to peak hours;typo_spike|23,0|Typo rate 200% increase after 23:00|Work after sufficient rest",
+ *   "qualitativeInsightsData": "strength|Carefully reviews AI suggestions in the morning|Counter-questioning rate 35%|10,11;improvement|Lack of verification at night|Verification request rate dropped to 5%|22,23",
  *   "topInsights": [
- *     "오전 10-11시에 가장 비판적으로 AI 출력을 검토합니다",
- *     "22시 이후 역질문 없이 AI 출력을 수용하는 경향 증가",
- *     "야간 오타율이 주간 대비 2배 높음 - 피로 시그널"
+ *     "Most critical review of AI output during 10-11 AM",
+ *     "Tendency to accept AI output without questioning increases after 22:00",
+ *     "Nighttime typo rate is 2x daytime - fatigue signal"
  *   ],
  *   "confidenceScore": 0.82
  * }

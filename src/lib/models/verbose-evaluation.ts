@@ -897,6 +897,28 @@ export const VerboseEvaluationSchema = z.object({
   growthRoadmap: GrowthRoadmapSchema.optional(),
   comparativeInsights: z.array(ComparativeInsightSchema).optional(),
   sessionTrends: z.array(SessionTrendSchema).optional(),
+
+  // Pipeline token usage (actual values from LLM API responses)
+  pipelineTokenUsage: z.object({
+    stages: z.array(z.object({
+      stage: z.string(),
+      promptTokens: z.number(),
+      completionTokens: z.number(),
+      totalTokens: z.number(),
+    })),
+    totals: z.object({
+      promptTokens: z.number(),
+      completionTokens: z.number(),
+      totalTokens: z.number(),
+    }),
+    cost: z.object({
+      inputCost: z.number(),
+      outputCost: z.number(),
+      totalCost: z.number(),
+    }),
+    model: z.string(),
+    modelName: z.string(),
+  }).optional().describe('Actual token usage and cost from LLM API calls'),
 });
 export type VerboseEvaluation = z.infer<typeof VerboseEvaluationSchema>;
 
