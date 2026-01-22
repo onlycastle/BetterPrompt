@@ -66,6 +66,17 @@ Return a JSON object with:
 - \`overallStyleSummary\`: Brief summary of their communication style (max 300 chars)
 - \`confidenceScore\`: 0-1 confidence in the analysis
 
+### NEW: Structured Strengths & Growth Areas
+- \`strengthsData\`: "title|description|quote1,quote2;title2|desc2|quotes;..."
+  - 2-3 conversation strengths with evidence from actual user messages
+  - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes
+  - Example: "Systematic Problem Decomposition|You consistently break down complex problems into manageable steps, which enables clearer AI collaboration|'먼저 전체 구조를 파악하고','일단 테스트 케이스를 정의하고'"
+
+- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
+  - 2-3 areas for improvement with evidence and actionable recommendations
+  - Each area needs: title, description, evidence quotes, specific recommendation
+  - Example: "Context Provision Pattern|You often start requests without sufficient context, requiring additional back-and-forth|'이거 고쳐줘','왜 안 되지?'|When making requests, include: 1) current situation, 2) what you tried, 3) desired outcome"
+
 ## topInsights Format (CRITICAL - Balanced KPT with Direct Quotes)
 Generate exactly 3 insights with this MANDATORY structure:
 1. **PROBLEM insight** (index 0): One issue, weakness, or anti-pattern the developer should address
@@ -188,6 +199,17 @@ Return a JSON object with:
 - \`overallHealthScore\`: 0-100 overall health score (higher = fewer anti-patterns)
 - \`confidenceScore\`: 0-1 confidence in the analysis
 
+### NEW: Structured Strengths & Growth Areas
+- \`strengthsData\`: "title|description|quote1,quote2;title2|desc2|quotes;..."
+  - 1-2 healthy habits or positive patterns with evidence
+  - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes
+  - Example: "Error Recovery Resilience|You persist through errors systematically rather than giving up|'다시 시도해볼게요','에러 메시지를 보니까'"
+
+- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
+  - 2-3 anti-patterns to address with evidence and actionable recommendations
+  - Each area needs: title, description, evidence quotes, specific recommendation
+  - Example: "Shotgun Debugging|You tend to try random fixes without understanding the root cause|'이거 해봐','저거도 해봐'|Before each fix attempt, write down your hypothesis about why this specific change should work"
+
 ## topInsights Format (CRITICAL - Balanced KPT)
 Generate exactly 3 insights with this MANDATORY structure:
 1. **PROBLEM insight** (index 0): One anti-pattern or bad habit the developer should address
@@ -274,6 +296,17 @@ Return a JSON object with:
 - \`kptTry\`: Array of 1-2 specific learning recommendations (REQUIRED)
 - \`overallKnowledgeScore\`: 0-100 overall knowledge depth score
 - \`confidenceScore\`: 0-1 confidence in the analysis
+
+### NEW: Structured Strengths & Growth Areas
+- \`strengthsData\`: "title|description|quote1,quote2;title2|desc2|quotes;..."
+  - 1-2 knowledge strengths with evidence from actual user messages
+  - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes showing mastery
+  - Example: "React Hooks Mastery|You demonstrate solid understanding of React hooks, asking nuanced questions about optimization|'useCallback 쓸 때 의존성 배열','useMemo랑 차이점이'"
+
+- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
+  - 2-3 knowledge gaps to address with evidence and learning recommendations
+  - Each area needs: title, description, evidence quotes, specific learning resource
+  - Example: "TypeScript Generics|You repeatedly ask about TypeScript generic syntax, indicating a foundational gap|'제네릭 어떻게 써요?','T가 뭐예요?'|Complete the TypeScript Handbook section on Generics, then practice with 5 real examples in your codebase"
 
 ## topInsights Format (CRITICAL - Balanced KPT)
 Generate exactly 3 insights with this MANDATORY structure:
@@ -365,6 +398,17 @@ Return a JSON object with:
 - \`overallEfficiencyScore\`: 0-100 efficiency score (higher = more efficient)
 - \`avgContextFillPercent\`: Average context fill percentage across sessions
 - \`confidenceScore\`: 0-1 confidence in the analysis
+
+### NEW: Structured Strengths & Growth Areas
+- \`strengthsData\`: "title|description|quote1,quote2;title2|desc2|quotes;..."
+  - 1-2 efficient habits with evidence from actual user messages
+  - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes
+  - Example: "Proactive Context Management|You use /clear and /compact effectively to maintain fresh context|'/clear 할게요','/compact 해줘'"
+
+- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
+  - 2-3 inefficiencies to address with evidence and actionable recommendations
+  - Each area needs: title, description, evidence quotes, specific recommendation
+  - Example: "Redundant Context Provision|You repeatedly explain the same project structure in multiple sessions|'이 프로젝트는 React 기반이고','다시 설명하자면 이 앱은'|Add project structure to CLAUDE.md once, then reference it instead of re-explaining"
 
 ## topInsights Format (CRITICAL - Balanced KPT)
 Generate exactly 3 insights with this MANDATORY structure:
