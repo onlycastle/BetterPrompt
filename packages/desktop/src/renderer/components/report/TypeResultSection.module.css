@@ -45,19 +45,19 @@
   font-family: var(--font-primary);
 }
 
-.controlBadge[data-level="vibe-coder"] {
+.controlBadge[data-level="explorer"] {
   background: var(--sketch-orange-soft, #fff3e6);
   color: var(--sketch-orange, #ff9800);
   border: 1.5px solid var(--sketch-orange, #ff9800);
 }
 
-.controlBadge[data-level="developing"] {
+.controlBadge[data-level="navigator"] {
   background: var(--sketch-yellow-soft, #fff9e6);
   color: var(--sketch-yellow-dark, #f59e0b);
   border: 1.5px solid var(--sketch-yellow-dark, #f59e0b);
 }
 
-.controlBadge[data-level="ai-master"] {
+.controlBadge[data-level="cartographer"] {
   background: var(--sketch-green-soft, #e6f7ef);
   color: var(--sketch-green, #10b981);
   border: 1.5px solid var(--sketch-green, #10b981);

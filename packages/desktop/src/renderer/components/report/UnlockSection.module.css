@@ -63,22 +63,21 @@
   font-size: 13px;
 }
 
-/* CTA Box */
+/* CTA Box - Notebook Sketch style */
 .ctaBox {
-  background: var(--terminal-elevated);
-  border: 2px solid var(--neon-yellow);
-  border-radius: 8px;
+  background: var(--sketch-cyan-soft);
+  border: 2px solid var(--sketch-cyan);
+  border-radius: var(--radius-md);
   padding: 24px 32px;
   display: inline-block;
-  box-shadow: 0 0 30px rgba(255, 204, 0, 0.2);
+  box-shadow: 4px 4px 0 var(--ink-primary);
   margin: 16px 0;
 }
 
 .ctaPrice {
   font-size: 24px;
   font-weight: 700;
-  color: var(--neon-yellow);
-  text-shadow: 0 0 20px var(--neon-yellow);
+  color: var(--sketch-cyan-text);
   margin-bottom: 8px;
 }
 
@@ -136,25 +135,27 @@
 }
 
 .dashboardBtn.personal {
-  background: linear-gradient(135deg, #00d4ff, #ff00ff);
-  color: #0a0a0a;
-  box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+  background: var(--sketch-cyan-soft);
+  color: var(--ink-primary);
+  border: 2px solid var(--sketch-cyan);
+  box-shadow: 3px 3px 0 var(--ink-primary);
 }
 
 .dashboardBtn.personal:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 25px rgba(0, 212, 255, 0.6);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink-primary);
 }
 
 .dashboardBtn.enterprise {
-  background: linear-gradient(135deg, #00ff88, #00d4ff);
-  color: #0a0a0a;
-  box-shadow: 0 4px 20px rgba(0, 255, 136, 0.4);
+  background: var(--sketch-green-soft);
+  color: var(--ink-primary);
+  border: 2px solid var(--sketch-green);
+  box-shadow: 3px 3px 0 var(--ink-primary);
 }
 
 .dashboardBtn.enterprise:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 25px rgba(0, 255, 136, 0.6);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink-primary);
 }
 
 /* Responsive Design */
