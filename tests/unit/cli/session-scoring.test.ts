@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   extractQualityMetrics,
   calculateQualityScore,
+  calculateNoveltyScore,
   type SessionQualityMetrics,
 } from '../../../packages/cli/src/session-scoring.js';
 
@@ -129,6 +130,10 @@ not valid json
         searchToolCount: 0,
         errorCount: 0,
         errorRecoveryCount: 0,
+        uniqueFilesRead: new Set(),
+        uniqueFilesModified: new Set(),
+        promptVocabularySize: 10,
+        totalPromptWords: 20,
       };
 
       expect(calculateQualityScore(metrics)).toBe(0);
@@ -146,6 +151,10 @@ not valid json
         searchToolCount: 2,
         errorCount: 1,
         errorRecoveryCount: 1,
+        uniqueFilesRead: new Set(['/f1.ts', '/f2.ts']),
+        uniqueFilesModified: new Set(['/f1.ts', '/f2.ts']),
+        promptVocabularySize: 50,
+        totalPromptWords: 100,
       };
 
       const imbalancedMetrics: SessionQualityMetrics = {
@@ -175,12 +184,17 @@ not valid json
         searchToolCount: 2,
         errorCount: 0,
         errorRecoveryCount: 0,
+        uniqueFilesRead: new Set(['/f1.ts', '/f2.ts']),
+        uniqueFilesModified: new Set(['/f1.ts', '/f2.ts']),
+        promptVocabularySize: 50,
+        totalPromptWords: 100,
       };
 
       const readOnlyMetrics: SessionQualityMetrics = {
         ...activeMetrics,
         editWriteCount: 0,
         uniqueToolsUsed: new Set(['Read', 'Grep']),
+        uniqueFilesModified: new Set(),
       };
 
       const activeScore = calculateQualityScore(activeMetrics);
@@ -201,12 +215,17 @@ not valid json
         searchToolCount: 2,
         errorCount: 0,
         errorRecoveryCount: 0,
+        uniqueFilesRead: new Set(['/f1.ts', '/f2.ts']),
+        uniqueFilesModified: new Set(['/f1.ts', '/f2.ts']),
+        promptVocabularySize: 50,
+        totalPromptWords: 100,
       };
 
       const singleToolMetrics: SessionQualityMetrics = {
         ...diverseMetrics,
         uniqueToolsUsed: new Set(['Read']),
         editWriteCount: 0,
+        uniqueFilesModified: new Set(),
       };
 
       const diverseScore = calculateQualityScore(diverseMetrics);
@@ -227,6 +246,10 @@ not valid json
         searchToolCount: 2,
         errorCount: 3,
         errorRecoveryCount: 3,
+        uniqueFilesRead: new Set(['/f1.ts', '/f2.ts']),
+        uniqueFilesModified: new Set(['/f1.ts', '/f2.ts']),
+        promptVocabularySize: 50,
+        totalPromptWords: 100,
       };
 
       const unrecoveredMetrics: SessionQualityMetrics = {
@@ -252,9 +275,170 @@ not valid json
         searchToolCount: 6,
         errorCount: 2,
         errorRecoveryCount: 2,
+        uniqueFilesRead: new Set(['/file1.ts', '/file2.ts']),
+        uniqueFilesModified: new Set(['/file1.ts']),
+        promptVocabularySize: 50,
+        totalPromptWords: 100,
       };
 
       const score = calculateQualityScore(metrics);
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(100);
+    });
+  });
+
+  describe('extractQualityMetrics - novelty metrics', () => {
+    it('should track unique files read', () => {
+      const content = `
+{"type": "assistant", "message": [{"type": "tool_use", "name": "Read", "input": {"file_path": "/src/file1.ts"}}], "timestamp": "2024-01-01T00:00:00Z"}
+{"type": "assistant", "message": [{"type": "tool_use", "name": "Read", "input": {"file_path": "/src/file2.ts"}}], "timestamp": "2024-01-01T00:00:01Z"}
+{"type": "assistant", "message": [{"type": "tool_use", "name": "Read", "input": {"file_path": "/src/file1.ts"}}], "timestamp": "2024-01-01T00:00:02Z"}
+      `.trim();
+
+      const metrics = extractQualityMetrics(content);
+      expect(metrics.uniqueFilesRead.size).toBe(2);
+      expect(metrics.uniqueFilesRead.has('/src/file1.ts')).toBe(true);
+      expect(metrics.uniqueFilesRead.has('/src/file2.ts')).toBe(true);
+    });
+
+    it('should track unique files modified', () => {
+      const content = `
+{"type": "assistant", "message": [{"type": "tool_use", "name": "Edit", "input": {"file_path": "/src/file1.ts"}}], "timestamp": "2024-01-01T00:00:00Z"}
+{"type": "assistant", "message": [{"type": "tool_use", "name": "Write", "input": {"file_path": "/src/file2.ts"}}], "timestamp": "2024-01-01T00:00:01Z"}
+{"type": "assistant", "message": [{"type": "tool_use", "name": "Edit", "input": {"file_path": "/src/file1.ts"}}], "timestamp": "2024-01-01T00:00:02Z"}
+      `.trim();
+
+      const metrics = extractQualityMetrics(content);
+      expect(metrics.uniqueFilesModified.size).toBe(2);
+      expect(metrics.uniqueFilesModified.has('/src/file1.ts')).toBe(true);
+      expect(metrics.uniqueFilesModified.has('/src/file2.ts')).toBe(true);
+    });
+
+    it('should track vocabulary from user prompts', () => {
+      const content = `
+{"type": "user", "message": "Please help me refactor the authentication module", "timestamp": "2024-01-01T00:00:00Z"}
+{"type": "user", "message": "Also add some validation logic to the form", "timestamp": "2024-01-01T00:00:01Z"}
+      `.trim();
+
+      const metrics = extractQualityMetrics(content);
+      expect(metrics.promptVocabularySize).toBeGreaterThan(0);
+      expect(metrics.totalPromptWords).toBeGreaterThan(0);
+      // Vocabulary size should be less than total words (some words repeat)
+      expect(metrics.promptVocabularySize).toBeLessThanOrEqual(metrics.totalPromptWords);
+    });
+
+    it('should handle path parameter for Glob tool', () => {
+      const content = `
+{"type": "assistant", "message": [{"type": "tool_use", "name": "Glob", "input": {"path": "/src"}}], "timestamp": "2024-01-01T00:00:00Z"}
+      `.trim();
+
+      const metrics = extractQualityMetrics(content);
+      expect(metrics.uniqueToolsUsed.has('Glob')).toBe(true);
+    });
+  });
+
+  describe('calculateNoveltyScore', () => {
+    it('should return high score for diverse file access', () => {
+      const diverseMetrics: SessionQualityMetrics = {
+        userMessageCount: 5,
+        assistantMessageCount: 5,
+        totalUserTextLength: 500,
+        questionCount: 3,
+        iterationCount: 2,
+        uniqueToolsUsed: new Set(['Read', 'Edit']),
+        editWriteCount: 3,
+        searchToolCount: 2,
+        errorCount: 0,
+        errorRecoveryCount: 0,
+        uniqueFilesRead: new Set(['/f1.ts', '/f2.ts', '/f3.ts', '/f4.ts', '/f5.ts']),
+        uniqueFilesModified: new Set(['/f1.ts', '/f2.ts', '/f3.ts']),
+        promptVocabularySize: 80,
+        totalPromptWords: 150,
+      };
+
+      const singleFileMetrics: SessionQualityMetrics = {
+        ...diverseMetrics,
+        uniqueFilesRead: new Set(['/f1.ts']),
+        uniqueFilesModified: new Set(['/f1.ts']),
+      };
+
+      const diverseScore = calculateNoveltyScore(diverseMetrics);
+      const singleFileScore = calculateNoveltyScore(singleFileMetrics);
+
+      expect(diverseScore).toBeGreaterThan(singleFileScore);
+    });
+
+    it('should return high score for diverse vocabulary', () => {
+      const diverseVocab: SessionQualityMetrics = {
+        userMessageCount: 5,
+        assistantMessageCount: 5,
+        totalUserTextLength: 500,
+        questionCount: 3,
+        iterationCount: 2,
+        uniqueToolsUsed: new Set(['Read', 'Edit']),
+        editWriteCount: 3,
+        searchToolCount: 2,
+        errorCount: 0,
+        errorRecoveryCount: 0,
+        uniqueFilesRead: new Set(['/f1.ts']),
+        uniqueFilesModified: new Set(['/f1.ts']),
+        promptVocabularySize: 100,
+        totalPromptWords: 150,
+      };
+
+      const repetitiveVocab: SessionQualityMetrics = {
+        ...diverseVocab,
+        promptVocabularySize: 20,
+        totalPromptWords: 150,
+      };
+
+      const diverseScore = calculateNoveltyScore(diverseVocab);
+      const repetitiveScore = calculateNoveltyScore(repetitiveVocab);
+
+      expect(diverseScore).toBeGreaterThan(repetitiveScore);
+    });
+
+    it('should return 0 for empty metrics', () => {
+      const metrics: SessionQualityMetrics = {
+        userMessageCount: 0,
+        assistantMessageCount: 0,
+        totalUserTextLength: 0,
+        questionCount: 0,
+        iterationCount: 0,
+        uniqueToolsUsed: new Set(),
+        editWriteCount: 0,
+        searchToolCount: 0,
+        errorCount: 0,
+        errorRecoveryCount: 0,
+        uniqueFilesRead: new Set(),
+        uniqueFilesModified: new Set(),
+        promptVocabularySize: 0,
+        totalPromptWords: 0,
+      };
+
+      const score = calculateNoveltyScore(metrics);
+      expect(score).toBe(0);
+    });
+
+    it('should return score between 0 and 100', () => {
+      const metrics: SessionQualityMetrics = {
+        userMessageCount: 10,
+        assistantMessageCount: 10,
+        totalUserTextLength: 2000,
+        questionCount: 15,
+        iterationCount: 8,
+        uniqueToolsUsed: new Set(['Read', 'Edit', 'Grep', 'Glob']),
+        editWriteCount: 8,
+        searchToolCount: 6,
+        errorCount: 0,
+        errorRecoveryCount: 0,
+        uniqueFilesRead: new Set(['/f1', '/f2', '/f3', '/f4', '/f5', '/f6', '/f7', '/f8', '/f9', '/f10']),
+        uniqueFilesModified: new Set(['/f1', '/f2', '/f3', '/f4', '/f5']),
+        promptVocabularySize: 200,
+        totalPromptWords: 400,
+      };
+
+      const score = calculateNoveltyScore(metrics);
       expect(score).toBeGreaterThanOrEqual(0);
       expect(score).toBeLessThanOrEqual(100);
     });

@@ -6,7 +6,7 @@
 
 import pc from 'picocolors';
 import boxen from 'boxen';
-import type { AnalysisResult } from './uploader.js';
+import type { AnalysisResult, PipelineTokenUsage } from './uploader.js';
 import type { SessionWithParsed } from './scanner.js';
 import type { CostEstimate } from './cost-estimator.js';
 import { generateCelebrationBanner } from './animations/index.js';
@@ -89,20 +89,20 @@ function computeMatrixDistribution(
   let cartographerWeight: number;
 
   if (score <= 34) {
+    // Explorer-dominant zone
     explorerWeight = 0.6 + (34 - score) / 85;
     navigatorWeight = (1 - explorerWeight) * 0.7;
     cartographerWeight = (1 - explorerWeight) * 0.3;
   } else if (score <= 64) {
+    // Navigator-dominant zone
     const distFromCenter = Math.abs(score - 50) / 15;
     navigatorWeight = 0.5 + (1 - distFromCenter) * 0.3;
-    if (score < 50) {
-      explorerWeight = (1 - navigatorWeight) * 0.6;
-      cartographerWeight = (1 - navigatorWeight) * 0.4;
-    } else {
-      explorerWeight = (1 - navigatorWeight) * 0.4;
-      cartographerWeight = (1 - navigatorWeight) * 0.6;
-    }
+    const remainingWeight = 1 - navigatorWeight;
+    const explorerBias = score < 50 ? 0.6 : 0.4;
+    explorerWeight = remainingWeight * explorerBias;
+    cartographerWeight = remainingWeight * (1 - explorerBias);
   } else {
+    // Cartographer-dominant zone
     cartographerWeight = 0.6 + (score - 65) / 87.5;
     navigatorWeight = (1 - cartographerWeight) * 0.7;
     explorerWeight = (1 - cartographerWeight) * 0.3;
@@ -120,15 +120,10 @@ function computeMatrixDistribution(
 }
 
 /**
- * Format control level for display
+ * Format control level for display (capitalize first letter)
  */
 function formatControlLevel(level: string): string {
-  switch (level) {
-    case 'explorer': return 'Explorer';
-    case 'navigator': return 'Navigator';
-    case 'cartographer': return 'Cartographer';
-    default: return level;
-  }
+  return level.charAt(0).toUpperCase() + level.slice(1);
 }
 
 /**
@@ -381,6 +376,47 @@ export async function confirmWithPrivacy(): Promise<boolean> {
 }
 
 /**
+ * Render actual token usage from LLM pipeline
+ */
+export function renderActualTokenUsage(usage: PipelineTokenUsage): string {
+  const lines: string[] = [];
+
+  lines.push('');
+  lines.push(pc.bold(pc.green('  💰 Actual LLM Token Usage')));
+  lines.push('');
+  lines.push(`  ${pc.dim('Model:')} ${pc.white(usage.modelName)}`);
+  lines.push('');
+  lines.push(`  ${pc.dim('Per-Stage Breakdown:')}`);
+
+  for (const stage of usage.stages) {
+    lines.push(`    ${pc.dim('├─')} ${stage.stage}`);
+    lines.push(`    ${pc.dim('│  ')} Input:  ${pc.cyan(stage.promptTokens.toLocaleString())} tokens`);
+    lines.push(`    ${pc.dim('│  ')} Output: ${pc.cyan(stage.completionTokens.toLocaleString())} tokens`);
+  }
+
+  lines.push('');
+  lines.push(`  ${pc.dim('Totals:')}`);
+  lines.push(`    ${pc.dim('Input Tokens: ')} ${pc.white(usage.totals.promptTokens.toLocaleString())}`);
+  lines.push(`    ${pc.dim('Output Tokens:')} ${pc.white(usage.totals.completionTokens.toLocaleString())}`);
+  lines.push(`    ${pc.dim('Total Tokens: ')} ${pc.white(usage.totals.totalTokens.toLocaleString())}`);
+  lines.push('');
+
+  // Cost box
+  const inputCostStr = `$${usage.cost.inputCost.toFixed(6)}`;
+  const outputCostStr = `$${usage.cost.outputCost.toFixed(6)}`;
+  const totalCostStr = `$${usage.cost.totalCost.toFixed(6)}`;
+
+  lines.push(pc.green(`  ╔══════════════════════════════════════╗`));
+  lines.push(pc.green(`  ║  ${pc.dim('Input Cost: ')} ${pc.white(inputCostStr.padEnd(20))}  ║`));
+  lines.push(pc.green(`  ║  ${pc.dim('Output Cost:')} ${pc.white(outputCostStr.padEnd(20))}  ║`));
+  lines.push(pc.green(`  ║  ${pc.bold('Total Cost: ')} ${pc.bold(pc.yellow(totalCostStr.padEnd(20)))}  ║`));
+  lines.push(pc.green(`  ╚══════════════════════════════════════╝`));
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+/**
  * Display results with celebration animation
  */
 export function displayResultsWithCelebration(result: AnalysisResult): void {
@@ -389,4 +425,9 @@ export function displayResultsWithCelebration(result: AnalysisResult): void {
 
   // Show regular results
   displayResults(result);
+
+  // Show actual token usage if DEBUG_COST is enabled and tokenUsage is available
+  if (process.env.DEBUG_COST && result.tokenUsage) {
+    console.log(renderActualTokenUsage(result.tokenUsage));
+  }
 }

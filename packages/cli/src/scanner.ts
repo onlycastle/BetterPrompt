@@ -41,6 +41,25 @@ const PREFILTER_CONFIG = {
 };
 
 /**
+ * Selection configuration for diversity-aware session selection
+ */
+const SELECTION_CONFIG = {
+  // Time distribution
+  RECENCY_WINDOW_DAYS: 14, // 2-week window
+  TIME_BUCKETS: 4, // Divide into 4 buckets (3.5 days each)
+
+  // Project diversity
+  MIN_PROJECTS: 3, // Target minimum 3 projects
+  MAX_PER_PROJECT: 10, // Maximum sessions per project (for 30 total)
+
+  // Quality thresholds
+  MIN_MESSAGE_COUNT: 5, // Minimum messages to consider
+
+  // Final selection
+  MAX_SESSIONS: 30, // Default max sessions
+};
+
+/**
  * Lightweight file metadata for pre-filtering (no content read)
  */
 interface FileMetadata {
@@ -300,6 +319,157 @@ async function scoreCandidates(
 }
 
 /**
+ * Scored session for diversity selection
+ */
+interface ScoredSession {
+  metadata: SessionMetadata;
+  content: string;
+}
+
+/**
+ * Distribute sessions across time buckets for temporal diversity.
+ * Divides the recency window into equal buckets and selects from each.
+ */
+function distributeByTimeBuckets(
+  sessions: ScoredSession[],
+  maxSessions: number
+): ScoredSession[] {
+  const now = Date.now();
+  const cutoffMs = SELECTION_CONFIG.RECENCY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  const cutoffDate = now - cutoffMs;
+
+  // Filter to recent sessions only
+  const recentSessions = sessions.filter(
+    s => s.metadata.timestamp.getTime() >= cutoffDate
+  );
+
+  // If not enough recent sessions, include all
+  if (recentSessions.length <= maxSessions) {
+    // Sort by quality within each bucket, but return all
+    recentSessions.sort((a, b) =>
+      (b.metadata.qualityScore ?? 0) - (a.metadata.qualityScore ?? 0)
+    );
+    return recentSessions;
+  }
+
+  // Create time buckets
+  const bucketSizeMs = cutoffMs / SELECTION_CONFIG.TIME_BUCKETS;
+  const buckets: ScoredSession[][] = Array.from(
+    { length: SELECTION_CONFIG.TIME_BUCKETS },
+    () => []
+  );
+
+  for (const session of recentSessions) {
+    const ageMs = now - session.metadata.timestamp.getTime();
+    const bucketIndex = Math.min(
+      Math.floor(ageMs / bucketSizeMs),
+      SELECTION_CONFIG.TIME_BUCKETS - 1
+    );
+    buckets[bucketIndex].push(session);
+  }
+
+  // Sort each bucket by quality score
+  for (const bucket of buckets) {
+    bucket.sort((a, b) =>
+      (b.metadata.qualityScore ?? 0) - (a.metadata.qualityScore ?? 0)
+    );
+  }
+
+  // Select from each bucket proportionally
+  const perBucket = Math.ceil(maxSessions / SELECTION_CONFIG.TIME_BUCKETS);
+  const selected: ScoredSession[] = [];
+
+  for (const bucket of buckets) {
+    selected.push(...bucket.slice(0, perBucket));
+  }
+
+  return selected.slice(0, maxSessions);
+}
+
+/**
+ * Distribute sessions across projects using round-robin selection.
+ * Ensures diversity across different codebases.
+ */
+function distributeByProjects(
+  sessions: ScoredSession[],
+  maxSessions: number
+): ScoredSession[] {
+  // Group by project
+  const byProject = new Map<string, ScoredSession[]>();
+
+  for (const session of sessions) {
+    const project = session.metadata.projectName;
+    if (!byProject.has(project)) {
+      byProject.set(project, []);
+    }
+    byProject.get(project)!.push(session);
+  }
+
+  // Sort each project's sessions by quality
+  for (const projectSessions of byProject.values()) {
+    projectSessions.sort((a, b) =>
+      (b.metadata.qualityScore ?? 0) - (a.metadata.qualityScore ?? 0)
+    );
+  }
+
+  // Round-robin selection across projects
+  const selected: ScoredSession[] = [];
+  const projects = Array.from(byProject.keys());
+  let round = 0;
+
+  while (selected.length < maxSessions) {
+    let addedThisRound = false;
+
+    for (const project of projects) {
+      const projectSessions = byProject.get(project)!;
+      if (
+        round < projectSessions.length &&
+        round < SELECTION_CONFIG.MAX_PER_PROJECT
+      ) {
+        selected.push(projectSessions[round]);
+        addedThisRound = true;
+
+        if (selected.length >= maxSessions) break;
+      }
+    }
+
+    if (!addedThisRound) break;
+    round++;
+  }
+
+  return selected;
+}
+
+/**
+ * Select optimal sessions using diversity-aware strategy.
+ *
+ * 1. Time bucket distribution (ensures temporal diversity)
+ * 2. Project diversity (round-robin across projects)
+ * 3. Final quality-based sorting
+ */
+function selectOptimalSessions(
+  candidates: ScoredSession[],
+  maxSessions: number
+): ScoredSession[] {
+  // Step 1: Time bucket distribution
+  const timeDistributed = distributeByTimeBuckets(candidates, maxSessions * 2);
+
+  // Step 2: Project diversity
+  const projectDistributed = distributeByProjects(timeDistributed, maxSessions);
+
+  // Step 3: Final sort by quality with recency as tiebreaker
+  projectDistributed.sort((a, b) => {
+    const qualityDiff =
+      (b.metadata.qualityScore ?? 0) - (a.metadata.qualityScore ?? 0);
+    // Use recency as tiebreaker only if scores are within 5 points
+    if (Math.abs(qualityDiff) > 5) return qualityDiff;
+    return b.metadata.timestamp.getTime() - a.metadata.timestamp.getTime();
+  });
+
+  return projectDistributed.slice(0, maxSessions);
+}
+
+/**
  * Scan all sessions and parse them for analysis.
  *
  * Uses a 4-phase memory-efficient approach:
@@ -322,16 +492,9 @@ export async function scanSessions(maxSessions: number = 15): Promise<ScanResult
   // Phase 3: Full quality scoring on candidates only
   const scoredCandidates = await scoreCandidates(candidates);
 
-  // Sort by quality score (higher is better), then by recency as tiebreaker
-  scoredCandidates.sort((a, b) => {
-    const scoreDiff = (b.metadata.qualityScore ?? 0) - (a.metadata.qualityScore ?? 0);
-    // Only use recency as tiebreaker if scores are within 5 points
-    if (Math.abs(scoreDiff) > 5) return scoreDiff;
-    return b.metadata.timestamp.getTime() - a.metadata.timestamp.getTime();
-  });
-
-  // Select top sessions
-  const selected = scoredCandidates.slice(0, maxSessions);
+  // Phase 3.5: Diversity-aware selection
+  // Uses time bucket distribution + project diversity + quality sorting
+  const selected = selectOptimalSessions(scoredCandidates, maxSessions);
 
   // Phase 4: Parse content for selected sessions
   const sessions: SessionWithParsed[] = [];

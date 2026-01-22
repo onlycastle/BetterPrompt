@@ -22,25 +22,39 @@ export interface SessionQualityMetrics {
   searchToolCount: number;
   errorCount: number;
   errorRecoveryCount: number;
+
+  // Novelty signals
+  uniqueFilesRead: Set<string>;
+  uniqueFilesModified: Set<string>;
+  promptVocabularySize: number;
+  totalPromptWords: number;
 }
 
 /**
  * Scoring weights (must sum to 1.0)
+ *
+ * Rebalanced to include novelty scoring:
+ * - Dialogue quality: 40%
+ * - Problem complexity: 30%
+ * - Novelty: 30%
  */
 const WEIGHTS = {
-  // Dialogue quality (60%)
-  turnBalance: 0.15,
-  promptLength: 0.1,
-  questionDensity: 0.1,
-  iterationPatterns: 0.15,
-  conversationDepth: 0.1,
+  // Dialogue quality (40%)
+  turnBalance: 0.10,
+  promptLength: 0.08,
+  questionDensity: 0.08,
+  iterationPatterns: 0.10,
+  conversationDepth: 0.04,
 
-  // Problem complexity (40%)
-  toolDiversity: 0.1,
-  editWriteRatio: 0.1,
-  errorRecovery: 0.1,
-  searchExploration: 0.05,
-  contextUtilization: 0.05,
+  // Problem complexity (30%)
+  toolDiversity: 0.08,
+  editWriteRatio: 0.08,
+  errorRecovery: 0.08,
+  searchExploration: 0.03,
+  contextUtilization: 0.03,
+
+  // Novelty (30%)
+  noveltyScore: 0.30,
 } as const;
 
 /**
@@ -51,6 +65,16 @@ const PENALTIES = {
   singleToolSession: 0.15, // Only one unique tool
   veryShortSession: 0.1, // Less than 10 messages
   highErrorRate: 0.1, // Many errors without recovery
+  lowNovelty: 0.15, // Novelty score < 30
+  singleFileSession: 0.10, // Only modifying one file repeatedly
+} as const;
+
+/**
+ * Thresholds for novelty scoring
+ */
+const NOVELTY_THRESHOLDS = {
+  LOW_NOVELTY_SCORE: 30,
+  MIN_FILES_FOR_DIVERSITY: 2,
 } as const;
 
 /**
@@ -95,7 +119,15 @@ export function extractQualityMetrics(content: string): SessionQualityMetrics {
     searchToolCount: 0,
     errorCount: 0,
     errorRecoveryCount: 0,
+    // Novelty metrics
+    uniqueFilesRead: new Set(),
+    uniqueFilesModified: new Set(),
+    promptVocabularySize: 0,
+    totalPromptWords: 0,
   };
+
+  // Track all words from user prompts for vocabulary diversity
+  const vocabularySet = new Set<string>();
 
   const lines = content.split('\n');
   let lastWasError = false;
@@ -123,18 +155,29 @@ export function extractQualityMetrics(content: string): SessionQualityMetrics {
           const matches = text.match(pattern);
           if (matches) metrics.iterationCount += matches.length;
         }
+
+        // Track vocabulary for novelty scoring
+        const words = extractWords(text);
+        metrics.totalPromptWords += words.length;
+        for (const word of words) {
+          vocabularySet.add(word.toLowerCase());
+        }
       }
 
       if (parsed.type === 'assistant') {
         metrics.assistantMessageCount++;
 
         // Extract tool usage from assistant messages
-        const tools = extractToolsFromMessage(parsed.message);
-        for (const tool of tools) {
+        const toolsWithFiles = extractToolsWithFiles(parsed.message);
+        for (const { tool, filePath } of toolsWithFiles) {
           metrics.uniqueToolsUsed.add(tool);
 
           if (EDIT_WRITE_TOOLS.has(tool)) {
             metrics.editWriteCount++;
+            // Track modified files for novelty
+            if (filePath) {
+              metrics.uniqueFilesModified.add(filePath);
+            }
             // If there was an error before this edit, count as recovery
             if (lastWasError) {
               metrics.errorRecoveryCount++;
@@ -144,6 +187,10 @@ export function extractQualityMetrics(content: string): SessionQualityMetrics {
 
           if (SEARCH_TOOLS.has(tool)) {
             metrics.searchToolCount++;
+            // Track read files for novelty (Read tool)
+            if (tool === 'Read' && filePath) {
+              metrics.uniqueFilesRead.add(filePath);
+            }
           }
         }
 
@@ -157,6 +204,9 @@ export function extractQualityMetrics(content: string): SessionQualityMetrics {
       // Skip unparseable lines
     }
   }
+
+  // Set vocabulary size after processing
+  metrics.promptVocabularySize = vocabularySet.size;
 
   return metrics;
 }
@@ -189,10 +239,27 @@ function extractTextFromMessage(message: unknown): string {
 }
 
 /**
- * Extract tool names from an assistant message
+ * Extract words from text for vocabulary analysis
  */
-function extractToolsFromMessage(message: unknown): string[] {
-  const tools: string[] = [];
+function extractWords(text: string): string[] {
+  // Match word characters, filter out very short words and numbers
+  const words = text.match(/\b[a-zA-Z]{3,}\b/g) || [];
+  return words;
+}
+
+/**
+ * Tool usage with optional file path
+ */
+interface ToolWithFile {
+  tool: string;
+  filePath: string | null;
+}
+
+/**
+ * Extract tool names and file paths from an assistant message
+ */
+function extractToolsWithFiles(message: unknown): ToolWithFile[] {
+  const tools: ToolWithFile[] = [];
 
   if (!message || !Array.isArray(message)) return tools;
 
@@ -204,7 +271,21 @@ function extractToolsFromMessage(message: unknown): string[] {
       block.type === 'tool_use' &&
       'name' in block
     ) {
-      tools.push(String(block.name));
+      const tool = String(block.name);
+      let filePath: string | null = null;
+
+      // Extract file path from tool input
+      if ('input' in block && block.input && typeof block.input === 'object') {
+        const input = block.input as Record<string, unknown>;
+        // Different tools use different parameter names for file path
+        if ('file_path' in input && typeof input.file_path === 'string') {
+          filePath = input.file_path;
+        } else if ('path' in input && typeof input.path === 'string') {
+          filePath = input.path;
+        }
+      }
+
+      tools.push({ tool, filePath });
     }
   }
 
@@ -231,6 +312,49 @@ function hasToolErrors(message: unknown): boolean {
   }
 
   return false;
+}
+
+/**
+ * Calculate novelty score from metrics (0-100)
+ *
+ * Novelty is measured by:
+ * - File diversity: working on multiple files
+ * - Vocabulary diversity: using varied language in prompts
+ *
+ * Low novelty indicates repetitive work on the same files with similar prompts
+ */
+export function calculateNoveltyScore(metrics: SessionQualityMetrics): number {
+  let score = 0;
+
+  // 1. File diversity (50% of novelty score)
+  // Combines both read and modified files
+  const totalUniqueFiles = metrics.uniqueFilesRead.size + metrics.uniqueFilesModified.size;
+  const modifiedFileCount = metrics.uniqueFilesModified.size;
+
+  // Score based on number of unique files worked with
+  // 10+ files = max score
+  const fileDiversityScore = Math.min(100, (totalUniqueFiles / 10) * 100);
+
+  // Bonus for modifying multiple files (not just reading)
+  const modifyDiversityBonus = modifiedFileCount >= 3 ? 20 : modifiedFileCount * 6;
+
+  score += (fileDiversityScore + Math.min(20, modifyDiversityBonus)) * 0.5;
+
+  // 2. Vocabulary diversity (50% of novelty score)
+  // Higher ratio of unique words to total words = more diverse prompts
+  if (metrics.totalPromptWords > 0) {
+    const vocabRatio = metrics.promptVocabularySize / metrics.totalPromptWords;
+    // Typical ratio is 0.2-0.6, with higher being more diverse
+    const vocabScore = Math.min(100, vocabRatio * 200);
+
+    // Also consider absolute vocabulary size
+    // 100+ unique words indicates substantial, varied discussion
+    const vocabSizeBonus = Math.min(30, (metrics.promptVocabularySize / 100) * 30);
+
+    score += (vocabScore + vocabSizeBonus) * 0.5;
+  }
+
+  return Math.round(Math.max(0, Math.min(100, score)));
 }
 
 /**
@@ -291,6 +415,10 @@ export function calculateQualityScore(metrics: SessionQualityMetrics): number {
   const contextScore = Math.min(100, (metrics.totalUserTextLength / 5000) * 100);
   score += contextScore * WEIGHTS.contextUtilization;
 
+  // 11. Novelty Score (30%) - file and vocabulary diversity
+  const noveltyScore = calculateNoveltyScore(metrics);
+  score += noveltyScore * WEIGHTS.noveltyScore;
+
   // Apply penalties
   if (metrics.editWriteCount === 0) {
     score *= 1 - PENALTIES.readOnlySession;
@@ -306,6 +434,15 @@ export function calculateQualityScore(metrics: SessionQualityMetrics): number {
 
   if (metrics.errorCount > 0 && metrics.errorRecoveryCount === 0) {
     score *= 1 - PENALTIES.highErrorRate;
+  }
+
+  // Novelty penalties
+  if (noveltyScore < NOVELTY_THRESHOLDS.LOW_NOVELTY_SCORE) {
+    score *= 1 - PENALTIES.lowNovelty;
+  }
+
+  if (metrics.uniqueFilesModified.size < NOVELTY_THRESHOLDS.MIN_FILES_FOR_DIVERSITY) {
+    score *= 1 - PENALTIES.singleFileSession;
   }
 
   return Math.round(Math.max(0, Math.min(100, score)));
