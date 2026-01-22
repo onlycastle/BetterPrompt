@@ -50,9 +50,9 @@ You are a cognitive psychologist who specializes in metacognition - the ability 
 ## TASK
 Analyze the provided session data and Module A analysis to discover:
 1. **Awareness Signals**: Moments when the user explicitly recognizes their own patterns
-   - Self-reflection: "I notice I keep doing X", "패턴이 보여"
-   - Strategy verbalization: "This time I'll try differently", "이번엔 다르게"
-   - Learning recognition: "Ah now I understand", "이제 알겠다"
+   - Self-reflection: "I notice I keep doing X", "I see a pattern"
+   - Strategy verbalization: "This time I'll try differently", "Let me try another approach"
+   - Learning recognition: "Ah now I understand", "Now I get it"
 
 2. **Unawareness Signals / Blind Spots**: Patterns the user repeats without recognition
    - Same error 3+ times without mentioning awareness
@@ -60,9 +60,9 @@ Analyze the provided session data and Module A analysis to discover:
    - No verification after repeated failures
 
 3. **Growth Mindset Indicators**:
-   - Curiosity: "왜 이렇게 되는 거야?", "why does this happen?"
-   - Experimentation: "한번 해볼게", "let me try"
-   - Resilience: "괜찮아, 다시 해보자", "let's try another way"
+   - Curiosity: "Why does this happen?", "How does this work?"
+   - Experimentation: "Let me try", "I'll test this out"
+   - Resilience: "It's okay, let's try again", "let's try another way"
 
 ## CONTEXT
 - Focus on USER messages (their self-awareness), not assistant responses
@@ -72,9 +72,9 @@ Analyze the provided session data and Module A analysis to discover:
 
 ## CRITICAL THINKING PATTERNS TO DETECT
 Look for these indicators of good critical engagement:
-- Counter-questioning: "왜?", "정말?", "확실해?", "why?", "are you sure?"
-- Critical interpretation: "근데 이거 맞아?", "이해가 안 되는데", "doesn't make sense"
-- Verification requests: "확인해 봐", "test this", "verify"
+- Counter-questioning: "why?", "really?", "are you sure?"
+- Critical interpretation: "but is this correct?", "this doesn't make sense"
+- Verification requests: "check this", "test this", "verify"
 
 ## FORMAT
 Return a JSON object with:
@@ -98,14 +98,14 @@ export function buildMetacognitionUserPrompt(
 ): string {
   const koreanInstructions = useKorean
     ? `
-## 🇰🇷 CRITICAL: Korean Output Required
+## CRITICAL: Korean Output Required
 
-**모든 출력은 한국어로 작성하세요.**
+**Write all output in Korean.**
 
-The developer's content is in Korean. You MUST write ALL fields in **Korean (한국어)**:
-- topInsights: 한국어로 작성
-- Awareness signal descriptions: 한국어로 작성
-- Blind spot explanations: 한국어로 작성
+The developer's content is in Korean. You MUST write ALL fields in **Korean**:
+- topInsights: Write in Korean
+- Awareness signal descriptions: Write in Korean
+- Blind spot explanations: Write in Korean
 
 Keep technical terms in English.
 Be encouraging and supportive in Korean.
@@ -124,7 +124,7 @@ Analyze the user's metacognitive patterns:
 1. Find moments of explicit self-awareness (with quotes)
 2. Identify blind spots (patterns repeated without recognition)
 3. Score growth mindset indicators
-4. Generate exactly 3 "wow moment" insights about their metacognition${useKorean ? ' (한국어로 작성)' : ''}
+4. Generate exactly 3 "wow moment" insights about their metacognition${useKorean ? ' (write in Korean)' : ''}
 
 Focus on USER messages. Look for both Korean and English patterns.`;
 }

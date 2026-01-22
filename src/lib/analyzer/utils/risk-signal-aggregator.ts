@@ -232,7 +232,7 @@ function extractFromModuleA(output: StructuredAnalysisData): RiskSignal[] {
   }
 
   // Check for reactive planning patterns in examples
-  const reactiveKeywords = ['immediate', 'quick', 'just fix', 'just do', '빨리', '그냥'];
+  const reactiveKeywords = ['immediate', 'quick', 'just fix', 'just do', 'quickly', 'hurry'];
   const hasReactivePlanning = planningBehaviors.some((b) =>
     reactiveKeywords.some((kw) => b.examples?.toLowerCase().includes(kw) || b.behavior?.toLowerCase().includes(kw))
   );

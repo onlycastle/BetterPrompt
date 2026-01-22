@@ -2,9 +2,9 @@
  * Temporal Analyzer Worker - Time-based prompt performance analysis
  *
  * Analyzes qualitative metrics by hour:
- * - Counter-questioning rate (역질문)
- * - Critical interpretation rate (비판적 해석)
- * - Verification request rate (검증 요청)
+ * - Counter-questioning rate
+ * - Critical interpretation rate
+ * - Verification request rate
  * - Typo rate & passive acceptance (fatigue signals)
  *
  * Phase 2 worker that requires Module A output.
@@ -52,19 +52,19 @@ You are a productivity researcher who studies how cognitive performance varies t
 ## TASK
 Analyze the provided session data to discover time-based patterns using QUALITATIVE metrics:
 
-### 1. QUALITATIVE INTERACTION METRICS (핵심 지표)
+### 1. QUALITATIVE INTERACTION METRICS (Core Metrics)
 For each hour, measure:
-- **Counter-questioning rate**: How often the user asks "왜?", "정말?", "확실해?", "why?", "are you sure?", "다른 방법은?"
-- **Critical interpretation rate**: How often the user challenges AI: "근데 이거 맞아?", "이해가 안 되는데", "doesn't make sense"
-- **Verification request rate**: How often the user asks to verify: "확인해 봐", "test this", "검증해"
+- **Counter-questioning rate**: How often the user asks "why?", "really?", "are you sure?", "is there another way?"
+- **Critical interpretation rate**: How often the user challenges AI: "but is this correct?", "I don't understand", "doesn't make sense"
+- **Verification request rate**: How often the user asks to verify: "check this", "test this", "verify"
 
-### 2. FATIGUE/LAZINESS SIGNALS (피로 지표)
-- **Typo rate**: Uncorrected typos (Korean: 오타 방치, English: teh, taht, etc.)
+### 2. FATIGUE/LAZINESS SIGNALS (Fatigue Metrics)
+- **Typo rate**: Uncorrected typos (e.g., teh, taht, etc.)
 - **Passive acceptance rate**: AI output accepted without any questioning or verification
-- **Short response rate**: "ㅇㅋ", "ok", "yes", "ㄱㄱ" without elaboration
+- **Short response rate**: "ok", "yes", "sure" without elaboration
 
 ### 3. PEAK vs CAUTION HOURS
-- Identify hours with HIGHEST critical thinking (역질문 + 비판적 해석 + 검증 요청)
+- Identify hours with HIGHEST critical thinking (counter-questioning + critical interpretation + verification)
 - Identify hours with LOWEST critical thinking / HIGHEST fatigue signals
 
 ### 4. FATIGUE PATTERNS
@@ -81,15 +81,15 @@ Detect specific patterns:
 - Compare peak hours vs caution hours
 
 ## CRITICAL THINKING PATTERN EXAMPLES
-High quality (역질문/비판적 해석):
-- "왜 이렇게 되는 거야?" (why question)
-- "정말? 확실해?" (challenging)
-- "다른 방법은 없어?" (exploring alternatives)
-- "확인해 봐" (verification request)
+High quality (counter-questioning/critical interpretation):
+- "Why does this happen?" (why question)
+- "Really? Are you sure?" (challenging)
+- "Is there another way?" (exploring alternatives)
+- "Check this" (verification request)
 
-Low quality (피로 시그널):
-- "ㅇㅋ" without context (passive acceptance)
-- "오타 있는데 그냥 진행" (typo ignored)
+Low quality (fatigue signals):
+- "ok" without context (passive acceptance)
+- Typos ignored, proceeding anyway
 - AI output copied without any questions
 
 ## FORMAT
@@ -115,15 +115,15 @@ export function buildTemporalUserPrompt(
 ): string {
   const koreanInstructions = useKorean
     ? `
-## 🇰🇷 CRITICAL: Korean Output Required
+## CRITICAL: Korean Output Required
 
-**모든 출력은 한국어로 작성하세요.**
+**Write all output in Korean.**
 
-The developer's content is in Korean. You MUST write ALL fields in **Korean (한국어)**:
-- topInsights: 한국어로 작성
-- Peak/Caution hour descriptions: 한국어로 작성
-- Fatigue pattern explanations: 한국어로 작성
-- Recommendations: 한국어로 작성
+The developer's content is in Korean. You MUST write ALL fields in **Korean**:
+- topInsights: Write in Korean
+- Peak/Caution hour descriptions: Write in Korean
+- Fatigue pattern explanations: Write in Korean
+- Recommendations: Write in Korean
 
 Keep technical terms and time formats in English.
 
@@ -144,9 +144,9 @@ Analyze time-based prompt quality patterns:
 4. Find caution hours (lowest critical thinking / highest fatigue)
 5. Detect specific fatigue patterns (late_night_drop, typo_spike, etc.)
 
-Generate exactly 3 actionable temporal insights.${useKorean ? ' (한국어로 작성)' : ''}
+Generate exactly 3 actionable temporal insights.${useKorean ? ' (write in Korean)' : ''}
 
-IMPORTANT: Use QUALITATIVE metrics (역질문, 비판적 해석, 검증 요청) rather than simple prompt length.`;
+IMPORTANT: Use QUALITATIVE metrics (counter-questioning, critical interpretation, verification) rather than simple prompt length.`;
 }
 
 // ============================================================================

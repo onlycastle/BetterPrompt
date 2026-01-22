@@ -589,18 +589,17 @@ export class ContentWriterStage {
    * Extract meaningful keywords from text
    */
   private extractKeywords(text: string): Set<string> {
-    // Common stop words in English and Korean
+    // Common stop words in English
     const stopWords = new Set([
       'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
       'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should',
       'this', 'that', 'these', 'those', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by',
       'from', 'as', 'or', 'and', 'but', 'if', 'then', 'else', 'when', 'where', 'which', 'who',
-      'your', 'you', 'their', 'its', 'our', 'my', 'his', 'her',
-      '이', '그', '저', '것', '수', '를', '을', '에', '의', '와', '과', '로', '으로', '는', '은', '가', '이'
+      'your', 'you', 'their', 'its', 'our', 'my', 'his', 'her'
     ]);
 
     const words = text.toLowerCase()
-      .replace(/[^\w\s가-힣]/g, ' ')
+      .replace(/[^\w\s]/g, ' ')
       .split(/\s+/)
       .filter(w => w.length > 2 && !stopWords.has(w));
 

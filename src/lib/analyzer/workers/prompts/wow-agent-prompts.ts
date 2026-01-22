@@ -76,14 +76,14 @@ export function buildPatternDetectiveUserPrompt(
 ): string {
   const koreanInstructions = useKorean
     ? `
-## 🇰🇷 CRITICAL: Korean Output Required
+## CRITICAL: Korean Output Required
 
-**모든 출력은 한국어로 작성하세요.**
+**Write all output in Korean.**
 
-The developer's content is in Korean. You MUST write ALL fields in **Korean (한국어)**:
-- topInsights: 한국어로 작성
-- overallStyleSummary: 한국어로 작성
-- Pattern descriptions: 한국어로 작성
+The developer's content is in Korean. You MUST write ALL fields in **Korean**:
+- topInsights: Write in Korean
+- overallStyleSummary: Write in Korean
+- Pattern descriptions: Write in Korean
 
 Keep technical terms in English (AI, IDE, debugging, Git, commit).
 Match the developer's casual Korean style.
@@ -106,7 +106,7 @@ Analyze the conversation patterns and communication style across all sessions. F
 - If a pattern appears 3+ times, suggest creating a skill (e.g., /investigate, /debug)
 - Use → arrows to show the sequence in repeatedCommandPatternsData
 
-Generate exactly 3 "wow moment" insights.${useKorean ? ' 모든 인사이트를 한국어로 작성하세요.' : ''}`;
+Generate exactly 3 "wow moment" insights.${useKorean ? ' Write all insights in Korean.' : ''}`;
 }
 
 // ============================================================================
@@ -151,13 +151,13 @@ export function buildAntiPatternSpotterUserPrompt(
 ): string {
   const koreanInstructions = useKorean
     ? `
-## 🇰🇷 CRITICAL: Korean Output Required
+## CRITICAL: Korean Output Required
 
-**모든 출력은 한국어로 작성하세요.**
+**Write all output in Korean.**
 
-The developer's content is in Korean. You MUST write ALL fields in **Korean (한국어)**:
-- topInsights: 한국어로 작성
-- Pattern descriptions: 한국어로 작성
+The developer's content is in Korean. You MUST write ALL fields in **Korean**:
+- topInsights: Write in Korean
+- Pattern descriptions: Write in Korean
 
 Keep technical terms in English (AI, IDE, debugging, Git, commit).
 Be constructive and growth-oriented in Korean.
@@ -172,7 +172,7 @@ ${sessionsFormatted}
 ${moduleAOutput}
 ${koreanInstructions}
 ## INSTRUCTIONS
-Identify problematic patterns like error loops, learning avoidance, and repeated mistakes. Focus on patterns that slow the developer down or prevent learning. Frame insights constructively as growth opportunities. Generate exactly 3 key anti-pattern insights.${useKorean ? ' 모든 인사이트를 한국어로 작성하세요.' : ''}`;
+Identify problematic patterns like error loops, learning avoidance, and repeated mistakes. Focus on patterns that slow the developer down or prevent learning. Frame insights constructively as growth opportunities. Generate exactly 3 key anti-pattern insights.${useKorean ? ' Write all insights in Korean.' : ''}`;
 }
 
 // ============================================================================
@@ -217,14 +217,14 @@ export function buildKnowledgeGapUserPrompt(
 ): string {
   const koreanInstructions = useKorean
     ? `
-## 🇰🇷 CRITICAL: Korean Output Required
+## CRITICAL: Korean Output Required
 
-**모든 출력은 한국어로 작성하세요.**
+**Write all output in Korean.**
 
-The developer's content is in Korean. You MUST write ALL fields in **Korean (한국어)**:
-- topInsights: 한국어로 작성
-- Knowledge gap descriptions: 한국어로 작성
-- Learning progress analysis: 한국어로 작성
+The developer's content is in Korean. You MUST write ALL fields in **Korean**:
+- topInsights: Write in Korean
+- Knowledge gap descriptions: Write in Korean
+- Learning progress analysis: Write in Korean
 
 Keep technical terms and resource names in English.
 Recommend Korean resources when available.
@@ -239,7 +239,7 @@ ${sessionsFormatted}
 ${moduleAOutput}
 ${koreanInstructions}
 ## INSTRUCTIONS
-Identify knowledge gaps from repeated questions, track learning progress across sessions, and recommend specific resources for improvement. Focus on actionable insights that help the developer grow. Generate exactly 3 key knowledge insights.${useKorean ? ' 모든 인사이트를 한국어로 작성하세요.' : ''}`;
+Identify knowledge gaps from repeated questions, track learning progress across sessions, and recommend specific resources for improvement. Focus on actionable insights that help the developer grow. Generate exactly 3 key knowledge insights.${useKorean ? ' Write all insights in Korean.' : ''}`;
 }
 
 // ============================================================================
@@ -287,14 +287,14 @@ export function buildContextEfficiencyUserPrompt(
 ): string {
   const koreanInstructions = useKorean
     ? `
-## 🇰🇷 CRITICAL: Korean Output Required
+## CRITICAL: Korean Output Required
 
-**모든 출력은 한국어로 작성하세요.**
+**Write all output in Korean.**
 
-The developer's content is in Korean. You MUST write ALL fields in **Korean (한국어)**:
-- topInsights: 한국어로 작성
-- Efficiency pattern descriptions: 한국어로 작성
-- Improvement suggestions: 한국어로 작성
+The developer's content is in Korean. You MUST write ALL fields in **Korean**:
+- topInsights: Write in Korean
+- Efficiency pattern descriptions: Write in Korean
+- Improvement suggestions: Write in Korean
 
 Keep technical terms in English (token, context, compact).
 
@@ -308,5 +308,5 @@ ${sessionsFormatted}
 ${moduleAOutput}
 ${koreanInstructions}
 ## INSTRUCTIONS
-Analyze how context and prompts are managed across sessions. Identify inefficiencies like late compaction, repeated information, and prompt length inflation. Focus on actionable improvements that would save tokens and improve AI collaboration efficiency. Generate exactly 3 key efficiency insights.${useKorean ? ' 모든 인사이트를 한국어로 작성하세요.' : ''}`;
+Analyze how context and prompts are managed across sessions. Identify inefficiencies like late compaction, repeated information, and prompt length inflation. Focus on actionable improvements that would save tokens and improve AI collaboration efficiency. Generate exactly 3 key efficiency insights.${useKorean ? ' Write all insights in Korean.' : ''}`;
 }

@@ -32,6 +32,7 @@ import {
   type StageTokenUsage,
   type PipelineTokenUsage,
   formatActualUsage,
+  aggregateTokenUsage,
 } from '../cost-estimator';
 
 // ============================================================================
@@ -288,6 +289,9 @@ export class AnalysisOrchestrator {
     // ─────────────────────────────────────────────────────────────────────
     const analyzedSessions = this.extractAnalyzedSessions(sessions);
 
+    // Aggregate token usage for the pipeline
+    const pipelineTokenUsage = aggregateTokenUsage(stageUsages, this.config.model);
+
     const evaluation: VerboseEvaluation = {
       sessionId: sessions[sessions.length - 1]?.sessionId ?? 'unknown',
       analyzedAt: new Date().toISOString(),
@@ -298,6 +302,7 @@ export class AnalysisOrchestrator {
       ...contentResult.data,
       productivityAnalysis: phase1Results.productivityAnalyst.data,
       agentOutputs: agentOutputs,
+      pipelineTokenUsage,
     };
 
     console.log(`[Orchestrator] Final evaluation - hasAgentOutputs: ${!!evaluation.agentOutputs}`);
@@ -423,15 +428,12 @@ export class AnalysisOrchestrator {
    */
   private mergeAgentOutputs(results: Record<string, WorkerResult<unknown> | undefined>): AgentOutputs {
     return {
-      // Original 4 agents
       patternDetective: results['PatternDetective']?.data as AgentOutputs['patternDetective'],
       antiPatternSpotter: results['AntiPatternSpotter']?.data as AgentOutputs['antiPatternSpotter'],
       knowledgeGap: results['KnowledgeGap']?.data as AgentOutputs['knowledgeGap'],
       contextEfficiency: results['ContextEfficiency']?.data as AgentOutputs['contextEfficiency'],
-      // NEW: Metacognition + Temporal Analysis agents
       metacognition: results['MetacognitionWorker']?.data as AgentOutputs['metacognition'],
       temporalAnalysis: results['TemporalAnalyzer']?.data as AgentOutputs['temporalAnalysis'],
-      // NEW: Multitasking Analysis
       multitasking: results['MultitaskingAnalyzer']?.data as AgentOutputs['multitasking'],
     };
   }
@@ -464,7 +466,6 @@ export class AnalysisOrchestrator {
     }));
   }
 
-  /**
   /**
    * Log a message if verbose mode is enabled
    */
