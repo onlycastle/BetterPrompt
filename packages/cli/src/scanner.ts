@@ -478,7 +478,7 @@ function selectOptimalSessions(
  * 3. Full quality scoring only on candidates
  * 4. Parse only the final selected sessions
  */
-export async function scanSessions(maxSessions: number = 15): Promise<ScanResult> {
+export async function scanSessions(maxSessions: number = 30): Promise<ScanResult> {
   // Phase 1: Collect file metadata (memory efficient - no content read)
   const allFiles = await collectFileMetadata();
 

@@ -250,7 +250,7 @@ async function runAnalysis(): Promise<void> {
 
   let scanResult;
   try {
-    scanResult = await scanSessions(15);
+    scanResult = await scanSessions(30);
   } catch (error) {
     scanSpinner.fail('Failed to scan sessions');
     displayError(error instanceof Error ? error.message : 'Unknown error');
