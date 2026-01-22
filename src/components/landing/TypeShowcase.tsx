@@ -2,7 +2,6 @@ import {
   TYPE_METADATA,
   CONTROL_LEVEL_METADATA,
   MATRIX_NAMES,
-  MATRIX_METADATA,
   type CodingStyleType,
   type AIControlLevel,
 } from '@/lib/models/coding-style';
@@ -112,13 +111,9 @@ export function TypeShowcase() {
                 </span>
               </div>
               {levelOrder.map((level) => {
-                const matrixMeta = MATRIX_METADATA[type][level];
                 const matrixName = MATRIX_NAMES[type][level];
                 return (
                   <div key={`${type}-${level}`} className={styles.matrixCell}>
-                    <span className={styles.matrixCellEmoji}>
-                      {matrixMeta.emoji}
-                    </span>
                     <span className={styles.matrixCellName}>{matrixName}</span>
                   </div>
                 );
