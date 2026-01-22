@@ -10,7 +10,6 @@ import { X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
-import { supabase } from '@/lib/supabase-browser';
 import styles from './WaitlistModal.module.css';
 
 /** Waitlist source types for Supabase tracking */
@@ -130,26 +129,22 @@ export function WaitlistModal({
       return;
     }
 
-    // If Supabase is not configured, show error (No Fallback Policy)
-    if (!supabase) {
-      console.error('[Waitlist] Supabase is not configured');
-      setError('Service temporarily unavailable. Please try again later.');
-      setStatus('error');
-      return;
-    }
-
     try {
-      const { error: insertError } = await supabase
-        .from('waitlist')
-        .insert({ email, source: config.type });
+      const response = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, source: config.type }),
+      });
 
-      if (insertError) {
-        // Check for unique constraint violation (email already exists)
-        if (insertError.code === '23505') {
-          setStatus('already_exists');
-          return;
-        }
-        throw insertError;
+      const data = await response.json();
+
+      if (data.status === 'already_exists') {
+        setStatus('already_exists');
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to join waitlist');
       }
 
       setStatus('success');
