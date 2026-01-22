@@ -78,13 +78,13 @@ After extracting quotes, group them into thematic clusters:
 2. Similar behavioral patterns should form a cluster
 3. Assign unique clusterId to each quote (format: "{dimension}_s_{n}" for strength, "{dimension}_g_{n}" for growth)
 4. FLATTENED: Define clusters in dimensionSignals.strengthClusterThemes and growthClusterThemes arrays
-   - Format: "clusterId:theme" strings (e.g., "aiCollaboration_s_1:전문가 페르소나 활용")
+   - Format: "clusterId:theme" strings (e.g., "aiCollaboration_s_1:Expert Persona Usage")
 
 Example thinking process:
 "I found 8 strength quotes for aiCollaboration. Looking at the patterns:
-- 3 quotes about using expert personas → clusterId: 'aiCollaboration_s_1', theme: '전문가 페르소나 활용'
-- 2 quotes about deep thinking triggers → clusterId: 'aiCollaboration_s_2', theme: '고밀도 사고 유도'
-Resulting strengthClusterThemes: ['aiCollaboration_s_1:전문가 페르소나 활용', 'aiCollaboration_s_2:고밀도 사고 유도']"
+- 3 quotes about using expert personas → clusterId: 'aiCollaboration_s_1', theme: 'Expert Persona Usage'
+- 2 quotes about deep thinking triggers → clusterId: 'aiCollaboration_s_2', theme: 'Deep Thinking Triggers'
+Resulting strengthClusterThemes: ['aiCollaboration_s_1:Expert Persona Usage', 'aiCollaboration_s_2:Deep Thinking Triggers']"
 
 Clustering rules:
 - Each quote MUST have a clusterId that matches a defined cluster theme
@@ -117,21 +117,21 @@ Clustering rules:
 - skillResilience: Cold start behavior, hallucination detection
 
 For EACH dimension, include cluster themes as flattened string arrays:
-- strengthClusterThemes: ["clusterId:theme", ...] (e.g., ["aiControl_s_1:검증 요청 습관"])
-- growthClusterThemes: ["clusterId:theme", ...] (e.g., ["aiControl_g_1:수동적 수용 패턴"])
+- strengthClusterThemes: ["clusterId:theme", ...] (e.g., ["aiControl_s_1:Verification Request Habit"])
+- growthClusterThemes: ["clusterId:theme", ...] (e.g., ["aiControl_g_1:Passive Acceptance Pattern"])
 - clusterId must match the clusterIds assigned to quotes
 - theme describes what the cluster represents (will be used for section titles)
 
 **Anti-Pattern Detection** (target: 0-3 patterns, Premium/Enterprise)
 Detect inefficient AI collaboration patterns (frame as "growth opportunity", NOT criticism):
 - sunk_cost_loop: Same error + same/similar approach repeated 3+ times
-  * Examples in any language: "다시 해줘", "try again", "もう一度", "fix it again"
+  * Examples: "try again", "do it again", "fix it again", "one more time"
   * Look for: repeated prompts after identical errors, no change in approach
 - emotional_escalation: Frustration affecting prompts
-  * Examples: "아 진짜", "ugh", "come on", expressions of anger/frustration
+  * Examples: "ugh", "come on", "seriously?", expressions of anger/frustration
   * Look for: emotional language after AI errors, tone degradation
 - blind_retry: Retry without analysis or approach change
-  * Examples: "다시 해", "fix it", "run again" without error analysis
+  * Examples: "fix it", "run again", "try again" without error analysis
   * Look for: retry requests without mentioning what to change
 - passive_acceptance: Accepting AI output without verification
   * Look for: no verification questions, no testing, immediate use of AI code
@@ -139,18 +139,18 @@ Detect inefficient AI collaboration patterns (frame as "growth opportunity", NOT
 **Critical Thinking Detection** (target: 3-8 moments, Premium/Enterprise)
 Detect verification and questioning behaviors (celebrate these as strengths):
 - verification_request: Verifying AI output before accepting
-  * Examples: "정말?", "확실해?", "are you sure?", "let me check"
+  * Examples: "are you sure?", "is that correct?", "let me check", "really?"
   * Look for: questions about correctness, running tests, checking results
 - output_validation: Actually testing or validating AI suggestions
   * Look for: mentions of running tests, checking output, verifying behavior
 - assumption_questioning: Challenging AI's assumptions or decisions
-  * Examples: "왜 이 방법이야?", "이게 최선이야?", "why this approach?"
+  * Examples: "why this approach?", "is this the best way?", "why not X instead?"
   * Look for: questions about the reasoning behind AI suggestions
 - alternative_exploration: Asking for different approaches
-  * Examples: "다른 방법은?", "대안은?", "what about...", "instead of..."
+  * Examples: "what about...", "instead of...", "any alternatives?", "other options?"
   * Look for: requests for alternatives, comparison of options
 - security_check: Checking for security, performance, or side effects
-  * Examples: "보안 취약점은?", "성능 문제?", "side effects?"
+  * Examples: "any security issues?", "performance concerns?", "side effects?"
   * Look for: questions about security, performance, or unintended consequences
 
 **Planning Behavior Detection** (target: 2-5 behaviors, Premium/Enterprise)
@@ -160,15 +160,15 @@ Detect strategic thinking before implementation:
   * MUST analyze: Count steps in plan, check for problem decomposition
   * Record: planContent (summary), problemDecomposition (boolean), stepsCount (number)
 - structure_first: Planning before implementation
-  * Examples: "먼저 전체 구조를 보자", "설계부터", "let's plan first"
+  * Examples: "let's look at the overall structure first", "design first", "let's plan first"
   * Look for: architectural thinking before coding
 - task_decomposition: Breaking complex tasks into steps
-  * Examples: "단계별로", "step by step", numbered lists, bullet points
+  * Examples: "step by step", numbered lists, bullet points, "first... then..."
   * Look for: explicit task breakdown
 - todowrite_usage: Using TodoWrite tool
   * Look for: TodoWrite tool calls, task list management
 - stepwise_approach: Sequential, methodical approach
-  * Examples: "1. 먼저... 2. 그 다음...", ordered execution
+  * Examples: "1. First... 2. Then...", ordered execution
   * Look for: numbered steps, sequential thinking
 
 **Planning Quality Assessment:**
@@ -208,19 +208,19 @@ Example output:
     {
       "rank": 1,
       "dimension": "aiControl",
-      "focusArea": "AI 출력 검증 습관 강화",
-      "rationale": "14개 세션 중 11개에서 AI 출력을 검증 없이 수용. 특히 복잡한 결정 상황에서 두드러짐.",
-      "expectedImpact": "버그 조기 발견율 향상, 코드 품질 개선",
+      "focusArea": "Strengthen AI output verification habit",
+      "rationale": "In 11 of 14 sessions, AI output was accepted without verification. Especially prominent in complex decision situations.",
+      "expectedImpact": "Improved early bug detection, better code quality",
       "priorityScore": 87,
       "relatedClusterIds": ["aiControl_g_1", "aiControl_g_2"]
     }
   ],
-  "selectionRationale": "시간 압박 상황에서 검증 단계를 건너뛰는 패턴이 가장 빈번하게 관찰됨..."
+  "selectionRationale": "The pattern of skipping verification steps under time pressure was most frequently observed..."
 }
 
 **Type Classification**
 - primaryType: architect | scientist | collaborator | speedrunner | craftsman
-- controlLevel: vibe-coder | developing | ai-master
+- controlLevel: explorer | navigator | cartographer
 - distribution: Percentages across all 5 types (must sum to 100)
 
 # Context
@@ -307,7 +307,7 @@ Analyze the sessions above and extract:
    - Group similar quotes into thematic clusters (2-5 per dimension×signal)
    - Assign unique clusterId to each quote
    - Define clusters in dimensionSignals via strengthClusterThemes and growthClusterThemes arrays
-   - Format: "clusterId:theme" strings (e.g., ["aiCollaboration_s_1:전문가 페르소나 활용"])
+   - Format: "clusterId:theme" strings (e.g., ["aiCollaboration_s_1:Expert Persona Usage"])
 
 3. **Patterns** (8-15 patterns)
    - Recurring behaviors across sessions
@@ -316,7 +316,7 @@ Analyze the sessions above and extract:
 4. **Dimension Signals** (6 dimensions)
    - All strength and growth signals per dimension
    - Include strengthClusterThemes: string[] and growthClusterThemes: string[]
-   - Format each as "clusterId:theme" (e.g., "aiControl_s_1:검증 습관")
+   - Format each as "clusterId:theme" (e.g., "aiControl_s_1:Verification Habit")
 
 5. **Type Classification**
    - Primary type with evidence

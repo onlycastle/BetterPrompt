@@ -405,7 +405,7 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
       author: 'hashin',
     },
     applicableStyles: ['speedrunner'],
-    applicableControlLevels: ['vibe-coder', 'developing'],
+    applicableControlLevels: ['explorer', 'navigator'],
     priority: 8,
     enabled: true,
   },

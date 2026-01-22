@@ -83,9 +83,9 @@ The 5 AI Coding Styles:
 - **Craftsman** (🔧): Quality artisan who prioritizes code quality. Focus on maintainability, style.
 
 Control Levels:
-- **vibe-coder**: High AI dependency - accepts output without much modification
-- **developing**: Learning balance - building control habits
-- **ai-master**: Strategic control - directs AI as a precision tool
+- **explorer**: Open exploration - discovering solutions through experimentation
+- **navigator**: Balanced navigation - building control habits with route planning
+- **cartographer**: Strategic mapping - charts territory before advancing
 </type_definitions>
 
 <dimension_definitions>
@@ -198,7 +198,7 @@ Generate a VerboseEvaluation with the following sections:
 ## TYPE CLASSIFICATION
 
 1. **primaryType**: One of architect, scientist, collaborator, speedrunner, craftsman
-2. **controlLevel**: One of vibe-coder, developing, ai-master
+2. **controlLevel**: One of explorer, navigator, cartographer
 3. **distribution**: Percentages for each type (must sum to 100)
 
 ## PERSONALITY SUMMARY (200-800 chars)

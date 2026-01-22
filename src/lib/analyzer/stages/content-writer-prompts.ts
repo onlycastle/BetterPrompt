@@ -72,16 +72,16 @@ Transform raw behavioral data into an ENGAGING, PERSONALIZED narrative that make
 **Dimension Insights** (exactly 6 - COMPREHENSIVE)
 For each dimension, USE CLUSTERS from Stage 1 data (dimensionSignals.strengthClusterThemes / growthClusterThemes):
 
-⚠️ CRITICAL: ClusterId 출력 필수 (Evidence 매칭에 사용됨)
+⚠️ CRITICAL: ClusterId output is required (used for evidence matching)
 
 STRENGTH SECTIONS:
 - Number of strength sections = number of strength clusters defined in Stage 1
 - For each cluster: transform cluster.theme into an engaging section title
   - Make it specific and memorable (not generic)
-- strengthsData 형식: "clusterId|title|description;clusterId|title|description;..."
-  - clusterId는 Stage 1의 strengthClusterThemes에서 콜론(:) 앞부분을 그대로 복사
-  - 예: Stage 1 cluster "aiCollaboration_s_1:전문가 페르소나 활용"
-    → 출력: "aiCollaboration_s_1|Expert Persona Orchestration|Your strategic use of..."
+- strengthsData format: "clusterId|title|description;clusterId|title|description;..."
+  - clusterId must be copied exactly from Stage 1 strengthClusterThemes (the part before the colon)
+  - Example: Stage 1 cluster "aiCollaboration_s_1:Expert Persona Usage"
+    → Output: "aiCollaboration_s_1|Expert Persona Orchestration|Your strategic use of..."
 - Write detailed descriptions (up to 500 chars) that feel personal
 - Evidence quotes will be added automatically via clusterId matching
 
@@ -89,8 +89,8 @@ GROWTH AREAS:
 - Number of growth sections = number of growth clusters defined in Stage 1
 - Transform cluster.theme into actionable section title
 - Frame as opportunities, not criticisms
-- growthAreasData 형식: "clusterId|title|description|recommendation;..."
-  - clusterId는 Stage 1의 growthClusterThemes에서 콜론(:) 앞부분을 그대로 복사
+- growthAreasData format: "clusterId|title|description|recommendation;..."
+  - clusterId must be copied exactly from Stage 1 growthClusterThemes (the part before the colon)
 - Include detailed, actionable recommendations (up to 400 chars)
 - Evidence quotes will be added automatically via clusterId matching
 
@@ -102,16 +102,16 @@ GROWTH AREAS:
   - **WHAT**: Describe the observable behavior pattern concretely
   - **WHY**: Explain what this pattern reveals about their mindset, values, or work philosophy
   - **HOW**: Describe how this pattern affects their AI collaboration effectiveness and code quality
-  - Connect to their personality: "This reflects your tendency to..." or "이 패턴은 당신의 ~한 성향을 보여줍니다"
+  - Connect to their personality: "This reflects your tendency to..." or "This pattern shows your..."
   - Include the IMPACT: productivity, code quality, learning speed, or team dynamics
 - Show examples with actual quotes
 - Rate effectiveness
 - **Tip (600-1000 chars):** Write expert-level coaching advice:
-  - Reference knowledge base insights with natural attribution: "Anthropic의 가이드에 따르면...", "Simon Willison의 조언처럼..."
+  - Reference knowledge base insights with natural attribution: "According to Anthropic's guide...", "As Simon Willison advises..."
   - Include specific techniques or frameworks from expert sources
   - Provide concrete "try this" examples the developer can apply immediately
   - Connect to their actual behavior: "When you [quote], you could enhance this by..."
-  - For Korean output: Translate KB advice naturally, keep technical terms in English
+  - When writing in non-English: Translate KB advice naturally, keep technical terms in English
 
 **Actionable Practices** (from actionablePatternMatches in Stage 1 data)
 - Transform practiced patterns into "practiced" array:
@@ -171,7 +171,7 @@ GROWTH AREAS:
   - totalUsage: count of /plan commands
   - avgStepsPerPlan: average steps in plans
   - problemDecompositionRate: ratio with decomposition
-- If NO /plan usage: recommend "복잡한 작업 전 /plan 명령어로 로드맵을 세워보세요"
+- If NO /plan usage: recommend "Try using /plan command to create a roadmap before complex tasks"
 - Write summary emphasizing their planning sophistication
 
 **Top 3 Focus Areas** (CRITICAL - from personalizedPriorities)
