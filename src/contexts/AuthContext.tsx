@@ -79,8 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async (pendingResultId?: string) => {
     if (!supabase) return { error: new Error('Authentication not configured') };
     const next = pendingResultId
-      ? `/personal?pendingResultId=${encodeURIComponent(pendingResultId)}`
-      : '/personal';
+      ? `/dashboard/personal/r/${encodeURIComponent(pendingResultId)}`
+      : '/dashboard/personal';
     const { error } = await supabase.client.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` }
@@ -91,8 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGitHub = async (pendingResultId?: string) => {
     if (!supabase) return { error: new Error('Authentication not configured') };
     const next = pendingResultId
-      ? `/personal?pendingResultId=${encodeURIComponent(pendingResultId)}`
-      : '/personal';
+      ? `/dashboard/personal/r/${encodeURIComponent(pendingResultId)}`
+      : '/dashboard/personal';
     const { error } = await supabase.client.auth.signInWithOAuth({
       provider: 'github',
       options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` }

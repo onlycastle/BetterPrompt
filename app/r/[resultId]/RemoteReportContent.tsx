@@ -103,7 +103,7 @@ function PageHeader() {
         <span className={styles.logoText}>NoMoreAISlop</span>
       </Link>
       <div className={styles.headerActions}>
-        <Link href="/personal" className={styles.headerButton}>
+        <Link href="/dashboard/personal" className={styles.headerButton}>
           My Dashboard
         </Link>
       </div>

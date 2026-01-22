@@ -1,0 +1,30 @@
+/**
+ * Dashboard Layout Styles
+ * Two-column layout with fixed sidebar
+ */
+
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-paper);
+
+  /* Graph paper background effect */
+  background-image:
+    linear-gradient(var(--bg-grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-color) 1px, transparent 1px);
+  background-size: var(--bg-grid-size) var(--bg-grid-size);
+}
+
+.content {
+  flex: 1;
+  margin-left: 240px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Mobile: Sidebar overlays content */
+@media (max-width: 768px) {
+  .content {
+    margin-left: 0;
+  }
+}
