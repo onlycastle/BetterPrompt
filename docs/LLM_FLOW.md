@@ -1133,17 +1133,14 @@ VerboseAnalyzerConfig (src/lib/analyzer/verbose-analyzer.ts)
 │       ├── temperature: 1.0
 │       └── maxOutputTokens: 65536
 │
-├── tier: 'free' | 'premium' | 'enterprise'  ← default: 'enterprise'
-│
-└── fallbackToLegacy: true  ← Fallback to Claude single-stage if Orchestrator fails
+└── tier: 'free' | 'premium' | 'enterprise'  ← default: 'enterprise'
 
 Environment Variables:
-├── GOOGLE_GEMINI_API_KEY  ← Required for orchestrator pipeline
-└── ANTHROPIC_API_KEY      ← Required for fallback/legacy mode
+└── GOOGLE_GEMINI_API_KEY  ← Required for orchestrator pipeline
 
-Graceful Degradation:
-├── Phase 1 worker fails → uses default data (createDefaultStructuredAnalysisData)
-├── Phase 2 worker fails → continues without that agent's output
-├── Phase 2 skipped for Free tier → AgentOutputs = empty
-└── Orchestrator fails + fallbackToLegacy: true → uses Claude single-stage
+Error Handling (No Fallback Policy):
+├── All errors are thrown immediately, never silently hidden
+├── Workers throw errors instead of returning empty data
+├── Orchestrator uses Promise.all() to fail fast
+└── Frontend shows clear error states, not fake/empty results
 ```
