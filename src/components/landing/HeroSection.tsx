@@ -9,9 +9,8 @@ export function HeroSection() {
       <div className={styles.content}>
         <h1 className={styles.headline}>
           Are you getting better with AI
-          <span className={styles.emDash}>—</span>
           <br className={styles.breakDesktop} />
-          or just more dependent?
+          or just more <span className={styles.accent}>dependent</span>?
         </h1>
 
         <p className={styles.subheadline}>

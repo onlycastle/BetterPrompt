@@ -1,10 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { Download, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { WaitlistModal } from './WaitlistModal';
 import styles from './LandingFooter.module.css';
 
 export function LandingFooter() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   return (
     <footer className={styles.footer}>
       <div className={styles.content}>
@@ -15,9 +19,7 @@ export function LandingFooter() {
             variant="primary"
             size="lg"
             icon={<Download size={20} />}
-            onClick={() => {
-              // TODO: Connect to desktop app download
-            }}
+            onClick={() => setIsModalOpen(true)}
           >
             Download for macOS
           </Button>
@@ -41,6 +43,11 @@ export function LandingFooter() {
           &copy; {new Date().getFullYear()} NoMoreAISlop
         </p>
       </div>
+
+      <WaitlistModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </footer>
   );
 }
