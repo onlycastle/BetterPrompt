@@ -202,8 +202,8 @@ export function UnlockSection({ isUnlocked, resultId }: UnlockSectionProps) {
               </div>
               <div className={styles.pricingAmount}>$6.99<span>/month</span></div>
               <div className={styles.proFeatures}>
-                <div>정기적인 분석을 통한 맞춤형 데이터 분석</div>
-                <div>성장을 위한 맞춤형 학습 자료 및 피드백 제공</div>
+                <div>Regular analysis with personalized data insights</div>
+                <div>Customized learning resources and feedback for growth</div>
               </div>
               <button
                 className={styles.subscribeCta}

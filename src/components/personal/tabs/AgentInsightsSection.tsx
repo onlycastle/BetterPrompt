@@ -117,7 +117,7 @@ function formatScore(value: number, max: number): string {
   return max === 1 ? `${Math.round(value * 100)}%` : `${Math.round(value)}/100`;
 }
 
-function getScoreColor(value: number, max: number): string {
+function getScoreColor(value: number, max: number): 'high' | 'medium' | 'low' {
   const normalized = normalizeScore(value, max);
   if (normalized >= 75) return 'high';
   if (normalized >= 50) return 'medium';
@@ -255,20 +255,21 @@ const POSITIVE_KEYWORDS = ['well', 'good', 'efficient', 'consistent', 'strong', 
 const PROBLEM_KEYWORDS = ['struggle', 'lack', 'miss', 'error', 'loop', 'repeat', 'fail', 'weak', 'poor', 'confus', 'unclear', 'inefficient', 'forgot'];
 const SUGGESTION_KEYWORDS = ['try', 'consider', 'could', 'should', 'recommend', 'suggest', 'would benefit', 'might', 'may want'];
 
+function hasAnyKeyword(text: string, keywords: string[]): boolean {
+  const lower = text.toLowerCase();
+  return keywords.some(kw => lower.includes(kw));
+}
+
 function isPositiveInsight(insight: string): boolean {
-  const lower = insight.toLowerCase();
-  return POSITIVE_KEYWORDS.some(kw => lower.includes(kw)) &&
-         !PROBLEM_KEYWORDS.some(kw => lower.includes(kw));
+  return hasAnyKeyword(insight, POSITIVE_KEYWORDS) && !hasAnyKeyword(insight, PROBLEM_KEYWORDS);
 }
 
 function isProblemInsight(insight: string): boolean {
-  const lower = insight.toLowerCase();
-  return PROBLEM_KEYWORDS.some(kw => lower.includes(kw));
+  return hasAnyKeyword(insight, PROBLEM_KEYWORDS);
 }
 
 function isSuggestionInsight(insight: string): boolean {
-  const lower = insight.toLowerCase();
-  return SUGGESTION_KEYWORDS.some(kw => lower.includes(kw));
+  return hasAnyKeyword(insight, SUGGESTION_KEYWORDS);
 }
 
 interface KPTResult {
@@ -307,7 +308,7 @@ function AgentKPTSummary({ data }: { data: unknown }) {
       <div className={styles.kptGrid}>
         {kpt.keep.length > 0 && (
           <div className={styles.kptColumn}>
-            <span className={styles.kptLabelKeep}>K - 지킬것</span>
+            <span className={styles.kptLabelKeep}>K - Keep</span>
             <ul className={styles.kptList}>
               {kpt.keep.map((item, i) => <li key={i}>{item}</li>)}
             </ul>
@@ -315,7 +316,7 @@ function AgentKPTSummary({ data }: { data: unknown }) {
         )}
         {kpt.problem.length > 0 && (
           <div className={styles.kptColumn}>
-            <span className={styles.kptLabelProblem}>P - 문제점</span>
+            <span className={styles.kptLabelProblem}>P - Problem</span>
             <ul className={styles.kptList}>
               {kpt.problem.map((item, i) => <li key={i}>{item}</li>)}
             </ul>
@@ -323,7 +324,7 @@ function AgentKPTSummary({ data }: { data: unknown }) {
         )}
         {kpt.try.length > 0 && (
           <div className={styles.kptColumn}>
-            <span className={styles.kptLabelTry}>T - 시도할것</span>
+            <span className={styles.kptLabelTry}>T - Try</span>
             <ul className={styles.kptList}>
               {kpt.try.map((item, i) => <li key={i}>{item}</li>)}
             </ul>

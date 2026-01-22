@@ -17,15 +17,15 @@ export function PhilosophySection() {
           </p>
           <p>
             Here&apos;s the uncomfortable truth: when thinking becomes optional,
-            we stop doing it. And when we stop thinking, we stop growing.
+            we stop doing{'\u00A0'}it. And when we stop thinking, we stop growing.
           </p>
           <p className={styles.emphasis}>
             AI isn&apos;t the problem. Unconscious dependency is.
           </p>
           <p>
-            The developers who thrive won&apos;t be those who delegate everything—
-            they&apos;ll be those who know when to think for themselves and when
-            to let AI multiply their work.
+            The developers who thrive won&apos;t be those who delegate everything.
+            They&apos;ll be those who know when to think for themselves and when
+            to let AI multiply their{'\u00A0'}work.
           </p>
         </div>
       </div>
