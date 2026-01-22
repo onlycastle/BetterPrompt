@@ -176,13 +176,12 @@
   text-align: center;
 }
 
-/* PRIMARY Card (ONE-TIME) - Gradient background */
+/* PRIMARY Card (ONE-TIME) - Notebook Sketch style */
 .pricingCard.primary {
-  background: linear-gradient(135deg, #00d4ff, #ff00ff);
-  color: #0a0a0a;
-  box-shadow:
-    0 4px 20px rgba(0, 212, 255, 0.4),
-    3px 3px 0 rgba(0, 0, 0, 0.3);
+  background: var(--sketch-cyan-soft);
+  color: var(--ink-primary);
+  border: 2px solid var(--sketch-cyan);
+  box-shadow: 4px 4px 0 var(--ink-primary);
 }
 
 /* SECONDARY Card (PRO) - Outline style */
@@ -202,6 +201,10 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
+}
+
+.pricingCard.primary .pricingHeader {
+  color: var(--sketch-cyan-text);
 }
 
 .pricingCard.secondary .pricingHeader {
@@ -227,7 +230,7 @@
 .pricingNote {
   font-size: 11px;
   margin-top: 12px;
-  opacity: 0.8;
+  color: var(--text-secondary);
 }
 
 .proFeatures {
@@ -244,17 +247,44 @@
   font-size: 14px;
   font-weight: 700;
   font-family: var(--font-mono);
-  background: #0a0a0a;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
+  background: var(--ink-primary);
+  color: var(--text-on-dark);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow: 2px 2px 0 var(--sketch-cyan);
 }
 
-.unlockCta:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+.unlockCta:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 var(--sketch-cyan);
+}
+
+.unlockCta:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.unlockCta .spinner {
+  display: inline-block;
+  margin-right: 8px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.errorMessage {
+  color: var(--sketch-red);
+  font-size: 12px;
+  margin-top: 8px;
 }
 
 .subscribeCta {
