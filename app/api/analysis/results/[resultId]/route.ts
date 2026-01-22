@@ -302,3 +302,93 @@ export async function GET(
     );
   }
 }
+
+/**
+ * DELETE /api/analysis/results/:resultId
+ *
+ * Delete an analysis result by ID (requires ownership)
+ */
+export async function DELETE(
+  request: NextRequest,
+  context: RouteContext
+): Promise<NextResponse> {
+  try {
+    const { resultId } = await context.params;
+
+    if (!resultId) {
+      return NextResponse.json(
+        { error: 'Invalid request', message: 'resultId is required' },
+        { status: 400 }
+      );
+    }
+
+    // 1. Authenticate user (try Authorization header first, then cookies)
+    let user: User | null = await getUserFromAuthHeader(request);
+
+    if (!user) {
+      try {
+        const serverSupabase = await createSupabaseServerClient();
+        const { data: authData } = await serverSupabase.auth.getUser();
+        user = authData.user;
+      } catch {
+        // Cookie access might fail
+      }
+    }
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', message: 'You must be logged in to delete reports' },
+        { status: 401 }
+      );
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    // 2. Fetch the result to verify ownership
+    const { data: result, error: fetchError } = await supabase
+      .from('analysis_results')
+      .select('user_id')
+      .eq('result_id', resultId)
+      .single();
+
+    if (fetchError || !result) {
+      return NextResponse.json(
+        { error: 'Not found', message: 'Analysis result not found' },
+        { status: 404 }
+      );
+    }
+
+    // 3. Verify ownership
+    if (result.user_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden', message: 'You can only delete your own reports' },
+        { status: 403 }
+      );
+    }
+
+    // 4. Delete the result
+    const { error: deleteError } = await supabase
+      .from('analysis_results')
+      .delete()
+      .eq('result_id', resultId);
+
+    if (deleteError) {
+      console.error('Error deleting result:', deleteError);
+      return NextResponse.json(
+        { error: 'Delete failed', message: 'Failed to delete the analysis result' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, message: 'Report deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting result:', error);
+    return NextResponse.json(
+      {
+        error: 'Delete failed',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}

@@ -383,6 +383,35 @@ ProductivityAnalysisData
 | **Metacognition** (NEW) | Detect self-awareness patterns and blind spots | `MetacognitionOutput` |
 | **TemporalAnalyzer** (NEW) | Analyze prompt quality and fatigue by time of day | `TemporalAnalysisOutput` |
 
+#### Worker Input Configuration Matrix
+
+Each worker receives different subsets of session data based on its analysis needs:
+
+| Worker | User Msg | Assistant Msg | Tool Calls | Duration | Timestamps |
+|--------|:--------:|:-------------:|:----------:|:--------:|:----------:|
+| **DataAnalyst** (Module A) | ✓ | ✓ | ✓ | ✓ | ✗ |
+| **Productivity** (Module C) | ✓ | ✓ | ✓ | ✓ | ✗ |
+| **PatternDetective** | ✓ | ✗ | ✗ | ✗ | ✗ |
+| **AntiPatternSpotter** | ✓ | ✓ | ✓ | ✓ | ✗ |
+| **KnowledgeGap** | ✓ | ✗ | ✗ | ✗ | ✗ |
+| **ContextEfficiency** | ✓ | ✗ | ✗ | ✓ | ✗ |
+| **Metacognition** | ✓ | ✓ | ✗ | ✓ | ✗ |
+| **Temporal** | ✓ | ✓ | ✗ | ✓ | ✓ |
+| **Multitasking** | ✓ | ✗ | Custom | Custom | ✓ |
+| **TypeSynthesis** | — | — | — | — | — |
+
+**Legend:**
+- **User Msg**: User messages included in session data
+- **Assistant Msg**: AI assistant responses included (needed for error loops, interaction patterns)
+- **Tool Calls**: Tool usage information (Bash, Read, Edit, etc.)
+- **Duration**: Session duration metadata
+- **Timestamps**: Per-message timestamps (needed for temporal analysis)
+- **TypeSynthesis**: Receives only agent outputs, not raw session data
+
+**Design Rationale:**
+- **User-only workers** (PatternDetective, KnowledgeGap, ContextEfficiency, Multitasking): Focus on pure user intent and communication patterns
+- **User+Assistant workers** (DataAnalyst, AntiPattern, Metacognition, Temporal): Need interaction context for error loops, fatigue signals, and self-awareness detection
+
 #### Agent Output Schema (AgentOutputs)
 
 ```

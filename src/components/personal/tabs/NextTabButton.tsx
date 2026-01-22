@@ -14,8 +14,6 @@ interface NextTabButtonProps {
   contentRef: RefObject<HTMLElement | null>;
   /** Label for the next tab */
   nextTabLabel: string;
-  /** Icon for the next tab */
-  nextTabIcon: string;
   /** Callback when button is clicked */
   onNextTab: () => void;
 }
@@ -23,7 +21,6 @@ interface NextTabButtonProps {
 export function NextTabButton({
   contentRef,
   nextTabLabel,
-  nextTabIcon,
   onNextTab,
 }: NextTabButtonProps) {
   const { isAtBottom, scrollProgress } = useTabScrollNavigation({
@@ -49,7 +46,6 @@ export function NextTabButton({
           <span className={styles.label}>
             Next: {nextTabLabel}
           </span>
-          <span className={styles.icon}>{nextTabIcon}</span>
           <span className={styles.arrow}>→</span>
         </span>
       </button>

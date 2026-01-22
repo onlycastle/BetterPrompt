@@ -116,11 +116,75 @@ Clustering rules:
 - aiControl: Verification requests, corrections, modifications
 - skillResilience: Cold start behavior, hallucination detection
 
+## Growth Signal Priority (CRITICAL)
+Growth signals are MORE VALUABLE than strength signals for learning:
+- **Minimum ratio**: At least 40% growth clusters / 60% strength clusters
+- **Every dimension** MUST have at least 1 growth cluster with recommendation
+- Users learn more from what to improve than from what they already do well
+- Focus on "what could be better" rather than "what is already good"
+- If you find only strengths, dig deeper - everyone has growth areas
+
+IMPORTANT: If you are tempted to generate more strength clusters than growth clusters,
+reverse your thinking. What weaknesses might explain those strengths being necessary?
+What adjacent skills are underdeveloped?
+
+## Systematic Growth Detection (THREE MECHANISMS)
+
+### Mechanism 1: Strength-Inferred Gaps
+When you detect a strength, CHECK FOR ADJACENT SKILL GAPS:
+
+| Detected Strength | Check For | Rationale |
+|-------------------|-----------|-----------|
+| Strong task delegation | Verification habit | Delegators may skip checking AI work |
+| Strong parallel workflows | Context awareness | Multiple threads can fragment context |
+| Strong expert persona usage | Deep learning | Over-reliance on AI expertise |
+| Fast execution speed | Upfront planning | Speed-focused may skip planning |
+| Strong iterative refinement | Goal clarity | Many iterations may mean unclear goals |
+| Strong verification | Appropriate trust | Over-verification slows simple tasks |
+| Detailed prompting | AI creativity space | Over-specification limits AI |
+| Concise communication | Context richness | Brief prompts may miss key context |
+
+For each strength found, ask: "What adjacent skill might be underdeveloped?"
+
+### Mechanism 2: Behavioral Contrast (Best Practice Comparison)
+For each pattern in expert_knowledge.actionable_patterns where practiced=false:
+- This IS a growth area (expert advice NOT being followed)
+- Use the pattern's if_missing feedback in your analysis
+- CRITICAL: Cite the source (e.g., "According to Anthropic's best practices...")
+- Include this in your actionablePatternMatches with practiced=false
+
+### Mechanism 3: Absence-Based Growth Detection (MOST RELIABLE)
+Detect ABSENCE of expected patterns. This is the most reliable growth detection because
+absence is definitive - if a pattern never appears, it's definitely a growth area.
+
+**Check for these patterns. If ABSENT, report as absenceBasedGrowthSignal:**
+
+| Pattern ID | Detection Method | If Absent → Growth Area |
+|------------|------------------|-------------------------|
+| plan_usage | No "/plan" in ANY session | "Planning Habit Development" |
+| compact_usage | No "/compact" with session >50 turns | "Context Window Management" |
+| verification_questions | No "are you sure", "is that right", "let me check" | "AI Output Verification Habit" |
+| task_decomposition | No numbered steps, "first...then", bullet points | "Scope Management" |
+| why_questions | No "why", "how does this work", "explain" | "Deep Learning Habit" |
+| approach_change | No "different approach", "let's try", "instead of" | "Adaptive Problem-Solving" |
+| fresh_start | No "starting fresh", "new session", context summary | "Session Hygiene" |
+
+For EACH pattern checked, report to absenceBasedGrowthSignals:
+- patternId: the pattern identifier
+- dimension: which dimension this relates to
+- wasAbsent: true if pattern NOT found, false if found
+- sessionsChecked: how many sessions you analyzed
+- growthTitle: human-readable title (from table above)
+- growthDescription: detailed explanation of why this matters
+- recommendation: specific action to take
+- source: "Expected Pattern Analysis"
+
 For EACH dimension, include cluster themes as flattened string arrays:
 - strengthClusterThemes: ["clusterId:theme", ...] (e.g., ["aiControl_s_1:Verification Request Habit"])
 - growthClusterThemes: ["clusterId:theme", ...] (e.g., ["aiControl_g_1:Passive Acceptance Pattern"])
 - clusterId must match the clusterIds assigned to quotes
 - theme describes what the cluster represents (will be used for section titles)
+- REMEMBER: Every dimension needs at least 1 growthClusterTheme
 
 **Anti-Pattern Detection** (target: 0-3 patterns, Premium/Enterprise)
 Detect inefficient AI collaboration patterns (frame as "growth opportunity", NOT criticism):
@@ -243,6 +307,10 @@ Return StructuredAnalysisData with FLATTENED structure:
   * behavior, behaviorType, frequency, effectiveness
   * examples: semicolon-separated string (not array)
   * planContentSummary?, planHasDecomposition?, planStepsCount? (inline, not nested planDetails)
+- absenceBasedGrowthSignals: Array of { patternId, dimension, wasAbsent, sessionsChecked, growthTitle, growthDescription, recommendation, source }
+  * Report ALL expected patterns checked (both absent AND present)
+  * wasAbsent=true for patterns NOT found (these are growth areas)
+  * wasAbsent=false for patterns that WERE found (these are strengths)
 - personalizedPriorities: FLATTENED structure:
   * priority1Dimension, priority1FocusArea, priority1Rationale, priority1ExpectedImpact, priority1Score, priority1ClusterIds
   * priority2Dimension, priority2FocusArea, ... (same pattern)
@@ -313,10 +381,12 @@ Analyze the sessions above and extract:
    - Recurring behaviors across sessions
    - Count frequency and provide 3-6 examples each
 
-4. **Dimension Signals** (6 dimensions)
+4. **Dimension Signals** (6 dimensions, GROWTH PRIORITY)
    - All strength and growth signals per dimension
    - Include strengthClusterThemes: string[] and growthClusterThemes: string[]
    - Format each as "clusterId:theme" (e.g., "aiControl_s_1:Verification Habit")
+   - **CRITICAL**: Each dimension MUST have at least 1 growthClusterTheme
+   - Target: 40% growth / 60% strength clusters minimum
 
 5. **Type Classification**
    - Primary type with evidence
@@ -347,6 +417,20 @@ Analyze the sessions above and extract:
      * priority3Dimension, priority3FocusArea, ... (same pattern)
    - priority*ClusterIds: comma-separated string (e.g., "aiControl_g_1,aiControl_g_2")
    - selectionRationale: explain how these 3 priorities were selected
+
+10. **Absence-Based Growth Signals** (SYSTEMATIC DETECTION)
+   - Check for ABSENCE of each expected pattern:
+     * plan_usage: Look for "/plan" in any session
+     * compact_usage: Look for "/compact" especially in long sessions
+     * verification_questions: Look for "are you sure", "is that right", "let me check"
+     * task_decomposition: Look for numbered steps, "first...then", explicit task breakdown
+     * why_questions: Look for "why", "how does this work", "explain"
+     * approach_change: Look for "different approach", "let's try", "instead of"
+     * fresh_start: Look for "starting fresh", "new session", context summaries
+   - For EACH pattern (found OR absent), output to absenceBasedGrowthSignals:
+     * patternId, dimension, wasAbsent (true if NOT found), sessionsChecked
+     * growthTitle, growthDescription, recommendation, source
+   - This provides SYSTEMATIC growth detection beyond LLM judgment
 
 Return StructuredAnalysisData. Be EXHAUSTIVE.`;
 }

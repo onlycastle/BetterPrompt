@@ -12,10 +12,10 @@
 
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
-import { Github, Mail, CheckCircle, XCircle, Terminal } from 'lucide-react';
+import { Github, Mail, CheckCircle, XCircle, Terminal, FlaskConical } from 'lucide-react';
 import styles from './page.module.css';
 
 function DeviceAuthContent() {
@@ -25,6 +25,14 @@ function DeviceAuthContent() {
   const [userCode, setUserCode] = useState(searchParams.get('code') || '');
   const [user, setUser] = useState<{ email: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [testEmail, setTestEmail] = useState('');
+  const [testPassword, setTestPassword] = useState('');
+  const [testMode, setTestMode] = useState<'login' | 'signup'>('login');
+  const [testError, setTestError] = useState<string | null>(null);
+  const [testLoading, setTestLoading] = useState(false);
+
+  // Ref to prevent duplicate authorization calls (race condition fix)
+  const authorizingRef = useRef(false);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -60,6 +68,12 @@ function DeviceAuthContent() {
   }, [searchParams]);
 
   const authorizeDevice = async (code: string) => {
+    // Prevent duplicate authorization calls (race condition between test login and onAuthStateChange)
+    if (authorizingRef.current) {
+      return;
+    }
+    authorizingRef.current = true;
+
     setStatus('authorizing');
     setErrorMessage(null);
 
@@ -79,10 +93,12 @@ function DeviceAuthContent() {
       } else {
         setStatus('error');
         setErrorMessage(data.message || 'Failed to authorize device');
+        authorizingRef.current = false; // Reset so user can retry
       }
     } catch (error) {
       setStatus('error');
       setErrorMessage('Network error. Please try again.');
+      authorizingRef.current = false; // Reset so user can retry
     }
   };
 
@@ -104,6 +120,28 @@ function DeviceAuthContent() {
         redirectTo: redirectUrl,
       },
     });
+  };
+
+  const handleTestEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTestError(null);
+    setTestLoading(true);
+
+    const { error, data } = testMode === 'login'
+      ? await supabase.auth.signInWithPassword({ email: testEmail, password: testPassword })
+      : await supabase.auth.signUp({ email: testEmail, password: testPassword });
+
+    if (error) {
+      setTestError(error.message);
+      setTestLoading(false);
+    } else if (data.user) {
+      setUser({ email: data.user.email || 'Unknown' });
+      // If we have a code from URL, auto-authorize
+      if (userCode) {
+        await authorizeDevice(userCode);
+      }
+    }
+    setTestLoading(false);
   };
 
   if (loading) {
@@ -154,6 +192,7 @@ function DeviceAuthContent() {
               onClick={() => {
                 setStatus('input');
                 setErrorMessage(null);
+                authorizingRef.current = false; // Reset for retry
               }}
               className={styles.retryButton}
             >
@@ -201,6 +240,56 @@ function DeviceAuthContent() {
                   <p className={styles.codePreview}>
                     Code <span className={styles.codeHighlight}>{userCode}</span> will be authorized after sign in
                   </p>
+                )}
+
+                {/* Test Login Form - Development Only */}
+                {process.env.NODE_ENV !== 'production' && (
+                  <div className={styles.testLoginContainer}>
+                    <div className={styles.testLoginHeader}>
+                      <FlaskConical size={14} className={styles.testLoginIcon} />
+                      <span className={styles.testLoginBadge}>DEV ONLY</span>
+                    </div>
+                    <form onSubmit={handleTestEmailSubmit} className={styles.testLoginForm}>
+                      <input
+                        type="email"
+                        value={testEmail}
+                        onChange={e => setTestEmail(e.target.value)}
+                        placeholder="test@example.com"
+                        required
+                        autoComplete="email"
+                        className={styles.testLoginInput}
+                      />
+                      <input
+                        type="password"
+                        value={testPassword}
+                        onChange={e => setTestPassword(e.target.value)}
+                        placeholder="Password (min 6 chars)"
+                        required
+                        minLength={6}
+                        autoComplete={testMode === 'login' ? 'current-password' : 'new-password'}
+                        className={styles.testLoginInput}
+                      />
+                      {testError && <p className={styles.testLoginError}>{testError}</p>}
+                      <button
+                        type="submit"
+                        disabled={testLoading}
+                        className={styles.testLoginButton}
+                      >
+                        <Mail size={14} />
+                        {testLoading ? 'Processing...' : testMode === 'login' ? 'Sign In' : 'Sign Up'}
+                      </button>
+                    </form>
+                    <button
+                      type="button"
+                      className={styles.testLoginToggle}
+                      onClick={() => {
+                        setTestMode(testMode === 'login' ? 'signup' : 'login');
+                        setTestError(null);
+                      }}
+                    >
+                      {testMode === 'login' ? 'Need an account? Sign up' : 'Have an account? Sign in'}
+                    </button>
+                  </div>
                 )}
               </>
             ) : (

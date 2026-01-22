@@ -105,11 +105,13 @@ export class ProgressDisplay {
 
     // Build multiline output: status on first line (with spinner), chip below
     // This prevents the spinner from colliding with Unicode box-drawing characters
+    // Progress bar on its own line to avoid Unicode width alignment issues
     this.spinner.text = [
       `${mainLine}`,
       `  ${chipLines[0]}`,
-      `  ${chipLines[1]}   ${progressLine}`,
+      `  ${chipLines[1]}`,
       `  ${chipLines[2]}`,
+      `  ${progressLine}`,
     ].join('\n');
   }
 

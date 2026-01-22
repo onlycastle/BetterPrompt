@@ -105,7 +105,14 @@ The developer's content is in Korean. Write the \`adjustmentReasons\` field in *
 Keep type names (architect, scientist, etc.) and technical terms in English.
 
 `
-    : '';
+    : `
+## CRITICAL: English Output Required
+
+**Write ALL output fields in English.**
+Even if the input data contains Korean text, you MUST write your analysis in English.
+Keep the analysis professional and technical.
+
+`;
   // Format initial classification
   const initialClassification = `
 ## INITIAL CLASSIFICATION (Pattern-Based)

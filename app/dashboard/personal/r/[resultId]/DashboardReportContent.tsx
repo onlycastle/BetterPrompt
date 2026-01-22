@@ -22,7 +22,7 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
   const searchParams = useSearchParams();
   const paymentSuccess = searchParams.get('payment') === 'success';
 
-  const { data, isPaid, preview, isLoading, error, errorStatus, refetch } = useRemoteResult(resultId);
+  const { data, isPaid, preview, credits, isLoading, error, errorStatus, refetch } = useRemoteResult(resultId);
   const [showSuccessToast, setShowSuccessToast] = useState(paymentSuccess);
 
   // Hide success toast after delay
@@ -145,7 +145,12 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
 
       {/* Unlock Section */}
       <div className={styles.unlockWrapper}>
-        <UnlockSection isUnlocked={isPaid} resultId={resultId} />
+        <UnlockSection
+          isUnlocked={isPaid}
+          resultId={resultId}
+          credits={credits}
+          onCreditsUsed={refetch}
+        />
       </div>
     </div>
   );

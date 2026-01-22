@@ -27,6 +27,14 @@
   margin: 0 0 var(--space-md) 0;
 }
 
+.sectionDescription {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-lg) 0;
+  line-height: 1.5;
+}
+
 /* Tab Navigation */
 .tabNav {
   display: flex;
@@ -68,14 +76,6 @@
   border: 1px solid var(--sketch-cyan);
 }
 
-.tabIcon {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-}
-
-.tabLabel {
-  white-space: nowrap;
-}
 
 /* Tab Content Area */
 .tabContent {
@@ -111,18 +111,6 @@
     font-size: var(--text-xs);
   }
 
-  .tabIcon {
-    font-size: var(--text-xs);
-  }
-
-  .tabLabel {
-    display: none;
-  }
-
-  /* Show label only for active tab on mobile */
-  .tabActive .tabLabel {
-    display: inline;
-  }
 }
 
 /* Extra small screens */

@@ -58,21 +58,28 @@ const CHIP_FRAMES: Record<ChippyExpression, string[]> = {
 
 /**
  * Pixel dust patterns for animation
+ * Using only ASCII-safe characters for consistent terminal width
  */
-const DUST_PATTERNS = ['▪', '▫', '·', '✧', ' '];
+const DUST_PATTERNS = ['.', '*', ':', '+', ' '];
+
+/**
+ * Fixed width for dust animation (ensures progress bar stability)
+ */
+const DUST_WIDTH = 8;
 
 /**
  * Generate animated pixel dust around the character
- * Returns 3 strings (one for each line) with varying dust positions
+ * Returns 3 strings (one for each line) with FIXED width to prevent progress bar jitter
  */
 function generateDust(tick: number): string[] {
   // Create a deterministic but varied pattern based on tick
   const dustLine = (offset: number): string => {
     const idx1 = (tick + offset) % DUST_PATTERNS.length;
     const idx2 = (tick + offset + 2) % DUST_PATTERNS.length;
-    // Spacing varies to create movement illusion
-    const spacing = (tick + offset) % 3 === 0 ? '  ' : ' ';
-    return `${spacing}${DUST_PATTERNS[idx1]}${spacing}${DUST_PATTERNS[idx2]}`;
+    // Fixed spacing pattern - animation comes from character changes, not position
+    const raw = ` ${DUST_PATTERNS[idx1]}  ${DUST_PATTERNS[idx2]} `;
+    // Pad to fixed width to prevent progress bar position jitter
+    return raw.padEnd(DUST_WIDTH);
   };
 
   return [

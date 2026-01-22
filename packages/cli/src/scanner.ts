@@ -27,17 +27,20 @@ export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
  */
 const PREFILTER_CONFIG = {
   // Files smaller than this are likely too short to be meaningful
-  MIN_FILE_SIZE: 10 * 1024, // 10KB
+  MIN_FILE_SIZE: 5 * 1024, // 5KB (relaxed from 10KB to include shorter meaningful sessions)
   // Files larger than this are suspicious or would dominate memory
   MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB
   // How many candidates to fully read for quality scoring
-  MAX_CANDIDATES: 100,
+  MAX_CANDIDATES: 150, // Increased from 100 to ensure 30 sessions can be found
   // Weight for size score vs recency score in pre-filtering
   SIZE_WEIGHT: 0.3,
   RECENCY_WEIGHT: 0.7,
   // Ideal file size range for size scoring (100KB - 5MB)
   IDEAL_SIZE_MIN: 100 * 1024,
   IDEAL_SIZE_MAX: 5 * 1024 * 1024,
+  // Project diversity in pre-filter
+  MIN_PROJECTS_IN_PREFILTER: 5, // Ensure at least 5 projects in candidates
+  MAX_PER_PROJECT_IN_PREFILTER: 30, // Cap per project to ensure diversity (lowered from 50)
 };
 
 /**
@@ -45,15 +48,19 @@ const PREFILTER_CONFIG = {
  */
 const SELECTION_CONFIG = {
   // Time distribution
-  RECENCY_WINDOW_DAYS: 14, // 2-week window
-  TIME_BUCKETS: 4, // Divide into 4 buckets (3.5 days each)
+  RECENCY_WINDOW_DAYS: 14, // Initial window (dynamically expands if needed)
+  TIME_BUCKETS: 4, // Divide into 4 buckets
+  // Dynamic window expansion: 14 → 30 → 60 → 90 days
+  RECENCY_WINDOW_OPTIONS: [14, 30, 60, 90],
 
-  // Project diversity
+  // Project diversity - tiered selection for maximum diversity
   MIN_PROJECTS: 3, // Target minimum 3 projects
-  MAX_PER_PROJECT: 10, // Maximum sessions per project (for 30 total)
+  MAX_PER_PROJECT_TIER1: 3, // First pass: max 3 per project (maximize diversity)
+  MAX_PER_PROJECT_TIER2: 5, // Second pass: max 5 per project (fill gaps)
+  MAX_PER_PROJECT_FINAL: 15, // Final fallback if still short
 
   // Quality thresholds
-  MIN_MESSAGE_COUNT: 5, // Minimum messages to consider
+  MIN_MESSAGE_COUNT: 3, // Relaxed from 5 to include shorter meaningful sessions
 
   // Final selection
   MAX_SESSIONS: 30, // Default max sessions
@@ -261,6 +268,11 @@ function calculatePrefilterScore(file: FileMetadata, newestMtime: number, oldest
 /**
  * Phase 2: Pre-filter files to top candidates based on size + recency heuristics.
  * This dramatically reduces the number of files we need to fully read.
+ *
+ * Uses project-aware selection to ensure diversity:
+ * 1. Score all files
+ * 2. Select top files from each project (capped at MAX_PER_PROJECT_IN_PREFILTER)
+ * 3. Merge and take top MAX_CANDIDATES
  */
 function prefilterCandidates(allFiles: FileMetadata[]): FileMetadata[] {
   // Filter out files that are too small or too large
@@ -276,16 +288,33 @@ function prefilterCandidates(allFiles: FileMetadata[]): FileMetadata[] {
   const newestMtime = Math.max(...mtimes);
   const oldestMtime = Math.min(...mtimes);
 
-  // Score and sort candidates
+  // Score all files
   const scored = validFiles.map(file => ({
     file,
     score: calculatePrefilterScore(file, newestMtime, oldestMtime),
   }));
 
-  scored.sort((a, b) => b.score - a.score);
+  // Group by project
+  const byProject = new Map<string, Array<{ file: FileMetadata; score: number }>>();
+  for (const item of scored) {
+    const project = item.file.projectDirName;
+    if (!byProject.has(project)) {
+      byProject.set(project, []);
+    }
+    byProject.get(project)!.push(item);
+  }
 
-  // Return top candidates
-  return scored
+  // Sort each project's files by score and cap at MAX_PER_PROJECT_IN_PREFILTER
+  const projectCandidates: Array<{ file: FileMetadata; score: number }> = [];
+  for (const [_project, files] of byProject) {
+    files.sort((a, b) => b.score - a.score);
+    projectCandidates.push(...files.slice(0, PREFILTER_CONFIG.MAX_PER_PROJECT_IN_PREFILTER));
+  }
+
+  // Sort all candidates by score and take top MAX_CANDIDATES
+  projectCandidates.sort((a, b) => b.score - a.score);
+
+  return projectCandidates
     .slice(0, PREFILTER_CONFIG.MAX_CANDIDATES)
     .map(s => s.file);
 }
@@ -304,7 +333,7 @@ async function scoreCandidates(
       const content = await readFile(file.filePath, 'utf-8');
       const metadata = extractMetadataFromContent(file.filePath, content);
 
-      if (metadata && metadata.messageCount >= 5) {
+      if (metadata && metadata.messageCount >= SELECTION_CONFIG.MIN_MESSAGE_COUNT) {
         // Calculate quality score
         const qualityMetrics = extractQualityMetrics(content);
         metadata.qualityScore = calculateQualityScore(qualityMetrics);
@@ -328,31 +357,49 @@ interface ScoredSession {
 
 /**
  * Distribute sessions across time buckets for temporal diversity.
- * Divides the recency window into equal buckets and selects from each.
+ * Uses dynamic time window expansion (14 → 30 → 60 → 90 days) to ensure
+ * enough sessions are found even when recent activity is sparse.
  */
 function distributeByTimeBuckets(
   sessions: ScoredSession[],
   maxSessions: number
 ): ScoredSession[] {
   const now = Date.now();
-  const cutoffMs = SELECTION_CONFIG.RECENCY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-  const cutoffDate = now - cutoffMs;
 
-  // Filter to recent sessions only
-  const recentSessions = sessions.filter(
-    s => s.metadata.timestamp.getTime() >= cutoffDate
-  );
+  // Dynamic time window: progressively expand until we have enough sessions
+  let recentSessions: ScoredSession[] = [];
+  let usedWindowDays = SELECTION_CONFIG.RECENCY_WINDOW_OPTIONS[0];
 
-  // If not enough recent sessions, include all
+  for (const windowDays of SELECTION_CONFIG.RECENCY_WINDOW_OPTIONS) {
+    const cutoffMs = windowDays * 24 * 60 * 60 * 1000;
+    const cutoffDate = now - cutoffMs;
+
+    recentSessions = sessions.filter(
+      s => s.metadata.timestamp.getTime() >= cutoffDate
+    );
+    usedWindowDays = windowDays;
+
+    // Stop expanding if we have enough sessions
+    if (recentSessions.length >= maxSessions) {
+      break;
+    }
+  }
+
+  // If still not enough after max window, use all available sessions
+  if (recentSessions.length < maxSessions && recentSessions.length < sessions.length) {
+    recentSessions = [...sessions];
+  }
+
+  // If we have fewer or equal to maxSessions, return all sorted by quality
   if (recentSessions.length <= maxSessions) {
-    // Sort by quality within each bucket, but return all
     recentSessions.sort((a, b) =>
       (b.metadata.qualityScore ?? 0) - (a.metadata.qualityScore ?? 0)
     );
     return recentSessions;
   }
 
-  // Create time buckets
+  // Create time buckets based on the window we actually used
+  const cutoffMs = usedWindowDays * 24 * 60 * 60 * 1000;
   const bucketSizeMs = cutoffMs / SELECTION_CONFIG.TIME_BUCKETS;
   const buckets: ScoredSession[][] = Array.from(
     { length: SELECTION_CONFIG.TIME_BUCKETS },
@@ -389,6 +436,9 @@ function distributeByTimeBuckets(
 /**
  * Distribute sessions across projects using round-robin selection.
  * Ensures diversity across different codebases.
+ *
+ * If round-robin can't fill maxSessions (due to limited projects),
+ * falls back to quality-based filling from remaining sessions.
  */
 function distributeByProjects(
   sessions: ScoredSession[],
@@ -412,29 +462,64 @@ function distributeByProjects(
     );
   }
 
-  // Round-robin selection across projects
   const selected: ScoredSession[] = [];
+  const selectedIds = new Set<string>();
   const projects = Array.from(byProject.keys());
-  let round = 0;
 
-  while (selected.length < maxSessions) {
-    let addedThisRound = false;
+  // Helper: Round-robin selection up to maxPerProject
+  const roundRobinSelect = (maxPerProject: number) => {
+    let round = 0;
+    while (selected.length < maxSessions) {
+      let addedThisRound = false;
 
-    for (const project of projects) {
-      const projectSessions = byProject.get(project)!;
-      if (
-        round < projectSessions.length &&
-        round < SELECTION_CONFIG.MAX_PER_PROJECT
-      ) {
-        selected.push(projectSessions[round]);
-        addedThisRound = true;
+      for (const project of projects) {
+        const projectSessions = byProject.get(project)!;
+        // Find next unselected session for this project
+        let projectCount = 0;
+        for (const s of selected) {
+          if (s.metadata.projectName === project) projectCount++;
+        }
 
-        if (selected.length >= maxSessions) break;
+        if (projectCount < maxPerProject && projectCount < projectSessions.length) {
+          const session = projectSessions[projectCount];
+          if (!selectedIds.has(session.metadata.sessionId)) {
+            selected.push(session);
+            selectedIds.add(session.metadata.sessionId);
+            addedThisRound = true;
+
+            if (selected.length >= maxSessions) return;
+          }
+        }
       }
-    }
 
-    if (!addedThisRound) break;
-    round++;
+      if (!addedThisRound) break;
+      round++;
+    }
+  };
+
+  // Tier 1: Max 3 per project (maximize project diversity)
+  roundRobinSelect(SELECTION_CONFIG.MAX_PER_PROJECT_TIER1);
+
+  // Tier 2: Max 5 per project (fill with more from existing projects)
+  if (selected.length < maxSessions) {
+    roundRobinSelect(SELECTION_CONFIG.MAX_PER_PROJECT_TIER2);
+  }
+
+  // Tier 3: Max 15 per project (if still short)
+  if (selected.length < maxSessions) {
+    roundRobinSelect(SELECTION_CONFIG.MAX_PER_PROJECT_FINAL);
+  }
+
+  // Final fallback: Fill with remaining high-quality sessions regardless of project
+  if (selected.length < maxSessions) {
+    const remaining = sessions
+      .filter(s => !selectedIds.has(s.metadata.sessionId))
+      .sort((a, b) => (b.metadata.qualityScore ?? 0) - (a.metadata.qualityScore ?? 0));
+
+    for (const session of remaining) {
+      if (selected.length >= maxSessions) break;
+      selected.push(session);
+    }
   }
 
   return selected;

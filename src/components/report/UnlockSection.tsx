@@ -1,13 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { BarChart3, Target, Users, Gift, Coffee, Zap, Lock, Sparkles, Loader2 } from 'lucide-react';
+import { BarChart3, Target, Users, Gift, Coffee, Zap, Lock, Loader2, Coins } from 'lucide-react';
 import { WaitlistModal, waitlistConfigs } from '@/components/landing';
 import styles from './UnlockSection.module.css';
 
 interface UnlockSectionProps {
   isUnlocked: boolean;
   resultId?: string;
+  /** User's credit balance (null if not authenticated) */
+  credits?: number | null;
+  /** Callback after credits are used successfully */
+  onCreditsUsed?: () => void;
 }
 
 /**
@@ -63,11 +67,61 @@ const benefitCategories = [
 /**
  * CTA section for locked/unlocked states
  * Shows unlock badge when premium, paywall with pricing cards when free
+ *
+ * Credit Flow:
+ * - If credits > 0: Show "Use 1 Credit to Unlock" button with balance
+ * - If credits === 0 or null: Show $4.99 one-time payment option
  */
-export function UnlockSection({ isUnlocked, resultId }: UnlockSectionProps) {
+export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: UnlockSectionProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isCreditLoading, setIsCreditLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isProWaitlistOpen, setIsProWaitlistOpen] = useState(false);
+
+  // Determine if user has credits available
+  const hasCredits = credits !== null && credits !== undefined && credits > 0;
+
+  /**
+   * Handle using a credit to unlock the report
+   * Calls /api/credits/use and triggers refetch on success
+   */
+  const handleUseCredit = async () => {
+    if (!resultId) {
+      setError('Unable to process. Please refresh and try again.');
+      return;
+    }
+
+    setIsCreditLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/credits/use', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ resultId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to use credit');
+      }
+
+      if (data.success) {
+        // Trigger parent refetch to reload the report with full data
+        onCreditsUsed?.();
+      } else if (data.reason === 'insufficient_credits') {
+        setError('No credits available. Please purchase credits to unlock.');
+        setIsCreditLoading(false);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setIsCreditLoading(false);
+    }
+  };
 
   /**
    * Handle checkout button click
@@ -118,20 +172,14 @@ export function UnlockSection({ isUnlocked, resultId }: UnlockSectionProps) {
       setIsLoading(false);
     }
   };
+  // Don't render anything when already unlocked - the badge adds no value
+  if (isUnlocked) {
+    return null;
+  }
+
   return (
     <div className={styles.unlockSection}>
-      {isUnlocked ? (
-        <div className={styles.unlockedBadge}>
-          <div className={styles.badgeIcon}>
-            <Sparkles size={48} />
-          </div>
-          <h3 className={styles.badgeTitle}>Full Analysis Unlocked</h3>
-          <p className={styles.badgeSubtitle}>
-            You have access to all premium features and detailed breakdowns.
-          </p>
-        </div>
-      ) : (
-        <div className={styles.lockedContent}>
+      <div className={styles.lockedContent}>
           {/* Header */}
           <div className={styles.lockIcon}>
             <Lock size={32} />
@@ -165,17 +213,51 @@ export function UnlockSection({ isUnlocked, resultId }: UnlockSectionProps) {
             })}
           </div>
 
-          {/* Pricing Cards - ONE-TIME + PRO */}
-          <div className={styles.pricingCards}>
-            {/* ONE-TIME Card (Primary) */}
-            <div className={`${styles.pricingCard} ${styles.primary}`}>
+          {/* Pricing Cards - CREDIT (if available) + ONE-TIME + PRO */}
+          <div className={hasCredits ? styles.pricingCardsWithCredit : styles.pricingCards}>
+            {/* CREDIT Card (shown when user has credits) */}
+            {hasCredits && (
+              <div className={`${styles.pricingCard} ${styles.credit}`}>
+                <div className={styles.pricingHeader}>
+                  <Coins size={20} />
+                  <span>USE CREDIT</span>
+                </div>
+                <div className={styles.creditBalance}>
+                  <span className={styles.creditCount}>{credits}</span>
+                  <span className={styles.creditLabel}>
+                    credit{credits !== 1 ? 's' : ''} available
+                  </span>
+                </div>
+                <button
+                  className={styles.creditCta}
+                  onClick={handleUseCredit}
+                  disabled={isCreditLoading}
+                >
+                  {isCreditLoading ? (
+                    <>
+                      <Loader2 size={16} className={styles.spinner} />
+                      Unlocking...
+                    </>
+                  ) : (
+                    'Use 1 Credit to Unlock'
+                  )}
+                </button>
+                {error && <div className={styles.errorMessage}>{error}</div>}
+                <div className={styles.pricingNote}>
+                  Instant access • No payment required
+                </div>
+              </div>
+            )}
+
+            {/* ONE-TIME Card (Primary when no credits, Secondary when credits available) */}
+            <div className={`${styles.pricingCard} ${hasCredits ? styles.secondary : styles.primary}`}>
               <div className={styles.pricingHeader}>
                 <Coffee size={20} />
                 <span>ONE-TIME</span>
               </div>
               <div className={styles.pricingAmount}>$4.99</div>
               <button
-                className={styles.unlockCta}
+                className={hasCredits ? styles.subscribeCta : styles.unlockCta}
                 onClick={handleCheckout}
                 disabled={isLoading}
               >
@@ -188,30 +270,35 @@ export function UnlockSection({ isUnlocked, resultId }: UnlockSectionProps) {
                   'Unlock Full Report'
                 )}
               </button>
-              {error && <div className={styles.errorMessage}>{error}</div>}
+              {!hasCredits && error && <div className={styles.errorMessage}>{error}</div>}
               <div className={styles.pricingNote}>
                 Less than a coffee • Yours forever
               </div>
+              {process.env.NODE_ENV !== 'production' && (
+                <p className={styles.testHint}>Test coupon: PO100LAR</p>
+              )}
             </div>
 
-            {/* PRO Card (Secondary) */}
-            <div className={`${styles.pricingCard} ${styles.secondary}`}>
-              <div className={styles.pricingHeader}>
-                <Zap size={20} />
-                <span>PRO</span>
+            {/* PRO Card (Secondary) - Only show when no credits to avoid 3-card clutter */}
+            {!hasCredits && (
+              <div className={`${styles.pricingCard} ${styles.secondary}`}>
+                <div className={styles.pricingHeader}>
+                  <Zap size={20} />
+                  <span>PRO</span>
+                </div>
+                <div className={styles.pricingAmount}>$6.99<span>/month</span></div>
+                <div className={styles.proFeatures}>
+                  <div>Regular analysis with personalized data insights</div>
+                  <div>Customized learning resources and feedback for growth</div>
+                </div>
+                <button
+                  className={styles.subscribeCta}
+                  onClick={() => setIsProWaitlistOpen(true)}
+                >
+                  Subscribe →
+                </button>
               </div>
-              <div className={styles.pricingAmount}>$6.99<span>/month</span></div>
-              <div className={styles.proFeatures}>
-                <div>Regular analysis with personalized data insights</div>
-                <div>Customized learning resources and feedback for growth</div>
-              </div>
-              <button
-                className={styles.subscribeCta}
-                onClick={() => setIsProWaitlistOpen(true)}
-              >
-                Subscribe →
-              </button>
-            </div>
+            )}
           </div>
 
           {/* Discord Community CTA */}
@@ -241,7 +328,6 @@ export function UnlockSection({ isUnlocked, resultId }: UnlockSectionProps) {
             </a>
           </div>
         </div>
-      )}
 
       {/* PRO Waitlist Modal */}
       <WaitlistModal
