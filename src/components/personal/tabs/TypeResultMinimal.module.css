@@ -3,6 +3,7 @@
  */
 
 .container {
+  padding: var(--space-lg);
   margin-bottom: var(--space-xl);
 }
 

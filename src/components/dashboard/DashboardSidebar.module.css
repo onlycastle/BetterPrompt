@@ -1,0 +1,160 @@
+/**
+ * Dashboard Sidebar Styles
+ * Fixed left sidebar with notebook sketch aesthetic
+ */
+
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 240px;
+  height: 100vh;
+  background: var(--surface-1);
+  border-right: 2px solid var(--ink-primary);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  text-decoration: none;
+  border-bottom: 2px solid var(--border-default);
+}
+
+.logoIcon {
+  color: var(--sketch-cyan);
+}
+
+.logoText {
+  font-family: var(--font-primary);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+}
+
+/* Navigation */
+.nav {
+  flex: 1;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  transition: all var(--transition-fast);
+  border: 2px solid transparent;
+}
+
+.navItem:hover {
+  background: var(--surface-2);
+  color: var(--ink-primary);
+}
+
+.navItem.active {
+  background: var(--sketch-cyan-soft);
+  color: var(--ink-primary);
+  border-color: var(--sketch-cyan);
+  font-weight: var(--weight-semibold);
+}
+
+.navIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.navLabel {
+  white-space: nowrap;
+}
+
+/* Footer */
+.footer {
+  padding: var(--space-md);
+  border-top: 2px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--sketch-cyan);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  flex-shrink: 0;
+}
+
+.userName {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signOut {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: transparent;
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.signOut:hover {
+  border-color: var(--sketch-red);
+  color: var(--sketch-red);
+  background: var(--sketch-red-soft);
+}
+
+/* Mobile: Hidden by default, show via hamburger (future) */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform var(--transition-base);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+}
