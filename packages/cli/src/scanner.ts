@@ -3,6 +3,15 @@
  *
  * Scans ~/.claude/projects/ for Claude Code session logs,
  * parses JSONL into structured sessions, and prepares for analysis.
+ *
+ * Memory-efficient 4-phase implementation:
+ * - Phase 1: Collect file metadata (size, mtime) using fs.stat only
+ * - Phase 2: Pre-filter to top ~100 candidates based on size + recency heuristics
+ * - Phase 3: Full quality scoring only on candidates
+ * - Phase 4: Parse only the final selected sessions
+ *
+ * This reduces memory usage from potentially GBs to ~100MB
+ * when users have thousands of session files.
  */
 
 import { readFile, readdir, stat } from 'node:fs/promises';
@@ -12,6 +21,34 @@ import { parseSessionContent, type ParsedSession } from './session-formatter.js'
 import { extractQualityMetrics, calculateQualityScore } from './session-scoring.js';
 
 export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
+
+/**
+ * Pre-filtering thresholds for candidate selection
+ */
+const PREFILTER_CONFIG = {
+  // Files smaller than this are likely too short to be meaningful
+  MIN_FILE_SIZE: 10 * 1024, // 10KB
+  // Files larger than this are suspicious or would dominate memory
+  MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB
+  // How many candidates to fully read for quality scoring
+  MAX_CANDIDATES: 100,
+  // Weight for size score vs recency score in pre-filtering
+  SIZE_WEIGHT: 0.3,
+  RECENCY_WEIGHT: 0.7,
+  // Ideal file size range for size scoring (100KB - 5MB)
+  IDEAL_SIZE_MIN: 100 * 1024,
+  IDEAL_SIZE_MAX: 5 * 1024 * 1024,
+};
+
+/**
+ * Lightweight file metadata for pre-filtering (no content read)
+ */
+interface FileMetadata {
+  filePath: string;
+  fileSize: number;
+  mtime: Date;
+  projectDirName: string;
+}
 
 export interface SessionMetadata {
   sessionId: string;
@@ -143,35 +180,150 @@ export async function listSessionFiles(projectDir: string): Promise<string[]> {
 }
 
 /**
- * Scan all sessions and parse them for analysis
- * Uses quality-based scoring to select the most meaningful sessions
+ * Phase 1: Collect lightweight file metadata (no content read)
+ * Only uses fs.stat, so memory usage is minimal.
  */
-export async function scanSessions(maxSessions: number = 15): Promise<ScanResult> {
+async function collectFileMetadata(): Promise<FileMetadata[]> {
   const projectDirs = await listProjectDirs();
-  const allMetadataWithContent: Array<{ metadata: SessionMetadata; content: string }> = [];
+  const allFiles: FileMetadata[] = [];
 
-  // First pass: collect metadata and content for quality scoring
   for (const dir of projectDirs) {
     const files = await listSessionFiles(dir);
     for (const file of files) {
       try {
-        const content = await readFile(file, 'utf-8');
-        const metadata = extractMetadataFromContent(file, content);
-
-        if (metadata && metadata.messageCount >= 5) {
-          // Calculate quality score
-          const qualityMetrics = extractQualityMetrics(content);
-          metadata.qualityScore = calculateQualityScore(qualityMetrics);
-          allMetadataWithContent.push({ metadata, content });
+        const stats = await stat(file);
+        if (stats.isFile()) {
+          allFiles.push({
+            filePath: file,
+            fileSize: stats.size,
+            mtime: stats.mtime,
+            projectDirName: basename(dir),
+          });
         }
       } catch {
-        // Skip unreadable files
+        // Skip inaccessible files
       }
     }
   }
 
+  return allFiles;
+}
+
+/**
+ * Calculate pre-filter score based on file size and recency.
+ * This is a heuristic to select likely-good candidates without reading content.
+ */
+function calculatePrefilterScore(file: FileMetadata, newestMtime: number, oldestMtime: number): number {
+  // Size score: files in the "ideal" range get higher scores
+  let sizeScore: number;
+  if (file.fileSize < PREFILTER_CONFIG.IDEAL_SIZE_MIN) {
+    // Small files: linear scale from 0 to 50
+    sizeScore = (file.fileSize / PREFILTER_CONFIG.IDEAL_SIZE_MIN) * 50;
+  } else if (file.fileSize <= PREFILTER_CONFIG.IDEAL_SIZE_MAX) {
+    // Ideal range: full score
+    sizeScore = 100;
+  } else {
+    // Large files: gradually decrease score
+    const overSize = file.fileSize - PREFILTER_CONFIG.IDEAL_SIZE_MAX;
+    const maxOverSize = PREFILTER_CONFIG.MAX_FILE_SIZE - PREFILTER_CONFIG.IDEAL_SIZE_MAX;
+    sizeScore = Math.max(30, 100 - (overSize / maxOverSize) * 70);
+  }
+
+  // Recency score: linear scale based on mtime
+  const mtimeRange = newestMtime - oldestMtime;
+  const recencyScore = mtimeRange > 0
+    ? ((file.mtime.getTime() - oldestMtime) / mtimeRange) * 100
+    : 100;
+
+  // Weighted combination
+  return sizeScore * PREFILTER_CONFIG.SIZE_WEIGHT + recencyScore * PREFILTER_CONFIG.RECENCY_WEIGHT;
+}
+
+/**
+ * Phase 2: Pre-filter files to top candidates based on size + recency heuristics.
+ * This dramatically reduces the number of files we need to fully read.
+ */
+function prefilterCandidates(allFiles: FileMetadata[]): FileMetadata[] {
+  // Filter out files that are too small or too large
+  const validFiles = allFiles.filter(
+    f => f.fileSize >= PREFILTER_CONFIG.MIN_FILE_SIZE &&
+         f.fileSize <= PREFILTER_CONFIG.MAX_FILE_SIZE
+  );
+
+  if (validFiles.length === 0) return [];
+
+  // Calculate time range for recency scoring
+  const mtimes = validFiles.map(f => f.mtime.getTime());
+  const newestMtime = Math.max(...mtimes);
+  const oldestMtime = Math.min(...mtimes);
+
+  // Score and sort candidates
+  const scored = validFiles.map(file => ({
+    file,
+    score: calculatePrefilterScore(file, newestMtime, oldestMtime),
+  }));
+
+  scored.sort((a, b) => b.score - a.score);
+
+  // Return top candidates
+  return scored
+    .slice(0, PREFILTER_CONFIG.MAX_CANDIDATES)
+    .map(s => s.file);
+}
+
+/**
+ * Phase 3: Full quality scoring on candidates.
+ * Reads file content but only for pre-filtered candidates.
+ */
+async function scoreCandidates(
+  candidates: FileMetadata[]
+): Promise<Array<{ metadata: SessionMetadata; content: string }>> {
+  const results: Array<{ metadata: SessionMetadata; content: string }> = [];
+
+  for (const file of candidates) {
+    try {
+      const content = await readFile(file.filePath, 'utf-8');
+      const metadata = extractMetadataFromContent(file.filePath, content);
+
+      if (metadata && metadata.messageCount >= 5) {
+        // Calculate quality score
+        const qualityMetrics = extractQualityMetrics(content);
+        metadata.qualityScore = calculateQualityScore(qualityMetrics);
+        results.push({ metadata, content });
+      }
+    } catch {
+      // Skip unreadable files
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Scan all sessions and parse them for analysis.
+ *
+ * Uses a 4-phase memory-efficient approach:
+ * 1. Collect lightweight file metadata (no content read)
+ * 2. Pre-filter to top candidates based on size + recency
+ * 3. Full quality scoring only on candidates
+ * 4. Parse only the final selected sessions
+ */
+export async function scanSessions(maxSessions: number = 15): Promise<ScanResult> {
+  // Phase 1: Collect file metadata (memory efficient - no content read)
+  const allFiles = await collectFileMetadata();
+
+  // Phase 2: Pre-filter to top candidates
+  const candidates = prefilterCandidates(allFiles);
+
+  if (candidates.length === 0) {
+    return { sessions: [], totalMessages: 0, totalDurationMinutes: 0 };
+  }
+
+  // Phase 3: Full quality scoring on candidates only
+  const scoredCandidates = await scoreCandidates(candidates);
+
   // Sort by quality score (higher is better), then by recency as tiebreaker
-  allMetadataWithContent.sort((a, b) => {
+  scoredCandidates.sort((a, b) => {
     const scoreDiff = (b.metadata.qualityScore ?? 0) - (a.metadata.qualityScore ?? 0);
     // Only use recency as tiebreaker if scores are within 5 points
     if (Math.abs(scoreDiff) > 5) return scoreDiff;
@@ -179,9 +331,9 @@ export async function scanSessions(maxSessions: number = 15): Promise<ScanResult
   });
 
   // Select top sessions
-  const selected = allMetadataWithContent.slice(0, maxSessions);
+  const selected = scoredCandidates.slice(0, maxSessions);
 
-  // Parse content for selected sessions
+  // Phase 4: Parse content for selected sessions
   const sessions: SessionWithParsed[] = [];
   let totalMessages = 0;
   let totalDurationMinutes = 0;
