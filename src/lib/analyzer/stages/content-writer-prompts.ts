@@ -94,6 +94,18 @@ GROWTH AREAS:
 - Include detailed, actionable recommendations (up to 400 chars)
 - Evidence quotes will be added automatically via clusterId matching
 
+ABSENCE-BASED GROWTH INTEGRATION (CRITICAL):
+- Check absenceBasedGrowthSignals from Stage 1 data
+- For each signal where wasAbsent=true, this is a SYSTEMATIC growth area
+- These should be PRIORITIZED because absence detection is more reliable than positive detection
+- Include in growthAreasData with:
+  - clusterId: use the patternId prefixed with "absence_" (e.g., "absence_plan_usage")
+  - title: use growthTitle from the signal
+  - description: use growthDescription, but personalize it with session context (500+ chars for depth)
+  - recommendation: use the signal's recommendation
+- CITE SOURCES: When behavioral contrast shows unmet best practices, cite the source
+  - Example: "According to Anthropic's best practices, using /plan before complex tasks..."
+
 ⚠️ VALIDATION: Each clusterId in output MUST exist in Stage 1 cluster themes. Missing or wrong clusterId = broken evidence matching.
 
 **Prompt Patterns** (5-12 patterns for comprehensive analysis)
@@ -425,7 +437,12 @@ Using the extracted data above, create a VerboseLLMResponse:
    - For each strength cluster: transform theme into engaging title (max 80 chars), write description (max 500 chars)
    - For each growth cluster: transform theme into title, write description and recommendation (max 400 chars)
    - Evidence quotes are added automatically - do NOT include evidence arrays
-   - CRITICAL: Order of strengths/growthAreas MUST match order of clusters in Stage 1${koreanDimensionReminder}
+   - CRITICAL: Order of strengths/growthAreas MUST match order of clusters in Stage 1
+   - **ABSENCE-BASED GROWTH**: For each absenceBasedGrowthSignal where wasAbsent=true:
+     * Add to the appropriate dimension's growthAreasData
+     * Use detailed descriptions (500+ chars) explaining why this matters
+     * Cite sources when available (e.g., "According to Anthropic's best practices...")
+     * These systematic insights should appear FIRST in growth areas (highest priority)${koreanDimensionReminder}
 
 4. **Prompt Patterns** (5-12 for comprehensive analysis)
    - Transform detectedPatterns into distinctively named patterns
