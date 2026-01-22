@@ -226,7 +226,7 @@ const ADVICE_TEMPLATES: Record<DimensionName, AdviceTemplate> = {
       'Your "only this" pattern prevents scope creep and improves AI accuracy.',
     ],
     improvement: [
-      'Try "먼저 X 하고, 그 다음 Y" instead of "X와 Y 둘 다 해줘". Sequential requests work better.',
+      'Try "First do X, then Y" instead of "Do both X and Y". Sequential requests work better.',
       'Complete one task before adding another. "Also add X" often degrades quality.',
       'If your request has "and" 3+ times, consider splitting it into separate requests.',
     ],

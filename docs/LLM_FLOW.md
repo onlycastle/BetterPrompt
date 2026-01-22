@@ -182,7 +182,7 @@ StructuredAnalysisData
 │
 ├── typeAnalysis
 │   ├── primaryType: "architect" | "scientist" | "collaborator" | "speedrunner" | "craftsman"
-│   ├── controlLevel: "vibe-coder" | "developing" | "ai-master"
+│   ├── controlLevel: "explorer" | "navigator" | "cartographer"
 │   ├── distribution: { architect: 30, scientist: 25, ... }  ← sum = 100
 │   └── reasoning: "Based on planning behavior..."
 │
@@ -456,7 +456,7 @@ AgentOutputs
 └── typeSynthesis (NEW - Phase 2.5)  ← Refined classification using all agent outputs
     ├── refinedPrimaryType: "architect" | "scientist" | "collaborator" | "speedrunner" | "craftsman"
     ├── refinedDistribution: string  ← "type:percent;..." format
-    ├── refinedControlLevel: "vibe-coder" | "developing" | "ai-master"
+    ├── refinedControlLevel: "explorer" | "navigator" | "cartographer"
     ├── matrixName: string  ← Combined name (e.g., "Systems Architect", "Yolo Coder")
     ├── matrixEmoji: string
     ├── adjustmentReasons: string[]  ← Why classification was adjusted
@@ -503,8 +503,8 @@ AgentOutputs
 │               ▼                                                          │
 │  ┌──────────────────┐                                                   │
 │  │  OUTPUT          │     SYNTHESIS RULES:                              │
-│  │  TypeSynthesis   │     - Error loops + low metacognition → vibe-coder│
-│  │  Output          │     - High metacognition score → ai-master        │
+│  │  TypeSynthesis   │     - Error loops + low metacognition → explorer  │
+│  │  Output          │     - High metacognition score → cartographer     │
 │  │                  │     - Repeated questions → scientist tendency     │
 │  │  - Refined type  │     - High focus → architect; scattered → speedrun│
 │  │  - Matrix name   │     - High context efficiency → architect/craftsm │
@@ -519,7 +519,7 @@ AgentOutputs
 1. **Initial Classification** (from `type-detector.ts`):
    - Pattern-based scoring from raw session metrics
    - 5 coding styles: architect, scientist, collaborator, speedrunner, craftsman
-   - 3 control levels: vibe-coder, developing, ai-master
+   - 3 control levels: explorer, navigator, cartographer
 
 2. **Agent Insights Collection**:
    - PatternDetective: repeated questions, conversation style
@@ -913,8 +913,8 @@ Module A에 주입되는 전문가 지식 구조:
   ║           - adjustmentReasons + synthesisEvidence                  ║
   ║                                                                    ║
   ║   SYNTHESIS RULES:                                                 ║
-  ║   - Error loops + low metacognition → vibe-coder tendency          ║
-  ║   - High metacognition (>70) → ai-master tendency                  ║
+  ║   - Error loops + low metacognition → explorer tendency             ║
+  ║   - High metacognition (>70) → cartographer tendency               ║
   ║   - Repeated questions → scientist tendency                        ║
   ║   - High focus → architect; scattered → speedrunner                ║
   ║                                                                    ║

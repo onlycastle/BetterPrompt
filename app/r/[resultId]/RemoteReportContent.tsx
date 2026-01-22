@@ -200,7 +200,7 @@ export function RemoteReportContent({ resultId }: RemoteReportContentProps) {
 
         {/* Unlock section for free users */}
         <div className={styles.unlockWrapper}>
-          <UnlockSection isUnlocked={isPaid} />
+          <UnlockSection isUnlocked={isPaid} resultId={resultId} />
         </div>
       </div>
     </div>

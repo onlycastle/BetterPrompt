@@ -7,13 +7,53 @@
   font-weight: var(--weight-bold);
   color: var(--ink-primary);
   text-align: center;
+  margin-bottom: var(--space-xs);
+}
+
+.subheadline {
+  font-size: var(--text-md);
+  color: var(--ink-secondary);
+  text-align: center;
   margin-bottom: var(--space-2xl);
 }
 
-.grid {
+/* ═══════════════════════════════════════════════════════════════
+   Dimensional Equation: 5 Styles × 3 Levels
+   ═══════════════════════════════════════════════════════════════ */
+
+.equation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.dimension {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  width: 100%;
+}
+
+.dimensionLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   5 Style Cards
+   ═══════════════════════════════════════════════════════════════ */
+
+.styleGrid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: var(--space-md);
+  width: 100%;
 }
 
 .card {
@@ -50,21 +90,215 @@
   line-height: var(--leading-normal);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   Operator (×)
+   ═══════════════════════════════════════════════════════════════ */
+
+.operator {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  color: var(--sketch-cyan);
+  line-height: 1;
+  padding: var(--space-sm) 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   3 Level Cards
+   ═══════════════════════════════════════════════════════════════ */
+
+.levelGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 600px;
+}
+
+.levelCard {
+  padding: var(--space-md) var(--space-lg);
+  background: var(--glass-bg);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  cursor: default;
+}
+
+.levelCard:hover {
+  transform: rotate(0.5deg) translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.levelName {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.levelTagline {
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+  line-height: var(--leading-normal);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Equals Section
+   ═══════════════════════════════════════════════════════════════ */
+
+.equalsSection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.equalsSign {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  color: var(--sketch-cyan);
+  line-height: 1;
+}
+
+.equalsText {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   5×3 Matrix Grid
+   ═══════════════════════════════════════════════════════════════ */
+
+.matrixContainer {
+  overflow-x: auto;
+  padding: var(--space-sm);
+  margin: 0 calc(-1 * var(--space-md));
+}
+
+.matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 600px;
+  margin: 0 auto;
+  max-width: 900px;
+  background: var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.matrixHeader {
+  display: grid;
+  grid-template-columns: 140px repeat(3, 1fr);
+  gap: 2px;
+}
+
+.matrixCorner {
+  background: var(--paper-bg);
+  padding: var(--space-sm);
+}
+
+.matrixLevelHeader {
+  background: var(--glass-bg);
+  padding: var(--space-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-cyan);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.matrixRow {
+  display: grid;
+  grid-template-columns: 140px repeat(3, 1fr);
+  gap: 2px;
+}
+
+.matrixStyleHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  background: var(--glass-bg);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.matrixStyleEmoji {
+  font-size: 20px;
+}
+
+.matrixStyleName {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+}
+
+.matrixCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper-bg);
+  padding: var(--space-sm) var(--space-md);
+  min-height: 52px;
+  transition: background var(--transition-fast);
+  cursor: default;
+}
+
+.matrixCell:hover {
+  background: var(--glass-bg);
+}
+
+.matrixCellName {
+  font-size: var(--text-sm);
+  color: var(--ink-primary);
+  text-align: center;
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-medium);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Note
+   ═══════════════════════════════════════════════════════════════ */
+
 .note {
   text-align: center;
   font-size: var(--text-sm);
   color: var(--ink-muted);
-  margin-top: var(--space-lg);
+  margin-top: var(--space-xl);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   Responsive: Tablet (1024px)
+   ═══════════════════════════════════════════════════════════════ */
+
 @media (max-width: 1024px) {
-  .grid {
+  .styleGrid {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .card:nth-child(4),
+  .card:nth-child(5) {
+    max-width: 200px;
+    justify-self: center;
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   Responsive: Mobile (640px)
+   ═══════════════════════════════════════════════════════════════ */
+
 @media (max-width: 640px) {
-  .grid {
+  .headline {
+    font-size: var(--text-xl);
+  }
+
+  .subheadline {
+    font-size: var(--text-sm);
+  }
+
+  .styleGrid {
     grid-template-columns: repeat(2, 1fr);
   }
 
@@ -72,8 +306,10 @@
     padding: var(--space-md);
   }
 
-  .emoji {
-    font-size: 28px;
+  .card:nth-child(4),
+  .card:nth-child(5) {
+    max-width: none;
+    justify-self: stretch;
   }
 
   .card:nth-child(5) {
@@ -81,10 +317,67 @@
     max-width: 50%;
     margin: 0 auto;
   }
+
+  .emoji {
+    font-size: 28px;
+  }
+
+  .levelGrid {
+    grid-template-columns: 1fr;
+    max-width: 280px;
+  }
+
+  .operator,
+  .equalsSign {
+    font-size: var(--text-2xl);
+  }
+
+  .equalsText {
+    font-size: var(--text-lg);
+  }
+
+  .matrix {
+    min-width: 500px;
+  }
+
+  .matrixHeader,
+  .matrixRow {
+    grid-template-columns: 100px repeat(3, 1fr);
+  }
+
+  .matrixStyleEmoji {
+    display: none;
+  }
+
+  .matrixStyleName {
+    font-size: var(--text-xs);
+  }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Responsive: Small Mobile (400px)
+   ═══════════════════════════════════════════════════════════════ */
 
 @media (max-width: 400px) {
   .card:nth-child(5) {
     max-width: 100%;
+  }
+
+  .matrix {
+    min-width: 420px;
+  }
+
+  .matrixHeader,
+  .matrixRow {
+    grid-template-columns: 80px repeat(3, 1fr);
+  }
+
+  .matrixCell {
+    padding: var(--space-xs) var(--space-sm);
+    min-height: 44px;
+  }
+
+  .matrixCellName {
+    font-size: var(--text-xs);
   }
 }

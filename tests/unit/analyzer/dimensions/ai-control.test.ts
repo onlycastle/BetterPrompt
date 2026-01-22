@@ -127,7 +127,7 @@ describe('AI Control Dimension', () => {
     });
 
     describe('level classification', () => {
-      it('should classify high control as ai-master', () => {
+      it('should classify high control as cartographer', () => {
         // Create sessions with high control patterns
         const sessions = Array(5)
           .fill(null)
@@ -143,12 +143,12 @@ describe('AI Control Dimension', () => {
 
         const result = calculateAIControl(sessions);
 
-        // High engagement should result in ai-master or developing
-        expect(['ai-master', 'developing']).toContain(result.level);
+        // High engagement should result in cartographer or navigator
+        expect(['cartographer', 'navigator']).toContain(result.level);
         expect(result.score).toBeGreaterThan(30);
       });
 
-      it('should classify low control as vibe-coder or developing', () => {
+      it('should classify low control as explorer or navigator', () => {
         // Create sessions with minimal control patterns
         const sessions = [
           createMockSession(['make this work']),
@@ -159,8 +159,8 @@ describe('AI Control Dimension', () => {
         const result = calculateAIControl(sessions);
 
         // Low engagement should result in lower scores
-        // Depending on context control baseline, may be developing or vibe-coder
-        expect(['vibe-coder', 'developing']).toContain(result.level);
+        // Depending on context control baseline, may be navigator or explorer
+        expect(['explorer', 'navigator']).toContain(result.level);
         expect(result.score).toBeLessThan(50);
       });
     });

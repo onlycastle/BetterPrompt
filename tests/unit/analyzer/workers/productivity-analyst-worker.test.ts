@@ -51,7 +51,7 @@ function createMockContext(includeModuleA = true): WorkerContext {
     baseContext.moduleAOutput = {
       typeAnalysis: {
         primaryType: 'architect',
-        controlLevel: 'ai-master',
+        controlLevel: 'cartographer',
         distribution: {
           architect: 40,
           scientist: 20,

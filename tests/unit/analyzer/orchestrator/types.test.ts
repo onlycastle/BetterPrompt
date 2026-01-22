@@ -350,7 +350,7 @@ describe('Orchestrator Types', () => {
         moduleAOutput: {
           typeResult: {
             primaryType: 'architect',
-            controlLevel: 'ai-master',
+            controlLevel: 'cartographer',
             architectScore: 85,
             scientistScore: 60,
             collaboratorScore: 70,

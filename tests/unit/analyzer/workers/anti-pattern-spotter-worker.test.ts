@@ -61,7 +61,7 @@ function createMockContext(tier: 'free' | 'premium' | 'enterprise' = 'premium'):
     moduleAOutput: {
       typeAnalysis: {
         primaryType: 'architect',
-        controlLevel: 'ai-master',
+        controlLevel: 'cartographer',
         distribution: {
           architect: 40,
           scientist: 20,

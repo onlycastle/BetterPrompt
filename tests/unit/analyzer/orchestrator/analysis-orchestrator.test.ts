@@ -24,7 +24,7 @@ vi.mock('../../../../src/lib/analyzer/stages/content-writer.js', () => ({
       return {
         data: {
           primaryType: 'architect',
-          controlLevel: 'ai-master',
+          controlLevel: 'cartographer',
           distribution: {
             architect: 40,
             scientist: 25,
@@ -195,7 +195,7 @@ describe('AnalysisOrchestrator', () => {
     mockDataAnalystData = {
       typeResult: {
         primaryType: 'architect',
-        controlLevel: 'ai-master',
+        controlLevel: 'cartographer',
         architectScore: 85,
         scientistScore: 60,
         collaboratorScore: 70,

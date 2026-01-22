@@ -67,9 +67,9 @@ export const KNOWLEDGE_DRIVEN_PATTERNS: KnowledgeDrivenPattern[] = [
     dimension: 'contextEngineering',
     target: 'user',
     foundFeedback:
-      'Anthropic 권장대로 /compact를 활용해 컨텍스트를 관리했습니다. 이는 Context Engineering의 COMPRESS 전략입니다.',
+      'You used /compact to manage context as Anthropic recommends. This is the COMPRESS strategy in Context Engineering.',
     missingFeedback:
-      '컨텍스트가 길어지면 /compact로 정리해보세요. Anthropic이 권장하는 Context Compaction 기법입니다.',
+      'Try using /compact when context gets long. This is the Context Compaction technique recommended by Anthropic.',
     priority: 9,
   },
   {
@@ -84,9 +84,9 @@ export const KNOWLEDGE_DRIVEN_PATTERNS: KnowledgeDrivenPattern[] = [
     dimension: 'contextEngineering',
     target: 'both',
     foundFeedback:
-      'Task tool을 활용해 작업을 위임하는 패턴이 보입니다. Anthropic이 권장하는 ISOLATE 전략입니다.',
+      'You delegate work using the Task tool. This is the ISOLATE strategy recommended by Anthropic.',
     missingFeedback:
-      '복잡한 작업은 Task tool로 전문 에이전트에게 위임해보세요. 컨텍스트 분리에 효과적입니다.',
+      'Try delegating complex tasks to specialized agents via Task tool. It effectively separates context.',
     priority: 8,
   },
 
@@ -103,9 +103,9 @@ export const KNOWLEDGE_DRIVEN_PATTERNS: KnowledgeDrivenPattern[] = [
     dimension: 'aiCollaboration',
     target: 'user',
     foundFeedback:
-      '계획을 먼저 작성하는 습관이 보입니다. "80% 계획, 20% 실행" 원칙을 실천하고 있습니다.',
+      'You have a habit of writing plans first. You practice the "80% planning, 20% execution" principle.',
     missingFeedback:
-      '복잡한 기능 구현 전 plan.md를 작성해보세요. 상위 개발자들은 80%의 시간을 계획에 투자합니다.',
+      'Try writing a plan.md before implementing complex features. Top developers invest 80% of their time in planning.',
     priority: 7,
   },
   {
@@ -119,9 +119,9 @@ export const KNOWLEDGE_DRIVEN_PATTERNS: KnowledgeDrivenPattern[] = [
     dimension: 'aiCollaboration',
     target: 'user',
     foundFeedback:
-      '구현 전 요구사항/기준을 명시하는 패턴이 보입니다. AI에게 명확한 목표를 제공합니다.',
+      'You specify requirements/criteria before implementation. You provide clear goals to AI.',
     missingFeedback:
-      'AI에게 구현 요청 전 acceptance criteria를 정의해보세요. 결과물 품질이 크게 향상됩니다.',
+      'Try defining acceptance criteria before asking AI to implement. Output quality improves dramatically.',
     priority: 7,
   },
   {
@@ -134,9 +134,9 @@ export const KNOWLEDGE_DRIVEN_PATTERNS: KnowledgeDrivenPattern[] = [
     dimension: 'aiCollaboration',
     target: 'both',
     foundFeedback:
-      'TodoWrite를 활용해 작업을 구조화하고 있습니다. 체계적인 작업 관리 패턴입니다.',
+      'You use TodoWrite to structure your work. This is a systematic task management pattern.',
     missingFeedback:
-      'TodoWrite tool로 작업을 구조화해보세요. 복잡한 작업을 단계별로 추적할 수 있습니다.',
+      'Try structuring your work with TodoWrite tool. It helps track complex tasks step by step.',
     priority: 6,
   },
 
@@ -154,9 +154,9 @@ export const KNOWLEDGE_DRIVEN_PATTERNS: KnowledgeDrivenPattern[] = [
     dimension: 'aiControl',
     target: 'user',
     foundFeedback:
-      'AI 결과물을 적극적으로 수정/보완하는 패턴이 보입니다. 전문 개발자는 약 50%의 AI 코드를 수정합니다.',
+      'You actively modify/refine AI output. Expert developers modify about 50% of AI-generated code.',
     missingFeedback:
-      'AI 결과물을 그대로 수용하는 경향이 있습니다. "이게 맞아?" 하고 한 번 더 검토해보세요.',
+      'You tend to accept AI output as-is. Try reviewing with "Is this right?" before accepting.',
     priority: 8,
   },
   {
@@ -169,9 +169,9 @@ export const KNOWLEDGE_DRIVEN_PATTERNS: KnowledgeDrivenPattern[] = [
     dimension: 'aiControl',
     target: 'user',
     foundFeedback:
-      'AI 응답에 의문을 제기하는 습관이 보입니다. 이는 hallucination 방지에 효과적입니다.',
+      'You have a habit of questioning AI responses. This is effective at preventing hallucinations.',
     missingFeedback:
-      '세션당 최소 한 번은 AI에게 "정말 맞아?"라고 도전해보세요. 오류 발견율이 높아집니다.',
+      'Try challenging AI with "are you sure?" at least once per session. It increases error detection.',
     priority: 8,
   },
   {
@@ -183,9 +183,9 @@ export const KNOWLEDGE_DRIVEN_PATTERNS: KnowledgeDrivenPattern[] = [
     pattern: /\b(run\s+(the\s+)?tests?|npm\s+test|yarn\s+test|pytest|jest|vitest|quick\s+test)\b/i,
     dimension: 'aiControl',
     target: 'both',
-    foundFeedback: '빠른 검증 습관이 보입니다. 속도와 정확성을 모두 챙기는 좋은 패턴입니다.',
+    foundFeedback: 'You have a quick verification habit. A good pattern that balances speed and accuracy.',
     missingFeedback:
-      '다음 작업으로 넘어가기 전 간단한 테스트를 실행해보세요. 30초 투자로 큰 버그를 막습니다.',
+      'Try running a simple test before moving on. A 30-second investment can prevent major bugs.',
     priority: 7,
   },
 
@@ -203,9 +203,9 @@ export const KNOWLEDGE_DRIVEN_PATTERNS: KnowledgeDrivenPattern[] = [
     dimension: 'skillResilience',
     target: 'user',
     foundFeedback:
-      'AI 투입 전 스펙/슈도코드를 작성하는 패턴이 보입니다. 독립적 사고력을 유지하는 좋은 습관입니다.',
+      'You write specs/pseudocode before involving AI. A good habit that maintains independent thinking.',
     missingFeedback:
-      'AI에게 바로 요청하기 전, 간단한 슈도코드를 먼저 작성해보세요. 스킬 위축을 방지합니다.',
+      'Try writing simple pseudocode before asking AI. It prevents skill atrophy.',
     priority: 9,
   },
   {
@@ -219,9 +219,9 @@ export const KNOWLEDGE_DRIVEN_PATTERNS: KnowledgeDrivenPattern[] = [
     dimension: 'skillResilience',
     target: 'user',
     foundFeedback:
-      'AI 생성 코드에 대해 설명을 요청하는 패턴이 보입니다. 이해 없이 넘어가지 않는 좋은 습관입니다.',
+      'You ask for explanations of AI-generated code. A good habit of not moving on without understanding.',
     missingFeedback:
-      'AI가 생성한 코드를 설명할 수 있나요? 설명하지 못한다면 스킬 위축의 경고 신호입니다.',
+      'Can you explain the code AI generated? If not, it is a warning sign of skill atrophy.',
     priority: 9,
   },
   {
@@ -235,9 +235,9 @@ export const KNOWLEDGE_DRIVEN_PATTERNS: KnowledgeDrivenPattern[] = [
     dimension: 'skillResilience',
     target: 'user',
     foundFeedback:
-      '자신의 생각/계획을 먼저 제시하는 패턴이 보입니다. AI 의존도가 낮은 건강한 습관입니다.',
+      'You present your own thoughts/plans first. A healthy habit with low AI dependency.',
     missingFeedback:
-      'AI에게 요청 전 "내가 먼저 시작할 수 있을까?" 자문해보세요. 의존성을 점검하는 좋은 습관입니다.',
+      'Before asking AI, ask yourself "Could I start this myself?" A good habit to check dependency.',
     priority: 8,
   },
 
@@ -254,9 +254,9 @@ export const KNOWLEDGE_DRIVEN_PATTERNS: KnowledgeDrivenPattern[] = [
     dimension: 'contextEngineering',
     target: 'user',
     foundFeedback:
-      'Context window를 인식하고 관리하는 패턴이 보입니다. Karpathy가 말한 "Context Engineering" 역량입니다.',
+      'You recognize and manage the context window. This is the "Context Engineering" capability Karpathy describes.',
     missingFeedback:
-      'Context window 한계를 인식하고 계신가요? 이를 관리하는 것이 새로운 핵심 스킬입니다.',
+      'Are you aware of context window limits? Managing this is a critical new skill.',
     priority: 10,
   },
   {
@@ -269,9 +269,9 @@ export const KNOWLEDGE_DRIVEN_PATTERNS: KnowledgeDrivenPattern[] = [
     dimension: 'contextEngineering',
     target: 'user',
     foundFeedback:
-      '전략적으로 새 세션을 시작하는 패턴이 보입니다. 컨텍스트 오염을 방지하는 좋은 습관입니다.',
+      'You strategically start fresh sessions. A good habit that prevents context pollution.',
     missingFeedback:
-      '컨텍스트가 복잡해지면 새 세션으로 시작하는 것도 좋은 전략입니다. /compact와 함께 활용해보세요.',
+      'Starting a fresh session when context gets complex is a good strategy. Try using it with /compact.',
     priority: 7,
   },
 ];

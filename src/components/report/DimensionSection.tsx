@@ -53,11 +53,11 @@ export function DimensionSection({
     expert: styles.healthy,
     proficient: styles.healthy,
     resilient: styles.healthy,
-    'ai-master': styles.healthy,
-    developing: styles.balanced,
+    cartographer: styles.healthy,
+    navigator: styles.balanced,
     high: styles.warning,
     'at-risk': styles.warning,
-    'vibe-coder': styles.warning,
+    explorer: styles.warning,
   };
 
   // Get level class for styling

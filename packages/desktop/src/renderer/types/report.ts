@@ -15,7 +15,7 @@ export type CodingStyleType =
   | 'speedrunner'
   | 'craftsman';
 
-export type AIControlLevel = 'vibe-coder' | 'developing' | 'ai-master';
+export type AIControlLevel = 'explorer' | 'navigator' | 'cartographer';
 
 export interface TypeDistribution {
   architect: number;
@@ -131,29 +131,29 @@ export const REPORT_TYPE_METADATA: Record<CodingStyleType, TypeMetadata> = {
  */
 export const MATRIX_NAMES: Record<CodingStyleType, Record<AIControlLevel, string>> = {
   architect: {
-    'vibe-coder': 'Dreamer',
-    developing: 'Planner',
-    'ai-master': 'Systems Architect',
+    explorer: 'Visionary',
+    navigator: 'Strategist',
+    cartographer: 'Systems Architect',
   },
   scientist: {
-    'vibe-coder': 'Curious',
-    developing: 'Investigator',
-    'ai-master': 'Research Master',
+    explorer: 'Questioner',
+    navigator: 'Analyst',
+    cartographer: 'Research Lead',
   },
   collaborator: {
-    'vibe-coder': 'Follower',
-    developing: 'Partner',
-    'ai-master': 'Conductor',
+    explorer: 'Conversationalist',
+    navigator: 'Team Player',
+    cartographer: 'Facilitator',
   },
   speedrunner: {
-    'vibe-coder': 'Yolo Coder',
-    developing: 'Fast Learner',
-    'ai-master': 'Efficient Master',
+    explorer: 'Experimenter',
+    navigator: 'Rapid Prototyper',
+    cartographer: 'Velocity Expert',
   },
   craftsman: {
-    'vibe-coder': 'Perfectionist',
-    developing: 'Quality Seeker',
-    'ai-master': 'Code Artisan',
+    explorer: 'Detail Lover',
+    navigator: 'Quality Crafter',
+    cartographer: 'Master Artisan',
   },
 };
 
@@ -173,101 +173,101 @@ export const MATRIX_METADATA: Record<
   >
 > = {
   architect: {
-    'vibe-coder': {
+    explorer: {
       emoji: '💭',
-      description: 'You plan well but tend to let AI take over implementation.',
-      keyStrength: 'Clear vision and planning',
+      description: 'You explore solutions through open-ended planning and vision.',
+      keyStrength: 'Clear vision and creative planning',
       growthPath: 'Try validating AI output against your plans more actively',
     },
-    developing: {
+    navigator: {
       emoji: '📐',
-      description: 'You balance planning with hands-on verification.',
-      keyStrength: 'Structured approach with growing control',
+      description: 'You balance strategic planning with hands-on verification.',
+      keyStrength: 'Structured approach with balanced control',
       growthPath: 'Keep building verification habits',
     },
-    'ai-master': {
+    cartographer: {
       emoji: '🏛️',
-      description: 'You orchestrate AI with precision, using plans as control mechanisms.',
+      description: 'You map out the territory completely before advancing.',
       keyStrength: 'Strategic AI orchestration with full control',
       growthPath: 'Share your planning techniques with others',
     },
   },
   scientist: {
-    'vibe-coder': {
+    explorer: {
       emoji: '🔎',
-      description: 'You ask questions but may accept answers too readily.',
+      description: 'You explore through curious questioning and open inquiry.',
       keyStrength: 'Curious mind and questioning attitude',
       growthPath: 'Try challenging AI responses more often',
     },
-    developing: {
+    navigator: {
       emoji: '🧪',
-      description: 'You verify AI output and are building critical thinking habits.',
+      description: 'You navigate through hypothesis and verification.',
       keyStrength: 'Growing verification skills',
       growthPath: 'Add systematic testing to your workflow',
     },
-    'ai-master': {
+    cartographer: {
       emoji: '🔬',
-      description: 'You treat every AI output as a hypothesis to be tested.',
+      description: 'You map every hypothesis systematically before proceeding.',
       keyStrength: 'Rigorous verification and error detection',
       growthPath: 'Help others develop critical thinking habits',
     },
   },
   collaborator: {
-    'vibe-coder': {
+    explorer: {
       emoji: '👥',
-      description: 'You converse with AI but let it lead the dialogue.',
+      description: 'You explore solutions through rich dialogue and conversation.',
       keyStrength: 'Open communication style',
       growthPath: 'Try directing conversations more actively',
     },
-    developing: {
+    navigator: {
       emoji: '🤝',
-      description: 'You engage in balanced dialogue with AI.',
+      description: 'You navigate through balanced, productive dialogue.',
       keyStrength: 'Effective back-and-forth refinement',
       growthPath: 'Focus on asking more probing questions',
     },
-    'ai-master': {
+    cartographer: {
       emoji: '🎭',
-      description: 'You conduct AI like an orchestra, directing every iteration.',
+      description: 'You facilitate and direct collaborative sessions masterfully.',
       keyStrength: 'Masterful iterative refinement',
       growthPath: 'Document your collaboration patterns for others',
     },
   },
   speedrunner: {
-    'vibe-coder': {
+    explorer: {
       emoji: '🎲',
-      description: 'You move fast but may skip important verifications.',
+      description: 'You explore through rapid experimentation and iteration.',
       keyStrength: 'High velocity and experimentation',
       growthPath: 'Add quick sanity checks to your workflow',
     },
-    developing: {
+    navigator: {
       emoji: '🏃',
-      description: 'You balance speed with growing verification habits.',
+      description: 'You navigate quickly while building verification habits.',
       keyStrength: 'Fast iteration with increasing quality awareness',
       growthPath: 'Build quick-check routines into your speed',
     },
-    'ai-master': {
+    cartographer: {
       emoji: '⚡',
-      description: 'You achieve maximum velocity through strategic AI delegation.',
-      keyStrength: 'Efficient mastery - fast AND accurate',
+      description: 'You achieve maximum velocity through strategic optimization.',
+      keyStrength: 'Efficient expertise - fast AND accurate',
       growthPath: 'Teach efficient verification techniques to others',
     },
   },
   craftsman: {
-    'vibe-coder': {
+    explorer: {
       emoji: '🎨',
-      description: 'You care about quality but rely heavily on AI to achieve it.',
+      description: 'You explore quality through attention to detail and aesthetics.',
       keyStrength: 'High standards and attention to detail',
       growthPath: 'Practice writing quality code without AI assistance',
     },
-    developing: {
+    navigator: {
       emoji: '🔧',
-      description: 'You actively refine AI output to meet your quality standards.',
+      description: 'You navigate toward quality through active refinement.',
       keyStrength: 'Active quality improvement process',
       growthPath: 'Keep developing your manual coding skills',
     },
-    'ai-master': {
+    cartographer: {
       emoji: '💎',
-      description: 'You use AI as a precision tool to achieve exceptional quality.',
+      description: 'You craft with precision, using AI as an expert tool.',
       keyStrength: 'Masterful quality control with AI assistance',
       growthPath: 'Set quality benchmarks for your team',
     },
@@ -285,19 +285,19 @@ export const CONTROL_LEVEL_METADATA: Record<
     scoreRange: string;
   }
 > = {
-  'vibe-coder': {
-    name: 'Vibe Coder',
-    description: 'High AI dependency - you tend to accept AI output without much modification',
+  explorer: {
+    name: 'Explorer',
+    description: 'Open exploration - you discover solutions through experimentation',
     scoreRange: '0-34',
   },
-  developing: {
-    name: 'Developing',
-    description: 'Learning balance - you are building control habits over AI',
+  navigator: {
+    name: 'Navigator',
+    description: 'Balanced navigation - you balance exploration with route planning',
     scoreRange: '35-64',
   },
-  'ai-master': {
-    name: 'AI Master',
-    description: 'Strategic control - you direct AI effectively as a tool',
+  cartographer: {
+    name: 'Cartographer',
+    description: 'Strategic mapping - you chart the territory before advancing',
     scoreRange: '65-100',
   },
 };

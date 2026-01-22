@@ -247,7 +247,7 @@ export function createMockDimensions(overrides: Partial<FullAnalysisResult> = {}
     },
     aiControl: {
       score: 72,
-      level: 'ai-master',
+      level: 'cartographer',
       breakdown: {
         verificationRate: 75,
         constraintSpecification: 70,
@@ -319,7 +319,7 @@ export function createMockVerboseEvaluation(
     analyzedAt: new Date().toISOString(),
     sessionsAnalyzed: 5,
     primaryType: 'architect',
-    controlLevel: 'ai-master',
+    controlLevel: 'cartographer',
     distribution: {
       architect: 40,
       scientist: 25,
@@ -378,7 +378,7 @@ export function createMockUnifiedReport(overrides: Partial<UnifiedReport> = {}):
     sessionsAnalyzed: 5,
     profile: {
       primaryType: 'architect',
-      controlLevel: 'ai-master',
+      controlLevel: 'cartographer',
       matrixName: 'Systems Architect',
       matrixEmoji: '🏛️',
       distribution: {

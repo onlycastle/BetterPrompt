@@ -168,7 +168,7 @@ export const TOPIC_DISPLAY_NAMES: Record<TopicCategory, string> = {
  * Professional Insight category
  *
  * Note: applicableStyles uses CodingStyleType values ('architect', 'scientist', etc.)
- * Note: applicableControlLevels uses AIControlLevel values ('vibe-coder', 'developing', 'ai-master')
+ * Note: applicableControlLevels uses AIControlLevel values ('explorer', 'navigator', 'cartographer')
  */
 export const InsightCategorySchema = z.enum([
   'diagnosis', // Help users understand their current state
@@ -349,7 +349,7 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
       author: 'hashin',
     },
     applicableStyles: ['speedrunner'],
-    applicableControlLevels: ['vibe-coder', 'developing'],
+    applicableControlLevels: ['explorer', 'navigator'],
     priority: 8,
     enabled: true,
   },

@@ -7,13 +7,13 @@ import styles from './DownloadSection.module.css';
 const features = [
   {
     icon: Terminal,
-    title: 'Local Analysis',
-    description: 'Your session logs never leave your machine during scanning',
+    title: 'Local Scanning',
+    description: 'CLI reads your session files locally, no agents on your machine',
   },
   {
     icon: Shield,
-    title: 'Privacy First',
-    description: 'Data processed securely, nothing stored on our servers',
+    title: 'Secure Analysis',
+    description: 'Data encrypted in transit, only insights stored—not raw sessions',
   },
   {
     icon: Lock,

@@ -61,9 +61,57 @@ export const PatternDetectiveOutputSchema = z.object({
 
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
+
+  // NEW: Repeated command patterns (multi-step instructions)
+  // "pattern|frequency|example;..." where pattern uses → to show sequence
+  // Example: "check code→analyze problem→create plan|5|check the code, analyze it, then make a plan"
+  repeatedCommandPatternsData: z.string().max(3000).optional(),
 });
 
 export type PatternDetectiveOutput = z.infer<typeof PatternDetectiveOutputSchema>;
+
+/**
+ * Parsed repeated command pattern
+ * Represents a multi-step instruction sequence that repeats across sessions
+ */
+export interface RepeatedCommandPattern {
+  /** The command sequence pattern (e.g., "check code→analyze problem→create plan") */
+  pattern: string;
+  /** How many times this pattern appeared */
+  frequency: number;
+  /** An actual example from the user (e.g., "check the code, analyze it, then make a plan") */
+  example: string;
+}
+
+/**
+ * Parse repeatedCommandPatternsData string into structured array
+ *
+ * @example
+ * parseRepeatedCommandPatternsData("check code→analyze problem→create plan|5|check the code, analyze it, then make a plan;run tests→fix errors|3|run tests and fix any failures")
+ * // Returns:
+ * // [
+ * //   { pattern: "check code→analyze problem→create plan", frequency: 5, example: "check the code, analyze it, then make a plan" },
+ * //   { pattern: "run tests→fix errors", frequency: 3, example: "run tests and fix any failures" }
+ * // ]
+ */
+export function parseRepeatedCommandPatternsData(
+  data: string | undefined
+): RepeatedCommandPattern[] {
+  if (!data) return [];
+
+  return data
+    .split(';')
+    .filter(Boolean)
+    .map((entry) => {
+      const [pattern, freq, example] = entry.split('|');
+      return {
+        pattern: pattern?.trim() || '',
+        frequency: parseInt(freq, 10) || 0,
+        example: example?.trim() || '',
+      };
+    })
+    .filter((item) => item.pattern && item.frequency > 0);
+}
 
 // ============================================================================
 // Anti-Pattern Spotter: Bad Habit Detection

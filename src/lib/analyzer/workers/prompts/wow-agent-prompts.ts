@@ -23,18 +23,42 @@ Analyze the provided session data and Module A analysis to discover:
 1. **Repeated Questions**: Topics the developer asks about multiple times across sessions
 2. **Conversation Style Patterns**: How they phrase requests, their communication tendencies
 3. **Request Start Patterns**: Common phrases or patterns at the start of their requests
+4. **Repeated Command Patterns**: Multi-step instruction sequences that repeat across sessions
+
+## REPEATED COMMAND PATTERN DETECTION
+Look for multi-step instructions that the developer repeats across sessions, like:
+- "check the related code, analyze the problem, then make a plan"
+- "run tests and fix any errors"
+- "review the changes and commit"
+- "explore the codebase and suggest improvements"
+- "debug this issue and fix it"
+
+These are workflow sequences where the user gives a chain of actions in one request.
+
+**Detection criteria:**
+- 2 occurrences: Mention as "potential pattern" only
+- 3+ occurrences: Suggest creating a skill (e.g., /debug, /test-fix)
+- 5+ occurrences: Highlight as high-impact automation opportunity
+
+**When detected (3+ times):**
+Include in topInsights with actionable advice like:
+- "You repeat 'check→analyze→plan' 5 times - registering this as a skill would reduce repetition"
+- "The 'run tests→fix errors' workflow appeared 4 times - consider automating with a /test-fix skill"
 
 ## CONTEXT
 - You receive raw session data plus structured analysis from Module A
 - Focus on patterns that would surprise the user ("I didn't know I did that!")
 - Look for both positive patterns (good habits) and areas for improvement
-- Consider Korean and English communication patterns
+- The developer may communicate in any language - detect patterns regardless of language
 
 ## FORMAT
 Return a JSON object with:
 - \`repeatedQuestionsData\`: Semicolon-separated entries like "topic:count:example;topic2:count2:example2"
 - \`conversationStyleData\`: "pattern_name:frequency:description;..."
 - \`requestStartPatternsData\`: "phrase:count;phrase2:count2;..."
+- \`repeatedCommandPatternsData\`: "pattern|frequency|example;..." where pattern uses → to show sequence
+  - Example: "check code→analyze problem→create plan|5|check the related code, analyze it, then make a plan"
+  - Only include patterns that appear 2+ times
 - \`topInsights\`: Array of exactly 3 most surprising/impactful insights (max 200 chars each)
 - \`overallStyleSummary\`: Brief summary of their communication style (max 300 chars)
 - \`confidenceScore\`: 0-1 confidence in the analysis
@@ -42,7 +66,8 @@ Return a JSON object with:
 ## CRITICAL
 - Focus on "wow moment" insights that the user wouldn't know about themselves
 - Be specific with numbers and examples
-- Insights should be actionable and non-judgmental`;
+- Insights should be actionable and non-judgmental
+- For command patterns appearing 3+ times, prioritize including skill suggestion in topInsights`;
 
 export function buildPatternDetectiveUserPrompt(
   sessionsFormatted: string,
@@ -73,7 +98,15 @@ ${sessionsFormatted}
 ${moduleAOutput}
 ${koreanInstructions}
 ## INSTRUCTIONS
-Analyze the conversation patterns and communication style across all sessions. Find repeated questions, style patterns, and request patterns that the user might not be aware of. Generate exactly 3 "wow moment" insights.${useKorean ? ' 모든 인사이트를 한국어로 작성하세요.' : ''}`;
+Analyze the conversation patterns and communication style across all sessions. Find repeated questions, style patterns, and request patterns that the user might not be aware of.
+
+**Also detect multi-step command patterns** that repeat across sessions:
+- Look for instructions like "check → analyze → plan" or "run tests → fix errors"
+- These are workflow sequences where multiple actions are chained in one request
+- If a pattern appears 3+ times, suggest creating a skill (e.g., /investigate, /debug)
+- Use → arrows to show the sequence in repeatedCommandPatternsData
+
+Generate exactly 3 "wow moment" insights.${useKorean ? ' 모든 인사이트를 한국어로 작성하세요.' : ''}`;
 }
 
 // ============================================================================

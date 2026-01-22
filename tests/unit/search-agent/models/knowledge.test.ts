@@ -295,7 +295,7 @@ describe('Knowledge Models', () => {
           author: 'Blog Author',
         },
         applicableStyles: ['architect', 'collaborator'],
-        applicableControlLevels: ['developing', 'ai-master'],
+        applicableControlLevels: ['navigator', 'cartographer'],
         applicableDimensions: ['aiControl'],
         minScore: 30,
         maxScore: 70,

@@ -9,13 +9,13 @@
  * - VCP Paper (arXiv:2601.02410): Cognitive offloading measurement
  * - Anthropic: Critical verification patterns
  *
- * This distinguishes "Vibe Coders" (high AI dependency) from "AI Masters" (strategic AI control).
+ * This distinguishes "Explorers" (open exploration) from "Cartographers" (strategic mapping).
  */
 
 import { type ParsedSession } from '../../models/index';
 import { countMatches, hasMatch, PATTERNS } from './pattern-utils';
 
-export type AIControlLevel = 'vibe-coder' | 'developing' | 'ai-master';
+export type AIControlLevel = 'explorer' | 'navigator' | 'cartographer';
 
 export interface AIControlResult {
   score: number; // 0-100, higher = more control
@@ -264,9 +264,9 @@ function calculateContextControlScore(metrics: ControlMetrics): number {
 }
 
 function getLevel(score: number): AIControlLevel {
-  if (score >= 65) return 'ai-master';
-  if (score >= 35) return 'developing';
-  return 'vibe-coder';
+  if (score >= 65) return 'cartographer';
+  if (score >= 35) return 'navigator';
+  return 'explorer';
 }
 
 interface ComponentScores {
@@ -355,18 +355,18 @@ function identifyGrowthAreas(metrics: ControlMetrics, scores: ComponentScores): 
 
 function getInterpretation(score: number, metrics: ControlMetrics): string {
   if (score >= 65) {
-    return `AI Master! You effectively control AI output with ${metrics.modificationRequests} modifications and ${metrics.constraintKeywords} constraints. You're directing AI as a tool, not following it blindly.`;
+    return `Cartographer! You strategically map AI output with ${metrics.modificationRequests} modifications and ${metrics.constraintKeywords} constraints. You're charting the territory before advancing.`;
   }
   if (score >= 35) {
-    return `Developing control over AI. You show some verification habits but could be more deliberate about constraints and critiquing output. Remember: professionals modify ~50% of AI suggestions.`;
+    return `Navigator level - you balance exploration with route planning. You show some verification habits but could be more deliberate about constraints and critiquing output. Remember: professionals modify ~50% of AI suggestions.`;
   }
-  return `High AI dependency detected. You may be accepting AI output too passively. Try adding explicit constraints, questioning assumptions, and requesting alternatives. Small changes can dramatically improve code quality.`;
+  return `Explorer level - you're discovering solutions through open experimentation. Try adding explicit constraints, questioning assumptions, and requesting alternatives to chart your path more deliberately.`;
 }
 
 function createDefaultResult(): AIControlResult {
   return {
     score: 50,
-    level: 'developing',
+    level: 'navigator',
     breakdown: {
       verificationRate: 50,
       constraintSpecification: 50,
