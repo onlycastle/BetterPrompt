@@ -133,10 +133,10 @@ export const ExtractedQuoteSchema = z.object({
 
   // ---- C: Insight fields (FLATTENED from QuoteInsightSchema) ----
   /** Root cause of this behavior (max 200 chars) */
-  insightRootCause: z.string().max(200).optional(),
+  insightRootCause: z.string().max(3000).optional(),
 
   /** What this behavior implies about the developer's growth */
-  insightImplication: z.string().max(200).optional(),
+  insightImplication: z.string().max(3000).optional(),
 
   /** Whether this behavior is deliberate, reactive, or habitual */
   insightGrowthSignal: GrowthSignalEnum.optional(),
@@ -205,7 +205,7 @@ export const ActionablePatternMatchSchema = z.object({
   practiced: z.boolean(),
 
   /** Evidence quotes (empty array if not practiced) */
-  evidence: z.array(z.string().max(300)),
+  evidence: z.array(z.string().max(3000)),
 
   /** Feedback message (from if_found or if_missing template) */
   feedback: z.string().max(500),
@@ -248,13 +248,13 @@ export const DetectedAntiPatternSchema = z.object({
   frequency: z.number(),
 
   /** Evidence quotes showing this pattern (target: 1-3 examples) */
-  examples: z.array(z.string().max(300)),
+  examples: z.array(z.string().max(3000)),
 
   /** Severity assessment */
   severity: z.enum(['mild', 'moderate', 'significant']),
 
   /** Context in which this anti-pattern occurred */
-  triggerContext: z.string().max(200),
+  triggerContext: z.string().max(3000),
 });
 export type DetectedAntiPattern = z.infer<typeof DetectedAntiPatternSchema>;
 
@@ -287,7 +287,7 @@ export const CriticalThinkingMomentSchema = z.object({
   ]),
 
   /** What result this critical thinking led to */
-  result: z.string().max(300),
+  result: z.string().max(3000),
 
   /** Which dimension this relates to */
   dimension: DimensionNameEnumSchema,
@@ -308,7 +308,7 @@ export type CriticalThinkingMoment = z.infer<typeof CriticalThinkingMomentSchema
  */
 export const PlanningBehaviorSchema = z.object({
   /** Description of the planning behavior */
-  behavior: z.string().max(200),
+  behavior: z.string().max(3000),
 
   /** Type of planning behavior */
   behaviorType: z.enum([
@@ -372,13 +372,13 @@ export const PriorityItemSchema = z.object({
   dimension: DimensionNameEnumSchema,
 
   /** Specific focus area within this dimension */
-  focusArea: z.string().max(100),
+  focusArea: z.string().max(3000),
 
   /** Why this is a priority for THIS developer (personalized reasoning) */
-  rationale: z.string().max(300),
+  rationale: z.string().max(3000),
 
   /** Expected impact if they focus on this */
-  expectedImpact: z.string().max(200),
+  expectedImpact: z.string().max(3000),
 
   /** Calculated priority score (0-100) based on frequency, impact, potential, relevance */
   priorityScore: z.number().min(0).max(100),
@@ -396,25 +396,25 @@ export type PriorityItem = z.infer<typeof PriorityItemSchema>;
 export const PersonalizedPrioritySchema = z.object({
   /** Priority 1 - highest priority focus area */
   priority1Dimension: DimensionNameEnumSchema.optional(),
-  priority1FocusArea: z.string().max(100).optional(),
-  priority1Rationale: z.string().max(300).optional(),
-  priority1ExpectedImpact: z.string().max(200).optional(),
+  priority1FocusArea: z.string().max(3000).optional(),
+  priority1Rationale: z.string().max(3000).optional(),
+  priority1ExpectedImpact: z.string().max(3000).optional(),
   priority1Score: z.number().min(0).max(100).optional(),
   priority1ClusterIds: z.string().max(500).optional(),
 
   /** Priority 2 */
   priority2Dimension: DimensionNameEnumSchema.optional(),
-  priority2FocusArea: z.string().max(100).optional(),
-  priority2Rationale: z.string().max(300).optional(),
-  priority2ExpectedImpact: z.string().max(200).optional(),
+  priority2FocusArea: z.string().max(3000).optional(),
+  priority2Rationale: z.string().max(3000).optional(),
+  priority2ExpectedImpact: z.string().max(3000).optional(),
   priority2Score: z.number().min(0).max(100).optional(),
   priority2ClusterIds: z.string().max(500).optional(),
 
   /** Priority 3 */
   priority3Dimension: DimensionNameEnumSchema.optional(),
-  priority3FocusArea: z.string().max(100).optional(),
-  priority3Rationale: z.string().max(300).optional(),
-  priority3ExpectedImpact: z.string().max(200).optional(),
+  priority3FocusArea: z.string().max(3000).optional(),
+  priority3Rationale: z.string().max(3000).optional(),
+  priority3ExpectedImpact: z.string().max(3000).optional(),
   priority3Score: z.number().min(0).max(100).optional(),
   priority3ClusterIds: z.string().max(500).optional(),
 
@@ -445,10 +445,10 @@ export const DimensionSignalSchema = z.object({
   growthSignals: z.array(z.string().max(150)),
 
   /** Cluster themes for strength quotes (format: "clusterId:theme" pairs as strings) */
-  strengthClusterThemes: z.array(z.string().max(200)).optional(),
+  strengthClusterThemes: z.array(z.string().max(3000)).optional(),
 
   /** Cluster themes for growth quotes (format: "clusterId:theme" pairs as strings) */
-  growthClusterThemes: z.array(z.string().max(200)).optional(),
+  growthClusterThemes: z.array(z.string().max(3000)).optional(),
 });
 export type DimensionSignal = z.infer<typeof DimensionSignalSchema>;
 

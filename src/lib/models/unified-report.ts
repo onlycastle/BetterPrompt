@@ -57,13 +57,13 @@ export const ConversationInsightSchema = z.object({
 });
 
 export const ResearchInsightSchema = z.object({
-  source: z.string().max(100),
+  source: z.string().max(3000),
   insight: z.string().min(20).max(500),
   url: z.string().url().optional(),
 });
 
 export const LearningResourceSchema = z.object({
-  title: z.string().max(200),
+  title: z.string().max(3000),
   url: z.string().url(),
   platform: z.string().max(50),
   level: ResourceLevelSchema,
@@ -176,7 +176,7 @@ export const RecommendationTypeSchema = z.enum(['reinforce', 'improve']);
 export const ResourceTypeSchema = z.enum(['article', 'video', 'documentation', 'example']);
 
 export const RecommendationResourceSchema = z.object({
-  title: z.string().max(200),
+  title: z.string().max(3000),
   url: z.string().url(),
   type: ResourceTypeSchema,
   level: ResourceLevelSchema,
@@ -185,12 +185,12 @@ export const RecommendationResourceSchema = z.object({
 export const RecommendationSchema = z.object({
   priority: z.number().int().min(1).max(5),
   type: RecommendationTypeSchema,
-  title: z.string().max(100),
+  title: z.string().max(3000),
   description: z.string().max(500),
   relatedDimension: DimensionNameSchema,
-  actionItems: z.array(z.string().max(200)).min(1).max(5),
+  actionItems: z.array(z.string().max(3000)).min(1).max(5),
   resources: z.array(RecommendationResourceSchema).max(5),
-  expectedImpact: z.string().max(200),
+  expectedImpact: z.string().max(3000),
 });
 
 // ============================================
@@ -201,7 +201,7 @@ export const DimensionSummaryItemSchema = z.object({
   dimension: DimensionNameSchema,
   displayName: z.string(),
   score: z.number().min(0).max(100),
-  highlight: z.string().max(300),
+  highlight: z.string().max(3000),
 });
 
 export const ReportSummarySchema = z.object({
@@ -217,19 +217,19 @@ export const ReportSummarySchema = z.object({
 export const ToolInsightSchema = z.object({
   tool: z.string(),
   usagePercentage: z.number().min(0).max(100),
-  insight: z.string().max(300),
-  recommendation: z.string().max(200),
+  insight: z.string().max(3000),
+  recommendation: z.string().max(3000),
 });
 
 export const TokenEfficiencySchema = z.object({
   score: z.number().min(0).max(100),
   avgTokensPerSession: z.number(),
-  savingsOpportunity: z.string().max(200),
+  savingsOpportunity: z.string().max(3000),
 });
 
 export const MilestoneSchema = z.object({
-  title: z.string().max(100),
-  description: z.string().max(300),
+  title: z.string().max(3000),
+  description: z.string().max(3000),
   completed: z.boolean(),
 });
 
@@ -238,17 +238,17 @@ export const GrowthRoadmapSchema = z.object({
 });
 
 export const ComparativeInsightSchema = z.object({
-  metric: z.string().max(100),
+  metric: z.string().max(3000),
   yourScore: z.number(),
   percentile: z.number().min(0).max(100),
-  interpretation: z.string().max(300),
+  interpretation: z.string().max(3000),
 });
 
 export const SessionTrendSchema = z.object({
-  metric: z.string().max(100),
+  metric: z.string().max(3000),
   trend: TrendSchema,
   change: z.number(),
-  interpretation: z.string().max(300),
+  interpretation: z.string().max(3000),
 });
 
 export const PremiumContentSchema = z.object({

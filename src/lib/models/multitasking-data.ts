@@ -128,7 +128,7 @@ export const MultitaskingAnalysisOutputSchema = z.object({
   projectGroupCount: z.number().min(0),
 
   // Top 3 multitasking insights
-  topInsights: z.array(z.string().max(200)).max(3),
+  topInsights: z.array(z.string().max(3000)).max(3),
 
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),

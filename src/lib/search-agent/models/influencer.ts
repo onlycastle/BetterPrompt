@@ -40,7 +40,7 @@ export type PlatformIdentifier = z.infer<typeof PlatformIdentifierSchema>;
  */
 export const InfluencerSchema = z.object({
   id: z.string().uuid(),
-  name: z.string().min(1).max(100),
+  name: z.string().min(1).max(3000),
   description: z.string().max(500),
   credibilityTier: CredibilityTierSchema,
 

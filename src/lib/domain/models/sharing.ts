@@ -28,7 +28,7 @@ export type ShareAccessLevel = z.infer<typeof ShareAccessLevelSchema>;
  * Share token schema
  */
 export const ShareTokenSchema = z.object({
-  token: z.string().min(20).max(100),
+  token: z.string().min(20).max(3000),
   expiresAt: z.string().datetime().optional(),
   usageCount: z.number().default(0),
   maxUsage: z.number().optional(),

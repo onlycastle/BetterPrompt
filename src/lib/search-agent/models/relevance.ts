@@ -13,7 +13,7 @@ import { TopicCategorySchema } from './knowledge';
 export const RelevanceDimensionSchema = z.object({
   score: z.number().min(0).max(1),
   weight: z.number().min(0).max(1),
-  reasoning: z.string().max(300),
+  reasoning: z.string().max(3000),
 });
 export type RelevanceDimension = z.infer<typeof RelevanceDimensionSchema>;
 

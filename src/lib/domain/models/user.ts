@@ -137,7 +137,7 @@ export type TeamRole = z.infer<typeof TeamRoleSchema>;
 export const TeamSchema = z.object({
   id: z.string().uuid(),
   organizationId: z.string().uuid(),
-  name: z.string().min(1).max(100),
+  name: z.string().min(1).max(3000),
   description: z.string().max(500).optional(),
 
   // Metadata
@@ -163,7 +163,7 @@ export type TeamMember = z.infer<typeof TeamMemberSchema>;
  */
 export const OrganizationSchema = z.object({
   id: z.string().uuid(),
-  name: z.string().min(1).max(200),
+  name: z.string().min(1).max(3000),
   slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/),
 
   // Subscription
@@ -202,7 +202,7 @@ export type LicenseType = z.infer<typeof LicenseTypeSchema>;
  */
 export const LicenseSchema = z.object({
   id: z.string().uuid(),
-  key: z.string().min(20).max(100),
+  key: z.string().min(20).max(3000),
   type: LicenseTypeSchema,
 
   // Usage

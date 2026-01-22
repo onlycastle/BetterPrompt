@@ -68,7 +68,7 @@ export const MetacognitionOutputSchema = z.object({
     .describe('Growth mindset: "curiosity:0-100|experimentation:0-100|resilience:0-100"'),
 
   // Top 3 metacognition insights
-  topInsights: z.array(z.string().max(200)).max(3),
+  topInsights: z.array(z.string().max(3000)).max(3),
 
   // Overall metacognitive awareness score (0-100)
   metacognitiveAwarenessScore: z.number().min(0).max(100),

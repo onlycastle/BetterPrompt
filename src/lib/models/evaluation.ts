@@ -21,7 +21,7 @@ export const ClueSchema = z.object({
   explanation: z
     .string()
     .min(10)
-    .max(300)
+    .max(3000)
     .describe('Why this quote is evidence for the rating'),
 });
 export type Clue = z.infer<typeof ClueSchema>;
@@ -64,7 +64,7 @@ export const EvaluationSchema = z.object({
     .describe("Overall assessment of the developer's AI collaboration style"),
 
   recommendations: z
-    .array(z.string().min(20).max(200))
+    .array(z.string().min(20).max(3000))
     .min(1)
     .max(5)
     .describe('Specific, actionable recommendations for improvement'),
@@ -80,6 +80,6 @@ export const LLMResponseSchema = z.object({
   criticalThinking: CategoryEvaluationSchema,
   codeUnderstanding: CategoryEvaluationSchema,
   overallSummary: z.string().min(100).max(1000),
-  recommendations: z.array(z.string().min(20).max(200)).min(1).max(5),
+  recommendations: z.array(z.string().min(20).max(3000)).min(1).max(5),
 });
 export type LLMResponse = z.infer<typeof LLMResponseSchema>;

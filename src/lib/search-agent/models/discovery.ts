@@ -75,7 +75,7 @@ export type DiscoveredContent = z.infer<typeof DiscoveredContentSchema>;
  */
 export const CandidateInfluencerSchema = z.object({
   // Identity
-  name: z.string().min(1).max(100),
+  name: z.string().min(1).max(3000),
   handles: z.array(PlatformIdentifierSchema).min(1),
 
   // Content analysis

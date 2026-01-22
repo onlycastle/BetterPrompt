@@ -706,7 +706,7 @@ async function runAnalysis(
   ];
   let messageIndex = 0;
 
-  // Heartbeat interval - send progress updates every 3 seconds
+  // Heartbeat interval - send progress updates every 1 second for responsive UX
   // Progress is calculated from index (40% to 84%), capped at last message
   const heartbeatInterval = setInterval(() => {
     try {
@@ -722,7 +722,7 @@ async function runAnalysis(
     } catch {
       clearInterval(heartbeatInterval);
     }
-  }, 3000);
+  }, 1000);
 
   // Run analysis
   let evaluation: VerboseEvaluation;

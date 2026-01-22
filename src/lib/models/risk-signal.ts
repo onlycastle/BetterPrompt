@@ -60,11 +60,11 @@ export const RiskSignalSchema = z.object({
   severity: z.number().min(1).max(5),
 
   // Evidence from various sources (flattened strings)
-  evidenceFromAntiPatterns: z.array(z.string().max(200)).optional(),
-  evidenceFromCriticalThinking: z.array(z.string().max(200)).optional(),
-  evidenceFromPlanning: z.array(z.string().max(200)).optional(),
-  evidenceFromMetacognition: z.array(z.string().max(200)).optional(),
-  evidenceFromTemporalPatterns: z.array(z.string().max(200)).optional(),
+  evidenceFromAntiPatterns: z.array(z.string().max(3000)).optional(),
+  evidenceFromCriticalThinking: z.array(z.string().max(3000)).optional(),
+  evidenceFromPlanning: z.array(z.string().max(3000)).optional(),
+  evidenceFromMetacognition: z.array(z.string().max(3000)).optional(),
+  evidenceFromTemporalPatterns: z.array(z.string().max(3000)).optional(),
 
   // KB recommendations (insight IDs)
   kbRecommendationIds: z.array(z.string()).optional(),
@@ -95,7 +95,7 @@ export const RiskAnalysisSchema = z.object({
   topRiskSignals: z.array(
     z.object({
       type: RiskTypeSchema,
-      summary: z.string().max(300),
+      summary: z.string().max(3000),
       severity: z.number().min(1).max(5),
       isRecurring: z.boolean(),
     })
