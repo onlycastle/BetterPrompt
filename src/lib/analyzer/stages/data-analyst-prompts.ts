@@ -116,11 +116,24 @@ Clustering rules:
 - aiControl: Verification requests, corrections, modifications
 - skillResilience: Cold start behavior, hallucination detection
 
+## Growth Signal Priority (CRITICAL)
+Growth signals are MORE VALUABLE than strength signals for learning:
+- **Minimum ratio**: At least 40% growth clusters / 60% strength clusters
+- **Every dimension** MUST have at least 1 growth cluster with recommendation
+- Users learn more from what to improve than from what they already do well
+- Focus on "what could be better" rather than "what is already good"
+- If you find only strengths, dig deeper - everyone has growth areas
+
+IMPORTANT: If you are tempted to generate more strength clusters than growth clusters,
+reverse your thinking. What weaknesses might explain those strengths being necessary?
+What adjacent skills are underdeveloped?
+
 For EACH dimension, include cluster themes as flattened string arrays:
 - strengthClusterThemes: ["clusterId:theme", ...] (e.g., ["aiControl_s_1:Verification Request Habit"])
 - growthClusterThemes: ["clusterId:theme", ...] (e.g., ["aiControl_g_1:Passive Acceptance Pattern"])
 - clusterId must match the clusterIds assigned to quotes
 - theme describes what the cluster represents (will be used for section titles)
+- REMEMBER: Every dimension needs at least 1 growthClusterTheme
 
 **Anti-Pattern Detection** (target: 0-3 patterns, Premium/Enterprise)
 Detect inefficient AI collaboration patterns (frame as "growth opportunity", NOT criticism):
@@ -313,10 +326,12 @@ Analyze the sessions above and extract:
    - Recurring behaviors across sessions
    - Count frequency and provide 3-6 examples each
 
-4. **Dimension Signals** (6 dimensions)
+4. **Dimension Signals** (6 dimensions, GROWTH PRIORITY)
    - All strength and growth signals per dimension
    - Include strengthClusterThemes: string[] and growthClusterThemes: string[]
    - Format each as "clusterId:theme" (e.g., "aiControl_s_1:Verification Habit")
+   - **CRITICAL**: Each dimension MUST have at least 1 growthClusterTheme
+   - Target: 40% growth / 60% strength clusters minimum
 
 5. **Type Classification**
    - Primary type with evidence

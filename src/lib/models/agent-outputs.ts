@@ -56,6 +56,12 @@ export const PatternDetectiveOutputSchema = z.object({
   // Top 3 Wow Insights (displayed directly in UI)
   topInsights: z.array(z.string().max(3000)).max(3),
 
+  // KPT (Keep/Problem/Try) structured fields for balanced feedback
+  // These provide explicit categorization instead of relying on keyword matching
+  kptKeep: z.array(z.string().max(500)).max(2).optional(),     // Strengths to maintain (0-2)
+  kptProblem: z.array(z.string().max(500)).max(2).optional(),  // Issues to address (1-2, expected)
+  kptTry: z.array(z.string().max(500)).max(2).optional(),      // Actionable suggestions (1-2, expected)
+
   // Overall summary
   overallStyleSummary: z.string().max(3000),
 
@@ -154,6 +160,11 @@ export const AntiPatternSpotterOutputSchema = z.object({
   // Top 3 Wow Insights
   topInsights: z.array(z.string().max(3000)).max(3),
 
+  // KPT (Keep/Problem/Try) structured fields for balanced feedback
+  kptKeep: z.array(z.string().max(500)).max(2).optional(),     // Healthy habits to maintain (0-1)
+  kptProblem: z.array(z.string().max(500)).max(2).optional(),  // Anti-patterns to address (1-2, expected)
+  kptTry: z.array(z.string().max(500)).max(2).optional(),      // Actionable improvements (1-2, expected)
+
   // Overall health score (0-100)
   overallHealthScore: z.number().min(0).max(100),
 
@@ -203,6 +214,11 @@ export const KnowledgeGapOutputSchema = z.object({
 
   // Top 3 Wow Insights
   topInsights: z.array(z.string().max(3000)).max(3),
+
+  // KPT (Keep/Problem/Try) structured fields for balanced feedback
+  kptKeep: z.array(z.string().max(500)).max(2).optional(),     // Knowledge strengths (0-1)
+  kptProblem: z.array(z.string().max(500)).max(2).optional(),  // Knowledge gaps to address (1-2, expected)
+  kptTry: z.array(z.string().max(500)).max(2).optional(),      // Learning recommendations (1-2, expected)
 
   // Overall knowledge score (0-100)
   overallKnowledgeScore: z.number().min(0).max(100),
@@ -259,6 +275,11 @@ export const ContextEfficiencyOutputSchema = z.object({
 
   // Top 3 Wow Insights
   topInsights: z.array(z.string().max(3000)).max(3),
+
+  // KPT (Keep/Problem/Try) structured fields for balanced feedback
+  kptKeep: z.array(z.string().max(500)).max(2).optional(),     // Efficient habits (0-1)
+  kptProblem: z.array(z.string().max(500)).max(2).optional(),  // Inefficiencies to address (1-2, expected)
+  kptTry: z.array(z.string().max(500)).max(2).optional(),      // Efficiency improvements (1-2, expected)
 
   // Overall efficiency score (0-100)
   overallEfficiencyScore: z.number().min(0).max(100),

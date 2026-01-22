@@ -128,7 +128,14 @@ The developer's content is in Korean. You MUST write ALL fields in **Korean**:
 Keep technical terms and time formats in English.
 
 `
-    : '';
+    : `
+## CRITICAL: English Output Required
+
+**Write ALL output fields in English.**
+Even if the input data contains Korean text, you MUST write your analysis in English.
+Keep the analysis professional and technical.
+
+`;
 
   return `## SESSION DATA (with timestamps)
 ${sessionsFormatted}
