@@ -145,25 +145,31 @@ export function PersonalDashboardContent() {
   const { user, isAuthenticated, isLoading: authLoading, signInWithGitHub, signOut } = useAuth();
   const [analyses, setAnalyses] = useState<UserAnalysis[]>([]);
   const [isLoadingAnalyses, setIsLoadingAnalyses] = useState(false);
+  const [analysesError, setAnalysesError] = useState<string | null>(null);
   const [loginLoading, setLoginLoading] = useState(false);
 
   // Fetch user's analyses when authenticated
   useEffect(() => {
     if (!isAuthenticated || !user) {
       setAnalyses([]);
+      setAnalysesError(null);
       return;
     }
 
     const fetchAnalyses = async () => {
       setIsLoadingAnalyses(true);
+      setAnalysesError(null);
       try {
         const response = await fetch('/api/analysis/user');
-        if (response.ok) {
-          const data = await response.json();
-          setAnalyses(data.analyses || []);
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unknown error');
+          throw new Error(`Failed to fetch analyses: ${response.status} ${errorText}`);
         }
+        const data = await response.json();
+        setAnalyses(data.analyses || []);
       } catch (error) {
         console.error('Failed to fetch analyses:', error);
+        setAnalysesError(error instanceof Error ? error.message : 'Failed to load analyses');
       } finally {
         setIsLoadingAnalyses(false);
       }
@@ -174,7 +180,13 @@ export function PersonalDashboardContent() {
 
   const handleGitHubLogin = async () => {
     setLoginLoading(true);
-    await signInWithGitHub();
+    try {
+      await signInWithGitHub();
+    } catch (error) {
+      console.error('GitHub login failed:', error);
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
   const handleSignOut = async () => {
@@ -225,6 +237,10 @@ export function PersonalDashboardContent() {
             <div className={styles.loadingInline}>
               <div className={styles.spinnerSmall} />
               <span>Loading analyses...</span>
+            </div>
+          ) : analysesError ? (
+            <div className={styles.errorState}>
+              <p className={styles.errorText}>{analysesError}</p>
             </div>
           ) : analyses.length === 0 ? (
             <EmptyState />

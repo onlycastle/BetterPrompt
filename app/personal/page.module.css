@@ -263,6 +263,24 @@
 }
 
 /* ============================================
+   Error State
+   ============================================ */
+.errorState {
+  background: var(--surface-1);
+  border: 2px solid var(--sketch-red);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  text-align: center;
+}
+
+.errorText {
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  color: var(--sketch-red);
+  margin: 0;
+}
+
+/* ============================================
    Empty State
    ============================================ */
 .emptyState {

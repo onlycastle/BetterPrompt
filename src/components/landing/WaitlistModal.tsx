@@ -130,10 +130,11 @@ export function WaitlistModal({
       return;
     }
 
-    // If Supabase is not configured, log and show success (graceful degradation)
+    // If Supabase is not configured, show error (No Fallback Policy)
     if (!supabase) {
-      console.log('[Waitlist] Supabase not configured, email:', email);
-      setStatus('success');
+      console.error('[Waitlist] Supabase is not configured');
+      setError('Service temporarily unavailable. Please try again later.');
+      setStatus('error');
       return;
     }
 

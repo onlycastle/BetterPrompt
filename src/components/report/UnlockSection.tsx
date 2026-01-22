@@ -97,8 +97,22 @@ export function UnlockSection({ isUnlocked, resultId }: UnlockSectionProps) {
         throw new Error(data.message || 'Failed to create checkout session');
       }
 
-      // Redirect to Polar checkout page
-      window.location.href = data.checkoutUrl;
+      // Validate checkout URL before redirect
+      if (!data.checkoutUrl || typeof data.checkoutUrl !== 'string') {
+        throw new Error('Invalid checkout URL received from server');
+      }
+
+      try {
+        const checkoutUrl = new URL(data.checkoutUrl);
+        // Only allow HTTPS URLs for security
+        if (checkoutUrl.protocol !== 'https:') {
+          throw new Error('Invalid checkout URL protocol');
+        }
+        // Redirect to Polar checkout page
+        window.location.href = checkoutUrl.href;
+      } catch {
+        throw new Error('Invalid checkout URL format');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setIsLoading(false);
