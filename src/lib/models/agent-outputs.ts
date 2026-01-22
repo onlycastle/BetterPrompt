@@ -54,10 +54,10 @@ export const PatternDetectiveOutputSchema = z.object({
   requestStartPatternsData: z.string().max(1000),
 
   // Top 3 Wow Insights (displayed directly in UI)
-  topInsights: z.array(z.string().max(200)).max(3),
+  topInsights: z.array(z.string().max(3000)).max(3),
 
   // Overall summary
-  overallStyleSummary: z.string().max(300),
+  overallStyleSummary: z.string().max(3000),
 
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
@@ -152,7 +152,7 @@ export const AntiPatternSpotterOutputSchema = z.object({
   repeatedMistakesData: z.string().max(1500),
 
   // Top 3 Wow Insights
-  topInsights: z.array(z.string().max(200)).max(3),
+  topInsights: z.array(z.string().max(3000)).max(3),
 
   // Overall health score (0-100)
   overallHealthScore: z.number().min(0).max(100),
@@ -202,7 +202,7 @@ export const KnowledgeGapOutputSchema = z.object({
   recommendedResourcesData: z.string().max(1000),
 
   // Top 3 Wow Insights
-  topInsights: z.array(z.string().max(200)).max(3),
+  topInsights: z.array(z.string().max(3000)).max(3),
 
   // Overall knowledge score (0-100)
   overallKnowledgeScore: z.number().min(0).max(100),
@@ -258,7 +258,7 @@ export const ContextEfficiencyOutputSchema = z.object({
   redundantInfoData: z.string().max(1000),
 
   // Top 3 Wow Insights
-  topInsights: z.array(z.string().max(200)).max(3),
+  topInsights: z.array(z.string().max(3000)).max(3),
 
   // Overall efficiency score (0-100)
   overallEfficiencyScore: z.number().min(0).max(100),
@@ -333,7 +333,7 @@ export const TypeSynthesisOutputSchema = z.object({
   refinedPrimaryType: z.enum(['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman']),
 
   // Refined distribution - "type:percent;..." format (sum to 100)
-  refinedDistribution: z.string().max(200),
+  refinedDistribution: z.string().max(3000),
 
   // Refined control level based on agent insights (exploration metaphor)
   refinedControlLevel: z.enum(['explorer', 'navigator', 'cartographer']),
@@ -348,7 +348,7 @@ export const TypeSynthesisOutputSchema = z.object({
   matrixEmoji: z.string().max(10),
 
   // Reasons for adjustments from initial classification
-  adjustmentReasons: z.array(z.string().max(200)).max(5),
+  adjustmentReasons: z.array(z.string().max(3000)).max(5),
 
   // Final confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),

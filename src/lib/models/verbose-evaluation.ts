@@ -43,8 +43,8 @@ export type AnalyzedSessionInfo = z.infer<typeof AnalyzedSessionInfoSchema>;
 export const PersonalizedEvidenceSchema = z.object({
   quote: z.string().max(500).describe('Actual quote from the conversation (target: 20-500 chars)'),
   sessionDate: z.string().describe('When this was said (ISO date)'),
-  context: z.string().max(200).describe('Brief context of what was being discussed'),
-  significance: z.string().max(300).describe('What this reveals about their personality'),
+  context: z.string().max(3000).describe('Brief context of what was being discussed'),
+  significance: z.string().max(3000).describe('What this reveals about their personality'),
   sentiment: z.enum(['positive', 'neutral', 'growth_opportunity']),
 });
 export type PersonalizedEvidence = z.infer<typeof PersonalizedEvidenceSchema>;
@@ -78,7 +78,7 @@ export const GrowthAreaSchema = z.object({
   evidence: z
     .array(PersonalizedEvidenceSchema)
     .describe('Examples showing this growth opportunity (target: 1-3)'),
-  recommendation: z.string().max(300).describe('Specific, actionable recommendation'),
+  recommendation: z.string().max(3000).describe('Specific, actionable recommendation'),
   resources: z
     .array(z.string())
     .optional()
@@ -97,7 +97,7 @@ export const PromptPatternSchema = z.object({
     .array(
       z.object({
         quote: z.string().max(500),
-        analysis: z.string().max(300),
+        analysis: z.string().max(3000),
       })
     ),
   effectiveness: z.enum(['highly_effective', 'effective', 'could_improve']),
@@ -318,10 +318,10 @@ export type PerDimensionInsight = z.infer<typeof PerDimensionInsightSchema>;
  */
 export const PracticedAdviceSchema = z.object({
   patternId: z.string().describe('Pattern identifier from KNOWLEDGE_DRIVEN_PATTERNS'),
-  advice: z.string().max(200).describe('The actionable advice that was practiced'),
+  advice: z.string().max(3000).describe('The actionable advice that was practiced'),
   source: z.string().describe('Source of this advice (e.g., "Anthropic", "Karpathy")'),
   feedback: z.string().max(500).describe('Personalized feedback about this practice'),
-  evidence: z.array(z.string().max(300)).describe('Quotes showing this practice'),
+  evidence: z.array(z.string().max(3000)).describe('Quotes showing this practice'),
   dimension: z.string().describe('Related dimension'),
 });
 export type PracticedAdvice = z.infer<typeof PracticedAdviceSchema>;
@@ -332,7 +332,7 @@ export type PracticedAdvice = z.infer<typeof PracticedAdviceSchema>;
  */
 export const OpportunityAdviceSchema = z.object({
   patternId: z.string().describe('Pattern identifier from KNOWLEDGE_DRIVEN_PATTERNS'),
-  advice: z.string().max(200).describe('The actionable advice to try'),
+  advice: z.string().max(3000).describe('The actionable advice to try'),
   source: z.string().describe('Source of this advice (e.g., "Anthropic", "Karpathy")'),
   tip: z.string().max(500).describe('Why and how to adopt this practice'),
   dimension: z.string().describe('Related dimension'),
@@ -347,7 +347,7 @@ export type OpportunityAdvice = z.infer<typeof OpportunityAdviceSchema>;
 export const ActionablePracticesSchema = z.object({
   practiced: z.array(PracticedAdviceSchema).describe('Expert advice the developer followed'),
   opportunities: z.array(OpportunityAdviceSchema).describe('Expert advice to consider adopting'),
-  summary: z.string().max(300).describe('Overall assessment of actionable practices'),
+  summary: z.string().max(3000).describe('Overall assessment of actionable practices'),
 });
 export type ActionablePractices = z.infer<typeof ActionablePracticesSchema>;
 
@@ -356,9 +356,9 @@ export type ActionablePractices = z.infer<typeof ActionablePracticesSchema>;
  */
 export const LLMPracticedAdviceSchema = z.object({
   patternId: z.string(),
-  advice: z.string().max(200),
+  advice: z.string().max(3000),
   source: z.string(),
-  feedback: z.string().max(500),
+  feedback: z.string().max(3000),
   dimension: z.string(),
 });
 
@@ -367,9 +367,9 @@ export const LLMPracticedAdviceSchema = z.object({
  */
 export const LLMOpportunityAdviceSchema = z.object({
   patternId: z.string(),
-  advice: z.string().max(200),
+  advice: z.string().max(3000),
   source: z.string(),
-  tip: z.string().max(500),
+  tip: z.string().max(3000),
   dimension: z.string(),
   priority: z.number().min(1).max(10),
 });
@@ -381,7 +381,7 @@ export const LLMOpportunityAdviceSchema = z.object({
 export const LLMActionablePracticesSchema = z.object({
   practiced: z.array(LLMPracticedAdviceSchema).describe('Expert advice the developer followed'),
   opportunities: z.array(LLMOpportunityAdviceSchema).describe('Expert advice to consider'),
-  summary: z.string().max(300).describe('Overall assessment'),
+  summary: z.string().max(3000).describe('Overall assessment'),
 });
 
 // ============================================================================
@@ -400,7 +400,7 @@ export const AntiPatternInsightSchema = z.object({
   displayName: z.string().max(50),
 
   /** Personalized description of what was observed */
-  description: z.string().max(300),
+  description: z.string().max(3000),
 
   /** How many times this pattern was observed */
   occurrences: z.number(),
@@ -409,13 +409,13 @@ export const AntiPatternInsightSchema = z.object({
   severity: z.enum(['mild', 'moderate', 'significant']),
 
   /** Evidence quotes showing this pattern */
-  evidence: z.array(z.string().max(300)).optional(),
+  evidence: z.array(z.string().max(3000)).optional(),
 
   /** Supportive growth opportunity message */
   growthOpportunity: z.string().max(400),
 
   /** Specific actionable tip */
-  actionableTip: z.string().max(200),
+  actionableTip: z.string().max(3000),
 });
 export type AntiPatternInsight = z.infer<typeof AntiPatternInsightSchema>;
 
@@ -451,7 +451,7 @@ export const CriticalThinkingHighlightSchema = z.object({
   displayName: z.string().max(50),
 
   /** Personalized description of the behavior */
-  description: z.string().max(300),
+  description: z.string().max(3000),
 
   /** How frequently observed */
   frequency: z.number(),
@@ -460,10 +460,10 @@ export const CriticalThinkingHighlightSchema = z.object({
   quality: z.enum(['basic', 'intermediate', 'advanced']),
 
   /** Evidence quotes showing this behavior */
-  evidence: z.array(z.string().max(300)).optional(),
+  evidence: z.array(z.string().max(3000)).optional(),
 
   /** Tip for further development */
-  tip: z.string().max(200).optional(),
+  tip: z.string().max(3000).optional(),
 });
 export type CriticalThinkingHighlight = z.infer<typeof CriticalThinkingHighlightSchema>;
 
@@ -502,7 +502,7 @@ export const PlanningInsightSchema = z.object({
   displayName: z.string().max(50),
 
   /** Personalized description */
-  description: z.string().max(300),
+  description: z.string().max(3000),
 
   /** Frequency of this behavior */
   frequency: z.number(),
@@ -511,10 +511,10 @@ export const PlanningInsightSchema = z.object({
   sophistication: z.enum(['basic', 'intermediate', 'advanced']),
 
   /** Evidence quotes */
-  evidence: z.array(z.string().max(300)).optional(),
+  evidence: z.array(z.string().max(3000)).optional(),
 
   /** Tip for improvement */
-  tip: z.string().max(200).optional(),
+  tip: z.string().max(3000).optional(),
 });
 export type PlanningInsight = z.infer<typeof PlanningInsightSchema>;
 
@@ -567,11 +567,11 @@ export type PlanningAnalysis = z.infer<typeof PlanningAnalysisSchema>;
 export const LLMAntiPatternInsightSchema = z.object({
   antiPatternType: z.string().max(50),
   displayName: z.string().max(50),
-  description: z.string().max(300),
+  description: z.string().max(3000),
   occurrences: z.number(),
   severity: z.enum(['mild', 'moderate', 'significant']),
   growthOpportunity: z.string().max(400),
-  actionableTip: z.string().max(200),
+  actionableTip: z.string().max(3000),
 });
 
 /**
@@ -589,10 +589,10 @@ export const LLMAntiPatternsAnalysisSchema = z.object({
 export const LLMCriticalThinkingHighlightSchema = z.object({
   indicatorType: z.string().max(50),
   displayName: z.string().max(50),
-  description: z.string().max(300),
+  description: z.string().max(3000),
   frequency: z.number(),
   quality: z.enum(['basic', 'intermediate', 'advanced']),
-  tip: z.string().max(200).optional(),
+  tip: z.string().max(3000).optional(),
 });
 
 /**
@@ -611,10 +611,10 @@ export const LLMCriticalThinkingAnalysisSchema = z.object({
 export const LLMPlanningInsightSchema = z.object({
   behaviorType: z.string().max(50),
   displayName: z.string().max(50),
-  description: z.string().max(300),
+  description: z.string().max(3000),
   frequency: z.number(),
   sophistication: z.enum(['basic', 'intermediate', 'advanced']),
-  tip: z.string().max(200).optional(),
+  tip: z.string().max(3000).optional(),
 });
 
 /**
@@ -635,9 +635,9 @@ export const LLMPlanningAnalysisSchema = z.object({
 export const LLMTopFocusAreaSchema = z.object({
   rank: z.number().min(1).max(3),
   dimension: DimensionNameEnumSchema,
-  title: z.string().max(100),
+  title: z.string().max(3000),
   narrative: z.string().max(500),
-  expectedImpact: z.string().max(200),
+  expectedImpact: z.string().max(3000),
   priorityScore: z.number().min(0).max(100),
   /** Flattened actions: "start|stop|continue" format */
   actionsData: z.string().max(700).optional()
@@ -674,11 +674,11 @@ export function parseActionsData(data: string | undefined): { start: string; sto
  */
 export const FocusAreaActionsSchema = z.object({
   /** What to START doing */
-  start: z.string().max(200),
+  start: z.string().max(3000),
   /** What to STOP doing */
-  stop: z.string().max(200),
+  stop: z.string().max(3000),
   /** What to CONTINUE doing */
-  continue: z.string().max(200),
+  continue: z.string().max(3000),
 });
 export type FocusAreaActions = z.infer<typeof FocusAreaActionsSchema>;
 
@@ -694,13 +694,13 @@ export const TopFocusAreaSchema = z.object({
   dimension: DimensionNameEnumSchema,
 
   /** Specific focus area title */
-  title: z.string().max(100),
+  title: z.string().max(3000),
 
   /** WHY this matters for this developer (narrative) */
   narrative: z.string().max(500),
 
   /** Expected impact if they focus on this */
-  expectedImpact: z.string().max(200),
+  expectedImpact: z.string().max(3000),
 
   /** Priority score (0-100) from Stage 1 calculation */
   priorityScore: z.number().min(0).max(100),
@@ -735,9 +735,9 @@ export const ToolUsageInsightSchema = z.object({
   usageCount: z.number(),
   usagePercentage: z.number(),
   insightTitle: z.string().max(50),
-  insight: z.string().max(300),
-  comparison: z.string().max(200).describe('How this compares to typical usage'),
-  recommendation: z.string().max(200).optional(),
+  insight: z.string().max(3000),
+  comparison: z.string().max(3000).describe('How this compares to typical usage'),
+  recommendation: z.string().max(3000).optional(),
 });
 export type ToolUsageInsight = z.infer<typeof ToolUsageInsightSchema>;
 
@@ -752,11 +752,11 @@ export const TokenEfficiencySchema = z.object({
     .array(
       z.object({
         title: z.string().max(50),
-        description: z.string().max(300),
+        description: z.string().max(3000),
         impact: z.enum(['high', 'medium', 'low']),
       })
     ),
-  savingsEstimate: z.string().max(200).describe('Estimated monthly savings if optimized'),
+  savingsEstimate: z.string().max(3000).describe('Estimated monthly savings if optimized'),
 });
 export type TokenEfficiency = z.infer<typeof TokenEfficiencySchema>;
 
@@ -765,18 +765,18 @@ export type TokenEfficiency = z.infer<typeof TokenEfficiencySchema>;
  */
 export const GrowthRoadmapSchema = z.object({
   currentLevel: z.enum(['beginner', 'developing', 'proficient', 'expert']),
-  nextMilestone: z.string().max(200),
+  nextMilestone: z.string().max(3000),
   steps: z
     .array(
       z.object({
         order: z.number(),
-        title: z.string().max(100),
+        title: z.string().max(3000),
         description: z.string().max(400),
-        timeEstimate: z.string().max(100),
+        timeEstimate: z.string().max(3000),
         metrics: z.string().max(150).describe('How to measure progress'),
       })
     ),
-  estimatedTimeToNextLevel: z.string().max(100),
+  estimatedTimeToNextLevel: z.string().max(3000),
 });
 export type GrowthRoadmap = z.infer<typeof GrowthRoadmapSchema>;
 
@@ -788,7 +788,7 @@ export const ComparativeInsightSchema = z.object({
   yourValue: z.number(),
   averageValue: z.number(),
   percentile: z.number().min(0).max(100),
-  interpretation: z.string().max(200),
+  interpretation: z.string().max(3000),
 });
 export type ComparativeInsight = z.infer<typeof ComparativeInsightSchema>;
 
@@ -798,7 +798,7 @@ export type ComparativeInsight = z.infer<typeof ComparativeInsightSchema>;
 export const SessionTrendSchema = z.object({
   metricName: z.string().max(50),
   direction: z.enum(['improving', 'stable', 'declining']),
-  description: z.string().max(200),
+  description: z.string().max(3000),
   dataPoints: z
     .array(
       z.object({
