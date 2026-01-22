@@ -91,7 +91,7 @@ export type GrowthArea = z.infer<typeof GrowthAreaSchema>;
  */
 export const PromptPatternSchema = z.object({
   patternName: z.string().max(80).describe('Distinctive name for this pattern'),
-  description: z.string().max(500).describe('Detailed description of what this pattern is and why it matters'),
+  description: z.string().max(2000).describe('Detailed description of what this pattern is and why it matters'),
   frequency: z.enum(['frequent', 'occasional', 'rare']),
   examples: z
     .array(
@@ -111,7 +111,7 @@ export type PromptPattern = z.infer<typeof PromptPatternSchema>;
  */
 export const LLMPromptPatternSchema = z.object({
   patternName: z.string().max(80).describe('Distinctive name for this pattern'),
-  description: z.string().max(500).describe('Detailed description of what this pattern is and why it matters'),
+  description: z.string().max(2000).describe('Detailed description of what this pattern is and why it matters'),
   frequency: z.enum(['frequent', 'occasional', 'rare']),
   /** Examples as "quote|analysis;quote|analysis;..." format */
   examplesData: z.string().max(3000).optional()
