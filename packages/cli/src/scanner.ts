@@ -40,7 +40,7 @@ const PREFILTER_CONFIG = {
   IDEAL_SIZE_MAX: 5 * 1024 * 1024,
   // Project diversity in pre-filter
   MIN_PROJECTS_IN_PREFILTER: 5, // Ensure at least 5 projects in candidates
-  MAX_PER_PROJECT_IN_PREFILTER: 50, // Cap per project to ensure diversity
+  MAX_PER_PROJECT_IN_PREFILTER: 30, // Cap per project to ensure diversity (lowered from 50)
 };
 
 /**
@@ -53,9 +53,11 @@ const SELECTION_CONFIG = {
   // Dynamic window expansion: 14 → 30 → 60 → 90 days
   RECENCY_WINDOW_OPTIONS: [14, 30, 60, 90],
 
-  // Project diversity
+  // Project diversity - tiered selection for maximum diversity
   MIN_PROJECTS: 3, // Target minimum 3 projects
-  MAX_PER_PROJECT: 15, // Relaxed from 10 to allow more sessions per project
+  MAX_PER_PROJECT_TIER1: 3, // First pass: max 3 per project (maximize diversity)
+  MAX_PER_PROJECT_TIER2: 5, // Second pass: max 5 per project (fill gaps)
+  MAX_PER_PROJECT_FINAL: 15, // Final fallback if still short
 
   // Quality thresholds
   MIN_MESSAGE_COUNT: 3, // Relaxed from 5 to include shorter meaningful sessions
@@ -460,38 +462,56 @@ function distributeByProjects(
     );
   }
 
-  // Phase 1: Round-robin selection with MAX_PER_PROJECT limit
   const selected: ScoredSession[] = [];
   const selectedIds = new Set<string>();
   const projects = Array.from(byProject.keys());
-  let round = 0;
 
-  while (selected.length < maxSessions) {
-    let addedThisRound = false;
+  // Helper: Round-robin selection up to maxPerProject
+  const roundRobinSelect = (maxPerProject: number) => {
+    let round = 0;
+    while (selected.length < maxSessions) {
+      let addedThisRound = false;
 
-    for (const project of projects) {
-      const projectSessions = byProject.get(project)!;
-      if (
-        round < projectSessions.length &&
-        round < SELECTION_CONFIG.MAX_PER_PROJECT
-      ) {
-        const session = projectSessions[round];
-        selected.push(session);
-        selectedIds.add(session.metadata.sessionId);
-        addedThisRound = true;
+      for (const project of projects) {
+        const projectSessions = byProject.get(project)!;
+        // Find next unselected session for this project
+        let projectCount = 0;
+        for (const s of selected) {
+          if (s.metadata.projectName === project) projectCount++;
+        }
 
-        if (selected.length >= maxSessions) break;
+        if (projectCount < maxPerProject && projectCount < projectSessions.length) {
+          const session = projectSessions[projectCount];
+          if (!selectedIds.has(session.metadata.sessionId)) {
+            selected.push(session);
+            selectedIds.add(session.metadata.sessionId);
+            addedThisRound = true;
+
+            if (selected.length >= maxSessions) return;
+          }
+        }
       }
-    }
 
-    if (!addedThisRound) break;
-    round++;
+      if (!addedThisRound) break;
+      round++;
+    }
+  };
+
+  // Tier 1: Max 3 per project (maximize project diversity)
+  roundRobinSelect(SELECTION_CONFIG.MAX_PER_PROJECT_TIER1);
+
+  // Tier 2: Max 5 per project (fill with more from existing projects)
+  if (selected.length < maxSessions) {
+    roundRobinSelect(SELECTION_CONFIG.MAX_PER_PROJECT_TIER2);
   }
 
-  // Phase 2: If still short, fill with remaining high-quality sessions
-  // This handles cases where few projects exist but have many sessions
+  // Tier 3: Max 15 per project (if still short)
   if (selected.length < maxSessions) {
-    // Collect all unselected sessions and sort by quality
+    roundRobinSelect(SELECTION_CONFIG.MAX_PER_PROJECT_FINAL);
+  }
+
+  // Final fallback: Fill with remaining high-quality sessions regardless of project
+  if (selected.length < maxSessions) {
     const remaining = sessions
       .filter(s => !selectedIds.has(s.metadata.sessionId))
       .sort((a, b) => (b.metadata.qualityScore ?? 0) - (a.metadata.qualityScore ?? 0));
