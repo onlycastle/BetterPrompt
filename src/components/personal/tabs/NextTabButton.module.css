@@ -67,11 +67,6 @@
   color: var(--sketch-cyan-dark);
 }
 
-.icon {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-}
-
 .arrow {
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);

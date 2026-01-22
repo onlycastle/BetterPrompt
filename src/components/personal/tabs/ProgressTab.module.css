@@ -51,6 +51,115 @@
   min-height: 280px;
 }
 
+/* Upsell Banner */
+.upsellBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--surface-2);
+  border: 1px dashed var(--border-secondary);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-primary);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.upsellBanner svg {
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+/* Premium Teaser Card */
+.premiumTeaser {
+  margin-top: var(--space-xl);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  box-shadow: 3px 3px 0 var(--ink-muted);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.premiumTeaserHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.premiumTeaserHeader h3 {
+  font-family: var(--font-primary);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  margin: 0;
+}
+
+.premiumTeaserHeader svg {
+  color: var(--accent-primary);
+}
+
+.premiumTeaserText {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-md) 0;
+}
+
+.premiumTeaserBlur {
+  position: relative;
+  padding: var(--space-lg);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-md);
+  filter: blur(3px);
+  pointer-events: none;
+}
+
+.fakeTl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.fakeDot {
+  width: 12px;
+  height: 12px;
+  background: var(--accent-primary);
+  border-radius: 50%;
+}
+
+.fakeLine {
+  width: 80px;
+  height: 2px;
+  background: var(--border-secondary);
+}
+
+.premiumBtn {
+  display: block;
+  width: 100%;
+  padding: var(--space-md);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--surface-1);
+  background: var(--ink-primary);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.premiumBtn:hover {
+  background: var(--ink-secondary);
+  transform: translateY(-1px);
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .statsRow {

@@ -3,7 +3,7 @@
  *
  * Organizes the report into tabs to reduce scroll length:
  * - Fixed header: TypeResultMinimal + PersonalitySummary (always visible)
- * - Tabs: Patterns | Dimensions | AI Agents
+ * - Tabs: Patterns | Dimensions | AI Agents | Growth Insights
  * - Smart "Next Tab" navigation at bottom
  */
 
@@ -13,23 +13,24 @@ import { PersonalitySummaryClean } from './PersonalitySummaryClean';
 import { PromptPatternsClean } from './PromptPatternsClean';
 import { DimensionInsightsClean } from './DimensionInsightsClean';
 import { AgentInsightsSection } from './AgentInsightsSection';
+import { GrowthAreasSection } from './GrowthAreasSection';
 import { NextTabButton } from './NextTabButton';
 import type { VerboseAnalysisData } from '../../../types/verbose';
 import type { AgentOutputs } from '../../../lib/models/agent-outputs';
 import styles from './TabbedReportContainer.module.css';
 
-export type ReportTabId = 'patterns' | 'dimensions' | 'agents';
+export type ReportTabId = 'patterns' | 'dimensions' | 'agents' | 'insights';
 
 interface TabConfig {
   id: ReportTabId;
   label: string;
-  icon: string;
 }
 
 const REPORT_TABS: TabConfig[] = [
-  { id: 'patterns', label: 'Prompt Patterns', icon: '💬' },
-  { id: 'dimensions', label: 'Dimension Insights', icon: '📊' },
-  { id: 'agents', label: 'AI Agent Insights', icon: '>_' },
+  { id: 'patterns', label: 'Prompt Patterns' },
+  { id: 'dimensions', label: 'Dimension Insights' },
+  { id: 'agents', label: 'AI Agent Insights' },
+  { id: 'insights', label: 'Growth Insights' },
 ];
 
 interface TabbedReportContainerProps {
@@ -71,6 +72,7 @@ export function TabbedReportContainer({
   const hasPatterns = analysis.promptPatterns && analysis.promptPatterns.length > 0;
   const hasDimensions = analysis.dimensionInsights && analysis.dimensionInsights.length > 0;
   const hasAgents = agentOutputs && Object.values(agentOutputs).some(Boolean);
+  const hasInsights = analysis.dimensionInsights?.some(d => d.growthAreas?.length > 0);
 
   // Filter tabs to only show those with content
   const availableTabs = REPORT_TABS.filter(tab => {
@@ -78,6 +80,7 @@ export function TabbedReportContainer({
       case 'patterns': return hasPatterns;
       case 'dimensions': return hasDimensions;
       case 'agents': return hasAgents;
+      case 'insights': return hasInsights;
       default: return false;
     }
   });
@@ -125,8 +128,7 @@ export function TabbedReportContainer({
               onClick={() => handleTabChange(tab.id)}
               type="button"
             >
-              <span className={styles.tabIcon}>{tab.icon}</span>
-              <span className={styles.tabLabel}>{tab.label}</span>
+              {tab.label}
             </button>
           ))}
         </div>
@@ -163,12 +165,24 @@ export function TabbedReportContainer({
           </div>
         )}
 
+        {/* Insights Tab */}
+        {activeTab === 'insights' && hasInsights && (
+          <div className={styles.tabPanel}>
+            <h3 className={styles.sectionTitle}>Areas for Growth</h3>
+            <p className={styles.sectionDescription}>
+              Key opportunities to improve your AI collaboration based on your sessions.
+            </p>
+            <GrowthAreasSection
+              areas={analysis.dimensionInsights?.flatMap(d => d.growthAreas).slice(0, 5) ?? []}
+            />
+          </div>
+        )}
+
         {/* Smart Navigation - Next Tab Button */}
         {nextAvailableTab && (
           <NextTabButton
             contentRef={contentRef}
             nextTabLabel={nextAvailableTab.label}
-            nextTabIcon={nextAvailableTab.icon}
             onNextTab={handleNextTab}
           />
         )}

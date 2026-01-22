@@ -82,7 +82,7 @@ function LoginCTA({ onGitHubLogin, isLoading }: { onGitHubLogin: () => void; isL
         </button>
         <div className={styles.cliHint}>
           <Terminal size={16} />
-          <span>New here? Run <code>npx nomoreaislop</code> to analyze your coding style</span>
+          <span>New here? Run <code>npx no-ai-slop</code> to analyze your coding style</span>
         </div>
       </div>
     </div>
@@ -101,7 +101,7 @@ function EmptyState() {
         Run your first analysis with the CLI to see your AI coding insights here.
       </p>
       <div className={styles.cliBox}>
-        <code>npx nomoreaislop</code>
+        <code>npx no-ai-slop</code>
       </div>
     </div>
   );

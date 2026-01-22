@@ -40,7 +40,7 @@ const AGENT_CONFIGS: AgentCardConfig[] = [
     id: 'patternDetective',
     name: 'Pattern Detective',
     icon: '🔍',
-    scoreLabel: 'Confidence',
+    scoreLabel: 'Score',
     scoreKey: 'confidenceScore',
     scoreMax: 1,
     tier: 'free',
@@ -49,7 +49,7 @@ const AGENT_CONFIGS: AgentCardConfig[] = [
     id: 'metacognition',
     name: 'Metacognition',
     icon: '🧠',
-    scoreLabel: 'Awareness',
+    scoreLabel: 'Score',
     scoreKey: 'metacognitiveAwarenessScore',
     scoreMax: 100,
     tier: 'free',
@@ -60,7 +60,7 @@ const AGENT_CONFIGS: AgentCardConfig[] = [
     id: 'antiPatternSpotter',
     name: 'Anti-Pattern Spotter',
     icon: '⚠️',
-    scoreLabel: 'Health Score',
+    scoreLabel: 'Score',
     scoreKey: 'overallHealthScore',
     scoreMax: 100,
     tier: 'premium',
@@ -69,7 +69,7 @@ const AGENT_CONFIGS: AgentCardConfig[] = [
     id: 'knowledgeGap',
     name: 'Knowledge Gap',
     icon: '📚',
-    scoreLabel: 'Knowledge Score',
+    scoreLabel: 'Score',
     scoreKey: 'overallKnowledgeScore',
     scoreMax: 100,
     tier: 'premium',
@@ -78,7 +78,7 @@ const AGENT_CONFIGS: AgentCardConfig[] = [
     id: 'contextEfficiency',
     name: 'Context Efficiency',
     icon: '⚡',
-    scoreLabel: 'Efficiency Score',
+    scoreLabel: 'Score',
     scoreKey: 'overallEfficiencyScore',
     scoreMax: 100,
     tier: 'premium',
@@ -87,7 +87,7 @@ const AGENT_CONFIGS: AgentCardConfig[] = [
     id: 'temporalAnalysis',
     name: 'Temporal Analysis',
     icon: '⏱️',
-    scoreLabel: 'Confidence',
+    scoreLabel: 'Score',
     scoreKey: 'confidenceScore',
     scoreMax: 1,
     tier: 'premium',
@@ -96,7 +96,7 @@ const AGENT_CONFIGS: AgentCardConfig[] = [
     id: 'multitasking',
     name: 'Multitasking',
     icon: '🔄',
-    scoreLabel: 'Efficiency',
+    scoreLabel: 'Score',
     scoreKey: 'multitaskingEfficiencyScore',
     scoreMax: 100,
     tier: 'premium',
@@ -114,7 +114,8 @@ function normalizeScore(value: number, max: number): number {
 }
 
 function formatScore(value: number, max: number): string {
-  return max === 1 ? `${Math.round(value * 100)}%` : `${Math.round(value)}/100`;
+  const normalized = max === 1 ? Math.round(value * 100) : Math.round(value);
+  return `${normalized}/100`;
 }
 
 function getScoreColor(value: number, max: number): 'high' | 'medium' | 'low' {
@@ -250,10 +251,44 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
 /**
  * KPT Analysis derivation helpers
  * Classifies insights into Keep/Problem/Try based on keywords
+ * Extended with more patterns and Korean support
  */
-const POSITIVE_KEYWORDS = ['well', 'good', 'efficient', 'consistent', 'strong', 'clear', 'effective', 'proficient', 'successfully', 'excellent'];
-const PROBLEM_KEYWORDS = ['struggle', 'lack', 'miss', 'error', 'loop', 'repeat', 'fail', 'weak', 'poor', 'confus', 'unclear', 'inefficient', 'forgot'];
-const SUGGESTION_KEYWORDS = ['try', 'consider', 'could', 'should', 'recommend', 'suggest', 'would benefit', 'might', 'may want'];
+const POSITIVE_KEYWORDS = [
+  // English
+  'well', 'good', 'efficient', 'consistent', 'strong', 'clear', 'effective',
+  'proficient', 'successfully', 'excellent', 'great', 'solid', 'impressive',
+  'skilled', 'adept', 'maintains', 'demonstrates',
+  // Korean
+  '잘', '좋은', '효율적', '일관', '강점', '명확', '효과적', '훌륭', '능숙',
+];
+
+const PROBLEM_KEYWORDS = [
+  // English - problem indicators
+  'struggle', 'lack', 'miss', 'error', 'loop', 'repeat', 'fail', 'weak',
+  'poor', 'confus', 'unclear', 'inefficient', 'forgot',
+  // English - tendency/pattern indicators (for problems)
+  'tend to', 'tends to', 'often', 'overlook', 'neglect', 'skip', 'avoid',
+  'rarely', 'without', 'doesn\'t', 'does not', 'hasn\'t', 'has not',
+  // English - gap/deficit indicators
+  'gap', 'deficit', 'missing', 'absence', 'insufficient', 'limited',
+  // Korean
+  '부족', '놓치', '빠뜨', '실수', '반복', '약점', '문제', '개선 필요',
+  '없이', '안 하', '하지 않', '부재', '제한적', '미흡',
+];
+
+const SUGGESTION_KEYWORDS = [
+  // English - direct suggestions
+  'try', 'consider', 'could', 'should', 'recommend', 'suggest',
+  'would benefit', 'might', 'may want',
+  // English - improvement suggestions
+  'instead', 'rather than', 'improve', 'enhance', 'experiment', 'explore',
+  'start', 'begin', 'adopt', 'implement', 'use', 'leverage',
+  // English - specific action phrases
+  'would help', 'can help', 'helps to', 'better to', 'worth',
+  // Korean
+  '시도', '고려', '개선', '추천', '제안', '해보', '도입', '활용',
+  '하면 좋', '것이 좋', '바람직', '필요',
+];
 
 function hasAnyKeyword(text: string, keywords: string[]): boolean {
   const lower = text.toLowerCase();
@@ -278,8 +313,32 @@ interface KPTResult {
   try: string[];
 }
 
+/**
+ * Derive KPT (Keep/Problem/Try) from agent output data
+ *
+ * Priority:
+ * 1. Use structured kptKeep/kptProblem/kptTry fields if available (new format)
+ * 2. Fall back to keyword matching on topInsights (legacy format)
+ */
 function deriveAgentKPT(data: unknown): KPTResult {
-  const insights = (data as { topInsights?: string[] }).topInsights || [];
+  const d = data as {
+    kptKeep?: string[];
+    kptProblem?: string[];
+    kptTry?: string[];
+    topInsights?: string[];
+  };
+
+  // 1. Use structured KPT fields if available (preferred)
+  if (d.kptProblem?.length || d.kptTry?.length) {
+    return {
+      keep: d.kptKeep || [],
+      problem: d.kptProblem || [],
+      try: d.kptTry || [],
+    };
+  }
+
+  // 2. Fallback: keyword matching on topInsights (legacy support)
+  const insights = d.topInsights || [];
 
   return {
     keep: insights.filter(i => isPositiveInsight(i)).slice(0, 2),

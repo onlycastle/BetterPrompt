@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { TestLoginForm } from '@/components/auth';
 import { Terminal, ArrowRight, FileText, RefreshCw, Github, Clock } from 'lucide-react';
 import styles from './page.module.css';
 
@@ -102,6 +103,7 @@ export function AnalyzeContent() {
             <Github size={20} />
             {loginLoading ? 'Signing in...' : 'Continue with GitHub'}
           </button>
+          <TestLoginForm />
         </div>
       </div>
     );
@@ -127,7 +129,7 @@ export function AnalyzeContent() {
             Your data is processed in the cloud but <strong>never stored</strong>.
           </p>
           <div className={styles.cliCommand}>
-            <code>npx nomoreaislop</code>
+            <code>npx no-ai-slop</code>
           </div>
           <p className={styles.ctaHint}>
             Works with Claude Code sessions from <code>~/.claude/projects/</code>

@@ -1,6 +1,6 @@
 /**
  * PersonalContent - Client Component
- * Tabbed view: Report | Progress | Insights
+ * Tabbed view: Report | Progress
  */
 
 'use client';
@@ -9,10 +9,13 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { FileText, TrendingUp, Lightbulb, ArrowRight, Github, CheckCircle } from 'lucide-react';
+import { usePersonalAnalytics } from '@/hooks/usePersonalAnalytics';
+import { TestLoginForm } from '@/components/auth';
+import { ProgressTab } from '@/components/personal';
+import { FileText, TrendingUp, ArrowRight, Github, CheckCircle, Trash2, AlertTriangle } from 'lucide-react';
 import styles from './page.module.css';
 
-type TabId = 'report' | 'progress' | 'insights';
+type TabId = 'report' | 'progress';
 
 interface UserAnalysis {
   id: string;
@@ -29,7 +32,6 @@ interface UserAnalysis {
 const TABS: Array<{ id: TabId; label: string; icon: React.ReactNode }> = [
   { id: 'report', label: 'Report', icon: <FileText size={18} /> },
   { id: 'progress', label: 'Progress', icon: <TrendingUp size={18} /> },
-  { id: 'insights', label: 'Insights', icon: <Lightbulb size={18} /> },
 ];
 
 export function PersonalContent() {
@@ -42,6 +44,9 @@ export function PersonalContent() {
   const [isLoadingAnalyses, setIsLoadingAnalyses] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(paymentSuccess);
+  const [deleteTarget, setDeleteTarget] = useState<UserAnalysis | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Hide success toast after delay
   useEffect(() => {
@@ -84,13 +89,40 @@ export function PersonalContent() {
     }
   };
 
-  const formatDate = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+  const handleDeleteClick = (analysis: UserAnalysis) => {
+    setDeleteTarget(analysis);
+    setDeleteError(null);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteTarget(null);
+    setDeleteError(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const response = await fetch(`/api/analysis/results/${deleteTarget.resultId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to delete report');
+      }
+
+      // Remove from local state
+      setAnalyses(prev => prev.filter(a => a.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Failed to delete report');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Loading state
@@ -123,6 +155,7 @@ export function PersonalContent() {
             <Github size={20} />
             {loginLoading ? 'Signing in...' : 'Continue with GitHub'}
           </button>
+          <TestLoginForm />
         </div>
       </div>
     );
@@ -163,25 +196,39 @@ export function PersonalContent() {
       {/* Tab Content */}
       <div className={styles.content}>
         {activeTab === 'report' && (
-          <ReportTabContent analyses={analyses} isLoading={isLoadingAnalyses} />
+          <ReportTabContent
+            analyses={analyses}
+            isLoading={isLoadingAnalyses}
+            onDelete={handleDeleteClick}
+          />
         )}
         {activeTab === 'progress' && (
-          <ProgressTabContent analyses={analyses} />
-        )}
-        {activeTab === 'insights' && (
-          <InsightsTabContent analyses={analyses} />
+          <ProgressTabWrapper analyses={analyses} />
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <DeleteConfirmModal
+          analysis={deleteTarget}
+          isDeleting={isDeleting}
+          error={deleteError}
+          onCancel={handleDeleteCancel}
+          onConfirm={handleDeleteConfirm}
+        />
+      )}
     </div>
   );
 }
 
 function ReportTabContent({
   analyses,
-  isLoading
+  isLoading,
+  onDelete
 }: {
   analyses: UserAnalysis[];
   isLoading: boolean;
+  onDelete: (analysis: UserAnalysis) => void;
 }) {
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
@@ -208,7 +255,7 @@ function ReportTabContent({
         <h3>No Analysis Reports Yet</h3>
         <p>Run your first analysis to see your AI coding insights here.</p>
         <div className={styles.cliBox}>
-          <code>npx nomoreaislop</code>
+          <code>npx no-ai-slop</code>
         </div>
       </div>
     );
@@ -238,6 +285,17 @@ function ReportTabContent({
           <span className={`${styles.badge} ${analysis.isPaid ? styles.paidBadge : styles.freeBadge}`}>
             {analysis.isPaid ? 'Full' : 'Preview'}
           </span>
+          <button
+            className={styles.deleteBtn}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDelete(analysis);
+            }}
+            aria-label="Delete report"
+          >
+            <Trash2 size={16} />
+          </button>
           <ArrowRight size={20} className={styles.cardArrow} />
         </Link>
       ))}
@@ -245,7 +303,34 @@ function ReportTabContent({
   );
 }
 
-function ProgressTabContent({ analyses }: { analyses: UserAnalysis[] }) {
+function ProgressTabWrapper({ analyses }: { analyses: UserAnalysis[] }) {
+  const { data: analytics, isLoading, error } = usePersonalAnalytics();
+
+  // Check if user has any paid analyses (premium status)
+  const isPremium = analyses.some(a => a.isPaid);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className={styles.loadingInline}>
+        <div className={styles.spinnerSmall} />
+        <span>Loading progress data...</span>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className={styles.emptyState}>
+        <div className={styles.emptyIcon}>&#9888;</div>
+        <h3>Failed to Load Progress</h3>
+        <p>There was an error loading your progress data. Please try again.</p>
+      </div>
+    );
+  }
+
+  // Show empty state if no analyses yet
   if (analyses.length === 0) {
     return (
       <div className={styles.emptyState}>
@@ -253,91 +338,75 @@ function ProgressTabContent({ analyses }: { analyses: UserAnalysis[] }) {
         <h3>No Progress Data Yet</h3>
         <p>Complete your first analysis to start tracking your growth journey.</p>
         <div className={styles.cliBox}>
-          <code>npx nomoreaislop</code>
+          <code>npx no-ai-slop</code>
         </div>
       </div>
     );
   }
 
-  // Show basic progress info
-  const latestScore = analyses[0]?.evaluation?.overallScore;
-  const analysisCount = analyses.length;
-  const paidCount = analyses.filter(a => a.isPaid).length;
-
-  return (
-    <div className={styles.progressContent}>
-      <div className={styles.statsGrid}>
-        <div className={styles.statCard}>
-          <span className={styles.statValue}>{analysisCount}</span>
-          <span className={styles.statLabel}>Total Analyses</span>
-        </div>
-        <div className={styles.statCard}>
-          <span className={styles.statValue}>{paidCount}</span>
-          <span className={styles.statLabel}>Unlocked Reports</span>
-        </div>
-        {latestScore !== undefined && (
-          <div className={styles.statCard}>
-            <span className={styles.statValue}>{Math.round(latestScore)}</span>
-            <span className={styles.statLabel}>Latest Score</span>
-          </div>
-        )}
-      </div>
-
-      <div className={styles.progressHint}>
-        <TrendingUp size={20} />
-        <p>
-          Run more analyses over time to see your progress chart and detailed trends.
-          Each analysis captures a snapshot of your AI collaboration patterns.
-        </p>
-      </div>
-    </div>
-  );
+  // Show progress tab with real analytics data
+  // analytics can be undefined before query completes, treat as null
+  return <ProgressTab analytics={analytics ?? null} isPremium={isPremium} />;
 }
 
-function InsightsTabContent({ analyses }: { analyses: UserAnalysis[] }) {
-  const paidAnalyses = analyses.filter(a => a.isPaid);
-
-  if (paidAnalyses.length === 0) {
-    return (
-      <div className={styles.emptyState}>
-        <div className={styles.emptyIcon}>&#128161;</div>
-        <h3>No Insights Yet</h3>
-        <p>Unlock a report to see personalized growth areas and recommendations.</p>
-        {analyses.length > 0 && (
-          <Link href={`/dashboard/personal/r/${analyses[0].resultId}`} className={styles.unlockLink}>
-            Unlock Your First Report
-            <ArrowRight size={14} />
-          </Link>
-        )}
-      </div>
-    );
-  }
+function DeleteConfirmModal({
+  analysis,
+  isDeleting,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  analysis: UserAnalysis;
+  isDeleting: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  // Handle ESC key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isDeleting) {
+        onCancel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDeleting, onCancel]);
 
   return (
-    <div className={styles.insightsContent}>
-      <div className={styles.insightCard}>
-        <Lightbulb size={24} className={styles.insightIcon} />
-        <div>
-          <h4>Your Growth Journey</h4>
-          <p>
-            You&apos;ve unlocked {paidAnalyses.length} report{paidAnalyses.length > 1 ? 's' : ''}.
-            View each report for detailed insights and personalized recommendations.
-          </p>
+    <div className={styles.modal} onClick={isDeleting ? undefined : onCancel}>
+      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalIcon}>
+          <AlertTriangle size={32} />
         </div>
-      </div>
-
-      <div className={styles.reportLinks}>
-        <h4>View Detailed Insights</h4>
-        {paidAnalyses.slice(0, 3).map((analysis) => (
-          <Link
-            key={analysis.id}
-            href={`/dashboard/personal/r/${analysis.resultId}`}
-            className={styles.insightLink}
+        <h3 className={styles.modalTitle}>Delete Report?</h3>
+        <p className={styles.modalDescription}>
+          This action cannot be undone. The report
+          {analysis.evaluation?.primaryType && (
+            <strong> &quot;{analysis.evaluation.primaryType}&quot;</strong>
+          )} and all associated data will be permanently deleted.
+        </p>
+        {error && (
+          <div className={styles.modalError}>
+            {error}
+          </div>
+        )}
+        <div className={styles.modalActions}>
+          <button
+            className={styles.cancelBtn}
+            onClick={onCancel}
+            disabled={isDeleting}
           >
-            {analysis.evaluation?.primaryType || 'Analysis'} Report
-            <ArrowRight size={14} />
-          </Link>
-        ))}
+            Cancel
+          </button>
+          <button
+            className={styles.confirmDeleteBtn}
+            onClick={onConfirm}
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </button>
+        </div>
       </div>
     </div>
   );
