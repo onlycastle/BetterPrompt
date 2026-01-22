@@ -148,6 +148,35 @@ interface AnalysisRequestV2 {
 type AnalysisRequest = AnalysisRequestV1 | AnalysisRequestV2;
 
 /**
+ * Token usage for a single stage
+ */
+interface StageTokenUsage {
+  stage: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
+/**
+ * Pipeline token usage from LLM API responses
+ */
+interface PipelineTokenUsage {
+  stages: StageTokenUsage[];
+  totals: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  cost: {
+    inputCost: number;
+    outputCost: number;
+    totalCost: number;
+  };
+  model: string;
+  modelName: string;
+}
+
+/**
  * Analysis result returned to CLI
  */
 interface AnalysisResponse {
@@ -165,6 +194,8 @@ interface AnalysisResponse {
     craftsman: number;
   };
   personalitySummary: string;
+  /** Actual token usage from LLM pipeline (for DEBUG_COST mode) */
+  tokenUsage?: PipelineTokenUsage;
 }
 
 /**
@@ -757,6 +788,7 @@ async function runAnalysis(
     matrixEmoji,
     distribution: evaluation.distribution,
     personalitySummary: evaluation.personalitySummary,
+    tokenUsage: evaluation.pipelineTokenUsage,
   };
 
   write({
