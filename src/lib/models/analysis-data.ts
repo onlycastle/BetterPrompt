@@ -341,6 +341,43 @@ export const PlanningBehaviorSchema = z.object({
 export type PlanningBehavior = z.infer<typeof PlanningBehaviorSchema>;
 
 // ============================================================================
+// Absence-Based Growth Signal Schema (NEW - Systematic Growth Detection)
+// ============================================================================
+
+/**
+ * Growth signal detected by the ABSENCE of an expected pattern.
+ * This is more reliable than positive detection because absence is definitive.
+ *
+ * Example: If no /plan usage is found in any session, that's a clear growth area.
+ */
+export const AbsenceBasedGrowthSignalSchema = z.object({
+  /** Pattern identifier from EXPECTED_PATTERNS */
+  patternId: z.string(),
+
+  /** Which dimension this growth signal relates to */
+  dimension: DimensionNameEnumSchema,
+
+  /** Whether this expected pattern was absent (true = not found = growth area) */
+  wasAbsent: z.boolean(),
+
+  /** How many sessions were checked for this pattern */
+  sessionsChecked: z.number(),
+
+  /** Human-readable title for this growth area */
+  growthTitle: z.string().max(100),
+
+  /** Detailed explanation of why this matters */
+  growthDescription: z.string().max(500),
+
+  /** Actionable recommendation */
+  recommendation: z.string().max(400),
+
+  /** Source of this recommendation (e.g., "Anthropic Best Practices", "Expected Pattern") */
+  source: z.string().max(100).optional(),
+});
+export type AbsenceBasedGrowthSignal = z.infer<typeof AbsenceBasedGrowthSignalSchema>;
+
+// ============================================================================
 // Cluster Definition (Legacy type for backward compatibility)
 // ============================================================================
 
@@ -507,6 +544,9 @@ export const StructuredAnalysisDataSchema = z.object({
 
   /** Planning behaviors observed (Premium/Enterprise) */
   planningBehaviors: z.array(PlanningBehaviorSchema).optional(),
+
+  /** Absence-based growth signals (systematic growth detection) */
+  absenceBasedGrowthSignals: z.array(AbsenceBasedGrowthSignalSchema).optional(),
 
   /** B: Personalized top 3 priorities for this developer */
   personalizedPriorities: PersonalizedPrioritySchema.optional(),

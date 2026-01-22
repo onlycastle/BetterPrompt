@@ -72,6 +72,14 @@ export const PatternDetectiveOutputSchema = z.object({
   // "pattern|frequency|example;..." where pattern uses → to show sequence
   // Example: "check code→analyze problem→create plan|5|check the code, analyze it, then make a plan"
   repeatedCommandPatternsData: z.string().max(3000).optional(),
+
+  // NEW: Structured strengths with evidence (replaces topInsights for positive patterns)
+  // Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
+  strengthsData: z.string().max(4000).optional(),
+
+  // NEW: Growth areas with evidence and recommendations (replaces topInsights for improvements)
+  // Format: "title|description|evidence1,evidence2|recommendation;title2|..."
+  growthAreasData: z.string().max(4000).optional(),
 });
 
 export type PatternDetectiveOutput = z.infer<typeof PatternDetectiveOutputSchema>;
@@ -117,6 +125,103 @@ export function parseRepeatedCommandPatternsData(
       };
     })
     .filter((item) => item.pattern && item.frequency > 0);
+}
+
+// ============================================================================
+// Strengths & Growth Areas Parsing (NEW)
+// ============================================================================
+
+/**
+ * Parsed strength item for agent insights
+ * Represents a positive pattern with supporting evidence
+ */
+export interface AgentStrength {
+  /** Clear pattern name (e.g., "Systematic Problem Decomposition") */
+  title: string;
+  /** 2-3 sentence detailed description */
+  description: string;
+  /** Direct quotes from user's actual messages */
+  evidence: string[];
+}
+
+/**
+ * Parsed growth area for agent insights
+ * Represents an area for improvement with recommendation
+ */
+export interface AgentGrowthArea {
+  /** Clear pattern name (e.g., "Context Provision Pattern") */
+  title: string;
+  /** 2-3 sentence description of the issue */
+  description: string;
+  /** Direct quotes from user's actual messages */
+  evidence: string[];
+  /** Specific, actionable recommendation */
+  recommendation: string;
+}
+
+/**
+ * Parse strengthsData string into structured array
+ * Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
+ *
+ * @example
+ * parseStrengthsData("Systematic Approach|You break down complex problems into clear steps|'먼저 구조를 파악하고','그 다음 세부 구현'")
+ * // Returns:
+ * // [{ title: "Systematic Approach", description: "You break down...", evidence: ["먼저 구조를 파악하고", "그 다음 세부 구현"] }]
+ */
+export function parseStrengthsData(data: string | undefined): AgentStrength[] {
+  if (!data || data.trim() === '') return [];
+
+  return data
+    .split(';')
+    .filter(Boolean)
+    .map((entry) => {
+      const parts = entry.split('|');
+      const title = parts[0]?.trim() || '';
+      const description = parts[1]?.trim() || '';
+      const evidenceStr = parts[2]?.trim() || '';
+
+      // Parse evidence: comma-separated, remove surrounding quotes
+      const evidence = evidenceStr
+        .split(',')
+        .map((e) => e.trim().replace(/^['"]|['"]$/g, ''))
+        .filter(Boolean);
+
+      return { title, description, evidence };
+    })
+    .filter((item) => item.title && item.description);
+}
+
+/**
+ * Parse growthAreasData string into structured array
+ * Format: "title|description|evidence1,evidence2|recommendation;title2|..."
+ *
+ * @example
+ * parseGrowthAreasData("Context Provision|Tends to skip context|'이거 고쳐줘','왜 안 되지?'|Provide situation, attempts, and desired outcome")
+ * // Returns:
+ * // [{ title: "Context Provision", description: "Tends to...", evidence: [...], recommendation: "Provide..." }]
+ */
+export function parseGrowthAreasData(data: string | undefined): AgentGrowthArea[] {
+  if (!data || data.trim() === '') return [];
+
+  return data
+    .split(';')
+    .filter(Boolean)
+    .map((entry) => {
+      const parts = entry.split('|');
+      const title = parts[0]?.trim() || '';
+      const description = parts[1]?.trim() || '';
+      const evidenceStr = parts[2]?.trim() || '';
+      const recommendation = parts[3]?.trim() || '';
+
+      // Parse evidence: comma-separated, remove surrounding quotes
+      const evidence = evidenceStr
+        .split(',')
+        .map((e) => e.trim().replace(/^['"]|['"]$/g, ''))
+        .filter(Boolean);
+
+      return { title, description, evidence, recommendation };
+    })
+    .filter((item) => item.title && item.description);
 }
 
 // ============================================================================
@@ -170,6 +275,14 @@ export const AntiPatternSpotterOutputSchema = z.object({
 
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
+
+  // NEW: Structured strengths with evidence (healthy habits)
+  // Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
+  strengthsData: z.string().max(4000).optional(),
+
+  // NEW: Growth areas with evidence and recommendations (anti-patterns to address)
+  // Format: "title|description|evidence1,evidence2|recommendation;title2|..."
+  growthAreasData: z.string().max(4000).optional(),
 });
 
 export type AntiPatternSpotterOutput = z.infer<typeof AntiPatternSpotterOutputSchema>;
@@ -225,6 +338,14 @@ export const KnowledgeGapOutputSchema = z.object({
 
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
+
+  // NEW: Structured strengths with evidence (knowledge strengths)
+  // Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
+  strengthsData: z.string().max(4000).optional(),
+
+  // NEW: Growth areas with evidence and recommendations (knowledge gaps)
+  // Format: "title|description|evidence1,evidence2|recommendation;title2|..."
+  growthAreasData: z.string().max(4000).optional(),
 });
 
 export type KnowledgeGapOutput = z.infer<typeof KnowledgeGapOutputSchema>;
@@ -289,6 +410,14 @@ export const ContextEfficiencyOutputSchema = z.object({
 
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
+
+  // NEW: Structured strengths with evidence (efficient habits)
+  // Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
+  strengthsData: z.string().max(4000).optional(),
+
+  // NEW: Growth areas with evidence and recommendations (inefficiencies)
+  // Format: "title|description|evidence1,evidence2|recommendation;title2|..."
+  growthAreasData: z.string().max(4000).optional(),
 });
 
 export type ContextEfficiencyOutput = z.infer<typeof ContextEfficiencyOutputSchema>;
