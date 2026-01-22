@@ -111,7 +111,7 @@ export const KnowledgeItemSchema = z.object({
   version: z.literal('1.0.0'),
 
   // Content
-  title: z.string().min(10).max(200),
+  title: z.string().min(10).max(3000),
   summary: z.string().min(50).max(1000),
   content: z.string().min(100).max(10000),
 
@@ -214,9 +214,9 @@ export const ProfessionalInsightSchema = z.object({
   category: InsightCategorySchema,
 
   // Content
-  title: z.string().min(10).max(100),
-  keyTakeaway: z.string().min(20).max(300),
-  actionableAdvice: z.array(z.string().max(200)).min(1).max(5),
+  title: z.string().min(10).max(3000),
+  keyTakeaway: z.string().min(20).max(3000),
+  actionableAdvice: z.array(z.string().max(3000)).min(1).max(5),
 
   // Source attribution
   source: z.object({
