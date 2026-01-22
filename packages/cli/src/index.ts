@@ -213,6 +213,9 @@ async function performDeviceFlowAuth(): Promise<string> {
         throw new Error('Device authorization timed out. Please try again.');
       }
     }
+  } catch (error) {
+    spinner.fail('Authentication failed');
+    throw error;
   }
 }
 
