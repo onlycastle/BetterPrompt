@@ -577,6 +577,7 @@ async function storeResult(
     // Include user_id if provided (desktop app pre-authenticated flow)
     if (userId) {
       insertData.user_id = userId;
+      insertData.claimed_at = new Date().toISOString();
       console.log(`[lambda] Storing result with user_id: ${userId}`);
     }
 
