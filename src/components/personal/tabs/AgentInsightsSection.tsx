@@ -131,6 +131,48 @@ function getScoreColor(value: number, max: number): 'high' | 'medium' | 'low' {
   return 'low';
 }
 
+/**
+ * Check if agent has detail data to show
+ * Returns false for teaser data (premium agents in free tier have empty data fields)
+ */
+function hasDetailData(agentId: keyof AgentOutputs, data: unknown): boolean {
+  if (!data) return false;
+
+  switch (agentId) {
+    case 'patternDetective': {
+      const d = data as AgentOutputs['patternDetective'];
+      return !!(d?.repeatedQuestionsData || d?.requestStartPatternsData);
+    }
+    case 'antiPatternSpotter': {
+      const d = data as AgentOutputs['antiPatternSpotter'];
+      return !!(d?.errorLoopsData || d?.repeatedMistakesData);
+    }
+    case 'knowledgeGap': {
+      const d = data as AgentOutputs['knowledgeGap'];
+      return !!(d?.knowledgeGapsData || d?.recommendedResourcesData);
+    }
+    case 'contextEfficiency': {
+      const d = data as AgentOutputs['contextEfficiency'];
+      return !!(d?.inefficiencyPatternsData || d?.redundantInfoData);
+    }
+    case 'metacognition': {
+      const d = data as AgentOutputs['metacognition'];
+      return !!(d?.awarenessInstancesData || d?.blindSpotsData);
+    }
+    case 'temporalAnalysis': {
+      const d = data as AgentOutputs['temporalAnalysis'];
+      // Temporal always has metrics, so check if there's meaningful data
+      return !!(d?.metrics?.activityHeatmap?.totalMessages);
+    }
+    case 'multitasking': {
+      const d = data as AgentOutputs['multitasking'];
+      return !!(d?.strategyEvaluationData || d?.contextSwitchCountMin);
+    }
+    default:
+      return false;
+  }
+}
+
 export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsightsSectionProps) {
   const [expandedAgent, setExpandedAgent] = useState<keyof AgentOutputs | null>(null);
 
@@ -196,13 +238,15 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
                 </div>
               )}
 
-              {/* Expand/Collapse Button */}
-              <button
-                className={styles.expandButton}
-                onClick={() => toggleExpand(config.id)}
-              >
-                {isExpanded ? 'Hide Details ▲' : 'Show Details ▼'}
-              </button>
+              {/* Expand/Collapse Button - only show if there's detail data */}
+              {hasDetailData(config.id, data) && (
+                <button
+                  className={styles.expandButton}
+                  onClick={() => toggleExpand(config.id)}
+                >
+                  {isExpanded ? 'Hide Details ▲' : 'Show Details ▼'}
+                </button>
+              )}
 
               {/* Expanded Details */}
               {isExpanded && (
@@ -951,11 +995,6 @@ function parsePipeDelimitedData<T extends Record<string, string>>(
 
     return result;
   });
-}
-
-function parseSinglePipeEntry(data: string | undefined): string[] {
-  if (!data) return [];
-  return data.split('|');
 }
 
 export default AgentInsightsSection;

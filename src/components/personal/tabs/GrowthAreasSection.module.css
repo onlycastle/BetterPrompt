@@ -5,10 +5,19 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-lg);
+}
+
+/* Row layout for Growth Area card + Resource Bubble side by side */
+.areaRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-lg);
 }
 
 .areaCard {
+  flex: 1;
+  max-width: 560px;
   background: var(--surface-1);
   border: 2px solid var(--ink-primary);
   border-left: 4px solid var(--sketch-yellow);
@@ -126,4 +135,15 @@
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--sketch-cyan-text);
+}
+
+/* Responsive: Stack card and bubble on mobile */
+@media (max-width: 768px) {
+  .areaRow {
+    flex-direction: column;
+  }
+
+  .areaCard {
+    max-width: 100%;
+  }
 }
