@@ -338,10 +338,31 @@ Return StructuredAnalysisData with FLATTENED structure:
 - Acknowledge that anti-patterns are common learning stages
 - Suggest specific improvements rather than just highlighting problems
 
-**IMPORTANT - Language Independence:**
-- Detect patterns by MEANING, not by specific keywords
-- The examples given are in multiple languages - detect similar INTENT in any language
-- For /plan command, detection is language-independent (it's a slash command)`;
+**IMPORTANT - Multi-Language Input Support:**
+
+The developer's session data may contain non-English text (Korean, Japanese, Chinese, or other languages).
+
+**Analysis Requirements:**
+- Detect patterns and behaviors by MEANING and INTENT, not by specific English keywords
+- Understand frustration, verification, planning regardless of the language used
+- Technical terms are often in English even within non-English sentences - this is normal
+- The examples in this prompt are in English, but apply the same detection logic to ANY language
+
+**Quote Handling:**
+- Extract quotes in their ORIGINAL language - do NOT translate
+- Preserve exact text including any English technical terms mixed in
+- If the user wrote in Korean/Japanese/Chinese, extract the quote exactly as written
+
+**Intent Detection (detect equivalent meaning in any language):**
+- Frustration signals: expressions of annoyance, anger, confusion (any language)
+- Verification signals: questions about correctness, confirmation requests (any language)
+- Planning signals: phrases about preparing, organizing, sequencing tasks (any language)
+- Debugging signals: expressions about fixing, troubleshooting, investigating (any language)
+- Retry signals: expressions meaning "try again", "one more time", "fix it" (any language)
+
+**Slash Commands:**
+- /plan, /compact, /clear are language-independent (literal slash commands)
+- Detect these regardless of surrounding text language`;
 
 /**
  * Build the user prompt for Stage 1 data extraction

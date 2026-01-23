@@ -30,7 +30,7 @@ import type { AgentOutputs } from '../../models/agent-outputs';
 import {
   CONTENT_WRITER_SYSTEM_PROMPT,
   buildContentWriterUserPrompt,
-  detectKoreanContent,
+  detectPrimaryLanguage,
 } from './content-writer-prompts';
 import { buildPatternKnowledgeContext, extractPatternTypes } from './pattern-knowledge-mapping';
 
@@ -114,9 +114,10 @@ export class ContentWriterStage {
     const productivityDataJson = productivityData ? JSON.stringify(productivityData, null, 2) : undefined;
     const agentOutputsJson = agentOutputs ? JSON.stringify(agentOutputs, null, 2) : undefined;
 
-    // Detect if user's quotes are primarily in Korean
+    // Detect primary language from user's quotes
     const quotes = analysisData.extractedQuotes.map((q) => q.quote);
-    const useKorean = detectKoreanContent(quotes);
+    const languageResult = detectPrimaryLanguage(quotes);
+    const outputLanguage = languageResult.primary;
 
     // Build KB context from detected patterns for enriched tips
     const patternTypes = analysisData.detectedPatterns
@@ -127,7 +128,7 @@ export class ContentWriterStage {
     const userPrompt = buildContentWriterUserPrompt(
       structuredDataJson,
       sessions.length,
-      useKorean,
+      outputLanguage,
       kbContext,
       productivityDataJson,
       agentOutputsJson
@@ -177,8 +178,8 @@ export class ContentWriterStage {
 
     // Truncate strings that exceed limits (preserving bold markers)
     if (sanitized.personalitySummary && typeof sanitized.personalitySummary === 'string') {
-      if (sanitized.personalitySummary.length > 800) {
-        let truncated = sanitized.personalitySummary.slice(0, 797);
+      if (sanitized.personalitySummary.length > 3000) {
+        let truncated = sanitized.personalitySummary.slice(0, 2997);
         // Avoid breaking a bold marker mid-way by checking for unclosed **
         const lastBoldStart = truncated.lastIndexOf('**');
         const beforeLastBold = truncated.slice(0, lastBoldStart).lastIndexOf('**');
