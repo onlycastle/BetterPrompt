@@ -121,6 +121,24 @@
   margin-bottom: var(--space-md);
 }
 
+/* Growth area row with inline ResourceBubble */
+.growthRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.growthRow:last-child {
+  margin-bottom: 0;
+}
+
+.growthRow > .item {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0; /* Remove margin since parent handles it */
+}
+
 .item {
   padding: var(--space-md);
   background: var(--surface-2);
@@ -284,7 +302,13 @@
   color: var(--sketch-cyan-text);
 }
 
-/* Responsive */
+/* Responsive - Stack growth row on mobile */
+@media (max-width: 768px) {
+  .growthRow {
+    flex-direction: column;
+  }
+}
+
 @media (max-width: 640px) {
   .itemHeader {
     flex-direction: column;
