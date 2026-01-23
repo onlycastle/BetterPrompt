@@ -59,15 +59,18 @@ export function createAgentTeasers(agentOutputs: AgentOutputs | undefined): Agen
         }
       : undefined,
 
+    // REDESIGNED: Temporal analysis now has metrics + insights structure
     temporalAnalysis: agentOutputs.temporalAnalysis
       ? {
-          hourlyPatternsData: '',
-          peakHoursData: '',
-          cautionHoursData: '',
-          fatiguePatternsData: '',
-          qualitativeInsightsData: '',
-          topInsights: agentOutputs.temporalAnalysis.topInsights?.slice(0, 1) || [],
-          confidenceScore: agentOutputs.temporalAnalysis.confidenceScore,
+          metrics: agentOutputs.temporalAnalysis.metrics, // Full metrics (deterministic)
+          insights: {
+            activityPatternSummary: '', // Hidden
+            sessionStyleSummary: '', // Hidden
+            topInsights: agentOutputs.temporalAnalysis.insights?.topInsights?.slice(0, 1) || [],
+            strengthsData: '', // Hidden
+            growthAreasData: '', // Hidden
+            confidenceScore: agentOutputs.temporalAnalysis.insights?.confidenceScore ?? 0,
+          },
         }
       : undefined,
 

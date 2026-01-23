@@ -38,7 +38,7 @@ export const ProfileSchema = z.object({
     speedrunner: z.number().min(0).max(100),
     craftsman: z.number().min(0).max(100),
   }),
-  personalitySummary: z.string().min(100).max(1500),
+  personalitySummary: z.string().min(100).max(3000),
 });
 
 // ============================================

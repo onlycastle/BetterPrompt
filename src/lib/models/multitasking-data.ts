@@ -132,6 +132,38 @@ export const MultitaskingAnalysisOutputSchema = z.object({
 
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
+
+  // NEW: Structured strengths with evidence (effective multitasking habits)
+  // Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
+  strengthsData: z.string().max(4000).optional(),
+
+  // NEW: Growth areas with evidence and recommendations (multitasking inefficiencies)
+  // Format: "title|description|evidence1,evidence2|recommendation;title2|..."
+  growthAreasData: z.string().max(4000).optional(),
+
+  // ============================================================================
+  // NEW: Time-Based Metrics (Research-Backed)
+  // Based on Gloria Mark's research: ~23 min recovery time per context switch
+  // ============================================================================
+
+  // Context switch count (min/max range to acknowledge LLM estimation uncertainty)
+  // Conservative (min): Only explicit switches ("wait, not that", "actually", "let me do something else")
+  // Upper bound (max): Includes implicit switches (file pattern changes, topic drift)
+  contextSwitchCountMin: z.number().min(0).optional(),
+  contextSwitchCountMax: z.number().min(0).optional(),
+
+  // Estimated recovery time lost in minutes (calculated from switches × 23 min)
+  estimatedRecoveryTimeLostMinutesMin: z.number().min(0).optional(),
+  estimatedRecoveryTimeLostMinutesMax: z.number().min(0).optional(),
+
+  // Deep work blocks: Sessions with 60+ minutes of focused work on one task
+  deepWorkBlockCount: z.number().min(0).optional(),
+
+  // Average session duration in minutes (precise - calculated from timestamps)
+  avgSessionDurationMinutes: z.number().min(0).optional(),
+
+  // Longest uninterrupted focus block in minutes (best deep work achieved)
+  longestFocusBlockMinutes: z.number().min(0).optional(),
 });
 
 export type MultitaskingAnalysisOutput = z.infer<typeof MultitaskingAnalysisOutputSchema>;
@@ -198,6 +230,15 @@ export interface MultitaskingAnalysis {
   projectGroupCount: number;
   topInsights: string[];
   confidenceScore: number;
+
+  // Time-based metrics (research-backed)
+  contextSwitchCountMin?: number;
+  contextSwitchCountMax?: number;
+  estimatedRecoveryTimeLostMinutesMin?: number;
+  estimatedRecoveryTimeLostMinutesMax?: number;
+  deepWorkBlockCount?: number;
+  avgSessionDurationMinutes?: number;
+  longestFocusBlockMinutes?: number;
 }
 
 // ============================================================================
@@ -348,6 +389,15 @@ export function parseMultitaskingAnalysisOutput(output: MultitaskingAnalysisOutp
     projectGroupCount: output.projectGroupCount,
     topInsights: output.topInsights || [],
     confidenceScore: output.confidenceScore,
+
+    // Time-based metrics (research-backed)
+    contextSwitchCountMin: output.contextSwitchCountMin,
+    contextSwitchCountMax: output.contextSwitchCountMax,
+    estimatedRecoveryTimeLostMinutesMin: output.estimatedRecoveryTimeLostMinutesMin,
+    estimatedRecoveryTimeLostMinutesMax: output.estimatedRecoveryTimeLostMinutesMax,
+    deepWorkBlockCount: output.deepWorkBlockCount,
+    avgSessionDurationMinutes: output.avgSessionDurationMinutes,
+    longestFocusBlockMinutes: output.longestFocusBlockMinutes,
   };
 }
 
@@ -373,5 +423,13 @@ export function createDefaultMultitaskingAnalysisOutput(): MultitaskingAnalysisO
     projectGroupCount: 0,
     topInsights: [],
     confidenceScore: 0,
+    // Time-based metrics defaults
+    contextSwitchCountMin: 0,
+    contextSwitchCountMax: 0,
+    estimatedRecoveryTimeLostMinutesMin: 0,
+    estimatedRecoveryTimeLostMinutesMax: 0,
+    deepWorkBlockCount: 0,
+    avgSessionDurationMinutes: 0,
+    longestFocusBlockMinutes: 0,
   };
 }
