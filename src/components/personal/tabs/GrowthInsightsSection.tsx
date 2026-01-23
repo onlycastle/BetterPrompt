@@ -1,0 +1,160 @@
+/**
+ * GrowthInsightsSection Component
+ *
+ * Aggregates growth areas from ALL agents (both free and premium tiers)
+ * and displays them in card format.
+ *
+ * Free users see growth areas from Pattern Detective + Metacognition
+ * Premium users see growth areas from all 7 agents
+ *
+ * Note: Learning resources are now displayed in a separate sidebar (ResourceSidebar)
+ */
+
+import { useMemo } from 'react';
+import { Card } from '../../ui/Card';
+import { ResourceBubble } from './ResourceBubble';
+import type { AgentOutputs, AgentGrowthArea, ParsedResource } from '../../../lib/models/agent-outputs';
+import { getAllAgentGrowthAreas } from '../../../lib/models/agent-outputs';
+import styles from './GrowthInsightsSection.module.css';
+
+interface GrowthInsightsSectionProps {
+  agentOutputs?: AgentOutputs;
+  isPaid?: boolean;
+  /** Map of topic -> resources for inline matching */
+  resourcesMap?: Map<string, ParsedResource[]>;
+}
+
+/** Maximum number of evidence quotes to display per growth area */
+const MAX_EVIDENCE_QUOTES = 2;
+
+/**
+ * Find matching resources for a growth area title
+ * Uses fuzzy matching - checks if topic appears in title or vice versa
+ */
+function findMatchingResources(
+  title: string,
+  resourcesMap?: Map<string, ParsedResource[]>
+): ParsedResource[] {
+  if (!resourcesMap || resourcesMap.size === 0) return [];
+
+  const titleLower = title.toLowerCase();
+  const matchedResources: ParsedResource[] = [];
+
+  resourcesMap.forEach((resources, topic) => {
+    // Check if topic appears in title or title appears in topic
+    if (titleLower.includes(topic) || topic.includes(titleLower)) {
+      matchedResources.push(...resources);
+    }
+  });
+
+  return matchedResources;
+}
+
+interface GrowthAreaCardProps {
+  area: AgentGrowthArea;
+  isPaid: boolean;
+  isFirstItem: boolean;
+  resourcesMap?: Map<string, ParsedResource[]>;
+}
+
+function GrowthAreaCard({ area, isPaid, isFirstItem, resourcesMap }: GrowthAreaCardProps) {
+  // Show full recommendation if isPaid OR first item (free preview)
+  const showFullRecommendation = isPaid || isFirstItem;
+  const matchedResources = findMatchingResources(area.title, resourcesMap);
+
+  return (
+    <div className={styles.growthRow}>
+      <Card padding="md" className={styles.growthCard}>
+        <div className={styles.cardHeader}>
+          <h4 className={styles.growthTitle}>{area.title}</h4>
+          {area.evidence.length > 0 && (
+            <span className={styles.evidenceCount}>{area.evidence.length} instances</span>
+          )}
+        </div>
+
+        <p className={styles.growthDescription}>{area.description}</p>
+
+        {/* Evidence quotes */}
+        {area.evidence.length > 0 && (
+          <div className={styles.evidenceQuotes}>
+            {area.evidence.slice(0, MAX_EVIDENCE_QUOTES).map((quote, qIdx) => (
+              <blockquote key={qIdx} className={styles.quote}>
+                "{quote}"
+              </blockquote>
+            ))}
+          </div>
+        )}
+
+        {/* Recommendation - locked for free users EXCEPT first item */}
+        {area.recommendation && (
+          <div className={`${styles.recommendation} ${!showFullRecommendation ? styles.recommendationLocked : ''}`}>
+            <span className={styles.recommendationLabel}>💡 Try this:</span>
+            {showFullRecommendation ? (
+              <span className={styles.recommendationText}>{area.recommendation}</span>
+            ) : (
+              <span className={styles.lockedContent}>
+                <span className={styles.blurredText}>{area.recommendation.slice(0, 25)}...</span>
+                <span className={styles.unlockBadge}>🔒 See recommendation</span>
+              </span>
+            )}
+          </div>
+        )}
+      </Card>
+      {/* Inline resource bubble - appears next to matching growth area */}
+      {matchedResources.length > 0 && (
+        <ResourceBubble resources={matchedResources} isPaid={isPaid} />
+      )}
+    </div>
+  );
+}
+
+export function GrowthInsightsSection({
+  agentOutputs,
+  isPaid = false,
+  resourcesMap,
+}: GrowthInsightsSectionProps) {
+  // Collect ALL growth areas from all agents
+  const allGrowthAreas = useMemo(() => {
+    if (!agentOutputs) return [];
+    return getAllAgentGrowthAreas(agentOutputs);
+  }, [agentOutputs]);
+
+  if (allGrowthAreas.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <h3 className={styles.title}>Growth Insights</h3>
+        <p className={styles.subtitle}>
+          Areas for improvement identified from your coding sessions
+        </p>
+      </div>
+
+      <div className={styles.list}>
+        {allGrowthAreas.map((area, idx) => (
+          <GrowthAreaCard
+            key={idx}
+            area={area}
+            isPaid={isPaid}
+            isFirstItem={idx === 0}
+            resourcesMap={resourcesMap}
+          />
+        ))}
+      </div>
+
+      {/* Premium teaser for free users */}
+      {!isPaid && (
+        <div className={styles.premiumTeaser}>
+          <span className={styles.premiumIcon}>✨</span>
+          <span className={styles.premiumText}>
+            Unlock all growth insights from 7 AI agents + personalized learning resources
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default GrowthInsightsSection;
