@@ -225,6 +225,55 @@ export function parseGrowthAreasData(data: string | undefined): AgentGrowthArea[
 }
 
 // ============================================================================
+// Recommended Resources Parsing (NEW)
+// ============================================================================
+
+/**
+ * Parsed resource item for learning recommendations
+ * Links to external documentation, tutorials, courses, etc.
+ */
+export interface ParsedResource {
+  /** Topic the resource covers (e.g., "TypeScript generics") */
+  topic: string;
+  /** Type of resource */
+  type: 'docs' | 'tutorial' | 'course' | 'article' | 'video';
+  /** Full URL to the resource */
+  url: string;
+}
+
+/**
+ * Parse recommendedResourcesData string into structured array
+ * Format: "topic:resource_type:full_url;..."
+ *
+ * Note: URLs contain colons (https://...) so we rejoin parts after the first two
+ *
+ * @example
+ * parseRecommendedResourcesData("TypeScript generics:docs:https://www.typescriptlang.org/docs/handbook/2/generics.html;React hooks:tutorial:https://react.dev/learn/hooks-overview")
+ * // Returns:
+ * // [
+ * //   { topic: "TypeScript generics", type: "docs", url: "https://www.typescriptlang.org/..." },
+ * //   { topic: "React hooks", type: "tutorial", url: "https://react.dev/learn/hooks-overview" }
+ * // ]
+ */
+export function parseRecommendedResourcesData(data: string | undefined): ParsedResource[] {
+  if (!data || data.trim() === '') return [];
+
+  return data
+    .split(';')
+    .filter(Boolean)
+    .map((entry) => {
+      const parts = entry.split(':');
+      const topic = parts[0]?.trim() || '';
+      const type = parts[1]?.trim() || 'docs';
+      // Handle URLs with colons (https://...) by rejoining remaining parts
+      const url = parts.slice(2).join(':').trim();
+
+      return { topic, type: type as ParsedResource['type'], url };
+    })
+    .filter((item) => item.topic && item.url);
+}
+
+// ============================================================================
 // Anti-Pattern Spotter: Bad Habit Detection
 // ============================================================================
 

@@ -469,6 +469,17 @@ Do NOT write pattern names, descriptions, tips, or analysis in English.
 Example: "The Persona Anchor" in English should be expressed naturally in ${langName}.`
     : '';
 
+  // Language reminder for agent insights translation
+  const languageAgentInsightsReminder = useNonEnglish
+    ? `
+⚠️ TRANSLATION REQUIRED: The agent insights above are in English.
+When integrating these insights into your ${langName} narrative:
+- Translate all agent findings, pattern names, and recommendations to ${langName}
+- Express insights naturally in ${langName} style
+- Keep technical terms in English (AI, IDE, debugging, Git, commit, token, etc.)
+`
+    : '';
+
   // Build KB context section if provided
   const kbContextSection = kbContext
     ? buildKnowledgeContextSection(kbContext, outputLanguage)
@@ -502,7 +513,7 @@ ${agentOutputsData}
 6. **Temporal Analysis insights** → Use for sessionTrends and productivity patterns
 
 ⚠️ IMPORTANT: These agent outputs contain REAL discoveries. Reference them explicitly in your narrative!
-`
+${languageAgentInsightsReminder}`
     : '';
 
   return `# Context Data

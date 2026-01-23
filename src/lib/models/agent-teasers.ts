@@ -39,7 +39,8 @@ export function createAgentTeasers(agentOutputs: AgentOutputs | undefined): Agen
       ? {
           knowledgeGapsData: '',
           learningProgressData: '',
-          recommendedResourcesData: '',
+          // Keep only first resource for free tier (1 per growth area visible)
+          recommendedResourcesData: agentOutputs.knowledgeGap.recommendedResourcesData?.split(';')[0] || '',
           topInsights: agentOutputs.knowledgeGap.topInsights?.slice(0, 1) || [],
           overallKnowledgeScore: agentOutputs.knowledgeGap.overallKnowledgeScore,
           confidenceScore: agentOutputs.knowledgeGap.confidenceScore,
