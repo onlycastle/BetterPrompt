@@ -152,7 +152,8 @@ Your insights MUST include direct quotes from the user's actual messages.
 export function buildPatternDetectiveUserPrompt(
   sessionsFormatted: string,
   moduleAOutput: string,
-  outputLanguage: SupportedLanguage = 'en'
+  outputLanguage: SupportedLanguage = 'en',
+  phraseStats?: string
 ): string {
   const useNonEnglish = outputLanguage !== 'en';
   const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
@@ -181,12 +182,19 @@ Keep the analysis professional and technical.
 
 `;
 
+  const phraseStatsSection = phraseStats
+    ? `
+${phraseStats}
+
+`
+    : '';
+
   return `## SESSION DATA
 ${sessionsFormatted}
 
 ## MODULE A ANALYSIS
 ${moduleAOutput}
-${languageInstructions}
+${phraseStatsSection}${languageInstructions}
 ## INSTRUCTIONS
 Analyze the conversation patterns and communication style across all sessions. Find repeated questions, style patterns, and request patterns that the user might not be aware of.
 
@@ -195,7 +203,7 @@ Analyze the conversation patterns and communication style across all sessions. F
 - These are workflow sequences where multiple actions are chained in one request
 - If a pattern appears 3+ times, suggest creating a skill (e.g., /investigate, /debug)
 - Use → arrows to show the sequence in repeatedCommandPatternsData
-
+${phraseStats ? '\n**IMPORTANT**: Use the PRE-CALCULATED PHRASE STATISTICS above for accurate frequency counts. Do NOT re-count - trust the provided numbers.\n' : ''}
 Generate exactly 3 "wow moment" insights.${useNonEnglish ? ` Write all insights in ${langName}.` : ''}`;
 }
 
