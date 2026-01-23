@@ -370,7 +370,12 @@ The developer's session data may contain non-English text (Korean, Japanese, Chi
 Return a JSON object with:
 - \`knowledgeGapsData\`: "topic:question_count:depth(shallow/moderate/deep):example;..."
 - \`learningProgressData\`: "topic:start_level:current_level:evidence;..."
-- \`recommendedResourcesData\`: "topic:resource_type:resource_name_or_url;..."
+- \`recommendedResourcesData\`: "topic:resource_type:full_url;..."
+  - **topic**: Match exactly to identified knowledge gaps (use same wording as growthAreasData titles)
+  - **resource_type**: docs | tutorial | course | article | video
+  - **full_url**: MUST be complete URL starting with https://
+  - Generate 2-3 high-quality resources per knowledge gap
+  - Example: "TypeScript generics:docs:https://www.typescriptlang.org/docs/handbook/2/generics.html;React hooks:tutorial:https://react.dev/learn/hooks-overview"
 - \`topInsights\`: Array of exactly 3 insights (MUST follow KPT structure below)
 - \`kptKeep\`: Array of 0-1 knowledge strengths (optional)
 - \`kptProblem\`: Array of 1-2 knowledge gaps to address (REQUIRED)
