@@ -1,13 +1,37 @@
 /**
  * TabbedReportContainer Styles
  * Notebook sketch style with tab navigation
+ * 2-column layout: main content + resource sidebar
  */
 
-.container {
-  max-width: 800px;
+/* Outer 2-column layout wrapper */
+.pageLayout {
+  display: flex;
+  gap: var(--space-xl);
+  max-width: 1100px;
   margin: 0 auto;
+}
+
+/* Main content column (left side) */
+.mainContent {
+  flex: 1;
+  min-width: 0; /* Prevent flex overflow */
+  max-width: 700px;
   display: flex;
   flex-direction: column;
+}
+
+/* Resource sidebar (right side) */
+.resourceSidebar {
+  width: 280px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Sticky positioning for sidebar content */
+.resourceSidebar > * {
+  position: sticky;
+  top: var(--space-lg);
 }
 
 /* Fixed Header Section */
@@ -98,6 +122,26 @@
   }
 }
 
+/* Responsive - Tablet: Stack columns vertically */
+@media (max-width: 900px) {
+  .pageLayout {
+    flex-direction: column;
+  }
+
+  .mainContent {
+    max-width: 100%;
+  }
+
+  .resourceSidebar {
+    width: 100%;
+    order: -1; /* Show above main content on smaller screens */
+  }
+
+  .resourceSidebar > * {
+    position: static; /* Remove sticky on mobile */
+  }
+}
+
 /* Responsive - Mobile */
 @media (max-width: 640px) {
   .tabNav {
@@ -110,7 +154,6 @@
     padding: var(--space-xs) var(--space-sm);
     font-size: var(--text-xs);
   }
-
 }
 
 /* Extra small screens */

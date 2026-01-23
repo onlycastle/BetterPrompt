@@ -7,15 +7,17 @@
  * - Smart "Next Tab" navigation at bottom
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { TypeResultMinimal } from './TypeResultMinimal';
 import { PersonalitySummaryClean } from './PersonalitySummaryClean';
 import { PromptPatternsClean } from './PromptPatternsClean';
 import { DimensionInsightsClean } from './DimensionInsightsClean';
 import { AgentInsightsSection } from './AgentInsightsSection';
 import { NextTabButton } from './NextTabButton';
+import { ResourceBubble } from './ResourceBubble';
 import type { VerboseAnalysisData } from '../../../types/verbose';
 import type { AgentOutputs } from '../../../lib/models/agent-outputs';
+import { parseRecommendedResourcesData } from '../../../lib/models/agent-outputs';
 import styles from './TabbedReportContainer.module.css';
 
 export type ReportTabId = 'patterns' | 'dimensions' | 'agents';
@@ -44,6 +46,14 @@ export function TabbedReportContainer({
 }: TabbedReportContainerProps) {
   const [activeTab, setActiveTab] = useState<ReportTabId>('patterns');
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Parse knowledge resources for sidebar display
+  const allResources = useMemo(() => {
+    if (agentOutputs?.knowledgeGap?.recommendedResourcesData) {
+      return parseRecommendedResourcesData(agentOutputs.knowledgeGap.recommendedResourcesData);
+    }
+    return [];
+  }, [agentOutputs]);
 
   // Get index of current tab
   const currentTabIndex = REPORT_TABS.findIndex(t => t.id === activeTab);
@@ -93,83 +103,93 @@ export function TabbedReportContainer({
   const nextAvailableTab = hasNextAvailableTab ? availableTabs[currentAvailableIndex + 1] : null;
 
   return (
-    <div className={styles.container}>
-      {/* Fixed Header Section - Always Visible */}
-      <div className={styles.headerSection}>
-        {/* Type Result */}
-        <TypeResultMinimal
-          primaryType={analysis.primaryType}
-          distribution={analysis.distribution}
-          sessionsAnalyzed={analysis.sessionsAnalyzed}
-          controlLevel={analysis.controlLevel}
-          controlScore={analysis.controlScore}
-        />
-
-        {/* Personality Summary */}
-        {analysis.personalitySummary && (
-          <section className={styles.personalitySection}>
-            <h3 className={styles.sectionTitle}>Your AI Coding Personality</h3>
-            <PersonalitySummaryClean summary={analysis.personalitySummary} />
-          </section>
-        )}
-      </div>
-
-      {/* Tab Navigation */}
-      {availableTabs.length > 1 && (
-        <div className={styles.tabNav}>
-          {availableTabs.map((tab) => (
-            <button
-              key={tab.id}
-              className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-              onClick={() => handleTabChange(tab.id)}
-              type="button"
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Tab Content - Scrollable */}
-      <div ref={contentRef} className={styles.tabContent}>
-        {/* Patterns Tab */}
-        {activeTab === 'patterns' && hasPatterns && (
-          <div className={styles.tabPanel}>
-            <h3 className={styles.sectionTitle}>Communication Patterns</h3>
-            <PromptPatternsClean patterns={analysis.promptPatterns} isPaid={isPaid} />
-          </div>
-        )}
-
-        {/* Dimensions Tab */}
-        {activeTab === 'dimensions' && hasDimensions && (
-          <div className={styles.tabPanel}>
-            <DimensionInsightsClean
-              insights={analysis.dimensionInsights}
-              sessionsAnalyzed={analysis.sessionsAnalyzed}
-              isPaid={isPaid}
-            />
-          </div>
-        )}
-
-        {/* Agents Tab */}
-        {activeTab === 'agents' && hasAgents && agentOutputs && (
-          <div className={styles.tabPanel}>
-            <AgentInsightsSection
-              agentOutputs={agentOutputs}
-              isPaid={isPaid}
-            />
-          </div>
-        )}
-
-        {/* Smart Navigation - Next Tab Button */}
-        {nextAvailableTab && (
-          <NextTabButton
-            contentRef={contentRef}
-            nextTabLabel={nextAvailableTab.label}
-            onNextTab={handleNextTab}
+    <div className={styles.pageLayout}>
+      {/* Main Content Column */}
+      <div className={styles.mainContent}>
+        {/* Fixed Header Section - Always Visible */}
+        <div className={styles.headerSection}>
+          {/* Type Result */}
+          <TypeResultMinimal
+            primaryType={analysis.primaryType}
+            distribution={analysis.distribution}
+            sessionsAnalyzed={analysis.sessionsAnalyzed}
+            controlLevel={analysis.controlLevel}
+            controlScore={analysis.controlScore}
           />
+
+          {/* Personality Summary */}
+          {analysis.personalitySummary && (
+            <section className={styles.personalitySection}>
+              <h3 className={styles.sectionTitle}>Your AI Coding Personality</h3>
+              <PersonalitySummaryClean summary={analysis.personalitySummary} />
+            </section>
+          )}
+        </div>
+
+        {/* Tab Navigation */}
+        {availableTabs.length > 1 && (
+          <div className={styles.tabNav}>
+            {availableTabs.map((tab) => (
+              <button
+                key={tab.id}
+                className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
+                onClick={() => handleTabChange(tab.id)}
+                type="button"
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         )}
+
+        {/* Tab Content - Scrollable */}
+        <div ref={contentRef} className={styles.tabContent}>
+          {/* Patterns Tab */}
+          {activeTab === 'patterns' && hasPatterns && (
+            <div className={styles.tabPanel}>
+              <h3 className={styles.sectionTitle}>Communication Patterns</h3>
+              <PromptPatternsClean patterns={analysis.promptPatterns} isPaid={isPaid} />
+            </div>
+          )}
+
+          {/* Dimensions Tab */}
+          {activeTab === 'dimensions' && hasDimensions && (
+            <div className={styles.tabPanel}>
+              <DimensionInsightsClean
+                insights={analysis.dimensionInsights}
+                sessionsAnalyzed={analysis.sessionsAnalyzed}
+                isPaid={isPaid}
+              />
+            </div>
+          )}
+
+          {/* Agents Tab */}
+          {activeTab === 'agents' && hasAgents && agentOutputs && (
+            <div className={styles.tabPanel}>
+              <AgentInsightsSection
+                agentOutputs={agentOutputs}
+                isPaid={isPaid}
+              />
+            </div>
+          )}
+
+          {/* Smart Navigation - Next Tab Button */}
+          {nextAvailableTab && (
+            <NextTabButton
+              contentRef={contentRef}
+              nextTabLabel={nextAvailableTab.label}
+              onNextTab={handleNextTab}
+            />
+          )}
+        </div>
       </div>
+
+      {/* Resource Sidebar - Only show if resources exist */}
+      {allResources.length > 0 && (
+        <aside className={styles.resourceSidebar}>
+          <ResourceBubble resources={allResources} isPaid={isPaid} />
+        </aside>
+      )}
     </div>
   );
 }
