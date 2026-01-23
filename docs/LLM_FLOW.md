@@ -638,6 +638,23 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
 │  └─────────────────────────────────────────────────────────────────┘    │
 │               │                                                          │
 │               ▼                                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │  MULTI-LANGUAGE SUPPORT                                          │    │
+│  │                                                                   │    │
+│  │  Supported: 'en', 'ko', 'ja', 'zh'                               │    │
+│  │                                                                   │    │
+│  │  Language Reminders (non-English only):                          │    │
+│  │  ├── languageHeader: Write ALL output in target language         │    │
+│  │  ├── languagePatternReminder: Translate pattern descriptions     │    │
+│  │  ├── languageDimensionReminder: Translate dimension insights     │    │
+│  │  ├── languageAgentInsightsReminder: Translate agent insights     │    │
+│  │  └── languageFinalReminder: Final language compliance check      │    │
+│  │                                                                   │    │
+│  │  Technical Terms (kept in English):                              │    │
+│  │    AI, IDE, debugging, Git, commit, token, API, etc.             │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│               │                                                          │
+│               ▼                                                          │
 │  ┌────────────────────────────────────────────┐                         │
 │  │  LLM CALL                                   │                         │
 │  │  Model: gemini-3-flash-preview             │                         │
@@ -728,8 +745,15 @@ AgentOutputs                                       agentInsights
 │ patternDetective: {}  │                           │ patternInsights: "Across your..."│
 │ antiPatternSpotter: {}│──────────────────────────▶│ antiPatternFeedback: "We noted.."│
 │ knowledgeGap: {}      │     aggregate & narrate   │ learningRecommendations: [...]   │
-│ contextEfficiency: {} │                           │ efficiencyOpportunities: [...]   │
+│ contextEfficiency: {} │     + translate (if i18n) │ efficiencyOpportunities: [...]   │
 └───────────────────────┘                           └──────────────────────────────────┘
+
+⚠️ TRANSLATION NOTE (non-English output):
+Agent insights from Phase 2 are generated in English.
+When output language is non-English (ko, ja, zh):
+- languageAgentInsightsReminder instructs LLM to translate agent findings
+- Pattern names and recommendations are translated to target language
+- Technical terms (AI, Git, commit, etc.) remain in English
 ```
 
 ---
@@ -975,6 +999,9 @@ Expert knowledge structure injected into Module A:
   ║           - Top focus areas (personalized)                         ║
   ║           - Productivity insights (from Module C)                  ║
   ║           - Agent insights (from Phase 2, Premium+)                ║
+  ║                                                                    ║
+  ║   LANGUAGE: Supports 'en', 'ko', 'ja', 'zh'                        ║
+  ║             Non-English: Agent insights translated via prompt      ║
   ╚═══════════════════════════════════════════════════════════════════╝
                        │
                        │ [6] Post-processing: evidence linking, flattening
@@ -1127,7 +1154,7 @@ Expert knowledge structure injected into Module A:
 | Component | File | Description |
 |-----------|------|-------------|
 | Stage Implementation | `src/lib/analyzer/stages/content-writer.ts` | ContentWriterStage class, narrative transformation, evidence linking |
-| Prompts (PTCF) | `src/lib/analyzer/stages/content-writer-prompts.ts` | System/user prompt builders |
+| Prompts (PTCF) | `src/lib/analyzer/stages/content-writer-prompts.ts` | System/user prompt builders, i18n language reminders (ko/ja/zh) |
 | Output Schema | `src/lib/models/verbose-evaluation.ts` | VerboseLLMResponse, VerboseEvaluation schema |
 
 ### Session Parsing (Stage 0)
