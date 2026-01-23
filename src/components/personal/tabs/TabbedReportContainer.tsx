@@ -12,15 +12,20 @@ import { TypeResultMinimal } from './TypeResultMinimal';
 import { PersonalitySummaryClean } from './PersonalitySummaryClean';
 import { PromptPatternsClean } from './PromptPatternsClean';
 import { DimensionInsightsClean } from './DimensionInsightsClean';
+import { GrowthInsightsSection } from './GrowthInsightsSection';
 import { AgentInsightsSection } from './AgentInsightsSection';
 import { NextTabButton } from './NextTabButton';
-import { ResourceBubble } from './ResourceBubble';
+import { ResourceSidebar } from './ResourceSidebar';
 import type { VerboseAnalysisData } from '../../../types/verbose';
 import type { AgentOutputs } from '../../../lib/models/agent-outputs';
-import { parseRecommendedResourcesData } from '../../../lib/models/agent-outputs';
+import {
+  parseRecommendedResourcesData,
+  getAllAgentGrowthAreas,
+  type ParsedResource,
+} from '../../../lib/models/agent-outputs';
 import styles from './TabbedReportContainer.module.css';
 
-export type ReportTabId = 'patterns' | 'dimensions' | 'agents';
+export type ReportTabId = 'patterns' | 'growth' | 'dimensions' | 'agents';
 
 interface TabConfig {
   id: ReportTabId;
@@ -29,6 +34,7 @@ interface TabConfig {
 
 const REPORT_TABS: TabConfig[] = [
   { id: 'patterns', label: 'Prompt Patterns' },
+  { id: 'growth', label: 'Growth Insights' },
   { id: 'dimensions', label: 'Dimension Insights' },
   { id: 'agents', label: 'AI Agent Insights' },
 ];
@@ -47,18 +53,22 @@ export function TabbedReportContainer({
   const [activeTab, setActiveTab] = useState<ReportTabId>('patterns');
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Parse knowledge resources for sidebar display
+  // Parse all resources for sidebar display (flat array)
   const allResources = useMemo(() => {
-    if (agentOutputs?.knowledgeGap?.recommendedResourcesData) {
-      return parseRecommendedResourcesData(agentOutputs.knowledgeGap.recommendedResourcesData);
-    }
-    return [];
+    if (!agentOutputs?.knowledgeGap?.recommendedResourcesData) return [];
+    return parseRecommendedResourcesData(agentOutputs.knowledgeGap.recommendedResourcesData);
   }, [agentOutputs]);
 
-  // Get index of current tab
-  const currentTabIndex = REPORT_TABS.findIndex(t => t.id === activeTab);
-  const hasNextTab = currentTabIndex < REPORT_TABS.length - 1;
-  const nextTab = hasNextTab ? REPORT_TABS[currentTabIndex + 1] : null;
+  // Parse knowledge resources into a map by topic for inline display (used by DimensionInsightsClean)
+  const resourcesMap = useMemo(() => {
+    const map = new Map<string, ParsedResource[]>();
+    allResources.forEach((resource) => {
+      const key = resource.topic.toLowerCase();
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(resource);
+    });
+    return map;
+  }, [allResources]);
 
   // Handle tab change with scroll-to-top
   const handleTabChange = useCallback((tabId: ReportTabId) => {
@@ -69,15 +79,9 @@ export function TabbedReportContainer({
     }
   }, []);
 
-  // Handle next tab button click
-  const handleNextTab = useCallback(() => {
-    if (nextTab) {
-      handleTabChange(nextTab.id);
-    }
-  }, [nextTab, handleTabChange]);
-
   // Check if we have content for each tab
   const hasPatterns = analysis.promptPatterns && analysis.promptPatterns.length > 0;
+  const hasGrowth = agentOutputs && getAllAgentGrowthAreas(agentOutputs).length > 0;
   const hasDimensions = analysis.dimensionInsights && analysis.dimensionInsights.length > 0;
   const hasAgents = agentOutputs && Object.values(agentOutputs).some(Boolean);
 
@@ -85,6 +89,7 @@ export function TabbedReportContainer({
   const availableTabs = REPORT_TABS.filter(tab => {
     switch (tab.id) {
       case 'patterns': return hasPatterns;
+      case 'growth': return hasGrowth;
       case 'dimensions': return hasDimensions;
       case 'agents': return hasAgents;
       default: return false;
@@ -97,10 +102,18 @@ export function TabbedReportContainer({
     setActiveTab(defaultTab);
   }
 
-  // Update next tab calculation with available tabs
+  // Calculate next available tab
   const currentAvailableIndex = availableTabs.findIndex(t => t.id === activeTab);
-  const hasNextAvailableTab = currentAvailableIndex < availableTabs.length - 1;
-  const nextAvailableTab = hasNextAvailableTab ? availableTabs[currentAvailableIndex + 1] : null;
+  const nextAvailableTab = currentAvailableIndex < availableTabs.length - 1
+    ? availableTabs[currentAvailableIndex + 1]
+    : null;
+
+  // Handle next tab button click
+  const handleNextTab = useCallback(() => {
+    if (nextAvailableTab) {
+      handleTabChange(nextAvailableTab.id);
+    }
+  }, [nextAvailableTab, handleTabChange]);
 
   return (
     <div className={styles.pageLayout}>
@@ -152,6 +165,17 @@ export function TabbedReportContainer({
             </div>
           )}
 
+          {/* Growth Tab */}
+          {activeTab === 'growth' && hasGrowth && agentOutputs && (
+            <div className={styles.tabPanel}>
+              <GrowthInsightsSection
+                agentOutputs={agentOutputs}
+                isPaid={isPaid}
+                resourcesMap={resourcesMap}
+              />
+            </div>
+          )}
+
           {/* Dimensions Tab */}
           {activeTab === 'dimensions' && hasDimensions && (
             <div className={styles.tabPanel}>
@@ -159,6 +183,7 @@ export function TabbedReportContainer({
                 insights={analysis.dimensionInsights}
                 sessionsAnalyzed={analysis.sessionsAnalyzed}
                 isPaid={isPaid}
+                resourcesMap={resourcesMap}
               />
             </div>
           )}
@@ -184,10 +209,12 @@ export function TabbedReportContainer({
         </div>
       </div>
 
-      {/* Resource Sidebar - Only show if resources exist */}
-      {allResources.length > 0 && (
-        <aside className={styles.resourceSidebar}>
-          <ResourceBubble resources={allResources} isPaid={isPaid} />
+      {/* Resource Sidebar - Right column
+          Only show when NOT on Growth or Dimensions tabs
+          (those tabs show inline resources via ResourceBubble) */}
+      {allResources.length > 0 && activeTab !== 'growth' && activeTab !== 'dimensions' && (
+        <aside className={styles.sidebar}>
+          <ResourceSidebar resources={allResources} isPaid={isPaid} />
         </aside>
       )}
     </div>
