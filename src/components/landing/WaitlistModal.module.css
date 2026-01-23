@@ -171,3 +171,20 @@
   font-weight: var(--weight-medium);
   margin-bottom: var(--space-md);
 }
+
+/* Enterprise Badge - Blue accent for enterprise contact */
+.enterpriseBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1));
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--sketch-blue, #3b82f6);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  margin-bottom: var(--space-md);
+}

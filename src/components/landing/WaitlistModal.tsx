@@ -13,7 +13,7 @@ import { Card } from '@/components/ui/Card';
 import styles from './WaitlistModal.module.css';
 
 /** Waitlist source types for Supabase tracking */
-export type WaitlistType = 'macos_app' | 'pro_subscription';
+export type WaitlistType = 'macos_app' | 'pro_subscription' | 'enterprise_contact';
 
 /** Configuration for customizing modal content */
 export interface WaitlistConfig {
@@ -71,6 +71,28 @@ export const waitlistConfigs: Record<WaitlistType, WaitlistConfig> = {
     disclaimer: "We'll only email about PRO launch. No spam.",
     ctaText: 'Join Waitlist',
     highlight: <div className={styles.earlyBirdBanner}>🎁 Early bird: 50% off for 3 months</div>,
+  },
+  enterprise_contact: {
+    type: 'enterprise_contact',
+    title: 'Enterprise Solutions',
+    subtitle: (
+      <>
+        Team capability testing and performance tracking
+        <br />
+        Tailored solutions for your organization
+      </>
+    ),
+    successTitle: "We'll be in touch!",
+    successMessage: (
+      <>
+        Our team will reach out to discuss
+        <br />
+        your enterprise needs.
+      </>
+    ),
+    disclaimer: "We'll only email about enterprise solutions. No spam.",
+    ctaText: 'Contact Sales',
+    highlight: <div className={styles.enterpriseBadge}>🏢 Custom plans for teams</div>,
   },
 };
 

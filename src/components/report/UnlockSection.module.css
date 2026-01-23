@@ -164,9 +164,9 @@
 
 .pricingCards {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-  max-width: 500px;
+  max-width: 750px;
   margin: 0 auto;
 }
 
@@ -210,6 +210,46 @@
 
 .pricingCard.credit .pricingHeader {
   color: var(--neon-green);
+}
+
+/* ENTERPRISE Card - Blue accent for enterprise tier */
+.pricingCard.enterprise {
+  background: var(--sketch-blue-soft, rgba(59, 130, 246, 0.1));
+  color: var(--ink-primary);
+  border: 2px solid var(--sketch-blue, #3b82f6);
+  box-shadow: 4px 4px 0 var(--ink-primary);
+}
+
+.pricingCard.enterprise .pricingHeader {
+  color: var(--sketch-blue, #3b82f6);
+}
+
+.enterpriseFeatures {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.contactCta {
+  width: 100%;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  background: transparent;
+  color: var(--sketch-blue, #3b82f6);
+  border: 2px solid var(--sketch-blue, #3b82f6);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.contactCta:hover {
+  background: var(--sketch-blue, #3b82f6);
+  color: var(--bg-paper);
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 var(--ink-primary);
 }
 
 .pricingHeader {
