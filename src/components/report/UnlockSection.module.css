@@ -183,6 +183,8 @@
   border-radius: 12px;
   padding: 24px 20px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
 }
 
 /* PRIMARY Card (ONE-TIME) - Notebook Sketch style */
@@ -224,12 +226,7 @@
   color: var(--sketch-blue, #3b82f6);
 }
 
-.enterpriseFeatures {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 16px;
-  line-height: 1.6;
-}
+/* Legacy styles removed - now using .featureList */
 
 .contactCta {
   width: 100%;
@@ -347,11 +344,37 @@
   animation: spin 1s linear infinite;
 }
 
-.proFeatures {
+/* Feature List - Scannable bullet points */
+.featureList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+  text-align: left;
+  flex-grow: 1;
+}
+
+.featureList li {
   font-size: 13px;
   color: var(--text-secondary);
-  margin-bottom: 16px;
-  line-height: 1.6;
+  padding: 4px 0;
+  padding-left: 16px;
+  position: relative;
+}
+
+.featureList li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--neon-cyan);
+  font-weight: 600;
+}
+
+.pricingCard.primary .featureList li::before {
+  color: var(--sketch-cyan-text, var(--neon-cyan));
+}
+
+.pricingCard.enterprise .featureList li::before {
+  color: var(--sketch-blue, #3b82f6);
 }
 
 /* CTA Buttons */
