@@ -1,9 +1,10 @@
 /**
  * Analysis Orchestrator - Main orchestrator for the analysis pipeline
  *
- * Coordinates 3 phases of analysis:
- * - Phase 1: Data Extraction (Module A, C in parallel)
- * - Phase 2: Insight Generation (4 Wow Agents in parallel)
+ * Coordinates 4 phases of analysis:
+ * - Phase 1: Data Extraction (2 workers: Module A, C in parallel)
+ * - Phase 2: Insight Generation (7 workers in parallel, tier-gated)
+ * - Phase 2.5: Type Synthesis (1 worker: refines classification using agent outputs)
  * - Phase 3: Content Generation (ContentWriter)
  *
  * @module analyzer/orchestrator/analysis-orchestrator
@@ -201,7 +202,7 @@ export class AnalysisOrchestrator {
         ...baseContext,
         moduleAOutput: phase1Results.dataAnalyst.data,
         moduleCOutput: phase1Results.productivityAnalyst.data,
-        // useKorean intentionally NOT passed - Phase 2 workers always use English
+        // outputLanguage intentionally NOT passed - Phase 2 workers always use English
       };
 
       console.log(`[Orchestrator] Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasModuleA: ${!!phase2Context.moduleAOutput}`);
@@ -238,7 +239,7 @@ export class AnalysisOrchestrator {
         ...baseContext,
         moduleAOutput: phase1Results.dataAnalyst.data,
         moduleCOutput: phase1Results.productivityAnalyst.data,
-        // useKorean intentionally NOT passed - Type Synthesis always uses English
+        // outputLanguage intentionally NOT passed - Type Synthesis always uses English
       };
 
       const phase2Point5Results = await this.runPhase2Point5(

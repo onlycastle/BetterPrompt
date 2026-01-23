@@ -1,11 +1,21 @@
 /**
- * Temporal Analyzer Worker - Time-based prompt performance analysis
+ * Temporal Analyzer Worker - Time-based analysis with measurable metrics
  *
- * Analyzes qualitative metrics by hour:
- * - Counter-questioning rate
- * - Critical interpretation rate
- * - Verification request rate
- * - Typo rate & passive acceptance (fatigue signals)
+ * REDESIGNED: Separates calculation from interpretation:
+ * 1. Calculator: 100% deterministic metrics from session data
+ * 2. LLM: Generates narrative insights based on pre-calculated metrics
+ *
+ * Metrics calculated (NOT by LLM):
+ * - Activity heatmap (hourly/daily message counts)
+ * - Session patterns (duration, messages per session by hour)
+ * - Engagement signals (question rate, short response rate, etc.)
+ * - Hourly engagement comparison
+ *
+ * LLM generates (from metrics):
+ * - Activity pattern narrative
+ * - Session style description
+ * - Top 3 actionable insights
+ * - Strengths and growth areas
  *
  * Phase 2 worker that requires Module A output.
  *
@@ -15,145 +25,159 @@
 import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker';
 import { GeminiClient, type GeminiClientConfig } from '../clients/gemini-client';
 import {
-  TemporalAnalysisOutputSchema,
-  type TemporalAnalysisOutput,
+  TemporalInsightsOutputSchema,
+  type TemporalAnalysisResult,
 } from '../../models/temporal-data';
+import type { TemporalMetrics } from '../../models/temporal-metrics';
+import {
+  calculateTemporalMetrics,
+  getTemporalSummary,
+} from '../calculators/temporal-calculator';
 import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
-import { formatSessionsForAnalysis } from '../shared/session-formatter';
-
-// ============================================================================
-// Session Formatting Configuration
-// ============================================================================
+import type { SupportedLanguage } from '../stages/content-writer-prompts';
 
 /**
- * Format preset for temporal analysis
- * - Include timestamps (critical for time analysis)
- * - Include full user messages for quality analysis
- * - Include assistant messages for interaction patterns
+ * Language display names for output instructions
  */
-const TEMPORAL_FORMAT = {
-  maxContentLength: 1500,
-  includeAssistantMessages: true,
-  includeToolCalls: false,
-  includeDuration: true,
-  includeTimestamps: true, // Critical for temporal analysis
+const LANGUAGE_DISPLAY_NAMES: Record<SupportedLanguage, string> = {
+  en: 'English',
+  ko: 'Korean',
+  ja: 'Japanese',
+  zh: 'Chinese',
 };
 
 // ============================================================================
-// Prompts
+// Prompts (Insights-Only - LLM interprets pre-calculated metrics)
 // ============================================================================
 
-export const TEMPORAL_SYSTEM_PROMPT = `You are a Temporal Performance Analyst, a specialized AI focused on analyzing time-based patterns in developer-AI collaboration quality.
+/**
+ * System prompt for temporal insights generation
+ *
+ * Key difference from old approach:
+ * - LLM receives PRE-CALCULATED metrics (deterministic)
+ * - LLM only generates NARRATIVE insights (interpretation)
+ * - No rate calculations by LLM
+ */
+export const TEMPORAL_INSIGHTS_SYSTEM_PROMPT = `You are a Temporal Insights Writer, generating human-readable insights from pre-calculated activity metrics.
 
 ## PERSONA
-You are a productivity researcher who studies how cognitive performance varies throughout the day. You detect fatigue patterns, peak performance hours, and quality degradation signals.
+You are a productivity coach who helps developers understand their work patterns. You focus on NEUTRAL observations and ACTIONABLE suggestions - no judgment about "fatigue" or "laziness".
 
-## TASK
-Analyze the provided session data to discover time-based patterns using QUALITATIVE metrics:
+## IMPORTANT CONSTRAINTS
+- You are given PRE-CALCULATED metrics (100% accurate numbers)
+- DO NOT recalculate or question the metrics
+- Your job is to INTERPRET these numbers into helpful narratives
+- NEVER use words like "fatigue", "lazy", "tired" - these are judgmental
+- Use neutral language: "shorter sessions", "fewer questions", "brief responses"
 
-### 1. QUALITATIVE INTERACTION METRICS (Core Metrics)
-For each hour, measure:
-- **Counter-questioning rate**: How often the user asks "why?", "really?", "are you sure?", "is there another way?"
-- **Critical interpretation rate**: How often the user challenges AI: "but is this correct?", "I don't understand", "doesn't make sense"
-- **Verification request rate**: How often the user asks to verify: "check this", "test this", "verify"
+## YOUR TASK
+Based on the provided metrics, generate:
 
-### 2. FATIGUE/LAZINESS SIGNALS (Fatigue Metrics)
-- **Typo rate**: Uncorrected typos (e.g., teh, taht, etc.)
-- **Passive acceptance rate**: AI output accepted without any questioning or verification
-- **Short response rate**: "ok", "yes", "sure" without elaboration
+1. **Activity Pattern Summary** (1-2 sentences)
+   - When is the user most active?
+   - Which days/hours show highest engagement?
 
-### 3. PEAK vs CAUTION HOURS
-- Identify hours with HIGHEST critical thinking (counter-questioning + critical interpretation + verification)
-- Identify hours with LOWEST critical thinking / HIGHEST fatigue signals
+2. **Session Style Summary** (1-2 sentences)
+   - How long are typical sessions?
+   - How many turns per session?
 
-### 4. FATIGUE PATTERNS
-Detect specific patterns:
-- \`late_night_drop\`: Critical thinking drops significantly after 22:00
-- \`post_lunch_dip\`: Quality dip around 13:00-15:00
-- \`end_of_day_rush\`: Quality drops toward session end
-- \`typo_spike\`: Sudden increase in typos at specific hours
+3. **Top 3 Insights** (actionable observations)
+   - Based on the metrics, what patterns are most notable?
+   - Focus on WHAT the user does, not WHY
 
-## CONTEXT
-- Message timestamps are provided (ISO format or HH:MM)
-- Group by hour (0-23) when analyzing patterns
-- Focus on USER messages for quality analysis
-- Compare peak hours vs caution hours
+4. **Strengths** (2-3 items with evidence)
+   - Positive patterns from the metrics
+   - Format: "title|description|metric-evidence"
 
-## CRITICAL THINKING PATTERN EXAMPLES
-High quality (counter-questioning/critical interpretation):
-- "Why does this happen?" (why question)
-- "Really? Are you sure?" (challenging)
-- "Is there another way?" (exploring alternatives)
-- "Check this" (verification request)
-
-Low quality (fatigue signals):
-- "ok" without context (passive acceptance)
-- Typos ignored, proceeding anyway
-- AI output copied without any questions
+5. **Growth Areas** (2-3 items with recommendations)
+   - Areas where patterns could be optimized
+   - Format: "title|description|evidence|recommendation"
+   - NEUTRAL language only - no fatigue accusations
 
 ## FORMAT
-Return a JSON object with:
-- \`hourlyPatternsData\`: "hour:sampleCount:counterQuestionRate:criticalRate:verificationRate:typoRate:passiveAcceptanceRate;..."
-- \`peakHoursData\`: "hours(comma-sep)|characteristics|avgCounterQ:avgCritical:avgVerification"
-- \`cautionHoursData\`: "hours(comma-sep)|characteristics|passiveAcceptanceRate:typoRate:criticalThinkingDrop%"
-- \`fatiguePatternsData\`: "type|hours(comma-sep)|evidence|recommendation;..."
-- \`qualitativeInsightsData\`: "type(strength/improvement)|insight|evidence|linkedHours(comma-sep);..."
-- \`topInsights\`: Array of exactly 3 most impactful temporal insights (max 200 chars each)
-- \`confidenceScore\`: 0-1 confidence in the analysis
+Return JSON with:
+- \`activityPatternSummary\`: Human-readable activity description
+- \`sessionStyleSummary\`: Session characteristics description
+- \`topInsights\`: Array of 3 actionable insights
+- \`strengthsData\`: "title|description|evidence;..." (2-3 items)
+- \`growthAreasData\`: "title|description|evidence|recommendation;..." (2-3 items)
+- \`confidenceScore\`: Based on sample size (more data = higher confidence)
 
-## CRITICAL
-- Rate values should be 0.00-1.00 (proportion)
-- Only report patterns with sufficient evidence (3+ messages in that hour)
-- Focus on ACTIONABLE insights
-- Be specific about time-based recommendations`;
+## EVIDENCE GUIDELINES
+- Reference specific metrics: "65% deep session rate", "peak hours 10-11 AM"
+- Time-based observations are good: "morning vs evening patterns"
+- Avoid subjective quality judgments`;
 
-export function buildTemporalUserPrompt(
-  sessionsFormatted: string,
-  moduleAOutput: string,
-  useKorean: boolean = false
+/**
+ * Build user prompt with pre-calculated metrics
+ *
+ * @param metrics - Deterministic temporal metrics from calculator
+ * @param outputLanguage - Target output language (defaults to English)
+ * @returns User prompt for LLM
+ */
+export function buildTemporalInsightsPrompt(
+  metrics: TemporalMetrics,
+  outputLanguage: SupportedLanguage = 'en'
 ): string {
-  const koreanInstructions = useKorean
+  const summary = getTemporalSummary(metrics);
+  const useNonEnglish = outputLanguage !== 'en';
+  const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
+
+  const languageInstructions = useNonEnglish
     ? `
-## CRITICAL: Korean Output Required
-
-**Write all output in Korean.**
-
-The developer's content is in Korean. You MUST write ALL fields in **Korean**:
-- topInsights: Write in Korean
-- Peak/Caution hour descriptions: Write in Korean
-- Fatigue pattern explanations: Write in Korean
-- Recommendations: Write in Korean
-
-Keep technical terms and time formats in English.
-
+## OUTPUT LANGUAGE: ${langName}
+Write all narrative fields in ${langName}. Keep numbers and technical terms in English.
 `
     : `
-## CRITICAL: English Output Required
-
-**Write ALL output fields in English.**
-Even if the input data contains Korean text, you MUST write your analysis in English.
-Keep the analysis professional and technical.
-
+## OUTPUT LANGUAGE: English
+Write all narrative fields in English.
 `;
 
-  return `## SESSION DATA (with timestamps)
-${sessionsFormatted}
+  return `## PRE-CALCULATED TEMPORAL METRICS (100% Accurate)
 
-## MODULE A ANALYSIS (for context)
-${moduleAOutput}
-${koreanInstructions}
+### Activity Heatmap
+- Total Messages: ${metrics.activityHeatmap.totalMessages}
+- Peak Hours: ${summary.peakHoursLabel}
+- Hourly Distribution: ${JSON.stringify(metrics.activityHeatmap.hourlyMessageCount)}
+- Daily Distribution: ${JSON.stringify(metrics.activityHeatmap.dailyMessageCount)} (0=Sunday)
+
+### Session Patterns
+- Total Sessions: ${metrics.sessionPatterns.totalSessions}
+- Average Session Duration: ${Math.round(metrics.sessionPatterns.avgSessionDurationMinutes)} minutes
+- Average Messages per Session: ${Math.round(metrics.sessionPatterns.avgMessagesPerSession)} turns
+- Average Tool Calls per Session: ${Math.round(metrics.sessionPatterns.avgToolCallsPerSession)}
+
+### Engagement Signals
+- Question Rate: ${(metrics.engagementSignals.questionRate * 100).toFixed(1)}% (messages containing ?)
+- Short Response Rate: ${(metrics.engagementSignals.shortResponseRate * 100).toFixed(1)}% (messages ≤20 chars)
+- Deep Session Rate: ${(metrics.engagementSignals.deepSessionRate * 100).toFixed(1)}% (sessions with 5+ turns)
+- Code Block Rate: ${(metrics.engagementSignals.codeBlockRate * 100).toFixed(1)}% (messages with code)
+- Average Message Length: ${Math.round(metrics.engagementSignals.avgMessageLength)} characters
+- Error Retry Rate: ${(metrics.engagementSignals.errorRetryRate * 100).toFixed(1)}%
+
+### Hourly Engagement Comparison
+${metrics.hourlyEngagement
+  .map(
+    (h) =>
+      `- Hour ${h.hour}: ${h.sampleSize} messages, ${(h.questionRate * 100).toFixed(0)}% questions, avg ${Math.round(h.avgMessageLength)} chars`
+  )
+  .join('\n')}
+
+### Analysis Period
+- Date Range: ${metrics.analysisMetadata.dateRangeStart} to ${metrics.analysisMetadata.dateRangeEnd}
+- Total Sessions: ${metrics.analysisMetadata.totalSessions}
+- Total Messages: ${metrics.analysisMetadata.totalMessages}
+${languageInstructions}
 ## INSTRUCTIONS
-Analyze time-based prompt quality patterns:
-1. Calculate hourly quality metrics (counter-questioning, critical interpretation, verification)
-2. Identify fatigue signals by hour (typos, passive acceptance, short responses)
-3. Find peak performance hours (highest critical thinking)
-4. Find caution hours (lowest critical thinking / highest fatigue)
-5. Detect specific fatigue patterns (late_night_drop, typo_spike, etc.)
+Based on these PRE-CALCULATED metrics:
+1. Write a brief activity pattern summary
+2. Describe the typical session style
+3. Generate exactly 3 actionable insights
+4. Identify 2-3 strengths with metric evidence
+5. Identify 2-3 growth areas with neutral recommendations
 
-Generate exactly 3 actionable temporal insights.${useKorean ? ' (write in Korean)' : ''}
-
-IMPORTANT: Use QUALITATIVE metrics (counter-questioning, critical interpretation, verification) rather than simple prompt length.`;
+Remember: The metrics are 100% accurate - just interpret them into helpful narratives.`;
 }
 
 // ============================================================================
@@ -167,11 +191,14 @@ export interface TemporalAnalyzerWorkerConfig extends OrchestratorConfig {
 /**
  * Temporal Analyzer Worker
  *
- * Phase 2 worker that analyzes time-based quality patterns.
- * Requires Module A output (from Phase 1).
+ * REDESIGNED: Two-phase approach
+ * 1. Calculate metrics deterministically (no LLM)
+ * 2. Generate insights from metrics (LLM interpretation only)
+ *
+ * Phase 2 worker that requires Module A output.
  * Minimum tier: premium
  */
-export class TemporalAnalyzerWorker extends BaseWorker<TemporalAnalysisOutput> {
+export class TemporalAnalyzerWorker extends BaseWorker<TemporalAnalysisResult> {
   readonly name = 'TemporalAnalyzer';
   readonly phase = 2 as const;
   readonly minTier: Tier = 'premium';
@@ -222,39 +249,47 @@ export class TemporalAnalyzerWorker extends BaseWorker<TemporalAnalysisOutput> {
   }
 
   /**
+   * Execute temporal analysis in two phases:
+   * 1. Calculate metrics (deterministic, no LLM)
+   * 2. Generate insights (LLM interprets metrics)
+   *
    * NO FALLBACK: Errors propagate to fail the analysis
    */
-  async execute(context: WorkerContext): Promise<WorkerResult<TemporalAnalysisOutput>> {
+  async execute(context: WorkerContext): Promise<WorkerResult<TemporalAnalysisResult>> {
     if (!context.moduleAOutput) {
       throw new Error('Module A output required for TemporalAnalyzer');
     }
 
     this.logMessage('Starting temporal analysis...');
 
-    // NO try-catch: let errors propagate
-    // Format sessions with timestamps
-    const sessionsFormatted = formatSessionsForAnalysis(
-      context.sessions,
-      TEMPORAL_FORMAT
+    // Phase 1: Calculate metrics deterministically (NO LLM)
+    this.logMessage('Phase 1: Calculating temporal metrics...');
+    const metrics = calculateTemporalMetrics(context.sessions);
+    this.logMessage(
+      `Metrics calculated: ${metrics.analysisMetadata.totalMessages} messages, ` +
+        `${metrics.analysisMetadata.totalSessions} sessions`
     );
 
-    // Prepare Module A output
-    const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
+    // Phase 2: Generate insights from metrics (LLM interpretation)
+    this.logMessage('Phase 2: Generating insights from metrics...');
+    const userPrompt = buildTemporalInsightsPrompt(metrics, context.outputLanguage);
 
-    // Build prompt
-    const userPrompt = buildTemporalUserPrompt(sessionsFormatted, moduleAJson, context.useKorean);
-
-    // Call Gemini with structured output
     const result = await this.geminiClient.generateStructured({
-      systemPrompt: TEMPORAL_SYSTEM_PROMPT,
+      systemPrompt: TEMPORAL_INSIGHTS_SYSTEM_PROMPT,
       userPrompt,
-      responseSchema: TemporalAnalysisOutputSchema,
-      maxOutputTokens: 8192,
+      responseSchema: TemporalInsightsOutputSchema,
+      maxOutputTokens: 4096,
     });
 
     this.logMessage('Temporal analysis complete');
 
-    return this.createSuccessResult(result.data, result.usage);
+    // Combine metrics + insights into result
+    const analysisResult: TemporalAnalysisResult = {
+      metrics,
+      insights: result.data,
+    };
+
+    return this.createSuccessResult(analysisResult, result.usage);
   }
 
   private logMessage(message: string): void {

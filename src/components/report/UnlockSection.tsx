@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BarChart3, Target, Users, Gift, Coffee, Zap, Lock, Loader2, Coins } from 'lucide-react';
+import { BarChart3, Target, Users, Gift, Coffee, Zap, Lock, Loader2, Coins, Building2 } from 'lucide-react';
 import { WaitlistModal, waitlistConfigs } from '@/components/landing';
 import styles from './UnlockSection.module.css';
 
@@ -77,6 +77,7 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: 
   const [isCreditLoading, setIsCreditLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isProWaitlistOpen, setIsProWaitlistOpen] = useState(false);
+  const [isEnterpriseContactOpen, setIsEnterpriseContactOpen] = useState(false);
 
   // Determine if user has credits available
   const hasCredits = credits !== null && credits !== undefined && credits > 0;
@@ -299,6 +300,27 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: 
                 </button>
               </div>
             )}
+
+            {/* ENTERPRISE Card - Always show when no credits */}
+            {!hasCredits && (
+              <div className={`${styles.pricingCard} ${styles.enterprise}`}>
+                <div className={styles.pricingHeader}>
+                  <Building2 size={20} />
+                  <span>ENTERPRISE</span>
+                </div>
+                <div className={styles.pricingAmount}>Custom</div>
+                <div className={styles.enterpriseFeatures}>
+                  <div>Team member capability testing</div>
+                  <div>Easy performance tracking per member</div>
+                </div>
+                <button
+                  className={styles.contactCta}
+                  onClick={() => setIsEnterpriseContactOpen(true)}
+                >
+                  Contact Us
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Discord Community CTA */}
@@ -334,6 +356,13 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: 
         isOpen={isProWaitlistOpen}
         onClose={() => setIsProWaitlistOpen(false)}
         config={waitlistConfigs.pro_subscription}
+      />
+
+      {/* Enterprise Contact Modal */}
+      <WaitlistModal
+        isOpen={isEnterpriseContactOpen}
+        onClose={() => setIsEnterpriseContactOpen(false)}
+        config={waitlistConfigs.enterprise_contact}
       />
     </div>
   );

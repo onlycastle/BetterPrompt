@@ -442,95 +442,6 @@
   font-weight: var(--weight-medium);
 }
 
-/* KPT Analysis Section */
-.kptSection {
-  margin-bottom: var(--space-md);
-  padding: var(--space-sm);
-  background: var(--surface-1);
-  border-radius: var(--radius-sm);
-  border: 2px dashed var(--sketch-cyan);
-}
-
-.kptHeader {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-sm);
-  padding-bottom: var(--space-xs);
-  border-bottom: 1px solid var(--ink-muted);
-}
-
-.kptIcon {
-  font-size: var(--text-sm);
-}
-
-.kptTitle {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--sketch-cyan-text);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.kptGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-sm);
-}
-
-.kptColumn {
-  padding: var(--space-xs);
-  background: var(--surface-2);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--ink-muted);
-}
-
-.kptLabelKeep,
-.kptLabelProblem,
-.kptLabelTry {
-  display: block;
-  font-family: var(--font-primary);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  margin-bottom: var(--space-xs);
-}
-
-.kptLabelKeep {
-  color: var(--sketch-green-text);
-}
-
-.kptLabelProblem {
-  color: var(--sketch-yellow-text);
-}
-
-.kptLabelTry {
-  color: var(--sketch-cyan-text);
-}
-
-.kptList {
-  margin: 0;
-  padding-left: var(--space-md);
-  font-family: var(--font-primary);
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  list-style-type: disc;
-  line-height: 1.5;
-}
-
-.kptList li {
-  margin-bottom: 2px;
-}
-
-.kptList li:last-child {
-  margin-bottom: 0;
-}
-
-@media (max-width: 640px) {
-  .kptGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* ============================================================================
    Strengths & Growth Areas Sections (NEW)
    ============================================================================ */
@@ -646,6 +557,84 @@
   line-height: 1.5;
 }
 
+/* Locked recommendation styles for free users */
+.recommendationLocked {
+  background: linear-gradient(135deg, var(--surface-2) 0%, var(--sketch-cyan-soft) 100%);
+  cursor: pointer;
+}
+
+/* ============================================================================
+   Time-Based Metrics (Research-Backed) - Multitasking Analysis
+   ============================================================================ */
+
+.timeMetricHighlight {
+  padding: var(--space-sm);
+  background: linear-gradient(135deg, var(--surface-1) 0%, var(--sketch-cyan-soft) 100%);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--sketch-cyan);
+}
+
+.recoveryTimeBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-xs);
+}
+
+.recoveryTimeValue {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  font-family: var(--font-mono);
+  color: var(--sketch-cyan-text);
+  line-height: 1;
+}
+
+.recoveryTimeLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.recoveryTimeDetail {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  background: var(--surface-2);
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-sm);
+}
+
+.recLockedContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.blurredText {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  filter: blur(4px);
+  user-select: none;
+}
+
+.unlockBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--sketch-cyan-text);
+  background: var(--surface-1);
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--sketch-cyan);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .recommendation {
@@ -656,5 +645,10 @@
   .recText {
     margin-left: 0;
     margin-top: var(--space-xs);
+  }
+
+  .recLockedContent {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

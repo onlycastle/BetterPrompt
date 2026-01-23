@@ -158,6 +158,25 @@ Return ProductivityAnalysisData with:
 
 10. **summary**: Brief summary of key insights (max 500 chars)
 
+**Multi-Language Input Support:**
+
+The developer's session data may contain non-English text (Korean, Japanese, Chinese, or other languages).
+
+**Analysis Requirements:**
+- Detect iteration cycles and learning signals by MEANING and INTENT, not by specific English keywords
+- Technical terms are often in English even within non-English sentences - this is normal
+- The examples in this prompt are in English, but apply the same detection logic to ANY language
+
+**Signal Detection (detect equivalent meaning in any language):**
+- Retry signals: expressions meaning "try again", "fix this", "one more change" (any language)
+- Learning signals: questions like "why", "how does this work", "explain" (any language)
+- Clarification signals: phrases requesting more information (any language)
+- Success signals: expressions of completion, satisfaction, understanding (any language)
+
+**Evidence Extraction:**
+- Extract evidence text in its ORIGINAL language - do NOT translate
+- Preserve exact phrases for accurate pattern attribution
+
 **Critical Rules:**
 - Be HONEST with scores - most developers are average (50-70)
 - High scores (80+) require CLEAR evidence of excellence

@@ -10,7 +10,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendSlackNotification, formatKoreanTime } from '@/lib/slack';
 
 /** Valid waitlist source types */
-const VALID_SOURCES = ['macos_app', 'pro_subscription'] as const;
+const VALID_SOURCES = ['macos_app', 'pro_subscription', 'enterprise_contact'] as const;
 type WaitlistSource = (typeof VALID_SOURCES)[number];
 
 interface WaitlistRequest {
@@ -77,8 +77,8 @@ export async function POST(request: Request) {
     }
 
     // Send Slack notification (fire and forget - don't block response)
-    const emoji = source === 'pro_subscription' ? '💎' : '🖥️';
-    const label = source === 'pro_subscription' ? 'PRO Waitlist' : 'Desktop App Waitlist';
+    const emoji = source === 'enterprise_contact' ? '🏢' : source === 'pro_subscription' ? '💎' : '🖥️';
+    const label = source === 'enterprise_contact' ? 'Enterprise Inquiry' : source === 'pro_subscription' ? 'PRO Waitlist' : 'Desktop App Waitlist';
     sendSlackNotification({
       text: `${emoji} ${label} 신청!\n• 이메일: ${email}\n• 시간: ${formatKoreanTime()}`,
     });

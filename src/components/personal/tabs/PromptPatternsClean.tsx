@@ -21,7 +21,7 @@ const FREQUENCY_STYLES: Record<PromptFrequency, { label: string; className: stri
 const EFFECTIVENESS_STYLES: Record<PromptEffectiveness, { label: string; className: string }> = {
   highly_effective: { label: 'Highly Effective', className: styles.effectivenessHigh },
   effective: { label: 'Effective', className: styles.effectivenessMedium },
-  could_improve: { label: 'Could Improve', className: styles.effectivenessLow },
+  could_improve: { label: 'Opportunity', className: styles.effectivenessLow },
 };
 
 export function PromptPatternsClean({ patterns, isPaid = false }: PromptPatternsCleanProps) {
@@ -29,13 +29,12 @@ export function PromptPatternsClean({ patterns, isPaid = false }: PromptPatterns
     return null;
   }
 
-  // Free users see only first 3 patterns
-  const displayPatterns = isPaid ? patterns : patterns.slice(0, 3);
-  const hiddenCount = patterns.length - displayPatterns.length;
+  // All patterns visible to everyone - "진단 무료, 처방 유료"
+  const tipsCount = patterns.filter(p => p.tip).length;
 
   return (
     <div className={styles.container}>
-      {displayPatterns.map((pattern, idx) => (
+      {patterns.map((pattern, idx) => (
         <Card key={idx} padding="md" className={styles.patternCard}>
           <div className={styles.header}>
             <h4 className={styles.patternName}>{pattern.patternName}</h4>
@@ -64,19 +63,26 @@ export function PromptPatternsClean({ patterns, isPaid = false }: PromptPatterns
           )}
 
           {pattern.tip && (
-            <div className={styles.tip}>
-              <span className={styles.tipLabel}>Tip:</span>
-              <span className={styles.tipText}>{pattern.tip}</span>
+            <div className={`${styles.tip} ${!isPaid ? styles.tipLocked : ''}`}>
+              <span className={styles.tipLabel}>💡 Tip:</span>
+              {isPaid ? (
+                <span className={styles.tipText}>{pattern.tip}</span>
+              ) : (
+                <span className={styles.tipLockedContent}>
+                  <span className={styles.blurredText}>{pattern.tip.slice(0, 30)}...</span>
+                  <span className={styles.unlockBadge}>🔒 See improvement tip</span>
+                </span>
+              )}
             </div>
           )}
         </Card>
       ))}
 
-      {/* Teaser for free users */}
-      {!isPaid && hiddenCount > 0 && (
+      {/* Teaser for free users - shows tips count */}
+      {!isPaid && tipsCount > 0 && (
         <div className={styles.teaser}>
-          <span className={styles.teaserIcon}>🔒</span>
-          <span className={styles.teaserText}>+{hiddenCount} more patterns in premium</span>
+          <span className={styles.teaserIcon}>🔓</span>
+          <span className={styles.teaserText}>{tipsCount} improvement tips + personalized recommendations</span>
         </div>
       )}
     </div>

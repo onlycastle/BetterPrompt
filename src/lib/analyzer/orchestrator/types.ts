@@ -14,6 +14,7 @@ import type { ParsedSession, SessionMetrics } from '../../domain/models/analysis
 import type { StructuredAnalysisData } from '../../models/analysis-data';
 import type { ProductivityAnalysisData } from '../../models/productivity-data';
 import type { Tier } from '../content-gateway';
+import type { SupportedLanguage } from '../stages/content-writer-prompts';
 
 // ============================================================================
 // Worker Result Types
@@ -104,8 +105,8 @@ export interface WorkerContext {
   // Language Detection (for i18n support)
   // ─────────────────────────────────────────────────────────────────────────
 
-  /** Whether content is primarily Korean (detected from user prompts) */
-  useKorean?: boolean;
+  /** Output language detected from user prompts (defaults to 'en') */
+  outputLanguage?: SupportedLanguage;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Phase 1 Outputs (available in Phase 2+)

@@ -847,8 +847,8 @@ export const VerboseEvaluationSchema = z.object({
   // NOTE: min constraint removed - Gemini doesn't reliably follow minimum length requirements
   personalitySummary: z
     .string()
-    .max(1500)
-    .describe('Hyper-personalized summary of their AI coding personality (target: 300-1500 chars)'),
+    .max(3000)
+    .describe('Hyper-personalized summary of their AI coding personality (target: 300-3000 chars)'),
 
   // NEW: Per-dimension insights (replaces global strengths/growthAreas)
   dimensionInsights: z
@@ -951,8 +951,8 @@ export const VerboseLLMResponseSchema = z.object({
   // NOTE: min constraint removed - Gemini doesn't reliably follow minimum length requirements
   personalitySummary: z
     .string()
-    .max(1500)
-    .describe('Hyper-personalized summary of their AI coding personality (target: 300-1500 chars)'),
+    .max(3000)
+    .describe('Hyper-personalized summary of their AI coding personality (target: 300-3000 chars)'),
 
   // Dimension insights with REDUCED nesting (no evidence field)
   dimensionInsights: z

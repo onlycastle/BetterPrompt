@@ -164,9 +164,9 @@ export interface AgentGrowthArea {
  * Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
  *
  * @example
- * parseStrengthsData("Systematic Approach|You break down complex problems into clear steps|'먼저 구조를 파악하고','그 다음 세부 구현'")
+ * parseStrengthsData("Systematic Approach|You break down complex problems into clear steps|'first understand the structure','then implement details'")
  * // Returns:
- * // [{ title: "Systematic Approach", description: "You break down...", evidence: ["먼저 구조를 파악하고", "그 다음 세부 구현"] }]
+ * // [{ title: "Systematic Approach", description: "You break down...", evidence: ["first understand the structure", "then implement details"] }]
  */
 export function parseStrengthsData(data: string | undefined): AgentStrength[] {
   if (!data || data.trim() === '') return [];
@@ -196,7 +196,7 @@ export function parseStrengthsData(data: string | undefined): AgentStrength[] {
  * Format: "title|description|evidence1,evidence2|recommendation;title2|..."
  *
  * @example
- * parseGrowthAreasData("Context Provision|Tends to skip context|'이거 고쳐줘','왜 안 되지?'|Provide situation, attempts, and desired outcome")
+ * parseGrowthAreasData("Context Provision|Tends to skip context|'fix this','why isn't it working?'|Provide situation, attempts, and desired outcome")
  * // Returns:
  * // [{ title: "Context Provision", description: "Tends to...", evidence: [...], recommendation: "Provide..." }]
  */
@@ -431,12 +431,32 @@ import { MetacognitionOutputSchema, type MetacognitionOutput } from './metacogni
 export { MetacognitionOutputSchema, type MetacognitionOutput };
 
 // ============================================================================
-// Temporal Analysis Output (NEW)
+// Temporal Analysis Output (REDESIGNED)
 // ============================================================================
 
 // Import from dedicated schema file
-import { TemporalAnalysisOutputSchema, type TemporalAnalysisOutput } from './temporal-data';
-export { TemporalAnalysisOutputSchema, type TemporalAnalysisOutput };
+// Legacy schema kept for backward compatibility with stored data
+import {
+  TemporalAnalysisOutputSchema,
+  type TemporalAnalysisOutput,
+  TemporalAnalysisResultSchema,
+  type TemporalAnalysisResult,
+  TemporalInsightsOutputSchema,
+  type TemporalInsightsOutput,
+} from './temporal-data';
+import { TemporalMetricsSchema, type TemporalMetrics } from './temporal-metrics';
+export {
+  // Legacy (deprecated, kept for stored data)
+  TemporalAnalysisOutputSchema,
+  type TemporalAnalysisOutput,
+  // New (recommended)
+  TemporalAnalysisResultSchema,
+  type TemporalAnalysisResult,
+  TemporalInsightsOutputSchema,
+  type TemporalInsightsOutput,
+  TemporalMetricsSchema,
+  type TemporalMetrics,
+};
 
 // ============================================================================
 // Multitasking Analysis Output (NEW)
@@ -540,7 +560,8 @@ export const AgentOutputsSchema = z.object({
 
   // NEW: Metacognition + Temporal Analysis agents
   metacognition: MetacognitionOutputSchema.optional(),
-  temporalAnalysis: TemporalAnalysisOutputSchema.optional(),
+  // REDESIGNED: Now uses TemporalAnalysisResult (metrics + insights)
+  temporalAnalysis: TemporalAnalysisResultSchema.optional(),
 
   // NEW: Multitasking Analysis
   multitasking: MultitaskingAnalysisOutputSchema.optional(),
@@ -600,8 +621,9 @@ export function getAllTopInsights(outputs: AgentOutputs): string[] {
   if (outputs.metacognition?.topInsights) {
     insights.push(...outputs.metacognition.topInsights);
   }
-  if (outputs.temporalAnalysis?.topInsights) {
-    insights.push(...outputs.temporalAnalysis.topInsights);
+  // REDESIGNED: Temporal insights are now nested under insights.topInsights
+  if (outputs.temporalAnalysis?.insights?.topInsights) {
+    insights.push(...outputs.temporalAnalysis.insights.topInsights);
   }
   // NEW: Include multitasking insights
   if (outputs.multitasking?.topInsights) {

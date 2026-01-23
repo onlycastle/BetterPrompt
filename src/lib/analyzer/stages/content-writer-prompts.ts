@@ -9,28 +9,108 @@
  */
 
 /**
- * Detect if the given quotes contain significant Korean text
- * Returns true if Korean characters make up >= 80% of alphanumeric content
+ * Supported output languages for content generation
  */
-export function detectKoreanContent(quotes: string[]): boolean {
-  if (quotes.length === 0) return false;
+export type SupportedLanguage = 'en' | 'ko' | 'ja' | 'zh';
 
-  const combinedText = quotes.join(' ');
+/**
+ * Result of language detection analysis
+ */
+export interface LanguageDetectionResult {
+  /** Primary detected language */
+  primary: SupportedLanguage;
+  /** Confidence score (0-1) based on character ratio */
+  confidence: number;
+  /** Whether non-English characters were found */
+  hasNonEnglish: boolean;
+}
+
+/**
+ * Detect the primary language from given texts
+ *
+ * Uses Unicode character ranges to detect CJK languages:
+ * - Korean (Hangul): U+AC00-U+D7AF (syllables), U+1100-U+11FF, U+3130-U+318F (Jamo)
+ * - Japanese: U+3040-U+309F (Hiragana), U+30A0-U+30FF (Katakana)
+ * - Chinese: U+4E00-U+9FFF (CJK Unified Ideographs)
+ *
+ * Priority: Korean > Japanese > Chinese > English (default)
+ * Threshold: 20% - if non-English characters make up >= 20% of meaningful content,
+ * the text is considered to be in that language.
+ *
+ * @param texts - Array of text strings to analyze
+ * @returns LanguageDetectionResult with primary language and confidence
+ */
+export function detectPrimaryLanguage(texts: string[]): LanguageDetectionResult {
+  if (texts.length === 0) {
+    return { primary: 'en', confidence: 1.0, hasNonEnglish: false };
+  }
+
+  const combinedText = texts.join(' ');
 
   // Count Korean characters (Hangul syllables + Jamo)
   const koreanRegex = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g;
   const koreanMatches = combinedText.match(koreanRegex);
   const koreanCount = koreanMatches ? koreanMatches.length : 0;
 
-  // Count total meaningful characters (letters, numbers, Korean)
-  const meaningfulRegex = /[a-zA-Z0-9\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g;
+  // Count Japanese characters (Hiragana + Katakana, excluding shared CJK)
+  const japaneseRegex = /[\u3040-\u309F\u30A0-\u30FF]/g;
+  const japaneseMatches = combinedText.match(japaneseRegex);
+  const japaneseCount = japaneseMatches ? japaneseMatches.length : 0;
+
+  // Count Chinese characters (CJK Unified Ideographs)
+  // Note: This range is shared with Japanese Kanji, but we prioritize Hiragana/Katakana detection
+  const chineseRegex = /[\u4E00-\u9FFF]/g;
+  const chineseMatches = combinedText.match(chineseRegex);
+  const chineseCount = chineseMatches ? chineseMatches.length : 0;
+
+  // Count total meaningful characters (letters, numbers, CJK)
+  const meaningfulRegex = /[a-zA-Z0-9\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/g;
   const meaningfulMatches = combinedText.match(meaningfulRegex);
   const totalCount = meaningfulMatches ? meaningfulMatches.length : 0;
 
-  if (totalCount === 0) return false;
+  if (totalCount === 0) {
+    return { primary: 'en', confidence: 1.0, hasNonEnglish: false };
+  }
 
+  // Calculate ratios
   const koreanRatio = koreanCount / totalCount;
-  return koreanRatio >= 0.8; // 80% threshold
+  const japaneseRatio = japaneseCount / totalCount;
+  const chineseRatio = chineseCount / totalCount;
+
+  // Threshold: 20% - lower than before to catch mixed-language content
+  // (developers often mix Korean with English technical terms)
+  const THRESHOLD = 0.2;
+
+  const hasNonEnglish = koreanCount > 0 || japaneseCount > 0 || chineseCount > 0;
+
+  // Priority: Korean > Japanese > Chinese > English
+  // Korean takes priority as it has distinct character ranges
+  if (koreanRatio >= THRESHOLD) {
+    return { primary: 'ko', confidence: koreanRatio, hasNonEnglish };
+  }
+
+  // Japanese (if significant Hiragana/Katakana present)
+  if (japaneseRatio >= THRESHOLD) {
+    return { primary: 'ja', confidence: japaneseRatio, hasNonEnglish };
+  }
+
+  // Chinese (CJK without Japanese kana)
+  // Only consider Chinese if there's CJK but minimal Japanese kana
+  if (chineseRatio >= THRESHOLD && japaneseRatio < 0.05) {
+    return { primary: 'zh', confidence: chineseRatio, hasNonEnglish };
+  }
+
+  // Default to English
+  const englishRatio = 1 - (koreanRatio + japaneseRatio + chineseRatio);
+  return { primary: 'en', confidence: englishRatio, hasNonEnglish };
+}
+
+/**
+ * @deprecated Use detectPrimaryLanguage instead. This function is kept for backward compatibility.
+ */
+export function detectKoreanContent(quotes: string[]): boolean {
+  const result = detectPrimaryLanguage(quotes);
+  return result.primary === 'ko';
 }
 
 /**
@@ -275,7 +355,7 @@ export interface PatternKnowledgeContext {
  */
 export function buildKnowledgeContextSection(
   kbContext: PatternKnowledgeContext,
-  useKorean: boolean = false
+  outputLanguage: SupportedLanguage = 'en'
 ): string {
   if (!kbContext || Object.keys(kbContext).length === 0) {
     return '';
@@ -312,12 +392,22 @@ export function buildKnowledgeContextSection(
 }
 
 /**
+ * Language display names for output instructions
+ */
+const LANGUAGE_DISPLAY_NAMES: Record<SupportedLanguage, string> = {
+  en: 'English',
+  ko: 'Korean',
+  ja: 'Japanese',
+  zh: 'Chinese',
+};
+
+/**
  * Build the user prompt for Stage 2 content transformation
  * Places data context before instructions (Gemini best practice)
  *
  * @param structuredData - JSON string of Stage 1 analysis data (Module A)
  * @param sessionCount - Number of sessions analyzed
- * @param useKorean - Whether to generate content in Korean
+ * @param outputLanguage - Target output language (defaults to English)
  * @param kbContext - Optional knowledge base context for tip generation
  * @param productivityData - JSON string of productivity analysis (Module C) - optional
  * @param agentOutputsData - JSON string of Phase 2 agent outputs - optional
@@ -325,60 +415,63 @@ export function buildKnowledgeContextSection(
 export function buildContentWriterUserPrompt(
   structuredData: string,
   sessionCount: number,
-  useKorean: boolean = false,
+  outputLanguage: SupportedLanguage = 'en',
   kbContext?: PatternKnowledgeContext,
   productivityData?: string,
   agentOutputsData?: string
 ): string {
-  // Korean-specific instructions for different sections
-  const koreanHeader = useKorean
+  const useNonEnglish = outputLanguage !== 'en';
+  const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
+
+  // Language-specific instructions for different sections
+  const languageHeader = useNonEnglish
     ? `
-## CRITICAL: Korean Output Required
+## CRITICAL: ${langName} Output Required
 
-**Write all output in Korean.**
+**Write all output in ${langName}.**
 
-The developer's quotes are in Korean. You MUST write EVERY field in **Korean**:
-- personalitySummary: Write in Korean
-- patternName: Write in Korean (e.g., "Persona Anchoring", "Git Time Machine" → translate to Korean)
-- pattern description: Write in Korean
-- pattern tip: Write in Korean
-- example analysis: Write in Korean
-- strength/growth titles: Write in Korean
-- strength/growth descriptions: Write in Korean
-- ALL recommendations: Write in Korean
+The developer's quotes are in ${langName}. You MUST write EVERY field in **${langName}**:
+- personalitySummary: Write in ${langName}
+- patternName: Write in ${langName} (e.g., "Persona Anchoring", "Git Time Machine" should be expressed naturally in ${langName})
+- pattern description: Write in ${langName}
+- pattern tip: Write in ${langName}
+- example analysis: Write in ${langName}
+- strength/growth titles: Write in ${langName}
+- strength/growth descriptions: Write in ${langName}
+- ALL recommendations: Write in ${langName}
 
 Keep technical terms in English (AI, IDE, debugging, Git, commit).
-Match the developer's casual Korean style from their quotes.
+Match the developer's natural ${langName} style from their quotes.
 `
     : '';
 
-  const koreanPatternReminder = useKorean
+  const languagePatternReminder = useNonEnglish
     ? `
-   - ⚠️ **Write in Korean**: patternName, description, tip, analysis must all be in Korean`
+   - Write in ${langName}: patternName, description, tip, analysis must all be in ${langName}`
     : '';
 
-  const koreanDimensionReminder = useKorean
+  const languageDimensionReminder = useNonEnglish
     ? `
-   - ⚠️ **Write in Korean**: title, description, recommendation must all be in Korean`
+   - Write in ${langName}: title, description, recommendation must all be in ${langName}`
     : '';
 
-  const koreanSummaryReminder = useKorean
+  const languageSummaryReminder = useNonEnglish
     ? `
-   - ⚠️ **Write in Korean**`
+   - Write in ${langName}`
     : '';
 
-  const koreanFinalReminder = useKorean
+  const languageFinalReminder = useNonEnglish
     ? `
 
 ---
-## ⚠️ Final Reminder: Write all output fields in Korean!
+## Final Reminder: Write all output fields in ${langName}!
 Do NOT write pattern names, descriptions, tips, or analysis in English.
-Example: "The Persona Anchor" in English should be translated to Korean equivalent.`
+Example: "The Persona Anchor" in English should be expressed naturally in ${langName}.`
     : '';
 
   // Build KB context section if provided
   const kbContextSection = kbContext
-    ? buildKnowledgeContextSection(kbContext, useKorean)
+    ? buildKnowledgeContextSection(kbContext, outputLanguage)
     : '';
 
   // Build productivity data section if provided
@@ -415,7 +508,7 @@ ${agentOutputsData}
   return `# Context Data
 
 This developer has ${sessionCount} sessions analyzed.
-${koreanHeader}
+${languageHeader}
 ## Structured Analysis Data (from Module A - Behavioral Analysis)
 ${structuredData}
 ${productivityDataSection}${agentInsightsSection}${kbContextSection}
@@ -430,7 +523,7 @@ Using the extracted data above, create a VerboseLLMResponse:
    - Synthesize type reasoning into engaging, detailed prose
    - Reference 3-5 personality-revealing quotes from extractedQuotes
    - Emphasize 3-5 key phrases with **bold markers** (e.g., "Your **strategic planning approach**...")
-   - Include insights on collaboration style, problem-solving, and growth mindset${koreanSummaryReminder}
+   - Include insights on collaboration style, problem-solving, and growth mindset${languageSummaryReminder}
 
 3. **Dimension Insights** (exactly 6 - USE CLUSTERS FROM STAGE 1)
    - Use dimensionSignals.clusters to determine number and order of sections
@@ -442,7 +535,7 @@ Using the extracted data above, create a VerboseLLMResponse:
      * Add to the appropriate dimension's growthAreasData
      * Use detailed descriptions (500+ chars) explaining why this matters
      * Cite sources when available (e.g., "According to Anthropic's best practices...")
-     * These systematic insights should appear FIRST in growth areas (highest priority)${koreanDimensionReminder}
+     * These systematic insights should appear FIRST in growth areas (highest priority)${languageDimensionReminder}
 
 4. **Prompt Patterns** (5-12 for comprehensive analysis)
    - Transform detectedPatterns into distinctively named patterns
@@ -456,7 +549,7 @@ Using the extracted data above, create a VerboseLLMResponse:
      * Reference expert insights with natural attribution
      * Include specific techniques from KB sources
      * Provide concrete "try this" examples
-     * Connect to their behavior: "When you [quote], try..."${koreanPatternReminder}
+     * Connect to their behavior: "When you [quote], try..."${languagePatternReminder}
 
 5. **Actionable Practices** (IMPORTANT - from actionablePatternMatches)
    - Split actionablePatternMatches by practiced=true/false
@@ -501,5 +594,5 @@ Using the extracted data above, create a VerboseLLMResponse:
      * actions: { start: "...", stop: "...", continue: "..." }
    - summary: transform priority.selectionRationale into narrative
 
-Make this developer feel truly understood. Use their actual words.${koreanFinalReminder}`;
+Make this developer feel truly understood. Use their actual words.${languageFinalReminder}`;
 }

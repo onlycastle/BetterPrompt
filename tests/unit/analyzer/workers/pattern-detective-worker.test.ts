@@ -20,6 +20,18 @@ vi.mock('../../../../src/lib/analyzer/shared/session-formatter.js', () => ({
   formatSessionsForAnalysis: vi.fn().mockReturnValue('formatted sessions'),
 }));
 
+// Mock the phrase pattern calculator
+vi.mock('../../../../src/lib/analyzer/calculators/phrase-pattern-calculator.js', () => ({
+  calculatePhrasePatternStats: vi.fn(() => ({
+    topNGrams: [{ phrase: 'help me', frequency: 3, percentageOfMessages: 10, examples: ['help me'], sessionCount: 2 }],
+    clusters: [],
+    totalMessages: 10,
+    totalSessions: 1,
+    analysisMetadata: { minNGramSize: 2, maxNGramSize: 5, minFrequencyThreshold: 2, generatedAt: new Date().toISOString() },
+  })),
+  formatPhraseStatsForPrompt: vi.fn(() => '## PRE-CALCULATED PHRASE STATISTICS\nMocked stats'),
+}));
+
 // Import after mocking
 import {
   PatternDetectiveWorker,

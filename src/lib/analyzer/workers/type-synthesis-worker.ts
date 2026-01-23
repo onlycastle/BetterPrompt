@@ -37,6 +37,17 @@ import {
   scoresToDistribution,
   getPrimaryType,
 } from '../type-detector';
+import type { SupportedLanguage } from '../stages/content-writer-prompts';
+
+/**
+ * Language display names for output instructions
+ */
+const LANGUAGE_DISPLAY_NAMES: Record<SupportedLanguage, string> = {
+  en: 'English',
+  ko: 'Korean',
+  ja: 'Japanese',
+  zh: 'Chinese',
+};
 
 // ============================================================================
 // Prompts
@@ -93,15 +104,18 @@ function buildTypeSynthesisUserPrompt(
   initialDistribution: TypeDistribution,
   initialControlLevel: AIControlLevel,
   agentOutputs: AgentOutputs,
-  useKorean: boolean = false
+  outputLanguage: SupportedLanguage = 'en'
 ): string {
-  const koreanInstructions = useKorean
+  const useNonEnglish = outputLanguage !== 'en';
+  const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
+
+  const languageInstructions = useNonEnglish
     ? `
-## CRITICAL: Korean Output Required
+## CRITICAL: ${langName} Output Required
 
-**Write adjustmentReasons in Korean.**
+**Write adjustmentReasons in ${langName}.**
 
-The developer's content is in Korean. Write the \`adjustmentReasons\` field in **Korean**.
+The developer's content is in ${langName}. Write the \`adjustmentReasons\` field in **${langName}**.
 Keep type names (architect, scientist, etc.) and technical terms in English.
 
 `
@@ -109,7 +123,7 @@ Keep type names (architect, scientist, etc.) and technical terms in English.
 ## CRITICAL: English Output Required
 
 **Write ALL output fields in English.**
-Even if the input data contains Korean text, you MUST write your analysis in English.
+Even if the input data contains non-English text, you MUST write your analysis in English.
 Keep the analysis professional and technical.
 
 `;
@@ -171,11 +185,16 @@ Control Level: ${initialControlLevel}`;
 
   if (agentOutputs.temporalAnalysis) {
     const ta = agentOutputs.temporalAnalysis;
+    // REDESIGNED: Access new metrics + insights structure
+    const peakHours = ta.metrics.activityHeatmap.peakHours.join(', ') || 'none';
+    const deepSessionRate = Math.round(ta.metrics.engagementSignals.deepSessionRate * 100);
+    const questionRate = Math.round(ta.metrics.engagementSignals.questionRate * 100);
     agentSections.push(`
 ### Temporal Analysis
-- Peak Hours: ${ta.peakHoursData || 'none'}
-- Fatigue Patterns: ${ta.fatiguePatternsData || 'none'}
-- Confidence: ${ta.confidenceScore}`);
+- Peak Hours: ${peakHours}
+- Deep Session Rate: ${deepSessionRate}%
+- Question Rate: ${questionRate}%
+- Confidence: ${ta.insights.confidenceScore}`);
   }
 
   if (agentOutputs.contextEfficiency) {
@@ -204,14 +223,14 @@ Control Level: ${initialControlLevel}`;
 
   return `${initialClassification}
 ${agentOutputsSection}
-${koreanInstructions}
+${languageInstructions}
 ## INSTRUCTIONS
 1. Analyze the initial classification and agent insights
 2. Determine if the initial classification should be adjusted based on agent signals
 3. Calculate the refined distribution (must sum to 100%)
 4. Determine the refined control level
 5. Provide the combined matrix name and emoji
-6. Explain your adjustments with specific evidence${useKorean ? ' (write adjustmentReasons in Korean)' : ''}
+6. Explain your adjustments with specific evidence${useNonEnglish ? ` (write adjustmentReasons in ${langName})` : ''}
 
 Be specific about WHY you made changes. If no changes are needed, explain why the initial classification is accurate.`;
 }
@@ -306,7 +325,7 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
     }
 
     // Build prompt and call LLM - NO try-catch, let errors propagate
-    const userPrompt = buildTypeSynthesisUserPrompt(distribution, controlLevel, agentOutputs, context.useKorean);
+    const userPrompt = buildTypeSynthesisUserPrompt(distribution, controlLevel, agentOutputs, context.outputLanguage);
 
     const result = await this.geminiClient.generateStructured({
       systemPrompt: TYPE_SYNTHESIS_SYSTEM_PROMPT,
@@ -400,7 +419,8 @@ export class TypeSynthesisWorker extends BaseWorker<TypeSynthesisOutput> {
       agentOutputs.antiPatternSpotter?.confidenceScore ||
       agentOutputs.metacognition?.confidenceScore ||
       agentOutputs.multitasking?.confidenceScore ||
-      agentOutputs.temporalAnalysis?.confidenceScore ||
+      // REDESIGNED: Temporal confidence is now under insights
+      agentOutputs.temporalAnalysis?.insights?.confidenceScore ||
       agentOutputs.contextEfficiency?.confidenceScore
     );
   }

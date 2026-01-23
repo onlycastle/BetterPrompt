@@ -38,9 +38,10 @@ const MAX_EVIDENCE_QUOTES = 3;
 
 interface DimensionCardProps {
   insight: PerDimensionInsight;
+  isPaid: boolean;
 }
 
-function DimensionCard({ insight }: DimensionCardProps) {
+function DimensionCard({ insight, isPaid }: DimensionCardProps) {
   const [expanded, setExpanded] = useState(false);
   const style = DIMENSION_STYLES[insight.dimension] || DEFAULT_STYLE;
 
@@ -126,11 +127,18 @@ function DimensionCard({ insight }: DimensionCardProps) {
                       ))}
                     </div>
                   )}
-                  {/* Prominent recommendation display */}
+                  {/* Prominent recommendation display - locked for free users */}
                   {growth.recommendation && (
-                    <div className={styles.recommendation}>
-                      <span className={styles.recommendationLabel}>Try this:</span>
-                      <span className={styles.recommendationText}>{growth.recommendation}</span>
+                    <div className={`${styles.recommendation} ${!isPaid ? styles.recommendationLocked : ''}`}>
+                      <span className={styles.recommendationLabel}>💡 Try this:</span>
+                      {isPaid ? (
+                        <span className={styles.recommendationText}>{growth.recommendation}</span>
+                      ) : (
+                        <span className={styles.lockedContent}>
+                          <span className={styles.blurredText}>{growth.recommendation.slice(0, 25)}...</span>
+                          <span className={styles.unlockBadge}>🔒 See recommendation</span>
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -148,9 +156,12 @@ export function DimensionInsightsClean({ insights, sessionsAnalyzed, isPaid = fa
     return null;
   }
 
-  // Free users see only first 3 dimensions
-  const displayInsights = isPaid ? insights : insights.slice(0, 3);
-  const hiddenCount = insights.length - displayInsights.length;
+  // All dimensions visible - "진단 무료, 처방 유료"
+  // Count recommendations that would be unlocked
+  const recommendationCount = insights.reduce(
+    (sum, i) => sum + i.growthAreas.filter(g => g.recommendation).length,
+    0
+  );
 
   return (
     <div className={styles.container}>
@@ -161,16 +172,16 @@ export function DimensionInsightsClean({ insights, sessionsAnalyzed, isPaid = fa
         </span>
       </div>
       <div className={styles.list}>
-        {displayInsights.map((insight, idx) => (
-          <DimensionCard key={idx} insight={insight} />
+        {insights.map((insight, idx) => (
+          <DimensionCard key={idx} insight={insight} isPaid={isPaid} />
         ))}
       </div>
 
-      {/* Teaser for free users */}
-      {!isPaid && hiddenCount > 0 && (
+      {/* Teaser for free users - shows recommendations count */}
+      {!isPaid && recommendationCount > 0 && (
         <div className={styles.teaser}>
-          <span className={styles.teaserIcon}>🔒</span>
-          <span className={styles.teaserText}>+{hiddenCount} more dimensions in premium</span>
+          <span className={styles.teaserIcon}>🔓</span>
+          <span className={styles.teaserText}>{recommendationCount} personalized improvement recommendations</span>
         </div>
       )}
     </div>

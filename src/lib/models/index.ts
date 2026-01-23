@@ -178,9 +178,10 @@ export {
 } from './metacognition-data';
 
 // ============================================================================
-// Temporal Analysis Types (NEW)
+// Temporal Analysis Types (REDESIGNED)
 // ============================================================================
 export {
+  // Legacy schemas (deprecated, kept for backward compatibility)
   TemporalAnalysisOutputSchema,
   type TemporalAnalysisOutput,
   type HourlyPattern,
@@ -198,7 +199,34 @@ export {
   parseQualitativeInsightsData,
   parseTemporalAnalysisOutput,
   createDefaultTemporalAnalysisOutput,
+  // New schemas (recommended)
+  TemporalAnalysisResultSchema,
+  type TemporalAnalysisResult,
+  TemporalInsightsOutputSchema,
+  type TemporalInsightsOutput,
+  parseTemporalStrengthsData,
+  parseTemporalGrowthAreasData,
+  createDefaultTemporalInsightsOutput,
 } from './temporal-data';
+
+// ============================================================================
+// Temporal Metrics Types (NEW - 100% Deterministic)
+// ============================================================================
+export {
+  TemporalMetricsSchema,
+  type TemporalMetrics,
+  type ActivityHeatmap,
+  type SessionPatterns,
+  type HourlySessionStats,
+  type EngagementSignals,
+  type HourlyEngagement,
+  ActivityHeatmapSchema,
+  SessionPatternsSchema,
+  HourlySessionStatsSchema,
+  EngagementSignalsSchema,
+  HourlyEngagementSchema,
+  createEmptyTemporalMetrics,
+} from './temporal-metrics';
 
 // ============================================================================
 // Risk Signal Types (NEW)

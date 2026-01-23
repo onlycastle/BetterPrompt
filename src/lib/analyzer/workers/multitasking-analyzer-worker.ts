@@ -20,6 +20,17 @@ import {
 import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import type { ParsedSession } from '../../domain/models/analysis';
+import type { SupportedLanguage } from '../stages/content-writer-prompts';
+
+/**
+ * Language display names for output instructions
+ */
+const LANGUAGE_DISPLAY_NAMES: Record<SupportedLanguage, string> = {
+  en: 'English',
+  ko: 'Korean',
+  ja: 'Japanese',
+  zh: 'Chinese',
+};
 
 // ============================================================================
 // Session Formatting (Custom for Multitasking)
@@ -181,6 +192,33 @@ Classify the overall strategy:
 - \`context_polluted\`: Multiple unrelated tasks in one session
 - \`chaotic_switching\`: Random switching between sessions/tasks
 
+### 5. TIME-BASED METRICS (RESEARCH-BACKED)
+
+Based on productivity research (Gloria Mark, UC Irvine):
+- Each context switch costs ~23 minutes of recovery time to regain full focus
+- Deep work blocks of 60+ minutes are critical for complex problem-solving
+- 20-40% productivity loss from frequent task switching
+
+Calculate with HONEST UNCERTAINTY (provide ranges, not false precision):
+
+**Context Switch Count (Range)**:
+- Conservative (min): Only count EXPLICIT switches with clear verbal signals:
+  - "wait, not that", "actually let's do something else", "never mind"
+  - "oh wait, also do this", "let me switch to", "forget about that"
+- Upper bound (max): Also include IMPLICIT switches:
+  - Sudden file pattern changes (API → UI → tests in same session)
+  - Topic drift without transition (backend → frontend without closing context)
+
+**Deep Work Block Count**: Number of sessions with 60+ minutes of sustained focus on ONE task/topic
+
+**Longest Focus Block**: The longest continuous focused work period in minutes (from session duration data)
+
+**Estimated Recovery Time Lost**:
+- Formula: contextSwitchCount × 23 minutes
+- Provide min and max based on switch count range
+
+IMPORTANT: Context switching is INFERRED not measured. Use ranges to reflect inherent uncertainty.
+
 ## WORK TYPE CLASSIFICATION
 - \`main_development\`: Core feature implementation
 - \`research_experiment\`: Testing new approaches, exploring solutions
@@ -213,28 +251,57 @@ Return a JSON object with:
 - \`topInsights\`: Array of exactly 3 insights (max 200 chars each)
 - \`confidenceScore\`: 0-1
 
+### TIME-BASED METRICS (Required):
+- \`contextSwitchCountMin\`: Conservative count (only explicit verbal switches)
+- \`contextSwitchCountMax\`: Upper bound (includes implicit switches from file/topic patterns)
+- \`estimatedRecoveryTimeLostMinutesMin\`: contextSwitchCountMin × 23
+- \`estimatedRecoveryTimeLostMinutesMax\`: contextSwitchCountMax × 23
+- \`deepWorkBlockCount\`: Number of sessions with 60+ min focused work
+- \`avgSessionDurationMinutes\`: Average session duration (calculate from session timestamps)
+- \`longestFocusBlockMinutes\`: Longest session duration in minutes
+
+### NEW: Structured Strengths & Growth Areas (REQUIRED)
+- \`strengthsData\`: "title|description|quote1,quote2;title2|desc2|quotes;..."
+  - 2-3 effective multitasking habits with evidence from actual user messages
+  - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes
+  - Example: "Clear Session Boundaries|You consistently start sessions with clear scope statements, preventing context pollution|'in this session I'll only work on the API','let's focus on backend only'"
+
+- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
+  - 2-3 multitasking inefficiencies with evidence and actionable recommendations
+  - Each area needs: title, description, evidence quotes showing context pollution, specific recommendation
+  - Example: "Mid-Session Task Switching|You often interrupt focused work with unrelated requests, causing context pollution|'oh wait, not that','but also do this','let me do something else first'|Create separate sessions for different task types; finish current task before switching"
+
 ## CRITICAL
 - Focus on SAME PROJECT multitasking, not cross-project work
 - Detect Korean AND English context pollution signals
 - File overlap between sessions = bad separation
-- A session with \`mixed\` work type likely has context pollution`;
+- A session with \`mixed\` work type likely has context pollution
+- strengthsData and growthAreasData MUST be populated with session-specific evidence
+- Time-based metrics MUST be populated:
+  - Use session duration_minutes from XML to calculate avgSessionDurationMinutes and longestFocusBlockMinutes
+  - Context switch counts should be ranges (min/max) to reflect estimation uncertainty
+  - Recovery time = switches × 23 minutes (based on Gloria Mark's research)
+  - Deep work = sessions with 60+ uninterrupted minutes on one topic`;
 
 export function buildMultitaskingUserPrompt(
   sessionsFormatted: string,
   concurrentGroups: ConcurrentGroup[],
-  useKorean: boolean = false
+  outputLanguage: SupportedLanguage = 'en'
 ): string {
-  const koreanInstructions = useKorean
+  const useNonEnglish = outputLanguage !== 'en';
+  const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
+
+  const languageInstructions = useNonEnglish
     ? `
-## CRITICAL: Korean Output Required
+## CRITICAL: ${langName} Output Required
 
-**Write all output in Korean.**
+**Write all output in ${langName}.**
 
-The developer's content is in Korean. You MUST write ALL fields in **Korean**:
-- topInsights: Write in Korean
-- Work descriptions: Write in Korean
-- Strategy evaluations: Write in Korean
-- Recommendations: Write in Korean
+The developer's content is in ${langName}. You MUST write ALL fields in **${langName}**:
+- topInsights: Write in ${langName}
+- Work descriptions: Write in ${langName}
+- Strategy evaluations: Write in ${langName}
+- Recommendations: Write in ${langName}
 
 Keep technical terms, session IDs, and file paths in English.
 
@@ -243,7 +310,7 @@ Keep technical terms, session IDs, and file paths in English.
 ## CRITICAL: English Output Required
 
 **Write ALL output fields in English.**
-Even if the input data contains Korean text, you MUST write your analysis in English.
+Even if the input data contains non-English text, you MUST write your analysis in English.
 Keep the analysis professional and technical.
 
 `;
@@ -261,7 +328,7 @@ No concurrent sessions detected (sessions were sequential).
 
   return `## SESSION DATA
 ${sessionsFormatted}
-${concurrentInfo}${koreanInstructions}
+${concurrentInfo}${languageInstructions}
 ## INSTRUCTIONS
 Analyze the multi-session work patterns:
 1. Evaluate each session's focus and goal coherence
@@ -269,8 +336,13 @@ Analyze the multi-session work patterns:
 3. Analyze work unit separation across sessions in the same project
 4. Evaluate the overall multitasking strategy
 5. Calculate metrics: avgGoalCoherence, avgContextPollutionScore, workUnitSeparationScore, fileOverlapRate
+6. Calculate time-based metrics (from session timestamps and content analysis):
+   - avgSessionDurationMinutes and longestFocusBlockMinutes from session duration_minutes
+   - contextSwitchCountMin/Max by counting explicit and implicit switches
+   - estimatedRecoveryTimeLostMinutes = switches × 23 minutes
+   - deepWorkBlockCount = sessions with 60+ min of focused single-topic work
 
-Generate exactly 3 actionable insights about the user's multitasking patterns.${useKorean ? ' (write in Korean)' : ''}
+Generate exactly 3 actionable insights about the user's multitasking patterns.${useNonEnglish ? ` (write in ${langName})` : ''}
 
 IMPORTANT: Look for context pollution signals in BOTH Korean and English.`;
 }
@@ -340,7 +412,7 @@ export class MultitaskingAnalyzerWorker extends BaseWorker<MultitaskingAnalysisO
     const sessionsFormatted = formatSessionsForMultitasking(context.sessions);
 
     // Build prompt
-    const userPrompt = buildMultitaskingUserPrompt(sessionsFormatted, concurrentGroups, context.useKorean);
+    const userPrompt = buildMultitaskingUserPrompt(sessionsFormatted, concurrentGroups, context.outputLanguage);
 
     // Call Gemini with structured output
     const result = await this.geminiClient.generateStructured({

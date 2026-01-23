@@ -22,6 +22,10 @@ import {
   buildPatternDetectiveUserPrompt,
 } from './prompts/wow-agent-prompts';
 import { formatSessionsForAnalysis } from '../shared/session-formatter';
+import {
+  calculatePhrasePatternStats,
+  formatPhraseStatsForPrompt,
+} from '../calculators/phrase-pattern-calculator';
 
 /**
  * Format preset for Pattern Detective
@@ -95,7 +99,19 @@ export class PatternDetectiveWorker extends BaseWorker<PatternDetectiveOutput> {
       PATTERN_DETECTIVE_FORMAT
     );
     const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
-    const userPrompt = buildPatternDetectiveUserPrompt(sessionsFormatted, moduleAJson, context.useKorean);
+
+    // Pre-calculate phrase statistics for accurate counting
+    this.logMessage('Calculating phrase frequency statistics...');
+    const phraseStats = calculatePhrasePatternStats(context.sessions);
+    const phraseStatsText = formatPhraseStatsForPrompt(phraseStats);
+    this.logMessage(`Found ${phraseStats.topNGrams.length} repeated phrases, ${phraseStats.clusters.length} clusters`);
+
+    const userPrompt = buildPatternDetectiveUserPrompt(
+      sessionsFormatted,
+      moduleAJson,
+      context.outputLanguage,
+      phraseStatsText
+    );
 
     const result = await this.geminiClient.generateStructured({
       systemPrompt: PATTERN_DETECTIVE_SYSTEM_PROMPT,

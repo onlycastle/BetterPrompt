@@ -75,6 +75,14 @@ export const MetacognitionOutputSchema = z.object({
 
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
+
+  // NEW: Structured strengths with evidence (metacognitive strengths)
+  // Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
+  strengthsData: z.string().max(4000).optional(),
+
+  // NEW: Growth areas with evidence and recommendations (metacognitive blind spots)
+  // Format: "title|description|evidence1,evidence2|recommendation;title2|..."
+  growthAreasData: z.string().max(4000).optional(),
 });
 
 export type MetacognitionOutput = z.infer<typeof MetacognitionOutputSchema>;

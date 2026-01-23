@@ -9,6 +9,18 @@
  * @module analyzer/workers/prompts/wow-agent-prompts
  */
 
+import type { SupportedLanguage } from '../../stages/content-writer-prompts';
+
+/**
+ * Language display names for output instructions
+ */
+const LANGUAGE_DISPLAY_NAMES: Record<SupportedLanguage, string> = {
+  en: 'English',
+  ko: 'Korean',
+  ja: 'Japanese',
+  zh: 'Chinese',
+};
+
 // ============================================================================
 // Pattern Detective Prompts
 // ============================================================================
@@ -49,7 +61,25 @@ Include in topInsights with actionable advice like:
 - You receive raw session data plus structured analysis from Module A
 - Focus on patterns that would surprise the user ("I didn't know I did that!")
 - Look for both positive patterns (good habits) and areas for improvement
-- The developer may communicate in any language - detect patterns regardless of language
+
+## MULTI-LANGUAGE INPUT SUPPORT
+
+The developer's session data may contain non-English text (Korean, Japanese, Chinese, or other languages).
+
+**Analysis Requirements:**
+- Detect patterns and behaviors by MEANING and INTENT, not by specific English keywords
+- Technical terms are often in English even within non-English sentences - this is normal
+- The examples in this prompt are in English, but apply the same detection logic to ANY language
+
+**Quote Handling:**
+- Extract quotes in their ORIGINAL language - do NOT translate
+- Preserve exact text including any English technical terms mixed in
+- If the user wrote in Korean/Japanese/Chinese, extract the quote exactly as written
+
+**Pattern Detection (detect equivalent meaning in any language):**
+- Request patterns: how they start requests, common phrases (any language)
+- Command patterns: workflow sequences like "check, analyze, plan" (any language)
+- Style patterns: communication tendencies, verbal habits (any language)
 
 ## FORMAT
 Return a JSON object with:
@@ -70,12 +100,12 @@ Return a JSON object with:
 - \`strengthsData\`: "title|description|quote1,quote2;title2|desc2|quotes;..."
   - 2-3 conversation strengths with evidence from actual user messages
   - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes
-  - Example: "Systematic Problem Decomposition|You consistently break down complex problems into manageable steps, which enables clearer AI collaboration|'먼저 전체 구조를 파악하고','일단 테스트 케이스를 정의하고'"
+  - Example: "Systematic Problem Decomposition|You consistently break down complex problems into manageable steps, which enables clearer AI collaboration|'first let me understand the overall structure','let me define the test cases first'"
 
 - \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
   - 2-3 areas for improvement with evidence and actionable recommendations
   - Each area needs: title, description, evidence quotes, specific recommendation
-  - Example: "Context Provision Pattern|You often start requests without sufficient context, requiring additional back-and-forth|'이거 고쳐줘','왜 안 되지?'|When making requests, include: 1) current situation, 2) what you tried, 3) desired outcome"
+  - Example: "Context Provision Pattern|You often start requests without sufficient context, requiring additional back-and-forth|'fix this','why isn't it working?'|When making requests, include: 1) current situation, 2) what you tried, 3) desired outcome"
 
 ## topInsights Format (CRITICAL - Balanced KPT with Direct Quotes)
 Generate exactly 3 insights with this MANDATORY structure:
@@ -90,7 +120,7 @@ Generate exactly 3 insights with this MANDATORY structure:
 
 **Insight Example Format**:
 - BAD: "You repeat the analyze→plan workflow frequently"
-- GOOD: "You said **'일단 코드를 분석해서 계획을 세워줘'** in 4 sessions - consider registering this as a /plan skill"
+- GOOD: "You said **'first analyze the code and create a plan'** in 4 sessions - consider registering this as a /plan skill"
 
 IMPORTANT: Teaching what to improve is MORE VALUABLE than praising strengths.
 Prioritize actionable, constructive feedback over generic praise.
@@ -104,7 +134,7 @@ Your insights MUST include direct quotes from the user's actual messages.
 "You repeated the analyze→plan→implement workflow 4 times"
 
 **GOOD (evidence-based)**:
-"You said **'코드를 분석해서 문제점을 파악하고 계획을 세워줘'** 4 times across sessions. This consistent workflow could become a /investigate skill."
+"You said **'analyze the code, identify the issues, and create a plan'** 4 times across sessions. This consistent workflow could become a /investigate skill."
 
 **Rules**:
 1. Every insight MUST quote at least one actual phrase the user typed
@@ -122,38 +152,49 @@ Your insights MUST include direct quotes from the user's actual messages.
 export function buildPatternDetectiveUserPrompt(
   sessionsFormatted: string,
   moduleAOutput: string,
-  useKorean: boolean = false
+  outputLanguage: SupportedLanguage = 'en',
+  phraseStats?: string
 ): string {
-  const koreanInstructions = useKorean
+  const useNonEnglish = outputLanguage !== 'en';
+  const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
+
+  const languageInstructions = useNonEnglish
     ? `
-## CRITICAL: Korean Output Required
+## CRITICAL: ${langName} Output Required
 
-**Write all output in Korean.**
+**Write all output in ${langName}.**
 
-The developer's content is in Korean. You MUST write ALL fields in **Korean**:
-- topInsights: Write in Korean
-- overallStyleSummary: Write in Korean
-- Pattern descriptions: Write in Korean
+The developer's content is in ${langName}. You MUST write ALL fields in **${langName}**:
+- topInsights: Write in ${langName}
+- overallStyleSummary: Write in ${langName}
+- Pattern descriptions: Write in ${langName}
 
 Keep technical terms in English (AI, IDE, debugging, Git, commit).
-Match the developer's casual Korean style.
+Match the developer's natural ${langName} style.
 
 `
     : `
 ## CRITICAL: English Output Required
 
 **Write ALL output fields in English.**
-Even if the input data contains Korean text, you MUST write your analysis in English.
+Even if the input data contains non-English text, you MUST write your analysis in English.
 Keep the analysis professional and technical.
 
 `;
+
+  const phraseStatsSection = phraseStats
+    ? `
+${phraseStats}
+
+`
+    : '';
 
   return `## SESSION DATA
 ${sessionsFormatted}
 
 ## MODULE A ANALYSIS
 ${moduleAOutput}
-${koreanInstructions}
+${phraseStatsSection}${languageInstructions}
 ## INSTRUCTIONS
 Analyze the conversation patterns and communication style across all sessions. Find repeated questions, style patterns, and request patterns that the user might not be aware of.
 
@@ -162,8 +203,8 @@ Analyze the conversation patterns and communication style across all sessions. F
 - These are workflow sequences where multiple actions are chained in one request
 - If a pattern appears 3+ times, suggest creating a skill (e.g., /investigate, /debug)
 - Use → arrows to show the sequence in repeatedCommandPatternsData
-
-Generate exactly 3 "wow moment" insights.${useKorean ? ' Write all insights in Korean.' : ''}`;
+${phraseStats ? '\n**IMPORTANT**: Use the PRE-CALCULATED PHRASE STATISTICS above for accurate frequency counts. Do NOT re-count - trust the provided numbers.\n' : ''}
+Generate exactly 3 "wow moment" insights.${useNonEnglish ? ` Write all insights in ${langName}.` : ''}`;
 }
 
 // ============================================================================
@@ -187,6 +228,24 @@ Analyze the provided session data and Module A analysis to discover:
 - Be constructive - these are opportunities for growth, not criticisms
 - Look for "tunnel vision" and "shotgun debugging" patterns
 
+## MULTI-LANGUAGE INPUT SUPPORT
+
+The developer's session data may contain non-English text (Korean, Japanese, Chinese, or other languages).
+
+**Analysis Requirements:**
+- Detect anti-patterns by MEANING and INTENT, not by specific English keywords
+- Technical terms are often in English even within non-English sentences - this is normal
+- The examples in this prompt are in English, but apply the same detection logic to ANY language
+
+**Quote Handling:**
+- Extract evidence in ORIGINAL language - do NOT translate
+- Preserve exact text for accurate attribution
+
+**Anti-Pattern Detection (detect equivalent meaning in any language):**
+- Error loops: repeated error messages, "try again" expressions (any language)
+- Learning avoidance: skipping explanations, copy-paste without understanding (any language)
+- Frustration signals: expressions of annoyance, giving up (any language)
+
 ## FORMAT
 Return a JSON object with:
 - \`errorLoopsData\`: "error_type:repeat_count:avg_turns_to_resolve:example;..."
@@ -203,12 +262,12 @@ Return a JSON object with:
 - \`strengthsData\`: "title|description|quote1,quote2;title2|desc2|quotes;..."
   - 1-2 healthy habits or positive patterns with evidence
   - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes
-  - Example: "Error Recovery Resilience|You persist through errors systematically rather than giving up|'다시 시도해볼게요','에러 메시지를 보니까'"
+  - Example: "Error Recovery Resilience|You persist through errors systematically rather than giving up|'let me try again','looking at the error message'"
 
 - \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
   - 2-3 anti-patterns to address with evidence and actionable recommendations
   - Each area needs: title, description, evidence quotes, specific recommendation
-  - Example: "Shotgun Debugging|You tend to try random fixes without understanding the root cause|'이거 해봐','저거도 해봐'|Before each fix attempt, write down your hypothesis about why this specific change should work"
+  - Example: "Shotgun Debugging|You tend to try random fixes without understanding the root cause|'try this','try that too'|Before each fix attempt, write down your hypothesis about why this specific change should work"
 
 ## topInsights Format (CRITICAL - Balanced KPT)
 Generate exactly 3 insights with this MANDATORY structure:
@@ -229,27 +288,30 @@ Prioritize actionable, constructive feedback. Growth comes from understanding we
 export function buildAntiPatternSpotterUserPrompt(
   sessionsFormatted: string,
   moduleAOutput: string,
-  useKorean: boolean = false
+  outputLanguage: SupportedLanguage = 'en'
 ): string {
-  const koreanInstructions = useKorean
+  const useNonEnglish = outputLanguage !== 'en';
+  const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
+
+  const languageInstructions = useNonEnglish
     ? `
-## CRITICAL: Korean Output Required
+## CRITICAL: ${langName} Output Required
 
-**Write all output in Korean.**
+**Write all output in ${langName}.**
 
-The developer's content is in Korean. You MUST write ALL fields in **Korean**:
-- topInsights: Write in Korean
-- Pattern descriptions: Write in Korean
+The developer's content is in ${langName}. You MUST write ALL fields in **${langName}**:
+- topInsights: Write in ${langName}
+- Pattern descriptions: Write in ${langName}
 
 Keep technical terms in English (AI, IDE, debugging, Git, commit).
-Be constructive and growth-oriented in Korean.
+Be constructive and growth-oriented in ${langName}.
 
 `
     : `
 ## CRITICAL: English Output Required
 
 **Write ALL output fields in English.**
-Even if the input data contains Korean text, you MUST write your analysis in English.
+Even if the input data contains non-English text, you MUST write your analysis in English.
 Keep the analysis professional and technical.
 
 `;
@@ -259,9 +321,9 @@ ${sessionsFormatted}
 
 ## MODULE A ANALYSIS
 ${moduleAOutput}
-${koreanInstructions}
+${languageInstructions}
 ## INSTRUCTIONS
-Identify problematic patterns like error loops, learning avoidance, and repeated mistakes. Focus on patterns that slow the developer down or prevent learning. Frame insights constructively as growth opportunities. Generate exactly 3 key anti-pattern insights.${useKorean ? ' Write all insights in Korean.' : ''}`;
+Identify problematic patterns like error loops, learning avoidance, and repeated mistakes. Focus on patterns that slow the developer down or prevent learning. Frame insights constructively as growth opportunities. Generate exactly 3 key anti-pattern insights.${useNonEnglish ? ` Write all insights in ${langName}.` : ''}`;
 }
 
 // ============================================================================
@@ -285,6 +347,25 @@ Analyze the provided session data and Module A analysis to discover:
 - "Why" questions indicate deeper learning desire
 - Track progression: did understanding improve over sessions?
 
+## MULTI-LANGUAGE INPUT SUPPORT
+
+The developer's session data may contain non-English text (Korean, Japanese, Chinese, or other languages).
+
+**Analysis Requirements:**
+- Detect knowledge gaps by MEANING and INTENT, not by specific English keywords
+- Technical terms are often in English even within non-English sentences - this is normal
+- The examples in this prompt are in English, but apply the same detection logic to ANY language
+
+**Quote Handling:**
+- Extract evidence in ORIGINAL language - do NOT translate
+- Preserve exact questions and phrases for accurate attribution
+
+**Knowledge Signal Detection (detect equivalent meaning in any language):**
+- "Why" questions: expressions asking for reasons, explanations (any language)
+- Repeated questions: same topic asked multiple times (any language)
+- Confusion signals: expressions of not understanding (any language)
+- Learning progress: expressions of understanding, "aha" moments (any language)
+
 ## FORMAT
 Return a JSON object with:
 - \`knowledgeGapsData\`: "topic:question_count:depth(shallow/moderate/deep):example;..."
@@ -301,12 +382,12 @@ Return a JSON object with:
 - \`strengthsData\`: "title|description|quote1,quote2;title2|desc2|quotes;..."
   - 1-2 knowledge strengths with evidence from actual user messages
   - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes showing mastery
-  - Example: "React Hooks Mastery|You demonstrate solid understanding of React hooks, asking nuanced questions about optimization|'useCallback 쓸 때 의존성 배열','useMemo랑 차이점이'"
+  - Example: "React Hooks Mastery|You demonstrate solid understanding of React hooks, asking nuanced questions about optimization|'dependency array when using useCallback','what's the difference between useMemo'"
 
 - \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
   - 2-3 knowledge gaps to address with evidence and learning recommendations
   - Each area needs: title, description, evidence quotes, specific learning resource
-  - Example: "TypeScript Generics|You repeatedly ask about TypeScript generic syntax, indicating a foundational gap|'제네릭 어떻게 써요?','T가 뭐예요?'|Complete the TypeScript Handbook section on Generics, then practice with 5 real examples in your codebase"
+  - Example: "TypeScript Generics|You repeatedly ask about TypeScript generic syntax, indicating a foundational gap|'how do I use generics?','what is T?'|Complete the TypeScript Handbook section on Generics, then practice with 5 real examples in your codebase"
 
 ## topInsights Format (CRITICAL - Balanced KPT)
 Generate exactly 3 insights with this MANDATORY structure:
@@ -327,28 +408,31 @@ Specific resource recommendations create actionable growth paths.
 export function buildKnowledgeGapUserPrompt(
   sessionsFormatted: string,
   moduleAOutput: string,
-  useKorean: boolean = false
+  outputLanguage: SupportedLanguage = 'en'
 ): string {
-  const koreanInstructions = useKorean
+  const useNonEnglish = outputLanguage !== 'en';
+  const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
+
+  const languageInstructions = useNonEnglish
     ? `
-## CRITICAL: Korean Output Required
+## CRITICAL: ${langName} Output Required
 
-**Write all output in Korean.**
+**Write all output in ${langName}.**
 
-The developer's content is in Korean. You MUST write ALL fields in **Korean**:
-- topInsights: Write in Korean
-- Knowledge gap descriptions: Write in Korean
-- Learning progress analysis: Write in Korean
+The developer's content is in ${langName}. You MUST write ALL fields in **${langName}**:
+- topInsights: Write in ${langName}
+- Knowledge gap descriptions: Write in ${langName}
+- Learning progress analysis: Write in ${langName}
 
 Keep technical terms and resource names in English.
-Recommend Korean resources when available.
+Recommend ${langName} resources when available.
 
 `
     : `
 ## CRITICAL: English Output Required
 
 **Write ALL output fields in English.**
-Even if the input data contains Korean text, you MUST write your analysis in English.
+Even if the input data contains non-English text, you MUST write your analysis in English.
 Keep the analysis professional and technical.
 
 `;
@@ -358,9 +442,9 @@ ${sessionsFormatted}
 
 ## MODULE A ANALYSIS
 ${moduleAOutput}
-${koreanInstructions}
+${languageInstructions}
 ## INSTRUCTIONS
-Identify knowledge gaps from repeated questions, track learning progress across sessions, and recommend specific resources for improvement. Focus on actionable insights that help the developer grow. Generate exactly 3 key knowledge insights.${useKorean ? ' Write all insights in Korean.' : ''}`;
+Identify knowledge gaps from repeated questions, track learning progress across sessions, and recommend specific resources for improvement. Focus on actionable insights that help the developer grow. Generate exactly 3 key knowledge insights.${useNonEnglish ? ` Write all insights in ${langName}.` : ''}`;
 }
 
 // ============================================================================
@@ -385,6 +469,24 @@ Analyze the provided session data and Module A analysis to discover:
 - Identify repeated information that could be set once in context
 - Note /compact and /clear usage patterns
 
+## MULTI-LANGUAGE INPUT SUPPORT
+
+The developer's session data may contain non-English text (Korean, Japanese, Chinese, or other languages).
+
+**Analysis Requirements:**
+- Detect efficiency patterns by MEANING and INTENT, not by specific English keywords
+- Technical terms are often in English even within non-English sentences - this is normal
+- The examples in this prompt are in English, but apply the same detection logic to ANY language
+
+**Quote Handling:**
+- Extract evidence in ORIGINAL language - do NOT translate
+- Preserve exact text for accurate attribution
+
+**Efficiency Signal Detection (detect equivalent meaning in any language):**
+- Redundant information: repeated explanations, same context provided multiple times (any language)
+- Slash commands: /compact, /clear are language-independent (literal commands)
+- Context bloat signals: long explanations, unnecessary repetition (any language)
+
 ## FORMAT
 Return a JSON object with:
 - \`contextUsagePatternData\`: "session_id:avg_fill_percent:compact_trigger_percent;..."
@@ -403,12 +505,12 @@ Return a JSON object with:
 - \`strengthsData\`: "title|description|quote1,quote2;title2|desc2|quotes;..."
   - 1-2 efficient habits with evidence from actual user messages
   - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes
-  - Example: "Proactive Context Management|You use /clear and /compact effectively to maintain fresh context|'/clear 할게요','/compact 해줘'"
+  - Example: "Proactive Context Management|You use /clear and /compact effectively to maintain fresh context|'I'll use /clear','/compact please'"
 
 - \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
   - 2-3 inefficiencies to address with evidence and actionable recommendations
   - Each area needs: title, description, evidence quotes, specific recommendation
-  - Example: "Redundant Context Provision|You repeatedly explain the same project structure in multiple sessions|'이 프로젝트는 React 기반이고','다시 설명하자면 이 앱은'|Add project structure to CLAUDE.md once, then reference it instead of re-explaining"
+  - Example: "Redundant Context Provision|You repeatedly explain the same project structure in multiple sessions|'this project is React-based and','let me explain again, this app is'|Add project structure to CLAUDE.md once, then reference it instead of re-explaining"
 
 ## topInsights Format (CRITICAL - Balanced KPT)
 Generate exactly 3 insights with this MANDATORY structure:
@@ -429,18 +531,21 @@ Specific, actionable suggestions with numbers create clear improvement paths.
 export function buildContextEfficiencyUserPrompt(
   sessionsFormatted: string,
   moduleAOutput: string,
-  useKorean: boolean = false
+  outputLanguage: SupportedLanguage = 'en'
 ): string {
-  const koreanInstructions = useKorean
+  const useNonEnglish = outputLanguage !== 'en';
+  const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
+
+  const languageInstructions = useNonEnglish
     ? `
-## CRITICAL: Korean Output Required
+## CRITICAL: ${langName} Output Required
 
-**Write all output in Korean.**
+**Write all output in ${langName}.**
 
-The developer's content is in Korean. You MUST write ALL fields in **Korean**:
-- topInsights: Write in Korean
-- Efficiency pattern descriptions: Write in Korean
-- Improvement suggestions: Write in Korean
+The developer's content is in ${langName}. You MUST write ALL fields in **${langName}**:
+- topInsights: Write in ${langName}
+- Efficiency pattern descriptions: Write in ${langName}
+- Improvement suggestions: Write in ${langName}
 
 Keep technical terms in English (token, context, compact).
 
@@ -449,7 +554,7 @@ Keep technical terms in English (token, context, compact).
 ## CRITICAL: English Output Required
 
 **Write ALL output fields in English.**
-Even if the input data contains Korean text, you MUST write your analysis in English.
+Even if the input data contains non-English text, you MUST write your analysis in English.
 Keep the analysis professional and technical.
 
 `;
@@ -459,7 +564,7 @@ ${sessionsFormatted}
 
 ## MODULE A ANALYSIS
 ${moduleAOutput}
-${koreanInstructions}
+${languageInstructions}
 ## INSTRUCTIONS
-Analyze how context and prompts are managed across sessions. Identify inefficiencies like late compaction, repeated information, and prompt length inflation. Focus on actionable improvements that would save tokens and improve AI collaboration efficiency. Generate exactly 3 key efficiency insights.${useKorean ? ' Write all insights in Korean.' : ''}`;
+Analyze how context and prompts are managed across sessions. Identify inefficiencies like late compaction, repeated information, and prompt length inflation. Focus on actionable improvements that would save tokens and improve AI collaboration efficiency. Generate exactly 3 key efficiency insights.${useNonEnglish ? ` Write all insights in ${langName}.` : ''}`;
 }
