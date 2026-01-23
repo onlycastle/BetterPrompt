@@ -10,6 +10,17 @@ This file provides guidance to Claude Code when working with this repository.
 
 NoMoreAISlop analyzes developer-AI collaboration sessions from `~/.claude/projects/`, evaluates coding style using LLM analysis, and generates personalized reports.
 
+## Language Policy
+
+> ⚠️ **IMPORTANT**: All content in this codebase MUST be written in English.
+
+- **LLM Prompts**: All prompts for LLM analysis (Gemini, Anthropic, etc.) must be in English
+- **Code**: All code, variable names, function names, and comments must be in English
+- **Docstrings**: All documentation strings and JSDoc comments must be in English
+- **Commit messages**: All git commit messages must be in English
+
+This ensures consistency across the codebase and maintains compatibility with LLM models which perform best with English prompts.
+
 ## Commands
 
 ```bash
