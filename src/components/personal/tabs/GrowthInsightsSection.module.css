@@ -1,5 +1,6 @@
 /**
- * DimensionInsightsClean - Notebook Sketch Style
+ * GrowthInsightsSection - Notebook Sketch Style
+ * Consistent with DimensionInsightsClean styling
  */
 
 .container {
@@ -22,27 +23,36 @@
   font-family: var(--font-primary);
   font-size: var(--text-sm);
   color: var(--text-tertiary);
+  margin: 0;
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
-.dimensionCard {
-  overflow: hidden;
+/* Row layout for card + resource bubble */
+.growthRow {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-md);
+  align-items: flex-start;
+}
+
+.growthCard {
+  flex: 1;
+  min-width: 0;
   background: var(--surface-1);
   border: 2px solid var(--ink-primary);
   border-radius: var(--radius-md);
   box-shadow: 3px 3px 0 var(--ink-muted);
-  padding: var(--space-lg);
   transition:
     transform var(--transition-fast),
     box-shadow var(--transition-fast);
 }
 
-.dimensionCard:hover {
+.growthCard:hover {
   transform: translate(-2px, -2px);
   box-shadow: 5px 5px 0 var(--ink-muted);
 }
@@ -51,133 +61,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  padding: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  transition: opacity var(--transition-fast);
-}
-
-.cardHeader:hover {
-  opacity: 0.8;
-}
-
-.headerLeft {
-  display: flex;
-  align-items: center;
   gap: var(--space-md);
+  margin-bottom: var(--space-sm);
 }
 
-.indicator {
-  width: 4px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-  background: var(--sketch-cyan);
-}
-
-.dimensionName {
+.growthTitle {
   font-family: var(--font-primary);
   font-size: var(--text-md);
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-semibold);
   color: var(--ink-primary);
   margin: 0;
 }
 
 .evidenceCount {
-  font-family: var(--font-primary);
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-}
-
-.headerRight {
-  color: var(--text-tertiary);
-  transition: transform var(--transition-fast);
-}
-
-.cardContent {
-  padding-top: var(--space-lg);
-  margin-top: var(--space-md);
-  border-top: 2px dashed var(--ink-muted);
-}
-
-.section {
-  margin-bottom: var(--space-lg);
-}
-
-.section:last-child {
-  margin-bottom: 0;
-}
-
-.sectionLabel {
-  font-family: var(--font-primary);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: var(--space-md);
-}
-
-/* Growth area row with inline ResourceBubble */
-.growthRow {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-md);
-  margin-bottom: var(--space-sm);
-}
-
-.growthRow:last-child {
-  margin-bottom: 0;
-}
-
-.growthRow > .item {
-  flex: 1;
-  min-width: 0;
-  margin-bottom: 0; /* Remove margin since parent handles it */
-}
-
-.item {
-  padding: var(--space-md);
-  background: var(--surface-2);
-  border-radius: var(--radius-sm);
-  border: 1.5px solid var(--ink-muted);
-  margin-bottom: var(--space-sm);
-}
-
-.item:last-child {
-  margin-bottom: 0;
-}
-
-.itemHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
-  margin-bottom: var(--space-xs);
-}
-
-.itemTitle {
-  font-family: var(--font-primary);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--ink-primary);
-}
-
-.itemCount {
-  font-family: var(--font-primary);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  padding: 2px var(--space-sm);
-  border-radius: var(--radius-sm);
-  background: var(--sketch-cyan-soft);
-  color: var(--sketch-cyan-text);
-  border: 1px solid var(--sketch-cyan);
-}
-
-.itemCountGrowth {
   font-family: var(--font-primary);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
@@ -186,9 +82,10 @@
   padding: 2px var(--space-sm);
   border-radius: var(--radius-sm);
   border: 1px solid var(--sketch-yellow);
+  flex-shrink: 0;
 }
 
-.itemDescription {
+.growthDescription {
   font-family: var(--font-primary);
   font-size: var(--text-sm);
   color: var(--text-secondary);
@@ -196,7 +93,15 @@
   margin: 0 0 var(--space-sm) 0;
 }
 
-.itemQuote {
+/* Evidence Quotes */
+.evidenceQuotes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.quote {
   font-family: var(--font-primary);
   font-size: var(--text-sm);
   color: var(--ink-primary);
@@ -206,6 +111,7 @@
   border-left: 3px solid var(--sketch-cyan);
 }
 
+/* Recommendation Section */
 .recommendation {
   display: flex;
   flex-direction: column;
@@ -214,7 +120,7 @@
   background: var(--sketch-cyan-soft);
   border-radius: var(--radius-sm);
   border: 1.5px solid var(--sketch-cyan);
-  margin-top: var(--space-sm);
+  margin-top: var(--space-md);
 }
 
 .recommendationLabel {
@@ -270,16 +176,8 @@
   white-space: nowrap;
 }
 
-/* Multiple Evidence Quotes Container */
-.evidenceQuotes {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  margin-top: var(--space-sm);
-}
-
-/* Teaser for free users */
-.teaser {
+/* Premium Teaser at Bottom */
+.premiumTeaser {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -288,31 +186,28 @@
   background: linear-gradient(135deg, var(--surface-2) 0%, var(--sketch-cyan-soft) 100%);
   border: 2px dashed var(--sketch-cyan);
   border-radius: var(--radius-md);
-  margin-top: var(--space-md);
+  margin-top: var(--space-lg);
 }
 
-.teaserIcon {
+.premiumIcon {
   font-size: var(--text-base);
 }
 
-.teaserText {
+.premiumText {
   font-family: var(--font-primary);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--sketch-cyan-text);
 }
 
-/* Responsive - Stack growth row on mobile */
-@media (max-width: 768px) {
-  .growthRow {
-    flex-direction: column;
-  }
-}
-
 @media (max-width: 640px) {
-  .itemHeader {
+  .cardHeader {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-xs);
+  }
+
+  .growthRow {
+    flex-direction: column;
   }
 }

@@ -681,3 +681,46 @@ export function getAllTopInsights(outputs: AgentOutputs): string[] {
 
   return insights;
 }
+
+/**
+ * Collect growth areas from ALL agents (both free and premium tiers)
+ *
+ * This aggregation function enables free users to see growth areas from
+ * Pattern Detective and Metacognition, while premium users see growth
+ * areas from all 7 agents.
+ *
+ * @example
+ * const allAreas = getAllAgentGrowthAreas(agentOutputs);
+ * // Returns: AgentGrowthArea[] from all agents that produced data
+ */
+export function getAllAgentGrowthAreas(outputs: AgentOutputs): AgentGrowthArea[] {
+  const allAreas: AgentGrowthArea[] = [];
+
+  // Free tier agents
+  if (outputs.patternDetective?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(outputs.patternDetective.growthAreasData));
+  }
+  if (outputs.metacognition?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(outputs.metacognition.growthAreasData));
+  }
+
+  // Premium tier agents
+  if (outputs.antiPatternSpotter?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(outputs.antiPatternSpotter.growthAreasData));
+  }
+  if (outputs.knowledgeGap?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(outputs.knowledgeGap.growthAreasData));
+  }
+  if (outputs.contextEfficiency?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(outputs.contextEfficiency.growthAreasData));
+  }
+  // Temporal insights are nested under insights.growthAreasData
+  if (outputs.temporalAnalysis?.insights?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(outputs.temporalAnalysis.insights.growthAreasData));
+  }
+  if (outputs.multitasking?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(outputs.multitasking.growthAreasData));
+  }
+
+  return allAreas;
+}

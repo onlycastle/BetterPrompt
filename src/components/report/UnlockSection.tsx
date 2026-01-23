@@ -261,6 +261,11 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: 
                 <span>ONE-TIME</span>
               </div>
               <div className={styles.pricingAmount}>$4.99</div>
+              <ul className={styles.featureList}>
+                <li>Unlock all contents</li>
+                <li>One-time payment</li>
+                <li>Yours forever</li>
+              </ul>
               <button
                 className={hasCredits ? styles.subscribeCta : styles.unlockCta}
                 onClick={handleCheckout}
@@ -272,13 +277,10 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: 
                     Processing...
                   </>
                 ) : (
-                  'Unlock Full Report'
+                  'Unlock Now'
                 )}
               </button>
               {!hasCredits && error && <div className={styles.errorMessage}>{error}</div>}
-              <div className={styles.pricingNote}>
-                Less than a coffee • Yours forever
-              </div>
               {process.env.NODE_ENV !== 'production' && (
                 <p className={styles.testHint}>Test coupon: PO100LAR</p>
               )}
@@ -292,10 +294,11 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: 
                   <span>PRO</span>
                 </div>
                 <div className={styles.pricingAmount}>$6.99<span>/month</span></div>
-                <div className={styles.proFeatures}>
-                  <div>Regular analysis with personalized data insights</div>
-                  <div>Customized learning resources and feedback for growth</div>
-                </div>
+                <ul className={styles.featureList}>
+                  <li>4 analyses / month</li>
+                  <li>Personalized insights</li>
+                  <li>Progress tracking</li>
+                </ul>
                 <button
                   className={styles.subscribeCta}
                   onClick={() => setIsProWaitlistOpen(true)}
@@ -313,10 +316,11 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: 
                   <span>ENTERPRISE</span>
                 </div>
                 <div className={styles.pricingAmount}>Custom</div>
-                <div className={styles.enterpriseFeatures}>
-                  <div>Team member capability testing</div>
-                  <div>Easy performance tracking per member</div>
-                </div>
+                <ul className={styles.featureList}>
+                  <li>Team capability assessment</li>
+                  <li>Member performance tracking</li>
+                  <li>Admin dashboard</li>
+                </ul>
                 <button
                   className={styles.contactCta}
                   onClick={() => setIsEnterpriseContactOpen(true)}
