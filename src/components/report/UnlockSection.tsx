@@ -17,49 +17,53 @@ interface UnlockSectionProps {
 /**
  * Benefit categories for the unlock section
  * Grouped into 4 categories for a clean 2x2 grid layout
+ *
+ * NOTE: Only list features that are actually implemented!
+ * - 7 AI agents (2 free, 5 premium): AgentInsightsSection.tsx
+ * - Recommendations/tips: PromptPatternsClean.tsx, DimensionInsightsClean.tsx
+ * - Full history: ProgressTab.tsx
  */
 const benefitCategories = [
   {
-    id: 'insights',
+    id: 'agents',
     icon: BarChart3,
-    title: 'Deep Insights',
+    title: 'Full AI Analysis',
     color: 'cyan',
     items: [
-      'AI Collaboration breakdown',
-      'Control Index deep-dive',
-      'Skill Resilience analysis',
+      '7 specialized AI agents (vs 2 free)',
+      'Anti-pattern & knowledge gap detection',
+      'Context efficiency & temporal analysis',
     ],
   },
   {
     id: 'tips',
     icon: Target,
-    title: 'Improvement Tips',
+    title: 'Actionable Recommendations',
     color: 'pink',
     items: [
-      'Best & worst prompt examples',
-      'Personalized growth roadmap',
-      'Practice exercises',
+      'Improvement tips for every pattern',
+      'Growth area recommendations',
+      'Agent-specific action items',
     ],
   },
   {
-    id: 'comparison',
+    id: 'progress',
     icon: Users,
-    title: 'Peer Comparison',
+    title: 'Full Progress History',
     color: 'green',
     items: [
-      'Percentile rankings (vs 10K+ users)',
-      'Learning velocity tracking',
+      'Track all your analyses over time',
+      'Skill evolution timeline',
     ],
   },
   {
     id: 'extras',
     icon: Gift,
-    title: 'Extras',
+    title: 'Complete Evidence',
     color: 'yellow',
     items: [
-      'Downloadable PDF report',
-      'Shareable profile badge',
-      'All conversation evidence',
+      'All conversation evidence quotes',
+      'Detailed dimension breakdowns',
     ],
   },
 ] as const;

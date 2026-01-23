@@ -41,18 +41,16 @@ export function UnlockSection({
             </p>
 
             <ul className={styles.featureList}>
-              <li>🤝 Full AI Collaboration breakdown + improvement strategies</li>
-              <li>🎯 Best & worst prompt examples with improvement tips</li>
-              <li>🔥 Complete burnout risk analysis + time patterns</li>
-              <li>🛠️ All tool mastery data + optimization strategies</li>
-              <li>🎮 AI Control Index deep-dive + professional tips</li>
-              <li>💪 Skill Resilience analysis + practice exercises</li>
-              <li>📊 Peer comparison percentiles (vs 10,000+ users)</li>
-              <li>📈 Learning velocity tracking</li>
-              <li>💬 All conversation evidence examples</li>
-              <li>🎯 Personalized growth roadmap</li>
-              <li>📄 Downloadable PDF report</li>
-              <li>🏷️ Shareable badge for your profile</li>
+              <li>🤖 7 specialized AI agents (vs 2 free)</li>
+              <li>🔍 Anti-pattern & knowledge gap detection</li>
+              <li>⏱️ Context efficiency & temporal analysis</li>
+              <li>💡 Improvement tips for every pattern</li>
+              <li>🎯 Growth area recommendations</li>
+              <li>📊 Agent-specific action items</li>
+              <li>📈 Track all your analyses over time</li>
+              <li>⏳ Skill evolution timeline</li>
+              <li>💬 All conversation evidence quotes</li>
+              <li>🔬 Detailed dimension breakdowns</li>
             </ul>
 
             <div className={styles.ctaBox}>

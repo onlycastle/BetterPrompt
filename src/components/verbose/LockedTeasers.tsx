@@ -6,33 +6,33 @@ interface LockedTeasersProps {
 
 const PREMIUM_FEATURES = [
   {
-    icon: '🛠️',
-    title: 'Tool Usage Deep Dive',
-    description: 'Detailed analysis of how you use each tool, with comparisons to expert users and optimization strategies...',
+    icon: '🤖',
+    title: 'Full AI Agent Analysis',
+    description: '7 specialized AI agents analyzing your sessions: anti-pattern detection, knowledge gaps, context efficiency, and more...',
     accentColor: 'var(--neon-magenta)',
   },
   {
-    icon: '💰',
-    title: 'Token Efficiency Analysis',
-    description: 'Your token usage patterns, efficiency score, and estimated monthly savings with optimization tips...',
+    icon: '💡',
+    title: 'Actionable Recommendations',
+    description: 'Specific improvement tips for every pattern, growth area recommendations, and agent-specific action items...',
     accentColor: 'var(--neon-green)',
   },
   {
-    icon: '🗺️',
-    title: 'Personalized Growth Roadmap',
-    description: 'Step-by-step plan to reach the next level, with time estimates and measurable milestones...',
+    icon: '📊',
+    title: 'Full Progress History',
+    description: 'Track all your analyses over time with skill evolution timeline...',
     accentColor: 'var(--neon-cyan)',
   },
   {
-    icon: '📊',
-    title: 'Comparative Insights',
-    description: 'How you compare to 10,000+ developers across key metrics, with percentile rankings...',
+    icon: '🔬',
+    title: 'Detailed Dimension Breakdowns',
+    description: 'Deep analysis of AI collaboration, context efficiency, temporal patterns, and more...',
     accentColor: 'var(--neon-yellow)',
   },
   {
-    icon: '📈',
-    title: 'Session Trends',
-    description: 'Track your improvement over time across all dimensions with trend analysis...',
+    icon: '💬',
+    title: 'Complete Evidence Quotes',
+    description: 'All conversation evidence supporting your analysis and insights...',
     accentColor: 'var(--neon-pink)',
   },
 ];
