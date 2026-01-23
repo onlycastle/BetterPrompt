@@ -18,9 +18,12 @@ import type { AgentOutputs } from '../../../lib/models/agent-outputs';
 import {
   parseStrengthsData,
   parseGrowthAreasData,
+  parseRecommendedResourcesData,
   type AgentStrength,
   type AgentGrowthArea,
+  type ParsedResource,
 } from '../../../lib/models/agent-outputs';
+import { ResourceBubble } from './ResourceBubble';
 import styles from './AgentInsightsSection.module.css';
 
 interface AgentInsightsSectionProps {
@@ -43,15 +46,6 @@ interface AgentCardConfig {
 const AGENT_CONFIGS: AgentCardConfig[] = [
   // FREE tier agents
   {
-    id: 'patternDetective',
-    name: 'Pattern Detective',
-    icon: '🔍',
-    scoreLabel: 'Score',
-    scoreKey: 'confidenceScore',
-    scoreMax: 1,
-    tier: 'free',
-  },
-  {
     id: 'metacognition',
     name: 'Metacognition',
     icon: '🧠',
@@ -60,23 +54,32 @@ const AGENT_CONFIGS: AgentCardConfig[] = [
     scoreMax: 100,
     tier: 'free',
   },
-
-  // PREMIUM tier agents
-  {
-    id: 'antiPatternSpotter',
-    name: 'Anti-Pattern Spotter',
-    icon: '⚠️',
-    scoreLabel: 'Score',
-    scoreKey: 'overallHealthScore',
-    scoreMax: 100,
-    tier: 'premium',
-  },
   {
     id: 'knowledgeGap',
     name: 'Knowledge Gap',
     icon: '📚',
     scoreLabel: 'Score',
     scoreKey: 'overallKnowledgeScore',
+    scoreMax: 100,
+    tier: 'free',
+  },
+
+  // PREMIUM tier agents
+  {
+    id: 'patternDetective',
+    name: 'Pattern Detective',
+    icon: '🔍',
+    scoreLabel: 'Score',
+    scoreKey: 'confidenceScore',
+    scoreMax: 1,
+    tier: 'premium',
+  },
+  {
+    id: 'antiPatternSpotter',
+    name: 'Anti-Pattern Spotter',
+    icon: '⚠️',
+    scoreLabel: 'Score',
+    scoreKey: 'overallHealthScore',
     scoreMax: 100,
     tier: 'premium',
   },
@@ -240,6 +243,14 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
           const summary = (data as { overallStyleSummary?: string }).overallStyleSummary;
           const isExpanded = expandedAgent === config.id;
 
+          // Extract resources for Knowledge Gap agent
+          const knowledgeGapResources =
+            config.id === 'knowledgeGap' && data
+              ? parseRecommendedResourcesData(
+                  (data as AgentOutputs['knowledgeGap'])?.recommendedResourcesData
+                )
+              : [];
+
           return (
             <div key={config.id} className={styles.agentCard}>
               {/* Card Header */}
@@ -257,7 +268,12 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
               </div>
 
               {/* Strengths & Growth Areas - recommendations locked for free users */}
-              <AgentStrengthsGrowthAreas data={data} isPaid={isPaid} />
+              <AgentStrengthsGrowthAreas
+                data={data}
+                isPaid={isPaid}
+                agentId={config.id}
+                resources={knowledgeGapResources}
+              />
 
               {/* Summary */}
               {summary && (
@@ -392,10 +408,43 @@ function extractTitleFromText(text: string): string {
 }
 
 /**
+ * Find matching resources for a growth area title
+ * Uses fuzzy matching - checks if topic appears in title or vice versa
+ */
+function findMatchingResourcesForTitle(
+  title: string,
+  resources: ParsedResource[]
+): ParsedResource[] {
+  if (resources.length === 0) return [];
+
+  const titleLower = title.toLowerCase();
+  return resources.filter((resource) => {
+    const topicLower = resource.topic.toLowerCase();
+    return titleLower.includes(topicLower) || topicLower.includes(titleLower);
+  });
+}
+
+interface AgentStrengthsGrowthAreasProps {
+  data: unknown;
+  isPaid: boolean;
+  agentId: keyof AgentOutputs;
+  /** Resources for Knowledge Gap agent to show inline */
+  resources?: ParsedResource[];
+}
+
+/**
  * Agent Strengths & Growth Areas Component
  * All content visible, only recommendations locked for free users
+ *
+ * Special handling for Knowledge Gap:
+ * - Free users see first recommendation unlocked with matching Learning Resource
  */
-function AgentStrengthsGrowthAreas({ data, isPaid }: { data: unknown; isPaid: boolean }) {
+function AgentStrengthsGrowthAreas({
+  data,
+  isPaid,
+  agentId,
+  resources = [],
+}: AgentStrengthsGrowthAreasProps) {
   const strengths = getAgentStrengths(data);
   const growthAreas = getAgentGrowthAreas(data);
 
@@ -404,8 +453,12 @@ function AgentStrengthsGrowthAreas({ data, isPaid }: { data: unknown; isPaid: bo
     return null;
   }
 
-  // Count recommendations for teaser
+  // Special handling for Knowledge Gap: show first recommendation for free users
+  const isKnowledgeGap = agentId === 'knowledgeGap';
+
+  // Count recommendations for teaser (excluding the free one for Knowledge Gap)
   const recommendationCount = growthAreas.filter(g => g.recommendation).length;
+  const teaserCount = isKnowledgeGap && !isPaid ? recommendationCount - 1 : recommendationCount;
 
   return (
     <div className={styles.strengthsGrowthContainer}>
@@ -441,41 +494,59 @@ function AgentStrengthsGrowthAreas({ data, isPaid }: { data: unknown; isPaid: bo
             <span className={styles.growthIcon}>🌱</span>
             <span className={styles.sectionLabel}>Growth Areas</span>
           </div>
-          {growthAreas.map((g, idx) => (
-            <div key={idx} className={styles.insightCard}>
-              <h4 className={styles.insightTitle}>{g.title}</h4>
-              <p className={styles.insightDescription}>{g.description}</p>
-              {g.evidence.length > 0 && (
-                <div className={styles.evidenceList}>
-                  {g.evidence.slice(0, 2).map((quote, i) => (
-                    <blockquote key={i} className={styles.evidenceQuote}>
-                      &ldquo;{quote}&rdquo;
-                    </blockquote>
-                  ))}
-                </div>
-              )}
-              {g.recommendation && (
-                <div className={`${styles.recommendation} ${!isPaid ? styles.recommendationLocked : ''}`}>
-                  <span className={styles.recLabel}>💡 Recommendation:</span>
-                  {isPaid ? (
-                    <span className={styles.recText}>{g.recommendation}</span>
-                  ) : (
-                    <span className={styles.recLockedContent}>
-                      <span className={styles.blurredText}>{g.recommendation.slice(0, 20)}...</span>
-                      <span className={styles.unlockBadge}>🔒 See recommendation</span>
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+          {growthAreas.map((g, idx) => {
+            // For Knowledge Gap free users: first item shows recommendation unlocked
+            const isFirstKnowledgeGapItem = isKnowledgeGap && idx === 0;
+            const showRecommendation = isPaid || isFirstKnowledgeGapItem;
+
+            // Find matching resources for this growth area (Knowledge Gap only)
+            const matchingResources = isKnowledgeGap
+              ? findMatchingResourcesForTitle(g.title, resources)
+              : [];
+
+            return (
+              <div key={idx} className={styles.insightCard}>
+                <h4 className={styles.insightTitle}>{g.title}</h4>
+                <p className={styles.insightDescription}>{g.description}</p>
+                {g.evidence.length > 0 && (
+                  <div className={styles.evidenceList}>
+                    {g.evidence.slice(0, 2).map((quote, i) => (
+                      <blockquote key={i} className={styles.evidenceQuote}>
+                        &ldquo;{quote}&rdquo;
+                      </blockquote>
+                    ))}
+                  </div>
+                )}
+                {g.recommendation && (
+                  <div className={`${styles.recommendation} ${!showRecommendation ? styles.recommendationLocked : ''}`}>
+                    <span className={styles.recLabel}>💡 Recommendation:</span>
+                    {showRecommendation ? (
+                      <span className={styles.recText}>{g.recommendation}</span>
+                    ) : (
+                      <span className={styles.recLockedContent}>
+                        <span className={styles.blurredText}>{g.recommendation.slice(0, 20)}...</span>
+                        <span className={styles.unlockBadge}>🔒 See recommendation</span>
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Inline Learning Resource for Knowledge Gap (first item only for free users) */}
+                {isKnowledgeGap && matchingResources.length > 0 && (isPaid || isFirstKnowledgeGapItem) && (
+                  <div className={styles.inlineResource}>
+                    <ResourceBubble resources={matchingResources} isPaid={true} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {/* Teaser for free users */}
-          {!isPaid && recommendationCount > 0 && (
+          {!isPaid && teaserCount > 0 && (
             <div className={styles.teaserMore}>
               <span className={styles.unlockIcon}>🔓</span>
               <span className={styles.teaserMoreText}>
-                {recommendationCount} personalized recommendations
+                {teaserCount} more personalized recommendations
               </span>
             </div>
           )}
