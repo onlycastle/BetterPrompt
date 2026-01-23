@@ -22,24 +22,30 @@
 │   ║                        ANALYSIS ORCHESTRATOR                                  ║   │
 │   ║                                                                               ║   │
 │   ║  ┌─────────────────────────────────────────────────────────────────────────┐ ║   │
-│   ║  │ PHASE 1: Data Extraction (parallel)                                     │ ║   │
-│   ║  │ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐             │ ║   │
-│   ║  │ │ DataAnalyst     │ │ Productivity    │ │ Multitasking    │             │ ║   │
-│   ║  │ │ Worker (A)      │ │ Worker (C)      │ │ Analyzer        │             │ ║   │
-│   ║  │ └───────┬─────────┘ └───────┬─────────┘ └───────┬─────────┘             │ ║   │
-│   ║  │         │                   │                   │                        │ ║   │
-│   ║  │         ▼                   ▼                   ▼                        │ ║   │
-│   ║  │  StructuredData      ProductivityData    MultitaskingData               │ ║   │
+│   ║  │ PHASE 1: Data Extraction (parallel, 2 workers)                          │ ║   │
+│   ║  │ ┌─────────────────────────────┐ ┌─────────────────────────────┐         │ ║   │
+│   ║  │ │ DataAnalyst Worker (A)      │ │ Productivity Worker (C)     │         │ ║   │
+│   ║  │ │ Behavioral data extraction  │ │ Productivity metrics        │         │ ║   │
+│   ║  │ └─────────────┬───────────────┘ └─────────────┬───────────────┘         │ ║   │
+│   ║  │               │                               │                          │ ║   │
+│   ║  │               ▼                               ▼                          │ ║   │
+│   ║  │        StructuredData                  ProductivityData                  │ ║   │
 │   ║  └─────────────────────────────────────────────────────────────────────────┘ ║   │
 │   ║                              │                                                ║   │
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
-│   ║  │ PHASE 2: Insight Generation (parallel, Premium+ only)                  │   ║   │
-│   ║  │ ┌───────────────┐ ┌───────────────┐ ┌──────────────┐ ┌──────────────┐ │   ║   │
-│   ║  │ │ PatternDet.   │ │ AntiPattern   │ │ KnowledgeGap │ │ ContextEff.  │ │   ║   │
-│   ║  │ │ Worker        │ │ Spotter       │ │ Worker       │ │ Worker       │ │   ║   │
-│   ║  │ └───────┬───────┘ └───────┬───────┘ └──────┬───────┘ └──────┬───────┘ │   ║   │
-│   ║  │         │                 │                 │                │         │   ║   │
-│   ║  │         └─────────────────┴─────────────────┴────────────────┘         │   ║   │
+│   ║  │ PHASE 2: Insight Generation (parallel, 7 workers)                      │   ║   │
+│   ║  │                                                                         │   ║   │
+│   ║  │ Row 1: Pattern Analysis                                                 │   ║   │
+│   ║  │ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐ ┌─────────────┐  │   ║   │
+│   ║  │ │ PatternDet.   │ │ AntiPattern   │ │ KnowledgeGap  │ │ContextEff. │  │   ║   │
+│   ║  │ │ (free)        │ │ (premium)     │ │ (premium)     │ │ (premium)   │  │   ║   │
+│   ║  │ └───────────────┘ └───────────────┘ └───────────────┘ └─────────────┘  │   ║   │
+│   ║  │                                                                         │   ║   │
+│   ║  │ Row 2: Behavioral Analysis                                              │   ║   │
+│   ║  │ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐                  │   ║   │
+│   ║  │ │ Metacognition │ │ Temporal      │ │ Multitasking  │                  │   ║   │
+│   ║  │ │ (free)        │ │ (premium)     │ │ (premium)     │                  │   ║   │
+│   ║  │ └───────────────┘ └───────────────┘ └───────────────┘                  │   ║   │
 │   ║  │                                   │                                     │   ║   │
 │   ║  │                                   ▼                                     │   ║   │
 │   ║  │                            AgentOutputs                                 │   ║   │
@@ -48,7 +54,7 @@
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
 │   ║  │ PHASE 2.5: Type Synthesis (Agent-Informed Classification Refinement)  │   ║   │
 │   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
-│   ║  │ │ TypeSynthesisWorker                                              │   │   ║   │
+│   ║  │ │ TypeSynthesisWorker (free)                                       │   │   ║   │
 │   ║  │ │ (refines initial type classification using all agent outputs)    │   │   ║   │
 │   ║  │ └─────────────────────────────────────────────────────────────────┘   │   ║   │
 │   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
@@ -57,7 +63,7 @@
 │   ║  │ PHASE 3: Content Generation                                            │   ║   │
 │   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
 │   ║  │ │ ContentWriter                                                    │   │   ║   │
-│   ║  │ │ (combines Module A + C + Agent outputs)                         │   │   ║   │
+│   ║  │ │ (combines Module A + C + Agent outputs into narrative)           │   │   ║   │
 │   ║  │ └─────────────────────────────────────────────────────────────────┘   │   ║   │
 │   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
 │   ╚══════════════════════════════════════════════════════════════════════════════╝   │
@@ -327,80 +333,83 @@ ProductivityAnalysisData
 
 ---
 
-### Phase 2: Insight Generation Agents (Premium+)
+### Phase 2: Insight Generation Workers
 
 **Purpose**: Generate deep insights based on Phase 1 results
 
-> 6 specialized agents run in parallel. Skipped for Free tier.
+> 7 workers run in parallel. Some workers are free tier, some require premium+.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    PHASE 2: 6 WOW AGENTS (PARALLEL)                     │
+│                    PHASE 2: 7 WORKERS (PARALLEL)                        │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌──────────────────────────────┐                                       │
 │  │  INPUT (from Phase 1)        │                                       │
 │  │  - StructuredAnalysisData    │  ◀── Module A output                 │
 │  │  - ProductivityAnalysisData  │  ◀── Module C output                 │
-│  │  - MultitaskingAnalysisData  │  ◀── Multitasking output (NEW)       │
 │  │  - Sessions[]                │                                       │
 │  │  - Metrics                   │                                       │
 │  └────────────┬─────────────────┘                                       │
 │               │                                                          │
-│  ┌────────────┴────────────┬──────────────┬──────────────┐              │
-│  ▼                         ▼              ▼              ▼              │
-│ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐            │
-│ │Pattern     │ │AntiPattern │ │KnowledgeGap│ │ContextEff. │            │
-│ │Detective   │ │Spotter     │ │Worker      │ │Worker      │            │
-│ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘            │
-│       │              │              │              │                    │
-│ ┌─────┴──────────────┴──────────────┴──────────────┘                   │
-│ │                                                                       │
-│ │  ┌────────────────┐  ┌────────────────┐  (NEW Premium+ Workers)      │
-│ │  │ Metacognition  │  │ Temporal       │                              │
-│ │  │ Worker         │  │ Analyzer       │                              │
-│ │  └───────┬────────┘  └───────┬────────┘                              │
-│ │          │                   │                                        │
-│ └──────────┴───────────────────┴───────────────────────────────────────┤
-│                                   │                                      │
-│                                   ▼                                      │
-│                          ┌──────────────┐                               │
-│                          │ AgentOutputs │                               │
-│                          │ (merged)     │                               │
-│                          └──────────────┘                               │
+│  ┌────────────┴───────────────────────────────────────────────────┐    │
+│  │                                                                  │    │
+│  │  Row 1: Pattern Analysis Workers                                │    │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐   │    │
+│  │  │ Pattern    │ │ AntiPat.   │ │ Knowledge  │ │ Context    │   │    │
+│  │  │ Detective  │ │ Spotter    │ │ Gap        │ │ Efficiency │   │    │
+│  │  │ (free)     │ │ (premium)  │ │ (premium)  │ │ (premium)  │   │    │
+│  │  └────────────┘ └────────────┘ └────────────┘ └────────────┘   │    │
+│  │                                                                  │    │
+│  │  Row 2: Behavioral Analysis Workers                             │    │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐                  │    │
+│  │  │ Metacog.   │ │ Temporal   │ │ Multitask. │                  │    │
+│  │  │ Worker     │ │ Analyzer   │ │ Analyzer   │                  │    │
+│  │  │ (free)     │ │ (premium)  │ │ (premium)  │                  │    │
+│  │  └────────────┘ └────────────┘ └────────────┘                  │    │
+│  │                                                                  │    │
+│  └──────────────────────────────────┬──────────────────────────────┘    │
+│                                      │                                   │
+│                                      ▼                                   │
+│                             ┌──────────────┐                            │
+│                             │ AgentOutputs │                            │
+│                             │ (merged)     │                            │
+│                             └──────────────┘                            │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### Phase 2 Agent Descriptions
+#### Phase 2 Worker Descriptions
 
-| Agent | Purpose | Output Schema |
-|-------|---------|---------------|
-| **PatternDetective** | Detect recurring behavioral patterns across sessions | `PatternDetectiveOutput` |
-| **AntiPatternSpotter** | Detect inefficient patterns and improvement opportunities | `AntiPatternSpotterOutput` |
-| **KnowledgeGap** | Identify knowledge gaps and learning opportunities | `KnowledgeGapOutput` |
-| **ContextEfficiency** | Analyze context utilization efficiency | `ContextEfficiencyOutput` |
-| **Metacognition** (NEW) | Detect self-awareness patterns and blind spots | `MetacognitionOutput` |
-| **TemporalAnalyzer** (NEW) | Analyze prompt quality and fatigue by time of day | `TemporalAnalysisOutput` |
+| Worker | Tier | Purpose | Output Schema |
+|--------|------|---------|---------------|
+| **PatternDetective** | free | Detect recurring behavioral patterns across sessions | `PatternDetectiveOutput` |
+| **AntiPatternSpotter** | premium | Detect inefficient patterns and improvement opportunities | `AntiPatternSpotterOutput` |
+| **KnowledgeGap** | premium | Identify knowledge gaps and learning opportunities | `KnowledgeGapOutput` |
+| **ContextEfficiency** | premium | Analyze context utilization efficiency | `ContextEfficiencyOutput` |
+| **Metacognition** | free | Detect self-awareness patterns and blind spots | `MetacognitionOutput` |
+| **TemporalAnalyzer** | premium | Analyze prompt quality and fatigue by time of day (uses temporal-calculator.ts) | `TemporalAnalysisOutput` |
+| **MultitaskingAnalyzer** | premium | Analyze multi-session work patterns, context pollution, goal coherence | `MultitaskingAnalysisOutput` |
 
 #### Worker Input Configuration Matrix
 
 Each worker receives different subsets of session data based on its analysis needs:
 
-| Worker | User Msg | Assistant Msg | Tool Calls | Duration | Timestamps |
-|--------|:--------:|:-------------:|:----------:|:--------:|:----------:|
-| **DataAnalyst** (Module A) | ✓ | ✓ | ✓ | ✓ | ✗ |
-| **Productivity** (Module C) | ✓ | ✓ | ✓ | ✓ | ✗ |
-| **PatternDetective** | ✓ | ✗ | ✗ | ✗ | ✗ |
-| **AntiPatternSpotter** | ✓ | ✓ | ✓ | ✓ | ✗ |
-| **KnowledgeGap** | ✓ | ✗ | ✗ | ✗ | ✗ |
-| **ContextEfficiency** | ✓ | ✗ | ✗ | ✓ | ✗ |
-| **Metacognition** | ✓ | ✓ | ✗ | ✓ | ✗ |
-| **Temporal** | ✓ | ✓ | ✗ | ✓ | ✓ |
-| **Multitasking** | ✓ | ✗ | Custom | Custom | ✓ |
-| **TypeSynthesis** | — | — | — | — | — |
+| Worker | Phase | User Msg | Assistant Msg | Tool Calls | Duration | Timestamps |
+|--------|:-----:|:--------:|:-------------:|:----------:|:--------:|:----------:|
+| **DataAnalyst** (Module A) | 1 | ✓ | ✓ | ✓ | ✓ | ✗ |
+| **Productivity** (Module C) | 1 | ✓ | ✓ | ✓ | ✓ | ✗ |
+| **PatternDetective** | 2 | ✓ | ✗ | ✗ | ✗ | ✗ |
+| **AntiPatternSpotter** | 2 | ✓ | ✓ | ✓ | ✓ | ✗ |
+| **KnowledgeGap** | 2 | ✓ | ✗ | ✗ | ✗ | ✗ |
+| **ContextEfficiency** | 2 | ✓ | ✗ | ✗ | ✓ | ✗ |
+| **Metacognition** | 2 | ✓ | ✓ | ✗ | ✓ | ✗ |
+| **TemporalAnalyzer** | 2 | ✓ | ✓ | ✗ | ✓ | ✓ |
+| **MultitaskingAnalyzer** | 2 | ✓ | ✗ | Custom | Custom | ✓ |
+| **TypeSynthesis** | 2.5 | — | — | — | — | — |
 
 **Legend:**
+- **Phase**: 1 = Data Extraction, 2 = Insight Generation, 2.5 = Type Synthesis
 - **User Msg**: User messages included in session data
 - **Assistant Msg**: AI assistant responses included (needed for error loops, interaction patterns)
 - **Tool Calls**: Tool usage information (Bash, Read, Edit, etc.)
@@ -409,8 +418,8 @@ Each worker receives different subsets of session data based on its analysis nee
 - **TypeSynthesis**: Receives only agent outputs, not raw session data
 
 **Design Rationale:**
-- **User-only workers** (PatternDetective, KnowledgeGap, ContextEfficiency, Multitasking): Focus on pure user intent and communication patterns
-- **User+Assistant workers** (DataAnalyst, AntiPattern, Metacognition, Temporal): Need interaction context for error loops, fatigue signals, and self-awareness detection
+- **User-only workers** (PatternDetective, KnowledgeGap, ContextEfficiency, MultitaskingAnalyzer): Focus on pure user intent and communication patterns
+- **User+Assistant workers** (DataAnalyst, AntiPattern, Metacognition, TemporalAnalyzer): Need interaction context for error loops, fatigue signals, and self-awareness detection
 
 #### Agent Output Schema (AgentOutputs)
 
@@ -454,7 +463,7 @@ AgentOutputs
 │   ├── improvementAreas[]
 │   └── bestPracticesSuggestions[]
 │
-├── metacognition (NEW - Premium+)
+├── metacognition (Phase 2 - free)
 │   ├── awarenessInstancesData: string  ← semicolon-separated
 │   ├── blindSpotsData: string
 │   ├── growthMindsetData: string
@@ -462,7 +471,7 @@ AgentOutputs
 │   ├── topInsights: string[3]
 │   └── confidenceScore: 0-1
 │
-├── temporalAnalysis (NEW - Premium+)
+├── temporalAnalysis (Phase 2 - premium)
 │   ├── hourlyPatternsData: string  ← semicolon-separated
 │   ├── peakHoursData: string
 │   ├── cautionHoursData: string
@@ -471,7 +480,7 @@ AgentOutputs
 │   ├── topInsights: string[3]
 │   └── confidenceScore: 0-1
 │
-├── multitasking (NEW - Phase 1)
+├── multitasking (Phase 2 - premium)
 │   ├── sessionFocusData: string  ← semicolon-separated
 │   ├── contextPollutionData: string
 │   ├── workUnitSeparationData: string
@@ -482,7 +491,7 @@ AgentOutputs
 │   ├── topInsights: string[3]
 │   └── confidenceScore: 0-1
 │
-└── typeSynthesis (NEW - Phase 2.5)  ← Refined classification using all agent outputs
+└── typeSynthesis (Phase 2.5 - free)  ← Refined classification using all agent outputs
     ├── refinedPrimaryType: "architect" | "scientist" | "collaborator" | "speedrunner" | "craftsman"
     ├── refinedDistribution: string  ← "type:percent;..." format
     ├── refinedControlLevel: "explorer" | "navigator" | "cartographer"
@@ -496,11 +505,11 @@ AgentOutputs
 
 ---
 
-### Phase 2.5: Type Synthesis (NEW)
+### Phase 2.5: Type Synthesis
 
 **Purpose**: Refine initial type classification using Phase 2 agent outputs
 
-> Runs after Phase 2, before Phase 3. Available for all tiers.
+> Runs after Phase 2, before Phase 3. Available for all tiers (free).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -885,45 +894,45 @@ Expert knowledge structure injected into Module A:
                        │
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║     PHASE 1: DATA EXTRACTION (Module A + C + Multitasking)        ║
+  ║     PHASE 1: DATA EXTRACTION (Module A + C, 2 workers)            ║
   ╠═══════════════════════════════════════════════════════════════════╣
   ║                                                                    ║
-  ║  ┌───────────────────┐ ┌───────────────────┐ ┌───────────────────┐║
-  ║  │  MODULE A: DATA   │ │  MODULE C: PROD.  │ │  MULTITASKING     │║
-  ║  │  ANALYST          │ │  ANALYST          │ │  ANALYZER (NEW)   │║
-  ║  ├───────────────────┤ ├───────────────────┤ ├───────────────────┤║
-  ║  │ Model: gemini-3   │ │ Model: gemini-3   │ │ Model: gemini-3   │║
-  ║  │ Temp: 1.0         │ │ Temp: 1.0         │ │ Temp: 1.0         │║
-  ║  │                   │ │                   │ │                   │║
-  ║  │ OUTPUT:           │ │ OUTPUT:           │ │ OUTPUT:           │║
-  ║  │ - quotes (15-50)  │ │ - efficiency      │ │ - sessionFocus    │║
-  ║  │ - patterns (3-10) │ │ - completion      │ │ - pollution       │║
-  ║  │ - 6 dim signals   │ │ - focus           │ │ - workUnits       │║
-  ║  │ - type            │ │ - workPatterns    │ │ - strategy        │║
-  ║  └─────────┬─────────┘ └─────────┬─────────┘ └─────────┬─────────┘║
-  ║            │                     │                     │          ║
-  ║            └─────────────────────┼─────────────────────┘          ║
-  ║                                  ▼                                 ║
-  ║    StructuredData + ProductivityData + MultitaskingData           ║
+  ║  ┌─────────────────────────────┐ ┌─────────────────────────────┐  ║
+  ║  │  MODULE A: DATA ANALYST     │ │  MODULE C: PRODUCTIVITY     │  ║
+  ║  ├─────────────────────────────┤ ├─────────────────────────────┤  ║
+  ║  │ Model: gemini-3-flash       │ │ Model: gemini-3-flash       │  ║
+  ║  │ Temp: 1.0                   │ │ Temp: 1.0                   │  ║
+  ║  │                             │ │                             │  ║
+  ║  │ OUTPUT:                     │ │ OUTPUT:                     │  ║
+  ║  │ - quotes (15-50)            │ │ - efficiency                │  ║
+  ║  │ - patterns (3-10)           │ │ - completion                │  ║
+  ║  │ - 6 dim signals             │ │ - focus                     │  ║
+  ║  │ - type                      │ │ - workPatterns              │  ║
+  ║  └─────────────┬───────────────┘ └─────────────┬───────────────┘  ║
+  ║                │                               │                   ║
+  ║                └───────────────┬───────────────┘                   ║
+  ║                                ▼                                   ║
+  ║              StructuredData + ProductivityData                     ║
   ╚═══════════════════════════════════════════════════════════════════╝
                        │
                        │ [4] Pass Phase 1 outputs to Phase 2 (Premium+ only)
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║         PHASE 2: INSIGHT GENERATION (6 WOW AGENTS, Premium+)      ║
+  ║         PHASE 2: INSIGHT GENERATION (7 workers)                   ║
   ║                                                                    ║
-  ║   [6 parallel agents, skipped for Free tier]                       ║
+  ║   [7 parallel workers, tier requirements vary per worker]          ║
   ║                                                                    ║
-  ║   INPUT:  StructuredData + ProductivityData + MultitaskingData     ║
+  ║   INPUT:  StructuredData + ProductivityData + Sessions             ║
   ║   OUTPUT: AgentOutputs (merged)                                    ║
-  ║           - PatternDetectiveWorker → recurring patterns            ║
-  ║           - AntiPatternSpotterWorker → inefficient patterns        ║
-  ║           - KnowledgeGapWorker → knowledge gaps                    ║
-  ║           - ContextEfficiencyWorker → context utilization          ║
-  ║           - MetacognitionWorker → self-awareness patterns (NEW)    ║
-  ║           - TemporalAnalyzerWorker → time-based quality (NEW)      ║
+  ║           - PatternDetectiveWorker → recurring patterns (free)     ║
+  ║           - AntiPatternSpotterWorker → inefficient patterns (prem) ║
+  ║           - KnowledgeGapWorker → knowledge gaps (premium)          ║
+  ║           - ContextEfficiencyWorker → context utilization (prem)   ║
+  ║           - MetacognitionWorker → self-awareness patterns (free)   ║
+  ║           - TemporalAnalyzerWorker → time-based quality (premium)  ║
+  ║           - MultitaskingAnalyzerWorker → work patterns (premium)   ║
   ║                                                                    ║
-  ║   GRACEFUL DEGRADATION: Individual agents can fail independently  ║
+  ║   NO FALLBACK: Worker failures propagate as errors                ║
   ╚═══════════════════════════════════════════════════════════════════╝
                        │
                        │ [5] Pass agent outputs to Phase 2.5
@@ -1025,26 +1034,31 @@ Expert knowledge structure injected into Module A:
 │                                                                          │
 │  Orchestrator Pipeline (Current - Gemini 3 Flash)                        │
 │  ┌──────────────────────────────────────────────────────────┐           │
-│  │  PHASE 1 (Parallel): Module A + Module C                  │           │
+│  │  PHASE 1 (Parallel): Module A + Module C (2 workers)      │           │
 │  │  Module A: Input: ~15K tokens    Output: ~8K tokens      │           │
 │  │  Module C: Input: ~10K tokens    Output: ~3K tokens      │           │
 │  │                                                           │           │
-│  │  PHASE 2 (Parallel, Premium+): 4 Wow Agents              │           │
-│  │  ~4K tokens per agent, ~16K total (Premium only)         │           │
+│  │  PHASE 2 (Parallel): 7 Workers (tier-gated)              │           │
+│  │  ~4K tokens per worker, ~28K total (all workers)         │           │
+│  │  Free tier runs: PatternDetective, Metacognition (2)     │           │
+│  │  Premium runs: all 7 workers                             │           │
+│  │                                                           │           │
+│  │  PHASE 2.5: Type Synthesis (1 worker)                    │           │
+│  │  Input: ~4K tokens    Output: ~1K tokens                 │           │
 │  │                                                           │           │
 │  │  PHASE 3: Content Writer                                  │           │
 │  │  Input: ~12K tokens    Output: ~6K tokens                │           │
 │  │                                                           │           │
-│  │  Total Cost (Free):    ~$0.04 per analysis               │           │
-│  │  Total Cost (Premium): ~$0.07 per analysis               │           │
+│  │  Total Cost (Free):    ~$0.05 per analysis               │           │
+│  │  Total Cost (Premium): ~$0.10 per analysis               │           │
 │  └──────────────────────────────────────────────────────────┘           │
 │                                                                          │
 │  Result: Orchestrator + Workers provides BEST VALUE                     │
 │  - Gemini 3 Flash: Pro-level intelligence at Flash pricing              │
 │  - 1M token context window for comprehensive analysis                   │
 │  - Parallel execution speeds up Phase 1 and Phase 2                     │
-│  - Graceful degradation: individual workers can fail independently      │
-│  - Tier-based Phase 2 skipping saves cost for Free users                │
+│  - NO FALLBACK: Worker failures propagate to identify issues            │
+│  - Tier-based worker filtering reduces cost for Free users              │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -1057,45 +1071,53 @@ Expert knowledge structure injected into Module A:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | 4-phase pipeline coordination (1→2→2.5→3), Worker registration/execution |
+| Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | Pipeline coordination (Phase 1→2→2.5→3), Worker registration/execution |
 | Orchestrator Types | `src/lib/analyzer/orchestrator/types.ts` | WorkerResult, WorkerContext, Phase types |
-| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, Worker registration, string sanitization |
+| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, registers all workers (2 Phase 1, 7 Phase 2, 1 Phase 2.5) |
 | Content Gateway | `src/lib/analyzer/content-gateway.ts` | Tier-based content filtering (free/premium/enterprise) |
 
-### Phase 1: Data Extraction Workers
+### Phase 1: Data Extraction Workers (2 workers)
 
 | Component | File | Description |
 |-----------|------|-------------|
 | Base Worker | `src/lib/analyzer/workers/base-worker.ts` | BaseWorker abstract class, runWorkerSafely |
 | Data Analyst Worker | `src/lib/analyzer/workers/data-analyst-worker.ts` | Module A - behavioral data extraction |
 | Productivity Worker | `src/lib/analyzer/workers/productivity-analyst-worker.ts` | Module C - productivity metrics extraction |
-| **Multitasking Worker** | `src/lib/analyzer/workers/multitasking-analyzer-worker.ts` | Multi-session work pattern analysis (NEW) |
 | Module A Stage | `src/lib/analyzer/stages/data-analyst.ts` | DataAnalystStage class, Gemini call |
 | Module A Prompts | `src/lib/analyzer/stages/data-analyst-prompts.ts` | System/user prompt builders |
 | Module A Schema | `src/lib/models/analysis-data.ts` | StructuredAnalysisData Zod schema |
 | Module C Schema | `src/lib/models/productivity-data.ts` | ProductivityAnalysisData Zod schema |
-| **Multitasking Schema** | `src/lib/models/multitasking-data.ts` | MultitaskingAnalysisData Zod schema (NEW) |
 
-### Phase 2: Insight Generation Workers (Premium+)
+### Phase 2: Insight Generation Workers (7 workers)
+
+| Component | File | Tier | Description |
+|-----------|------|------|-------------|
+| Pattern Detective | `src/lib/analyzer/workers/pattern-detective-worker.ts` | free | Detect recurring patterns across sessions |
+| Anti-Pattern Spotter | `src/lib/analyzer/workers/anti-pattern-spotter-worker.ts` | premium | Detect inefficient patterns |
+| Knowledge Gap | `src/lib/analyzer/workers/knowledge-gap-worker.ts` | premium | Identify knowledge gaps |
+| Context Efficiency | `src/lib/analyzer/workers/context-efficiency-worker.ts` | premium | Analyze context utilization |
+| Metacognition Worker | `src/lib/analyzer/workers/metacognition-worker.ts` | free | Detect self-awareness patterns and blind spots |
+| Temporal Analyzer | `src/lib/analyzer/workers/temporal-analyzer-worker.ts` | premium | Analyze quality and fatigue by time of day |
+| Multitasking Analyzer | `src/lib/analyzer/workers/multitasking-analyzer-worker.ts` | premium | Multi-session work pattern analysis |
+| Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | — | AgentOutputs, all agent output Zod schemas |
+| Metacognition Schema | `src/lib/models/metacognition-data.ts` | — | MetacognitionOutput Zod schema |
+| Temporal Schema | `src/lib/models/temporal-data.ts` | — | TemporalAnalysisOutput Zod schema |
+| Multitasking Schema | `src/lib/models/multitasking-data.ts` | — | MultitaskingAnalysisData Zod schema |
+| Risk Signal Schema | `src/lib/models/risk-signal.ts` | — | RiskSignal Zod schema |
+
+### Calculators (Pure Deterministic - No LLM)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Pattern Detective | `src/lib/analyzer/workers/pattern-detective-worker.ts` | Detect recurring patterns across sessions |
-| Anti-Pattern Spotter | `src/lib/analyzer/workers/anti-pattern-spotter-worker.ts` | Detect inefficient patterns |
-| Knowledge Gap | `src/lib/analyzer/workers/knowledge-gap-worker.ts` | Identify knowledge gaps |
-| Context Efficiency | `src/lib/analyzer/workers/context-efficiency-worker.ts` | Analyze context utilization |
-| **Metacognition Worker** | `src/lib/analyzer/workers/metacognition-worker.ts` | Detect self-awareness patterns and blind spots (NEW) |
-| **Temporal Analyzer** | `src/lib/analyzer/workers/temporal-analyzer-worker.ts` | Analyze quality and fatigue by time of day (NEW) |
-| Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | AgentOutputs, 7 agent output Zod schemas |
-| **Metacognition Schema** | `src/lib/models/metacognition-data.ts` | MetacognitionOutput Zod schema (NEW) |
-| **Temporal Schema** | `src/lib/models/temporal-data.ts` | TemporalAnalysisOutput Zod schema (NEW) |
-| **Risk Signal Schema** | `src/lib/models/risk-signal.ts` | RiskSignal Zod schema (NEW) |
+| Temporal Calculator | `src/lib/analyzer/calculators/temporal-calculator.ts` | Pure functions for temporal metrics (heatmaps, session patterns, engagement signals) |
+| Phrase Pattern Calculator | `src/lib/analyzer/calculators/phrase-pattern-calculator.ts` | N-gram phrase pattern detection using Levenshtein clustering |
+| Temporal Metrics Schema | `src/lib/models/temporal-metrics.ts` | Zod schemas for deterministic temporal metrics |
 
-### Phase 2.5: Type Synthesis (NEW)
+### Phase 2.5: Type Synthesis (1 worker)
 
-| Component | File | Description |
-|-----------|------|-------------|
-| **TypeSynthesis Worker** | `src/lib/analyzer/workers/type-synthesis-worker.ts` | Phase 2.5 - Refine type classification based on agent insights (NEW) |
+| Component | File | Tier | Description |
+|-----------|------|------|-------------|
+| TypeSynthesis Worker | `src/lib/analyzer/workers/type-synthesis-worker.ts` | free | Phase 2.5 - Refine type classification based on agent insights |
 | Type Detector | `src/lib/analyzer/type-detector.ts` | Initial pattern-based type detection |
 | Coding Style Types | `src/lib/models/coding-style.ts` | 5×3 matrix types (15 combinations) |
 | AI Control Dimension | `src/lib/analyzer/dimensions/ai-control.ts` | Control level calculation |
@@ -1144,7 +1166,6 @@ OrchestratorConfig (src/lib/analyzer/orchestrator/types.ts)
 ├── temperature: 1.0                  ← Gemini default (do not lower)
 ├── maxOutputTokens: 65536
 ├── maxRetries: 2                     ← Per-worker retry count
-├── continueOnWorkerFailure: true     ← Continue if individual worker fails
 └── verbose: false                    ← Log worker progress
 
 VerboseAnalyzerConfig (src/lib/analyzer/verbose-analyzer.ts)
@@ -1163,6 +1184,24 @@ VerboseAnalyzerConfig (src/lib/analyzer/verbose-analyzer.ts)
 │       └── maxOutputTokens: 65536
 │
 └── tier: 'free' | 'premium' | 'enterprise'  ← default: 'enterprise'
+
+Worker Registration (src/lib/analyzer/verbose-analyzer.ts):
+│
+├── Phase 1 (2 workers):
+│   ├── DataAnalystWorker (Module A)
+│   └── ProductivityAnalystWorker (Module C)
+│
+├── Phase 2 (7 workers):
+│   ├── PatternDetectiveWorker (free)
+│   ├── AntiPatternSpotterWorker (premium)
+│   ├── KnowledgeGapWorker (premium)
+│   ├── ContextEfficiencyWorker (premium)
+│   ├── MetacognitionWorker (free)
+│   ├── TemporalAnalyzerWorker (premium)
+│   └── MultitaskingAnalyzerWorker (premium)
+│
+└── Phase 2.5 (1 worker):
+    └── TypeSynthesisWorker (free)
 
 Environment Variables:
 └── GOOGLE_GEMINI_API_KEY  ← Required for orchestrator pipeline

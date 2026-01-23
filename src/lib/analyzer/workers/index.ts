@@ -13,7 +13,7 @@ export type { DataAnalystWorkerConfig } from './data-analyst-worker';
 export { ProductivityAnalystWorker, createProductivityAnalystWorker } from './productivity-analyst-worker';
 export type { ProductivityAnalystWorkerConfig } from './productivity-analyst-worker';
 
-// Phase 2 Workers (4 Wow Agents)
+// Phase 2 Workers (7 workers: pattern analysis + behavioral analysis)
 export { PatternDetectiveWorker, createPatternDetectiveWorker } from './pattern-detective-worker';
 export type { PatternDetectiveWorkerConfig } from './pattern-detective-worker';
 
