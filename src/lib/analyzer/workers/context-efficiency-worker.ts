@@ -96,7 +96,7 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
       CONTEXT_EFFICIENCY_FORMAT
     );
     const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
-    const userPrompt = buildContextEfficiencyUserPrompt(sessionsFormatted, moduleAJson, context.useKorean);
+    const userPrompt = buildContextEfficiencyUserPrompt(sessionsFormatted, moduleAJson, context.outputLanguage);
 
     const result = await this.geminiClient.generateStructured({
       systemPrompt: CONTEXT_EFFICIENCY_SYSTEM_PROMPT,

@@ -20,6 +20,17 @@ import {
 import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import { formatSessionsForAnalysis } from '../shared/session-formatter';
+import type { SupportedLanguage } from '../stages/content-writer-prompts';
+
+/**
+ * Language display names for output instructions
+ */
+const LANGUAGE_DISPLAY_NAMES: Record<SupportedLanguage, string> = {
+  en: 'English',
+  ko: 'Korean',
+  ja: 'Japanese',
+  zh: 'Chinese',
+};
 
 // ============================================================================
 // Session Formatting Configuration
@@ -85,37 +96,52 @@ Return a JSON object with:
 - \`metacognitiveAwarenessScore\`: 0-100 overall metacognitive awareness score
 - \`confidenceScore\`: 0-1 confidence in the analysis
 
+### NEW: Structured Strengths & Growth Areas (REQUIRED)
+- \`strengthsData\`: "title|description|quote1,quote2;title2|desc2|quotes;..."
+  - 2-3 metacognitive strengths with evidence from actual user messages
+  - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes
+  - Example: "Strong Self-Reflection|You regularly pause to assess your approach and recognize when something isn't working|'let me think about this','I'll try again','what am I missing?'"
+
+- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
+  - 2-3 metacognitive blind spots with evidence and actionable recommendations
+  - Each area needs: title, description, evidence quotes, specific recommendation
+  - Example: "Unrecognized Repetition|Same error patterns repeated without conscious awareness|'why isn't this working?','why isn't this working?','another error'|After 2 consecutive failures, pause and ask: 'What pattern am I seeing? What did I try before?'"
+
 ## CRITICAL
 - Focus on patterns the user would be surprised to learn about
 - Blind spots should be specific and evidence-based
 - Awareness instances need actual quotes from user messages
+- strengthsData and growthAreasData MUST be populated with evidence-based insights
 - Be encouraging - high metacognition is learnable`;
 
 export function buildMetacognitionUserPrompt(
   sessionsFormatted: string,
   moduleAOutput: string,
-  useKorean: boolean = false
+  outputLanguage: SupportedLanguage = 'en'
 ): string {
-  const koreanInstructions = useKorean
+  const useNonEnglish = outputLanguage !== 'en';
+  const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
+
+  const languageInstructions = useNonEnglish
     ? `
-## CRITICAL: Korean Output Required
+## CRITICAL: ${langName} Output Required
 
-**Write all output in Korean.**
+**Write all output in ${langName}.**
 
-The developer's content is in Korean. You MUST write ALL fields in **Korean**:
-- topInsights: Write in Korean
-- Awareness signal descriptions: Write in Korean
-- Blind spot explanations: Write in Korean
+The developer's content is in ${langName}. You MUST write ALL fields in **${langName}**:
+- topInsights: Write in ${langName}
+- Awareness signal descriptions: Write in ${langName}
+- Blind spot explanations: Write in ${langName}
 
 Keep technical terms in English.
-Be encouraging and supportive in Korean.
+Be encouraging and supportive in ${langName}.
 
 `
     : `
 ## CRITICAL: English Output Required
 
 **Write ALL output fields in English.**
-Even if the input data contains Korean text, you MUST write your analysis in English.
+Even if the input data contains non-English text, you MUST write your analysis in English.
 Keep the analysis professional and technical.
 
 `;
@@ -125,13 +151,13 @@ ${sessionsFormatted}
 
 ## MODULE A ANALYSIS (for cross-referencing patterns)
 ${moduleAOutput}
-${koreanInstructions}
+${languageInstructions}
 ## INSTRUCTIONS
 Analyze the user's metacognitive patterns:
 1. Find moments of explicit self-awareness (with quotes)
 2. Identify blind spots (patterns repeated without recognition)
 3. Score growth mindset indicators
-4. Generate exactly 3 "wow moment" insights about their metacognition${useKorean ? ' (write in Korean)' : ''}
+4. Generate exactly 3 "wow moment" insights about their metacognition${useNonEnglish ? ` (write in ${langName})` : ''}
 
 Focus on USER messages. Look for both Korean and English patterns.`;
 }
@@ -212,7 +238,7 @@ export class MetacognitionWorker extends BaseWorker<MetacognitionOutput> {
     const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
 
     // Build prompt
-    const userPrompt = buildMetacognitionUserPrompt(sessionsFormatted, moduleAJson, context.useKorean);
+    const userPrompt = buildMetacognitionUserPrompt(sessionsFormatted, moduleAJson, context.outputLanguage);
 
     // Call Gemini with structured output
     const result = await this.geminiClient.generateStructured({

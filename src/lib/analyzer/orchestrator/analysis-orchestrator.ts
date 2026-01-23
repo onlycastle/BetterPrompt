@@ -201,7 +201,7 @@ export class AnalysisOrchestrator {
         ...baseContext,
         moduleAOutput: phase1Results.dataAnalyst.data,
         moduleCOutput: phase1Results.productivityAnalyst.data,
-        // useKorean intentionally NOT passed - Phase 2 workers always use English
+        // outputLanguage intentionally NOT passed - Phase 2 workers always use English
       };
 
       console.log(`[Orchestrator] Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasModuleA: ${!!phase2Context.moduleAOutput}`);
@@ -238,7 +238,7 @@ export class AnalysisOrchestrator {
         ...baseContext,
         moduleAOutput: phase1Results.dataAnalyst.data,
         moduleCOutput: phase1Results.productivityAnalyst.data,
-        // useKorean intentionally NOT passed - Type Synthesis always uses English
+        // outputLanguage intentionally NOT passed - Type Synthesis always uses English
       };
 
       const phase2Point5Results = await this.runPhase2Point5(

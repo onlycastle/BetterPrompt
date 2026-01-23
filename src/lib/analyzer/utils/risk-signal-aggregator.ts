@@ -13,7 +13,7 @@
 
 import type { AntiPatternSpotterOutput } from '../../models/agent-outputs';
 import type { MetacognitionOutput } from '../../models/metacognition-data';
-import type { TemporalAnalysisOutput } from '../../models/temporal-data';
+import type { TemporalAnalysisResult } from '../../models/temporal-data';
 import type { StructuredAnalysisData } from '../../models/analysis-data';
 import {
   type RiskSignal,
@@ -44,8 +44,8 @@ export interface RiskAggregatorInput {
   /** Metacognition worker output (optional) */
   metacognitionOutput?: MetacognitionOutput;
 
-  /** Temporal analyzer output (optional) */
-  temporalOutput?: TemporalAnalysisOutput;
+  /** Temporal analyzer output (optional) - now uses TemporalAnalysisResult */
+  temporalOutput?: TemporalAnalysisResult;
 }
 
 // ============================================================================
@@ -306,64 +306,61 @@ function extractFromMetacognition(output: MetacognitionOutput): RiskSignal[] {
 /**
  * Extract risk signals from temporal analysis
  *
- * @param output - TemporalAnalyzerWorker output
+ * REDESIGNED: Now uses deterministic metrics instead of LLM-calculated rates
+ * Extracts signals based on:
+ * - High short response rate (potential passive acceptance)
+ * - Hourly engagement variance (potential focus issues)
+ *
+ * @param output - TemporalAnalyzerWorker output (TemporalAnalysisResult)
  * @returns Risk signals
  */
-function extractFromTemporal(output: TemporalAnalysisOutput): RiskSignal[] {
+function extractFromTemporal(output: TemporalAnalysisResult): RiskSignal[] {
   const signals: RiskSignal[] = [];
+  const { metrics } = output;
 
-  // Parse fatigue patterns: "type|hours|evidence|recommendation;..."
-  if (output.fatiguePatternsData) {
-    const entries = output.fatiguePatternsData.split(';').filter(Boolean);
-    for (const entry of entries) {
-      const parts = entry.split('|');
-      const type = parts[0] || '';
-      const hours = parts[1]?.split(',').map((h) => parseInt(h, 10)).filter((h) => !isNaN(h)) || [];
-      const evidence = parts[2] || '';
-
-      // Map temporal pattern types to risk patterns
-      const patternMap: Record<string, string> = {
-        late_night_drop: 'late_night_drop',
-        post_lunch_dip: 'late_night_drop', // Similar risk
-        end_of_day_rush: 'late_night_drop',
-        typo_spike: 'typo_spike',
-      };
-
-      const patternId = patternMap[type] || 'late_night_drop';
-
-      // Severity based on number of affected hours
-      const severity = Math.min(5, Math.max(2, Math.ceil(hours.length / 2)));
-
-      const signal = createRiskSignalFromPattern(
-        patternId,
-        severity,
-        evidence || `Fatigue pattern "${type}" detected at hours: ${hours.join(', ')}`,
-        'temporal',
-        hours.length >= 3, // Recurring if 3+ hours affected
-        hours.length
-      );
-      if (signal) signals.push(signal);
-    }
+  // Check for high short response rate (potential passive acceptance)
+  if (metrics.engagementSignals.shortResponseRate > 0.3) {
+    const signal = createRiskSignalFromPattern(
+      'passive_acceptance',
+      Math.ceil(metrics.engagementSignals.shortResponseRate * 5),
+      `High short response rate (${Math.round(metrics.engagementSignals.shortResponseRate * 100)}%) - many brief responses`,
+      'temporal',
+      false
+    );
+    if (signal) signals.push(signal);
   }
 
-  // Check caution hours for passive acceptance spike
-  if (output.cautionHoursData) {
-    const parts = output.cautionHoursData.split('|');
-    if (parts.length >= 3) {
-      const evidenceParts = parts[2].split(':');
-      const passiveAcceptanceRate = parseFloat(evidenceParts[0]) || 0;
+  // Check for low question rate (potential passive acceptance)
+  if (metrics.engagementSignals.questionRate < 0.1 && metrics.analysisMetadata.totalMessages > 20) {
+    const signal = createRiskSignalFromPattern(
+      'passive_acceptance',
+      3,
+      `Low question rate (${Math.round(metrics.engagementSignals.questionRate * 100)}%) - few clarifying questions`,
+      'temporal',
+      false
+    );
+    if (signal) signals.push(signal);
+  }
 
-      // High passive acceptance rate in caution hours
-      if (passiveAcceptanceRate > 0.3) {
-        const signal = createRiskSignalFromPattern(
-          'passive_acceptance_spike',
-          Math.ceil(passiveAcceptanceRate * 5),
-          `High passive acceptance (${Math.round(passiveAcceptanceRate * 100)}%) during caution hours`,
-          'temporal',
-          false
-        );
-        if (signal) signals.push(signal);
-      }
+  // Check for hourly engagement variance (identify potential focus hours)
+  if (metrics.hourlyEngagement.length >= 3) {
+    // Find hours with significantly higher short response rates
+    const avgShortRate = metrics.engagementSignals.shortResponseRate;
+    const highShortRateHours = metrics.hourlyEngagement.filter(
+      (h) => h.shortResponseRate > avgShortRate * 1.5 && h.sampleSize >= 3
+    );
+
+    if (highShortRateHours.length >= 2) {
+      const hours = highShortRateHours.map((h) => h.hour);
+      const signal = createRiskSignalFromPattern(
+        'late_night_drop',
+        Math.min(4, highShortRateHours.length),
+        `Higher short response rates at hours: ${hours.join(', ')}`,
+        'temporal',
+        highShortRateHours.length >= 3,
+        highShortRateHours.length
+      );
+      if (signal) signals.push(signal);
     }
   }
 

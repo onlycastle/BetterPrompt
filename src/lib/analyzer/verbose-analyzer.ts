@@ -59,7 +59,7 @@ import { ContentWriterStage, type ContentWriterConfig } from './stages/content-w
  * Field-specific max length constraints from the schema
  */
 const STRING_LIMITS = {
-  personalitySummary: 800,
+  personalitySummary: 3000,
   patternName: 50,
   description: 300,
   tip: 200,
