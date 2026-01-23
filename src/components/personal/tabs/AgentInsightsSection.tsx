@@ -160,33 +160,23 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
         </p>
       </div>
 
-      {/* Agent Cards - 1 Column Layout */}
+      {/* Agent Cards - 1 Column Layout - All agents visible */}
       <div className={styles.agentGrid}>
         {AGENT_CONFIGS.map((config) => {
           const data = agentOutputs[config.id];
           if (!data) return null;
 
           const score = getScoreValue(data, config.scoreKey);
-          const insights = (data as { topInsights?: string[] }).topInsights || [];
           const summary = (data as { overallStyleSummary?: string }).overallStyleSummary;
           const isExpanded = expandedAgent === config.id;
 
-          const FULL_INSIGHTS_COUNT = 3;
-          const hasFullData = insights.length >= FULL_INSIGHTS_COUNT;
-          const isTeaser = config.tier === 'premium' && !isPaid && !hasFullData;
-          const hiddenInsightsCount = isTeaser ? Math.max(0, FULL_INSIGHTS_COUNT - insights.length) : 0;
-
           return (
-            <div
-              key={config.id}
-              className={`${styles.agentCard} ${isTeaser ? styles.teaser : ''}`}
-            >
+            <div key={config.id} className={styles.agentCard}>
               {/* Card Header */}
               <div className={styles.cardHeader}>
                 <div className={styles.agentInfo}>
                   <span className={styles.agentIcon}>{config.icon}</span>
                   <h3 className={styles.agentName}>{config.name}</h3>
-                  {isTeaser && <span className={styles.lockIcon}>🔒</span>}
                 </div>
                 <div className={`${styles.scoreGauge} ${styles[getScoreColor(score, config.scoreMax)]}`}>
                   <span className={styles.scoreValue}>
@@ -196,8 +186,8 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
                 </div>
               </div>
 
-              {/* Strengths & Growth Areas (NEW) */}
-              <AgentStrengthsGrowthAreas data={data} isTeaser={isTeaser} />
+              {/* Strengths & Growth Areas - recommendations locked for free users */}
+              <AgentStrengthsGrowthAreas data={data} isPaid={isPaid} />
 
               {/* Summary */}
               {summary && (
@@ -207,17 +197,15 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
               )}
 
               {/* Expand/Collapse Button */}
-              {!isTeaser && (
-                <button
-                  className={styles.expandButton}
-                  onClick={() => toggleExpand(config.id)}
-                >
-                  {isExpanded ? 'Hide Details ▲' : 'Show Details ▼'}
-                </button>
-              )}
+              <button
+                className={styles.expandButton}
+                onClick={() => toggleExpand(config.id)}
+              >
+                {isExpanded ? 'Hide Details ▲' : 'Show Details ▼'}
+              </button>
 
               {/* Expanded Details */}
-              {!isTeaser && isExpanded && (
+              {isExpanded && (
                 <div className={styles.detailsBox}>
                   <AgentDetails agentId={config.id} data={data} />
                 </div>
@@ -230,113 +218,13 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
   );
 }
 
-/**
- * KPT Analysis derivation helpers
- * Classifies insights into Keep/Problem/Try based on keywords
- * Extended with more patterns and Korean support
- */
-const POSITIVE_KEYWORDS = [
-  // English
-  'well', 'good', 'efficient', 'consistent', 'strong', 'clear', 'effective',
-  'proficient', 'successfully', 'excellent', 'great', 'solid', 'impressive',
-  'skilled', 'adept', 'maintains', 'demonstrates',
-  // Korean
-  '잘', '좋은', '효율적', '일관', '강점', '명확', '효과적', '훌륭', '능숙',
-];
-
-const PROBLEM_KEYWORDS = [
-  // English - problem indicators
-  'struggle', 'lack', 'miss', 'error', 'loop', 'repeat', 'fail', 'weak',
-  'poor', 'confus', 'unclear', 'inefficient', 'forgot',
-  // English - tendency/pattern indicators (for problems)
-  'tend to', 'tends to', 'often', 'overlook', 'neglect', 'skip', 'avoid',
-  'rarely', 'without', 'doesn\'t', 'does not', 'hasn\'t', 'has not',
-  // English - gap/deficit indicators
-  'gap', 'deficit', 'missing', 'absence', 'insufficient', 'limited',
-  // Korean
-  '부족', '놓치', '빠뜨', '실수', '반복', '약점', '문제', '개선 필요',
-  '없이', '안 하', '하지 않', '부재', '제한적', '미흡',
-];
-
-const SUGGESTION_KEYWORDS = [
-  // English - direct suggestions
-  'try', 'consider', 'could', 'should', 'recommend', 'suggest',
-  'would benefit', 'might', 'may want',
-  // English - improvement suggestions
-  'instead', 'rather than', 'improve', 'enhance', 'experiment', 'explore',
-  'start', 'begin', 'adopt', 'implement', 'use', 'leverage',
-  // English - specific action phrases
-  'would help', 'can help', 'helps to', 'better to', 'worth',
-  // Korean
-  '시도', '고려', '개선', '추천', '제안', '해보', '도입', '활용',
-  '하면 좋', '것이 좋', '바람직', '필요',
-];
-
-function hasAnyKeyword(text: string, keywords: string[]): boolean {
-  const lower = text.toLowerCase();
-  return keywords.some(kw => lower.includes(kw));
-}
-
-function isPositiveInsight(insight: string): boolean {
-  return hasAnyKeyword(insight, POSITIVE_KEYWORDS) && !hasAnyKeyword(insight, PROBLEM_KEYWORDS);
-}
-
-function isProblemInsight(insight: string): boolean {
-  return hasAnyKeyword(insight, PROBLEM_KEYWORDS);
-}
-
-function isSuggestionInsight(insight: string): boolean {
-  return hasAnyKeyword(insight, SUGGESTION_KEYWORDS);
-}
-
-interface KPTResult {
-  keep: string[];
-  problem: string[];
-  try: string[];
-}
-
-/**
- * Derive KPT (Keep/Problem/Try) from agent output data
- *
- * Priority:
- * 1. Use structured kptKeep/kptProblem/kptTry fields if available (new format)
- * 2. Fall back to keyword matching on topInsights (legacy format)
- */
-function deriveAgentKPT(data: unknown): KPTResult {
-  const d = data as {
-    kptKeep?: string[];
-    kptProblem?: string[];
-    kptTry?: string[];
-    topInsights?: string[];
-  };
-
-  // 1. Use structured KPT fields if available (preferred)
-  if (d.kptProblem?.length || d.kptTry?.length) {
-    return {
-      keep: d.kptKeep || [],
-      problem: d.kptProblem || [],
-      try: d.kptTry || [],
-    };
-  }
-
-  // 2. Fallback: keyword matching on topInsights (legacy support)
-  const insights = d.topInsights || [];
-
-  return {
-    keep: insights.filter(i => isPositiveInsight(i)).slice(0, 2),
-    problem: insights.filter(i => isProblemInsight(i)).slice(0, 2),
-    try: insights.filter(i => isSuggestionInsight(i)).slice(0, 2),
-  };
-}
-
 // ============================================================================
-// Strengths & Growth Areas Derivation (NEW)
+// Strengths & Growth Areas Derivation
 // ============================================================================
 
 interface AgentInsightsData {
   strengthsData?: string;
   growthAreasData?: string;
-  topInsights?: string[];
   kptKeep?: string[];
   kptProblem?: string[];
   kptTry?: string[];
@@ -344,7 +232,7 @@ interface AgentInsightsData {
 
 /**
  * Get strengths from agent data
- * Priority: new strengthsData > fallback from kptKeep/positive insights
+ * Priority: new strengthsData > fallback from kptKeep
  */
 function getAgentStrengths(data: unknown): AgentStrength[] {
   const d = data as AgentInsightsData;
@@ -355,21 +243,22 @@ function getAgentStrengths(data: unknown): AgentStrength[] {
     if (parsed.length > 0) return parsed;
   }
 
-  // 2. Fallback: derive from kptKeep or positive insights
+  // 2. Fallback: derive from kptKeep (backward compatibility)
   const keepItems = d.kptKeep || [];
-  const positiveInsights = (d.topInsights || []).filter(i => isPositiveInsight(i));
-  const sources = [...keepItems, ...positiveInsights].slice(0, 2);
+  if (keepItems.length > 0) {
+    return keepItems.slice(0, 2).map(text => ({
+      title: extractTitleFromText(text),
+      description: text,
+      evidence: [],
+    }));
+  }
 
-  return sources.map(text => ({
-    title: extractTitleFromText(text),
-    description: text,
-    evidence: [],
-  }));
+  return [];
 }
 
 /**
  * Get growth areas from agent data
- * Priority: new growthAreasData > fallback from kptProblem+kptTry/negative insights
+ * Priority: new growthAreasData > fallback from kptProblem+kptTry
  */
 function getAgentGrowthAreas(data: unknown): AgentGrowthArea[] {
   const d = data as AgentInsightsData;
@@ -380,10 +269,9 @@ function getAgentGrowthAreas(data: unknown): AgentGrowthArea[] {
     if (parsed.length > 0) return parsed;
   }
 
-  // 2. Fallback: derive from kptProblem/kptTry or negative insights
+  // 2. Fallback: derive from kptProblem/kptTry (backward compatibility)
   const problemItems = d.kptProblem || [];
   const tryItems = d.kptTry || [];
-  const negativeInsights = (d.topInsights || []).filter(i => isProblemInsight(i) || isSuggestionInsight(i));
 
   // Combine problems with try items as recommendations
   const result: AgentGrowthArea[] = [];
@@ -407,18 +295,6 @@ function getAgentGrowthAreas(data: unknown): AgentGrowthArea[] {
       recommendation: '',
     });
   });
-
-  // If still empty, use negative insights
-  if (result.length === 0) {
-    negativeInsights.slice(0, 2).forEach(text => {
-      result.push({
-        title: extractTitleFromText(text),
-        description: text,
-        evidence: [],
-        recommendation: '',
-      });
-    });
-  }
 
   return result.slice(0, 3);
 }
@@ -444,57 +320,10 @@ function extractTitleFromText(text: string): string {
 }
 
 /**
- * Agent KPT Summary Component (Legacy - kept for backward compatibility in details)
+ * Agent Strengths & Growth Areas Component
+ * All content visible, only recommendations locked for free users
  */
-function AgentKPTSummary({ data }: { data: unknown }) {
-  const kpt = deriveAgentKPT(data);
-
-  // Don't render if no KPT items found
-  if (kpt.keep.length === 0 && kpt.problem.length === 0 && kpt.try.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className={styles.kptSection}>
-      <div className={styles.kptHeader}>
-        <span className={styles.kptIcon}>📋</span>
-        <span className={styles.kptTitle}>KPT Analysis</span>
-      </div>
-      <div className={styles.kptGrid}>
-        {kpt.keep.length > 0 && (
-          <div className={styles.kptColumn}>
-            <span className={styles.kptLabelKeep}>K - Keep</span>
-            <ul className={styles.kptList}>
-              {kpt.keep.map((item, i) => <li key={i}>{item}</li>)}
-            </ul>
-          </div>
-        )}
-        {kpt.problem.length > 0 && (
-          <div className={styles.kptColumn}>
-            <span className={styles.kptLabelProblem}>P - Problem</span>
-            <ul className={styles.kptList}>
-              {kpt.problem.map((item, i) => <li key={i}>{item}</li>)}
-            </ul>
-          </div>
-        )}
-        {kpt.try.length > 0 && (
-          <div className={styles.kptColumn}>
-            <span className={styles.kptLabelTry}>T - Try</span>
-            <ul className={styles.kptList}>
-              {kpt.try.map((item, i) => <li key={i}>{item}</li>)}
-            </ul>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Agent Strengths & Growth Areas Component (NEW)
- * Replaces Key Discoveries with richer, structured insights
- */
-function AgentStrengthsGrowthAreas({ data, isTeaser }: { data: unknown; isTeaser: boolean }) {
+function AgentStrengthsGrowthAreas({ data, isPaid }: { data: unknown; isPaid: boolean }) {
   const strengths = getAgentStrengths(data);
   const growthAreas = getAgentGrowthAreas(data);
 
@@ -503,9 +332,12 @@ function AgentStrengthsGrowthAreas({ data, isTeaser }: { data: unknown; isTeaser
     return null;
   }
 
+  // Count recommendations for teaser
+  const recommendationCount = growthAreas.filter(g => g.recommendation).length;
+
   return (
     <div className={styles.strengthsGrowthContainer}>
-      {/* Strengths Section */}
+      {/* Strengths Section - always fully visible */}
       {strengths.length > 0 && (
         <div className={styles.strengthsSection}>
           <div className={styles.sectionHeader}>
@@ -530,7 +362,7 @@ function AgentStrengthsGrowthAreas({ data, isTeaser }: { data: unknown; isTeaser
         </div>
       )}
 
-      {/* Growth Areas Section */}
+      {/* Growth Areas Section - recommendations locked for free users */}
       {growthAreas.length > 0 && (
         <div className={styles.growthSection}>
           <div className={styles.sectionHeader}>
@@ -551,19 +383,27 @@ function AgentStrengthsGrowthAreas({ data, isTeaser }: { data: unknown; isTeaser
                 </div>
               )}
               {g.recommendation && (
-                <div className={styles.recommendation}>
+                <div className={`${styles.recommendation} ${!isPaid ? styles.recommendationLocked : ''}`}>
                   <span className={styles.recLabel}>💡 Recommendation:</span>
-                  <span className={styles.recText}>{g.recommendation}</span>
+                  {isPaid ? (
+                    <span className={styles.recText}>{g.recommendation}</span>
+                  ) : (
+                    <span className={styles.recLockedContent}>
+                      <span className={styles.blurredText}>{g.recommendation.slice(0, 20)}...</span>
+                      <span className={styles.unlockBadge}>🔒 See recommendation</span>
+                    </span>
+                  )}
                 </div>
               )}
             </div>
           ))}
 
-          {isTeaser && (
+          {/* Teaser for free users */}
+          {!isPaid && recommendationCount > 0 && (
             <div className={styles.teaserMore}>
               <span className={styles.unlockIcon}>🔓</span>
               <span className={styles.teaserMoreText}>
-                Unlock to see more insights
+                {recommendationCount} personalized recommendations
               </span>
             </div>
           )}
@@ -608,8 +448,6 @@ function PatternDetectiveDetails({ data }: { data: AgentOutputs['patternDetectiv
 
   return (
     <div className={styles.detailsContent}>
-      {/* KPT Analysis */}
-      <AgentKPTSummary data={data} />
       {repeatedQuestions.length > 0 && (
         <DetailSection title="Repeated Questions" icon="🔁">
           {repeatedQuestions.map((item, i) => (
@@ -643,8 +481,6 @@ function AntiPatternDetails({ data }: { data: AgentOutputs['antiPatternSpotter']
 
   return (
     <div className={styles.detailsContent}>
-      {/* KPT Analysis */}
-      <AgentKPTSummary data={data} />
       {errorLoops.length > 0 && (
         <DetailSection title="Error Loops Detected" icon="🔄">
           {errorLoops.map((item, i) => (
@@ -679,8 +515,6 @@ function KnowledgeGapDetails({ data }: { data: AgentOutputs['knowledgeGap'] }) {
 
   return (
     <div className={styles.detailsContent}>
-      {/* KPT Analysis */}
-      <AgentKPTSummary data={data} />
       {gaps.length > 0 && (
         <DetailSection title="Knowledge Gaps" icon="📖">
           {gaps.map((item, i) => (
@@ -716,8 +550,6 @@ function ContextEfficiencyDetails({ data }: { data: AgentOutputs['contextEfficie
 
   return (
     <div className={styles.detailsContent}>
-      {/* KPT Analysis */}
-      <AgentKPTSummary data={data} />
 
       <div className={styles.metricRow}>
         <span className={styles.metricLabel}>Avg Context Fill</span>
@@ -764,8 +596,6 @@ function MetacognitionDetails({ data }: { data: AgentOutputs['metacognition'] })
 
   return (
     <div className={styles.detailsContent}>
-      {/* KPT Analysis */}
-      <AgentKPTSummary data={data} />
 
       <div className={styles.metricRow}>
         <span className={styles.metricLabel}>Awareness Score</span>
@@ -795,50 +625,102 @@ function MetacognitionDetails({ data }: { data: AgentOutputs['metacognition'] })
   );
 }
 
+/**
+ * TemporalAnalysisDetails - REDESIGNED for metrics + insights structure
+ *
+ * Displays:
+ * - Activity patterns (deterministic metrics)
+ * - Session statistics
+ * - Engagement signals
+ * - LLM-generated insights
+ */
 function TemporalAnalysisDetails({ data }: { data: AgentOutputs['temporalAnalysis'] }) {
   if (!data) return null;
 
-  const peakHoursParts = parseSinglePipeEntry(data.peakHoursData);
-  const peakHours = peakHoursParts[0] || '';
-  const peakCharacteristics = peakHoursParts[1] || '';
+  const { metrics, insights } = data;
 
-  const cautionHoursParts = parseSinglePipeEntry(data.cautionHoursData);
-  const cautionHours = cautionHoursParts[0] || '';
-  const cautionCharacteristics = cautionHoursParts[1] || '';
+  // Format peak hours (e.g., [10, 11, 14] -> "10 AM, 11 AM, 2 PM")
+  const formatHour = (hour: number): string => {
+    if (hour === 0) return '12 AM';
+    if (hour === 12) return '12 PM';
+    if (hour < 12) return `${hour} AM`;
+    return `${hour - 12} PM`;
+  };
 
-  const fatiguePatterns = parsePipeDelimitedData<{ type: string; hours: string; evidence: string; recommendation: string }>(
-    data.fatiguePatternsData,
-    ['type', 'hours', 'evidence', 'recommendation']
-  );
+  const peakHoursFormatted = metrics.activityHeatmap.peakHours
+    .map(formatHour)
+    .join(', ') || 'No clear pattern';
+
+  // Format engagement percentages
+  const questionRatePercent = Math.round(metrics.engagementSignals.questionRate * 100);
+  const deepSessionRatePercent = Math.round(metrics.engagementSignals.deepSessionRate * 100);
+  const shortResponseRatePercent = Math.round(metrics.engagementSignals.shortResponseRate * 100);
 
   return (
     <div className={styles.detailsContent}>
-      {/* KPT Analysis */}
-      <AgentKPTSummary data={data} />
-      {peakHours && (
-        <DetailSection title="Peak Performance Hours" icon="🌟">
+      {/* Activity Summary (from metrics) */}
+      <DetailSection title="Activity Patterns" icon="📊">
+        <div className={styles.detailItem}>
+          <span className={styles.detailLabel}>Peak Hours</span>
+          <span className={styles.detailValue}>{peakHoursFormatted}</span>
+        </div>
+        <div className={styles.detailItem}>
+          <span className={styles.detailLabel}>Total Messages</span>
+          <span className={styles.detailValue}>{metrics.activityHeatmap.totalMessages.toLocaleString()}</span>
+        </div>
+        <div className={styles.detailItem}>
+          <span className={styles.detailLabel}>Total Sessions</span>
+          <span className={styles.detailValue}>{metrics.sessionPatterns.totalSessions}</span>
+        </div>
+      </DetailSection>
+
+      {/* Session Statistics (from metrics) */}
+      <DetailSection title="Session Style" icon="⏱️">
+        <div className={styles.detailItem}>
+          <span className={styles.detailLabel}>Avg Duration</span>
+          <span className={styles.detailValue}>{Math.round(metrics.sessionPatterns.avgSessionDurationMinutes)} min</span>
+        </div>
+        <div className={styles.detailItem}>
+          <span className={styles.detailLabel}>Avg Turns/Session</span>
+          <span className={styles.detailValue}>{Math.round(metrics.sessionPatterns.avgMessagesPerSession)}</span>
+        </div>
+        {metrics.sessionPatterns.avgToolCallsPerSession > 0 && (
           <div className={styles.detailItem}>
-            <span className={styles.detailLabel}>Hours: {peakHours}</span>
-            {peakCharacteristics && <span className={styles.detailExample}>{peakCharacteristics}</span>}
+            <span className={styles.detailLabel}>Avg Tool Calls</span>
+            <span className={styles.detailValue}>{Math.round(metrics.sessionPatterns.avgToolCallsPerSession)}</span>
           </div>
-        </DetailSection>
-      )}
-      {cautionHours && (
-        <DetailSection title="Caution Hours" icon="⚠️">
+        )}
+      </DetailSection>
+
+      {/* Engagement Signals (from metrics) */}
+      <DetailSection title="Engagement Signals" icon="💬">
+        <div className={styles.detailItem}>
+          <span className={styles.detailLabel}>Question Rate</span>
+          <span className={styles.detailValue}>{questionRatePercent}%</span>
+        </div>
+        <div className={styles.detailItem}>
+          <span className={styles.detailLabel}>Deep Sessions (5+ turns)</span>
+          <span className={styles.detailValue}>{deepSessionRatePercent}%</span>
+        </div>
+        {shortResponseRatePercent > 10 && (
           <div className={styles.detailItem}>
-            <span className={styles.detailLabel}>Hours: {cautionHours}</span>
-            {cautionCharacteristics && <span className={styles.detailExample}>{cautionCharacteristics}</span>}
+            <span className={styles.detailLabel}>Brief Responses</span>
+            <span className={styles.detailValue}>{shortResponseRatePercent}%</span>
           </div>
-        </DetailSection>
-      )}
-      {fatiguePatterns.length > 0 && (
-        <DetailSection title="Fatigue Patterns" icon="😴">
-          {fatiguePatterns.slice(0, 3).map((item, i) => (
-            <div key={i} className={styles.detailItem}>
-              <span className={styles.detailLabel}>{item.type}</span>
-              <span className={styles.detailValue}>@ {item.hours}</span>
+        )}
+      </DetailSection>
+
+      {/* LLM Insights (from insights) */}
+      {insights.activityPatternSummary && (
+        <DetailSection title="Pattern Summary" icon="📝">
+          <div className={styles.detailItem}>
+            <span className={styles.detailExample}>{insights.activityPatternSummary}</span>
+          </div>
+          {insights.sessionStyleSummary && (
+            <div className={styles.detailItem}>
+              <span className={styles.detailExample}>{insights.sessionStyleSummary}</span>
             </div>
-          ))}
+          )}
         </DetailSection>
       )}
     </div>
@@ -853,29 +735,102 @@ function MultitaskingDetails({ data }: { data: AgentOutputs['multitasking'] }) {
     ['type', 'evidence', 'recommendation']
   );
 
+  // Time-based metrics (research-backed)
+  const hasTimeMetrics = data.contextSwitchCountMin !== undefined || data.contextSwitchCountMax !== undefined;
+  const switchMin = data.contextSwitchCountMin ?? 0;
+  const switchMax = data.contextSwitchCountMax ?? 0;
+  const recoveryMin = data.estimatedRecoveryTimeLostMinutesMin ?? (switchMin * 23);
+  const recoveryMax = data.estimatedRecoveryTimeLostMinutesMax ?? (switchMax * 23);
+  const deepWorkBlocks = data.deepWorkBlockCount ?? 0;
+  const longestFocus = data.longestFocusBlockMinutes ?? 0;
+  const avgDuration = data.avgSessionDurationMinutes ?? 0;
+
+  // Format recovery time as hours
+  const formatRecoveryTime = (min: number, max: number): string => {
+    const minHours = min / 60;
+    const maxHours = max / 60;
+    if (minHours === maxHours) {
+      return minHours < 1 ? `~${min} min` : `~${minHours.toFixed(1)} hours`;
+    }
+    if (minHours < 1 && maxHours < 1) {
+      return `${min}-${max} min`;
+    }
+    return `${minHours.toFixed(1)}-${maxHours.toFixed(1)} hours`;
+  };
+
+  // Format context switch count
+  const formatSwitchCount = (min: number, max: number): string => {
+    if (min === max) return `${min}`;
+    return `${min}-${max}`;
+  };
+
   return (
     <div className={styles.detailsContent}>
-      {/* KPT Analysis */}
-      <AgentKPTSummary data={data} />
+      {/* Time-Based Metrics (Research-Backed) - Show prominently if available */}
+      {hasTimeMetrics && (switchMin > 0 || switchMax > 0) && (
+        <DetailSection title="Time Impact Analysis" icon="⏱️">
+          <div className={styles.timeMetricHighlight}>
+            <div className={styles.recoveryTimeBox}>
+              <span className={styles.recoveryTimeValue}>
+                {formatRecoveryTime(recoveryMin, recoveryMax)}
+              </span>
+              <span className={styles.recoveryTimeLabel}>
+                estimated recovery time lost
+              </span>
+              <span className={styles.recoveryTimeDetail}>
+                ({formatSwitchCount(switchMin, switchMax)} context switches × 23min research-based recovery)
+              </span>
+            </div>
+          </div>
+        </DetailSection>
+      )}
 
-      <div className={styles.metricRow}>
-        <span className={styles.metricLabel}>Goal Coherence</span>
-        <span className={styles.metricValue}>{data.avgGoalCoherence}%</span>
-      </div>
-      <div className={styles.metricRow}>
-        <span className={styles.metricLabel}>Context Pollution</span>
-        <span className={styles.metricValue}>{data.avgContextPollutionScore}%</span>
-      </div>
-      <div className={styles.metricRow}>
-        <span className={styles.metricLabel}>Work Unit Separation</span>
-        <span className={styles.metricValue}>{data.workUnitSeparationScore}%</span>
-      </div>
-      <div className={styles.metricRow}>
-        <span className={styles.metricLabel}>Sessions Analyzed</span>
-        <span className={styles.metricValue}>{data.totalSessionsAnalyzed}</span>
-      </div>
+      {/* Deep Work & Focus Metrics */}
+      {(deepWorkBlocks > 0 || longestFocus > 0) && (
+        <DetailSection title="Focus Quality" icon="🎯">
+          {deepWorkBlocks > 0 && (
+            <div className={styles.detailItem}>
+              <span className={styles.detailLabel}>Deep work blocks (60+ min)</span>
+              <span className={styles.detailValue}>{deepWorkBlocks} achieved</span>
+            </div>
+          )}
+          {longestFocus > 0 && (
+            <div className={styles.detailItem}>
+              <span className={styles.detailLabel}>Longest focus session</span>
+              <span className={styles.detailValue}>{longestFocus} min</span>
+            </div>
+          )}
+          {avgDuration > 0 && (
+            <div className={styles.detailItem}>
+              <span className={styles.detailLabel}>Average session duration</span>
+              <span className={styles.detailValue}>{Math.round(avgDuration)} min</span>
+            </div>
+          )}
+        </DetailSection>
+      )}
+
+      {/* Traditional Metrics - Now as secondary details */}
+      <DetailSection title="Session Metrics" icon="📊">
+        <div className={styles.metricRow}>
+          <span className={styles.metricLabel}>Goal Coherence</span>
+          <span className={styles.metricValue}>{data.avgGoalCoherence}%</span>
+        </div>
+        <div className={styles.metricRow}>
+          <span className={styles.metricLabel}>Context Pollution</span>
+          <span className={styles.metricValue}>{data.avgContextPollutionScore}%</span>
+        </div>
+        <div className={styles.metricRow}>
+          <span className={styles.metricLabel}>Work Unit Separation</span>
+          <span className={styles.metricValue}>{data.workUnitSeparationScore}%</span>
+        </div>
+        <div className={styles.metricRow}>
+          <span className={styles.metricLabel}>Sessions Analyzed</span>
+          <span className={styles.metricValue}>{data.totalSessionsAnalyzed}</span>
+        </div>
+      </DetailSection>
+
       {strategies.length > 0 && (
-        <DetailSection title="Strategy Evaluation" icon="📊">
+        <DetailSection title="Strategy Evaluation" icon="📋">
           {strategies.slice(0, 2).map((item, i) => (
             <div key={i} className={styles.detailItem}>
               <span className={styles.detailLabel}>{item.type}</span>

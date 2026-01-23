@@ -165,6 +165,45 @@
   color: var(--text-secondary);
 }
 
+/* Locked tip styles for free users */
+.tipLocked {
+  background: linear-gradient(135deg, var(--surface-2) 0%, var(--sketch-cyan-soft) 100%);
+  border-style: dashed;
+  cursor: pointer;
+}
+
+.tipLockedContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.blurredText {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  filter: blur(4px);
+  user-select: none;
+}
+
+.unlockBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-family: var(--font-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--sketch-cyan-text);
+  background: var(--surface-1);
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--sketch-cyan);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 /* Teaser for free users */
 .teaser {
   display: flex;
