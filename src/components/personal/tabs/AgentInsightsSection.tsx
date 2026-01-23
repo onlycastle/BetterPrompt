@@ -173,6 +173,28 @@ function hasDetailData(agentId: keyof AgentOutputs, data: unknown): boolean {
   }
 }
 
+/**
+ * Check if agent card has any visible content beyond just the score header
+ * Used to hide empty teaser cards for premium agents in free tier
+ */
+function hasVisibleContent(agentId: keyof AgentOutputs, data: unknown): boolean {
+  if (!data) return false;
+
+  // 1. Check for strengths/growth areas data
+  const strengths = getAgentStrengths(data);
+  const growthAreas = getAgentGrowthAreas(data);
+  const hasStrengthsOrGrowth = strengths.length > 0 || growthAreas.length > 0;
+
+  // 2. Check for summary
+  const summary = (data as { overallStyleSummary?: string }).overallStyleSummary;
+  const hasSummary = !!summary;
+
+  // 3. Check for detail data
+  const hasDetails = hasDetailData(agentId, data);
+
+  return hasStrengthsOrGrowth || hasSummary || hasDetails;
+}
+
 export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsightsSectionProps) {
   const [expandedAgent, setExpandedAgent] = useState<keyof AgentOutputs | null>(null);
 
@@ -186,8 +208,11 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
     setExpandedAgent(expandedAgent === agentId ? null : agentId);
   };
 
-  // Count how many agents have data to show
-  const activeAgents = AGENT_CONFIGS.filter(c => agentOutputs[c.id]);
+  // Count how many agents have visible content to show (not just scores)
+  const activeAgents = AGENT_CONFIGS.filter(c => {
+    const data = agentOutputs[c.id];
+    return data && hasVisibleContent(c.id, data);
+  });
 
   return (
     <div className={styles.container}>
@@ -202,11 +227,14 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
         </p>
       </div>
 
-      {/* Agent Cards - 1 Column Layout - All agents visible */}
+      {/* Agent Cards - 1 Column Layout - Only show cards with visible content */}
       <div className={styles.agentGrid}>
         {AGENT_CONFIGS.map((config) => {
           const data = agentOutputs[config.id];
           if (!data) return null;
+
+          // Skip cards that only have a score but no content (teaser cards)
+          if (!hasVisibleContent(config.id, data)) return null;
 
           const score = getScoreValue(data, config.scoreKey);
           const summary = (data as { overallStyleSummary?: string }).overallStyleSummary;
