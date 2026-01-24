@@ -1,0 +1,234 @@
+/**
+ * DataQualityBadge Styles
+ *
+ * Displays analysis metadata with confidence scores
+ */
+
+/* Container */
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface-secondary, #f8f9fa);
+  border-radius: 8px;
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+
+/* Summary Row */
+.summaryRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.badgeEmoji {
+  font-size: 0.85rem;
+}
+
+.badgeLabel {
+  font-weight: 600;
+}
+
+/* Quality Variants */
+.qualityHigh {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.qualityMedium {
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fde047;
+}
+
+.qualityLow {
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #d1d5db;
+}
+
+/* Confidence Chip */
+.confidenceChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.confidenceLabel {
+  font-weight: 500;
+}
+
+.confidenceValue {
+  font-weight: 600;
+  color: var(--color-text-primary, #111827);
+}
+
+.confidenceLevel {
+  opacity: 0.7;
+}
+
+/* Messages Chip */
+.messagesChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.infoIcon {
+  opacity: 0.6;
+}
+
+/* Expand Button */
+.expandButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: var(--color-text-secondary, #6b7280);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.expandButton:hover {
+  background: var(--color-surface-hover, #f3f4f6);
+}
+
+/* Details Panel */
+.detailsPanel {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.detailsTitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+/* Agent Grid */
+.agentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.5rem;
+}
+
+.agentCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: var(--color-background, #ffffff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+}
+
+.agentName {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agentConfidence {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #111827);
+}
+
+/* Confidence Bar */
+.confidenceBar {
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.confidenceBar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: calc(var(--confidence) * 100%);
+  background: linear-gradient(90deg, #3b82f6, #10b981);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Notes */
+.filteredNote {
+  margin: 0.5rem 0 0;
+  font-size: 0.7rem;
+  color: var(--color-text-muted, #9ca3af);
+  font-style: italic;
+}
+
+.dateRange {
+  margin: 0.35rem 0 0;
+  font-size: 0.7rem;
+  color: var(--color-text-muted, #9ca3af);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .container {
+    background: var(--color-surface-secondary, #1f2937);
+    border-color: var(--color-border, #374151);
+  }
+
+  .qualityHigh {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+
+  .qualityMedium {
+    background: rgba(234, 179, 8, 0.15);
+    color: #facc15;
+    border-color: rgba(234, 179, 8, 0.3);
+  }
+
+  .qualityLow {
+    background: rgba(156, 163, 175, 0.15);
+    color: #9ca3af;
+    border-color: rgba(156, 163, 175, 0.3);
+  }
+
+  .agentCard {
+    background: var(--color-surface, #111827);
+    border-color: var(--color-border, #374151);
+  }
+
+  .confidenceBar {
+    background: #374151;
+  }
+}

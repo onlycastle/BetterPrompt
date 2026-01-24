@@ -141,12 +141,42 @@ export interface VerboseAnalysisData {
   promptPatterns: PromptPattern[];
   // Agent outputs (from Wow Agents - Premium)
   agentOutputs?: import('../lib/models/agent-outputs').AgentOutputs;
+  // Analysis metadata with confidence scores (for transparency)
+  analysisMetadata?: AnalysisMetadata;
   // Premium fields (optional)
   toolUsageDeepDive?: unknown[];
   tokenEfficiency?: unknown;
   growthRoadmap?: unknown;
   comparativeInsights?: unknown[];
   sessionTrends?: unknown[];
+}
+
+/**
+ * Analysis metadata for transparency and trust
+ * Shows users what data was analyzed and how confident the system is
+ */
+export interface AnalysisMetadata {
+  /** Overall confidence score (0-1, weighted average of agent scores) */
+  overallConfidence: number;
+  /** Confidence scores by individual agent */
+  agentConfidences?: {
+    agentId: string;
+    agentName: string;
+    confidenceScore: number;
+  }[];
+  /** Total messages analyzed across all sessions */
+  totalMessagesAnalyzed: number;
+  /** Date range of analyzed sessions */
+  analysisDateRange?: {
+    earliest: string;
+    latest: string;
+  };
+  /** Data quality indicator: high (10+), medium (5-9), low (<5 sessions) */
+  dataQuality: 'high' | 'medium' | 'low';
+  /** Minimum confidence threshold applied */
+  confidenceThreshold?: number;
+  /** Number of insights filtered due to low confidence */
+  insightsFiltered?: number;
 }
 
 // ============================================================================
