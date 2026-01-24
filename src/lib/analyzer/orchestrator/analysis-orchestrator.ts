@@ -28,7 +28,12 @@ import type {
   Phase1Results,
   AggregatedTokenUsage,
 } from './types';
-import { DEFAULT_ORCHESTRATOR_CONFIG, aggregateWorkerTokenUsage } from './types';
+import {
+  DEFAULT_ORCHESTRATOR_CONFIG,
+  aggregateWorkerTokenUsage,
+  aggregateConfidenceScores,
+  DEFAULT_CONFIDENCE_THRESHOLD,
+} from './types';
 import {
   type StageTokenUsage,
   type PipelineTokenUsage,
@@ -293,6 +298,31 @@ export class AnalysisOrchestrator {
     // Aggregate token usage for the pipeline
     const pipelineTokenUsage = aggregateTokenUsage(stageUsages, this.config.model);
 
+    // Aggregate confidence scores from all agents
+    const confidenceMetadata = aggregateConfidenceScores(
+      agentOutputs as Record<string, unknown>,
+      sessions,
+      DEFAULT_CONFIDENCE_THRESHOLD
+    );
+
+    // Calculate date range
+    const sessionDates = sessions
+      .map((s) => {
+        const ts = s.messages[0]?.timestamp;
+        if (!ts) return null;
+        // Handle both Date objects and ISO strings
+        return ts instanceof Date ? ts.toISOString() : String(ts);
+      })
+      .filter((d): d is string => d !== null && d.length > 0)
+      .sort();
+    const analysisDateRange =
+      sessionDates.length >= 2
+        ? {
+            earliest: sessionDates[0],
+            latest: sessionDates[sessionDates.length - 1],
+          }
+        : undefined;
+
     const evaluation: VerboseEvaluation = {
       sessionId: sessions[sessions.length - 1]?.sessionId ?? 'unknown',
       analyzedAt: new Date().toISOString(),
@@ -304,6 +334,16 @@ export class AnalysisOrchestrator {
       productivityAnalysis: phase1Results.productivityAnalyst.data,
       agentOutputs: agentOutputs,
       pipelineTokenUsage,
+      // NEW: Analysis metadata with confidence scores
+      analysisMetadata: {
+        overallConfidence: confidenceMetadata.overallConfidence,
+        agentConfidences: confidenceMetadata.agentConfidences,
+        totalMessagesAnalyzed: confidenceMetadata.totalMessagesAnalyzed,
+        analysisDateRange,
+        dataQuality: confidenceMetadata.dataQuality,
+        confidenceThreshold: confidenceMetadata.confidenceThreshold,
+        insightsFiltered: confidenceMetadata.insightsFiltered,
+      },
     };
 
     console.log(`[Orchestrator] Final evaluation - hasAgentOutputs: ${!!evaluation.agentOutputs}`);
@@ -436,6 +476,7 @@ export class AnalysisOrchestrator {
       metacognition: results['MetacognitionWorker']?.data as AgentOutputs['metacognition'],
       temporalAnalysis: results['TemporalAnalyzer']?.data as AgentOutputs['temporalAnalysis'],
       multitasking: results['MultitaskingAnalyzer']?.data as AgentOutputs['multitasking'],
+      crossSessionAntiPatterns: results['CrossSessionAntiPattern']?.data as AgentOutputs['crossSessionAntiPatterns'],
     };
   }
 

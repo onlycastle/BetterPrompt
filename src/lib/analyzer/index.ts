@@ -14,12 +14,10 @@ export { getEvaluationJsonSchema, getEvaluationTool } from './schema-converter';
 export {
   type InsightMode,
   type ResourceLevel,
-  type TopicCategory,
   type DimensionKeywordConfig,
   type DimensionMapping,
   DIMENSION_KEYWORDS,
   getKeywordConfig,
-  getDimensionCategories,
   getModeFromScore,
   getResourceLevel,
 } from './dimension-keywords';
