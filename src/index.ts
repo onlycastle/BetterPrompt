@@ -52,12 +52,10 @@ export {
   // Dimension utilities
   DIMENSION_KEYWORDS,
   getKeywordConfig,
-  getDimensionCategories,
   getModeFromScore,
   getResourceLevel,
   type InsightMode,
   type ResourceLevel,
-  type TopicCategory,
   type DimensionKeywordConfig,
   type DimensionMapping,
   // Schema utilities
