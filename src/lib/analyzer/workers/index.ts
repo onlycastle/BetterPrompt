@@ -36,6 +36,10 @@ export type { TemporalAnalyzerWorkerConfig } from './temporal-analyzer-worker';
 export { MultitaskingAnalyzerWorker, createMultitaskingAnalyzerWorker } from './multitasking-analyzer-worker';
 export type { MultitaskingAnalyzerWorkerConfig } from './multitasking-analyzer-worker';
 
+// Phase 2 Worker (NEW - Cross-Session Anti-Pattern Detection)
+export { CrossSessionAntiPatternWorker, createCrossSessionAntiPatternWorker } from './cross-session-anti-pattern-worker';
+export type { CrossSessionAntiPatternWorkerConfig } from './cross-session-anti-pattern-worker';
+
 // Phase 2.5 Worker (Type Synthesis - runs after other Phase 2 workers)
 export { TypeSynthesisWorker, createTypeSynthesisWorker } from './type-synthesis-worker';
 export type { TypeSynthesisWorkerConfig, TypeSynthesisWorkerContext } from './type-synthesis-worker';

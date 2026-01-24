@@ -16,7 +16,8 @@ import { GrowthInsightsSection } from './GrowthInsightsSection';
 import { AgentInsightsSection } from './AgentInsightsSection';
 import { NextTabButton } from './NextTabButton';
 import { ResourceSidebar } from './ResourceSidebar';
-import type { VerboseAnalysisData } from '../../../types/verbose';
+import { DataQualityBadge } from './DataQualityBadge';
+import type { VerboseAnalysisData, AnalysisMetadata } from '../../../types/verbose';
 import type { AgentOutputs } from '../../../lib/models/agent-outputs';
 import {
   parseRecommendedResourcesData,
@@ -43,12 +44,15 @@ interface TabbedReportContainerProps {
   analysis: VerboseAnalysisData;
   agentOutputs?: AgentOutputs;
   isPaid?: boolean;
+  /** Analysis metadata for confidence display */
+  analysisMetadata?: AnalysisMetadata;
 }
 
 export function TabbedReportContainer({
   analysis,
   agentOutputs,
   isPaid = false,
+  analysisMetadata,
 }: TabbedReportContainerProps) {
   const [activeTab, setActiveTab] = useState<ReportTabId>('patterns');
   const contentRef = useRef<HTMLDivElement>(null);
@@ -121,6 +125,11 @@ export function TabbedReportContainer({
       <div className={styles.mainContent}>
         {/* Fixed Header Section - Always Visible */}
         <div className={styles.headerSection}>
+          {/* Analysis Quality Badge - Transparency for trust */}
+          {analysisMetadata && (
+            <DataQualityBadge metadata={analysisMetadata} />
+          )}
+
           {/* Type Result */}
           <TypeResultMinimal
             primaryType={analysis.primaryType}

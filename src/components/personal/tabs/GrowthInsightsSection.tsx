@@ -17,6 +17,58 @@ import type { AgentOutputs, AgentGrowthArea, ParsedResource } from '../../../lib
 import { getAllAgentGrowthAreas } from '../../../lib/models/agent-outputs';
 import styles from './GrowthInsightsSection.module.css';
 
+/**
+ * Severity level type for growth areas
+ */
+export type SeverityLevel = 'critical' | 'high' | 'medium' | 'low';
+
+/**
+ * Calculate severity level based on frequency (evidence count or frequency percentage)
+ * - Critical: 70%+ occurrence or 5+ evidence instances
+ * - High: 40-70% or 3-4 evidence instances
+ * - Medium: 20-40% or 2 evidence instances
+ * - Low: <20% or 0-1 evidence instances
+ */
+export function calculateSeverity(
+  frequencyPercent?: number,
+  evidenceCount?: number
+): SeverityLevel {
+  // If frequency percentage is provided, use it
+  if (frequencyPercent !== undefined) {
+    if (frequencyPercent >= 70) return 'critical';
+    if (frequencyPercent >= 40) return 'high';
+    if (frequencyPercent >= 20) return 'medium';
+    return 'low';
+  }
+
+  // Otherwise use evidence count as a proxy
+  const count = evidenceCount ?? 0;
+  if (count >= 5) return 'critical';
+  if (count >= 3) return 'high';
+  if (count >= 2) return 'medium';
+  return 'low';
+}
+
+/**
+ * Get severity badge configuration
+ */
+export function getSeverityBadge(severity: SeverityLevel): {
+  emoji: string;
+  label: string;
+  className: string;
+} {
+  switch (severity) {
+    case 'critical':
+      return { emoji: '🔴', label: 'Critical', className: styles.severityCritical };
+    case 'high':
+      return { emoji: '🟠', label: 'High', className: styles.severityHigh };
+    case 'medium':
+      return { emoji: '🟡', label: 'Medium', className: styles.severityMedium };
+    case 'low':
+      return { emoji: '⚪', label: 'Low', className: styles.severityLow };
+  }
+}
+
 interface GrowthInsightsSectionProps {
   agentOutputs?: AgentOutputs;
   isPaid?: boolean;
@@ -62,11 +114,20 @@ function GrowthAreaCard({ area, isPaid, isFirstItem, resourcesMap }: GrowthAreaC
   const showFullRecommendation = isPaid || isFirstItem;
   const matchedResources = findMatchingResources(area.title, resourcesMap);
 
+  // Calculate severity based on evidence count (or frequency if available)
+  const severity = calculateSeverity(area.frequency, area.evidence.length);
+  const severityBadge = getSeverityBadge(severity);
+
   return (
     <div className={styles.growthRow}>
       <Card padding="md" className={styles.growthCard}>
         <div className={styles.cardHeader}>
-          <h4 className={styles.growthTitle}>{area.title}</h4>
+          <div className={styles.titleWithBadge}>
+            <span className={`${styles.severityBadge} ${severityBadge.className}`}>
+              {severityBadge.emoji}
+            </span>
+            <h4 className={styles.growthTitle}>{area.title}</h4>
+          </div>
           {area.evidence.length > 0 && (
             <span className={styles.evidenceCount}>{area.evidence.length} instances</span>
           )}

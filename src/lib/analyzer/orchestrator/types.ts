@@ -15,6 +15,7 @@ import type { StructuredAnalysisData } from '../../models/analysis-data';
 import type { ProductivityAnalysisData } from '../../models/productivity-data';
 import type { Tier } from '../content-gateway';
 import type { SupportedLanguage } from '../stages/content-writer-prompts';
+import { getAgentConfig, type AgentId } from '../../domain/models';
 
 // ============================================================================
 // Worker Result Types
@@ -263,4 +264,133 @@ export function aggregateWorkerTokenUsage(
   }
 
   return aggregated;
+}
+
+// ============================================================================
+// Confidence Aggregation
+// ============================================================================
+
+/**
+ * Confidence score from a single agent
+ */
+export interface AgentConfidenceScore {
+  agentId: string;
+  agentName: string;
+  confidenceScore: number;
+}
+
+/**
+ * Aggregated analysis metadata with confidence scores
+ */
+export interface AnalysisMetadataResult {
+  /** Overall confidence (weighted average of agent scores) */
+  overallConfidence: number;
+  /** Individual agent confidence scores */
+  agentConfidences: AgentConfidenceScore[];
+  /** Data quality indicator based on session count */
+  dataQuality: 'high' | 'medium' | 'low';
+  /** Total messages analyzed */
+  totalMessagesAnalyzed: number;
+  /** Minimum confidence threshold applied */
+  confidenceThreshold: number;
+  /** Number of insights filtered due to low confidence */
+  insightsFiltered: number;
+}
+
+/**
+ * Default confidence threshold (0.70)
+ * Insights with confidence below this are filtered or flagged
+ */
+export const DEFAULT_CONFIDENCE_THRESHOLD = 0.70;
+
+/**
+ * Calculate data quality based on session count
+ *
+ * @param sessionCount - Number of sessions analyzed
+ * @returns Quality indicator
+ */
+export function calculateDataQuality(sessionCount: number): 'high' | 'medium' | 'low' {
+  if (sessionCount >= 10) return 'high';
+  if (sessionCount >= 5) return 'medium';
+  return 'low';
+}
+
+/**
+ * Extract confidence score from an agent output object
+ *
+ * @param output - Agent output that may contain confidenceScore
+ * @returns Confidence score (0-1) or undefined if not found
+ */
+export function extractConfidence(output: unknown): number | undefined {
+  if (typeof output !== 'object' || output === null) return undefined;
+  const conf = (output as Record<string, unknown>).confidenceScore;
+  return typeof conf === 'number' && conf >= 0 && conf <= 1 ? conf : undefined;
+}
+
+/**
+ * Aggregate confidence scores from all agent outputs
+ *
+ * @param agentOutputs - Object containing all agent outputs
+ * @param sessions - Sessions for message counting
+ * @param threshold - Minimum confidence threshold
+ * @returns Aggregated analysis metadata
+ */
+export function aggregateConfidenceScores(
+  agentOutputs: Record<string, unknown>,
+  sessions: ParsedSession[],
+  threshold: number = DEFAULT_CONFIDENCE_THRESHOLD
+): AnalysisMetadataResult {
+  const agentConfidences: AgentConfidenceScore[] = [];
+  let totalConfidence = 0;
+  let countWithConfidence = 0;
+  let insightsFiltered = 0;
+
+  for (const [agentId, output] of Object.entries(agentOutputs)) {
+    if (!output) continue;
+
+    // Handle nested structure (e.g., temporalAnalysis.insights)
+    let confidence = extractConfidence(output);
+    if (confidence === undefined) {
+      const nested = (output as Record<string, unknown>).insights;
+      confidence = extractConfidence(nested);
+    }
+
+    if (confidence !== undefined) {
+      // Get agent name from single source of truth (agent-config.ts)
+      const config = getAgentConfig(agentId as AgentId);
+      agentConfidences.push({
+        agentId,
+        agentName: config?.name ?? agentId,
+        confidenceScore: confidence,
+      });
+
+      totalConfidence += confidence;
+      countWithConfidence++;
+
+      // Count insights that would be filtered
+      if (confidence < threshold) {
+        insightsFiltered++;
+      }
+    }
+  }
+
+  // Calculate overall confidence (weighted average)
+  const overallConfidence = countWithConfidence > 0
+    ? Math.round((totalConfidence / countWithConfidence) * 100) / 100
+    : 0;
+
+  // Count total messages
+  const totalMessagesAnalyzed = sessions.reduce(
+    (sum, s) => sum + s.messages.length,
+    0
+  );
+
+  return {
+    overallConfidence,
+    agentConfidences,
+    dataQuality: calculateDataQuality(sessions.length),
+    totalMessagesAnalyzed,
+    confidenceThreshold: threshold,
+    insightsFiltered,
+  };
 }

@@ -10,6 +10,7 @@
  */
 
 import type { SupportedLanguage } from '../../stages/content-writer-prompts';
+import { NO_HEDGING_DIRECTIVE } from '../../verbose-prompts';
 
 /**
  * Language display names for output instructions
@@ -102,10 +103,13 @@ Return a JSON object with:
   - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes
   - Example: "Systematic Problem Decomposition|You consistently break down complex problems into manageable steps, which enables clearer AI collaboration|'first let me understand the overall structure','let me define the test cases first'"
 
-- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
-  - 2-3 areas for improvement with evidence and actionable recommendations
-  - Each area needs: title, description, evidence quotes, specific recommendation
-  - Example: "Context Provision Pattern|You often start requests without sufficient context, requiring additional back-and-forth|'fix this','why isn't it working?'|When making requests, include: 1) current situation, 2) what you tried, 3) desired outcome"
+- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation|frequency|severity|priorityScore;..."
+  - 2-3 areas for improvement with evidence, recommendations, AND quantification
+  - Each area needs: title, description, evidence quotes, recommendation, frequency%, severity, priority
+  - **frequency**: Percentage of sessions where this pattern was observed (0-100)
+  - **severity**: critical | high | medium | low (based on impact)
+  - **priorityScore**: 0-100 score for which to address first (frequency x severity)
+  - Example: "Context Provision Pattern|You often start requests without sufficient context, requiring additional back-and-forth|'fix this','why isn't it working?'|When making requests, include: 1) current situation, 2) what you tried, 3) desired outcome|67|high|80"
 
 ## topInsights Format (CRITICAL - Balanced KPT with Direct Quotes)
 Generate exactly 3 insights with this MANDATORY structure:
@@ -147,7 +151,9 @@ Your insights MUST include direct quotes from the user's actual messages.
 - Focus on "wow moment" insights that the user wouldn't know about themselves
 - Be specific with numbers and examples
 - Insights should be actionable and non-judgmental
-- For command patterns appearing 3+ times, prioritize including skill suggestion in topInsights`;
+- For command patterns appearing 3+ times, prioritize including skill suggestion in topInsights
+
+${NO_HEDGING_DIRECTIVE}`;
 
 export function buildPatternDetectiveUserPrompt(
   sessionsFormatted: string,
@@ -264,10 +270,13 @@ Return a JSON object with:
   - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes
   - Example: "Error Recovery Resilience|You persist through errors systematically rather than giving up|'let me try again','looking at the error message'"
 
-- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
-  - 2-3 anti-patterns to address with evidence and actionable recommendations
-  - Each area needs: title, description, evidence quotes, specific recommendation
-  - Example: "Shotgun Debugging|You tend to try random fixes without understanding the root cause|'try this','try that too'|Before each fix attempt, write down your hypothesis about why this specific change should work"
+- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation|frequency|severity|priorityScore;..."
+  - 2-3 anti-patterns to address with evidence, recommendations, AND quantification
+  - Each area needs: title, description, evidence quotes, recommendation, frequency%, severity, priority
+  - **frequency**: Percentage of sessions where this anti-pattern was observed (0-100)
+  - **severity**: critical | high | medium | low (based on impact on productivity)
+  - **priorityScore**: 0-100 score for which to address first (frequency x severity)
+  - Example: "Shotgun Debugging|You tend to try random fixes without understanding the root cause|'try this','try that too'|Before each fix attempt, write down your hypothesis about why this specific change should work|75|critical|90"
 
 ## topInsights Format (CRITICAL - Balanced KPT)
 Generate exactly 3 insights with this MANDATORY structure:
@@ -283,7 +292,9 @@ Prioritize actionable, constructive feedback. Growth comes from understanding we
 ## CRITICAL
 - Be constructive and growth-oriented, not critical
 - Focus on patterns that can be changed
-- Higher health score means fewer problematic patterns`;
+- Higher health score means fewer problematic patterns
+
+${NO_HEDGING_DIRECTIVE}`;
 
 export function buildAntiPatternSpotterUserPrompt(
   sessionsFormatted: string,
@@ -389,10 +400,13 @@ Return a JSON object with:
   - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes showing mastery
   - Example: "React Hooks Mastery|You demonstrate solid understanding of React hooks, asking nuanced questions about optimization|'dependency array when using useCallback','what's the difference between useMemo'"
 
-- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
-  - 2-3 knowledge gaps to address with evidence and learning recommendations
-  - Each area needs: title, description, evidence quotes, specific learning resource
-  - Example: "TypeScript Generics|You repeatedly ask about TypeScript generic syntax, indicating a foundational gap|'how do I use generics?','what is T?'|Complete the TypeScript Handbook section on Generics, then practice with 5 real examples in your codebase"
+- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation|frequency|severity|priorityScore;..."
+  - 2-3 knowledge gaps to address with evidence, recommendations, AND quantification
+  - Each area needs: title, description, evidence quotes, learning resource, frequency%, severity, priority
+  - **frequency**: Percentage of sessions where this knowledge gap surfaced (0-100)
+  - **severity**: critical | high | medium | low (based on impact on work)
+  - **priorityScore**: 0-100 score for which to learn first (frequency x severity)
+  - Example: "TypeScript Generics|You repeatedly ask about TypeScript generic syntax, indicating a foundational gap|'how do I use generics?','what is T?'|Complete the TypeScript Handbook section on Generics, then practice with 5 real examples in your codebase|58|high|75"
 
 ## topInsights Format (CRITICAL - Balanced KPT)
 Generate exactly 3 insights with this MANDATORY structure:
@@ -408,7 +422,9 @@ Specific resource recommendations create actionable growth paths.
 ## CRITICAL
 - Be specific about which topics need attention
 - Recommend real, useful resources (documentation, tutorials, books)
-- Celebrate learning progress, but prioritize identifying gaps`;
+- Celebrate learning progress, but prioritize identifying gaps
+
+${NO_HEDGING_DIRECTIVE}`;
 
 export function buildKnowledgeGapUserPrompt(
   sessionsFormatted: string,
@@ -512,10 +528,13 @@ Return a JSON object with:
   - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes
   - Example: "Proactive Context Management|You use /clear and /compact effectively to maintain fresh context|'I'll use /clear','/compact please'"
 
-- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
-  - 2-3 inefficiencies to address with evidence and actionable recommendations
-  - Each area needs: title, description, evidence quotes, specific recommendation
-  - Example: "Redundant Context Provision|You repeatedly explain the same project structure in multiple sessions|'this project is React-based and','let me explain again, this app is'|Add project structure to CLAUDE.md once, then reference it instead of re-explaining"
+- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation|frequency|severity|priorityScore;..."
+  - 2-3 inefficiencies to address with evidence, recommendations, AND quantification
+  - Each area needs: title, description, evidence quotes, recommendation, frequency%, severity, priority
+  - **frequency**: Percentage of sessions where this inefficiency was observed (0-100)
+  - **severity**: critical | high | medium | low (based on token waste)
+  - **priorityScore**: 0-100 score for which to optimize first (frequency x severity)
+  - Example: "Redundant Context Provision|You repeatedly explain the same project structure in multiple sessions|'this project is React-based and','let me explain again, this app is'|Add project structure to CLAUDE.md once, then reference it instead of re-explaining|83|high|85"
 
 ## topInsights Format (CRITICAL - Balanced KPT)
 Generate exactly 3 insights with this MANDATORY structure:
@@ -531,7 +550,9 @@ Specific, actionable suggestions with numbers create clear improvement paths.
 ## CRITICAL
 - Focus on actionable efficiency improvements
 - Identify patterns that waste tokens or context space
-- Provide specific numbers when possible`;
+- Provide specific numbers when possible
+
+${NO_HEDGING_DIRECTIVE}`;
 
 export function buildContextEfficiencyUserPrompt(
   sessionsFormatted: string,

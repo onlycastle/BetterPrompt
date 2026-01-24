@@ -16,101 +16,13 @@
 
 import { useState } from 'react';
 import type { AgentOutputs } from '../../types/report';
+import { AGENT_CONFIGS, type AgentConfig } from '../../types/agent-config';
 import styles from './AgentInsightsSection.module.css';
 
 interface AgentInsightsSectionProps {
   agentOutputs: AgentOutputs;
   isPaid?: boolean; // Whether user has unlocked full content
 }
-
-type AgentTier = 'free' | 'premium';
-
-interface AgentCardConfig {
-  id: keyof AgentOutputs;
-  name: string;
-  icon: string;
-  color: string;
-  scoreLabel: string;
-  scoreKey: string;
-  scoreMax: number;
-  tier: AgentTier;
-}
-
-const AGENT_CONFIGS: AgentCardConfig[] = [
-  // FREE tier agents - show full data for all users
-  {
-    id: 'patternDetective',
-    name: 'Pattern Detective',
-    icon: '🔍',
-    color: 'purple',
-    scoreLabel: 'Confidence',
-    scoreKey: 'confidenceScore',
-    scoreMax: 1,
-    tier: 'free',
-  },
-  {
-    id: 'metacognition',
-    name: 'Metacognition',
-    icon: '🧠',
-    color: 'indigo',
-    scoreLabel: 'Awareness',
-    scoreKey: 'metacognitiveAwarenessScore',
-    scoreMax: 100,
-    tier: 'free',
-  },
-
-  // PREMIUM tier agents - show teaser for free users
-  {
-    id: 'antiPatternSpotter',
-    name: 'Anti-Pattern Spotter',
-    icon: '⚠️',
-    color: 'red',
-    scoreLabel: 'Health Score',
-    scoreKey: 'overallHealthScore',
-    scoreMax: 100,
-    tier: 'premium',
-  },
-  {
-    id: 'knowledgeGap',
-    name: 'Knowledge Gap',
-    icon: '📚',
-    color: 'cyan',
-    scoreLabel: 'Knowledge Score',
-    scoreKey: 'overallKnowledgeScore',
-    scoreMax: 100,
-    tier: 'premium',
-  },
-  {
-    id: 'contextEfficiency',
-    name: 'Context Efficiency',
-    icon: '⚡',
-    color: 'yellow',
-    scoreLabel: 'Efficiency Score',
-    scoreKey: 'overallEfficiencyScore',
-    scoreMax: 100,
-    tier: 'premium',
-  },
-  {
-    id: 'temporalAnalysis',
-    name: 'Temporal Analysis',
-    icon: '⏱️',
-    color: 'orange',
-    scoreLabel: 'Confidence',
-    scoreKey: 'confidenceScore',
-    scoreMax: 1,
-    tier: 'premium',
-  },
-  {
-    id: 'multitasking',
-    name: 'Multitasking',
-    icon: '🔄',
-    color: 'green',
-    scoreLabel: 'Efficiency',
-    scoreKey: 'multitaskingEfficiencyScore',
-    scoreMax: 100,
-    tier: 'premium',
-  },
-];
 
 function getScoreValue(data: unknown, key: string): number {
   if (typeof data !== 'object' || data === null) return 0;
@@ -133,6 +45,38 @@ function getScoreColor(value: number, max: number): string {
   return 'low';
 }
 
+/**
+ * Check if agent card has meaningful content beyond just the score header
+ * Aligns with web app's teaser detection via hasVisibleContent()
+ *
+ * Premium agents in free tier have:
+ * - Empty kptTry array (locked prescriptions)
+ * - Stripped growthAreasData recommendations
+ * - Reduced topInsights (1-2 instead of 3)
+ */
+function hasVisibleContent(agentId: keyof AgentOutputs, data: unknown): boolean {
+  if (!data) return false;
+
+  // 1. Check for kptTry (locked for free tier)
+  const kptTry = (data as { kptTry?: string[] }).kptTry;
+  const hasKptTry = Array.isArray(kptTry) && kptTry.length > 0;
+
+  // 2. Check for summary
+  const summary = (data as { overallStyleSummary?: string }).overallStyleSummary;
+  const hasSummary = !!summary;
+
+  // 3. Check for strengthsData/growthAreasData
+  const strengthsData = (data as { strengthsData?: string }).strengthsData;
+  const growthAreasData = (data as { growthAreasData?: string }).growthAreasData;
+  const hasStrengthsOrGrowth = !!(strengthsData || growthAreasData);
+
+  // 4. Check for top insights
+  const insights = (data as { topInsights?: string[] }).topInsights || [];
+  const hasInsights = insights.length > 0;
+
+  return hasKptTry || hasSummary || hasStrengthsOrGrowth || hasInsights;
+}
+
 export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsightsSectionProps) {
   const [expandedAgent, setExpandedAgent] = useState<keyof AgentOutputs | null>(null);
 
@@ -146,8 +90,11 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
     setExpandedAgent(expandedAgent === agentId ? null : agentId);
   };
 
-  // Count how many agents have data to show
-  const activeAgents = AGENT_CONFIGS.filter(c => agentOutputs[c.id]);
+  // Count how many agents have visible content (not just scores)
+  const activeAgents = AGENT_CONFIGS.filter(c => {
+    const data = agentOutputs[c.id];
+    return data && hasVisibleContent(c.id, data);
+  });
 
   return (
     <div className={styles.container}>
@@ -173,18 +120,19 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
           const summary = (data as { overallStyleSummary?: string }).overallStyleSummary;
           const isExpanded = expandedAgent === config.id;
 
-          // Premium agents normally have 3 insights, teasers show 1
-          const FULL_INSIGHTS_COUNT = 3;
+          // Check for locked prescriptions (kptTry is empty for free tier teasers)
+          const kptTry = (data as { kptTry?: string[] }).kptTry || [];
 
-          // Determine if this is a teaser based on:
-          // 1. Premium tier agent
-          // 2. User hasn't paid
-          // 3. We don't have full data (if we have 3 insights, we have full data regardless of isPaid flag)
-          const hasFullData = insights.length >= FULL_INSIGHTS_COUNT;
-          const isTeaser = config.tier === 'premium' && !isPaid && !hasFullData;
+          // Determine if this is a teaser:
+          // - Premium tier agent AND
+          // - User hasn't paid AND
+          // - No kptTry (prescriptions are locked)
+          // This aligns with web app's createAgentTeasers() logic
+          const isTeaser = config.tier === 'premium' && !isPaid && kptTry.length === 0;
 
-          // Calculate hidden insights based on actual data difference
-          const hiddenInsightsCount = isTeaser ? Math.max(0, FULL_INSIGHTS_COUNT - insights.length) : 0;
+          // Calculate hidden content indicator
+          const EXPECTED_KPT_TRY = 2; // Premium agents typically have 2 kptTry items
+          const hiddenInsightsCount = isTeaser ? EXPECTED_KPT_TRY : 0;
 
           return (
             <div

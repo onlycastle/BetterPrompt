@@ -80,12 +80,10 @@ function formatDimensionSignals(
   return `    <dimension name="${dimension}" displayName="${displayName}">
       <strength_signals>
         <keywords>${strengthKeywords}</keywords>
-        <categories>${mapping.reinforcement.categories.join(', ')}</categories>
         <look_for>${mapping.reinforcement.searchQuery}</look_for>
       </strength_signals>
       <growth_signals>
         <keywords>${growthKeywords}</keywords>
-        <categories>${mapping.improvement.categories.join(', ')}</categories>
         <look_for>${mapping.improvement.searchQuery}</look_for>
       </growth_signals>
     </dimension>`;

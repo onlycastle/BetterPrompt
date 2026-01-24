@@ -419,3 +419,178 @@ export function getDimensionsWithExpectedPatterns(): DimensionName[] {
   const dimensions = new Set(EXPECTED_PATTERNS.map((p) => p.dimension));
   return Array.from(dimensions);
 }
+
+// ============================================================================
+// Frequency & Severity Calculation
+// ============================================================================
+
+/**
+ * Severity level for growth areas
+ */
+export type SeverityLevel = 'critical' | 'high' | 'medium' | 'low';
+
+/**
+ * Calculated frequency statistics for a pattern/growth area
+ */
+export interface FrequencyStats {
+  /** Raw count of occurrences */
+  absoluteCount: number;
+  /** Percentage of sessions where pattern was observed (0-100) */
+  percentageOfSessions: number;
+  /** Number of sessions affected */
+  sessionsAffected: number;
+  /** Total sessions analyzed */
+  totalSessions: number;
+  /** Calculated severity based on frequency thresholds */
+  severity: SeverityLevel;
+  /** Computed priority score (frequency × impact factor) */
+  priorityScore: number;
+}
+
+/**
+ * Default impact factors by dimension (higher = more impactful)
+ * Used to weight priority calculation
+ */
+const DIMENSION_IMPACT_FACTORS: Record<string, number> = {
+  aiCollaboration: 1.0,
+  contextEngineering: 0.9,
+  toolMastery: 0.7,
+  burnoutRisk: 1.2, // Higher weight for wellbeing
+  aiControl: 1.1,
+  skillResilience: 1.0,
+  iterationEfficiency: 0.8,
+  learningVelocity: 0.9,
+  scopeManagement: 0.85,
+};
+
+/**
+ * Calculate severity level based on frequency percentage
+ *
+ * Thresholds:
+ * - Critical: 70%+ of sessions
+ * - High: 40-70% of sessions
+ * - Medium: 20-40% of sessions
+ * - Low: <20% of sessions
+ *
+ * @param percentageOfSessions - Frequency as percentage (0-100)
+ * @returns Severity level
+ */
+export function calculateSeverityFromFrequency(percentageOfSessions: number): SeverityLevel {
+  if (percentageOfSessions >= 70) return 'critical';
+  if (percentageOfSessions >= 40) return 'high';
+  if (percentageOfSessions >= 20) return 'medium';
+  return 'low';
+}
+
+/**
+ * Calculate severity level based on evidence count (proxy for frequency)
+ *
+ * Used when actual frequency percentage is not available.
+ *
+ * Thresholds:
+ * - Critical: 5+ evidence instances
+ * - High: 3-4 evidence instances
+ * - Medium: 2 evidence instances
+ * - Low: 0-1 evidence instances
+ *
+ * @param evidenceCount - Number of evidence quotes/instances
+ * @returns Severity level
+ */
+export function calculateSeverityFromEvidence(evidenceCount: number): SeverityLevel {
+  if (evidenceCount >= 5) return 'critical';
+  if (evidenceCount >= 3) return 'high';
+  if (evidenceCount >= 2) return 'medium';
+  return 'low';
+}
+
+/**
+ * Calculate priority score for a growth area
+ *
+ * Priority = (frequencyWeight × frequency) + (impactWeight × dimensionImpact)
+ *
+ * @param percentageOfSessions - Frequency as percentage (0-100)
+ * @param dimension - The dimension this growth area belongs to
+ * @returns Priority score (0-100)
+ */
+export function calculatePriorityScore(
+  percentageOfSessions: number,
+  dimension: string
+): number {
+  const frequencyWeight = 0.6;
+  const impactWeight = 0.4;
+
+  const impactFactor = DIMENSION_IMPACT_FACTORS[dimension] || 1.0;
+  const normalizedImpact = impactFactor * 100;
+
+  const priorityScore =
+    frequencyWeight * percentageOfSessions +
+    impactWeight * normalizedImpact;
+
+  return Math.min(100, Math.max(0, Math.round(priorityScore)));
+}
+
+/**
+ * Calculate comprehensive frequency statistics for a pattern
+ *
+ * @param occurrenceCounts - Map of sessionId to occurrence count
+ * @param totalSessions - Total number of sessions analyzed
+ * @param dimension - The dimension for priority calculation
+ * @returns Complete frequency statistics
+ */
+export function calculateFrequencyStats(
+  occurrenceCounts: Map<string, number>,
+  totalSessions: number,
+  dimension: string
+): FrequencyStats {
+  const sessionsAffected = occurrenceCounts.size;
+  const absoluteCount = Array.from(occurrenceCounts.values()).reduce((a, b) => a + b, 0);
+
+  const percentageOfSessions = totalSessions > 0
+    ? Math.round((sessionsAffected / totalSessions) * 100)
+    : 0;
+
+  const severity = calculateSeverityFromFrequency(percentageOfSessions);
+  const priorityScore = calculatePriorityScore(percentageOfSessions, dimension);
+
+  return {
+    absoluteCount,
+    percentageOfSessions,
+    sessionsAffected,
+    totalSessions,
+    severity,
+    priorityScore,
+  };
+}
+
+/**
+ * Calculate frequency statistics from evidence array
+ *
+ * This is a fallback when session-level data is not available.
+ * Uses evidence count as a proxy for frequency.
+ *
+ * @param evidenceCount - Number of evidence quotes
+ * @param totalSessions - Total sessions analyzed (for context)
+ * @param dimension - The dimension for priority calculation
+ * @returns Estimated frequency statistics
+ */
+export function estimateFrequencyFromEvidence(
+  evidenceCount: number,
+  totalSessions: number,
+  dimension: string
+): FrequencyStats {
+  // Estimate: each evidence instance represents ~15-25% of sessions
+  // This is a rough heuristic based on typical extraction rates
+  const estimatedPercentage = Math.min(100, evidenceCount * 18);
+
+  const severity = calculateSeverityFromEvidence(evidenceCount);
+  const priorityScore = calculatePriorityScore(estimatedPercentage, dimension);
+
+  return {
+    absoluteCount: evidenceCount,
+    percentageOfSessions: estimatedPercentage,
+    sessionsAffected: Math.min(totalSessions, evidenceCount),
+    totalSessions,
+    severity,
+    priorityScore,
+  };
+}

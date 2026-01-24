@@ -9,6 +9,7 @@
  */
 
 import { buildExpertKnowledgeContext } from '../verbose-knowledge-context';
+import { NO_HEDGING_DIRECTIVE } from '../verbose-prompts';
 
 /**
  * System prompt for the Data Analyst stage
@@ -362,7 +363,9 @@ The developer's session data may contain non-English text (Korean, Japanese, Chi
 
 **Slash Commands:**
 - /plan, /compact, /clear are language-independent (literal slash commands)
-- Detect these regardless of surrounding text language`;
+- Detect these regardless of surrounding text language
+
+${NO_HEDGING_DIRECTIVE}`;
 
 /**
  * Build the user prompt for Stage 1 data extraction

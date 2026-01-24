@@ -42,6 +42,8 @@ import {
   createTemporalAnalyzerWorker,
   // NEW: Multitasking Analysis worker
   createMultitaskingAnalyzerWorker,
+  // NEW: Cross-Session Anti-Pattern Detection worker
+  createCrossSessionAntiPatternWorker,
   // NEW: Type Synthesis worker (Phase 2.5)
   createTypeSynthesisWorker,
 } from './workers';
@@ -370,6 +372,7 @@ export class VerboseAnalyzer {
       this.orchestrator.registerPhase2Worker(createMetacognitionWorker(orchestratorConfig));
       this.orchestrator.registerPhase2Worker(createTemporalAnalyzerWorker(orchestratorConfig));
       this.orchestrator.registerPhase2Worker(createMultitaskingAnalyzerWorker(orchestratorConfig));
+      this.orchestrator.registerPhase2Worker(createCrossSessionAntiPatternWorker(orchestratorConfig));
 
       // Register Phase 2.5 worker (Type Synthesis - refines classification using agent outputs)
       this.orchestrator.registerPhase2Point5Worker(createTypeSynthesisWorker(orchestratorConfig));

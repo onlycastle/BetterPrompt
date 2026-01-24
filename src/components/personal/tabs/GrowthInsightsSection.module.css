@@ -65,6 +65,42 @@
   margin-bottom: var(--space-sm);
 }
 
+.titleWithBadge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.severityBadge {
+  font-size: var(--text-sm);
+  flex-shrink: 0;
+}
+
+.severityCritical {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.severityHigh {
+  /* No animation for high */
+}
+
+.severityMedium {
+  opacity: 0.9;
+}
+
+.severityLow {
+  opacity: 0.7;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
 .growthTitle {
   font-family: var(--font-primary);
   font-size: var(--text-md);

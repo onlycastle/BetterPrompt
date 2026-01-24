@@ -37,9 +37,27 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 // Knowledge API
+
+/**
+ * Dimension names - aligned with analysis dimensions
+ */
+export type DimensionName =
+  | 'aiCollaboration'
+  | 'contextEngineering'
+  | 'toolMastery'
+  | 'burnoutRisk'
+  | 'aiControl'
+  | 'skillResilience'
+  | 'iterationEfficiency'
+  | 'learningVelocity'
+  | 'scopeManagement';
+
 export interface KnowledgeListParams {
   platform?: SourcePlatform;
+  /** @deprecated Use dimension instead */
   category?: TopicCategory;
+  dimension?: DimensionName;
+  dimensions?: DimensionName[];
   status?: KnowledgeStatus;
   author?: string;
   influencerId?: string;
@@ -55,7 +73,12 @@ export async function listKnowledge(params: KnowledgeListParams = {}): Promise<K
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined) {
-      searchParams.set(key, String(value));
+      // Handle dimensions array specially
+      if (key === 'dimensions' && Array.isArray(value)) {
+        searchParams.set(key, value.join(','));
+      } else {
+        searchParams.set(key, String(value));
+      }
     }
   });
 

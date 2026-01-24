@@ -145,8 +145,15 @@ export interface AgentStrength {
 }
 
 /**
+ * Severity level for growth areas
+ */
+export type AgentSeverityLevel = 'critical' | 'high' | 'medium' | 'low';
+
+/**
  * Parsed growth area for agent insights
  * Represents an area for improvement with recommendation
+ *
+ * Enhanced with quantification fields for definitive assessment.
  */
 export interface AgentGrowthArea {
   /** Clear pattern name (e.g., "Context Provision Pattern") */
@@ -157,6 +164,12 @@ export interface AgentGrowthArea {
   evidence: string[];
   /** Specific, actionable recommendation */
   recommendation: string;
+  /** Percentage of sessions where this pattern was observed (0-100) */
+  frequency?: number;
+  /** How critical this growth area is to address */
+  severity?: AgentSeverityLevel;
+  /** Computed priority based on frequency × impact (0-100) */
+  priorityScore?: number;
 }
 
 /**
@@ -193,12 +206,15 @@ export function parseStrengthsData(data: string | undefined): AgentStrength[] {
 
 /**
  * Parse growthAreasData string into structured array
- * Format: "title|description|evidence1,evidence2|recommendation;title2|..."
+ *
+ * Supported formats:
+ * - Extended: "title|description|evidence|recommendation|frequency|severity|priorityScore;..."
+ * - Standard: "title|description|evidence|recommendation;..."
  *
  * @example
- * parseGrowthAreasData("Context Provision|Tends to skip context|'fix this','why isn't it working?'|Provide situation, attempts, and desired outcome")
+ * parseGrowthAreasData("Context Provision|Tends to skip context|'fix this','why?'|Provide context|75|high|82")
  * // Returns:
- * // [{ title: "Context Provision", description: "Tends to...", evidence: [...], recommendation: "Provide..." }]
+ * // [{ title: "Context Provision", description: "Tends to...", evidence: [...], recommendation: "Provide...", frequency: 75, severity: "high", priorityScore: 82 }]
  */
 export function parseGrowthAreasData(data: string | undefined): AgentGrowthArea[] {
   if (!data || data.trim() === '') return [];
@@ -219,7 +235,19 @@ export function parseGrowthAreasData(data: string | undefined): AgentGrowthArea[
         .map((e) => e.trim().replace(/^['"]|['"]$/g, ''))
         .filter(Boolean);
 
-      return { title, description, evidence, recommendation };
+      // Parse optional quantification fields (extended format)
+      const freq = parts[4] ? parseFloat(parts[4]) : undefined;
+      const sev = parts[5]?.trim() as AgentSeverityLevel | undefined;
+      const priority = parts[6] ? parseFloat(parts[6]) : undefined;
+
+      const result: AgentGrowthArea = { title, description, evidence, recommendation };
+
+      // Only add quantification fields if present and valid
+      if (freq !== undefined && !isNaN(freq)) result.frequency = freq;
+      if (sev && ['critical', 'high', 'medium', 'low'].includes(sev)) result.severity = sev;
+      if (priority !== undefined && !isNaN(priority)) result.priorityScore = priority;
+
+      return result;
     })
     .filter((item) => item.title && item.description);
 }
@@ -335,6 +363,222 @@ export const AntiPatternSpotterOutputSchema = z.object({
 });
 
 export type AntiPatternSpotterOutput = z.infer<typeof AntiPatternSpotterOutputSchema>;
+
+// ============================================================================
+// Cross-Session Anti-Pattern Detection (NEW)
+// ============================================================================
+
+/**
+ * Anti-Pattern Hierarchy - Severity levels for cross-session pattern detection
+ *
+ * CRITICAL: Patterns that pose immediate risk to code quality and learning
+ * WARNING: Patterns that slow progress and prevent optimal learning
+ * INFO: Patterns worth noting but lower impact
+ */
+export const ANTI_PATTERN_HIERARCHY = {
+  critical: ['blind_approval', 'sunk_cost_loop'] as const,
+  warning: ['passive_acceptance', 'blind_retry'] as const,
+  info: ['delegation_without_review'] as const,
+} as const;
+
+export type AntiPatternSeverity = 'critical' | 'warning' | 'info';
+export type CriticalAntiPattern = (typeof ANTI_PATTERN_HIERARCHY.critical)[number];
+export type WarningAntiPattern = (typeof ANTI_PATTERN_HIERARCHY.warning)[number];
+export type InfoAntiPattern = (typeof ANTI_PATTERN_HIERARCHY.info)[number];
+export type AntiPatternType = CriticalAntiPattern | WarningAntiPattern | InfoAntiPattern;
+
+/**
+ * Cross-Session Anti-Pattern Output Schema
+ *
+ * Detects behavioral patterns that repeat across 2+ sessions.
+ * Only patterns appearing in multiple sessions qualify - single-session
+ * occurrences are isolated incidents, not patterns.
+ *
+ * Uses semicolon-separated strings to comply with Gemini's 4-level nesting limit.
+ *
+ * @example
+ * ```json
+ * {
+ *   "criticalAntiPatterns": "blind_approval|CRITICAL|4|session_3,session_7,session_12,session_15|High|'looks good, ship it'",
+ *   "warningAntiPatterns": "passive_acceptance|WARNING|3|session_2,session_8,session_14|Moderate|accepting without evaluation",
+ *   "infoAntiPatterns": "delegation_without_review|INFO|2|session_5,session_10|Moderate|shipped without testing",
+ *   "isolatedIncidents": "blind_retry|session_6|single occurrence",
+ *   "topInsights": [
+ *     "CRITICAL: blind_approval pattern in 4 sessions - 'looks good, ship it' risks technical debt",
+ *     "Try: Before approving, ask 'What could go wrong?' to break blind approval habit",
+ *     "KEEP: Systematic error analysis in Sessions 2, 5, 9"
+ *   ],
+ *   "patternDensity": 45,
+ *   "crossSessionConsistency": 0.72
+ * }
+ * ```
+ */
+export const CrossSessionAntiPatternOutputSchema = z.object({
+  // Critical patterns - "pattern|severity|count|session_ids|frequency|evidence;..."
+  criticalAntiPatterns: z.string().max(3000),
+
+  // Warning patterns - "pattern|severity|count|session_ids|frequency|evidence;..."
+  warningAntiPatterns: z.string().max(3000),
+
+  // Info patterns - "pattern|severity|count|session_ids|frequency|evidence;..."
+  infoAntiPatterns: z.string().max(3000),
+
+  // Single-session occurrences (not patterns) - "incident|session_id|description;..."
+  isolatedIncidents: z.string().max(2000),
+
+  // Top 3 insights (Problem/Try/Keep structure)
+  topInsights: z.array(z.string().max(3000)).max(3),
+
+  // Pattern density score (0-100, higher = more anti-patterns)
+  patternDensity: z.number().min(0).max(100),
+
+  // Cross-session consistency (0-1, confidence in pattern detection)
+  crossSessionConsistency: z.number().min(0).max(1),
+
+  // Actionable recommendations (1-3)
+  recommendedInterventions: z.array(z.string().max(1000)).max(3),
+
+  // Cross-references: "pattern|quote1|quote2|quote3;..." (tracks pattern across sessions)
+  sessionCrossReferences: z.string().max(4000).optional(),
+
+  // Strengths: "behavior|sessions|quotes;..." (positive patterns across sessions)
+  strengthsAcrossSessions: z.string().max(3000).optional(),
+});
+
+export type CrossSessionAntiPatternOutput = z.infer<typeof CrossSessionAntiPatternOutputSchema>;
+
+// ============================================================================
+// Cross-Session Anti-Pattern Parsing Functions
+// ============================================================================
+
+/**
+ * Parsed cross-session anti-pattern occurrence
+ */
+export interface ParsedCrossSessionPattern {
+  /** Anti-pattern type (e.g., 'blind_approval') */
+  patternType: AntiPatternType;
+  /** Severity level */
+  severity: AntiPatternSeverity;
+  /** Number of sessions where pattern appears */
+  sessionCount: number;
+  /** Session IDs where pattern appears */
+  sessionIds: string[];
+  /** Frequency classification ('High' if 3+, 'Moderate' if 2) */
+  frequency: 'High' | 'Moderate';
+  /** Evidence quote from one session */
+  evidence: string;
+}
+
+/**
+ * Parse cross-session anti-pattern data string into structured array
+ * Format: "pattern|severity|count|session_ids|frequency|evidence;..."
+ *
+ * @example
+ * parseCrossSessionPatternsData("blind_approval|CRITICAL|4|session_3,session_7,session_12,session_15|High|'looks good, ship it'")
+ * // Returns:
+ * // [{
+ * //   patternType: 'blind_approval',
+ * //   severity: 'critical',
+ * //   sessionCount: 4,
+ * //   sessionIds: ['session_3', 'session_7', 'session_12', 'session_15'],
+ * //   frequency: 'High',
+ * //   evidence: "'looks good, ship it'"
+ * // }]
+ */
+export function parseCrossSessionPatternsData(
+  data: string | undefined
+): ParsedCrossSessionPattern[] {
+  if (!data || data.trim() === '') return [];
+
+  return data
+    .split(';')
+    .filter(Boolean)
+    .map((entry) => {
+      const parts = entry.split('|');
+      const patternType = parts[0]?.trim().toLowerCase() as AntiPatternType;
+      const severityRaw = parts[1]?.trim().toUpperCase();
+      const severity = (
+        severityRaw === 'CRITICAL' ? 'critical' :
+        severityRaw === 'WARNING' ? 'warning' : 'info'
+      ) as AntiPatternSeverity;
+      const sessionCount = parseInt(parts[2], 10) || 0;
+      const sessionIds = (parts[3]?.trim() || '').split(',').map((s) => s.trim()).filter(Boolean);
+      const frequencyRaw = parts[4]?.trim();
+      const frequency = (frequencyRaw === 'High' ? 'High' : 'Moderate') as 'High' | 'Moderate';
+      const evidence = parts[5]?.trim() || '';
+
+      return {
+        patternType,
+        severity,
+        sessionCount,
+        sessionIds,
+        frequency,
+        evidence,
+      };
+    })
+    .filter((item) => item.patternType && item.sessionCount >= 2);
+}
+
+/**
+ * Get all cross-session patterns from output, sorted by severity
+ */
+export function getAllCrossSessionPatterns(
+  output: CrossSessionAntiPatternOutput
+): ParsedCrossSessionPattern[] {
+  const critical = parseCrossSessionPatternsData(output.criticalAntiPatterns);
+  const warning = parseCrossSessionPatternsData(output.warningAntiPatterns);
+  const info = parseCrossSessionPatternsData(output.infoAntiPatterns);
+
+  return [...critical, ...warning, ...info];
+}
+
+/**
+ * Get severity level for a given anti-pattern type
+ */
+export function getAntiPatternSeverity(patternType: string): AntiPatternSeverity {
+  if (ANTI_PATTERN_HIERARCHY.critical.includes(patternType as CriticalAntiPattern)) {
+    return 'critical';
+  }
+  if (ANTI_PATTERN_HIERARCHY.warning.includes(patternType as WarningAntiPattern)) {
+    return 'warning';
+  }
+  return 'info';
+}
+
+/**
+ * Parsed isolated incident (single-session occurrence, not a pattern)
+ */
+export interface ParsedIsolatedIncident {
+  /** Incident type */
+  incidentType: string;
+  /** Session ID where it occurred */
+  sessionId: string;
+  /** Description */
+  description: string;
+}
+
+/**
+ * Parse isolated incidents data string
+ * Format: "incident|session_id|description;..."
+ */
+export function parseIsolatedIncidentsData(
+  data: string | undefined
+): ParsedIsolatedIncident[] {
+  if (!data || data.trim() === '') return [];
+
+  return data
+    .split(';')
+    .filter(Boolean)
+    .map((entry) => {
+      const parts = entry.split('|');
+      return {
+        incidentType: parts[0]?.trim() || '',
+        sessionId: parts[1]?.trim() || '',
+        description: parts[2]?.trim() || '',
+      };
+    })
+    .filter((item) => item.incidentType && item.sessionId);
+}
 
 // ============================================================================
 // Knowledge Gap Analyzer: Knowledge Gaps + Learning Suggestions
@@ -617,6 +861,9 @@ export const AgentOutputsSchema = z.object({
 
   // NEW: Type Synthesis (Agent-Informed Classification)
   typeSynthesis: TypeSynthesisOutputSchema.optional(),
+
+  // NEW: Cross-Session Anti-Pattern Detection
+  crossSessionAntiPatterns: CrossSessionAntiPatternOutputSchema.optional(),
 });
 
 export type AgentOutputs = z.infer<typeof AgentOutputsSchema>;
@@ -644,7 +891,8 @@ export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
     outputs.metacognition ||
     outputs.temporalAnalysis ||
     outputs.multitasking ||
-    outputs.typeSynthesis
+    outputs.typeSynthesis ||
+    outputs.crossSessionAntiPatterns
   );
 }
 
@@ -677,6 +925,10 @@ export function getAllTopInsights(outputs: AgentOutputs): string[] {
   // NEW: Include multitasking insights
   if (outputs.multitasking?.topInsights) {
     insights.push(...outputs.multitasking.topInsights);
+  }
+  // NEW: Include cross-session anti-pattern insights
+  if (outputs.crossSessionAntiPatterns?.topInsights) {
+    insights.push(...outputs.crossSessionAntiPatterns.topInsights);
   }
 
   return insights;
@@ -723,4 +975,121 @@ export function getAllAgentGrowthAreas(outputs: AgentOutputs): AgentGrowthArea[]
   }
 
   return allAreas;
+}
+
+// ============================================================================
+// Diagnosis / Prescription Separation
+// ============================================================================
+
+/**
+ * Diagnosis - FREE tier content
+ *
+ * Contains: WHAT is the issue and WHY it matters
+ * - Title and description of the growth area
+ * - Evidence quotes showing the pattern
+ * - Frequency and severity metrics
+ *
+ * This content answers "What needs to improve?" and is shown to all users.
+ */
+export interface GrowthDiagnosis {
+  /** Clear pattern name */
+  title: string;
+  /** Description of the issue and why it matters */
+  description: string;
+  /** Evidence quotes from actual sessions */
+  evidence: string[];
+  /** Session occurrence percentage (0-100) */
+  frequency?: number;
+  /** Severity level: critical | high | medium | low */
+  severity?: AgentSeverityLevel;
+  /** Computed priority score (0-100) */
+  priorityScore?: number;
+}
+
+/**
+ * Prescription - PREMIUM tier content
+ *
+ * Contains: HOW to fix the issue
+ * - Specific actionable recommendations
+ * - Learning resources and links
+ * - Step-by-step improvement path
+ *
+ * This content answers "How do I improve?" and is shown only to paid users.
+ */
+export interface GrowthPrescription {
+  /** Specific, actionable recommendation */
+  recommendation: string;
+  /** Learning resources (URLs, courses, docs) */
+  resources?: string[];
+  /** Step-by-step action items */
+  actionSteps?: string[];
+}
+
+/**
+ * Complete growth insight combining diagnosis and prescription
+ */
+export interface GrowthInsight {
+  /** FREE: The problem identification */
+  diagnosis: GrowthDiagnosis;
+  /** PREMIUM: The solution */
+  prescription: GrowthPrescription;
+}
+
+/**
+ * Convert AgentGrowthArea to separated Diagnosis and Prescription
+ *
+ * @param area - Full growth area data
+ * @returns Separated diagnosis and prescription
+ */
+export function separateDiagnosisPrescription(area: AgentGrowthArea): GrowthInsight {
+  return {
+    diagnosis: {
+      title: area.title,
+      description: area.description,
+      evidence: area.evidence,
+      frequency: area.frequency,
+      severity: area.severity,
+      priorityScore: area.priorityScore,
+    },
+    prescription: {
+      recommendation: area.recommendation,
+      // resources and actionSteps can be extracted from recommendation if structured
+      resources: undefined,
+      actionSteps: undefined,
+    },
+  };
+}
+
+/**
+ * Extract only the diagnosis (FREE tier) from a growth area
+ *
+ * Use this to create free tier content that shows the problem but not the solution.
+ *
+ * @param area - Full growth area data
+ * @returns Diagnosis only (no recommendation)
+ */
+export function extractDiagnosisOnly(area: AgentGrowthArea): GrowthDiagnosis {
+  return {
+    title: area.title,
+    description: area.description,
+    evidence: area.evidence,
+    frequency: area.frequency,
+    severity: area.severity,
+    priorityScore: area.priorityScore,
+  };
+}
+
+/**
+ * Create a locked growth area for free tier users
+ *
+ * Retains all diagnosis information but removes the recommendation.
+ *
+ * @param area - Full growth area data
+ * @returns Growth area with empty recommendation
+ */
+export function createLockedGrowthArea(area: AgentGrowthArea): AgentGrowthArea {
+  return {
+    ...area,
+    recommendation: '', // Prescription is locked
+  };
 }

@@ -101,6 +101,9 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
     // FREE agents (patternDetective, metacognition) show full data
     // PREMIUM agents show 1 insight + scores only
     agentOutputs: createAgentTeasers(evaluation.agentOutputs),
+
+    // Analysis metadata - always show (transparency builds trust)
+    analysisMetadata: evaluation.analysisMetadata,
   };
 }
 

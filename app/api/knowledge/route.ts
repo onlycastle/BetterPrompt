@@ -1,6 +1,11 @@
 /**
  * Knowledge API Route - List
  * GET /api/knowledge - List knowledge items with optional filters
+ *
+ * Supports both legacy category-based filtering and new dimension-based filtering:
+ * - dimension: Single dimension filter (preferred)
+ * - dimensions: Comma-separated dimension filters
+ * - category: Legacy category filter (deprecated)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -8,6 +13,7 @@ import { knowledgeDb } from '@/lib/search-agent/db/index';
 import type {
   SourcePlatform,
   TopicCategory,
+  DimensionName,
   KnowledgeStatus,
 } from '@/lib/search-agent/models/knowledge';
 
@@ -17,7 +23,9 @@ export async function GET(request: NextRequest) {
 
     // Parse query params
     const platform = searchParams.get('platform');
-    const category = searchParams.get('category');
+    const dimension = searchParams.get('dimension');
+    const dimensionsParam = searchParams.get('dimensions');
+    const category = searchParams.get('category'); // Legacy
     const status = searchParams.get('status');
     const author = searchParams.get('author');
     const influencerId = searchParams.get('influencerId');
@@ -28,10 +36,17 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'created_at';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
-    // Build filters
+    // Parse dimensions array
+    const dimensions = dimensionsParam
+      ? (dimensionsParam.split(',') as DimensionName[])
+      : undefined;
+
+    // Build filters (dimension-first, category as fallback)
     const filters = {
       platform: platform as SourcePlatform | undefined,
-      category: category as TopicCategory | undefined,
+      dimension: dimension as DimensionName | undefined,
+      dimensions,
+      category: category as TopicCategory | undefined, // Legacy fallback
       status: status as KnowledgeStatus | undefined,
       author: author || undefined,
       influencerId: influencerId || undefined,

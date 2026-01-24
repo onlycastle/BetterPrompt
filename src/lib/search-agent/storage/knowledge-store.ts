@@ -278,13 +278,14 @@ export class KnowledgeStore {
       };
     }
 
-    // Add to category if not already present
+    // Add to category if not already present (handle optional category)
     const categories = this.collection.categories;
-    if (!categories[item.category]) {
-      categories[item.category] = [];
+    const category = item.category || 'other';
+    if (!categories[category]) {
+      categories[category] = [];
     }
 
-    const categoryItems = categories[item.category];
+    const categoryItems = categories[category];
     if (categoryItems && !categoryItems.includes(item.id)) {
       categoryItems.push(item.id);
       this.collection.totalItems++;
@@ -310,8 +311,9 @@ export class KnowledgeStore {
       // Remove from URL index
       this.urlIndex.delete(item.source.url);
 
-      // Remove from collection
-      const categoryItems = this.collection?.categories[item.category];
+      // Remove from collection (handle optional category)
+      const category = item.category || 'other';
+      const categoryItems = this.collection?.categories[category];
       if (categoryItems) {
         const idx = categoryItems.indexOf(id);
         if (idx !== -1) {
@@ -532,8 +534,9 @@ export class KnowledgeStore {
       const platform = item.source.platform;
       platformDistribution[platform] = (platformDistribution[platform] || 0) + 1;
 
-      // Category distribution
-      categoryDistribution[item.category] = (categoryDistribution[item.category] || 0) + 1;
+      // Category distribution (handle optional category)
+      const category = item.category || 'other';
+      categoryDistribution[category] = (categoryDistribution[category] || 0) + 1;
 
       // Score metrics
       totalScore += item.relevance.score;

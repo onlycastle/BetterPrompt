@@ -17,10 +17,12 @@ import type {
   KnowledgeStats,
   KnowledgeFilters,
   TopicCategory,
+  KnowledgeDimensionName,
   ContentType,
   SourcePlatform,
   KnowledgeStatus,
 } from '../../domain/models/index';
+import { TOPIC_TO_DIMENSION_MAP } from '../../domain/models/index';
 
 /**
  * Knowledge service dependencies
@@ -107,13 +109,18 @@ export function createKnowledgeService(deps: KnowledgeServiceDeps) {
 
       // 5. Build knowledge item
       const now = new Date().toISOString();
+      // Derive dimension from extracted category
+      const category = (extractedData.category || 'other') as TopicCategory;
+      const dimension = TOPIC_TO_DIMENSION_MAP[category];
+
       const item: KnowledgeItem = {
         id: randomUUID(),
         version: '1.0.0',
         title: extractedData.title || input.title || 'Untitled',
         summary: extractedData.summary || input.content.slice(0, 200) + '...',
         content: input.content,
-        category: extractedData.category || 'other',
+        applicableDimensions: [dimension],
+        category, // Legacy, kept for backward compatibility
         contentType: (extractedData.contentType as ContentType) || 'insight',
         tags: extractedData.tags || [],
         source: {

@@ -25,6 +25,8 @@ import type {
   SharedReport,
   CreateSharedReportInput,
   PublicReportView,
+  ProfessionalInsight,
+  KnowledgeDimensionName,
 } from '../../domain/models/index';
 
 // ============================================================================
@@ -475,6 +477,89 @@ export interface ISharingRepository {
    * Delete expired reports
    */
   deleteExpired(): Promise<Result<number, StorageError>>;
+}
+
+// ============================================================================
+// Professional Insight Repository Port
+// ============================================================================
+
+/**
+ * Filters for querying professional insights
+ */
+export interface ProfessionalInsightFilters {
+  dimension?: KnowledgeDimensionName;
+  dimensions?: KnowledgeDimensionName[];
+  style?: string;
+  controlLevel?: string;
+  minScore?: number;
+  maxScore?: number;
+  category?: 'diagnosis' | 'trend' | 'type-specific' | 'tool';
+  enabledOnly?: boolean;
+}
+
+/**
+ * Repository for professional insights (curated tips for developers)
+ */
+export interface IProfessionalInsightRepository {
+  /**
+   * Find all enabled insights
+   */
+  findEnabled(): Promise<Result<ProfessionalInsight[], StorageError>>;
+
+  /**
+   * Find insights applicable to a specific dimension and score
+   * Used by KnowledgeLinker to show relevant insights based on analysis results
+   */
+  findApplicable(
+    dimension: KnowledgeDimensionName,
+    score: number
+  ): Promise<Result<ProfessionalInsight[], StorageError>>;
+
+  /**
+   * Find insights with advanced filtering
+   */
+  findWithFilters(
+    filters: ProfessionalInsightFilters,
+    options?: QueryOptions<'priority' | 'createdAt' | 'title'>
+  ): Promise<Result<PaginatedResult<ProfessionalInsight>, StorageError>>;
+
+  /**
+   * Find by ID
+   */
+  findById(id: string): Promise<Result<ProfessionalInsight | null, StorageError>>;
+
+  /**
+   * Save a new insight
+   */
+  save(insight: ProfessionalInsight): Promise<Result<ProfessionalInsight, StorageError>>;
+
+  /**
+   * Save multiple insights in batch
+   */
+  saveBatch(insights: ProfessionalInsight[]): Promise<Result<ProfessionalInsight[], StorageError>>;
+
+  /**
+   * Update an insight
+   */
+  update(
+    id: string,
+    updates: Partial<ProfessionalInsight>
+  ): Promise<Result<ProfessionalInsight, StorageError>>;
+
+  /**
+   * Toggle enabled status
+   */
+  setEnabled(id: string, enabled: boolean): Promise<Result<void, StorageError>>;
+
+  /**
+   * Delete an insight
+   */
+  delete(id: string): Promise<Result<void, StorageError>>;
+
+  /**
+   * Count insights by category
+   */
+  countByCategory(): Promise<Result<Record<string, number>, StorageError>>;
 }
 
 // ============================================================================

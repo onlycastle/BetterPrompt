@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   TopicCategorySchema,
+  DimensionNameSchema,
   ContentTypeSchema,
   SourcePlatformSchema,
   KnowledgeSourceSchema,
@@ -11,7 +12,8 @@ import {
   ProfessionalInsightSchema,
   DEFAULT_SEARCH_TOPICS,
   TOPIC_DISPLAY_NAMES,
-  INITIAL_INSIGHTS,
+  TOPIC_TO_DIMENSION_MAP,
+  // Note: INITIAL_INSIGHTS removed - now in database (see supabase/migrations/018_seed_professional_insights.sql)
 } from '../../../../src/lib/search-agent/models/knowledge.js';
 
 describe('Knowledge Models', () => {
@@ -37,6 +39,44 @@ describe('Knowledge Models', () => {
     it('should reject invalid categories', () => {
       expect(() => TopicCategorySchema.parse('invalid-category')).toThrow();
       expect(() => TopicCategorySchema.parse('')).toThrow();
+    });
+  });
+
+  describe('DimensionNameSchema', () => {
+    it('should accept all valid dimension names', () => {
+      const validDimensions = [
+        'aiCollaboration',
+        'contextEngineering',
+        'toolMastery',
+        'burnoutRisk',
+        'aiControl',
+        'skillResilience',
+        'iterationEfficiency',
+        'learningVelocity',
+        'scopeManagement',
+      ];
+
+      for (const dimension of validDimensions) {
+        expect(DimensionNameSchema.parse(dimension)).toBe(dimension);
+      }
+    });
+
+    it('should reject invalid dimension names', () => {
+      expect(() => DimensionNameSchema.parse('invalidDimension')).toThrow();
+      expect(() => DimensionNameSchema.parse('')).toThrow();
+    });
+  });
+
+  describe('TOPIC_TO_DIMENSION_MAP', () => {
+    it('should map all topic categories to dimensions', () => {
+      const categories = TopicCategorySchema.options;
+      for (const category of categories) {
+        expect(TOPIC_TO_DIMENSION_MAP[category]).toBeDefined();
+        // Verify the mapped dimension is valid
+        expect(DimensionNameSchema.parse(TOPIC_TO_DIMENSION_MAP[category])).toBe(
+          TOPIC_TO_DIMENSION_MAP[category]
+        );
+      }
     });
   });
 
@@ -183,6 +223,10 @@ describe('Knowledge Models', () => {
       title: 'How to Effectively Use Context Engineering',
       summary: 'A comprehensive guide to understanding and implementing context engineering techniques for AI-assisted development workflows'.padEnd(100, '.'),
       content: 'Full detailed content about context engineering...'.padEnd(200, '.'),
+      // New: dimension-based classification
+      applicableDimensions: ['contextEngineering'],
+      subCategories: { contextEngineering: ['context window', 'token optimization'] },
+      // Legacy: category (optional now)
       category: 'context-engineering',
       contentType: 'technique',
       tags: ['context', 'AI', 'development'],
@@ -201,8 +245,15 @@ describe('Knowledge Models', () => {
       status: 'approved',
     };
 
-    it('should validate complete knowledge item', () => {
+    it('should validate complete knowledge item with dimensions', () => {
       const result = KnowledgeItemSchema.safeParse(validKnowledgeItem);
+      expect(result.success).toBe(true);
+    });
+
+    it('should validate knowledge item without legacy category', () => {
+      const withoutCategory = { ...validKnowledgeItem };
+      delete (withoutCategory as Record<string, unknown>).category;
+      const result = KnowledgeItemSchema.safeParse(withoutCategory);
       expect(result.success).toBe(true);
     });
 
@@ -357,26 +408,7 @@ describe('Knowledge Models', () => {
       });
     });
 
-    describe('INITIAL_INSIGHTS', () => {
-      it('should have valid insight structures', () => {
-        expect(INITIAL_INSIGHTS.length).toBeGreaterThan(0);
-
-        for (const insight of INITIAL_INSIGHTS) {
-          expect(insight.version).toBe('1.0.0');
-          expect(InsightCategorySchema.parse(insight.category)).toBe(insight.category);
-          expect(insight.title.length).toBeGreaterThan(10);
-          expect(insight.keyTakeaway.length).toBeGreaterThan(20);
-          expect(insight.actionableAdvice.length).toBeGreaterThan(0);
-          expect(insight.source.url).toMatch(/^https?:\/\//);
-        }
-      });
-
-      it('should have priorities in valid range', () => {
-        for (const insight of INITIAL_INSIGHTS) {
-          expect(insight.priority).toBeGreaterThanOrEqual(1);
-          expect(insight.priority).toBeLessThanOrEqual(10);
-        }
-      });
-    });
+    // Note: INITIAL_INSIGHTS tests removed - Professional Insights are now stored in database
+    // See supabase/migrations/018_seed_professional_insights.sql for canonical data
   });
 });

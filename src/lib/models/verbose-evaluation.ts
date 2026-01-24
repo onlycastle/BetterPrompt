@@ -69,8 +69,27 @@ export const PersonalizedStrengthSchema = z.object({
 export type PersonalizedStrength = z.infer<typeof PersonalizedStrengthSchema>;
 
 /**
+ * Severity level for growth areas
+ * - critical: 70%+ occurrence or fundamental skill gap
+ * - high: 40-70% occurrence or significant impact on productivity
+ * - medium: 20-40% occurrence or moderate impact
+ * - low: <20% occurrence or minor impact
+ */
+export const SeverityLevelSchema = z.enum(['critical', 'high', 'medium', 'low']);
+export type SeverityLevel = z.infer<typeof SeverityLevelSchema>;
+
+/**
+ * Trend direction for growth areas over time
+ */
+export const TrendDirectionSchema = z.enum(['improving', 'stable', 'declining']);
+export type TrendDirection = z.infer<typeof TrendDirectionSchema>;
+
+/**
  * Growth area with specific examples
  * NOTE: min constraints removed - Gemini doesn't reliably follow minimum length requirements
+ *
+ * Enhanced with frequency, severity, priorityScore, and trend fields for
+ * quantified assessment and prioritization.
  */
 export const GrowthAreaSchema = z.object({
   title: z.string().max(50),
@@ -83,6 +102,23 @@ export const GrowthAreaSchema = z.object({
     .array(z.string())
     .optional()
     .describe('Links or resources to help (max 3)'),
+  // Quantification fields for definitive assessment
+  frequency: z
+    .number()
+    .min(0)
+    .max(100)
+    .optional()
+    .describe('Percentage of sessions where this pattern was observed (0-100)'),
+  severity: SeverityLevelSchema.optional()
+    .describe('How critical this growth area is to address'),
+  priorityScore: z
+    .number()
+    .min(0)
+    .max(100)
+    .optional()
+    .describe('Computed priority based on frequency × impact (0-100)'),
+  trend: TrendDirectionSchema.optional()
+    .describe('Direction of this pattern over time'),
 });
 export type GrowthArea = z.infer<typeof GrowthAreaSchema>;
 
@@ -194,6 +230,8 @@ export type DimensionStrength = z.infer<typeof DimensionStrengthSchema>;
 /**
  * Growth area within a specific dimension (full schema with evidence)
  * Used in VerboseEvaluation for storage and display
+ *
+ * Enhanced with quantification fields for definitive assessment.
  */
 export const DimensionGrowthAreaSchema = z.object({
   title: z.string().max(80).describe('Descriptive title for this growth area'),
@@ -203,6 +241,23 @@ export const DimensionGrowthAreaSchema = z.object({
     .optional()
     .describe('Quotes showing this opportunity (target: 2-4 quotes)'),
   recommendation: z.string().max(400).describe('Detailed, specific action to take with examples'),
+  // Quantification fields
+  frequency: z
+    .number()
+    .min(0)
+    .max(100)
+    .optional()
+    .describe('Percentage of sessions where this pattern was observed (0-100)'),
+  severity: SeverityLevelSchema.optional()
+    .describe('How critical this growth area is to address'),
+  priorityScore: z
+    .number()
+    .min(0)
+    .max(100)
+    .optional()
+    .describe('Computed priority based on frequency × impact (0-100)'),
+  trend: TrendDirectionSchema.optional()
+    .describe('Direction of this pattern over time'),
 });
 export type DimensionGrowthArea = z.infer<typeof DimensionGrowthAreaSchema>;
 
@@ -222,11 +277,16 @@ export const LLMDimensionStrengthSchema = z.object({
 /**
  * Growth area schema for LLM response - NO evidence field
  * Evidence is added in post-processing from Stage 1 data
+ *
+ * Enhanced with optional quantification fields.
  */
 export const LLMDimensionGrowthAreaSchema = z.object({
   title: z.string().max(80).describe('Descriptive title for this growth area'),
   description: z.string().max(500).describe('Detailed description of what could improve (qualitative, no scores)'),
   recommendation: z.string().max(400).describe('Detailed, specific action to take with examples'),
+  frequency: z.number().min(0).max(100).optional().describe('Session occurrence percentage (0-100)'),
+  severity: SeverityLevelSchema.optional().describe('critical|high|medium|low'),
+  priorityScore: z.number().min(0).max(100).optional().describe('Computed priority (0-100)'),
 });
 
 /**
@@ -236,8 +296,11 @@ export const LLMDimensionGrowthAreaSchema = z.object({
  * Gemini API's max nesting depth limit (~4 levels).
  *
  * Format:
- * - strengthsData: "title1|description1;title2|description2;..."
- * - growthAreasData: "title1|description1|recommendation1;title2|..."
+ * - strengthsData: "clusterId|title|description;..."
+ * - growthAreasData: "clusterId|title|description|recommendation|frequency|severity|priorityScore;..."
+ *   - frequency: 0-100 (session occurrence percentage)
+ *   - severity: critical|high|medium|low
+ *   - priorityScore: 0-100 (computed from frequency × impact)
  */
 export const LLMPerDimensionInsightSchema = z.object({
   dimension: DimensionNameEnumSchema,
@@ -247,9 +310,9 @@ export const LLMPerDimensionInsightSchema = z.object({
   strengthsData: z.string().max(5000).optional()
     .describe('0-8 strengths as "clusterId|title|description;..." format - clusterId MUST match Stage 1 cluster'),
 
-  /** Growth areas with clusterId: "clusterId|title|description|recommendation;..." */
+  /** Growth areas with quantification: "clusterId|title|description|recommendation|frequency|severity|priorityScore;..." */
   growthAreasData: z.string().max(5000).optional()
-    .describe('0-5 growth areas as "clusterId|title|description|recommendation;..." format - clusterId MUST match Stage 1 cluster'),
+    .describe('0-5 growth areas as "clusterId|title|desc|rec|freq|severity|priority;..." - include frequency (0-100), severity (critical/high/medium/low), priorityScore (0-100)'),
 });
 
 /**
@@ -272,15 +335,46 @@ export function parseStrengthsData(data: string | undefined): Array<{ clusterId?
 }
 
 /**
- * Helper to parse growthAreasData string into array of {clusterId?, title, description, recommendation}
- * Supports both new format (clusterId|title|description|recommendation) and legacy format (title|description|recommendation)
+ * Parsed growth area with optional quantification fields
  */
-export function parseGrowthAreasData(data: string | undefined): Array<{ clusterId?: string; title: string; description: string; recommendation: string }> {
+export interface ParsedGrowthArea {
+  clusterId?: string;
+  title: string;
+  description: string;
+  recommendation: string;
+  frequency?: number;
+  severity?: SeverityLevel;
+  priorityScore?: number;
+}
+
+/**
+ * Helper to parse growthAreasData string into array of growth areas
+ *
+ * Supported formats:
+ * - Extended: "clusterId|title|description|recommendation|frequency|severity|priorityScore;..."
+ * - Standard: "clusterId|title|description|recommendation;..."
+ * - Legacy: "title|description|recommendation;..."
+ */
+export function parseGrowthAreasData(data: string | undefined): ParsedGrowthArea[] {
   if (!data) return [];
   return data.split(';').filter(Boolean).map((s) => {
     const parts = s.split('|');
-    if (parts.length >= 4) {
-      // New format: clusterId|title|description|recommendation
+    if (parts.length >= 7) {
+      // Extended format with quantification: clusterId|title|desc|rec|freq|severity|priority
+      const freq = parseFloat(parts[4]);
+      const sev = parts[5] as SeverityLevel | undefined;
+      const priority = parseFloat(parts[6]);
+      return {
+        clusterId: parts[0],
+        title: parts[1],
+        description: parts[2],
+        recommendation: parts[3],
+        frequency: isNaN(freq) ? undefined : freq,
+        severity: ['critical', 'high', 'medium', 'low'].includes(sev || '') ? sev : undefined,
+        priorityScore: isNaN(priority) ? undefined : priority,
+      };
+    } else if (parts.length >= 4) {
+      // Standard format: clusterId|title|description|recommendation
       return { clusterId: parts[0], title: parts[1], description: parts[2], recommendation: parts.slice(3).join('|') };
     } else if (parts.length === 3) {
       // Legacy format: title|description|recommendation
@@ -919,6 +1013,31 @@ export const VerboseEvaluationSchema = z.object({
     model: z.string(),
     modelName: z.string(),
   }).optional().describe('Actual token usage and cost from LLM API calls'),
+
+  // NEW: Analysis metadata with confidence scores
+  analysisMetadata: z.object({
+    /** Overall confidence score (0-1, weighted average of agent scores) */
+    overallConfidence: z.number().min(0).max(1),
+    /** Confidence scores by individual agent */
+    agentConfidences: z.array(z.object({
+      agentId: z.string(),
+      agentName: z.string(),
+      confidenceScore: z.number().min(0).max(1),
+    })).optional(),
+    /** Total messages analyzed across all sessions */
+    totalMessagesAnalyzed: z.number().int().min(0),
+    /** Date range of analyzed sessions */
+    analysisDateRange: z.object({
+      earliest: z.string().datetime(),
+      latest: z.string().datetime(),
+    }).optional(),
+    /** Data quality indicator: high (10+), medium (5-9), low (<5 sessions) */
+    dataQuality: z.enum(['high', 'medium', 'low']),
+    /** Minimum confidence threshold applied */
+    confidenceThreshold: z.number().min(0).max(1).optional(),
+    /** Number of insights filtered due to low confidence */
+    insightsFiltered: z.number().int().min(0).optional(),
+  }).optional().describe('Analysis metadata for transparency and trust'),
 });
 export type VerboseEvaluation = z.infer<typeof VerboseEvaluationSchema>;
 

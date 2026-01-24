@@ -1,6 +1,8 @@
 /**
  * KnowledgeContent - Client Component
  * Knowledge base browsing with search and filters
+ *
+ * Uses dimension-based filtering (aligned with analysis dimensions)
  */
 
 'use client';
@@ -11,8 +13,22 @@ import { useKnowledgeList } from '@/hooks/useKnowledge';
 import { KnowledgeCard } from '@/components/knowledge/KnowledgeCard';
 import { AddKnowledgeDrawer } from '@/components/dashboard/AddKnowledgeDrawer';
 import { Search, Plus, X, Github } from 'lucide-react';
-import type { SourcePlatform, TopicCategory } from '@/types';
+import type { SourcePlatform } from '@/types';
 import styles from './page.module.css';
+
+/**
+ * Dimension names - aligned with analysis dimensions
+ */
+type DimensionName =
+  | 'aiCollaboration'
+  | 'contextEngineering'
+  | 'toolMastery'
+  | 'burnoutRisk'
+  | 'aiControl'
+  | 'skillResilience'
+  | 'iterationEfficiency'
+  | 'learningVelocity'
+  | 'scopeManagement';
 
 const PLATFORMS: Array<{ value: SourcePlatform | ''; label: string }> = [
   { value: '', label: 'All Platforms' },
@@ -23,23 +39,27 @@ const PLATFORMS: Array<{ value: SourcePlatform | ''; label: string }> = [
   { value: 'web', label: 'Web' },
 ];
 
-const CATEGORIES: Array<{ value: TopicCategory | ''; label: string }> = [
-  { value: '', label: 'All Categories' },
-  { value: 'prompt-engineering', label: 'Prompt Engineering' },
-  { value: 'context-engineering', label: 'Context Engineering' },
-  { value: 'claude-code-skills', label: 'Claude Code Skills' },
-  { value: 'tool-use', label: 'Tool Use' },
-  { value: 'subagents', label: 'Subagents' },
-  { value: 'workflow-automation', label: 'Workflow Automation' },
-  { value: 'best-practices', label: 'Best Practices' },
-  { value: 'other', label: 'Other' },
+/**
+ * Dimensions for filtering - aligned with analysis dimensions
+ */
+const DIMENSIONS: Array<{ value: DimensionName | ''; label: string }> = [
+  { value: '', label: 'All Dimensions' },
+  { value: 'aiCollaboration', label: 'AI Collaboration' },
+  { value: 'contextEngineering', label: 'Context Engineering' },
+  { value: 'toolMastery', label: 'Tool Mastery' },
+  { value: 'aiControl', label: 'AI Control' },
+  { value: 'skillResilience', label: 'Skill Resilience' },
+  { value: 'burnoutRisk', label: 'Burnout Risk' },
+  { value: 'iterationEfficiency', label: 'Iteration Efficiency' },
+  { value: 'learningVelocity', label: 'Learning Velocity' },
+  { value: 'scopeManagement', label: 'Scope Management' },
 ];
 
 export function KnowledgeContent() {
   const { isAuthenticated, isLoading: authLoading, signInWithGitHub } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [platform, setPlatform] = useState<SourcePlatform | ''>('');
-  const [category, setCategory] = useState<TopicCategory | ''>('');
+  const [dimension, setDimension] = useState<DimensionName | ''>('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
 
@@ -47,12 +67,12 @@ export function KnowledgeContent() {
     () => ({
       query: searchQuery || undefined,
       platform: platform || undefined,
-      category: category || undefined,
+      dimension: dimension || undefined,
       limit: 50,
       sortBy: 'createdAt' as const,
       sortOrder: 'desc' as const,
     }),
-    [searchQuery, platform, category]
+    [searchQuery, platform, dimension]
   );
 
   const { data, isLoading, error, refetch } = useKnowledgeList(queryParams);
@@ -63,21 +83,21 @@ export function KnowledgeContent() {
       value: platform,
       label: PLATFORMS.find((p) => p.value === platform)?.label || platform,
     },
-    category && {
-      type: 'category' as const,
-      value: category,
-      label: CATEGORIES.find((c) => c.value === category)?.label || category,
+    dimension && {
+      type: 'dimension' as const,
+      value: dimension,
+      label: DIMENSIONS.find((d) => d.value === dimension)?.label || dimension,
     },
   ].filter(Boolean);
 
-  const clearFilter = (type: 'platform' | 'category') => {
+  const clearFilter = (type: 'platform' | 'dimension') => {
     if (type === 'platform') setPlatform('');
-    if (type === 'category') setCategory('');
+    if (type === 'dimension') setDimension('');
   };
 
   const clearAllFilters = () => {
     setPlatform('');
-    setCategory('');
+    setDimension('');
     setSearchQuery('');
   };
 
@@ -180,10 +200,10 @@ export function KnowledgeContent() {
 
         <select
           className={styles.filterSelect}
-          value={category}
-          onChange={(e) => setCategory(e.target.value as TopicCategory | '')}
+          value={dimension}
+          onChange={(e) => setDimension(e.target.value as DimensionName | '')}
         >
-          {CATEGORIES.map(({ value, label }) => (
+          {DIMENSIONS.map(({ value, label }) => (
             <option key={value} value={value}>
               {label}
             </option>

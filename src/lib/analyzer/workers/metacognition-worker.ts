@@ -102,10 +102,13 @@ Return a JSON object with:
   - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes
   - Example: "Strong Self-Reflection|You regularly pause to assess your approach and recognize when something isn't working|'let me think about this','I'll try again','what am I missing?'"
 
-- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
-  - 2-3 metacognitive blind spots with evidence and actionable recommendations
-  - Each area needs: title, description, evidence quotes, specific recommendation
-  - Example: "Unrecognized Repetition|Same error patterns repeated without conscious awareness|'why isn't this working?','why isn't this working?','another error'|After 2 consecutive failures, pause and ask: 'What pattern am I seeing? What did I try before?'"
+- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation|frequency|severity|priorityScore;..."
+  - 2-3 metacognitive blind spots with evidence, recommendations, AND quantification
+  - Each area needs: title, description, evidence quotes, recommendation, frequency%, severity, priority
+  - **frequency**: Percentage of sessions where this blind spot was observed (0-100)
+  - **severity**: critical | high | medium | low (based on impact on effectiveness)
+  - **priorityScore**: 0-100 score for which to address first (frequency x severity)
+  - Example: "Unrecognized Repetition|Same error patterns repeated without conscious awareness|'why isn't this working?','why isn't this working?','another error'|After 2 consecutive failures, pause and ask: 'What pattern am I seeing? What did I try before?'|45|high|70"
 
 ## CRITICAL
 - Focus on patterns the user would be surprised to learn about

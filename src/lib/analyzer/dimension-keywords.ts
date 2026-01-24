@@ -1,6 +1,9 @@
 /**
  * Dimension Keywords - Mapping analysis dimensions to KB search parameters
  *
+ * SIMPLIFIED: Now that Knowledge Items use applicableDimensions directly,
+ * this file provides keyword configs for search refinement, not category mapping.
+ *
  * Each dimension has two keyword sets:
  * - reinforcement: For strengths (score >= 70) - advanced resources
  * - improvement: For growth areas (score < 70) - beginner resources
@@ -15,21 +18,14 @@ const INTERMEDIATE_THRESHOLD = 50;
 export type InsightMode = 'reinforcement' | 'improvement';
 export type ResourceLevel = 'beginner' | 'intermediate' | 'advanced';
 
-export type TopicCategory =
-  | 'context-engineering'
-  | 'claude-code-skills'
-  | 'subagents'
-  | 'memory-management'
-  | 'prompt-engineering'
-  | 'tool-use'
-  | 'workflow-automation'
-  | 'best-practices'
-  | 'other';
-
 export interface DimensionKeywordConfig {
+  /**
+   * Keywords for future semantic matching implementation.
+   * Currently unused - Professional Insights matching uses DB fields only
+   * (applicableDimensions, minScore, maxScore).
+   * @future Implement embedding-based matching with these keywords
+   */
   keywords: string[];
-  categories: TopicCategory[];
-  professionalInsightIds: string[];
   level: ResourceLevel;
   searchQuery: string;
 }
@@ -52,8 +48,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'AI pair programming mastery',
         'optimal AI interaction',
       ],
-      categories: ['prompt-engineering', 'best-practices'],
-      professionalInsightIds: ['pi-003', 'pi-014'],
       level: 'advanced',
       searchQuery: 'advanced AI collaboration techniques expert prompting',
     },
@@ -64,8 +58,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'clear instructions',
         'AI communication',
       ],
-      categories: ['prompt-engineering', 'best-practices'],
-      professionalInsightIds: ['pi-003', 'pi-012'],
       level: 'beginner',
       searchQuery: 'AI collaboration basics effective prompting beginners',
     },
@@ -81,8 +73,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'fresh session strategy',
         'context window ~50%',
       ],
-      categories: ['context-engineering', 'memory-management'],
-      professionalInsightIds: ['pi-006', 'pi-016'],
       level: 'advanced',
       searchQuery: 'advanced context engineering token optimization compact command',
     },
@@ -96,8 +86,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'WRITE strategy',
         'file references',
       ],
-      categories: ['context-engineering', 'prompt-engineering'],
-      professionalInsightIds: ['pi-006', 'pi-010', 'pi-011', 'pi-015'],
       level: 'beginner',
       searchQuery: 'context engineering basics context window management compact',
     },
@@ -111,8 +99,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'tool chain optimization',
         'subagent mastery',
       ],
-      categories: ['tool-use', 'subagents', 'workflow-automation'],
-      professionalInsightIds: ['pi-006', 'pi-014', 'pi-016'],
       level: 'advanced',
       searchQuery: 'advanced tool use orchestration multi-agent workflows',
     },
@@ -123,8 +109,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'tool selection',
         'basic automation',
       ],
-      categories: ['tool-use', 'claude-code-skills'],
-      professionalInsightIds: ['pi-014'],
       level: 'beginner',
       searchQuery: 'tool use basics when to use AI tools beginners',
     },
@@ -138,8 +122,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'efficient sessions',
         'healthy AI usage',
       ],
-      categories: ['best-practices', 'workflow-automation'],
-      professionalInsightIds: [],
       level: 'advanced',
       searchQuery: 'sustainable AI workflow productivity balance efficiency',
     },
@@ -150,8 +132,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'overreliance prevention',
         'healthy boundaries',
       ],
-      categories: ['best-practices'],
-      professionalInsightIds: ['pi-009'],
       level: 'beginner',
       searchQuery: 'AI burnout prevention session management healthy usage',
     },
@@ -165,8 +145,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'output steering',
         'expert verification',
       ],
-      categories: ['prompt-engineering', 'best-practices'],
-      professionalInsightIds: ['pi-002', 'pi-007', 'pi-013'],
       level: 'advanced',
       searchQuery: 'AI control mastery output steering verification expert',
     },
@@ -178,8 +156,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'code review',
         'modification practice',
       ],
-      categories: ['best-practices', 'prompt-engineering'],
-      professionalInsightIds: ['pi-002', 'pi-007', 'pi-013'],
       level: 'beginner',
       searchQuery: 'AI control basics verification code review modification',
     },
@@ -193,8 +169,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'cold start mastery',
         'continuous learning',
       ],
-      categories: ['best-practices'],
-      professionalInsightIds: ['pi-001', 'pi-013'],
       level: 'advanced',
       searchQuery: 'skill resilience maintenance independent coding mastery',
     },
@@ -206,8 +180,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'dependency reduction',
         'manual coding',
       ],
-      categories: ['best-practices'],
-      professionalInsightIds: ['pi-001', 'pi-009', 'pi-013'],
       level: 'beginner',
       searchQuery: 'skill atrophy prevention VCP cold start practice',
     },
@@ -226,8 +198,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'efficient debugging',
         'systematic approach',
       ],
-      categories: ['best-practices', 'prompt-engineering'],
-      professionalInsightIds: ['pi-iteration-efficiency', 'pi-011'],
       level: 'advanced',
       searchQuery: 'efficient iteration targeted debugging systematic approach',
     },
@@ -239,8 +209,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'vague requests',
         'unclear requirements',
       ],
-      categories: ['best-practices', 'prompt-engineering'],
-      professionalInsightIds: ['pi-iteration-efficiency', 'pi-011'],
       level: 'beginner',
       searchQuery: 'reduce iteration cycles clear requirements targeted requests',
     },
@@ -255,8 +223,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'pattern recognition',
         'independent application',
       ],
-      categories: ['best-practices'],
-      professionalInsightIds: ['pi-learning-velocity'],
       level: 'advanced',
       searchQuery: 'deep learning AI understanding knowledge transfer patterns',
     },
@@ -268,8 +234,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'AI dependency',
         'surface understanding',
       ],
-      categories: ['best-practices'],
-      professionalInsightIds: ['pi-learning-velocity'],
       level: 'beginner',
       searchQuery: 'learning from AI deep understanding avoid dependency',
     },
@@ -284,8 +248,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'proper decomposition',
         'focused requests',
       ],
-      categories: ['best-practices', 'prompt-engineering'],
-      professionalInsightIds: ['pi-012'],
       level: 'advanced',
       searchQuery: 'scope management task decomposition focused requests',
     },
@@ -297,8 +259,6 @@ export const DIMENSION_KEYWORDS: Record<DimensionName, DimensionMapping> = {
         'expanding requirements',
         'kitchen sink prompts',
       ],
-      categories: ['best-practices', 'prompt-engineering'],
-      professionalInsightIds: ['pi-012'],
       level: 'beginner',
       searchQuery: 'avoid scope creep clear boundaries task decomposition',
     },
@@ -313,15 +273,6 @@ export function getKeywordConfig(
   mode: InsightMode
 ): DimensionKeywordConfig {
   return DIMENSION_KEYWORDS[dimension][mode];
-}
-
-/**
- * Get all categories relevant to a dimension
- */
-export function getDimensionCategories(dimension: DimensionName): TopicCategory[] {
-  const reinforcement = DIMENSION_KEYWORDS[dimension].reinforcement.categories;
-  const improvement = DIMENSION_KEYWORDS[dimension].improvement.categories;
-  return [...new Set([...reinforcement, ...improvement])];
 }
 
 /**

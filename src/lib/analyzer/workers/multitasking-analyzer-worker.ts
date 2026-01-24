@@ -266,10 +266,13 @@ Return a JSON object with:
   - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes
   - Example: "Clear Session Boundaries|You consistently start sessions with clear scope statements, preventing context pollution|'in this session I'll only work on the API','let's focus on backend only'"
 
-- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation;..."
-  - 2-3 multitasking inefficiencies with evidence and actionable recommendations
-  - Each area needs: title, description, evidence quotes showing context pollution, specific recommendation
-  - Example: "Mid-Session Task Switching|You often interrupt focused work with unrelated requests, causing context pollution|'oh wait, not that','but also do this','let me do something else first'|Create separate sessions for different task types; finish current task before switching"
+- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation|frequency|severity|priorityScore;..."
+  - 2-3 multitasking inefficiencies with evidence, recommendations, AND quantification
+  - Each area needs: title, description, evidence quotes, recommendation, frequency%, severity, priority
+  - **frequency**: Percentage of sessions where this inefficiency was observed (0-100)
+  - **severity**: critical | high | medium | low (based on productivity impact)
+  - **priorityScore**: 0-100 score for which to address first (frequency x severity)
+  - Example: "Mid-Session Task Switching|You often interrupt focused work with unrelated requests, causing context pollution|'oh wait, not that','but also do this','let me do something else first'|Create separate sessions for different task types; finish current task before switching|60|high|78"
 
 ## CRITICAL
 - Focus on SAME PROJECT multitasking, not cross-project work

@@ -23,94 +23,15 @@ import {
   type AgentGrowthArea,
   type ParsedResource,
 } from '../../../lib/models/agent-outputs';
+import { AGENT_CONFIGS, type AgentConfig } from '../../../lib/domain/models';
 import { ResourceBubble } from './ResourceBubble';
+import { calculateSeverity, getSeverityBadge, type SeverityLevel } from './GrowthInsightsSection';
 import styles from './AgentInsightsSection.module.css';
 
 interface AgentInsightsSectionProps {
   agentOutputs: AgentOutputs;
   isPaid?: boolean;
 }
-
-type AgentTier = 'free' | 'premium';
-
-interface AgentCardConfig {
-  id: keyof AgentOutputs;
-  name: string;
-  icon: string;
-  scoreLabel: string;
-  scoreKey: string;
-  scoreMax: number;
-  tier: AgentTier;
-}
-
-const AGENT_CONFIGS: AgentCardConfig[] = [
-  // FREE tier agents
-  {
-    id: 'metacognition',
-    name: 'Metacognition',
-    icon: '🧠',
-    scoreLabel: 'Score',
-    scoreKey: 'metacognitiveAwarenessScore',
-    scoreMax: 100,
-    tier: 'free',
-  },
-  {
-    id: 'knowledgeGap',
-    name: 'Knowledge Gap',
-    icon: '📚',
-    scoreLabel: 'Score',
-    scoreKey: 'overallKnowledgeScore',
-    scoreMax: 100,
-    tier: 'free',
-  },
-
-  // PREMIUM tier agents
-  {
-    id: 'patternDetective',
-    name: 'Pattern Detective',
-    icon: '🔍',
-    scoreLabel: 'Score',
-    scoreKey: 'confidenceScore',
-    scoreMax: 1,
-    tier: 'premium',
-  },
-  {
-    id: 'antiPatternSpotter',
-    name: 'Anti-Pattern Spotter',
-    icon: '⚠️',
-    scoreLabel: 'Score',
-    scoreKey: 'overallHealthScore',
-    scoreMax: 100,
-    tier: 'premium',
-  },
-  {
-    id: 'contextEfficiency',
-    name: 'Context Efficiency',
-    icon: '⚡',
-    scoreLabel: 'Score',
-    scoreKey: 'overallEfficiencyScore',
-    scoreMax: 100,
-    tier: 'premium',
-  },
-  {
-    id: 'temporalAnalysis',
-    name: 'Temporal Analysis',
-    icon: '⏱️',
-    scoreLabel: 'Score',
-    scoreKey: 'confidenceScore',
-    scoreMax: 1,
-    tier: 'premium',
-  },
-  {
-    id: 'multitasking',
-    name: 'Multitasking',
-    icon: '🔄',
-    scoreLabel: 'Score',
-    scoreKey: 'multitaskingEfficiencyScore',
-    scoreMax: 100,
-    tier: 'premium',
-  },
-];
 
 function getScoreValue(data: unknown, key: string): number {
   if (typeof data !== 'object' || data === null) return 0;
@@ -504,9 +425,18 @@ function AgentStrengthsGrowthAreas({
               ? findMatchingResourcesForTitle(g.title, resources)
               : [];
 
+            // Calculate severity based on evidence count (or frequency if available)
+            const severity = calculateSeverity(g.frequency, g.evidence.length);
+            const severityBadge = getSeverityBadge(severity);
+
             return (
               <div key={idx} className={styles.insightCard}>
-                <h4 className={styles.insightTitle}>{g.title}</h4>
+                <div className={styles.titleWithSeverity}>
+                  <span className={`${styles.severityBadge} ${severityBadge.className}`}>
+                    {severityBadge.emoji}
+                  </span>
+                  <h4 className={styles.insightTitle}>{g.title}</h4>
+                </div>
                 <p className={styles.insightDescription}>{g.description}</p>
                 {g.evidence.length > 0 && (
                   <div className={styles.evidenceList}>

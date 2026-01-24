@@ -6,6 +6,11 @@
 
 // Knowledge models
 export {
+  // Dimension Names (unified classification)
+  DimensionNameSchema,
+  TOPIC_TO_DIMENSION_MAP,
+  type DimensionName,
+  // Legacy classification
   TopicCategorySchema,
   ContentTypeSchema,
   SourcePlatformSchema,
@@ -20,7 +25,7 @@ export {
   InsightCategorySchema,
   InsightSourceTypeSchema,
   ProfessionalInsightSchema,
-  INITIAL_INSIGHTS,
+  // Note: INITIAL_INSIGHTS removed - now in database (see supabase/migrations/018_seed_professional_insights.sql)
   type TopicCategory,
   type ContentType,
   type SourcePlatform,

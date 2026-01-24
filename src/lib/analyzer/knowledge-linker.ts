@@ -1,17 +1,19 @@
 /**
  * Knowledge Linker - Connects analysis dimensions to Knowledge Base items
  *
+ * SIMPLIFIED: Now that Knowledge Items use applicableDimensions directly,
+ * we can search by dimension without intermediate category mapping.
+ *
  * Retrieves relevant KB items for each dimension based on:
  * - Score (strength vs growth area)
- * - Keyword matching
- * - Category filtering
+ * - Direct dimension matching (applicableDimensions)
+ * - Keyword matching (subCategories)
  * - Professional Insights applicability
  */
 
 import type { DimensionName, DimensionResult } from '../models/unified-report';
 import {
   type InsightMode,
-  type TopicCategory,
   type ResourceLevel,
   getKeywordConfig,
   getModeFromScore,
@@ -19,6 +21,12 @@ import {
 } from './dimension-keywords';
 
 export type { InsightMode, ResourceLevel };
+
+/**
+ * @deprecated Category strings are no longer used for matching.
+ * Kept for backwards compatibility with LinkedKnowledge interface.
+ */
+type TopicCategory = string;
 
 // ============================================
 // Constants
@@ -28,7 +36,6 @@ const MAX_INSIGHTS_PER_DIMENSION = 3;
 const MAX_KNOWLEDGE_ITEMS = 5;
 const MIN_RELEVANCE_SCORE = 0.5;
 const DEFAULT_RELEVANCE_SCORE = 0.5;
-const ITEMS_PER_CATEGORY = 3;
 
 /**
  * Represents a linked knowledge item for a dimension
@@ -137,6 +144,9 @@ interface ProfessionalInsight {
 
 /**
  * Mock knowledge source for development/testing
+ *
+ * Returns empty arrays for all methods. For integration testing with real data,
+ * use SupabaseKnowledgeSource with a test database.
  */
 export class MockKnowledgeSource implements KnowledgeSource {
   async searchAdvanced(): Promise<KnowledgeItem[]> {
@@ -144,268 +154,25 @@ export class MockKnowledgeSource implements KnowledgeSource {
   }
 
   async getProfessionalInsights(): Promise<ProfessionalInsight[]> {
-    return INITIAL_PROFESSIONAL_INSIGHTS;
+    // Professional insights are now stored in the database.
+    // For testing, inject a mock or use SupabaseKnowledgeSource with fallback.
+    return [];
   }
 }
 
 /**
- * Initial professional insights (hardcoded from KB documentation)
+ * Professional Insights are now stored in the database
+ *
+ * @deprecated INITIAL_PROFESSIONAL_INSIGHTS has been removed.
+ * Professional insights are now managed in the `professional_insights` database table.
+ *
+ * For the canonical seed data, see:
+ * - supabase/migrations/018_seed_professional_insights.sql
+ *
+ * For fallback insights when database is unavailable, see:
+ * - src/lib/analyzer/supabase-knowledge-source.ts (FALLBACK_PROFESSIONAL_INSIGHTS)
  */
-const INITIAL_PROFESSIONAL_INSIGHTS: ProfessionalInsight[] = [
-  {
-    id: 'pi-001',
-    title: 'Skill Atrophy Self-Diagnosis',
-    keyTakeaway:
-      'Monitor your ability to code without AI assistance. Regular "cold starts" help maintain fundamental skills.',
-    actionableAdvice: [
-      'Try coding a small feature without AI once a week',
-      'Time yourself on basic tasks to track skill maintenance',
-      'Review AI suggestions critically before accepting',
-    ],
-    source: {
-      type: 'research',
-      author: 'VCP Research Team',
-      url: 'https://arxiv.org/abs/example',
-    },
-    applicableDimensions: ['skillResilience'],
-    maxScore: 60,
-    priority: 9,
-    enabled: true,
-  },
-  {
-    id: 'pi-002',
-    title: 'The 50% Modification Test',
-    keyTakeaway:
-      'Professional developers typically modify about 50% of AI-generated code. Low modification rates may indicate over-reliance.',
-    actionableAdvice: [
-      'Track how much AI code you modify vs accept as-is',
-      'Aim to understand every line before accepting',
-      'Use AI output as a starting point, not final answer',
-    ],
-    source: {
-      type: 'research',
-      author: 'Industry Survey 2024',
-    },
-    applicableDimensions: ['aiControl'],
-    maxScore: 50,
-    priority: 8,
-    enabled: true,
-  },
-  {
-    id: 'pi-003',
-    title: 'The 80% Planning Rule',
-    keyTakeaway:
-      'Spending 80% of time on planning and 20% on execution leads to better AI collaboration outcomes.',
-    actionableAdvice: [
-      'Write detailed specifications before starting',
-      'Break complex tasks into small, testable pieces',
-      'Plan validation criteria upfront',
-    ],
-    source: {
-      type: 'blog',
-      author: 'Simon Willison',
-      url: 'https://simonwillison.net/',
-    },
-    applicableDimensions: ['aiCollaboration', 'contextEngineering'],
-    priority: 7,
-    enabled: true,
-  },
-  {
-    id: 'pi-006',
-    title: 'Anthropic Context Engineering Techniques',
-    keyTakeaway:
-      'Master compaction, sub-agents, and JIT context loading for optimal Claude interactions.',
-    actionableAdvice: [
-      'Use /compact to summarize long conversations',
-      'Delegate specialized tasks to sub-agents',
-      'Load context just-in-time, not all upfront',
-    ],
-    source: {
-      type: 'official',
-      author: 'Anthropic',
-      url: 'https://docs.anthropic.com/',
-    },
-    applicableDimensions: ['contextEngineering', 'toolMastery'],
-    priority: 9,
-    enabled: true,
-  },
-  {
-    id: 'pi-007',
-    title: 'For Architects: Validate Against Your Plans',
-    keyTakeaway:
-      'Always verify AI output against your original architectural vision and constraints.',
-    actionableAdvice: [
-      'Create verification checkpoints in your workflow',
-      'Document architectural decisions before coding',
-      'Review AI code for pattern consistency',
-    ],
-    source: {
-      type: 'blog',
-      author: 'Software Architecture Weekly',
-    },
-    applicableDimensions: ['aiControl'],
-    priority: 6,
-    enabled: true,
-  },
-  {
-    id: 'pi-009',
-    title: 'AI Dependency Checklist',
-    keyTakeaway:
-      'Regularly assess your AI dependency level to prevent learned helplessness.',
-    actionableAdvice: [
-      'Can you explain the code without re-reading it?',
-      'Could you write this from scratch if needed?',
-      'Do you understand WHY this solution works?',
-    ],
-    source: {
-      type: 'research',
-      author: 'Developer Productivity Research',
-    },
-    applicableDimensions: ['skillResilience', 'burnoutRisk'],
-    maxScore: 50,
-    priority: 8,
-    enabled: true,
-  },
-  {
-    id: 'pi-010',
-    title: 'From Vibe Coding to Context Engineering',
-    keyTakeaway:
-      'Move beyond casual prompting to structured context engineering for professional results.',
-    actionableAdvice: [
-      'Learn the WRITE framework for context',
-      'Structure prompts with clear sections',
-      'Provide examples of desired output format',
-    ],
-    source: {
-      type: 'blog',
-      author: 'MIT Technology Review',
-      url: 'https://www.technologyreview.com/',
-    },
-    applicableDimensions: ['contextEngineering'],
-    maxScore: 70,
-    priority: 9,
-    enabled: true,
-  },
-  // Claude Code Best Practices (from ykdojo/claude-code-tips, Anthropic Engineering)
-  {
-    id: 'pi-011',
-    title: 'Fresh Sessions Outperform Continued Context',
-    keyTakeaway:
-      'Starting new sessions often yields better results than continuing degraded context. Use /compact or restart when AI responses become incoherent.',
-    actionableAdvice: [
-      'Start fresh sessions for new distinct tasks',
-      'Use /compact to summarize and clear when context degrades',
-      'Recognize context exhaustion: repetitive errors, ignoring instructions',
-    ],
-    source: {
-      type: 'blog',
-      author: 'Claude Code Tips',
-      url: 'https://github.com/ykdojo/claude-code-tips',
-    },
-    applicableDimensions: ['contextEngineering', 'iterationEfficiency'],
-    maxScore: 60,
-    priority: 9,
-    enabled: true,
-  },
-  {
-    id: 'pi-012',
-    title: 'Task Decomposition: The A→A1→A2→A3→B Pattern',
-    keyTakeaway:
-      'Break complex tasks into numbered subtasks. Complete each subtask before moving to the next. This prevents scope creep and improves AI focus.',
-    actionableAdvice: [
-      'Decompose tasks: "First do A1, then A2, then A3, then B"',
-      'Verify each subtask completion before proceeding',
-      'Keep subtasks small enough to complete in 1-2 AI turns',
-    ],
-    source: {
-      type: 'blog',
-      author: 'Claude Code Tips',
-      url: 'https://github.com/ykdojo/claude-code-tips',
-    },
-    applicableDimensions: ['scopeManagement', 'aiCollaboration'],
-    priority: 8,
-    enabled: true,
-  },
-  {
-    id: 'pi-013',
-    title: 'The Write-Test-Verify Cycle',
-    keyTakeaway:
-      'After AI generates code, always run tests before accepting. This catches hallucinations and ensures the code actually works.',
-    actionableAdvice: [
-      'Run "npm test" or equivalent after each significant change',
-      'Ask AI to write tests first, then implement',
-      'Never merge AI code without running the full test suite',
-    ],
-    source: {
-      type: 'official',
-      author: 'Anthropic Engineering',
-      url: 'https://www.anthropic.com/engineering/claude-code-best-practices',
-    },
-    applicableDimensions: ['aiControl', 'skillResilience'],
-    priority: 9,
-    enabled: true,
-  },
-  {
-    id: 'pi-014',
-    title: 'Simple Agents Beat Complex Ones',
-    keyTakeaway:
-      'Research from Anthropic shows simple, well-prompted agents outperform complex multi-step frameworks. Invest in prompts, not orchestration complexity.',
-    actionableAdvice: [
-      'Start with the simplest agent architecture that works',
-      'Add complexity only when simple approaches fail',
-      'Prefer explicit instructions over implicit inference',
-    ],
-    source: {
-      type: 'official',
-      author: 'Anthropic Engineering',
-      url: 'https://www.anthropic.com/engineering/building-effective-agents',
-    },
-    applicableDimensions: ['aiCollaboration', 'toolMastery'],
-    minScore: 60,
-    priority: 8,
-    enabled: true,
-  },
-  {
-    id: 'pi-015',
-    title: 'Treat Context Like Memory Allocation',
-    keyTakeaway:
-      'Context window is like RAM - finite and precious. Loading unnecessary files or long chat history causes "context OOM". Be deliberate about what you load.',
-    actionableAdvice: [
-      'Only read files you actually need',
-      'Use /compact before context becomes bloated',
-      'Clear context when switching tasks',
-    ],
-    source: {
-      type: 'official',
-      author: 'Anthropic',
-      url: 'https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents',
-    },
-    applicableDimensions: ['contextEngineering'],
-    maxScore: 70,
-    priority: 9,
-    enabled: true,
-  },
-  {
-    id: 'pi-016',
-    title: 'Reduce System Prompt to Recover 10k+ Tokens',
-    keyTakeaway:
-      'Heavy system prompts (CLAUDE.md, MCP tools) can consume 10k+ tokens before you even start. Audit and trim for meaningful context gains.',
-    actionableAdvice: [
-      'Use /cost command to check token usage',
-      'Remove redundant MCP servers from configuration',
-      'Keep CLAUDE.md under 500 lines',
-    ],
-    source: {
-      type: 'blog',
-      author: 'Claude Code Tips',
-      url: 'https://github.com/ykdojo/claude-code-tips',
-    },
-    applicableDimensions: ['contextEngineering', 'toolMastery'],
-    minScore: 70,
-    priority: 8,
-    enabled: true,
-  },
-];
+// REMOVED: INITIAL_PROFESSIONAL_INSIGHTS constant - now in database
 
 /**
  * KnowledgeLinker - Main class for dimension-KB integration
@@ -429,16 +196,11 @@ export class KnowledgeLinker {
     const config = getKeywordConfig(dimension, mode);
 
     const [knowledgeItems, allInsights] = await Promise.all([
-      this.searchKnowledge(config.searchQuery, config.categories, config.level),
+      this.searchKnowledge(config.searchQuery, config.level),
       this.source.getProfessionalInsights(),
     ]);
 
-    const professionalInsights = this.filterInsights(
-      allInsights,
-      dimension,
-      score,
-      config.professionalInsightIds
-    );
+    const professionalInsights = this.filterInsights(allInsights, dimension, score);
 
     return {
       dimension,
@@ -466,27 +228,20 @@ export class KnowledgeLinker {
   }
 
   /**
-   * Search KB for relevant items across all specified categories
+   * Search KB for relevant items using query string
    */
   private async searchKnowledge(
     query: string,
-    categories: TopicCategory[],
     targetLevel: ResourceLevel
   ): Promise<LinkedKnowledge[]> {
-    const searchPromises = categories.map((category) =>
-      this.source.searchAdvanced({
-        query,
-        category,
-        minScore: MIN_RELEVANCE_SCORE,
-        limit: ITEMS_PER_CATEGORY,
-        sortBy: 'relevance',
-      })
-    );
+    const items = await this.source.searchAdvanced({
+      query,
+      minScore: MIN_RELEVANCE_SCORE,
+      limit: MAX_KNOWLEDGE_ITEMS,
+      sortBy: 'relevance',
+    });
 
-    const itemsByCategory = await Promise.all(searchPromises);
-    const allItems = itemsByCategory.flat();
-
-    const linkedItems = allItems.map((item) =>
+    const linkedItems = items.map((item) =>
       this.toLinkedKnowledge(item, targetLevel)
     );
 
@@ -528,67 +283,56 @@ export class KnowledgeLinker {
 
   /**
    * Filter professional insights for a dimension
+   *
+   * Matching is now purely database-driven:
+   * - applicableDimensions: which dimensions the insight applies to
+   * - minScore/maxScore: score range for applicability
+   * - priority: higher priority insights are shown first
    */
   private filterInsights(
     insights: ProfessionalInsight[],
     dimension: DimensionName,
-    score: number,
-    preferredIds: string[]
+    score: number
   ): LinkedInsight[] {
     const applicableInsights = insights.filter((insight) =>
-      this.isInsightApplicable(insight, dimension, score, preferredIds)
+      this.isInsightApplicable(insight, dimension, score)
     );
 
-    const sortedInsights = this.sortInsightsByPreferenceAndPriority(
-      applicableInsights,
-      preferredIds
+    // Sort by priority (descending) and take top N
+    const sortedInsights = [...applicableInsights].sort(
+      (a, b) => b.priority - a.priority
     );
 
-    return sortedInsights.slice(0, MAX_INSIGHTS_PER_DIMENSION).map((insight) => this.toLinkedInsight(insight));
+    return sortedInsights
+      .slice(0, MAX_INSIGHTS_PER_DIMENSION)
+      .map((insight) => this.toLinkedInsight(insight));
   }
 
   /**
    * Check if an insight is applicable to the given dimension and score
+   *
+   * Uses database fields only:
+   * - enabled: must be true
+   * - applicableDimensions: must include dimension (or be empty for "all")
+   * - minScore/maxScore: score must be within range
    */
   private isInsightApplicable(
     insight: ProfessionalInsight,
     dimension: DimensionName,
-    score: number,
-    preferredIds: string[]
+    score: number
   ): boolean {
     if (!insight.enabled) return false;
 
     const matchesDimension =
       !insight.applicableDimensions ||
+      insight.applicableDimensions.length === 0 ||
       insight.applicableDimensions.includes(dimension);
 
     const withinMinScore = insight.minScore === undefined || score >= insight.minScore;
     const withinMaxScore = insight.maxScore === undefined || score <= insight.maxScore;
     const withinScoreRange = withinMinScore && withinMaxScore;
 
-    const isPreferred = preferredIds.includes(insight.id);
-
-    return matchesDimension && (withinScoreRange || isPreferred);
-  }
-
-  /**
-   * Sort insights: preferred first, then by priority (descending)
-   */
-  private sortInsightsByPreferenceAndPriority(
-    insights: ProfessionalInsight[],
-    preferredIds: string[]
-  ): ProfessionalInsight[] {
-    const preferredSet = new Set(preferredIds);
-    return [...insights].sort((a, b) => {
-      const aPreferred = preferredSet.has(a.id);
-      const bPreferred = preferredSet.has(b.id);
-
-      // Preferred items come first
-      if (aPreferred !== bPreferred) return bPreferred ? 1 : -1;
-
-      // Then sort by priority (descending)
-      return b.priority - a.priority;
-    });
+    return matchesDimension && withinScoreRange;
   }
 
   /**
