@@ -101,7 +101,8 @@ Return JSON with:
 - \`sessionStyleSummary\`: Session characteristics description
 - \`topInsights\`: Array of 3 actionable insights
 - \`strengthsData\`: "title|description|evidence;..." (2-3 items)
-- \`growthAreasData\`: "title|description|evidence|recommendation;..." (2-3 items)
+- \`growthAreasData\`: "title|description|evidence|recommendation|frequency|severity|priorityScore;..." (2-3 items)
+  - Include frequency% (0-100), severity (critical|high|medium|low), and priorityScore (0-100)
 - \`confidenceScore\`: Based on sample size (more data = higher confidence)
 
 ## EVIDENCE GUIDELINES
