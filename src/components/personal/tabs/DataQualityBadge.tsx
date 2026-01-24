@@ -133,7 +133,7 @@ export function DataQualityBadge({ metadata, compact = false }: DataQualityBadge
                 </span>
                 <div
                   className={styles.confidenceBar}
-                  style={{ '--confidence': agent.confidenceScore } as React.CSSProperties}
+                  style={{ '--confidence': `${agent.confidenceScore}` } as React.CSSProperties}
                 />
               </div>
             ))}
