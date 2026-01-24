@@ -13,6 +13,37 @@ import { type ParsedSession, type SessionMetrics } from '../domain/models/analys
 import { buildExpertKnowledgeContext } from './verbose-knowledge-context';
 
 /**
+ * No-hedging directive for confident, direct language in all outputs.
+ * This directive is injected into all LLM prompts to ensure definitive assessments.
+ */
+export const NO_HEDGING_DIRECTIVE = `
+<language_requirements>
+## CRITICAL: Direct, Confident Language
+
+Write with absolute certainty. Your assessments are evidence-based facts, not possibilities.
+
+**BANNED WORDS (never use these):**
+- Hedging: "may", "might", "could", "tends to", "seems", "appears", "possibly", "likely", "probably", "potentially"
+- Vague frequency: "often", "sometimes", "usually", "typically", "generally"
+- Weak qualifiers: "somewhat", "fairly", "rather", "quite", "a bit"
+
+**REQUIRED LANGUAGE:**
+- Use definitive verbs: "is", "does", "demonstrates", "shows", "indicates", "reveals", "exhibits"
+- Use quantified statements: "in X of Y sessions", "X% of the time", "consistently across N sessions"
+- Use direct observations: "You skip verification" NOT "You tend to skip verification"
+
+**EXAMPLES of required corrections:**
+- ❌ "You may struggle with X" → ✅ "You struggle with X (observed in 4 of 6 sessions)"
+- ❌ "You tend to ask about X" → ✅ "You ask about X repeatedly"
+- ❌ "This seems to indicate" → ✅ "This indicates"
+- ❌ "You often accept AI output" → ✅ "You accept AI output without verification"
+- ❌ "You might benefit from" → ✅ "You will benefit from"
+
+Every finding is a fact derived from evidence. State it as such.
+</language_requirements>
+`;
+
+/**
  * System prompt optimized for hyper-personalized analysis
  */
 export const VERBOSE_SYSTEM_PROMPT = `You are an expert behavioral analyst specializing in developer-AI collaboration patterns. Your expertise lies in identifying personality-revealing behaviors from conversation data and providing deeply personalized insights.
@@ -72,7 +103,10 @@ ${buildExpertKnowledgeContext()}
 - Insightful without being judgmental
 - Specific without being overwhelming
 - Encouraging without being sycophantic
+- DIRECT and DEFINITIVE - never hedge or soften findings
 </tone>
+
+${NO_HEDGING_DIRECTIVE}
 
 <type_definitions>
 The 5 AI Coding Styles:
