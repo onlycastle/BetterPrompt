@@ -195,6 +195,7 @@ export function RemoteReportContent({ resultId }: RemoteReportContentProps) {
             analysis={data}
             agentOutputs={data.agentOutputs}
             isPaid={isPaid}
+            analysisMetadata={data.analysisMetadata}
           />
         </div>
 

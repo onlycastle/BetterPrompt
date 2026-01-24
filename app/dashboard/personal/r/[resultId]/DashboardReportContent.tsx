@@ -140,6 +140,7 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
           analysis={data}
           agentOutputs={data.agentOutputs}
           isPaid={isPaid}
+          analysisMetadata={data.analysisMetadata}
         />
       </div>
 

@@ -26,6 +26,7 @@ export function ReportTab({ analysis, hasAnalysis, isPaid = false }: ReportTabPr
         analysis={analysis}
         agentOutputs={analysis.agentOutputs}
         isPaid={isPaid}
+        analysisMetadata={analysis.analysisMetadata}
       />
     </div>
   );
