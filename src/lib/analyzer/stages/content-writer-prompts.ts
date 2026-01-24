@@ -8,6 +8,8 @@
  * @module analyzer/stages/content-writer-prompts
  */
 
+import { NO_HEDGING_DIRECTIVE } from '../verbose-prompts';
+
 /**
  * Supported output languages for content generation
  */
@@ -165,14 +167,30 @@ STRENGTH SECTIONS:
 - Write detailed descriptions (up to 500 chars) that feel personal
 - Evidence quotes will be added automatically via clusterId matching
 
-GROWTH AREAS:
+GROWTH AREAS (with QUANTIFICATION):
 - Number of growth sections = number of growth clusters defined in Stage 1
 - Transform cluster.theme into actionable section title
 - Frame as opportunities, not criticisms
-- growthAreasData format: "clusterId|title|description|recommendation;..."
+- growthAreasData format: "clusterId|title|description|recommendation|frequency|severity|priorityScore;..."
   - clusterId must be copied exactly from Stage 1 growthClusterThemes (the part before the colon)
+  - frequency: Calculate as percentage (0-100) of sessions where this pattern occurred
+    * Count sessions with evidence quotes for this cluster
+    * Formula: (sessions with pattern / total sessions) × 100
+  - severity: Assign based on frequency thresholds:
+    * "critical" if frequency >= 70%
+    * "high" if frequency >= 40%
+    * "medium" if frequency >= 20%
+    * "low" if frequency < 20%
+  - priorityScore: Calculate as (frequency × 0.6) + (dimension impact × 0.4)
+    * Range: 0-100, higher = more urgent to address
 - Include detailed, actionable recommendations (up to 400 chars)
 - Evidence quotes will be added automatically via clusterId matching
+
+QUANTIFICATION RULES:
+- EVERY growth area MUST include frequency, severity, and priorityScore
+- Use actual session counts from Stage 1 data (dimensionSignals contains per-cluster quotes)
+- Count how many unique sessions contain evidence for each growth cluster
+- Be PRECISE with numbers - users trust quantified assessments more than vague claims
 
 ABSENCE-BASED GROWTH INTEGRATION (CRITICAL):
 - Check absenceBasedGrowthSignals from Stage 1 data
@@ -298,8 +316,11 @@ Return VerboseLLMResponse with all sections populated.
 To reduce nesting depth, use SEMICOLON-SEPARATED STRINGS instead of nested arrays:
 
 **dimensionInsights** - Use pipe-separated fields, semicolon between items:
-- strengthsData: "title1|description1;title2|description2;..." (NOT an array)
-- growthAreasData: "title1|description1|recommendation1;title2|..." (NOT an array)
+- strengthsData: "clusterId|title|description;clusterId|title|description;..." (NOT an array)
+- growthAreasData: "clusterId|title|description|recommendation|frequency|severity|priorityScore;..." (NOT an array)
+  * frequency: 0-100 (percentage of sessions)
+  * severity: critical|high|medium|low
+  * priorityScore: 0-100
 
 **promptPatterns** - Use pipe-separated fields, semicolon between items:
 - examplesData: "quote1|analysis1;quote2|analysis2;..." (NOT an array)
@@ -312,8 +333,8 @@ To reduce nesting depth, use SEMICOLON-SEPARATED STRINGS instead of nested array
 - personalitySummary (300-1500 chars)
 - dimensionInsights (exactly 6):
   - dimension, dimensionDisplayName
-  - strengthsData: "title|description;title|description;..." (0-8 items)
-  - growthAreasData: "title|description|recommendation;..." (0-5 items)
+  - strengthsData: "clusterId|title|description;..." (0-8 items)
+  - growthAreasData: "clusterId|title|desc|rec|freq|severity|priority;..." (0-5 items, with quantification)
 - promptPatterns (5-12):
   - patternName, description (600-800 chars with WHAT-WHY-HOW), frequency, effectiveness, tip
   - examplesData: "quote|analysis;quote|analysis;..." (1-5 items)
@@ -331,7 +352,9 @@ To reduce nesting depth, use SEMICOLON-SEPARATED STRINGS instead of nested array
 - Use ACTUAL quotes from the input data. Do not invent quotes.
 - Every insight must be grounded in the provided data.
 - Type classification values (primaryType, controlLevel, distribution) come from input data.
-- ESCAPE any pipe (|) or semicolon (;) characters within text fields with backslash.`;
+- ESCAPE any pipe (|) or semicolon (;) characters within text fields with backslash.
+
+${NO_HEDGING_DIRECTIVE}`;
 
 /**
  * Knowledge context for tip generation

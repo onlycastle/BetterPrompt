@@ -12,6 +12,8 @@
  * @module analyzer/stages/productivity-analyst-prompts
  */
 
+import { NO_HEDGING_DIRECTIVE } from '../verbose-prompts';
+
 /**
  * System prompt for the Productivity Analyst stage
  */
@@ -182,7 +184,9 @@ The developer's session data may contain non-English text (Korean, Japanese, Chi
 - High scores (80+) require CLEAR evidence of excellence
 - Low scores (30-) require CLEAR evidence of issues
 - Use actual counts for frequency metrics
-- Confidence should reflect data availability`;
+- Confidence should reflect data availability
+
+${NO_HEDGING_DIRECTIVE}`;
 
 /**
  * Build the user prompt for Productivity Analyst (Module C)
