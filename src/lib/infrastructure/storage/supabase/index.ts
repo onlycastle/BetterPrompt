@@ -30,7 +30,7 @@ export {
 } from './helpers';
 
 // Repositories
-export { createSupabaseAnalysisRepository } from './analysis-repo';
+// Note: createSupabaseAnalysisRepository removed - analyses table dropped (unused, replaced by analysis_results)
 export { createSupabaseKnowledgeRepository } from './knowledge-repo';
 export { createSupabaseInfluencerRepository } from './influencer-repo';
 export { createSupabaseUserRepository } from './user-repo';

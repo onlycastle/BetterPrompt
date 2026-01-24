@@ -29,16 +29,29 @@ import type {
   TopicCategory,
   SourcePlatform,
   KnowledgeStatus,
+  KnowledgeDimensionName,
 } from '../../../domain/models/index';
+import { TOPIC_TO_DIMENSION_MAP } from '../../../domain/models/index';
 
 function toKnowledgeItem(row: Record<string, unknown>): KnowledgeItem {
+  // Get applicable_dimensions from DB, or derive from legacy category
+  let applicableDimensions = row.applicable_dimensions as KnowledgeDimensionName[] | undefined;
+  const category = row.category as TopicCategory | undefined;
+
+  // If applicable_dimensions is empty/missing, derive from legacy category
+  if ((!applicableDimensions || applicableDimensions.length === 0) && category) {
+    applicableDimensions = [TOPIC_TO_DIMENSION_MAP[category]];
+  }
+
   return {
     id: row.id as string,
     version: row.version as '1.0.0',
     title: row.title as string,
     summary: row.summary as string,
     content: row.content as string,
-    category: row.category as TopicCategory,
+    applicableDimensions: applicableDimensions || ['skillResilience'],
+    subCategories: row.sub_categories as Record<KnowledgeDimensionName, string[]> | undefined,
+    category: category, // Keep for backward compatibility
     contentType: row.content_type as KnowledgeItem['contentType'],
     tags: row.tags as string[],
     source: row.source as KnowledgeItem['source'],
@@ -52,13 +65,25 @@ function toKnowledgeItem(row: Record<string, unknown>): KnowledgeItem {
 }
 
 function toDbRow(item: KnowledgeItem): Record<string, unknown> {
+  // Derive category from first applicable dimension if not provided (for legacy compatibility)
+  let category = item.category;
+  if (!category && item.applicableDimensions && item.applicableDimensions.length > 0) {
+    // Reverse lookup: find a category that maps to the first dimension
+    const firstDimension = item.applicableDimensions[0];
+    const entries = Object.entries(TOPIC_TO_DIMENSION_MAP) as [TopicCategory, KnowledgeDimensionName][];
+    const match = entries.find(([, dim]) => dim === firstDimension);
+    category = match ? match[0] : 'other';
+  }
+
   return {
     id: item.id,
     version: item.version,
     title: item.title,
     summary: item.summary,
     content: item.content,
-    category: item.category,
+    applicable_dimensions: item.applicableDimensions,
+    sub_categories: item.subCategories || {},
+    category: category || 'other', // Keep for legacy compatibility
     content_type: item.contentType,
     tags: item.tags,
     source: item.source,
@@ -159,6 +184,15 @@ export function createSupabaseKnowledgeRepository(): IKnowledgeRepository {
         if (filters.platform) {
           query = query.eq('source->>platform', filters.platform);
         }
+        // New: dimension-based filtering (primary)
+        if (filters.dimension) {
+          query = query.contains('applicable_dimensions', [filters.dimension]);
+        }
+        // New: multi-dimension filtering
+        if (filters.dimensions && filters.dimensions.length > 0) {
+          query = query.overlaps('applicable_dimensions', filters.dimensions);
+        }
+        // Legacy: category-based filtering (fallback)
         if (filters.category) {
           query = query.eq('category', filters.category);
         }
@@ -207,6 +241,14 @@ export function createSupabaseKnowledgeRepository(): IKnowledgeRepository {
           .select('*', { count: 'exact' })
           .or(`title.ilike.%${query}%,summary.ilike.%${query}%,content.ilike.%${query}%`);
 
+        // New: dimension-based filtering
+        if (filters?.dimension) {
+          dbQuery = dbQuery.contains('applicable_dimensions', [filters.dimension]);
+        }
+        if (filters?.dimensions && filters.dimensions.length > 0) {
+          dbQuery = dbQuery.overlaps('applicable_dimensions', filters.dimensions);
+        }
+        // Legacy: category-based filtering
         if (filters?.category) {
           dbQuery = dbQuery.eq('category', filters.category);
         }
@@ -241,47 +283,41 @@ export function createSupabaseKnowledgeRepository(): IKnowledgeRepository {
 
         const { data, error } = await supabase
           .from('knowledge_items')
-          .select('category, status, source, relevance');
+          .select('category, applicable_dimensions, status, source, relevance');
 
         if (error) {
           return err(StorageError.queryFailed(error.message));
         }
 
-        const byCategory: Record<TopicCategory, number> = {
-          'context-engineering': 0,
-          'claude-code-skills': 0,
-          'subagents': 0,
-          'memory-management': 0,
-          'prompt-engineering': 0,
-          'tool-use': 0,
-          'workflow-automation': 0,
-          'best-practices': 0,
-          'other': 0,
-        };
-        const byStatus: Record<KnowledgeStatus, number> = {
-          draft: 0,
-          reviewed: 0,
-          approved: 0,
-          archived: 0,
-        };
-        const byPlatform: Record<SourcePlatform, number> = {
-          reddit: 0,
-          twitter: 0,
-          threads: 0,
-          web: 0,
-          manual: 0,
-          youtube: 0,
-          linkedin: 0,
-        };
+        // New: dimension-based stats
+        const byDimension: Partial<Record<KnowledgeDimensionName, number>> = {};
+
+        // Legacy: category-based stats (kept for backward compatibility)
+        const byCategory: Partial<Record<TopicCategory, number>> = {};
+
+        const byStatus: Partial<Record<KnowledgeStatus, number>> = {};
+        const byPlatform: Partial<Record<SourcePlatform, number>> = {};
 
         let totalRelevanceScore = 0;
         let highQualityCount = 0;
 
         for (const row of data || []) {
-          byCategory[row.category as TopicCategory] =
-            (byCategory[row.category as TopicCategory] || 0) + 1;
-          byStatus[row.status as KnowledgeStatus] =
-            (byStatus[row.status as KnowledgeStatus] || 0) + 1;
+          // Count by dimension (new)
+          const dimensions = row.applicable_dimensions as KnowledgeDimensionName[] | undefined;
+          if (dimensions && dimensions.length > 0) {
+            for (const dim of dimensions) {
+              byDimension[dim] = (byDimension[dim] || 0) + 1;
+            }
+          }
+
+          // Count by category (legacy)
+          const category = row.category as TopicCategory | undefined;
+          if (category) {
+            byCategory[category] = (byCategory[category] || 0) + 1;
+          }
+
+          const status = row.status as KnowledgeStatus;
+          byStatus[status] = (byStatus[status] || 0) + 1;
 
           const source = row.source as { platform?: SourcePlatform };
           if (source?.platform) {
@@ -301,7 +337,8 @@ export function createSupabaseKnowledgeRepository(): IKnowledgeRepository {
 
         return ok({
           totalItems,
-          byCategory,
+          byDimension,
+          byCategory, // Legacy
           byStatus,
           byPlatform,
           avgRelevanceScore: totalItems > 0 ? totalRelevanceScore / totalItems : 0,
@@ -324,6 +361,14 @@ export function createSupabaseKnowledgeRepository(): IKnowledgeRepository {
         if (updates.title !== undefined) dbUpdates.title = updates.title;
         if (updates.summary !== undefined) dbUpdates.summary = updates.summary;
         if (updates.content !== undefined) dbUpdates.content = updates.content;
+        // New: dimension-based fields
+        if (updates.applicableDimensions !== undefined) {
+          dbUpdates.applicable_dimensions = updates.applicableDimensions;
+        }
+        if (updates.subCategories !== undefined) {
+          dbUpdates.sub_categories = updates.subCategories;
+        }
+        // Legacy: category (kept for backward compatibility)
         if (updates.category !== undefined) dbUpdates.category = updates.category;
         if (updates.contentType !== undefined) dbUpdates.content_type = updates.contentType;
         if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
