@@ -125,14 +125,29 @@ export const VerboseStrengthSchema = z.object({
 });
 
 /**
+ * Severity level for growth areas
+ */
+export const SeverityLevelSchema = z.enum(['critical', 'high', 'medium', 'low']);
+
+/**
  * Growth area with evidence and recommendation (for display in dimension section)
+ * Enhanced with quantification fields for definitive assessment
  */
 export const VerboseGrowthAreaSchema = z.object({
   title: z.string(),
   description: z.string(),
   evidence: z.array(VerboseEvidenceSchema),
   recommendation: z.string(),
+  // Quantification fields
+  frequency: z.number().min(0).max(100).optional()
+    .describe('Percentage of sessions where this pattern was observed'),
+  severity: SeverityLevelSchema.optional()
+    .describe('How critical this growth area is'),
+  priorityScore: z.number().min(0).max(100).optional()
+    .describe('Computed priority for addressing this area'),
 });
+
+export type SeverityLevel = z.infer<typeof SeverityLevelSchema>;
 
 export const DimensionResultSchema = z.object({
   name: DimensionNameSchema,
@@ -260,6 +275,51 @@ export const PremiumContentSchema = z.object({
 });
 
 // ============================================
+// PART 8: Analysis Metadata (NEW)
+// ============================================
+
+/**
+ * Confidence score by agent
+ */
+export const AgentConfidenceSchema = z.object({
+  agentId: z.string(),
+  agentName: z.string(),
+  confidenceScore: z.number().min(0).max(1),
+});
+
+/**
+ * Analysis metadata for transparency and trust
+ * Shows users what data was analyzed and how confident the system is
+ */
+export const AnalysisMetadataSchema = z.object({
+  /** Overall confidence score (0-1, weighted average of agent scores) */
+  overallConfidence: z.number().min(0).max(1),
+
+  /** Confidence scores by individual agent */
+  agentConfidences: z.array(AgentConfidenceSchema).optional(),
+
+  /** Number of messages analyzed across all sessions */
+  totalMessagesAnalyzed: z.number().int().min(0),
+
+  /** Date range of analyzed sessions */
+  analysisDateRange: z.object({
+    earliest: z.string().datetime(),
+    latest: z.string().datetime(),
+  }).optional(),
+
+  /** Analysis quality indicator */
+  dataQuality: z.enum(['high', 'medium', 'low']).describe(
+    'high: 10+ sessions, medium: 5-9 sessions, low: <5 sessions'
+  ),
+
+  /** Minimum confidence threshold applied (insights below this were filtered) */
+  confidenceThreshold: z.number().min(0).max(1).optional(),
+
+  /** Number of insights filtered due to low confidence */
+  insightsFiltered: z.number().int().min(0).optional(),
+});
+
+// ============================================
 // MAIN SCHEMA: UnifiedReport
 // ============================================
 
@@ -270,6 +330,9 @@ export const UnifiedReportSchema = z.object({
   id: z.string().uuid(),
   createdAt: z.string().datetime(),
   sessionsAnalyzed: z.number().int().min(1),
+
+  // Analysis Confidence & Quality (NEW)
+  analysisMetadata: AnalysisMetadataSchema.optional(),
 
   // Core Analysis
   profile: ProfileSchema,
@@ -325,6 +388,8 @@ export type GrowthRoadmap = z.infer<typeof GrowthRoadmapSchema>;
 export type ComparativeInsight = z.infer<typeof ComparativeInsightSchema>;
 export type SessionTrend = z.infer<typeof SessionTrendSchema>;
 export type PremiumContent = z.infer<typeof PremiumContentSchema>;
+export type AgentConfidence = z.infer<typeof AgentConfidenceSchema>;
+export type AnalysisMetadata = z.infer<typeof AnalysisMetadataSchema>;
 export type Tier = z.infer<typeof TierSchema>;
 export type UnifiedReport = z.infer<typeof UnifiedReportSchema>;
 
