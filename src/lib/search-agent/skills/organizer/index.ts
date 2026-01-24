@@ -118,9 +118,9 @@ export class OrganizerSkill extends BaseSkill<OrganizerInput, OrganizerOutput> {
           await knowledgeDb.save(validated.data);
           items.push(validated.data);
 
-          // Update counts
-          categoryCounts[validated.data.category] =
-            (categoryCounts[validated.data.category] || 0) + 1;
+          // Update counts (handle optional category)
+          const category = validated.data.category || 'other';
+          categoryCounts[category] = (categoryCounts[category] || 0) + 1;
         } catch (error) {
           errors.push({
             url: judgment.sourceUrl,

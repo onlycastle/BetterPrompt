@@ -90,7 +90,10 @@ export {
 // ============================================================================
 
 export {
-  // Classification
+  // Dimension Names (unified classification system)
+  DimensionNameSchema as KnowledgeDimensionNameSchema,
+  type DimensionName as KnowledgeDimensionName,
+  // Classification (legacy - kept for migration)
   TopicCategorySchema,
   ContentTypeSchema,
   SourcePlatformSchema,
@@ -120,6 +123,9 @@ export {
   type InsightSourceType,
   type ProfessionalInsight,
   // Constants
+  DIMENSION_DISPLAY_NAMES as KNOWLEDGE_DIMENSION_DISPLAY_NAMES,
+  ALL_DIMENSIONS,
+  TOPIC_TO_DIMENSION_MAP,
   DEFAULT_SEARCH_TOPICS,
   TOPIC_DISPLAY_NAMES,
   RELEVANCE_THRESHOLDS,
@@ -312,3 +318,21 @@ export {
   parseEnvBoolean,
   validateSupabaseConfig,
 } from './config';
+
+// ============================================================================
+// Agent Configuration
+// ============================================================================
+
+export {
+  AgentTierSchema,
+  AgentIdSchema,
+  type AgentTier,
+  type AgentId,
+  type AgentConfig,
+  AGENT_CONFIGS,
+  FREE_AGENT_IDS,
+  PREMIUM_AGENT_IDS,
+  isAgentFree,
+  getAgentConfig,
+  getAgentsByTier,
+} from './agent-config';

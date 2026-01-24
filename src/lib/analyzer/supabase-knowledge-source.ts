@@ -1,17 +1,31 @@
 /**
  * Supabase Knowledge Source Adapter
  *
- * Implements KnowledgeSource interface using IKnowledgeRepository.
- * Bridges the gap between Supabase storage and the KnowledgeLinker.
+ * Implements KnowledgeSource interface using IKnowledgeRepository and
+ * IProfessionalInsightRepository. Bridges the gap between Supabase storage
+ * and the KnowledgeLinker.
+ *
+ * SIMPLIFIED: Now that Knowledge Items use applicableDimensions directly,
+ * we can search by dimension without intermediate category mapping.
  *
  * @module analyzer/supabase-knowledge-source
  */
 
-import type { IKnowledgeRepository } from '../application/ports/storage';
-import type { KnowledgeItem as DomainKnowledgeItem } from '../domain/models/index';
+import type {
+  IKnowledgeRepository,
+  IProfessionalInsightRepository,
+} from '../application/ports/storage';
+import type {
+  KnowledgeItem as DomainKnowledgeItem,
+  ProfessionalInsight as DomainProfessionalInsight,
+  KnowledgeDimensionName,
+} from '../domain/models/index';
 
-// Re-use types from knowledge-linker (avoid circular import)
-import type { TopicCategory } from './dimension-keywords';
+/**
+ * @deprecated Category strings are no longer used for matching.
+ * Kept for backwards compatibility with internal interfaces.
+ */
+type TopicCategory = string;
 
 // ============================================
 // Types
@@ -61,11 +75,22 @@ export interface ProfessionalInsight {
 export interface KnowledgeSource {
   searchAdvanced(options: {
     query?: string;
+    /** @deprecated Use dimension instead */
     category?: string;
+    dimension?: KnowledgeDimensionName;
+    dimensions?: KnowledgeDimensionName[];
     minScore?: number;
     limit?: number;
     sortBy?: 'relevance' | 'date' | 'score';
   }): Promise<KnowledgeItem[]>;
+
+  /**
+   * Search by dimension directly (simplified API)
+   */
+  searchByDimension?(
+    dimension: KnowledgeDimensionName,
+    options?: { limit?: number; minScore?: number }
+  ): Promise<KnowledgeItem[]>;
 
   getProfessionalInsights(): Promise<ProfessionalInsight[]>;
 }
@@ -75,6 +100,7 @@ export interface KnowledgeSource {
  */
 export interface SupabaseKnowledgeSourceConfig {
   repository: IKnowledgeRepository;
+  insightRepository?: IProfessionalInsightRepository;
   cacheTTL?: number; // milliseconds, default 5 minutes
   fallbackToHardcoded?: boolean; // use hardcoded insights if Supabase fails
 }
@@ -353,17 +379,19 @@ const FALLBACK_PROFESSIONAL_INSIGHTS: ProfessionalInsight[] = [
  *
  * Features:
  * - In-memory caching with TTL
- * - Graceful fallback to hardcoded insights on error
+ * - Professional insights from database (with fallback to hardcoded)
  * - Type mapping from domain models to linker types
  */
 export class SupabaseKnowledgeSource implements KnowledgeSource {
   private repository: IKnowledgeRepository;
+  private insightRepository?: IProfessionalInsightRepository;
   private cache: Map<string, CacheEntry<unknown>>;
   private cacheTTL: number;
   private fallbackToHardcoded: boolean;
 
   constructor(config: SupabaseKnowledgeSourceConfig) {
     this.repository = config.repository;
+    this.insightRepository = config.insightRepository;
     this.cache = new Map();
     this.cacheTTL = config.cacheTTL ?? 5 * 60 * 1000; // 5 minutes default
     this.fallbackToHardcoded = config.fallbackToHardcoded ?? true;
@@ -371,10 +399,14 @@ export class SupabaseKnowledgeSource implements KnowledgeSource {
 
   /**
    * Search knowledge items with advanced filtering
+   * Now supports dimension-based filtering (preferred over category)
    */
   async searchAdvanced(options: {
     query?: string;
+    /** @deprecated Use dimension instead */
     category?: string;
+    dimension?: KnowledgeDimensionName;
+    dimensions?: KnowledgeDimensionName[];
     minScore?: number;
     limit?: number;
     sortBy?: 'relevance' | 'date' | 'score';
@@ -386,26 +418,23 @@ export class SupabaseKnowledgeSource implements KnowledgeSource {
     }
 
     try {
+      // Build filters with dimension support
+      // Category is deprecated - dimension-based filtering is preferred
+      const filters = {
+        dimension: options.dimension,
+        dimensions: options.dimensions,
+        minScore: options.minScore,
+      };
+
       // Use fullTextSearch if query provided, otherwise use search with filters
       const result = options.query
-        ? await this.repository.fullTextSearch(
-            options.query,
-            {
-              category: options.category as TopicCategory | undefined,
-              minScore: options.minScore,
-            },
-            { limit: options.limit ?? 10 }
-          )
-        : await this.repository.search(
-            {
-              category: options.category as TopicCategory | undefined,
-              minScore: options.minScore,
-            },
-            {
-              pagination: { limit: options.limit ?? 10 },
-              sort: this.mapSortOption(options.sortBy),
-            }
-          );
+        ? await this.repository.fullTextSearch(options.query, filters, {
+            limit: options.limit ?? 10,
+          })
+        : await this.repository.search(filters, {
+            pagination: { limit: options.limit ?? 10 },
+            sort: this.mapSortOption(options.sortBy),
+          });
 
       if (!result.success) {
         console.warn('[SupabaseKnowledgeSource] Search failed:', result.error);
@@ -422,8 +451,23 @@ export class SupabaseKnowledgeSource implements KnowledgeSource {
   }
 
   /**
-   * Get professional insights
-   * Falls back to hardcoded insights if Supabase fails
+   * Search by dimension directly (simplified API)
+   */
+  async searchByDimension(
+    dimension: KnowledgeDimensionName,
+    options?: { limit?: number; minScore?: number }
+  ): Promise<KnowledgeItem[]> {
+    return this.searchAdvanced({
+      dimension,
+      limit: options?.limit ?? 5,
+      minScore: options?.minScore,
+      sortBy: 'relevance',
+    });
+  }
+
+  /**
+   * Get professional insights from database
+   * Falls back to hardcoded insights if Supabase fails or repository not configured
    */
   async getProfessionalInsights(): Promise<ProfessionalInsight[]> {
     const cacheKey = 'professional_insights';
@@ -432,15 +476,50 @@ export class SupabaseKnowledgeSource implements KnowledgeSource {
       return cached;
     }
 
-    // For now, return fallback insights
-    // TODO: When professional_insights table is added to Supabase,
-    // query from there instead
+    // Try to fetch from database if repository is configured
+    if (this.insightRepository) {
+      try {
+        const result = await this.insightRepository.findEnabled();
+        if (result.success) {
+          const insights = result.data.map(this.mapDomainToLinkerInsight);
+          this.setCache(cacheKey, insights);
+          return insights;
+        }
+        console.warn('[SupabaseKnowledgeSource] Failed to fetch insights:', result.error);
+      } catch (error) {
+        console.warn('[SupabaseKnowledgeSource] Error fetching insights:', error);
+      }
+    }
+
+    // Fall back to hardcoded insights
     if (this.fallbackToHardcoded) {
       this.setCache(cacheKey, FALLBACK_PROFESSIONAL_INSIGHTS);
       return FALLBACK_PROFESSIONAL_INSIGHTS;
     }
 
     return [];
+  }
+
+  /**
+   * Map domain ProfessionalInsight to linker's simplified format
+   */
+  private mapDomainToLinkerInsight(insight: DomainProfessionalInsight): ProfessionalInsight {
+    return {
+      id: insight.id,
+      title: insight.title,
+      keyTakeaway: insight.keyTakeaway,
+      actionableAdvice: insight.actionableAdvice,
+      source: {
+        type: insight.source.type,
+        author: insight.source.author,
+        url: insight.source.url,
+      },
+      applicableDimensions: insight.applicableDimensions,
+      minScore: insight.minScore,
+      maxScore: insight.maxScore,
+      priority: insight.priority,
+      enabled: insight.enabled,
+    };
   }
 
   /**
@@ -462,7 +541,7 @@ export class SupabaseKnowledgeSource implements KnowledgeSource {
       id: item.id,
       title: item.title,
       summary: item.summary,
-      category: item.category,
+      category: item.category || 'other', // Default to 'other' if not set
       source: item.source
         ? {
             url: item.source.url,
@@ -538,6 +617,9 @@ export class SupabaseKnowledgeSource implements KnowledgeSource {
 
 /**
  * Create a SupabaseKnowledgeSource instance
+ *
+ * @param repository - Knowledge items repository
+ * @param options - Additional configuration options including insightRepository
  */
 export function createSupabaseKnowledgeSource(
   repository: IKnowledgeRepository,
@@ -545,6 +627,25 @@ export function createSupabaseKnowledgeSource(
 ): SupabaseKnowledgeSource {
   return new SupabaseKnowledgeSource({
     repository,
+    ...options,
+  });
+}
+
+/**
+ * Create a fully-configured SupabaseKnowledgeSource with both repositories
+ *
+ * @param knowledgeRepository - Knowledge items repository
+ * @param insightRepository - Professional insights repository
+ * @param options - Additional configuration options
+ */
+export function createFullSupabaseKnowledgeSource(
+  knowledgeRepository: IKnowledgeRepository,
+  insightRepository: IProfessionalInsightRepository,
+  options?: Partial<Omit<SupabaseKnowledgeSourceConfig, 'repository' | 'insightRepository'>>
+): SupabaseKnowledgeSource {
+  return new SupabaseKnowledgeSource({
+    repository: knowledgeRepository,
+    insightRepository,
     ...options,
   });
 }

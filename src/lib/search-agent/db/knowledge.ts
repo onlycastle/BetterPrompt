@@ -9,9 +9,11 @@ import { getSupabase } from '../../supabase';
 import type {
   KnowledgeItem,
   TopicCategory,
+  DimensionName,
   SourcePlatform,
   KnowledgeStatus,
 } from '../models/index';
+import { TOPIC_TO_DIMENSION_MAP } from '../models/index';
 import type { KnowledgeStats, QualityMetrics } from '../storage/knowledge-store';
 
 /**
@@ -29,7 +31,10 @@ export interface QueryOptions {
  */
 export interface KnowledgeFilters {
   platform?: SourcePlatform;
+  /** @deprecated Use dimension instead */
   category?: TopicCategory;
+  dimension?: DimensionName;
+  dimensions?: DimensionName[];
   author?: string;
   influencerId?: string;
   minScore?: number;
@@ -51,13 +56,24 @@ export interface PaginatedResult<T> {
  * Transform database row to domain model
  */
 function toKnowledgeItem(row: Record<string, unknown>): KnowledgeItem {
+  // Get applicable_dimensions from DB, or derive from legacy category
+  let applicableDimensions = row.applicable_dimensions as DimensionName[] | undefined;
+  const category = row.category as TopicCategory | undefined;
+
+  // If applicable_dimensions is empty/missing, derive from legacy category
+  if ((!applicableDimensions || applicableDimensions.length === 0) && category) {
+    applicableDimensions = [TOPIC_TO_DIMENSION_MAP[category]];
+  }
+
   return {
     id: row.id as string,
     version: row.version as '1.0.0',
     title: row.title as string,
     summary: row.summary as string,
     content: row.content as string,
-    category: row.category as TopicCategory,
+    applicableDimensions: applicableDimensions || ['skillResilience'],
+    subCategories: row.sub_categories as Record<DimensionName, string[]> | undefined,
+    category: category, // Legacy
     contentType: row.content_type as KnowledgeItem['contentType'],
     tags: row.tags as string[],
     source: row.source as KnowledgeItem['source'],
@@ -74,13 +90,25 @@ function toKnowledgeItem(row: Record<string, unknown>): KnowledgeItem {
  * Transform domain model to database row
  */
 function toDbRow(item: KnowledgeItem): Record<string, unknown> {
+  // Derive category from first applicable dimension if not provided (for legacy compatibility)
+  let category = item.category;
+  if (!category && item.applicableDimensions && item.applicableDimensions.length > 0) {
+    // Reverse lookup: find a category that maps to the first dimension
+    const firstDimension = item.applicableDimensions[0];
+    const entries = Object.entries(TOPIC_TO_DIMENSION_MAP) as [TopicCategory, DimensionName][];
+    const match = entries.find(([, dim]) => dim === firstDimension);
+    category = match ? match[0] : 'other';
+  }
+
   return {
     id: item.id,
     version: item.version,
     title: item.title,
     summary: item.summary,
     content: item.content,
-    category: item.category,
+    applicable_dimensions: item.applicableDimensions || [],
+    sub_categories: item.subCategories || {},
+    category: category || 'other', // Legacy
     content_type: item.contentType,
     tags: item.tags,
     source: item.source,
@@ -164,6 +192,15 @@ export const knowledgeDb = {
     if (filters.platform) {
       query = query.eq('source->>platform', filters.platform);
     }
+    // New: dimension-based filtering (primary)
+    if (filters.dimension) {
+      query = query.contains('applicable_dimensions', [filters.dimension]);
+    }
+    // New: multi-dimension filtering
+    if (filters.dimensions && filters.dimensions.length > 0) {
+      query = query.overlaps('applicable_dimensions', filters.dimensions);
+    }
+    // Legacy: category-based filtering (fallback)
     if (filters.category) {
       query = query.eq('category', filters.category);
     }

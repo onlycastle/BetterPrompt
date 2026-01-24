@@ -10,11 +10,35 @@
 import { z } from 'zod';
 
 // ============================================================================
-// Topic & Content Classification
+// Dimension Names (imported concept from unified-report.ts)
+// ============================================================================
+
+/**
+ * 9 Analysis Dimensions - shared between Professional Insights and Knowledge Items
+ * This creates alignment between what we measure and what we recommend.
+ */
+export const DimensionNameSchema = z.enum([
+  // Original 6 dimensions
+  'aiCollaboration',
+  'contextEngineering',
+  'toolMastery',
+  'burnoutRisk',
+  'aiControl',
+  'skillResilience',
+  // New 3 dimensions (Phase 3 - Premium/Enterprise)
+  'iterationEfficiency',
+  'learningVelocity',
+  'scopeManagement',
+]);
+export type DimensionName = z.infer<typeof DimensionNameSchema>;
+
+// ============================================================================
+// Topic & Content Classification (Legacy - kept for DB migration compatibility)
 // ============================================================================
 
 /**
  * Topic categories for AI engineering knowledge
+ * @deprecated Use applicableDimensions + subCategories instead
  */
 export const TopicCategorySchema = z.enum([
   'context-engineering',
@@ -105,6 +129,10 @@ export type KnowledgeRelevance = z.infer<typeof KnowledgeRelevanceSchema>;
 
 /**
  * Knowledge item - a single piece of curated knowledge
+ *
+ * Uses applicableDimensions + subCategories to align with Professional Insights:
+ * - applicableDimensions: Which dimensions this knowledge helps with (min 1)
+ * - subCategories: Keywords per dimension for search matching
  */
 export const KnowledgeItemSchema = z.object({
   id: z.string().uuid(),
@@ -115,8 +143,14 @@ export const KnowledgeItemSchema = z.object({
   summary: z.string().min(50).max(1000),
   content: z.string().min(100).max(10000),
 
-  // Classification
-  category: TopicCategorySchema,
+  // Classification - NEW unified dimension system
+  applicableDimensions: z.array(DimensionNameSchema).min(1),
+  subCategories: z.record(DimensionNameSchema, z.array(z.string())).optional(),
+
+  // Legacy classification (kept for migration, will be removed)
+  /** @deprecated Use applicableDimensions instead */
+  category: TopicCategorySchema.optional(),
+
   contentType: ContentTypeSchema,
   tags: z.array(z.string()).min(1).max(10),
 
@@ -138,12 +172,14 @@ export const KnowledgeItemSchema = z.object({
 export type KnowledgeItem = z.infer<typeof KnowledgeItemSchema>;
 
 /**
- * Knowledge collection - grouped items by category
+ * Knowledge collection - grouped items by dimension
  */
 export const KnowledgeCollectionSchema = z.object({
   version: z.literal('1.0.0'),
   updatedAt: z.string().datetime(),
-  categories: z.record(TopicCategorySchema, z.array(z.string().uuid())),
+  dimensions: z.record(DimensionNameSchema, z.array(z.string().uuid())),
+  /** @deprecated Use dimensions instead */
+  categories: z.record(TopicCategorySchema, z.array(z.string().uuid())).optional(),
   totalItems: z.number(),
 });
 export type KnowledgeCollection = z.infer<typeof KnowledgeCollectionSchema>;
@@ -153,9 +189,11 @@ export type KnowledgeCollection = z.infer<typeof KnowledgeCollectionSchema>;
  */
 export interface KnowledgeStats {
   totalItems: number;
-  byCategory: Record<TopicCategory, number>;
-  byPlatform: Record<SourcePlatform, number>;
-  byStatus: Record<KnowledgeStatus, number>;
+  byDimension: Partial<Record<DimensionName, number>>;
+  /** @deprecated Use byDimension instead */
+  byCategory?: Partial<Record<TopicCategory, number>>;
+  byPlatform: Partial<Record<SourcePlatform, number>>;
+  byStatus: Partial<Record<KnowledgeStatus, number>>;
   avgRelevanceScore: number;
   highQualityCount: number; // score >= 0.7
 }
@@ -164,6 +202,9 @@ export interface KnowledgeStats {
  * Knowledge search filters
  */
 export interface KnowledgeFilters {
+  dimension?: DimensionName;
+  dimensions?: DimensionName[]; // Search across multiple dimensions
+  /** @deprecated Use dimension instead */
   category?: TopicCategory;
   platform?: SourcePlatform;
   status?: KnowledgeStatus;
@@ -255,7 +296,40 @@ export type ProfessionalInsight = z.infer<typeof ProfessionalInsightSchema>;
 // ============================================================================
 
 /**
+ * Dimension display names for UI (unified with unified-report.ts)
+ */
+export const DIMENSION_DISPLAY_NAMES: Record<DimensionName, string> = {
+  // Original 6 dimensions
+  aiCollaboration: 'AI Collaboration Mastery',
+  contextEngineering: 'Context Engineering',
+  toolMastery: 'Tool Mastery',
+  burnoutRisk: 'Burnout Risk',
+  aiControl: 'AI Control Index',
+  skillResilience: 'Skill Resilience',
+  // New 3 dimensions (Phase 3 - Premium/Enterprise)
+  iterationEfficiency: 'Iteration Efficiency',
+  learningVelocity: 'Learning Velocity',
+  scopeManagement: 'Scope Management',
+};
+
+/**
+ * All dimension names for iteration
+ */
+export const ALL_DIMENSIONS: DimensionName[] = [
+  'aiCollaboration',
+  'contextEngineering',
+  'toolMastery',
+  'burnoutRisk',
+  'aiControl',
+  'skillResilience',
+  'iterationEfficiency',
+  'learningVelocity',
+  'scopeManagement',
+];
+
+/**
  * Default topic categories for searches
+ * @deprecated Use ALL_DIMENSIONS instead
  */
 export const DEFAULT_SEARCH_TOPICS: TopicCategory[] = [
   'context-engineering',
@@ -270,6 +344,7 @@ export const DEFAULT_SEARCH_TOPICS: TopicCategory[] = [
 
 /**
  * Topic display names for UI
+ * @deprecated Use DIMENSION_DISPLAY_NAMES instead
  */
 export const TOPIC_DISPLAY_NAMES: Record<TopicCategory, string> = {
   'context-engineering': 'Context Engineering',
@@ -284,6 +359,22 @@ export const TOPIC_DISPLAY_NAMES: Record<TopicCategory, string> = {
 };
 
 /**
+ * Mapping from legacy TopicCategory to DimensionName
+ * Used during migration and for backward compatibility
+ */
+export const TOPIC_TO_DIMENSION_MAP: Record<TopicCategory, DimensionName> = {
+  'context-engineering': 'contextEngineering',
+  'memory-management': 'contextEngineering',
+  'prompt-engineering': 'aiCollaboration',
+  'tool-use': 'toolMastery',
+  subagents: 'toolMastery',
+  'claude-code-skills': 'toolMastery',
+  'workflow-automation': 'iterationEfficiency',
+  'best-practices': 'skillResilience',
+  other: 'skillResilience',
+};
+
+/**
  * Relevance score thresholds
  */
 export const RELEVANCE_THRESHOLDS = {
@@ -293,11 +384,25 @@ export const RELEVANCE_THRESHOLDS = {
 } as const;
 
 // ============================================================================
-// Initial Professional Insights
+// Initial Professional Insights (DEPRECATED - now in database)
 // ============================================================================
 
 /**
  * Initial Professional Insights based on verified research
+ *
+ * @deprecated Professional insights are now stored in the `professional_insights`
+ * database table. This constant is kept only as a reference for the seed migration.
+ *
+ * For accessing insights programmatically, use:
+ * ```typescript
+ * import { createSupabaseProfessionalInsightRepository } from '../infrastructure/storage/supabase/professional-insight-repo';
+ * const repo = createSupabaseProfessionalInsightRepository();
+ * const result = await repo.findEnabled();
+ * ```
+ *
+ * See also:
+ * - supabase/migrations/017_professional_insights.sql (schema)
+ * - supabase/migrations/018_seed_professional_insights.sql (seed data)
  *
  * Sources:
  * - VCP Paper (arXiv:2601.02410)
