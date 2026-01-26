@@ -427,45 +427,23 @@ Specific resource recommendations create actionable growth paths.
 ${NO_HEDGING_DIRECTIVE}`;
 
 export function buildKnowledgeGapUserPrompt(
-  sessionsFormatted: string,
-  moduleAOutput: string,
-  outputLanguage: SupportedLanguage = 'en'
+  phase1OutputJson: string,
 ): string {
-  const useNonEnglish = outputLanguage !== 'en';
-  const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
+  return `## PHASE 1 EXTRACTION DATA
+Analyze this extracted data to identify knowledge gaps and learning progress.
 
-  const languageInstructions = useNonEnglish
-    ? `
-## CRITICAL: ${langName} Output Required
+\`\`\`json
+${phase1OutputJson}
+\`\`\`
 
-**Write all output in ${langName}.**
-
-The developer's content is in ${langName}. You MUST write ALL fields in **${langName}**:
-- topInsights: Write in ${langName}
-- Knowledge gap descriptions: Write in ${langName}
-- Learning progress analysis: Write in ${langName}
-
-Keep technical terms and resource names in English.
-Recommend ${langName} resources when available.
-
-`
-    : `
-## CRITICAL: English Output Required
-
-**Write ALL output fields in English.**
-Even if the input data contains non-English text, you MUST write your analysis in English.
-Keep the analysis professional and technical.
-
-`;
-
-  return `## SESSION DATA
-${sessionsFormatted}
-
-## MODULE A ANALYSIS
-${moduleAOutput}
-${languageInstructions}
 ## INSTRUCTIONS
-Identify knowledge gaps from repeated questions, track learning progress across sessions, and recommend specific resources for improvement. Focus on actionable insights that help the developer grow. Generate exactly 3 key knowledge insights.${useNonEnglish ? ` Write all insights in ${langName}.` : ''}`;
+1. Identify knowledge gaps from repeated questions in developer utterances
+2. Track learning progress across sessions
+3. Recommend specific resources for improvement
+4. Focus on actionable insights that help the developer grow
+
+Generate exactly 3 key knowledge insights.
+Remember: Output MUST be in English.`;
 }
 
 // ============================================================================
@@ -555,42 +533,21 @@ Specific, actionable suggestions with numbers create clear improvement paths.
 ${NO_HEDGING_DIRECTIVE}`;
 
 export function buildContextEfficiencyUserPrompt(
-  sessionsFormatted: string,
-  moduleAOutput: string,
-  outputLanguage: SupportedLanguage = 'en'
+  phase1OutputJson: string,
 ): string {
-  const useNonEnglish = outputLanguage !== 'en';
-  const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
+  return `## PHASE 1 EXTRACTION DATA
+Analyze this extracted data to identify context efficiency patterns and productivity metrics.
 
-  const languageInstructions = useNonEnglish
-    ? `
-## CRITICAL: ${langName} Output Required
+\`\`\`json
+${phase1OutputJson}
+\`\`\`
 
-**Write all output in ${langName}.**
-
-The developer's content is in ${langName}. You MUST write ALL fields in **${langName}**:
-- topInsights: Write in ${langName}
-- Efficiency pattern descriptions: Write in ${langName}
-- Improvement suggestions: Write in ${langName}
-
-Keep technical terms in English (token, context, compact).
-
-`
-    : `
-## CRITICAL: English Output Required
-
-**Write ALL output fields in English.**
-Even if the input data contains non-English text, you MUST write your analysis in English.
-Keep the analysis professional and technical.
-
-`;
-
-  return `## SESSION DATA
-${sessionsFormatted}
-
-## MODULE A ANALYSIS
-${moduleAOutput}
-${languageInstructions}
 ## INSTRUCTIONS
-Analyze how context and prompts are managed across sessions. Identify inefficiencies like late compaction, repeated information, and prompt length inflation. Focus on actionable improvements that would save tokens and improve AI collaboration efficiency. Generate exactly 3 key efficiency insights.${useNonEnglish ? ` Write all insights in ${langName}.` : ''}`;
+1. Analyze how context and prompts are managed across sessions
+2. Identify inefficiencies like late compaction, repeated information, prompt length inflation
+3. Assess productivity metrics: iteration cycles, collaboration efficiency
+4. Focus on actionable improvements
+
+Generate exactly 3 key efficiency insights.
+Remember: Output MUST be in English.`;
 }
