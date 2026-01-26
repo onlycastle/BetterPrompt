@@ -89,7 +89,7 @@ NoMoreAISlop uses a **web-first architecture with Lambda analysis backend**:
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                     3. Desktop App Response Handling                        │
+│                        3. Client Response Handling                          │
 │                                                                             │
 │   src/lib/api.ts:                                                           │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
@@ -99,11 +99,13 @@ NoMoreAISlop uses a **web-first architecture with Lambda analysis backend**:
 │   │ └── error event → throw error                                       │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
-│   Desktop App UI:                                                           │
+│   Web App UI:                                                               │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
 │   │ ✓ Parsing 5 session(s)...                                           │   │
-│   │ ✓ Analyzing behavioral patterns...                                  │   │
-│   │ ✓ Generating personalized insights...                               │   │
+│   │ ✓ Phase 1: Extracting data...                                       │   │
+│   │ ✓ Phase 2: Analyzing insights (5 workers)...                        │   │
+│   │ ✓ Phase 2.5: Classifying coding type...                             │   │
+│   │ ✓ Phase 3: Generating personalized narrative...                     │   │
 │   │ ✓ Analysis complete!                                                │   │
 │   │                                                                     │   │
 │   │ 🎯 Your AI Coding Style: Architect (78%)                            │   │
@@ -112,23 +114,18 @@ NoMoreAISlop uses a **web-first architecture with Lambda analysis backend**:
 │   └─────────────────────────────────────────────────────────────────────┘   │
 └───────────────────────────────┬─────────────────────────────────────────────┘
                                 │
-                                │ Display Report in Desktop App
-                                │ (or share via Web URL)
+                                │ Display Report in Web App
+                                │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                       4. Report Display                                     │
 │                                                                             │
-│   Desktop App (Primary):                                                    │
-│   ├── src/app/r/[resultId]/page.tsx (embedded in Electron)                 │
-│   ├── Supabase: query evaluation from analysis_results table               │
-│   ├── React Component: data fetch and rendering                            │
-│   └── Native UI: terminal-style interactive report                         │
-│                                                                             │
-│   Web App (Sharing):                                                        │
+│   Web App (Primary):                                                        │
 │   ├── Route: /r/[resultId]                                                  │
 │   ├── Supabase: query evaluation from analysis_results table               │
 │   ├── Server Component: data fetch and rendering                           │
-│   └── Public sharing via URL                                                │
+│   ├── Public sharing via URL                                                │
+│   └── Responsive UI: terminal-style interactive report                     │
 │                                                                             │
 │   Features:                                                                 │
 │   ├── Snap scroll navigation (j/k keys)                                     │
@@ -204,7 +201,7 @@ NoMoreAISlop uses a **web-first architecture with Lambda analysis backend**:
 │   ├── serverExternalPackages: ['@anthropic-ai/sdk', '@google/genai']        │
 │   └── experimental.serverActions.bodySizeLimit: '50mb'                      │
 │                                                                             │
-│   Note: Desktop App calls Lambda directly, so Vercel rewrite not needed     │
+│   Note: Client calls Lambda directly, so Vercel rewrite not needed          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -212,7 +209,7 @@ NoMoreAISlop uses a **web-first architecture with Lambda analysis backend**:
 
 ## Payload Truncation Strategy
 
-When Desktop App exceeds 25MB limit, payload is automatically reduced:
+When client exceeds 25MB limit, payload is automatically reduced:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -242,7 +239,7 @@ When Desktop App exceeds 25MB limit, payload is automatically reduced:
 
 ## SSE (Server-Sent Events) Protocol
 
-Real-time communication between Lambda and Desktop App:
+Real-time communication between Lambda and client:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -290,10 +287,13 @@ Real-time communication between Lambda and Desktop App:
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| **Desktop Main** | `electron/main.ts` | Electron main process |
-| **Scanner** | `src/lib/parser/project-scanner.ts` | Session directory scanning |
 | **API Client** | `src/lib/api.ts` | Lambda communication, SSE handling |
 | **Lambda Handler** | `lambda/analysis.ts` | Lambda handler (streaming) |
+| **Analysis Orchestrator** | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | 4-phase pipeline coordinator |
+| **Phase 1 Worker** | `src/lib/analyzer/workers/data-extractor-worker.ts` | Deterministic data extraction |
+| **Phase 2 Workers** | `src/lib/analyzer/workers/*.ts` | 5 insight workers (parallel) |
+| **Phase 2.5 Worker** | `src/lib/analyzer/workers/type-classifier-worker.ts` | Coding type classification |
+| **Phase 3 Stage** | `src/lib/analyzer/stages/content-writer.ts` | Narrative generation |
 | **SST Config** | `sst.config.ts` | SST app configuration |
 | **Lambda Infra** | `infra/api.ts` | Lambda function definition |
 | **Next Config** | `next.config.ts` | Next.js configuration |
@@ -309,19 +309,18 @@ Real-time communication between Lambda and Desktop App:
 | `NEXT_PUBLIC_SUPABASE_URL` | GitHub Secret | Supabase URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | GitHub Secret | Supabase server key |
 
-### Vercel
+### Vercel (Next.js Web App)
 | Variable | Source | Purpose |
 |----------|--------|---------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Vercel Dashboard | Supabase URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Vercel Dashboard | Supabase client key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Vercel Dashboard | Supabase server key |
-| `GOOGLE_GEMINI_API_KEY` | Vercel Dashboard | Gemini API (fallback) |
+| `GOOGLE_GEMINI_API_KEY` | Vercel Dashboard | Gemini API (optional) |
 
-### Desktop App
+### Client (User-Provided)
 | Variable | Source | Purpose |
 |----------|--------|---------|
-| `NOSLOP_API_URL` | App Settings (optional) | Custom Lambda URL (default: Lambda Function URL) |
-| `GOOGLE_GEMINI_API_KEY` | App Settings | Gemini API key (entered in UI) |
+| `X-Gemini-API-Key` | HTTP Header | User's Gemini API key (sent with analysis request) |
 
 ---
 
@@ -339,9 +338,12 @@ aws lambda add-permission \
 
 ### E2E Testing
 ```bash
-# 1. Direct Lambda invocation (URL used by Desktop App)
+# 1. Direct Lambda invocation
 curl -I https://xxx.lambda-url.ap-northeast-2.on.aws/
 
-# 2. Desktop App full flow
-npm run dev  # Starts desktop app in development mode
+# 2. Web app full flow
+npm run dev  # Starts Next.js dev server (port 3000)
+
+# 3. Run test suite
+npm test
 ```

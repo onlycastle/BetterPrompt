@@ -66,9 +66,9 @@ The Knowledge Base provides **personalized insights and learning resources** bas
 │                                      │                                       │
 │                                      ▼                                       │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │                      INSIGHT GENERATOR                                │   │
+│  │                      CONTENT WRITER (Phase 3)                            │   │
 │  │                                                                       │   │
-│  │  buildDimensionInsights(dimension, score, quotes, knowledge)         │   │
+│  │  Builds personalized narrative using knowledge context:               │   │
 │  │    1. ConversationInsight (from user's actual quotes)                │   │
 │  │    2. ResearchInsight (from professional insights)                   │   │
 │  │    3. LearningResource (from knowledge items)                        │   │
@@ -76,13 +76,12 @@ The Knowledge Base provides **personalized insights and learning resources** bas
 │                                      │                                       │
 │                                      ▼                                       │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │                      UNIFIED REPORT                                   │   │
+│  │                      VERBOSE EVALUATION                               │   │
 │  │                                                                       │   │
-│  │  dimensions[].insights[]                                             │   │
-│  │    - type: 'reinforcement' | 'improvement'                           │   │
-│  │    - conversationBased: { quote, advice, sentiment }                 │   │
-│  │    - researchBased: { source, insight, url }                         │   │
-│  │    - learningResource: { title, url, level }                         │   │
+│  │  dimensionInsights[].strengths/growthAreas                           │   │
+│  │    - title, description, evidence[]                                   │   │
+│  │    - recommendation (growth areas)                                    │   │
+│  │  Knowledge-linked professional insights                              │   │
 │  └──────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -272,8 +271,7 @@ src/lib/
 │   ├── knowledge-linker.ts       # KnowledgeLinker + INITIAL_PROFESSIONAL_INSIGHTS
 │   ├── supabase-knowledge-source.ts  # SupabaseKnowledgeSource + FALLBACK_*
 │   ├── dimension-keywords.ts     # Dimension → Insight ID mapping
-│   ├── insight-generator.ts      # InsightGenerator (builds final insights)
-│   └── unified-analyzer.ts       # UnifiedAnalyzer (orchestrates analysis)
+│   └── verbose-knowledge-context.ts  # Knowledge context for ContentWriter
 ```
 
 ## Future Improvements
