@@ -666,3 +666,156 @@ Using the extracted data above, create a VerboseLLMResponse:
 ${translatedAgentInsightsInstructions}
 Make this developer feel truly understood. Use their actual words.${languageFinalReminder}`;
 }
+
+// ============================================================================
+// v3 Architecture: Phase1Output + AgentOutputs
+// ============================================================================
+
+/**
+ * Build the user prompt for v3 content transformation
+ *
+ * Key differences from v2:
+ * - Phase1Output replaces StructuredAnalysisData (raw utterances, no semantic analysis)
+ * - All semantic analysis comes from AgentOutputs (Phase 2 + 2.5)
+ * - No ProductivityAnalysisData (consolidated into ContextEfficiency)
+ * - Type classification from TypeClassifier (Phase 2.5), not Module A
+ *
+ * @param phase1OutputJson - JSON of Phase1Output (utterances + metrics)
+ * @param agentOutputsJson - JSON of all Phase 2 + 2.5 agent outputs
+ * @param sessionCount - Number of sessions analyzed
+ * @param outputLanguage - Target output language
+ * @param kbContext - Optional knowledge base context for tip generation
+ */
+export function buildContentWriterUserPromptV3(
+  phase1OutputJson: string,
+  agentOutputsJson: string,
+  sessionCount: number,
+  outputLanguage: SupportedLanguage = 'en',
+  kbContext?: PatternKnowledgeContext
+): string {
+  const useNonEnglish = outputLanguage !== 'en';
+  const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
+
+  const languageHeader = useNonEnglish
+    ? `
+## CRITICAL: ${langName} Output Required
+
+**Write all output in ${langName}.**
+
+The developer's utterances are in ${langName}. You MUST write EVERY field in **${langName}**:
+- personalitySummary: Write in ${langName}
+- patternName: Write in ${langName}
+- pattern description, tip, analysis: Write in ${langName}
+- strength/growth titles, descriptions: Write in ${langName}
+- ALL recommendations: Write in ${langName}
+
+Keep technical terms in English (AI, IDE, debugging, Git, commit).
+Match the developer's natural ${langName} style from their utterances.
+`
+    : '';
+
+  const languageReminder = useNonEnglish
+    ? `
+   - Write in ${langName}: all titles, descriptions, tips, recommendations`
+    : '';
+
+  const languageFinalReminder = useNonEnglish
+    ? `
+
+---
+## Final Reminder: Write all output fields in ${langName}!
+Do NOT write pattern names, descriptions, tips, or analysis in English.`
+    : '';
+
+  const kbContextSection = kbContext
+    ? buildKnowledgeContextSection(kbContext, outputLanguage)
+    : '';
+
+  // Translation instructions for agent insights (non-English)
+  const translatedAgentInsightsInstructions = useNonEnglish
+    ? `
+
+11. **Translated Agent Insights** (REQUIRED for ${langName} output)
+   - Populate translatedAgentInsights with translated versions of agent strengthsData and growthAreasData
+   - For each agent that has data:
+     * strengthsData: Translate title and description to ${langName}, keep evidence quotes in original language
+     * growthAreasData: Translate title, description, and recommendation to ${langName}
+   - Format: same flattened string format as original
+   - If an agent has no data, omit it from translatedAgentInsights`
+    : '';
+
+  return `# Context Data
+
+This developer has ${sessionCount} sessions analyzed.
+${languageHeader}
+## Phase 1 Extraction Data (Raw Utterances + Metrics)
+${phase1OutputJson}
+
+## Phase 2 Analysis Outputs (Semantic Analysis from Specialized Workers)
+
+These outputs come from 5 Phase 2 workers + 1 Phase 2.5 worker:
+- **StrengthGrowth**: Identified strengths and growth areas with evidence quotes
+- **TrustVerification**: Anti-patterns detected, verification behavior (Vibe Coder spectrum)
+- **WorkflowHabit**: Planning habits, critical thinking moments, multitasking patterns
+- **KnowledgeGap**: Knowledge gaps, learning progress, recommended resources
+- **ContextEfficiency**: Token efficiency patterns, productivity metrics
+- **TypeClassifier**: Developer type classification (15-type matrix) + collaboration maturity
+
+${agentOutputsJson}
+${kbContextSection}
+# Transformation Instructions
+
+Using the Phase 1 utterances and Phase 2 analysis above, create a VerboseLLMResponse:
+
+1. **Type Result**
+   - Use TypeClassifier output for primaryType, controlLevel, distribution
+   - TypeClassifier is the authoritative source for type classification
+
+2. **Personality Summary** (300-1500 characters for premium value)
+   - Synthesize TypeClassifier reasoning + StrengthGrowth insights into engaging prose
+   - Reference developer quotes from Phase 1 utterances
+   - Emphasize 3-5 key phrases with **bold markers**
+   - Include insights on collaboration style, problem-solving, and growth mindset${languageReminder}
+
+3. **Dimension Insights** (exactly 6)
+   - Use StrengthGrowth output as primary source for strengths and growth areas
+   - Group by the 6 dimensions (aiCollaboration, contextEngineering, toolMastery, burnoutRisk, aiControl, skillResilience)
+   - Phase 2 workers already provide evidence — reference it in descriptions
+   - For each dimension, provide engaging titles and descriptions${languageReminder}
+
+4. **Prompt Patterns** (5-12 for comprehensive analysis)
+   - Derive patterns from Phase 1 utterances and Phase 2 insights
+   - **Description (600-800 chars):** WHAT-WHY-HOW framework
+   - Include 2-5 example quotes from utterances
+   - **Tip (600-1000 chars):** Expert coaching using Knowledge Base context${languageReminder}
+
+5. **Actionable Practices**
+   - Use TrustVerification actionablePatternMatchesData for practiced/opportunity split
+   - Write summary of expert practice adoption
+
+6. **Advanced Sections**
+   - Generate: toolUsageDeepDive, tokenEfficiency, growthRoadmap, comparativeInsights, sessionTrends
+   - Use ContextEfficiency for tokenEfficiency
+   - Use KnowledgeGap for growthRoadmap
+   - Use WorkflowHabit for planning-related sections
+
+7. **Anti-Patterns Analysis** (from TrustVerification)
+   - Transform detected anti-patterns with memorable displayName
+   - Frame as GROWTH OPPORTUNITIES, not criticisms
+   - Use TrustVerification.overallTrustHealthScore for overallHealthScore
+
+8. **Critical Thinking Highlights** (from WorkflowHabit)
+   - Use criticalThinkingMoments from WorkflowHabit
+   - CELEBRATE these as professional strengths
+   - Split into strengths (high confidence) vs opportunities
+
+9. **Planning Assessment** (from WorkflowHabit)
+   - Use planningHabits from WorkflowHabit
+   - Assign planningMaturityLevel: reactive → emerging → structured → expert
+
+10. **Top 3 Focus Areas** (from StrengthGrowth)
+   - Use personalizedPrioritiesData from StrengthGrowth
+   - Create ranked focus areas with actions (start/stop/continue)
+${translatedAgentInsightsInstructions}
+Make this developer feel truly understood. Use their actual words.${languageFinalReminder}`;
+}
