@@ -156,6 +156,12 @@ export const StrengthGrowthOutputSchema = z.object({
 
   /** Warnings or notes about the analysis */
   warnings: z.array(z.string()).optional(),
+
+  /** Personalized priorities: "dimension|focusArea|rationale|impact|score;..." */
+  personalizedPrioritiesData: z.string().max(3000).optional(),
+
+  /** Absence-based growth signals (things the developer should do but doesn't) */
+  absenceBasedSignalsData: z.string().max(3000).optional(),
 });
 export type StrengthGrowthOutput = z.infer<typeof StrengthGrowthOutputSchema>;
 
@@ -184,6 +190,14 @@ export const StrengthGrowthLLMOutputSchema = z.object({
 
   /** Confidence score (0-1) */
   confidenceScore: z.number().min(0).max(1),
+
+  /** Personalized priorities: "dimension|focusArea|rationale|impact|score;..." */
+  personalizedPrioritiesData: z.string().max(3000).optional()
+    .describe('Personalized priorities: "dimension|focusArea|rationale|impact|score;..."'),
+
+  /** Absence-based growth signals: "signal|description|recommendation;..." */
+  absenceBasedSignalsData: z.string().max(3000).optional()
+    .describe('Absence-based signals: "signal|description|recommendation;..."'),
 });
 export type StrengthGrowthLLMOutput = z.infer<typeof StrengthGrowthLLMOutputSchema>;
 
@@ -288,6 +302,8 @@ export function parseStrengthGrowthLLMOutput(llmOutput: StrengthGrowthLLMOutput)
     growthAreas: parseGrowthAreasLLMData(llmOutput.growthAreasData),
     summary: llmOutput.summary,
     confidenceScore: llmOutput.confidenceScore,
+    personalizedPrioritiesData: llmOutput.personalizedPrioritiesData,
+    absenceBasedSignalsData: llmOutput.absenceBasedSignalsData,
   };
 }
 
