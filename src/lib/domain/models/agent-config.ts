@@ -17,6 +17,7 @@ export const AgentTierSchema = z.enum(['free', 'premium']);
 export type AgentTier = z.infer<typeof AgentTierSchema>;
 
 export const AgentIdSchema = z.enum([
+  // Legacy agent IDs (kept for backward compatibility with stored data)
   'metacognition',
   'knowledgeGap',
   'patternDetective',
@@ -25,6 +26,11 @@ export const AgentIdSchema = z.enum([
   'temporalAnalysis',
   'multitasking',
   'typeSynthesis',
+  // v2 agent IDs
+  'strengthGrowth',
+  'trustVerification',
+  'workflowHabit',
+  'typeClassifier',
 ]);
 export type AgentId = z.infer<typeof AgentIdSchema>;
 
@@ -133,6 +139,48 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     name: 'Type Synthesis',
     icon: '🎭',
     color: 'pink',
+    scoreLabel: 'Confidence',
+    scoreKey: 'confidenceScore',
+    scoreMax: 1,
+  },
+
+  // v2 agents
+  {
+    id: 'strengthGrowth',
+    tier: 'free',
+    name: 'Strength & Growth',
+    icon: '💪',
+    color: 'emerald',
+    scoreLabel: 'Confidence',
+    scoreKey: 'confidenceScore',
+    scoreMax: 1,
+  },
+  {
+    id: 'trustVerification',
+    tier: 'premium',
+    name: 'Trust Verification',
+    icon: '🛡️',
+    color: 'red',
+    scoreLabel: 'Trust Score',
+    scoreKey: 'trustScore',
+    scoreMax: 100,
+  },
+  {
+    id: 'workflowHabit',
+    tier: 'premium',
+    name: 'Workflow Habits',
+    icon: '🔧',
+    color: 'amber',
+    scoreLabel: 'Workflow Score',
+    scoreKey: 'workflowScore',
+    scoreMax: 100,
+  },
+  {
+    id: 'typeClassifier',
+    tier: 'free',
+    name: 'Type Classifier',
+    icon: '🎯',
+    color: 'violet',
     scoreLabel: 'Confidence',
     scoreKey: 'confidenceScore',
     scoreMax: 1,

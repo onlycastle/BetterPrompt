@@ -1,10 +1,11 @@
 /**
  * Workers Module Exports
  *
- * v2 Architecture:
- * - Phase 1: DataAnalyst, ProductivityAnalyst, QuoteExtractor (v2)
- * - Phase 2: KnowledgeGap, ContextEfficiency + v2 workers (StrengthGrowth, BehaviorPattern, TypeClassifier)
- * - Phase 2.5: TypeSynthesis
+ * Pipeline (7 LLM calls total):
+ * - Phase 1: DataExtractor (deterministic, no LLM)
+ * - Phase 2: StrengthGrowth, TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency (5 LLM calls)
+ * - Phase 2.5: TypeClassifier (1 LLM call)
+ * - Phase 3: ContentWriter (1 LLM call, managed by orchestrator)
  *
  * @module analyzer/workers
  */
@@ -12,47 +13,30 @@
 export * from './base-worker';
 
 // ============================================================================
-// Phase 1 Workers
+// Phase 1: Data Extraction (deterministic, no LLM)
 // ============================================================================
 
-// Legacy Phase 1 Workers (Module A, C - produce StructuredAnalysisData)
-export { DataAnalystWorker, createDataAnalystWorker } from './data-analyst-worker';
-export type { DataAnalystWorkerConfig } from './data-analyst-worker';
-
-export { ProductivityAnalystWorker, createProductivityAnalystWorker } from './productivity-analyst-worker';
-export type { ProductivityAnalystWorkerConfig } from './productivity-analyst-worker';
-
-// v2 Phase 1 Worker (produces Phase1Output for v2 Phase 2 workers)
-export { QuoteExtractorWorker, createQuoteExtractorWorker } from './quote-extractor-worker';
-export type { QuoteExtractorWorkerConfig } from './quote-extractor-worker';
+export { DataExtractorWorker, createDataExtractorWorker } from './data-extractor-worker';
 
 // ============================================================================
-// Phase 2 Workers
+// Phase 2: Insight Generation (5 workers, parallel LLM calls)
 // ============================================================================
 
-// Legacy Phase 2 Workers (kept per v2 plan - use moduleAOutput)
+export { StrengthGrowthWorker, createStrengthGrowthWorker } from './strength-growth-worker';
+
+export { TrustVerificationWorker, createTrustVerificationWorker } from './trust-verification-worker';
+
+export { WorkflowHabitWorker, createWorkflowHabitWorker } from './workflow-habit-worker';
+
 export { KnowledgeGapWorker, createKnowledgeGapWorker } from './knowledge-gap-worker';
-export type { KnowledgeGapWorkerConfig } from './knowledge-gap-worker';
 
 export { ContextEfficiencyWorker, createContextEfficiencyWorker } from './context-efficiency-worker';
-export type { ContextEfficiencyWorkerConfig } from './context-efficiency-worker';
 
-// v2 Phase 2 Workers (use Phase1Output - context isolated)
-export { StrengthGrowthWorker, createStrengthGrowthWorker } from './strength-growth-worker';
-export type { StrengthGrowthWorkerConfig } from './strength-growth-worker';
-
-export { BehaviorPatternWorker, createBehaviorPatternWorker } from './behavior-pattern-worker';
-export type { BehaviorPatternWorkerConfig } from './behavior-pattern-worker';
+// ============================================================================
+// Phase 2.5: TypeClassifier (classification + synthesis, 1 LLM call)
+// ============================================================================
 
 export { TypeClassifierWorker, createTypeClassifierWorker } from './type-classifier-worker';
-export type { TypeClassifierWorkerConfig } from './type-classifier-worker';
-
-// ============================================================================
-// Phase 2.5 Worker (Type Synthesis - runs after other Phase 2 workers)
-// ============================================================================
-
-export { TypeSynthesisWorker, createTypeSynthesisWorker } from './type-synthesis-worker';
-export type { TypeSynthesisWorkerConfig, TypeSynthesisWorkerContext } from './type-synthesis-worker';
 
 // ============================================================================
 // Phase 2 Prompts
