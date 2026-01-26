@@ -1,13 +1,14 @@
 # NoMoreAISlop - Data Flow
 
-> Version: 2.0.0 | Last Updated: 2026-01-20
+> Version: 3.0.0 | Last Updated: 2026-01-26
 
 ## Overview
 
-NoMoreAISlop uses a **direct Lambda invocation architecture** to bypass Vercel's 4.5MB payload limit and 5-minute timeout:
-- **Desktop App**: Electron app (session scanning, analysis, report display)
-- **AWS Lambda (SST)**: Analysis API (called directly by Desktop App)
-- **Web App (Vercel)**: Next.js web app (shareable report display only)
+NoMoreAISlop uses a **web-first architecture with Lambda analysis backend**:
+- **Next.js Web App (Vercel)**: Primary user interface (session upload, report display)
+- **AWS Lambda (SST)**: Heavy analysis processing (4-phase pipeline)
+- **Claude Code Plugin**: Alternative session data source (direct file access)
+- **Supabase**: Database for analysis results and reports
 
 ---
 
@@ -15,7 +16,7 @@ NoMoreAISlop uses a **direct Lambda invocation architecture** to bypass Vercel's
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         1. Desktop App (Electron)                           │
+│                   1. Client (Web App / Claude Code Plugin)                  │
 │                                                                             │
 │   ~/.claude/projects/                                                       │
 │   └── -Users-name-project/                                                  │
@@ -24,7 +25,7 @@ NoMoreAISlop uses a **direct Lambda invocation architecture** to bypass Vercel's
 │           ├── def456.jsonl                                                  │
 │           └── ...                                                           │
 │                                                                             │
-│   [Scan] → [Session Selection] → [JSONL Parsing] → [gzip compress] → [HTTP POST] │
+│   [Session Upload] → [JSONL Parsing] → [gzip compress] → [HTTP POST]       │
 │                                                                             │
 │   Headers:                                                                  │
 │   ├── Content-Type: application/octet-stream                                │
@@ -62,9 +63,16 @@ NoMoreAISlop uses a **direct Lambda invocation architecture** to bypass Vercel's
 │   │    ├── user/assistant message extraction                            │   │
 │   │    └── tool_use/tool_result mapping                                 │   │
 │   │                                                                     │   │
-│   │ 3. LLM Analysis (Gemini 3 Flash)                                    │   │
-│   │    ├── Stage 1: Data Analyst (behavioral pattern extraction)        │   │
-│   │    └── Stage 2: Content Writer (personalized narrative generation)  │   │
+│   │ 3. 4-Phase Analysis Pipeline (Gemini 3 Flash)                       │   │
+│   │    ├── Phase 1: DataExtractor (deterministic extraction, no LLM)    │   │
+│   │    ├── Phase 2: 5 insight workers (parallel LLM analysis)           │   │
+│   │    │   ├── ContextEfficiencyWorker                                  │   │
+│   │    │   ├── KnowledgeGapWorker                                       │   │
+│   │    │   ├── TrustVerificationWorker                                  │   │
+│   │    │   ├── WorkflowHabitWorker                                      │   │
+│   │    │   └── WowAgentWorker                                           │   │
+│   │    ├── Phase 2.5: TypeClassifier (LLM synthesis)                    │   │
+│   │    └── Phase 3: ContentWriter (personalized narrative generation)   │   │
 │   │                                                                     │   │
 │   │ 4. Result Storage                                                   │   │
 │   │    └── Supabase: analysis_results table                             │   │

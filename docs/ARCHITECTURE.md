@@ -20,7 +20,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     PRESENTATION LAYER                          │
-│  Desktop App (packages/desktop/)  │  Next.js API (app/api/)  │  Next.js App (app/) │
+│            Next.js API (app/api/)  │  Next.js App (app/)       │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -48,14 +48,15 @@
 
 ### Analysis Pipeline (LLM-powered Verbose Analysis)
 ```
-Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation] → VerboseAnalyzer → Next.js App (app/)
+Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation] → AnalysisOrchestrator → ContentGateway → Next.js App (app/)
 ```
 
 **Key Components:**
 - **SessionSelector** (`src/lib/parser/session-selector.ts`) - Selects optimal sessions (5-min minimum, 90-day window, max 10)
 - **CostEstimator** (`src/lib/analyzer/cost-estimator.ts`) - Token counting and API cost calculation
-- **VerboseAnalyzer** (`src/lib/analyzer/verbose-analyzer.ts`) - LLM-powered hyper-personalized analysis
-- **VerbosePrompts** (`src/lib/analyzer/verbose-prompts.ts`) - Behavioral analyst prompts
+- **VerboseAnalyzer** (`src/lib/analyzer/verbose-analyzer.ts`) - Entry point, delegates to AnalysisOrchestrator
+- **AnalysisOrchestrator** (`src/lib/analyzer/orchestrator/analysis-orchestrator.ts`) - 4-phase pipeline coordinator
+- **ContentGateway** (`src/lib/analyzer/content-gateway.ts`) - Tier-based content filtering
 - **Next.js App** (`app/`) - Unified web dashboard with analysis report view
 
 ## Key Components
