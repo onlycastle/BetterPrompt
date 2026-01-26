@@ -1,11 +1,12 @@
 /**
  * Analysis Orchestrator - Main orchestrator for the analysis pipeline
  *
- * Coordinates 4 phases of analysis (7 LLM calls total):
+ * Coordinates 5 phases of analysis (7-8 LLM calls total):
  * - Phase 1: DataExtractor (deterministic, no LLM)
  * - Phase 2: 5 insight workers in parallel (5 LLM calls)
  * - Phase 2.5: TypeClassifier (1 LLM call)
- * - Phase 3: ContentWriter (1 LLM call)
+ * - Phase 3: ContentWriter (1 LLM call, always English)
+ * - Phase 4: Translator (1 LLM call, conditional — only for non-English users)
  *
  * @module analyzer/orchestrator/analysis-orchestrator
  */
@@ -15,8 +16,9 @@ import type { VerboseEvaluation } from '../../models/verbose-evaluation';
 import type { AgentOutputs } from '../../models/agent-outputs';
 import { createEmptyAgentOutputs } from '../../models/agent-outputs';
 import { ContentWriterStage } from '../stages/content-writer';
-// NOTE: detectKoreanContent is used internally by ContentWriterStage (Phase 3 only)
-// All preceding phases (1, 2, 2.5) operate in English for consistency
+import { TranslatorStage } from '../stages/translator';
+import { detectPrimaryLanguage, LANGUAGE_DISPLAY_NAMES, type LanguageDetectionResult } from '../stages/content-writer-prompts';
+import type { TranslatorOutput } from '../../models/translator-output';
 import { ContentGateway, type Tier } from '../content-gateway';
 import { BaseWorker } from '../workers/base-worker';
 import type {
@@ -73,6 +75,7 @@ export class AnalysisOrchestrator {
   private phase2Workers: BaseWorker<unknown>[] = [];
   private phase2Point5Workers: BaseWorker<unknown>[] = []; // Type Synthesis workers
   private contentWriter: ContentWriterStage;
+  private translator: TranslatorStage;
   private contentGateway: ContentGateway;
 
   constructor(config: OrchestratorConfig) {
@@ -84,6 +87,15 @@ export class AnalysisOrchestrator {
 
     // Initialize content writer (Phase 3)
     this.contentWriter = new ContentWriterStage({
+      apiKey: this.config.geminiApiKey,
+      model: this.config.model,
+      temperature: this.config.temperature,
+      maxOutputTokens: this.config.maxOutputTokens,
+      maxRetries: this.config.maxRetries,
+    });
+
+    // Initialize translator (Phase 4 - conditional)
+    this.translator = new TranslatorStage({
       apiKey: this.config.geminiApiKey,
       model: this.config.model,
       temperature: this.config.temperature,
@@ -284,6 +296,35 @@ export class AnalysisOrchestrator {
     });
 
     // ─────────────────────────────────────────────────────────────────────
+    // Phase 4: Translation (conditional — only for non-English users)
+    // Detects language from developer utterances.
+    // If non-English, runs a dedicated translation LLM call.
+    // ─────────────────────────────────────────────────────────────────────
+    const utteranceTexts = phase1Results.dataExtractor.data.developerUtterances.map(u => u.text);
+    const languageResult = detectPrimaryLanguage(utteranceTexts);
+    this.logLanguageDetection(languageResult);
+
+    if (languageResult.primary !== 'en') {
+      this.log(`Phase 4: Translation to ${languageResult.primary}...`);
+      const translatorResult = await this.translator.translate(
+        contentResult.data,
+        languageResult.primary,
+        agentOutputs
+      );
+
+      stageUsages.push({
+        stage: 'Translator (Phase 4)',
+        ...translatorResult.usage,
+      });
+
+      // Merge translated text fields into the English response
+      this.mergeTranslatedFields(contentResult.data, translatorResult.data);
+      this.log('Phase 4: Translation complete');
+    } else {
+      this.log('Phase 4: Skipped (English detected)');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // Build Final Evaluation
     // ─────────────────────────────────────────────────────────────────────
     const analyzedSessions = this.extractAnalyzedSessions(sessions);
@@ -478,6 +519,220 @@ export class AnalysisOrchestrator {
       // TypeClassifier now runs at Phase 2.5 (replaces TypeSynthesis)
       typeClassifier: phase2Point5Results['TypeClassifier']?.data as AgentOutputs['typeClassifier'],
     };
+  }
+
+  /**
+   * Merge translated text fields into the English ContentWriter response
+   *
+   * The English response is the "source of truth" for all structural/numeric fields.
+   * Only text fields from TranslatorOutput are overlaid.
+   */
+  private mergeTranslatedFields(englishResponse: any, translated: TranslatorOutput): void {
+    // Personality summary
+    if (translated.personalitySummary) {
+      englishResponse.personalitySummary = translated.personalitySummary;
+    }
+
+    // Dimension insights — overlay text fields, preserve structure
+    if (Array.isArray(translated.dimensionInsights) && Array.isArray(englishResponse.dimensionInsights)) {
+      for (const translatedDim of translated.dimensionInsights) {
+        const englishDim = englishResponse.dimensionInsights.find(
+          (d: any) => d.dimension === translatedDim.dimension
+        );
+        if (englishDim) {
+          englishDim.dimensionDisplayName = translatedDim.dimensionDisplayName;
+          // Re-parse translated flattened strings into nested format
+          if (translatedDim.strengthsData) {
+            const translatedStrengths = translatedDim.strengthsData.split(';').filter(Boolean);
+            if (Array.isArray(englishDim.strengths)) {
+              for (let i = 0; i < Math.min(translatedStrengths.length, englishDim.strengths.length); i++) {
+                const parts = translatedStrengths[i].split('|');
+                if (parts.length >= 3) {
+                  // clusterId preserved, title and description translated
+                  englishDim.strengths[i].title = parts[1];
+                  englishDim.strengths[i].description = parts.slice(2).join('|');
+                }
+              }
+            }
+          }
+          if (translatedDim.growthAreasData) {
+            const translatedGrowth = translatedDim.growthAreasData.split(';').filter(Boolean);
+            if (Array.isArray(englishDim.growthAreas)) {
+              for (let i = 0; i < Math.min(translatedGrowth.length, englishDim.growthAreas.length); i++) {
+                const parts = translatedGrowth[i].split('|');
+                if (parts.length >= 4) {
+                  // clusterId preserved, title/description/recommendation translated
+                  englishDim.growthAreas[i].title = parts[1];
+                  englishDim.growthAreas[i].description = parts[2];
+                  englishDim.growthAreas[i].recommendation = parts[3];
+                  // frequency, severity, priorityScore remain from English
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Prompt patterns — overlay text fields, preserve structure
+    if (Array.isArray(translated.promptPatterns) && Array.isArray(englishResponse.promptPatterns)) {
+      for (let i = 0; i < Math.min(translated.promptPatterns.length, englishResponse.promptPatterns.length); i++) {
+        const tp = translated.promptPatterns[i];
+        const ep = englishResponse.promptPatterns[i];
+        if (tp.patternName) ep.patternName = tp.patternName;
+        if (tp.description) ep.description = tp.description;
+        if (tp.tip) ep.tip = tp.tip;
+        // Translate analysis in examples, keep quotes original
+        if (tp.examplesData && Array.isArray(ep.examples)) {
+          const translatedExamples = tp.examplesData.split(';').filter(Boolean);
+          for (let j = 0; j < Math.min(translatedExamples.length, ep.examples.length); j++) {
+            const parts = translatedExamples[j].split('|');
+            if (parts.length >= 2) {
+              // Quote stays original, analysis translated
+              ep.examples[j].analysis = parts[1];
+            }
+          }
+        }
+      }
+    }
+
+    // Top focus areas
+    if (translated.topFocusAreas && englishResponse.topFocusAreas) {
+      if (translated.topFocusAreas.summary) {
+        englishResponse.topFocusAreas.summary = translated.topFocusAreas.summary;
+      }
+      if (Array.isArray(translated.topFocusAreas.areas) && Array.isArray(englishResponse.topFocusAreas.areas)) {
+        for (const ta of translated.topFocusAreas.areas) {
+          const ea = englishResponse.topFocusAreas.areas.find((a: any) => a.rank === ta.rank);
+          if (ea) {
+            if (ta.title) ea.title = ta.title;
+            if (ta.narrative) ea.narrative = ta.narrative;
+            if (ta.expectedImpact) ea.expectedImpact = ta.expectedImpact;
+            if (ta.actionsData && ea.actions) {
+              const [start, stop, cont] = ta.actionsData.split('|');
+              ea.actions = { start: start || '', stop: stop || '', continue: cont || '' };
+            }
+          }
+        }
+      }
+    }
+
+    // Anti-patterns analysis text fields
+    if (translated.antiPatternsAnalysis && englishResponse.antiPatternsAnalysis) {
+      if (translated.antiPatternsAnalysis.summary) {
+        englishResponse.antiPatternsAnalysis.summary = translated.antiPatternsAnalysis.summary;
+      }
+      if (Array.isArray(translated.antiPatternsAnalysis.detected) && Array.isArray(englishResponse.antiPatternsAnalysis.detected)) {
+        for (const td of translated.antiPatternsAnalysis.detected) {
+          const ed = englishResponse.antiPatternsAnalysis.detected.find(
+            (d: any) => d.antiPatternType === td.antiPatternType
+          );
+          if (ed) {
+            if (td.displayName) ed.displayName = td.displayName;
+            if (td.description) ed.description = td.description;
+            if (td.growthOpportunity) ed.growthOpportunity = td.growthOpportunity;
+            if (td.actionableTip) ed.actionableTip = td.actionableTip;
+          }
+        }
+      }
+    }
+
+    // Critical thinking analysis text fields
+    if (translated.criticalThinkingAnalysis && englishResponse.criticalThinkingAnalysis) {
+      if (translated.criticalThinkingAnalysis.summary) {
+        englishResponse.criticalThinkingAnalysis.summary = translated.criticalThinkingAnalysis.summary;
+      }
+      this.mergeHighlightTranslations(
+        translated.criticalThinkingAnalysis.strengths,
+        englishResponse.criticalThinkingAnalysis.strengths
+      );
+      this.mergeHighlightTranslations(
+        translated.criticalThinkingAnalysis.opportunities,
+        englishResponse.criticalThinkingAnalysis.opportunities
+      );
+    }
+
+    // Planning analysis text fields
+    if (translated.planningAnalysis && englishResponse.planningAnalysis) {
+      if (translated.planningAnalysis.summary) {
+        englishResponse.planningAnalysis.summary = translated.planningAnalysis.summary;
+      }
+      this.mergeHighlightTranslations(
+        translated.planningAnalysis.strengths,
+        englishResponse.planningAnalysis.strengths
+      );
+      this.mergeHighlightTranslations(
+        translated.planningAnalysis.opportunities,
+        englishResponse.planningAnalysis.opportunities
+      );
+    }
+
+    // Translated agent insights — set directly on the response
+    if (translated.translatedAgentInsights) {
+      englishResponse.translatedAgentInsights = translated.translatedAgentInsights;
+    }
+
+    // Actionable practices text fields
+    if (translated.actionablePractices && englishResponse.actionablePractices) {
+      if (translated.actionablePractices.summary) {
+        englishResponse.actionablePractices.summary = translated.actionablePractices.summary;
+      }
+      if (Array.isArray(translated.actionablePractices.practiced) && Array.isArray(englishResponse.actionablePractices.practiced)) {
+        for (const tp of translated.actionablePractices.practiced) {
+          const ep = englishResponse.actionablePractices.practiced.find(
+            (p: any) => p.patternId === tp.patternId
+          );
+          if (ep && tp.feedback) ep.feedback = tp.feedback;
+        }
+      }
+      if (Array.isArray(translated.actionablePractices.opportunities) && Array.isArray(englishResponse.actionablePractices.opportunities)) {
+        for (const to of translated.actionablePractices.opportunities) {
+          const eo = englishResponse.actionablePractices.opportunities.find(
+            (o: any) => o.patternId === to.patternId
+          );
+          if (eo && to.tip) eo.tip = to.tip;
+        }
+      }
+    }
+  }
+
+  /**
+   * Helper to merge translated highlight arrays (critical thinking, planning)
+   */
+  private mergeHighlightTranslations(
+    translated: Array<{ displayName: string; description: string; tip?: string }> | undefined,
+    english: any[] | undefined
+  ): void {
+    if (!translated || !english) return;
+    for (let i = 0; i < Math.min(translated.length, english.length); i++) {
+      if (translated[i].displayName) english[i].displayName = translated[i].displayName;
+      if (translated[i].description) english[i].description = translated[i].description;
+      if (translated[i].tip) english[i].tip = translated[i].tip;
+    }
+  }
+
+  /**
+   * Log language detection results for debugging (when verbose/DEBUG_COST=1)
+   */
+  private logLanguageDetection(result: LanguageDetectionResult): void {
+    if (!this.config.verbose) return;
+
+    const { charCounts } = result;
+    const total = charCounts.total || 1; // avoid division by zero
+    const englishOther = total - charCounts.korean - charCounts.japanese - charCounts.chinese;
+
+    console.log('\n=== Language Detection ===');
+    console.log(`Detected Language: ${LANGUAGE_DISPLAY_NAMES[result.primary] || result.primary} (${result.primary})`);
+    console.log(`Confidence: ${result.confidence.toFixed(2)} (${(result.confidence * 100).toFixed(0)}%)`);
+    console.log('Threshold: 20%');
+    console.log('Character Breakdown:');
+    console.log(`  Korean (Hangul):  ${charCounts.korean} chars (${((charCounts.korean / total) * 100).toFixed(1)}%)`);
+    console.log(`  Japanese (Kana):  ${charCounts.japanese} chars (${((charCounts.japanese / total) * 100).toFixed(1)}%)`);
+    console.log(`  Chinese (CJK):    ${charCounts.chinese} chars (${((charCounts.chinese / total) * 100).toFixed(1)}%)`);
+    console.log(`  English/Other:    ${englishOther} chars (${((englishOther / total) * 100).toFixed(1)}%)`);
+    console.log(`Total Meaningful:   ${total} chars`);
+    console.log(`Translation: ${result.primary !== 'en' ? 'Phase 4 Translator will run' : 'Skipped (English)'}`);
+    console.log('===========================\n');
   }
 
   /**

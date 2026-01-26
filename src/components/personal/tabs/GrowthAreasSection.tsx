@@ -37,7 +37,7 @@ export function GrowthAreasSection({ areas, isPaid = false, resourcesMap }: Grow
               <h4 className={styles.title}>{area.title}</h4>
               <p className={styles.description}>{area.description}</p>
 
-              {area.evidence.length > 0 && (
+              {area.evidence && area.evidence.length > 0 && (
                 <blockquote className={styles.quote}>
                   "{area.evidence[0]}"
                 </blockquote>
