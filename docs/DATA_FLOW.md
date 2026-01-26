@@ -70,7 +70,7 @@ NoMoreAISlop uses a **web-first architecture with Lambda analysis backend**:
 │   │    │   ├── KnowledgeGapWorker                                       │   │
 │   │    │   ├── TrustVerificationWorker                                  │   │
 │   │    │   ├── WorkflowHabitWorker                                      │   │
-│   │    │   └── WowAgentWorker                                           │   │
+│   │    │   └── StrengthGrowthWorker                                      │   │
 │   │    ├── Phase 2.5: TypeClassifier (LLM synthesis)                    │   │
 │   │    └── Phase 3: ContentWriter (personalized narrative generation)   │   │
 │   │                                                                     │   │

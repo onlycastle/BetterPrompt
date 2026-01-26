@@ -155,11 +155,16 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     if (Math.abs(sum - 100) > 1) {
       this.log(`Warning: Distribution sums to ${sum}, normalizing...`);
       const factor = 100 / sum;
-      dist.architect = Math.round(dist.architect * factor);
-      dist.scientist = Math.round(dist.scientist * factor);
-      dist.collaborator = Math.round(dist.collaborator * factor);
-      dist.speedrunner = Math.round(dist.speedrunner * factor);
-      dist.craftsman = Math.round(dist.craftsman * factor);
+      const keys: (keyof typeof dist)[] = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'];
+      for (const key of keys) {
+        dist[key] = Math.round(dist[key] * factor);
+      }
+      // Compensate rounding error on the largest value to ensure exact sum of 100
+      const newSum = keys.reduce((s, k) => s + dist[k], 0);
+      if (newSum !== 100) {
+        const maxKey = keys.reduce((a, b) => (dist[a] >= dist[b] ? a : b));
+        dist[maxKey] += 100 - newSum;
+      }
     }
 
     this.log(`Type: ${result.data.primaryType}`);

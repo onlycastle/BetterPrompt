@@ -172,6 +172,11 @@ export class AnalysisOrchestrator {
     this.log('Phase 1: Data Extraction...');
     const phase1Results = await this.runPhase1(baseContext);
 
+    // Validate Phase 1 output before proceeding (No Fallback Policy)
+    if (!phase1Results.dataExtractor.data) {
+      throw new Error('Phase 1 DataExtractor produced no output. Analysis cannot proceed.');
+    }
+
     // DataExtractor is deterministic — track token usage only if present
     if (phase1Results.dataExtractor.usage) {
       stageUsages.push({
