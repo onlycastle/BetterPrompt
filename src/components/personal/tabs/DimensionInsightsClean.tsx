@@ -73,8 +73,8 @@ function DimensionCard({ insight, isPaid, resourcesMap }: DimensionCardProps) {
   const style = DIMENSION_STYLES[insight.dimension] || DEFAULT_STYLE;
 
   const totalEvidence =
-    insight.strengths.reduce((sum, s) => sum + s.evidence.length, 0) +
-    insight.growthAreas.reduce((sum, g) => sum + g.evidence.length, 0);
+    insight.strengths.reduce((sum, s) => sum + (s.evidence?.length ?? 0), 0) +
+    insight.growthAreas.reduce((sum, g) => sum + (g.evidence?.length ?? 0), 0);
 
   return (
     <Card padding="md" className={styles.dimensionCard}>
@@ -112,12 +112,12 @@ function DimensionCard({ insight, isPaid, resourcesMap }: DimensionCardProps) {
                       className={styles.itemCount}
                       style={{ color: style.accent, backgroundColor: style.bg }}
                     >
-                      {strength.evidence.length} instances
+                      {strength.evidence?.length ?? 0} instances
                     </span>
                   </div>
                   <p className={styles.itemDescription}>{strength.description}</p>
                   {/* Show up to MAX_EVIDENCE_QUOTES quotes for richer evidence display */}
-                  {strength.evidence.length > 0 && (
+                  {strength.evidence && strength.evidence.length > 0 && (
                     <div className={styles.evidenceQuotes}>
                       {strength.evidence.slice(0, MAX_EVIDENCE_QUOTES).map((quote, qIdx) => (
                         <blockquote key={qIdx} className={styles.itemQuote}>
@@ -144,12 +144,12 @@ function DimensionCard({ insight, isPaid, resourcesMap }: DimensionCardProps) {
                       <div className={styles.itemHeader}>
                         <span className={styles.itemTitle}>{growth.title}</span>
                         <span className={styles.itemCountGrowth}>
-                          {growth.evidence.length} instances
+                          {growth.evidence?.length ?? 0} instances
                         </span>
                       </div>
                       <p className={styles.itemDescription}>{growth.description}</p>
                       {/* Show up to MAX_EVIDENCE_QUOTES quotes for richer evidence display */}
-                      {growth.evidence.length > 0 && (
+                      {growth.evidence && growth.evidence.length > 0 && (
                         <div className={styles.evidenceQuotes}>
                           {growth.evidence.slice(0, MAX_EVIDENCE_QUOTES).map((quote, qIdx) => (
                             <blockquote key={qIdx} className={styles.itemQuote}>

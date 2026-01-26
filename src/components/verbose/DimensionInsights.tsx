@@ -16,13 +16,13 @@ type DimensionName =
 interface DimensionStrength {
   title: string;
   description: string;
-  evidence: string[];
+  evidence?: string[];
 }
 
 interface DimensionGrowthArea {
   title: string;
   description: string;
-  evidence: string[];
+  evidence?: string[];
   recommendation: string;
 }
 
@@ -86,8 +86,8 @@ const DEFAULT_CONFIG: DimensionConfig = {
 
 const VISIBLE_COUNT = 2;
 
-function countEvidence<T extends { evidence: string[] }>(items: T[]): number {
-  return items.reduce((sum, item) => sum + item.evidence.length, 0);
+function countEvidence<T extends { evidence?: string[] }>(items: T[]): number {
+  return items.reduce((sum, item) => sum + (item.evidence?.length ?? 0), 0);
 }
 
 interface QuoteCardProps {
@@ -119,7 +119,8 @@ interface StrengthClusterProps {
 
 function StrengthCluster({ strength, config }: StrengthClusterProps) {
   const [expanded, setExpanded] = useState(false);
-  const [heroQuote, ...regularQuotes] = strength.evidence;
+  const evidenceList = strength.evidence ?? [];
+  const [heroQuote, ...regularQuotes] = evidenceList;
   const hiddenCount = Math.max(0, regularQuotes.length - VISIBLE_COUNT);
 
   const toggleExpanded = useCallback(() => {
@@ -134,7 +135,7 @@ function StrengthCluster({ strength, config }: StrengthClusterProps) {
         <span className={styles.clusterIcon}>✨</span>
         <span className={styles.clusterTitle}>{strength.title}</span>
         <span className={styles.instanceCount} style={accentStyle}>
-          {strength.evidence.length} instances
+          {evidenceList.length} instances
         </span>
       </div>
 
@@ -173,19 +174,20 @@ interface GrowthClusterProps {
 
 function GrowthCluster({ growth, isUnlocked }: GrowthClusterProps) {
   const className = isUnlocked ? styles.growthCluster : `${styles.growthCluster} ${styles.blurred}`;
+  const evidenceList = growth.evidence ?? [];
 
   return (
     <div className={className}>
       <div className={styles.growthHeader}>
         <span className={styles.clusterIcon}>🌱</span>
         <span className={styles.growthTitle}>{growth.title}</span>
-        <span className={styles.growthInstanceCount}>{growth.evidence.length} instances</span>
+        <span className={styles.growthInstanceCount}>{evidenceList.length} instances</span>
       </div>
 
       <p className={styles.clusterDescription}>{growth.description}</p>
 
       <div className={styles.quoteWall}>
-        {growth.evidence.map((quote, idx) => (
+        {evidenceList.map((quote, idx) => (
           <div key={idx} className={styles.growthQuote}>
             <p className={styles.quoteText}>"{quote}"</p>
           </div>

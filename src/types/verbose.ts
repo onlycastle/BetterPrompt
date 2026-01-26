@@ -71,14 +71,14 @@ export interface DimensionStrength {
   title: string;
   description: string;
   /** Array of quote strings demonstrating this strength */
-  evidence: string[];
+  evidence?: string[];
 }
 
 export interface DimensionGrowthArea {
   title: string;
   description: string;
   /** Array of quote strings showing this growth opportunity */
-  evidence: string[];
+  evidence?: string[];
   recommendation: string;
 }
 
