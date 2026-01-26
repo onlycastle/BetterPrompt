@@ -32,7 +32,6 @@ import {
   CONTENT_WRITER_SYSTEM_PROMPT,
   buildContentWriterUserPrompt,
   buildContentWriterUserPromptV3,
-  detectPrimaryLanguage,
 } from './content-writer-prompts';
 import { buildPatternKnowledgeContext, extractPatternTypes } from './pattern-knowledge-mapping';
 
@@ -182,11 +181,6 @@ export class ContentWriterStage {
     const phase1Json = JSON.stringify(phase1Output, null, 2);
     const agentOutputsJson = JSON.stringify(agentOutputs, null, 2);
 
-    // Detect language from raw developer utterances (better source than LLM-curated quotes)
-    const utteranceTexts = phase1Output.developerUtterances.map(u => u.text);
-    const languageResult = detectPrimaryLanguage(utteranceTexts);
-    const outputLanguage = languageResult.primary;
-
     // Build KB context from TrustVerification detected patterns
     const detectedPatternsData = agentOutputs.trustVerification?.detectedPatternsData;
     const patternTypes = detectedPatternsData
@@ -198,7 +192,6 @@ export class ContentWriterStage {
       phase1Json,
       agentOutputsJson,
       sessionCount,
-      outputLanguage,
       kbContext
     );
 
@@ -344,11 +337,6 @@ export class ContentWriterStage {
     // Sanitize Premium sections using Phase 2 outputs
     this.sanitizePremiumSectionsV3(sanitized, agentOutputs);
 
-    // Process translatedAgentInsights if present (for non-English output)
-    if (sanitized.translatedAgentInsights) {
-      this.sanitizeTranslatedAgentInsights(sanitized);
-    }
-
     return sanitized;
   }
 
@@ -475,11 +463,6 @@ export class ContentWriterStage {
     const productivityDataJson = productivityData ? JSON.stringify(productivityData, null, 2) : undefined;
     const agentOutputsJson = agentOutputs ? JSON.stringify(agentOutputs, null, 2) : undefined;
 
-    // Detect primary language from user's quotes
-    const quotes = analysisData.extractedQuotes.map((q) => q.quote);
-    const languageResult = detectPrimaryLanguage(quotes);
-    const outputLanguage = languageResult.primary;
-
     // Build KB context from detected patterns for enriched tips
     const patternTypes = analysisData.detectedPatterns
       ? extractPatternTypes(analysisData.detectedPatterns)
@@ -489,7 +472,6 @@ export class ContentWriterStage {
     const userPrompt = buildContentWriterUserPrompt(
       structuredDataJson,
       sessionCount,
-      outputLanguage,
       kbContext,
       productivityDataJson,
       agentOutputsJson
@@ -637,59 +619,7 @@ export class ContentWriterStage {
     // Sanitize Premium/Enterprise sections (Anti-Patterns, Critical Thinking, Planning)
     this.sanitizePremiumSections(sanitized, analysisData);
 
-    // Process translatedAgentInsights if present (for non-English output)
-    // Keep as-is since frontend will parse the flattened strings
-    if (sanitized.translatedAgentInsights) {
-      this.sanitizeTranslatedAgentInsights(sanitized);
-    }
-
     return sanitized;
-  }
-
-  /**
-   * Sanitize translatedAgentInsights to ensure proper format
-   * Removes empty agent entries and validates string fields
-   */
-  private sanitizeTranslatedAgentInsights(response: any): void {
-    const translatedInsights = response.translatedAgentInsights;
-    if (!translatedInsights || typeof translatedInsights !== 'object') {
-      delete response.translatedAgentInsights;
-      return;
-    }
-
-    const agentKeys = [
-      'patternDetective',
-      'metacognition',
-      'antiPatternSpotter',
-      'knowledgeGap',
-      'contextEfficiency',
-      'temporalAnalysis',
-      'multitasking',
-    ];
-
-    // Check if there's any actual content
-    let hasContent = false;
-
-    for (const key of agentKeys) {
-      const agent = translatedInsights[key];
-      if (!agent) continue;
-
-      // Check if agent has any content
-      const hasStrengths = agent.strengthsData && typeof agent.strengthsData === 'string' && agent.strengthsData.trim() !== '';
-      const hasGrowth = agent.growthAreasData && typeof agent.growthAreasData === 'string' && agent.growthAreasData.trim() !== '';
-
-      if (hasStrengths || hasGrowth) {
-        hasContent = true;
-      } else {
-        // Remove empty agent entries
-        delete translatedInsights[key];
-      }
-    }
-
-    // If no content at all, remove the entire field
-    if (!hasContent) {
-      delete response.translatedAgentInsights;
-    }
   }
 
   /**

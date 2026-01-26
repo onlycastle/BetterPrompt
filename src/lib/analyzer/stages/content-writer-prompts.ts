@@ -25,6 +25,13 @@ export interface LanguageDetectionResult {
   confidence: number;
   /** Whether non-English characters were found */
   hasNonEnglish: boolean;
+  /** Character counts for debug logging */
+  charCounts: {
+    korean: number;
+    japanese: number;
+    chinese: number;
+    total: number;
+  };
 }
 
 /**
@@ -44,7 +51,7 @@ export interface LanguageDetectionResult {
  */
 export function detectPrimaryLanguage(texts: string[]): LanguageDetectionResult {
   if (texts.length === 0) {
-    return { primary: 'en', confidence: 1.0, hasNonEnglish: false };
+    return { primary: 'en', confidence: 1.0, hasNonEnglish: false, charCounts: { korean: 0, japanese: 0, chinese: 0, total: 0 } };
   }
 
   const combinedText = texts.join(' ');
@@ -71,7 +78,7 @@ export function detectPrimaryLanguage(texts: string[]): LanguageDetectionResult 
   const totalCount = meaningfulMatches ? meaningfulMatches.length : 0;
 
   if (totalCount === 0) {
-    return { primary: 'en', confidence: 1.0, hasNonEnglish: false };
+    return { primary: 'en', confidence: 1.0, hasNonEnglish: false, charCounts: { korean: koreanCount, japanese: japaneseCount, chinese: chineseCount, total: totalCount } };
   }
 
   // Calculate ratios
@@ -87,24 +94,26 @@ export function detectPrimaryLanguage(texts: string[]): LanguageDetectionResult 
 
   // Priority: Korean > Japanese > Chinese > English
   // Korean takes priority as it has distinct character ranges
+  const charCounts = { korean: koreanCount, japanese: japaneseCount, chinese: chineseCount, total: totalCount };
+
   if (koreanRatio >= THRESHOLD) {
-    return { primary: 'ko', confidence: koreanRatio, hasNonEnglish };
+    return { primary: 'ko', confidence: koreanRatio, hasNonEnglish, charCounts };
   }
 
   // Japanese (if significant Hiragana/Katakana present)
   if (japaneseRatio >= THRESHOLD) {
-    return { primary: 'ja', confidence: japaneseRatio, hasNonEnglish };
+    return { primary: 'ja', confidence: japaneseRatio, hasNonEnglish, charCounts };
   }
 
   // Chinese (CJK without Japanese kana)
   // Only consider Chinese if there's CJK but minimal Japanese kana
   if (chineseRatio >= THRESHOLD && japaneseRatio < 0.05) {
-    return { primary: 'zh', confidence: chineseRatio, hasNonEnglish };
+    return { primary: 'zh', confidence: chineseRatio, hasNonEnglish, charCounts };
   }
 
   // Default to English
   const englishRatio = 1 - (koreanRatio + japaneseRatio + chineseRatio);
-  return { primary: 'en', confidence: englishRatio, hasNonEnglish };
+  return { primary: 'en', confidence: englishRatio, hasNonEnglish, charCounts };
 }
 
 /**
@@ -221,7 +230,7 @@ ABSENCE-BASED GROWTH INTEGRATION (CRITICAL):
   - Include specific techniques or frameworks from expert sources
   - Provide concrete "try this" examples the developer can apply immediately
   - Connect to their actual behavior: "When you [quote], you could enhance this by..."
-  - When writing in non-English: Translate KB advice naturally, keep technical terms in English
+  - Translate KB advice naturally when needed, keep technical terms in English
 
 **Actionable Practices** (from actionablePatternMatches in Stage 1 data)
 - Transform practiced patterns into "practiced" array:
@@ -328,19 +337,6 @@ To reduce nesting depth, use SEMICOLON-SEPARATED STRINGS instead of nested array
 **topFocusAreas.areas** - Use pipe-separated fields for actions:
 - actionsData: "start_action|stop_action|continue_action" (NOT an object)
 
-**translatedAgentInsights** (ONLY for non-English output):
-When output language is NOT English, you MUST populate translatedAgentInsights with translated versions of agent strengthsData and growthAreasData.
-
-Format for each agent (patternDetective, metacognition, antiPatternSpotter, knowledgeGap, contextEfficiency, temporalAnalysis, multitasking):
-- strengthsData: "title|description|quote1,quote2;..." (same format as agentOutputs, but TRANSLATED)
-- growthAreasData: "title|desc|evidence|rec|freq|severity|priority;..." (same format, but TRANSLATED)
-
-TRANSLATION RULES:
-- Translate title, description, recommendation to the output language
-- Keep technical terms in English (AI, IDE, debugging, Git, commit, token)
-- Keep evidence quotes in their ORIGINAL language (do not translate user quotes)
-- If agent outputs are empty, set the corresponding field to empty string ""
-
 **Required fields:**
 - primaryType, controlLevel, distribution (from Stage 1 typeAnalysis)
 - personalitySummary (300-1500 chars)
@@ -390,8 +386,7 @@ export interface PatternKnowledgeContext {
  * Formats knowledge items for LLM consumption
  */
 export function buildKnowledgeContextSection(
-  kbContext: PatternKnowledgeContext,
-  outputLanguage: SupportedLanguage = 'en'
+  kbContext: PatternKnowledgeContext
 ): string {
   if (!kbContext || Object.keys(kbContext).length === 0) {
     return '';
@@ -430,7 +425,7 @@ export function buildKnowledgeContextSection(
 /**
  * Language display names for output instructions
  */
-const LANGUAGE_DISPLAY_NAMES: Record<SupportedLanguage, string> = {
+export const LANGUAGE_DISPLAY_NAMES: Record<SupportedLanguage, string> = {
   en: 'English',
   ko: 'Korean',
   ja: 'Japanese',
@@ -443,7 +438,6 @@ const LANGUAGE_DISPLAY_NAMES: Record<SupportedLanguage, string> = {
  *
  * @param structuredData - JSON string of Stage 1 analysis data (Module A)
  * @param sessionCount - Number of sessions analyzed
- * @param outputLanguage - Target output language (defaults to English)
  * @param kbContext - Optional knowledge base context for tip generation
  * @param productivityData - JSON string of productivity analysis (Module C) - optional
  * @param agentOutputsData - JSON string of Phase 2 agent outputs - optional
@@ -451,97 +445,13 @@ const LANGUAGE_DISPLAY_NAMES: Record<SupportedLanguage, string> = {
 export function buildContentWriterUserPrompt(
   structuredData: string,
   sessionCount: number,
-  outputLanguage: SupportedLanguage = 'en',
   kbContext?: PatternKnowledgeContext,
   productivityData?: string,
   agentOutputsData?: string
 ): string {
-  const useNonEnglish = outputLanguage !== 'en';
-  const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
-
-  // Language-specific instructions for different sections
-  const languageHeader = useNonEnglish
-    ? `
-## CRITICAL: ${langName} Output Required
-
-**Write all output in ${langName}.**
-
-The developer's quotes are in ${langName}. You MUST write EVERY field in **${langName}**:
-- personalitySummary: Write in ${langName}
-- patternName: Write in ${langName} (e.g., "Persona Anchoring", "Git Time Machine" should be expressed naturally in ${langName})
-- pattern description: Write in ${langName}
-- pattern tip: Write in ${langName}
-- example analysis: Write in ${langName}
-- strength/growth titles: Write in ${langName}
-- strength/growth descriptions: Write in ${langName}
-- ALL recommendations: Write in ${langName}
-
-Keep technical terms in English (AI, IDE, debugging, Git, commit).
-Match the developer's natural ${langName} style from their quotes.
-`
-    : '';
-
-  const languagePatternReminder = useNonEnglish
-    ? `
-   - Write in ${langName}: patternName, description, tip, analysis must all be in ${langName}`
-    : '';
-
-  const languageDimensionReminder = useNonEnglish
-    ? `
-   - Write in ${langName}: title, description, recommendation must all be in ${langName}`
-    : '';
-
-  const languageSummaryReminder = useNonEnglish
-    ? `
-   - Write in ${langName}`
-    : '';
-
-  const languageFinalReminder = useNonEnglish
-    ? `
-
----
-## Final Reminder: Write all output fields in ${langName}!
-Do NOT write pattern names, descriptions, tips, or analysis in English.
-Example: "The Persona Anchor" in English should be expressed naturally in ${langName}.`
-    : '';
-
-  // Language reminder for agent insights translation
-  const languageAgentInsightsReminder = useNonEnglish
-    ? `
-⚠️ TRANSLATION REQUIRED: The agent insights above are in English.
-When integrating these insights into your ${langName} narrative:
-- Translate all agent findings, pattern names, and recommendations to ${langName}
-- Express insights naturally in ${langName} style
-- Keep technical terms in English (AI, IDE, debugging, Git, commit, token, etc.)
-
-⚠️ CRITICAL: You MUST populate translatedAgentInsights field with translated versions!
-See Step 11 in Transformation Instructions.
-`
-    : '';
-
-  // Instructions for translatedAgentInsights (only for non-English)
-  const translatedAgentInsightsInstructions = useNonEnglish && agentOutputsData
-    ? `
-
-11. **Translated Agent Insights** (REQUIRED for ${langName} output)
-   - Populate translatedAgentInsights with translated versions of agent strengthsData and growthAreasData
-   - For each agent that has data (patternDetective, metacognition, antiPatternSpotter, knowledgeGap, contextEfficiency, temporalAnalysis, multitasking):
-     * strengthsData: Translate title and description to ${langName}, keep evidence quotes in original language
-     * growthAreasData: Translate title, description, and recommendation to ${langName}
-   - Format is the SAME as original agentOutputs:
-     * strengthsData: "title|description|quote1,quote2;..."
-     * growthAreasData: "title|desc|evidence|rec|freq|severity|priority;..."
-   - Translation rules:
-     * Translate title, description, recommendation to ${langName}
-     * Keep technical terms in English (AI, IDE, debugging, Git, commit, token)
-     * Keep evidence quotes in their ORIGINAL language (these are user's words)
-     * Match the developer's natural ${langName} style from their quotes
-   - If an agent has no data, omit it from translatedAgentInsights (do not include empty object)`
-    : '';
-
   // Build KB context section if provided
   const kbContextSection = kbContext
-    ? buildKnowledgeContextSection(kbContext, outputLanguage)
+    ? buildKnowledgeContextSection(kbContext)
     : '';
 
   // Build productivity data section if provided
@@ -572,13 +482,13 @@ ${agentOutputsData}
 6. **Temporal Analysis insights** → Use for sessionTrends and productivity patterns
 
 ⚠️ IMPORTANT: These agent outputs contain REAL discoveries. Reference them explicitly in your narrative!
-${languageAgentInsightsReminder}`
+`
     : '';
 
   return `# Context Data
 
 This developer has ${sessionCount} sessions analyzed.
-${languageHeader}
+
 ## Structured Analysis Data (from Module A - Behavioral Analysis)
 ${structuredData}
 ${productivityDataSection}${agentInsightsSection}${kbContextSection}
@@ -593,7 +503,7 @@ Using the extracted data above, create a VerboseLLMResponse:
    - Synthesize type reasoning into engaging, detailed prose
    - Reference 3-5 personality-revealing quotes from extractedQuotes
    - Emphasize 3-5 key phrases with **bold markers** (e.g., "Your **strategic planning approach**...")
-   - Include insights on collaboration style, problem-solving, and growth mindset${languageSummaryReminder}
+   - Include insights on collaboration style, problem-solving, and growth mindset
 
 3. **Dimension Insights** (exactly 6 - USE CLUSTERS FROM STAGE 1)
    - Use dimensionSignals.clusters to determine number and order of sections
@@ -605,7 +515,7 @@ Using the extracted data above, create a VerboseLLMResponse:
      * Add to the appropriate dimension's growthAreasData
      * Use detailed descriptions (500+ chars) explaining why this matters
      * Cite sources when available (e.g., "According to Anthropic's best practices...")
-     * These systematic insights should appear FIRST in growth areas (highest priority)${languageDimensionReminder}
+     * These systematic insights should appear FIRST in growth areas (highest priority)
 
 4. **Prompt Patterns** (5-12 for comprehensive analysis)
    - Transform detectedPatterns into distinctively named patterns
@@ -619,7 +529,7 @@ Using the extracted data above, create a VerboseLLMResponse:
      * Reference expert insights with natural attribution
      * Include specific techniques from KB sources
      * Provide concrete "try this" examples
-     * Connect to their behavior: "When you [quote], try..."${languagePatternReminder}
+     * Connect to their behavior: "When you [quote], try..."
 
 5. **Actionable Practices** (IMPORTANT - from actionablePatternMatches)
    - Split actionablePatternMatches by practiced=true/false
@@ -663,8 +573,8 @@ Using the extracted data above, create a VerboseLLMResponse:
      * priorityScore: same as priority.priorityScore
      * actions: { start: "...", stop: "...", continue: "..." }
    - summary: transform priority.selectionRationale into narrative
-${translatedAgentInsightsInstructions}
-Make this developer feel truly understood. Use their actual words.${languageFinalReminder}`;
+
+Make this developer feel truly understood. Use their actual words.`;
 }
 
 // ============================================================================
@@ -683,71 +593,22 @@ Make this developer feel truly understood. Use their actual words.${languageFina
  * @param phase1OutputJson - JSON of Phase1Output (utterances + metrics)
  * @param agentOutputsJson - JSON of all Phase 2 + 2.5 agent outputs
  * @param sessionCount - Number of sessions analyzed
- * @param outputLanguage - Target output language
  * @param kbContext - Optional knowledge base context for tip generation
  */
 export function buildContentWriterUserPromptV3(
   phase1OutputJson: string,
   agentOutputsJson: string,
   sessionCount: number,
-  outputLanguage: SupportedLanguage = 'en',
   kbContext?: PatternKnowledgeContext
 ): string {
-  const useNonEnglish = outputLanguage !== 'en';
-  const langName = LANGUAGE_DISPLAY_NAMES[outputLanguage];
-
-  const languageHeader = useNonEnglish
-    ? `
-## CRITICAL: ${langName} Output Required
-
-**Write all output in ${langName}.**
-
-The developer's utterances are in ${langName}. You MUST write EVERY field in **${langName}**:
-- personalitySummary: Write in ${langName}
-- patternName: Write in ${langName}
-- pattern description, tip, analysis: Write in ${langName}
-- strength/growth titles, descriptions: Write in ${langName}
-- ALL recommendations: Write in ${langName}
-
-Keep technical terms in English (AI, IDE, debugging, Git, commit).
-Match the developer's natural ${langName} style from their utterances.
-`
-    : '';
-
-  const languageReminder = useNonEnglish
-    ? `
-   - Write in ${langName}: all titles, descriptions, tips, recommendations`
-    : '';
-
-  const languageFinalReminder = useNonEnglish
-    ? `
-
----
-## Final Reminder: Write all output fields in ${langName}!
-Do NOT write pattern names, descriptions, tips, or analysis in English.`
-    : '';
-
   const kbContextSection = kbContext
-    ? buildKnowledgeContextSection(kbContext, outputLanguage)
-    : '';
-
-  // Translation instructions for agent insights (non-English)
-  const translatedAgentInsightsInstructions = useNonEnglish
-    ? `
-
-11. **Translated Agent Insights** (REQUIRED for ${langName} output)
-   - Populate translatedAgentInsights with translated versions of agent strengthsData and growthAreasData
-   - For each agent that has data:
-     * strengthsData: Translate title and description to ${langName}, keep evidence quotes in original language
-     * growthAreasData: Translate title, description, and recommendation to ${langName}
-   - Format: same flattened string format as original
-   - If an agent has no data, omit it from translatedAgentInsights`
+    ? buildKnowledgeContextSection(kbContext)
     : '';
 
   return `# Context Data
 
 This developer has ${sessionCount} sessions analyzed.
-${languageHeader}
+
 ## Phase 1 Extraction Data (Raw Utterances + Metrics)
 ${phase1OutputJson}
 
@@ -775,19 +636,19 @@ Using the Phase 1 utterances and Phase 2 analysis above, create a VerboseLLMResp
    - Synthesize TypeClassifier reasoning + StrengthGrowth insights into engaging prose
    - Reference developer quotes from Phase 1 utterances
    - Emphasize 3-5 key phrases with **bold markers**
-   - Include insights on collaboration style, problem-solving, and growth mindset${languageReminder}
+   - Include insights on collaboration style, problem-solving, and growth mindset
 
 3. **Dimension Insights** (exactly 6)
    - Use StrengthGrowth output as primary source for strengths and growth areas
    - Group by the 6 dimensions (aiCollaboration, contextEngineering, toolMastery, burnoutRisk, aiControl, skillResilience)
    - Phase 2 workers already provide evidence — reference it in descriptions
-   - For each dimension, provide engaging titles and descriptions${languageReminder}
+   - For each dimension, provide engaging titles and descriptions
 
 4. **Prompt Patterns** (5-12 for comprehensive analysis)
    - Derive patterns from Phase 1 utterances and Phase 2 insights
    - **Description (600-800 chars):** WHAT-WHY-HOW framework
    - Include 2-5 example quotes from utterances
-   - **Tip (600-1000 chars):** Expert coaching using Knowledge Base context${languageReminder}
+   - **Tip (600-1000 chars):** Expert coaching using Knowledge Base context
 
 5. **Actionable Practices**
    - Use TrustVerification actionablePatternMatchesData for practiced/opportunity split
@@ -816,6 +677,6 @@ Using the Phase 1 utterances and Phase 2 analysis above, create a VerboseLLMResp
 10. **Top 3 Focus Areas** (from StrengthGrowth)
    - Use personalizedPrioritiesData from StrengthGrowth
    - Create ranked focus areas with actions (start/stop/continue)
-${translatedAgentInsightsInstructions}
-Make this developer feel truly understood. Use their actual words.${languageFinalReminder}`;
+
+Make this developer feel truly understood. Use their actual words.`;
 }
