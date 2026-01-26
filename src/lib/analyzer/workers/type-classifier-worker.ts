@@ -152,18 +152,23 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     // Validate distribution sums to 100
     const dist = result.data.distribution;
     const sum = dist.architect + dist.scientist + dist.collaborator + dist.speedrunner + dist.craftsman;
+    const keys: (keyof typeof dist)[] = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'];
     if (Math.abs(sum - 100) > 1) {
       this.log(`Warning: Distribution sums to ${sum}, normalizing...`);
-      const factor = 100 / sum;
-      const keys: (keyof typeof dist)[] = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'];
-      for (const key of keys) {
-        dist[key] = Math.round(dist[key] * factor);
-      }
-      // Compensate rounding error on the largest value to ensure exact sum of 100
-      const newSum = keys.reduce((s, k) => s + dist[k], 0);
-      if (newSum !== 100) {
-        const maxKey = keys.reduce((a, b) => (dist[a] >= dist[b] ? a : b));
-        dist[maxKey] += 100 - newSum;
+      if (sum === 0) {
+        // All zeros: distribute evenly
+        for (const key of keys) { dist[key] = 20; }
+      } else {
+        const factor = 100 / sum;
+        for (const key of keys) {
+          dist[key] = Math.round(dist[key] * factor);
+        }
+        // Compensate rounding error on the largest value to ensure exact sum of 100
+        const newSum = keys.reduce((s, k) => s + dist[k], 0);
+        if (newSum !== 100) {
+          const maxKey = keys.reduce((a, b) => (dist[a] >= dist[b] ? a : b));
+          dist[maxKey] += 100 - newSum;
+        }
       }
     }
 
