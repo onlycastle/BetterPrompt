@@ -13,6 +13,9 @@ import { z } from 'zod';
 import { CodingStyleTypeSchema, AIControlLevelSchema } from './coding-style';
 import { ProductivityAnalysisDataSchema } from './productivity-data';
 import { AgentOutputsSchema } from './agent-outputs';
+// Import and re-export dimension schema from the isolated file
+import { DimensionNameEnumSchema, DIMENSION_NAMES, type DimensionNameEnum, type DimensionName } from './dimension-schema';
+export { DimensionNameEnumSchema, DIMENSION_NAMES, type DimensionNameEnum, type DimensionName };
 
 // ============================================================================
 // ANALYZED SESSION INFO - Metadata about sessions included in analysis
@@ -172,29 +175,10 @@ export function parseExamplesData(data: string | undefined): Array<{ quote: stri
 // PER-DIMENSION INSIGHT SCHEMAS (Score-Free)
 // ============================================================================
 
-/**
- * The 9 analysis dimensions (6 original + 3 new Premium/Enterprise)
- */
-export const DimensionNameEnumSchema = z.enum([
-  // Original 6 dimensions
-  'aiCollaboration',
-  'contextEngineering',
-  'toolMastery',
-  'burnoutRisk',
-  'aiControl',
-  'skillResilience',
-  // New 3 dimensions (Phase 3 - Premium/Enterprise)
-  'iterationEfficiency',
-  'learningVelocity',
-  'scopeManagement',
-]);
-export type DimensionNameEnum = z.infer<typeof DimensionNameEnumSchema>;
-
-/**
- * Array of all dimension names, derived from the schema
- * Use this constant instead of hardcoding dimension arrays
- */
-export const DIMENSION_NAMES = DimensionNameEnumSchema.options;
+// NOTE: DimensionNameEnumSchema, DIMENSION_NAMES, DimensionNameEnum, and DimensionName
+// are now imported from ./dimension-schema and re-exported at the top of this file.
+// This was done to break the circular dependency:
+//   agent-outputs.ts → strength-growth-data.ts → verbose-evaluation.ts → agent-outputs.ts
 
 /**
  * Human-readable display names for each dimension
@@ -904,6 +888,48 @@ export const SessionTrendSchema = z.object({
 export type SessionTrend = z.infer<typeof SessionTrendSchema>;
 
 // ============================================================================
+// TRANSLATED AGENT INSIGHTS SCHEMA (for non-English output)
+// ============================================================================
+
+/**
+ * Translated Agent Insight Schema
+ *
+ * Contains translated strengths and growth areas for a single agent.
+ * Uses flattened semicolon-separated strings to comply with Gemini's nesting limit.
+ *
+ * Format:
+ * - strengthsData: "title|description|quote1,quote2;title2|description2|quotes;..."
+ * - growthAreasData: "title|description|evidence|recommendation|frequency|severity|priorityScore;..."
+ */
+export const TranslatedAgentInsightSchema = z.object({
+  /** Strengths as "title|description|quote1,quote2;..." format */
+  strengthsData: z.string().max(4000).optional()
+    .describe('Translated strengths as "title|description|quote1,quote2;..." format'),
+  /** Growth areas as "title|desc|evidence|rec|freq|severity|priority;..." format */
+  growthAreasData: z.string().max(4000).optional()
+    .describe('Translated growth areas as "title|desc|evidence|rec|freq|severity|priority;..." format'),
+});
+export type TranslatedAgentInsight = z.infer<typeof TranslatedAgentInsightSchema>;
+
+/**
+ * Translated Agent Insights for all agents
+ *
+ * Contains translated strengths/growthAreas for each agent.
+ * Only populated when output language is non-English.
+ * Frontend should use this when available, falling back to original agentOutputs.
+ */
+export const TranslatedAgentInsightsSchema = z.object({
+  patternDetective: TranslatedAgentInsightSchema.optional(),
+  metacognition: TranslatedAgentInsightSchema.optional(),
+  antiPatternSpotter: TranslatedAgentInsightSchema.optional(),
+  knowledgeGap: TranslatedAgentInsightSchema.optional(),
+  contextEfficiency: TranslatedAgentInsightSchema.optional(),
+  temporalAnalysis: TranslatedAgentInsightSchema.optional(),
+  multitasking: TranslatedAgentInsightSchema.optional(),
+});
+export type TranslatedAgentInsights = z.infer<typeof TranslatedAgentInsightsSchema>;
+
+// ============================================================================
 // COMPLETE VERBOSE EVALUATION SCHEMA
 // ============================================================================
 
@@ -1038,6 +1064,12 @@ export const VerboseEvaluationSchema = z.object({
     /** Number of insights filtered due to low confidence */
     insightsFiltered: z.number().int().min(0).optional(),
   }).optional().describe('Analysis metadata for transparency and trust'),
+
+  // NEW: Translated Agent Insights (for non-English output)
+  // Contains translated strengths/growthAreas from all agents
+  // Frontend should use this when available, falling back to agentOutputs
+  translatedAgentInsights: TranslatedAgentInsightsSchema.optional()
+    .describe('Translated agent insights for non-English output'),
 });
 export type VerboseEvaluation = z.infer<typeof VerboseEvaluationSchema>;
 
@@ -1101,5 +1133,11 @@ export const VerboseLLMResponseSchema = z.object({
   // Top 3 Focus Areas (from Stage 1) - LLM version with flattened actions
   topFocusAreas: LLMTopFocusAreasSchema.optional()
     .describe('Top 3 personalized priorities - the MOST ACTIONABLE part'),
+
+  // Translated Agent Insights (for non-English output)
+  // Contains translated strengths/growthAreas from all agents
+  // Only populated when output language is non-English
+  translatedAgentInsights: TranslatedAgentInsightsSchema.optional()
+    .describe('Translated agent insights for non-English output - use when available'),
 });
 export type VerboseLLMResponse = z.infer<typeof VerboseLLMResponseSchema>;

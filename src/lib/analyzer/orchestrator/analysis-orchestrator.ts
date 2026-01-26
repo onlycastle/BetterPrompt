@@ -27,6 +27,7 @@ import type {
   OrchestratorConfig,
   Phase1Results,
   AggregatedTokenUsage,
+  Phase1Output,
 } from './types';
 import {
   DEFAULT_ORCHESTRATOR_CONFIG,
@@ -203,14 +204,19 @@ export class AnalysisOrchestrator {
     if (this.phase2Workers.length > 0) {
       this.log('Phase 2: Insight Generation...');
 
-      const phase2Context: WorkerContext = {
+      // Build Phase 2 context with both legacy (moduleAOutput) and v2 (phase1Output) data
+      // Legacy workers (KnowledgeGap, ContextEfficiency) use moduleAOutput
+      // v2 workers (StrengthGrowth, BehaviorPattern, TypeClassifier) use phase1Output
+      const phase2Context: WorkerContext & { phase1Output?: Phase1Output } = {
         ...baseContext,
         moduleAOutput: phase1Results.dataAnalyst.data,
         moduleCOutput: phase1Results.productivityAnalyst.data,
+        // v2: Add Phase 1 output for v2 workers (context isolation)
+        phase1Output: phase1Results.quoteExtractor?.data,
         // outputLanguage intentionally NOT passed - Phase 2 workers always use English
       };
 
-      console.log(`[Orchestrator] Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasModuleA: ${!!phase2Context.moduleAOutput}`);
+      console.log(`[Orchestrator] Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasModuleA: ${!!phase2Context.moduleAOutput}, hasPhase1Output: ${!!phase2Context.phase1Output}`);
 
       const phase2Results = await this.runPhase2(phase2Context);
       console.log(`[Orchestrator] Phase 2 results keys: ${Object.keys(phase2Results).join(', ')}`);
@@ -276,11 +282,12 @@ export class AnalysisOrchestrator {
 
     // ─────────────────────────────────────────────────────────────────────
     // Phase 3: Content Generation (with Phase 2 agent outputs)
+    // v2 Architecture: Use transformV2 - no raw session access
     // ─────────────────────────────────────────────────────────────────────
     this.log('Phase 3: Content Generation...');
-    const contentResult = await this.contentWriter.transform(
+    const contentResult = await this.contentWriter.transformV2(
       phase1Results.dataAnalyst.data,
-      sessions,
+      sessions.length,  // v2: session count only, no raw sessions
       phase1Results.productivityAnalyst.data,
       agentOutputs
     );
@@ -366,11 +373,14 @@ export class AnalysisOrchestrator {
    * Run Phase 1 workers (Data Extraction)
    *
    * Workers run in parallel. Results are keyed by worker name.
+   * Includes both legacy workers (DataAnalyst, ProductivityAnalyst) and
+   * v2 worker (QuoteExtractor) for Phase 1 output.
    */
   private async runPhase1(context: WorkerContext): Promise<Phase1Results> {
     // Find workers by name - NO FALLBACK: workers must be registered
     const dataAnalystWorker = this.phase1Workers.find((w) => w.name === 'DataAnalyst');
     const productivityWorker = this.phase1Workers.find((w) => w.name === 'ProductivityAnalyst');
+    const quoteExtractorWorker = this.phase1Workers.find((w) => w.name === 'QuoteExtractor');
 
     // Fail fast if required workers are not registered
     if (!dataAnalystWorker) {
@@ -381,14 +391,25 @@ export class AnalysisOrchestrator {
     }
 
     // Run workers in parallel - errors propagate up
-    const [dataResult, productivityResult] = await Promise.all([
+    // QuoteExtractor is optional (for v2 workers) but runs in parallel if registered
+    const workerPromises: Promise<WorkerResult<unknown>>[] = [
       dataAnalystWorker.execute(context),
       productivityWorker.execute(context),
-    ]);
+    ];
+
+    // Add QuoteExtractor if registered
+    if (quoteExtractorWorker) {
+      workerPromises.push(quoteExtractorWorker.execute(context));
+    }
+
+    const results = await Promise.all(workerPromises);
 
     return {
-      dataAnalyst: dataResult as WorkerResult<StructuredAnalysisData>,
-      productivityAnalyst: productivityResult as WorkerResult<ProductivityAnalysisData>,
+      dataAnalyst: results[0] as WorkerResult<StructuredAnalysisData>,
+      productivityAnalyst: results[1] as WorkerResult<ProductivityAnalysisData>,
+      quoteExtractor: quoteExtractorWorker
+        ? (results[2] as WorkerResult<Phase1Output>)
+        : undefined,
     };
   }
 
@@ -466,17 +487,35 @@ export class AnalysisOrchestrator {
 
   /**
    * Merge Phase 2 worker results into AgentOutputs
+   *
+   * Handles both legacy workers and v2 workers.
+   * Legacy workers: PatternDetective, AntiPatternSpotter, etc. (deprecated in v2)
+   * v2 workers: StrengthGrowth, BehaviorPattern, TypeClassifier
    */
   private mergeAgentOutputs(results: Record<string, WorkerResult<unknown> | undefined>): AgentOutputs {
     return {
+      // =========================================================================
+      // Legacy workers (kept for backward compatibility)
+      // =========================================================================
       patternDetective: results['PatternDetective']?.data as AgentOutputs['patternDetective'],
       antiPatternSpotter: results['AntiPatternSpotter']?.data as AgentOutputs['antiPatternSpotter'],
-      knowledgeGap: results['KnowledgeGap']?.data as AgentOutputs['knowledgeGap'],
-      contextEfficiency: results['ContextEfficiency']?.data as AgentOutputs['contextEfficiency'],
       metacognition: results['MetacognitionWorker']?.data as AgentOutputs['metacognition'],
       temporalAnalysis: results['TemporalAnalyzer']?.data as AgentOutputs['temporalAnalysis'],
       multitasking: results['MultitaskingAnalyzer']?.data as AgentOutputs['multitasking'],
       crossSessionAntiPatterns: results['CrossSessionAntiPattern']?.data as AgentOutputs['crossSessionAntiPatterns'],
+
+      // =========================================================================
+      // Current workers (kept per v2 plan)
+      // =========================================================================
+      knowledgeGap: results['KnowledgeGap']?.data as AgentOutputs['knowledgeGap'],
+      contextEfficiency: results['ContextEfficiency']?.data as AgentOutputs['contextEfficiency'],
+
+      // =========================================================================
+      // NEW v2 workers (context isolated)
+      // =========================================================================
+      strengthGrowth: results['StrengthGrowth']?.data as AgentOutputs['strengthGrowth'],
+      behaviorPattern: results['BehaviorPattern']?.data as AgentOutputs['behaviorPattern'],
+      typeClassifier: results['TypeClassifier']?.data as AgentOutputs['typeClassifier'],
     };
   }
 

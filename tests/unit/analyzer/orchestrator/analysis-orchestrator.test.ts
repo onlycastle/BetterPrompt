@@ -20,7 +20,12 @@ import { BaseWorker } from '../../../../src/lib/analyzer/workers/base-worker.js'
 // Mock dependencies
 vi.mock('../../../../src/lib/analyzer/stages/content-writer.js', () => ({
   ContentWriterStage: class MockContentWriterStage {
+    // Legacy method (deprecated)
     async transform() {
+      return this.transformV2();
+    }
+    // v2 method (used by orchestrator)
+    async transformV2() {
       return {
         data: {
           primaryType: 'architect',

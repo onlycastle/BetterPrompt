@@ -181,6 +181,7 @@ export function TabbedReportContainer({
                 agentOutputs={agentOutputs}
                 isPaid={isPaid}
                 resourcesMap={resourcesMap}
+                translatedAgentInsights={analysis.translatedAgentInsights}
               />
             </div>
           )}
@@ -203,6 +204,7 @@ export function TabbedReportContainer({
               <AgentInsightsSection
                 agentOutputs={agentOutputs}
                 isPaid={isPaid}
+                translatedAgentInsights={analysis.translatedAgentInsights}
               />
             </div>
           )}

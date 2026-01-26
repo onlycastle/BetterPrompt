@@ -141,6 +141,9 @@ export interface VerboseAnalysisData {
   promptPatterns: PromptPattern[];
   // Agent outputs (from Wow Agents - Premium)
   agentOutputs?: import('../lib/models/agent-outputs').AgentOutputs;
+  // Translated agent insights (for non-English output)
+  // Contains translated strengths/growthAreas from Content Writer
+  translatedAgentInsights?: import('../lib/models/verbose-evaluation').TranslatedAgentInsights;
   // Analysis metadata with confidence scores (for transparency)
   analysisMetadata?: AnalysisMetadata;
   // Premium fields (optional)
