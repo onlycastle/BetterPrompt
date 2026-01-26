@@ -1,6 +1,11 @@
 /**
  * ResourceBubble Component
- * Displays learning resources in a speech bubble style next to Growth Area cards
+ * Displays learning resources for Growth Area cards.
+ *
+ * Modes:
+ * - Default: Speech bubble style positioned next to the card (standalone)
+ * - Inline (inline=true): Displays inside the card with a left border separator
+ *
  * Free users see 1 resource + locked teaser; paid users see all resources
  */
 
@@ -10,6 +15,8 @@ import styles from './ResourceBubble.module.css';
 interface ResourceBubbleProps {
   resources: ParsedResource[];
   isPaid: boolean;
+  /** When true, displays inline within the card instead of as a speech bubble */
+  inline?: boolean;
 }
 
 /**
@@ -32,16 +39,20 @@ function getResourceTypeIcon(type: ParsedResource['type']): string {
   }
 }
 
-export function ResourceBubble({ resources, isPaid }: ResourceBubbleProps) {
+export function ResourceBubble({ resources, isPaid, inline = false }: ResourceBubbleProps) {
   if (resources.length === 0) return null;
 
   const visibleResources = isPaid ? resources : resources.slice(0, 1);
   const hiddenCount = resources.length - visibleResources.length;
 
+  const bubbleClassName = inline
+    ? `${styles.bubble} ${styles.inlineBubble}`
+    : styles.bubble;
+
   return (
-    <div className={styles.bubble}>
-      {/* Speech bubble tail pointing left */}
-      <div className={styles.bubbleTail} />
+    <div className={bubbleClassName}>
+      {/* Speech bubble tail pointing left - hidden in inline mode */}
+      {!inline && <div className={styles.bubbleTail} />}
 
       <div className={styles.bubbleContent}>
         <div className={styles.bubbleHeader}>

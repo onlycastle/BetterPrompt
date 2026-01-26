@@ -33,19 +33,20 @@ import type { OrchestratorConfig } from './orchestrator/types';
 import {
   createDataAnalystWorker,
   createProductivityAnalystWorker,
-  createPatternDetectiveWorker,
-  createAntiPatternSpotterWorker,
+  // Phase 2: Core workers (kept from original)
   createKnowledgeGapWorker,
   createContextEfficiencyWorker,
-  // NEW: Metacognition + Temporal Analysis workers
-  createMetacognitionWorker,
-  createTemporalAnalyzerWorker,
-  // NEW: Multitasking Analysis worker
-  createMultitaskingAnalyzerWorker,
-  // NEW: Cross-Session Anti-Pattern Detection worker
-  createCrossSessionAntiPatternWorker,
-  // NEW: Type Synthesis worker (Phase 2.5)
+  // Phase 2.5: Type Synthesis (kept for 15-type matrix)
   createTypeSynthesisWorker,
+  // ============================================================================
+  // NEW v2 Architecture Workers
+  // ============================================================================
+  // Phase 1 v2: Pure extraction (produces Phase1Output for v2 workers)
+  createQuoteExtractorWorker,
+  // Phase 2 v2: Semantic analysis (receives Phase1Output)
+  createStrengthGrowthWorker,
+  createBehaviorPatternWorker,
+  createTypeClassifierWorker,
 } from './workers';
 
 // Legacy imports for single-stage mode (kept for backward compatibility)
@@ -360,21 +361,29 @@ export class VerboseAnalyzer {
       // Create and configure orchestrator
       this.orchestrator = createAnalysisOrchestrator(orchestratorConfig);
 
-      // Register Phase 1 workers (Module A, C - Data Extraction)
+      // =========================================================================
+      // PHASE 1: Data Extraction
+      // =========================================================================
+      // Legacy workers (Module A, C - produce StructuredAnalysisData)
       this.orchestrator.registerPhase1Worker(createDataAnalystWorker(orchestratorConfig));
       this.orchestrator.registerPhase1Worker(createProductivityAnalystWorker(orchestratorConfig));
+      // NEW v2 worker (produces Phase1Output for v2 Phase 2 workers)
+      this.orchestrator.registerPhase1Worker(createQuoteExtractorWorker(orchestratorConfig));
 
-      // Register Phase 2 workers (Insight Generation - Premium+ only)
-      this.orchestrator.registerPhase2Worker(createPatternDetectiveWorker(orchestratorConfig));
-      this.orchestrator.registerPhase2Worker(createAntiPatternSpotterWorker(orchestratorConfig));
+      // =========================================================================
+      // PHASE 2: Insight Generation (5 workers per v2 plan)
+      // =========================================================================
+      // NEW v2 workers (consume Phase1Output)
+      this.orchestrator.registerPhase2Worker(createStrengthGrowthWorker(orchestratorConfig));
+      this.orchestrator.registerPhase2Worker(createBehaviorPatternWorker(orchestratorConfig));
+      this.orchestrator.registerPhase2Worker(createTypeClassifierWorker(orchestratorConfig));
+      // Legacy workers (consume moduleAOutput - kept per plan)
       this.orchestrator.registerPhase2Worker(createKnowledgeGapWorker(orchestratorConfig));
       this.orchestrator.registerPhase2Worker(createContextEfficiencyWorker(orchestratorConfig));
-      this.orchestrator.registerPhase2Worker(createMetacognitionWorker(orchestratorConfig));
-      this.orchestrator.registerPhase2Worker(createTemporalAnalyzerWorker(orchestratorConfig));
-      this.orchestrator.registerPhase2Worker(createMultitaskingAnalyzerWorker(orchestratorConfig));
-      this.orchestrator.registerPhase2Worker(createCrossSessionAntiPatternWorker(orchestratorConfig));
 
-      // Register Phase 2.5 worker (Type Synthesis - refines classification using agent outputs)
+      // =========================================================================
+      // PHASE 2.5: Type Synthesis (refines classification using agent outputs)
+      // =========================================================================
       this.orchestrator.registerPhase2Point5Worker(createTypeSynthesisWorker(orchestratorConfig));
     }
 

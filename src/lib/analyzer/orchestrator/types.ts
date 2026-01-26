@@ -121,6 +121,62 @@ export interface WorkerContext {
 }
 
 // ============================================================================
+// v2 Architecture Context Types
+// ============================================================================
+
+/**
+ * Phase 1 v2 Output (from QuoteExtractor)
+ *
+ * Pure extraction result with no semantic analysis.
+ * This is what Phase 2 v2 workers receive - NOT raw sessions.
+ */
+import type { Phase1Output } from '../../models/phase1-output';
+export type { Phase1Output };
+
+/**
+ * Context for v2 Phase 2 workers (Context Isolation)
+ *
+ * IMPORTANT: v2 Phase 2 workers do NOT receive raw sessions.
+ * They receive ONLY the Phase 1 output from QuoteExtractor.
+ *
+ * This enforces the architectural principle:
+ * - Phase 1 = Pure Extraction (no semantic analysis)
+ * - Phase 2 = Semantic Analysis (on extracted data only)
+ *
+ * Benefits:
+ * - Clean separation of concerns
+ * - Easier testing (mock Phase 1 output)
+ * - Prevents bypassing extraction layer
+ */
+export interface Phase2V2WorkerContext {
+  /** Phase 1 extraction output (REQUIRED) */
+  phase1Output: Phase1Output;
+
+  /** User tier level */
+  tier: Tier;
+
+  // NOTE: No outputLanguage - Phase 2 v2 workers ALWAYS output English
+  // Translation happens in Phase 3 (ContentWriter) only
+
+  // NOTE: No sessions - raw data access is FORBIDDEN for Phase 2 v2 workers
+  // This is intentional to enforce context isolation
+}
+
+/**
+ * Type guard to check if context is v2 Phase 2 context
+ */
+export function isPhase2V2Context(context: unknown): context is Phase2V2WorkerContext {
+  if (typeof context !== 'object' || context === null) return false;
+  const ctx = context as Record<string, unknown>;
+  return (
+    'phase1Output' in ctx &&
+    typeof ctx.phase1Output === 'object' &&
+    ctx.phase1Output !== null &&
+    'tier' in ctx
+  );
+}
+
+// ============================================================================
 // Phase Types
 // ============================================================================
 
@@ -208,6 +264,8 @@ export const DEFAULT_ORCHESTRATOR_CONFIG: Required<Omit<OrchestratorConfig, 'gem
 export interface Phase1Results {
   dataAnalyst: WorkerResult<StructuredAnalysisData>;
   productivityAnalyst: WorkerResult<ProductivityAnalysisData>;
+  /** v2: QuoteExtractor output for Phase 2 v2 workers */
+  quoteExtractor?: WorkerResult<Phase1Output>;
 }
 
 /**
@@ -218,6 +276,36 @@ export interface Phase2Results {
   antiPatternSpotter?: WorkerResultWithStatus<unknown>;
   knowledgeGap?: WorkerResultWithStatus<unknown>;
   contextEfficiency?: WorkerResultWithStatus<unknown>;
+}
+
+// ============================================================================
+// v2 Architecture Phase Results Types
+// ============================================================================
+
+import type { StrengthGrowthOutput } from '../../models/strength-growth-data';
+import type { BehaviorPatternOutput } from '../../models/behavior-pattern-data';
+import type { TypeClassifierOutput, KnowledgeGapOutput, ContextEfficiencyOutput } from '../../models/agent-outputs';
+
+/**
+ * Results from Phase 2 v2 workers (Context Isolated)
+ *
+ * These workers receive only Phase 1 output (no raw sessions).
+ */
+export interface Phase2V2Results {
+  /** Strengths & Growth Areas analysis */
+  strengthGrowth?: WorkerResult<StrengthGrowthOutput>;
+
+  /** Behavior Patterns analysis (anti-patterns, planning, verification) */
+  behaviorPattern?: WorkerResult<BehaviorPatternOutput>;
+
+  /** Knowledge Gap analysis */
+  knowledgeGap?: WorkerResult<KnowledgeGapOutput>;
+
+  /** Context Efficiency analysis */
+  contextEfficiency?: WorkerResult<ContextEfficiencyOutput>;
+
+  /** Type Classification */
+  typeClassifier?: WorkerResult<TypeClassifierOutput>;
 }
 
 // ============================================================================

@@ -19,10 +19,14 @@ import {
   parseStrengthsData,
   parseGrowthAreasData,
   parseRecommendedResourcesData,
+  getTranslatedAgentStrengths,
+  getTranslatedAgentGrowthAreas,
   type AgentStrength,
   type AgentGrowthArea,
   type ParsedResource,
+  type TranslatedAgentKey,
 } from '../../../lib/models/agent-outputs';
+import type { TranslatedAgentInsights } from '../../../lib/models/verbose-evaluation';
 import { AGENT_CONFIGS, type AgentConfig } from '../../../lib/domain/models';
 import { ResourceBubble } from './ResourceBubble';
 import { calculateSeverity, getSeverityBadge, type SeverityLevel } from './GrowthInsightsSection';
@@ -31,6 +35,8 @@ import styles from './AgentInsightsSection.module.css';
 interface AgentInsightsSectionProps {
   agentOutputs: AgentOutputs;
   isPaid?: boolean;
+  /** Translated agent insights (for non-English output) - uses when available */
+  translatedAgentInsights?: TranslatedAgentInsights;
 }
 
 function getScoreValue(data: unknown, key: string): number {
@@ -119,7 +125,11 @@ function hasVisibleContent(agentId: keyof AgentOutputs, data: unknown): boolean 
   return hasStrengthsOrGrowth || hasSummary || hasDetails;
 }
 
-export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsightsSectionProps) {
+export function AgentInsightsSection({
+  agentOutputs,
+  isPaid = false,
+  translatedAgentInsights,
+}: AgentInsightsSectionProps) {
   const [expandedAgent, setExpandedAgent] = useState<keyof AgentOutputs | null>(null);
 
   // Check if any agent has data
@@ -194,6 +204,7 @@ export function AgentInsightsSection({ agentOutputs, isPaid = false }: AgentInsi
                 isPaid={isPaid}
                 agentId={config.id}
                 resources={knowledgeGapResources}
+                translatedAgentInsights={translatedAgentInsights}
               />
 
               {/* Summary */}
@@ -351,6 +362,8 @@ interface AgentStrengthsGrowthAreasProps {
   agentId: keyof AgentOutputs;
   /** Resources for Knowledge Gap agent to show inline */
   resources?: ParsedResource[];
+  /** Translated agent insights (for non-English output) */
+  translatedAgentInsights?: TranslatedAgentInsights;
 }
 
 /**
@@ -365,9 +378,15 @@ function AgentStrengthsGrowthAreas({
   isPaid,
   agentId,
   resources = [],
+  translatedAgentInsights,
 }: AgentStrengthsGrowthAreasProps) {
-  const strengths = getAgentStrengths(data);
-  const growthAreas = getAgentGrowthAreas(data);
+  // Prefer translated data when available
+  const translatedStrengths = getTranslatedAgentStrengths(translatedAgentInsights, agentId as TranslatedAgentKey);
+  const translatedGrowthAreas = getTranslatedAgentGrowthAreas(translatedAgentInsights, agentId as TranslatedAgentKey);
+
+  // Use translated data if available, otherwise fallback to original
+  const strengths = translatedStrengths.length > 0 ? translatedStrengths : getAgentStrengths(data);
+  const growthAreas = translatedGrowthAreas.length > 0 ? translatedGrowthAreas : getAgentGrowthAreas(data);
 
   // Don't render if no data
   if (strengths.length === 0 && growthAreas.length === 0) {

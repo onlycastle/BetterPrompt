@@ -97,16 +97,64 @@ export class ContentWriterStage {
    * Returns both the response data and token usage metadata
    *
    * @param analysisData - Module A output (behavioral analysis)
-   * @param sessions - Raw parsed sessions
+   * @param sessions - Raw parsed sessions (for session count only)
    * @param productivityData - Module C output (productivity metrics) - optional
    * @param agentOutputs - Phase 2 agent outputs (insight generation) - optional
    *
    * @returns ContentWriterResult with VerboseLLMResponse (nested arrays) and token usage
    *          The LLM returns flattened strings, which are parsed back to nested arrays.
+   *
+   * @deprecated Use transformV2 for v2 architecture (no raw sessions access)
    */
   async transform(
     analysisData: StructuredAnalysisData,
     sessions: ParsedSession[],
+    productivityData?: ProductivityAnalysisData,
+    agentOutputs?: AgentOutputs
+  ): Promise<ContentWriterResult> {
+    // Delegate to internal method with session count
+    return this.transformInternal(
+      analysisData,
+      sessions.length,
+      productivityData,
+      agentOutputs
+    );
+  }
+
+  /**
+   * v2 Architecture: Transform without raw session access
+   *
+   * This method enforces the v2 architecture principle where Phase 3
+   * does NOT have access to raw sessions. Session count is derived
+   * from Phase 1 metrics.
+   *
+   * @param analysisData - Module A output (behavioral analysis)
+   * @param sessionCount - Number of sessions (from Phase 1 metrics)
+   * @param productivityData - Module C output (productivity metrics) - optional
+   * @param agentOutputs - Phase 2 agent outputs (insight generation) - optional
+   *
+   * @returns ContentWriterResult with VerboseLLMResponse (nested arrays) and token usage
+   */
+  async transformV2(
+    analysisData: StructuredAnalysisData,
+    sessionCount: number,
+    productivityData?: ProductivityAnalysisData,
+    agentOutputs?: AgentOutputs
+  ): Promise<ContentWriterResult> {
+    return this.transformInternal(
+      analysisData,
+      sessionCount,
+      productivityData,
+      agentOutputs
+    );
+  }
+
+  /**
+   * Internal transformation method
+   */
+  private async transformInternal(
+    analysisData: StructuredAnalysisData,
+    sessionCount: number,
     productivityData?: ProductivityAnalysisData,
     agentOutputs?: AgentOutputs
   ): Promise<ContentWriterResult> {
@@ -127,7 +175,7 @@ export class ContentWriterStage {
 
     const userPrompt = buildContentWriterUserPrompt(
       structuredDataJson,
-      sessions.length,
+      sessionCount,
       outputLanguage,
       kbContext,
       productivityDataJson,
@@ -276,7 +324,59 @@ export class ContentWriterStage {
     // Sanitize Premium/Enterprise sections (Anti-Patterns, Critical Thinking, Planning)
     this.sanitizePremiumSections(sanitized, analysisData);
 
+    // Process translatedAgentInsights if present (for non-English output)
+    // Keep as-is since frontend will parse the flattened strings
+    if (sanitized.translatedAgentInsights) {
+      this.sanitizeTranslatedAgentInsights(sanitized);
+    }
+
     return sanitized;
+  }
+
+  /**
+   * Sanitize translatedAgentInsights to ensure proper format
+   * Removes empty agent entries and validates string fields
+   */
+  private sanitizeTranslatedAgentInsights(response: any): void {
+    const translatedInsights = response.translatedAgentInsights;
+    if (!translatedInsights || typeof translatedInsights !== 'object') {
+      delete response.translatedAgentInsights;
+      return;
+    }
+
+    const agentKeys = [
+      'patternDetective',
+      'metacognition',
+      'antiPatternSpotter',
+      'knowledgeGap',
+      'contextEfficiency',
+      'temporalAnalysis',
+      'multitasking',
+    ];
+
+    // Check if there's any actual content
+    let hasContent = false;
+
+    for (const key of agentKeys) {
+      const agent = translatedInsights[key];
+      if (!agent) continue;
+
+      // Check if agent has any content
+      const hasStrengths = agent.strengthsData && typeof agent.strengthsData === 'string' && agent.strengthsData.trim() !== '';
+      const hasGrowth = agent.growthAreasData && typeof agent.growthAreasData === 'string' && agent.growthAreasData.trim() !== '';
+
+      if (hasStrengths || hasGrowth) {
+        hasContent = true;
+      } else {
+        // Remove empty agent entries
+        delete translatedInsights[key];
+      }
+    }
+
+    // If no content at all, remove the entire field
+    if (!hasContent) {
+      delete response.translatedAgentInsights;
+    }
   }
 
   /**

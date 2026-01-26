@@ -826,6 +826,61 @@ export const TypeSynthesisOutputSchema = z.object({
 export type TypeSynthesisOutput = z.infer<typeof TypeSynthesisOutputSchema>;
 
 // ============================================================================
+// Type Classifier Output (v2 Architecture)
+// ============================================================================
+
+/**
+ * Type Classifier Output Schema (v2)
+ *
+ * Classifies the developer into the 15-type matrix (5 styles × 3 control levels).
+ * Also includes the "Vibe Coder Spectrum" assessment.
+ *
+ * NOTE: Defined here (before AgentOutputsSchema) to avoid forward reference issues.
+ */
+export const TypeClassifierOutputSchema = z.object({
+  /** Primary coding style type */
+  primaryType: z.enum(['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman']),
+
+  /** Type distribution percentages (sum to 100) */
+  distribution: z.object({
+    architect: z.number().min(0).max(100),
+    scientist: z.number().min(0).max(100),
+    collaborator: z.number().min(0).max(100),
+    speedrunner: z.number().min(0).max(100),
+    craftsman: z.number().min(0).max(100),
+  }),
+
+  /** AI control level */
+  controlLevel: z.enum(['explorer', 'navigator', 'cartographer']),
+
+  /** Raw control score (0-100) */
+  controlScore: z.number().min(0).max(100),
+
+  /** Combined matrix name (e.g., "Systems Architect", "Yolo Coder") */
+  matrixName: z.string().max(50),
+
+  /** Matrix emoji */
+  matrixEmoji: z.string().max(10),
+
+  /** Vibe Coder Spectrum assessment (from Addy Osmani research) */
+  collaborationMaturity: z.object({
+    /** Where on the spectrum: vibe_coder → ai_assisted_engineer */
+    level: z.enum(['vibe_coder', 'supervised_coder', 'ai_assisted_engineer', 'reluctant_user']),
+    /** Human-readable description */
+    description: z.string().max(300),
+    /** Key indicators that led to this assessment */
+    indicators: z.array(z.string().max(200)),
+  }).optional(),
+
+  /** Confidence score (0-1) */
+  confidenceScore: z.number().min(0).max(1),
+
+  /** Reasoning for the classification */
+  reasoning: z.string().max(500).optional(),
+});
+export type TypeClassifierOutput = z.infer<typeof TypeClassifierOutputSchema>;
+
+// ============================================================================
 // Combined Agent Outputs
 // ============================================================================
 
@@ -845,25 +900,36 @@ export type TypeSynthesisOutput = z.infer<typeof TypeSynthesisOutputSchema>;
  * All fields are optional since agents may fail independently.
  */
 export const AgentOutputsSchema = z.object({
-  // Original 4 agents
+  // =========================================================================
+  // Legacy Agents (kept for backward compatibility)
+  // =========================================================================
   patternDetective: PatternDetectiveOutputSchema.optional(),
   antiPatternSpotter: AntiPatternSpotterOutputSchema.optional(),
   knowledgeGap: KnowledgeGapOutputSchema.optional(),
   contextEfficiency: ContextEfficiencyOutputSchema.optional(),
 
-  // NEW: Metacognition + Temporal Analysis agents
+  // Legacy: Metacognition + Temporal Analysis agents (deprecated in v2)
   metacognition: MetacognitionOutputSchema.optional(),
-  // REDESIGNED: Now uses TemporalAnalysisResult (metrics + insights)
   temporalAnalysis: TemporalAnalysisResultSchema.optional(),
-
-  // NEW: Multitasking Analysis
   multitasking: MultitaskingAnalysisOutputSchema.optional(),
 
-  // NEW: Type Synthesis (Agent-Informed Classification)
+  // Legacy: Type Synthesis (used by Phase 2.5)
   typeSynthesis: TypeSynthesisOutputSchema.optional(),
 
-  // NEW: Cross-Session Anti-Pattern Detection
+  // Legacy: Cross-Session Anti-Pattern Detection (deprecated in v2)
   crossSessionAntiPatterns: CrossSessionAntiPatternOutputSchema.optional(),
+
+  // =========================================================================
+  // v2 Architecture Workers (NEW)
+  // =========================================================================
+  /** Strengths & Growth Areas analysis (v2) */
+  strengthGrowth: StrengthGrowthOutputSchema.optional(),
+
+  /** Behavior Patterns analysis (v2) - replaces AntiPatternSpotter + Multitasking */
+  behaviorPattern: BehaviorPatternOutputSchema.optional(),
+
+  /** Type Classification (v2) - can replace TypeSynthesis */
+  typeClassifier: TypeClassifierOutputSchema.optional(),
 });
 
 export type AgentOutputs = z.infer<typeof AgentOutputsSchema>;
@@ -884,6 +950,7 @@ export function createEmptyAgentOutputs(): AgentOutputs {
  */
 export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
   return !!(
+    // Legacy agents
     outputs.patternDetective ||
     outputs.antiPatternSpotter ||
     outputs.knowledgeGap ||
@@ -892,7 +959,11 @@ export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
     outputs.temporalAnalysis ||
     outputs.multitasking ||
     outputs.typeSynthesis ||
-    outputs.crossSessionAntiPatterns
+    outputs.crossSessionAntiPatterns ||
+    // v2 agents
+    outputs.strengthGrowth ||
+    outputs.behaviorPattern ||
+    outputs.typeClassifier
   );
 }
 
@@ -934,6 +1005,179 @@ export function getAllTopInsights(outputs: AgentOutputs): string[] {
   return insights;
 }
 
+// ============================================================================
+// Growth Area Deduplication Logic
+// ============================================================================
+
+/**
+ * Common stop words to remove when normalizing titles for similarity comparison.
+ * These words don't contribute to semantic meaning for pattern identification.
+ */
+const TITLE_STOP_WORDS = [
+  'pattern', 'habit', 'behavior', 'behaviour', 'issue', 'problem',
+  'and', 'the', 'a', 'an', 'of', 'in', 'for', 'with', 'to', 'on',
+  'tendency', 'style', 'approach', 'practice', 'area',
+];
+
+/**
+ * Normalize title for similarity comparison
+ *
+ * Transforms titles to a canonical form for comparison:
+ * - Converts to lowercase
+ * - Removes punctuation and special characters
+ * - Removes common stop words (pattern, habit, behavior, etc.)
+ * - Sorts remaining words alphabetically
+ *
+ * @example
+ * normalizeTitle("Blind Approval Pattern") // "approval blind"
+ * normalizeTitle("Blind Approval Habit")   // "approval blind"
+ * normalizeTitle("Blind Approval & Verification") // "approval blind verification"
+ */
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')  // Replace punctuation with spaces
+    .split(/\s+/)
+    .filter(w => w && !TITLE_STOP_WORDS.includes(w))
+    .sort()
+    .join(' ');
+}
+
+/**
+ * Calculate Jaccard similarity between two normalized titles
+ *
+ * Jaccard similarity = |A ∩ B| / |A ∪ B|
+ * Returns a value between 0 (no overlap) and 1 (identical)
+ *
+ * @example
+ * calculateSimilarity("approval blind", "approval blind") // 1.0
+ * calculateSimilarity("approval blind", "approval blind verification") // 0.67
+ */
+function calculateSimilarity(a: string, b: string): number {
+  const setA = new Set(a.split(' ').filter(Boolean));
+  const setB = new Set(b.split(' ').filter(Boolean));
+
+  if (setA.size === 0 && setB.size === 0) return 1; // Both empty = identical
+
+  const intersection = new Set([...setA].filter(x => setB.has(x)));
+  const union = new Set([...setA, ...setB]);
+
+  return union.size === 0 ? 0 : intersection.size / union.size;
+}
+
+/**
+ * Merge a group of similar growth areas into a single representative item
+ *
+ * Merging strategy:
+ * - Title: Use the shortest (most concise) title
+ * - Description: Use the longest (most detailed) description
+ * - Evidence: Merge all, deduplicate
+ * - Recommendation: Use the longest (most comprehensive)
+ * - Frequency: Use maximum value (most frequent observation)
+ * - Severity: Use highest severity level
+ * - PriorityScore: Use maximum value
+ */
+function mergeGrowthAreaGroup(group: AgentGrowthArea[]): AgentGrowthArea {
+  if (group.length === 1) return group[0];
+
+  // Title: shortest (most concise)
+  const title = group.reduce((a, b) =>
+    a.title.length <= b.title.length ? a : b
+  ).title;
+
+  // Description: longest (most detailed)
+  const description = group.reduce((a, b) =>
+    a.description.length >= b.description.length ? a : b
+  ).description;
+
+  // Evidence: merge all, deduplicate
+  const evidence = [...new Set(group.flatMap(g => g.evidence))];
+
+  // Recommendation: longest (most comprehensive)
+  const recommendation = group.reduce((a, b) =>
+    (a.recommendation?.length || 0) >= (b.recommendation?.length || 0) ? a : b
+  ).recommendation;
+
+  // Frequency: maximum value
+  const frequencies = group.map(g => g.frequency).filter((f): f is number => f !== undefined);
+  const frequency = frequencies.length > 0 ? Math.max(...frequencies) : undefined;
+
+  // Severity: highest level
+  const severityOrder: Record<AgentSeverityLevel, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+  const severities = group.map(g => g.severity).filter((s): s is AgentSeverityLevel => s !== undefined);
+  const severity = severities.length > 0
+    ? severities.reduce((a, b) => severityOrder[a] >= severityOrder[b] ? a : b)
+    : undefined;
+
+  // Priority Score: maximum value
+  const priorities = group.map(g => g.priorityScore).filter((p): p is number => p !== undefined);
+  const priorityScore = priorities.length > 0 ? Math.max(...priorities) : undefined;
+
+  return {
+    title,
+    description,
+    evidence,
+    recommendation,
+    frequency,
+    severity,
+    priorityScore,
+  };
+}
+
+/**
+ * Similarity threshold for grouping growth areas.
+ * 0.5 = 50% word overlap after normalization required to be considered similar.
+ *
+ * Examples at 0.5 threshold:
+ * - "Blind Approval Pattern" vs "Blind Approval Habit" → 1.0 (grouped)
+ * - "Blind Approval" vs "Blind Approval & Verification" → 0.67 (grouped)
+ * - "Context Provision" vs "Error Handling" → 0.0 (not grouped)
+ */
+const SIMILARITY_THRESHOLD = 0.5;
+
+/**
+ * Group similar growth areas by title similarity
+ *
+ * Uses greedy clustering: for each unassigned area, find all areas
+ * with similarity >= threshold and group them together.
+ *
+ * @param areas - Raw list of growth areas from multiple agents
+ * @returns Deduplicated list with similar items merged
+ */
+function groupSimilarGrowthAreas(areas: AgentGrowthArea[]): AgentGrowthArea[] {
+  if (areas.length === 0) return [];
+
+  const groups: AgentGrowthArea[][] = [];
+  const used = new Set<number>();
+
+  for (let i = 0; i < areas.length; i++) {
+    if (used.has(i)) continue;
+
+    const group: AgentGrowthArea[] = [areas[i]];
+    used.add(i);
+
+    const normA = normalizeTitle(areas[i].title);
+
+    for (let j = i + 1; j < areas.length; j++) {
+      if (used.has(j)) continue;
+
+      const normB = normalizeTitle(areas[j].title);
+      if (calculateSimilarity(normA, normB) >= SIMILARITY_THRESHOLD) {
+        group.push(areas[j]);
+        used.add(j);
+      }
+    }
+
+    groups.push(group);
+  }
+
+  return groups.map(mergeGrowthAreaGroup);
+}
+
+// ============================================================================
+// Growth Area Collection
+// ============================================================================
+
 /**
  * Collect growth areas from ALL agents (both free and premium tiers)
  *
@@ -941,9 +1185,14 @@ export function getAllTopInsights(outputs: AgentOutputs): string[] {
  * Pattern Detective and Metacognition, while premium users see growth
  * areas from all 7 agents.
  *
+ * IMPORTANT: Deduplicates similar growth areas across agents using
+ * title similarity (Jaccard index >= 0.5). This prevents duplicate
+ * cards like "Blind Approval Pattern" / "Blind Approval Habit" /
+ * "Blind Approval & Verification" from appearing separately.
+ *
  * @example
  * const allAreas = getAllAgentGrowthAreas(agentOutputs);
- * // Returns: AgentGrowthArea[] from all agents that produced data
+ * // Returns: AgentGrowthArea[] from all agents, deduplicated
  */
 export function getAllAgentGrowthAreas(outputs: AgentOutputs): AgentGrowthArea[] {
   const allAreas: AgentGrowthArea[] = [];
@@ -974,7 +1223,8 @@ export function getAllAgentGrowthAreas(outputs: AgentOutputs): AgentGrowthArea[]
     allAreas.push(...parseGrowthAreasData(outputs.multitasking.growthAreasData));
   }
 
-  return allAreas;
+  // Deduplicate similar growth areas across agents
+  return groupSimilarGrowthAreas(allAreas);
 }
 
 // ============================================================================
@@ -1092,4 +1342,261 @@ export function createLockedGrowthArea(area: AgentGrowthArea): AgentGrowthArea {
     ...area,
     recommendation: '', // Prescription is locked
   };
+}
+
+// ============================================================================
+// Translated Agent Insights Helper Functions
+// ============================================================================
+
+import type { TranslatedAgentInsights, TranslatedAgentInsight } from './verbose-evaluation';
+
+/**
+ * Agent keys that may have translated insights
+ */
+export type TranslatedAgentKey =
+  | 'patternDetective'
+  | 'metacognition'
+  | 'antiPatternSpotter'
+  | 'knowledgeGap'
+  | 'contextEfficiency'
+  | 'temporalAnalysis'
+  | 'multitasking';
+
+/**
+ * Get growth areas from a specific translated agent
+ *
+ * @param insights - TranslatedAgentInsights object from Content Writer
+ * @param agentKey - The agent key to get growth areas from
+ * @returns Parsed AgentGrowthArea array
+ */
+export function getTranslatedAgentGrowthAreas(
+  insights: TranslatedAgentInsights | undefined,
+  agentKey: TranslatedAgentKey
+): AgentGrowthArea[] {
+  if (!insights) return [];
+
+  const agent = insights[agentKey] as TranslatedAgentInsight | undefined;
+  if (!agent?.growthAreasData) return [];
+
+  return parseGrowthAreasData(agent.growthAreasData);
+}
+
+/**
+ * Get strengths from a specific translated agent
+ *
+ * @param insights - TranslatedAgentInsights object from Content Writer
+ * @param agentKey - The agent key to get strengths from
+ * @returns Parsed AgentStrength array
+ */
+export function getTranslatedAgentStrengths(
+  insights: TranslatedAgentInsights | undefined,
+  agentKey: TranslatedAgentKey
+): AgentStrength[] {
+  if (!insights) return [];
+
+  const agent = insights[agentKey] as TranslatedAgentInsight | undefined;
+  if (!agent?.strengthsData) return [];
+
+  return parseStrengthsData(agent.strengthsData);
+}
+
+/**
+ * Collect growth areas from ALL translated agent insights
+ *
+ * Similar to getAllAgentGrowthAreas but works with TranslatedAgentInsights.
+ * Uses the same deduplication logic (Jaccard similarity >= 0.5).
+ *
+ * Frontend should use this when translatedAgentInsights is available,
+ * falling back to getAllAgentGrowthAreas when not.
+ *
+ * @example
+ * const translatedAreas = getAllTranslatedGrowthAreas(translatedAgentInsights);
+ * const areas = translatedAreas.length > 0
+ *   ? translatedAreas
+ *   : getAllAgentGrowthAreas(agentOutputs);
+ */
+export function getAllTranslatedGrowthAreas(
+  insights: TranslatedAgentInsights | undefined
+): AgentGrowthArea[] {
+  if (!insights) return [];
+
+  const allAreas: AgentGrowthArea[] = [];
+
+  // Free tier agents
+  if (insights.patternDetective?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(insights.patternDetective.growthAreasData));
+  }
+  if (insights.metacognition?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(insights.metacognition.growthAreasData));
+  }
+
+  // Premium tier agents
+  if (insights.antiPatternSpotter?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(insights.antiPatternSpotter.growthAreasData));
+  }
+  if (insights.knowledgeGap?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(insights.knowledgeGap.growthAreasData));
+  }
+  if (insights.contextEfficiency?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(insights.contextEfficiency.growthAreasData));
+  }
+  if (insights.temporalAnalysis?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(insights.temporalAnalysis.growthAreasData));
+  }
+  if (insights.multitasking?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(insights.multitasking.growthAreasData));
+  }
+
+  // Deduplicate similar growth areas
+  return groupSimilarGrowthAreas(allAreas);
+}
+
+/**
+ * Collect strengths from ALL translated agent insights
+ *
+ * Similar to getAllAgentStrengths pattern but for translated insights.
+ *
+ * @example
+ * const translatedStrengths = getAllTranslatedStrengths(translatedAgentInsights);
+ */
+export function getAllTranslatedStrengths(
+  insights: TranslatedAgentInsights | undefined
+): AgentStrength[] {
+  if (!insights) return [];
+
+  const allStrengths: AgentStrength[] = [];
+
+  // Collect from all agents that have strengths
+  if (insights.patternDetective?.strengthsData) {
+    allStrengths.push(...parseStrengthsData(insights.patternDetective.strengthsData));
+  }
+  if (insights.metacognition?.strengthsData) {
+    allStrengths.push(...parseStrengthsData(insights.metacognition.strengthsData));
+  }
+  if (insights.antiPatternSpotter?.strengthsData) {
+    allStrengths.push(...parseStrengthsData(insights.antiPatternSpotter.strengthsData));
+  }
+  if (insights.knowledgeGap?.strengthsData) {
+    allStrengths.push(...parseStrengthsData(insights.knowledgeGap.strengthsData));
+  }
+  if (insights.contextEfficiency?.strengthsData) {
+    allStrengths.push(...parseStrengthsData(insights.contextEfficiency.strengthsData));
+  }
+  if (insights.temporalAnalysis?.strengthsData) {
+    allStrengths.push(...parseStrengthsData(insights.temporalAnalysis.strengthsData));
+  }
+  if (insights.multitasking?.strengthsData) {
+    allStrengths.push(...parseStrengthsData(insights.multitasking.strengthsData));
+  }
+
+  return allStrengths;
+}
+
+/**
+ * Check if translated agent insights have any content
+ */
+export function hasTranslatedInsights(insights: TranslatedAgentInsights | undefined): boolean {
+  if (!insights) return false;
+
+  const agentKeys: TranslatedAgentKey[] = [
+    'patternDetective',
+    'metacognition',
+    'antiPatternSpotter',
+    'knowledgeGap',
+    'contextEfficiency',
+    'temporalAnalysis',
+    'multitasking',
+  ];
+
+  for (const key of agentKeys) {
+    const agent = insights[key] as TranslatedAgentInsight | undefined;
+    if (agent?.strengthsData || agent?.growthAreasData) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// ============================================================================
+// NEW PHASE 2 WORKER OUTPUTS (v2 Architecture)
+// ============================================================================
+
+// Import new Phase 2 schemas
+import {
+  Phase1OutputSchema,
+  type Phase1Output,
+} from './phase1-output';
+
+import {
+  StrengthGrowthOutputSchema,
+  type StrengthGrowthOutput,
+  StrengthGrowthLLMOutputSchema,
+  type StrengthGrowthLLMOutput,
+} from './strength-growth-data';
+
+import {
+  BehaviorPatternOutputSchema,
+  type BehaviorPatternOutput,
+  BehaviorPatternLLMOutputSchema,
+  type BehaviorPatternLLMOutput,
+} from './behavior-pattern-data';
+
+// Re-export for convenience
+export {
+  Phase1OutputSchema,
+  type Phase1Output,
+  StrengthGrowthOutputSchema,
+  type StrengthGrowthOutput,
+  StrengthGrowthLLMOutputSchema,
+  type StrengthGrowthLLMOutput,
+  BehaviorPatternOutputSchema,
+  type BehaviorPatternOutput,
+  BehaviorPatternLLMOutputSchema,
+  type BehaviorPatternLLMOutput,
+};
+
+// ============================================================================
+// Combined New Agent Outputs Schema (v2)
+// ============================================================================
+
+/**
+ * Combined outputs from the new Phase 2 workers (v2 architecture).
+ *
+ * Core workers:
+ * - StrengthGrowth: Strengths & growth areas with evidence
+ * - BehaviorPattern: Anti-patterns, planning, verification
+ * - KnowledgeGap: Repeated questions, learning progress, recommendations
+ * - ContextEfficiency: Context usage patterns
+ * - TypeClassifier: Type classification (fun/viral element)
+ */
+export const NewAgentOutputsSchema = z.object({
+  /** Strengths & Growth Areas analysis */
+  strengthGrowth: StrengthGrowthOutputSchema.optional(),
+
+  /** Behavior Patterns analysis */
+  behaviorPattern: BehaviorPatternOutputSchema.optional(),
+
+  /** Knowledge Gap analysis (reuses existing schema) */
+  knowledgeGap: KnowledgeGapOutputSchema.optional(),
+
+  /** Context Efficiency analysis (reuses existing schema) */
+  contextEfficiency: ContextEfficiencyOutputSchema.optional(),
+
+  /** Type Classification */
+  typeClassifier: TypeClassifierOutputSchema.optional(),
+});
+export type NewAgentOutputs = z.infer<typeof NewAgentOutputsSchema>;
+
+/**
+ * Check if any new agent produced output
+ */
+export function hasAnyNewAgentOutput(outputs: NewAgentOutputs): boolean {
+  return !!(
+    outputs.strengthGrowth ||
+    outputs.behaviorPattern ||
+    outputs.knowledgeGap ||
+    outputs.contextEfficiency ||
+    outputs.typeClassifier
+  );
 }

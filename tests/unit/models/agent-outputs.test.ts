@@ -22,6 +22,7 @@ import {
   createEmptyAgentOutputs,
   hasAnyAgentOutput,
   getAllTopInsights,
+  getAllAgentGrowthAreas,
   type PatternDetectiveOutput,
   type AntiPatternSpotterOutput,
   type KnowledgeGapOutput,
@@ -948,5 +949,193 @@ describe('JSON Schema Conversion', () => {
 
     expect(jsonSchema).toBeDefined();
     expect(jsonSchema.type).toBe('object');
+  });
+});
+
+// ============================================================================
+// Growth Area Deduplication Tests
+// ============================================================================
+
+describe('getAllAgentGrowthAreas', () => {
+  describe('deduplication', () => {
+    it('should merge similar growth areas with different titles', () => {
+      const outputs: AgentOutputs = {
+        patternDetective: {
+          repeatedQuestionsData: '',
+          conversationStyleData: '',
+          requestStartPatternsData: '',
+          topInsights: [],
+          overallStyleSummary: '',
+          confidenceScore: 0.8,
+          growthAreasData: 'Blind Approval Pattern|Accepts AI suggestions without verification|quote1,quote2|Always verify|70|high|85',
+        },
+        metacognition: {
+          overallAwarenessScore: 50,
+          awarenessLevel: 'developing',
+          growthMindsetIndicator: 'moderate',
+          blindSpotsData: '',
+          selfAwarenessIndicatorsData: '',
+          metaStrategiesData: '',
+          topInsights: [],
+          confidenceScore: 0.8,
+          growthAreasData: 'Blind Approval Habit|A habit of approving without checking|quote3|Check before approving|65|medium|75',
+        },
+        antiPatternSpotter: {
+          errorLoopsData: '',
+          learningAvoidanceData: '',
+          repeatedMistakesData: '',
+          topInsights: [],
+          overallHealthScore: 70,
+          confidenceScore: 0.8,
+          growthAreasData: 'Blind Approval & Verification|Verification is often skipped|quote4,quote5|Implement checklist|80|critical|90',
+        },
+      };
+
+      const result = getAllAgentGrowthAreas(outputs);
+
+      // Should merge 3 similar items into 1
+      expect(result.length).toBe(1);
+
+      // Should use shortest title
+      expect(result[0].title).toBe('Blind Approval Habit');
+
+      // Should merge all evidence (5 unique quotes)
+      expect(result[0].evidence.length).toBe(5);
+      expect(result[0].evidence).toContain('quote1');
+      expect(result[0].evidence).toContain('quote5');
+
+      // Should use highest severity (critical)
+      expect(result[0].severity).toBe('critical');
+
+      // Should use maximum frequency (80)
+      expect(result[0].frequency).toBe(80);
+
+      // Should use maximum priority score (90)
+      expect(result[0].priorityScore).toBe(90);
+    });
+
+    it('should NOT merge unrelated growth areas', () => {
+      const outputs: AgentOutputs = {
+        patternDetective: {
+          repeatedQuestionsData: '',
+          conversationStyleData: '',
+          requestStartPatternsData: '',
+          topInsights: [],
+          overallStyleSummary: '',
+          confidenceScore: 0.8,
+          growthAreasData: 'Context Provision|Tends to skip context|quote1|Provide more context',
+        },
+        metacognition: {
+          overallAwarenessScore: 50,
+          awarenessLevel: 'developing',
+          growthMindsetIndicator: 'moderate',
+          blindSpotsData: '',
+          selfAwarenessIndicatorsData: '',
+          metaStrategiesData: '',
+          topInsights: [],
+          confidenceScore: 0.8,
+          growthAreasData: 'Error Handling|Does not handle errors properly|quote2|Add error handling',
+        },
+      };
+
+      const result = getAllAgentGrowthAreas(outputs);
+
+      // Should keep both items (not similar)
+      expect(result.length).toBe(2);
+    });
+
+    it('should handle empty outputs gracefully', () => {
+      const outputs: AgentOutputs = {};
+
+      const result = getAllAgentGrowthAreas(outputs);
+
+      expect(result.length).toBe(0);
+    });
+
+    it('should handle single growth area without modification', () => {
+      const outputs: AgentOutputs = {
+        patternDetective: {
+          repeatedQuestionsData: '',
+          conversationStyleData: '',
+          requestStartPatternsData: '',
+          topInsights: [],
+          overallStyleSummary: '',
+          confidenceScore: 0.8,
+          growthAreasData: 'Single Area|Description|quote1|Recommendation|50|medium|60',
+        },
+      };
+
+      const result = getAllAgentGrowthAreas(outputs);
+
+      expect(result.length).toBe(1);
+      expect(result[0].title).toBe('Single Area');
+      expect(result[0].frequency).toBe(50);
+      expect(result[0].severity).toBe('medium');
+    });
+
+    it('should deduplicate evidence when merging', () => {
+      const outputs: AgentOutputs = {
+        patternDetective: {
+          repeatedQuestionsData: '',
+          conversationStyleData: '',
+          requestStartPatternsData: '',
+          topInsights: [],
+          overallStyleSummary: '',
+          confidenceScore: 0.8,
+          // Same quote appears in both agents
+          growthAreasData: 'Test Pattern|Description|shared_quote,unique1|Rec1',
+        },
+        metacognition: {
+          overallAwarenessScore: 50,
+          awarenessLevel: 'developing',
+          growthMindsetIndicator: 'moderate',
+          blindSpotsData: '',
+          selfAwarenessIndicatorsData: '',
+          metaStrategiesData: '',
+          topInsights: [],
+          confidenceScore: 0.8,
+          growthAreasData: 'Test Pattern Habit|Description2|shared_quote,unique2|Rec2',
+        },
+      };
+
+      const result = getAllAgentGrowthAreas(outputs);
+
+      expect(result.length).toBe(1);
+      // Should have 3 unique quotes (shared_quote deduplicated)
+      expect(result[0].evidence.length).toBe(3);
+      expect(result[0].evidence).toContain('shared_quote');
+      expect(result[0].evidence).toContain('unique1');
+      expect(result[0].evidence).toContain('unique2');
+    });
+
+    it('should use longest recommendation when merging', () => {
+      const outputs: AgentOutputs = {
+        patternDetective: {
+          repeatedQuestionsData: '',
+          conversationStyleData: '',
+          requestStartPatternsData: '',
+          topInsights: [],
+          overallStyleSummary: '',
+          confidenceScore: 0.8,
+          growthAreasData: 'Test Pattern|Desc|q1|Short rec',
+        },
+        metacognition: {
+          overallAwarenessScore: 50,
+          awarenessLevel: 'developing',
+          growthMindsetIndicator: 'moderate',
+          blindSpotsData: '',
+          selfAwarenessIndicatorsData: '',
+          metaStrategiesData: '',
+          topInsights: [],
+          confidenceScore: 0.8,
+          growthAreasData: 'Test Pattern Issue|Desc|q2|This is a much longer and more detailed recommendation',
+        },
+      };
+
+      const result = getAllAgentGrowthAreas(outputs);
+
+      expect(result.length).toBe(1);
+      expect(result[0].recommendation).toBe('This is a much longer and more detailed recommendation');
+    });
   });
 });

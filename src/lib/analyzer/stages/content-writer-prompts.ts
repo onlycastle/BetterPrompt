@@ -328,6 +328,19 @@ To reduce nesting depth, use SEMICOLON-SEPARATED STRINGS instead of nested array
 **topFocusAreas.areas** - Use pipe-separated fields for actions:
 - actionsData: "start_action|stop_action|continue_action" (NOT an object)
 
+**translatedAgentInsights** (ONLY for non-English output):
+When output language is NOT English, you MUST populate translatedAgentInsights with translated versions of agent strengthsData and growthAreasData.
+
+Format for each agent (patternDetective, metacognition, antiPatternSpotter, knowledgeGap, contextEfficiency, temporalAnalysis, multitasking):
+- strengthsData: "title|description|quote1,quote2;..." (same format as agentOutputs, but TRANSLATED)
+- growthAreasData: "title|desc|evidence|rec|freq|severity|priority;..." (same format, but TRANSLATED)
+
+TRANSLATION RULES:
+- Translate title, description, recommendation to the output language
+- Keep technical terms in English (AI, IDE, debugging, Git, commit, token)
+- Keep evidence quotes in their ORIGINAL language (do not translate user quotes)
+- If agent outputs are empty, set the corresponding field to empty string ""
+
 **Required fields:**
 - primaryType, controlLevel, distribution (from Stage 1 typeAnalysis)
 - personalitySummary (300-1500 chars)
@@ -500,7 +513,30 @@ When integrating these insights into your ${langName} narrative:
 - Translate all agent findings, pattern names, and recommendations to ${langName}
 - Express insights naturally in ${langName} style
 - Keep technical terms in English (AI, IDE, debugging, Git, commit, token, etc.)
+
+⚠️ CRITICAL: You MUST populate translatedAgentInsights field with translated versions!
+See Step 11 in Transformation Instructions.
 `
+    : '';
+
+  // Instructions for translatedAgentInsights (only for non-English)
+  const translatedAgentInsightsInstructions = useNonEnglish && agentOutputsData
+    ? `
+
+11. **Translated Agent Insights** (REQUIRED for ${langName} output)
+   - Populate translatedAgentInsights with translated versions of agent strengthsData and growthAreasData
+   - For each agent that has data (patternDetective, metacognition, antiPatternSpotter, knowledgeGap, contextEfficiency, temporalAnalysis, multitasking):
+     * strengthsData: Translate title and description to ${langName}, keep evidence quotes in original language
+     * growthAreasData: Translate title, description, and recommendation to ${langName}
+   - Format is the SAME as original agentOutputs:
+     * strengthsData: "title|description|quote1,quote2;..."
+     * growthAreasData: "title|desc|evidence|rec|freq|severity|priority;..."
+   - Translation rules:
+     * Translate title, description, recommendation to ${langName}
+     * Keep technical terms in English (AI, IDE, debugging, Git, commit, token)
+     * Keep evidence quotes in their ORIGINAL language (these are user's words)
+     * Match the developer's natural ${langName} style from their quotes
+   - If an agent has no data, omit it from translatedAgentInsights (do not include empty object)`
     : '';
 
   // Build KB context section if provided
@@ -627,6 +663,6 @@ Using the extracted data above, create a VerboseLLMResponse:
      * priorityScore: same as priority.priorityScore
      * actions: { start: "...", stop: "...", continue: "..." }
    - summary: transform priority.selectionRationale into narrative
-
+${translatedAgentInsightsInstructions}
 Make this developer feel truly understood. Use their actual words.${languageFinalReminder}`;
 }

@@ -8,7 +8,8 @@
 
 import { z } from 'zod';
 import { CodingStyleTypeSchema, AIControlLevelSchema } from './coding-style';
-import { DimensionNameEnumSchema } from './verbose-evaluation';
+// Import from dimension-schema to avoid circular dependency
+import { DimensionNameEnumSchema } from './dimension-schema';
 
 // ============================================================================
 // Type Distribution Schema

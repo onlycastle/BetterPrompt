@@ -57,108 +57,6 @@
 }
 
 /* ========================================
-   BENEFITS GRID - 2x2 Categories
-   ======================================== */
-
-.benefitsGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-bottom: 32px;
-  text-align: left;
-}
-
-.categoryCard {
-  background: var(--terminal-elevated);
-  border: 2px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 16px;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Color accent bar at top */
-.categoryCard::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--neon-cyan);
-}
-
-.categoryCard[data-color="cyan"]::before {
-  background: var(--neon-cyan);
-}
-
-.categoryCard[data-color="pink"]::before {
-  background: var(--neon-pink);
-}
-
-.categoryCard[data-color="green"]::before {
-  background: var(--neon-green);
-}
-
-.categoryCard[data-color="yellow"]::before {
-  background: var(--neon-yellow);
-}
-
-.categoryHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.categoryIcon {
-  color: var(--text-secondary);
-}
-
-.categoryCard[data-color="cyan"] .categoryIcon {
-  color: var(--neon-cyan);
-}
-
-.categoryCard[data-color="pink"] .categoryIcon {
-  color: var(--neon-pink);
-}
-
-.categoryCard[data-color="green"] .categoryIcon {
-  color: var(--neon-green);
-}
-
-.categoryCard[data-color="yellow"] .categoryIcon {
-  color: var(--neon-yellow);
-}
-
-.categoryTitle {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-.categoryItems {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.categoryItems li {
-  font-size: 12px;
-  color: var(--text-muted);
-  padding: 4px 0;
-  padding-left: 12px;
-  position: relative;
-}
-
-.categoryItems li::before {
-  content: '•';
-  position: absolute;
-  left: 0;
-  color: var(--text-muted);
-}
-
-/* ========================================
    PRICING CARDS - CREDIT + ONE-TIME + PRO
    ======================================== */
 
@@ -538,10 +436,6 @@
    ======================================== */
 
 @media (max-width: 768px) {
-  .benefitsGrid {
-    grid-template-columns: 1fr;
-  }
-
   .pricingCards,
   .pricingCardsWithCredit {
     grid-template-columns: 1fr;

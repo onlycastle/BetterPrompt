@@ -269,3 +269,104 @@ export {
   parseMultitaskingAnalysisOutput,
   createDefaultMultitaskingAnalysisOutput,
 } from './multitasking-data';
+
+// ============================================================================
+// Dimension Schema (Extracted to break circular dependencies)
+// ============================================================================
+export {
+  DimensionNameEnumSchema,
+  DIMENSION_NAMES,
+  type DimensionNameEnum,
+  type DimensionName as DimensionNameType,
+} from './dimension-schema';
+
+// ============================================================================
+// Phase 1 Output Types (NEW - v2 Architecture)
+// ============================================================================
+export {
+  DeveloperUtteranceSchema,
+  type DeveloperUtterance,
+  AIResponseSchema,
+  type AIResponse,
+  Phase1SessionMetricsSchema,
+  type Phase1SessionMetrics,
+  Phase1OutputSchema,
+  type Phase1Output,
+  createEmptyPhase1Output,
+  parsePhase1Output,
+  safeParsePhase1Output,
+} from './phase1-output';
+
+// ============================================================================
+// Strength & Growth Data Types (NEW - v2 Architecture)
+// ============================================================================
+export {
+  InsightEvidenceSchema,
+  type InsightEvidence,
+  StrengthInsightSchema,
+  type StrengthInsight,
+  GrowthSeveritySchema,
+  type GrowthSeverity,
+  GrowthAreaInsightSchema,
+  type GrowthAreaInsight,
+  StrengthGrowthOutputSchema,
+  type StrengthGrowthOutput,
+  StrengthGrowthLLMOutputSchema,
+  type StrengthGrowthLLMOutput,
+  parseStrengthsLLMData,
+  parseGrowthAreasLLMData,
+  parseStrengthGrowthLLMOutput,
+  createEmptyStrengthGrowthOutput,
+} from './strength-growth-data';
+
+// ============================================================================
+// Behavior Pattern Data Types (NEW - v2 Architecture)
+// ============================================================================
+export {
+  AntiPatternTypeSchema,
+  type AntiPatternType,
+  PatternSeveritySchema,
+  type PatternSeverity,
+  DetectedAntiPatternSchema,
+  type DetectedAntiPattern,
+  PlanningHabitTypeSchema,
+  type PlanningHabitType,
+  HabitFrequencySchema,
+  type HabitFrequency,
+  PlanningHabitSchema,
+  type PlanningHabit,
+  CriticalThinkingTypeSchema,
+  type CriticalThinkingType,
+  CriticalThinkingMomentSchema,
+  type CriticalThinkingMoment,
+  VerificationLevelSchema,
+  type VerificationLevel,
+  VerificationBehaviorSchema,
+  type VerificationBehavior,
+  ContextPollutionSchema,
+  type ContextPollution,
+  MultitaskingPatternSchema,
+  type MultitaskingPattern,
+  BehaviorPatternOutputSchema,
+  type BehaviorPatternOutput,
+  BehaviorPatternLLMOutputSchema,
+  type BehaviorPatternLLMOutput,
+  parseAntiPatternsData,
+  parsePlanningHabitsData,
+  parseCriticalThinkingData,
+  parseVerificationBehaviorData,
+  parseMultitaskingData,
+  parseBehaviorPatternLLMOutput,
+  createEmptyBehaviorPatternOutput,
+} from './behavior-pattern-data';
+
+// ============================================================================
+// New Agent Outputs (v2 Architecture)
+// ============================================================================
+export {
+  TypeClassifierOutputSchema,
+  type TypeClassifierOutput,
+  NewAgentOutputsSchema,
+  type NewAgentOutputs,
+  hasAnyNewAgentOutput,
+} from './agent-outputs';

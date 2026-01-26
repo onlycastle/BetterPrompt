@@ -5,3 +5,6 @@
  */
 
 export * from './wow-agent-prompts';
+
+// v2 Architecture Phase 2 Prompts
+export * from './phase2-worker-prompts';

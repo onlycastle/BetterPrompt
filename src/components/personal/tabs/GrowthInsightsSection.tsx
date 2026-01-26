@@ -7,14 +7,16 @@
  * Free users see growth areas from Pattern Detective + Metacognition
  * Premium users see growth areas from all 7 agents
  *
- * Note: Learning resources are now displayed in a separate sidebar (ResourceSidebar)
+ * Learning resources are displayed inline within each card when matched,
+ * using a 2-column layout with the resource bubble on the right side.
  */
 
 import { useMemo } from 'react';
 import { Card } from '../../ui/Card';
 import { ResourceBubble } from './ResourceBubble';
 import type { AgentOutputs, AgentGrowthArea, ParsedResource } from '../../../lib/models/agent-outputs';
-import { getAllAgentGrowthAreas } from '../../../lib/models/agent-outputs';
+import { getAllAgentGrowthAreas, getAllTranslatedGrowthAreas, hasTranslatedInsights } from '../../../lib/models/agent-outputs';
+import type { TranslatedAgentInsights } from '../../../lib/models/verbose-evaluation';
 import styles from './GrowthInsightsSection.module.css';
 
 /**
@@ -74,6 +76,8 @@ interface GrowthInsightsSectionProps {
   isPaid?: boolean;
   /** Map of topic -> resources for inline matching */
   resourcesMap?: Map<string, ParsedResource[]>;
+  /** Translated agent insights (for non-English output) - uses when available */
+  translatedAgentInsights?: TranslatedAgentInsights;
 }
 
 /** Maximum number of evidence quotes to display per growth area */
@@ -118,54 +122,59 @@ function GrowthAreaCard({ area, isPaid, isFirstItem, resourcesMap }: GrowthAreaC
   const severity = calculateSeverity(area.frequency, area.evidence.length);
   const severityBadge = getSeverityBadge(severity);
 
+  const hasResources = matchedResources.length > 0;
+
   return (
-    <div className={styles.growthRow}>
-      <Card padding="md" className={styles.growthCard}>
-        <div className={styles.cardHeader}>
-          <div className={styles.titleWithBadge}>
-            <span className={`${styles.severityBadge} ${severityBadge.className}`}>
-              {severityBadge.emoji}
-            </span>
-            <h4 className={styles.growthTitle}>{area.title}</h4>
+    <Card padding="md" className={styles.growthCard}>
+      <div className={hasResources ? styles.cardInnerLayout : undefined}>
+        <div className={styles.cardMainContent}>
+          <div className={styles.cardHeader}>
+            <div className={styles.titleWithBadge}>
+              <span className={`${styles.severityBadge} ${severityBadge.className}`}>
+                {severityBadge.emoji}
+              </span>
+              <h4 className={styles.growthTitle}>{area.title}</h4>
+            </div>
+            {area.evidence.length > 0 && (
+              <span className={styles.evidenceCount}>{area.evidence.length} instances</span>
+            )}
           </div>
+
+          <p className={styles.growthDescription}>{area.description}</p>
+
+          {/* Evidence quotes */}
           {area.evidence.length > 0 && (
-            <span className={styles.evidenceCount}>{area.evidence.length} instances</span>
+            <div className={styles.evidenceQuotes}>
+              {area.evidence.slice(0, MAX_EVIDENCE_QUOTES).map((quote, qIdx) => (
+                <blockquote key={qIdx} className={styles.quote}>
+                  "{quote}"
+                </blockquote>
+              ))}
+            </div>
+          )}
+
+          {/* Recommendation - locked for free users EXCEPT first item */}
+          {area.recommendation && (
+            <div className={`${styles.recommendation} ${!showFullRecommendation ? styles.recommendationLocked : ''}`}>
+              <span className={styles.recommendationLabel}>💡 Try this:</span>
+              {showFullRecommendation ? (
+                <span className={styles.recommendationText}>{area.recommendation}</span>
+              ) : (
+                <span className={styles.lockedContent}>
+                  <span className={styles.blurredText}>{area.recommendation.slice(0, 25)}...</span>
+                  <span className={styles.unlockBadge}>🔒 See recommendation</span>
+                </span>
+              )}
+            </div>
           )}
         </div>
 
-        <p className={styles.growthDescription}>{area.description}</p>
-
-        {/* Evidence quotes */}
-        {area.evidence.length > 0 && (
-          <div className={styles.evidenceQuotes}>
-            {area.evidence.slice(0, MAX_EVIDENCE_QUOTES).map((quote, qIdx) => (
-              <blockquote key={qIdx} className={styles.quote}>
-                "{quote}"
-              </blockquote>
-            ))}
-          </div>
+        {/* Inline resource bubble - inside the card */}
+        {hasResources && (
+          <ResourceBubble resources={matchedResources} isPaid={isPaid} inline />
         )}
-
-        {/* Recommendation - locked for free users EXCEPT first item */}
-        {area.recommendation && (
-          <div className={`${styles.recommendation} ${!showFullRecommendation ? styles.recommendationLocked : ''}`}>
-            <span className={styles.recommendationLabel}>💡 Try this:</span>
-            {showFullRecommendation ? (
-              <span className={styles.recommendationText}>{area.recommendation}</span>
-            ) : (
-              <span className={styles.lockedContent}>
-                <span className={styles.blurredText}>{area.recommendation.slice(0, 25)}...</span>
-                <span className={styles.unlockBadge}>🔒 See recommendation</span>
-              </span>
-            )}
-          </div>
-        )}
-      </Card>
-      {/* Inline resource bubble - appears next to matching growth area */}
-      {matchedResources.length > 0 && (
-        <ResourceBubble resources={matchedResources} isPaid={isPaid} />
-      )}
-    </div>
+      </div>
+    </Card>
   );
 }
 
@@ -173,12 +182,19 @@ export function GrowthInsightsSection({
   agentOutputs,
   isPaid = false,
   resourcesMap,
+  translatedAgentInsights,
 }: GrowthInsightsSectionProps) {
   // Collect ALL growth areas from all agents
+  // Use translated data when available, fallback to original agentOutputs
   const allGrowthAreas = useMemo(() => {
+    // Prefer translated insights if available
+    if (hasTranslatedInsights(translatedAgentInsights)) {
+      return getAllTranslatedGrowthAreas(translatedAgentInsights);
+    }
+    // Fallback to original agent outputs
     if (!agentOutputs) return [];
     return getAllAgentGrowthAreas(agentOutputs);
-  }, [agentOutputs]);
+  }, [agentOutputs, translatedAgentInsights]);
 
   if (allGrowthAreas.length === 0) {
     return null;

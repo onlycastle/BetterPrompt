@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BarChart3, Target, Users, Gift, Coffee, Zap, Lock, Loader2, Coins, Building2 } from 'lucide-react';
+import { Coffee, Zap, Lock, Loader2, Coins, Building2 } from 'lucide-react';
 import { WaitlistModal, waitlistConfigs } from '@/components/landing';
 import styles from './UnlockSection.module.css';
 
@@ -13,60 +13,6 @@ interface UnlockSectionProps {
   /** Callback after credits are used successfully */
   onCreditsUsed?: () => void;
 }
-
-/**
- * Benefit categories for the unlock section
- * Grouped into 4 categories for a clean 2x2 grid layout
- *
- * NOTE: Only list features that are actually implemented!
- * - 7 AI agents (2 free, 5 premium): AgentInsightsSection.tsx
- * - Recommendations/tips: PromptPatternsClean.tsx, DimensionInsightsClean.tsx
- * - Full history: ProgressTab.tsx
- */
-const benefitCategories = [
-  {
-    id: 'agents',
-    icon: BarChart3,
-    title: 'Full AI Analysis',
-    color: 'cyan',
-    items: [
-      '7 specialized AI agents (vs 2 free)',
-      'Anti-pattern & knowledge gap detection',
-      'Context efficiency & temporal analysis',
-    ],
-  },
-  {
-    id: 'tips',
-    icon: Target,
-    title: 'Actionable Recommendations',
-    color: 'pink',
-    items: [
-      'Improvement tips for every pattern',
-      'Growth area recommendations',
-      'Agent-specific action items',
-    ],
-  },
-  {
-    id: 'progress',
-    icon: Users,
-    title: 'Full Progress History',
-    color: 'green',
-    items: [
-      'Track all your analyses over time',
-      'Skill evolution timeline',
-    ],
-  },
-  {
-    id: 'extras',
-    icon: Gift,
-    title: 'Complete Evidence',
-    color: 'yellow',
-    items: [
-      'All conversation evidence quotes',
-      'Detailed dimension breakdowns',
-    ],
-  },
-] as const;
 
 /**
  * CTA section for locked/unlocked states
@@ -193,30 +139,6 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: 
           <p className={styles.lockedDescription}>
             See the complete picture of your AI collaboration patterns
           </p>
-
-          {/* Benefits Grid - 2x2 Categories */}
-          <div className={styles.benefitsGrid}>
-            {benefitCategories.map((category) => {
-              const IconComponent = category.icon;
-              return (
-                <div
-                  key={category.id}
-                  className={styles.categoryCard}
-                  data-color={category.color}
-                >
-                  <div className={styles.categoryHeader}>
-                    <IconComponent size={20} className={styles.categoryIcon} />
-                    <span className={styles.categoryTitle}>{category.title}</span>
-                  </div>
-                  <ul className={styles.categoryItems}>
-                    {category.items.map((item, index) => (
-                      <li key={index}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
 
           {/* Pricing Cards - CREDIT (if available) + ONE-TIME + PRO */}
           <div className={hasCredits ? styles.pricingCardsWithCredit : styles.pricingCards}>

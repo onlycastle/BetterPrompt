@@ -32,12 +32,16 @@
   gap: var(--space-md);
 }
 
-/* Row layout for card + resource bubble */
-.growthRow {
+/* Inner 2-column layout when resources are present */
+.cardInnerLayout {
   display: flex;
-  flex-direction: row;
   gap: var(--space-md);
   align-items: flex-start;
+}
+
+.cardMainContent {
+  flex: 1;
+  min-width: 0;
 }
 
 .growthCard {
@@ -243,7 +247,7 @@
     gap: var(--space-xs);
   }
 
-  .growthRow {
+  .cardInnerLayout {
     flex-direction: column;
   }
 }
