@@ -1,18 +1,17 @@
 /**
- * Analysis Orchestrator Tests
+ * Analysis Orchestrator Tests (v2 Architecture)
  *
  * Tests for AnalysisOrchestrator class including:
  * - Worker registration
  * - Phase execution
- * - Graceful degradation
  * - Token tracking
  * - Tier-based filtering
+ * - NO FALLBACK policy enforcement
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { ParsedSession, SessionMetrics } from '../../../../src/lib/domain/models/analysis.js';
-import type { StructuredAnalysisData } from '../../../../src/lib/models/analysis-data.js';
-import type { ProductivityAnalysisData } from '../../../../src/lib/models/productivity-data.js';
+import type { Phase1Output } from '../../../../src/lib/models/phase1-output.js';
 import type { WorkerContext, WorkerResult } from '../../../../src/lib/analyzer/orchestrator/types.js';
 import type { Tier } from '../../../../src/lib/analyzer/content-gateway.js';
 import { BaseWorker } from '../../../../src/lib/analyzer/workers/base-worker.js';
@@ -22,10 +21,14 @@ vi.mock('../../../../src/lib/analyzer/stages/content-writer.js', () => ({
   ContentWriterStage: class MockContentWriterStage {
     // Legacy method (deprecated)
     async transform() {
-      return this.transformV2();
+      return this.transformV3();
     }
-    // v2 method (used by orchestrator)
+    // v2 method (deprecated)
     async transformV2() {
+      return this.transformV3();
+    }
+    // v3 method (used by orchestrator v2)
+    async transformV3() {
       return {
         data: {
           primaryType: 'architect',
@@ -63,52 +66,36 @@ vi.mock('../../../../src/lib/analyzer/content-gateway.js', () => ({
 import { AnalysisOrchestrator, createAnalysisOrchestrator } from '../../../../src/lib/analyzer/orchestrator/analysis-orchestrator.js';
 
 // Test worker implementations
-class MockDataAnalystWorker extends BaseWorker<StructuredAnalysisData> {
-  readonly name = 'DataAnalyst';
+class MockDataExtractorWorker extends BaseWorker<Phase1Output> {
+  readonly name = 'DataExtractor';
   readonly phase = 1 as const;
   readonly minTier: Tier = 'free';
-
-  constructor(private mockData: StructuredAnalysisData) {
-    super();
-  }
 
   canRun(context: WorkerContext): boolean {
     return context.sessions.length > 0;
   }
 
-  async execute(context: WorkerContext): Promise<WorkerResult<StructuredAnalysisData>> {
+  async execute(context: WorkerContext): Promise<WorkerResult<Phase1Output>> {
     return {
-      data: this.mockData,
-      usage: {
-        promptTokens: 2000,
-        completionTokens: 1000,
-        totalTokens: 3000,
+      data: {
+        developerUtterances: [],
+        aiResponses: [],
+        sessionMetrics: {
+          totalSessions: context.sessions.length,
+          totalMessages: 10,
+          totalDeveloperUtterances: 5,
+          totalAIResponses: 5,
+          avgMessagesPerSession: 10,
+          avgDeveloperMessageLength: 100,
+          questionRatio: 0.2,
+          codeBlockRatio: 0.3,
+          dateRange: {
+            earliest: '2024-01-01T10:00:00Z',
+            latest: '2024-01-01T11:00:00Z',
+          },
+        },
       },
-    };
-  }
-}
-
-class MockProductivityAnalystWorker extends BaseWorker<ProductivityAnalysisData> {
-  readonly name = 'ProductivityAnalyst';
-  readonly phase = 1 as const;
-  readonly minTier: Tier = 'free';
-
-  constructor(private mockData: ProductivityAnalysisData) {
-    super();
-  }
-
-  canRun(context: WorkerContext): boolean {
-    return context.sessions.length > 0;
-  }
-
-  async execute(context: WorkerContext): Promise<WorkerResult<ProductivityAnalysisData>> {
-    return {
-      data: this.mockData,
-      usage: {
-        promptTokens: 1500,
-        completionTokens: 750,
-        totalTokens: 2250,
-      },
+      usage: null, // Deterministic, no LLM call
     };
   }
 }
@@ -119,7 +106,7 @@ class MockPhase2Worker extends BaseWorker<{ insight: string }> {
   readonly minTier: Tier = 'premium';
 
   canRun(context: WorkerContext): boolean {
-    return context.tier !== 'free' && !!context.moduleAOutput;
+    return context.tier !== 'free';
   }
 
   async execute(context: WorkerContext): Promise<WorkerResult<{ insight: string }>> {
@@ -166,8 +153,6 @@ describe('AnalysisOrchestrator', () => {
   let orchestrator: AnalysisOrchestrator;
   let mockSessions: ParsedSession[];
   let mockMetrics: SessionMetrics;
-  let mockDataAnalystData: StructuredAnalysisData;
-  let mockProductivityData: ProductivityAnalysisData;
 
   beforeEach(() => {
     // Create orchestrator with test config
@@ -195,47 +180,19 @@ describe('AnalysisOrchestrator', () => {
       totalSessions: 1,
       totalMessages: 10,
     };
-
-    // Create mock data
-    mockDataAnalystData = {
-      typeResult: {
-        primaryType: 'architect',
-        controlLevel: 'cartographer',
-        architectScore: 85,
-        scientistScore: 60,
-        collaboratorScore: 70,
-        speedrunnerScore: 40,
-        craftsmanScore: 50,
-      },
-    } as StructuredAnalysisData;
-
-    mockProductivityData = {
-      sessionContext: {
-        totalProjects: 1,
-        totalSessions: 1,
-        timeRange: '2024-01-01 to 2024-01-01',
-      },
-      workloadMetrics: {} as any,
-      focusMetrics: {} as any,
-      velocityMetrics: {} as any,
-      qualityMetrics: {} as any,
-      collaborationMetrics: {} as any,
-      riskMetrics: {} as any,
-      overallAssessment: {} as any,
-    };
   });
 
   describe('Worker Registration', () => {
     describe('registerPhase1Worker', () => {
       it('should register a Phase 1 worker successfully', () => {
-        const worker = new MockDataAnalystWorker(mockDataAnalystData);
+        const worker = new MockDataExtractorWorker();
 
         expect(() => orchestrator.registerPhase1Worker(worker)).not.toThrow();
       });
 
       it('should support method chaining', () => {
-        const worker1 = new MockDataAnalystWorker(mockDataAnalystData);
-        const worker2 = new MockProductivityAnalystWorker(mockProductivityData);
+        const worker1 = new MockDataExtractorWorker();
+        const worker2 = new MockDataExtractorWorker();
 
         const result = orchestrator
           .registerPhase1Worker(worker1)
@@ -252,8 +209,8 @@ describe('AnalysisOrchestrator', () => {
       });
 
       it('should allow registering multiple Phase 1 workers', () => {
-        const worker1 = new MockDataAnalystWorker(mockDataAnalystData);
-        const worker2 = new MockProductivityAnalystWorker(mockProductivityData);
+        const worker1 = new MockDataExtractorWorker();
+        const worker2 = new MockDataExtractorWorker();
 
         expect(() => {
           orchestrator.registerPhase1Worker(worker1);
@@ -299,43 +256,28 @@ describe('AnalysisOrchestrator', () => {
   describe('Phase Execution', () => {
     describe('Phase 1 - Data Extraction', () => {
       it('should run Phase 1 workers in parallel', async () => {
-        const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-        const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
+        const dataExtractorWorker = new MockDataExtractorWorker();
 
-        orchestrator
-          .registerPhase1Worker(dataWorker)
-          .registerPhase1Worker(productivityWorker);
+        orchestrator.registerPhase1Worker(dataExtractorWorker);
 
         const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
 
         expect(result).toBeDefined();
         expect(result.primaryType).toBe('architect');
-        expect(result.productivityAnalysis).toBeDefined();
       });
 
       // NO FALLBACK POLICY: Workers must be registered
-      it('should throw when DataAnalyst worker is not registered', async () => {
-        const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
-        orchestrator.registerPhase1Worker(productivityWorker);
-
+      it('should throw when DataExtractor worker is not registered', async () => {
+        // No workers registered
         await expect(orchestrator.analyze(mockSessions, mockMetrics, 'free')).rejects.toThrow(
-          'DataAnalyst worker not registered'
-        );
-      });
-
-      it('should throw when ProductivityAnalyst worker is not registered', async () => {
-        const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-        orchestrator.registerPhase1Worker(dataWorker);
-
-        await expect(orchestrator.analyze(mockSessions, mockMetrics, 'free')).rejects.toThrow(
-          'ProductivityAnalyst worker not registered'
+          'DataExtractor worker not registered'
         );
       });
 
       it('should throw when no Phase 1 workers are registered', async () => {
         // No workers registered
         await expect(orchestrator.analyze(mockSessions, mockMetrics, 'free')).rejects.toThrow(
-          'DataAnalyst worker not registered'
+          'DataExtractor worker not registered'
         );
       });
     });
@@ -343,11 +285,8 @@ describe('AnalysisOrchestrator', () => {
     describe('Phase 2 - Insight Generation', () => {
       beforeEach(() => {
         // Always register Phase 1 workers for Phase 2 tests
-        const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-        const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
-        orchestrator
-          .registerPhase1Worker(dataWorker)
-          .registerPhase1Worker(productivityWorker);
+        const dataExtractorWorker = new MockDataExtractorWorker();
+        orchestrator.registerPhase1Worker(dataExtractorWorker);
       });
 
       it('should run Phase 2 workers for premium tier', async () => {
@@ -417,19 +356,15 @@ describe('AnalysisOrchestrator', () => {
         await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
 
         expect(receivedContext).not.toBeNull();
-        expect(receivedContext?.moduleAOutput).toBeDefined();
-        expect(receivedContext?.moduleCOutput).toBeDefined();
+        expect((receivedContext as any)?.phase1Output).toBeDefined();
       });
     });
 
     describe('Phase 3 - Content Generation', () => {
       it('should always run content generation phase', async () => {
-        const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-        const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
+        const dataExtractorWorker = new MockDataExtractorWorker();
 
-        orchestrator
-          .registerPhase1Worker(dataWorker)
-          .registerPhase1Worker(productivityWorker);
+        orchestrator.registerPhase1Worker(dataExtractorWorker);
 
         const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
 
@@ -439,12 +374,9 @@ describe('AnalysisOrchestrator', () => {
       });
 
       it('should receive Phase 1 outputs in content writer', async () => {
-        const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-        const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
+        const dataExtractorWorker = new MockDataExtractorWorker();
 
-        orchestrator
-          .registerPhase1Worker(dataWorker)
-          .registerPhase1Worker(productivityWorker);
+        orchestrator.registerPhase1Worker(dataExtractorWorker);
 
         const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
 
@@ -459,11 +391,8 @@ describe('AnalysisOrchestrator', () => {
   describe('Error Propagation (NO FALLBACK)', () => {
     beforeEach(() => {
       // Register Phase 1 workers
-      const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-      const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
-      orchestrator
-        .registerPhase1Worker(dataWorker)
-        .registerPhase1Worker(productivityWorker);
+      const dataExtractorWorker = new MockDataExtractorWorker();
+      orchestrator.registerPhase1Worker(dataExtractorWorker);
     });
 
     it('should throw when a Phase 2 worker fails', async () => {
@@ -522,12 +451,9 @@ describe('AnalysisOrchestrator', () => {
         verbose: true,
       });
 
-      const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-      const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
+      const dataExtractorWorker = new MockDataExtractorWorker();
 
-      verboseOrchestrator
-        .registerPhase1Worker(dataWorker)
-        .registerPhase1Worker(productivityWorker);
+      verboseOrchestrator.registerPhase1Worker(dataExtractorWorker);
 
       await verboseOrchestrator.analyze(mockSessions, mockMetrics, 'free');
 
@@ -545,13 +471,11 @@ describe('AnalysisOrchestrator', () => {
         verbose: true,
       });
 
-      const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-      const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
+      const dataExtractorWorker = new MockDataExtractorWorker();
       const phase2Worker = new MockPhase2Worker();
 
       verboseOrchestrator
-        .registerPhase1Worker(dataWorker)
-        .registerPhase1Worker(productivityWorker)
+        .registerPhase1Worker(dataExtractorWorker)
         .registerPhase2Worker(phase2Worker);
 
       await verboseOrchestrator.analyze(mockSessions, mockMetrics, 'premium');
@@ -565,12 +489,9 @@ describe('AnalysisOrchestrator', () => {
     it('should not log verbose messages when verbose is false', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation();
 
-      // Must register both required workers
-      const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-      const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
-      orchestrator
-        .registerPhase1Worker(dataWorker)
-        .registerPhase1Worker(productivityWorker);
+      // Must register required worker
+      const dataExtractorWorker = new MockDataExtractorWorker();
+      orchestrator.registerPhase1Worker(dataExtractorWorker);
 
       await orchestrator.analyze(mockSessions, mockMetrics, 'free');
 
@@ -588,11 +509,8 @@ describe('AnalysisOrchestrator', () => {
 
   describe('Result Building', () => {
     beforeEach(() => {
-      const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-      const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
-      orchestrator
-        .registerPhase1Worker(dataWorker)
-        .registerPhase1Worker(productivityWorker);
+      const dataExtractorWorker = new MockDataExtractorWorker();
+      orchestrator.registerPhase1Worker(dataExtractorWorker);
     });
 
     it('should include session metadata', async () => {
@@ -619,13 +537,6 @@ describe('AnalysisOrchestrator', () => {
       expect(result.analyzedSessions[0].projectName).toBe('project');
     });
 
-    it('should include productivity analysis', async () => {
-      const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
-
-      expect(result.productivityAnalysis).toBeDefined();
-      expect(result.productivityAnalysis.sessionContext).toBeDefined();
-    });
-
     it('should include agent outputs (empty for free tier)', async () => {
       const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
 
@@ -644,11 +555,8 @@ describe('AnalysisOrchestrator', () => {
 
   describe('Tier-Based Filtering', () => {
     beforeEach(() => {
-      const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-      const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
-      orchestrator
-        .registerPhase1Worker(dataWorker)
-        .registerPhase1Worker(productivityWorker);
+      const dataExtractorWorker = new MockDataExtractorWorker();
+      orchestrator.registerPhase1Worker(dataExtractorWorker);
     });
 
     it('should apply tier filtering to final result', async () => {
@@ -690,12 +598,9 @@ describe('AnalysisOrchestrator', () => {
 
   describe('Edge Cases', () => {
     beforeEach(() => {
-      // Always register required workers for edge case tests
-      const dataWorker = new MockDataAnalystWorker(mockDataAnalystData);
-      const productivityWorker = new MockProductivityAnalystWorker(mockProductivityData);
-      orchestrator
-        .registerPhase1Worker(dataWorker)
-        .registerPhase1Worker(productivityWorker);
+      // Always register required worker for edge case tests
+      const dataExtractorWorker = new MockDataExtractorWorker();
+      orchestrator.registerPhase1Worker(dataExtractorWorker);
     });
 
     it('should handle empty sessions array', async () => {

@@ -471,20 +471,23 @@ describe('ContentGateway', () => {
         expect(filtered.productivityAnalysis).toBeUndefined();
       });
 
-      it('should have agentOutputs with teaser data (typeSynthesis preserved)', () => {
+      it('should have agentOutputs with teaser data', () => {
         const filtered = gateway.filter(fullEvaluation, 'free');
 
         // Free tier gets teaser version of agentOutputs
         expect(filtered.agentOutputs).toBeDefined();
-        // patternDetective is a free agent - full data
-        expect(filtered.agentOutputs?.patternDetective).toEqual(fullEvaluation.agentOutputs?.patternDetective);
-        // Premium agents get teaser (1 insight + scores only)
-        expect(filtered.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(1);
-        expect(filtered.agentOutputs?.antiPatternSpotter?.errorLoopsData).toBe('');
-        expect(filtered.agentOutputs?.knowledgeGap?.topInsights).toHaveLength(1);
-        expect(filtered.agentOutputs?.knowledgeGap?.knowledgeGapsData).toBe('');
-        expect(filtered.agentOutputs?.contextEfficiency?.topInsights).toHaveLength(1);
-        expect(filtered.agentOutputs?.contextEfficiency?.contextUsagePatternData).toBe('');
+        // patternDetective is a premium agent in teaser mode - has limited insights
+        expect(filtered.agentOutputs?.patternDetective?.topInsights).toHaveLength(2); // TEASER_INSIGHTS_LIMIT
+        expect(filtered.agentOutputs?.patternDetective?.confidenceScore).toBe(0.85);
+        // Premium agents get teaser (limited insights, diagnostic data preserved, prescriptions locked)
+        expect(filtered.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(2);
+        expect(filtered.agentOutputs?.antiPatternSpotter?.errorLoopsData).toBe(
+          'TypeScript error:8:4.2:same error in 3 sessions'
+        );
+        expect(filtered.agentOutputs?.contextEfficiency?.topInsights).toHaveLength(2);
+        expect(filtered.agentOutputs?.contextEfficiency?.contextUsagePatternData).toBe(
+          'session1:85:92;session2:78:88'
+        );
       });
 
       it('should preserve metadata fields', () => {
@@ -662,10 +665,10 @@ describe('ContentGateway', () => {
       expect(freeTier.promptPatterns).toEqual([]);
       expect(freeTier.toolUsageDeepDive).toBeUndefined();
       expect(freeTier.productivityAnalysis).toBeUndefined();
-      // Free tier gets teaser agentOutputs (patternDetective full, premium agents limited)
+      // Free tier gets teaser agentOutputs (all agents in teaser mode with limited insights)
       expect(freeTier.agentOutputs).toBeDefined();
       expect(freeTier.agentOutputs?.patternDetective).toBeDefined();
-      expect(freeTier.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(1);
+      expect(freeTier.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(2);
 
       // Premium tier: all dimensions, prompt patterns, productivity & agents, no analytics
       expect(premiumTier.dimensionInsights[2].strengths).toBeTruthy();
@@ -760,9 +763,11 @@ describe('ContentGateway', () => {
 
       // Free tier gets teaser version (not undefined, not full)
       expect(filtered.agentOutputs).toBeDefined();
-      // Premium agents have limited data
-      expect(filtered.agentOutputs?.antiPatternSpotter?.errorLoopsData).toBe('');
-      expect(filtered.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(1);
+      // Premium agents: diagnostic data preserved, prescriptions locked
+      expect(filtered.agentOutputs?.antiPatternSpotter?.errorLoopsData).toBe(
+        'TypeScript error:8:4.2:same error in 3 sessions'
+      );
+      expect(filtered.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(2);
       // But ensure full version was present in original
       expect(fullEvaluation.agentOutputs).toBeDefined();
       expect(fullEvaluation.agentOutputs?.antiPatternSpotter?.topInsights?.length).toBeGreaterThan(1);
@@ -782,13 +787,16 @@ describe('ContentGateway', () => {
     it('should provide teaser agentOutputs to free tier (not full access)', () => {
       const freeTier = gateway.filter(fullEvaluation, 'free');
 
-      // Free tier gets teaser agentOutputs (limited data for premium agents)
+      // Free tier gets teaser agentOutputs (limited data for all premium agents)
       expect(freeTier.agentOutputs).toBeDefined();
-      // Free agents (patternDetective) get full data
-      expect(freeTier.agentOutputs?.patternDetective).toEqual(fullEvaluation.agentOutputs?.patternDetective);
-      // Premium agents get teaser (limited insights, empty data fields)
-      expect(freeTier.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(1);
-      expect(freeTier.agentOutputs?.antiPatternSpotter?.errorLoopsData).toBe('');
+      // PatternDetective is in teaser mode with limited insights
+      expect(freeTier.agentOutputs?.patternDetective?.topInsights).toHaveLength(2);
+      expect(freeTier.agentOutputs?.patternDetective?.confidenceScore).toBe(0.85);
+      // Premium agents get teaser (limited insights, diagnostic data preserved, prescriptions locked)
+      expect(freeTier.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(2);
+      expect(freeTier.agentOutputs?.antiPatternSpotter?.errorLoopsData).toBe(
+        'TypeScript error:8:4.2:same error in 3 sessions'
+      );
       // Verify the full version exists in original
       expect(fullEvaluation.agentOutputs?.antiPatternSpotter?.topInsights?.length).toBeGreaterThan(1);
     });

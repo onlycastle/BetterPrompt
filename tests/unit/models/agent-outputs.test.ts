@@ -129,7 +129,7 @@ describe('PatternDetectiveOutputSchema', () => {
 
     it('should FAIL when topInsights item exceeds max length', () => {
       const output = createValidPatternDetectiveOutput();
-      output.topInsights = ['a'.repeat(201)];
+      output.topInsights = ['a'.repeat(3001)];
 
       const result = PatternDetectiveOutputSchema.safeParse(output);
       expect(result.success).toBe(false);
@@ -137,7 +137,7 @@ describe('PatternDetectiveOutputSchema', () => {
 
     it('should FAIL when overallStyleSummary exceeds max length', () => {
       const output = createValidPatternDetectiveOutput();
-      output.overallStyleSummary = 'a'.repeat(301);
+      output.overallStyleSummary = 'a'.repeat(3001);
 
       const result = PatternDetectiveOutputSchema.safeParse(output);
       expect(result.success).toBe(false);

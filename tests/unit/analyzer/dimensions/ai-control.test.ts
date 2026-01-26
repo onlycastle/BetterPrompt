@@ -60,7 +60,7 @@ describe('AI Control Dimension', () => {
       const result = calculateAIControl([]);
 
       expect(result.score).toBe(50);
-      expect(result.level).toBe('developing');
+      expect(result.level).toBe('navigator');
       expect(result.breakdown.verificationRate).toBe(50);
       expect(result.growthAreas).toContain('Complete more sessions to measure your AI control patterns');
     });
@@ -223,7 +223,7 @@ describe('AI Control Dimension', () => {
 
         const result = calculateAIControl([session]);
 
-        expect(result.interpretation).toContain('AI dependency');
+        expect(result.interpretation).toContain('Explorer level');
       });
     });
 

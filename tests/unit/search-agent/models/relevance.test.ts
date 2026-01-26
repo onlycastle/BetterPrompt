@@ -49,7 +49,7 @@ describe('Relevance Models', () => {
       const dimension = {
         score: 0.5,
         weight: 0.5,
-        reasoning: 'A'.repeat(301),
+        reasoning: 'A'.repeat(3001),
       };
 
       const result = RelevanceDimensionSchema.safeParse(dimension);

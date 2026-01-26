@@ -5,8 +5,9 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { WorkerContext } from '../../../../src/lib/analyzer/workers/base-worker.js';
+import type { WorkerContext, Phase2WorkerContext } from '../../../../src/lib/analyzer/workers/base-worker.js';
 import type { KnowledgeGapOutput } from '../../../../src/lib/models/agent-outputs.js';
+import type { Phase1Output } from '../../../../src/lib/models/phase1-output.js';
 
 // Mock the GeminiClient
 vi.mock('../../../../src/lib/analyzer/clients/gemini-client.js', () => ({
@@ -15,37 +16,21 @@ vi.mock('../../../../src/lib/analyzer/clients/gemini-client.js', () => ({
   })),
 }));
 
-// Mock the session formatter
-vi.mock('../../../../src/lib/analyzer/shared/session-formatter.js', () => ({
-  formatSessionsForAnalysis: vi.fn().mockReturnValue('formatted sessions'),
-}));
-
 // Import after mocking
 import {
   KnowledgeGapWorker,
   createKnowledgeGapWorker,
-  type KnowledgeGapWorkerConfig,
 } from '../../../../src/lib/analyzer/workers/knowledge-gap-worker.js';
+import type { OrchestratorConfig } from '../../../../src/lib/analyzer/orchestrator/types.js';
 import { GeminiClient } from '../../../../src/lib/analyzer/clients/gemini-client.js';
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
-function createMockContext(tier: 'free' | 'premium' | 'enterprise' = 'premium'): WorkerContext {
+function createMockContext(tier: 'free' | 'premium' | 'enterprise' = 'premium'): Phase2WorkerContext {
   return {
-    sessions: [
-      {
-        sessionId: 'session-1',
-        startedAt: new Date('2024-01-01T10:00:00Z'),
-        turns: [
-          {
-            role: 'user',
-            content: [{ type: 'text', text: 'How do React hooks work?' }],
-          },
-        ],
-      },
-    ],
+    sessions: [],
     metrics: {
       totalSessions: 1,
       totalTurns: 10,
@@ -54,33 +39,59 @@ function createMockContext(tier: 'free' | 'premium' | 'enterprise' = 'premium'):
       averageSessionDuration: 3600000,
     },
     tier,
-    moduleAOutput: {
-      typeAnalysis: {
-        primaryType: 'architect',
-        controlLevel: 'cartographer',
-        distribution: {
-          architect: 40,
-          scientist: 20,
-          collaborator: 20,
-          speedrunner: 10,
-          craftsman: 10,
+    phase1Output: {
+      developerUtterances: [
+        {
+          id: 'session-1_0',
+          text: 'How do React hooks work?',
+          timestamp: '2024-01-01T10:00:00Z',
+          sessionId: 'session-1',
+          turnIndex: 0,
+          characterCount: 25,
+          wordCount: 5,
+          hasCodeBlock: false,
+          hasQuestion: true,
+          isSessionStart: true,
+          isContinuation: false,
         },
-        reasoning: 'Test',
-      },
-      extractedQuotes: [],
-      detectedPatterns: [],
-      dimensionSignals: [
-        { dimension: 'aiCollaboration', strengthSignals: [], growthSignals: [] },
-        { dimension: 'contextEngineering', strengthSignals: [], growthSignals: [] },
-        { dimension: 'toolMastery', strengthSignals: [], growthSignals: [] },
-        { dimension: 'burnoutRisk', strengthSignals: [], growthSignals: [] },
-        { dimension: 'aiControl', strengthSignals: [], growthSignals: [] },
-        { dimension: 'skillResilience', strengthSignals: [], growthSignals: [] },
+        {
+          id: 'session-1_2',
+          text: 'Can you explain async/await patterns?',
+          timestamp: '2024-01-01T10:05:00Z',
+          sessionId: 'session-1',
+          turnIndex: 2,
+          characterCount: 38,
+          wordCount: 5,
+          hasCodeBlock: false,
+          hasQuestion: true,
+          isSessionStart: false,
+          isContinuation: false,
+        },
       ],
-      analysisMetadata: {
-        totalQuotesAnalyzed: 0,
-        coverageScores: [],
-        confidenceScore: 0.8,
+      aiResponses: [
+        {
+          id: 'session-1_1',
+          sessionId: 'session-1',
+          turnIndex: 1,
+          responseType: 'explanation',
+          toolsUsed: [],
+          textSnippet: 'React hooks are functions that let you use state...',
+          fullTextLength: 500,
+        },
+      ],
+      sessionMetrics: {
+        totalSessions: 1,
+        totalMessages: 10,
+        totalDeveloperUtterances: 2,
+        totalAIResponses: 1,
+        avgMessagesPerSession: 10,
+        avgDeveloperMessageLength: 31.5,
+        questionRatio: 1.0,
+        codeBlockRatio: 0.0,
+        dateRange: {
+          earliest: '2024-01-01T10:00:00Z',
+          latest: '2024-01-01T10:05:00Z',
+        },
       },
     },
   };
@@ -110,7 +121,7 @@ function createMockOutput(): KnowledgeGapOutput {
 
 describe('KnowledgeGapWorker', () => {
   let worker: KnowledgeGapWorker;
-  let context: WorkerContext;
+  let context: Phase2WorkerContext;
   let mockGenerateStructured: any;
 
   beforeEach(() => {
@@ -126,7 +137,7 @@ describe('KnowledgeGapWorker', () => {
         }) as any
     );
 
-    const config: KnowledgeGapWorkerConfig = {
+    const config: OrchestratorConfig = {
       geminiApiKey: 'test-key',
       verbose: false,
     };
@@ -150,7 +161,7 @@ describe('KnowledgeGapWorker', () => {
 
   describe('constructor', () => {
     it('should create worker with config', () => {
-      const config: KnowledgeGapWorkerConfig = {
+      const config: OrchestratorConfig = {
         geminiApiKey: 'test-key',
         model: 'gemini-3-flash-preview',
         temperature: 1.0,
@@ -163,7 +174,7 @@ describe('KnowledgeGapWorker', () => {
   });
 
   describe('canRun()', () => {
-    it('should return true for premium tier with moduleAOutput', () => {
+    it('should return true for premium tier with phase1Output', () => {
       expect(worker.canRun(context)).toBe(true);
     });
 
@@ -177,29 +188,35 @@ describe('KnowledgeGapWorker', () => {
       expect(worker.canRun(freeContext)).toBe(false);
     });
 
-    it('should return false when moduleAOutput missing', () => {
-      const contextWithoutModuleA = {
+    it('should return false when phase1Output missing', () => {
+      const contextWithoutPhase1 = {
         ...context,
-        moduleAOutput: undefined,
+        phase1Output: undefined,
       };
-      expect(worker.canRun(contextWithoutModuleA)).toBe(false);
+      expect(worker.canRun(contextWithoutPhase1)).toBe(false);
     });
 
-    it('should return false when sessions empty', () => {
-      context.sessions = [];
-      expect(worker.canRun(context)).toBe(false);
+    it('should return false when developerUtterances empty', () => {
+      const contextWithEmptyUtterances = {
+        ...context,
+        phase1Output: {
+          ...context.phase1Output!,
+          developerUtterances: [],
+        },
+      };
+      expect(worker.canRun(contextWithEmptyUtterances)).toBe(false);
     });
   });
 
   describe('execute()', () => {
-    it('should throw when moduleAOutput missing', async () => {
-      const contextWithoutModuleA = {
+    it('should throw when phase1Output missing', async () => {
+      const contextWithoutPhase1 = {
         ...context,
-        moduleAOutput: undefined,
+        phase1Output: undefined,
       };
 
-      await expect(worker.execute(contextWithoutModuleA)).rejects.toThrow(
-        'Module A output required for KnowledgeGap'
+      await expect(worker.execute(contextWithoutPhase1)).rejects.toThrow(
+        'Phase 1 output required for KnowledgeGapWorker'
       );
     });
 
@@ -232,7 +249,7 @@ describe('KnowledgeGapWorker', () => {
 
     it('should log progress when verbose enabled', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const verboseConfig: KnowledgeGapWorkerConfig = {
+      const verboseConfig: OrchestratorConfig = {
         geminiApiKey: 'test-key',
         verbose: true,
       };
@@ -247,11 +264,12 @@ describe('KnowledgeGapWorker', () => {
       await verboseWorker.execute(context);
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[KnowledgeGapWorker] Analyzing knowledge gaps and learning progress...'
+        '[KnowledgeGap] Analyzing knowledge gaps and learning progress...'
       );
-      expect(consoleSpy).toHaveBeenCalledWith('[KnowledgeGapWorker] Knowledge score: 68');
+      expect(consoleSpy).toHaveBeenCalledWith('[KnowledgeGap] Utterances: 2');
+      expect(consoleSpy).toHaveBeenCalledWith('[KnowledgeGap] Knowledge score: 68');
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[KnowledgeGapWorker] Found 3 knowledge insights'
+        '[KnowledgeGap] Found 3 knowledge insights'
       );
 
       consoleSpy.mockRestore();
@@ -267,7 +285,7 @@ describe('KnowledgeGapWorker', () => {
 
   describe('factory function', () => {
     it('should create worker with config', () => {
-      const config: KnowledgeGapWorkerConfig = {
+      const config: OrchestratorConfig = {
         geminiApiKey: 'test-key',
       };
       const worker = createKnowledgeGapWorker(config);
