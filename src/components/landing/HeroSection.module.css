@@ -11,9 +11,23 @@
 .headline {
   font-size: var(--text-4xl);
   font-weight: var(--weight-bold);
+  font-weight: var(--weight-bold);
   color: var(--ink-primary);
   line-height: var(--leading-tight);
   margin-bottom: var(--space-lg);
+}
+
+.badge {
+  display: inline-block;
+  padding: var(--space-xs) var(--space-md);
+  background: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-md);
+  border: 1px solid var(--sketch-cyan-light);
 }
 
 .accent {

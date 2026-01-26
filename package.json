@@ -12,6 +12,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run tests/integration.test.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "analyze": "tsx scripts/analyze-style.ts",
