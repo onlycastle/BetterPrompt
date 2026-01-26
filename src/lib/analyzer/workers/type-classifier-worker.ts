@@ -1,29 +1,27 @@
 /**
- * Type Classifier Worker (Phase 2 - v2 Architecture)
+ * Type Classifier Worker (Phase 2.5 - v2 Architecture)
  *
- * Phase 2 worker that classifies developers into the AI Collaboration Matrix:
+ * Phase 2.5 worker that classifies developers into the AI Collaboration Matrix
+ * using ALL Phase 2 worker outputs for informed classification:
  * - 5 Coding Styles: architect, scientist, collaborator, speedrunner, craftsman
  * - 3 Control Levels: explorer, navigator, cartographer
  * - 15 Matrix Combinations (e.g., "Systems Architect", "Mad Scientist")
  *
  * Also assesses Collaboration Maturity (Vibe Coder spectrum).
+ * Merges functionality from the deprecated TypeSynthesisWorker.
  *
  * This is the "fun/viral" element of the report - shareable personality type.
- *
- * Refactored from TypeSynthesisWorker to work with Phase 1 output only.
  *
  * @module analyzer/workers/type-classifier-worker
  */
 
 import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker';
-import { GeminiClient, type GeminiClientConfig } from '../clients/gemini-client';
 import {
-  TypeClassifierOutputSchema,
   type TypeClassifierOutput,
+  type AgentOutputs,
 } from '../../models/agent-outputs';
 import type { Phase1Output } from '../../models/phase1-output';
 import type { StrengthGrowthOutput } from '../../models/strength-growth-data';
-import type { BehaviorPatternOutput } from '../../models/behavior-pattern-data';
 import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
@@ -33,25 +31,19 @@ import {
 import { z } from 'zod';
 
 /**
- * Worker configuration
- */
-export interface TypeClassifierWorkerConfig extends OrchestratorConfig {
-  // No additional config needed
-}
-
-/**
- * Extended WorkerContext for TypeClassifier
+ * Extended WorkerContext for TypeClassifier (Phase 2.5)
  *
- * TypeClassifier runs AFTER other Phase 2 workers to incorporate their insights.
+ * TypeClassifier runs AFTER all Phase 2 workers to incorporate their insights.
+ * It receives phase1Output AND agentOutputs containing all Phase 2 results.
  */
 interface TypeClassifierContext extends WorkerContext {
   phase1Output?: Phase1Output;
-  strengthGrowthOutput?: StrengthGrowthOutput;
-  behaviorPatternOutput?: BehaviorPatternOutput;
+  agentOutputs?: AgentOutputs;
 }
 
 /**
- * LLM output schema for TypeClassifier (matches TypeClassifierOutputSchema)
+ * LLM output schema for TypeClassifier
+ * Includes synthesis fields merged from TypeSynthesis
  */
 const TypeClassifierLLMSchema = z.object({
   primaryType: z.enum(['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman']),
@@ -73,31 +65,26 @@ const TypeClassifierLLMSchema = z.object({
   }).optional(),
   confidenceScore: z.number().min(0).max(1),
   reasoning: z.string().max(500).optional(),
+  // Synthesis fields (merged from TypeSynthesis)
+  adjustmentReasons: z.array(z.string().max(3000)).max(5).optional(),
+  confidenceBoost: z.number().min(0).max(1).optional(),
+  synthesisEvidence: z.string().max(1000).optional(),
 });
 
 /**
  * TypeClassifierWorker - Classifies developers into the AI Collaboration Matrix
  *
- * Phase 2 worker that provides the viral/shareable personality type.
+ * Phase 2.5 worker that provides the viral/shareable personality type.
+ * Runs AFTER all Phase 2 workers to use their insights for informed classification.
  * Runs for all tiers (FREE content - type classification is fun/marketing).
  */
 export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   readonly name = 'TypeClassifier';
-  readonly phase = 2 as const;
+  readonly phase = 2 as const; // Registered as Phase 2.5 via registerPhase2Point5Worker
   readonly minTier: Tier = 'free'; // Available to all users
 
-  private geminiClient: GeminiClient;
-  private verbose: boolean;
-
-  constructor(config: TypeClassifierWorkerConfig) {
-    super();
-    this.geminiClient = new GeminiClient({
-      apiKey: config.geminiApiKey,
-      model: config.model ?? 'gemini-3-flash-preview',
-      temperature: config.temperature ?? 1.0,
-      maxRetries: config.maxRetries ?? 2,
-    } as GeminiClientConfig);
-    this.verbose = config.verbose ?? false;
+  constructor(config: OrchestratorConfig) {
+    super(config);
   }
 
   /**
@@ -106,15 +93,15 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   canRun(context: WorkerContext): boolean {
     const tcContext = context as TypeClassifierContext;
 
-    // Must have Phase 1 output
+    // Must have Phase 1 output (passed via agentOutputs context)
     if (!tcContext.phase1Output) {
-      this.logMessage('Cannot run: Phase 1 output not available');
+      this.log('Cannot run: Phase 1 output not available');
       return false;
     }
 
     // Must have utterances to analyze
     if (tcContext.phase1Output.developerUtterances.length === 0) {
-      this.logMessage('Cannot run: No developer utterances to analyze');
+      this.log('Cannot run: No developer utterances to analyze');
       return false;
     }
 
@@ -122,7 +109,7 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   }
 
   /**
-   * Execute type classification
+   * Execute type classification with Phase 2 synthesis
    *
    * NO FALLBACK: Errors propagate to fail the analysis.
    */
@@ -133,29 +120,29 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
       throw new Error('Phase 1 output required for TypeClassifierWorker');
     }
 
-    this.logMessage('Classifying developer into AI Collaboration Matrix...');
+    this.log('Classifying developer into AI Collaboration Matrix (Phase 2.5)...');
 
     // Prepare Phase 1 output
     const phase1ForPrompt = this.preparePhase1ForPrompt(tcContext.phase1Output);
     const phase1Json = JSON.stringify(phase1ForPrompt, null, 2);
 
-    // Prepare summaries from other Phase 2 workers if available
-    const strengthGrowthSummary = tcContext.strengthGrowthOutput
-      ? this.summarizeStrengthGrowth(tcContext.strengthGrowthOutput)
+    // Prepare summaries from ALL Phase 2 workers
+    const agentOutputs = tcContext.agentOutputs ?? {};
+    const strengthGrowthSummary = agentOutputs.strengthGrowth
+      ? this.summarizeStrengthGrowth(agentOutputs.strengthGrowth)
       : undefined;
 
-    const behaviorPatternSummary = tcContext.behaviorPatternOutput
-      ? this.summarizeBehaviorPattern(tcContext.behaviorPatternOutput)
-      : undefined;
+    // Build combined Phase 2 summary for the prompt
+    const phase2Summary = this.buildPhase2Summary(agentOutputs);
 
     const userPrompt = buildTypeClassifierUserPrompt(
       phase1Json,
       strengthGrowthSummary,
-      behaviorPatternSummary
+      phase2Summary || undefined
     );
 
     // Call Gemini
-    const result = await this.geminiClient.generateStructured({
+    const result = await this.client!.generateStructured({
       systemPrompt: TYPE_CLASSIFIER_SYSTEM_PROMPT,
       userPrompt,
       responseSchema: TypeClassifierLLMSchema,
@@ -166,8 +153,7 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     const dist = result.data.distribution;
     const sum = dist.architect + dist.scientist + dist.collaborator + dist.speedrunner + dist.craftsman;
     if (Math.abs(sum - 100) > 1) {
-      this.logMessage(`Warning: Distribution sums to ${sum}, normalizing...`);
-      // Normalize
+      this.log(`Warning: Distribution sums to ${sum}, normalizing...`);
       const factor = 100 / sum;
       dist.architect = Math.round(dist.architect * factor);
       dist.scientist = Math.round(dist.scientist * factor);
@@ -176,9 +162,12 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
       dist.craftsman = Math.round(dist.craftsman * factor);
     }
 
-    this.logMessage(`Type: ${result.data.primaryType}`);
-    this.logMessage(`Control: ${result.data.controlLevel} (${result.data.controlScore})`);
-    this.logMessage(`Matrix: ${result.data.matrixName} ${result.data.matrixEmoji}`);
+    this.log(`Type: ${result.data.primaryType}`);
+    this.log(`Control: ${result.data.controlLevel} (${result.data.controlScore})`);
+    this.log(`Matrix: ${result.data.matrixName} ${result.data.matrixEmoji}`);
+    if (result.data.confidenceBoost) {
+      this.log(`Confidence boost: +${(result.data.confidenceBoost * 100).toFixed(0)}%`);
+    }
 
     return this.createSuccessResult(result.data as TypeClassifierOutput, result.usage);
   }
@@ -207,6 +196,59 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   }
 
   /**
+   * Build a comprehensive Phase 2 summary from all available worker outputs
+   *
+   * This replaces the old TypeSynthesis approach of reading from legacy agents.
+   * Now uses the new v2 workers: TrustVerification, WorkflowHabit,
+   * KnowledgeGap, ContextEfficiency.
+   */
+  private buildPhase2Summary(agentOutputs: AgentOutputs): string | null {
+    const sections: string[] = [];
+
+    // TrustVerification: anti-patterns + verification behavior
+    if (agentOutputs.trustVerification) {
+      const tv = agentOutputs.trustVerification;
+      sections.push(`### Trust & Verification
+- Anti-patterns detected: ${tv.antiPatterns?.length ?? 0}
+- Verification level: ${tv.verificationBehavior?.level ?? 'unknown'}
+- Trust health score: ${tv.overallTrustHealthScore}/100
+- Confidence: ${tv.confidenceScore}`);
+    }
+
+    // WorkflowHabit: planning + critical thinking + multitasking
+    if (agentOutputs.workflowHabit) {
+      const wh = agentOutputs.workflowHabit;
+      const planningTypes = wh.planningHabits?.map(ph => ph.type).join(', ') || 'none';
+      sections.push(`### Workflow Habits
+- Planning habits: ${planningTypes}
+- Critical thinking moments: ${wh.criticalThinkingMoments?.length ?? 0}
+- Workflow score: ${wh.overallWorkflowScore}/100
+- Confidence: ${wh.confidenceScore}`);
+    }
+
+    // KnowledgeGap
+    if (agentOutputs.knowledgeGap) {
+      const kg = agentOutputs.knowledgeGap;
+      sections.push(`### Knowledge Gap
+- Knowledge score: ${kg.overallKnowledgeScore}/100
+- Confidence: ${kg.confidenceScore}`);
+    }
+
+    // ContextEfficiency
+    if (agentOutputs.contextEfficiency) {
+      const ce = agentOutputs.contextEfficiency;
+      sections.push(`### Context Efficiency
+- Efficiency score: ${ce.overallEfficiencyScore}/100
+- Avg context fill: ${ce.avgContextFillPercent}%
+- Confidence: ${ce.confidenceScore}`);
+    }
+
+    if (sections.length === 0) return null;
+
+    return `## PHASE 2 ANALYSIS SUMMARY\n${sections.join('\n\n')}`;
+  }
+
+  /**
    * Summarize StrengthGrowth output for type classification
    */
   private summarizeStrengthGrowth(output: StrengthGrowthOutput): string {
@@ -222,36 +264,13 @@ Growth Areas: ${growthTitles || 'None identified'}
 Dimensions covered: ${Array.from(dimensions).join(', ')}
 Confidence: ${output.confidenceScore}`;
   }
-
-  /**
-   * Summarize BehaviorPattern output for type classification
-   */
-  private summarizeBehaviorPattern(output: BehaviorPatternOutput): string {
-    const antiPatternTypes = output.antiPatterns.map(ap => ap.type).slice(0, 5).join(', ');
-    const planningTypes = output.planningHabits.map(ph => `${ph.type}(${ph.frequency})`).join(', ');
-
-    return `Anti-patterns: ${antiPatternTypes || 'None detected'}
-Planning habits: ${planningTypes || 'None detected'}
-Verification level: ${output.verificationBehavior.level}
-Health score: ${output.overallHealthScore}
-Critical thinking moments: ${output.criticalThinkingMoments.length}`;
-  }
-
-  /**
-   * Log message if verbose mode enabled
-   */
-  private logMessage(message: string): void {
-    if (this.verbose) {
-      console.log(`[TypeClassifierWorker] ${message}`);
-    }
-  }
 }
 
 /**
  * Factory function for creating TypeClassifierWorker
  */
 export function createTypeClassifierWorker(
-  config: TypeClassifierWorkerConfig
+  config: OrchestratorConfig
 ): TypeClassifierWorker {
   return new TypeClassifierWorker(config);
 }

@@ -1,51 +1,34 @@
 /**
- * Knowledge Gap Worker (Wow Agent 3)
+ * Knowledge Gap Worker (Phase 2 - v2 Architecture)
  *
  * Phase 2 worker that analyzes knowledge gaps:
  * - Identifies gaps from repeated questions
  * - Tracks learning progress over sessions
  * - Recommends specific learning resources
  *
+ * Refactored to use Phase1Output (v2 context isolation).
+ *
  * @module analyzer/workers/knowledge-gap-worker
  */
 
-import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker';
-import { GeminiClient, type GeminiClientConfig } from '../clients/gemini-client';
+import { BaseWorker, type WorkerResult, type WorkerContext, type Phase2WorkerContext } from './base-worker';
 import {
   KnowledgeGapOutputSchema,
   type KnowledgeGapOutput,
 } from '../../models/agent-outputs';
+import type { Phase1Output } from '../../models/phase1-output';
 import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
   KNOWLEDGE_GAP_SYSTEM_PROMPT,
   buildKnowledgeGapUserPrompt,
 } from './prompts/wow-agent-prompts';
-import { formatSessionsForAnalysis } from '../shared/session-formatter';
-
-/**
- * Format preset for Knowledge Gap Analyzer
- * - User messages only (focusing on questions asked)
- * - No tool calls (focus on conceptual questions)
- */
-const KNOWLEDGE_GAP_FORMAT = {
-  maxContentLength: 1500,
-  includeAssistantMessages: false,
-  includeToolCalls: false,
-  includeDuration: false,
-};
-
-/**
- * Worker configuration
- */
-export interface KnowledgeGapWorkerConfig extends OrchestratorConfig {
-  // No additional config needed
-}
 
 /**
  * Knowledge Gap Worker - Analyzes knowledge gaps and learning
  *
  * Phase 2 worker that identifies knowledge gaps and tracks progress.
+ * Uses Phase1Output (v2 context isolation).
  * Requires Premium tier or higher.
  */
 export class KnowledgeGapWorker extends BaseWorker<KnowledgeGapOutput> {
@@ -53,28 +36,31 @@ export class KnowledgeGapWorker extends BaseWorker<KnowledgeGapOutput> {
   readonly phase = 2 as const;
   readonly minTier: Tier = 'premium';
 
-  private geminiClient: GeminiClient;
-  private verbose: boolean;
-
-  constructor(config: KnowledgeGapWorkerConfig) {
-    super();
-    this.geminiClient = new GeminiClient({
-      apiKey: config.geminiApiKey,
-      model: config.model ?? 'gemini-3-flash-preview',
-      temperature: config.temperature ?? 1.0,
-      maxRetries: config.maxRetries ?? 2,
-    } as GeminiClientConfig);
-    this.verbose = config.verbose ?? false;
+  constructor(config: OrchestratorConfig) {
+    super(config);
   }
 
   /**
    * Check if worker can run
    */
   canRun(context: WorkerContext): boolean {
+    const phase2Context = context as Phase2WorkerContext;
+
     if (!this.isTierSufficient(context.tier)) {
       return false;
     }
-    return context.sessions.length > 0 && context.moduleAOutput !== undefined;
+
+    if (!phase2Context.phase1Output) {
+      this.log('Cannot run: Phase 1 output not available');
+      return false;
+    }
+
+    if (phase2Context.phase1Output.developerUtterances.length === 0) {
+      this.log('Cannot run: No developer utterances to analyze');
+      return false;
+    }
+
+    return true;
   }
 
   /**
@@ -82,40 +68,54 @@ export class KnowledgeGapWorker extends BaseWorker<KnowledgeGapOutput> {
    * NO FALLBACK: Errors propagate to fail the analysis
    */
   async execute(context: WorkerContext): Promise<WorkerResult<KnowledgeGapOutput>> {
-    if (!context.moduleAOutput) {
-      throw new Error('Module A output required for KnowledgeGap');
+    const phase2Context = context as Phase2WorkerContext;
+
+    if (!phase2Context.phase1Output) {
+      throw new Error('Phase 1 output required for KnowledgeGapWorker');
     }
 
-    this.logMessage('Analyzing knowledge gaps and learning progress...');
+    this.log('Analyzing knowledge gaps and learning progress...');
+    this.log(`Utterances: ${phase2Context.phase1Output.developerUtterances.length}`);
 
-    // NO try-catch: let errors propagate
-    const sessionsFormatted = formatSessionsForAnalysis(
-      context.sessions,
-      KNOWLEDGE_GAP_FORMAT
-    );
-    const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
-    const userPrompt = buildKnowledgeGapUserPrompt(sessionsFormatted, moduleAJson, context.outputLanguage);
+    // Prepare Phase 1 output for the prompt
+    const phase1ForPrompt = this.preparePhase1ForPrompt(phase2Context.phase1Output);
+    const phase1Json = JSON.stringify(phase1ForPrompt, null, 2);
+    const userPrompt = buildKnowledgeGapUserPrompt(phase1Json);
 
-    const result = await this.geminiClient.generateStructured({
+    const result = await this.client!.generateStructured({
       systemPrompt: KNOWLEDGE_GAP_SYSTEM_PROMPT,
       userPrompt,
       responseSchema: KnowledgeGapOutputSchema,
       maxOutputTokens: 8192,
     });
 
-    this.logMessage(`Knowledge score: ${result.data.overallKnowledgeScore}`);
-    this.logMessage(`Found ${result.data.topInsights.length} knowledge insights`);
+    this.log(`Knowledge score: ${result.data.overallKnowledgeScore}`);
+    this.log(`Found ${result.data.topInsights.length} knowledge insights`);
 
     return this.createSuccessResult(result.data, result.usage);
   }
 
   /**
-   * Log message if verbose mode enabled
+   * Prepare Phase 1 output for the prompt
+   *
+   * Focuses on questions and learning-related utterances.
    */
-  private logMessage(message: string): void {
-    if (this.verbose) {
-      console.log(`[KnowledgeGapWorker] ${message}`);
-    }
+  private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
+    const MAX_UTTERANCES = 100;
+
+    return {
+      developerUtterances: phase1.developerUtterances.slice(0, MAX_UTTERANCES).map((u) => ({
+        id: u.id,
+        text: u.text.slice(0, 800),
+        sessionId: u.sessionId,
+        turnIndex: u.turnIndex,
+        wordCount: u.wordCount,
+        hasQuestion: u.hasQuestion,
+        isSessionStart: u.isSessionStart,
+        timestamp: u.timestamp,
+      })),
+      sessionMetrics: phase1.sessionMetrics,
+    };
   }
 }
 
@@ -123,7 +123,7 @@ export class KnowledgeGapWorker extends BaseWorker<KnowledgeGapOutput> {
  * Factory function for creating KnowledgeGapWorker
  */
 export function createKnowledgeGapWorker(
-  config: KnowledgeGapWorkerConfig
+  config: OrchestratorConfig
 ): KnowledgeGapWorker {
   return new KnowledgeGapWorker(config);
 }

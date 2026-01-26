@@ -1,53 +1,37 @@
 /**
- * Context Efficiency Worker (Wow Agent 4)
+ * Context Efficiency Worker (Phase 2 - v2 Architecture)
  *
  * Phase 2 worker that analyzes context and token efficiency:
  * - Context usage patterns (fill percentage)
  * - Inefficiency patterns (late compaction, bloat)
  * - Prompt length trends
  * - Redundant information repetition
+ * - Productivity metrics (iteration cycles, collaboration efficiency)
+ *
+ * Refactored to use Phase1Output (v2 context isolation).
+ * Also consolidates productivity analysis from the deprecated ProductivityAnalystWorker.
  *
  * @module analyzer/workers/context-efficiency-worker
  */
 
-import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker';
-import { GeminiClient, type GeminiClientConfig } from '../clients/gemini-client';
+import { BaseWorker, type WorkerResult, type WorkerContext, type Phase2WorkerContext } from './base-worker';
 import {
   ContextEfficiencyOutputSchema,
   type ContextEfficiencyOutput,
 } from '../../models/agent-outputs';
+import type { Phase1Output } from '../../models/phase1-output';
 import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
   CONTEXT_EFFICIENCY_SYSTEM_PROMPT,
   buildContextEfficiencyUserPrompt,
 } from './prompts/wow-agent-prompts';
-import { formatSessionsForAnalysis } from '../shared/session-formatter';
 
 /**
- * Format preset for Context Efficiency Analyzer
- * - User messages only (analyzing prompt patterns)
- * - No tool calls (focus on context usage)
- * - Duration included (for efficiency metrics)
- */
-const CONTEXT_EFFICIENCY_FORMAT = {
-  maxContentLength: 2000, // Longer to capture more context patterns
-  includeAssistantMessages: false,
-  includeToolCalls: false,
-  includeDuration: true,
-};
-
-/**
- * Worker configuration
- */
-export interface ContextEfficiencyWorkerConfig extends OrchestratorConfig {
-  // No additional config needed
-}
-
-/**
- * Context Efficiency Worker - Analyzes token and context efficiency
+ * Context Efficiency Worker - Analyzes token and context efficiency + productivity
  *
- * Phase 2 worker that identifies context management patterns.
+ * Phase 2 worker that identifies context management patterns and productivity metrics.
+ * Uses Phase1Output (v2 context isolation).
  * Requires Premium tier or higher.
  */
 export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput> {
@@ -55,28 +39,31 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
   readonly phase = 2 as const;
   readonly minTier: Tier = 'premium';
 
-  private geminiClient: GeminiClient;
-  private verbose: boolean;
-
-  constructor(config: ContextEfficiencyWorkerConfig) {
-    super();
-    this.geminiClient = new GeminiClient({
-      apiKey: config.geminiApiKey,
-      model: config.model ?? 'gemini-3-flash-preview',
-      temperature: config.temperature ?? 1.0,
-      maxRetries: config.maxRetries ?? 2,
-    } as GeminiClientConfig);
-    this.verbose = config.verbose ?? false;
+  constructor(config: OrchestratorConfig) {
+    super(config);
   }
 
   /**
    * Check if worker can run
    */
   canRun(context: WorkerContext): boolean {
+    const phase2Context = context as Phase2WorkerContext;
+
     if (!this.isTierSufficient(context.tier)) {
       return false;
     }
-    return context.sessions.length > 0 && context.moduleAOutput !== undefined;
+
+    if (!phase2Context.phase1Output) {
+      this.log('Cannot run: Phase 1 output not available');
+      return false;
+    }
+
+    if (phase2Context.phase1Output.developerUtterances.length === 0) {
+      this.log('Cannot run: No developer utterances to analyze');
+      return false;
+    }
+
+    return true;
   }
 
   /**
@@ -84,40 +71,55 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
    * NO FALLBACK: Errors propagate to fail the analysis
    */
   async execute(context: WorkerContext): Promise<WorkerResult<ContextEfficiencyOutput>> {
-    if (!context.moduleAOutput) {
-      throw new Error('Module A output required for ContextEfficiency');
+    const phase2Context = context as Phase2WorkerContext;
+
+    if (!phase2Context.phase1Output) {
+      throw new Error('Phase 1 output required for ContextEfficiencyWorker');
     }
 
-    this.logMessage('Analyzing context and token efficiency...');
+    this.log('Analyzing context efficiency and productivity...');
+    this.log(`Utterances: ${phase2Context.phase1Output.developerUtterances.length}`);
 
-    // NO try-catch: let errors propagate
-    const sessionsFormatted = formatSessionsForAnalysis(
-      context.sessions,
-      CONTEXT_EFFICIENCY_FORMAT
-    );
-    const moduleAJson = JSON.stringify(context.moduleAOutput, null, 2);
-    const userPrompt = buildContextEfficiencyUserPrompt(sessionsFormatted, moduleAJson, context.outputLanguage);
+    // Prepare Phase 1 output for the prompt
+    const phase1ForPrompt = this.preparePhase1ForPrompt(phase2Context.phase1Output);
+    const phase1Json = JSON.stringify(phase1ForPrompt, null, 2);
+    const userPrompt = buildContextEfficiencyUserPrompt(phase1Json);
 
-    const result = await this.geminiClient.generateStructured({
+    const result = await this.client!.generateStructured({
       systemPrompt: CONTEXT_EFFICIENCY_SYSTEM_PROMPT,
       userPrompt,
       responseSchema: ContextEfficiencyOutputSchema,
       maxOutputTokens: 8192,
     });
 
-    this.logMessage(`Efficiency score: ${result.data.overallEfficiencyScore}`);
-    this.logMessage(`Avg context fill: ${result.data.avgContextFillPercent}%`);
+    this.log(`Efficiency score: ${result.data.overallEfficiencyScore}`);
+    this.log(`Avg context fill: ${result.data.avgContextFillPercent}%`);
 
     return this.createSuccessResult(result.data, result.usage);
   }
 
   /**
-   * Log message if verbose mode enabled
+   * Prepare Phase 1 output for the prompt
+   *
+   * Includes utterance lengths and session metrics for efficiency analysis.
    */
-  private logMessage(message: string): void {
-    if (this.verbose) {
-      console.log(`[ContextEfficiencyWorker] ${message}`);
-    }
+  private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
+    const MAX_UTTERANCES = 100;
+
+    return {
+      developerUtterances: phase1.developerUtterances.slice(0, MAX_UTTERANCES).map((u) => ({
+        id: u.id,
+        text: u.text.slice(0, 1000), // Longer for context analysis
+        sessionId: u.sessionId,
+        turnIndex: u.turnIndex,
+        characterCount: u.characterCount,
+        wordCount: u.wordCount,
+        isSessionStart: u.isSessionStart,
+        isContinuation: u.isContinuation,
+        timestamp: u.timestamp,
+      })),
+      sessionMetrics: phase1.sessionMetrics,
+    };
   }
 }
 
@@ -125,7 +127,7 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
  * Factory function for creating ContextEfficiencyWorker
  */
 export function createContextEfficiencyWorker(
-  config: ContextEfficiencyWorkerConfig
+  config: OrchestratorConfig
 ): ContextEfficiencyWorker {
   return new ContextEfficiencyWorker(config);
 }
