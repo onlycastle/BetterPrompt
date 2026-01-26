@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { WorkerContext } from '../../../../src/lib/analyzer/workers/base-worker.js';
 import type { ContextEfficiencyOutput } from '../../../../src/lib/models/agent-outputs.js';
+import type { Phase1Output } from '../../../../src/lib/models/phase1-output.js';
 
 // Mock the GeminiClient
 vi.mock('../../../../src/lib/analyzer/clients/gemini-client.js', () => ({
@@ -15,17 +16,12 @@ vi.mock('../../../../src/lib/analyzer/clients/gemini-client.js', () => ({
   })),
 }));
 
-// Mock the session formatter
-vi.mock('../../../../src/lib/analyzer/shared/session-formatter.js', () => ({
-  formatSessionsForAnalysis: vi.fn().mockReturnValue('formatted sessions'),
-}));
-
 // Import after mocking
 import {
   ContextEfficiencyWorker,
   createContextEfficiencyWorker,
-  type ContextEfficiencyWorkerConfig,
 } from '../../../../src/lib/analyzer/workers/context-efficiency-worker.js';
+import type { OrchestratorConfig } from '../../../../src/lib/analyzer/orchestrator/types.js';
 import { GeminiClient } from '../../../../src/lib/analyzer/clients/gemini-client.js';
 
 // ============================================================================
@@ -33,6 +29,64 @@ import { GeminiClient } from '../../../../src/lib/analyzer/clients/gemini-client
 // ============================================================================
 
 function createMockContext(tier: 'free' | 'premium' | 'enterprise' = 'premium'): WorkerContext {
+  const phase1Output: Phase1Output = {
+    developerUtterances: [
+      {
+        id: 'session-1_0',
+        text: 'Here is the project structure again...',
+        timestamp: '2024-01-01T10:00:00Z',
+        sessionId: 'session-1',
+        turnIndex: 0,
+        characterCount: 40,
+        wordCount: 6,
+        hasCodeBlock: false,
+        hasQuestion: false,
+        isSessionStart: true,
+        isContinuation: false,
+      },
+      {
+        id: 'session-1_2',
+        text: 'Can you review this code?',
+        timestamp: '2024-01-01T10:05:00Z',
+        sessionId: 'session-1',
+        turnIndex: 2,
+        characterCount: 26,
+        wordCount: 5,
+        hasCodeBlock: false,
+        hasQuestion: true,
+        isSessionStart: false,
+        isContinuation: false,
+      },
+    ],
+    aiResponses: [
+      {
+        id: 'session-1_1',
+        sessionId: 'session-1',
+        turnIndex: 1,
+        responseType: 'explanation',
+        toolsUsed: ['Read', 'Grep'],
+        textSnippet: 'I can see the project structure...',
+        fullTextLength: 150,
+        hadError: false,
+        wasSuccessful: true,
+      },
+    ],
+    sessionMetrics: {
+      totalSessions: 1,
+      totalMessages: 3,
+      totalDeveloperUtterances: 2,
+      totalAIResponses: 1,
+      avgMessagesPerSession: 3,
+      avgDeveloperMessageLength: 33,
+      questionRatio: 0.5,
+      codeBlockRatio: 0,
+      dateRange: {
+        earliest: '2024-01-01T10:00:00Z',
+        latest: '2024-01-01T10:05:00Z',
+      },
+    },
+  };
+
   return {
     sessions: [
       {
@@ -54,35 +108,7 @@ function createMockContext(tier: 'free' | 'premium' | 'enterprise' = 'premium'):
       averageSessionDuration: 3600000,
     },
     tier,
-    moduleAOutput: {
-      typeAnalysis: {
-        primaryType: 'architect',
-        controlLevel: 'cartographer',
-        distribution: {
-          architect: 40,
-          scientist: 20,
-          collaborator: 20,
-          speedrunner: 10,
-          craftsman: 10,
-        },
-        reasoning: 'Test',
-      },
-      extractedQuotes: [],
-      detectedPatterns: [],
-      dimensionSignals: [
-        { dimension: 'aiCollaboration', strengthSignals: [], growthSignals: [] },
-        { dimension: 'contextEngineering', strengthSignals: [], growthSignals: [] },
-        { dimension: 'toolMastery', strengthSignals: [], growthSignals: [] },
-        { dimension: 'burnoutRisk', strengthSignals: [], growthSignals: [] },
-        { dimension: 'aiControl', strengthSignals: [], growthSignals: [] },
-        { dimension: 'skillResilience', strengthSignals: [], growthSignals: [] },
-      ],
-      analysisMetadata: {
-        totalQuotesAnalyzed: 0,
-        coverageScores: [],
-        confidenceScore: 0.8,
-      },
-    },
+    phase1Output,
   };
 }
 
@@ -126,7 +152,7 @@ describe('ContextEfficiencyWorker', () => {
         }) as any
     );
 
-    const config: ContextEfficiencyWorkerConfig = {
+    const config: OrchestratorConfig = {
       geminiApiKey: 'test-key',
       verbose: false,
     };
@@ -150,7 +176,7 @@ describe('ContextEfficiencyWorker', () => {
 
   describe('constructor', () => {
     it('should create worker with config', () => {
-      const config: ContextEfficiencyWorkerConfig = {
+      const config: OrchestratorConfig = {
         geminiApiKey: 'test-key',
         model: 'gemini-3-flash-preview',
         temperature: 1.0,
@@ -163,7 +189,7 @@ describe('ContextEfficiencyWorker', () => {
   });
 
   describe('canRun()', () => {
-    it('should return true for premium tier with moduleAOutput', () => {
+    it('should return true for premium tier with phase1Output', () => {
       expect(worker.canRun(context)).toBe(true);
     });
 
@@ -177,29 +203,35 @@ describe('ContextEfficiencyWorker', () => {
       expect(worker.canRun(freeContext)).toBe(false);
     });
 
-    it('should return false when moduleAOutput missing', () => {
-      const contextWithoutModuleA = {
+    it('should return false when phase1Output missing', () => {
+      const contextWithoutPhase1 = {
         ...context,
-        moduleAOutput: undefined,
+        phase1Output: undefined,
       };
-      expect(worker.canRun(contextWithoutModuleA)).toBe(false);
+      expect(worker.canRun(contextWithoutPhase1)).toBe(false);
     });
 
-    it('should return false when sessions empty', () => {
-      context.sessions = [];
-      expect(worker.canRun(context)).toBe(false);
+    it('should return false when developerUtterances empty', () => {
+      const contextWithEmptyUtterances = {
+        ...context,
+        phase1Output: {
+          ...context.phase1Output!,
+          developerUtterances: [],
+        },
+      };
+      expect(worker.canRun(contextWithEmptyUtterances)).toBe(false);
     });
   });
 
   describe('execute()', () => {
-    it('should throw when moduleAOutput missing', async () => {
-      const contextWithoutModuleA = {
+    it('should throw when phase1Output missing', async () => {
+      const contextWithoutPhase1 = {
         ...context,
-        moduleAOutput: undefined,
+        phase1Output: undefined,
       };
 
-      await expect(worker.execute(contextWithoutModuleA)).rejects.toThrow(
-        'Module A output required for ContextEfficiency'
+      await expect(worker.execute(contextWithoutPhase1)).rejects.toThrow(
+        'Phase 1 output required for ContextEfficiencyWorker'
       );
     });
 
@@ -232,7 +264,7 @@ describe('ContextEfficiencyWorker', () => {
 
     it('should log progress when verbose enabled', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const verboseConfig: ContextEfficiencyWorkerConfig = {
+      const verboseConfig: OrchestratorConfig = {
         geminiApiKey: 'test-key',
         verbose: true,
       };
@@ -247,11 +279,12 @@ describe('ContextEfficiencyWorker', () => {
       await verboseWorker.execute(context);
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[ContextEfficiencyWorker] Analyzing context and token efficiency...'
+        '[ContextEfficiency] Analyzing context efficiency and productivity...'
       );
-      expect(consoleSpy).toHaveBeenCalledWith('[ContextEfficiencyWorker] Efficiency score: 65');
+      expect(consoleSpy).toHaveBeenCalledWith('[ContextEfficiency] Utterances: 2');
+      expect(consoleSpy).toHaveBeenCalledWith('[ContextEfficiency] Efficiency score: 65');
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[ContextEfficiencyWorker] Avg context fill: 84%'
+        '[ContextEfficiency] Avg context fill: 84%'
       );
 
       consoleSpy.mockRestore();
@@ -267,7 +300,7 @@ describe('ContextEfficiencyWorker', () => {
 
   describe('factory function', () => {
     it('should create worker with config', () => {
-      const config: ContextEfficiencyWorkerConfig = {
+      const config: OrchestratorConfig = {
         geminiApiKey: 'test-key',
       };
       const worker = createContextEfficiencyWorker(config);

@@ -711,6 +711,19 @@ export const ContextEfficiencyOutputSchema = z.object({
   // NEW: Growth areas with evidence and recommendations (inefficiencies)
   // Format: "title|description|evidence1,evidence2|recommendation;title2|..."
   growthAreasData: z.string().max(4000).optional(),
+
+  // Productivity metrics (consolidated from ProductivityAnalyst)
+  // Iteration data: "sessionId|iterationCount|avgTurnsPerIteration;..."
+  iterationSummaryData: z.string().max(3000).optional(),
+
+  // Collaboration efficiency score (0-100)
+  collaborationEfficiencyScore: z.number().min(0).max(100).optional(),
+
+  // Overall productivity score (0-100)
+  overallProductivityScore: z.number().min(0).max(100).optional(),
+
+  // Productivity summary (max 2000 chars)
+  productivitySummary: z.string().max(2000).optional(),
 });
 
 export type ContextEfficiencyOutput = z.infer<typeof ContextEfficiencyOutputSchema>;
@@ -877,6 +890,19 @@ export const TypeClassifierOutputSchema = z.object({
 
   /** Reasoning for the classification */
   reasoning: z.string().max(500).optional(),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Synthesis Fields (merged from TypeSynthesis)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Reasons for adjustments from initial or pattern-based classification */
+  adjustmentReasons: z.array(z.string().max(3000)).max(5).optional(),
+
+  /** How much confidence increased from agent synthesis (0-1) */
+  confidenceBoost: z.number().min(0).max(1).optional(),
+
+  /** Evidence from other Phase 2 agent outputs - "agent:key_signal:detail;..." */
+  synthesisEvidence: z.string().max(1000).optional(),
 });
 export type TypeClassifierOutput = z.infer<typeof TypeClassifierOutputSchema>;
 
@@ -913,20 +939,23 @@ export const AgentOutputsSchema = z.object({
   temporalAnalysis: TemporalAnalysisResultSchema.optional(),
   multitasking: MultitaskingAnalysisOutputSchema.optional(),
 
-  // Legacy: Type Synthesis (used by Phase 2.5)
+  // Legacy: Type Synthesis (replaced by TypeClassifier, kept for stored data)
   typeSynthesis: TypeSynthesisOutputSchema.optional(),
 
-  // Legacy: Cross-Session Anti-Pattern Detection (deprecated in v2)
+  // Legacy: Cross-Session Anti-Pattern Detection (deprecated in v2, kept for stored data)
   crossSessionAntiPatterns: CrossSessionAntiPatternOutputSchema.optional(),
 
   // =========================================================================
-  // v2 Architecture Workers (NEW)
+  // v2 Architecture Workers
   // =========================================================================
-  /** Strengths & Growth Areas analysis (v2) */
+  /** Strengths & Growth Areas analysis */
   strengthGrowth: StrengthGrowthOutputSchema.optional(),
 
-  /** Behavior Patterns analysis (v2) - replaces AntiPatternSpotter + Multitasking */
-  behaviorPattern: BehaviorPatternOutputSchema.optional(),
+  /** Trust Verification analysis (anti-patterns + verification behavior) */
+  trustVerification: TrustVerificationOutputSchema.optional(),
+
+  /** Workflow Habit analysis (planning + critical thinking) */
+  workflowHabit: WorkflowHabitOutputSchema.optional(),
 
   /** Type Classification (v2) - can replace TypeSynthesis */
   typeClassifier: TypeClassifierOutputSchema.optional(),
@@ -962,7 +991,8 @@ export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
     outputs.crossSessionAntiPatterns ||
     // v2 agents
     outputs.strengthGrowth ||
-    outputs.behaviorPattern ||
+    outputs.trustVerification ||
+    outputs.workflowHabit ||
     outputs.typeClassifier
   );
 }
@@ -1542,6 +1572,20 @@ import {
   type BehaviorPatternLLMOutput,
 } from './behavior-pattern-data';
 
+import {
+  TrustVerificationOutputSchema,
+  type TrustVerificationOutput,
+  TrustVerificationLLMOutputSchema,
+  type TrustVerificationLLMOutput,
+} from './trust-verification-data';
+
+import {
+  WorkflowHabitOutputSchema,
+  type WorkflowHabitOutput,
+  WorkflowHabitLLMOutputSchema,
+  type WorkflowHabitLLMOutput,
+} from './workflow-habit-data';
+
 // Re-export for convenience
 export {
   Phase1OutputSchema,
@@ -1554,6 +1598,14 @@ export {
   type BehaviorPatternOutput,
   BehaviorPatternLLMOutputSchema,
   type BehaviorPatternLLMOutput,
+  TrustVerificationOutputSchema,
+  type TrustVerificationOutput,
+  TrustVerificationLLMOutputSchema,
+  type TrustVerificationLLMOutput,
+  WorkflowHabitOutputSchema,
+  type WorkflowHabitOutput,
+  WorkflowHabitLLMOutputSchema,
+  type WorkflowHabitLLMOutput,
 };
 
 // ============================================================================
@@ -1574,8 +1626,11 @@ export const NewAgentOutputsSchema = z.object({
   /** Strengths & Growth Areas analysis */
   strengthGrowth: StrengthGrowthOutputSchema.optional(),
 
-  /** Behavior Patterns analysis */
-  behaviorPattern: BehaviorPatternOutputSchema.optional(),
+  /** Trust Verification analysis (anti-patterns + verification behavior) */
+  trustVerification: TrustVerificationOutputSchema.optional(),
+
+  /** Workflow Habit analysis (planning + critical thinking + multitasking) */
+  workflowHabit: WorkflowHabitOutputSchema.optional(),
 
   /** Knowledge Gap analysis (reuses existing schema) */
   knowledgeGap: KnowledgeGapOutputSchema.optional(),
@@ -1594,7 +1649,8 @@ export type NewAgentOutputs = z.infer<typeof NewAgentOutputsSchema>;
 export function hasAnyNewAgentOutput(outputs: NewAgentOutputs): boolean {
   return !!(
     outputs.strengthGrowth ||
-    outputs.behaviorPattern ||
+    outputs.trustVerification ||
+    outputs.workflowHabit ||
     outputs.knowledgeGap ||
     outputs.contextEfficiency ||
     outputs.typeClassifier

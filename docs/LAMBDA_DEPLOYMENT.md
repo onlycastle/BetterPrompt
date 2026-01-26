@@ -214,8 +214,8 @@ AWS Free Tier (12 months):
 
 ```
 ┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
-│ Desktop App │────▶│  AWS Lambda      │────▶│  Supabase   │
-│ (Electron)  │     │  (SSE Streaming) │     │  (Storage)  │
+│   Client    │────▶│  AWS Lambda      │────▶│  Supabase   │
+│ (Web / CLI) │     │  (SSE Streaming) │     │  (Storage)  │
 └─────────────┘     └──────────────────┘     └─────────────┘
                             │
                             ▼
@@ -227,11 +227,11 @@ AWS Free Tier (12 months):
 
 ## Hybrid Setup
 
-Keep Vercel for web app, use Lambda for desktop app analysis:
+Keep Vercel for web app, use Lambda for heavy analysis:
 
-- **Vercel**: `/`, `/r/[id]`, `/api/*` (web frontend)
-- **Lambda**: Heavy analysis endpoint (called by desktop app via `NOSLOP_LAMBDA_URL`)
+- **Vercel**: `/`, `/r/[id]`, `/api/*` (web frontend + light API routes)
+- **Lambda**: Heavy analysis endpoint (called via `NOSLOP_LAMBDA_URL`)
 
 This gives you the best of both worlds:
 - Vercel's CDN and instant deployments for the web app
-- Lambda's higher limits and longer timeout for desktop app analysis
+- Lambda's higher limits and longer timeout for analysis processing

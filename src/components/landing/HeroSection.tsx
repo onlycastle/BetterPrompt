@@ -7,8 +7,9 @@ export function HeroSection() {
   return (
     <section className={styles.hero}>
       <div className={styles.content}>
+        <div className={styles.badge}>No More AI Slop</div>
         <h1 className={styles.headline}>
-          Are you getting better with AI
+          Are you getting better with AI{' '}
           <br className={styles.breakDesktop} />
           or just more <span className={styles.accent}>dependent</span>?
         </h1>

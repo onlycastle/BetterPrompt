@@ -11,8 +11,6 @@
 
 import type { TokenUsage } from '../clients/gemini-client';
 import type { ParsedSession, SessionMetrics } from '../../domain/models/analysis';
-import type { StructuredAnalysisData } from '../../models/analysis-data';
-import type { ProductivityAnalysisData } from '../../models/productivity-data';
 import type { Tier } from '../content-gateway';
 import type { SupportedLanguage } from '../stages/content-writer-prompts';
 import { getAgentConfig, type AgentId } from '../../domain/models';
@@ -28,7 +26,7 @@ import { getAgentConfig, type AgentId } from '../../domain/models';
  *
  * @example
  * ```typescript
- * const result: WorkerResult<StructuredAnalysisData> = {
+ * const result: WorkerResult<Phase1Output> = {
  *   data: analysisData,
  *   usage: { promptTokens: 1000, completionTokens: 500, totalTokens: 1500 },
  * };
@@ -71,24 +69,17 @@ export interface WorkerResultWithStatus<T> extends WorkerResult<T> {
 /**
  * Shared context passed to all workers
  *
- * Phase 1 workers receive base context.
- * Phase 2 workers receive base context + Phase 1 outputs.
- * Phase 3 workers receive everything.
+ * Phase 1 workers receive base context (sessions, metrics, tier).
+ * Phase 2 workers receive base context + phase1Output.
+ * Phase 2.5 workers receive base context + phase1Output + agentOutputs.
+ * Phase 3 (ContentWriter) receives phase1Output + agentOutputs.
  *
  * @example
  * ```typescript
- * // Phase 1 context
- * const phase1Context: WorkerContext = {
+ * const baseContext: WorkerContext = {
  *   sessions,
  *   metrics,
  *   tier: 'premium',
- * };
- *
- * // Phase 2 context (after Phase 1 completes)
- * const phase2Context: WorkerContext = {
- *   ...phase1Context,
- *   moduleAOutput: dataAnalystResult.data,
- *   moduleCOutput: productivityResult.data,
  * };
  * ```
  */
@@ -108,16 +99,24 @@ export interface WorkerContext {
 
   /** Output language detected from user prompts (defaults to 'en') */
   outputLanguage?: SupportedLanguage;
+}
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Phase 1 Outputs (available in Phase 2+)
-  // ─────────────────────────────────────────────────────────────────────────
+// ============================================================================
+// Phase 2 Worker Context
+// ============================================================================
 
-  /** Module A (Data Analyst) output */
-  moduleAOutput?: StructuredAnalysisData;
+import type { Phase1Output } from '../../models/phase1-output';
+export type { Phase1Output };
 
-  /** Module C (Productivity Analyst) output */
-  moduleCOutput?: ProductivityAnalysisData;
+/**
+ * Extended WorkerContext for Phase 2 workers that require Phase 1 output
+ *
+ * In the v2 architecture, Phase 2 workers receive ONLY Phase 1 output
+ * (not raw sessions). This is enforced by the orchestrator.
+ */
+export interface Phase2WorkerContext extends WorkerContext {
+  /** Phase 1 extraction output (REQUIRED for Phase 2 workers) */
+  phase1Output?: Phase1Output;
 }
 
 // ============================================================================
@@ -125,19 +124,10 @@ export interface WorkerContext {
 // ============================================================================
 
 /**
- * Phase 1 v2 Output (from QuoteExtractor)
- *
- * Pure extraction result with no semantic analysis.
- * This is what Phase 2 v2 workers receive - NOT raw sessions.
- */
-import type { Phase1Output } from '../../models/phase1-output';
-export type { Phase1Output };
-
-/**
  * Context for v2 Phase 2 workers (Context Isolation)
  *
  * IMPORTANT: v2 Phase 2 workers do NOT receive raw sessions.
- * They receive ONLY the Phase 1 output from QuoteExtractor.
+ * They receive ONLY the Phase 1 output from DataExtractor.
  *
  * This enforces the architectural principle:
  * - Phase 1 = Pure Extraction (no semantic analysis)
@@ -183,9 +173,10 @@ export function isPhase2V2Context(context: unknown): context is Phase2V2WorkerCo
 /**
  * Analysis pipeline phases
  *
- * - Phase 1: Data Extraction (Module A, C run in parallel)
- * - Phase 2: Insight Generation (4 Wow Agents run in parallel)
- * - Phase 3: Content Generation (ContentWriter)
+ * - Phase 1: DataExtractor (deterministic)
+ * - Phase 2: 5 Insight workers (parallel)
+ * - Phase 2.5: TypeClassifier
+ * - Phase 3: ContentWriter
  */
 export type Phase = 1 | 2 | 3;
 
@@ -262,18 +253,17 @@ export const DEFAULT_ORCHESTRATOR_CONFIG: Required<Omit<OrchestratorConfig, 'gem
  * Results from Phase 1 (Data Extraction)
  */
 export interface Phase1Results {
-  dataAnalyst: WorkerResult<StructuredAnalysisData>;
-  productivityAnalyst: WorkerResult<ProductivityAnalysisData>;
-  /** v2: QuoteExtractor output for Phase 2 v2 workers */
-  quoteExtractor?: WorkerResult<Phase1Output>;
+  /** DataExtractor output for Phase 2 workers */
+  dataExtractor: WorkerResult<Phase1Output>;
 }
 
 /**
  * Results from Phase 2 (Insight Generation)
  */
 export interface Phase2Results {
-  patternDetective?: WorkerResultWithStatus<unknown>;
-  antiPatternSpotter?: WorkerResultWithStatus<unknown>;
+  strengthGrowth?: WorkerResultWithStatus<unknown>;
+  trustVerification?: WorkerResultWithStatus<unknown>;
+  workflowHabit?: WorkerResultWithStatus<unknown>;
   knowledgeGap?: WorkerResultWithStatus<unknown>;
   contextEfficiency?: WorkerResultWithStatus<unknown>;
 }
@@ -283,11 +273,12 @@ export interface Phase2Results {
 // ============================================================================
 
 import type { StrengthGrowthOutput } from '../../models/strength-growth-data';
-import type { BehaviorPatternOutput } from '../../models/behavior-pattern-data';
+import type { TrustVerificationOutput } from '../../models/trust-verification-data';
+import type { WorkflowHabitOutput } from '../../models/workflow-habit-data';
 import type { TypeClassifierOutput, KnowledgeGapOutput, ContextEfficiencyOutput } from '../../models/agent-outputs';
 
 /**
- * Results from Phase 2 v2 workers (Context Isolated)
+ * Results from Phase 2 workers (Context Isolated)
  *
  * These workers receive only Phase 1 output (no raw sessions).
  */
@@ -295,8 +286,11 @@ export interface Phase2V2Results {
   /** Strengths & Growth Areas analysis */
   strengthGrowth?: WorkerResult<StrengthGrowthOutput>;
 
-  /** Behavior Patterns analysis (anti-patterns, planning, verification) */
-  behaviorPattern?: WorkerResult<BehaviorPatternOutput>;
+  /** Trust Verification analysis (anti-patterns + verification behavior) */
+  trustVerification?: WorkerResult<TrustVerificationOutput>;
+
+  /** Workflow Habit analysis (planning + critical thinking + multitasking) */
+  workflowHabit?: WorkerResult<WorkflowHabitOutput>;
 
   /** Knowledge Gap analysis */
   knowledgeGap?: WorkerResult<KnowledgeGapOutput>;
@@ -304,7 +298,7 @@ export interface Phase2V2Results {
   /** Context Efficiency analysis */
   contextEfficiency?: WorkerResult<ContextEfficiencyOutput>;
 
-  /** Type Classification */
+  /** Type Classification (Phase 2.5) */
   typeClassifier?: WorkerResult<TypeClassifierOutput>;
 }
 

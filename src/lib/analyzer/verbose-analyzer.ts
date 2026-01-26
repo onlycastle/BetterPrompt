@@ -3,12 +3,13 @@
  *
  * Supports two analysis modes:
  * 1. Single-stage (legacy): One LLM call with Anthropic Claude (requires ANTHROPIC_API_KEY)
- * 2. Two-module pipeline: Module A + Module C + Stage 2 with Gemini 3 Flash (requires GOOGLE_GEMINI_API_KEY)
+ * 2. Multi-phase pipeline (default): 7 LLM calls with Gemini 3 Flash (requires GOOGLE_GEMINI_API_KEY)
  *
- * Two-module pipeline:
- * - Module A (Data Analyst): Extract structured behavioral data
- * - Module C (Productivity Analyst): Extract productivity metrics
- * - Stage 2 (Content Writer): Transform into engaging narrative using both outputs
+ * Multi-phase pipeline (7 LLM calls total):
+ * - Phase 1: DataExtractor (deterministic, no LLM)
+ * - Phase 2: 5 parallel workers (StrengthGrowth, TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency)
+ * - Phase 2.5: TypeClassifier (1 LLM call)
+ * - Phase 3: ContentWriter (1 LLM call)
  *
  * Single-stage legacy mode uses Anthropic's Structured Outputs.
  */
@@ -31,27 +32,19 @@ import { ContentGateway, type Tier } from './content-gateway';
 import { AnalysisOrchestrator, createAnalysisOrchestrator } from './orchestrator';
 import type { OrchestratorConfig } from './orchestrator/types';
 import {
-  createDataAnalystWorker,
-  createProductivityAnalystWorker,
-  // Phase 2: Core workers (kept from original)
+  // Phase 1: Pure extraction (produces Phase1Output for Phase 2 workers)
+  createDataExtractorWorker,
+  // Phase 2: Semantic analysis (receives Phase1Output)
+  createStrengthGrowthWorker,
+  createTrustVerificationWorker,
+  createWorkflowHabitWorker,
   createKnowledgeGapWorker,
   createContextEfficiencyWorker,
-  // Phase 2.5: Type Synthesis (kept for 15-type matrix)
-  createTypeSynthesisWorker,
-  // ============================================================================
-  // NEW v2 Architecture Workers
-  // ============================================================================
-  // Phase 1 v2: Pure extraction (produces Phase1Output for v2 workers)
-  createQuoteExtractorWorker,
-  // Phase 2 v2: Semantic analysis (receives Phase1Output)
-  createStrengthGrowthWorker,
-  createBehaviorPatternWorker,
+  // Phase 2.5: TypeClassifier (classification + synthesis)
   createTypeClassifierWorker,
 } from './workers';
 
-// Legacy imports for single-stage mode (kept for backward compatibility)
-import { DataAnalystStage, type DataAnalystConfig } from './stages/data-analyst';
-import { ProductivityAnalystStage, type ProductivityAnalystConfig } from './stages/productivity-analyst';
+// Stage imports for pipeline configuration
 import { ContentWriterStage, type ContentWriterConfig } from './stages/content-writer';
 
 // ============================================================================
@@ -250,16 +243,14 @@ export class VerboseAnalysisError extends Error {
 export type PipelineMode = 'single' | 'two-stage';
 
 /**
- * Two-module pipeline configuration
+ * Pipeline configuration
  *
- * - stage1 (Module A): Data Analyst - behavioral data extraction
- * - moduleC: Productivity Analyst - productivity/efficiency metrics extraction
+ * - stage1: Gemini model config for Phase 1-2 workers
  * - stage2: Content Writer - narrative generation
  */
 export interface PipelineConfig {
   mode: PipelineMode;
-  stage1?: DataAnalystConfig;
-  moduleC?: ProductivityAnalystConfig;
+  stage1?: ContentWriterConfig;
   stage2?: ContentWriterConfig;
 }
 
@@ -282,8 +273,8 @@ export interface VerboseAnalyzerConfig {
 /**
  * Default configuration
  *
- * Two-stage pipeline (default):
- * - Uses Gemini 3 Flash for both stages
+ * Multi-phase pipeline (default):
+ * - Uses Gemini 3 Flash for all workers
  * - Requires GOOGLE_GEMINI_API_KEY
  *
  * Single-stage legacy mode:
@@ -317,9 +308,9 @@ const DEFAULT_CONFIG: Required<Omit<VerboseAnalyzerConfig, 'apiKey' | 'geminiApi
  *
  * Supports two modes:
  * 1. Single-stage (legacy): One LLM call with Claude Sonnet (ANTHROPIC_API_KEY)
- * 2. Two-stage pipeline: Orchestrator + Workers with Gemini 3 Flash (GOOGLE_GEMINI_API_KEY)
+ * 2. Multi-phase pipeline (default): 7 LLM calls with Gemini 3 Flash (GOOGLE_GEMINI_API_KEY)
  *
- * Two-stage pipeline uses AnalysisOrchestrator with registered workers.
+ * Multi-phase pipeline uses AnalysisOrchestrator with registered workers.
  * Single-stage uses Anthropic's Structured Outputs feature.
  */
 export class VerboseAnalyzer {
@@ -362,29 +353,24 @@ export class VerboseAnalyzer {
       this.orchestrator = createAnalysisOrchestrator(orchestratorConfig);
 
       // =========================================================================
-      // PHASE 1: Data Extraction
+      // PHASE 1: Data Extraction (1 worker, deterministic - no LLM)
       // =========================================================================
-      // Legacy workers (Module A, C - produce StructuredAnalysisData)
-      this.orchestrator.registerPhase1Worker(createDataAnalystWorker(orchestratorConfig));
-      this.orchestrator.registerPhase1Worker(createProductivityAnalystWorker(orchestratorConfig));
-      // NEW v2 worker (produces Phase1Output for v2 Phase 2 workers)
-      this.orchestrator.registerPhase1Worker(createQuoteExtractorWorker(orchestratorConfig));
+      this.orchestrator.registerPhase1Worker(createDataExtractorWorker(orchestratorConfig));
 
       // =========================================================================
-      // PHASE 2: Insight Generation (5 workers per v2 plan)
+      // PHASE 2: Insight Generation (5 workers, parallel LLM calls)
       // =========================================================================
-      // NEW v2 workers (consume Phase1Output)
       this.orchestrator.registerPhase2Worker(createStrengthGrowthWorker(orchestratorConfig));
-      this.orchestrator.registerPhase2Worker(createBehaviorPatternWorker(orchestratorConfig));
-      this.orchestrator.registerPhase2Worker(createTypeClassifierWorker(orchestratorConfig));
-      // Legacy workers (consume moduleAOutput - kept per plan)
+      this.orchestrator.registerPhase2Worker(createTrustVerificationWorker(orchestratorConfig));
+      this.orchestrator.registerPhase2Worker(createWorkflowHabitWorker(orchestratorConfig));
       this.orchestrator.registerPhase2Worker(createKnowledgeGapWorker(orchestratorConfig));
       this.orchestrator.registerPhase2Worker(createContextEfficiencyWorker(orchestratorConfig));
 
       // =========================================================================
-      // PHASE 2.5: Type Synthesis (refines classification using agent outputs)
+      // PHASE 2.5: TypeClassifier (classification using all Phase 2 outputs)
+      // Replaces TypeSynthesis — single LLM call for both classification + synthesis
       // =========================================================================
-      this.orchestrator.registerPhase2Point5Worker(createTypeSynthesisWorker(orchestratorConfig));
+      this.orchestrator.registerPhase2Point5Worker(createTypeClassifierWorker(orchestratorConfig));
     }
 
     // Get Anthropic API key for legacy single-stage mode only
@@ -407,10 +393,11 @@ export class VerboseAnalyzer {
   /**
    * Analyze multiple sessions and return a verbose evaluation
    *
-   * Uses two-stage pipeline by default:
-   * - Phase 1: Module A (Data), Module B (Personality), Module C (Productivity) in parallel
-   * - Phase 2: 4 Wow Agents (Premium+ only) in parallel
-   * - Phase 3: Content Writer
+   * Uses multi-phase pipeline by default:
+   * - Phase 1: DataExtractor (deterministic)
+   * - Phase 2: 5 workers in parallel
+   * - Phase 2.5: TypeClassifier
+   * - Phase 3: ContentWriter
    *
    * NO FALLBACK: Errors are thrown immediately to identify root causes.
    */
@@ -434,7 +421,7 @@ export class VerboseAnalyzer {
     if (this.config.pipeline.mode === 'two-stage' && this.orchestrator) {
       console.log('[VerboseAnalyzer] Using TWO-STAGE pipeline with orchestrator');
       const result = await this.analyzeTwoStage(sessions, metrics, tier);
-      console.log(`[VerboseAnalyzer] Two-stage complete. hasAgentOutputs: ${!!result.agentOutputs}, typeSynthesis: ${!!result.agentOutputs?.typeSynthesis}`);
+      console.log(`[VerboseAnalyzer] Two-stage complete. hasAgentOutputs: ${!!result.agentOutputs}, typeClassifier: ${!!result.agentOutputs?.typeClassifier}`);
       return result;
     }
 
@@ -447,9 +434,10 @@ export class VerboseAnalyzer {
    * Multi-phase analysis pipeline using Orchestrator + Workers
    *
    * Delegates to AnalysisOrchestrator which coordinates:
-   * - Phase 1: Data Extraction (Module A, B, C in parallel)
-   * - Phase 2: Insight Generation (4 Wow Agents in parallel, Premium+ only)
-   * - Phase 3: Content Generation (ContentWriter)
+   * - Phase 1: DataExtractor (deterministic)
+   * - Phase 2: 5 Insight Generation workers (parallel)
+   * - Phase 2.5: TypeClassifier
+   * - Phase 3: ContentWriter
    *
    * All token tracking and tier filtering is handled by the orchestrator.
    */
@@ -651,6 +639,4 @@ export function createVerboseAnalyzer(config?: VerboseAnalyzerConfig): VerboseAn
 // Re-export types and utilities
 export { buildVerboseUserPrompt } from './verbose-prompts';
 export { type Tier, ContentGateway, createContentGateway } from './content-gateway';
-export { DataAnalystStage, type DataAnalystConfig } from './stages/data-analyst';
-export { ProductivityAnalystStage, type ProductivityAnalystConfig } from './stages/productivity-analyst';
 export { ContentWriterStage, type ContentWriterConfig } from './stages/content-writer';

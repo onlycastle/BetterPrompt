@@ -20,7 +20,7 @@ import type {
 } from '../orchestrator/types';
 
 // Re-export types for worker implementations
-export type { WorkerResult, WorkerContext, Phase } from '../orchestrator/types';
+export type { WorkerResult, WorkerContext, Phase, Phase2WorkerContext } from '../orchestrator/types';
 
 // ============================================================================
 // Base Worker Abstract Class

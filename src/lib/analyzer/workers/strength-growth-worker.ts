@@ -13,13 +13,11 @@
  * @module analyzer/workers/strength-growth-worker
  */
 
-import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker';
-import { GeminiClient, type GeminiClientConfig } from '../clients/gemini-client';
+import { BaseWorker, type WorkerResult, type WorkerContext, type Phase2WorkerContext } from './base-worker';
 import {
   StrengthGrowthLLMOutputSchema,
   type StrengthGrowthOutput,
   parseStrengthGrowthLLMOutput,
-  createEmptyStrengthGrowthOutput,
 } from '../../models/strength-growth-data';
 import type { Phase1Output } from '../../models/phase1-output';
 import type { Tier } from '../content-gateway';
@@ -28,24 +26,6 @@ import {
   STRENGTH_GROWTH_SYSTEM_PROMPT,
   buildStrengthGrowthUserPrompt,
 } from './prompts/phase2-worker-prompts';
-
-/**
- * Worker configuration
- */
-export interface StrengthGrowthWorkerConfig extends OrchestratorConfig {
-  // No additional config needed
-}
-
-/**
- * Extended WorkerContext for Phase 2 workers that require Phase 1 output
- *
- * NOTE: In the v2 architecture, Phase 2 workers should NOT access raw sessions.
- * They receive ONLY the Phase 1 output. This is enforced by the orchestrator.
- */
-export interface Phase2WorkerContext extends WorkerContext {
-  /** Phase 1 extraction output (REQUIRED for Phase 2 workers) */
-  phase1Output?: Phase1Output;
-}
 
 /**
  * StrengthGrowthWorker - Identifies strengths and growth areas
@@ -58,18 +38,8 @@ export class StrengthGrowthWorker extends BaseWorker<StrengthGrowthOutput> {
   readonly phase = 2 as const;
   readonly minTier: Tier = 'free'; // Available to all users
 
-  private geminiClient: GeminiClient;
-  private verbose: boolean;
-
-  constructor(config: StrengthGrowthWorkerConfig) {
-    super();
-    this.geminiClient = new GeminiClient({
-      apiKey: config.geminiApiKey,
-      model: config.model ?? 'gemini-3-flash-preview',
-      temperature: config.temperature ?? 1.0,
-      maxRetries: config.maxRetries ?? 2,
-    } as GeminiClientConfig);
-    this.verbose = config.verbose ?? false;
+  constructor(config: OrchestratorConfig) {
+    super(config);
   }
 
   /**
@@ -82,13 +52,13 @@ export class StrengthGrowthWorker extends BaseWorker<StrengthGrowthOutput> {
 
     // Must have Phase 1 output
     if (!phase2Context.phase1Output) {
-      this.logMessage('Cannot run: Phase 1 output not available');
+      this.log('Cannot run: Phase 1 output not available');
       return false;
     }
 
     // Must have utterances to analyze
     if (phase2Context.phase1Output.developerUtterances.length === 0) {
-      this.logMessage('Cannot run: No developer utterances to analyze');
+      this.log('Cannot run: No developer utterances to analyze');
       return false;
     }
 
@@ -107,12 +77,12 @@ export class StrengthGrowthWorker extends BaseWorker<StrengthGrowthOutput> {
       throw new Error('Phase 1 output required for StrengthGrowthWorker');
     }
 
-    this.logMessage('Analyzing strengths and growth areas...');
-    this.logMessage(`Utterances: ${phase2Context.phase1Output.developerUtterances.length}`);
+    this.log('Analyzing strengths and growth areas...');
+    this.log(`Utterances: ${phase2Context.phase1Output.developerUtterances.length}`);
 
     // Check for minimum data
     if (phase2Context.phase1Output.developerUtterances.length < 5) {
-      this.logMessage('Warning: Few utterances available for analysis');
+      this.log('Warning: Few utterances available for analysis');
     }
 
     // Prepare Phase 1 output as JSON for the prompt
@@ -123,7 +93,7 @@ export class StrengthGrowthWorker extends BaseWorker<StrengthGrowthOutput> {
     const userPrompt = buildStrengthGrowthUserPrompt(phase1Json);
 
     // Call Gemini with the flattened schema
-    const result = await this.geminiClient.generateStructured({
+    const result = await this.client!.generateStructured({
       systemPrompt: STRENGTH_GROWTH_SYSTEM_PROMPT,
       userPrompt,
       responseSchema: StrengthGrowthLLMOutputSchema,
@@ -133,9 +103,9 @@ export class StrengthGrowthWorker extends BaseWorker<StrengthGrowthOutput> {
     // Parse the flattened LLM output into structured format
     const parsedOutput = parseStrengthGrowthLLMOutput(result.data);
 
-    this.logMessage(`Found ${parsedOutput.strengths.length} strengths`);
-    this.logMessage(`Found ${parsedOutput.growthAreas.length} growth areas`);
-    this.logMessage(`Confidence: ${parsedOutput.confidenceScore}`);
+    this.log(`Found ${parsedOutput.strengths.length} strengths`);
+    this.log(`Found ${parsedOutput.growthAreas.length} growth areas`);
+    this.log(`Confidence: ${parsedOutput.confidenceScore}`);
 
     return this.createSuccessResult(parsedOutput, result.usage);
   }
@@ -179,21 +149,13 @@ export class StrengthGrowthWorker extends BaseWorker<StrengthGrowthOutput> {
     };
   }
 
-  /**
-   * Log message if verbose mode enabled
-   */
-  private logMessage(message: string): void {
-    if (this.verbose) {
-      console.log(`[StrengthGrowthWorker] ${message}`);
-    }
-  }
 }
 
 /**
  * Factory function for creating StrengthGrowthWorker
  */
 export function createStrengthGrowthWorker(
-  config: StrengthGrowthWorkerConfig
+  config: OrchestratorConfig
 ): StrengthGrowthWorker {
   return new StrengthGrowthWorker(config);
 }

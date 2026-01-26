@@ -20,7 +20,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     PRESENTATION LAYER                          │
-│  Desktop App (packages/desktop/)  │  Next.js API (app/api/)  │  Next.js App (app/) │
+│            Next.js API (app/api/)  │  Next.js App (app/)       │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -48,21 +48,21 @@
 
 ### Analysis Pipeline (LLM-powered Verbose Analysis)
 ```
-Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation] → VerboseAnalyzer → Next.js App (app/)
+Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation] → AnalysisOrchestrator → ContentGateway → Next.js App (app/)
 ```
 
 **Key Components:**
 - **SessionSelector** (`src/lib/parser/session-selector.ts`) - Selects optimal sessions (5-min minimum, 90-day window, max 10)
 - **CostEstimator** (`src/lib/analyzer/cost-estimator.ts`) - Token counting and API cost calculation
-- **VerboseAnalyzer** (`src/lib/analyzer/verbose-analyzer.ts`) - LLM-powered hyper-personalized analysis
-- **VerbosePrompts** (`src/lib/analyzer/verbose-prompts.ts`) - Behavioral analyst prompts
+- **VerboseAnalyzer** (`src/lib/analyzer/verbose-analyzer.ts`) - Entry point, delegates to AnalysisOrchestrator
+- **AnalysisOrchestrator** (`src/lib/analyzer/orchestrator/analysis-orchestrator.ts`) - 4-phase pipeline coordinator
+- **ContentGateway** (`src/lib/analyzer/content-gateway.ts`) - Tier-based content filtering
 - **Next.js App** (`app/`) - Unified web dashboard with analysis report view
 
 ## Key Components
 
 | Directory | Purpose | Layer |
 |-----------|---------|-------|
-| `packages/desktop/` | Desktop app (Electron/Tauri) | Presentation |
 | `app/api/` | Next.js 15 API routes | Presentation |
 | `app/` | Next.js pages and layouts | Presentation |
 | `src/components/` | React UI components | Presentation |
@@ -72,9 +72,9 @@ Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation
 | `src/lib/domain/` | Domain models (Zod schemas, business rules) | Domain |
 | `src/lib/infrastructure/` | Supabase & local storage adapters | Infrastructure |
 | `src/lib/analyzer/` | LLM analysis (prompts, dimensions, insights) | Application |
-| `src/lib/analyzer/orchestrator/` | 3-phase analysis orchestration | Application |
-| `src/lib/analyzer/workers/` | Phase 1 & Phase 2 workers (Module A, C, Multitasking, 6 Wow Agents) | Application |
-| `src/lib/analyzer/stages/` | Stage implementations (data-analyst, content-writer) | Application |
+| `src/lib/analyzer/orchestrator/` | 4-phase analysis orchestration | Application |
+| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (StrengthGrowth, TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency) + Phase 2.5 TypeClassifier | Application |
+| `src/lib/analyzer/stages/` | Content Writer stage (Phase 3 narrative generation) | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/parser/` | JSONL session parsing | Infrastructure |
 | `src/lib/search-agent/` | Knowledge curation system | Application |
@@ -141,46 +141,47 @@ src/hooks/
 
 ### Orchestrator + Workers Analysis Pipeline
 
-The analyzer uses a 3-phase Orchestrator + Workers pattern with Gemini. See [LLM_FLOW.md](./LLM_FLOW.md) for details.
+The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM_FLOW.md](./LLM_FLOW.md) for details.
 
 **Architecture:**
 - **AnalysisOrchestrator** (`src/lib/analyzer/orchestrator/analysis-orchestrator.ts`) coordinates all phases
 - **Workers** (`src/lib/analyzer/workers/`) execute phase-specific analysis tasks
-- **Graceful Degradation**: Individual workers can fail independently
+- **No Fallback Policy**: Worker failures propagate as errors (Promise.all)
 
-**Phase 1: Data Extraction (Parallel)**
-- **DataAnalystWorker** (Module A) - Extracts behavioral patterns
-- **ProductivityAnalystWorker** (Module C) - Extracts productivity metrics
-- **MultitaskingAnalyzerWorker** (NEW) - Analyzes multi-session work patterns
-- All run in parallel, outputs: `StructuredAnalysisData` + `ProductivityAnalysisData` + `MultitaskingAnalysisOutput`
+**Phase 1: Data Extraction (Deterministic)**
+- **DataExtractorWorker** (deterministic, NO LLM) - Extracts structured Phase1Output from raw sessions
+- Output: `Phase1Output` (DeveloperUtterances[], AIResponses[], SessionMetrics)
+- 0 LLM calls
 
-**Phase 2: Insight Generation (Parallel, Premium+ only)**
-- 6 "Wow Agents" run in parallel:
-  - **PatternDetectiveWorker** - Cross-session pattern detection
-  - **AntiPatternSpotterWorker** - Inefficient pattern detection
-  - **KnowledgeGapWorker** - Knowledge gap identification
-  - **ContextEfficiencyWorker** - Context utilization analysis
-  - **MetacognitionWorker** (NEW) - Self-awareness patterns, blind spots
-  - **TemporalAnalyzerWorker** (NEW) - Time-based quality and fatigue analysis
+**Phase 2: Insight Generation (Parallel, 5 workers)**
+- **StrengthGrowthWorker** (free) - Identifies strengths and growth areas with evidence
+- **TrustVerificationWorker** (premium) - Anti-patterns and verification behavior analysis
+- **WorkflowHabitWorker** (premium) - Planning, critical thinking, multitasking patterns
+- **KnowledgeGapWorker** (premium) - Knowledge gaps and learning suggestions
+- **ContextEfficiencyWorker** (premium) - Token inefficiency patterns
 - Output: `AgentOutputs` (merged results)
-- Skipped for Free tier
+- 5 LLM calls (parallel)
 
-**Phase 2.5: Type Synthesis (NEW)**
-- **TypeSynthesisWorker** - Refines initial type classification using all agent outputs
+**Phase 2.5: Type Classification**
+- **TypeClassifierWorker** (free) - Type classification + synthesis using Phase 2 outputs
 - Uses semantic analysis from Phase 2 agents to improve accuracy of:
   - 5 coding styles: architect, scientist, collaborator, speedrunner, craftsman
   - 3 control levels: explorer, navigator, cartographer
   - 15 combination matrix (5×3 = unique personalities)
-- Output: `TypeSynthesisOutput` with refined classification and evidence
+- Output: `TypeClassifierOutput` with refined classification and evidence
 - Available for all tiers (free and above)
+- 1 LLM call
 
 **Phase 3: Content Writer**
 - **ContentWriterStage** (`src/lib/analyzer/stages/content-writer.ts`)
 - Combines all phase outputs into personalized narrative
 - Output: `VerboseLLMResponse` → `VerboseEvaluation`
+- 1 LLM call
+
+**Total: 7 LLM calls (0 + 5 + 1 + 1)**
 
 **Prompt Engineering:**
-- Prompts in `src/lib/analyzer/stages/data-analyst-prompts.ts` and `content-writer-prompts.ts`
+- Prompts in `src/lib/analyzer/workers/prompts/phase2-worker-prompts.ts` and `content-writer-prompts.ts`
 - Uses PTCF framework (Persona · Task · Context · Format)
 - Zod schemas → JSON Schema via `zod-to-json-schema`
 
@@ -254,7 +255,6 @@ The analyzer uses a 3-phase Orchestrator + Workers pattern with Gemini. See [LLM
 | `~/.nomoreaislop/config.json` | User config | All |
 | `~/.nomoreaislop/cache/` | LLM response cache | All |
 
-See [DATABASE.md](./DATABASE.md) for full schema details.
 
 ## API Routes (Next.js App Router)
 

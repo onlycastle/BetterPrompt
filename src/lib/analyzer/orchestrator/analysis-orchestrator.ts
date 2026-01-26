@@ -1,18 +1,16 @@
 /**
  * Analysis Orchestrator - Main orchestrator for the analysis pipeline
  *
- * Coordinates 4 phases of analysis:
- * - Phase 1: Data Extraction (2 workers: Module A, C in parallel)
- * - Phase 2: Insight Generation (7 workers in parallel, tier-gated)
- * - Phase 2.5: Type Synthesis (1 worker: refines classification using agent outputs)
- * - Phase 3: Content Generation (ContentWriter)
+ * Coordinates 4 phases of analysis (7 LLM calls total):
+ * - Phase 1: DataExtractor (deterministic, no LLM)
+ * - Phase 2: 5 insight workers in parallel (5 LLM calls)
+ * - Phase 2.5: TypeClassifier (1 LLM call)
+ * - Phase 3: ContentWriter (1 LLM call)
  *
  * @module analyzer/orchestrator/analysis-orchestrator
  */
 
 import type { ParsedSession, SessionMetrics } from '../../domain/models/analysis';
-import type { StructuredAnalysisData } from '../../models/analysis-data';
-import type { ProductivityAnalysisData } from '../../models/productivity-data';
 import type { VerboseEvaluation } from '../../models/verbose-evaluation';
 import type { AgentOutputs } from '../../models/agent-outputs';
 import { createEmptyAgentOutputs } from '../../models/agent-outputs';
@@ -61,10 +59,8 @@ import {
  * });
  *
  * // Register workers
- * orchestrator.registerPhase1Worker(new DataAnalystWorker(config));
- * orchestrator.registerPhase1Worker(new ProductivityAnalystWorker(config));
- *
- * orchestrator.registerPhase2Worker(new PatternDetectiveWorker(config));
+ * orchestrator.registerPhase1Worker(createDataExtractorWorker(config));
+ * orchestrator.registerPhase2Worker(createStrengthGrowthWorker(config));
  * // ... more workers
  *
  * // Run analysis
@@ -171,22 +167,21 @@ export class AnalysisOrchestrator {
     };
 
     // ─────────────────────────────────────────────────────────────────────
-    // Phase 1: Data Extraction (parallel)
+    // Phase 1: Data Extraction (deterministic, no LLM)
     // ─────────────────────────────────────────────────────────────────────
     this.log('Phase 1: Data Extraction...');
     const phase1Results = await this.runPhase1(baseContext);
 
-    // Track Phase 1 token usage
-    if (phase1Results.dataAnalyst.usage) {
-      stageUsages.push({
-        stage: 'Data Analyst (Module A)',
-        ...phase1Results.dataAnalyst.usage,
-      });
+    // Validate Phase 1 output before proceeding (No Fallback Policy)
+    if (!phase1Results.dataExtractor.data) {
+      throw new Error('Phase 1 DataExtractor produced no output. Analysis cannot proceed.');
     }
-    if (phase1Results.productivityAnalyst.usage) {
+
+    // DataExtractor is deterministic — track token usage only if present
+    if (phase1Results.dataExtractor.usage) {
       stageUsages.push({
-        stage: 'Productivity Analyst (Module C)',
-        ...phase1Results.productivityAnalyst.usage,
+        stage: 'DataExtractor (Phase 1)',
+        ...phase1Results.dataExtractor.usage,
       });
     }
 
@@ -204,19 +199,14 @@ export class AnalysisOrchestrator {
     if (this.phase2Workers.length > 0) {
       this.log('Phase 2: Insight Generation...');
 
-      // Build Phase 2 context with both legacy (moduleAOutput) and v2 (phase1Output) data
-      // Legacy workers (KnowledgeGap, ContextEfficiency) use moduleAOutput
-      // v2 workers (StrengthGrowth, BehaviorPattern, TypeClassifier) use phase1Output
+      // All Phase 2 workers receive Phase1Output (context isolation)
       const phase2Context: WorkerContext & { phase1Output?: Phase1Output } = {
         ...baseContext,
-        moduleAOutput: phase1Results.dataAnalyst.data,
-        moduleCOutput: phase1Results.productivityAnalyst.data,
-        // v2: Add Phase 1 output for v2 workers (context isolation)
-        phase1Output: phase1Results.quoteExtractor?.data,
+        phase1Output: phase1Results.dataExtractor.data,
         // outputLanguage intentionally NOT passed - Phase 2 workers always use English
       };
 
-      console.log(`[Orchestrator] Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasModuleA: ${!!phase2Context.moduleAOutput}, hasPhase1Output: ${!!phase2Context.phase1Output}`);
+      console.log(`[Orchestrator] Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasPhase1Output: ${!!phase2Context.phase1Output}`);
 
       const phase2Results = await this.runPhase2(phase2Context);
       console.log(`[Orchestrator] Phase 2 results keys: ${Object.keys(phase2Results).join(', ')}`);
@@ -245,12 +235,11 @@ export class AnalysisOrchestrator {
     // ─────────────────────────────────────────────────────────────────────
     console.log(`[Orchestrator] Phase 2.5 workers registered: ${this.phase2Point5Workers.length}`);
     if (this.phase2Point5Workers.length > 0) {
-      this.log('Phase 2.5: Type Synthesis...');
-      const phase2Point5Context: WorkerContext = {
+      this.log('Phase 2.5: Type Classification...');
+      const phase2Point5Context: WorkerContext & { phase1Output?: Phase1Output } = {
         ...baseContext,
-        moduleAOutput: phase1Results.dataAnalyst.data,
-        moduleCOutput: phase1Results.productivityAnalyst.data,
-        // outputLanguage intentionally NOT passed - Type Synthesis always uses English
+        phase1Output: phase1Results.dataExtractor.data,
+        // outputLanguage intentionally NOT passed - Phase 2.5 always uses English
       };
 
       const phase2Point5Results = await this.runPhase2Point5(
@@ -258,16 +247,16 @@ export class AnalysisOrchestrator {
         agentOutputs
       );
 
-      // TypeSynthesis is REQUIRED for 15-type matrix classification
-      // Fail the entire analysis if TypeSynthesis fails
-      const typeSynthesisResult = phase2Point5Results['TypeSynthesis'];
-      if (!typeSynthesisResult?.data) {
-        const errorMessage = typeSynthesisResult?.error?.message || 'Unknown error';
-        throw new Error(`TypeSynthesis failed: ${errorMessage}. Analysis cannot proceed without type classification.`);
+      // TypeClassifier is REQUIRED for 15-type matrix classification
+      // Fail the entire analysis if TypeClassifier fails
+      const typeClassifierResult = phase2Point5Results['TypeClassifier'];
+      if (!typeClassifierResult?.data) {
+        const errorMessage = typeClassifierResult?.error?.message || 'Unknown error';
+        throw new Error(`TypeClassifier failed: ${errorMessage}. Analysis cannot proceed without type classification.`);
       }
 
-      // Merge Type Synthesis results into agentOutputs
-      agentOutputs = this.mergeTypeSynthesisOutputs(agentOutputs, phase2Point5Results);
+      // Merge TypeClassifier results into agentOutputs
+      agentOutputs = this.mergePhase2Point5Outputs(agentOutputs, phase2Point5Results);
 
       // Track Phase 2.5 token usage
       for (const [workerName, result] of Object.entries(phase2Point5Results)) {
@@ -281,14 +270,11 @@ export class AnalysisOrchestrator {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Phase 3: Content Generation (with Phase 2 agent outputs)
-    // v2 Architecture: Use transformV2 - no raw session access
+    // Phase 3: Content Generation (Phase1Output + AgentOutputs → narrative)
     // ─────────────────────────────────────────────────────────────────────
     this.log('Phase 3: Content Generation...');
-    const contentResult = await this.contentWriter.transformV2(
-      phase1Results.dataAnalyst.data,
-      sessions.length,  // v2: session count only, no raw sessions
-      phase1Results.productivityAnalyst.data,
+    const contentResult = await this.contentWriter.transformV3(
+      phase1Results.dataExtractor.data,
       agentOutputs
     );
 
@@ -338,7 +324,6 @@ export class AnalysisOrchestrator {
       avgTurnsPerSession: Math.round(metrics.avgTurnsPerSession * 10) / 10,
       analyzedSessions,
       ...contentResult.data,
-      productivityAnalysis: phase1Results.productivityAnalyst.data,
       agentOutputs: agentOutputs,
       pipelineTokenUsage,
       // NEW: Analysis metadata with confidence scores
@@ -355,7 +340,7 @@ export class AnalysisOrchestrator {
 
     console.log(`[Orchestrator] Final evaluation - hasAgentOutputs: ${!!evaluation.agentOutputs}`);
     console.log(`[Orchestrator] Final agentOutputs keys: ${evaluation.agentOutputs ? Object.keys(evaluation.agentOutputs).join(', ') : 'none'}`);
-    console.log(`[Orchestrator] Final typeSynthesis: ${evaluation.agentOutputs?.typeSynthesis ? 'present' : 'null'}`);
+    console.log(`[Orchestrator] Final typeClassifier: ${evaluation.agentOutputs?.typeClassifier ? 'present' : 'null'}`);
 
     // Log pipeline summary
     const totalTime = Date.now() - startTime;
@@ -372,44 +357,20 @@ export class AnalysisOrchestrator {
   /**
    * Run Phase 1 workers (Data Extraction)
    *
-   * Workers run in parallel. Results are keyed by worker name.
-   * Includes both legacy workers (DataAnalyst, ProductivityAnalyst) and
-   * v2 worker (QuoteExtractor) for Phase 1 output.
+   * DataExtractor is a deterministic worker (no LLM call) that extracts
+   * structured Phase1Output from raw sessions for Phase 2 workers.
    */
   private async runPhase1(context: WorkerContext): Promise<Phase1Results> {
-    // Find workers by name - NO FALLBACK: workers must be registered
-    const dataAnalystWorker = this.phase1Workers.find((w) => w.name === 'DataAnalyst');
-    const productivityWorker = this.phase1Workers.find((w) => w.name === 'ProductivityAnalyst');
-    const quoteExtractorWorker = this.phase1Workers.find((w) => w.name === 'QuoteExtractor');
+    const dataExtractorWorker = this.phase1Workers.find((w) => w.name === 'DataExtractor');
 
-    // Fail fast if required workers are not registered
-    if (!dataAnalystWorker) {
-      throw new Error('DataAnalyst worker not registered. Cannot proceed without data analysis.');
-    }
-    if (!productivityWorker) {
-      throw new Error('ProductivityAnalyst worker not registered. Cannot proceed without productivity analysis.');
+    if (!dataExtractorWorker) {
+      throw new Error('DataExtractor worker not registered. Cannot proceed without data extraction.');
     }
 
-    // Run workers in parallel - errors propagate up
-    // QuoteExtractor is optional (for v2 workers) but runs in parallel if registered
-    const workerPromises: Promise<WorkerResult<unknown>>[] = [
-      dataAnalystWorker.execute(context),
-      productivityWorker.execute(context),
-    ];
-
-    // Add QuoteExtractor if registered
-    if (quoteExtractorWorker) {
-      workerPromises.push(quoteExtractorWorker.execute(context));
-    }
-
-    const results = await Promise.all(workerPromises);
+    const result = await dataExtractorWorker.execute(context);
 
     return {
-      dataAnalyst: results[0] as WorkerResult<StructuredAnalysisData>,
-      productivityAnalyst: results[1] as WorkerResult<ProductivityAnalysisData>,
-      quoteExtractor: quoteExtractorWorker
-        ? (results[2] as WorkerResult<Phase1Output>)
-        : undefined,
+      dataExtractor: result as WorkerResult<Phase1Output>,
     };
   }
 
@@ -488,48 +449,34 @@ export class AnalysisOrchestrator {
   /**
    * Merge Phase 2 worker results into AgentOutputs
    *
-   * Handles both legacy workers and v2 workers.
-   * Legacy workers: PatternDetective, AntiPatternSpotter, etc. (deprecated in v2)
-   * v2 workers: StrengthGrowth, BehaviorPattern, TypeClassifier
+   * Maps Phase 2 worker results by name to the AgentOutputs fields.
+   * Only v2 workers are registered: StrengthGrowth, TrustVerification,
+   * WorkflowHabit, KnowledgeGap, ContextEfficiency.
+   * TypeClassifier runs at Phase 2.5 (merged separately).
    */
   private mergeAgentOutputs(results: Record<string, WorkerResult<unknown> | undefined>): AgentOutputs {
     return {
-      // =========================================================================
-      // Legacy workers (kept for backward compatibility)
-      // =========================================================================
-      patternDetective: results['PatternDetective']?.data as AgentOutputs['patternDetective'],
-      antiPatternSpotter: results['AntiPatternSpotter']?.data as AgentOutputs['antiPatternSpotter'],
-      metacognition: results['MetacognitionWorker']?.data as AgentOutputs['metacognition'],
-      temporalAnalysis: results['TemporalAnalyzer']?.data as AgentOutputs['temporalAnalysis'],
-      multitasking: results['MultitaskingAnalyzer']?.data as AgentOutputs['multitasking'],
-      crossSessionAntiPatterns: results['CrossSessionAntiPattern']?.data as AgentOutputs['crossSessionAntiPatterns'],
-
-      // =========================================================================
-      // Current workers (kept per v2 plan)
-      // =========================================================================
+      strengthGrowth: results['StrengthGrowth']?.data as AgentOutputs['strengthGrowth'],
+      trustVerification: results['TrustVerification']?.data as AgentOutputs['trustVerification'],
+      workflowHabit: results['WorkflowHabit']?.data as AgentOutputs['workflowHabit'],
       knowledgeGap: results['KnowledgeGap']?.data as AgentOutputs['knowledgeGap'],
       contextEfficiency: results['ContextEfficiency']?.data as AgentOutputs['contextEfficiency'],
-
-      // =========================================================================
-      // NEW v2 workers (context isolated)
-      // =========================================================================
-      strengthGrowth: results['StrengthGrowth']?.data as AgentOutputs['strengthGrowth'],
-      behaviorPattern: results['BehaviorPattern']?.data as AgentOutputs['behaviorPattern'],
-      typeClassifier: results['TypeClassifier']?.data as AgentOutputs['typeClassifier'],
     };
   }
 
   /**
-   * Merge Phase 2.5 Type Synthesis results into AgentOutputs
+   * Merge Phase 2.5 results into AgentOutputs
+   *
+   * TypeClassifier at Phase 2.5 performs both classification and synthesis.
    */
-  private mergeTypeSynthesisOutputs(
+  private mergePhase2Point5Outputs(
     agentOutputs: AgentOutputs,
     phase2Point5Results: Record<string, WorkerResult<unknown> | undefined>
   ): AgentOutputs {
     return {
       ...agentOutputs,
-      // Type Synthesis output
-      typeSynthesis: phase2Point5Results['TypeSynthesis']?.data as AgentOutputs['typeSynthesis'],
+      // TypeClassifier now runs at Phase 2.5 (replaces TypeSynthesis)
+      typeClassifier: phase2Point5Results['TypeClassifier']?.data as AgentOutputs['typeClassifier'],
     };
   }
 

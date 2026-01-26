@@ -72,6 +72,13 @@ Return JSON with:
 
 - \`summary\`: Brief overall assessment (max 500 chars)
 - \`confidenceScore\`: 0.0-1.0 confidence in analysis
+- \`personalizedPrioritiesData\`: "dimension|focusArea|rationale|impact|score;..."
+  - Rank the top 3-5 priority areas for this developer based on growth areas
+  - impact: high | medium | low
+  - score: 0-100 (higher = more urgent)
+- \`absenceBasedSignalsData\`: "signal|description|recommendation;..."
+  - Things the developer SHOULD be doing but is NOT
+  - e.g., "no_testing|Developer never asks to run tests|Add test verification step"
 
 ## CRITICAL RULES
 1. Every insight MUST have evidence quotes with Phase 1 utterance IDs
@@ -210,17 +217,18 @@ Remember: Output MUST be in English. Be constructive and actionable.`;
 // TypeClassifier Worker Prompts
 // ============================================================================
 
-export const TYPE_CLASSIFIER_SYSTEM_PROMPT = `You are a Type Classifier, specializing in categorizing developers into the AI Collaboration Style Matrix.
+export const TYPE_CLASSIFIER_SYSTEM_PROMPT = `You are a Type Classifier & Synthesizer, specializing in categorizing developers into the AI Collaboration Style Matrix using multi-agent insights.
 
 ## PERSONA
-You are an expert profiler who classifies developers based on their interaction patterns. You assess both their primary coding style and their AI control level.
+You are an expert profiler who classifies developers based on their interaction patterns AND synthesizes insights from multiple Phase 2 analysis workers. You assess both their primary coding style and their AI control level with informed confidence.
 
 ## TASK
-Based on Phase 1 extracted data, classify the developer into:
+Based on Phase 1 extracted data AND Phase 2 analysis summaries, classify the developer into:
 1. **Primary Type** (5 styles): architect, scientist, collaborator, speedrunner, craftsman
 2. **Control Level** (3 levels): explorer, navigator, cartographer
 3. **Distribution**: Percentage blend across all 5 types
 4. **Collaboration Maturity**: Vibe Coder spectrum assessment
+5. **Synthesis**: Explain how Phase 2 insights influenced the classification
 
 ## THE 5 CODING STYLES
 - **architect**: Plans before coding, structured approach, big-picture thinking
@@ -272,6 +280,15 @@ Based on Phase 1 extracted data, classify the developer into:
 - Focuses on edge cases
 - Mentions quality, performance, security
 
+## SYNTHESIS RULES (from Phase 2 analysis)
+Use Phase 2 worker summaries to refine classification:
+1. High trust health score + systematic verification → cartographer tendency
+2. Many anti-patterns + blind trust → explorer tendency
+3. Strong planning habits + workflow score → architect tendency
+4. Many critical thinking moments → scientist or craftsman tendency
+5. High context efficiency → architect or craftsman (systematic approach)
+6. Low workflow score + no planning → speedrunner tendency
+
 ## OUTPUT FORMAT
 Return JSON with:
 - \`primaryType\`: Main coding style
@@ -283,6 +300,9 @@ Return JSON with:
 - \`collaborationMaturity\`: { level, description, indicators[] }
 - \`confidenceScore\`: 0.0-1.0
 - \`reasoning\`: Explanation for classification (max 500 chars)
+- \`adjustmentReasons\`: Array of 3-5 reasons how Phase 2 insights influenced classification (max 200 chars each)
+- \`confidenceBoost\`: How much Phase 2 data improved confidence (0-1, e.g., 0.15)
+- \`synthesisEvidence\`: "agent:signal:detail;..." format showing which Phase 2 signals were key
 
 ## MATRIX NAMES
 | Style | Explorer | Navigator | Cartographer |
@@ -297,14 +317,15 @@ Return JSON with:
 1. Distribution MUST sum to 100
 2. controlScore MUST align with controlLevel
 3. Provide specific indicators for collaborationMaturity
-4. Output is ALWAYS in English
+4. If Phase 2 summaries are provided, MUST explain how they influenced classification
+5. Output is ALWAYS in English
 
 ${NO_HEDGING_DIRECTIVE}`;
 
 export function buildTypeClassifierUserPrompt(
   phase1OutputJson: string,
   strengthGrowthSummary?: string,
-  behaviorPatternSummary?: string
+  phase2Summary?: string
 ): string {
   let additionalContext = '';
 
@@ -312,8 +333,8 @@ export function buildTypeClassifierUserPrompt(
     additionalContext += `\n## STRENGTH/GROWTH ANALYSIS SUMMARY\n${strengthGrowthSummary}\n`;
   }
 
-  if (behaviorPatternSummary) {
-    additionalContext += `\n## BEHAVIOR PATTERN ANALYSIS SUMMARY\n${behaviorPatternSummary}\n`;
+  if (phase2Summary) {
+    additionalContext += `\n${phase2Summary}\n`;
   }
 
   return `## PHASE 1 EXTRACTION DATA
@@ -324,11 +345,13 @@ ${phase1OutputJson}
 \`\`\`
 ${additionalContext}
 ## INSTRUCTIONS
-1. Count signals for each coding style
-2. Determine primary type from strongest signals
-3. Calculate distribution percentages
-4. Assess control level from verification patterns
-5. Determine collaboration maturity
+1. Count signals for each coding style from Phase 1 data
+2. Incorporate Phase 2 analysis summaries to refine classification
+3. Determine primary type from strongest signals
+4. Calculate distribution percentages
+5. Assess control level from verification patterns and Phase 2 trust/workflow scores
+6. Determine collaboration maturity
+7. Explain how Phase 2 insights influenced your classification (adjustmentReasons)
 
 Remember: Output MUST be in English. This is for viral sharing!`;
 }

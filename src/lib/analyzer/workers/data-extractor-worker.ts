@@ -1,5 +1,5 @@
 /**
- * Quote Extractor Worker (Phase 1 - v2 Architecture)
+ * Data Extractor Worker (Phase 1 - v2 Architecture)
  *
  * Phase 1 worker that performs PURE EXTRACTION:
  * - Extracts raw developer utterances with structural metadata
@@ -15,45 +15,37 @@
  *
  * All semantic analysis is delegated to Phase 2 workers.
  *
- * @module analyzer/workers/quote-extractor-worker
+ * @module analyzer/workers/data-extractor-worker
  */
 
 import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker';
 import {
-  Phase1OutputSchema,
   type Phase1Output,
   type DeveloperUtterance,
   type AIResponse,
   type Phase1SessionMetrics,
-  createEmptyPhase1Output,
 } from '../../models/phase1-output';
 import type { ParsedSession, ParsedMessage } from '../../models/session';
 import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
 
 /**
- * Worker configuration
- */
-export interface QuoteExtractorWorkerConfig extends OrchestratorConfig {
-  // No additional config needed
-}
-
-/**
- * QuoteExtractorWorker - Extracts raw text and structural metadata
+ * DataExtractorWorker - Extracts raw text and structural metadata
  *
  * Phase 1 worker that creates the Phase1Output used by Phase 2 workers.
  * This is a deterministic extraction - no LLM calls needed.
  */
-export class QuoteExtractorWorker extends BaseWorker<Phase1Output> {
-  readonly name = 'QuoteExtractor';
+export class DataExtractorWorker extends BaseWorker<Phase1Output> {
+  readonly name = 'DataExtractor';
   readonly phase = 1 as const;
   readonly minTier: Tier = 'free';
 
-  private verbose: boolean;
-
-  constructor(config?: QuoteExtractorWorkerConfig) {
-    super();
-    this.verbose = config?.verbose ?? false;
+  constructor(config?: OrchestratorConfig) {
+    if (config) {
+      super(config);
+    } else {
+      super();
+    }
   }
 
   /**
@@ -70,7 +62,7 @@ export class QuoteExtractorWorker extends BaseWorker<Phase1Output> {
    * NO FALLBACK: Errors propagate to fail the analysis.
    */
   async execute(context: WorkerContext): Promise<WorkerResult<Phase1Output>> {
-    this.logMessage(`Extracting from ${context.sessions.length} sessions...`);
+    this.log(`Extracting from ${context.sessions.length} sessions...`);
 
     const developerUtterances: DeveloperUtterance[] = [];
     const aiResponses: AIResponse[] = [];
@@ -93,8 +85,8 @@ export class QuoteExtractorWorker extends BaseWorker<Phase1Output> {
       extractionWarnings: this.generateWarnings(context.sessions, developerUtterances),
     };
 
-    this.logMessage(`Extracted ${developerUtterances.length} utterances`);
-    this.logMessage(`Extracted ${aiResponses.length} AI responses`);
+    this.log(`Extracted ${developerUtterances.length} utterances`);
+    this.log(`Extracted ${aiResponses.length} AI responses`);
 
     // No token usage since this is deterministic extraction
     return this.createSuccessResult(output, null);
@@ -404,18 +396,13 @@ export class QuoteExtractorWorker extends BaseWorker<Phase1Output> {
            content.includes('success') || content.includes('created');
   }
 
-  private logMessage(message: string): void {
-    if (this.verbose) {
-      console.log(`[QuoteExtractorWorker] ${message}`);
-    }
-  }
 }
 
 /**
- * Factory function for creating QuoteExtractorWorker
+ * Factory function for creating DataExtractorWorker
  */
-export function createQuoteExtractorWorker(
-  config?: QuoteExtractorWorkerConfig
-): QuoteExtractorWorker {
-  return new QuoteExtractorWorker(config);
+export function createDataExtractorWorker(
+  config?: OrchestratorConfig
+): DataExtractorWorker {
+  return new DataExtractorWorker(config);
 }

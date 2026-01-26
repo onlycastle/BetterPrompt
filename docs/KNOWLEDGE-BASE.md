@@ -66,9 +66,9 @@ The Knowledge Base provides **personalized insights and learning resources** bas
 │                                      │                                       │
 │                                      ▼                                       │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │                      INSIGHT GENERATOR                                │   │
+│  │                      CONTENT WRITER (Phase 3)                            │   │
 │  │                                                                       │   │
-│  │  buildDimensionInsights(dimension, score, quotes, knowledge)         │   │
+│  │  Builds personalized narrative using knowledge context:               │   │
 │  │    1. ConversationInsight (from user's actual quotes)                │   │
 │  │    2. ResearchInsight (from professional insights)                   │   │
 │  │    3. LearningResource (from knowledge items)                        │   │
@@ -76,13 +76,12 @@ The Knowledge Base provides **personalized insights and learning resources** bas
 │                                      │                                       │
 │                                      ▼                                       │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │                      UNIFIED REPORT                                   │   │
+│  │                      VERBOSE EVALUATION                               │   │
 │  │                                                                       │   │
-│  │  dimensions[].insights[]                                             │   │
-│  │    - type: 'reinforcement' | 'improvement'                           │   │
-│  │    - conversationBased: { quote, advice, sentiment }                 │   │
-│  │    - researchBased: { source, insight, url }                         │   │
-│  │    - learningResource: { title, url, level }                         │   │
+│  │  dimensionInsights[].strengths/growthAreas                           │   │
+│  │    - title, description, evidence[]                                   │   │
+│  │    - recommendation (growth areas)                                    │   │
+│  │  Knowledge-linked professional insights                              │   │
 │  └──────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -91,29 +90,25 @@ The Knowledge Base provides **personalized insights and learning resources** bas
 
 ```mermaid
 sequenceDiagram
-    participant UA as UnifiedAnalyzer
-    participant IG as InsightGenerator
+    participant CW as ContentWriter
     participant KL as KnowledgeLinker
     participant KS as KnowledgeSource
     participant DK as DimensionKeywords
 
-    UA->>UA: calculateAllDimensions(sessions)
-    UA->>IG: generateForAllDimensions(dimensionResults, sessions)
+    CW->>CW: Build narrative from Phase 2 outputs
 
     loop For each dimension
-        IG->>KL: findRelevant(dimension, score)
+        CW->>KL: findRelevant(dimension, score)
         KL->>DK: getKeywordConfig(dimension, mode)
         DK-->>KL: { keywords, categories, professionalInsightIds }
         KL->>KS: getProfessionalInsights()
         KS-->>KL: ProfessionalInsight[]
         KL->>KL: filterInsights(insights, dimension, score)
-        KL-->>IG: DimensionKnowledge { insights, items }
-        IG->>IG: buildDimensionInsights()
+        KL-->>CW: DimensionKnowledge { insights, items }
+        CW->>CW: buildDimensionInsights()
     end
 
-    IG-->>UA: Map<DimensionName, GeneratedInsights>
-    UA->>UA: injectInsights(dimensionResults, insights)
-    UA-->>UA: UnifiedReport
+    CW-->>CW: VerboseEvaluation (with knowledge context)
 ```
 
 ## Key Components
@@ -276,8 +271,7 @@ src/lib/
 │   ├── knowledge-linker.ts       # KnowledgeLinker + INITIAL_PROFESSIONAL_INSIGHTS
 │   ├── supabase-knowledge-source.ts  # SupabaseKnowledgeSource + FALLBACK_*
 │   ├── dimension-keywords.ts     # Dimension → Insight ID mapping
-│   ├── insight-generator.ts      # InsightGenerator (builds final insights)
-│   └── unified-analyzer.ts       # UnifiedAnalyzer (orchestrates analysis)
+│   └── verbose-knowledge-context.ts  # Knowledge context for ContentWriter
 ```
 
 ## Future Improvements

@@ -14,12 +14,10 @@ import {
   // dimension-keywords exports
   DIMENSION_KEYWORDS,
   getKeywordConfig,
-  getDimensionCategories,
   getModeFromScore,
   getResourceLevel,
   type InsightMode,
   type ResourceLevel,
-  type TopicCategory,
 } from '../src/lib/analyzer/dimension-keywords.js';
 import {
   KnowledgeLinker,
@@ -61,9 +59,6 @@ describe('dimension-keywords', () => {
           const config = mapping[mode as InsightMode];
           expect(config.keywords).toBeInstanceOf(Array);
           expect(config.keywords.length).toBeGreaterThan(0);
-          expect(config.categories).toBeInstanceOf(Array);
-          expect(config.categories.length).toBeGreaterThan(0);
-          expect(config.professionalInsightIds).toBeInstanceOf(Array);
           expect(['beginner', 'intermediate', 'advanced']).toContain(config.level);
           expect(typeof config.searchQuery).toBe('string');
         });
@@ -82,25 +77,13 @@ describe('dimension-keywords', () => {
     it('should return correct config for reinforcement mode', () => {
       const config = getKeywordConfig('contextEngineering', 'reinforcement');
       expect(config.level).toBe('advanced');
-      expect(config.categories).toContain('context-engineering');
+      expect(config.keywords).toContain('advanced context management');
     });
 
     it('should return correct config for improvement mode', () => {
       const config = getKeywordConfig('skillResilience', 'improvement');
       expect(config.level).toBe('beginner');
       expect(config.keywords).toContain('skill atrophy');
-    });
-  });
-
-  describe('getDimensionCategories', () => {
-    it('should return unique categories from both modes', () => {
-      const categories = getDimensionCategories('contextEngineering');
-      expect(categories).toContain('context-engineering');
-      expect(categories).toContain('memory-management');
-      expect(categories).toContain('prompt-engineering');
-      // Should be unique
-      const uniqueCategories = [...new Set(categories)];
-      expect(categories.length).toBe(uniqueCategories.length);
     });
   });
 
@@ -150,13 +133,10 @@ describe('knowledge-linker', () => {
       expect(results).toEqual([]);
     });
 
-    it('should return professional insights', async () => {
+    it('should return empty professional insights (now stored in database)', async () => {
       const source = new MockKnowledgeSource();
       const insights = await source.getProfessionalInsights();
-      expect(insights.length).toBeGreaterThan(0);
-      expect(insights[0]).toHaveProperty('id');
-      expect(insights[0]).toHaveProperty('title');
-      expect(insights[0]).toHaveProperty('keyTakeaway');
+      expect(insights).toEqual([]);
     });
   });
 
@@ -186,12 +166,11 @@ describe('knowledge-linker', () => {
         expect(result.level).toBe('beginner');
       });
 
-      it('should filter professional insights by dimension', async () => {
+      it('should return empty professional insights with MockKnowledgeSource', async () => {
         const result = await linker.findRelevant('skillResilience', 40);
 
-        // pi-001 is applicable to skillResilience with maxScore 60
-        const insightIds = result.professionalInsights.map((i) => i.id);
-        expect(insightIds).toContain('pi-001');
+        // MockKnowledgeSource returns empty (insights now in database)
+        expect(result.professionalInsights).toEqual([]);
       });
 
       it('should filter professional insights by score range', async () => {
@@ -281,35 +260,85 @@ describe('knowledge-linker', () => {
 // ============================================
 
 describe('Professional Insights Integration', () => {
-  let linker: KnowledgeLinker;
+  // Professional insights are now stored in the database.
+  // MockKnowledgeSource returns empty arrays, so these tests verify
+  // the filtering logic with an injected custom source.
 
-  beforeEach(() => {
-    linker = new KnowledgeLinker();
-  });
+  it('should filter insights by dimension and score range', async () => {
+    const customSource: KnowledgeSource = {
+      async searchAdvanced() { return []; },
+      async getProfessionalInsights() {
+        return [
+          {
+            id: 'pi-001',
+            title: 'Skill Atrophy Prevention',
+            keyTakeaway: 'Practice independently',
+            actionableAdvice: ['Code without AI weekly'],
+            source: { type: 'article', author: 'Test Author' },
+            applicableDimensions: ['skillResilience'],
+            minScore: 0,
+            maxScore: 60,
+            priority: 10,
+            enabled: true,
+          },
+          {
+            id: 'pi-002',
+            title: 'Advanced AI Control',
+            keyTakeaway: 'Verify outputs systematically',
+            actionableAdvice: ['Use structured reviews'],
+            source: { type: 'article', author: 'Test Author' },
+            applicableDimensions: ['aiControl'],
+            minScore: 0,
+            maxScore: 50,
+            priority: 8,
+            enabled: true,
+          },
+        ];
+      },
+    };
 
-  it('should include pi-001 for low skillResilience score', async () => {
+    const linker = createKnowledgeLinker(customSource);
+
+    // pi-001 should match: skillResilience dimension, score 40 <= maxScore 60
     const result = await linker.findRelevant('skillResilience', 40);
     const ids = result.professionalInsights.map((i) => i.id);
     expect(ids).toContain('pi-001');
-  });
-
-  it('should include pi-006 for contextEngineering', async () => {
-    const result = await linker.findRelevant('contextEngineering', 50);
-    const ids = result.professionalInsights.map((i) => i.id);
-    expect(ids).toContain('pi-006');
+    expect(ids).not.toContain('pi-002'); // Wrong dimension
   });
 
   it('should limit insights to 3 per dimension', async () => {
+    const linker = new KnowledgeLinker();
     const result = await linker.findRelevant('aiControl', 40);
     expect(result.professionalInsights.length).toBeLessThanOrEqual(3);
   });
 
-  it('should include preferred insights even outside score range', async () => {
-    // contextEngineering improvement has pi-010 as preferred
-    // pi-010 has maxScore: 70, but preferredIds should bypass this
-    const result = await linker.findRelevant('contextEngineering', 50);
+  it('should exclude insights outside score range', async () => {
+    const customSource: KnowledgeSource = {
+      async searchAdvanced() { return []; },
+      async getProfessionalInsights() {
+        return [
+          {
+            id: 'pi-001',
+            title: 'Beginner Guide',
+            keyTakeaway: 'Start here',
+            actionableAdvice: ['Step 1'],
+            source: { type: 'article', author: 'Test' },
+            applicableDimensions: ['skillResilience'],
+            minScore: 0,
+            maxScore: 60,
+            priority: 10,
+            enabled: true,
+          },
+        ];
+      },
+    };
+
+    const linker = createKnowledgeLinker(customSource);
+
+    // Score 75 exceeds maxScore 60 — should NOT include pi-001
+    const result = await linker.findRelevant('skillResilience', 75);
     const ids = result.professionalInsights.map((i) => i.id);
-    expect(ids).toContain('pi-010');
+    expect(ids).not.toContain('pi-001');
   });
 });
 
