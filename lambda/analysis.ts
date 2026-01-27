@@ -577,6 +577,7 @@ async function storeResult(
     // Debug: log agentOutputs status before storage
     console.log(`[PHASE:STORE] hasAgentOutputs: ${!!evaluation.agentOutputs}`);
     console.log(`[PHASE:STORE] agentOutputs keys: ${evaluation.agentOutputs ? Object.keys(evaluation.agentOutputs).join(', ') : 'none'}`);
+    console.log(`[PHASE:STORE] typeClassifier: ${evaluation.agentOutputs?.typeClassifier ? 'present' : 'null'}`);
     console.log(`[PHASE:STORE] hasPhase1Output: ${!!phase1Output}`);
 
     const insertData: Record<string, unknown> = {
