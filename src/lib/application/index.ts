@@ -1,13 +1,10 @@
 /**
  * Application Layer
  *
- * Use cases, services, and port interfaces.
+ * Port interfaces for infrastructure adapters.
  *
  * @module application
  */
-
-// Services
-export * from './services/index';
 
 // Ports
 export * from './ports/index';
