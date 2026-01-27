@@ -47,10 +47,7 @@ export type DimensionName =
   | 'toolMastery'
   | 'burnoutRisk'
   | 'aiControl'
-  | 'skillResilience'
-  | 'iterationEfficiency'
-  | 'learningVelocity'
-  | 'scopeManagement';
+  | 'skillResilience';
 
 export interface KnowledgeListParams {
   platform?: SourcePlatform;

@@ -175,26 +175,16 @@ export function parseExamplesData(data: string | undefined): Array<{ quote: stri
 // PER-DIMENSION INSIGHT SCHEMAS (Score-Free)
 // ============================================================================
 
-// NOTE: DimensionNameEnumSchema, DIMENSION_NAMES, DimensionNameEnum, and DimensionName
-// are now imported from ./dimension-schema and re-exported at the top of this file.
-// This was done to break the circular dependency:
-//   agent-outputs.ts → strength-growth-data.ts → verbose-evaluation.ts → agent-outputs.ts
-
 /**
  * Human-readable display names for each dimension
  */
 export const DIMENSION_DISPLAY_NAMES: Record<DimensionNameEnum, string> = {
-  // Original 6 dimensions
   aiCollaboration: 'AI Collaboration Mastery',
   contextEngineering: 'Context Engineering',
   toolMastery: 'Tool Mastery',
   burnoutRisk: 'Burnout Risk Assessment',
   aiControl: 'AI Control Index',
   skillResilience: 'Skill Resilience',
-  // New 3 dimensions (Phase 3 - Premium/Enterprise)
-  iterationEfficiency: 'Iteration Efficiency',
-  learningVelocity: 'Learning Velocity',
-  scopeManagement: 'Scope Management',
 };
 
 /**
@@ -1083,7 +1073,7 @@ export const VerboseEvaluationSchema = z.object({
     .max(3000)
     .describe('Hyper-personalized summary of their AI coding personality (target: 300-3000 chars)'),
 
-  // NEW: Per-dimension insights (replaces global strengths/growthAreas)
+  // Per-dimension insights (replaces global strengths/growthAreas)
   dimensionInsights: z
     .array(PerDimensionInsightSchema)
     .length(6)
@@ -1095,36 +1085,35 @@ export const VerboseEvaluationSchema = z.object({
 
   promptPatterns: z.array(PromptPatternSchema),
 
-  // NEW: Actionable Practices - Knowledge-driven feedback
-  // Uses LLM schema (no evidence field) - evidence is in Stage 1's actionablePatternMatches
+  // Actionable Practices (knowledge-driven feedback, evidence in Stage 1's actionablePatternMatches)
   actionablePractices: LLMActionablePracticesSchema.optional()
     .describe('Expert recommendations practiced/missed by the developer'),
 
-  // NEW: Anti-Patterns Analysis (Premium/Enterprise)
+  // Anti-Patterns Analysis (Premium/Enterprise)
   antiPatternsAnalysis: AntiPatternsAnalysisSchema.optional()
     .describe('Anti-patterns detected with growth opportunities'),
 
-  // NEW: Critical Thinking Analysis (Premium/Enterprise)
+  // Critical Thinking Analysis (Premium/Enterprise)
   criticalThinkingAnalysis: CriticalThinkingAnalysisSchema.optional()
     .describe('Critical thinking behaviors analysis'),
 
-  // NEW: Planning Analysis (Premium/Enterprise)
+  // Planning Analysis (Premium/Enterprise)
   planningAnalysis: PlanningAnalysisSchema.optional()
     .describe('Planning behaviors analysis'),
 
-  // NEW: Top 3 Focus Areas (from Stage 1 personalizedPriorities)
+  // Top 3 Focus Areas (from Stage 1 personalizedPriorities)
   topFocusAreas: TopFocusAreasSchema.optional()
     .describe('Top 3 personalized priorities - the MOST ACTIONABLE part'),
 
-  // NEW: Productivity Analysis (from Module C)
+  // Productivity Analysis (from Module C)
   productivityAnalysis: ProductivityAnalysisDataSchema.optional()
     .describe('Productivity metrics including iteration efficiency, learning velocity, and collaboration effectiveness'),
 
-  // NEW: Agent Outputs (from Phase 2 Wow Agents - Premium only)
+  // Agent Outputs (Phase 2 Wow Agents - Premium only)
   agentOutputs: AgentOutputsSchema.optional()
     .describe('Insights from 4 Wow-Focused agents: Pattern Detective, Anti-Pattern Spotter, Knowledge Gap, Context Efficiency'),
 
-  // NEW: Matched Knowledge Resources (from Phase 2.75 - deterministic matching)
+  // Matched Knowledge Resources (Phase 2.75 - deterministic matching)
   knowledgeResources: z.array(DimensionResourceMatchSchema).optional()
     .describe('Matched learning resources per dimension from Knowledge Base'),
 
@@ -1157,7 +1146,7 @@ export const VerboseEvaluationSchema = z.object({
     modelName: z.string(),
   }).optional().describe('Actual token usage and cost from LLM API calls'),
 
-  // NEW: Analysis metadata with confidence scores
+  // Analysis metadata (confidence scores, data quality)
   analysisMetadata: z.object({
     /** Overall confidence score (0-1, weighted average of agent scores) */
     overallConfidence: z.number().min(0).max(1),
@@ -1182,8 +1171,7 @@ export const VerboseEvaluationSchema = z.object({
     insightsFiltered: z.number().int().min(0).optional(),
   }).optional().describe('Analysis metadata for transparency and trust'),
 
-  // NEW: Translated Agent Insights (for non-English output)
-  // Contains translated strengths/growthAreas from all agents
+  // Translated Agent Insights (for non-English output)
   // Frontend should use this when available, falling back to agentOutputs
   translatedAgentInsights: TranslatedAgentInsightsSchema.optional()
     .describe('Translated agent insights for non-English output'),

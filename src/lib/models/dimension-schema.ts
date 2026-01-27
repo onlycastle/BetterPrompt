@@ -15,20 +15,15 @@
 import { z } from 'zod';
 
 /**
- * The 9 analysis dimensions (6 original + 3 new Premium/Enterprise)
+ * The 6 analysis dimensions
  */
 export const DimensionNameEnumSchema = z.enum([
-  // Original 6 dimensions
   'aiCollaboration',
   'contextEngineering',
   'toolMastery',
   'burnoutRisk',
   'aiControl',
   'skillResilience',
-  // New 3 dimensions (Phase 3 - Premium/Enterprise)
-  'iterationEfficiency',
-  'learningVelocity',
-  'scopeManagement',
 ]);
 export type DimensionNameEnum = z.infer<typeof DimensionNameEnumSchema>;
 
