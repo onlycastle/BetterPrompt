@@ -254,8 +254,8 @@ npm test
 
 | ID | Title | Dimensions | Score Range |
 |----|-------|------------|-------------|
-| pi-011 | Fresh Sessions Outperform Continued Context | contextEngineering, iterationEfficiency | maxScore: 60 |
-| pi-012 | Task Decomposition: A→A1→A2→A3→B Pattern | scopeManagement, aiCollaboration | all |
+| pi-011 | Fresh Sessions Outperform Continued Context | contextEngineering | maxScore: 60 |
+| pi-012 | Task Decomposition: A→A1→A2→A3→B Pattern | contextEngineering, aiCollaboration | all |
 | pi-013 | The Write-Test-Verify Cycle | aiControl, skillResilience | all |
 | pi-014 | Simple Agents Beat Complex Ones | aiCollaboration, toolMastery | minScore: 60 |
 | pi-015 | Treat Context Like Memory Allocation | contextEngineering | maxScore: 70 |
