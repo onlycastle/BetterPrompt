@@ -324,6 +324,9 @@ export class AnalysisOrchestrator {
     const languageResult = detectPrimaryLanguage(utteranceTexts);
     this.logLanguageDetection(languageResult);
 
+    // Always log language detection result for production debugging (not gated by verbose)
+    console.log(`[PHASE:LANG] detected=${languageResult.primary}, confidence=${languageResult.confidence.toFixed(2)}, korean=${languageResult.charCounts.korean}/${languageResult.charCounts.total}, threshold=0.05, willTranslate=${languageResult.primary !== 'en'}`);
+
     if (languageResult.primary !== 'en') {
       this.log(`Phase 4: Translation to ${languageResult.primary}...`);
       const translatorResult = await this.translator.translate(
@@ -748,7 +751,7 @@ export class AnalysisOrchestrator {
     console.log('\n=== Language Detection ===');
     console.log(`Detected Language: ${LANGUAGE_DISPLAY_NAMES[result.primary] || result.primary} (${result.primary})`);
     console.log(`Confidence: ${result.confidence.toFixed(2)} (${(result.confidence * 100).toFixed(0)}%)`);
-    console.log('Threshold: 20%');
+    console.log('Threshold: 5%');
     console.log('Character Breakdown:');
     console.log(`  Korean (Hangul):  ${charCounts.korean} chars (${((charCounts.korean / total) * 100).toFixed(1)}%)`);
     console.log(`  Japanese (Kana):  ${charCounts.japanese} chars (${((charCounts.japanese / total) * 100).toFixed(1)}%)`);
