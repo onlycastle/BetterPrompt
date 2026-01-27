@@ -320,7 +320,7 @@ function summarizeContextEfficiency(ce: ContextEfficiencyOutput): string {
  * Truncate a quote string to a max length for the summary.
  * Preserves readability by cutting at word boundaries.
  */
-function truncateQuote(text: string, maxLength: number = 200): string {
+function truncateQuote(text: string, maxLength: number = 500): string {
   if (text.length <= maxLength) return text;
   const cutPoint = text.lastIndexOf(' ', maxLength);
   const truncated = cutPoint > maxLength * 0.6 ? text.slice(0, cutPoint) : text.slice(0, maxLength);
