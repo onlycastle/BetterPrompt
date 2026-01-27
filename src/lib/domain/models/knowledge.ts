@@ -14,21 +14,16 @@ import { z } from 'zod';
 // ============================================================================
 
 /**
- * 9 Analysis Dimensions - shared between Professional Insights and Knowledge Items
+ * 6 Analysis Dimensions - shared between Professional Insights and Knowledge Items
  * This creates alignment between what we measure and what we recommend.
  */
 export const DimensionNameSchema = z.enum([
-  // Original 6 dimensions
   'aiCollaboration',
   'contextEngineering',
   'toolMastery',
   'burnoutRisk',
   'aiControl',
   'skillResilience',
-  // New 3 dimensions (Phase 3 - Premium/Enterprise)
-  'iterationEfficiency',
-  'learningVelocity',
-  'scopeManagement',
 ]);
 export type DimensionName = z.infer<typeof DimensionNameSchema>;
 
@@ -299,17 +294,12 @@ export type ProfessionalInsight = z.infer<typeof ProfessionalInsightSchema>;
  * Dimension display names for UI (unified with unified-report.ts)
  */
 export const DIMENSION_DISPLAY_NAMES: Record<DimensionName, string> = {
-  // Original 6 dimensions
   aiCollaboration: 'AI Collaboration Mastery',
   contextEngineering: 'Context Engineering',
   toolMastery: 'Tool Mastery',
   burnoutRisk: 'Burnout Risk',
   aiControl: 'AI Control Index',
   skillResilience: 'Skill Resilience',
-  // New 3 dimensions (Phase 3 - Premium/Enterprise)
-  iterationEfficiency: 'Iteration Efficiency',
-  learningVelocity: 'Learning Velocity',
-  scopeManagement: 'Scope Management',
 };
 
 /**
@@ -322,9 +312,6 @@ export const ALL_DIMENSIONS: DimensionName[] = [
   'burnoutRisk',
   'aiControl',
   'skillResilience',
-  'iterationEfficiency',
-  'learningVelocity',
-  'scopeManagement',
 ];
 
 /**
@@ -369,7 +356,7 @@ export const TOPIC_TO_DIMENSION_MAP: Record<TopicCategory, DimensionName> = {
   'tool-use': 'toolMastery',
   subagents: 'toolMastery',
   'claude-code-skills': 'toolMastery',
-  'workflow-automation': 'iterationEfficiency',
+  'workflow-automation': 'toolMastery',
   'best-practices': 'skillResilience',
   other: 'skillResilience',
 };
@@ -683,7 +670,7 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
     enabled: true,
   },
   // ============================================================================
-  // New Dimension Insights (Phase 4) - iterationEfficiency, learningVelocity, scopeManagement
+  // Additional Dimension Insights
   // ============================================================================
   {
     version: '1.0.0',
@@ -701,7 +688,7 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
       url: 'https://nomoreaislop.com/insights/iteration-efficiency',
       author: 'NoMoreAISlop Research',
     },
-    applicableDimensions: ['iterationEfficiency'],
+    applicableDimensions: ['aiControl'],
     maxScore: 60,
     priority: 8,
     enabled: true,
@@ -722,7 +709,7 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
       url: 'https://nomoreaislop.com/insights/learning-velocity',
       author: 'Educational Research',
     },
-    applicableDimensions: ['learningVelocity', 'skillResilience'],
+    applicableDimensions: ['skillResilience'],
     priority: 9,
     enabled: true,
   },
@@ -742,7 +729,7 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
       url: 'https://nomoreaislop.com/insights/scope-management',
       author: 'NoMoreAISlop Research',
     },
-    applicableDimensions: ['scopeManagement'],
+    applicableDimensions: ['aiCollaboration'],
     priority: 8,
     enabled: true,
   },
@@ -762,7 +749,7 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
       url: 'https://twitter.com/example/targeted-refinement',
       author: 'AI Engineering',
     },
-    applicableDimensions: ['iterationEfficiency', 'aiCollaboration'],
+    applicableDimensions: ['aiControl', 'aiCollaboration'],
     priority: 7,
     enabled: true,
   },
@@ -782,7 +769,7 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
       url: 'https://nomoreaislop.com/insights/why-question-test',
       author: 'Educational Research',
     },
-    applicableDimensions: ['learningVelocity'],
+    applicableDimensions: ['skillResilience'],
     maxScore: 50,
     priority: 9,
     enabled: true,
@@ -806,7 +793,7 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
       url: 'https://github.com/ykdojo/claude-code-tips',
       author: 'Claude Code Tips',
     },
-    applicableDimensions: ['contextEngineering', 'iterationEfficiency'],
+    applicableDimensions: ['contextEngineering'],
     maxScore: 60,
     priority: 9,
     enabled: true,
@@ -827,7 +814,7 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
       url: 'https://github.com/ykdojo/claude-code-tips',
       author: 'Claude Code Tips',
     },
-    applicableDimensions: ['scopeManagement', 'aiCollaboration'],
+    applicableDimensions: ['contextEngineering', 'aiCollaboration'],
     priority: 8,
     enabled: true,
   },
@@ -909,7 +896,7 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
       url: 'https://github.com/ykdojo/claude-code-tips',
       author: 'Claude Code Tips',
     },
-    applicableDimensions: ['iterationEfficiency', 'toolMastery'],
+    applicableDimensions: ['toolMastery'],
     minScore: 70,
     priority: 7,
     enabled: true,

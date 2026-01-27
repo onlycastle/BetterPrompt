@@ -452,19 +452,14 @@ describe('Schema Bridge', () => {
 
 describe('Constants', () => {
   describe('DIMENSION_DISPLAY_NAMES', () => {
-    it('should have all 9 dimensions (6 original + 3 new)', () => {
-      expect(Object.keys(DIMENSION_DISPLAY_NAMES)).toHaveLength(9);
-      // Original 6 dimensions
+    it('should have all 6 dimensions', () => {
+      expect(Object.keys(DIMENSION_DISPLAY_NAMES)).toHaveLength(6);
       expect(DIMENSION_DISPLAY_NAMES.aiCollaboration).toBe('AI Collaboration Mastery');
       expect(DIMENSION_DISPLAY_NAMES.contextEngineering).toBe('Context Engineering');
       expect(DIMENSION_DISPLAY_NAMES.toolMastery).toBe('Tool Mastery');
       expect(DIMENSION_DISPLAY_NAMES.burnoutRisk).toBe('Burnout Risk');
       expect(DIMENSION_DISPLAY_NAMES.aiControl).toBe('AI Control Index');
       expect(DIMENSION_DISPLAY_NAMES.skillResilience).toBe('Skill Resilience');
-      // New 3 dimensions (Phase 3 - Premium/Enterprise)
-      expect(DIMENSION_DISPLAY_NAMES.iterationEfficiency).toBe('Iteration Efficiency');
-      expect(DIMENSION_DISPLAY_NAMES.learningVelocity).toBe('Learning Velocity');
-      expect(DIMENSION_DISPLAY_NAMES.scopeManagement).toBe('Scope Management');
     });
   });
 

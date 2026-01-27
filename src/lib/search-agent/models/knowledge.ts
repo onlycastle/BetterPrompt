@@ -11,7 +11,7 @@ import { z } from 'zod';
 // ============================================================================
 
 /**
- * 9 Analysis Dimensions - shared between Professional Insights and Knowledge Items
+ * 6 Analysis Dimensions - shared between Professional Insights and Knowledge Items
  */
 export const DimensionNameSchema = z.enum([
   'aiCollaboration',
@@ -20,9 +20,6 @@ export const DimensionNameSchema = z.enum([
   'burnoutRisk',
   'aiControl',
   'skillResilience',
-  'iterationEfficiency',
-  'learningVelocity',
-  'scopeManagement',
 ]);
 export type DimensionName = z.infer<typeof DimensionNameSchema>;
 
@@ -53,7 +50,7 @@ export const TOPIC_TO_DIMENSION_MAP: Record<TopicCategory, DimensionName> = {
   'tool-use': 'toolMastery',
   subagents: 'toolMastery',
   'claude-code-skills': 'toolMastery',
-  'workflow-automation': 'iterationEfficiency',
+  'workflow-automation': 'toolMastery',
   'best-practices': 'skillResilience',
   other: 'skillResilience',
 };
@@ -81,8 +78,8 @@ export const SourcePlatformSchema = z.enum([
   'threads',
   'web',
   'manual',
-  'youtube', // NEW: YouTube video transcripts
-  'linkedin', // NEW: LinkedIn posts (public only)
+  'youtube',
+  'linkedin',
 ]);
 export type SourcePlatform = z.infer<typeof SourcePlatformSchema>;
 
@@ -93,11 +90,11 @@ export const KnowledgeSourceSchema = z.object({
   platform: SourcePlatformSchema,
   url: z.string().url(),
   author: z.string().optional(),
-  authorHandle: z.string().optional(), // NEW: @handle, channel name, or profile slug
+  authorHandle: z.string().optional(),
   publishedAt: z.string().datetime().optional(),
   fetchedAt: z.string().datetime(),
-  influencerId: z.string().uuid().optional(), // NEW: Link to tracked influencer
-  credibilityTier: z.enum(['high', 'medium', 'standard']).optional(), // NEW: Author credibility
+  influencerId: z.string().uuid().optional(),
+  credibilityTier: z.enum(['high', 'medium', 'standard']).optional(),
 });
 export type KnowledgeSource = z.infer<typeof KnowledgeSourceSchema>;
 
@@ -134,7 +131,7 @@ export const KnowledgeItemSchema = z.object({
   summary: z.string().min(50).max(1000),
   content: z.string().min(100).max(10000),
 
-  // Classification - NEW unified dimension system
+  // Classification (dimension-based)
   applicableDimensions: z.array(DimensionNameSchema).min(1).optional(),
   subCategories: z.record(DimensionNameSchema, z.array(z.string())).optional(),
 

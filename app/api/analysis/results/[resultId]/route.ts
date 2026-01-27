@@ -211,7 +211,7 @@ export async function GET(
     // 1. Fetch the result
     const { data, error } = await supabase
       .from('analysis_results')
-      .select('evaluation, is_paid')
+      .select('evaluation, is_paid, expires_at')
       .eq('result_id', resultId)
       .single();
 
@@ -222,41 +222,17 @@ export async function GET(
       );
     }
 
-    const evaluation = data.evaluation as VerboseEvaluation;
-
-    // 2. Check if result is already paid (legacy or via credit unlock)
-    let isPaid = data.is_paid;
-
-    // 3. If not paid, check if current user has unlocked it via credits
-    if (!isPaid) {
-      // Try to get authenticated user
-      let user: User | null = await getUserFromAuthHeader(request);
-
-      if (!user) {
-        try {
-          const serverSupabase = await createSupabaseServerClient();
-          const { data: authData } = await serverSupabase.auth.getUser();
-          user = authData.user;
-        } catch {
-          // Cookie access might fail in some contexts, continue without user
-        }
-      }
-
-      if (user) {
-        // Check if user has unlocked this result via credits
-        const { data: hasUnlocked } = await supabase.rpc('has_unlocked_result', {
-          p_user_id: user.id,
-          p_result_id: resultId,
-        });
-
-        if (hasUnlocked) {
-          isPaid = true;
-        }
-      }
+    // Check if result has expired
+    if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      return NextResponse.json(
+        { error: 'Result expired', message: 'This analysis result has expired. Please run a new analysis.' },
+        { status: 410 }
+      );
     }
 
-    // 4. Get user's credit info if authenticated
-    let credits: number | null = null;
+    const evaluation = data.evaluation as VerboseEvaluation;
+
+    // 2. Resolve authenticated user (try auth header first, then cookies)
     let user: User | null = await getUserFromAuthHeader(request);
     if (!user) {
       try {
@@ -264,10 +240,26 @@ export async function GET(
         const { data: authData } = await serverSupabase.auth.getUser();
         user = authData.user;
       } catch {
-        // Continue without user
+        // Cookie access might fail in some contexts, continue without user
       }
     }
 
+    // 3. Check if result is already paid (legacy or via credit unlock)
+    let isPaid = data.is_paid;
+
+    if (!isPaid && user) {
+      const { data: hasUnlocked } = await supabase.rpc('has_unlocked_result', {
+        p_user_id: user.id,
+        p_result_id: resultId,
+      });
+
+      if (hasUnlocked) {
+        isPaid = true;
+      }
+    }
+
+    // 4. Get user's credit info if authenticated
+    let credits: number | null = null;
     if (user) {
       const { data: creditInfo } = await supabase.rpc('get_user_credit_info', {
         p_user_id: user.id,

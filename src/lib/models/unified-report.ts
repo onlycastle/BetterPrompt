@@ -82,17 +82,12 @@ export const DimensionInsightSchema = z.object({
 // ============================================
 
 export const DimensionNameSchema = z.enum([
-  // Original 6 dimensions
   'aiCollaboration',
   'contextEngineering',
   'toolMastery',
   'burnoutRisk',
   'aiControl',
   'skillResilience',
-  // New 3 dimensions (Phase 3 - Premium/Enterprise)
-  'iterationEfficiency',
-  'learningVelocity',
-  'scopeManagement',
 ]);
 
 export const TrendSchema = z.enum(['improving', 'stable', 'declining']);
@@ -398,17 +393,12 @@ export type UnifiedReport = z.infer<typeof UnifiedReportSchema>;
 // ============================================
 
 export const DIMENSION_DISPLAY_NAMES: Record<DimensionName, string> = {
-  // Original 6 dimensions
   aiCollaboration: 'AI Collaboration Mastery',
   contextEngineering: 'Context Engineering',
   toolMastery: 'Tool Mastery',
   burnoutRisk: 'Burnout Risk',
   aiControl: 'AI Control Index',
   skillResilience: 'Skill Resilience',
-  // New 3 dimensions (Phase 3 - Premium/Enterprise)
-  iterationEfficiency: 'Iteration Efficiency',
-  learningVelocity: 'Learning Velocity',
-  scopeManagement: 'Scope Management',
 };
 
 export const STRENGTH_THRESHOLD = 70;

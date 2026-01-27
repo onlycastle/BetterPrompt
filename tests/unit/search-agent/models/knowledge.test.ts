@@ -51,9 +51,6 @@ describe('Knowledge Models', () => {
         'burnoutRisk',
         'aiControl',
         'skillResilience',
-        'iterationEfficiency',
-        'learningVelocity',
-        'scopeManagement',
       ];
 
       for (const dimension of validDimensions) {
