@@ -26,8 +26,7 @@ export const ConfigSchema = z.object({
   // Storage
   storagePath: z.string().default('~/.nomoreaislop'),
 
-  // LLM settings
-  model: z.string().default('claude-sonnet-4-20250514'),
+  // API settings
   apiKey: z.string().nullable().default(null),
 
   // API settings
@@ -46,7 +45,6 @@ export const DEFAULT_CONFIG: Config = {
   version: '1.0.0',
   telemetry: true,
   storagePath: '~/.nomoreaislop',
-  model: 'claude-sonnet-4-20250514',
   apiKey: null,
   apiBaseUrl: 'https://api.nomoreaislop.xyz',
   offlineMode: false,
@@ -60,7 +58,6 @@ export const ENV_MAPPINGS = {
   apiKey: 'ANTHROPIC_API_KEY',
   telemetry: 'NOSLOP_TELEMETRY',
   storagePath: 'NOSLOP_STORAGE_PATH',
-  model: 'NOSLOP_MODEL',
   apiBaseUrl: 'NOSLOP_API_BASE_URL',
   offlineMode: 'NOSLOP_OFFLINE_MODE',
 } as const;

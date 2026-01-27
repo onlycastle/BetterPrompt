@@ -10,7 +10,7 @@
  */
 
 import type { SupportedLanguage } from '../../stages/content-writer-prompts';
-import { NO_HEDGING_DIRECTIVE } from '../../verbose-prompts';
+import { NO_HEDGING_DIRECTIVE } from '../../shared/constants';
 
 /**
  * Language display names for output instructions

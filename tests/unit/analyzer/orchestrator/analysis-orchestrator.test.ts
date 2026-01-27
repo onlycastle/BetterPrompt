@@ -263,7 +263,7 @@ describe('AnalysisOrchestrator', () => {
         const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
 
         expect(result).toBeDefined();
-        expect(result.primaryType).toBe('architect');
+        expect(result.evaluation.primaryType).toBe('architect');
       });
 
       // NO FALLBACK POLICY: Workers must be registered
@@ -296,7 +296,7 @@ describe('AnalysisOrchestrator', () => {
         const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
 
         expect(result).toBeDefined();
-        expect(result.agentOutputs).toBeDefined();
+        expect(result.evaluation.agentOutputs).toBeDefined();
       });
 
       it('should skip Phase 2 workers for free tier', async () => {
@@ -307,7 +307,7 @@ describe('AnalysisOrchestrator', () => {
 
         expect(result).toBeDefined();
         // agentOutputs should be empty for free tier
-        expect(result.agentOutputs).toBeDefined();
+        expect(result.evaluation.agentOutputs).toBeDefined();
       });
 
       it('should skip Phase 2 when no workers are registered', async () => {
@@ -315,7 +315,7 @@ describe('AnalysisOrchestrator', () => {
         const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
 
         expect(result).toBeDefined();
-        expect(result.agentOutputs).toBeDefined();
+        expect(result.evaluation.agentOutputs).toBeDefined();
       });
 
       it('should run multiple Phase 2 workers in parallel', async () => {
@@ -329,7 +329,7 @@ describe('AnalysisOrchestrator', () => {
         const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
 
         expect(result).toBeDefined();
-        expect(result.agentOutputs).toBeDefined();
+        expect(result.evaluation.agentOutputs).toBeDefined();
       });
 
       it('should provide Phase 1 outputs to Phase 2 workers', async () => {
@@ -369,8 +369,8 @@ describe('AnalysisOrchestrator', () => {
         const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
 
         expect(result).toBeDefined();
-        expect(result.personalitySummary).toBeDefined();
-        expect(result.dimensionInsights).toBeDefined();
+        expect(result.evaluation.personalitySummary).toBeDefined();
+        expect(result.evaluation.dimensionInsights).toBeDefined();
       });
 
       it('should receive Phase 1 outputs in content writer', async () => {
@@ -382,7 +382,7 @@ describe('AnalysisOrchestrator', () => {
 
         expect(result).toBeDefined();
         // Content writer transforms data from Phase 1
-        expect(result.primaryType).toBe('architect');
+        expect(result.evaluation.primaryType).toBe('architect');
       });
     });
   });
@@ -516,31 +516,31 @@ describe('AnalysisOrchestrator', () => {
     it('should include session metadata', async () => {
       const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
 
-      expect(result.sessionId).toBe('session-1');
-      expect(result.analyzedAt).toBeDefined();
-      expect(result.sessionsAnalyzed).toBe(1);
+      expect(result.evaluation.sessionId).toBe('session-1');
+      expect(result.evaluation.analyzedAt).toBeDefined();
+      expect(result.evaluation.sessionsAnalyzed).toBe(1);
     });
 
     it('should include computed metrics', async () => {
       const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
 
-      expect(result.avgPromptLength).toBe(150);
-      expect(result.avgTurnsPerSession).toBe(5);
+      expect(result.evaluation.avgPromptLength).toBe(150);
+      expect(result.evaluation.avgTurnsPerSession).toBe(5);
     });
 
     it('should include analyzedSessions array', async () => {
       const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
 
-      expect(result.analyzedSessions).toBeDefined();
-      expect(result.analyzedSessions).toHaveLength(1);
-      expect(result.analyzedSessions[0].sessionId).toBe('session-1');
-      expect(result.analyzedSessions[0].projectName).toBe('project');
+      expect(result.evaluation.analyzedSessions).toBeDefined();
+      expect(result.evaluation.analyzedSessions).toHaveLength(1);
+      expect(result.evaluation.analyzedSessions[0].sessionId).toBe('session-1');
+      expect(result.evaluation.analyzedSessions[0].projectName).toBe('project');
     });
 
     it('should include agent outputs (empty for free tier)', async () => {
       const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
 
-      expect(result.agentOutputs).toBeDefined();
+      expect(result.evaluation.agentOutputs).toBeDefined();
     });
 
     it('should include agent outputs (populated for premium tier)', async () => {
@@ -549,7 +549,14 @@ describe('AnalysisOrchestrator', () => {
 
       const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
 
-      expect(result.agentOutputs).toBeDefined();
+      expect(result.evaluation.agentOutputs).toBeDefined();
+    });
+
+    it('should include phase1Output in result', async () => {
+      const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
+
+      expect(result.phase1Output).toBeDefined();
+      expect(result.phase1Output.sessionMetrics).toBeDefined();
     });
   });
 
@@ -564,7 +571,7 @@ describe('AnalysisOrchestrator', () => {
 
       expect(result).toBeDefined();
       // ContentGateway.filter is mocked to pass through
-      expect(result.primaryType).toBe('architect');
+      expect(result.evaluation.primaryType).toBe('architect');
     });
 
     it('should pass correct tier to content gateway', async () => {
@@ -626,8 +633,8 @@ describe('AnalysisOrchestrator', () => {
       const result = await orchestrator.analyze(multipleSessions, mockMetrics, 'premium');
 
       expect(result).toBeDefined();
-      expect(result.sessionsAnalyzed).toBe(3);
-      expect(result.analyzedSessions).toHaveLength(3);
+      expect(result.evaluation.sessionsAnalyzed).toBe(3);
+      expect(result.evaluation.analyzedSessions).toHaveLength(3);
     });
 
     it('should use last session ID as evaluation session ID', async () => {
@@ -639,13 +646,13 @@ describe('AnalysisOrchestrator', () => {
 
       const result = await orchestrator.analyze(multipleSessions, mockMetrics, 'free');
 
-      expect(result.sessionId).toBe('last');
+      expect(result.evaluation.sessionId).toBe('last');
     });
 
     it('should handle unknown session ID gracefully', async () => {
       const result = await orchestrator.analyze([], mockMetrics, 'free');
 
-      expect(result.sessionId).toBe('unknown');
+      expect(result.evaluation.sessionId).toBe('unknown');
     });
   });
 });

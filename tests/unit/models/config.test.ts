@@ -12,7 +12,6 @@ describe('Config Models', () => {
         version: '1.0.0',
         telemetry: true,
         storagePath: '~/.nomoreaislop',
-        model: 'claude-sonnet-4-20250514',
         apiKey: 'sk-ant-test-key',
       };
       const result = ConfigSchema.safeParse(config);
@@ -24,7 +23,6 @@ describe('Config Models', () => {
         version: '1.0.0',
         telemetry: true,
         storagePath: '~/.nomoreaislop',
-        model: 'claude-sonnet-4-20250514',
         apiKey: null,
       };
       const result = ConfigSchema.safeParse(config);
@@ -38,7 +36,6 @@ describe('Config Models', () => {
       if (result.success) {
         expect(result.data.telemetry).toBe(true);
         expect(result.data.storagePath).toBe('~/.nomoreaislop');
-        expect(result.data.model).toBe('claude-sonnet-4-20250514');
         expect(result.data.apiKey).toBeNull();
       }
     });
@@ -72,18 +69,6 @@ describe('Config Models', () => {
         expect(result.data.storagePath).toBe('/custom/path/storage');
       }
     });
-
-    it('should accept custom model', () => {
-      const config = {
-        version: '1.0.0',
-        model: 'claude-3-opus-20240229',
-      };
-      const result = ConfigSchema.safeParse(config);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.model).toBe('claude-3-opus-20240229');
-      }
-    });
   });
 
   describe('DEFAULT_CONFIG', () => {
@@ -97,10 +82,6 @@ describe('Config Models', () => {
 
     it('should have correct default storage path', () => {
       expect(DEFAULT_CONFIG.storagePath).toBe('~/.nomoreaislop');
-    });
-
-    it('should have correct default model', () => {
-      expect(DEFAULT_CONFIG.model).toBe('claude-sonnet-4-20250514');
     });
 
     it('should have null apiKey by default', () => {
@@ -126,12 +107,8 @@ describe('Config Models', () => {
       expect(ENV_MAPPINGS.storagePath).toBe('NOSLOP_STORAGE_PATH');
     });
 
-    it('should have correct model mapping', () => {
-      expect(ENV_MAPPINGS.model).toBe('NOSLOP_MODEL');
-    });
-
     it('should have all config keys mapped', () => {
-      const configKeys = ['apiKey', 'telemetry', 'storagePath', 'model'];
+      const configKeys = ['apiKey', 'telemetry', 'storagePath'];
       for (const key of configKeys) {
         expect(ENV_MAPPINGS).toHaveProperty(key);
       }

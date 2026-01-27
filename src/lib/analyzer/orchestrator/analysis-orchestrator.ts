@@ -21,6 +21,8 @@ import { detectPrimaryLanguage, LANGUAGE_DISPLAY_NAMES, type LanguageDetectionRe
 import type { TranslatorOutput } from '../../models/translator-output';
 import { ContentGateway, type Tier } from '../content-gateway';
 import { BaseWorker } from '../workers/base-worker';
+import type { DimensionResourceMatch } from '../../models/verbose-evaluation';
+import { matchKnowledgeResources } from '../stages/knowledge-resource-matcher';
 import type {
   WorkerResult,
   WorkerContext,
@@ -28,6 +30,7 @@ import type {
   Phase1Results,
   AggregatedTokenUsage,
   Phase1Output,
+  AnalysisResult,
 } from './types';
 import {
   DEFAULT_ORCHESTRATOR_CONFIG,
@@ -70,7 +73,7 @@ import {
  * ```
  */
 export class AnalysisOrchestrator {
-  private config: Required<OrchestratorConfig>;
+  private config: Required<Omit<OrchestratorConfig, 'knowledgeRepo' | 'professionalInsightRepo'>> & Pick<OrchestratorConfig, 'knowledgeRepo' | 'professionalInsightRepo'>;
   private phase1Workers: BaseWorker<unknown>[] = [];
   private phase2Workers: BaseWorker<unknown>[] = [];
   private phase2Point5Workers: BaseWorker<unknown>[] = []; // Type Synthesis workers
@@ -92,6 +95,7 @@ export class AnalysisOrchestrator {
       temperature: this.config.temperature,
       maxOutputTokens: this.config.maxOutputTokens,
       maxRetries: this.config.maxRetries,
+      verbose: this.config.verbose,
     });
 
     // Initialize translator (Phase 4 - conditional)
@@ -158,13 +162,13 @@ export class AnalysisOrchestrator {
    * @param sessions - Parsed session data
    * @param metrics - Computed session metrics
    * @param tier - User tier level
-   * @returns Tier-filtered VerboseEvaluation
+   * @returns AnalysisResult with tier-filtered VerboseEvaluation and raw Phase1Output
    */
   async analyze(
     sessions: ParsedSession[],
     metrics: SessionMetrics,
     tier: Tier
-  ): Promise<VerboseEvaluation> {
+  ): Promise<AnalysisResult> {
     const startTime = Date.now();
     const stageUsages: StageTokenUsage[] = [];
 
@@ -205,8 +209,8 @@ export class AnalysisOrchestrator {
     // ─────────────────────────────────────────────────────────────────────
     let agentOutputs: AgentOutputs = createEmptyAgentOutputs();
 
-    console.log(`[Orchestrator] Phase 2 workers registered: ${this.phase2Workers.length}`);
-    console.log(`[Orchestrator] Worker names: ${this.phase2Workers.map(w => w.name).join(', ')}`);
+    this.log(`Phase 2 workers registered: ${this.phase2Workers.length}`);
+    this.log(`Worker names: ${this.phase2Workers.map(w => w.name).join(', ')}`);
 
     if (this.phase2Workers.length > 0) {
       this.log('Phase 2: Insight Generation...');
@@ -218,14 +222,13 @@ export class AnalysisOrchestrator {
         // outputLanguage intentionally NOT passed - Phase 2 workers always use English
       };
 
-      console.log(`[Orchestrator] Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasPhase1Output: ${!!phase2Context.phase1Output}`);
+      this.log(`Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasPhase1Output: ${!!phase2Context.phase1Output}`);
 
       const phase2Results = await this.runPhase2(phase2Context);
-      console.log(`[Orchestrator] Phase 2 results keys: ${Object.keys(phase2Results).join(', ')}`);
+      this.log(`Phase 2 results keys: ${Object.keys(phase2Results).join(', ')}`);
 
       agentOutputs = this.mergeAgentOutputs(phase2Results);
-      console.log(`[Orchestrator] Merged agentOutputs keys: ${Object.keys(agentOutputs).join(', ')}`);
-      console.log(`[Orchestrator] agentOutputs.patternDetective: ${agentOutputs.patternDetective ? 'present' : 'null'}`);
+      this.log(`Merged agentOutputs keys: ${Object.keys(agentOutputs).join(', ')}`);
 
       // Track Phase 2 token usage
       for (const [workerName, result] of Object.entries(phase2Results)) {
@@ -245,12 +248,11 @@ export class AnalysisOrchestrator {
     // Refines type classification using insights from all Phase 2 agents
     // NOTE: Type Synthesis also operates in ENGLISH.
     // ─────────────────────────────────────────────────────────────────────
-    console.log(`[Orchestrator] Phase 2.5 workers registered: ${this.phase2Point5Workers.length}`);
+    this.log(`Phase 2.5 workers registered: ${this.phase2Point5Workers.length}`);
     if (this.phase2Point5Workers.length > 0) {
       this.log('Phase 2.5: Type Classification...');
-      const phase2Point5Context: WorkerContext & { phase1Output?: Phase1Output } = {
+      const phase2Point5Context: WorkerContext = {
         ...baseContext,
-        phase1Output: phase1Results.dataExtractor.data,
         // outputLanguage intentionally NOT passed - Phase 2.5 always uses English
       };
 
@@ -282,12 +284,30 @@ export class AnalysisOrchestrator {
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // Phase 2.75: Knowledge Resource Matching (deterministic, no LLM)
+    // Two-level matching: dimension filter → keyword/style ranking
+    // ─────────────────────────────────────────────────────────────────────
+    let knowledgeResources: DimensionResourceMatch[] = [];
+    if (this.config.knowledgeRepo && this.config.professionalInsightRepo) {
+      this.log('Phase 2.75: Knowledge Resource Matching...');
+      knowledgeResources = await matchKnowledgeResources(agentOutputs, {
+        knowledgeRepo: this.config.knowledgeRepo,
+        professionalInsightRepo: this.config.professionalInsightRepo,
+      });
+      this.log(`Phase 2.75: Matched resources for ${knowledgeResources.length} dimensions`);
+    } else {
+      this.log('Phase 2.75: Skipped (no knowledge repos configured)');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // Phase 3: Content Generation (Phase1Output + AgentOutputs → narrative)
     // ─────────────────────────────────────────────────────────────────────
     this.log('Phase 3: Content Generation...');
+    const sessionCount = phase1Results.dataExtractor.data.sessionMetrics.totalSessions;
     const contentResult = await this.contentWriter.transformV3(
-      phase1Results.dataExtractor.data,
-      agentOutputs
+      sessionCount,
+      agentOutputs,
+      phase1Results.dataExtractor.data // Phase1Output for evidence verification
     );
 
     stageUsages.push({
@@ -366,6 +386,7 @@ export class AnalysisOrchestrator {
       analyzedSessions,
       ...contentResult.data,
       agentOutputs: agentOutputs,
+      knowledgeResources: knowledgeResources.length > 0 ? knowledgeResources : undefined,
       pipelineTokenUsage,
       // NEW: Analysis metadata with confidence scores
       analysisMetadata: {
@@ -379,16 +400,19 @@ export class AnalysisOrchestrator {
       },
     };
 
-    console.log(`[Orchestrator] Final evaluation - hasAgentOutputs: ${!!evaluation.agentOutputs}`);
-    console.log(`[Orchestrator] Final agentOutputs keys: ${evaluation.agentOutputs ? Object.keys(evaluation.agentOutputs).join(', ') : 'none'}`);
-    console.log(`[Orchestrator] Final typeClassifier: ${evaluation.agentOutputs?.typeClassifier ? 'present' : 'null'}`);
+    this.log(`Final evaluation - hasAgentOutputs: ${!!evaluation.agentOutputs}`);
+    this.log(`Final agentOutputs keys: ${evaluation.agentOutputs ? Object.keys(evaluation.agentOutputs).join(', ') : 'none'}`);
+    this.log(`Final typeClassifier: ${evaluation.agentOutputs?.typeClassifier ? 'present' : 'null'}`);
 
     // Log pipeline summary
     const totalTime = Date.now() - startTime;
     this.logPipelineSummary(stageUsages, totalTime);
 
-    // Apply tier-based filtering
-    return this.contentGateway.filter(evaluation, tier);
+    // Apply tier-based filtering and return with Phase1Output
+    return {
+      evaluation: this.contentGateway.filter(evaluation, tier),
+      phase1Output: phase1Results.dataExtractor.data,
+    };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -712,7 +736,7 @@ export class AnalysisOrchestrator {
   }
 
   /**
-   * Log language detection results for debugging (when verbose/DEBUG_COST=1)
+   * Log language detection results for debugging (when verbose/DEBUG=1)
    */
   private logLanguageDetection(result: LanguageDetectionResult): void {
     if (!this.config.verbose) return;

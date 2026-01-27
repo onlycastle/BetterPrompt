@@ -31,36 +31,10 @@ export {
 // Analyzer (Verbose Mode - Default)
 // ============================================================================
 export {
-  // Verbose Analyzer (primary)
   VerboseAnalyzer,
   VerboseAnalysisError,
   createVerboseAnalyzer,
-  buildVerboseUserPrompt,
   type VerboseAnalyzerConfig,
-  // Knowledge Linking
-  KnowledgeLinker,
-  MockKnowledgeSource,
-  createKnowledgeLinker,
-  SupabaseKnowledgeSource,
-  createSupabaseKnowledgeSource,
-  type KnowledgeSource,
-  type LinkedKnowledge,
-  type LinkedInsight,
-  type DimensionKnowledge,
-  type KnowledgeContext,
-  type SupabaseKnowledgeSourceConfig,
-  // Dimension utilities
-  DIMENSION_KEYWORDS,
-  getKeywordConfig,
-  getModeFromScore,
-  getResourceLevel,
-  type InsightMode,
-  type ResourceLevel,
-  type DimensionKeywordConfig,
-  type DimensionMapping,
-  // Schema utilities
-  getEvaluationJsonSchema,
-  getEvaluationTool,
 } from './lib/analyzer/index';
 
 // ============================================================================

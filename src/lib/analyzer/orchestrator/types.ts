@@ -11,9 +11,11 @@
 
 import type { TokenUsage } from '../clients/gemini-client';
 import type { ParsedSession, SessionMetrics } from '../../domain/models/analysis';
+import type { VerboseEvaluation } from '../../models/verbose-evaluation';
 import type { Tier } from '../content-gateway';
 import type { SupportedLanguage } from '../stages/content-writer-prompts';
 import { getAgentConfig, type AgentId } from '../../domain/models';
+import type { IKnowledgeRepository, IProfessionalInsightRepository } from '../../application/ports/storage';
 
 // ============================================================================
 // Worker Result Types
@@ -231,12 +233,18 @@ export interface OrchestratorConfig {
 
   /** Log worker progress (default: false) */
   verbose?: boolean;
+
+  /** Knowledge repository for Phase 2.75 resource matching (optional — skipped if not provided) */
+  knowledgeRepo?: IKnowledgeRepository;
+
+  /** Professional insight repository for Phase 2.75 resource matching (optional — skipped if not provided) */
+  professionalInsightRepo?: IProfessionalInsightRepository;
 }
 
 /**
  * Default orchestrator configuration
  */
-export const DEFAULT_ORCHESTRATOR_CONFIG: Required<Omit<OrchestratorConfig, 'geminiApiKey'>> = {
+export const DEFAULT_ORCHESTRATOR_CONFIG: Required<Omit<OrchestratorConfig, 'geminiApiKey' | 'knowledgeRepo' | 'professionalInsightRepo'>> = {
   model: 'gemini-3-flash-preview',
   temperature: 1.0,
   maxOutputTokens: 65536,
@@ -300,6 +308,26 @@ export interface Phase2V2Results {
 
   /** Type Classification (Phase 2.5) */
   typeClassifier?: WorkerResult<TypeClassifierOutput>;
+}
+
+// ============================================================================
+// Analysis Result (Pipeline Output)
+// ============================================================================
+
+/**
+ * Complete analysis pipeline result
+ *
+ * Bundles VerboseEvaluation with Phase1Output so that:
+ * - Phase1Output can be stored in DB for evidence auditing
+ * - Phase1Output can be used for deterministic evidence verification
+ * - Callers don't need to track Phase1Output separately
+ */
+export interface AnalysisResult {
+  /** The final evaluation (tier-filtered) */
+  evaluation: VerboseEvaluation;
+
+  /** Raw Phase 1 extraction output (for DB storage and evidence auditing) */
+  phase1Output: Phase1Output;
 }
 
 // ============================================================================

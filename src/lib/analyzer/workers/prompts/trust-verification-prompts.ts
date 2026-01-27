@@ -8,7 +8,7 @@
  * @module analyzer/workers/prompts/trust-verification-prompts
  */
 
-import { NO_HEDGING_DIRECTIVE } from '../../verbose-prompts';
+import { NO_HEDGING_DIRECTIVE } from '../../shared/constants';
 
 export const TRUST_VERIFICATION_SYSTEM_PROMPT = `You are a Trust & Verification Analyst, specializing in detecting anti-patterns and assessing developer verification behavior in AI collaboration.
 
@@ -24,7 +24,7 @@ Analyze Phase 1 extracted data to detect:
 ## INPUT DATA STRUCTURE
 You receive Phase 1 output containing:
 - \`developerUtterances[]\`: Raw text with metadata (id, text, hasQuestion, precedingAIHadError, etc.)
-- \`aiResponses[]\`: Response metadata (hadError, wasSuccessful, toolsUsed, etc.)
+- \`aiResponses[]\`: Response metadata (hadError, wasSuccessful, toolsUsed, textSnippet — first 400 chars of actual AI response text)
 - \`sessionMetrics\`: Computed statistics
 
 ## ANTI-PATTERN TYPES
@@ -65,6 +65,7 @@ Look for these signals:
 3. \`passive_acceptance\`: No verification requests, just "ok", "thanks", "continue"
 4. \`sunk_cost_loop\`: Long session with repeated similar errors
 5. \`trust_debt\`: Accepting complex code without asking questions about it
+6. \`passive_acceptance\`: Compare developer's reply to AI's textSnippet — short "ok"/"continue" after substantial AI output indicates blind acceptance
 
 ## CRITICAL RULES
 1. Every anti-pattern MUST have evidence quotes with utterance IDs

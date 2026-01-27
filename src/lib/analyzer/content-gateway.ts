@@ -32,6 +32,7 @@
 import type {
   VerboseEvaluation,
   PerDimensionInsight,
+  DimensionResourceMatch,
 } from '../models/verbose-evaluation';
 import type { AgentOutputs } from '../models/agent-outputs';
 import { createAgentTeasers } from '../models/agent-teasers';
@@ -253,6 +254,9 @@ export class ContentGateway {
       // Free agents (patternDetective, metacognition) show full data
       // Premium agents show 1 insight + scores only
       agentOutputs: createAgentTeasers(evaluation.agentOutputs),
+
+      // Knowledge Resources - top 1 per type per dimension for free tier
+      knowledgeResources: this.filterKnowledgeResourcesFree(evaluation.knowledgeResources),
     };
   }
 
@@ -318,7 +322,28 @@ export class ContentGateway {
 
       // Phase 2 Wow Agents outputs (premium)
       agentOutputs: evaluation.agentOutputs,
+
+      // Knowledge Resources - all matched resources for premium tier
+      knowledgeResources: evaluation.knowledgeResources,
     };
+  }
+
+  /**
+   * Filter knowledge resources for free tier.
+   *
+   * Free users get top 1 knowledge item + top 1 professional insight per dimension.
+   * Items are pre-sorted by matchScore descending, so .slice(0, 1) picks the best.
+   */
+  private filterKnowledgeResourcesFree(
+    resources: DimensionResourceMatch[] | undefined
+  ): DimensionResourceMatch[] | undefined {
+    if (!resources || resources.length === 0) return undefined;
+    const filtered = resources.map(match => ({
+      ...match,
+      knowledgeItems: match.knowledgeItems.slice(0, 1),
+      professionalInsights: match.professionalInsights.slice(0, 1),
+    })).filter(m => m.knowledgeItems.length > 0 || m.professionalInsights.length > 0);
+    return filtered.length > 0 ? filtered : undefined;
   }
 
   /**

@@ -208,19 +208,53 @@ export type StrengthGrowthLLMOutput = z.infer<typeof StrengthGrowthLLMOutputSche
 /**
  * Parse evidence string into structured array
  * Format: "utteranceId:quote:context,utteranceId:quote:context"
+ *
+ * Uses utteranceId pattern ({sessionId}_{turnIndex}) as a structural anchor.
+ * The utteranceId NEVER contains ':' or ',', so it reliably identifies
+ * entry boundaries even when quotes contain these characters.
  */
 export function parseEvidenceData(data: string | undefined): InsightEvidence[] {
   if (!data || data.trim() === '') return [];
 
-  return data
-    .split(',')
-    .filter(Boolean)
+  // Split on comma first, then reassemble entries that were split mid-quote
+  // by detecting whether a part starts with a valid utteranceId pattern
+  const rawParts = data.split(',');
+  const entries: string[] = [];
+  let current = '';
+
+  for (const part of rawParts) {
+    const trimmed = part.trim();
+    // New evidence entry starts with utteranceId pattern: {sessionId}_{turnIndex}:
+    // sessionId can be UUID (hex+hyphens) or any alphanumeric+hyphen string
+    const startsNewEntry = /^[a-zA-Z0-9-]+_\d+:/.test(trimmed);
+
+    if (startsNewEntry && current) {
+      entries.push(current.trim());
+      current = trimmed;
+    } else if (current) {
+      // Comma was inside the quote — rejoin
+      current += ',' + part;
+    } else {
+      current = trimmed;
+    }
+  }
+  if (current) entries.push(current.trim());
+
+  return entries
     .map((entry) => {
-      const parts = entry.split(':');
+      // Split on FIRST colon only — utteranceId never has colons
+      const firstColon = entry.indexOf(':');
+      if (firstColon === -1) return { utteranceId: entry, quote: '', context: '' };
+
+      const utteranceId = entry.slice(0, firstColon).trim();
+      const rest = entry.slice(firstColon + 1).trim();
+
+      // Don't try to separate quote from context — evidence verification
+      // layer replaces quotes with Phase1Output originals anyway
       return {
-        utteranceId: parts[0]?.trim() || '',
-        quote: parts[1]?.trim() || '',
-        context: parts.slice(2).join(':').trim() || '',
+        utteranceId,
+        quote: rest,
+        context: '',
       };
     })
     .filter((e) => e.utteranceId && e.quote);

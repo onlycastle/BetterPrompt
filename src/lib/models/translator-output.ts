@@ -155,6 +155,9 @@ export const TranslatorOutputSchema = z.object({
     contextEfficiency: TranslatedAgentInsightEntrySchema.optional(),
     temporalAnalysis: TranslatedAgentInsightEntrySchema.optional(),
     multitasking: TranslatedAgentInsightEntrySchema.optional(),
+    strengthGrowth: TranslatedAgentInsightEntrySchema.optional(),
+    trustVerification: TranslatedAgentInsightEntrySchema.optional(),
+    workflowHabit: TranslatedAgentInsightEntrySchema.optional(),
   }).optional().describe('Translated Phase 2 agent insights — keep evidence quotes in original language'),
 
   /** Translated premium section text fields */

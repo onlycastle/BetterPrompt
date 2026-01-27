@@ -117,14 +117,10 @@ export class StrengthGrowthWorker extends BaseWorker<StrengthGrowthOutput> {
    * Returns a simplified object for JSON serialization (not the full schema type).
    */
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
-    // Limit utterances to prevent token overflow
-    const MAX_UTTERANCES = 100;
-    const MAX_AI_RESPONSES = 50;
-
     return {
-      developerUtterances: phase1.developerUtterances.slice(0, MAX_UTTERANCES).map((u) => ({
+      developerUtterances: phase1.developerUtterances.map((u) => ({
         id: u.id,
-        text: u.text.slice(0, 800), // Truncate long texts
+        text: u.text.slice(0, 800),
         sessionId: u.sessionId,
         turnIndex: u.turnIndex,
         characterCount: u.characterCount,
@@ -135,7 +131,7 @@ export class StrengthGrowthWorker extends BaseWorker<StrengthGrowthOutput> {
         precedingAIHadError: u.precedingAIHadError,
         timestamp: u.timestamp,
       })),
-      aiResponses: phase1.aiResponses.slice(0, MAX_AI_RESPONSES).map((r) => ({
+      aiResponses: phase1.aiResponses.map((r) => ({
         id: r.id,
         sessionId: r.sessionId,
         responseType: r.responseType,
@@ -144,6 +140,7 @@ export class StrengthGrowthWorker extends BaseWorker<StrengthGrowthOutput> {
         wasSuccessful: r.wasSuccessful,
         fullTextLength: r.fullTextLength,
         turnIndex: r.turnIndex,
+        textSnippet: r.textSnippet?.slice(0, 300),
       })),
       sessionMetrics: phase1.sessionMetrics,
     };

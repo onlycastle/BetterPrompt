@@ -278,6 +278,17 @@
   margin-top: var(--space-sm);
 }
 
+/* Evidence source tracking citation */
+.evidenceSource {
+  display: block;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-xs);
+  font-style: normal;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  opacity: 0.7;
+}
+
 /* Teaser for free users */
 .teaser {
   display: flex;

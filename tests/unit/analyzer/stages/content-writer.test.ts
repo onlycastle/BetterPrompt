@@ -322,6 +322,93 @@ describe('ContentWriterStage', () => {
     });
   });
 
+  describe('verifyEvidenceForInsight (C3 fix: index-based matching)', () => {
+    const callVerifyEvidence = (
+      stg: ContentWriterStage,
+      insight: any,
+      matchedEvidence: any[] | null,
+      utteranceLookup: Map<string, any>,
+      fallback?: any[]
+    ) => {
+      return (stg as any).verifyEvidenceForInsight(insight, matchedEvidence, utteranceLookup, fallback);
+    };
+
+    it('should verify evidence using pre-matched Phase 2 evidence (index-based)', () => {
+      const insight = { title: 'Engaging Title That Differs' };
+      const matchedEvidence = [
+        { utteranceId: 'sess1_5', quote: 'let me plan this out', context: 'planning' },
+      ];
+      const utteranceLookup = new Map([
+        ['sess1_5', { id: 'sess1_5', text: 'let me plan this out first before diving in' }],
+      ]);
+
+      const result = callVerifyEvidence(stage, insight, matchedEvidence, utteranceLookup);
+
+      expect(result.verified).toBe(1);
+      expect(result.replaced).toBe(0);
+      expect(result.removed).toBe(0);
+      expect(insight.evidence).toHaveLength(1);
+      expect(insight.evidence[0].utteranceId).toBe('sess1_5');
+    });
+
+    it('should replace mismatched quotes with originals', () => {
+      const insight = { title: 'Some Title' };
+      const matchedEvidence = [
+        { utteranceId: 'sess1_5', quote: 'completely different paraphrase', context: 'ctx' },
+      ];
+      const utteranceLookup = new Map([
+        ['sess1_5', { id: 'sess1_5', text: 'the actual original text that is completely different from paraphrase' }],
+      ]);
+
+      const result = callVerifyEvidence(stage, insight, matchedEvidence, utteranceLookup);
+
+      expect(result.replaced).toBe(1);
+      expect(insight.evidence[0].quote).toBe('the actual original text that is completely different from paraphrase');
+    });
+
+    it('should remove evidence with invalid utteranceId', () => {
+      const insight = { title: 'Some Title' };
+      const matchedEvidence = [
+        { utteranceId: 'nonexistent_99', quote: 'some quote', context: 'ctx' },
+      ];
+      const utteranceLookup = new Map<string, any>();
+
+      const result = callVerifyEvidence(stage, insight, matchedEvidence, utteranceLookup);
+
+      expect(result.removed).toBe(1);
+      expect(insight.evidence).toBeUndefined();
+    });
+
+    it('should fall back to title-based matching when no index match', () => {
+      const insight = { title: 'Exact Title Match' };
+      const fallback = [
+        {
+          title: 'Exact Title Match',
+          evidence: [{ utteranceId: 'sess1_3', quote: 'fallback evidence quote', context: '' }],
+        },
+      ];
+      const utteranceLookup = new Map([
+        ['sess1_3', { id: 'sess1_3', text: 'fallback evidence quote from the session' }],
+      ]);
+
+      const result = callVerifyEvidence(stage, insight, null, utteranceLookup, fallback);
+
+      expect(result.verified).toBe(1);
+      expect(insight.evidence).toHaveLength(1);
+    });
+
+    it('should return zero stats when no evidence available', () => {
+      const insight = { title: 'No Evidence Title' };
+      const utteranceLookup = new Map<string, any>();
+
+      const result = callVerifyEvidence(stage, insight, null, utteranceLookup);
+
+      expect(result.verified).toBe(0);
+      expect(result.replaced).toBe(0);
+      expect(result.removed).toBe(0);
+    });
+  });
+
   describe('calculateOverlapScore', () => {
     const callCalculateOverlapScore = (
       stg: ContentWriterStage,

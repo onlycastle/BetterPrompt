@@ -107,11 +107,8 @@ export class WorkflowHabitWorker extends BaseWorker<WorkflowHabitOutput> {
    * Includes tool usage counts and session start utterances for planning detection.
    */
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
-    const MAX_UTTERANCES = 100;
-    const MAX_AI_RESPONSES = 50;
-
     return {
-      developerUtterances: phase1.developerUtterances.slice(0, MAX_UTTERANCES).map((u) => ({
+      developerUtterances: phase1.developerUtterances.map((u) => ({
         id: u.id,
         text: u.text.slice(0, 600),
         sessionId: u.sessionId,
@@ -124,13 +121,14 @@ export class WorkflowHabitWorker extends BaseWorker<WorkflowHabitOutput> {
         precedingAIToolCalls: u.precedingAIToolCalls,
         timestamp: u.timestamp,
       })),
-      aiResponses: phase1.aiResponses.slice(0, MAX_AI_RESPONSES).map((r) => ({
+      aiResponses: phase1.aiResponses.map((r) => ({
         id: r.id,
         sessionId: r.sessionId,
         turnIndex: r.turnIndex,
         responseType: r.responseType,
         toolsUsed: r.toolsUsed,
         wasSuccessful: r.wasSuccessful,
+        textSnippet: r.textSnippet?.slice(0, 200),
       })),
       sessionMetrics: phase1.sessionMetrics,
     };

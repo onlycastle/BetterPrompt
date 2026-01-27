@@ -104,10 +104,8 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
    * Includes utterance lengths and session metrics for efficiency analysis.
    */
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
-    const MAX_UTTERANCES = 100;
-
     return {
-      developerUtterances: phase1.developerUtterances.slice(0, MAX_UTTERANCES).map((u) => ({
+      developerUtterances: phase1.developerUtterances.map((u) => ({
         id: u.id,
         text: u.text.slice(0, 1000), // Longer for context analysis
         sessionId: u.sessionId,

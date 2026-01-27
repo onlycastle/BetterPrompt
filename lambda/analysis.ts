@@ -194,7 +194,7 @@ interface AnalysisResponse {
     craftsman: number;
   };
   personalitySummary: string;
-  /** Actual token usage from LLM pipeline (for DEBUG_COST mode) */
+  /** Actual token usage from LLM pipeline (for DEBUG mode) */
   tokenUsage?: PipelineTokenUsage;
 }
 
@@ -545,11 +545,17 @@ async function validateAuthToken(
 
 /**
  * Store analysis result in Supabase
+ *
+ * @param resultId - Unique result identifier for URL
+ * @param evaluation - Tier-filtered VerboseEvaluation
+ * @param userId - Optional authenticated user ID
+ * @param phase1Output - Optional Phase1Output for evidence auditing and source tracking
  */
 async function storeResult(
   resultId: string,
   evaluation: VerboseEvaluation,
-  userId?: string
+  userId?: string,
+  phase1Output?: unknown
 ): Promise<boolean> {
   if (!isSupabaseConfigured()) {
     console.warn("Supabase not configured, skipping result storage");
@@ -565,7 +571,8 @@ async function storeResult(
     // Debug: log agentOutputs status before storage
     console.log(`[lambda] storeResult - hasAgentOutputs: ${!!evaluation.agentOutputs}`);
     console.log(`[lambda] storeResult - agentOutputs keys: ${evaluation.agentOutputs ? Object.keys(evaluation.agentOutputs).join(', ') : 'none'}`);
-    console.log(`[lambda] storeResult - typeSynthesis: ${evaluation.agentOutputs?.typeSynthesis ? 'present' : 'null'}`);
+    console.log(`[lambda] storeResult - typeClassifier: ${evaluation.agentOutputs?.typeClassifier ? 'present' : 'null'}`);
+    console.log(`[lambda] storeResult - hasPhase1Output: ${!!phase1Output}`);
 
     const insertData: Record<string, unknown> = {
       result_id: resultId,
@@ -573,6 +580,11 @@ async function storeResult(
       is_paid: false,
       expires_at: expiresAt.toISOString(),
     };
+
+    // Store Phase1Output for evidence auditing and source tracking
+    if (phase1Output) {
+      insertData.phase1_output = phase1Output;
+    }
 
     // Include user_id if provided (desktop app pre-authenticated flow)
     if (userId) {
@@ -725,20 +737,21 @@ async function runAnalysis(
     }
   }, 1000);
 
-  // Run analysis
+  // Run analysis - returns AnalysisResult with evaluation + phase1Output
   let evaluation: VerboseEvaluation;
+  let phase1Output: unknown;
   try {
     const analyzer = new VerboseAnalyzer({
-      pipeline: { mode: "two-stage" },
       tier: "enterprise",
-      fallbackToLegacy: false,
       geminiApiKey: userGeminiApiKey,
     });
 
     console.log("[lambda-analysis] Starting analyzeVerbose...");
-    evaluation = await analyzer.analyzeVerbose(parsedSessions, metrics, {
+    const analysisResult = await analyzer.analyzeVerbose(parsedSessions, metrics, {
       tier: "enterprise",
     });
+    evaluation = analysisResult.evaluation;
+    phase1Output = analysisResult.phase1Output;
     console.log("[lambda-analysis] analyzeVerbose completed successfully");
   } finally {
     clearInterval(heartbeatInterval);
@@ -752,9 +765,9 @@ async function runAnalysis(
     message: "Storing results...",
   });
 
-  // Generate result ID and store
+  // Generate result ID and store (includes phase1Output for evidence auditing)
   const resultId = generateResultId();
-  await storeResult(resultId, evaluation, userId);
+  await storeResult(resultId, evaluation, userId, phase1Output);
 
   // Progress: Complete
   write({
@@ -768,14 +781,14 @@ async function runAnalysis(
   const primaryType = evaluation.primaryType as CodingStyleType;
   const controlLevel = (evaluation.controlLevel || "developing") as AIControlLevel;
 
-  // Get controlScore, matrixName, matrixEmoji from TypeSynthesis agent or compute from constants
+  // Get controlScore, matrixName, matrixEmoji from TypeClassifier or compute from constants
   const controlScore = evaluation.controlScore
-    ?? evaluation.agentOutputs?.typeSynthesis?.controlScore
+    ?? evaluation.agentOutputs?.typeClassifier?.controlScore
     ?? 50;
-  const matrixName = evaluation.agentOutputs?.typeSynthesis?.matrixName
+  const matrixName = evaluation.agentOutputs?.typeClassifier?.matrixName
     ?? MATRIX_NAMES[primaryType]?.[controlLevel]
     ?? `${primaryType} ${controlLevel}`;
-  const matrixEmoji = evaluation.agentOutputs?.typeSynthesis?.matrixEmoji
+  const matrixEmoji = evaluation.agentOutputs?.typeClassifier?.matrixEmoji
     ?? MATRIX_METADATA[primaryType]?.[controlLevel]?.emoji
     ?? '🎯';
 

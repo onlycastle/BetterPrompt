@@ -28,6 +28,8 @@ import {
 import type { ParsedSession, ParsedMessage } from '../../models/session';
 import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
+import { strategicSampleUtterances, strategicSampleAIResponses } from '../shared/sampling-utils';
+import { PHASE1_MAX_UTTERANCES, PHASE1_MAX_AI_RESPONSES } from '../shared/constants';
 
 /**
  * DataExtractorWorker - Extracts raw text and structural metadata
@@ -39,6 +41,12 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   readonly name = 'DataExtractor';
   readonly phase = 1 as const;
   readonly minTier: Tier = 'free';
+
+  // Truncation/sampling limits to control downstream token usage
+  private static readonly MAX_TEXT_LENGTH = 2000;
+  private static readonly MAX_UTTERANCES = PHASE1_MAX_UTTERANCES;
+  private static readonly MAX_AI_RESPONSES = PHASE1_MAX_AI_RESPONSES;
+  private static readonly TRUNCATION_MARKER = '... [truncated]';
 
   constructor(config?: OrchestratorConfig) {
     if (config) {
@@ -64,29 +72,39 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   async execute(context: WorkerContext): Promise<WorkerResult<Phase1Output>> {
     this.log(`Extracting from ${context.sessions.length} sessions...`);
 
-    const developerUtterances: DeveloperUtterance[] = [];
-    const aiResponses: AIResponse[] = [];
+    const allDeveloperUtterances: DeveloperUtterance[] = [];
+    const allAIResponses: AIResponse[] = [];
 
-    // Process each session
+    // Process each session — extract ALL utterances/responses first
     for (const session of context.sessions) {
       const { utterances, responses } = this.extractFromSession(session);
-      developerUtterances.push(...utterances);
-      aiResponses.push(...responses);
+      allDeveloperUtterances.push(...utterances);
+      allAIResponses.push(...responses);
     }
 
-    // Compute session metrics
-    const sessionMetrics = this.computeSessionMetrics(context.sessions, developerUtterances);
+    // Compute metrics from FULL data (preserves accurate totals)
+    const sessionMetrics = this.computeSessionMetrics(context.sessions, allDeveloperUtterances);
+
+    // Apply strategic sampling to reduce downstream token usage
+    const sampledUtterances = this.sampleUtterances(allDeveloperUtterances, DataExtractorWorker.MAX_UTTERANCES);
+    const sampledResponses = this.sampleAIResponses(allAIResponses, DataExtractorWorker.MAX_AI_RESPONSES);
 
     const output: Phase1Output = {
-      developerUtterances,
-      aiResponses,
+      developerUtterances: sampledUtterances,
+      aiResponses: sampledResponses,
       sessionMetrics,
       extractionConfidence: this.computeExtractionConfidence(context.sessions),
-      extractionWarnings: this.generateWarnings(context.sessions, developerUtterances),
+      extractionWarnings: this.generateWarnings(
+        context.sessions,
+        allDeveloperUtterances,
+        sampledUtterances,
+        allAIResponses,
+        sampledResponses
+      ),
     };
 
-    this.log(`Extracted ${developerUtterances.length} utterances`);
-    this.log(`Extracted ${aiResponses.length} AI responses`);
+    this.log(`Extracted ${allDeveloperUtterances.length} utterances, sampled to ${sampledUtterances.length}`);
+    this.log(`Extracted ${allAIResponses.length} AI responses, sampled to ${sampledResponses.length}`);
 
     // No token usage since this is deterministic extraction
     return this.createSuccessResult(output, null);
@@ -136,7 +154,8 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     turnIndex: number,
     precedingAI: ParsedMessage | null
   ): DeveloperUtterance {
-    const text = message.content;
+    const originalText = message.content;
+    const text = this.truncateText(originalText, DataExtractorWorker.MAX_TEXT_LENGTH);
     const id = `${session.sessionId}_${turnIndex}`;
 
     return {
@@ -146,13 +165,13 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       sessionId: session.sessionId,
       turnIndex,
 
-      // Structural metadata (computed, NOT LLM)
-      characterCount: text.length,
-      wordCount: this.countWords(text),
-      hasCodeBlock: this.hasCodeBlock(text),
-      hasQuestion: this.hasQuestion(text),
+      // Structural metadata computed from ORIGINAL text (preserves accurate metrics)
+      characterCount: originalText.length,
+      wordCount: this.countWords(originalText),
+      hasCodeBlock: this.hasCodeBlock(originalText),
+      hasQuestion: this.hasQuestion(originalText),
       isSessionStart: turnIndex === 0,
-      isContinuation: this.isContinuation(text),
+      isContinuation: this.isContinuation(originalText),
 
       // Context from preceding AI response
       precedingAIToolCalls: precedingAI?.toolCalls?.map(tc => tc.name),
@@ -322,7 +341,10 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    */
   private generateWarnings(
     sessions: ParsedSession[],
-    utterances: DeveloperUtterance[]
+    allUtterances: DeveloperUtterance[],
+    sampledUtterances?: DeveloperUtterance[],
+    allResponses?: AIResponse[],
+    sampledResponses?: AIResponse[]
   ): string[] {
     const warnings: string[] = [];
 
@@ -330,19 +352,85 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       warnings.push('Few sessions available - analysis may be limited');
     }
 
-    if (utterances.length < 10) {
+    if (allUtterances.length < 10) {
       warnings.push('Few developer utterances - insights may be limited');
     }
 
-    const avgLength = utterances.length > 0
-      ? utterances.reduce((sum, u) => sum + u.characterCount, 0) / utterances.length
+    const avgLength = allUtterances.length > 0
+      ? allUtterances.reduce((sum, u) => sum + u.characterCount, 0) / allUtterances.length
       : 0;
 
     if (avgLength < 50) {
       warnings.push('Short average message length - may indicate brief interactions');
     }
 
+    // Report sampling stats
+    if (sampledUtterances && sampledUtterances.length < allUtterances.length) {
+      warnings.push(
+        `Utterances sampled: ${sampledUtterances.length}/${allUtterances.length} (strategic sampling applied)`
+      );
+    }
+
+    if (allResponses && sampledResponses && sampledResponses.length < allResponses.length) {
+      warnings.push(
+        `AI responses sampled: ${sampledResponses.length}/${allResponses.length} (strategic sampling applied)`
+      );
+    }
+
+    // Report text truncation stats
+    const truncatedCount = (sampledUtterances ?? allUtterances)
+      .filter(u => u.text.endsWith(DataExtractorWorker.TRUNCATION_MARKER))
+      .length;
+    if (truncatedCount > 0) {
+      warnings.push(`${truncatedCount} utterance(s) truncated to ${DataExtractorWorker.MAX_TEXT_LENGTH} chars`);
+    }
+
     return warnings;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Truncation & Sampling Methods
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Truncate text at word boundary, appending marker if truncated.
+   * Falls back to hard cut if word boundary is too far back (>20%).
+   */
+  private truncateText(text: string, maxLength: number): string {
+    if (text.length <= maxLength) return text;
+
+    const cutPoint = maxLength - DataExtractorWorker.TRUNCATION_MARKER.length;
+    const lastSpace = text.lastIndexOf(' ', cutPoint);
+
+    // Use word boundary if it's within 20% of the cut point
+    const minAcceptable = cutPoint * 0.8;
+    const truncated = lastSpace > minAcceptable
+      ? text.slice(0, lastSpace)
+      : text.slice(0, cutPoint);
+
+    return truncated + DataExtractorWorker.TRUNCATION_MARKER;
+  }
+
+  /**
+   * Strategic sampling of developer utterances.
+   * Delegates to shared utility (bookend + even spacing strategy).
+   */
+  private sampleUtterances(
+    all: DeveloperUtterance[],
+    maxCount: number
+  ): DeveloperUtterance[] {
+    return strategicSampleUtterances(all, maxCount);
+  }
+
+  /**
+   * Strategic sampling of AI responses.
+   * Delegates to shared utility (error-prioritized + even spacing strategy).
+   */
+  private sampleAIResponses(
+    all: AIResponse[],
+    maxCount: number
+  ): AIResponse[] {
+    return strategicSampleAIResponses(all, maxCount);
   }
 
   // ─────────────────────────────────────────────────────────────────────────

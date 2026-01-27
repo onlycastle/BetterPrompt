@@ -2,29 +2,28 @@
  * Cost Estimator - Token counting and API cost calculation
  *
  * Estimates the cost of running analysis based on:
- * - Session content token count (with truncation matching actual stages)
- * - System prompt overhead per stage
+ * - Phase1Output size (estimated from session message counts)
+ * - System prompt overhead per LLM stage
  * - Expected output tokens per stage
  * - Model-specific pricing
  *
- * Three-stage pipeline:
- * - Stage 1A: Data Analyst (input: sessions, output: StructuredAnalysisData)
- * - Stage 1B: Personality Analyst (input: sessions, output: PersonalityProfile)
- * - Stage 2: Content Writer (input: Stage 1A + 1B outputs, output: final report)
+ * Multi-phase pipeline (7-8 LLM calls):
+ * - Phase 1: DataExtractor (deterministic, no LLM)
+ * - Phase 2: 5 insight workers in parallel (StrengthGrowth, TrustVerification,
+ *            WorkflowHabit, KnowledgeGap, ContextEfficiency)
+ * - Phase 2.5: TypeClassifier (1 LLM call)
+ * - Phase 3: ContentWriter (1 LLM call, always English)
+ * - Phase 4: Translator (1 LLM call, conditional — only for non-English users)
  *
  * Based on CLI package implementation, adapted for Electron (CJS).
+ * // SYNC: Keep in sync with src/lib/analyzer/cost-estimator.ts
  */
 
 import type { ParsedSession } from './session-formatter';
-import {
-  countFormattedTokens,
-  DATA_ANALYST_FORMAT,
-  PERSONALITY_ANALYST_FORMAT,
-} from './session-formatter';
 
 /**
  * Model pricing configuration (per token)
- * Gemini 3 Flash is used for the three-stage analysis pipeline
+ * Gemini 3 Flash is used for the multi-phase analysis pipeline
  */
 const GEMINI_PRICING = {
   'gemini-3-flash-preview': {
@@ -35,45 +34,59 @@ const GEMINI_PRICING = {
 };
 
 /**
- * System prompt tokens per stage (approximate)
+ * System prompt tokens per LLM stage (approximate)
  */
 const SYSTEM_PROMPT_TOKENS_PER_STAGE = 2500;
 
 /**
- * Schema overhead tokens per stage
+ * Schema overhead tokens per LLM stage
  */
 const SCHEMA_OVERHEAD_PER_STAGE = 1500;
 
 /**
- * Number of LLM stages in the pipeline
+ * Per-stage overhead (system prompt + schema)
  */
-const PIPELINE_STAGES = 3;
+const STAGE_OVERHEAD = SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
 
 /**
- * Estimated output tokens per stage (generous 2x buffer)
- * - Data Analyst: ~8000 (structured data extraction)
- * - Personality Analyst: ~4000 (personality profile)
- * - Content Writer: ~12000 (final narrative report)
+ * Number of LLM stages in the pipeline (7 base, +1 conditional translator)
+ */
+const PIPELINE_LLM_STAGES = 8;
+
+/**
+ * Estimated output tokens per stage
  */
 const ESTIMATED_OUTPUT_PER_STAGE = {
-  dataAnalyst: 8000,
-  personalityAnalyst: 4000,
+  strengthGrowth: 8000,
+  trustVerification: 8000,
+  workflowHabit: 8000,
+  knowledgeGap: 4000,
+  contextEfficiency: 4000,
+  typeClassifier: 2000,
   contentWriter: 12000,
+  translator: 10000,
 };
 
 /**
- * Content Writer receives Stage 1A + 1B outputs as input
- * Estimate based on typical output sizes
+ * Phase1 sampling limits (must match src/lib/analyzer/shared/constants.ts)
  */
-const CONTENT_WRITER_INPUT_FROM_STAGES = 12000;
+const PHASE1_MAX_UTTERANCES = 500;
+const PHASE1_MAX_AI_RESPONSES = 350;
+
+/**
+ * Phase1Output token estimation constants
+ */
+const TOKENS_PER_UTTERANCE = 250;
+const TOKENS_PER_AI_RESPONSE = 100;
 
 /**
  * Stage-specific breakdown for cost estimation
  */
 export interface StageBreakdown {
-  dataAnalystInput: number;
-  personalityAnalystInput: number;
+  phase2WorkersInput: number;
+  typeClassifierInput: number;
   contentWriterInput: number;
+  translatorInput: number;
   systemPromptOverhead: number;
   schemaOverhead: number;
 }
@@ -88,7 +101,7 @@ export interface CostEstimate {
 
 /**
  * Legacy token counter for raw content (used during scanning)
- * @deprecated Use countFormattedTokens for accurate estimation
+ * @deprecated Use estimatePhase1OutputTokens for accurate estimation
  */
 export function countTokensAccurate(text: string): number {
   if (!text) return 0;
@@ -115,32 +128,64 @@ export function countTokensAccurate(text: string): number {
 }
 
 /**
+ * Estimate Phase1Output token count from session data
+ */
+function estimatePhase1OutputTokens(sessions: ParsedSession[]): number {
+  const totalMessages = sessions.reduce((sum, s) => sum + s.messages.length, 0);
+
+  // Approximate: ~60% user messages, ~40% assistant messages
+  const userMessages = Math.ceil(totalMessages * 0.6);
+  const assistantMessages = totalMessages - userMessages;
+
+  // Apply Phase 1 sampling limits
+  const sampledUtterances = Math.min(userMessages, PHASE1_MAX_UTTERANCES);
+  const sampledAiResponses = Math.min(assistantMessages, PHASE1_MAX_AI_RESPONSES);
+
+  // Session metrics overhead (~500 tokens for structured metadata)
+  const metricsOverhead = 500;
+
+  return (sampledUtterances * TOKENS_PER_UTTERANCE) +
+    (sampledAiResponses * TOKENS_PER_AI_RESPONSE) +
+    metricsOverhead;
+}
+
+/**
  * Estimate the cost of running analysis on parsed sessions
- * Uses the same truncation logic as actual analysis stages
  */
 export function estimateAnalysisCost(sessions: ParsedSession[]): CostEstimate {
   const pricing = GEMINI_PRICING['gemini-3-flash-preview'];
 
-  // Calculate session tokens using the same truncation as actual stages
-  const dataAnalystSessionTokens = countFormattedTokens(sessions, DATA_ANALYST_FORMAT);
-  const personalitySessionTokens = countFormattedTokens(sessions, PERSONALITY_ANALYST_FORMAT);
+  // Estimate Phase1Output size (shared input for Phase 2 workers)
+  const phase1OutputTokens = estimatePhase1OutputTokens(sessions);
 
-  // System prompt and schema overhead for each stage
-  const systemPromptOverhead = SYSTEM_PROMPT_TOKENS_PER_STAGE * PIPELINE_STAGES;
-  const schemaOverhead = SCHEMA_OVERHEAD_PER_STAGE * PIPELINE_STAGES;
+  // System prompt and schema overhead across all LLM stages
+  const systemPromptOverhead = SYSTEM_PROMPT_TOKENS_PER_STAGE * PIPELINE_LLM_STAGES;
+  const schemaOverhead = SCHEMA_OVERHEAD_PER_STAGE * PIPELINE_LLM_STAGES;
 
-  // Total input tokens per stage
-  const dataAnalystInput = dataAnalystSessionTokens + SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
-  const personalityInput = personalitySessionTokens + SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
-  const contentWriterInput = CONTENT_WRITER_INPUT_FROM_STAGES + SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
+  // Phase 2: 5 workers, each receives Phase1Output + overhead
+  const phase2WorkersInput = 5 * (phase1OutputTokens + STAGE_OVERHEAD);
 
-  const totalInputTokens = dataAnalystInput + personalityInput + contentWriterInput;
+  // Phase 2.5: TypeClassifier receives ~6K tokens (agent output summaries + overhead)
+  const typeClassifierInput = 6000 + STAGE_OVERHEAD;
+
+  // Phase 3: ContentWriter receives Phase1Output + AgentOutputs (~9.5K combined)
+  const contentWriterInput = 9500 + STAGE_OVERHEAD;
+
+  // Phase 4: Translator (conditional — receives ContentWriter output ~14K)
+  const translatorInput = 14000 + STAGE_OVERHEAD;
+
+  const totalInputTokens = phase2WorkersInput + typeClassifierInput + contentWriterInput + translatorInput;
 
   // Total output tokens
   const totalOutputTokens =
-    ESTIMATED_OUTPUT_PER_STAGE.dataAnalyst +
-    ESTIMATED_OUTPUT_PER_STAGE.personalityAnalyst +
-    ESTIMATED_OUTPUT_PER_STAGE.contentWriter;
+    ESTIMATED_OUTPUT_PER_STAGE.strengthGrowth +
+    ESTIMATED_OUTPUT_PER_STAGE.trustVerification +
+    ESTIMATED_OUTPUT_PER_STAGE.workflowHabit +
+    ESTIMATED_OUTPUT_PER_STAGE.knowledgeGap +
+    ESTIMATED_OUTPUT_PER_STAGE.contextEfficiency +
+    ESTIMATED_OUTPUT_PER_STAGE.typeClassifier +
+    ESTIMATED_OUTPUT_PER_STAGE.contentWriter +
+    ESTIMATED_OUTPUT_PER_STAGE.translator;
 
   const totalCost = totalInputTokens * pricing.input + totalOutputTokens * pricing.output;
 
@@ -149,9 +194,10 @@ export function estimateAnalysisCost(sessions: ParsedSession[]): CostEstimate {
     estimatedOutputTokens: totalOutputTokens,
     totalCost,
     breakdown: {
-      dataAnalystInput,
-      personalityAnalystInput: personalityInput,
+      phase2WorkersInput,
+      typeClassifierInput,
       contentWriterInput,
+      translatorInput,
       systemPromptOverhead,
       schemaOverhead,
     },
@@ -174,32 +220,41 @@ export function formatCostEstimateForUI(
   totalOutputTokens: number;
   totalCost: string;
   breakdown: {
-    dataAnalyst: number;
-    personalityAnalyst: number;
+    phase2Workers: number;
+    typeClassifier: number;
     contentWriter: number;
+    translator: number;
   };
   outputBreakdown: {
-    dataAnalyst: number;
-    personalityAnalyst: number;
+    phase2Workers: number;
+    typeClassifier: number;
     contentWriter: number;
+    translator: number;
   };
 } {
   return {
     sessionCount,
     modelName: estimate.modelName,
-    pipeline: '3-stage (Data → Personality → Content)',
+    pipeline: '7-8 LLM calls (Workers → TypeClassifier → Content → Translator)',
     totalInputTokens: estimate.totalInputTokens,
     totalOutputTokens: estimate.estimatedOutputTokens,
     totalCost: `$${estimate.totalCost.toFixed(4)}`,
     breakdown: {
-      dataAnalyst: estimate.breakdown.dataAnalystInput,
-      personalityAnalyst: estimate.breakdown.personalityAnalystInput,
+      phase2Workers: estimate.breakdown.phase2WorkersInput,
+      typeClassifier: estimate.breakdown.typeClassifierInput,
       contentWriter: estimate.breakdown.contentWriterInput,
+      translator: estimate.breakdown.translatorInput,
     },
     outputBreakdown: {
-      dataAnalyst: ESTIMATED_OUTPUT_PER_STAGE.dataAnalyst,
-      personalityAnalyst: ESTIMATED_OUTPUT_PER_STAGE.personalityAnalyst,
+      phase2Workers:
+        ESTIMATED_OUTPUT_PER_STAGE.strengthGrowth +
+        ESTIMATED_OUTPUT_PER_STAGE.trustVerification +
+        ESTIMATED_OUTPUT_PER_STAGE.workflowHabit +
+        ESTIMATED_OUTPUT_PER_STAGE.knowledgeGap +
+        ESTIMATED_OUTPUT_PER_STAGE.contextEfficiency,
+      typeClassifier: ESTIMATED_OUTPUT_PER_STAGE.typeClassifier,
       contentWriter: ESTIMATED_OUTPUT_PER_STAGE.contentWriter,
+      translator: ESTIMATED_OUTPUT_PER_STAGE.translator,
     },
   };
 }

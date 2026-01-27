@@ -7,9 +7,24 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Card } from '../../ui/Card';
 import { ResourceBubble } from './ResourceBubble';
-import type { PerDimensionInsight, DimensionName } from '../../../types/verbose';
+import type { PerDimensionInsight, DimensionName, Evidence } from '../../../types/verbose';
 import type { ParsedResource } from '../../../lib/models/agent-outputs';
 import styles from './DimensionInsightsClean.module.css';
+
+/**
+ * Extract display quote from evidence (handles both string and EvidenceItem formats)
+ */
+function getEvidenceQuote(evidence: Evidence): string {
+  if (typeof evidence === 'string') return evidence;
+  return evidence.quote;
+}
+
+/**
+ * Check if evidence has source tracking metadata (EvidenceItem format)
+ */
+function hasSourceTracking(evidence: Evidence): evidence is { utteranceId: string; quote: string; sessionId?: string } {
+  return typeof evidence === 'object' && 'utteranceId' in evidence;
+}
 
 interface DimensionInsightsCleanProps {
   insights: PerDimensionInsight[];
@@ -119,9 +134,14 @@ function DimensionCard({ insight, isPaid, resourcesMap }: DimensionCardProps) {
                   {/* Show up to MAX_EVIDENCE_QUOTES quotes for richer evidence display */}
                   {strength.evidence && strength.evidence.length > 0 && (
                     <div className={styles.evidenceQuotes}>
-                      {strength.evidence.slice(0, MAX_EVIDENCE_QUOTES).map((quote, qIdx) => (
+                      {strength.evidence.slice(0, MAX_EVIDENCE_QUOTES).map((ev, qIdx) => (
                         <blockquote key={qIdx} className={styles.itemQuote}>
-                          "{quote}"
+                          &ldquo;{getEvidenceQuote(ev)}&rdquo;
+                          {hasSourceTracking(ev) && ev.sessionId && (
+                            <cite className={styles.evidenceSource}>
+                              Session: {ev.sessionId.slice(-8)}
+                            </cite>
+                          )}
                         </blockquote>
                       ))}
                     </div>
@@ -151,9 +171,14 @@ function DimensionCard({ insight, isPaid, resourcesMap }: DimensionCardProps) {
                       {/* Show up to MAX_EVIDENCE_QUOTES quotes for richer evidence display */}
                       {growth.evidence && growth.evidence.length > 0 && (
                         <div className={styles.evidenceQuotes}>
-                          {growth.evidence.slice(0, MAX_EVIDENCE_QUOTES).map((quote, qIdx) => (
+                          {growth.evidence.slice(0, MAX_EVIDENCE_QUOTES).map((ev, qIdx) => (
                             <blockquote key={qIdx} className={styles.itemQuote}>
-                              "{quote}"
+                              &ldquo;{getEvidenceQuote(ev)}&rdquo;
+                              {hasSourceTracking(ev) && ev.sessionId && (
+                                <cite className={styles.evidenceSource}>
+                                  Session: {ev.sessionId.slice(-8)}
+                                </cite>
+                              )}
                             </blockquote>
                           ))}
                         </div>
