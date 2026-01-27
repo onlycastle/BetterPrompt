@@ -2,23 +2,22 @@
  * Cost Estimator - Token counting and API cost calculation
  *
  * Estimates the cost of running verbose analysis based on:
- * - Session content token count (using same truncation as actual stages)
- * - System prompt overhead per stage
+ * - Phase1Output size (estimated from session message counts)
+ * - System prompt overhead per LLM stage
  * - Expected output tokens per stage
  * - Model-specific pricing
  *
- * Three-stage pipeline:
- * - Stage 1A: Data Analyst (input: sessions, output: StructuredAnalysisData)
- * - Stage 1B: Personality Analyst (input: sessions, output: PersonalityProfile)
- * - Stage 2: Content Writer (input: Stage 1A + 1B outputs, output: final report)
+ * Multi-phase pipeline (7-8 LLM calls):
+ * - Phase 1: DataExtractor (deterministic, no LLM)
+ * - Phase 2: 5 insight workers in parallel (StrengthGrowth, TrustVerification,
+ *            WorkflowHabit, KnowledgeGap, ContextEfficiency)
+ * - Phase 2.5: TypeClassifier (1 LLM call)
+ * - Phase 3: ContentWriter (1 LLM call, always English)
+ * - Phase 4: Translator (1 LLM call, conditional — only for non-English users)
  */
 
 import { type ParsedSession } from '../domain/models/analysis';
-import {
-  countFormattedTokens,
-  DATA_ANALYST_FORMAT,
-  PERSONALITY_ANALYST_FORMAT,
-} from './shared/session-formatter';
+import { PHASE1_MAX_UTTERANCES, PHASE1_MAX_AI_RESPONSES } from './shared/constants';
 
 /**
  * Model pricing configuration
@@ -43,47 +42,19 @@ export const GEMINI_PRICING: ModelPricing = {
 };
 
 /**
- * Anthropic pricing as of 2025 (per token)
- * Used for legacy single-stage mode fallback
- */
-export const ANTHROPIC_PRICING: ModelPricing = {
-  'claude-sonnet-4-20250514': {
-    input: 3.0 / 1_000_000,
-    output: 15.0 / 1_000_000,
-    name: 'Claude Sonnet 4',
-  },
-  'claude-opus-4-20250514': {
-    input: 15.0 / 1_000_000,
-    output: 75.0 / 1_000_000,
-    name: 'Claude Opus 4',
-  },
-  'claude-opus-4-5-20251101': {
-    input: 15.0 / 1_000_000,
-    output: 75.0 / 1_000_000,
-    name: 'Claude Opus 4.5',
-  },
-  'claude-3-5-haiku-20241022': {
-    input: 0.8 / 1_000_000,
-    output: 4.0 / 1_000_000,
-    name: 'Claude 3.5 Haiku',
-  },
-};
-
-/**
- * Combined pricing lookup (Gemini first, then Anthropic for legacy)
- */
-export const ALL_PRICING: ModelPricing = {
-  ...GEMINI_PRICING,
-  ...ANTHROPIC_PRICING,
-};
-
-/**
  * Stage-specific breakdown for cost estimation
+ *
+ * Reflects the current multi-phase pipeline:
+ * - phase2Workers: 5 parallel LLM calls (StrengthGrowth, TrustVerification, etc.)
+ * - typeClassifier: Phase 2.5 (1 LLM call)
+ * - contentWriter: Phase 3 (1 LLM call)
+ * - translator: Phase 4 (1 LLM call, conditional)
  */
 export interface StageBreakdown {
-  dataAnalystInput: number;
-  personalityAnalystInput: number;
+  phase2WorkersInput: number;
+  typeClassifierInput: number;
   contentWriterInput: number;
+  translatorInput: number;
   systemPromptOverhead: number;
   schemaOverhead: number;
 }
@@ -98,89 +69,89 @@ export interface CostEstimate {
 }
 
 /**
- * Count tokens more accurately using character-based heuristics
- * with adjustments for common patterns
- *
- * @deprecated Use countFormattedTokens from shared/session-formatter instead
- */
-export function countTokensAccurate(text: string): number {
-  if (!text) return 0;
-
-  // Base estimate: ~4 chars per token for English
-  let baseCount = text.length / 4;
-
-  // Adjustments for code (more tokens due to symbols)
-  const codeBlockMatches = text.match(/```[\s\S]*?```/g);
-  const codeBlockCount = codeBlockMatches ? codeBlockMatches.length : 0;
-  baseCount += codeBlockCount * 50; // Code blocks are token-heavy
-
-  // JSON structure overhead
-  const jsonBraceMatches = text.match(/[{}[\]]/g);
-  const jsonBraceCount = jsonBraceMatches ? jsonBraceMatches.length : 0;
-  baseCount += jsonBraceCount * 0.5;
-
-  // Newlines and whitespace
-  const newlineMatches = text.match(/\n/g);
-  const newlineCount = newlineMatches ? newlineMatches.length : 0;
-  baseCount += newlineCount * 0.1;
-
-  // Special characters in code
-  const specialCharMatches = text.match(/[<>()=;:,."'`]/g);
-  const specialCharCount = specialCharMatches ? specialCharMatches.length : 0;
-  baseCount += specialCharCount * 0.1;
-
-  return Math.ceil(baseCount);
-}
-
-/**
- * System prompt tokens per stage (approximate)
+ * System prompt tokens per LLM stage (approximate)
  */
 const SYSTEM_PROMPT_TOKENS_PER_STAGE = 2500;
 
 /**
- * Schema overhead tokens per stage
+ * Schema overhead tokens per LLM stage
  */
 const SCHEMA_OVERHEAD_PER_STAGE = 1500;
 
 /**
- * Number of LLM stages in the pipeline
- * - Data Analyst (Stage 1A)
- * - Personality Analyst (Stage 1B)
- * - Content Writer (Stage 2)
+ * Per-stage overhead (system prompt + schema)
  */
-const PIPELINE_STAGES = 3;
+const STAGE_OVERHEAD = SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
 
 /**
- * Estimated output tokens per stage (generous 2x buffer)
- * - Data Analyst: ~8000 (structured data extraction)
- * - Personality Analyst: ~4000 (personality profile)
- * - Content Writer: ~12000 (final narrative report)
+ * Number of LLM stages in the pipeline (7 base, +1 conditional translator)
+ * - Phase 2: 5 workers (StrengthGrowth, TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency)
+ * - Phase 2.5: TypeClassifier (1 call)
+ * - Phase 3: ContentWriter (1 call)
+ * - Phase 4: Translator (1 call, conditional)
+ */
+const PIPELINE_LLM_STAGES = 8;
+
+/**
+ * Estimated output tokens per stage
  */
 const ESTIMATED_OUTPUT_PER_STAGE = {
-  dataAnalyst: 8000,
-  personalityAnalyst: 4000,
+  strengthGrowth: 8000,
+  trustVerification: 8000,
+  workflowHabit: 8000,
+  knowledgeGap: 4000,
+  contextEfficiency: 4000,
+  typeClassifier: 2000,
   contentWriter: 12000,
+  translator: 10000,
 };
 
 /**
- * Content Writer receives Stage 1A + 1B outputs as input
- * Estimate based on typical output sizes (generous 2x buffer)
+ * Phase1Output token estimation constants
+ * Per-utterance: ~250 tokens (text + metadata)
+ * Per-AI-response: ~100 tokens (summary)
  */
-const CONTENT_WRITER_INPUT_FROM_STAGES = 12000; // ~8000 + ~4000 from prior stages
+const TOKENS_PER_UTTERANCE = 250;
+const TOKENS_PER_AI_RESPONSE = 100;
+
+/**
+ * Estimate Phase1Output token count from session data
+ *
+ * Phase1Output contains sampled developer utterances and AI response summaries.
+ * DataExtractor samples up to PHASE1_MAX_UTTERANCES and PHASE1_MAX_AI_RESPONSES.
+ */
+export function estimatePhase1OutputTokens(sessions: ParsedSession[]): number {
+  // Count total messages across all sessions
+  const totalMessages = sessions.reduce((sum, s) => sum + s.messages.length, 0);
+
+  // Approximate: ~60% user messages, ~40% assistant messages
+  const userMessages = Math.ceil(totalMessages * 0.6);
+  const assistantMessages = totalMessages - userMessages;
+
+  // Apply Phase 1 sampling limits
+  const sampledUtterances = Math.min(userMessages, PHASE1_MAX_UTTERANCES);
+  const sampledAiResponses = Math.min(assistantMessages, PHASE1_MAX_AI_RESPONSES);
+
+  // Session metrics overhead (~500 tokens for structured metadata)
+  const metricsOverhead = 500;
+
+  return (sampledUtterances * TOKENS_PER_UTTERANCE) +
+    (sampledAiResponses * TOKENS_PER_AI_RESPONSE) +
+    metricsOverhead;
+}
 
 /**
  * Estimate the cost of running verbose analysis
  *
- * Default model is Gemini 3 Flash (three-stage pipeline).
+ * Default model is Gemini 3 Flash (multi-phase pipeline).
  * Falls back to Gemini pricing for unknown models.
  */
 export function estimateAnalysisCost(
   sessions: ParsedSession[],
   model: string = 'gemini-3-flash-preview'
 ): CostEstimate {
-  const pricing = ALL_PRICING[model];
+  const pricing = GEMINI_PRICING[model];
   if (!pricing) {
-    // Fallback to Gemini 3 Flash pricing for unknown models
     const fallbackPricing = GEMINI_PRICING['gemini-3-flash-preview'];
     return estimateWithPricing(sessions, model, fallbackPricing, 'Unknown Model');
   }
@@ -194,26 +165,37 @@ function estimateWithPricing(
   pricing: { input: number; output: number },
   modelName: string
 ): CostEstimate {
-  // Calculate session tokens using the same truncation as actual stages
-  const dataAnalystSessionTokens = countFormattedTokens(sessions, DATA_ANALYST_FORMAT);
-  const personalitySessionTokens = countFormattedTokens(sessions, PERSONALITY_ANALYST_FORMAT);
+  // Estimate Phase1Output size (shared input for Phase 2 workers)
+  const phase1OutputTokens = estimatePhase1OutputTokens(sessions);
 
-  // System prompt and schema overhead for each stage
-  const systemPromptOverhead = SYSTEM_PROMPT_TOKENS_PER_STAGE * PIPELINE_STAGES;
-  const schemaOverhead = SCHEMA_OVERHEAD_PER_STAGE * PIPELINE_STAGES;
+  // System prompt and schema overhead across all LLM stages
+  const systemPromptOverhead = SYSTEM_PROMPT_TOKENS_PER_STAGE * PIPELINE_LLM_STAGES;
+  const schemaOverhead = SCHEMA_OVERHEAD_PER_STAGE * PIPELINE_LLM_STAGES;
 
-  // Total input tokens per stage
-  const dataAnalystInput = dataAnalystSessionTokens + SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
-  const personalityInput = personalitySessionTokens + SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
-  const contentWriterInput = CONTENT_WRITER_INPUT_FROM_STAGES + SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
+  // Phase 2: 5 workers, each receives Phase1Output + overhead
+  const phase2WorkersInput = 5 * (phase1OutputTokens + STAGE_OVERHEAD);
 
-  const totalInputTokens = dataAnalystInput + personalityInput + contentWriterInput;
+  // Phase 2.5: TypeClassifier receives ~6K tokens (agent output summaries + overhead)
+  const typeClassifierInput = 6000 + STAGE_OVERHEAD;
+
+  // Phase 3: ContentWriter receives Phase1Output + AgentOutputs (~9.5K combined)
+  const contentWriterInput = 9500 + STAGE_OVERHEAD;
+
+  // Phase 4: Translator (conditional — receives ContentWriter output ~14K)
+  const translatorInput = 14000 + STAGE_OVERHEAD;
+
+  const totalInputTokens = phase2WorkersInput + typeClassifierInput + contentWriterInput + translatorInput;
 
   // Total output tokens
   const totalOutputTokens =
-    ESTIMATED_OUTPUT_PER_STAGE.dataAnalyst +
-    ESTIMATED_OUTPUT_PER_STAGE.personalityAnalyst +
-    ESTIMATED_OUTPUT_PER_STAGE.contentWriter;
+    ESTIMATED_OUTPUT_PER_STAGE.strengthGrowth +
+    ESTIMATED_OUTPUT_PER_STAGE.trustVerification +
+    ESTIMATED_OUTPUT_PER_STAGE.workflowHabit +
+    ESTIMATED_OUTPUT_PER_STAGE.knowledgeGap +
+    ESTIMATED_OUTPUT_PER_STAGE.contextEfficiency +
+    ESTIMATED_OUTPUT_PER_STAGE.typeClassifier +
+    ESTIMATED_OUTPUT_PER_STAGE.contentWriter +
+    ESTIMATED_OUTPUT_PER_STAGE.translator;
 
   const totalCost = totalInputTokens * pricing.input + totalOutputTokens * pricing.output;
 
@@ -222,9 +204,10 @@ function estimateWithPricing(
     estimatedOutputTokens: totalOutputTokens,
     totalCost,
     breakdown: {
-      dataAnalystInput,
-      personalityAnalystInput: personalityInput,
+      phase2WorkersInput,
+      typeClassifierInput,
       contentWriterInput,
+      translatorInput,
       systemPromptOverhead,
       schemaOverhead,
     },
@@ -241,9 +224,10 @@ export function formatCostEstimate(estimate: CostEstimate): string {
 
   lines.push(`Model: ${estimate.modelName}`);
   lines.push(`Input Tokens: ${estimate.totalInputTokens.toLocaleString()}`);
-  lines.push(`  - Data Analyst: ${estimate.breakdown.dataAnalystInput.toLocaleString()}`);
-  lines.push(`  - Personality Analyst: ${estimate.breakdown.personalityAnalystInput.toLocaleString()}`);
+  lines.push(`  - Phase 2 Workers (5x): ${estimate.breakdown.phase2WorkersInput.toLocaleString()}`);
+  lines.push(`  - TypeClassifier: ${estimate.breakdown.typeClassifierInput.toLocaleString()}`);
   lines.push(`  - Content Writer: ${estimate.breakdown.contentWriterInput.toLocaleString()}`);
+  lines.push(`  - Translator: ${estimate.breakdown.translatorInput.toLocaleString()}`);
   lines.push(`Output Tokens (est): ${estimate.estimatedOutputTokens.toLocaleString()}`);
   lines.push(`Estimated Cost: $${estimate.totalCost.toFixed(4)}`);
 
@@ -290,7 +274,7 @@ export function calculateActualCost(
   usage: { promptTokens: number; completionTokens: number },
   model: string = 'gemini-3-flash-preview'
 ): { inputCost: number; outputCost: number; totalCost: number } {
-  const pricing = ALL_PRICING[model] || GEMINI_PRICING['gemini-3-flash-preview'];
+  const pricing = GEMINI_PRICING[model] || GEMINI_PRICING['gemini-3-flash-preview'];
 
   const inputCost = usage.promptTokens * pricing.input;
   const outputCost = usage.completionTokens * pricing.output;
@@ -316,7 +300,7 @@ export function aggregateTokenUsage(
   );
 
   const cost = calculateActualCost(totals, model);
-  const pricing = ALL_PRICING[model] || GEMINI_PRICING['gemini-3-flash-preview'];
+  const pricing = GEMINI_PRICING[model] || GEMINI_PRICING['gemini-3-flash-preview'];
 
   return {
     stages,

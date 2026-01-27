@@ -256,7 +256,8 @@ async function main() {
   console.log(pc.dim('  🔬 Running verbose analysis (this may take a few minutes)...'));
   const metrics = aggregateMetrics(parsedSessions);
   const analyzer = new VerboseAnalyzer();
-  const verboseResult = await analyzer.analyzeVerbose(parsedSessions, metrics);
+  const analysisResult = await analyzer.analyzeVerbose(parsedSessions, metrics);
+  const verboseResult = analysisResult.evaluation;
 
   console.log(pc.green('  ✓ Verbose analysis complete!'));
   console.log('');

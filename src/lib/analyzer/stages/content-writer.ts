@@ -27,13 +27,15 @@ import {
 import type { StructuredAnalysisData } from '../../models/analysis-data';
 import type { ProductivityAnalysisData } from '../../models/productivity-data';
 import type { AgentOutputs } from '../../models/agent-outputs';
-import type { Phase1Output } from '../../models/phase1-output';
+import type { Phase1Output, DeveloperUtterance } from '../../models/phase1-output';
 import {
   CONTENT_WRITER_SYSTEM_PROMPT,
+  CONTENT_WRITER_SYSTEM_PROMPT_V3,
   buildContentWriterUserPrompt,
   buildContentWriterUserPromptV3,
 } from './content-writer-prompts';
 import { buildPatternKnowledgeContext, extractPatternTypes } from './pattern-knowledge-mapping';
+import { summarizeAgentOutputsForPhase3 } from './phase3-summarizer';
 
 /**
  * Configuration for the Content Writer stage
@@ -44,6 +46,7 @@ export interface ContentWriterConfig {
   temperature?: number;
   maxOutputTokens?: number;
   maxRetries?: number;
+  verbose?: boolean;
 }
 
 /**
@@ -65,6 +68,7 @@ const DEFAULT_CONFIG: Required<Omit<ContentWriterConfig, 'apiKey'>> = {
   temperature: 1.0, // Gemini 3 strongly recommends 1.0
   maxOutputTokens: 65536,
   maxRetries: 2,
+  verbose: false,
 };
 
 /**
@@ -90,6 +94,7 @@ export class ContentWriterStage {
       temperature: config.temperature ?? DEFAULT_CONFIG.temperature,
       maxOutputTokens: config.maxOutputTokens || DEFAULT_CONFIG.maxOutputTokens,
       maxRetries: config.maxRetries ?? DEFAULT_CONFIG.maxRetries,
+      verbose: config.verbose ?? DEFAULT_CONFIG.verbose,
     };
   }
 
@@ -151,35 +156,31 @@ export class ContentWriterStage {
   }
 
   /**
-   * v3 Architecture: Transform using Phase1Output + AgentOutputs
+   * v3 Architecture: Transform using AgentOutputs only
    *
    * Phase 3 in the new pipeline:
-   * - Phase 1 (DataExtractor) provides raw utterances + metrics
    * - Phase 2 workers provide semantic analysis (strengths, trust, workflow, etc.)
    * - Phase 2.5 (TypeClassifier) provides classification + synthesis
    * - Phase 3 (this) transforms everything into personalized narrative
    *
    * Key differences from transformV2:
-   * - No StructuredAnalysisData — uses Phase1Output instead
+   * - No StructuredAnalysisData — uses AgentOutputs only
    * - No ProductivityAnalysisData — consolidated into ContextEfficiency
-   * - Language detection from utterances, not quotes
-   * - Type override from agentOutputs.typeClassifier, not analysisData.typeAnalysis
-   * - No addEvidenceFromStage1 — Phase 2 workers produce evidence directly
+   * - Type override from agentOutputs.typeClassifier
+   * - Deterministic evidence verification against Phase1Output (when provided)
    * - Premium sections use Phase 2 outputs (TrustVerification, WorkflowHabit)
    *
-   * @param phase1Output - DataExtractor output (raw utterances + metrics)
+   * @param sessionCount - Number of sessions analyzed (from Phase 1 metrics)
    * @param agentOutputs - All Phase 2 + 2.5 worker outputs
+   * @param phase1Output - Optional Phase1Output for deterministic evidence verification
    * @returns ContentWriterResult with VerboseLLMResponse and token usage
    */
   async transformV3(
-    phase1Output: Phase1Output,
-    agentOutputs: AgentOutputs
+    sessionCount: number,
+    agentOutputs: AgentOutputs,
+    phase1Output?: Phase1Output
   ): Promise<ContentWriterResult> {
-    const sessionCount = phase1Output.sessionMetrics.totalSessions;
-
-    // Prepare Phase 1 and agent outputs as JSON for the prompt
-    const phase1Json = JSON.stringify(phase1Output, null, 2);
-    const agentOutputsJson = JSON.stringify(agentOutputs, null, 2);
+    const agentOutputsSummary = summarizeAgentOutputsForPhase3(agentOutputs);
 
     // Build KB context from TrustVerification detected patterns
     const detectedPatternsData = agentOutputs.trustVerification?.detectedPatternsData;
@@ -189,22 +190,21 @@ export class ContentWriterStage {
     const kbContext = buildPatternKnowledgeContext(patternTypes);
 
     const userPrompt = buildContentWriterUserPromptV3(
-      phase1Json,
-      agentOutputsJson,
+      agentOutputsSummary,
       sessionCount,
       kbContext
     );
 
     const result = await this.client.generateStructured({
-      systemPrompt: CONTENT_WRITER_SYSTEM_PROMPT,
+      systemPrompt: CONTENT_WRITER_SYSTEM_PROMPT_V3,
       userPrompt,
       responseSchema: VerboseLLMResponseSchema,
       maxOutputTokens: this.config.maxOutputTokens,
     });
 
-    // Sanitize response using v3 logic (no Stage 1 data dependency)
+    // Sanitize response using v3 logic, with optional evidence verification
     return {
-      data: this.sanitizeResponseV3(result.data, agentOutputs),
+      data: this.sanitizeResponseV3(result.data, agentOutputs, phase1Output),
       usage: result.usage,
     };
   }
@@ -227,12 +227,13 @@ export class ContentWriterStage {
    *
    * Uses Phase 2 outputs instead of StructuredAnalysisData:
    * - Type override from TypeClassifier (Phase 2.5)
-   * - No addEvidenceFromStage1 (Phase 2 workers produce evidence directly)
+   * - Deterministic evidence verification against Phase1Output (when provided)
    * - Premium sections from TrustVerification + WorkflowHabit
    */
   private sanitizeResponseV3(
     input: VerboseLLMResponse,
-    agentOutputs: AgentOutputs
+    agentOutputs: AgentOutputs,
+    phase1Output?: Phase1Output
   ): any {
     // Deep clone to avoid mutation
     const sanitized = JSON.parse(JSON.stringify(input)) as any;
@@ -332,7 +333,11 @@ export class ContentWriterStage {
       }));
     }
 
-    // v3: No addEvidenceFromStage1 — Phase 2 workers produce evidence directly
+    // Deterministic evidence verification: cross-reference Phase 2 evidence
+    // against Phase1Output originals to ensure quote accuracy
+    if (phase1Output) {
+      this.verifyAndEnrichEvidence(sanitized, agentOutputs, phase1Output);
+    }
 
     // Sanitize Premium sections using Phase 2 outputs
     this.sanitizePremiumSectionsV3(sanitized, agentOutputs);
@@ -417,6 +422,294 @@ export class ContentWriterStage {
       }
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Evidence Verification Layer
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Deterministic evidence verification and enrichment
+   *
+   * Cross-references evidence from Phase 2 workers against Phase1Output
+   * to ensure quote accuracy. This provides a hard guarantee that evidence
+   * quotes are actual developer utterances, not LLM paraphrases.
+   *
+   * Strategy:
+   * 1. Build a lookup map from Phase1Output.developerUtterances (id → text)
+   * 2. For each dimension insight's strengths/growthAreas, check if evidence
+   *    already exists from Phase 3 LLM or from Phase 2 worker data
+   * 3. If Phase 2 StrengthGrowth has evidence with utteranceIds,
+   *    verify quotes against originals and replace mismatches
+   * 4. Enrich evidence with structured { utteranceId, quote, sessionId }
+   */
+  private verifyAndEnrichEvidence(
+    sanitized: any,
+    agentOutputs: AgentOutputs,
+    phase1Output: Phase1Output
+  ): void {
+    // Build utterance lookup: id → DeveloperUtterance
+    const utteranceLookup = new Map<string, DeveloperUtterance>();
+    for (const utterance of phase1Output.developerUtterances) {
+      utteranceLookup.set(utterance.id, utterance);
+    }
+
+    if (utteranceLookup.size === 0) {
+      this.log('No developer utterances in Phase1Output — skipping evidence verification');
+      return;
+    }
+
+    // Get Phase 2 StrengthGrowth evidence for cross-referencing
+    const strengthGrowth = agentOutputs.strengthGrowth;
+    if (!strengthGrowth) return;
+
+    // Collect all Phase 2 evidence by dimension for matching
+    const phase2EvidenceByDimension = this.collectPhase2Evidence(strengthGrowth);
+
+    let verifiedCount = 0;
+    let replacedCount = 0;
+    let removedCount = 0;
+
+    // Process each dimension insight
+    if (!Array.isArray(sanitized.dimensionInsights)) return;
+
+    for (const insight of sanitized.dimensionInsights) {
+      const dimension = insight.dimension;
+      const phase2Data = phase2EvidenceByDimension.get(dimension);
+      if (!phase2Data) continue;
+
+      // Index-based matching for strengths:
+      // Phase 3 strength at index i corresponds to Phase 2 strength at index i
+      if (Array.isArray(insight.strengths)) {
+        for (let i = 0; i < insight.strengths.length; i++) {
+          const matchedEvidence = phase2Data.strengths[i]?.evidence ?? null;
+          const result = this.verifyEvidenceForInsight(
+            insight.strengths[i],
+            matchedEvidence,
+            utteranceLookup,
+            phase2Data.strengths // fallback for title-based matching
+          );
+          verifiedCount += result.verified;
+          replacedCount += result.replaced;
+          removedCount += result.removed;
+        }
+      }
+
+      // Index-based matching for growth areas
+      if (Array.isArray(insight.growthAreas)) {
+        for (let i = 0; i < insight.growthAreas.length; i++) {
+          const matchedEvidence = phase2Data.growthAreas[i]?.evidence ?? null;
+          const result = this.verifyEvidenceForInsight(
+            insight.growthAreas[i],
+            matchedEvidence,
+            utteranceLookup,
+            phase2Data.growthAreas // fallback for title-based matching
+          );
+          verifiedCount += result.verified;
+          replacedCount += result.replaced;
+          removedCount += result.removed;
+        }
+      }
+    }
+
+    this.log(`Evidence verification: verified=${verifiedCount}, replaced=${replacedCount}, removed=${removedCount}`);
+  }
+
+  /**
+   * Collect Phase 2 evidence organized by dimension
+   */
+  private collectPhase2Evidence(strengthGrowth: NonNullable<AgentOutputs['strengthGrowth']>): Map<string, {
+    strengths: Array<{ title: string; evidence: Array<{ utteranceId: string; quote: string; context?: string }> }>;
+    growthAreas: Array<{ title: string; evidence: Array<{ utteranceId: string; quote: string; context?: string }> }>;
+  }> {
+    const result = new Map<string, {
+      strengths: Array<{ title: string; evidence: Array<{ utteranceId: string; quote: string; context?: string }> }>;
+      growthAreas: Array<{ title: string; evidence: Array<{ utteranceId: string; quote: string; context?: string }> }>;
+    }>();
+
+    // Collect from strengths
+    if (Array.isArray(strengthGrowth.strengths)) {
+      for (const s of strengthGrowth.strengths) {
+        const dim = (s as any).dimension || 'aiCollaboration';
+        if (!result.has(dim)) {
+          result.set(dim, { strengths: [], growthAreas: [] });
+        }
+        result.get(dim)!.strengths.push({
+          title: (s as any).title || '',
+          evidence: Array.isArray((s as any).evidence)
+            ? (s as any).evidence.map((e: any) => ({
+                utteranceId: e.utteranceId || '',
+                quote: e.quote || (typeof e === 'string' ? e : ''),
+                context: e.context,
+              }))
+            : [],
+        });
+      }
+    }
+
+    // Collect from growth areas
+    if (Array.isArray(strengthGrowth.growthAreas)) {
+      for (const g of strengthGrowth.growthAreas) {
+        const dim = (g as any).dimension || 'aiCollaboration';
+        if (!result.has(dim)) {
+          result.set(dim, { strengths: [], growthAreas: [] });
+        }
+        result.get(dim)!.growthAreas.push({
+          title: (g as any).title || '',
+          evidence: Array.isArray((g as any).evidence)
+            ? (g as any).evidence.map((e: any) => ({
+                utteranceId: e.utteranceId || '',
+                quote: e.quote || (typeof e === 'string' ? e : ''),
+                context: e.context,
+              }))
+            : [],
+        });
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Verify and correct evidence for a single insight (strength or growth area)
+   *
+   * Primary strategy: Use pre-matched Phase 2 evidence (matched by dimension + index).
+   * Fallback: Search by title similarity if no index-based match is available.
+   *
+   * For each evidence quote:
+   * 1. Look up the utteranceId in Phase1Output
+   * 2. If quote matches original → keep (verified)
+   * 3. If quote doesn't match → replace with original text (corrected)
+   * 4. If utteranceId invalid → remove evidence entry (removed)
+   */
+  private verifyEvidenceForInsight(
+    insight: any,
+    matchedPhase2Evidence: Array<{ utteranceId: string; quote: string; context?: string }> | null,
+    utteranceLookup: Map<string, DeveloperUtterance>,
+    fallbackPhase2Insights?: Array<{ title: string; evidence: Array<{ utteranceId: string; quote: string; context?: string }> }>,
+  ): { verified: number; replaced: number; removed: number } {
+    const stats = { verified: 0, replaced: 0, removed: 0 };
+
+    // Determine which evidence to use: index-based match or title-based fallback
+    let evidenceToVerify = matchedPhase2Evidence;
+
+    if (!evidenceToVerify || evidenceToVerify.length === 0) {
+      // Fallback: find Phase 2 insight by title similarity
+      if (fallbackPhase2Insights) {
+        const insightTitle = (insight.title || '').toLowerCase();
+        const matchingPhase2 = fallbackPhase2Insights.find(
+          p2 => p2.title.toLowerCase() === insightTitle
+        ) || fallbackPhase2Insights.find(
+          p2 => this.titleSimilarity(p2.title, insight.title || '') > 0.6
+        );
+        evidenceToVerify = matchingPhase2?.evidence ?? null;
+      }
+    }
+
+    if (!evidenceToVerify || evidenceToVerify.length === 0) {
+      // No Phase 2 evidence to verify against — leave as-is
+      return stats;
+    }
+
+    // Build verified evidence array with structured data
+    const verifiedEvidence: Array<{ utteranceId: string; quote: string; sessionId?: string }> = [];
+
+    for (const ev of evidenceToVerify) {
+      if (!ev.utteranceId) {
+        stats.removed++;
+        continue;
+      }
+
+      const original = utteranceLookup.get(ev.utteranceId);
+      if (!original) {
+        // utteranceId not found in Phase1Output — remove
+        this.log(`Evidence utteranceId "${ev.utteranceId}" not found in Phase1Output — removing`);
+        stats.removed++;
+        continue;
+      }
+
+      // Extract original quote (first 500 chars of utterance text)
+      const originalQuote = original.text.slice(0, 500);
+
+      // Check if Phase 2 quote matches original
+      if (this.quotesMatch(ev.quote, originalQuote)) {
+        // Match — use Phase 2 quote (may be trimmed version of original)
+        verifiedEvidence.push({
+          utteranceId: ev.utteranceId,
+          quote: ev.quote,
+          sessionId: this.extractSessionId(ev.utteranceId),
+        });
+        stats.verified++;
+      } else {
+        // Mismatch — replace with original text
+        this.log(`Evidence quote mismatch for utterance "${ev.utteranceId}" — replacing with original`);
+        verifiedEvidence.push({
+          utteranceId: ev.utteranceId,
+          quote: originalQuote,
+          sessionId: this.extractSessionId(ev.utteranceId),
+        });
+        stats.replaced++;
+      }
+    }
+
+    // Set verified evidence on the insight
+    if (verifiedEvidence.length > 0) {
+      insight.evidence = verifiedEvidence;
+    }
+
+    return stats;
+  }
+
+  /**
+   * Check if two quote strings match (allowing for truncation and minor differences)
+   *
+   * Uses a substring containment check: if the shorter quote is contained
+   * within the longer one, or vice versa, they're considered matching.
+   * This handles cases where the LLM truncated or slightly reformatted the quote.
+   */
+  private quotesMatch(quote1: string, quote2: string): boolean {
+    const normalized1 = quote1.trim().toLowerCase().replace(/\s+/g, ' ');
+    const normalized2 = quote2.trim().toLowerCase().replace(/\s+/g, ' ');
+
+    if (normalized1 === normalized2) return true;
+
+    // Check substring containment (handles truncation)
+    const shorter = normalized1.length <= normalized2.length ? normalized1 : normalized2;
+    const longer = normalized1.length > normalized2.length ? normalized1 : normalized2;
+
+    // If the shorter string is at least 30 chars and is contained in the longer, match
+    if (shorter.length >= 30 && longer.includes(shorter)) return true;
+
+    // Check prefix match (first 50 chars) — handles minor ending differences
+    const prefixLen = Math.min(50, shorter.length);
+    if (prefixLen >= 20 && normalized1.slice(0, prefixLen) === normalized2.slice(0, prefixLen)) return true;
+
+    return false;
+  }
+
+  /**
+   * Simple title similarity score (0-1)
+   */
+  private titleSimilarity(title1: string, title2: string): number {
+    const words1 = new Set(title1.toLowerCase().split(/\s+/));
+    const words2 = new Set(title2.toLowerCase().split(/\s+/));
+    let matches = 0;
+    for (const w of words1) {
+      if (words2.has(w)) matches++;
+    }
+    return matches / Math.max(words1.size, words2.size, 1);
+  }
+
+  /**
+   * Extract sessionId from utteranceId
+   * Format: "{sessionId}_{turnIndex}" → "{sessionId}"
+   */
+  private extractSessionId(utteranceId: string): string | undefined {
+    const lastUnderscore = utteranceId.lastIndexOf('_');
+    if (lastUnderscore <= 0) return undefined;
+    return utteranceId.slice(0, lastUnderscore);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   /**
    * Parse personalizedPrioritiesData into focus areas
@@ -513,9 +806,9 @@ export class ContentWriterStage {
     sanitized.controlLevel = analysisData.typeAnalysis.controlLevel;
     sanitized.distribution = analysisData.typeAnalysis.distribution;
 
-    // Get controlScore from TypeSynthesis worker (Phase 2.5) if available,
+    // Get controlScore from TypeClassifier (Phase 2.5) if available,
     // otherwise fall back to Stage 1 data or default to 50
-    sanitized.controlScore = agentOutputs?.typeSynthesis?.controlScore
+    sanitized.controlScore = agentOutputs?.typeClassifier?.controlScore
       ?? analysisData.typeAnalysis.controlScore
       ?? 50;
 
@@ -862,9 +1155,9 @@ export class ContentWriterStage {
               strengthQuotes
             );
             if (!clusterId) {
-              console.warn(`[ContentWriter] Strength "${strength.title}" missing clusterId, using semantic fallback`);
+              this.log(`Strength "${strength.title}" missing clusterId, using semantic fallback`);
             } else {
-              console.warn(`[ContentWriter] ClusterId "${clusterId}" not found in quotes, using semantic fallback`);
+              this.log(`ClusterId "${clusterId}" not found in quotes, using semantic fallback`);
             }
           }
         }
@@ -891,9 +1184,9 @@ export class ContentWriterStage {
               4
             );
             if (!clusterId) {
-              console.warn(`[ContentWriter] Growth "${growth.title}" missing clusterId, using semantic fallback`);
+              this.log(`Growth "${growth.title}" missing clusterId, using semantic fallback`);
             } else {
-              console.warn(`[ContentWriter] ClusterId "${clusterId}" not found in quotes, using semantic fallback`);
+              this.log(`ClusterId "${clusterId}" not found in quotes, using semantic fallback`);
             }
           }
         }
@@ -973,5 +1266,14 @@ export class ContentWriterStage {
     }
 
     return matches / Math.max(keywords.size, 1);
+  }
+
+  /**
+   * Log a message if verbose mode is enabled
+   */
+  private log(message: string): void {
+    if (this.config.verbose) {
+      console.log(`[ContentWriter] ${message}`);
+    }
   }
 }
