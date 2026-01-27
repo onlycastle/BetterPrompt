@@ -14,21 +14,8 @@ import { KnowledgeCard } from '@/components/knowledge/KnowledgeCard';
 import { AddKnowledgeDrawer } from '@/components/dashboard/AddKnowledgeDrawer';
 import { Search, Plus, X, Github } from 'lucide-react';
 import type { SourcePlatform } from '@/types';
+import type { DimensionName } from '@/api/client';
 import styles from './page.module.css';
-
-/**
- * Dimension names - aligned with analysis dimensions
- */
-type DimensionName =
-  | 'aiCollaboration'
-  | 'contextEngineering'
-  | 'toolMastery'
-  | 'burnoutRisk'
-  | 'aiControl'
-  | 'skillResilience'
-  | 'iterationEfficiency'
-  | 'learningVelocity'
-  | 'scopeManagement';
 
 const PLATFORMS: Array<{ value: SourcePlatform | ''; label: string }> = [
   { value: '', label: 'All Platforms' },
@@ -39,9 +26,6 @@ const PLATFORMS: Array<{ value: SourcePlatform | ''; label: string }> = [
   { value: 'web', label: 'Web' },
 ];
 
-/**
- * Dimensions for filtering - aligned with analysis dimensions
- */
 const DIMENSIONS: Array<{ value: DimensionName | ''; label: string }> = [
   { value: '', label: 'All Dimensions' },
   { value: 'aiCollaboration', label: 'AI Collaboration' },
@@ -50,9 +34,6 @@ const DIMENSIONS: Array<{ value: DimensionName | ''; label: string }> = [
   { value: 'aiControl', label: 'AI Control' },
   { value: 'skillResilience', label: 'Skill Resilience' },
   { value: 'burnoutRisk', label: 'Burnout Risk' },
-  { value: 'iterationEfficiency', label: 'Iteration Efficiency' },
-  { value: 'learningVelocity', label: 'Learning Velocity' },
-  { value: 'scopeManagement', label: 'Scope Management' },
 ];
 
 export function KnowledgeContent() {
@@ -167,9 +148,7 @@ export function KnowledgeContent() {
       <AddKnowledgeDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
-        onSuccess={() => {
-          refetch();
-        }}
+        onSuccess={refetch}
       />
 
       {/* Search */}
