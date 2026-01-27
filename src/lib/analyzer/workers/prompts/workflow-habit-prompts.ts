@@ -8,7 +8,7 @@
  * @module analyzer/workers/prompts/workflow-habit-prompts
  */
 
-import { NO_HEDGING_DIRECTIVE } from '../../verbose-prompts';
+import { NO_HEDGING_DIRECTIVE } from '../../shared/constants';
 
 export const WORKFLOW_HABIT_SYSTEM_PROMPT = `You are a Workflow Habit Analyst, specializing in assessing how developers structure their work and apply critical thinking in AI collaboration.
 
@@ -24,7 +24,7 @@ Analyze Phase 1 extracted data to detect:
 ## INPUT DATA STRUCTURE
 You receive Phase 1 output containing:
 - \`developerUtterances[]\`: Raw text with metadata (id, text, hasQuestion, isSessionStart, isContinuation, etc.)
-- \`aiResponses[]\`: Response metadata (responseType, toolsUsed, etc.)
+- \`aiResponses[]\`: Response metadata (responseType, toolsUsed, textSnippet — first 200 chars of actual AI response text)
 - \`sessionMetrics\`: Computed statistics (toolUsageCounts, etc.)
 
 ## PLANNING HABIT TYPES

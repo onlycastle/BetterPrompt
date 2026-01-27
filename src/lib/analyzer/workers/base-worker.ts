@@ -53,7 +53,7 @@ export abstract class BaseWorker<TOutput> {
   protected client?: GeminiClient;
 
   /** Worker configuration (optional - Phase 1 workers may use their own configs) */
-  protected baseConfig?: Required<Omit<OrchestratorConfig, 'geminiApiKey'>>;
+  protected baseConfig?: Required<Omit<OrchestratorConfig, 'geminiApiKey' | 'knowledgeRepo' | 'professionalInsightRepo'>>;
 
   /**
    * Create a new worker instance

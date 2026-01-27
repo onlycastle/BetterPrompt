@@ -110,20 +110,8 @@ export class TrustVerificationWorker extends BaseWorker<TrustVerificationOutput>
    * Prioritizes error-related AI responses for anti-pattern detection.
    */
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
-    const MAX_UTTERANCES = 100;
-    const MAX_AI_RESPONSES = 100;
-
-    // Prioritize error responses for anti-pattern detection
-    const aiResponsesWithErrors = phase1.aiResponses.filter(r => r.hadError);
-    const otherResponses = phase1.aiResponses.filter(r => !r.hadError);
-
-    const selectedResponses = [
-      ...aiResponsesWithErrors.slice(0, MAX_AI_RESPONSES / 2),
-      ...otherResponses.slice(0, MAX_AI_RESPONSES / 2),
-    ];
-
     return {
-      developerUtterances: phase1.developerUtterances.slice(0, MAX_UTTERANCES).map((u) => ({
+      developerUtterances: phase1.developerUtterances.map((u) => ({
         id: u.id,
         text: u.text.slice(0, 600),
         sessionId: u.sessionId,
@@ -137,7 +125,7 @@ export class TrustVerificationWorker extends BaseWorker<TrustVerificationOutput>
         precedingAIToolCalls: u.precedingAIToolCalls,
         timestamp: u.timestamp,
       })),
-      aiResponses: selectedResponses.map((r) => ({
+      aiResponses: phase1.aiResponses.map((r) => ({
         id: r.id,
         sessionId: r.sessionId,
         turnIndex: r.turnIndex,
@@ -146,6 +134,7 @@ export class TrustVerificationWorker extends BaseWorker<TrustVerificationOutput>
         hadError: r.hadError,
         wasSuccessful: r.wasSuccessful,
         fullTextLength: r.fullTextLength,
+        textSnippet: r.textSnippet?.slice(0, 400),
       })),
       sessionMetrics: phase1.sessionMetrics,
     };

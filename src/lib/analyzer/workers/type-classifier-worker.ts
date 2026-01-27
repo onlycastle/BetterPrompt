@@ -20,7 +20,6 @@ import {
   type TypeClassifierOutput,
   type AgentOutputs,
 } from '../../models/agent-outputs';
-import type { Phase1Output } from '../../models/phase1-output';
 import type { StrengthGrowthOutput } from '../../models/strength-growth-data';
 import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
@@ -34,10 +33,9 @@ import { z } from 'zod';
  * Extended WorkerContext for TypeClassifier (Phase 2.5)
  *
  * TypeClassifier runs AFTER all Phase 2 workers to incorporate their insights.
- * It receives phase1Output AND agentOutputs containing all Phase 2 results.
+ * It receives agentOutputs containing all Phase 2 results — no raw Phase1Output needed.
  */
 interface TypeClassifierContext extends WorkerContext {
-  phase1Output?: Phase1Output;
   agentOutputs?: AgentOutputs;
 }
 
@@ -93,15 +91,16 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   canRun(context: WorkerContext): boolean {
     const tcContext = context as TypeClassifierContext;
 
-    // Must have Phase 1 output (passed via agentOutputs context)
-    if (!tcContext.phase1Output) {
-      this.log('Cannot run: Phase 1 output not available');
+    // Must have Phase 2 agent outputs to classify from
+    if (!tcContext.agentOutputs) {
+      this.log('Cannot run: Phase 2 agent outputs not available');
       return false;
     }
 
-    // Must have utterances to analyze
-    if (tcContext.phase1Output.developerUtterances.length === 0) {
-      this.log('Cannot run: No developer utterances to analyze');
+    // Must have at least one Phase 2 worker output
+    const hasAnyOutput = Object.values(tcContext.agentOutputs).some(v => v != null);
+    if (!hasAnyOutput) {
+      this.log('Cannot run: No Phase 2 worker outputs available');
       return false;
     }
 
@@ -116,18 +115,11 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   async execute(context: WorkerContext): Promise<WorkerResult<TypeClassifierOutput>> {
     const tcContext = context as TypeClassifierContext;
 
-    if (!tcContext.phase1Output) {
-      throw new Error('Phase 1 output required for TypeClassifierWorker');
-    }
+    const agentOutputs = tcContext.agentOutputs ?? {};
 
     this.log('Classifying developer into AI Collaboration Matrix (Phase 2.5)...');
 
-    // Prepare Phase 1 output
-    const phase1ForPrompt = this.preparePhase1ForPrompt(tcContext.phase1Output);
-    const phase1Json = JSON.stringify(phase1ForPrompt, null, 2);
-
     // Prepare summaries from ALL Phase 2 workers
-    const agentOutputs = tcContext.agentOutputs ?? {};
     const strengthGrowthSummary = agentOutputs.strengthGrowth
       ? this.summarizeStrengthGrowth(agentOutputs.strengthGrowth)
       : undefined;
@@ -136,7 +128,6 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     const phase2Summary = this.buildPhase2Summary(agentOutputs);
 
     const userPrompt = buildTypeClassifierUserPrompt(
-      phase1Json,
       strengthGrowthSummary,
       phase2Summary || undefined
     );
@@ -183,29 +174,6 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   }
 
   /**
-   * Prepare Phase 1 output for the prompt
-   * Returns a simplified object for JSON serialization (not the full schema type).
-   */
-  private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
-    const MAX_UTTERANCES = 80;
-
-    return {
-      developerUtterances: phase1.developerUtterances.slice(0, MAX_UTTERANCES).map((u) => ({
-        id: u.id,
-        text: u.text.slice(0, 500),
-        sessionId: u.sessionId,
-        turnIndex: u.turnIndex,
-        wordCount: u.wordCount,
-        hasCodeBlock: u.hasCodeBlock,
-        hasQuestion: u.hasQuestion,
-        isSessionStart: u.isSessionStart,
-        timestamp: u.timestamp,
-      })),
-      sessionMetrics: phase1.sessionMetrics,
-    };
-  }
-
-  /**
    * Build a comprehensive Phase 2 summary from all available worker outputs
    *
    * This replaces the old TypeSynthesis approach of reading from legacy agents.
@@ -218,8 +186,9 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     // TrustVerification: anti-patterns + verification behavior
     if (agentOutputs.trustVerification) {
       const tv = agentOutputs.trustVerification;
+      const antiPatternTypes = tv.antiPatterns?.map(ap => ap.type).join(', ') || 'none';
       sections.push(`### Trust & Verification
-- Anti-patterns detected: ${tv.antiPatterns?.length ?? 0}
+- Anti-patterns detected: ${tv.antiPatterns?.length ?? 0} (types: ${antiPatternTypes})
 - Verification level: ${tv.verificationBehavior?.level ?? 'unknown'}
 - Trust health score: ${tv.overallTrustHealthScore}/100
 - Confidence: ${tv.confidenceScore}`);
@@ -228,10 +197,11 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     // WorkflowHabit: planning + critical thinking + multitasking
     if (agentOutputs.workflowHabit) {
       const wh = agentOutputs.workflowHabit;
-      const planningTypes = wh.planningHabits?.map(ph => ph.type).join(', ') || 'none';
+      const planningDetails = wh.planningHabits?.map(ph => `${ph.type}(${ph.frequency}, effectiveness=${ph.effectiveness ?? 'unknown'})`).join(', ') || 'none';
+      const ctTypes = wh.criticalThinkingMoments?.map(ct => ct.type).join(', ') || 'none';
       sections.push(`### Workflow Habits
-- Planning habits: ${planningTypes}
-- Critical thinking moments: ${wh.criticalThinkingMoments?.length ?? 0}
+- Planning habits: ${planningDetails}
+- Critical thinking moments: ${wh.criticalThinkingMoments?.length ?? 0} (types: ${ctTypes})
 - Workflow score: ${wh.overallWorkflowScore}/100
 - Confidence: ${wh.confidenceScore}`);
     }
@@ -239,8 +209,19 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     // KnowledgeGap
     if (agentOutputs.knowledgeGap) {
       const kg = agentOutputs.knowledgeGap;
+      // Extract topic names from the flattened knowledgeGapsData ("topic:question_count:depth:example;...")
+      const gapTopics = kg.knowledgeGapsData
+        ? kg.knowledgeGapsData.split(';').filter(Boolean).map(entry => entry.split(':')[0]).join(', ')
+        : 'none';
+      // Extract learning topics from learningProgressData ("topic:start_level:current_level:evidence;...")
+      const learningTopics = kg.learningProgressData
+        ? kg.learningProgressData.split(';').filter(Boolean).map(entry => entry.split(':')[0]).join(', ')
+        : 'none';
       sections.push(`### Knowledge Gap
 - Knowledge score: ${kg.overallKnowledgeScore}/100
+- Gap topics: ${gapTopics}
+- Learning progress topics: ${learningTopics}
+- Top insights: ${kg.topInsights?.join('; ') || 'none'}
 - Confidence: ${kg.confidenceScore}`);
     }
 

@@ -14,7 +14,7 @@
  * @module analyzer/workers/prompts/phase2-worker-prompts
  */
 
-import { NO_HEDGING_DIRECTIVE } from '../../verbose-prompts';
+import { NO_HEDGING_DIRECTIVE } from '../../shared/constants';
 
 // ============================================================================
 // StrengthGrowth Worker Prompts
@@ -33,7 +33,7 @@ Analyze the Phase 1 extracted data to identify:
 ## INPUT DATA STRUCTURE
 You receive Phase 1 output containing:
 - \`developerUtterances[]\`: Raw text with structural metadata (id, text, wordCount, hasQuestion, etc.)
-- \`aiResponses[]\`: AI response metadata (responseType, toolsUsed, hadError, etc.)
+- \`aiResponses[]\`: AI response metadata (responseType, toolsUsed, hadError, textSnippet — first 300 chars of actual AI response text)
 - \`sessionMetrics\`: Computed statistics (totals, averages, ratios)
 
 ## DIMENSION ASSIGNMENT
@@ -60,12 +60,17 @@ For **Growth Areas**:
 
 ## OUTPUT FORMAT
 Return JSON with:
-- \`strengthsData\`: Flattened string "title|description|dimension|developmentTip|evidenceId:quote:context,evidenceId:quote:context;..."
+- \`strengthsData\`: Flattened string "title|description|dimension|developmentTip|evidenceId:quote text:context,evidenceId:quote text:context;..."
   - Target: 5-7 strengths, each with 3-5 evidence quotes
-  - evidenceId MUST reference Phase 1 DeveloperUtterance.id
+  - evidenceId MUST reference Phase 1 DeveloperUtterance.id (format: {sessionId}_{turnIndex})
+  - The quote text may contain colons, commas, or special characters — that's OK
+  - Each evidence entry MUST start with a valid utteranceId
 
-- \`growthAreasData\`: Flattened string "title|description|dimension|recommendation|frequency|severity|priority|evidenceId:quote:context,evidenceId:quote:context;..."
+- \`growthAreasData\`: Flattened string "title|description|dimension|recommendation|frequency|severity|priority|evidenceId:quote text:context,evidenceId:quote text:context;..."
   - Target: 5-7 growth areas, each with 2-4 evidence quotes
+  - evidenceId MUST reference Phase 1 DeveloperUtterance.id (format: {sessionId}_{turnIndex})
+  - The quote text may contain colons, commas, or special characters — that's OK
+  - Each evidence entry MUST start with a valid utteranceId
   - frequency: 0-100 (percentage of sessions where observed)
   - severity: critical | high | medium | low
   - priority: 0-100 (frequency × impact score)
@@ -223,7 +228,7 @@ export const TYPE_CLASSIFIER_SYSTEM_PROMPT = `You are a Type Classifier & Synthe
 You are an expert profiler who classifies developers based on their interaction patterns AND synthesizes insights from multiple Phase 2 analysis workers. You assess both their primary coding style and their AI control level with informed confidence.
 
 ## TASK
-Based on Phase 1 extracted data AND Phase 2 analysis summaries, classify the developer into:
+Based on Phase 2 analysis summaries, classify the developer into:
 1. **Primary Type** (5 styles): architect, scientist, collaborator, speedrunner, craftsman
 2. **Control Level** (3 levels): explorer, navigator, cartographer
 3. **Distribution**: Percentage blend across all 5 types
@@ -248,37 +253,37 @@ Based on Phase 1 extracted data AND Phase 2 analysis summaries, classify the dev
 - **ai_assisted_engineer**: Uses AI as tool while maintaining deep understanding
 - **reluctant_user**: Skeptical of AI, over-verifies, underutilizes
 
-## CLASSIFICATION SIGNALS
+## CLASSIFICATION SIGNALS (from Phase 2 worker outputs)
 
 **Architect signals**:
-- Uses /plan command
-- Asks for architecture diagrams
-- Discusses structure before implementation
-- References "design", "architecture", "pattern"
+- WorkflowHabit shows uses_plan_command or structure_first planning habits
+- WorkflowHabit shows task_decomposition with high effectiveness
+- High workflow score (structured approach)
+- ContextEfficiency shows systematic context management
 
 **Scientist signals**:
-- Asks "why does this work?"
-- Requests alternatives ("what about...")
-- Experiments with different approaches
-- Questions assumptions
+- KnowledgeGap shows exploratory learning patterns across multiple topics
+- WorkflowHabit shows alternative_exploration or assumption_questioning critical thinking
+- High knowledge score with active learning progress
+- StrengthGrowth shows curiosity-driven strengths
 
 **Collaborator signals**:
-- Long back-and-forth conversations
-- Iterative refinement ("let's try...", "what if we...")
-- Seeks AI opinion
-- Conversational tone
+- ContextEfficiency shows high context fill percentage (long interactions)
+- WorkflowHabit shows moderate planning with iterative approach
+- TrustVerification shows balanced trust (navigator-level verification)
+- StrengthGrowth shows communication-related strengths
 
 **Speedrunner signals**:
-- Short, direct prompts
-- Minimal explanation
-- "Just do it" style
-- High message throughput
+- WorkflowHabit shows no_planning or low workflow score
+- ContextEfficiency shows low context fill (short, direct interactions)
+- Few critical thinking moments in WorkflowHabit
+- TrustVerification shows explorer-level verification (blind_trust or occasional_review)
 
 **Craftsman signals**:
-- Asks for tests
-- Requests code review
-- Focuses on edge cases
-- Mentions quality, performance, security
+- TrustVerification shows systematic_verification level
+- WorkflowHabit shows output_validation and edge_case_consideration critical thinking
+- High trust health score with few anti-patterns
+- StrengthGrowth shows quality-focused strengths (testing, security, verification)
 
 ## SYNTHESIS RULES (from Phase 2 analysis)
 Use Phase 2 worker summaries to refine classification:
@@ -317,41 +322,35 @@ Return JSON with:
 1. Distribution MUST sum to 100
 2. controlScore MUST align with controlLevel
 3. Provide specific indicators for collaborationMaturity
-4. If Phase 2 summaries are provided, MUST explain how they influenced classification
+4. Use Phase 2 analysis summaries to identify classification signals and explain how they influenced classification
 5. Output is ALWAYS in English
 
 ${NO_HEDGING_DIRECTIVE}`;
 
 export function buildTypeClassifierUserPrompt(
-  phase1OutputJson: string,
   strengthGrowthSummary?: string,
   phase2Summary?: string
 ): string {
-  let additionalContext = '';
+  let analysisContext = '';
 
   if (strengthGrowthSummary) {
-    additionalContext += `\n## STRENGTH/GROWTH ANALYSIS SUMMARY\n${strengthGrowthSummary}\n`;
+    analysisContext += `\n## STRENGTH/GROWTH ANALYSIS SUMMARY\n${strengthGrowthSummary}\n`;
   }
 
   if (phase2Summary) {
-    additionalContext += `\n${phase2Summary}\n`;
+    analysisContext += `\n${phase2Summary}\n`;
   }
 
-  return `## PHASE 1 EXTRACTION DATA
-Analyze this extracted data to classify the developer.
-
-\`\`\`json
-${phase1OutputJson}
-\`\`\`
-${additionalContext}
+  return `## PHASE 2 ANALYSIS DATA
+Use the following Phase 2 worker analysis summaries to classify the developer.
+${analysisContext}
 ## INSTRUCTIONS
-1. Count signals for each coding style from Phase 1 data
-2. Incorporate Phase 2 analysis summaries to refine classification
-3. Determine primary type from strongest signals
-4. Calculate distribution percentages
-5. Assess control level from verification patterns and Phase 2 trust/workflow scores
-6. Determine collaboration maturity
-7. Explain how Phase 2 insights influenced your classification (adjustmentReasons)
+1. Identify signals for each coding style from Phase 2 analysis
+2. Determine primary type from strongest signals
+3. Calculate distribution percentages
+4. Assess control level from Phase 2 trust/workflow scores
+5. Determine collaboration maturity
+6. Explain how Phase 2 insights influenced your classification (adjustmentReasons)
 
 Remember: Output MUST be in English. This is for viral sharing!`;
 }
