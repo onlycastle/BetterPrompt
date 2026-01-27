@@ -25,7 +25,6 @@ export const AgentIdSchema = z.enum([
   'contextEfficiency',
   'temporalAnalysis',
   'multitasking',
-  'typeSynthesis',
   // v2 agent IDs
   'strengthGrowth',
   'trustVerification',
@@ -133,17 +132,6 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     scoreKey: 'multitaskingEfficiencyScore',
     scoreMax: 100,
   },
-  {
-    id: 'typeSynthesis',
-    tier: 'premium',
-    name: 'Type Synthesis',
-    icon: '🎭',
-    color: 'pink',
-    scoreLabel: 'Confidence',
-    scoreKey: 'confidenceScore',
-    scoreMax: 1,
-  },
-
   // v2 agents
   {
     id: 'strengthGrowth',
@@ -162,7 +150,7 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     icon: '🛡️',
     color: 'red',
     scoreLabel: 'Trust Score',
-    scoreKey: 'trustScore',
+    scoreKey: 'overallTrustHealthScore',
     scoreMax: 100,
   },
   {
@@ -172,7 +160,7 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     icon: '🔧',
     color: 'amber',
     scoreLabel: 'Workflow Score',
-    scoreKey: 'workflowScore',
+    scoreKey: 'overallWorkflowScore',
     scoreMax: 100,
   },
   {

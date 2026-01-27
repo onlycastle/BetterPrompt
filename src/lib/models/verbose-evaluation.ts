@@ -166,8 +166,8 @@ export type LLMPromptPattern = z.infer<typeof LLMPromptPatternSchema>;
 export function parseExamplesData(data: string | undefined): Array<{ quote: string; analysis: string }> {
   if (!data) return [];
   return data.split(';').filter(Boolean).map((s) => {
-    const [quote, analysis] = s.split('|');
-    return { quote: quote || '', analysis: analysis || '' };
+    const parts = s.split('|');
+    return { quote: parts[0] || '', analysis: parts.slice(1).join('|') || '' };
   });
 }
 
@@ -198,14 +198,51 @@ export const DIMENSION_DISPLAY_NAMES: Record<DimensionNameEnum, string> = {
 };
 
 /**
+ * Structured evidence item with source tracking
+ *
+ * When evidence verification is available (Phase1Output provided),
+ * evidence is stored as structured items with utteranceId for traceability.
+ * This enables:
+ * - Frontend display of evidence source (session + turn)
+ * - Post-hoc auditing of evidence accuracy
+ * - "View original" linking to session context
+ */
+export const EvidenceItemSchema = z.object({
+  /** Reference to Phase1Output.developerUtterances.id (format: "{sessionId}_{turnIndex}") */
+  utteranceId: z.string(),
+  /** The verified quote from the developer */
+  quote: z.string().max(1200),
+  /** Session ID extracted from utteranceId (for session-level tracking) */
+  sessionId: z.string().optional(),
+});
+export type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
+
+/**
+ * Evidence can be either plain strings (legacy/LLM output) or structured items (verified)
+ *
+ * - string[]: Legacy format from LLM output or older DB entries
+ * - EvidenceItem[]: Verified evidence with utteranceId tracking (new format)
+ *
+ * Frontend should handle both: if item is a string, display as-is;
+ * if item is an object with utteranceId, display with source metadata.
+ */
+export const EvidenceSchema = z.union([
+  z.string().max(1200),
+  EvidenceItemSchema,
+]);
+export type Evidence = z.infer<typeof EvidenceSchema>;
+
+/**
  * Strength within a specific dimension (full schema with evidence)
  * Used in VerboseEvaluation for storage and display
+ *
+ * Evidence supports both plain strings and structured EvidenceItems.
  */
 export const DimensionStrengthSchema = z.object({
   title: z.string().max(80).describe('Descriptive title for this strength'),
   description: z.string().max(500).describe('Detailed description of what they do well (qualitative, no scores)'),
   evidence: z
-    .array(z.string().max(1200))
+    .array(EvidenceSchema)
     .optional()
     .describe('Quotes demonstrating this strength (target: 3-6 quotes)'),
 });
@@ -221,7 +258,7 @@ export const DimensionGrowthAreaSchema = z.object({
   title: z.string().max(80).describe('Descriptive title for this growth area'),
   description: z.string().max(500).describe('Detailed description of what could improve (qualitative, no scores)'),
   evidence: z
-    .array(z.string().max(1200))
+    .array(EvidenceSchema)
     .optional()
     .describe('Quotes showing this opportunity (target: 2-4 quotes)'),
   recommendation: z.string().max(400).describe('Detailed, specific action to take with examples'),
@@ -344,7 +381,7 @@ export function parseGrowthAreasData(data: string | undefined): ParsedGrowthArea
   return data.split(';').filter(Boolean).map((s) => {
     const parts = s.split('|');
     if (parts.length >= 7) {
-      // Extended format with quantification: clusterId|title|desc|rec|freq|severity|priority
+      // Extended format with clusterId: clusterId|title|desc|rec|freq|severity|priority
       const freq = parseFloat(parts[4]);
       const sev = parts[5] as SeverityLevel | undefined;
       const priority = parseFloat(parts[6]);
@@ -353,6 +390,19 @@ export function parseGrowthAreasData(data: string | undefined): ParsedGrowthArea
         title: parts[1],
         description: parts[2],
         recommendation: parts[3],
+        frequency: isNaN(freq) ? undefined : freq,
+        severity: ['critical', 'high', 'medium', 'low'].includes(sev || '') ? sev : undefined,
+        priorityScore: isNaN(priority) ? undefined : priority,
+      };
+    } else if (parts.length === 6) {
+      // V3 format without clusterId: title|desc|rec|freq|severity|priority
+      const freq = parseFloat(parts[3]);
+      const sev = parts[4] as SeverityLevel | undefined;
+      const priority = parseFloat(parts[5]);
+      return {
+        title: parts[0],
+        description: parts[1],
+        recommendation: parts[2],
         frequency: isNaN(freq) ? undefined : freq,
         severity: ['critical', 'high', 'medium', 'low'].includes(sev || '') ? sev : undefined,
         priorityScore: isNaN(priority) ? undefined : priority,
@@ -926,8 +976,71 @@ export const TranslatedAgentInsightsSchema = z.object({
   contextEfficiency: TranslatedAgentInsightSchema.optional(),
   temporalAnalysis: TranslatedAgentInsightSchema.optional(),
   multitasking: TranslatedAgentInsightSchema.optional(),
+  strengthGrowth: TranslatedAgentInsightSchema.optional(),
+  trustVerification: TranslatedAgentInsightSchema.optional(),
+  workflowHabit: TranslatedAgentInsightSchema.optional(),
 });
 export type TranslatedAgentInsights = z.infer<typeof TranslatedAgentInsightsSchema>;
+
+// ============================================================================
+// KNOWLEDGE RESOURCES SCHEMA (Deterministic Matching)
+// ============================================================================
+
+/**
+ * A knowledge item matched to a growth area dimension via two-level matching.
+ *
+ * Level 1: Dimension filter (mandatory — item.applicableDimensions overlaps growth area dimensions)
+ * Level 2: Relevance ranking (tag overlap + subCategory overlap)
+ */
+export const MatchedKnowledgeItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  summary: z.string(),
+  sourceUrl: z.string(),
+  sourceAuthor: z.string().optional(),
+  contentType: z.string(),
+  tags: z.array(z.string()),
+  /** Original relevance score from knowledge item (0-1) */
+  relevanceScore: z.number().min(0).max(1),
+  /** Combined match score from 2-level matching (0-10) */
+  matchScore: z.number().min(0).max(10),
+});
+export type MatchedKnowledgeItem = z.infer<typeof MatchedKnowledgeItemSchema>;
+
+/**
+ * A professional insight matched to a growth area dimension via two-level matching.
+ *
+ * Level 1: Dimension filter (mandatory — insight.applicableDimensions contains dimension)
+ * Level 2: Style + control level boosting from TypeClassifier output
+ */
+export const MatchedProfessionalInsightSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  keyTakeaway: z.string(),
+  actionableAdvice: z.array(z.string()),
+  sourceAuthor: z.string(),
+  sourceUrl: z.string(),
+  category: z.string(),
+  priority: z.number(),
+  /** Combined match score from 2-level matching (0-10) */
+  matchScore: z.number().min(0).max(10),
+});
+export type MatchedProfessionalInsight = z.infer<typeof MatchedProfessionalInsightSchema>;
+
+/**
+ * Knowledge resources matched to a single dimension.
+ *
+ * Groups all matched knowledge items and professional insights for one dimension.
+ * Per-dimension grouping (not per-growth-area) avoids duplicate resources when
+ * multiple growth areas share a dimension.
+ */
+export const DimensionResourceMatchSchema = z.object({
+  dimension: DimensionNameEnumSchema,
+  dimensionDisplayName: z.string(),
+  knowledgeItems: z.array(MatchedKnowledgeItemSchema),
+  professionalInsights: z.array(MatchedProfessionalInsightSchema),
+});
+export type DimensionResourceMatch = z.infer<typeof DimensionResourceMatchSchema>;
 
 // ============================================================================
 // COMPLETE VERBOSE EVALUATION SCHEMA
@@ -1010,6 +1123,10 @@ export const VerboseEvaluationSchema = z.object({
   // NEW: Agent Outputs (from Phase 2 Wow Agents - Premium only)
   agentOutputs: AgentOutputsSchema.optional()
     .describe('Insights from 4 Wow-Focused agents: Pattern Detective, Anti-Pattern Spotter, Knowledge Gap, Context Efficiency'),
+
+  // NEW: Matched Knowledge Resources (from Phase 2.75 - deterministic matching)
+  knowledgeResources: z.array(DimensionResourceMatchSchema).optional()
+    .describe('Matched learning resources per dimension from Knowledge Base'),
 
   // PREMIUM TIER - Locked content
   toolUsageDeepDive: z.array(ToolUsageInsightSchema).optional(),

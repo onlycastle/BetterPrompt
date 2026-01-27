@@ -68,12 +68,6 @@ export class ConfigManager {
       env.storagePath = storagePath;
     }
 
-    // Model
-    const model = process.env[ENV_MAPPINGS.model];
-    if (model) {
-      env.model = model;
-    }
-
     return env;
   }
 
@@ -168,13 +162,6 @@ export class ConfigManager {
    */
   async isTelemetryEnabled(): Promise<boolean> {
     return this.get('telemetry');
-  }
-
-  /**
-   * Get model to use for analysis
-   */
-  async getModel(): Promise<string> {
-    return this.get('model');
   }
 
   /**

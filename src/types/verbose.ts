@@ -63,22 +63,39 @@ export interface AnalyzedSessionInfo {
 
 // ============================================================================
 // Dimension Insights
-// NOTE: Evidence is now a string array (just quotes) instead of object array
-// to reduce nesting depth for Gemini API compatibility.
+// Evidence supports both legacy string format and structured EvidenceItem format.
+// - string: Plain quote (legacy or when Phase1Output not available)
+// - EvidenceItem: Verified quote with utteranceId for source tracking
 // ============================================================================
+
+/**
+ * Structured evidence item with source tracking
+ * Created by the evidence verification layer when Phase1Output is available.
+ */
+export interface EvidenceItem {
+  /** Reference to Phase1Output utterance ID ("{sessionId}_{turnIndex}") */
+  utteranceId: string;
+  /** The verified quote from the developer */
+  quote: string;
+  /** Session ID for source tracking */
+  sessionId?: string;
+}
+
+/** Evidence can be a plain string quote or a structured EvidenceItem */
+export type Evidence = string | EvidenceItem;
 
 export interface DimensionStrength {
   title: string;
   description: string;
-  /** Array of quote strings demonstrating this strength */
-  evidence?: string[];
+  /** Quotes demonstrating this strength (string[] or EvidenceItem[]) */
+  evidence?: Evidence[];
 }
 
 export interface DimensionGrowthArea {
   title: string;
   description: string;
-  /** Array of quote strings showing this growth opportunity */
-  evidence?: string[];
+  /** Quotes showing this growth opportunity (string[] or EvidenceItem[]) */
+  evidence?: Evidence[];
   recommendation: string;
 }
 

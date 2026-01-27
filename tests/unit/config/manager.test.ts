@@ -62,7 +62,6 @@ describe('ConfigManager', () => {
     it('should merge file config with defaults', async () => {
       const fileConfig = {
         telemetry: false,
-        model: 'custom-model',
       };
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(fileConfig));
 
@@ -70,7 +69,6 @@ describe('ConfigManager', () => {
       const config = await manager.getConfig();
 
       expect(config.telemetry).toBe(false);
-      expect(config.model).toBe('custom-model');
       expect(config.version).toBe(DEFAULT_CONFIG.version);
       expect(config.storagePath).toBe(DEFAULT_CONFIG.storagePath);
     });
@@ -78,18 +76,15 @@ describe('ConfigManager', () => {
     it('should prioritize environment variables over file config', async () => {
       const fileConfig = {
         apiKey: 'file-api-key',
-        model: 'file-model',
       };
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(fileConfig));
 
       process.env.ANTHROPIC_API_KEY = 'env-api-key';
-      process.env.NOSLOP_MODEL = 'env-model';
 
       const manager = new ConfigManager();
       const config = await manager.getConfig();
 
       expect(config.apiKey).toBe('env-api-key');
-      expect(config.model).toBe('env-model');
     });
 
     it('should cache config after first load', async () => {
@@ -262,19 +257,6 @@ describe('ConfigManager', () => {
         process.env.NOSLOP_TELEMETRY = 'false';
         const manager = new ConfigManager();
         expect(await manager.isTelemetryEnabled()).toBe(false);
-      });
-    });
-
-    describe('getModel', () => {
-      it('should return default model', async () => {
-        const manager = new ConfigManager();
-        expect(await manager.getModel()).toBe('claude-sonnet-4-20250514');
-      });
-
-      it('should return custom model from env', async () => {
-        process.env.NOSLOP_MODEL = 'custom-model';
-        const manager = new ConfigManager();
-        expect(await manager.getModel()).toBe('custom-model');
       });
     });
 

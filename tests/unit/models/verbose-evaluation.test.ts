@@ -16,6 +16,8 @@ import {
   PerDimensionInsightSchema,
   DimensionStrengthSchema,
   DimensionGrowthAreaSchema,
+  parseExamplesData,
+  parseGrowthAreasData,
 } from '../../../src/lib/models/verbose-evaluation.js';
 
 describe('VerboseLLMResponseSchema', () => {
@@ -454,6 +456,102 @@ describe('DimensionGrowthAreaSchema', () => {
       };
       const result = DimensionGrowthAreaSchema.safeParse(area);
       expect(result.success).toBe(true);
+    });
+  });
+});
+
+// ============================================================================
+// Parser Function Tests (C1, M3 fixes)
+// ============================================================================
+
+describe('parseExamplesData (M3 fix: pipe in quotes)', () => {
+  it('should parse basic examples', () => {
+    const data = 'hello world|good greeting;bye|farewell';
+    const result = parseExamplesData(data);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({ quote: 'hello world', analysis: 'good greeting' });
+    expect(result[1]).toEqual({ quote: 'bye', analysis: 'farewell' });
+  });
+
+  it('should handle pipe characters within the analysis field', () => {
+    const data = 'quote text|analysis with | pipe character;another|simple';
+    const result = parseExamplesData(data);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({ quote: 'quote text', analysis: 'analysis with | pipe character' });
+    expect(result[1]).toEqual({ quote: 'another', analysis: 'simple' });
+  });
+
+  it('should return empty array for undefined input', () => {
+    expect(parseExamplesData(undefined)).toEqual([]);
+  });
+
+  it('should return empty array for empty string', () => {
+    expect(parseExamplesData('')).toEqual([]);
+  });
+
+  it('should handle single entry', () => {
+    const result = parseExamplesData('single quote|single analysis');
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({ quote: 'single quote', analysis: 'single analysis' });
+  });
+
+  it('should handle missing analysis', () => {
+    const result = parseExamplesData('only quote');
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({ quote: 'only quote', analysis: '' });
+  });
+});
+
+describe('parseGrowthAreasData (V3 6-part format)', () => {
+  it('should parse V3 format without clusterId (6 parts)', () => {
+    const data = 'Improve Context|Description here|Add more context|45|medium|60';
+    const result = parseGrowthAreasData(data);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      title: 'Improve Context',
+      description: 'Description here',
+      recommendation: 'Add more context',
+      frequency: 45,
+      severity: 'medium',
+      priorityScore: 60,
+    });
+  });
+
+  it('should still parse V2 format with clusterId (7 parts)', () => {
+    const data = 'cluster_1|Improve Context|Description here|Add more context|45|medium|60';
+    const result = parseGrowthAreasData(data);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      clusterId: 'cluster_1',
+      title: 'Improve Context',
+      description: 'Description here',
+      recommendation: 'Add more context',
+      frequency: 45,
+      severity: 'medium',
+      priorityScore: 60,
+    });
+  });
+
+  it('should parse multiple V3 entries', () => {
+    const data = 'Title1|Desc1|Rec1|30|low|25;Title2|Desc2|Rec2|70|critical|85';
+    const result = parseGrowthAreasData(data);
+    expect(result).toHaveLength(2);
+    expect(result[0].title).toBe('Title1');
+    expect(result[0].frequency).toBe(30);
+    expect(result[0].severity).toBe('low');
+    expect(result[1].title).toBe('Title2');
+    expect(result[1].frequency).toBe(70);
+    expect(result[1].severity).toBe('critical');
+  });
+
+  it('should handle legacy 3-part format', () => {
+    const data = 'Title|Description|Recommendation';
+    const result = parseGrowthAreasData(data);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      title: 'Title',
+      description: 'Description',
+      recommendation: 'Recommendation',
     });
   });
 });

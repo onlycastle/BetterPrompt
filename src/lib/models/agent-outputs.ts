@@ -773,72 +773,6 @@ import { MultitaskingAnalysisOutputSchema, type MultitaskingAnalysisOutput } fro
 export { MultitaskingAnalysisOutputSchema, type MultitaskingAnalysisOutput };
 
 // ============================================================================
-// Type Synthesis Output (NEW) - Agent-Informed Classification
-// ============================================================================
-
-/**
- * Type Synthesis Output Schema
- *
- * Refines the initial pattern-based type classification using insights
- * from all other agents (Pattern Detective, Anti-Pattern Spotter, etc.)
- *
- * This creates a more accurate 15-combination matrix (5 styles × 3 control levels)
- * by incorporating semantic information from LLM analysis.
- *
- * @example
- * ```json
- * {
- *   "refinedPrimaryType": "architect",
- *   "refinedDistribution": "architect:42;scientist:25;craftsman:18;collaborator:10;speedrunner:5",
- *   "refinedControlLevel": "cartographer",
- *   "matrixName": "Systems Architect",
- *   "matrixEmoji": "🏛️",
- *   "adjustmentReasons": [
- *     "High metacognition score (78) elevated control level from navigator to cartographer",
- *     "Low error loop count supports architect classification",
- *     "Strong context efficiency patterns reinforce systematic approach"
- *   ],
- *   "confidenceScore": 0.85,
- *   "confidenceBoost": 0.15,
- *   "synthesisEvidence": "metacognition:78:self-aware patterns;antiPattern:low_error_loops;context:high_efficiency"
- * }
- * ```
- */
-export const TypeSynthesisOutputSchema = z.object({
-  // Refined primary type after agent synthesis
-  refinedPrimaryType: z.enum(['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman']),
-
-  // Refined distribution - "type:percent;..." format (sum to 100)
-  refinedDistribution: z.string().max(3000),
-
-  // Refined control level based on agent insights (exploration metaphor)
-  refinedControlLevel: z.enum(['explorer', 'navigator', 'cartographer']),
-
-  // Raw control score (0-100) for level distribution calculation
-  controlScore: z.number().min(0).max(100).optional(),
-
-  // Combined matrix name (e.g., "Systems Architect", "Yolo Coder")
-  matrixName: z.string().max(50),
-
-  // Combined matrix emoji
-  matrixEmoji: z.string().max(10),
-
-  // Reasons for adjustments from initial classification
-  adjustmentReasons: z.array(z.string().max(3000)).max(5),
-
-  // Final confidence score (0-1)
-  confidenceScore: z.number().min(0).max(1),
-
-  // How much confidence increased from agent synthesis (0-1)
-  confidenceBoost: z.number().min(0).max(1),
-
-  // Evidence from agent outputs - "agent:key_signal:detail;..."
-  synthesisEvidence: z.string().max(1000),
-});
-
-export type TypeSynthesisOutput = z.infer<typeof TypeSynthesisOutputSchema>;
-
-// ============================================================================
 // Type Classifier Output (v2 Architecture)
 // ============================================================================
 
@@ -939,9 +873,6 @@ export const AgentOutputsSchema = z.object({
   temporalAnalysis: TemporalAnalysisResultSchema.optional(),
   multitasking: MultitaskingAnalysisOutputSchema.optional(),
 
-  // Legacy: Type Synthesis (replaced by TypeClassifier, kept for stored data)
-  typeSynthesis: TypeSynthesisOutputSchema.optional(),
-
   // Legacy: Cross-Session Anti-Pattern Detection (deprecated in v2, kept for stored data)
   crossSessionAntiPatterns: CrossSessionAntiPatternOutputSchema.optional(),
 
@@ -987,7 +918,6 @@ export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
     outputs.metacognition ||
     outputs.temporalAnalysis ||
     outputs.multitasking ||
-    outputs.typeSynthesis ||
     outputs.crossSessionAntiPatterns ||
     // v2 agents
     outputs.strengthGrowth ||
@@ -1253,6 +1183,47 @@ export function getAllAgentGrowthAreas(outputs: AgentOutputs): AgentGrowthArea[]
     allAreas.push(...parseGrowthAreasData(outputs.multitasking.growthAreasData));
   }
 
+  // v2 workers — structured arrays (not pipe-delimited strings)
+  if (outputs.strengthGrowth?.growthAreas) {
+    allAreas.push(...outputs.strengthGrowth.growthAreas.map(ga => ({
+      title: ga.title,
+      description: ga.description,
+      evidence: ga.evidence?.map(e => e.quote) ?? [],
+      recommendation: ga.recommendation,
+      frequency: ga.frequency,
+      severity: ga.severity,
+      priorityScore: ga.priorityScore,
+    })));
+  }
+  if (outputs.trustVerification?.antiPatterns) {
+    allAreas.push(...outputs.trustVerification.antiPatterns.map(ap => ({
+      title: `Anti-Pattern: ${ap.type.replace(/_/g, ' ')}`,
+      description: ap.improvement ?? `Detected ${ap.type} pattern`,
+      evidence: ap.examples?.map(e => e.quote) ?? [],
+      recommendation: ap.improvement ?? '',
+      frequency: ap.sessionPercentage,
+      severity: (
+        ap.severity === 'critical' ? 'critical' :
+        ap.severity === 'significant' ? 'high' :
+        ap.severity === 'moderate' ? 'medium' : 'low'
+      ) as AgentSeverityLevel,
+      priorityScore: ap.severity === 'critical' ? 90 : ap.severity === 'significant' ? 70 : ap.severity === 'moderate' ? 50 : 30,
+    })));
+  }
+  if (outputs.workflowHabit) {
+    const weakHabits = outputs.workflowHabit.planningHabits?.filter(h =>
+      h.effectiveness === 'low' || h.frequency === 'rarely' || h.frequency === 'never'
+    ) ?? [];
+    allAreas.push(...weakHabits.map(h => ({
+      title: `Planning: ${h.type.replace(/_/g, ' ')}`,
+      description: `Planning habit "${h.type.replace(/_/g, ' ')}" is ${h.frequency}`,
+      evidence: h.examples ?? [],
+      recommendation: `Improve ${h.type.replace(/_/g, ' ')} frequency`,
+      severity: 'medium' as AgentSeverityLevel,
+      priorityScore: 50,
+    })));
+  }
+
   // Deduplicate similar growth areas across agents
   return groupSimilarGrowthAreas(allAreas);
 }
@@ -1390,7 +1361,10 @@ export type TranslatedAgentKey =
   | 'knowledgeGap'
   | 'contextEfficiency'
   | 'temporalAnalysis'
-  | 'multitasking';
+  | 'multitasking'
+  | 'strengthGrowth'
+  | 'trustVerification'
+  | 'workflowHabit';
 
 /**
  * Get growth areas from a specific translated agent
@@ -1477,6 +1451,17 @@ export function getAllTranslatedGrowthAreas(
     allAreas.push(...parseGrowthAreasData(insights.multitasking.growthAreasData));
   }
 
+  // v2 workers
+  if (insights.strengthGrowth?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(insights.strengthGrowth.growthAreasData));
+  }
+  if (insights.trustVerification?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(insights.trustVerification.growthAreasData));
+  }
+  if (insights.workflowHabit?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(insights.workflowHabit.growthAreasData));
+  }
+
   // Deduplicate similar growth areas
   return groupSimilarGrowthAreas(allAreas);
 }
@@ -1519,6 +1504,17 @@ export function getAllTranslatedStrengths(
     allStrengths.push(...parseStrengthsData(insights.multitasking.strengthsData));
   }
 
+  // v2 workers
+  if (insights.strengthGrowth?.strengthsData) {
+    allStrengths.push(...parseStrengthsData(insights.strengthGrowth.strengthsData));
+  }
+  if (insights.trustVerification?.strengthsData) {
+    allStrengths.push(...parseStrengthsData(insights.trustVerification.strengthsData));
+  }
+  if (insights.workflowHabit?.strengthsData) {
+    allStrengths.push(...parseStrengthsData(insights.workflowHabit.strengthsData));
+  }
+
   return allStrengths;
 }
 
@@ -1536,6 +1532,9 @@ export function hasTranslatedInsights(insights: TranslatedAgentInsights | undefi
     'contextEfficiency',
     'temporalAnalysis',
     'multitasking',
+    'strengthGrowth',
+    'trustVerification',
+    'workflowHabit',
   ];
 
   for (const key of agentKeys) {
