@@ -250,21 +250,29 @@ export function displayNoSessions(): void {
 
 /**
  * Estimate cost for a single session based on message count
- * Uses approximation based on average truncated message size
+ * Uses approximation based on Phase1Output size and 7-8 LLM stage pipeline
  */
 function estimateSingleSessionCost(messageCount: number): number {
   const inputPrice = 0.5 / 1_000_000; // Gemini 3 Flash input
   const outputPrice = 3.0 / 1_000_000; // Gemini 3 Flash output
 
-  // Average truncated message: ~500 tokens (2000 chars / 4)
-  // 3 stages with different message counts
-  const avgTokensPerMessage = 500;
-  const dataAnalystTokens = messageCount * avgTokensPerMessage;
-  const personalityTokens = Math.ceil(messageCount / 2) * avgTokensPerMessage; // Only user messages
-  const stageOverhead = (2500 + 1500) * 3; // System prompt + schema per stage
+  // Estimate Phase1Output tokens from message count
+  const userMessages = Math.ceil(messageCount * 0.6);
+  const assistantMessages = messageCount - userMessages;
+  const sampledUtterances = Math.min(userMessages, 500); // PHASE1_MAX_UTTERANCES
+  const sampledAiResponses = Math.min(assistantMessages, 350); // PHASE1_MAX_AI_RESPONSES
+  const phase1OutputTokens = (sampledUtterances * 250) + (sampledAiResponses * 100) + 500;
 
-  const totalInput = dataAnalystTokens + personalityTokens + 16000 + stageOverhead;
-  const totalOutput = 8000 + 4000 + 12000; // Per stage output
+  const stageOverhead = (2500 + 1500); // System prompt + schema per stage
+
+  // Phase 2: 5 workers × (Phase1Output + overhead)
+  const phase2Input = 5 * (phase1OutputTokens + stageOverhead);
+  // Phase 2.5 + Phase 3 + Phase 4
+  const laterStagesInput = (6000 + stageOverhead) + (9500 + stageOverhead) + (14000 + stageOverhead);
+
+  const totalInput = phase2Input + laterStagesInput;
+  // 5 workers + TypeClassifier + ContentWriter + Translator
+  const totalOutput = 8000 + 8000 + 8000 + 4000 + 4000 + 2000 + 12000 + 10000;
 
   return totalInput * inputPrice + totalOutput * outputPrice;
 }
@@ -426,8 +434,8 @@ export function displayResultsWithCelebration(result: AnalysisResult): void {
   // Show regular results
   displayResults(result);
 
-  // Show actual token usage if DEBUG_COST is enabled and tokenUsage is available
-  if (process.env.DEBUG_COST && result.tokenUsage) {
+  // Show actual token usage if DEBUG is enabled and tokenUsage is available
+  if (process.env.DEBUG && result.tokenUsage) {
     console.log(renderActualTokenUsage(result.tokenUsage));
   }
 }

@@ -7,9 +7,15 @@
 
 import { Card } from '../../ui/Card';
 import { ResourceBubble } from './ResourceBubble';
-import type { DimensionGrowthArea } from '../../../types/verbose';
+import type { DimensionGrowthArea, Evidence } from '../../../types/verbose';
 import type { ParsedResource } from '../../../lib/models/agent-outputs';
 import styles from './GrowthAreasSection.module.css';
+
+/** Extract display quote from evidence (handles both string and EvidenceItem formats) */
+function getEvidenceQuote(evidence: Evidence): string {
+  if (typeof evidence === 'string') return evidence;
+  return evidence.quote;
+}
 
 interface GrowthAreasSectionProps {
   areas: DimensionGrowthArea[];
@@ -39,7 +45,7 @@ export function GrowthAreasSection({ areas, isPaid = false, resourcesMap }: Grow
 
               {area.evidence && area.evidence.length > 0 && (
                 <blockquote className={styles.quote}>
-                  "{area.evidence[0]}"
+                  &ldquo;{getEvidenceQuote(area.evidence[0])}&rdquo;
                 </blockquote>
               )}
 

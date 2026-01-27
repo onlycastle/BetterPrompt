@@ -98,6 +98,18 @@ function hasDetailData(agentId: keyof AgentOutputs, data: unknown): boolean {
       const d = data as AgentOutputs['multitasking'];
       return !!(d?.strategyEvaluationData || d?.contextSwitchCountMin);
     }
+    case 'strengthGrowth': {
+      const d = data as AgentOutputs['strengthGrowth'];
+      return !!(d?.strengths?.length || d?.growthAreas?.length);
+    }
+    case 'trustVerification': {
+      const d = data as AgentOutputs['trustVerification'];
+      return !!(d?.antiPatterns?.length || d?.verificationBehavior);
+    }
+    case 'workflowHabit': {
+      const d = data as AgentOutputs['workflowHabit'];
+      return !!(d?.planningHabits?.length || d?.criticalThinkingMoments?.length);
+    }
     default:
       return false;
   }
@@ -121,6 +133,13 @@ function hasVisibleContent(agentId: keyof AgentOutputs, data: unknown): boolean 
 
   // 3. Check for detail data
   const hasDetails = hasDetailData(agentId, data);
+
+  // v2 workers have structured arrays, not pipe-delimited strings
+  const d = data as Record<string, unknown>;
+  if (Array.isArray(d.strengths) && d.strengths.length > 0) return true;
+  if (Array.isArray(d.growthAreas) && d.growthAreas.length > 0) return true;
+  if (Array.isArray(d.antiPatterns) && d.antiPatterns.length > 0) return true;
+  if (Array.isArray(d.planningHabits) && d.planningHabits.length > 0) return true;
 
   return hasStrengthsOrGrowth || hasSummary || hasDetails;
 }
@@ -527,6 +546,12 @@ function AgentDetails({ agentId, data }: AgentDetailsProps) {
       return <TemporalAnalysisDetails data={data as AgentOutputs['temporalAnalysis']} />;
     case 'multitasking':
       return <MultitaskingDetails data={data as AgentOutputs['multitasking']} />;
+    case 'strengthGrowth':
+      return <StrengthGrowthDetails data={data as AgentOutputs['strengthGrowth']} />;
+    case 'trustVerification':
+      return <TrustVerificationDetails data={data as AgentOutputs['trustVerification']} />;
+    case 'workflowHabit':
+      return <WorkflowHabitDetails data={data as AgentOutputs['workflowHabit']} />;
     default:
       return null;
   }
@@ -931,6 +956,163 @@ function MultitaskingDetails({ data }: { data: AgentOutputs['multitasking'] }) {
           ))}
         </DetailSection>
       )}
+    </div>
+  );
+}
+
+function StrengthGrowthDetails({ data }: { data: AgentOutputs['strengthGrowth'] }) {
+  if (!data) return null;
+
+  return (
+    <div className={styles.detailsContent}>
+      {data.strengths?.length > 0 && (
+        <DetailSection title="Strengths" icon="💪">
+          {data.strengths.slice(0, 5).map((s, i) => (
+            <div key={i} className={styles.detailItem}>
+              <span className={styles.detailLabel}>{s.title}</span>
+              {s.dimension && (
+                <span className={styles.resourceType}>{s.dimension}</span>
+              )}
+              {s.evidence?.slice(0, 2).map((e, j) => (
+                <span key={j} className={styles.detailExample}>&ldquo;{e.quote}&rdquo;</span>
+              ))}
+            </div>
+          ))}
+        </DetailSection>
+      )}
+      {data.growthAreas?.length > 0 && (
+        <DetailSection title="Growth Areas" icon="🌱">
+          {data.growthAreas.slice(0, 5).map((g, i) => (
+            <div key={i} className={styles.detailItem}>
+              <span className={styles.detailLabel}>{g.title}</span>
+              {g.severity && (
+                <span className={`${styles.impactBadge} ${styles[g.severity]}`}>
+                  {g.severity}
+                </span>
+              )}
+              {g.recommendation && (
+                <span className={styles.detailExample}>{g.recommendation}</span>
+              )}
+            </div>
+          ))}
+        </DetailSection>
+      )}
+      {data.summary && (
+        <div className={styles.metricRow}>
+          <span className={styles.detailExample}>{data.summary}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TrustVerificationDetails({ data }: { data: AgentOutputs['trustVerification'] }) {
+  if (!data) return null;
+
+  return (
+    <div className={styles.detailsContent}>
+      {data.verificationBehavior && (
+        <DetailSection title="Verification Level" icon="🛡️">
+          <div className={styles.metricRow}>
+            <span className={styles.metricLabel}>Level</span>
+            <span className={styles.metricValue}>
+              {data.verificationBehavior.level.replace(/_/g, ' ')}
+            </span>
+          </div>
+          {data.verificationBehavior.recommendation && (
+            <div className={styles.detailItem}>
+              <span className={styles.detailExample}>
+                {data.verificationBehavior.recommendation}
+              </span>
+            </div>
+          )}
+        </DetailSection>
+      )}
+      {data.antiPatterns?.length > 0 && (
+        <DetailSection title="Anti-Patterns Detected" icon="⚠️">
+          {data.antiPatterns.slice(0, 5).map((ap, i) => (
+            <div key={i} className={styles.detailItem}>
+              <span className={styles.detailLabel}>
+                {ap.type.replace(/_/g, ' ')}
+              </span>
+              <span className={`${styles.impactBadge} ${styles[ap.severity]}`}>
+                {ap.severity}
+              </span>
+              <span className={styles.detailValue}>{ap.frequency}x</span>
+              {ap.examples?.slice(0, 1).map((e, j) => (
+                <span key={j} className={styles.detailExample}>
+                  &ldquo;{e.quote}&rdquo;
+                </span>
+              ))}
+            </div>
+          ))}
+        </DetailSection>
+      )}
+      <div className={styles.metricRow}>
+        <span className={styles.metricLabel}>Trust Health Score</span>
+        <span className={styles.metricValue}>{data.overallTrustHealthScore}/100</span>
+      </div>
+    </div>
+  );
+}
+
+function WorkflowHabitDetails({ data }: { data: AgentOutputs['workflowHabit'] }) {
+  if (!data) return null;
+
+  return (
+    <div className={styles.detailsContent}>
+      {data.planningHabits?.length > 0 && (
+        <DetailSection title="Planning Habits" icon="📋">
+          {data.planningHabits.map((h, i) => (
+            <div key={i} className={styles.detailItem}>
+              <span className={styles.detailLabel}>
+                {h.type.replace(/_/g, ' ')}
+              </span>
+              <span className={styles.detailValue}>{h.frequency}</span>
+              {h.effectiveness && (
+                <span className={`${styles.impactBadge} ${styles[h.effectiveness]}`}>
+                  {h.effectiveness}
+                </span>
+              )}
+            </div>
+          ))}
+        </DetailSection>
+      )}
+      {data.criticalThinkingMoments?.length > 0 && (
+        <DetailSection title="Critical Thinking Moments" icon="🧠">
+          {data.criticalThinkingMoments.slice(0, 3).map((ct, i) => (
+            <div key={i} className={styles.detailItem}>
+              <span className={styles.detailLabel}>
+                {ct.type.replace(/_/g, ' ')}
+              </span>
+              <span className={styles.detailExample}>
+                &ldquo;{ct.quote}&rdquo;
+              </span>
+            </div>
+          ))}
+        </DetailSection>
+      )}
+      {data.multitaskingPattern && (
+        <DetailSection title="Multitasking" icon="🔄">
+          <div className={styles.metricRow}>
+            <span className={styles.metricLabel}>Focus Score</span>
+            <span className={styles.metricValue}>
+              {data.multitaskingPattern.focusScore}/100
+            </span>
+          </div>
+          {data.multitaskingPattern.recommendation && (
+            <div className={styles.detailItem}>
+              <span className={styles.detailExample}>
+                {data.multitaskingPattern.recommendation}
+              </span>
+            </div>
+          )}
+        </DetailSection>
+      )}
+      <div className={styles.metricRow}>
+        <span className={styles.metricLabel}>Workflow Score</span>
+        <span className={styles.metricValue}>{data.overallWorkflowScore}/100</span>
+      </div>
     </div>
   );
 }

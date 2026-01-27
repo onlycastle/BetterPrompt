@@ -236,7 +236,7 @@ export interface AnalysisResult {
   };
   personalitySummary: string;
   reportUrl: string;
-  /** Actual token usage from LLM pipeline (available when DEBUG_COST is set) */
+  /** Actual token usage from LLM pipeline (available when DEBUG is set) */
   tokenUsage?: PipelineTokenUsage;
 }
 
