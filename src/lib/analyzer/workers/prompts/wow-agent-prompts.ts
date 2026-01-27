@@ -419,6 +419,14 @@ Generate exactly 3 insights with this MANDATORY structure:
 IMPORTANT: Identifying knowledge gaps is MORE VALUABLE than praising what they know.
 Specific resource recommendations create actionable growth paths.
 
+## EVIDENCE QUOTE SELECTION
+- All quotes in strengthsData and growthAreasData MUST be the developer's own words from developerUtterances
+- NEVER quote text from aiResponses — those are the AI's words, not the developer's
+- For knowledge gaps, prefer quotes showing the developer's own confusion or questions — not pasted error messages
+- Good evidence: "How do I use generics here?" or "I keep running into this TypeScript issue with union types"
+- Bad evidence: pasted compiler errors, code blocks, system output, or AI response text
+- Each growth area's FIRST evidence quote should show the developer's thinking, not just a command
+
 ## CRITICAL
 - Be specific about which topics need attention
 - Recommend real, useful resources (documentation, tutorials, books)
@@ -524,6 +532,15 @@ Generate exactly 3 insights with this MANDATORY structure:
 
 IMPORTANT: Identifying inefficiencies is MORE VALUABLE than praising efficiency.
 Specific, actionable suggestions with numbers create clear improvement paths.
+
+## EVIDENCE QUOTE SELECTION
+- All quotes in strengthsData and growthAreasData MUST be the developer's own words from developerUtterances
+- NEVER quote text from aiResponses — those are the AI's words, not the developer's
+- For efficiency insights, prefer quotes showing the developer's reasoning about context management — not just "/clear" or "/compact"
+- Good evidence: "I need to clear context because we've gone off track from the auth refactor" (shows thinking)
+- Acceptable supporting evidence: "/compact", "clear" (shows frequency of habit)
+- NEVER use system output or AI responses as evidence — only developer's own words
+- Each growth area's FIRST evidence quote should show the developer's reasoning, not just a command
 
 ## CRITICAL
 - Focus on actionable efficiency improvements

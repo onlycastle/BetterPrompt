@@ -71,6 +71,15 @@ Look for:
 3. Alternative exploration: "what about using X instead?"
 4. Edge case mentions: "what happens when...", "what if..."
 
+## EVIDENCE QUOTE SELECTION
+- Evidence quotes MUST come from developerUtterances[].text — the user's OWN words
+- NEVER quote text from aiResponses[].textSnippet — those are the AI's words, not the developer's
+- For critical thinking quotes, use the developer's actual question or challenge, not the AI's response to it
+- For planning habits, prefer quotes showing the developer's planning REASONING (e.g., "Let me break this into steps: first the migration, then the schema update") over simple commands ("/plan")
+- For critical thinking moments, the quote should show the developer's OWN questioning or reasoning — not just "are you sure?" but ideally the full thought (e.g., "Wait, that doesn't handle the null case — what happens when the user hasn't set a profile?")
+- Short verification quotes (e.g., "Run tests first", "Is that correct?") are valid as supporting evidence — they demonstrate the habit's frequency
+- NEVER use error messages or system output as evidence — only the developer's own words
+
 ## CRITICAL RULES
 1. Every planning habit MUST have evidence examples from actual utterances
 2. Every critical thinking moment MUST quote exact developer text

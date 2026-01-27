@@ -189,10 +189,26 @@ export class ContentWriterStage {
       : [];
     const kbContext = buildPatternKnowledgeContext(patternTypes);
 
+    // Select top 20 richest utterances for Content Writer to quote directly
+    // Sort by wordCount (not characterCount) to favor natural language over code/symbols,
+    // and deprioritize utterances that are mostly code blocks (pasted code ≠ developer thinking)
+    const topUtterances = phase1Output
+      ? phase1Output.developerUtterances
+          .filter(u => u.characterCount > 200)
+          .sort((a, b) => {
+            // Deprioritize code-heavy utterances: non-code first, then by word count
+            if (a.hasCodeBlock !== b.hasCodeBlock) return a.hasCodeBlock ? 1 : -1;
+            return b.wordCount - a.wordCount;
+          })
+          .slice(0, 20)
+          .map(u => ({ id: u.id, text: u.text.slice(0, 1500), wordCount: u.wordCount }))
+      : undefined;
+
     const userPrompt = buildContentWriterUserPromptV3(
       agentOutputsSummary,
       sessionCount,
-      kbContext
+      kbContext,
+      topUtterances
     );
 
     const result = await this.client.generateStructured({
@@ -337,6 +353,13 @@ export class ContentWriterStage {
     // against Phase1Output originals to ensure quote accuracy
     if (phase1Output) {
       this.verifyAndEnrichEvidence(sanitized, agentOutputs, phase1Output);
+
+      // Verify prompt pattern examples contain only developer utterances
+      this.verifyPromptPatternExamples(sanitized, phase1Output);
+
+      // Verify Phase 2 worker examples (anti-patterns, critical thinking, planning)
+      // Must run BEFORE sanitizePremiumSectionsV3 since it reads from agentOutputs
+      this.verifyPhase2WorkerExamples(agentOutputs, phase1Output);
     }
 
     // Sanitize Premium sections using Phase 2 outputs
@@ -707,6 +730,196 @@ export class ContentWriterStage {
     const lastUnderscore = utteranceId.lastIndexOf('_');
     if (lastUnderscore <= 0) return undefined;
     return utteranceId.slice(0, lastUnderscore);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // User-Message-Only Verification Layer
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Build normalized text corpora from Phase1Output for quote verification.
+   * Returns developer utterance texts and AI response texts, both normalized.
+   */
+  private buildCorpora(phase1Output: Phase1Output): { devTexts: string[]; aiTexts: string[] } {
+    return {
+      devTexts: phase1Output.developerUtterances.map(u => this.normalizeText(u.text)),
+      aiTexts: phase1Output.aiResponses.map(r => this.normalizeText(r.textSnippet)),
+    };
+  }
+
+  /**
+   * Normalize text for comparison: trim, lowercase, collapse whitespace.
+   */
+  private normalizeText(text: string): string {
+    return text.trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  /**
+   * Check if a normalized quote matches any text in a corpus.
+   * Delegates to quotesMatch for each corpus entry.
+   */
+  private matchesCorpus(normalizedQuote: string, corpus: string[]): boolean {
+    return corpus.some(text => text.length > 0 && this.quotesMatch(normalizedQuote, text));
+  }
+
+  /**
+   * Verify that prompt pattern example quotes are developer utterances, not AI responses.
+   *
+   * Strategy: For each prompt pattern example quote:
+   * - If quote matches an AI response but NOT a developer utterance → remove
+   * - Otherwise → keep (matches developer, matches both, or paraphrased)
+   */
+  private verifyPromptPatternExamples(
+    sanitized: any,
+    phase1Output: Phase1Output
+  ): void {
+    if (!Array.isArray(sanitized.promptPatterns)) return;
+
+    const { devTexts, aiTexts } = this.buildCorpora(phase1Output);
+    if (devTexts.length === 0) return;
+
+    const stats = { verified: 0, replaced: 0, removed: 0 };
+
+    for (const pattern of sanitized.promptPatterns) {
+      if (!Array.isArray(pattern.examples)) continue;
+
+      pattern.examples = pattern.examples.filter((example: any) => {
+        const quote = typeof example === 'string' ? example : example?.quote;
+        if (!quote || typeof quote !== 'string') return true;
+        return this.filterBySubstringMatch(quote, devTexts, aiTexts, stats);
+      });
+    }
+
+    if (stats.removed > 0) {
+      this.log(`Prompt pattern verification: removed ${stats.removed} AI-only quotes`);
+    }
+  }
+
+  /**
+   * Verify that Phase 2 worker examples (anti-patterns, critical thinking, planning)
+   * contain only developer utterances, not AI responses.
+   *
+   * Must run BEFORE sanitizePremiumSectionsV3() since premium sections read from agentOutputs.
+   * Mutates agentOutputs in place to filter out AI-only quotes.
+   */
+  private verifyPhase2WorkerExamples(
+    agentOutputs: AgentOutputs,
+    phase1Output: Phase1Output
+  ): void {
+    const utteranceLookup = new Map<string, DeveloperUtterance>();
+    for (const u of phase1Output.developerUtterances) {
+      utteranceLookup.set(u.id, u);
+    }
+
+    const { devTexts, aiTexts } = this.buildCorpora(phase1Output);
+    if (devTexts.length === 0) return;
+
+    const stats = { verified: 0, replaced: 0, removed: 0 };
+
+    // 1. Anti-pattern examples (have utteranceId → ID-based lookup)
+    if (agentOutputs.trustVerification?.antiPatterns) {
+      for (const ap of agentOutputs.trustVerification.antiPatterns) {
+        if (!Array.isArray(ap.examples)) continue;
+
+        ap.examples = ap.examples.filter((ex: any) => {
+          if (!ex.utteranceId) {
+            return this.filterBySubstringMatch(ex.quote, devTexts, aiTexts, stats);
+          }
+          return this.verifyQuoteByUtteranceId(ex, utteranceLookup, stats);
+        });
+      }
+    }
+
+    // 2. Critical thinking moments (have optional utteranceId + quote)
+    if (agentOutputs.workflowHabit?.criticalThinkingMoments) {
+      agentOutputs.workflowHabit.criticalThinkingMoments =
+        agentOutputs.workflowHabit.criticalThinkingMoments.filter((moment: any) => {
+          if (!moment.quote || typeof moment.quote !== 'string') return true;
+
+          if (moment.utteranceId) {
+            return this.verifyQuoteByUtteranceId(moment, utteranceLookup, stats);
+          }
+
+          return this.filterBySubstringMatch(moment.quote, devTexts, aiTexts, stats);
+        });
+    }
+
+    // 3. Planning habit examples (plain strings, no utteranceId)
+    if (agentOutputs.workflowHabit?.planningHabits) {
+      for (const habit of agentOutputs.workflowHabit.planningHabits) {
+        if (!Array.isArray(habit.examples)) continue;
+
+        habit.examples = habit.examples.filter((example: string) => {
+          if (!example || typeof example !== 'string') return true;
+          return this.filterBySubstringMatch(example, devTexts, aiTexts, stats);
+        });
+      }
+    }
+
+    const total = stats.verified + stats.replaced + stats.removed;
+    if (total > 0) {
+      this.log(`Phase 2 worker verification: verified=${stats.verified}, replaced=${stats.replaced}, removed=${stats.removed}`);
+    }
+  }
+
+  /**
+   * Verify a quote against a known utterance by ID.
+   * If the utteranceId is not found, removes the entry.
+   * If the quote doesn't match the original, replaces it with the original text.
+   * Returns true to keep, false to remove. Mutates the entry's quote if mismatched.
+   */
+  private verifyQuoteByUtteranceId(
+    entry: { utteranceId: string; quote: string },
+    utteranceLookup: Map<string, DeveloperUtterance>,
+    stats: { verified: number; replaced: number; removed: number }
+  ): boolean {
+    const original = utteranceLookup.get(entry.utteranceId);
+    if (!original) {
+      this.log(`utteranceId "${entry.utteranceId}" not found — removing`);
+      stats.removed++;
+      return false;
+    }
+
+    const originalQuote = original.text.slice(0, 500);
+    if (this.quotesMatch(entry.quote, originalQuote)) {
+      stats.verified++;
+    } else {
+      entry.quote = originalQuote;
+      stats.replaced++;
+    }
+    return true;
+  }
+
+  /**
+   * Filter a quote by substring matching against developer and AI corpora.
+   * Returns true to keep, false to remove.
+   * Mutates stats in place.
+   */
+  private filterBySubstringMatch(
+    quote: string,
+    devTexts: string[],
+    aiTexts: string[],
+    stats: { verified: number; replaced: number; removed: number }
+  ): boolean {
+    if (!quote || typeof quote !== 'string') return true;
+
+    const normalized = this.normalizeText(quote);
+    if (normalized.length < 15) return true; // Too short to verify
+
+    const matchesDev = this.matchesCorpus(normalized, devTexts);
+    const matchesAI = this.matchesCorpus(normalized, aiTexts);
+
+    if (matchesAI && !matchesDev) {
+      this.log(`Quote matches AI response, not developer — removing: "${quote.slice(0, 80)}..."`);
+      stats.removed++;
+      return false;
+    }
+
+    if (matchesDev) {
+      stats.verified++;
+    }
+    // No match either way → keep (paraphrased)
+    return true;
   }
 
   // ─────────────────────────────────────────────────────────────────────────

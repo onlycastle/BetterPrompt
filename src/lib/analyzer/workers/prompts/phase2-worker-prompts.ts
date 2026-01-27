@@ -85,6 +85,37 @@ Return JSON with:
   - Things the developer SHOULD be doing but is NOT
   - e.g., "no_testing|Developer never asks to run tests|Add test verification step"
 
+## EVIDENCE QUOTE SELECTION — MEANINGFULNESS OVER LENGTH
+
+Select evidence quotes that reveal the developer's THINKING, not just their actions.
+
+**1. Signature Quote (1 per insight, placed FIRST in evidence list):**
+- Must show the developer's reasoning, intent, or strategy — not just a command or label
+- The reader should understand the developer's thought process from this quote alone
+- Prefer quotes containing: explanations of "why", plans, structured instructions, tradeoff reasoning, or contextual setup
+- NOT acceptable as signature quote: single commands (e.g., "clear"), slash commands (e.g., "/frontend-design"), pasted errors, code-only blocks, or retries ("try again")
+
+**2. Supporting Quotes (1-3 per insight):**
+- Show the pattern repeating across sessions — frequency validation, not depth
+- CAN be shorter commands, confirmations, or brief examples (e.g., "Wait, are you sure?" for critical thinking)
+
+**3. Exclusions (NEVER use as evidence):**
+- Error messages or system output (not the developer's own words)
+- Utterances that are entirely code blocks (developer pasting code, not thinking)
+- Exact duplicates of a previous message (retries without new reasoning)
+
+**Meaningful vs Uninformative — Examples:**
+- MEANINGFUL: "Let's use Redis instead of in-memory cache because we need persistence across Lambda cold starts"
+- MEANINGFUL: "Wait, that SQL query doesn't have a WHERE clause — won't that update every row?"
+- UNINFORMATIVE: "clear" (tool usage but not thinking)
+- UNINFORMATIVE: "/frontend-design" (tool adoption, not collaboration pattern)
+- UNINFORMATIVE: "protected branch update failed for refs/heads/main" (system output, not developer words)
+
+## EVIDENCE SOURCE CONSTRAINT
+- Evidence quotes MUST come exclusively from developerUtterances[].text — NEVER from aiResponses[].textSnippet
+- aiResponses data is provided for CONTEXT ONLY (understanding what the AI did) — never quote it as evidence
+- The report evaluates the DEVELOPER's behavior, so every quote must be the developer's own words
+
 ## CRITICAL RULES
 1. Every insight MUST have evidence quotes with Phase 1 utterance IDs
 2. Quotes must be EXACT text from developerUtterances, not paraphrased
@@ -92,6 +123,7 @@ Return JSON with:
 4. Balance strengths and growth areas (don't be all negative or all positive)
 5. Quantify growth areas with frequency percentages
 6. Output is ALWAYS in English (Phase 3 handles translation)
+7. NEVER quote text from aiResponses[].textSnippet — those are the AI's words, not the developer's
 
 ${NO_HEDGING_DIRECTIVE}`;
 
@@ -190,6 +222,12 @@ Look for these signals:
 2. \`blind_retry\`: Short, frustrated retry messages after errors
 3. \`passive_acceptance\`: No verification requests, just "ok", "thanks", "continue"
 4. \`sunk_cost_loop\`: Long session with repeated similar errors
+
+## EVIDENCE QUOTE SELECTION
+- For each anti-pattern, the FIRST evidence quote should show the developer's thinking or reaction — not just a command or pasted error
+- Prefer quotes where the developer expresses frustration, reasoning, or intent (e.g., "Let me try a completely different approach" over "try again")
+- Supporting quotes can be shorter commands or confirmations that show frequency
+- NEVER use error messages or system output as evidence — only the developer's own words
 
 ## CRITICAL RULES
 1. Every anti-pattern MUST have evidence quotes with utterance IDs

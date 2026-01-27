@@ -110,7 +110,7 @@ export class WorkflowHabitWorker extends BaseWorker<WorkflowHabitOutput> {
     return {
       developerUtterances: phase1.developerUtterances.map((u) => ({
         id: u.id,
-        text: u.text.slice(0, 600),
+        text: u.text.slice(0, 1000),
         sessionId: u.sessionId,
         turnIndex: u.turnIndex,
         wordCount: u.wordCount,

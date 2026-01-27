@@ -120,7 +120,7 @@ export class StrengthGrowthWorker extends BaseWorker<StrengthGrowthOutput> {
     return {
       developerUtterances: phase1.developerUtterances.map((u) => ({
         id: u.id,
-        text: u.text.slice(0, 800),
+        text: u.text.slice(0, 1500),
         sessionId: u.sessionId,
         turnIndex: u.turnIndex,
         characterCount: u.characterCount,
