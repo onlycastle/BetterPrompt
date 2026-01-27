@@ -557,8 +557,14 @@ async function storeResult(
   userId?: string,
   phase1Output?: unknown
 ): Promise<boolean> {
+  console.log(`[PHASE:STORE] === Storage Diagnostics ===`);
+  console.log(`[PHASE:STORE] resultId: ${resultId}`);
+  console.log(`[PHASE:STORE] SUPABASE_URL set: ${!!process.env.NEXT_PUBLIC_SUPABASE_URL}`);
+  console.log(`[PHASE:STORE] SUPABASE_KEY set: ${!!process.env.SUPABASE_SERVICE_ROLE_KEY}`);
+  console.log(`[PHASE:STORE] isSupabaseConfigured: ${isSupabaseConfigured()}`);
+
   if (!isSupabaseConfigured()) {
-    console.warn("Supabase not configured, skipping result storage");
+    console.error("[PHASE:STORE] FAILED - Supabase not configured");
     return false;
   }
 
@@ -569,10 +575,9 @@ async function storeResult(
     expiresAt.setDate(expiresAt.getDate() + 30);
 
     // Debug: log agentOutputs status before storage
-    console.log(`[lambda] storeResult - hasAgentOutputs: ${!!evaluation.agentOutputs}`);
-    console.log(`[lambda] storeResult - agentOutputs keys: ${evaluation.agentOutputs ? Object.keys(evaluation.agentOutputs).join(', ') : 'none'}`);
-    console.log(`[lambda] storeResult - typeClassifier: ${evaluation.agentOutputs?.typeClassifier ? 'present' : 'null'}`);
-    console.log(`[lambda] storeResult - hasPhase1Output: ${!!phase1Output}`);
+    console.log(`[PHASE:STORE] hasAgentOutputs: ${!!evaluation.agentOutputs}`);
+    console.log(`[PHASE:STORE] agentOutputs keys: ${evaluation.agentOutputs ? Object.keys(evaluation.agentOutputs).join(', ') : 'none'}`);
+    console.log(`[PHASE:STORE] hasPhase1Output: ${!!phase1Output}`);
 
     const insertData: Record<string, unknown> = {
       result_id: resultId,
@@ -590,19 +595,25 @@ async function storeResult(
     if (userId) {
       insertData.user_id = userId;
       insertData.claimed_at = new Date().toISOString();
-      console.log(`[lambda] Storing result with user_id: ${userId}`);
+      console.log(`[PHASE:STORE] Storing with user_id: ${userId}`);
     }
+
+    const evaluationSize = JSON.stringify(evaluation).length;
+    const phase1Size = phase1Output ? JSON.stringify(phase1Output).length : 0;
+    console.log(`[PHASE:STORE] Payload sizes - evaluation: ${evaluationSize} bytes, phase1Output: ${phase1Size} bytes`);
 
     const { error } = await supabase.from("analysis_results").insert(insertData);
 
     if (error) {
-      console.error("Failed to store result:", error.message);
+      console.error(`[PHASE:STORE] FAILED - Supabase error: ${error.message}`);
+      console.error(`[PHASE:STORE] Error code: ${error.code}, details: ${error.details}`);
       return false;
     }
 
+    console.log(`[PHASE:STORE] SUCCESS - stored resultId: ${resultId}`);
     return true;
   } catch (error) {
-    console.error("Failed to store result:", error);
+    console.error(`[PHASE:STORE] FAILED - exception:`, error);
     return false;
   }
 }
@@ -670,6 +681,8 @@ async function runAnalysis(
       }
     }
   }
+
+  console.log(`[PHASE:PARSE] Sessions received: ${body.sessions.length}, valid: ${parsedSessions.length}`);
 
   if (parsedSessions.length === 0) {
     write({
@@ -746,13 +759,14 @@ async function runAnalysis(
       geminiApiKey: userGeminiApiKey,
     });
 
-    console.log("[lambda-analysis] Starting analyzeVerbose...");
+    console.log("[PHASE:ANALYZE] Starting analyzeVerbose...");
     const analysisResult = await analyzer.analyzeVerbose(parsedSessions, metrics, {
       tier: "enterprise",
     });
     evaluation = analysisResult.evaluation;
     phase1Output = analysisResult.phase1Output;
-    console.log("[lambda-analysis] analyzeVerbose completed successfully");
+    console.log(`[PHASE:ANALYZE] Completed - evaluation keys: ${Object.keys(evaluation).join(', ')}`);
+    console.log(`[PHASE:ANALYZE] agentOutputs: ${evaluation.agentOutputs ? 'present' : 'null'}, phase1Output: ${phase1Output ? 'present' : 'null'}`);
   } finally {
     clearInterval(heartbeatInterval);
   }
@@ -767,7 +781,15 @@ async function runAnalysis(
 
   // Generate result ID and store (includes phase1Output for evidence auditing)
   const resultId = generateResultId();
-  await storeResult(resultId, evaluation, userId, phase1Output);
+  const stored = await storeResult(resultId, evaluation, userId, phase1Output);
+  if (!stored) {
+    write({
+      type: "error",
+      code: "STORE_FAILED",
+      message: "Failed to store analysis results. The analysis completed but could not be saved. Please try again.",
+    });
+    return;
+  }
 
   // Progress: Complete
   write({
@@ -793,6 +815,7 @@ async function runAnalysis(
     ?? '🎯';
 
   // Send final result
+  console.log(`[PHASE:RESPONSE] Sending result event with resultId: ${resultId}`);
   const response: AnalysisResponse = {
     resultId,
     primaryType,
@@ -1113,11 +1136,9 @@ async function handleDirectUpload(
 
     console.log(`[lambda] Direct upload: ${rawBuffer.length} bytes`);
 
-    // Check for gzip
-    const hasGzipMagicBytes = isGzipBuffer(rawBuffer);
-
+    // Decompress if gzipped
     let bodyText: string;
-    if (hasGzipMagicBytes) {
+    if (isGzipBuffer(rawBuffer)) {
       const decompressed = gunzipSync(rawBuffer);
       bodyText = decompressed.toString("utf-8");
       console.log(`[lambda] Decompressed: ${rawBuffer.length} -> ${bodyText.length} bytes`);
