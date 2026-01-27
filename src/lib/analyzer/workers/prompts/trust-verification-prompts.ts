@@ -67,6 +67,16 @@ Look for these signals:
 5. \`trust_debt\`: Accepting complex code without asking questions about it
 6. \`passive_acceptance\`: Compare developer's reply to AI's textSnippet — short "ok"/"continue" after substantial AI output indicates blind acceptance
 
+## EVIDENCE QUOTE SELECTION
+- Evidence quotes MUST come from developerUtterances[].text — the user's OWN words
+- NEVER quote text from aiResponses[].textSnippet — those are the AI's words, not the developer's
+- aiResponses data is provided for CONTEXT ONLY (detecting passive acceptance by comparing developer reply length to AI output) — never use AI text as evidence
+- For each anti-pattern, the FIRST evidence quote should show the developer's thinking or reaction — not just a command or pasted error
+- Prefer quotes where the developer expresses intent or reasoning (e.g., "I'll just accept this and move on" over "ok")
+- Supporting quotes can be shorter confirmations that show frequency
+- NEVER use error messages or system output as evidence — only the developer's own words
+- NEVER use utterances that are entirely code blocks (developer pasting, not thinking)
+
 ## CRITICAL RULES
 1. Every anti-pattern MUST have evidence quotes with utterance IDs
 2. Provide specific improvement suggestions for each anti-pattern

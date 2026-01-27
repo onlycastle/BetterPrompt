@@ -43,8 +43,10 @@ export interface LanguageDetectionResult {
  * - Chinese: U+4E00-U+9FFF (CJK Unified Ideographs)
  *
  * Priority: Korean > Japanese > Chinese > English (default)
- * Threshold: 20% - if non-English characters make up >= 20% of meaningful content,
+ * Threshold: 5% - if non-English characters make up >= 5% of meaningful content,
  * the text is considered to be in that language.
+ * (Lowered from 20% because developer sessions mix Korean with heavy English
+ * technical content — code, CLI commands, file paths — diluting the ratio.)
  *
  * @param texts - Array of text strings to analyze
  * @returns LanguageDetectionResult with primary language and confidence
@@ -86,9 +88,11 @@ export function detectPrimaryLanguage(texts: string[]): LanguageDetectionResult 
   const japaneseRatio = japaneseCount / totalCount;
   const chineseRatio = chineseCount / totalCount;
 
-  // Threshold: 20% - lower than before to catch mixed-language content
-  // (developers often mix Korean with English technical terms)
-  const THRESHOLD = 0.2;
+  // Threshold: 5% - lowered from 20% because developer sessions mix native
+  // language with heavy English technical content (code, CLI, paths, variables),
+  // diluting the CJK ratio. Hangul is exclusive to Korean with zero false-positive
+  // risk, so even 5% is an unambiguous signal.
+  const THRESHOLD = 0.05;
 
   const hasNonEnglish = koreanCount > 0 || japaneseCount > 0 || chineseCount > 0;
 
@@ -224,6 +228,8 @@ ABSENCE-BASED GROWTH INTEGRATION (CRITICAL):
   - Connect to their personality: "This reflects your tendency to..." or "This pattern shows your..."
   - Include the IMPACT: productivity, code quality, learning speed, or team dynamics
 - Show examples with actual quotes
+  - Example quotes should be 100-500 chars, long enough to show the developer's full intent
+  - For patterns involving structured input (plans, blueprints, instructions), quote enough to show the structure
 - Rate effectiveness
 - **Tip (600-1000 chars):** Write expert-level coaching advice:
   - Reference knowledge base insights with natural attribution: "According to Anthropic's guide...", "As Simon Willison advises..."
@@ -457,7 +463,11 @@ ABSENCE-BASED GROWTH INTEGRATION:
   - **WHAT**: Describe the observable behavior pattern concretely
   - **WHY**: Explain what this pattern reveals about their mindset
   - **HOW**: Describe how this affects their AI collaboration and code quality
-- Show examples with actual quotes from Phase 2 evidence
+- Show examples with actual quotes from Phase 2 evidence or the Developer Utterances section
+  - CRITICAL: Every quote in examplesData MUST be the developer's own words, NEVER AI responses
+  - Example quotes should be 100-500 chars, long enough to show the developer's full intent
+  - For structured-input patterns (plans, blueprints, instructions), include enough of the message to demonstrate the structure
+  - Use the "Developer Utterances" section as your PRIMARY source for example quotes when available
 - Rate effectiveness
 - **Tip (600-1000 chars):** Write expert-level coaching advice
 
@@ -538,6 +548,7 @@ To reduce nesting depth, use SEMICOLON-SEPARATED STRINGS instead of nested array
 
 **Critical Rules:**
 - Use ACTUAL quotes from Phase 2 evidence data. Do not invent quotes.
+- EVERY quote in examplesData must be text the developer typed, not AI output. The report evaluates the DEVELOPER's behavior.
 - Every insight must be grounded in the provided data.
 - Type classification values come from TypeClassifier output.
 - ESCAPE any pipe (|) or semicolon (;) characters within text fields with backslash.
@@ -769,18 +780,34 @@ Make this developer feel truly understood. Use their actual words.`;
  * - No Phase1Output — Phase 2 workers already produce evidence quotes
  * - No ProductivityAnalysisData (consolidated into ContextEfficiency)
  * - Type classification from TypeClassifier (Phase 2.5), not Module A
+ * - Top utterances from Phase 1 for direct quoting in prompt patterns
  *
  * @param agentOutputsSummary - Structured text summary of Phase 2 + 2.5 agent outputs
  * @param sessionCount - Number of sessions analyzed
  * @param kbContext - Optional knowledge base context for tip generation
+ * @param topUtterances - Top 20 longest utterances for direct quoting
  */
 export function buildContentWriterUserPromptV3(
   agentOutputsSummary: string,
   sessionCount: number,
-  kbContext?: PatternKnowledgeContext
+  kbContext?: PatternKnowledgeContext,
+  topUtterances?: Array<{ id: string; text: string; wordCount: number }>
 ): string {
   const kbContextSection = kbContext
     ? buildKnowledgeContextSection(kbContext)
+    : '';
+
+  const utterancesSection = topUtterances && topUtterances.length > 0
+    ? `
+## Developer Utterances (Top ${topUtterances.length} selected for richness — use across ALL sections)
+
+These are the developer's actual messages, selected for their richness of thought and reasoning.
+Use these across ALL sections — Prompt Patterns, Dimension Insights, Personality Summary, and Focus Areas.
+These utterances show how the developer THINKS: their reasoning, strategy, and communication patterns.
+When Phase 2 evidence for a dimension insight lacks meaningful quotes, use these utterances instead.
+
+${topUtterances.map((u, i) => `${i + 1}. [${u.id}] (${u.wordCount} words): "${u.text}"`).join('\n\n')}
+`
     : '';
 
   return `# Context Data
@@ -793,7 +820,7 @@ Below is a structured summary from 5 Phase 2 workers + 1 Phase 2.5 worker.
 Each section uses ## headers with key scores. Data strings (PersonalizedPriorities, DetectedPatterns, etc.) are in their original pipeline format.
 
 ${agentOutputsSummary}
-${kbContextSection}
+${utterancesSection}${kbContextSection}
 # Transformation Instructions
 
 Using the Phase 2 analysis above, create a VerboseLLMResponse:
@@ -815,10 +842,18 @@ Using the Phase 2 analysis above, create a VerboseLLMResponse:
    - For each dimension, provide engaging titles and descriptions
 
 4. **Prompt Patterns** (5-12 for comprehensive analysis)
-   - Derive patterns from Phase 1 utterances and Phase 2 insights
+   - Derive patterns from Phase 2 insights and the Developer Utterances section
+   - Use the "Developer Utterances" section as your PRIMARY source for example quotes
+   - Select quotes that are 200-500 chars to show the developer's full intent
+   - For patterns involving structured input (plans, blueprints, instructions), quote enough to show the structure
    - **Description (600-800 chars):** WHAT-WHY-HOW framework
    - Include 2-5 example quotes from utterances
    - **Tip (600-1000 chars):** Expert coaching using Knowledge Base context
+
+   **NOTE on Developer Utterances**: These utterances are NOT limited to Prompt Patterns.
+   Use them across Dimension Insights (strengths/growth) and Personality Summary when
+   Phase 2 evidence quotes lack developer reasoning. A meaningful developer quote showing
+   their thought process is far more valuable than a short command as evidence.
 
 5. **Actionable Practices**
    - Use TrustVerification actionablePatternMatchesData for practiced/opportunity split
