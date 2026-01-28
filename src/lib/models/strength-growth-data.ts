@@ -13,7 +13,7 @@
  */
 
 import { z } from 'zod';
-import { DimensionNameEnumSchema } from './dimension-schema';
+import { DimensionNameEnumSchema, validateDimension } from './dimension-schema';
 
 // ============================================================================
 // Evidence Schema
@@ -274,14 +274,14 @@ export function parseStrengthsLLMData(data: string | undefined): StrengthInsight
       const parts = entry.split('|');
       const title = parts[0]?.trim() || '';
       const description = parts[1]?.trim() || '';
-      const dimension = parts[2]?.trim() || 'aiCollaboration';
+      const dimension = validateDimension(parts[2], `strength "${title}"`);
       const developmentTip = parts[3]?.trim() || undefined;
       const evidenceStr = parts[4]?.trim() || '';
 
       return {
         title,
         description,
-        dimension: dimension as StrengthInsight['dimension'],
+        dimension,
         developmentTip,
         evidence: parseEvidenceData(evidenceStr),
       };
@@ -303,7 +303,7 @@ export function parseGrowthAreasLLMData(data: string | undefined): GrowthAreaIns
       const parts = entry.split('|');
       const title = parts[0]?.trim() || '';
       const description = parts[1]?.trim() || '';
-      const dimension = parts[2]?.trim() || 'aiCollaboration';
+      const dimension = validateDimension(parts[2], `growth area "${title}"`);
       const recommendation = parts[3]?.trim() || '';
       const frequency = parts[4] ? parseFloat(parts[4]) : undefined;
       const severity = parts[5]?.trim() as GrowthSeverity | undefined;
@@ -313,7 +313,7 @@ export function parseGrowthAreasLLMData(data: string | undefined): GrowthAreaIns
       const result: GrowthAreaInsight = {
         title,
         description,
-        dimension: dimension as GrowthAreaInsight['dimension'],
+        dimension,
         recommendation,
         evidence: parseEvidenceData(evidenceStr),
       };

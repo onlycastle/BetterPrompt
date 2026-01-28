@@ -3,8 +3,8 @@
  *
  * Coordinates 5 phases of analysis (7-8 LLM calls total):
  * - Phase 1: DataExtractor (deterministic, no LLM)
- * - Phase 2: 5 insight workers in parallel (5 LLM calls)
- * - Phase 2.5: TypeClassifier (1 LLM call)
+ * - Phase 2: 4 insight workers in parallel (4 LLM calls)
+ * - Phase 2.5: StrengthGrowthSynthesizer → TypeClassifier (2 sequential LLM calls)
  * - Phase 3: ContentWriter (1 LLM call, always English)
  * - Phase 4: Translator (1 LLM call, conditional — only for non-English users)
  *
@@ -18,6 +18,7 @@ import { createEmptyAgentOutputs } from '../../models/agent-outputs';
 import { ContentWriterStage } from '../stages/content-writer';
 import { TranslatorStage } from '../stages/translator';
 import { detectPrimaryLanguage, LANGUAGE_DISPLAY_NAMES, type LanguageDetectionResult } from '../stages/content-writer-prompts';
+import { assembleEvaluation } from '../stages/evaluation-assembler';
 import type { TranslatorOutput } from '../../models/translator-output';
 import { ContentGateway, type Tier } from '../content-gateway';
 import { BaseWorker } from '../workers/base-worker';
@@ -177,7 +178,7 @@ export class AnalysisOrchestrator {
     const stageUsages: StageTokenUsage[] = [];
     this.debugOutputs = [];
 
-    // Progress tracking: 8 LLM stages total (5 Phase2 + Phase2.5 + Phase3 + Phase4)
+    // Progress tracking: 8 LLM stages total (4 Phase2 + 2 Phase2.5 + Phase3 + Phase4)
     const TOTAL_LLM_STAGES = 8;
     const PROGRESS_START = 40;
     const PROGRESS_RANGE = 49; // 40% → 89%
@@ -287,13 +288,14 @@ export class AnalysisOrchestrator {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Phase 2.5: Type Synthesis (after Phase 2, uses agent outputs)
-    // Refines type classification using insights from all Phase 2 agents
-    // NOTE: Type Synthesis also operates in ENGLISH.
+    // Phase 2.5: Synthesis → Classification (sequential, uses agent outputs)
+    // 1. StrengthGrowthSynthesizer: cross-domain strengths/growth
+    // 2. TypeClassifier: classification using all data including synthesized
+    // NOTE: Phase 2.5 also operates in ENGLISH.
     // ─────────────────────────────────────────────────────────────────────
     this.log(`Phase 2.5 workers registered: ${this.phase2Point5Workers.length}`);
     if (this.phase2Point5Workers.length > 0) {
-      this.log('Phase 2.5: Type Classification...');
+      this.log('Phase 2.5: Synthesis & Classification (sequential)...');
       const phase2Point5Start = Date.now();
       const phase2Point5Context: WorkerContext = {
         ...baseContext,
@@ -302,7 +304,8 @@ export class AnalysisOrchestrator {
 
       const phase2Point5Results = await this.runPhase2Point5(
         phase2Point5Context,
-        agentOutputs
+        agentOutputs,
+        phase1Results.dataExtractor.data
       );
 
       // TypeClassifier is REQUIRED for 15-type matrix classification
@@ -313,16 +316,24 @@ export class AnalysisOrchestrator {
         throw new Error(`TypeClassifier failed: ${errorMessage}. Analysis cannot proceed without type classification.`);
       }
 
-      this.collectDebugOutput(
-        'phase2.5_TypeClassifier', 'TypeClassifier', phase2Point5Start,
-        typeClassifierResult.data, typeClassifierResult.usage
-      );
+      // Collect debug output for each Phase 2.5 worker
+      for (const [workerName, result] of Object.entries(phase2Point5Results)) {
+        if (result) {
+          this.collectDebugOutput(
+            `phase2.5_${workerName}`, workerName, phase2Point5Start,
+            result.data, result.usage
+          );
 
-      // Report Phase 2.5 completion
-      completedLLMStages++;
-      reportProgress('phase2.5', 'Classifying developer type...');
+          // Report progress per worker
+          completedLLMStages++;
+          const progressMessage = workerName === 'StrengthGrowth'
+            ? 'Synthesizing strengths & growth areas...'
+            : 'Classifying developer type...';
+          reportProgress(`phase2.5_${workerName}`, progressMessage);
+        }
+      }
 
-      // Merge TypeClassifier results into agentOutputs
+      // Merge all Phase 2.5 results into agentOutputs
       agentOutputs = this.mergePhase2Point5Outputs(agentOutputs, phase2Point5Results);
 
       // Track Phase 2.5 token usage
@@ -358,6 +369,13 @@ export class AnalysisOrchestrator {
     this.log('Phase 3: Content Generation...');
     const phase3Start = Date.now();
     const sessionCount = phase1Results.dataExtractor.data.sessionMetrics.totalSessions;
+
+    // Phase 2 evidence verification (must run BEFORE assembly)
+    if (phase1Results.dataExtractor.data) {
+      this.contentWriter.verifyPhase2WorkerExamples(agentOutputs, phase1Results.dataExtractor.data);
+    }
+
+    // Phase 3: LLM generates narrative only (personalitySummary, promptPatterns, topFocusAreas)
     const contentResult = await this.contentWriter.transformV3(
       sessionCount,
       agentOutputs,
@@ -458,18 +476,26 @@ export class AnalysisOrchestrator {
           }
         : undefined;
 
-    const evaluation: VerboseEvaluation = {
+    // Deterministic assembly: Phase 2 structural data + Phase 3 narrative → VerboseEvaluation
+    const assembledData = assembleEvaluation(
+      agentOutputs,
+      contentResult.data,
+      phase1Results.dataExtractor.data,
+      sessionCount,
+      knowledgeResources.length > 0 ? knowledgeResources : undefined
+    );
+
+    const evaluation = {
       sessionId: sessions[sessions.length - 1]?.sessionId ?? 'unknown',
       analyzedAt: new Date().toISOString(),
       sessionsAnalyzed: sessions.length,
       avgPromptLength: Math.round(metrics.avgPromptLength),
       avgTurnsPerSession: Math.round(metrics.avgTurnsPerSession * 10) / 10,
       analyzedSessions,
-      ...contentResult.data,
+      ...assembledData,
       agentOutputs: agentOutputs,
       knowledgeResources: knowledgeResources.length > 0 ? knowledgeResources : undefined,
       pipelineTokenUsage,
-      // NEW: Analysis metadata with confidence scores
       analysisMetadata: {
         overallConfidence: confidenceMetadata.overallConfidence,
         agentConfidences: confidenceMetadata.agentConfidences,
@@ -479,7 +505,7 @@ export class AnalysisOrchestrator {
         confidenceThreshold: confidenceMetadata.confidenceThreshold,
         insightsFiltered: confidenceMetadata.insightsFiltered,
       },
-    };
+    } as VerboseEvaluation;
 
     this.log(`Final evaluation - hasAgentOutputs: ${!!evaluation.agentOutputs}`);
     this.log(`Final agentOutputs keys: ${evaluation.agentOutputs ? Object.keys(evaluation.agentOutputs).join(', ') : 'none'}`);
@@ -561,39 +587,45 @@ export class AnalysisOrchestrator {
   }
 
   /**
-   * Run Phase 2.5 workers (Type Synthesis)
+   * Run Phase 2.5 workers sequentially (Synthesis → Classification)
    *
-   * These workers run AFTER Phase 2 completes and receive all agent outputs.
-   * They refine type classification using semantic analysis from other agents.
+   * Workers run in registration order. After each worker completes,
+   * its result is merged into agentOutputs so the next worker sees
+   * updated data. This allows StrengthGrowthSynthesizer to run first,
+   * and TypeClassifier to use synthesized strengths/growth data.
+   *
    * NO FALLBACK: Worker failures propagate as errors.
    */
   private async runPhase2Point5(
     context: WorkerContext,
-    agentOutputs: AgentOutputs
+    agentOutputs: AgentOutputs,
+    phase1Output: Phase1Output
   ): Promise<Record<string, WorkerResult<unknown> | undefined>> {
     const results: Record<string, WorkerResult<unknown> | undefined> = {};
+    let currentAgentOutputs = { ...agentOutputs };
 
-    // Create extended context with agent outputs
-    const extendedContext = {
-      ...context,
-      agentOutputs,
-    };
+    // Run Phase 2.5 workers SEQUENTIALLY — order matters!
+    for (const worker of this.phase2Point5Workers) {
+      // Create extended context with current agent outputs + phase1Output
+      const extendedContext = {
+        ...context,
+        agentOutputs: currentAgentOutputs,
+        phase1Output,
+      };
 
-    // Run Phase 2.5 workers - errors will propagate
-    const workerPromises = this.phase2Point5Workers.map(async (worker) => {
       if (!worker.canRun(extendedContext)) {
         this.log(`Worker ${worker.name} skipped (cannot run)`);
-        return;
+        continue;
       }
 
       // NO try-catch: let errors propagate to identify issues
       const result = await worker.execute(extendedContext);
       results[worker.name] = result;
       this.log(`Worker ${worker.name} completed`);
-    });
 
-    // Use Promise.all instead of Promise.allSettled to propagate errors
-    await Promise.all(workerPromises);
+      // Merge result into agentOutputs so next worker sees updated data
+      currentAgentOutputs = this.mergePhase2Point5Outputs(currentAgentOutputs, { [worker.name]: result });
+    }
 
     return results;
   }
@@ -606,13 +638,11 @@ export class AnalysisOrchestrator {
    * Merge Phase 2 worker results into AgentOutputs
    *
    * Maps Phase 2 worker results by name to the AgentOutputs fields.
-   * Only v2 workers are registered: StrengthGrowth, TrustVerification,
-   * WorkflowHabit, KnowledgeGap, ContextEfficiency.
-   * TypeClassifier runs at Phase 2.5 (merged separately).
+   * Phase 2 workers: TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency.
+   * StrengthGrowth and TypeClassifier run at Phase 2.5 (merged separately).
    */
   private mergeAgentOutputs(results: Record<string, WorkerResult<unknown> | undefined>): AgentOutputs {
     return {
-      strengthGrowth: results['StrengthGrowth']?.data as AgentOutputs['strengthGrowth'],
       trustVerification: results['TrustVerification']?.data as AgentOutputs['trustVerification'],
       workflowHabit: results['WorkflowHabit']?.data as AgentOutputs['workflowHabit'],
       knowledgeGap: results['KnowledgeGap']?.data as AgentOutputs['knowledgeGap'],
@@ -623,17 +653,24 @@ export class AnalysisOrchestrator {
   /**
    * Merge Phase 2.5 results into AgentOutputs
    *
-   * TypeClassifier at Phase 2.5 performs both classification and synthesis.
+   * Phase 2.5 workers (sequential):
+   * 1. StrengthGrowthSynthesizer — cross-domain strengths/growth from Phase 2 outputs
+   * 2. TypeClassifier — classification using all Phase 2 + synthesized data
    */
   private mergePhase2Point5Outputs(
     agentOutputs: AgentOutputs,
     phase2Point5Results: Record<string, WorkerResult<unknown> | undefined>
   ): AgentOutputs {
-    return {
-      ...agentOutputs,
-      // TypeClassifier now runs at Phase 2.5 (replaces TypeSynthesis)
-      typeClassifier: phase2Point5Results['TypeClassifier']?.data as AgentOutputs['typeClassifier'],
-    };
+    const merged = { ...agentOutputs };
+
+    if (phase2Point5Results['StrengthGrowth']?.data) {
+      merged.strengthGrowth = phase2Point5Results['StrengthGrowth'].data as AgentOutputs['strengthGrowth'];
+    }
+    if (phase2Point5Results['TypeClassifier']?.data) {
+      merged.typeClassifier = phase2Point5Results['TypeClassifier'].data as AgentOutputs['typeClassifier'];
+    }
+
+    return merged;
   }
 
   /**

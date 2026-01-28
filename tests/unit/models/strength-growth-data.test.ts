@@ -7,7 +7,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { parseEvidenceData } from '../../../src/lib/models/strength-growth-data.js';
+import { parseEvidenceData, parseStrengthsLLMData, parseGrowthAreasLLMData } from '../../../src/lib/models/strength-growth-data.js';
+import { isValidDimension, validateDimension } from '../../../src/lib/models/dimension-schema.js';
 
 describe('parseEvidenceData (C1 fix: delimiter collision)', () => {
   it('should parse simple evidence without special characters', () => {
@@ -77,5 +78,119 @@ describe('parseEvidenceData (C1 fix: delimiter collision)', () => {
     expect(result[0].quote).toContain('many, special; chars');
     expect(result[1].utteranceId).toBe('def_2');
     expect(result[1].quote).toContain('"quoted"');
+  });
+});
+
+// ============================================================================
+// Dimension Validation Utilities
+// ============================================================================
+
+describe('isValidDimension', () => {
+  it('should return true for valid dimensions', () => {
+    expect(isValidDimension('aiCollaboration')).toBe(true);
+    expect(isValidDimension('burnoutRisk')).toBe(true);
+    expect(isValidDimension('contextEngineering')).toBe(true);
+    expect(isValidDimension('toolMastery')).toBe(true);
+    expect(isValidDimension('aiControl')).toBe(true);
+    expect(isValidDimension('skillResilience')).toBe(true);
+  });
+
+  it('should return false for invalid dimensions', () => {
+    expect(isValidDimension('iterationEfficiency')).toBe(false);
+    expect(isValidDimension('learningVelocity')).toBe(false);
+    expect(isValidDimension('')).toBe(false);
+    expect(isValidDimension('nonExistent')).toBe(false);
+  });
+});
+
+describe('validateDimension', () => {
+  it('should return valid dimensions as-is', () => {
+    expect(validateDimension('aiControl')).toBe('aiControl');
+    expect(validateDimension('burnoutRisk')).toBe('burnoutRisk');
+    expect(validateDimension('contextEngineering')).toBe('contextEngineering');
+  });
+
+  it('should remap known legacy dimensions', () => {
+    expect(validateDimension('iterationEfficiency')).toBe('aiControl');
+    expect(validateDimension('learningVelocity')).toBe('skillResilience');
+    expect(validateDimension('scopeManagement')).toBe('aiControl');
+  });
+
+  it('should default unknown to aiCollaboration', () => {
+    expect(validateDimension('fooBar')).toBe('aiCollaboration');
+    expect(validateDimension('nonExistentDimension')).toBe('aiCollaboration');
+  });
+
+  it('should handle undefined and empty string', () => {
+    expect(validateDimension(undefined)).toBe('aiCollaboration');
+    expect(validateDimension('')).toBe('aiCollaboration');
+    expect(validateDimension('  ')).toBe('aiCollaboration');
+  });
+
+  it('should trim whitespace before validation', () => {
+    expect(validateDimension('  aiControl  ')).toBe('aiControl');
+    expect(validateDimension('  iterationEfficiency  ')).toBe('aiControl');
+  });
+});
+
+// ============================================================================
+// Dimension Validation in LLM Parsing
+// ============================================================================
+
+describe('dimension validation in parseStrengthsLLMData', () => {
+  it('should accept valid dimensions', () => {
+    const data = 'Test Strength|description|aiControl|tip|sess_1:quote:ctx';
+    const result = parseStrengthsLLMData(data);
+    expect(result[0].dimension).toBe('aiControl');
+  });
+
+  it('should remap iterationEfficiency to aiControl', () => {
+    const data = 'Test|desc|iterationEfficiency|tip|sess_1:quote:ctx';
+    const result = parseStrengthsLLMData(data);
+    expect(result[0].dimension).toBe('aiControl');
+  });
+
+  it('should remap learningVelocity to skillResilience', () => {
+    const data = 'Test|desc|learningVelocity|tip|sess_1:quote:ctx';
+    const result = parseStrengthsLLMData(data);
+    expect(result[0].dimension).toBe('skillResilience');
+  });
+
+  it('should remap scopeManagement to aiControl', () => {
+    const data = 'Test|desc|scopeManagement|tip|sess_1:quote:ctx';
+    const result = parseStrengthsLLMData(data);
+    expect(result[0].dimension).toBe('aiControl');
+  });
+
+  it('should default completely unknown dimensions to aiCollaboration', () => {
+    const data = 'Test|desc|nonExistentDimension|tip|sess_1:quote:ctx';
+    const result = parseStrengthsLLMData(data);
+    expect(result[0].dimension).toBe('aiCollaboration');
+  });
+
+  it('should default empty dimension to aiCollaboration', () => {
+    const data = 'Test|desc||tip|sess_1:quote:ctx';
+    const result = parseStrengthsLLMData(data);
+    expect(result[0].dimension).toBe('aiCollaboration');
+  });
+});
+
+describe('dimension validation in parseGrowthAreasLLMData', () => {
+  it('should accept valid dimensions', () => {
+    const data = 'Test|desc|burnoutRisk|rec|50|high|75|sess_1:q:ctx';
+    const result = parseGrowthAreasLLMData(data);
+    expect(result[0].dimension).toBe('burnoutRisk');
+  });
+
+  it('should remap legacy dimensions', () => {
+    const data = 'Test|desc|iterationEfficiency|rec|50|high|75|sess_1:q:ctx';
+    const result = parseGrowthAreasLLMData(data);
+    expect(result[0].dimension).toBe('aiControl');
+  });
+
+  it('should default unknown dimensions to aiCollaboration', () => {
+    const data = 'Test|desc|unknownDim|rec|50|high|75|sess_1:q:ctx';
+    const result = parseGrowthAreasLLMData(data);
+    expect(result[0].dimension).toBe('aiCollaboration');
   });
 });

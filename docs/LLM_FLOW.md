@@ -34,31 +34,52 @@
 │   ║  └─────────────────────────────────────────────────────────────────────────┘ ║   │
 │   ║                              │                                                ║   │
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
-│   ║  │ PHASE 2: Insight Generation (parallel, 5 workers, 5 LLM calls)        │   ║   │
+│   ║  │ PHASE 2: Insight Generation (parallel, 4 workers, 4 LLM calls)        │   ║   │
 │   ║  │                                                                         │   ║   │
-│   ║  │ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────┐ │   ║   │
-│   ║  │ │ Strength   │ │   Trust    │ │  Workflow  │ │ Knowledge  │ │Cntxt │ │   ║   │
-│   ║  │ │  Growth    │ │Verification│ │   Habit    │ │    Gap     │ │Effic.│ │   ║   │
-│   ║  │ │  (free)    │ │ (premium)  │ │ (premium)  │ │  (free)    │ │(prem)│ │   ║   │
-│   ║  │ └────────────┘ └────────────┘ └────────────┘ └────────────┘ └──────┘ │   ║   │
+│   ║  │ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────────┐         │   ║   │
+│   ║  │ │   Trust    │ │  Workflow  │ │ Knowledge  │ │   Context    │         │   ║   │
+│   ║  │ │Verification│ │   Habit    │ │    Gap     │ │  Efficiency  │         │   ║   │
+│   ║  │ │ (premium)  │ │ (premium)  │ │  (free)    │ │  (premium)   │         │   ║   │
+│   ║  │ └────────────┘ └────────────┘ └────────────┘ └──────────────┘         │   ║   │
 │   ║  │                                   │                                     │   ║   │
 │   ║  │                                   ▼                                     │   ║   │
 │   ║  │                            AgentOutputs                                 │   ║   │
 │   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
 │   ║                              │                                                ║   │
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
-│   ║  │ PHASE 2.5: Type Classification (1 LLM call)                            │   ║   │
+│   ║  │ PHASE 2.5: Synthesis → Classification (2 sequential LLM calls)        │   ║   │
 │   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
-│   ║  │ │ TypeClassifierWorker (free)                                      │   │   ║   │
-│   ║  │ │ Classifies developer type using Phase1 + AgentOutputs           │   │   ║   │
+│   ║  │ │ StrengthGrowthSynthesizer (free) — cross-domain synthesis       │   │   ║   │
+│   ║  │ │ → merges result into AgentOutputs                               │   │   ║   │
+│   ║  │ │ TypeClassifierWorker (free) — type classification               │   │   ║   │
+│   ║  │ │ → uses Phase 2 outputs + synthesized strengths/growth           │   │   ║   │
 │   ║  │ └─────────────────────────────────────────────────────────────────┘   │   ║   │
 │   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
 │   ║                              │                                                ║   │
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
-│   ║  │ PHASE 3: Content Generation (1 LLM call)                              │   ║   │
+│   ║  │ PHASE 3: Content Writer — Narrative Only (1 LLM call)                │   ║   │
 │   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
 │   ║  │ │ ContentWriter                                                    │   │   ║   │
-│   ║  │ │ (combines Phase1Output + AgentOutputs into narrative)            │   │   ║   │
+│   ║  │ │ Output: NarrativeLLMResponse (personalitySummary,               │   │   ║   │
+│   ║  │ │         promptPatterns, topFocusAreas — narrative only)          │   │   ║   │
+│   ║  │ └─────────────────────────────────────────────────────────────────┘   │   ║   │
+│   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
+│   ║                              │                                                ║   │
+│   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
+│   ║  │ PHASE 4: Translator (0-1 LLM call, conditional)                     │   ║   │
+│   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
+│   ║  │ │ Translates NarrativeLLMResponse + AgentOutputs insights         │   │   ║   │
+│   ║  │ │ (Only for non-English users — ko, ja, zh)                       │   │   ║   │
+│   ║  │ └─────────────────────────────────────────────────────────────────┘   │   ║   │
+│   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
+│   ║                              │                                                ║   │
+│   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
+│   ║  │ EVALUATION ASSEMBLY (deterministic, NO LLM)                          │   ║   │
+│   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
+│   ║  │ │ assembleEvaluation()                                             │   │   ║   │
+│   ║  │ │ Merges Phase 2 AgentOutputs (structural) +                      │   │   ║   │
+│   ║  │ │        Phase 3 NarrativeLLMResponse (narrative)                 │   │   ║   │
+│   ║  │ │ → VerboseEvaluation fields                                      │   │   ║   │
 │   ║  │ └─────────────────────────────────────────────────────────────────┘   │   ║   │
 │   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
 │   ╚══════════════════════════════════════════════════════════════════════════════╝   │
@@ -185,7 +206,7 @@ Phase1Output
 
 **Purpose**: Generate deep insights based on Phase 1 results
 
-> 5 workers run in parallel. Some workers are free tier, some require premium.
+> 4 workers run in parallel. Some workers are free tier, some require premium.
 
 **IMPORTANT: Context Isolation**
 All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
@@ -194,7 +215,7 @@ All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    PHASE 2: 5 WORKERS (PARALLEL)                        │
+│                    PHASE 2: 4 WORKERS (PARALLEL)                        │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌──────────────────────────────┐                                       │
@@ -204,18 +225,12 @@ All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
 │               │                                                          │
 │  ┌────────────┴───────────────────────────────────────────────────┐    │
 │  │                                                                  │    │
-│  │  5 Parallel Workers (LLM-based)                                 │    │
-│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐                  │    │
-│  │  │ Strength   │ │   Trust    │ │  Workflow  │                  │    │
-│  │  │  Growth    │ │Verification│ │   Habit    │                  │    │
-│  │  │  (free)    │ │ (premium)  │ │ (premium)  │                  │    │
-│  │  └────────────┘ └────────────┘ └────────────┘                  │    │
-│  │                                                                  │    │
-│  │  ┌────────────┐ ┌────────────┐                                 │    │
-│  │  │ Knowledge  │ │  Context   │                                 │    │
-│  │  │    Gap     │ │ Efficiency │                                 │    │
-│  │  │  (free)    │ │ (premium)  │                                 │    │
-│  │  └────────────┘ └────────────┘                                 │    │
+│  │  4 Parallel Workers (LLM-based)                                 │    │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐  │    │
+│  │  │   Trust    │ │  Workflow  │ │ Knowledge  │ │  Context   │  │    │
+│  │  │Verification│ │   Habit    │ │    Gap     │ │ Efficiency │  │    │
+│  │  │ (premium)  │ │ (premium)  │ │  (free)    │ │ (premium)  │  │    │
+│  │  └────────────┘ └────────────┘ └────────────┘ └────────────┘  │    │
 │  │                                                                  │    │
 │  └──────────────────────────────────┬──────────────────────────────┘    │
 │                                      │                                   │
@@ -232,7 +247,6 @@ All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
 
 | Worker | Tier | Purpose | Output Schema |
 |--------|------|---------|---------------|
-| **StrengthGrowth** | free | Strengths & growth areas with evidence | `StrengthGrowthOutput` |
 | **TrustVerification** | premium | Anti-patterns & trust verification behavior | `TrustVerificationOutput` |
 | **WorkflowHabit** | premium | Planning, critical thinking, multitasking | `WorkflowHabitOutput` |
 | **KnowledgeGap** | free | Knowledge gaps & learning suggestions | `KnowledgeGapOutput` |
@@ -253,22 +267,21 @@ AgentOutputs
 
 ---
 
-### Phase 2.5: Type Classification
+### Phase 2.5: Synthesis → Classification
 
-**Purpose**: Classify developer type using Phase 1 output + Phase 2 agent outputs
+**Purpose**: Synthesize cross-domain insights, then classify developer type
 
-> Runs after Phase 2, before Phase 3. Available for all tiers (free).
+> Runs sequentially after Phase 2, before Phase 3. Both workers available for all tiers (free).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    PHASE 2.5: TYPE CLASSIFICATION                       │
+│              PHASE 2.5: SYNTHESIS → CLASSIFICATION (SEQUENTIAL)          │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌──────────────────────────────┐                                       │
 │  │  INPUT (from Phase 1 + 2)    │                                       │
-│  │  - Phase1Output              │  ◀── Extracted data                   │
-│  │  - AgentOutputs              │  ◀── All Phase 2 agent results       │
-│  │    ├── strengthGrowth        │                                       │
+│  │  - Phase1Output              │  ◀── Utterances for evidence          │
+│  │  - AgentOutputs              │  ◀── Phase 2 worker results           │
 │  │    ├── trustVerification     │                                       │
 │  │    ├── workflowHabit         │                                       │
 │  │    ├── knowledgeGap          │                                       │
@@ -277,109 +290,106 @@ AgentOutputs
 │               │                                                          │
 │               ▼                                                          │
 │  ┌────────────────────────────────────────────┐                         │
-│  │  LLM CALL                                   │                         │
-│  │  Model: gemini-3-flash-preview             │                         │
-│  │  Temperature: 1.0 (Gemini default)         │                         │
-│  │  Max Tokens: 4096                          │                         │
-│  │  Structured Output: TypeClassifierOutput   │                         │
+│  │  STEP 1: StrengthGrowthSynthesizer (free) │ ◀── 1 LLM call         │
+│  │  Cross-domain strengths/growth synthesis    │                         │
+│  │  Output: StrengthGrowthOutput               │                         │
+│  │  → Merged into AgentOutputs                 │                         │
+│  └────────────────────────────────────────────┘                         │
+│               │                                                          │
+│               ▼                                                          │
+│  ┌────────────────────────────────────────────┐                         │
+│  │  STEP 2: TypeClassifierWorker (free)       │ ◀── 1 LLM call         │
+│  │  Uses Phase 2 + Synthesizer outputs         │                         │
+│  │  Output: TypeClassifierOutput               │                         │
+│  │  → Primary type, control level, matrix      │                         │
 │  └────────────────────────────────────────────┘                         │
 │               │                                                          │
 │               ▼                                                          │
 │  ┌──────────────────┐                                                   │
-│  │  OUTPUT          │                                                   │
-│  │  TypeClassifier  │     - Primary type + distribution                 │
-│  │  Output          │     - Control level                               │
-│  │                  │     - Matrix name + emoji                         │
-│  │                  │     - Reasoning & evidence                        │
+│  │ AgentOutputs     │  (now includes strengthGrowth + typeClassifier)    │
 │  └──────────────────┘                                                   │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### Type Classification Process
+#### Phase 2.5 Sequential Process
 
-1. **Input Analysis**:
-   - Phase1Output: Developer utterances, AI responses, metrics
-   - AgentOutputs: Insights from 5 Phase 2 workers
+1. **StrengthGrowthSynthesizer** (Step 1):
+   - Receives structured summaries from 4 Phase 2 workers
+   - Receives Phase 1 utterances for evidence quote selection
+   - Detects cross-domain patterns (e.g., blind_retry + no_planning → reactive)
+   - Minimum 2/5-7 strengths and 2/5-7 growth areas must be cross-domain
+   - Output merged into AgentOutputs before TypeClassifier runs
 
-2. **LLM Classification**:
-   - Analyzes behavioral patterns and semantic evidence
+2. **TypeClassifierWorker** (Step 2):
+   - Receives AgentOutputs (now including synthesized strengthGrowth)
+   - Analyzes behavioral patterns + semantic evidence
    - Assigns developer to 5 coding styles × 3 control levels (15 combinations)
-   - Provides reasoning with specific evidence citations
+   - Output: Primary type, distribution, control level, matrix name/emoji, confidence
 
-3. **Output**:
-   - Primary type and distribution (e.g., 42% architect, 25% scientist, ...)
-   - Control level (explorer, navigator, cartographer)
-   - Combined matrix name (e.g., "Systems Architect", "Curious Scientist")
-   - Matrix emoji
-   - Confidence score
-
-#### TypeClassifierWorker
+#### Workers
 
 ```typescript
+// Step 1: Synthesizer
+export class StrengthGrowthWorker extends BaseWorker<StrengthGrowthOutput> {
+  readonly name = 'StrengthGrowth';
+  readonly phase = 2 as const;  // Registered as Phase 2.5
+  readonly minTier: Tier = 'free';
+  // canRun: requires agentOutputs + phase1Output
+}
+
+// Step 2: Classifier
 export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   readonly name = 'TypeClassifier';
-  readonly phase = 2 as const;  // Runs as Phase 2.5 (after other Phase 2 workers)
+  readonly phase = 2 as const;  // Registered as Phase 2.5
   readonly minTier: Tier = 'free';
-
-  canRun(context: WorkerContext): boolean;
-  execute(context: WorkerContext): Promise<WorkerResult<TypeClassifierOutput>>;
+  // canRun: requires agentOutputs (including synthesized strengthGrowth)
 }
 ```
 
 ---
 
-### Phase 3: Content Writer
+### Phase 3: Content Writer (Narrative Only)
 
-**Purpose**: Transform Phase1Output + AgentOutputs into personalized narrative
+**Purpose**: Generate narrative-only content (personalitySummary, promptPatterns, topFocusAreas) from Phase 2 analysis
+
+> Phase 3 now generates ONLY narrative content. All structural/quantitative data
+> (dimensionInsights, type classification, antiPatterns, criticalThinking, planning,
+> actionablePractices) is assembled deterministically by the EvaluationAssembler
+> from Phase 2 AgentOutputs — no LLM involvement.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    PHASE 3: CONTENT WRITER                               │
+│               PHASE 3: CONTENT WRITER (NARRATIVE ONLY)                   │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌──────────────────────────────┐                                       │
 │  │  INPUT                        │                                       │
-│  │  - Phase1Output               │  ◀── Phase 1 output                  │
-│  │  - AgentOutputs               │  ◀── Phase 2 outputs (Premium+)      │
-│  │  - Sessions[] (for language)  │                                       │
+│  │  - AgentOutputs summary       │  ◀── Phase 2 outputs (summarized     │
+│  │    (via phase3-summarizer)    │      by summarizeAgentOutputsForPhase3)│
+│  │  - sessionCount               │  ◀── Phase 1 metrics                 │
+│  │  - Top 20 utterances          │  ◀── Phase 1 (richest utterances)    │
+│  │  - knowledgeResources[]       │  ◀── Phase 2.75 (optional)           │
 │  └────────────┬─────────────────┘                                       │
 │               │                                                          │
 │               ▼                                                          │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │  TRANSFORMATION RULES                                            │    │
+│  │  NARRATIVE SCOPE (Phase 3 generates ONLY these)                  │    │
 │  │                                                                   │    │
-│  │  FROM PHASE 1:                                                    │    │
-│  │  developerUtterances ─────▶ dimensionInsights[].evidence[]       │    │
-│  │  aiResponses ─────────────▶ interaction patterns                 │    │
-│  │  sessionMetrics ──────────▶ quantitative metrics                 │    │
+│  │  personalitySummary ─────▶ Hyper-personalized summary (≤3000ch) │    │
+│  │  promptPatterns[] ───────▶ 5-12 detected prompt patterns         │    │
+│  │  topFocusAreas ──────────▶ Top 3 personalized priorities         │    │
 │  │                                                                   │    │
-│  │  FROM PHASE 2 AGENTS (Premium+):                                  │    │
-│  │  strengthGrowth ──────────▶ strengths + growth areas             │    │
-│  │  trustVerification ───────▶ anti-patterns + verification         │    │
-│  │  workflowHabit ───────────▶ planning + critical thinking         │    │
-│  │  knowledgeGap ────────────▶ learningRecommendations               │    │
-│  │  contextEfficiency ───────▶ communicationAnalysis                 │    │
+│  │  MOVED TO EvaluationAssembler (deterministic, no LLM):           │    │
+│  │  ✗ dimensionInsights[] ── from StrengthGrowth                    │    │
+│  │  ✗ primaryType/control ── from TypeClassifier                    │    │
+│  │  ✗ antiPatternsAnalysis ─ from TrustVerification                 │    │
+│  │  ✗ criticalThinking ───── from WorkflowHabit                     │    │
+│  │  ✗ planningAnalysis ───── from WorkflowHabit                     │    │
+│  │  ✗ actionablePractices ── from TrustVerification                 │    │
 │  │                                                                   │    │
 │  │  TONE: "Your habit of saying 'let me think'..."                  │    │
 │  │    NOT: "You demonstrate good planning behaviors..."             │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│               │                                                          │
-│               ▼                                                          │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │  MULTI-LANGUAGE SUPPORT                                          │    │
-│  │                                                                   │    │
-│  │  Supported: 'en', 'ko', 'ja', 'zh'                               │    │
-│  │                                                                   │    │
-│  │  Language Reminders (non-English only):                          │    │
-│  │  ├── languageHeader: Write ALL output in target language         │    │
-│  │  ├── languagePatternReminder: Translate pattern descriptions     │    │
-│  │  ├── languageDimensionReminder: Translate dimension insights     │    │
-│  │  ├── languageAgentInsightsReminder: Translate agent insights     │    │
-│  │  └── languageFinalReminder: Final language compliance check      │    │
-│  │                                                                   │    │
-│  │  Technical Terms (kept in English):                              │    │
-│  │    AI, IDE, debugging, Git, commit, token, API, etc.             │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │               │                                                          │
 │               ▼                                                          │
@@ -388,64 +398,91 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 │  │  Model: gemini-3-flash-preview             │                         │
 │  │  Temperature: 1.0 (Gemini default)         │                         │
 │  │  Max Tokens: 65536                         │                         │
-│  │  Structured Output: VerboseLLMResponse     │                         │
+│  │  Structured Output: NarrativeLLMResponse   │                         │
 │  └────────────────────────────────────────────┘                         │
 │               │                                                          │
 │               ▼                                                          │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │  POST-PROCESSING                                                 │    │
-│  │  1. Parse flattened strings → nested arrays                     │    │
-│  │  2. Attach evidence quotes using clusterId matching             │    │
-│  │  3. Apply semantic fallback if clusterId not found              │    │
-│  │  4. Truncate strings to max lengths                             │    │
-│  │  5. Ensure minimum data for each dimension                      │    │
+│  │  POST-PROCESSING (narrative-specific)                             │    │
+│  │  1. Verify prompt pattern examples are developer utterances      │    │
+│  │  2. Truncate personalitySummary to max 3000 chars                │    │
+│  │  3. Sanitize prompt patterns (parse examplesData, enforce min 3) │    │
+│  │  4. Parse topFocusAreas (actionsData → nested format)            │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │               │                                                          │
 │               ▼                                                          │
 │  ┌──────────────────┐                                                   │
 │  │  OUTPUT          │                                                   │
-│  │  VerboseLLM      │                                                   │
+│  │  NarrativeLLM    │                                                   │
 │  │  Response        │                                                   │
 │  └──────────────────┘                                                   │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### Data Transformation Flow
+#### Data Transformation Flow (Two Paths)
 
 ```
-Phase1Output                                        Phase 3 Output
-─────────────────                                   ─────────────────
+═══════════════════════════════════════════════════════════════════════════
+PATH 1: Phase 2 AgentOutputs → EvaluationAssembler → Structural Fields
+        (deterministic, NO LLM)
+═══════════════════════════════════════════════════════════════════════════
 
-developerUtterances[]                               dimensionInsights[]
-┌───────────────────────┐                           ┌──────────────────────────────────┐
-│ id: "..."             │                           │ dimension: "aiCollaboration"     │
-│ text: "..."           │───┐                       │ dimensionDisplayName: "AI..."    │
-│ sessionId: "..."      │   │ extract               │ strengths: [                     │
-│ timestamp: "..."      │   │ patterns              │   { title, description,          │
-└───────────────────────┘   │                       │     evidence: ["quote1", ...] }  │
-                            ├──────────────────────▶│ ]                                │
-┌───────────────────────┐   │                       │ growthAreas: [...]               │
-│ text: "..."           │───┘                       │                                  │
-└───────────────────────┘                           └──────────────────────────────────┘
+AgentOutputs                                        VerboseEvaluation (structural)
+────────────────────────                            ──────────────────────────────
 
-AgentOutputs                                        Phase 3 Output
-────────────────────────                           ─────────────────
+strengthGrowth
+┌────────────────────────┐     group by dimension   dimensionInsights[]
+│ strengths[]            │─────────────────────────▶┌──────────────────────────────┐
+│ growthAreas[]          │                          │ dimension: "aiCollaboration" │
+│ (each has .dimension)  │                          │ strengths: [...]             │
+└────────────────────────┘                          │ growthAreas: [...]           │
+                                                    └──────────────────────────────┘
 
-AgentOutputs                                       agentInsights
-┌───────────────────────┐                           ┌──────────────────────────────────┐
-│ strengthGrowth: {}    │                           │ strengths: "Your systematic..."  │
-│ trustVerification: {} │──────────────────────────▶│ growthAreas: "Consider..."       │
-│ workflowHabit: {}     │     aggregate & narrate   │ learningRecommendations: [...]   │
-│ knowledgeGap: {}      │     + translate (if i18n) │ antiPatterns: [...]              │
-│ contextEfficiency: {} │                           │                                  │
-└───────────────────────┘                           └──────────────────────────────────┘
+typeClassifier
+┌────────────────────────┐     direct mapping       primaryType, controlLevel,
+│ primaryType            │─────────────────────────▶distribution, controlScore
+│ controlLevel           │
+│ distribution           │
+└────────────────────────┘
+
+trustVerification
+┌────────────────────────┐     severity mapping     antiPatternsAnalysis
+│ antiPatterns[]         │─────────────────────────▶{ detected[], summary, score }
+│ actionablePatternData  │─────────────────────────▶actionablePractices
+└────────────────────────┘                          { practiced[], opportunities[] }
+
+workflowHabit
+┌────────────────────────┐     score calculation    criticalThinkingAnalysis
+│ criticalThinkingMoments│─────────────────────────▶{ strengths[], score }
+│ planningHabits[]       │─────────────────────────▶planningAnalysis
+└────────────────────────┘     maturity assessment  { strengths[], maturityLevel }
+
+
+═══════════════════════════════════════════════════════════════════════════
+PATH 2: Phase 3 NarrativeLLMResponse → Direct Copy → Narrative Fields
+        (LLM-generated)
+═══════════════════════════════════════════════════════════════════════════
+
+NarrativeLLMResponse                                VerboseEvaluation (narrative)
+─────────────────────                               ─────────────────────────────
+
+┌────────────────────────┐     direct copy          personalitySummary
+│ personalitySummary     │─────────────────────────▶(≤3000 chars, personalized)
+│                        │
+│ promptPatterns[]       │─────────────────────────▶promptPatterns[]
+│   (5-12 patterns)     │                          (with parsed examples)
+│                        │
+│ topFocusAreas          │─────────────────────────▶topFocusAreas
+│   (top 3 priorities)  │                          (with parsed actions)
+└────────────────────────┘
+
 
 ⚠️ TRANSLATION NOTE (non-English output):
-Agent insights from Phase 2 are generated in English.
-When output language is non-English (ko, ja, zh):
-- languageAgentInsightsReminder instructs LLM to translate agent findings
-- Pattern names and recommendations are translated to target language
+Phase 3 always generates in English. Translation is Phase 4 (Translator).
+Phase 4 receives NarrativeLLMResponse + AgentOutputs:
+- NarrativeLLMResponse text fields are translated (personalitySummary, patterns, etc.)
+- AgentOutputs insights are translated as translatedAgentInsights
 - Technical terms (AI, Git, commit, etc.) remain in English
 ```
 
@@ -453,7 +490,7 @@ When output language is non-English (ko, ja, zh):
 
 ### Phase 4: Translator (Conditional)
 
-**Purpose**: Translate Phase 3 output into user's detected language
+**Purpose**: Translate Phase 3 narrative + Phase 2 agent insights into user's detected language
 
 > Runs only when non-English language is detected (5% character threshold). Skipped for English users.
 
@@ -484,14 +521,18 @@ When output language is non-English (ko, ja, zh):
 │  │  LLM CALL                                                         │   │
 │  │  Model: gemini-3-flash-preview                                   │   │
 │  │  Temperature: 1.0                                                 │   │
-│  │  Input: VerboseLLMResponse (English)                              │   │
+│  │  Input: NarrativeLLMResponse (English) + AgentOutputs            │   │
 │  │  Output: TranslatorOutput (translated text fields only)          │   │
+│  │                                                                   │   │
+│  │  NOTE: Translator receives AgentOutputs to produce                │   │
+│  │  translatedAgentInsights (Phase 2 worker summaries in target     │   │
+│  │  language). NarrativeLLMResponse text fields are also translated. │   │
 │  └──────────────────────────────────────────────────────────────────┘   │
 │                                 │                                        │
 │                                 ▼                                        │
 │  ┌──────────────────────────────────────────────────────────────────┐   │
 │  │  MERGE STRATEGY                                                   │   │
-│  │  - English response = source of truth for structure               │   │
+│  │  - English NarrativeLLMResponse = source of truth for structure   │   │
 │  │  - Only text fields overlaid from translation                     │   │
 │  │  - Numeric fields, IDs remain from English                        │   │
 │  │  - Technical terms preserved: AI, Git, API, IDE, etc.             │   │
@@ -509,9 +550,92 @@ export class TranslatorStage {
     return language !== 'en';
   }
 
-  execute(input: VerboseLLMResponse, language: string): Promise<TranslatorOutput>;
+  translate(
+    englishResponse: NarrativeLLMResponse,
+    targetLanguage: SupportedLanguage,
+    agentOutputs: AgentOutputs
+  ): Promise<TranslatorResult>;
 }
 ```
+
+---
+
+### Evaluation Assembly (Post-Phase 4, Deterministic)
+
+**Purpose**: Deterministically merge Phase 2 AgentOutputs (structural) + Phase 3 NarrativeLLMResponse (narrative) into VerboseEvaluation fields
+
+> No LLM call — pure data transformation. Runs after Phase 4 (Translation) in the orchestrator.
+> Implemented in `evaluation-assembler.ts` as `assembleEvaluation()`.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│              EVALUATION ASSEMBLY (deterministic, NO LLM)                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────────────────────┐  ┌──────────────────────────────┐    │
+│  │  INPUT A                      │  │  INPUT B                      │    │
+│  │  AgentOutputs                 │  │  NarrativeLLMResponse         │    │
+│  │  (Phase 2 + 2.5 structural)  │  │  (Phase 3 narrative, possibly │    │
+│  │  ├── strengthGrowth          │  │   translated by Phase 4)      │    │
+│  │  ├── typeClassifier          │  │  ├── personalitySummary       │    │
+│  │  ├── trustVerification       │  │  ├── promptPatterns[]         │    │
+│  │  ├── workflowHabit           │  │  └── topFocusAreas            │    │
+│  │  ├── knowledgeGap            │  │                                │    │
+│  │  └── contextEfficiency       │  └──────────────┬───────────────┘    │
+│  └──────────────┬───────────────┘                  │                    │
+│                 │                                   │                    │
+│                 └─────────────┬─────────────────────┘                    │
+│                               │                                          │
+│                               ▼                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │  ASSEMBLY RULES (no LLM)                                         │    │
+│  │                                                                   │    │
+│  │  FROM AgentOutputs (deterministic):                              │    │
+│  │  strengthGrowth.strengths/growthAreas                            │    │
+│  │    → dimensionInsights[] (grouped by 6 dimensions)               │    │
+│  │  typeClassifier                                                   │    │
+│  │    → primaryType, controlLevel, distribution, controlScore       │    │
+│  │  trustVerification.antiPatterns[]                                 │    │
+│  │    → antiPatternsAnalysis (severity mapping, evidence)           │    │
+│  │  trustVerification.actionablePatternMatchesData                  │    │
+│  │    → actionablePractices (parse semicolon-separated data)        │    │
+│  │  workflowHabit.criticalThinkingMoments[]                        │    │
+│  │    → criticalThinkingAnalysis (score calculation)                │    │
+│  │  workflowHabit.planningHabits[]                                  │    │
+│  │    → planningAnalysis (maturity level assessment)                │    │
+│  │                                                                   │    │
+│  │  FROM NarrativeLLMResponse (direct copy):                        │    │
+│  │  personalitySummary → personalitySummary (truncate ≤3000)        │    │
+│  │  promptPatterns[]   → promptPatterns[] (parse, enforce min 3)    │    │
+│  │  topFocusAreas      → topFocusAreas (parse actionsData)          │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                               │                                          │
+│                               ▼                                          │
+│  ┌──────────────────┐                                                   │
+│  │  OUTPUT          │                                                   │
+│  │  Record<string,  │  (spread into VerboseEvaluation                   │
+│  │   unknown>       │   with metadata in orchestrator)                  │
+│  └──────────────────┘                                                   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Assembly Mapping Table
+
+| Source (Phase 2 AgentOutputs) | Target (VerboseEvaluation) | Transformation |
+|-------------------------------|---------------------------|----------------|
+| `strengthGrowth.strengths[]` + `.growthAreas[]` | `dimensionInsights[]` | Group by `.dimension` into 6 dimension buckets, map evidence |
+| `typeClassifier` | `primaryType`, `controlLevel`, `distribution`, `controlScore` | Direct field copy |
+| `trustVerification.antiPatterns[]` | `antiPatternsAnalysis.detected[]` | Severity mapping (critical/significant→significant), evidence extraction |
+| `trustVerification.actionablePatternMatchesData` | `actionablePractices` | Parse semicolon-separated entries into `practiced[]`/`opportunities[]` |
+| `workflowHabit.criticalThinkingMoments[]` | `criticalThinkingAnalysis` | Convert to highlights, calculate `overallScore` from type variety |
+| `workflowHabit.planningHabits[]` | `planningAnalysis` | Assess `planningMaturityLevel` (reactive→expert), split by effectiveness |
+
+| Source (Phase 3 Narrative) | Target (VerboseEvaluation) | Transformation |
+|---------------------------|---------------------------|----------------|
+| `personalitySummary` | `personalitySummary` | Truncate to ≤3000 chars |
+| `promptPatterns[]` | `promptPatterns[]` | Parse `examplesData`, enforce minimum 3 patterns |
+| `topFocusAreas` | `topFocusAreas` | Parse `actionsData` → nested `{start, stop, continue}` |
 
 ---
 
@@ -677,13 +801,12 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
                        │ [3] Pass Phase1Output to Phase 2 (Premium+ only)
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║         PHASE 2: INSIGHT GENERATION (5 workers, 5 LLM calls)      ║
+  ║         PHASE 2: INSIGHT GENERATION (4 workers, 4 LLM calls)      ║
   ║                                                                    ║
-  ║   [5 parallel workers, tier requirements vary per worker]          ║
+  ║   [4 parallel workers, tier requirements vary per worker]          ║
   ║                                                                    ║
   ║   INPUT:  Phase1Output (ONLY - no raw sessions)                   ║
-  ║   OUTPUT: AgentOutputs (merged)                                    ║
-  ║           - StrengthGrowthWorker → strengths/growth (free)        ║
+  ║   OUTPUT: AgentOutputs (merged, excluding strengthGrowth)          ║
   ║           - TrustVerificationWorker → anti-patterns (premium)     ║
   ║           - WorkflowHabitWorker → planning/thinking (premium)     ║
   ║           - KnowledgeGapWorker → knowledge gaps (free)            ║
@@ -695,37 +818,40 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
                        │ [4] Pass agent outputs to Phase 2.5
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║      PHASE 2.5: TYPE CLASSIFICATION (1 LLM call)                 ║
+  ║   PHASE 2.5: SYNTHESIS → CLASSIFICATION (2 sequential LLM calls) ║
   ║                                                                    ║
-  ║   [TypeClassifierWorker - runs after Phase 2, before Phase 3]     ║
+  ║   STEP 1: StrengthGrowthSynthesizer (free)                       ║
+  ║   INPUT:  Phase2 AgentOutputs + Phase1Output (utterances)         ║
+  ║   OUTPUT: StrengthGrowthOutput → merged into AgentOutputs         ║
   ║                                                                    ║
-  ║   INPUT:  Phase1Output + AgentOutputs                             ║
+  ║   STEP 2: TypeClassifierWorker (free)                             ║
+  ║   INPUT:  AgentOutputs (now includes strengthGrowth)              ║
   ║   OUTPUT: TypeClassifierOutput                                     ║
   ║           - primaryType + distribution                             ║
   ║           - controlLevel + controlScore                            ║
   ║           - matrixName + matrixEmoji                               ║
   ║           - confidenceScore + reasoning                            ║
   ║                                                                    ║
-  ║   NO FALLBACK: If type classification fails, error is thrown      ║
+  ║   NO FALLBACK: If either worker fails, error is thrown            ║
   ╚═══════════════════════════════════════════════════════════════════╝
                        │
-                       │ [5] Pass all outputs to Phase 3
+                       │ [5] Pass summarized outputs to Phase 3
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║                   PHASE 3: CONTENT WRITER (1 LLM call)           ║
+  ║         PHASE 3: CONTENT WRITER — NARRATIVE ONLY (1 LLM call)    ║
   ║                                                                    ║
   ║   Model: gemini-3-flash      Temp: 1.0    Tokens: 65536           ║
   ║                                                                    ║
-  ║   INPUT:  Phase1Output + AgentOutputs + Sessions                  ║
-  ║   OUTPUT: VerboseLLMResponse                                       ║
-  ║           - Personality summary (300-1500 chars)                   ║
-  ║           - 6 dimension insights (with evidence)                   ║
-  ║           - 3-6 prompt patterns                                    ║
-  ║           - Top focus areas (personalized)                         ║
-  ║           - Agent insights (from Phase 2, Premium+)                ║
+  ║   INPUT:  AgentOutputs summary (via phase3-summarizer)            ║
+  ║           + sessionCount + top 20 utterances                      ║
+  ║           + knowledgeResources (optional)                         ║
+  ║   OUTPUT: NarrativeLLMResponse (narrative only)                   ║
+  ║           - personalitySummary (≤3000 chars)                      ║
+  ║           - promptPatterns[] (5-12 patterns)                      ║
+  ║           - topFocusAreas (top 3 priorities, optional)            ║
   ║                                                                    ║
-  ║   LANGUAGE: Supports 'en', 'ko', 'ja', 'zh'                        ║
-  ║             Non-English: Agent insights translated via prompt      ║
+  ║   LANGUAGE: Always generates in English                           ║
+  ║             Translation is Phase 4 (Translator)                   ║
   ║                                                                    ║
   ║   NO FALLBACK: If content generation fails, error is thrown       ║
   ╚═══════════════════════════════════════════════════════════════════╝
@@ -737,29 +863,37 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
   ║                                                                    ║
   ║   CONDITION: Runs only if non-English detected (5% threshold)    ║
   ║                                                                    ║
-  ║   INPUT:  VerboseLLMResponse (English)                            ║
+  ║   INPUT:  NarrativeLLMResponse (English) + AgentOutputs          ║
   ║   OUTPUT: TranslatorOutput (translated text fields only)          ║
+  ║           + translatedAgentInsights (Phase 2 summaries)           ║
   ║                                                                    ║
   ║   MERGE: English structure preserved, text fields overlaid        ║
   ║   KEPT IN ENGLISH: IDs, numbers, technical terms                  ║
   ╚═══════════════════════════════════════════════════════════════════╝
                        │
-                       │ [7] Post-processing: evidence linking, flattening
+                       │ [7] Deterministic assembly
                        ▼
   ┌─────────────────────────────────────────────────────────────────┐
-  │  POST-PROCESSING                                                  │
-  │  - Parse flattened strings → nested arrays                       │
-  │  - Link evidence using clusterId (semantic fallback)             │
-  │  - Truncate strings to max lengths                               │
-  │  - Ensure minimums for each dimension                            │
+  │  EVALUATION ASSEMBLY (deterministic, NO LLM)                      │
+  │  assembleEvaluation(agentOutputs, narrativeResult, phase1Output)  │
+  │                                                                   │
+  │  Phase 2 AgentOutputs → structural fields:                       │
+  │  - dimensionInsights, type classification, antiPatterns           │
+  │  - criticalThinking, planning, actionablePractices               │
+  │                                                                   │
+  │  Phase 3 NarrativeLLMResponse → narrative fields:                │
+  │  - personalitySummary, promptPatterns, topFocusAreas             │
   └────────────────────────────────┬────────────────────────────────┘
                                    │
-                                   │ [8] Add metadata
+                                   │ [8] Add metadata + confidence
                                    ▼
   ┌─────────────────────────────────────────────────────────────────┐
   │  VerboseEvaluation (Full)                                        │
   │  - sessionId, analyzedAt, sessionsAnalyzed                       │
-  │  - ... all VerboseLLMResponse fields                             │
+  │  - ...assembledData (structural + narrative)                     │
+  │  - agentOutputs (raw Phase 2 data)                               │
+  │  - analysisMetadata (confidence, data quality)                   │
+  │  - pipelineTokenUsage                                             │
   └────────────────────────────────┬────────────────────────────────┘
                                    │
                                    │ [9] Apply tier-based filtering
@@ -803,26 +937,30 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 │  ┌──────────────────────────────────────────────────────────┐           │
 │  │  PHASE 1: DataExtractor (deterministic, no LLM cost)     │           │
 │  │                                                           │           │
-│  │  PHASE 2 (Parallel): 5 Workers (tier-gated)              │           │
-│  │  ~4K tokens per worker, ~20K total (all workers)         │           │
-│  │  Free tier runs: StrengthGrowth, KnowledgeGap (2 LLM)    │           │
-│  │  Premium runs: all 5 workers (5 LLM calls)               │           │
+│  │  PHASE 2 (Parallel): 4 Workers (tier-gated)              │           │
+│  │  ~4K tokens per worker, ~16K total (all workers)         │           │
+│  │  Free tier runs: KnowledgeGap (1 LLM)                     │           │
+│  │  Premium runs: all 4 workers (4 LLM calls)               │           │
 │  │                                                           │           │
-│  │  PHASE 2.5: TypeClassifier (1 LLM call)                  │           │
+│  │  PHASE 2.5 (Sequential): Synthesizer + TypeClassifier     │           │
+│  │  Synthesizer: ~8K input, ~4K output (1 LLM call)        │           │
+│  │  TypeClassifier: ~4K input, ~1K output (1 LLM call)     │           │
 │  │  Input: ~4K tokens    Output: ~1K tokens                 │           │
 │  │                                                           │           │
-│  │  PHASE 3: ContentWriter (1 LLM call)                      │           │
-│  │  Input: ~12K tokens    Output: ~6K tokens                │           │
+│  │  PHASE 3: ContentWriter — narrative only (1 LLM call)     │           │
+│  │  Input: ~8K tokens     Output: ~4K tokens                │           │
+│  │  (reduced scope: personalitySummary, promptPatterns,      │           │
+│  │   topFocusAreas only — structural data via assembler)     │           │
 │  │                                                           │           │
 │  │  PHASE 4: Translator (0-1 LLM call, conditional)         │           │
 │  │  Only runs for non-English users (ko, ja, zh)            │           │
 │  │  Input: ~8K tokens    Output: ~6K tokens                 │           │
 │  │                                                           │           │
 │  │  Total LLM Calls:                                         │           │
-│  │  - Free (English):     4 calls (2+1+1+0)                 │           │
-│  │  - Free (non-English): 5 calls (2+1+1+1)                 │           │
-│  │  - Premium (English):  7 calls (5+1+1+0)                 │           │
-│  │  - Premium (non-EN):   8 calls (5+1+1+1)                 │           │
+│  │  - Free (English):     4 calls (1+2+1+0)                 │           │
+│  │  - Free (non-English): 5 calls (1+2+1+1)                 │           │
+│  │  - Premium (English):  7 calls (4+2+1+0)                 │           │
+│  │  - Premium (non-EN):   8 calls (4+2+1+1)                 │           │
 │  │                                                           │           │
 │  │  Total Cost (Free):    ~$0.03-0.04 per analysis          │           │
 │  │  Total Cost (Premium): ~$0.08-0.10 per analysis          │           │
@@ -846,9 +984,9 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | Pipeline coordination (Phase 1→2→2.5→3), Worker registration/execution |
+| Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | Pipeline coordination (Phase 1→2→2.5→3→4→Assembly), Worker registration/execution |
 | Orchestrator Types | `src/lib/analyzer/orchestrator/types.ts` | WorkerResult, WorkerContext, Phase types |
-| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, registers all workers (1 Phase 1, 5 Phase 2, 1 Phase 2.5) |
+| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, registers all workers (1 Phase 1, 4 Phase 2, 2 Phase 2.5) |
 | Content Gateway | `src/lib/analyzer/content-gateway.ts` | Tier-based content filtering (free/premium/enterprise) |
 
 ### Phase 1: Data Extraction Worker (1 worker, deterministic)
@@ -859,27 +997,27 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Data Extractor Worker | `src/lib/analyzer/workers/data-extractor-worker.ts` | Phase 1 - deterministic extraction (no LLM) |
 | Phase 1 Output Schema | `src/lib/models/phase1-output.ts` | Phase1Output Zod schema |
 
-### Phase 2: Insight Generation Workers (5 workers, 5 LLM calls)
+### Phase 2: Insight Generation Workers (4 workers, 4 LLM calls)
 
 | Component | File | Tier | Description |
 |-----------|------|------|-------------|
-| Strength Growth | `src/lib/analyzer/workers/strength-growth-worker.ts` | free | Strengths & growth areas |
 | Trust Verification | `src/lib/analyzer/workers/trust-verification-worker.ts` | premium | Anti-patterns & verification |
 | Workflow Habit | `src/lib/analyzer/workers/workflow-habit-worker.ts` | premium | Planning, critical thinking |
 | Knowledge Gap | `src/lib/analyzer/workers/knowledge-gap-worker.ts` | free | Knowledge gaps & learning |
 | Context Efficiency | `src/lib/analyzer/workers/context-efficiency-worker.ts` | premium | Token inefficiency |
 | Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | — | AgentOutputs Zod schemas |
-| Strength Growth Schema | `src/lib/models/strength-growth-data.ts` | — | StrengthGrowthOutput |
 | Trust Verification Schema | `src/lib/models/trust-verification-data.ts` | — | TrustVerificationOutput |
 | Workflow Habit Schema | `src/lib/models/workflow-habit-data.ts` | — | WorkflowHabitOutput |
 | Knowledge Gap Schema | (reuses existing) | — | KnowledgeGapOutput |
 | Context Efficiency Schema | (reuses existing) | — | ContextEfficiencyOutput |
 
-### Phase 2.5: Type Classification (1 worker, 1 LLM call)
+### Phase 2.5: Synthesis → Classification (2 workers, 2 sequential LLM calls)
 
 | Component | File | Tier | Description |
 |-----------|------|------|-------------|
+| Strength Growth Synthesizer | `src/lib/analyzer/workers/strength-growth-worker.ts` | free | Cross-domain strengths/growth synthesis |
 | TypeClassifier Worker | `src/lib/analyzer/workers/type-classifier-worker.ts` | free | Type classification + synthesis |
+| Strength Growth Schema | `src/lib/models/strength-growth-data.ts` | — | StrengthGrowthOutput |
 | Type Detector | `src/lib/analyzer/type-detector.ts` | — | Pattern-based type detection utilities |
 | Coding Style Types | `src/lib/models/coding-style.ts` | — | 5×3 matrix types (15 combinations) |
 | AI Control Dimension | `src/lib/analyzer/dimensions/ai-control.ts` | — | Control level calculation |
@@ -892,13 +1030,21 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Phrase Pattern Calculator | `src/lib/analyzer/calculators/phrase-pattern-calculator.ts` | N-gram phrase pattern detection using Levenshtein clustering |
 | Temporal Metrics Schema | `src/lib/models/temporal-metrics.ts` | Zod schemas for deterministic temporal metrics |
 
-### Phase 3: Content Writer (1 LLM call)
+### Phase 3: Content Writer — Narrative Only (1 LLM call)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Stage Implementation | `src/lib/analyzer/stages/content-writer.ts` | ContentWriterStage class, narrative transformation, evidence linking |
-| Prompts (PTCF) | `src/lib/analyzer/stages/content-writer-prompts.ts` | System/user prompt builders, i18n language reminders (ko/ja/zh) |
-| Output Schema | `src/lib/models/verbose-evaluation.ts` | VerboseLLMResponse, VerboseEvaluation schema |
+| Stage Implementation | `src/lib/analyzer/stages/content-writer.ts` | ContentWriterStage class, narrative-only generation (personalitySummary, promptPatterns, topFocusAreas) |
+| Phase 3 Summarizer | `src/lib/analyzer/stages/phase3-summarizer.ts` | Summarizes AgentOutputs into structured text for Phase 3 prompt (~15-20K chars vs 50-100K from JSON) |
+| Prompts (PTCF) | `src/lib/analyzer/stages/content-writer-prompts.ts` | System/user prompt builders (always English; translation is Phase 4) |
+| Narrative Schema | `src/lib/models/verbose-evaluation.ts` | `NarrativeLLMResponseSchema` (personalitySummary, promptPatterns, topFocusAreas) |
+
+### Evaluation Assembly (deterministic, no LLM)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Evaluation Assembler | `src/lib/analyzer/stages/evaluation-assembler.ts` | `assembleEvaluation()` — merges Phase 2 structural data + Phase 3 narrative into VerboseEvaluation fields |
+| Output Schema | `src/lib/models/verbose-evaluation.ts` | `VerboseEvaluation` schema (full evaluation including assembled fields + metadata) |
 
 ### Session Parsing (Stage 0)
 
@@ -958,14 +1104,14 @@ Worker Registration (src/lib/analyzer/verbose-analyzer.ts):
 ├── Phase 1 (1 worker):
 │   └── DataExtractorWorker (deterministic, no LLM)
 │
-├── Phase 2 (5 workers):
-│   ├── StrengthGrowthWorker (free)
+├── Phase 2 (4 workers, parallel):
 │   ├── TrustVerificationWorker (premium)
 │   ├── WorkflowHabitWorker (premium)
 │   ├── KnowledgeGapWorker (free)
 │   └── ContextEfficiencyWorker (premium)
 │
-└── Phase 2.5 (1 worker):
+└── Phase 2.5 (2 workers, sequential):
+    ├── StrengthGrowthWorker/Synthesizer (free)
     └── TypeClassifierWorker (free)
 
 Environment Variables:

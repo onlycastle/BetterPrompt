@@ -9,10 +9,6 @@
 
 // Content Writer
 export { ContentWriterStage, type ContentWriterConfig } from './content-writer';
-export {
-  CONTENT_WRITER_SYSTEM_PROMPT,
-  buildContentWriterUserPrompt,
-} from './content-writer-prompts';
 
 // Translator
 export { TranslatorStage, type TranslatorConfig } from './translator';

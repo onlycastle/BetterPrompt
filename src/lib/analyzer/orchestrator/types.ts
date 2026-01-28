@@ -192,8 +192,8 @@ export function isPhase2V2Context(context: unknown): context is Phase2V2WorkerCo
  * Analysis pipeline phases
  *
  * - Phase 1: DataExtractor (deterministic)
- * - Phase 2: 5 Insight workers (parallel)
- * - Phase 2.5: TypeClassifier
+ * - Phase 2: 4 Insight workers (parallel)
+ * - Phase 2.5: StrengthGrowthSynthesizer → TypeClassifier (sequential)
  * - Phase 3: ContentWriter
  */
 export type Phase = 1 | 2 | 3;
@@ -317,9 +317,9 @@ export interface Phase1Results {
 
 /**
  * Results from Phase 2 (Insight Generation)
+ * Note: strengthGrowth moved to Phase 2.5 (Synthesizer)
  */
 export interface Phase2Results {
-  strengthGrowth?: WorkerResultWithStatus<unknown>;
   trustVerification?: WorkerResultWithStatus<unknown>;
   workflowHabit?: WorkerResultWithStatus<unknown>;
   knowledgeGap?: WorkerResultWithStatus<unknown>;
