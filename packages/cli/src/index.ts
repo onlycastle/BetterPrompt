@@ -395,12 +395,12 @@ async function runAnalysis(): Promise<void> {
   // Auto-select all sessions (no manual selection)
   const selectedSessions = scanResult.sessions;
 
-  // Estimate cost (displayed when DEBUG=1)
+  // Estimate cost (displayed when NOSLOP_DEBUG=1)
   const parsedSessions = selectedSessions.map(s => s.parsed);
   const costEstimate = estimateAnalysisCost(parsedSessions);
 
-  // Display cost estimate for developers when DEBUG is set
-  if (process.env.DEBUG) {
+  // Display cost estimate for developers when NOSLOP_DEBUG is set
+  if (process.env.NOSLOP_DEBUG === '1') {
     console.log(renderCostEstimate(costEstimate, selectedSessions.length));
   }
 

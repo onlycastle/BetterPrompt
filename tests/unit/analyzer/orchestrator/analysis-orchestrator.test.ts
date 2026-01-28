@@ -657,68 +657,9 @@ describe('AnalysisOrchestrator', () => {
       expect(executionOrder).toEqual(['StrengthGrowth', 'TypeClassifier']);
     });
 
-    it('should merge Synthesizer result into agentOutputs before TypeClassifier runs', async () => {
-      let typeClassifierReceivedStrengthGrowth = false;
-
-      class MockSynthesizerWorker extends BaseWorker<any> {
-        readonly name = 'StrengthGrowth';
-        readonly phase = 2 as const;
-        readonly minTier: Tier = 'free';
-
-        canRun(context: WorkerContext): boolean {
-          return !!(context as any).agentOutputs;
-        }
-
-        async execute(): Promise<WorkerResult<any>> {
-          return {
-            data: {
-              strengths: [{ title: 'Test Strength', description: 'desc', evidence: [], dimension: 'aiCollaboration' }],
-              growthAreas: [],
-              confidenceScore: 0.85,
-            },
-            usage: null,
-          };
-        }
-      }
-
-      class MockTypeClassifierWorker extends BaseWorker<any> {
-        readonly name = 'TypeClassifier';
-        readonly phase = 2 as const;
-        readonly minTier: Tier = 'free';
-
-        canRun(context: WorkerContext): boolean {
-          const ctx = context as any;
-          // Check if agentOutputs has strengthGrowth from Synthesizer
-          if (ctx.agentOutputs?.strengthGrowth?.strengths?.length > 0) {
-            typeClassifierReceivedStrengthGrowth = true;
-          }
-          return !!(ctx.agentOutputs);
-        }
-
-        async execute(): Promise<WorkerResult<any>> {
-          return {
-            data: {
-              primaryType: 'architect',
-              distribution: { architect: 40, scientist: 20, collaborator: 20, speedrunner: 10, craftsman: 10 },
-              controlLevel: 'navigator',
-              controlScore: 50,
-              matrixName: 'Systems Architect',
-              matrixEmoji: '🏗️',
-              confidenceScore: 0.8,
-            },
-            usage: null,
-          };
-        }
-      }
-
-      orchestrator.registerPhase2Point5Worker(new MockSynthesizerWorker());
-      orchestrator.registerPhase2Point5Worker(new MockTypeClassifierWorker());
-
-      await orchestrator.analyze(mockSessions, mockMetrics, 'free');
-
-      // TypeClassifier should have received the Synthesizer's strengthGrowth output
-      expect(typeClassifierReceivedStrengthGrowth).toBe(true);
-    });
+    // NOTE: Test for "should merge Synthesizer result into agentOutputs before TypeClassifier runs"
+    // was removed because StrengthGrowthSynthesizer has been removed from the pipeline.
+    // Workers now output strengths/growthAreas directly at Phase 2 level.
 
     it('should not include strengthGrowth in Phase 2 merge', async () => {
       // Phase 2 worker named StrengthGrowth should NOT be merged (it moved to Phase 2.5)

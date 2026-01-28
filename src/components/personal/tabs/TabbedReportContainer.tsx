@@ -1,43 +1,44 @@
 /**
  * TabbedReportContainer Component
  *
- * Organizes the report into tabs to reduce scroll length:
+ * Organizes the report into 2 tabs for cleaner UX:
  * - Fixed header: TypeResultMinimal + PersonalitySummary (always visible)
- * - Tabs: Patterns | Dimensions | AI Agents
+ * - Tabs: Communication Patterns | Your Insights
  * - Smart "Next Tab" navigation at bottom
+ *
+ * REFACTORED: Simplified from 4 tabs to 2 tabs.
+ * - "Your Insights" tab shows Worker-specific strengths/growthAreas directly
+ * - Removes legacy GrowthInsightsSection, DimensionInsightsClean, AgentInsightsSection
  */
 
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { TypeResultMinimal } from './TypeResultMinimal';
 import { PersonalitySummaryClean } from './PersonalitySummaryClean';
 import { PromptPatternsClean } from './PromptPatternsClean';
-import { DimensionInsightsClean } from './DimensionInsightsClean';
-import { GrowthInsightsSection } from './GrowthInsightsSection';
-import { AgentInsightsSection } from './AgentInsightsSection';
+import { WorkerInsightsSection } from './WorkerInsightsSection';
 import { NextTabButton } from './NextTabButton';
 import { ResourceSidebar } from './ResourceSidebar';
 import { DataQualityBadge } from './DataQualityBadge';
 import type { VerboseAnalysisData, AnalysisMetadata } from '../../../types/verbose';
 import type { AgentOutputs } from '../../../lib/models/agent-outputs';
-import {
-  parseRecommendedResourcesData,
-  getAllGrowthAreasHybrid,
-  type ParsedResource,
-} from '../../../lib/models/agent-outputs';
+import { aggregateWorkerInsights, parseRecommendedResourcesData, type ParsedResource } from '../../../lib/models/agent-outputs';
 import styles from './TabbedReportContainer.module.css';
 
-export type ReportTabId = 'patterns' | 'growth' | 'dimensions' | 'agents';
+export type ReportTabId = 'patterns' | 'insights';
 
 interface TabConfig {
   id: ReportTabId;
   label: string;
 }
 
+/**
+ * 2-tab structure (simplified from 4 tabs):
+ * - Communication Patterns: promptPatterns from ContentWriter
+ * - Your Insights: Domain-specific strengths/growthAreas from Phase 2 workers
+ */
 const REPORT_TABS: TabConfig[] = [
-  { id: 'patterns', label: 'Prompt Patterns' },
-  { id: 'growth', label: 'Growth Insights' },
-  { id: 'dimensions', label: 'Dimension Insights' },
-  { id: 'agents', label: 'AI Agent Insights' },
+  { id: 'patterns', label: 'Communication Patterns' },
+  { id: 'insights', label: 'Your Insights' },
 ];
 
 interface TabbedReportContainerProps {
@@ -63,16 +64,19 @@ export function TabbedReportContainer({
     return parseRecommendedResourcesData(agentOutputs.knowledgeGap.recommendedResourcesData);
   }, [agentOutputs]);
 
-  // Parse knowledge resources into a map by topic for inline display (used by DimensionInsightsClean)
-  const resourcesMap = useMemo(() => {
-    const map = new Map<string, ParsedResource[]>();
-    allResources.forEach((resource) => {
-      const key = resource.topic.toLowerCase();
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(resource);
-    });
-    return map;
-  }, [allResources]);
+  // Aggregate worker insights from Phase 2 workers
+  // This replaces the centralized StrengthGrowthSynthesizer approach
+  const workerInsights = useMemo(() => {
+    // First check if workerInsights is already on the analysis (from DB)
+    if ((analysis as any).workerInsights) {
+      return (analysis as any).workerInsights;
+    }
+    // Otherwise aggregate from agentOutputs
+    if (agentOutputs) {
+      return aggregateWorkerInsights(agentOutputs);
+    }
+    return undefined;
+  }, [analysis, agentOutputs]);
 
   // Handle tab change with scroll-to-top
   const handleTabChange = useCallback((tabId: ReportTabId) => {
@@ -85,17 +89,15 @@ export function TabbedReportContainer({
 
   // Check if we have content for each tab
   const hasPatterns = analysis.promptPatterns && analysis.promptPatterns.length > 0;
-  const hasGrowth = agentOutputs && getAllGrowthAreasHybrid(agentOutputs, analysis.translatedAgentInsights).length > 0;
-  const hasDimensions = analysis.dimensionInsights && analysis.dimensionInsights.length > 0;
-  const hasAgents = agentOutputs && Object.values(agentOutputs).some(Boolean);
+  const hasInsights = workerInsights && Object.values(workerInsights).some(
+    (domain: any) => domain && (domain.strengths?.length > 0 || domain.growthAreas?.length > 0)
+  );
 
   // Filter tabs to only show those with content
   const availableTabs = REPORT_TABS.filter(tab => {
     switch (tab.id) {
       case 'patterns': return hasPatterns;
-      case 'growth': return hasGrowth;
-      case 'dimensions': return hasDimensions;
-      case 'agents': return hasAgents;
+      case 'insights': return hasInsights;
       default: return false;
     }
   });
@@ -166,7 +168,7 @@ export function TabbedReportContainer({
 
         {/* Tab Content - Scrollable */}
         <div ref={contentRef} className={styles.tabContent}>
-          {/* Patterns Tab */}
+          {/* Communication Patterns Tab */}
           {activeTab === 'patterns' && hasPatterns && (
             <div className={styles.tabPanel}>
               <h3 className={styles.sectionTitle}>Communication Patterns</h3>
@@ -174,37 +176,12 @@ export function TabbedReportContainer({
             </div>
           )}
 
-          {/* Growth Tab */}
-          {activeTab === 'growth' && hasGrowth && agentOutputs && (
+          {/* Your Insights Tab - Worker-specific strengths/growthAreas */}
+          {activeTab === 'insights' && hasInsights && (
             <div className={styles.tabPanel}>
-              <GrowthInsightsSection
-                agentOutputs={agentOutputs}
+              <WorkerInsightsSection
+                workerInsights={workerInsights}
                 isPaid={isPaid}
-                resourcesMap={resourcesMap}
-                translatedAgentInsights={analysis.translatedAgentInsights}
-              />
-            </div>
-          )}
-
-          {/* Dimensions Tab */}
-          {activeTab === 'dimensions' && hasDimensions && (
-            <div className={styles.tabPanel}>
-              <DimensionInsightsClean
-                insights={analysis.dimensionInsights}
-                sessionsAnalyzed={analysis.sessionsAnalyzed}
-                isPaid={isPaid}
-                resourcesMap={resourcesMap}
-              />
-            </div>
-          )}
-
-          {/* Agents Tab */}
-          {activeTab === 'agents' && hasAgents && agentOutputs && (
-            <div className={styles.tabPanel}>
-              <AgentInsightsSection
-                agentOutputs={agentOutputs}
-                isPaid={isPaid}
-                translatedAgentInsights={analysis.translatedAgentInsights}
               />
             </div>
           )}
@@ -220,10 +197,8 @@ export function TabbedReportContainer({
         </div>
       </div>
 
-      {/* Resource Sidebar - Right column
-          Only show when NOT on Growth or Dimensions tabs
-          (those tabs show inline resources via ResourceBubble) */}
-      {allResources.length > 0 && activeTab !== 'growth' && activeTab !== 'dimensions' && (
+      {/* Resource Sidebar - Right column */}
+      {allResources.length > 0 && (
         <aside className={styles.sidebar}>
           <ResourceSidebar resources={allResources} isPaid={isPaid} />
         </aside>

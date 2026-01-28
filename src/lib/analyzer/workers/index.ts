@@ -1,10 +1,12 @@
 /**
  * Workers Module Exports
  *
- * Pipeline (7 LLM calls total):
+ * Pipeline (6 LLM calls total):
  * - Phase 1: DataExtractor (deterministic, no LLM)
  * - Phase 2: TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency (4 LLM calls)
- * - Phase 2.5: StrengthGrowthSynthesizer → TypeClassifier (2 sequential LLM calls)
+ *            Each worker outputs domain-specific strengths/growthAreas directly
+ * - Phase 2.5: TypeClassifier only (1 LLM call)
+ *            StrengthGrowthSynthesizer REMOVED - workers output insights directly
  * - Phase 3: ContentWriter (1 LLM call, managed by orchestrator)
  *
  * @module analyzer/workers
@@ -20,6 +22,7 @@ export { DataExtractorWorker, createDataExtractorWorker } from './data-extractor
 
 // ============================================================================
 // Phase 2: Insight Generation (4 workers, parallel LLM calls)
+// Each worker outputs domain-specific strengths/growthAreas directly
 // ============================================================================
 
 export { TrustVerificationWorker, createTrustVerificationWorker } from './trust-verification-worker';
@@ -31,10 +34,9 @@ export { KnowledgeGapWorker, createKnowledgeGapWorker } from './knowledge-gap-wo
 export { ContextEfficiencyWorker, createContextEfficiencyWorker } from './context-efficiency-worker';
 
 // ============================================================================
-// Phase 2.5: Synthesizer → TypeClassifier (2 sequential LLM calls)
+// Phase 2.5: TypeClassifier only (1 LLM call)
+// StrengthGrowthSynthesizer REMOVED - insights come from Phase 2 workers directly
 // ============================================================================
-
-export { StrengthGrowthWorker, createStrengthGrowthWorker } from './strength-growth-worker';
 
 export { TypeClassifierWorker, createTypeClassifierWorker } from './type-classifier-worker';
 

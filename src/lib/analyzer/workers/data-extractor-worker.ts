@@ -133,7 +133,10 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
           turnIndex,
           precedingAIResponse
         );
-        utterances.push(utterance);
+        // Skip utterances that became empty after system tag removal
+        if (utterance.text.trim()) {
+          utterances.push(utterance);
+        }
         precedingAIResponse = null;
       } else if (message.role === 'assistant') {
         const response = this.extractAIResponse(session, message, turnIndex);
@@ -154,7 +157,9 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     turnIndex: number,
     precedingAI: ParsedMessage | null
   ): DeveloperUtterance {
-    const originalText = message.content;
+    // Strip system-injected tags FIRST, before any processing
+    const rawText = message.content;
+    const originalText = this.stripSystemTags(rawText);
     const text = this.truncateText(originalText, DataExtractorWorker.MAX_TEXT_LENGTH);
     const id = `${session.sessionId}_${turnIndex}`;
 
@@ -211,46 +216,66 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     const tools = message.toolCalls?.map(tc => tc.name) ?? [];
     const content = message.content.toLowerCase();
 
-    // Check for planning indicators
-    if (tools.includes('EnterPlanMode') || tools.includes('ExitPlanMode') ||
-        tools.includes('TodoWrite') || tools.includes('TodoRead')) {
+    if (this.isPlanningResponse(tools)) {
       return 'planning';
     }
 
-    // Check for code editing
-    if (tools.includes('Edit') || tools.includes('Write')) {
+    if (this.isCodeEditResponse(tools)) {
       return 'code_edit';
     }
 
-    // Check for code generation (Write without Read)
-    if (tools.includes('Write') && !tools.includes('Read')) {
+    if (this.isCodeGenerationResponse(tools)) {
       return 'code_generation';
     }
 
-    // Check for error fixing indicators
-    if (content.includes('error') || content.includes('fix') ||
-        content.includes('bug') || content.includes('issue')) {
+    if (this.isErrorFixResponse(content)) {
       return 'error_fix';
     }
 
-    // Check for tool execution
-    if (tools.includes('Bash') || tools.includes('Task')) {
+    if (this.isToolExecutionResponse(tools)) {
       return 'tool_execution';
     }
 
-    // Check for questions
-    if (content.includes('?') || content.includes('would you') ||
-        content.includes('do you want')) {
+    if (this.isQuestionResponse(content)) {
       return 'question';
     }
 
-    // Check for explanation
-    if (content.includes('let me explain') || content.includes('this means') ||
-        content.includes('because')) {
+    if (this.isExplanationResponse(content)) {
       return 'explanation';
     }
 
     return 'other';
+  }
+
+  private isPlanningResponse(tools: string[]): boolean {
+    return tools.some(t => ['EnterPlanMode', 'ExitPlanMode', 'TodoWrite', 'TodoRead'].includes(t));
+  }
+
+  private isCodeEditResponse(tools: string[]): boolean {
+    return tools.includes('Edit') || tools.includes('Write');
+  }
+
+  private isCodeGenerationResponse(tools: string[]): boolean {
+    return tools.includes('Write') && !tools.includes('Read');
+  }
+
+  private isErrorFixResponse(content: string): boolean {
+    const errorKeywords = ['error', 'fix', 'bug', 'issue'];
+    return errorKeywords.some(keyword => content.includes(keyword));
+  }
+
+  private isToolExecutionResponse(tools: string[]): boolean {
+    return tools.includes('Bash') || tools.includes('Task');
+  }
+
+  private isQuestionResponse(content: string): boolean {
+    const questionIndicators = ['?', 'would you', 'do you want'];
+    return questionIndicators.some(indicator => content.includes(indicator));
+  }
+
+  private isExplanationResponse(content: string): boolean {
+    const explanationIndicators = ['let me explain', 'this means', 'because'];
+    return explanationIndicators.some(indicator => content.includes(indicator));
   }
 
   /**
@@ -456,6 +481,39 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       'and then', 'also', 'additionally', 'furthermore',
     ];
     return continuationPhrases.some(phrase => lowerText.startsWith(phrase));
+  }
+
+  /**
+   * Strip system-injected tags from user message content.
+   * Claude Code injects these tags into user-role messages.
+   * These are not the developer's own words.
+   */
+  private stripSystemTags(text: string): string {
+    const systemTagPatterns = [
+      // Claude Code system tags
+      /<system-reminder>[\s\S]*?<\/system-reminder>/g,
+      /<command-name>[\s\S]*?<\/command-name>/g,
+      /<command-message>[\s\S]*?<\/command-message>/g,
+      /<command-args>[\s\S]*?<\/command-args>/g,
+      /<local-command-stdout>[\s\S]*?<\/local-command-stdout>/g,
+      /<local-command-caveat>[\s\S]*?<\/local-command-caveat>/g,
+      /<local-command-stderr>[\s\S]*?<\/local-command-stderr>/g,
+
+      // Task notification tags (Sisyphus/Ralph Loop system)
+      /<task-notification>[\s\S]*?<\/task-notification>/g,
+      /<task-id>[\s\S]*?<\/task-id>/g,
+      /<status>[\s\S]*?<\/status>/g,
+      /<summary>[\s\S]*?<\/summary>/g,
+      /<result>[\s\S]*?<\/result>/g,
+      /<output-file>[\s\S]*?<\/output-file>/g,
+    ];
+
+    let cleaned = text;
+    for (const pattern of systemTagPatterns) {
+      cleaned = cleaned.replace(pattern, '');
+    }
+
+    return cleaned.replace(/\s{2,}/g, ' ').trim();
   }
 
   private hadError(message: ParsedMessage | null): boolean {

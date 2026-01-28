@@ -1,10 +1,12 @@
 /**
  * Analysis Orchestrator - Main orchestrator for the analysis pipeline
  *
- * Coordinates 5 phases of analysis (7-8 LLM calls total):
+ * Coordinates 5 phases of analysis (6-7 LLM calls total):
  * - Phase 1: DataExtractor (deterministic, no LLM)
  * - Phase 2: 4 insight workers in parallel (4 LLM calls)
- * - Phase 2.5: StrengthGrowthSynthesizer → TypeClassifier (2 sequential LLM calls)
+ *            Each worker outputs domain-specific strengths/growthAreas
+ * - Phase 2.5: TypeClassifier only (1 LLM call)
+ *            StrengthGrowthSynthesizer REMOVED - workers output insights directly
  * - Phase 3: ContentWriter (1 LLM call, always English)
  * - Phase 4: Translator (1 LLM call, conditional — only for non-English users)
  *
@@ -47,6 +49,26 @@ import {
   formatActualUsage,
   aggregateTokenUsage,
 } from '../cost-estimator';
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Create a progress reporter function
+ */
+function createProgressReporter(
+  onProgress: ProgressCallback | undefined,
+  progressStart: number,
+  step: number,
+  getCompletedStages: () => number
+): (stage: string, message: string) => void {
+  return (stage: string, message: string) => {
+    if (!onProgress) return;
+    const progress = progressStart + getCompletedStages() * step;
+    onProgress(stage, progress, message);
+  };
+}
 
 // ============================================================================
 // Analysis Orchestrator
@@ -178,18 +200,15 @@ export class AnalysisOrchestrator {
     const stageUsages: StageTokenUsage[] = [];
     this.debugOutputs = [];
 
-    // Progress tracking: 8 LLM stages total (4 Phase2 + 2 Phase2.5 + Phase3 + Phase4)
-    const TOTAL_LLM_STAGES = 8;
+    // Progress tracking: 7 LLM stages total (4 Phase2 + 1 Phase2.5 + Phase3 + Phase4)
+    // Note: StrengthGrowth removed - workers output insights directly
+    const TOTAL_LLM_STAGES = 7;
     const PROGRESS_START = 40;
     const PROGRESS_RANGE = 49; // 40% → 89%
     const STEP = Math.floor(PROGRESS_RANGE / TOTAL_LLM_STAGES); // 6 points per stage
     let completedLLMStages = 0;
 
-    const reportProgress = (stage: string, message: string) => {
-      if (!onProgress) return;
-      const progress = PROGRESS_START + completedLLMStages * STEP;
-      onProgress(stage, progress, message);
-    };
+    const reportProgress = createProgressReporter(onProgress, PROGRESS_START, STEP, () => completedLLMStages);
 
     this.log('Starting analysis pipeline...');
     this.log(`Sessions: ${sessions.length}, Tier: ${tier}`);
@@ -288,14 +307,17 @@ export class AnalysisOrchestrator {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Phase 2.5: Synthesis → Classification (sequential, uses agent outputs)
-    // 1. StrengthGrowthSynthesizer: cross-domain strengths/growth
-    // 2. TypeClassifier: classification using all data including synthesized
+    // Phase 2.5: TypeClassifier only (StrengthGrowth REMOVED)
+    //
+    // Each Phase 2 worker now outputs domain-specific strengths/growthAreas
+    // directly, eliminating the need for a centralized StrengthGrowthSynthesizer.
+    // TypeClassifier uses all Phase 2 data including worker-provided insights.
+    //
     // NOTE: Phase 2.5 also operates in ENGLISH.
     // ─────────────────────────────────────────────────────────────────────
     this.log(`Phase 2.5 workers registered: ${this.phase2Point5Workers.length}`);
     if (this.phase2Point5Workers.length > 0) {
-      this.log('Phase 2.5: Synthesis & Classification (sequential)...');
+      this.log('Phase 2.5: TypeClassifier (sequential)...');
       const phase2Point5Start = Date.now();
       const phase2Point5Context: WorkerContext = {
         ...baseContext,
@@ -326,9 +348,7 @@ export class AnalysisOrchestrator {
 
           // Report progress per worker
           completedLLMStages++;
-          const progressMessage = workerName === 'StrengthGrowth'
-            ? 'Synthesizing strengths & growth areas...'
-            : 'Classifying developer type...';
+          const progressMessage = 'Classifying developer type...';
           reportProgress(`phase2.5_${workerName}`, progressMessage);
         }
       }
@@ -340,7 +360,7 @@ export class AnalysisOrchestrator {
       for (const [workerName, result] of Object.entries(phase2Point5Results)) {
         if (result?.usage) {
           stageUsages.push({
-            stage: `${workerName} (Synthesis)`,
+            stage: `${workerName} (Classification)`,
             ...result.usage,
           });
         }
@@ -410,6 +430,9 @@ export class AnalysisOrchestrator {
     // Always log language detection result for production debugging (not gated by verbose)
     console.log(`[PHASE:LANG] detected=${languageResult.primary}, confidence=${languageResult.confidence.toFixed(2)}, korean=${languageResult.charCounts.korean}/${languageResult.charCounts.total}, threshold=0.05, willTranslate=${languageResult.primary !== 'en'}`);
 
+    // Hoist translator data to merge AFTER assembleEvaluation (fixes translation overwrite bug)
+    let translatorData: TranslatorOutput | null = null;
+
     if (languageResult.primary !== 'en') {
       this.log(`Phase 4: Translation to ${languageResult.primary}...`);
       const phase4Start = Date.now();
@@ -433,8 +456,8 @@ export class AnalysisOrchestrator {
       completedLLMStages++;
       reportProgress('phase4', `Translating to ${LANGUAGE_DISPLAY_NAMES[languageResult.primary] || languageResult.primary}...`);
 
-      // Merge translated text fields into the English response
-      this.mergeTranslatedFields(contentResult.data, translatorResult.data);
+      // Store translation data — DO NOT merge here, must merge AFTER assembleEvaluation
+      translatorData = translatorResult.data;
       this.log('Phase 4: Translation complete');
     } else {
       // Translation skipped — jump to 89% to match expected end of analysis range
@@ -485,6 +508,12 @@ export class AnalysisOrchestrator {
       knowledgeResources.length > 0 ? knowledgeResources : undefined
     );
 
+    // Apply translations AFTER assembly so they overlay English defaults
+    // (fixes bug where assembleEvaluation rebuilt fields from English agentOutputs)
+    if (translatorData) {
+      this.mergeTranslatedFields(assembledData as any, translatorData);
+    }
+
     const evaluation = {
       sessionId: sessions[sessions.length - 1]?.sessionId ?? 'unknown',
       analyzedAt: new Date().toISOString(),
@@ -494,6 +523,10 @@ export class AnalysisOrchestrator {
       analyzedSessions,
       ...assembledData,
       agentOutputs: agentOutputs,
+      // Propagate translated agent insights for frontend hybrid fallback pattern
+      ...(translatorData?.translatedAgentInsights
+        ? { translatedAgentInsights: translatorData.translatedAgentInsights }
+        : {}),
       knowledgeResources: knowledgeResources.length > 0 ? knowledgeResources : undefined,
       pipelineTokenUsage,
       analysisMetadata: {
@@ -653,9 +686,12 @@ export class AnalysisOrchestrator {
   /**
    * Merge Phase 2.5 results into AgentOutputs
    *
-   * Phase 2.5 workers (sequential):
-   * 1. StrengthGrowthSynthesizer — cross-domain strengths/growth from Phase 2 outputs
-   * 2. TypeClassifier — classification using all Phase 2 + synthesized data
+   * Phase 2.5 workers:
+   * - TypeClassifier only (StrengthGrowthSynthesizer REMOVED)
+   *
+   * Note: StrengthGrowth field is preserved for backward compatibility
+   * but no longer populated by a synthesizer. Each Phase 2 worker
+   * outputs strengths/growthAreas directly in their domain.
    */
   private mergePhase2Point5Outputs(
     agentOutputs: AgentOutputs,
@@ -663,9 +699,6 @@ export class AnalysisOrchestrator {
   ): AgentOutputs {
     const merged = { ...agentOutputs };
 
-    if (phase2Point5Results['StrengthGrowth']?.data) {
-      merged.strengthGrowth = phase2Point5Results['StrengthGrowth'].data as AgentOutputs['strengthGrowth'];
-    }
     if (phase2Point5Results['TypeClassifier']?.data) {
       merged.typeClassifier = phase2Point5Results['TypeClassifier'].data as AgentOutputs['typeClassifier'];
     }

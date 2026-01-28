@@ -1,6 +1,9 @@
 /**
  * Personal Dashboard Components
  * Barrel exports for individual developer growth components
+ *
+ * REFACTORED: Simplified tab structure
+ * - DimensionInsightsClean REMOVED (replaced by WorkerInsightsSection)
  */
 
 export { JourneyHeader } from './JourneyHeader';
@@ -17,7 +20,7 @@ export {
   TypeResultMinimal,
   PersonalitySummaryClean,
   PromptPatternsClean,
-  DimensionInsightsClean,
   GrowthAreasSection,
   EmptyStatePrompt,
+  WorkerInsightsSection,
 } from './tabs';

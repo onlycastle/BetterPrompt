@@ -25,6 +25,16 @@ function debugLog(...args: unknown[]) {
 }
 
 /**
+ * Ensure fetch response is OK, throw error with context if not
+ */
+async function ensureResponseOk(response: Response, errorContext: string): Promise<void> {
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`${errorContext}: ${response.status} ${errorText}`);
+  }
+}
+
+/**
  * Lambda Function URL for analysis API
  */
 const DEFAULT_LAMBDA_URL = 'https://kgdby5xqjypfnlihknmcllqwgq0labzp.lambda-url.ap-northeast-2.on.aws';
@@ -373,14 +383,11 @@ async function uploadViaStorage(
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${accessToken}`,
-      ...(process.env.DEBUG && { 'X-Debug': '1' }),
+      ...(DEBUG && { 'X-Debug': '1' }),
     },
   });
 
-  if (!urlResponse.ok) {
-    const errorText = await urlResponse.text().catch(() => '');
-    throw new Error(`Failed to get upload URL: ${urlResponse.status} ${errorText}`);
-  }
+  await ensureResponseOk(urlResponse, 'Failed to get upload URL');
 
   const urlData = await urlResponse.json() as UploadUrlResponse;
 
@@ -396,10 +403,7 @@ async function uploadViaStorage(
     body: new Uint8Array(compressedBody),
   });
 
-  if (!uploadResponse.ok) {
-    const errorText = await uploadResponse.text().catch(() => '');
-    throw new Error(`Storage upload failed: ${uploadResponse.status} ${errorText}`);
-  }
+  await ensureResponseOk(uploadResponse, 'Storage upload failed');
 
   onProgress?.('preparing', 50, 'Upload complete, starting analysis...');
 
@@ -436,7 +440,7 @@ export async function uploadForAnalysis(
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`,
-        ...(process.env.DEBUG && { 'X-Debug': '1' }),
+        ...(DEBUG && { 'X-Debug': '1' }),
       },
       body: JSON.stringify({ s3Key }),
     });
@@ -462,7 +466,7 @@ export async function uploadForAnalysis(
       'Content-Type': 'application/octet-stream',
       'Content-Encoding': 'gzip',
       'Authorization': `Bearer ${accessToken}`,
-      ...(process.env.DEBUG && { 'X-Debug': '1' }),
+      ...(DEBUG && { 'X-Debug': '1' }),
     },
     body: new Uint8Array(compressedBody),
   });
