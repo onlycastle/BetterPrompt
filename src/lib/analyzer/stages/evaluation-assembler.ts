@@ -6,7 +6,8 @@
  * (personalitySummary, promptPatterns, topFocusAreas).
  *
  * This module handles:
- * - dimensionInsights: StrengthGrowth → grouped by dimension
+ * - workerInsights: Aggregated strengths/growthAreas from each Phase 2 worker
+ *                   (replaces dimensionInsights from StrengthGrowthSynthesizer)
  * - Type classification: TypeClassifier → primaryType, controlLevel, distribution
  * - antiPatternsAnalysis: TrustVerification → deterministic transform
  * - criticalThinkingAnalysis: WorkflowHabit → deterministic transform
@@ -31,6 +32,11 @@ import {
 } from '../../models/verbose-evaluation';
 import type { NarrativeLLMResponse } from '../../models/verbose-evaluation';
 import type { Phase1Output } from '../../models/phase1-output';
+import {
+  aggregateWorkerInsights as doAggregateWorkerInsights,
+  type AggregatedWorkerInsights,
+  WORKER_DOMAIN_CONFIGS,
+} from '../../models/agent-outputs';
 
 // ============================================================================
 // Main Assembly Function
@@ -68,17 +74,20 @@ export function assembleEvaluation(
     Object.assign(result, assembleTypeClassification(agentOutputs.typeClassifier));
   }
 
-  // Dimension insights from StrengthGrowth
+  // ── Worker Insights: Domain-specific strengths/growthAreas from Phase 2 workers ──
+  // Each Phase 2 worker (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency)
+  // outputs strengths/growthAreas directly in their domain.
+  // This replaces the centralized StrengthGrowthSynthesizer approach.
+  result.workerInsights = doAggregateWorkerInsights(agentOutputs);
+
+  // BACKWARD COMPATIBILITY: dimensionInsights from legacy StrengthGrowth (if present)
+  // New data uses workerInsights; dimensionInsights kept for old reports in DB
   if (agentOutputs.strengthGrowth) {
     result.dimensionInsights = assembleDimensionInsights(agentOutputs.strengthGrowth);
   } else {
-    // Fallback: empty dimension insights for all 6 dimensions
-    result.dimensionInsights = DIMENSION_NAMES.map((dim) => ({
-      dimension: dim,
-      dimensionDisplayName: DIMENSION_DISPLAY_NAMES[dim],
-      strengths: [],
-      growthAreas: [],
-    }));
+    // No StrengthGrowth data — leave dimensionInsights empty
+    // Frontend should prefer workerInsights when available
+    result.dimensionInsights = [];
   }
 
   // Anti-patterns from TrustVerification
@@ -111,6 +120,8 @@ export function assembleEvaluation(
   }
 
   // Top focus areas fallback: if Phase 3 didn't produce them, use Phase 2 data
+  // Note: This fallback uses legacy strengthGrowth data if available (backward compatibility)
+  // New analyses don't have strengthGrowth, so ContentWriter (Phase 3) must provide topFocusAreas
   if (!result.topFocusAreas && agentOutputs.strengthGrowth?.personalizedPrioritiesData) {
     const areas = parsePersonalizedPriorities(agentOutputs.strengthGrowth.personalizedPrioritiesData);
     if (areas.length > 0) {
@@ -537,15 +548,13 @@ function mapEvidence(evidence: Array<{ utteranceId?: string; quote?: string }> |
 function mapAntiPatternSeverity(
   severity: string | undefined
 ): 'mild' | 'moderate' | 'significant' {
-  switch (severity) {
-    case 'critical':
-    case 'significant':
-      return 'significant';
-    case 'mild':
-      return 'mild';
-    default:
-      return 'moderate';
+  if (severity === 'critical' || severity === 'significant') {
+    return 'significant';
   }
+  if (severity === 'mild') {
+    return 'mild';
+  }
+  return 'moderate';
 }
 
 /**
