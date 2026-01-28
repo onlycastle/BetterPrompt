@@ -19,6 +19,16 @@
  */
 
 import { z } from 'zod';
+import {
+  WorkerStrengthSchema,
+  type WorkerStrength,
+  WorkerGrowthSchema,
+  type WorkerGrowth,
+  parseWorkerStrengthsData,
+  parseWorkerGrowthAreasData,
+  type AggregatedWorkerInsights,
+  WORKER_DOMAIN_CONFIGS,
+} from './worker-insights';
 
 // ============================================================================
 // Pattern Detective: Conversation Style Discovery
@@ -637,13 +647,21 @@ export const KnowledgeGapOutputSchema = z.object({
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
 
-  // NEW: Structured strengths with evidence (knowledge strengths)
-  // Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
+  // ─────────────────────────────────────────────────────────────────────────
+  // Domain-specific Strengths & Growth Areas (replaces StrengthGrowthSynthesizer)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)
   strengthsData: z.string().max(4000).optional(),
 
-  // NEW: Growth areas with evidence and recommendations (knowledge gaps)
-  // Format: "title|description|evidence1,evidence2|recommendation;title2|..."
+  // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)
   growthAreasData: z.string().max(4000).optional(),
+
+  // Parsed structured strengths (populated by parsing function)
+  strengths: z.array(WorkerStrengthSchema).optional(),
+
+  // Parsed structured growth areas (populated by parsing function)
+  growthAreas: z.array(WorkerGrowthSchema).optional(),
 });
 
 export type KnowledgeGapOutput = z.infer<typeof KnowledgeGapOutputSchema>;
@@ -709,13 +727,21 @@ export const ContextEfficiencyOutputSchema = z.object({
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
 
-  // NEW: Structured strengths with evidence (efficient habits)
-  // Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
+  // ─────────────────────────────────────────────────────────────────────────
+  // Domain-specific Strengths & Growth Areas (replaces StrengthGrowthSynthesizer)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)
   strengthsData: z.string().max(4000).optional(),
 
-  // NEW: Growth areas with evidence and recommendations (inefficiencies)
-  // Format: "title|description|evidence1,evidence2|recommendation;title2|..."
+  // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)
   growthAreasData: z.string().max(4000).optional(),
+
+  // Parsed structured strengths (populated by parsing function)
+  strengths: z.array(WorkerStrengthSchema).optional(),
+
+  // Parsed structured growth areas (populated by parsing function)
+  growthAreas: z.array(WorkerGrowthSchema).optional(),
 
   // Productivity metrics (consolidated from ProductivityAnalyst)
   // Iteration data: "sessionId|iterationCount|avgTurnsPerIteration;..."
@@ -1555,4 +1581,95 @@ export function hasAnyNewAgentOutput(outputs: NewAgentOutputs): boolean {
     outputs.contextEfficiency ||
     outputs.typeClassifier
   );
+}
+
+// ============================================================================
+// Worker Insights Aggregation (NEW - replaces StrengthGrowthSynthesizer)
+// ============================================================================
+
+// Re-export worker insights types for consumers
+export {
+  type WorkerStrength,
+  type WorkerGrowth,
+  type AggregatedWorkerInsights,
+  WORKER_DOMAIN_CONFIGS,
+  parseWorkerStrengthsData,
+  parseWorkerGrowthAreasData,
+};
+
+/**
+ * Aggregate strengths/growthAreas from all Phase 2 Workers into a unified structure.
+ *
+ * This replaces the StrengthGrowthSynthesizer by collecting domain-specific
+ * insights directly from each worker. Each worker already identifies
+ * strengths and growth areas within its domain during its LLM call.
+ *
+ * @param outputs - AgentOutputs from all Phase 2 workers
+ * @returns AggregatedWorkerInsights with per-domain strengths/growthAreas
+ */
+export function aggregateWorkerInsights(outputs: AgentOutputs): AggregatedWorkerInsights {
+  const result: AggregatedWorkerInsights = {};
+
+  // TrustVerification domain
+  if (outputs.trustVerification) {
+    const tv = outputs.trustVerification;
+    // Parse from string data if structured arrays not present
+    const strengths = tv.strengths ?? parseWorkerStrengthsData((tv as any).strengthsData);
+    const growthAreas = tv.growthAreas ?? parseWorkerGrowthAreasData((tv as any).growthAreasData);
+
+    if (strengths.length > 0 || growthAreas.length > 0) {
+      result.trustVerification = {
+        strengths,
+        growthAreas,
+        domainScore: tv.overallTrustHealthScore,
+      };
+    }
+  }
+
+  // WorkflowHabit domain
+  if (outputs.workflowHabit) {
+    const wh = outputs.workflowHabit;
+    const strengths = wh.strengths ?? parseWorkerStrengthsData((wh as any).strengthsData);
+    const growthAreas = wh.growthAreas ?? parseWorkerGrowthAreasData((wh as any).growthAreasData);
+
+    if (strengths.length > 0 || growthAreas.length > 0) {
+      result.workflowHabit = {
+        strengths,
+        growthAreas,
+        domainScore: wh.overallWorkflowScore,
+      };
+    }
+  }
+
+  // KnowledgeGap domain
+  if (outputs.knowledgeGap) {
+    const kg = outputs.knowledgeGap;
+    const strengths = kg.strengths ?? parseWorkerStrengthsData(kg.strengthsData);
+    const growthAreas = kg.growthAreas ?? parseWorkerGrowthAreasData(kg.growthAreasData);
+
+    if (strengths.length > 0 || growthAreas.length > 0) {
+      result.knowledgeGap = {
+        strengths,
+        growthAreas,
+        domainScore: kg.overallKnowledgeScore,
+      };
+    }
+  }
+
+  // ContextEfficiency domain
+  if (outputs.contextEfficiency) {
+    const ce = outputs.contextEfficiency;
+    const strengths = ce.strengths ?? parseWorkerStrengthsData(ce.strengthsData);
+    const growthAreas = ce.growthAreas ?? parseWorkerGrowthAreasData(ce.growthAreasData);
+
+    if (strengths.length > 0 || growthAreas.length > 0) {
+      result.contextEfficiency = {
+        strengths,
+        growthAreas,
+        domainScore: ce.overallEfficiencyScore,
+      };
+    }
+  }
+
+  return result;
 }

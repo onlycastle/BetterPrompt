@@ -1111,7 +1111,30 @@ export const VerboseEvaluationSchema = z.object({
 
   // Agent Outputs (Phase 2 Wow Agents - Premium only)
   agentOutputs: AgentOutputsSchema.optional()
-    .describe('Insights from Phase 2 workers: StrengthGrowth, TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency'),
+    .describe('Insights from Phase 2 workers: TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency, TypeClassifier'),
+
+  // Worker Insights - Aggregated strengths/growthAreas from each Phase 2 worker
+  // This is the NEW preferred way to access domain-specific insights.
+  // Each worker's insights are keyed by worker domain (trustVerification, workflowHabit, etc.)
+  // Frontend should use this for the "Your Insights" tab with 4 worker sections.
+  workerInsights: z.record(z.string(), z.object({
+    strengths: z.array(z.object({
+      title: z.string(),
+      description: z.string(),
+      evidence: z.array(z.string()),
+      frequency: z.number().optional(),
+    })),
+    growthAreas: z.array(z.object({
+      title: z.string(),
+      description: z.string(),
+      evidence: z.array(z.string()),
+      recommendation: z.string(),
+      severity: z.enum(['critical', 'high', 'medium', 'low']).optional(),
+      frequency: z.number().optional(),
+    })),
+    domainScore: z.number().optional(),
+  })).optional()
+    .describe('Domain-specific strengths/growthAreas from Phase 2 workers (replaces StrengthGrowthSynthesizer)'),
 
   // Matched Knowledge Resources (Phase 2.75 - deterministic matching)
   knowledgeResources: z.array(DimensionResourceMatchSchema).optional()

@@ -20,6 +20,14 @@ import {
   parseAntiPatternsData,
   parseVerificationBehaviorData,
 } from './behavior-pattern-data';
+import {
+  WorkerStrengthSchema,
+  type WorkerStrength,
+  WorkerGrowthSchema,
+  type WorkerGrowth,
+  parseWorkerStrengthsData,
+  parseWorkerGrowthAreasData,
+} from './worker-insights';
 
 // ============================================================================
 // Trust Verification Output Schema
@@ -46,6 +54,16 @@ export const TrustVerificationOutputSchema = z.object({
 
   /** Actionable pattern matches from KB - "patternId|matchScore|recommendation;..." */
   actionablePatternMatchesData: z.string().max(3000).optional(),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Domain-specific Strengths & Growth Areas (NEW - replaces StrengthGrowthSynthesizer)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Strengths identified in trust & verification domain (1-4 items) */
+  strengths: z.array(WorkerStrengthSchema).optional(),
+
+  /** Growth areas identified in trust & verification domain (1-4 items) */
+  growthAreas: z.array(WorkerGrowthSchema).optional(),
 });
 export type TrustVerificationOutput = z.infer<typeof TrustVerificationOutputSchema>;
 
@@ -78,6 +96,18 @@ export const TrustVerificationLLMOutputSchema = z.object({
   /** Actionable pattern matches: "patternId|matchScore|recommendation;..." */
   actionablePatternMatchesData: z.string().max(3000).optional()
     .describe('Actionable KB matches: "patternId|matchScore|recommendation;..."'),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Domain-specific Strengths & Growth Areas (NEW)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items) */
+  strengthsData: z.string().max(4000).optional()
+    .describe('Strengths in trust domain: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)'),
+
+  /** Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items) */
+  growthAreasData: z.string().max(4000).optional()
+    .describe('Growth areas in trust domain: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)'),
 });
 export type TrustVerificationLLMOutput = z.infer<typeof TrustVerificationLLMOutputSchema>;
 
@@ -97,6 +127,8 @@ export function parseTrustVerificationLLMOutput(llmOutput: TrustVerificationLLMO
     summary: llmOutput.summary,
     detectedPatternsData: llmOutput.detectedPatternsData,
     actionablePatternMatchesData: llmOutput.actionablePatternMatchesData,
+    strengths: parseWorkerStrengthsData(llmOutput.strengthsData),
+    growthAreas: parseWorkerGrowthAreasData(llmOutput.growthAreasData),
   };
 }
 
