@@ -70,16 +70,20 @@
 │   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
 │   ║  │ │ Translates NarrativeLLMResponse + AgentOutputs insights         │   │   ║   │
 │   ║  │ │ (Only for non-English users — ko, ja, zh)                       │   │   ║   │
+│   ║  │ │ ⚠️ Translation stored, NOT merged yet (hoisted for later use)   │   │   ║   │
 │   ║  │ └─────────────────────────────────────────────────────────────────┘   │   ║   │
 │   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
 │   ║                              │                                                ║   │
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
-│   ║  │ EVALUATION ASSEMBLY (deterministic, NO LLM)                          │   ║   │
+│   ║  │ EVALUATION ASSEMBLY + TRANSLATION OVERLAY (deterministic, NO LLM)   │   ║   │
 │   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
-│   ║  │ │ assembleEvaluation()                                             │   │   ║   │
-│   ║  │ │ Merges Phase 2 AgentOutputs (structural) +                      │   │   ║   │
-│   ║  │ │        Phase 3 NarrativeLLMResponse (narrative)                 │   │   ║   │
-│   ║  │ │ → VerboseEvaluation fields                                      │   │   ║   │
+│   ║  │ │ 1. assembleEvaluation() — builds English defaults               │   │   ║   │
+│   ║  │ │    Merges Phase 2 AgentOutputs (structural) +                   │   │   ║   │
+│   ║  │ │           Phase 3 NarrativeLLMResponse (narrative)              │   │   ║   │
+│   ║  │ │ 2. mergeTranslatedFields() — overlays translations (if any)     │   │   ║   │
+│   ║  │ │    Korean/Japanese/Chinese text fields overlay English base     │   │   ║   │
+│   ║  │ │ 3. Add translatedAgentInsights to final evaluation              │   │   ║   │
+│   ║  │ │ → VerboseEvaluation fields (localized for non-English users)    │   │   ║   │
 │   ║  │ └─────────────────────────────────────────────────────────────────┘   │   ║   │
 │   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
 │   ╚══════════════════════════════════════════════════════════════════════════════╝   │
@@ -484,6 +488,17 @@ Phase 4 receives NarrativeLLMResponse + AgentOutputs:
 - NarrativeLLMResponse text fields are translated (personalitySummary, patterns, etc.)
 - AgentOutputs insights are translated as translatedAgentInsights
 - Technical terms (AI, Git, commit, etc.) remain in English
+
+⚠️ CRITICAL: Translation Merge Timing
+Translation is applied AFTER assembleEvaluation(), not before:
+┌─────────────────────────────────────────────────────────────────────┐
+│ WRONG (causes translation loss):                                     │
+│   Phase 4 → merge translations → assembleEvaluation() (overwrites!) │
+│                                                                      │
+│ CORRECT (preserves translations):                                    │
+│   Phase 4 → store translatorData → assembleEvaluation() (English)  │
+│           → mergeTranslatedFields() (overlay Korean on English)     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -493,6 +508,11 @@ Phase 4 receives NarrativeLLMResponse + AgentOutputs:
 **Purpose**: Translate Phase 3 narrative + Phase 2 agent insights into user's detected language
 
 > Runs only when non-English language is detected (5% character threshold). Skipped for English users.
+
+**IMPORTANT: Translation Merge Timing**
+Phase 4 produces translations but does NOT merge them immediately. The `translatorData` is hoisted
+and stored for later use. Merging happens AFTER `assembleEvaluation()` to prevent translations
+from being overwritten by English defaults.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -531,11 +551,10 @@ Phase 4 receives NarrativeLLMResponse + AgentOutputs:
 │                                 │                                        │
 │                                 ▼                                        │
 │  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │  MERGE STRATEGY                                                   │   │
-│  │  - English NarrativeLLMResponse = source of truth for structure   │   │
-│  │  - Only text fields overlaid from translation                     │   │
-│  │  - Numeric fields, IDs remain from English                        │   │
-│  │  - Technical terms preserved: AI, Git, API, IDE, etc.             │   │
+│  │  ⚠️ HOISTED STORAGE (DO NOT MERGE YET)                            │   │
+│  │  translatorData = translatorResult.data                           │   │
+│  │  → Translation stored but NOT applied here                        │   │
+│  │  → Merge happens AFTER assembleEvaluation() to avoid overwrite   │   │
 │  └──────────────────────────────────────────────────────────────────┘   │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -558,30 +577,53 @@ export class TranslatorStage {
 }
 ```
 
+#### Why Translation is Hoisted (Not Merged Immediately)
+
+Previously, translations were merged right after Phase 4:
+```
+① Translator runs → produces Korean translations ✅
+② mergeTranslatedFields() → Korean applied to contentResult.data ✅
+③ assembleEvaluation() → REBUILDS fields from English agentOutputs 🔴
+   → Korean translations OVERWRITTEN with English defaults!
+```
+
+Now, translations are applied AFTER assembly:
+```
+① Translator runs → produces Korean translations ✅
+② translatorData = result (STORED, not merged) ✅
+③ assembleEvaluation() → builds English defaults from agentOutputs ✅
+④ mergeTranslatedFields(assembledData, translatorData) → Korean OVERLAYS English ✅
+   → Korean translations preserved!
+```
+
 ---
 
-### Evaluation Assembly (Post-Phase 4, Deterministic)
+### Evaluation Assembly + Translation Overlay (Post-Phase 4, Deterministic)
 
-**Purpose**: Deterministically merge Phase 2 AgentOutputs (structural) + Phase 3 NarrativeLLMResponse (narrative) into VerboseEvaluation fields
+**Purpose**: Deterministically merge Phase 2 AgentOutputs (structural) + Phase 3 NarrativeLLMResponse (narrative) into VerboseEvaluation fields, then overlay translations for non-English users
 
 > No LLM call — pure data transformation. Runs after Phase 4 (Translation) in the orchestrator.
-> Implemented in `evaluation-assembler.ts` as `assembleEvaluation()`.
+> Implemented in `evaluation-assembler.ts` as `assembleEvaluation()` + `mergeTranslatedFields()`.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│              EVALUATION ASSEMBLY (deterministic, NO LLM)                 │
+│       EVALUATION ASSEMBLY + TRANSLATION OVERLAY (deterministic)         │
 ├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ════════════════════════════════════════════════════════════════════   │
+│  STEP 1: assembleEvaluation() — Build English Defaults                  │
+│  ════════════════════════════════════════════════════════════════════   │
 │                                                                          │
 │  ┌──────────────────────────────┐  ┌──────────────────────────────┐    │
 │  │  INPUT A                      │  │  INPUT B                      │    │
 │  │  AgentOutputs                 │  │  NarrativeLLMResponse         │    │
-│  │  (Phase 2 + 2.5 structural)  │  │  (Phase 3 narrative, possibly │    │
-│  │  ├── strengthGrowth          │  │   translated by Phase 4)      │    │
-│  │  ├── typeClassifier          │  │  ├── personalitySummary       │    │
-│  │  ├── trustVerification       │  │  ├── promptPatterns[]         │    │
-│  │  ├── workflowHabit           │  │  └── topFocusAreas            │    │
-│  │  ├── knowledgeGap            │  │                                │    │
-│  │  └── contextEfficiency       │  └──────────────┬───────────────┘    │
+│  │  (Phase 2 + 2.5 structural)  │  │  (Phase 3 narrative, ENGLISH) │    │
+│  │  ├── strengthGrowth          │  │  ├── personalitySummary       │    │
+│  │  ├── typeClassifier          │  │  ├── promptPatterns[]         │    │
+│  │  ├── trustVerification       │  │  └── topFocusAreas            │    │
+│  │  ├── workflowHabit           │  │                                │    │
+│  │  ├── knowledgeGap            │  └──────────────┬───────────────┘    │
+│  │  └── contextEfficiency       │                  │                    │
 │  └──────────────┬───────────────┘                  │                    │
 │                 │                                   │                    │
 │                 └─────────────┬─────────────────────┘                    │
@@ -611,14 +653,87 @@ export class TranslatorStage {
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                               │                                          │
 │                               ▼                                          │
-│  ┌──────────────────┐                                                   │
-│  │  OUTPUT          │                                                   │
-│  │  Record<string,  │  (spread into VerboseEvaluation                   │
-│  │   unknown>       │   with metadata in orchestrator)                  │
-│  └──────────────────┘                                                   │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  assembledData (ENGLISH defaults)                                 │   │
+│  │  - dimensionInsights: English titles/descriptions                │   │
+│  │  - antiPatternsAnalysis: English displayName/description         │   │
+│  │  - criticalThinkingAnalysis: English highlights                  │   │
+│  │  - planningAnalysis: English strengths                           │   │
+│  │  - actionablePractices: English feedback/tips                    │   │
+│  │  - personalitySummary: English narrative                         │   │
+│  │  - promptPatterns: English patterns                              │   │
+│  │  - topFocusAreas: English priorities                             │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                               │                                          │
+│  ════════════════════════════════════════════════════════════════════   │
+│  STEP 2: mergeTranslatedFields() — Overlay Translations (if any)       │
+│  ════════════════════════════════════════════════════════════════════   │
+│                               │                                          │
+│  ┌────────────────────────────┴────────────────────────────────────┐    │
+│  │  CONDITION: if (translatorData) — only for non-English users     │    │
+│  │                                                                   │    │
+│  │  ┌────────────────────────────────────────────────────────────┐  │    │
+│  │  │  TranslatorOutput (Korean/Japanese/Chinese)                 │  │    │
+│  │  │  - personalitySummary: 한글 summary                          │  │    │
+│  │  │  - dimensionInsights[].dimensionDisplayName: 한글             │  │    │
+│  │  │  - dimensionInsights[].strengthsData: 한글 titles/descs      │  │    │
+│  │  │  - dimensionInsights[].growthAreasData: 한글 titles/descs    │  │    │
+│  │  │  - antiPatternsAnalysis.detected[]: 한글 displayName/desc    │  │    │
+│  │  │  - criticalThinkingAnalysis: 한글 highlights                  │  │    │
+│  │  │  - planningAnalysis: 한글 strengths                           │  │    │
+│  │  │  - actionablePractices: 한글 feedback/tips                    │  │    │
+│  │  │  - promptPatterns[]: 한글 patternName/description/tip        │  │    │
+│  │  │  - topFocusAreas: 한글 title/narrative/expectedImpact        │  │    │
+│  │  │  - translatedAgentInsights: 한글 Phase 2 worker summaries    │  │    │
+│  │  └────────────────────────────────────────────────────────────┘  │    │
+│  │                              │                                    │    │
+│  │                              ▼                                    │    │
+│  │  ┌────────────────────────────────────────────────────────────┐  │    │
+│  │  │  MERGE RULES (overlay, not replace)                         │  │    │
+│  │  │  - Text fields: translated text REPLACES English            │  │    │
+│  │  │  - Structure: preserved from assembledData                  │  │    │
+│  │  │  - IDs/numbers: preserved from assembledData                │  │    │
+│  │  │  - Technical terms: kept in English (AI, Git, API, etc.)    │  │    │
+│  │  │  - Developer quotes: kept original (not translated)         │  │    │
+│  │  └────────────────────────────────────────────────────────────┘  │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                               │                                          │
+│  ════════════════════════════════════════════════════════════════════   │
+│  STEP 3: Build Final Evaluation Object                                  │
+│  ════════════════════════════════════════════════════════════════════   │
+│                               │                                          │
+│                               ▼                                          │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  VerboseEvaluation                                                │   │
+│  │  {                                                                │   │
+│  │    ...assembledData,           // now localized (if translated)  │   │
+│  │    agentOutputs,               // raw Phase 2 data               │   │
+│  │    translatedAgentInsights?,   // Phase 2 summaries (translated) │   │
+│  │    knowledgeResources?,        // Phase 2.75 matches             │   │
+│  │    pipelineTokenUsage,         // cost tracking                  │   │
+│  │    analysisMetadata,           // confidence, data quality       │   │
+│  │  }                                                                │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+#### Translation Merge — Field Mapping
+
+| Source (TranslatorOutput) | Target (assembledData) | Merge Strategy |
+|---------------------------|------------------------|----------------|
+| `personalitySummary` | `personalitySummary` | Direct overlay |
+| `dimensionInsights[].dimensionDisplayName` | `dimensionInsights[].dimensionDisplayName` | Match by `dimension` key |
+| `dimensionInsights[].strengthsData` | `dimensionInsights[].strengths[].title/description` | Parse semicolon-separated, match by index |
+| `dimensionInsights[].growthAreasData` | `dimensionInsights[].growthAreas[].title/description/recommendation` | Parse semicolon-separated, match by index |
+| `antiPatternsAnalysis.detected[]` | `antiPatternsAnalysis.detected[]` | Match by `antiPatternType` |
+| `criticalThinkingAnalysis.strengths[]` | `criticalThinkingAnalysis.strengths[]` | Match by index |
+| `planningAnalysis.strengths[]` | `planningAnalysis.strengths[]` | Match by index |
+| `actionablePractices.practiced[]` | `actionablePractices.practiced[]` | Match by `patternId` |
+| `actionablePractices.opportunities[]` | `actionablePractices.opportunities[]` | Match by `patternId` |
+| `promptPatterns[]` | `promptPatterns[]` | Match by index |
+| `topFocusAreas.areas[]` | `topFocusAreas.areas[]` | Match by `rank` |
+| `translatedAgentInsights` | `evaluation.translatedAgentInsights` | Direct propagation |
 
 #### Assembly Mapping Table
 
@@ -867,22 +982,33 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
   ║   OUTPUT: TranslatorOutput (translated text fields only)          ║
   ║           + translatedAgentInsights (Phase 2 summaries)           ║
   ║                                                                    ║
-  ║   MERGE: English structure preserved, text fields overlaid        ║
-  ║   KEPT IN ENGLISH: IDs, numbers, technical terms                  ║
+  ║   ⚠️ HOISTED: translatorData stored, NOT merged here              ║
+  ║   REASON: Must merge AFTER assembleEvaluation() to avoid         ║
+  ║           English defaults overwriting translations               ║
   ╚═══════════════════════════════════════════════════════════════════╝
                        │
-                       │ [7] Deterministic assembly
+                       │ [7] Deterministic assembly + translation overlay
                        ▼
   ┌─────────────────────────────────────────────────────────────────┐
-  │  EVALUATION ASSEMBLY (deterministic, NO LLM)                      │
-  │  assembleEvaluation(agentOutputs, narrativeResult, phase1Output)  │
+  │  EVALUATION ASSEMBLY + TRANSLATION OVERLAY (deterministic)        │
   │                                                                   │
-  │  Phase 2 AgentOutputs → structural fields:                       │
-  │  - dimensionInsights, type classification, antiPatterns           │
-  │  - criticalThinking, planning, actionablePractices               │
+  │  STEP 1: assembleEvaluation()                                    │
+  │    agentOutputs + narrativeResult + phase1Output                 │
+  │    → assembledData (ENGLISH defaults)                            │
+  │    Phase 2 AgentOutputs → structural fields:                     │
+  │    - dimensionInsights, type classification, antiPatterns         │
+  │    - criticalThinking, planning, actionablePractices             │
+  │    Phase 3 NarrativeLLMResponse → narrative fields:              │
+  │    - personalitySummary, promptPatterns, topFocusAreas           │
   │                                                                   │
-  │  Phase 3 NarrativeLLMResponse → narrative fields:                │
-  │  - personalitySummary, promptPatterns, topFocusAreas             │
+  │  STEP 2: mergeTranslatedFields() (if translatorData exists)      │
+  │    translatorData → overlay Korean/Japanese/Chinese text         │
+  │    - Text fields: translated text REPLACES English               │
+  │    - Structure/IDs/numbers: preserved from assembledData         │
+  │    - Technical terms: kept in English (AI, Git, API, etc.)       │
+  │                                                                   │
+  │  STEP 3: Propagate translatedAgentInsights                       │
+  │    → Add to final evaluation for frontend hybrid fallback        │
   └────────────────────────────────┬────────────────────────────────┘
                                    │
                                    │ [8] Add metadata + confidence
@@ -890,8 +1016,9 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
   ┌─────────────────────────────────────────────────────────────────┐
   │  VerboseEvaluation (Full)                                        │
   │  - sessionId, analyzedAt, sessionsAnalyzed                       │
-  │  - ...assembledData (structural + narrative)                     │
-  │  - agentOutputs (raw Phase 2 data)                               │
+  │  - ...assembledData (structural + narrative, LOCALIZED)          │
+  │  - agentOutputs (raw Phase 2 data, always English)               │
+  │  - translatedAgentInsights? (for frontend hybrid fallback)       │
   │  - analysisMetadata (confidence, data quality)                   │
   │  - pipelineTokenUsage                                             │
   └────────────────────────────────┬────────────────────────────────┘
@@ -984,7 +1111,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | Pipeline coordination (Phase 1→2→2.5→3→4→Assembly), Worker registration/execution |
+| Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | Pipeline coordination (Phase 1→2→2.5→3→4→Assembly→TranslationOverlay), Worker registration/execution, `mergeTranslatedFields()` |
 | Orchestrator Types | `src/lib/analyzer/orchestrator/types.ts` | WorkerResult, WorkerContext, Phase types |
 | Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, registers all workers (1 Phase 1, 4 Phase 2, 2 Phase 2.5) |
 | Content Gateway | `src/lib/analyzer/content-gateway.ts` | Tier-based content filtering (free/premium/enterprise) |
@@ -1039,12 +1166,23 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Prompts (PTCF) | `src/lib/analyzer/stages/content-writer-prompts.ts` | System/user prompt builders (always English; translation is Phase 4) |
 | Narrative Schema | `src/lib/models/verbose-evaluation.ts` | `NarrativeLLMResponseSchema` (personalitySummary, promptPatterns, topFocusAreas) |
 
-### Evaluation Assembly (deterministic, no LLM)
+### Phase 4: Translator — Conditional Translation (0-1 LLM call)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Evaluation Assembler | `src/lib/analyzer/stages/evaluation-assembler.ts` | `assembleEvaluation()` — merges Phase 2 structural data + Phase 3 narrative into VerboseEvaluation fields |
-| Output Schema | `src/lib/models/verbose-evaluation.ts` | `VerboseEvaluation` schema (full evaluation including assembled fields + metadata) |
+| Translator Stage | `src/lib/analyzer/stages/translator.ts` | TranslatorStage class, conditional translation for non-English users |
+| Translator Prompts | `src/lib/analyzer/stages/translator-prompts.ts` | System/user prompt builders for Korean/Japanese/Chinese translation |
+| Translator Schema | `src/lib/models/translator-output.ts` | `TranslatorOutput` Zod schema (translated text fields + translatedAgentInsights) |
+| Language Detection | `src/lib/analyzer/stages/content-writer-prompts.ts` | `detectPrimaryLanguage()` — 5% threshold for non-ASCII characters |
+
+### Evaluation Assembly + Translation Overlay (deterministic, no LLM)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Evaluation Assembler | `src/lib/analyzer/stages/evaluation-assembler.ts` | `assembleEvaluation()` — merges Phase 2 structural data + Phase 3 narrative into VerboseEvaluation fields (English defaults) |
+| Translation Merge | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | `mergeTranslatedFields()` — overlays translations onto assembled data (called AFTER assembleEvaluation) |
+| Translator Output Schema | `src/lib/models/translator-output.ts` | `TranslatorOutput` schema (translated text fields + translatedAgentInsights) |
+| Output Schema | `src/lib/models/verbose-evaluation.ts` | `VerboseEvaluation` schema (full evaluation including assembled fields + metadata + translatedAgentInsights) |
 
 ### Session Parsing (Stage 0)
 
