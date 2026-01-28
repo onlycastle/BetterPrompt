@@ -57,6 +57,34 @@ Return JSON with:
 - \`confidenceScore\`: 0.0-1.0
 - \`summary\`: Brief assessment (max 500 chars)
 
+## DOMAIN-SPECIFIC STRENGTHS & GROWTH AREAS (REQUIRED)
+
+You MUST also output explicit strengths and growth areas for this domain:
+
+- \`strengthsData\`: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)
+  - title: Clear pattern name (e.g., "Structured Planning Approach", "Active Critical Thinking")
+  - description: 2-3 sentences explaining the strength
+  - quotes: Direct developer quotes demonstrating this (remove surrounding quotes in output)
+  - frequency: Percentage of sessions showing this pattern (0-100, optional)
+
+- \`growthAreasData\`: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)
+  - title: Clear pattern name (e.g., "Reactive Problem Solving", "Context Pollution")
+  - description: 2-3 sentences describing the issue
+  - quotes: Direct developer quotes showing this pattern
+  - recommendation: Actionable advice (1-2 sentences)
+  - severity: critical | high | medium | low
+  - frequency: Percentage of sessions where observed (0-100, optional)
+
+**Strengths examples for Workflow domain:**
+- "Structured Planning Approach" — developer breaks down tasks before implementation
+- "Active Critical Thinking" — developer questions AI output and considers alternatives
+- "Systematic Task Decomposition" — developer uses /plan or similar tools effectively
+
+**Growth areas examples for Workflow domain:**
+- "Reactive Problem Solving" — diving into solutions without planning
+- "Context Pollution" — mixing unrelated topics in a single session
+- "Missing Task Tracking" — not using TodoWrite or similar for complex work
+
 ## DETECTING PLANNING HABITS
 Look for these signals:
 1. Usage of /plan, EnterPlanMode, ExitPlanMode in toolUsageCounts

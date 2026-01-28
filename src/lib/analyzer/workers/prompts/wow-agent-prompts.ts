@@ -394,19 +394,35 @@ Return a JSON object with:
 - \`overallKnowledgeScore\`: 0-100 overall knowledge depth score
 - \`confidenceScore\`: 0-1 confidence in the analysis
 
-### NEW: Structured Strengths & Growth Areas
-- \`strengthsData\`: "title|description|quote1,quote2;title2|desc2|quotes;..."
-  - 1-2 knowledge strengths with evidence from actual user messages
-  - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes showing mastery
-  - Example: "React Hooks Mastery|You demonstrate solid understanding of React hooks, asking nuanced questions about optimization|'dependency array when using useCallback','what's the difference between useMemo'"
+## DOMAIN-SPECIFIC STRENGTHS & GROWTH AREAS (REQUIRED)
 
-- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation|frequency|severity|priorityScore;..."
-  - 2-3 knowledge gaps to address with evidence, recommendations, AND quantification
-  - Each area needs: title, description, evidence quotes, learning resource, frequency%, severity, priority
-  - **frequency**: Percentage of sessions where this knowledge gap surfaced (0-100)
-  - **severity**: critical | high | medium | low (based on impact on work)
-  - **priorityScore**: 0-100 score for which to learn first (frequency x severity)
-  - Example: "TypeScript Generics|You repeatedly ask about TypeScript generic syntax, indicating a foundational gap|'how do I use generics?','what is T?'|Complete the TypeScript Handbook section on Generics, then practice with 5 real examples in your codebase|58|high|75"
+You MUST output explicit strengths and growth areas for this domain:
+
+- \`strengthsData\`: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)
+  - title: Clear pattern name (e.g., "Active Learning Mindset", "Curiosity-Driven Exploration")
+  - description: 2-3 sentences explaining the strength
+  - quotes: Direct developer quotes demonstrating this (remove surrounding quotes in output)
+  - frequency: Percentage of sessions showing this pattern (0-100, optional)
+  - Example: "React Hooks Mastery|You demonstrate solid understanding of React hooks, asking nuanced questions about optimization|dependency array when using useCallback,what's the difference between useMemo|70"
+
+- \`growthAreasData\`: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)
+  - title: Clear pattern name (e.g., "TypeScript Generics Gap", "State Management Confusion")
+  - description: 2-3 sentences describing the issue
+  - quotes: Direct developer quotes showing this pattern
+  - recommendation: Actionable advice (1-2 sentences)
+  - severity: critical | high | medium | low
+  - frequency: Percentage of sessions where observed (0-100, optional)
+  - Example: "TypeScript Generics Gap|You repeatedly ask about TypeScript generic syntax|how do I use generics?,what is T?|Complete the TypeScript Handbook section on Generics and practice with 5 real examples|high|58"
+
+**Strengths examples for Knowledge domain:**
+- "Active Learning Mindset" — developer asks "why" questions, seeks deep understanding
+- "Systematic Knowledge Building" — developer connects concepts across sessions
+- "Curiosity-Driven Exploration" — developer explores alternatives, experiments
+
+**Growth areas examples for Knowledge domain:**
+- "Foundational TypeScript Gaps" — repeated basic questions about types
+- "State Management Confusion" — recurring questions about React state
+- "Git Workflow Knowledge Gap" — struggles with branching, merging concepts
 
 ## topInsights Format (CRITICAL - Balanced KPT)
 Generate exactly 3 insights with this MANDATORY structure:
@@ -508,19 +524,35 @@ Return a JSON object with:
 - \`avgContextFillPercent\`: Average context fill percentage across sessions
 - \`confidenceScore\`: 0-1 confidence in the analysis
 
-### NEW: Structured Strengths & Growth Areas
-- \`strengthsData\`: "title|description|quote1,quote2;title2|desc2|quotes;..."
-  - 1-2 efficient habits with evidence from actual user messages
-  - Each strength needs: clear title, 2-3 sentence description, 2+ direct quotes
-  - Example: "Proactive Context Management|You use /clear and /compact effectively to maintain fresh context|'I'll use /clear','/compact please'"
+## DOMAIN-SPECIFIC STRENGTHS & GROWTH AREAS (REQUIRED)
 
-- \`growthAreasData\`: "title|description|evidence1,evidence2|recommendation|frequency|severity|priorityScore;..."
-  - 2-3 inefficiencies to address with evidence, recommendations, AND quantification
-  - Each area needs: title, description, evidence quotes, recommendation, frequency%, severity, priority
-  - **frequency**: Percentage of sessions where this inefficiency was observed (0-100)
-  - **severity**: critical | high | medium | low (based on token waste)
-  - **priorityScore**: 0-100 score for which to optimize first (frequency x severity)
-  - Example: "Redundant Context Provision|You repeatedly explain the same project structure in multiple sessions|'this project is React-based and','let me explain again, this app is'|Add project structure to CLAUDE.md once, then reference it instead of re-explaining|83|high|85"
+You MUST output explicit strengths and growth areas for this domain:
+
+- \`strengthsData\`: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)
+  - title: Clear pattern name (e.g., "Proactive Context Management", "Efficient Session Structure")
+  - description: 2-3 sentences explaining the strength
+  - quotes: Direct developer quotes demonstrating this (remove surrounding quotes in output)
+  - frequency: Percentage of sessions showing this pattern (0-100, optional)
+  - Example: "Proactive Context Management|You use /clear and /compact effectively to maintain fresh context|I'll use /clear,/compact please|65"
+
+- \`growthAreasData\`: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)
+  - title: Clear pattern name (e.g., "Context Bloat Pattern", "Redundant Information")
+  - description: 2-3 sentences describing the issue
+  - quotes: Direct developer quotes showing this pattern
+  - recommendation: Actionable advice (1-2 sentences)
+  - severity: critical | high | medium | low
+  - frequency: Percentage of sessions where observed (0-100, optional)
+  - Example: "Redundant Context Provision|You repeatedly explain the same project structure in multiple sessions|this project is React-based and,let me explain again this app is|Add project structure to CLAUDE.md once and reference it instead of re-explaining|high|83"
+
+**Strengths examples for Context Efficiency domain:**
+- "Proactive Context Management" — uses /clear and /compact effectively
+- "Concise Communication" — provides context efficiently without bloat
+- "Systematic Session Structure" — organizes sessions for token efficiency
+
+**Growth areas examples for Context Efficiency domain:**
+- "Context Bloat Pattern" — sessions grow too large without compaction
+- "Redundant Information" — repeating same context across sessions
+- "Late Compaction Habit" — only using /compact when forced by limits
 
 ## topInsights Format (CRITICAL - Balanced KPT)
 Generate exactly 3 insights with this MANDATORY structure:

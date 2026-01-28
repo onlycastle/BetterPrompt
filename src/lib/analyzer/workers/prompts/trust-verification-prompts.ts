@@ -58,6 +58,34 @@ Return JSON with:
 - \`detectedPatternsData\`: "patternType|frequency|significance;..." (for KB matching)
 - \`actionablePatternMatchesData\`: "patternId|matchScore|recommendation;..." (KB pattern matches)
 
+## DOMAIN-SPECIFIC STRENGTHS & GROWTH AREAS (REQUIRED)
+
+You MUST also output explicit strengths and growth areas for this domain:
+
+- \`strengthsData\`: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)
+  - title: Clear pattern name (e.g., "Systematic Output Verification", "Proactive Security Checks")
+  - description: 2-3 sentences explaining the strength
+  - quotes: Direct developer quotes demonstrating this (remove surrounding quotes in output)
+  - frequency: Percentage of sessions showing this pattern (0-100, optional)
+
+- \`growthAreasData\`: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)
+  - title: Clear pattern name (e.g., "Error Loop Pattern", "Blind Acceptance Habit")
+  - description: 2-3 sentences describing the issue
+  - quotes: Direct developer quotes showing this pattern
+  - recommendation: Actionable advice (1-2 sentences)
+  - severity: critical | high | medium | low
+  - frequency: Percentage of sessions where observed (0-100, optional)
+
+**Strengths examples for Trust domain:**
+- "Consistent Output Verification" — developer regularly asks AI to verify results
+- "Proactive Error Analysis" — developer analyzes error messages before retrying
+- "Skeptical Evaluation" — developer questions AI assumptions
+
+**Growth areas examples for Trust domain:**
+- "Error Loop Pattern" — retrying same approach without analyzing failure
+- "Passive Acceptance" — accepting AI output without verification
+- "Trust Debt Accumulation" — using code without understanding it
+
 ## DETECTING ANTI-PATTERNS
 Look for these signals:
 1. \`error_loop\`: precedingAIHadError=true followed by similar utterance
