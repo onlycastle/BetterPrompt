@@ -23,7 +23,6 @@ import type { OrchestratorConfig } from '../../../../src/lib/analyzer/orchestrat
 class MockWorker extends BaseWorker<string> {
   readonly name = 'MockWorker';
   readonly phase = 1 as const;
-  readonly minTier = 'free' as const;
 
   canRun(context: WorkerContext): boolean {
     return this.checkBasicPreconditions(context);
@@ -42,7 +41,6 @@ class MockWorker extends BaseWorker<string> {
 class FailingWorker extends BaseWorker<string> {
   readonly name = 'FailingWorker';
   readonly phase = 1 as const;
-  readonly minTier = 'free' as const;
 
   canRun(_context: WorkerContext): boolean {
     return true;
@@ -53,17 +51,16 @@ class FailingWorker extends BaseWorker<string> {
   }
 }
 
-class PremiumWorker extends BaseWorker<string> {
-  readonly name = 'PremiumWorker';
+class Phase2Worker extends BaseWorker<string> {
+  readonly name = 'Phase2Worker';
   readonly phase = 2 as const;
-  readonly minTier = 'premium' as const;
 
   canRun(context: WorkerContext): boolean {
     return this.checkBasicPreconditions(context);
   }
 
   async execute(context: WorkerContext): Promise<WorkerResult<string>> {
-    return this.createSuccessResult('premium data', null);
+    return this.createSuccessResult('phase2 data', null);
   }
 }
 
@@ -97,7 +94,7 @@ function createMockContext(tier = 'free' as const): WorkerContext {
 
 describe('BaseWorker', () => {
   let mockWorker: MockWorker;
-  let premiumWorker: PremiumWorker;
+  let phase2Worker: Phase2Worker;
   let context: WorkerContext;
   let config: OrchestratorConfig;
 
@@ -112,7 +109,7 @@ describe('BaseWorker', () => {
       verbose: false,
     };
     mockWorker = new MockWorker(config);
-    premiumWorker = new PremiumWorker(config);
+    phase2Worker = new Phase2Worker(config);
   });
 
   describe('constructor', () => {
@@ -120,7 +117,6 @@ describe('BaseWorker', () => {
       const worker = new MockWorker();
       expect(worker.name).toBe('MockWorker');
       expect(worker.phase).toBe(1);
-      expect(worker.minTier).toBe('free');
     });
 
     it('should create worker with config', () => {
@@ -131,58 +127,22 @@ describe('BaseWorker', () => {
   });
 
   describe('abstract properties', () => {
-    it('should have required name, phase, and minTier', () => {
+    it('should have required name and phase', () => {
       expect(mockWorker.name).toBe('MockWorker');
       expect(mockWorker.phase).toBe(1);
-      expect(mockWorker.minTier).toBe('free');
-    });
-  });
-
-  describe('isTierSufficient()', () => {
-    it('should allow free tier for free worker', () => {
-      // Use type casting to access protected method for testing
-      const isSufficient = (mockWorker as any).isTierSufficient('free');
-      expect(isSufficient).toBe(true);
-    });
-
-    it('should allow premium tier for free worker', () => {
-      const isSufficient = (mockWorker as any).isTierSufficient('premium');
-      expect(isSufficient).toBe(true);
-    });
-
-    it('should allow enterprise tier for free worker', () => {
-      const isSufficient = (mockWorker as any).isTierSufficient('enterprise');
-      expect(isSufficient).toBe(true);
-    });
-
-    it('should reject free tier for premium worker', () => {
-      const isSufficient = (premiumWorker as any).isTierSufficient('free');
-      expect(isSufficient).toBe(false);
-    });
-
-    it('should allow premium tier for premium worker', () => {
-      const isSufficient = (premiumWorker as any).isTierSufficient('premium');
-      expect(isSufficient).toBe(true);
-    });
-
-    it('should allow enterprise tier for premium worker', () => {
-      const isSufficient = (premiumWorker as any).isTierSufficient('enterprise');
-      expect(isSufficient).toBe(true);
     });
   });
 
   describe('checkBasicPreconditions()', () => {
-    // NOTE: Tier check was removed from checkBasicPreconditions
-    // All workers now run for all tiers - tier filtering happens at API/Gateway level
-    it('should pass for valid context with free tier', () => {
+    // NOTE: All workers run for all tiers - tier filtering happens at API/Gateway level
+    it('should pass for valid context', () => {
       const result = (mockWorker as any).checkBasicPreconditions(context);
       expect(result).toBe(true);
     });
 
-    it('should pass for premium worker with free tier (tier check removed)', () => {
-      // Tier check removed - all workers always run
-      // Premium agents show teasers for free users, full data after payment
-      const result = (premiumWorker as any).checkBasicPreconditions(context);
+    it('should pass for phase 2 worker with any tier', () => {
+      // All workers always run - tier filtering at ContentGateway
+      const result = (phase2Worker as any).checkBasicPreconditions(context);
       expect(result).toBe(true);
     });
 
@@ -195,9 +155,9 @@ describe('BaseWorker', () => {
       expect(result).toBe(false);
     });
 
-    it('should pass for premium tier with premium worker', () => {
-      const premiumContext = createMockContext('premium');
-      const result = (premiumWorker as any).checkBasicPreconditions(premiumContext);
+    it('should pass for pro tier context', () => {
+      const proContext = createMockContext('pro');
+      const result = (phase2Worker as any).checkBasicPreconditions(proContext);
       expect(result).toBe(true);
     });
   });
@@ -250,10 +210,9 @@ describe('BaseWorker', () => {
       expect(mockWorker.canRun(context)).toBe(true);
     });
 
-    it('should return true for premium worker with free tier (tier check removed from checkBasicPreconditions)', () => {
-      // NOTE: canRun uses checkBasicPreconditions which no longer checks tier
-      // If your worker needs tier checking, implement it in canRun directly
-      expect(premiumWorker.canRun(context)).toBe(true);
+    it('should return true for phase 2 worker with any tier', () => {
+      // All workers run for all tiers - tier filtering at ContentGateway
+      expect(phase2Worker.canRun(context)).toBe(true);
     });
 
     it('should return false for empty sessions', () => {

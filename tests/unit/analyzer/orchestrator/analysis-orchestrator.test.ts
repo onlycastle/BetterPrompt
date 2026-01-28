@@ -93,7 +93,7 @@ class MockDataExtractorWorker extends BaseWorker<Phase1Output> {
 class MockPhase2Worker extends BaseWorker<{ insight: string }> {
   readonly name = 'PatternDetective';
   readonly phase = 2 as const;
-  readonly minTier: Tier = 'premium';
+  readonly minTier: Tier = 'pro';
 
   canRun(context: WorkerContext): boolean {
     return context.tier !== 'free';
@@ -114,7 +114,7 @@ class MockPhase2Worker extends BaseWorker<{ insight: string }> {
 class FailingWorker extends BaseWorker<any> {
   readonly name = 'FailingWorker';
   readonly phase = 2 as const;
-  readonly minTier: Tier = 'premium';
+  readonly minTier: Tier = 'pro';
 
   canRun(): boolean {
     return true;
@@ -250,7 +250,7 @@ describe('AnalysisOrchestrator', () => {
 
         orchestrator.registerPhase1Worker(dataExtractorWorker);
 
-        const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
+        const result = await orchestrator.analyze(mockSessions, mockMetrics, 'pro');
 
         expect(result).toBeDefined();
         expect(result.evaluation.personalitySummary).toBe('Test personality summary');
@@ -279,11 +279,11 @@ describe('AnalysisOrchestrator', () => {
         orchestrator.registerPhase1Worker(dataExtractorWorker);
       });
 
-      it('should run Phase 2 workers for premium tier', async () => {
+      it('should run Phase 2 workers for pro tier', async () => {
         const phase2Worker = new MockPhase2Worker();
         orchestrator.registerPhase2Worker(phase2Worker);
 
-        const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
+        const result = await orchestrator.analyze(mockSessions, mockMetrics, 'pro');
 
         expect(result).toBeDefined();
         expect(result.evaluation.agentOutputs).toBeDefined();
@@ -302,7 +302,7 @@ describe('AnalysisOrchestrator', () => {
 
       it('should skip Phase 2 when no workers are registered', async () => {
         // No Phase 2 workers registered
-        const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
+        const result = await orchestrator.analyze(mockSessions, mockMetrics, 'pro');
 
         expect(result).toBeDefined();
         expect(result.evaluation.agentOutputs).toBeDefined();
@@ -316,7 +316,7 @@ describe('AnalysisOrchestrator', () => {
           .registerPhase2Worker(worker1)
           .registerPhase2Worker(worker2);
 
-        const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
+        const result = await orchestrator.analyze(mockSessions, mockMetrics, 'pro');
 
         expect(result).toBeDefined();
         expect(result.evaluation.agentOutputs).toBeDefined();
@@ -328,7 +328,7 @@ describe('AnalysisOrchestrator', () => {
         class ContextCapturingWorker extends BaseWorker<any> {
           readonly name = 'ContextCapture';
           readonly phase = 2 as const;
-          readonly minTier: Tier = 'premium';
+          readonly minTier: Tier = 'pro';
 
           canRun(context: WorkerContext): boolean {
             receivedContext = context;
@@ -343,7 +343,7 @@ describe('AnalysisOrchestrator', () => {
         const contextWorker = new ContextCapturingWorker();
         orchestrator.registerPhase2Worker(contextWorker);
 
-        await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
+        await orchestrator.analyze(mockSessions, mockMetrics, 'pro');
 
         expect(receivedContext).not.toBeNull();
         expect((receivedContext as any)?.phase1Output).toBeDefined();
@@ -368,7 +368,7 @@ describe('AnalysisOrchestrator', () => {
 
         orchestrator.registerPhase1Worker(dataExtractorWorker);
 
-        const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
+        const result = await orchestrator.analyze(mockSessions, mockMetrics, 'pro');
 
         expect(result).toBeDefined();
         // Content writer produces narrative from Phase 1 + Phase 2 data
@@ -391,7 +391,7 @@ describe('AnalysisOrchestrator', () => {
       orchestrator.registerPhase2Worker(failingWorker);
 
       // Should throw - NO FALLBACK
-      await expect(orchestrator.analyze(mockSessions, mockMetrics, 'premium')).rejects.toThrow(
+      await expect(orchestrator.analyze(mockSessions, mockMetrics, 'pro')).rejects.toThrow(
         'Worker intentionally failed'
       );
     });
@@ -400,7 +400,7 @@ describe('AnalysisOrchestrator', () => {
       class CannotRunWorker extends BaseWorker<any> {
         readonly name = 'CannotRun';
         readonly phase = 2 as const;
-        readonly minTier: Tier = 'premium';
+        readonly minTier: Tier = 'pro';
 
         canRun(): boolean {
           return false; // Always returns false
@@ -415,7 +415,7 @@ describe('AnalysisOrchestrator', () => {
       orchestrator.registerPhase2Worker(cannotRunWorker);
 
       // Should complete - worker is skipped because canRun() returns false
-      const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
+      const result = await orchestrator.analyze(mockSessions, mockMetrics, 'pro');
 
       expect(result).toBeDefined();
     });
@@ -426,7 +426,7 @@ describe('AnalysisOrchestrator', () => {
       orchestrator.registerPhase2Worker(failing1);
 
       // Should throw - NO FALLBACK
-      await expect(orchestrator.analyze(mockSessions, mockMetrics, 'premium')).rejects.toThrow(
+      await expect(orchestrator.analyze(mockSessions, mockMetrics, 'pro')).rejects.toThrow(
         'Worker intentionally failed'
       );
     });
@@ -468,7 +468,7 @@ describe('AnalysisOrchestrator', () => {
         .registerPhase1Worker(dataExtractorWorker)
         .registerPhase2Worker(phase2Worker);
 
-      await verboseOrchestrator.analyze(mockSessions, mockMetrics, 'premium');
+      await verboseOrchestrator.analyze(mockSessions, mockMetrics, 'pro');
 
       // Should log token usage including Phase 2
       expect(consoleSpy).toHaveBeenCalled();
@@ -533,11 +533,11 @@ describe('AnalysisOrchestrator', () => {
       expect(result.evaluation.agentOutputs).toBeDefined();
     });
 
-    it('should include agent outputs (populated for premium tier)', async () => {
+    it('should include agent outputs (populated for pro tier)', async () => {
       const phase2Worker = new MockPhase2Worker();
       orchestrator.registerPhase2Worker(phase2Worker);
 
-      const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
+      const result = await orchestrator.analyze(mockSessions, mockMetrics, 'pro');
 
       expect(result.evaluation.agentOutputs).toBeDefined();
     });
@@ -566,9 +566,9 @@ describe('AnalysisOrchestrator', () => {
     });
 
     it('should pass correct tier to content gateway', async () => {
-      await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
+      await orchestrator.analyze(mockSessions, mockMetrics, 'pro');
 
-      // ContentGateway.filter mock should be called with 'premium'
+      // ContentGateway.filter mock should be called with 'pro'
       expect(true).toBe(true); // Placeholder - actual verification would require mock inspection
     });
   });
@@ -777,7 +777,7 @@ describe('AnalysisOrchestrator', () => {
         },
       ];
 
-      const result = await orchestrator.analyze(multipleSessions, mockMetrics, 'premium');
+      const result = await orchestrator.analyze(multipleSessions, mockMetrics, 'pro');
 
       expect(result).toBeDefined();
       expect(result.evaluation.sessionsAnalyzed).toBe(3);

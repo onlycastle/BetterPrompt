@@ -391,11 +391,35 @@ describe('Schema Bridge', () => {
       expect(report.profile.primaryType).toBe('architect');
     });
 
-    it('should include premium content for premium tier', () => {
+    it('should include premium content for pro tier', () => {
       const report = toUnifiedReport({
         verbose: mockVerboseEvaluation,
         dimensions: mockFullAnalysis,
-        tier: 'premium',
+        tier: 'pro',
+      });
+
+      expect(report.premium).toBeDefined();
+      expect(report.premium!.toolUsageDeepDive).toBeDefined();
+      expect(report.premium!.comparativeInsights).toBeDefined();
+    });
+
+    it('should include premium content for one_time tier', () => {
+      const report = toUnifiedReport({
+        verbose: mockVerboseEvaluation,
+        dimensions: mockFullAnalysis,
+        tier: 'one_time',
+      });
+
+      expect(report.premium).toBeDefined();
+      expect(report.premium!.toolUsageDeepDive).toBeDefined();
+      expect(report.premium!.comparativeInsights).toBeDefined();
+    });
+
+    it('should include premium content for enterprise tier', () => {
+      const report = toUnifiedReport({
+        verbose: mockVerboseEvaluation,
+        dimensions: mockFullAnalysis,
+        tier: 'enterprise',
       });
 
       expect(report.premium).toBeDefined();
