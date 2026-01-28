@@ -1,11 +1,16 @@
 /**
- * Agent Outputs - Zod schemas for 4 Wow-Focused Agents
+ * Agent Outputs - Zod schemas for Phase 2 worker outputs
  *
- * Each agent discovers unconscious patterns that create "wow moments":
- * - Pattern Detective: Conversation patterns, repeated questions
- * - Anti-Pattern Spotter: Error loops, bad habits
- * - Knowledge Gap Analyzer: Knowledge gaps + learning suggestions
- * - Context Efficiency Analyzer: Token inefficiency patterns
+ * Current workers (v2 architecture):
+ * - StrengthGrowth: Strengths and growth areas with evidence
+ * - TrustVerification: Anti-patterns and verification behavior
+ * - WorkflowHabit: Planning habits and critical thinking
+ * - KnowledgeGap: Knowledge gaps and learning resources
+ * - ContextEfficiency: Token efficiency patterns
+ *
+ * Legacy agent schemas (PatternDetective, AntiPatternSpotter, Metacognition,
+ * TemporalAnalysis, Multitasking) are kept for backward compatibility with
+ * cached data in the database (30-day retention).
  *
  * Schemas use flattened semicolon-separated strings to comply with
  * Gemini's 4-level nesting limit.
@@ -1135,98 +1140,69 @@ function groupSimilarGrowthAreas(areas: AgentGrowthArea[]): AgentGrowthArea[] {
 }
 
 // ============================================================================
-// Growth Area Collection
+// v2 Worker → Growth Area Conversion Helpers
 // ============================================================================
 
 /**
- * Collect growth areas from ALL agents (both free and premium tiers)
- *
- * This aggregation function enables free users to see growth areas from
- * Pattern Detective and Metacognition, while premium users see growth
- * areas from all 7 agents.
- *
- * IMPORTANT: Deduplicates similar growth areas across agents using
- * title similarity (Jaccard index >= 0.5). This prevents duplicate
- * cards like "Blind Approval Pattern" / "Blind Approval Habit" /
- * "Blind Approval & Verification" from appearing separately.
- *
- * @example
- * const allAreas = getAllAgentGrowthAreas(agentOutputs);
- * // Returns: AgentGrowthArea[] from all agents, deduplicated
+ * Convert StrengthGrowth worker growth areas to AgentGrowthArea format
  */
-export function getAllAgentGrowthAreas(outputs: AgentOutputs): AgentGrowthArea[] {
-  const allAreas: AgentGrowthArea[] = [];
-
-  // Free tier agents
-  if (outputs.patternDetective?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(outputs.patternDetective.growthAreasData));
-  }
-  if (outputs.metacognition?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(outputs.metacognition.growthAreasData));
-  }
-
-  // Premium tier agents
-  if (outputs.antiPatternSpotter?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(outputs.antiPatternSpotter.growthAreasData));
-  }
-  if (outputs.knowledgeGap?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(outputs.knowledgeGap.growthAreasData));
-  }
-  if (outputs.contextEfficiency?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(outputs.contextEfficiency.growthAreasData));
-  }
-  // Temporal insights are nested under insights.growthAreasData
-  if (outputs.temporalAnalysis?.insights?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(outputs.temporalAnalysis.insights.growthAreasData));
-  }
-  if (outputs.multitasking?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(outputs.multitasking.growthAreasData));
-  }
-
-  // v2 workers — structured arrays (not pipe-delimited strings)
-  if (outputs.strengthGrowth?.growthAreas) {
-    allAreas.push(...outputs.strengthGrowth.growthAreas.map(ga => ({
-      title: ga.title,
-      description: ga.description,
-      evidence: ga.evidence?.map(e => e.quote) ?? [],
-      recommendation: ga.recommendation,
-      frequency: ga.frequency,
-      severity: ga.severity,
-      priorityScore: ga.priorityScore,
-    })));
-  }
-  if (outputs.trustVerification?.antiPatterns) {
-    allAreas.push(...outputs.trustVerification.antiPatterns.map(ap => ({
-      title: `Anti-Pattern: ${ap.type.replace(/_/g, ' ')}`,
-      description: ap.improvement ?? `Detected ${ap.type} pattern`,
-      evidence: ap.examples?.map(e => e.quote) ?? [],
-      recommendation: ap.improvement ?? '',
-      frequency: ap.sessionPercentage,
-      severity: (
-        ap.severity === 'critical' ? 'critical' :
-        ap.severity === 'significant' ? 'high' :
-        ap.severity === 'moderate' ? 'medium' : 'low'
-      ) as AgentSeverityLevel,
-      priorityScore: ap.severity === 'critical' ? 90 : ap.severity === 'significant' ? 70 : ap.severity === 'moderate' ? 50 : 30,
-    })));
-  }
-  if (outputs.workflowHabit) {
-    const weakHabits = outputs.workflowHabit.planningHabits?.filter(h =>
-      h.effectiveness === 'low' || h.frequency === 'rarely' || h.frequency === 'never'
-    ) ?? [];
-    allAreas.push(...weakHabits.map(h => ({
-      title: `Planning: ${h.type.replace(/_/g, ' ')}`,
-      description: `Planning habit "${h.type.replace(/_/g, ' ')}" is ${h.frequency}`,
-      evidence: h.examples ?? [],
-      recommendation: `Improve ${h.type.replace(/_/g, ' ')} frequency`,
-      severity: 'medium' as AgentSeverityLevel,
-      priorityScore: 50,
-    })));
-  }
-
-  // Deduplicate similar growth areas across agents
-  return groupSimilarGrowthAreas(allAreas);
+function convertStrengthGrowthAreas(
+  growthAreas: NonNullable<StrengthGrowthOutput['growthAreas']>
+): AgentGrowthArea[] {
+  return growthAreas.map(ga => ({
+    title: ga.title,
+    description: ga.description,
+    evidence: ga.evidence?.map(e => e.quote) ?? [],
+    recommendation: ga.recommendation,
+    frequency: ga.frequency,
+    severity: ga.severity,
+    priorityScore: ga.priorityScore,
+  }));
 }
+
+/**
+ * Convert TrustVerification anti-patterns to AgentGrowthArea format
+ */
+function convertAntiPatternsToGrowthAreas(
+  antiPatterns: NonNullable<TrustVerificationOutput['antiPatterns']>
+): AgentGrowthArea[] {
+  return antiPatterns.map(ap => ({
+    title: `Anti-Pattern: ${ap.type.replace(/_/g, ' ')}`,
+    description: ap.improvement ?? `Detected ${ap.type} pattern`,
+    evidence: ap.examples?.map(e => e.quote) ?? [],
+    recommendation: ap.improvement ?? '',
+    frequency: ap.sessionPercentage,
+    severity: (
+      ap.severity === 'critical' ? 'critical' :
+      ap.severity === 'significant' ? 'high' :
+      ap.severity === 'moderate' ? 'medium' : 'low'
+    ) as AgentSeverityLevel,
+    priorityScore: ap.severity === 'critical' ? 90 : ap.severity === 'significant' ? 70 : ap.severity === 'moderate' ? 50 : 30,
+  }));
+}
+
+/**
+ * Convert weak WorkflowHabit planning habits to AgentGrowthArea format
+ */
+function convertWeakHabitsToGrowthAreas(
+  workflowHabit: WorkflowHabitOutput
+): AgentGrowthArea[] {
+  const weakHabits = workflowHabit.planningHabits?.filter(h =>
+    h.effectiveness === 'low' || h.frequency === 'rarely' || h.frequency === 'never'
+  ) ?? [];
+  return weakHabits.map(h => ({
+    title: `Planning: ${h.type.replace(/_/g, ' ')}`,
+    description: `Planning habit "${h.type.replace(/_/g, ' ')}" is ${h.frequency}`,
+    evidence: h.examples ?? [],
+    recommendation: `Improve ${h.type.replace(/_/g, ' ')} frequency`,
+    severity: 'medium' as AgentSeverityLevel,
+    priorityScore: 50,
+  }));
+}
+
+// ============================================================================
+// Growth Area Collection
+// ============================================================================
 
 // ============================================================================
 // Diagnosis / Prescription Separation
@@ -1405,146 +1381,71 @@ export function getTranslatedAgentStrengths(
 }
 
 /**
- * Collect growth areas from ALL translated agent insights
+ * Collect growth areas from ALL agents with per-agent translation fallback.
  *
- * Similar to getAllAgentGrowthAreas but works with TranslatedAgentInsights.
- * Uses the same deduplication logic (Jaccard similarity >= 0.5).
+ * For each agent, prefers translated data when available, falls back to
+ * original agentOutputs data when translation is missing.
  *
- * Frontend should use this when translatedAgentInsights is available,
- * falling back to getAllAgentGrowthAreas when not.
+ * Handles both legacy agents (pipe-delimited strings from old cached data)
+ * and v2 agents (structured arrays from current workers).
  *
  * @example
- * const translatedAreas = getAllTranslatedGrowthAreas(translatedAgentInsights);
- * const areas = translatedAreas.length > 0
- *   ? translatedAreas
- *   : getAllAgentGrowthAreas(agentOutputs);
+ * const areas = getAllGrowthAreasHybrid(agentOutputs, translatedAgentInsights);
  */
-export function getAllTranslatedGrowthAreas(
-  insights: TranslatedAgentInsights | undefined
+export function getAllGrowthAreasHybrid(
+  outputs: AgentOutputs,
+  translatedInsights?: TranslatedAgentInsights
 ): AgentGrowthArea[] {
-  if (!insights) return [];
-
   const allAreas: AgentGrowthArea[] = [];
 
+  // Helper: prefer translated pipe-delimited string, fall back to original
+  const addFromLegacyAgent = (
+    translatedData: TranslatedAgentInsight | undefined,
+    originalData: string | undefined,
+  ) => {
+    if (translatedData?.growthAreasData) {
+      allAreas.push(...parseGrowthAreasData(translatedData.growthAreasData));
+    } else if (originalData) {
+      allAreas.push(...parseGrowthAreasData(originalData));
+    }
+  };
+
   // Free tier agents
-  if (insights.patternDetective?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(insights.patternDetective.growthAreasData));
-  }
-  if (insights.metacognition?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(insights.metacognition.growthAreasData));
-  }
+  addFromLegacyAgent(translatedInsights?.patternDetective, outputs.patternDetective?.growthAreasData);
+  addFromLegacyAgent(translatedInsights?.metacognition, outputs.metacognition?.growthAreasData);
 
   // Premium tier agents
-  if (insights.antiPatternSpotter?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(insights.antiPatternSpotter.growthAreasData));
-  }
-  if (insights.knowledgeGap?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(insights.knowledgeGap.growthAreasData));
-  }
-  if (insights.contextEfficiency?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(insights.contextEfficiency.growthAreasData));
-  }
-  if (insights.temporalAnalysis?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(insights.temporalAnalysis.growthAreasData));
-  }
-  if (insights.multitasking?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(insights.multitasking.growthAreasData));
+  addFromLegacyAgent(translatedInsights?.antiPatternSpotter, outputs.antiPatternSpotter?.growthAreasData);
+  addFromLegacyAgent(translatedInsights?.knowledgeGap, outputs.knowledgeGap?.growthAreasData);
+  addFromLegacyAgent(translatedInsights?.contextEfficiency, outputs.contextEfficiency?.growthAreasData);
+  addFromLegacyAgent(
+    translatedInsights?.temporalAnalysis,
+    outputs.temporalAnalysis?.insights?.growthAreasData
+  );
+  addFromLegacyAgent(translatedInsights?.multitasking, outputs.multitasking?.growthAreasData);
+
+  // v2 strengthGrowth — translated flat string OR original structured data
+  if (translatedInsights?.strengthGrowth?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(translatedInsights.strengthGrowth.growthAreasData));
+  } else if (outputs.strengthGrowth?.growthAreas) {
+    allAreas.push(...convertStrengthGrowthAreas(outputs.strengthGrowth.growthAreas));
   }
 
-  // v2 workers
-  if (insights.strengthGrowth?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(insights.strengthGrowth.growthAreasData));
-  }
-  if (insights.trustVerification?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(insights.trustVerification.growthAreasData));
-  }
-  if (insights.workflowHabit?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(insights.workflowHabit.growthAreasData));
+  // v2 trustVerification — translated flat string OR original structured data
+  if (translatedInsights?.trustVerification?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(translatedInsights.trustVerification.growthAreasData));
+  } else if (outputs.trustVerification?.antiPatterns) {
+    allAreas.push(...convertAntiPatternsToGrowthAreas(outputs.trustVerification.antiPatterns));
   }
 
-  // Deduplicate similar growth areas
+  // v2 workflowHabit — translated flat string OR original structured data
+  if (translatedInsights?.workflowHabit?.growthAreasData) {
+    allAreas.push(...parseGrowthAreasData(translatedInsights.workflowHabit.growthAreasData));
+  } else if (outputs.workflowHabit) {
+    allAreas.push(...convertWeakHabitsToGrowthAreas(outputs.workflowHabit));
+  }
+
   return groupSimilarGrowthAreas(allAreas);
-}
-
-/**
- * Collect strengths from ALL translated agent insights
- *
- * Similar to getAllAgentStrengths pattern but for translated insights.
- *
- * @example
- * const translatedStrengths = getAllTranslatedStrengths(translatedAgentInsights);
- */
-export function getAllTranslatedStrengths(
-  insights: TranslatedAgentInsights | undefined
-): AgentStrength[] {
-  if (!insights) return [];
-
-  const allStrengths: AgentStrength[] = [];
-
-  // Collect from all agents that have strengths
-  if (insights.patternDetective?.strengthsData) {
-    allStrengths.push(...parseStrengthsData(insights.patternDetective.strengthsData));
-  }
-  if (insights.metacognition?.strengthsData) {
-    allStrengths.push(...parseStrengthsData(insights.metacognition.strengthsData));
-  }
-  if (insights.antiPatternSpotter?.strengthsData) {
-    allStrengths.push(...parseStrengthsData(insights.antiPatternSpotter.strengthsData));
-  }
-  if (insights.knowledgeGap?.strengthsData) {
-    allStrengths.push(...parseStrengthsData(insights.knowledgeGap.strengthsData));
-  }
-  if (insights.contextEfficiency?.strengthsData) {
-    allStrengths.push(...parseStrengthsData(insights.contextEfficiency.strengthsData));
-  }
-  if (insights.temporalAnalysis?.strengthsData) {
-    allStrengths.push(...parseStrengthsData(insights.temporalAnalysis.strengthsData));
-  }
-  if (insights.multitasking?.strengthsData) {
-    allStrengths.push(...parseStrengthsData(insights.multitasking.strengthsData));
-  }
-
-  // v2 workers
-  if (insights.strengthGrowth?.strengthsData) {
-    allStrengths.push(...parseStrengthsData(insights.strengthGrowth.strengthsData));
-  }
-  if (insights.trustVerification?.strengthsData) {
-    allStrengths.push(...parseStrengthsData(insights.trustVerification.strengthsData));
-  }
-  if (insights.workflowHabit?.strengthsData) {
-    allStrengths.push(...parseStrengthsData(insights.workflowHabit.strengthsData));
-  }
-
-  return allStrengths;
-}
-
-/**
- * Check if translated agent insights have any content
- */
-export function hasTranslatedInsights(insights: TranslatedAgentInsights | undefined): boolean {
-  if (!insights) return false;
-
-  const agentKeys: TranslatedAgentKey[] = [
-    'patternDetective',
-    'metacognition',
-    'antiPatternSpotter',
-    'knowledgeGap',
-    'contextEfficiency',
-    'temporalAnalysis',
-    'multitasking',
-    'strengthGrowth',
-    'trustVerification',
-    'workflowHabit',
-  ];
-
-  for (const key of agentKeys) {
-    const agent = insights[key] as TranslatedAgentInsight | undefined;
-    if (agent?.strengthsData || agent?.growthAreasData) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 // ============================================================================

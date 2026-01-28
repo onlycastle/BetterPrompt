@@ -1,11 +1,9 @@
 /**
  * Agent Outputs Schema Tests
  *
- * Tests for the 4 Wow-Focused Agent output schemas:
- * - Pattern Detective: Conversation style discovery
- * - Anti-Pattern Spotter: Bad habit detection
- * - Knowledge Gap Analyzer: Learning gaps and recommendations
- * - Context Efficiency Analyzer: Token inefficiency patterns
+ * Tests for Phase 2 worker output schemas and helper functions.
+ * Legacy agent schemas (PatternDetective, AntiPatternSpotter) are tested
+ * for backward compatibility with cached data.
  *
  * All schemas use flattened semicolon-separated strings to comply with
  * Gemini's 4-5 level nesting limit.
@@ -22,7 +20,7 @@ import {
   createEmptyAgentOutputs,
   hasAnyAgentOutput,
   getAllTopInsights,
-  getAllAgentGrowthAreas,
+  getAllGrowthAreasHybrid,
   type PatternDetectiveOutput,
   type AntiPatternSpotterOutput,
   type KnowledgeGapOutput,
@@ -956,7 +954,7 @@ describe('JSON Schema Conversion', () => {
 // Growth Area Deduplication Tests
 // ============================================================================
 
-describe('getAllAgentGrowthAreas', () => {
+describe('getAllGrowthAreasHybrid', () => {
   describe('deduplication', () => {
     it('should merge similar growth areas with different titles', () => {
       const outputs: AgentOutputs = {
@@ -991,7 +989,7 @@ describe('getAllAgentGrowthAreas', () => {
         },
       };
 
-      const result = getAllAgentGrowthAreas(outputs);
+      const result = getAllGrowthAreasHybrid(outputs);
 
       // Should merge 3 similar items into 1
       expect(result.length).toBe(1);
@@ -1038,7 +1036,7 @@ describe('getAllAgentGrowthAreas', () => {
         },
       };
 
-      const result = getAllAgentGrowthAreas(outputs);
+      const result = getAllGrowthAreasHybrid(outputs);
 
       // Should keep both items (not similar)
       expect(result.length).toBe(2);
@@ -1047,7 +1045,7 @@ describe('getAllAgentGrowthAreas', () => {
     it('should handle empty outputs gracefully', () => {
       const outputs: AgentOutputs = {};
 
-      const result = getAllAgentGrowthAreas(outputs);
+      const result = getAllGrowthAreasHybrid(outputs);
 
       expect(result.length).toBe(0);
     });
@@ -1065,7 +1063,7 @@ describe('getAllAgentGrowthAreas', () => {
         },
       };
 
-      const result = getAllAgentGrowthAreas(outputs);
+      const result = getAllGrowthAreasHybrid(outputs);
 
       expect(result.length).toBe(1);
       expect(result[0].title).toBe('Single Area');
@@ -1098,7 +1096,7 @@ describe('getAllAgentGrowthAreas', () => {
         },
       };
 
-      const result = getAllAgentGrowthAreas(outputs);
+      const result = getAllGrowthAreasHybrid(outputs);
 
       expect(result.length).toBe(1);
       // Should have 3 unique quotes (shared_quote deduplicated)
@@ -1132,7 +1130,7 @@ describe('getAllAgentGrowthAreas', () => {
         },
       };
 
-      const result = getAllAgentGrowthAreas(outputs);
+      const result = getAllGrowthAreasHybrid(outputs);
 
       expect(result.length).toBe(1);
       expect(result[0].recommendation).toBe('This is a much longer and more detailed recommendation');
