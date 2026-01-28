@@ -3,8 +3,8 @@
  *
  * Multi-phase pipeline using Gemini 3 Flash (requires GOOGLE_GEMINI_API_KEY):
  * - Phase 1: DataExtractor (deterministic, no LLM)
- * - Phase 2: 5 parallel workers (StrengthGrowth, TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency)
- * - Phase 2.5: TypeClassifier (1 LLM call)
+ * - Phase 2: 4 parallel workers (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency)
+ * - Phase 2.5: StrengthGrowthSynthesizer → TypeClassifier (2 sequential LLM calls)
  * - Phase 3: ContentWriter (1 LLM call)
  */
 
@@ -17,13 +17,13 @@ import type { IKnowledgeRepository, IProfessionalInsightRepository } from '../ap
 import {
   // Phase 1: Pure extraction (produces Phase1Output for Phase 2 workers)
   createDataExtractorWorker,
-  // Phase 2: Semantic analysis (receives Phase1Output)
-  createStrengthGrowthWorker,
+  // Phase 2: Semantic analysis (receives Phase1Output) — 4 parallel workers
   createTrustVerificationWorker,
   createWorkflowHabitWorker,
   createKnowledgeGapWorker,
   createContextEfficiencyWorker,
-  // Phase 2.5: TypeClassifier (classification + synthesis)
+  // Phase 2.5: Sequential — Synthesizer then TypeClassifier
+  createStrengthGrowthWorker,
   createTypeClassifierWorker,
 } from './workers';
 
@@ -148,17 +148,18 @@ export class VerboseAnalyzer {
     this.orchestrator.registerPhase1Worker(createDataExtractorWorker(orchestratorConfig));
 
     // =========================================================================
-    // PHASE 2: Insight Generation (5 workers, parallel LLM calls)
+    // PHASE 2: Insight Generation (4 workers, parallel LLM calls)
     // =========================================================================
-    this.orchestrator.registerPhase2Worker(createStrengthGrowthWorker(orchestratorConfig));
     this.orchestrator.registerPhase2Worker(createTrustVerificationWorker(orchestratorConfig));
     this.orchestrator.registerPhase2Worker(createWorkflowHabitWorker(orchestratorConfig));
     this.orchestrator.registerPhase2Worker(createKnowledgeGapWorker(orchestratorConfig));
     this.orchestrator.registerPhase2Worker(createContextEfficiencyWorker(orchestratorConfig));
 
     // =========================================================================
-    // PHASE 2.5: TypeClassifier (classification using all Phase 2 outputs)
+    // PHASE 2.5: Synthesizer → TypeClassifier (2 sequential LLM calls)
+    // Order matters: Synthesizer runs first, TypeClassifier uses its output.
     // =========================================================================
+    this.orchestrator.registerPhase2Point5Worker(createStrengthGrowthWorker(orchestratorConfig));
     this.orchestrator.registerPhase2Point5Worker(createTypeClassifierWorker(orchestratorConfig));
   }
 
@@ -167,8 +168,8 @@ export class VerboseAnalyzer {
    *
    * Multi-phase pipeline:
    * - Phase 1: DataExtractor (deterministic)
-   * - Phase 2: 5 workers in parallel
-   * - Phase 2.5: TypeClassifier
+   * - Phase 2: 4 workers in parallel
+   * - Phase 2.5: StrengthGrowthSynthesizer → TypeClassifier (sequential)
    * - Phase 3: ContentWriter
    *
    * Returns AnalysisResult containing both the VerboseEvaluation and raw Phase1Output.

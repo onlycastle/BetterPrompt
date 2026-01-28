@@ -1246,3 +1246,31 @@ export const VerboseLLMResponseSchema = z.object({
     .describe('Translated agent insights for non-English output - use when available'),
 });
 export type VerboseLLMResponse = z.infer<typeof VerboseLLMResponseSchema>;
+
+/**
+ * Narrative-only LLM Response schema for Phase 3 Content Writer
+ *
+ * Phase 3 LLM generates ONLY content that doesn't exist in Phase 2:
+ * - personalitySummary: Synthesized personality narrative
+ * - promptPatterns: WHAT-WHY-HOW prompt pattern analysis
+ * - topFocusAreas: Narrative-enriched focus areas (optional)
+ *
+ * All structural/quantitative data (dimensionInsights, type classification,
+ * premium sections, actionablePractices) are assembled deterministically
+ * from Phase 2 outputs by the evaluation-assembler module.
+ */
+export const NarrativeLLMResponseSchema = z.object({
+  // Narrative content (Phase 2 doesn't produce these)
+  personalitySummary: z
+    .string()
+    .max(3000)
+    .describe('Hyper-personalized summary of their AI coding personality (target: 300-3000 chars)'),
+
+  // Prompt patterns with WHAT-WHY-HOW analysis
+  promptPatterns: z.array(LLMPromptPatternSchema),
+
+  // Top 3 Focus Areas narrative (optional - may fall back to Phase 2 data)
+  topFocusAreas: LLMTopFocusAreasSchema.optional()
+    .describe('Top 3 personalized priorities with narrative enrichment'),
+});
+export type NarrativeLLMResponse = z.infer<typeof NarrativeLLMResponseSchema>;
