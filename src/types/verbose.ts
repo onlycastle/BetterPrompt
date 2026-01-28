@@ -97,6 +97,14 @@ export interface DimensionGrowthArea {
   /** Quotes showing this growth opportunity (string[] or EvidenceItem[]) */
   evidence?: Evidence[];
   recommendation: string;
+  /** Frequency of this growth area observed (0-100) */
+  frequency?: number;
+  /** Severity level of this growth area */
+  severity?: 'critical' | 'high' | 'medium' | 'low';
+  /** Computed priority score (0-100) */
+  priorityScore?: number;
+  /** Trend direction of this growth area */
+  trend?: 'improving' | 'stable' | 'declining';
 }
 
 export type DimensionName =
