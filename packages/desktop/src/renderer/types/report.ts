@@ -466,7 +466,7 @@ export interface ProductivityAnalysis {
 }
 
 // ============================================================================
-// Agent Outputs (4 Wow-Focused Agents - Premium Only)
+// Agent Outputs (Phase 2 Workers - Premium Only)
 // ============================================================================
 
 /**
@@ -648,12 +648,11 @@ export interface TypeSynthesisOutput {
 }
 
 /**
- * Combined outputs from all Wow-Focused Agents
- * All fields are optional since agents may fail independently
+ * Combined outputs from all Phase 2 workers
+ * All fields are optional since workers may fail independently
  *
- * Tier access:
- * - FREE: patternDetective, metacognition (full data)
- * - PREMIUM: all agents (antiPatternSpotter, knowledgeGap, contextEfficiency, temporalAnalysis, multitasking)
+ * Legacy agent fields (patternDetective, metacognition, etc.) are kept
+ * for backward compatibility with cached data.
  */
 export interface AgentOutputs {
   // FREE tier agents

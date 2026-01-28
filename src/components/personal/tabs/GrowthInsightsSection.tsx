@@ -1,11 +1,9 @@
 /**
  * GrowthInsightsSection Component
  *
- * Aggregates growth areas from ALL agents (both free and premium tiers)
- * and displays them in card format.
- *
- * Free users see growth areas from Pattern Detective + Metacognition
- * Premium users see growth areas from all 7 agents
+ * Aggregates growth areas from all Phase 2 workers and displays them
+ * in card format. Uses hybrid per-agent translation fallback to handle
+ * both translated and original data gracefully.
  *
  * Learning resources are displayed inline within each card when matched,
  * using a 2-column layout with the resource bubble on the right side.
@@ -15,7 +13,7 @@ import { useMemo } from 'react';
 import { Card } from '../../ui/Card';
 import { ResourceBubble } from './ResourceBubble';
 import type { AgentOutputs, AgentGrowthArea, ParsedResource } from '../../../lib/models/agent-outputs';
-import { getAllAgentGrowthAreas, getAllTranslatedGrowthAreas, hasTranslatedInsights } from '../../../lib/models/agent-outputs';
+import { getAllGrowthAreasHybrid } from '../../../lib/models/agent-outputs';
 import type { TranslatedAgentInsights } from '../../../lib/models/verbose-evaluation';
 import styles from './GrowthInsightsSection.module.css';
 
@@ -185,15 +183,10 @@ export function GrowthInsightsSection({
   translatedAgentInsights,
 }: GrowthInsightsSectionProps) {
   // Collect ALL growth areas from all agents
-  // Use translated data when available, fallback to original agentOutputs
+  // Per-agent hybrid: prefer translated data when available, fall back to original
   const allGrowthAreas = useMemo(() => {
-    // Prefer translated insights if available
-    if (hasTranslatedInsights(translatedAgentInsights)) {
-      return getAllTranslatedGrowthAreas(translatedAgentInsights);
-    }
-    // Fallback to original agent outputs
     if (!agentOutputs) return [];
-    return getAllAgentGrowthAreas(agentOutputs);
+    return getAllGrowthAreasHybrid(agentOutputs, translatedAgentInsights);
   }, [agentOutputs, translatedAgentInsights]);
 
   if (allGrowthAreas.length === 0) {
@@ -226,7 +219,7 @@ export function GrowthInsightsSection({
         <div className={styles.premiumTeaser}>
           <span className={styles.premiumIcon}>✨</span>
           <span className={styles.premiumText}>
-            Unlock all growth insights from 7 AI agents + personalized learning resources
+            Unlock all growth insights + personalized learning resources
           </span>
         </div>
       )}

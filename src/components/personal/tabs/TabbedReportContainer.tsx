@@ -21,7 +21,7 @@ import type { VerboseAnalysisData, AnalysisMetadata } from '../../../types/verbo
 import type { AgentOutputs } from '../../../lib/models/agent-outputs';
 import {
   parseRecommendedResourcesData,
-  getAllAgentGrowthAreas,
+  getAllGrowthAreasHybrid,
   type ParsedResource,
 } from '../../../lib/models/agent-outputs';
 import styles from './TabbedReportContainer.module.css';
@@ -85,7 +85,7 @@ export function TabbedReportContainer({
 
   // Check if we have content for each tab
   const hasPatterns = analysis.promptPatterns && analysis.promptPatterns.length > 0;
-  const hasGrowth = agentOutputs && getAllAgentGrowthAreas(agentOutputs).length > 0;
+  const hasGrowth = agentOutputs && getAllGrowthAreasHybrid(agentOutputs, analysis.translatedAgentInsights).length > 0;
   const hasDimensions = analysis.dimensionInsights && analysis.dimensionInsights.length > 0;
   const hasAgents = agentOutputs && Object.values(agentOutputs).some(Boolean);
 

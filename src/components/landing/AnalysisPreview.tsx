@@ -90,7 +90,7 @@ export function AnalysisPreview() {
             <h3 className={styles.agentTitle}>AI Agent Insights</h3>
           </div>
           <p className={styles.agentSubtitle}>
-            7 specialized agents analyzed your coding patterns to discover hidden habits
+            Specialized AI workers analyzed your coding patterns to discover hidden habits
           </p>
 
           {/* Agent Card */}
