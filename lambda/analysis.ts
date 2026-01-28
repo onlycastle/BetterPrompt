@@ -44,9 +44,12 @@ interface LambdaEvent {
 
 // Import shared libs (bundled by SST)
 import { VerboseAnalyzer } from "../src/lib/analyzer/verbose-analyzer";
+import type { ProgressCallback } from "../src/lib/analyzer/orchestrator/types";
 import { aggregateMetrics } from "../src/lib/analyzer/type-detector";
 import type { ParsedSession } from "../src/lib/domain/models/analysis";
 import type { VerboseEvaluation } from "../src/lib/models/verbose-evaluation";
+import { createSupabaseKnowledgeRepository } from "../src/lib/infrastructure/storage/supabase/knowledge-repo";
+import { createSupabaseProfessionalInsightRepository } from "../src/lib/infrastructure/storage/supabase/professional-insight-repo";
 import {
   JSONLLineSchema,
   type JSONLLine,
@@ -199,11 +202,24 @@ interface AnalysisResponse {
 }
 
 /**
+ * Debug phase output from pipeline (mirrors DebugPhaseOutput from orchestrator)
+ */
+interface DebugPhaseOutput {
+  phase: string;
+  phaseName: string;
+  completedAt: string;
+  durationMs: number;
+  data: unknown;
+  tokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
+}
+
+/**
  * SSE Event types
  */
 type SSEEvent =
   | { type: "progress"; stage: string; progress: number; message: string }
   | { type: "result"; data: AnalysisResponse }
+  | { type: "debug_phase"; data: DebugPhaseOutput }
   | { type: "error"; code: string; message: string };
 
 /**
@@ -633,7 +649,8 @@ async function runAnalysis(
   body: AnalysisRequest,
   userGeminiApiKey: string,
   write: (event: SSEEvent) => void,
-  userId?: string
+  userId?: string,
+  debug?: boolean
 ): Promise<void> {
   // Parse sessions based on version
   const parsedSessions: ParsedSession[] = [];
@@ -710,46 +727,45 @@ async function runAnalysis(
     type: "progress",
     stage: "analyzing",
     progress: 40,
-    message: "Running AI analysis (Stage 1: Data extraction)...",
+    message: "Running AI analysis pipeline...",
   });
 
-  // Analysis progress messages (40% to 84% range)
-  const analysisMessages = [
-    "Extracting behavioral patterns from conversations...",
-    "Analyzing tool usage patterns (Read, Write, Edit)...",
-    "Mapping conversation flow and interaction style...",
-    "Running personality dimension analysis...",
-    "Analyzing communication style preferences...",
-    "Evaluating decision-making patterns...",
-    "Detecting AI collaboration techniques...",
-    "Measuring verification and validation habits...",
-    "Analyzing planning and task decomposition...",
-    "Building personality profile...",
-    "Generating personalized insights...",
-    "Crafting evidence-based observations...",
-    "Synthesizing findings into narrative...",
-    "Finalizing your developer profile...",
-    "Completing deep analysis...",
-  ];
-  let messageIndex = 0;
+  // ── Real progress callback ──────────────────────────────────────────────
+  // The orchestrator fires this after each discrete phase/worker completion.
+  // Between callbacks, a liveness heartbeat re-sends the last progress with
+  // a dot animation so the client knows the connection is alive.
+  let lastProgress = 40;
+  let lastMessage = "Running AI analysis pipeline...";
+  let dotCount = 0;
 
-  // Heartbeat interval - send progress updates every 1 second for responsive UX
-  // Progress is calculated from index (40% to 84%), capped at last message
-  const heartbeatInterval = setInterval(() => {
+  const onProgress: ProgressCallback = (stage, progress, message) => {
+    lastProgress = progress;
+    lastMessage = message;
+    dotCount = 0; // reset dot animation on real progress tick
+    write({
+      type: "progress",
+      stage: "analyzing",
+      progress,
+      message,
+    });
+  };
+
+  // Liveness heartbeat: re-sends current progress with dot animation every 3s
+  // Shows the system is alive during long single-LLM calls (e.g., Phase 3: 15-30s)
+  const livenessInterval = setInterval(() => {
     try {
-      const cappedIndex = Math.min(messageIndex, analysisMessages.length - 1);
-      const progress = 40 + Math.floor((cappedIndex / (analysisMessages.length - 1)) * 44);
+      dotCount = (dotCount % 3) + 1;
+      const dots = ".".repeat(dotCount);
       write({
         type: "progress",
         stage: "analyzing",
-        progress,
-        message: analysisMessages[cappedIndex],
+        progress: lastProgress,
+        message: lastMessage.replace(/\.{1,3}$/, "") + dots,
       });
-      messageIndex++;
     } catch {
-      clearInterval(heartbeatInterval);
+      clearInterval(livenessInterval);
     }
-  }, 1000);
+  }, 3000);
 
   // Run analysis - returns AnalysisResult with evaluation + phase1Output
   let evaluation: VerboseEvaluation;
@@ -758,18 +774,30 @@ async function runAnalysis(
     const analyzer = new VerboseAnalyzer({
       tier: "enterprise",
       geminiApiKey: userGeminiApiKey,
+      debug: !!debug,
+      knowledgeRepo: createSupabaseKnowledgeRepository(),
+      professionalInsightRepo: createSupabaseProfessionalInsightRepository(),
     });
 
     console.log("[PHASE:ANALYZE] Starting analyzeVerbose...");
     const analysisResult = await analyzer.analyzeVerbose(parsedSessions, metrics, {
       tier: "enterprise",
+      onProgress,
     });
     evaluation = analysisResult.evaluation;
     phase1Output = analysisResult.phase1Output;
     console.log(`[PHASE:ANALYZE] Completed - evaluation keys: ${Object.keys(evaluation).join(', ')}`);
     console.log(`[PHASE:ANALYZE] agentOutputs: ${evaluation.agentOutputs ? 'present' : 'null'}, phase1Output: ${phase1Output ? 'present' : 'null'}`);
+
+    // Emit debug phase outputs as SSE events (before result event)
+    if (debug && analysisResult.debugOutputs) {
+      console.log(`[PHASE:DEBUG] Emitting ${analysisResult.debugOutputs.length} debug_phase events`);
+      for (const debugOutput of analysisResult.debugOutputs) {
+        write({ type: "debug_phase", data: debugOutput });
+      }
+    }
   } finally {
-    clearInterval(heartbeatInterval);
+    clearInterval(livenessInterval);
   }
 
   // Progress: Analysis complete
@@ -927,6 +955,9 @@ async function handleAnalyzeFromStorage(
     const authResult = await validateAuthToken(authHeader);
     const userId = authResult?.userId;
 
+    // Check for debug mode (X-Debug: 1 header from CLI)
+    const debug = event.headers?.['x-debug'] === '1';
+
     // Use server-side API key (not from request headers)
     const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY;
 
@@ -1052,7 +1083,7 @@ async function handleAnalyzeFromStorage(
     }
 
     // Run the shared analysis logic (userId from auth validation above)
-    await runAnalysis(body, geminiApiKey, write, userId);
+    await runAnalysis(body, geminiApiKey, write, userId, debug);
 
     // Clean up: delete the uploaded file from S3
     try {
@@ -1102,6 +1133,9 @@ async function handleDirectUpload(
     const authHeader = event.headers?.authorization || event.headers?.Authorization;
     const authResult = await validateAuthToken(authHeader);
     const userId = authResult?.userId;
+
+    // Check for debug mode (X-Debug: 1 header from CLI)
+    const debug = event.headers?.['x-debug'] === '1';
 
     // Use server-side API key (not from request headers)
     const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY;
@@ -1184,7 +1218,7 @@ async function handleDirectUpload(
     }
 
     // Run the shared analysis logic (userId from auth validation above)
-    await runAnalysis(body, geminiApiKey, write, userId);
+    await runAnalysis(body, geminiApiKey, write, userId, debug);
   } catch (error) {
     console.error("[lambda] Direct upload error:", error);
     write({

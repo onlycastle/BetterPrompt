@@ -32,10 +32,17 @@ npm test               # Run all tests
 
 ## Key Implementation Details
 
-**Three-Stage Pipeline**: Uses Gemini 3 Flash (`gemini-3-flash-preview`) for all analysis stages:
-- Module A (Data Analyst): Extracts structured behavioral data
-- Module B (Personality Analyst): Extracts personality profile for storytelling
-- Stage 2 (Content Writer): Transforms both outputs into personalized narrative
+**4-Phase Orchestrator Pipeline**: Uses Gemini 3 Flash (`gemini-3-flash-preview`) for all LLM stages:
+
+| Phase | Component | LLM Calls | Description |
+|-------|-----------|-----------|-------------|
+| 1 | DataExtractor | 0 | Deterministic extraction (no LLM) |
+| 2 | 5 Insight Workers | 5 | Parallel analysis (StrengthGrowth, TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency) |
+| 2.5 | TypeClassifier | 1 | Developer type classification (5x3 matrix) |
+| 3 | ContentWriter | 1 | Personalized narrative generation |
+| 4 | Translator | 0-1 | Conditional translation (non-English only) |
+
+- **Total**: 7 LLM calls (English), 8 LLM calls (non-English)
 - Prompts use PTCF framework (Persona · Task · Context · Format)
 - Temperature: 1.0 (Gemini's recommended default)
 
@@ -90,8 +97,7 @@ return await analyze(); // Error surfaces to user, root cause can be identified
 
 | Variable | Description |
 |----------|-------------|
-| `GOOGLE_GEMINI_API_KEY` | Required for three-stage pipeline (Gemini 3 Flash) |
-| `ANTHROPIC_API_KEY` | Required for legacy single-stage mode only |
+| `GOOGLE_GEMINI_API_KEY` | Required for 4-phase orchestrator pipeline (Gemini 3 Flash) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (client-side) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key (client-side) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |

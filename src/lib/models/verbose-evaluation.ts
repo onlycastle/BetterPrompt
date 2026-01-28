@@ -1111,7 +1111,7 @@ export const VerboseEvaluationSchema = z.object({
 
   // Agent Outputs (Phase 2 Wow Agents - Premium only)
   agentOutputs: AgentOutputsSchema.optional()
-    .describe('Insights from 4 Wow-Focused agents: Pattern Detective, Anti-Pattern Spotter, Knowledge Gap, Context Efficiency'),
+    .describe('Insights from Phase 2 workers: StrengthGrowth, TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency'),
 
   // Matched Knowledge Resources (Phase 2.75 - deterministic matching)
   knowledgeResources: z.array(DimensionResourceMatchSchema).optional()

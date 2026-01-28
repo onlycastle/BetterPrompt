@@ -1,14 +1,12 @@
 /**
  * AgentInsightsSection Component (Web App Version)
  *
- * Displays the Wow-Focused Agent outputs in a 1-column layout:
- * - Pattern Detective: Conversation patterns
- * - Anti-Pattern Spotter: Bad habits
+ * Displays Phase 2 worker outputs in a 1-column layout:
  * - Knowledge Gap Analyzer: Learning suggestions
  * - Context Efficiency Analyzer: Token efficiency
- * - Metacognition: Self-awareness patterns
- * - Temporal Analysis: Time-based patterns
- * - Multitasking: Session management patterns
+ *
+ * Also renders legacy agent cards for backward compatibility
+ * with old cached data (PatternDetective, AntiPatternSpotter, etc.).
  *
  * Ported from desktop with unified cyan color scheme.
  */

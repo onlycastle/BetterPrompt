@@ -10,9 +10,9 @@
 
 import { type ParsedSession, type SessionMetrics } from '../domain/models/analysis';
 import { type VerboseEvaluation } from '../models/verbose-evaluation';
-import { ContentGateway, type Tier } from './content-gateway';
+import type { Tier } from './content-gateway';
 import { AnalysisOrchestrator, createAnalysisOrchestrator } from './orchestrator';
-import type { AnalysisResult, OrchestratorConfig } from './orchestrator/types';
+import type { AnalysisResult, OrchestratorConfig, ProgressCallback } from './orchestrator/types';
 import type { IKnowledgeRepository, IProfessionalInsightRepository } from '../application/ports/storage';
 import {
   // Phase 1: Pure extraction (produces Phase1Output for Phase 2 workers)
@@ -66,6 +66,8 @@ export interface VerboseAnalyzerConfig {
   pipeline?: PipelineConfig;
   /** User tier for content filtering */
   tier?: Tier;
+  /** Collect intermediate phase outputs for debugging (default: false) */
+  debug?: boolean;
   /** Knowledge repository for Phase 2.75 resource matching (optional) */
   knowledgeRepo?: IKnowledgeRepository;
   /** Professional insight repository for Phase 2.75 resource matching (optional) */
@@ -94,6 +96,7 @@ const DEFAULT_CONFIG: Required<Omit<VerboseAnalyzerConfig, 'geminiApiKey' | 'kno
     },
   },
   tier: 'enterprise', // Generate full content by default
+  debug: false,
 };
 
 /**
@@ -105,7 +108,6 @@ const DEFAULT_CONFIG: Required<Omit<VerboseAnalyzerConfig, 'geminiApiKey' | 'kno
 export class VerboseAnalyzer {
   private config: Required<Omit<VerboseAnalyzerConfig, 'geminiApiKey' | 'knowledgeRepo' | 'professionalInsightRepo'>> & { geminiApiKey: string };
   private orchestrator: AnalysisOrchestrator;
-  private contentGateway: ContentGateway;
 
   constructor(config: VerboseAnalyzerConfig = {}) {
     this.config = {
@@ -113,8 +115,6 @@ export class VerboseAnalyzer {
       ...config,
       pipeline: { ...DEFAULT_CONFIG.pipeline, ...config.pipeline },
     };
-
-    this.contentGateway = new ContentGateway();
 
     const geminiApiKey = config.geminiApiKey || process.env.GOOGLE_GEMINI_API_KEY;
 
@@ -134,6 +134,7 @@ export class VerboseAnalyzer {
       maxOutputTokens: this.config.pipeline.stage1?.maxOutputTokens ?? 65536,
       maxRetries: this.config.maxRetries,
       verbose: !!process.env.DEBUG,
+      debug: config.debug ?? false,
       knowledgeRepo: config.knowledgeRepo,
       professionalInsightRepo: config.professionalInsightRepo,
     };
@@ -181,7 +182,7 @@ export class VerboseAnalyzer {
   async analyzeVerbose(
     sessions: ParsedSession[],
     metrics: SessionMetrics,
-    options: { tier?: Tier } = {}
+    options: { tier?: Tier; onProgress?: ProgressCallback } = {}
   ): Promise<AnalysisResult> {
     if (sessions.length === 0) {
       throw new VerboseAnalysisError(
@@ -193,7 +194,7 @@ export class VerboseAnalyzer {
     const tier = options.tier ?? this.config.tier;
 
     // Delegate to orchestrator - it handles everything
-    return await this.orchestrator.analyze(sessions, metrics, tier);
+    return await this.orchestrator.analyze(sessions, metrics, tier, options.onProgress);
   }
 }
 

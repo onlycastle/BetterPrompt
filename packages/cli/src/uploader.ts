@@ -10,6 +10,9 @@
  */
 
 import { gzipSync } from 'node:zlib';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 import type { ScanResult } from './scanner.js';
 import type { ParsedSession, ParsedMessage } from './session-formatter.js';
 
@@ -246,11 +249,24 @@ export interface UploadError {
 }
 
 /**
+ * Debug phase output from pipeline (mirrors server-side DebugPhaseOutput)
+ */
+interface DebugPhaseOutput {
+  phase: string;
+  phaseName: string;
+  completedAt: string;
+  durationMs: number;
+  data: unknown;
+  tokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
+}
+
+/**
  * SSE Event types from the server
  */
 type SSEEvent =
   | { type: 'progress'; stage: string; progress: number; message: string }
   | { type: 'result'; data: Omit<AnalysisResult, 'reportUrl'> }
+  | { type: 'debug_phase'; data: DebugPhaseOutput }
   | { type: 'error'; code: string; message: string };
 
 /**
@@ -276,6 +292,52 @@ function parseSSELine(line: string): SSEEvent | null {
     });
     return null;
   }
+}
+
+/**
+ * Save debug phase outputs to ~/.nomoreaislop/debug/{timestamp}/
+ */
+function saveDebugOutputs(debugOutputs: DebugPhaseOutput[]): void {
+  if (debugOutputs.length === 0) return;
+
+  // Create timestamp directory (colons replaced with dashes for filesystem compatibility)
+  const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\.\d+Z$/, '');
+  const debugDir = join(homedir(), '.nomoreaislop', 'debug', timestamp);
+
+  mkdirSync(debugDir, { recursive: true });
+
+  // Write each phase as a separate JSON file
+  for (const output of debugOutputs) {
+    const fileName = `${output.phase}.json`;
+    writeFileSync(
+      join(debugDir, fileName),
+      JSON.stringify(output.data, null, 2),
+      'utf-8'
+    );
+  }
+
+  // Write manifest
+  const manifest = {
+    createdAt: new Date().toISOString(),
+    phaseCount: debugOutputs.length,
+    totalDurationMs: debugOutputs.reduce((sum, o) => sum + o.durationMs, 0),
+    phases: debugOutputs.map(o => ({
+      phase: o.phase,
+      phaseName: o.phaseName,
+      completedAt: o.completedAt,
+      durationMs: o.durationMs,
+      tokenUsage: o.tokenUsage,
+      file: `${o.phase}.json`,
+    })),
+  };
+
+  writeFileSync(
+    join(debugDir, '_manifest.json'),
+    JSON.stringify(manifest, null, 2),
+    'utf-8'
+  );
+
+  console.error(`[DEBUG] Phase outputs saved to: ${debugDir}`);
 }
 
 /**
@@ -311,6 +373,7 @@ async function uploadViaStorage(
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${accessToken}`,
+      ...(process.env.DEBUG && { 'X-Debug': '1' }),
     },
   });
 
@@ -373,6 +436,7 @@ export async function uploadForAnalysis(
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`,
+        ...(process.env.DEBUG && { 'X-Debug': '1' }),
       },
       body: JSON.stringify({ s3Key }),
     });
@@ -398,6 +462,7 @@ export async function uploadForAnalysis(
       'Content-Type': 'application/octet-stream',
       'Content-Encoding': 'gzip',
       'Authorization': `Bearer ${accessToken}`,
+      ...(process.env.DEBUG && { 'X-Debug': '1' }),
     },
     body: new Uint8Array(compressedBody),
   });
@@ -441,6 +506,7 @@ async function handleStreamingResponse(
   let buffer = '';
   let result: AnalysisResult | null = null;
   let isFirstChunk = true;
+  const debugOutputs: DebugPhaseOutput[] = [];
 
   try {
     while (true) {
@@ -482,6 +548,10 @@ async function handleStreamingResponse(
             };
             break;
 
+          case 'debug_phase':
+            debugOutputs.push(event.data);
+            break;
+
           case 'error':
             throw new Error(event.message || 'Analysis failed');
         }
@@ -495,9 +565,16 @@ async function handleStreamingResponse(
           ...event.data,
           reportUrl: `${REPORT_BASE_URL}/r/${event.data.resultId}`,
         };
+      } else if (event?.type === 'debug_phase') {
+        debugOutputs.push(event.data);
       } else if (event?.type === 'error') {
         throw new Error(event.message || 'Analysis failed');
       }
+    }
+
+    // Save debug outputs to disk if any were received
+    if (debugOutputs.length > 0) {
+      saveDebugOutputs(debugOutputs);
     }
 
     if (!result) {

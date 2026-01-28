@@ -451,6 +451,70 @@ When output language is non-English (ko, ja, zh):
 
 ---
 
+### Phase 4: Translator (Conditional)
+
+**Purpose**: Translate Phase 3 output into user's detected language
+
+> Runs only when non-English language is detected (5% character threshold). Skipped for English users.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    PHASE 4: TRANSLATOR (CONDITIONAL)                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────────────────────────────┐                               │
+│  │  LANGUAGE DETECTION                   │                               │
+│  │  (from developer utterances)          │                               │
+│  │                                        │                               │
+│  │  detectPrimaryLanguage():              │                               │
+│  │  - Counts non-ASCII characters         │                               │
+│  │  - 5% threshold for non-English        │                               │
+│  │  - Supports: ko, ja, zh                │                               │
+│  └────────────────┬─────────────────────┘                               │
+│                   │                                                      │
+│      ┌────────────┴────────────┐                                        │
+│      ▼                         ▼                                        │
+│  ┌────────┐              ┌──────────────┐                               │
+│  │ English│              │ Non-English  │                               │
+│  │ → SKIP │              │ → TRANSLATE  │                               │
+│  └────────┘              └──────┬───────┘                               │
+│                                 │                                        │
+│                                 ▼                                        │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  LLM CALL                                                         │   │
+│  │  Model: gemini-3-flash-preview                                   │   │
+│  │  Temperature: 1.0                                                 │   │
+│  │  Input: VerboseLLMResponse (English)                              │   │
+│  │  Output: TranslatorOutput (translated text fields only)          │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                                 │                                        │
+│                                 ▼                                        │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  MERGE STRATEGY                                                   │   │
+│  │  - English response = source of truth for structure               │   │
+│  │  - Only text fields overlaid from translation                     │   │
+│  │  - Numeric fields, IDs remain from English                        │   │
+│  │  - Technical terms preserved: AI, Git, API, IDE, etc.             │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### TranslatorStage
+
+```typescript
+export class TranslatorStage {
+  // Only runs if language is non-English
+  shouldRun(language: string): boolean {
+    return language !== 'en';
+  }
+
+  execute(input: VerboseLLMResponse, language: string): Promise<TranslatorOutput>;
+}
+```
+
+---
+
 ### Content Gateway: Tier-based Filtering
 
 ```
@@ -666,7 +730,21 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
   ║   NO FALLBACK: If content generation fails, error is thrown       ║
   ╚═══════════════════════════════════════════════════════════════════╝
                        │
-                       │ [6] Post-processing: evidence linking, flattening
+                       │ [6] Language detection
+                       ▼
+  ╔═══════════════════════════════════════════════════════════════════╗
+  ║            PHASE 4: TRANSLATOR (0-1 LLM call, conditional)        ║
+  ║                                                                    ║
+  ║   CONDITION: Runs only if non-English detected (5% threshold)    ║
+  ║                                                                    ║
+  ║   INPUT:  VerboseLLMResponse (English)                            ║
+  ║   OUTPUT: TranslatorOutput (translated text fields only)          ║
+  ║                                                                    ║
+  ║   MERGE: English structure preserved, text fields overlaid        ║
+  ║   KEPT IN ENGLISH: IDs, numbers, technical terms                  ║
+  ╚═══════════════════════════════════════════════════════════════════╝
+                       │
+                       │ [7] Post-processing: evidence linking, flattening
                        ▼
   ┌─────────────────────────────────────────────────────────────────┐
   │  POST-PROCESSING                                                  │
@@ -676,7 +754,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
   │  - Ensure minimums for each dimension                            │
   └────────────────────────────────┬────────────────────────────────┘
                                    │
-                                   │ [7] Add metadata
+                                   │ [8] Add metadata
                                    ▼
   ┌─────────────────────────────────────────────────────────────────┐
   │  VerboseEvaluation (Full)                                        │
@@ -684,7 +762,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
   │  - ... all VerboseLLMResponse fields                             │
   └────────────────────────────────┬────────────────────────────────┘
                                    │
-                                   │ [8] Apply tier-based filtering
+                                   │ [9] Apply tier-based filtering
                                    ▼
   ┌─────────────────────────────────────────────────────────────────┐
   │  ContentGateway.filter(evaluation, tier)                         │
@@ -694,7 +772,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
   │  tier = 'enterprise' → Everything + advanced analytics          │
   └────────────────────────────────┬────────────────────────────────┘
                                    │
-                                   │ [9] Save & serve
+                                   │ [10] Save & serve
                                    ▼
   ┌─────────────────────────────────────────────────────────────────┐
   │  saveAnalysisLocally()                                           │
@@ -736,14 +814,18 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 │  │  PHASE 3: ContentWriter (1 LLM call)                      │           │
 │  │  Input: ~12K tokens    Output: ~6K tokens                │           │
 │  │                                                           │           │
-│  │  Total LLM Calls:                                         │           │
-│  │  - Free tier: 4 LLM calls (2 Phase 2 + 1 Phase 2.5 +     │           │
-│  │               1 Phase 3)                                  │           │
-│  │  - Premium: 7 LLM calls (5 Phase 2 + 1 Phase 2.5 +       │           │
-│  │             1 Phase 3)                                    │           │
+│  │  PHASE 4: Translator (0-1 LLM call, conditional)         │           │
+│  │  Only runs for non-English users (ko, ja, zh)            │           │
+│  │  Input: ~8K tokens    Output: ~6K tokens                 │           │
 │  │                                                           │           │
-│  │  Total Cost (Free):    ~$0.03 per analysis               │           │
-│  │  Total Cost (Premium): ~$0.08 per analysis               │           │
+│  │  Total LLM Calls:                                         │           │
+│  │  - Free (English):     4 calls (2+1+1+0)                 │           │
+│  │  - Free (non-English): 5 calls (2+1+1+1)                 │           │
+│  │  - Premium (English):  7 calls (5+1+1+0)                 │           │
+│  │  - Premium (non-EN):   8 calls (5+1+1+1)                 │           │
+│  │                                                           │           │
+│  │  Total Cost (Free):    ~$0.03-0.04 per analysis          │           │
+│  │  Total Cost (Premium): ~$0.08-0.10 per analysis          │           │
 │  └──────────────────────────────────────────────────────────┘           │
 │                                                                          │
 │  Result: Orchestrator + Workers provides BEST VALUE                     │

@@ -78,6 +78,7 @@ export abstract class BaseWorker<TOutput> {
         maxRetries: config.maxRetries ?? 2,
         continueOnWorkerFailure: config.continueOnWorkerFailure ?? true,
         verbose: config.verbose ?? false,
+        debug: config.debug ?? false,
       };
     }
   }

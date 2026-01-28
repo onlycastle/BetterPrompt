@@ -18,6 +18,22 @@ import { getAgentConfig, type AgentId } from '../../domain/models';
 import type { IKnowledgeRepository, IProfessionalInsightRepository } from '../../application/ports/storage';
 
 // ============================================================================
+// Progress Callback
+// ============================================================================
+
+/**
+ * Callback for reporting real pipeline progress to the caller.
+ *
+ * Fired after each discrete phase/worker completion so the caller can
+ * display honest progress (not simulated).
+ *
+ * @param stage - Pipeline stage identifier (e.g., "phase1", "phase2_worker", "phase3")
+ * @param progress - Progress percentage (0-100)
+ * @param message - Human-readable status message
+ */
+export type ProgressCallback = (stage: string, progress: number, message: string) => void;
+
+// ============================================================================
 // Worker Result Types
 // ============================================================================
 
@@ -206,6 +222,36 @@ export const PHASE_CONFIGS: Record<Phase, PhaseConfig> = {
 };
 
 // ============================================================================
+// Debug Output Types
+// ============================================================================
+
+/**
+ * Output captured from a single pipeline phase for debugging
+ *
+ * When `debug: true` is set in OrchestratorConfig, each phase's output
+ * is captured into this structure for later inspection.
+ */
+export interface DebugPhaseOutput {
+  /** Phase identifier (e.g., "phase1", "phase2_StrengthGrowth", "phase3") */
+  phase: string;
+
+  /** Human-readable phase name (e.g., "DataExtractor", "ContentWriter") */
+  phaseName: string;
+
+  /** ISO timestamp when this phase completed */
+  completedAt: string;
+
+  /** Duration of this phase in milliseconds */
+  durationMs: number;
+
+  /** The phase's raw output data */
+  data: unknown;
+
+  /** Token usage for this phase (null for deterministic phases) */
+  tokenUsage: TokenUsage | null;
+}
+
+// ============================================================================
 // Orchestrator Configuration
 // ============================================================================
 
@@ -234,6 +280,9 @@ export interface OrchestratorConfig {
   /** Log worker progress (default: false) */
   verbose?: boolean;
 
+  /** Collect intermediate phase outputs for debugging (default: false) */
+  debug?: boolean;
+
   /** Knowledge repository for Phase 2.75 resource matching (optional — skipped if not provided) */
   knowledgeRepo?: IKnowledgeRepository;
 
@@ -251,6 +300,7 @@ export const DEFAULT_ORCHESTRATOR_CONFIG: Required<Omit<OrchestratorConfig, 'gem
   maxRetries: 2,
   continueOnWorkerFailure: true,
   verbose: false,
+  debug: false,
 };
 
 // ============================================================================
@@ -328,6 +378,9 @@ export interface AnalysisResult {
 
   /** Raw Phase 1 extraction output (for DB storage and evidence auditing) */
   phase1Output: Phase1Output;
+
+  /** Intermediate phase outputs for debugging (only present when debug: true) */
+  debugOutputs?: DebugPhaseOutput[];
 }
 
 // ============================================================================

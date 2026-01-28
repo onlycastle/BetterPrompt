@@ -34,7 +34,7 @@ import {
   buildContentWriterUserPrompt,
   buildContentWriterUserPromptV3,
 } from './content-writer-prompts';
-import { buildPatternKnowledgeContext, extractPatternTypes } from './pattern-knowledge-mapping';
+import type { DimensionResourceMatch } from '../../models/verbose-evaluation';
 import { summarizeAgentOutputsForPhase3 } from './phase3-summarizer';
 
 /**
@@ -55,6 +55,19 @@ export interface ContentWriterConfig {
 export interface ContentWriterResult {
   data: any; // VerboseLLMResponse with nested arrays
   usage: TokenUsage;
+}
+
+/** Evidence entry from Phase 2 workers (used in evidence verification) */
+interface Phase2EvidenceEntry {
+  utteranceId: string;
+  quote: string;
+  context?: string;
+}
+
+/** Phase 2 evidence grouped by dimension for cross-referencing */
+interface Phase2DimensionEvidence {
+  strengths: Array<{ title: string; evidence: Phase2EvidenceEntry[] }>;
+  growthAreas: Array<{ title: string; evidence: Phase2EvidenceEntry[] }>;
 }
 
 /**
@@ -173,21 +186,16 @@ export class ContentWriterStage {
    * @param sessionCount - Number of sessions analyzed (from Phase 1 metrics)
    * @param agentOutputs - All Phase 2 + 2.5 worker outputs
    * @param phase1Output - Optional Phase1Output for deterministic evidence verification
+   * @param knowledgeResources - Optional DB-backed knowledge resources from Phase 2.75
    * @returns ContentWriterResult with VerboseLLMResponse and token usage
    */
   async transformV3(
     sessionCount: number,
     agentOutputs: AgentOutputs,
-    phase1Output?: Phase1Output
+    phase1Output?: Phase1Output,
+    knowledgeResources?: DimensionResourceMatch[]
   ): Promise<ContentWriterResult> {
     const agentOutputsSummary = summarizeAgentOutputsForPhase3(agentOutputs);
-
-    // Build KB context from TrustVerification detected patterns
-    const detectedPatternsData = agentOutputs.trustVerification?.detectedPatternsData;
-    const patternTypes = detectedPatternsData
-      ? this.extractPatternTypesFromData(detectedPatternsData)
-      : [];
-    const kbContext = buildPatternKnowledgeContext(patternTypes);
 
     // Select top 20 richest utterances for Content Writer to quote directly
     // Sort by wordCount (not characterCount) to favor natural language over code/symbols,
@@ -207,7 +215,7 @@ export class ContentWriterStage {
     const userPrompt = buildContentWriterUserPromptV3(
       agentOutputsSummary,
       sessionCount,
-      kbContext,
+      knowledgeResources,
       topUtterances
     );
 
@@ -223,19 +231,6 @@ export class ContentWriterStage {
       data: this.sanitizeResponseV3(result.data, agentOutputs, phase1Output),
       usage: result.usage,
     };
-  }
-
-  /**
-   * Extract pattern types from detectedPatternsData string
-   * Format: "patternType|frequency|significance;..."
-   */
-  private extractPatternTypesFromData(data: string): string[] {
-    if (!data || data.trim() === '') return [];
-    return data
-      .split(';')
-      .filter(Boolean)
-      .map(entry => entry.split('|')[0]?.trim())
-      .filter((type): type is string => !!type);
   }
 
   /**
@@ -262,7 +257,41 @@ export class ContentWriterStage {
       sanitized.controlScore = agentOutputs.typeClassifier.controlScore;
     }
 
-    // Truncate strings that exceed limits
+    // Apply shared sanitization: truncation, flattened→nested conversion, minimum items
+    this.sanitizeSharedFields(sanitized);
+
+    // Deterministic evidence verification: cross-reference Phase 2 evidence
+    // against Phase1Output originals to ensure quote accuracy
+    if (phase1Output) {
+      this.verifyAndEnrichEvidence(sanitized, agentOutputs, phase1Output);
+
+      // Verify prompt pattern examples contain only developer utterances
+      this.verifyPromptPatternExamples(sanitized, phase1Output);
+
+      // Verify Phase 2 worker examples (anti-patterns, critical thinking, planning)
+      // Must run BEFORE sanitizePremiumSectionsV3 since it reads from agentOutputs
+      this.verifyPhase2WorkerExamples(agentOutputs, phase1Output);
+    }
+
+    // Sanitize Premium sections using Phase 2 outputs
+    this.sanitizePremiumSectionsV3(sanitized, agentOutputs);
+
+    return sanitized;
+  }
+
+  /**
+   * Shared sanitization for both v2 and v3 pipelines
+   *
+   * Handles common post-processing steps:
+   * 1. Truncate personalitySummary (preserving bold markers)
+   * 2. Convert flattened dimensionInsights to nested format
+   * 3. Ensure exactly 6 dimension insights
+   * 4. Convert flattened promptPatterns to nested format
+   * 5. Ensure minimum 3 prompt patterns
+   * 6. Convert flattened topFocusAreas to nested format
+   */
+  private sanitizeSharedFields(sanitized: any): void {
+    // Truncate personalitySummary (preserving bold markers)
     if (sanitized.personalitySummary && typeof sanitized.personalitySummary === 'string') {
       if (sanitized.personalitySummary.length > 3000) {
         let truncated = sanitized.personalitySummary.slice(0, 2997);
@@ -348,24 +377,6 @@ export class ContentWriterStage {
           : area.actions,
       }));
     }
-
-    // Deterministic evidence verification: cross-reference Phase 2 evidence
-    // against Phase1Output originals to ensure quote accuracy
-    if (phase1Output) {
-      this.verifyAndEnrichEvidence(sanitized, agentOutputs, phase1Output);
-
-      // Verify prompt pattern examples contain only developer utterances
-      this.verifyPromptPatternExamples(sanitized, phase1Output);
-
-      // Verify Phase 2 worker examples (anti-patterns, critical thinking, planning)
-      // Must run BEFORE sanitizePremiumSectionsV3 since it reads from agentOutputs
-      this.verifyPhase2WorkerExamples(agentOutputs, phase1Output);
-    }
-
-    // Sanitize Premium sections using Phase 2 outputs
-    this.sanitizePremiumSectionsV3(sanitized, agentOutputs);
-
-    return sanitized;
   }
 
   /**
@@ -540,51 +551,41 @@ export class ContentWriterStage {
   /**
    * Collect Phase 2 evidence organized by dimension
    */
-  private collectPhase2Evidence(strengthGrowth: NonNullable<AgentOutputs['strengthGrowth']>): Map<string, {
-    strengths: Array<{ title: string; evidence: Array<{ utteranceId: string; quote: string; context?: string }> }>;
-    growthAreas: Array<{ title: string; evidence: Array<{ utteranceId: string; quote: string; context?: string }> }>;
-  }> {
-    const result = new Map<string, {
-      strengths: Array<{ title: string; evidence: Array<{ utteranceId: string; quote: string; context?: string }> }>;
-      growthAreas: Array<{ title: string; evidence: Array<{ utteranceId: string; quote: string; context?: string }> }>;
-    }>();
+  private collectPhase2Evidence(strengthGrowth: NonNullable<AgentOutputs['strengthGrowth']>): Map<string, Phase2DimensionEvidence> {
+    const result = new Map<string, Phase2DimensionEvidence>();
 
-    // Collect from strengths
+    const ensureDimension = (dim: string): Phase2DimensionEvidence => {
+      if (!result.has(dim)) {
+        result.set(dim, { strengths: [], growthAreas: [] });
+      }
+      return result.get(dim)!;
+    };
+
+    const extractEvidence = (item: any): Phase2EvidenceEntry[] =>
+      Array.isArray(item.evidence)
+        ? item.evidence.map((e: any) => ({
+            utteranceId: e.utteranceId || '',
+            quote: e.quote || (typeof e === 'string' ? e : ''),
+            context: e.context,
+          }))
+        : [];
+
     if (Array.isArray(strengthGrowth.strengths)) {
       for (const s of strengthGrowth.strengths) {
         const dim = (s as any).dimension || 'aiCollaboration';
-        if (!result.has(dim)) {
-          result.set(dim, { strengths: [], growthAreas: [] });
-        }
-        result.get(dim)!.strengths.push({
+        ensureDimension(dim).strengths.push({
           title: (s as any).title || '',
-          evidence: Array.isArray((s as any).evidence)
-            ? (s as any).evidence.map((e: any) => ({
-                utteranceId: e.utteranceId || '',
-                quote: e.quote || (typeof e === 'string' ? e : ''),
-                context: e.context,
-              }))
-            : [],
+          evidence: extractEvidence(s),
         });
       }
     }
 
-    // Collect from growth areas
     if (Array.isArray(strengthGrowth.growthAreas)) {
       for (const g of strengthGrowth.growthAreas) {
         const dim = (g as any).dimension || 'aiCollaboration';
-        if (!result.has(dim)) {
-          result.set(dim, { strengths: [], growthAreas: [] });
-        }
-        result.get(dim)!.growthAreas.push({
+        ensureDimension(dim).growthAreas.push({
           title: (g as any).title || '',
-          evidence: Array.isArray((g as any).evidence)
-            ? (g as any).evidence.map((e: any) => ({
-                utteranceId: e.utteranceId || '',
-                quote: e.quote || (typeof e === 'string' ? e : ''),
-                context: e.context,
-              }))
-            : [],
+          evidence: extractEvidence(g),
         });
       }
     }
@@ -856,6 +857,34 @@ export class ContentWriterStage {
       }
     }
 
+    // 4. StrengthGrowth evidence (strengths + growth areas)
+    if (agentOutputs.strengthGrowth) {
+      if (agentOutputs.strengthGrowth.strengths) {
+        for (const strength of agentOutputs.strengthGrowth.strengths) {
+          if (!Array.isArray(strength.evidence)) continue;
+          strength.evidence = strength.evidence.filter((ev: any) => {
+            if (ev.utteranceId) {
+              return this.verifyQuoteByUtteranceId(ev, utteranceLookup, stats);
+            }
+            if (!ev.quote || typeof ev.quote !== 'string') return true;
+            return this.filterBySubstringMatch(ev.quote, devTexts, aiTexts, stats);
+          });
+        }
+      }
+      if (agentOutputs.strengthGrowth.growthAreas) {
+        for (const area of agentOutputs.strengthGrowth.growthAreas) {
+          if (!Array.isArray(area.evidence)) continue;
+          area.evidence = area.evidence.filter((ev: any) => {
+            if (ev.utteranceId) {
+              return this.verifyQuoteByUtteranceId(ev, utteranceLookup, stats);
+            }
+            if (!ev.quote || typeof ev.quote !== 'string') return true;
+            return this.filterBySubstringMatch(ev.quote, devTexts, aiTexts, stats);
+          });
+        }
+      }
+    }
+
     const total = stats.verified + stats.replaced + stats.removed;
     if (total > 0) {
       this.log(`Phase 2 worker verification: verified=${stats.verified}, replaced=${stats.replaced}, removed=${stats.removed}`);
@@ -969,16 +998,10 @@ export class ContentWriterStage {
     const productivityDataJson = productivityData ? JSON.stringify(productivityData, null, 2) : undefined;
     const agentOutputsJson = agentOutputs ? JSON.stringify(agentOutputs, null, 2) : undefined;
 
-    // Build KB context from detected patterns for enriched tips
-    const patternTypes = analysisData.detectedPatterns
-      ? extractPatternTypes(analysisData.detectedPatterns)
-      : [];
-    const kbContext = buildPatternKnowledgeContext(patternTypes);
-
     const userPrompt = buildContentWriterUserPrompt(
       structuredDataJson,
       sessionCount,
-      kbContext,
+      undefined, // KB context now DB-backed via transformV3 pipeline
       productivityDataJson,
       agentOutputsJson
     );
@@ -1025,97 +1048,8 @@ export class ContentWriterStage {
       ?? analysisData.typeAnalysis.controlScore
       ?? 50;
 
-    // Truncate strings that exceed limits (preserving bold markers)
-    if (sanitized.personalitySummary && typeof sanitized.personalitySummary === 'string') {
-      if (sanitized.personalitySummary.length > 3000) {
-        let truncated = sanitized.personalitySummary.slice(0, 2997);
-        // Avoid breaking a bold marker mid-way by checking for unclosed **
-        const lastBoldStart = truncated.lastIndexOf('**');
-        const beforeLastBold = truncated.slice(0, lastBoldStart).lastIndexOf('**');
-        // If there's an unclosed bold marker (odd number of ** before truncation point)
-        if (lastBoldStart > beforeLastBold && lastBoldStart > 0) {
-          truncated = truncated.slice(0, lastBoldStart).trimEnd();
-        }
-        sanitized.personalitySummary = truncated + '...';
-      }
-    }
-
-    // Convert flattened dimensionInsights to nested format
-    if (Array.isArray(sanitized.dimensionInsights)) {
-      sanitized.dimensionInsights = sanitized.dimensionInsights.map((insight: any) => ({
-        dimension: insight.dimension,
-        dimensionDisplayName: insight.dimensionDisplayName,
-        // Parse flattened strings back to arrays
-        strengths: insight.strengthsData
-          ? parseStrengthsData(insight.strengthsData)
-          : (insight.strengths || []),
-        growthAreas: insight.growthAreasData
-          ? parseGrowthAreasData(insight.growthAreasData)
-          : (insight.growthAreas || []),
-      }));
-    }
-
-    // Ensure dimensionInsights has exactly 6 items
-    if (!Array.isArray(sanitized.dimensionInsights) || sanitized.dimensionInsights.length !== 6) {
-      sanitized.dimensionInsights = DIMENSION_NAMES.map((dim) => {
-        const existing = sanitized.dimensionInsights?.find((d: any) => d.dimension === dim);
-        return (
-          existing || {
-            dimension: dim,
-            dimensionDisplayName: DIMENSION_DISPLAY_NAMES[dim],
-            strengths: [],
-            growthAreas: [],
-          }
-        );
-      });
-    }
-
-    // Convert flattened promptPatterns to nested format
-    if (Array.isArray(sanitized.promptPatterns)) {
-      sanitized.promptPatterns = sanitized.promptPatterns.map((pattern: any) => ({
-        patternName: pattern.patternName,
-        description: pattern.description,
-        frequency: pattern.frequency,
-        // Parse flattened examplesData back to array
-        examples: pattern.examplesData
-          ? parseExamplesData(pattern.examplesData)
-          : (pattern.examples || []),
-        effectiveness: pattern.effectiveness,
-        tip: pattern.tip,
-      }));
-    }
-
-    // Ensure promptPatterns has at least 3 items
-    if (!Array.isArray(sanitized.promptPatterns) || sanitized.promptPatterns.length < 3) {
-      const existing = sanitized.promptPatterns || [];
-      while (existing.length < 3) {
-        existing.push({
-          patternName: `Pattern ${existing.length + 1}`,
-          description: 'A detected pattern in your prompting style.',
-          frequency: 'occasional',
-          examples: [{ quote: 'Example quote', analysis: 'Pattern analysis' }],
-          effectiveness: 'effective',
-          tip: 'Continue developing this pattern through practice.',
-        });
-      }
-      sanitized.promptPatterns = existing;
-    }
-
-    // Convert flattened topFocusAreas to nested format
-    if (sanitized.topFocusAreas && Array.isArray(sanitized.topFocusAreas.areas)) {
-      sanitized.topFocusAreas.areas = sanitized.topFocusAreas.areas.map((area: any) => ({
-        rank: area.rank,
-        dimension: area.dimension,
-        title: area.title,
-        narrative: area.narrative,
-        expectedImpact: area.expectedImpact,
-        priorityScore: area.priorityScore,
-        // Parse flattened actionsData back to object
-        actions: area.actionsData
-          ? parseActionsData(area.actionsData)
-          : area.actions,
-      }));
-    }
+    // Apply shared sanitization: truncation, flattened→nested conversion, minimum items
+    this.sanitizeSharedFields(sanitized);
 
     // Add evidence from Stage 1 data to dimension insights
     // NOTE: VerboseLLMResponse doesn't include evidence to reduce nesting depth

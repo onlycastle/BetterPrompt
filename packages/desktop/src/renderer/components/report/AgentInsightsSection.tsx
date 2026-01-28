@@ -1,11 +1,10 @@
 /**
  * AgentInsightsSection Component
  *
- * Displays the 4 Wow-Focused Agent outputs:
- * - Pattern Detective: Conversation patterns
- * - Anti-Pattern Spotter: Bad habits
+ * Displays Phase 2 worker outputs:
  * - Knowledge Gap Analyzer: Learning suggestions
  * - Context Efficiency Analyzer: Token efficiency
+ * - Legacy agent cards for backward compatibility with cached data
  *
  * Each agent card shows:
  * - Agent name and icon
