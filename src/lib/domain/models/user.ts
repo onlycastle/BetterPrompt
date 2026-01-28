@@ -14,9 +14,13 @@ import { z } from 'zod';
 // ============================================================================
 
 /**
- * User subscription tiers
+ * User subscription tiers (4-tier system)
+ * - free: Limited content, 3 analyses/month
+ * - one_time: Full content, 1-credit purchase (was 'paid')
+ * - pro: Full content, subscription (was 'premium')
+ * - enterprise: Full content + team management
  */
-export const UserTierSchema = z.enum(['free', 'paid', 'pro', 'premium', 'enterprise']);
+export const UserTierSchema = z.enum(['free', 'one_time', 'pro', 'enterprise']);
 export type UserTier = z.infer<typeof UserTierSchema>;
 
 /**
@@ -41,9 +45,9 @@ export const TIER_LIMITS: Record<
     customKnowledgeBase: false,
     apiAccess: false,
   },
-  paid: {
-    // Same as free for now - users who made one-time credit purchase
-    analysesPerMonth: 3,
+  one_time: {
+    // One-time credit purchase - full content access, unlimited analyses
+    analysesPerMonth: null,
     trackingEnabled: false,
     knowledgeBaseAccess: false,
     teamManagement: false,
@@ -51,14 +55,7 @@ export const TIER_LIMITS: Record<
     apiAccess: false,
   },
   pro: {
-    analysesPerMonth: null, // unlimited
-    trackingEnabled: false,
-    knowledgeBaseAccess: false,
-    teamManagement: false,
-    customKnowledgeBase: false,
-    apiAccess: true,
-  },
-  premium: {
+    // Subscription tier - full content access + advanced features
     analysesPerMonth: null,
     trackingEnabled: true,
     knowledgeBaseAccess: true,
@@ -67,6 +64,7 @@ export const TIER_LIMITS: Record<
     apiAccess: true,
   },
   enterprise: {
+    // Enterprise tier - full content access + team management
     analysesPerMonth: null,
     trackingEnabled: true,
     knowledgeBaseAccess: true,
