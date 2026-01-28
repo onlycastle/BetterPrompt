@@ -295,3 +295,91 @@ export const WORKER_DOMAIN_CONFIGS: WorkerDomainConfig[] = [
     scoreLabel: 'Efficiency Score',
   },
 ];
+
+// ============================================================================
+// Translation Overlay Functions
+// ============================================================================
+
+/**
+ * Parse translated strengths data and apply to WorkerStrength array.
+ *
+ * The translatedData format mirrors the strengthsData format from LLM output:
+ * "translatedTitle|translatedDescription|originalQuotes|frequency;..."
+ *
+ * This function overlays translated title/description while preserving
+ * original evidence quotes (which should remain in the source language).
+ *
+ * @param strengths - Original WorkerStrength array (English)
+ * @param translatedData - Translated data string from TranslatedAgentInsights
+ * @returns WorkerStrength array with translated title/description
+ */
+export function applyTranslatedStrengths(
+  strengths: WorkerStrength[],
+  translatedData: string | undefined
+): WorkerStrength[] {
+  if (!translatedData || translatedData.trim() === '') return strengths;
+
+  const translations = translatedData.split(';').filter(Boolean);
+
+  return strengths.map((strength, index) => {
+    const translationEntry = translations[index];
+    if (!translationEntry) return strength;
+
+    const parts = translationEntry.split('|');
+    if (parts.length < 2) return strength;
+
+    const translatedTitle = parts[0]?.trim();
+    const translatedDescription = parts[1]?.trim();
+
+    return {
+      ...strength,
+      title: translatedTitle || strength.title,
+      description: translatedDescription || strength.description,
+      // evidence stays as original (parts[2] contains original quotes)
+    };
+  });
+}
+
+/**
+ * Parse translated growth areas data and apply to WorkerGrowth array.
+ *
+ * The translatedData format mirrors the growthAreasData format from LLM output:
+ * "translatedTitle|translatedDesc|originalEvidence|translatedRec|freq|severity|priority;..."
+ *
+ * This function overlays translated title/description/recommendation while
+ * preserving original evidence quotes and numeric fields.
+ *
+ * @param growthAreas - Original WorkerGrowth array (English)
+ * @param translatedData - Translated data string from TranslatedAgentInsights
+ * @returns WorkerGrowth array with translated title/description/recommendation
+ */
+export function applyTranslatedGrowthAreas(
+  growthAreas: WorkerGrowth[],
+  translatedData: string | undefined
+): WorkerGrowth[] {
+  if (!translatedData || translatedData.trim() === '') return growthAreas;
+
+  const translations = translatedData.split(';').filter(Boolean);
+
+  return growthAreas.map((growth, index) => {
+    const translationEntry = translations[index];
+    if (!translationEntry) return growth;
+
+    const parts = translationEntry.split('|');
+    if (parts.length < 4) return growth;
+
+    const translatedTitle = parts[0]?.trim();
+    const translatedDescription = parts[1]?.trim();
+    // parts[2] is evidence (keep original)
+    const translatedRecommendation = parts[3]?.trim();
+    // parts[4], [5], [6] are frequency, severity, priority (keep original)
+
+    return {
+      ...growth,
+      title: translatedTitle || growth.title,
+      description: translatedDescription || growth.description,
+      recommendation: translatedRecommendation || growth.recommendation,
+      // evidence, severity, frequency stay as original
+    };
+  });
+}

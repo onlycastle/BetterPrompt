@@ -318,7 +318,7 @@ export const AnalysisMetadataSchema = z.object({
 // MAIN SCHEMA: UnifiedReport
 // ============================================
 
-export const TierSchema = z.enum(['free', 'pro', 'premium', 'enterprise']);
+export const TierSchema = z.enum(['free', 'one_time', 'pro', 'enterprise']);
 
 export const UnifiedReportSchema = z.object({
   // Metadata

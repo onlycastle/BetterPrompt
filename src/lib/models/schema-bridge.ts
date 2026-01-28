@@ -92,9 +92,6 @@ const LEVEL_MAPPINGS: Record<string, DimensionLevel> = {
   cartographer: 'expert',
 };
 
-/**
- * Map dimension level strings to DimensionLevel
- */
 function mapLevel(level: string): DimensionLevel {
   return LEVEL_MAPPINGS[level] ?? 'developing';
 }
@@ -113,13 +110,19 @@ const SCORE_THRESHOLDS = {
  */
 const BURNOUT_LOW_RISK_THRESHOLD = 30;
 
-/**
- * Calculate dimension level from score
- */
 function scoreToDimensionLevel(score: number): DimensionLevel {
-  if (score >= SCORE_THRESHOLDS.expert) return 'expert';
-  if (score >= SCORE_THRESHOLDS.proficient) return 'proficient';
-  if (score >= SCORE_THRESHOLDS.developing) return 'developing';
+  if (score >= SCORE_THRESHOLDS.expert) {
+    return 'expert';
+  }
+
+  if (score >= SCORE_THRESHOLDS.proficient) {
+    return 'proficient';
+  }
+
+  if (score >= SCORE_THRESHOLDS.developing) {
+    return 'developing';
+  }
+
   return 'novice';
 }
 
@@ -350,8 +353,14 @@ const OVERALL_MESSAGES = {
  * Generate overall message based on average score
  */
 function getOverallMessage(avgScore: number): string {
-  if (avgScore >= MESSAGE_THRESHOLDS.strong) return OVERALL_MESSAGES.strong;
-  if (avgScore >= MESSAGE_THRESHOLDS.moderate) return OVERALL_MESSAGES.moderate;
+  if (avgScore >= MESSAGE_THRESHOLDS.strong) {
+    return OVERALL_MESSAGES.strong;
+  }
+
+  if (avgScore >= MESSAGE_THRESHOLDS.moderate) {
+    return OVERALL_MESSAGES.moderate;
+  }
+
   return OVERALL_MESSAGES.foundational;
 }
 
@@ -413,9 +422,18 @@ function mapEvidenceSentiment(
   sourceSentiment: string,
   category: 'strength' | 'growth' | 'pattern'
 ): 'positive' | 'negative' | 'neutral' {
-  if (category === 'strength' && sourceSentiment === 'positive') return 'positive';
-  if (category === 'growth' && sourceSentiment === 'growth_opportunity') return 'negative';
-  if (category === 'pattern' && sourceSentiment === 'highly_effective') return 'positive';
+  if (category === 'strength' && sourceSentiment === 'positive') {
+    return 'positive';
+  }
+
+  if (category === 'growth' && sourceSentiment === 'growth_opportunity') {
+    return 'negative';
+  }
+
+  if (category === 'pattern' && sourceSentiment === 'highly_effective') {
+    return 'positive';
+  }
+
   return 'neutral';
 }
 
@@ -607,9 +625,6 @@ const CONTROL_LEVEL_MAPPINGS: Record<string, ControlLevel> = {
   explorer: 'explorer',
 };
 
-/**
- * Derive control level from AI control analysis level
- */
 function deriveControlLevel(level: string): ControlLevel {
   return CONTROL_LEVEL_MAPPINGS[level] ?? 'navigator';
 }
@@ -698,8 +713,8 @@ export function toUnifiedReport(input: ConversionInput): UnifiedReport {
     tier,
   };
 
-  // Add premium content if applicable
-  if (tier === 'premium' || tier === 'enterprise') {
+  // Add premium content if applicable (one_time, pro, enterprise get full access)
+  if (tier === 'one_time' || tier === 'pro' || tier === 'enterprise') {
     report.premium = buildPremiumContent(dimensions, verbose);
   }
 
@@ -743,11 +758,11 @@ function buildPremiumContent(
   return premium;
 }
 
-/**
- * Get tool recommendation based on proficiency level
- */
 function getToolRecommendation(tool: string, level: string): string {
-  if (level === 'expert') return 'Keep up the great work!';
+  if (level === 'expert') {
+    return 'Keep up the great work!';
+  }
+
   return `Consider using ${tool} more strategically`;
 }
 
