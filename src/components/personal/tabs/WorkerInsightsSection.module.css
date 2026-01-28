@@ -1,0 +1,384 @@
+/**
+ * WorkerInsightsSection Styles
+ *
+ * Displays domain-specific insights from Phase 2 workers in a clean,
+ * scannable layout with clear visual hierarchy.
+ */
+
+/* ============================================================================
+   Container & Header
+   ============================================================================ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.sectionHeader {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a1a2e);
+  margin: 0 0 0.5rem 0;
+}
+
+.sectionSubtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0;
+}
+
+/* ============================================================================
+   Domains Container
+   ============================================================================ */
+
+.domainsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* ============================================================================
+   Domain Section
+   ============================================================================ */
+
+.domainSection {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-light, #e5e7eb);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: box-shadow 0.2s ease;
+}
+
+.domainSection:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.domainHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-light, #e5e7eb);
+}
+
+.domainTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.domainIcon {
+  font-size: 1.5rem;
+}
+
+.domainTitleGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.domainTitle {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a2e);
+  margin: 0;
+}
+
+.domainSubtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0.25rem 0 0 0;
+}
+
+/* ============================================================================
+   Score Badge
+   ============================================================================ */
+
+.scoreBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  min-width: 70px;
+}
+
+.scoreValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.scoreLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+}
+
+.scoreHigh {
+  background: linear-gradient(135deg, #d4edda, #c3e6cb);
+  color: #155724;
+}
+
+.scoreMedium {
+  background: linear-gradient(135deg, #fff3cd, #ffeeba);
+  color: #856404;
+}
+
+.scoreLow {
+  background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+  color: #721c24;
+}
+
+/* ============================================================================
+   Insights Grid (Two Columns)
+   ============================================================================ */
+
+.insightsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .insightsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.insightsColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.columnTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a2e);
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.columnIcon {
+  font-size: 1rem;
+}
+
+.cardsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ============================================================================
+   Insight Card
+   ============================================================================ */
+
+.insightCard {
+  background: var(--bg-subtle, #f9fafb);
+  border: 1px solid var(--border-light, #e5e7eb);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.insightCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.growthCard {
+  border-left: 3px solid var(--warning-color, #f59e0b);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.cardIcon {
+  font-size: 1rem;
+}
+
+.cardTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a2e);
+  margin: 0;
+  flex: 1;
+}
+
+.cardDescription {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.5;
+}
+
+/* ============================================================================
+   Frequency & Severity Badges
+   ============================================================================ */
+
+.frequencyBadge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  background: var(--bg-subtle, #f3f4f6);
+  color: var(--text-secondary, #6b7280);
+}
+
+.severityBadge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.severityCritical {
+  background: #fecaca;
+  color: #dc2626;
+}
+
+.severityHigh {
+  background: #fed7aa;
+  color: #ea580c;
+}
+
+.severityMedium {
+  background: #fef08a;
+  color: #ca8a04;
+}
+
+.severityLow {
+  background: #d1fae5;
+  color: #059669;
+}
+
+/* ============================================================================
+   Evidence Section
+   ============================================================================ */
+
+.evidenceSection {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border-light, #e5e7eb);
+}
+
+.evidenceLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-tertiary, #9ca3af);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.evidenceList {
+  margin: 0;
+  padding-left: 1rem;
+  list-style: none;
+}
+
+.evidenceItem {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6b7280);
+  font-style: italic;
+  margin-bottom: 0.25rem;
+  position: relative;
+}
+
+.evidenceItem::before {
+  content: '"';
+  position: absolute;
+  left: -0.75rem;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+/* ============================================================================
+   Recommendation Section
+   ============================================================================ */
+
+.recommendationSection {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #fef3c7, #fef9c3);
+  border-radius: 6px;
+}
+
+.recommendationLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #b45309;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.recommendationText {
+  font-size: 0.85rem;
+  color: #92400e;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ============================================================================
+   Locked Content
+   ============================================================================ */
+
+.lockedContent {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-subtle, #f3f4f6);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+.lockIcon {
+  font-size: 0.9rem;
+}
+
+/* ============================================================================
+   Empty State
+   ============================================================================ */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  background: var(--bg-subtle, #f9fafb);
+  border-radius: 12px;
+  border: 1px dashed var(--border-light, #e5e7eb);
+}
+
+.emptyIcon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.emptyText {
+  font-size: 0.95rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0;
+  max-width: 300px;
+}
