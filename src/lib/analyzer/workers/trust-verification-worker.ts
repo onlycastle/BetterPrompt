@@ -21,7 +21,6 @@ import {
   parseTrustVerificationLLMOutput,
 } from '../../models/trust-verification-data';
 import type { Phase1Output } from '../../models/phase1-output';
-import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
   TRUST_VERIFICATION_SYSTEM_PROMPT,
@@ -33,21 +32,15 @@ import {
  *
  * Phase 2 worker that analyzes anti-patterns and verification behavior.
  * Answers: "Does this developer blindly trust AI or verify outputs?"
- *
- * Premium tier - anti-pattern and verification analysis is a premium feature.
  */
 export class TrustVerificationWorker extends BaseWorker<TrustVerificationOutput> {
   readonly name = 'TrustVerification';
   readonly phase = 2 as const;
-  readonly minTier: Tier = 'premium'; // Anti-pattern analysis is premium
 
   constructor(config: OrchestratorConfig) {
     super(config);
   }
 
-  /**
-   * Check if worker can run
-   */
   canRun(context: WorkerContext): boolean {
     const phase2Context = context as Phase2WorkerContext;
 
@@ -64,11 +57,6 @@ export class TrustVerificationWorker extends BaseWorker<TrustVerificationOutput>
     return true;
   }
 
-  /**
-   * Execute trust verification analysis
-   *
-   * NO FALLBACK: Errors propagate to fail the analysis.
-   */
   async execute(context: WorkerContext): Promise<WorkerResult<TrustVerificationOutput>> {
     const phase2Context = context as Phase2WorkerContext;
 
@@ -104,11 +92,6 @@ export class TrustVerificationWorker extends BaseWorker<TrustVerificationOutput>
     return this.createSuccessResult(parsedOutput, result.usage);
   }
 
-  /**
-   * Prepare Phase 1 output for the prompt
-   *
-   * Prioritizes error-related AI responses for anti-pattern detection.
-   */
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
     return {
       developerUtterances: phase1.developerUtterances.map((u) => ({

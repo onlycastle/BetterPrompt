@@ -17,7 +17,6 @@ import {
   type KnowledgeGapOutput,
 } from '../../models/agent-outputs';
 import type { Phase1Output } from '../../models/phase1-output';
-import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
   KNOWLEDGE_GAP_SYSTEM_PROMPT,
@@ -29,26 +28,17 @@ import {
  *
  * Phase 2 worker that identifies knowledge gaps and tracks progress.
  * Uses Phase1Output (v2 context isolation).
- * Requires Premium tier or higher.
  */
 export class KnowledgeGapWorker extends BaseWorker<KnowledgeGapOutput> {
   readonly name = 'KnowledgeGap';
   readonly phase = 2 as const;
-  readonly minTier: Tier = 'premium';
 
   constructor(config: OrchestratorConfig) {
     super(config);
   }
 
-  /**
-   * Check if worker can run
-   */
   canRun(context: WorkerContext): boolean {
     const phase2Context = context as Phase2WorkerContext;
-
-    if (!this.isTierSufficient(context.tier)) {
-      return false;
-    }
 
     if (!phase2Context.phase1Output) {
       this.log('Cannot run: Phase 1 output not available');
@@ -63,10 +53,6 @@ export class KnowledgeGapWorker extends BaseWorker<KnowledgeGapOutput> {
     return true;
   }
 
-  /**
-   * Execute knowledge gap analysis
-   * NO FALLBACK: Errors propagate to fail the analysis
-   */
   async execute(context: WorkerContext): Promise<WorkerResult<KnowledgeGapOutput>> {
     const phase2Context = context as Phase2WorkerContext;
 
@@ -95,11 +81,6 @@ export class KnowledgeGapWorker extends BaseWorker<KnowledgeGapOutput> {
     return this.createSuccessResult(result.data, result.usage);
   }
 
-  /**
-   * Prepare Phase 1 output for the prompt
-   *
-   * Focuses on questions and learning-related utterances.
-   */
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
     return {
       developerUtterances: phase1.developerUtterances.map((u) => ({

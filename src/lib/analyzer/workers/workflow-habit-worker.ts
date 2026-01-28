@@ -19,7 +19,6 @@ import {
   parseWorkflowHabitLLMOutput,
 } from '../../models/workflow-habit-data';
 import type { Phase1Output } from '../../models/phase1-output';
-import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
   WORKFLOW_HABIT_SYSTEM_PROMPT,
@@ -31,21 +30,15 @@ import {
  *
  * Phase 2 worker that analyzes planning habits and thinking patterns.
  * Answers: "How intentionally does this developer structure their work?"
- *
- * Premium tier - detailed workflow analysis is a premium feature.
  */
 export class WorkflowHabitWorker extends BaseWorker<WorkflowHabitOutput> {
   readonly name = 'WorkflowHabit';
   readonly phase = 2 as const;
-  readonly minTier: Tier = 'premium'; // Workflow analysis is premium
 
   constructor(config: OrchestratorConfig) {
     super(config);
   }
 
-  /**
-   * Check if worker can run
-   */
   canRun(context: WorkerContext): boolean {
     const phase2Context = context as Phase2WorkerContext;
 
@@ -62,11 +55,6 @@ export class WorkflowHabitWorker extends BaseWorker<WorkflowHabitOutput> {
     return true;
   }
 
-  /**
-   * Execute workflow habit analysis
-   *
-   * NO FALLBACK: Errors propagate to fail the analysis.
-   */
   async execute(context: WorkerContext): Promise<WorkerResult<WorkflowHabitOutput>> {
     const phase2Context = context as Phase2WorkerContext;
 
@@ -101,11 +89,6 @@ export class WorkflowHabitWorker extends BaseWorker<WorkflowHabitOutput> {
     return this.createSuccessResult(parsedOutput, result.usage);
   }
 
-  /**
-   * Prepare Phase 1 output for the prompt
-   *
-   * Includes tool usage counts and session start utterances for planning detection.
-   */
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
     return {
       developerUtterances: phase1.developerUtterances.map((u) => ({
