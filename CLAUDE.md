@@ -37,8 +37,9 @@ npm test               # Run all tests
 | Phase | Component | LLM Calls | Description |
 |-------|-----------|-----------|-------------|
 | 1 | DataExtractor | 0 | Deterministic extraction (no LLM) |
-| 2 | 5 Insight Workers | 5 | Parallel analysis (StrengthGrowth, TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency) |
-| 2.5 | TypeClassifier | 1 | Developer type classification (5x3 matrix) |
+| 2 | 4 Insight Workers | 4 | Parallel analysis (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency) |
+| 2.5 | StrengthGrowthSynthesizer | 1 | Cross-domain strengths/growth from Phase 2 outputs (sequential) |
+| 2.5 | TypeClassifier | 1 | Developer type classification (5x3 matrix, sequential after Synthesizer) |
 | 3 | ContentWriter | 1 | Personalized narrative generation |
 | 4 | Translator | 0-1 | Conditional translation (non-English only) |
 

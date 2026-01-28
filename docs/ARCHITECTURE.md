@@ -73,7 +73,7 @@ Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation
 | `src/lib/infrastructure/` | Supabase & local storage adapters | Infrastructure |
 | `src/lib/analyzer/` | LLM analysis (prompts, dimensions, insights) | Application |
 | `src/lib/analyzer/orchestrator/` | 4-phase analysis orchestration | Application |
-| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (StrengthGrowth, TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency) + Phase 2.5 TypeClassifier | Application |
+| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency) + Phase 2.5 StrengthGrowthSynthesizer → TypeClassifier | Application |
 | `src/lib/analyzer/stages/` | Content Writer stage (Phase 3 narrative generation) | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/parser/` | JSONL session parsing | Infrastructure |
@@ -153,24 +153,28 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 - Output: `Phase1Output` (DeveloperUtterances[], AIResponses[], SessionMetrics)
 - 0 LLM calls
 
-**Phase 2: Insight Generation (Parallel, 5 workers)**
-- **StrengthGrowthWorker** (free) - Identifies strengths and growth areas with evidence
+**Phase 2: Insight Generation (Parallel, 4 workers)**
 - **TrustVerificationWorker** (premium) - Anti-patterns and verification behavior analysis
 - **WorkflowHabitWorker** (premium) - Planning, critical thinking, multitasking patterns
 - **KnowledgeGapWorker** (premium) - Knowledge gaps and learning suggestions
 - **ContextEfficiencyWorker** (premium) - Token inefficiency patterns
-- Output: `AgentOutputs` (merged results)
-- 5 LLM calls (parallel)
+- Output: `AgentOutputs` (merged results, excluding strengthGrowth)
+- 4 LLM calls (parallel)
 
-**Phase 2.5: Type Classification**
-- **TypeClassifierWorker** (free) - Type classification + synthesis using Phase 2 outputs
-- Uses semantic analysis from Phase 2 agents to improve accuracy of:
-  - 5 coding styles: architect, scientist, collaborator, speedrunner, craftsman
-  - 3 control levels: explorer, navigator, cartographer
-  - 15 combination matrix (5×3 = unique personalities)
-- Output: `TypeClassifierOutput` with refined classification and evidence
-- Available for all tiers (free and above)
-- 1 LLM call
+**Phase 2.5: Synthesis → Classification (Sequential, 2 workers)**
+- **StrengthGrowthSynthesizer** (free) - Cross-domain strengths/growth from ALL Phase 2 outputs
+  - Receives structured Phase 2 worker summaries + Phase 1 utterances for evidence
+  - Detects cross-domain patterns (e.g., blind_retry + no_planning → reactive problem-solving)
+  - Output: `StrengthGrowthOutput` (identical schema to original, backward compatible)
+  - 1 LLM call
+- **TypeClassifierWorker** (free) - Type classification using all Phase 2 + synthesized data
+  - Uses semantic analysis from Phase 2 agents + Synthesizer to improve accuracy of:
+    - 5 coding styles: architect, scientist, collaborator, speedrunner, craftsman
+    - 3 control levels: explorer, navigator, cartographer
+    - 15 combination matrix (5×3 = unique personalities)
+  - Output: `TypeClassifierOutput` with refined classification and evidence
+  - 1 LLM call
+- Workers run sequentially: Synthesizer output is merged into agentOutputs before TypeClassifier runs
 
 **Phase 3: Content Writer**
 - **ContentWriterStage** (`src/lib/analyzer/stages/content-writer.ts`)
@@ -186,7 +190,7 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 - Output: `TranslatorOutput` (text fields only, merged with English response)
 - 0-1 LLM call (conditional)
 
-**Total: 7-8 LLM calls (0 + 5 + 1 + 1 + 0-1)**
+**Total: 7-8 LLM calls (0 + 4 + 2 + 1 + 0-1)**
 
 **Prompt Engineering:**
 - Prompts in `src/lib/analyzer/workers/prompts/phase2-worker-prompts.ts` and `content-writer-prompts.ts`

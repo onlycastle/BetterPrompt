@@ -34,23 +34,25 @@
 │   ║  └─────────────────────────────────────────────────────────────────────────┘ ║   │
 │   ║                              │                                                ║   │
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
-│   ║  │ PHASE 2: Insight Generation (parallel, 5 workers, 5 LLM calls)        │   ║   │
+│   ║  │ PHASE 2: Insight Generation (parallel, 4 workers, 4 LLM calls)        │   ║   │
 │   ║  │                                                                         │   ║   │
-│   ║  │ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────┐ │   ║   │
-│   ║  │ │ Strength   │ │   Trust    │ │  Workflow  │ │ Knowledge  │ │Cntxt │ │   ║   │
-│   ║  │ │  Growth    │ │Verification│ │   Habit    │ │    Gap     │ │Effic.│ │   ║   │
-│   ║  │ │  (free)    │ │ (premium)  │ │ (premium)  │ │  (free)    │ │(prem)│ │   ║   │
-│   ║  │ └────────────┘ └────────────┘ └────────────┘ └────────────┘ └──────┘ │   ║   │
+│   ║  │ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────────┐         │   ║   │
+│   ║  │ │   Trust    │ │  Workflow  │ │ Knowledge  │ │   Context    │         │   ║   │
+│   ║  │ │Verification│ │   Habit    │ │    Gap     │ │  Efficiency  │         │   ║   │
+│   ║  │ │ (premium)  │ │ (premium)  │ │  (free)    │ │  (premium)   │         │   ║   │
+│   ║  │ └────────────┘ └────────────┘ └────────────┘ └──────────────┘         │   ║   │
 │   ║  │                                   │                                     │   ║   │
 │   ║  │                                   ▼                                     │   ║   │
 │   ║  │                            AgentOutputs                                 │   ║   │
 │   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
 │   ║                              │                                                ║   │
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
-│   ║  │ PHASE 2.5: Type Classification (1 LLM call)                            │   ║   │
+│   ║  │ PHASE 2.5: Synthesis → Classification (2 sequential LLM calls)        │   ║   │
 │   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
-│   ║  │ │ TypeClassifierWorker (free)                                      │   │   ║   │
-│   ║  │ │ Classifies developer type using Phase1 + AgentOutputs           │   │   ║   │
+│   ║  │ │ StrengthGrowthSynthesizer (free) — cross-domain synthesis       │   │   ║   │
+│   ║  │ │ → merges result into AgentOutputs                               │   │   ║   │
+│   ║  │ │ TypeClassifierWorker (free) — type classification               │   │   ║   │
+│   ║  │ │ → uses Phase 2 outputs + synthesized strengths/growth           │   │   ║   │
 │   ║  │ └─────────────────────────────────────────────────────────────────┘   │   ║   │
 │   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
 │   ║                              │                                                ║   │
@@ -185,7 +187,7 @@ Phase1Output
 
 **Purpose**: Generate deep insights based on Phase 1 results
 
-> 5 workers run in parallel. Some workers are free tier, some require premium.
+> 4 workers run in parallel. Some workers are free tier, some require premium.
 
 **IMPORTANT: Context Isolation**
 All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
@@ -194,7 +196,7 @@ All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    PHASE 2: 5 WORKERS (PARALLEL)                        │
+│                    PHASE 2: 4 WORKERS (PARALLEL)                        │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌──────────────────────────────┐                                       │
@@ -204,18 +206,12 @@ All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
 │               │                                                          │
 │  ┌────────────┴───────────────────────────────────────────────────┐    │
 │  │                                                                  │    │
-│  │  5 Parallel Workers (LLM-based)                                 │    │
-│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐                  │    │
-│  │  │ Strength   │ │   Trust    │ │  Workflow  │                  │    │
-│  │  │  Growth    │ │Verification│ │   Habit    │                  │    │
-│  │  │  (free)    │ │ (premium)  │ │ (premium)  │                  │    │
-│  │  └────────────┘ └────────────┘ └────────────┘                  │    │
-│  │                                                                  │    │
-│  │  ┌────────────┐ ┌────────────┐                                 │    │
-│  │  │ Knowledge  │ │  Context   │                                 │    │
-│  │  │    Gap     │ │ Efficiency │                                 │    │
-│  │  │  (free)    │ │ (premium)  │                                 │    │
-│  │  └────────────┘ └────────────┘                                 │    │
+│  │  4 Parallel Workers (LLM-based)                                 │    │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐  │    │
+│  │  │   Trust    │ │  Workflow  │ │ Knowledge  │ │  Context   │  │    │
+│  │  │Verification│ │   Habit    │ │    Gap     │ │ Efficiency │  │    │
+│  │  │ (premium)  │ │ (premium)  │ │  (free)    │ │ (premium)  │  │    │
+│  │  └────────────┘ └────────────┘ └────────────┘ └────────────┘  │    │
 │  │                                                                  │    │
 │  └──────────────────────────────────┬──────────────────────────────┘    │
 │                                      │                                   │
@@ -232,7 +228,6 @@ All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
 
 | Worker | Tier | Purpose | Output Schema |
 |--------|------|---------|---------------|
-| **StrengthGrowth** | free | Strengths & growth areas with evidence | `StrengthGrowthOutput` |
 | **TrustVerification** | premium | Anti-patterns & trust verification behavior | `TrustVerificationOutput` |
 | **WorkflowHabit** | premium | Planning, critical thinking, multitasking | `WorkflowHabitOutput` |
 | **KnowledgeGap** | free | Knowledge gaps & learning suggestions | `KnowledgeGapOutput` |
@@ -253,22 +248,21 @@ AgentOutputs
 
 ---
 
-### Phase 2.5: Type Classification
+### Phase 2.5: Synthesis → Classification
 
-**Purpose**: Classify developer type using Phase 1 output + Phase 2 agent outputs
+**Purpose**: Synthesize cross-domain insights, then classify developer type
 
-> Runs after Phase 2, before Phase 3. Available for all tiers (free).
+> Runs sequentially after Phase 2, before Phase 3. Both workers available for all tiers (free).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    PHASE 2.5: TYPE CLASSIFICATION                       │
+│              PHASE 2.5: SYNTHESIS → CLASSIFICATION (SEQUENTIAL)          │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌──────────────────────────────┐                                       │
 │  │  INPUT (from Phase 1 + 2)    │                                       │
-│  │  - Phase1Output              │  ◀── Extracted data                   │
-│  │  - AgentOutputs              │  ◀── All Phase 2 agent results       │
-│  │    ├── strengthGrowth        │                                       │
+│  │  - Phase1Output              │  ◀── Utterances for evidence          │
+│  │  - AgentOutputs              │  ◀── Phase 2 worker results           │
 │  │    ├── trustVerification     │                                       │
 │  │    ├── workflowHabit         │                                       │
 │  │    ├── knowledgeGap          │                                       │
@@ -277,53 +271,60 @@ AgentOutputs
 │               │                                                          │
 │               ▼                                                          │
 │  ┌────────────────────────────────────────────┐                         │
-│  │  LLM CALL                                   │                         │
-│  │  Model: gemini-3-flash-preview             │                         │
-│  │  Temperature: 1.0 (Gemini default)         │                         │
-│  │  Max Tokens: 4096                          │                         │
-│  │  Structured Output: TypeClassifierOutput   │                         │
+│  │  STEP 1: StrengthGrowthSynthesizer (free) │ ◀── 1 LLM call         │
+│  │  Cross-domain strengths/growth synthesis    │                         │
+│  │  Output: StrengthGrowthOutput               │                         │
+│  │  → Merged into AgentOutputs                 │                         │
+│  └────────────────────────────────────────────┘                         │
+│               │                                                          │
+│               ▼                                                          │
+│  ┌────────────────────────────────────────────┐                         │
+│  │  STEP 2: TypeClassifierWorker (free)       │ ◀── 1 LLM call         │
+│  │  Uses Phase 2 + Synthesizer outputs         │                         │
+│  │  Output: TypeClassifierOutput               │                         │
+│  │  → Primary type, control level, matrix      │                         │
 │  └────────────────────────────────────────────┘                         │
 │               │                                                          │
 │               ▼                                                          │
 │  ┌──────────────────┐                                                   │
-│  │  OUTPUT          │                                                   │
-│  │  TypeClassifier  │     - Primary type + distribution                 │
-│  │  Output          │     - Control level                               │
-│  │                  │     - Matrix name + emoji                         │
-│  │                  │     - Reasoning & evidence                        │
+│  │ AgentOutputs     │  (now includes strengthGrowth + typeClassifier)    │
 │  └──────────────────┘                                                   │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### Type Classification Process
+#### Phase 2.5 Sequential Process
 
-1. **Input Analysis**:
-   - Phase1Output: Developer utterances, AI responses, metrics
-   - AgentOutputs: Insights from 5 Phase 2 workers
+1. **StrengthGrowthSynthesizer** (Step 1):
+   - Receives structured summaries from 4 Phase 2 workers
+   - Receives Phase 1 utterances for evidence quote selection
+   - Detects cross-domain patterns (e.g., blind_retry + no_planning → reactive)
+   - Minimum 2/5-7 strengths and 2/5-7 growth areas must be cross-domain
+   - Output merged into AgentOutputs before TypeClassifier runs
 
-2. **LLM Classification**:
-   - Analyzes behavioral patterns and semantic evidence
+2. **TypeClassifierWorker** (Step 2):
+   - Receives AgentOutputs (now including synthesized strengthGrowth)
+   - Analyzes behavioral patterns + semantic evidence
    - Assigns developer to 5 coding styles × 3 control levels (15 combinations)
-   - Provides reasoning with specific evidence citations
+   - Output: Primary type, distribution, control level, matrix name/emoji, confidence
 
-3. **Output**:
-   - Primary type and distribution (e.g., 42% architect, 25% scientist, ...)
-   - Control level (explorer, navigator, cartographer)
-   - Combined matrix name (e.g., "Systems Architect", "Curious Scientist")
-   - Matrix emoji
-   - Confidence score
-
-#### TypeClassifierWorker
+#### Workers
 
 ```typescript
+// Step 1: Synthesizer
+export class StrengthGrowthWorker extends BaseWorker<StrengthGrowthOutput> {
+  readonly name = 'StrengthGrowth';
+  readonly phase = 2 as const;  // Registered as Phase 2.5
+  readonly minTier: Tier = 'free';
+  // canRun: requires agentOutputs + phase1Output
+}
+
+// Step 2: Classifier
 export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   readonly name = 'TypeClassifier';
-  readonly phase = 2 as const;  // Runs as Phase 2.5 (after other Phase 2 workers)
+  readonly phase = 2 as const;  // Registered as Phase 2.5
   readonly minTier: Tier = 'free';
-
-  canRun(context: WorkerContext): boolean;
-  execute(context: WorkerContext): Promise<WorkerResult<TypeClassifierOutput>>;
+  // canRun: requires agentOutputs (including synthesized strengthGrowth)
 }
 ```
 
@@ -677,13 +678,12 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
                        │ [3] Pass Phase1Output to Phase 2 (Premium+ only)
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║         PHASE 2: INSIGHT GENERATION (5 workers, 5 LLM calls)      ║
+  ║         PHASE 2: INSIGHT GENERATION (4 workers, 4 LLM calls)      ║
   ║                                                                    ║
-  ║   [5 parallel workers, tier requirements vary per worker]          ║
+  ║   [4 parallel workers, tier requirements vary per worker]          ║
   ║                                                                    ║
   ║   INPUT:  Phase1Output (ONLY - no raw sessions)                   ║
-  ║   OUTPUT: AgentOutputs (merged)                                    ║
-  ║           - StrengthGrowthWorker → strengths/growth (free)        ║
+  ║   OUTPUT: AgentOutputs (merged, excluding strengthGrowth)          ║
   ║           - TrustVerificationWorker → anti-patterns (premium)     ║
   ║           - WorkflowHabitWorker → planning/thinking (premium)     ║
   ║           - KnowledgeGapWorker → knowledge gaps (free)            ║
@@ -695,18 +695,21 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
                        │ [4] Pass agent outputs to Phase 2.5
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║      PHASE 2.5: TYPE CLASSIFICATION (1 LLM call)                 ║
+  ║   PHASE 2.5: SYNTHESIS → CLASSIFICATION (2 sequential LLM calls) ║
   ║                                                                    ║
-  ║   [TypeClassifierWorker - runs after Phase 2, before Phase 3]     ║
+  ║   STEP 1: StrengthGrowthSynthesizer (free)                       ║
+  ║   INPUT:  Phase2 AgentOutputs + Phase1Output (utterances)         ║
+  ║   OUTPUT: StrengthGrowthOutput → merged into AgentOutputs         ║
   ║                                                                    ║
-  ║   INPUT:  Phase1Output + AgentOutputs                             ║
+  ║   STEP 2: TypeClassifierWorker (free)                             ║
+  ║   INPUT:  AgentOutputs (now includes strengthGrowth)              ║
   ║   OUTPUT: TypeClassifierOutput                                     ║
   ║           - primaryType + distribution                             ║
   ║           - controlLevel + controlScore                            ║
   ║           - matrixName + matrixEmoji                               ║
   ║           - confidenceScore + reasoning                            ║
   ║                                                                    ║
-  ║   NO FALLBACK: If type classification fails, error is thrown      ║
+  ║   NO FALLBACK: If either worker fails, error is thrown            ║
   ╚═══════════════════════════════════════════════════════════════════╝
                        │
                        │ [5] Pass all outputs to Phase 3
@@ -803,12 +806,14 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 │  ┌──────────────────────────────────────────────────────────┐           │
 │  │  PHASE 1: DataExtractor (deterministic, no LLM cost)     │           │
 │  │                                                           │           │
-│  │  PHASE 2 (Parallel): 5 Workers (tier-gated)              │           │
-│  │  ~4K tokens per worker, ~20K total (all workers)         │           │
-│  │  Free tier runs: StrengthGrowth, KnowledgeGap (2 LLM)    │           │
-│  │  Premium runs: all 5 workers (5 LLM calls)               │           │
+│  │  PHASE 2 (Parallel): 4 Workers (tier-gated)              │           │
+│  │  ~4K tokens per worker, ~16K total (all workers)         │           │
+│  │  Free tier runs: KnowledgeGap (1 LLM)                     │           │
+│  │  Premium runs: all 4 workers (4 LLM calls)               │           │
 │  │                                                           │           │
-│  │  PHASE 2.5: TypeClassifier (1 LLM call)                  │           │
+│  │  PHASE 2.5 (Sequential): Synthesizer + TypeClassifier     │           │
+│  │  Synthesizer: ~8K input, ~4K output (1 LLM call)        │           │
+│  │  TypeClassifier: ~4K input, ~1K output (1 LLM call)     │           │
 │  │  Input: ~4K tokens    Output: ~1K tokens                 │           │
 │  │                                                           │           │
 │  │  PHASE 3: ContentWriter (1 LLM call)                      │           │
@@ -819,10 +824,10 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 │  │  Input: ~8K tokens    Output: ~6K tokens                 │           │
 │  │                                                           │           │
 │  │  Total LLM Calls:                                         │           │
-│  │  - Free (English):     4 calls (2+1+1+0)                 │           │
-│  │  - Free (non-English): 5 calls (2+1+1+1)                 │           │
-│  │  - Premium (English):  7 calls (5+1+1+0)                 │           │
-│  │  - Premium (non-EN):   8 calls (5+1+1+1)                 │           │
+│  │  - Free (English):     4 calls (1+2+1+0)                 │           │
+│  │  - Free (non-English): 5 calls (1+2+1+1)                 │           │
+│  │  - Premium (English):  7 calls (4+2+1+0)                 │           │
+│  │  - Premium (non-EN):   8 calls (4+2+1+1)                 │           │
 │  │                                                           │           │
 │  │  Total Cost (Free):    ~$0.03-0.04 per analysis          │           │
 │  │  Total Cost (Premium): ~$0.08-0.10 per analysis          │           │
@@ -848,7 +853,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 |-----------|------|-------------|
 | Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | Pipeline coordination (Phase 1→2→2.5→3), Worker registration/execution |
 | Orchestrator Types | `src/lib/analyzer/orchestrator/types.ts` | WorkerResult, WorkerContext, Phase types |
-| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, registers all workers (1 Phase 1, 5 Phase 2, 1 Phase 2.5) |
+| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, registers all workers (1 Phase 1, 4 Phase 2, 2 Phase 2.5) |
 | Content Gateway | `src/lib/analyzer/content-gateway.ts` | Tier-based content filtering (free/premium/enterprise) |
 
 ### Phase 1: Data Extraction Worker (1 worker, deterministic)
@@ -859,27 +864,27 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Data Extractor Worker | `src/lib/analyzer/workers/data-extractor-worker.ts` | Phase 1 - deterministic extraction (no LLM) |
 | Phase 1 Output Schema | `src/lib/models/phase1-output.ts` | Phase1Output Zod schema |
 
-### Phase 2: Insight Generation Workers (5 workers, 5 LLM calls)
+### Phase 2: Insight Generation Workers (4 workers, 4 LLM calls)
 
 | Component | File | Tier | Description |
 |-----------|------|------|-------------|
-| Strength Growth | `src/lib/analyzer/workers/strength-growth-worker.ts` | free | Strengths & growth areas |
 | Trust Verification | `src/lib/analyzer/workers/trust-verification-worker.ts` | premium | Anti-patterns & verification |
 | Workflow Habit | `src/lib/analyzer/workers/workflow-habit-worker.ts` | premium | Planning, critical thinking |
 | Knowledge Gap | `src/lib/analyzer/workers/knowledge-gap-worker.ts` | free | Knowledge gaps & learning |
 | Context Efficiency | `src/lib/analyzer/workers/context-efficiency-worker.ts` | premium | Token inefficiency |
 | Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | — | AgentOutputs Zod schemas |
-| Strength Growth Schema | `src/lib/models/strength-growth-data.ts` | — | StrengthGrowthOutput |
 | Trust Verification Schema | `src/lib/models/trust-verification-data.ts` | — | TrustVerificationOutput |
 | Workflow Habit Schema | `src/lib/models/workflow-habit-data.ts` | — | WorkflowHabitOutput |
 | Knowledge Gap Schema | (reuses existing) | — | KnowledgeGapOutput |
 | Context Efficiency Schema | (reuses existing) | — | ContextEfficiencyOutput |
 
-### Phase 2.5: Type Classification (1 worker, 1 LLM call)
+### Phase 2.5: Synthesis → Classification (2 workers, 2 sequential LLM calls)
 
 | Component | File | Tier | Description |
 |-----------|------|------|-------------|
+| Strength Growth Synthesizer | `src/lib/analyzer/workers/strength-growth-worker.ts` | free | Cross-domain strengths/growth synthesis |
 | TypeClassifier Worker | `src/lib/analyzer/workers/type-classifier-worker.ts` | free | Type classification + synthesis |
+| Strength Growth Schema | `src/lib/models/strength-growth-data.ts` | — | StrengthGrowthOutput |
 | Type Detector | `src/lib/analyzer/type-detector.ts` | — | Pattern-based type detection utilities |
 | Coding Style Types | `src/lib/models/coding-style.ts` | — | 5×3 matrix types (15 combinations) |
 | AI Control Dimension | `src/lib/analyzer/dimensions/ai-control.ts` | — | Control level calculation |
@@ -958,14 +963,14 @@ Worker Registration (src/lib/analyzer/verbose-analyzer.ts):
 ├── Phase 1 (1 worker):
 │   └── DataExtractorWorker (deterministic, no LLM)
 │
-├── Phase 2 (5 workers):
-│   ├── StrengthGrowthWorker (free)
+├── Phase 2 (4 workers, parallel):
 │   ├── TrustVerificationWorker (premium)
 │   ├── WorkflowHabitWorker (premium)
 │   ├── KnowledgeGapWorker (free)
 │   └── ContextEfficiencyWorker (premium)
 │
-└── Phase 2.5 (1 worker):
+└── Phase 2.5 (2 workers, sequential):
+    ├── StrengthGrowthWorker/Synthesizer (free)
     └── TypeClassifierWorker (free)
 
 Environment Variables:
