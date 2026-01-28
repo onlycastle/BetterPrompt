@@ -9,6 +9,7 @@
  */
 
 import { NO_HEDGING_DIRECTIVE } from '../shared/constants';
+import type { DimensionResourceMatch } from '../../models/verbose-evaluation';
 
 /**
  * Supported output languages for content generation
@@ -118,14 +119,6 @@ export function detectPrimaryLanguage(texts: string[]): LanguageDetectionResult 
   // Default to English
   const englishRatio = 1 - (koreanRatio + japaneseRatio + chineseRatio);
   return { primary: 'en', confidence: englishRatio, hasNonEnglish, charCounts };
-}
-
-/**
- * @deprecated Use detectPrimaryLanguage instead. This function is kept for backward compatibility.
- */
-export function detectKoreanContent(quotes: string[]): boolean {
-  const result = detectPrimaryLanguage(quotes);
-  return result.primary === 'ko';
 }
 
 /**
@@ -614,6 +607,48 @@ export function buildKnowledgeContextSection(
 }
 
 /**
+ * Build KB context section from Phase 2.75 matched resources (DB-backed)
+ *
+ * Converts DimensionResourceMatch[] into a prompt section grouped by dimension.
+ * Replaces the hardcoded buildKnowledgeContextSection for the V3 pipeline.
+ */
+export function buildKnowledgeContextFromResources(
+  resources: DimensionResourceMatch[]
+): string {
+  if (!resources || resources.length === 0) {
+    return '';
+  }
+
+  const header = `## Knowledge Base Context (for tip generation)\n\nReference these expert insights when writing tips. Use natural attribution: "According to Anthropic's guide...", "As Simon Willison advises..."\n`;
+
+  const sections: string[] = [header];
+
+  for (const match of resources) {
+    const hasInsights = match.professionalInsights.length > 0;
+    const hasKnowledge = match.knowledgeItems.length > 0;
+    if (!hasInsights && !hasKnowledge) continue;
+
+    sections.push(`### ${match.dimensionDisplayName}\n`);
+
+    for (const insight of match.professionalInsights) {
+      sections.push(`- **"${insight.title}"** (${insight.sourceAuthor}): "${insight.keyTakeaway}"`);
+      if (insight.actionableAdvice.length > 0) {
+        sections.push(`  - Advice: ${insight.actionableAdvice.slice(0, 2).join('; ')}`);
+      }
+    }
+
+    for (const item of match.knowledgeItems) {
+      const author = item.sourceAuthor || 'Unknown';
+      sections.push(`- **"${item.title}"** (${author}): "${item.summary}"`);
+    }
+
+    sections.push('');
+  }
+
+  return sections.join('\n');
+}
+
+/**
  * Language display names for output instructions
  */
 export const LANGUAGE_DISPLAY_NAMES: Record<SupportedLanguage, string> = {
@@ -784,17 +819,17 @@ Make this developer feel truly understood. Use their actual words.`;
  *
  * @param agentOutputsSummary - Structured text summary of Phase 2 + 2.5 agent outputs
  * @param sessionCount - Number of sessions analyzed
- * @param kbContext - Optional knowledge base context for tip generation
+ * @param knowledgeResources - Optional DB-backed knowledge resources from Phase 2.75
  * @param topUtterances - Top 20 longest utterances for direct quoting
  */
 export function buildContentWriterUserPromptV3(
   agentOutputsSummary: string,
   sessionCount: number,
-  kbContext?: PatternKnowledgeContext,
+  knowledgeResources?: DimensionResourceMatch[],
   topUtterances?: Array<{ id: string; text: string; wordCount: number }>
 ): string {
-  const kbContextSection = kbContext
-    ? buildKnowledgeContextSection(kbContext)
+  const kbContextSection = knowledgeResources
+    ? buildKnowledgeContextFromResources(knowledgeResources)
     : '';
 
   const utterancesSection = topUtterances && topUtterances.length > 0
