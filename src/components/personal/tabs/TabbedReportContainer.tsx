@@ -78,6 +78,10 @@ export function TabbedReportContainer({
     return undefined;
   }, [analysis, agentOutputs]);
 
+  // Extract translatedAgentInsights for non-English translations
+  // Phase 4 Translator produces this when output language != English
+  const translatedAgentInsights = (analysis as any).translatedAgentInsights;
+
   // Handle tab change with scroll-to-top
   const handleTabChange = useCallback((tabId: ReportTabId) => {
     setActiveTab(tabId);
@@ -181,6 +185,7 @@ export function TabbedReportContainer({
             <div className={styles.tabPanel}>
               <WorkerInsightsSection
                 workerInsights={workerInsights}
+                translatedAgentInsights={translatedAgentInsights}
                 isPaid={isPaid}
               />
             </div>
