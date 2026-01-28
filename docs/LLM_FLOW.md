@@ -91,7 +91,7 @@
 │          ▼                                                                            │
 │   ┌─────────────┐                                                                     │
 │   │  Content    │                                                                     │
-│   │  Gateway    │  ← Tier-based filtering (free/premium/enterprise)                   │
+│   │  Gateway    │  ← Tier-based filtering (free/one_time/pro/enterprise)              │
 │   └──────┬──────┘                                                                     │
 │          │                                                                            │
 │          ▼                                                                            │
@@ -768,47 +768,55 @@ Now, translations are applied AFTER assembly:
 │     │ filter(tier) │                                                    │
 │     └──────┬───────┘                                                    │
 │            │                                                             │
-│     ┌──────┴──────┬────────────────┐                                   │
-│     ▼             ▼                ▼                                    │
-│  ┌──────┐    ┌─────────┐    ┌────────────┐                             │
-│  │ FREE │    │ PREMIUM │    │ ENTERPRISE │                             │
-│  └──┬───┘    └────┬────┘    └─────┬──────┘                             │
-│     │             │               │                                     │
-│     ▼             ▼               ▼                                     │
+│     ┌──────┴────────────────────────────────────────────┐               │
+│     ▼                                                   ▼               │
+│  ┌──────┐               ┌──────────┬──────┬────────────┐                │
+│  │ FREE │               │ ONE_TIME │ PRO  │ ENTERPRISE │                │
+│  └──┬───┘               └────────┴───────┴──────┬──────┘                │
+│     │                                           │                        │
+│     ▼                                           ▼                        │
+│  (limited)                                 (full access)                 │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  TIER ACCESS MATRIX                                                      │
+│  TIER ACCESS MATRIX (4-tier system)                                      │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  Content                        Free      Premium    Enterprise         │
-│  ───────────────────────────────────────────────────────────────        │
-│  Type Result                     ✓          ✓           ✓               │
+│  Content                     Free     One-time   Pro    Enterprise      │
+│  ─────────────────────────────────────────────────────────────────      │
+│  Type Result                  ✓          ✓        ✓          ✓          │
 │  (primaryType, controlLevel)                                             │
 │                                                                          │
-│  Personality Summary             ✓          ✓           ✓               │
+│  Personality Summary          ✓          ✓        ✓          ✓          │
 │                                                                          │
-│  Dimensions 1-2                  ✓          ✓           ✓               │
-│  (full detail)                  full       full        full             │
+│  Dimensions 1-2               ✓          ✓        ✓          ✓          │
+│  (full detail)               full       full     full       full        │
 │                                                                          │
-│  Dimensions 3-6                 empty       ✓           ✓               │
-│  (locked for free)                         full        full             │
+│  Dimensions 3-6              empty       ✓        ✓          ✓          │
+│  (locked for free)                      full     full       full        │
 │                                                                          │
-│  Prompt Patterns                 ✗          ✓           ✓               │
+│  Prompt Patterns              ✗          ✓        ✓          ✓          │
 │  (3-6 patterns)                                                          │
 │                                                                          │
-│  Top Focus Areas                 ✗          ✓           ✓               │
+│  Top Focus Areas              ✗          ✓        ✓          ✓          │
 │  (personalized priorities)                                               │
 │                                                                          │
-│  Agent Insights                  ✗          ✓           ✓               │
+│  Agent Insights             teaser       ✓        ✓          ✓          │
 │  (from Phase 2 Workers)                                                  │
 │                                                                          │
-│  Advanced Analytics              ✗          ✗           ✓               │
+│  Advanced Analytics           ✗          ✓        ✓          ✓          │
 │  - toolUsageDeepDive                                                     │
 │  - tokenEfficiency                                                       │
 │  - comparativeInsights                                                   │
 │  - sessionTrends                                                         │
+│                                                                          │
+│  ─────────────────────────────────────────────────────────────────      │
+│  Tier Descriptions:                                                      │
+│  - FREE: 3 analyses/month, limited content                              │
+│  - ONE_TIME: 1-credit purchase, unlimited analyses, full content        │
+│  - PRO: Subscription, unlimited analyses, full content + tracking       │
+│  - ENTERPRISE: Full content + team management + custom KB               │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -1029,8 +1037,9 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
   │  ContentGateway.filter(evaluation, tier)                         │
   │                                                                   │
   │  tier = 'free'       → Limited dimensions, no patterns          │
-  │  tier = 'premium'    → All dimensions + patterns + premium       │
-  │  tier = 'enterprise' → Everything + advanced analytics          │
+  │  tier = 'one_time'   → Full access (1-credit purchase)          │
+  │  tier = 'pro'        → Full access (subscription)               │
+  │  tier = 'enterprise' → Full access + team features              │
   └────────────────────────────────┬────────────────────────────────┘
                                    │
                                    │ [10] Save & serve
@@ -1114,7 +1123,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | Pipeline coordination (Phase 1→2→2.5→3→4→Assembly→TranslationOverlay), Worker registration/execution, `mergeTranslatedFields()` |
 | Orchestrator Types | `src/lib/analyzer/orchestrator/types.ts` | WorkerResult, WorkerContext, Phase types |
 | Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, registers all workers (1 Phase 1, 4 Phase 2, 2 Phase 2.5) |
-| Content Gateway | `src/lib/analyzer/content-gateway.ts` | Tier-based content filtering (free/premium/enterprise) |
+| Content Gateway | `src/lib/analyzer/content-gateway.ts` | Tier-based content filtering (free/premium) |
 
 ### Phase 1: Data Extraction Worker (1 worker, deterministic)
 
@@ -1235,7 +1244,7 @@ VerboseAnalyzerConfig (src/lib/analyzer/verbose-analyzer.ts)
 │       ├── temperature: 1.0
 │       └── maxOutputTokens: 65536
 │
-└── tier: 'free' | 'premium' | 'enterprise'  ← default: 'enterprise'
+└── tier: 'free' | 'one_time' | 'pro' | 'enterprise'  ← default: 'pro'
 
 Worker Registration (src/lib/analyzer/verbose-analyzer.ts):
 │

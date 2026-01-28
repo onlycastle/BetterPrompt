@@ -28,7 +28,7 @@ import { GeminiClient } from '../../../../src/lib/analyzer/clients/gemini-client
 // Helper Functions
 // ============================================================================
 
-function createMockContext(tier: 'free' | 'premium' | 'enterprise' = 'premium'): WorkerContext {
+function createMockContext(tier: 'free' | 'premium' = 'premium'): WorkerContext {
   const phase1Output: Phase1Output = {
     developerUtterances: [
       {
@@ -168,10 +168,6 @@ describe('ContextEfficiencyWorker', () => {
     it('should be phase 2 worker', () => {
       expect(worker.phase).toBe(2);
     });
-
-    it('should require premium tier', () => {
-      expect(worker.minTier).toBe('premium');
-    });
   });
 
   describe('constructor', () => {
@@ -189,18 +185,13 @@ describe('ContextEfficiencyWorker', () => {
   });
 
   describe('canRun()', () => {
-    it('should return true for premium tier with phase1Output', () => {
+    it('should return true when phase1Output present', () => {
       expect(worker.canRun(context)).toBe(true);
     });
 
-    it('should return true for enterprise tier', () => {
-      const enterpriseContext = createMockContext('enterprise');
-      expect(worker.canRun(enterpriseContext)).toBe(true);
-    });
-
-    it('should return false for free tier', () => {
+    it('should return true for any tier (tier filtering at ContentGateway)', () => {
       const freeContext = createMockContext('free');
-      expect(worker.canRun(freeContext)).toBe(false);
+      expect(worker.canRun(freeContext)).toBe(true);
     });
 
     it('should return false when phase1Output missing', () => {

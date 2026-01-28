@@ -26,7 +26,6 @@ import {
   type Phase1SessionMetrics,
 } from '../../models/phase1-output';
 import type { ParsedSession, ParsedMessage } from '../../models/session';
-import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import { strategicSampleUtterances, strategicSampleAIResponses } from '../shared/sampling-utils';
 import { PHASE1_MAX_UTTERANCES, PHASE1_MAX_AI_RESPONSES } from '../shared/constants';
@@ -40,7 +39,6 @@ import { PHASE1_MAX_UTTERANCES, PHASE1_MAX_AI_RESPONSES } from '../shared/consta
 export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   readonly name = 'DataExtractor';
   readonly phase = 1 as const;
-  readonly minTier: Tier = 'free';
 
   // Truncation/sampling limits to control downstream token usage
   private static readonly MAX_TEXT_LENGTH = 2000;

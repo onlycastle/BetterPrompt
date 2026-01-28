@@ -1,7 +1,7 @@
 /**
  * Content Gateway - Tier-based content filtering for VerboseEvaluation
  *
- * Filters verbose analysis content based on user tier (free, premium, enterprise).
+ * Filters verbose analysis content based on user tier (free, one_time, pro, enterprise).
  * Implements paywall strategy for monetization.
  *
  * @example
@@ -16,12 +16,9 @@
  * const freeVersion = gateway.filter(fullEvaluation, 'free');
  * // Returns: type result, personalitySummary, first 2 dimensions (full), rest empty
  *
- * // Filter for premium tier user
- * const premiumVersion = gateway.filter(fullEvaluation, 'premium');
- * // Returns: all free content + all 6 dimensions + prompt patterns
- *
- * // Enterprise gets everything
- * const enterpriseVersion = gateway.filter(fullEvaluation, 'enterprise');
+ * // Filter for pro tier user (full access)
+ * const proVersion = gateway.filter(fullEvaluation, 'pro');
+ * // Returns: all content including dimensions, prompt patterns, analytics
  *
  * // Create preview for locked content
  * const preview = gateway.createPremiumPreview(fullEvaluation);
@@ -42,9 +39,13 @@ import { createAgentTeasers } from '../models/agent-teasers';
 // ============================================================================
 
 /**
- * User tier levels
+ * User tier levels (4-tier system)
+ * - free: Limited content, 3 analyses/month
+ * - one_time: Full content, 1-credit purchase
+ * - pro: Full content, subscription
+ * - enterprise: Full content + team management
  */
-export type Tier = 'free' | 'premium' | 'enterprise';
+export type Tier = 'free' | 'one_time' | 'pro' | 'enterprise';
 
 /**
  * Preview of locked premium content (titles only)
@@ -78,11 +79,9 @@ export interface PremiumPreview {
 /**
  * ContentGateway filters verbose evaluation content based on user tier.
  *
- * Tier Access Matrix:
+ * Tier Access Matrix (4-tier system):
  * - Free: Type result, personalitySummary, first 2 dimensionInsights (full detail), rest get empty arrays
- * - Premium: All dimensionInsights, promptPatterns, actionablePractices,
- *            antiPatternsAnalysis, criticalThinkingAnalysis, planningAnalysis
- * - Enterprise: Everything including analytics (toolUsageDeepDive, tokenEfficiency, growthRoadmap, etc.)
+ * - One-time/Pro/Enterprise: Full access - all dimensions, prompt patterns, analytics, agent outputs
  *
  * @example
  * ```typescript
@@ -103,14 +102,10 @@ export class ContentGateway {
     switch (tier) {
       case 'free':
         return this.filterFree(evaluation);
-      case 'premium':
-        return this.filterPremium(evaluation);
+      case 'one_time':
+      case 'pro':
       case 'enterprise':
         return evaluation; // Full access
-      default:
-        // Type guard - should never reach here
-        const exhaustive: never = tier;
-        throw new Error(`Unknown tier: ${exhaustive}`);
     }
   }
 
@@ -257,74 +252,6 @@ export class ContentGateway {
 
       // Knowledge Resources - top 1 per type per dimension for free tier
       knowledgeResources: this.filterKnowledgeResourcesFree(evaluation.knowledgeResources),
-    };
-  }
-
-  /**
-   * Filter for premium tier users
-   *
-   * Premium tier gets:
-   * - Everything in free tier
-   * - All 6 dimension insights (fully detailed)
-   * - Prompt patterns
-   * - Actionable practices (expert advice adoption)
-   * - Anti-patterns analysis (growth opportunities)
-   * - Critical thinking analysis (verification habits)
-   * - Planning analysis (/plan usage, maturity level)
-   * - No enterprise analytics fields (locked for enterprise)
-   */
-  private filterPremium(evaluation: VerboseEvaluation): VerboseEvaluation {
-    return {
-      // Metadata (all tiers)
-      sessionId: evaluation.sessionId,
-      analyzedAt: evaluation.analyzedAt,
-      sessionsAnalyzed: evaluation.sessionsAnalyzed,
-      avgPromptLength: evaluation.avgPromptLength,
-      avgTurnsPerSession: evaluation.avgTurnsPerSession,
-      analyzedSessions: evaluation.analyzedSessions,
-
-      // Type result
-      primaryType: evaluation.primaryType,
-      controlLevel: evaluation.controlLevel,
-      distribution: evaluation.distribution,
-
-      // Personality summary
-      personalitySummary: evaluation.personalitySummary,
-
-      // All dimension insights (premium)
-      dimensionInsights: evaluation.dimensionInsights,
-
-      // Deprecated fields
-      strengths: evaluation.strengths,
-      growthAreas: evaluation.growthAreas,
-
-      // Prompt patterns (premium)
-      promptPatterns: evaluation.promptPatterns,
-
-      // Enterprise analytics fields (locked for premium)
-      toolUsageDeepDive: undefined,
-      tokenEfficiency: undefined,
-      growthRoadmap: undefined,
-      comparativeInsights: undefined,
-      sessionTrends: undefined,
-
-      // Premium analysis features (Anti-Patterns, Critical Thinking, Planning)
-      antiPatternsAnalysis: evaluation.antiPatternsAnalysis,
-      criticalThinkingAnalysis: evaluation.criticalThinkingAnalysis,
-      planningAnalysis: evaluation.planningAnalysis,
-
-      // Actionable practices (premium)
-      actionablePractices: evaluation.actionablePractices,
-
-      // Module C outputs (premium)
-      productivityAnalysis: evaluation.productivityAnalysis,
-      topFocusAreas: evaluation.topFocusAreas,
-
-      // Phase 2 Wow Agents outputs (premium)
-      agentOutputs: evaluation.agentOutputs,
-
-      // Knowledge Resources - all matched resources for premium tier
-      knowledgeResources: evaluation.knowledgeResources,
     };
   }
 

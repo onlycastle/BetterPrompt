@@ -20,7 +20,6 @@ import {
   type ContextEfficiencyOutput,
 } from '../../models/agent-outputs';
 import type { Phase1Output } from '../../models/phase1-output';
-import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
   CONTEXT_EFFICIENCY_SYSTEM_PROMPT,
@@ -32,26 +31,17 @@ import {
  *
  * Phase 2 worker that identifies context management patterns and productivity metrics.
  * Uses Phase1Output (v2 context isolation).
- * Requires Premium tier or higher.
  */
 export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput> {
   readonly name = 'ContextEfficiency';
   readonly phase = 2 as const;
-  readonly minTier: Tier = 'premium';
 
   constructor(config: OrchestratorConfig) {
     super(config);
   }
 
-  /**
-   * Check if worker can run
-   */
   canRun(context: WorkerContext): boolean {
     const phase2Context = context as Phase2WorkerContext;
-
-    if (!this.isTierSufficient(context.tier)) {
-      return false;
-    }
 
     if (!phase2Context.phase1Output) {
       this.log('Cannot run: Phase 1 output not available');
@@ -66,10 +56,6 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
     return true;
   }
 
-  /**
-   * Execute context efficiency analysis
-   * NO FALLBACK: Errors propagate to fail the analysis
-   */
   async execute(context: WorkerContext): Promise<WorkerResult<ContextEfficiencyOutput>> {
     const phase2Context = context as Phase2WorkerContext;
 
@@ -98,11 +84,6 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
     return this.createSuccessResult(result.data, result.usage);
   }
 
-  /**
-   * Prepare Phase 1 output for the prompt
-   *
-   * Includes utterance lengths and session metrics for efficiency analysis.
-   */
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
     return {
       developerUtterances: phase1.developerUtterances.map((u) => ({

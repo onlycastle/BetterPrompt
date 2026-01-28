@@ -185,11 +185,17 @@ export class TranslatorStage {
 
   /**
    * Flatten TrustVerification structured data to pipe-delimited strings.
-   * Converts anti-patterns to growthAreasData format for translation.
+   * Converts strengths array and anti-patterns to translation format.
    */
   private flattenTrustVerification(tv: TrustVerificationOutput): { strengthsData: string; growthAreasData: string } {
-    // TrustVerification has anti-patterns → growth areas
-    const growthAreasData = (tv.antiPatterns ?? []).map(ap => {
+    // Flatten actual strengths array (WorkerStrength.evidence is string[])
+    const strengthsData = (tv.strengths ?? []).map(s => {
+      const quotes = (s.evidence ?? []).join(',');
+      return `${s.title}|${s.description}|${quotes}|${s.frequency ?? ''}`;
+    }).join(';');
+
+    // Convert anti-patterns to growth areas format, then merge with actual growthAreas
+    const antiPatternGrowth = (tv.antiPatterns ?? []).map(ap => {
       const quotes = (ap.examples ?? []).map(e => e.quote).join(',');
       const title = `Anti-Pattern: ${ap.type.replace(/_/g, ' ')}`;
       const description = ap.improvement ?? `Detected ${ap.type} pattern`;
@@ -200,26 +206,49 @@ export class TranslatorStage {
         ap.severity === 'significant' ? '70' :
         ap.severity === 'moderate' ? '50' : '30';
       return `${title}|${description}|${quotes}|${ap.improvement ?? ''}|${ap.sessionPercentage ?? ''}|${severity}|${priority}`;
-    }).join(';');
+    });
 
-    return { strengthsData: '', growthAreasData };
+    // Include actual growthAreas from the worker (WorkerGrowth.evidence is string[])
+    const workerGrowth = (tv.growthAreas ?? []).map(g => {
+      const quotes = (g.evidence ?? []).join(',');
+      return `${g.title}|${g.description}|${quotes}|${g.recommendation}|${g.frequency ?? ''}|${g.severity ?? ''}|${g.frequency ?? ''}`;
+    });
+
+    const growthAreasData = [...antiPatternGrowth, ...workerGrowth].join(';');
+
+    return { strengthsData, growthAreasData };
   }
 
   /**
    * Flatten WorkflowHabit structured data to pipe-delimited strings.
-   * Converts weak planning habits to growthAreasData format for translation.
+   * Converts strengths array and weak planning habits to translation format.
    */
   private flattenWorkflowHabit(wh: WorkflowHabitOutput): { strengthsData: string; growthAreasData: string } {
+    // Flatten actual strengths array (WorkerStrength.evidence is string[])
+    const strengthsData = (wh.strengths ?? []).map(s => {
+      const quotes = (s.evidence ?? []).join(',');
+      return `${s.title}|${s.description}|${quotes}|${s.frequency ?? ''}`;
+    }).join(';');
+
+    // Convert weak planning habits to growth areas format
     const weakHabits = (wh.planningHabits ?? []).filter(h =>
       h.effectiveness === 'low' || h.frequency === 'rarely' || h.frequency === 'never'
     );
 
-    const growthAreasData = weakHabits.map(h => {
+    const weakHabitGrowth = weakHabits.map(h => {
       const typeLabel = h.type.replace(/_/g, ' ');
       const quotes = (h.examples ?? []).join(',');
       return `Planning: ${typeLabel}|Planning habit "${typeLabel}" is ${h.frequency}|${quotes}|Improve ${typeLabel} frequency||medium|50`;
-    }).join(';');
+    });
 
-    return { strengthsData: '', growthAreasData };
+    // Include actual growthAreas from the worker (WorkerGrowth.evidence is string[])
+    const workerGrowth = (wh.growthAreas ?? []).map(g => {
+      const quotes = (g.evidence ?? []).join(',');
+      return `${g.title}|${g.description}|${quotes}|${g.recommendation}|${g.frequency ?? ''}|${g.severity ?? ''}|${g.frequency ?? ''}`;
+    });
+
+    const growthAreasData = [...weakHabitGrowth, ...workerGrowth].join(';');
+
+    return { strengthsData, growthAreasData };
   }
 }

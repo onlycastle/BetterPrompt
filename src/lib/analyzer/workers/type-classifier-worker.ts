@@ -21,7 +21,6 @@ import {
   type AgentOutputs,
 } from '../../models/agent-outputs';
 import type { StrengthGrowthOutput } from '../../models/strength-growth-data';
-import type { Tier } from '../content-gateway';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
   TYPE_CLASSIFIER_SYSTEM_PROMPT,
@@ -74,20 +73,15 @@ const TypeClassifierLLMSchema = z.object({
  *
  * Phase 2.5 worker that provides the viral/shareable personality type.
  * Runs AFTER all Phase 2 workers to use their insights for informed classification.
- * Runs for all tiers (FREE content - type classification is fun/marketing).
  */
 export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   readonly name = 'TypeClassifier';
   readonly phase = 2 as const; // Registered as Phase 2.5 via registerPhase2Point5Worker
-  readonly minTier: Tier = 'free'; // Available to all users
 
   constructor(config: OrchestratorConfig) {
     super(config);
   }
 
-  /**
-   * Check if worker can run
-   */
   canRun(context: WorkerContext): boolean {
     const tcContext = context as TypeClassifierContext;
 
@@ -107,11 +101,6 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     return true;
   }
 
-  /**
-   * Execute type classification with Phase 2 synthesis
-   *
-   * NO FALLBACK: Errors propagate to fail the analysis.
-   */
   async execute(context: WorkerContext): Promise<WorkerResult<TypeClassifierOutput>> {
     const tcContext = context as TypeClassifierContext;
 
@@ -144,23 +133,10 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     const dist = result.data.distribution;
     const sum = dist.architect + dist.scientist + dist.collaborator + dist.speedrunner + dist.craftsman;
     const keys: (keyof typeof dist)[] = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'];
+
     if (Math.abs(sum - 100) > 1) {
       this.log(`Warning: Distribution sums to ${sum}, normalizing...`);
-      if (sum === 0) {
-        // All zeros: distribute evenly
-        for (const key of keys) { dist[key] = 20; }
-      } else {
-        const factor = 100 / sum;
-        for (const key of keys) {
-          dist[key] = Math.round(dist[key] * factor);
-        }
-        // Compensate rounding error on the largest value to ensure exact sum of 100
-        const newSum = keys.reduce((s, k) => s + dist[k], 0);
-        if (newSum !== 100) {
-          const maxKey = keys.reduce((a, b) => (dist[a] >= dist[b] ? a : b));
-          dist[maxKey] += 100 - newSum;
-        }
-      }
+      this.normalizeDistribution(dist, keys, sum);
     }
 
     this.log(`Type: ${result.data.primaryType}`);
@@ -237,6 +213,33 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     if (sections.length === 0) return null;
 
     return `## PHASE 2 ANALYSIS SUMMARY\n${sections.join('\n\n')}`;
+  }
+
+  /**
+   * Normalize distribution percentages to sum exactly to 100
+   */
+  private normalizeDistribution(
+    dist: Record<string, number>,
+    keys: string[],
+    sum: number
+  ): void {
+    if (sum === 0) {
+      for (const key of keys) {
+        dist[key] = 20;
+      }
+      return;
+    }
+
+    const factor = 100 / sum;
+    for (const key of keys) {
+      dist[key] = Math.round(dist[key] * factor);
+    }
+
+    const newSum = keys.reduce((s, k) => s + dist[k], 0);
+    if (newSum !== 100) {
+      const maxKey = keys.reduce((a, b) => (dist[a] >= dist[b] ? a : b));
+      dist[maxKey] += 100 - newSum;
+    }
   }
 
   /**

@@ -248,3 +248,41 @@
   --z-tooltip: 300;
   --z-terminal: 150;
 }
+
+/* ============================================
+   Insight Section Animations
+   ============================================ */
+@keyframes insightSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes insightShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes insightPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes scoreRingFill {
+  from {
+    stroke-dashoffset: 157;
+  }
+}

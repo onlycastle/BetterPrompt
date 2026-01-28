@@ -94,7 +94,7 @@ function createProgressReporter(
  * // ... more workers
  *
  * // Run analysis
- * const result = await orchestrator.analyze(sessions, metrics, 'premium');
+ * const result = await orchestrator.analyze(sessions, metrics, 'pro');
  * ```
  */
 export class AnalysisOrchestrator {
@@ -251,7 +251,7 @@ export class AnalysisOrchestrator {
 
     // ─────────────────────────────────────────────────────────────────────
     // Phase 2: Insight Generation (parallel)
-    // Workers check their own minTier via canRun() - some workers may be free tier
+    // All workers run for all users. Tier-based filtering happens at ContentGateway.
     // NOTE: All Phase 2 workers operate in ENGLISH. Language translation
     // happens only in Phase 3 (Content Writer) based on user's quotes.
     // ─────────────────────────────────────────────────────────────────────
@@ -667,13 +667,6 @@ export class AnalysisOrchestrator {
   // Helper Methods
   // ─────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Merge Phase 2 worker results into AgentOutputs
-   *
-   * Maps Phase 2 worker results by name to the AgentOutputs fields.
-   * Phase 2 workers: TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency.
-   * StrengthGrowth and TypeClassifier run at Phase 2.5 (merged separately).
-   */
   private mergeAgentOutputs(results: Record<string, WorkerResult<unknown> | undefined>): AgentOutputs {
     return {
       trustVerification: results['TrustVerification']?.data as AgentOutputs['trustVerification'],
@@ -683,16 +676,6 @@ export class AnalysisOrchestrator {
     };
   }
 
-  /**
-   * Merge Phase 2.5 results into AgentOutputs
-   *
-   * Phase 2.5 workers:
-   * - TypeClassifier only (StrengthGrowthSynthesizer REMOVED)
-   *
-   * Note: StrengthGrowth field is preserved for backward compatibility
-   * but no longer populated by a synthesizer. Each Phase 2 worker
-   * outputs strengths/growthAreas directly in their domain.
-   */
   private mergePhase2Point5Outputs(
     agentOutputs: AgentOutputs,
     phase2Point5Results: Record<string, WorkerResult<unknown> | undefined>
@@ -708,9 +691,6 @@ export class AnalysisOrchestrator {
 
   /**
    * Merge translated text fields into the English ContentWriter response
-   *
-   * The English response is the "source of truth" for all structural/numeric fields.
-   * Only text fields from TranslatorOutput are overlaid.
    */
   private mergeTranslatedFields(englishResponse: any, translated: TranslatorOutput): void {
     // Personality summary
@@ -881,9 +861,6 @@ export class AnalysisOrchestrator {
     }
   }
 
-  /**
-   * Helper to merge translated highlight arrays (critical thinking, planning)
-   */
   private mergeHighlightTranslations(
     translated: Array<{ displayName: string; description: string; tip?: string }> | undefined,
     english: any[] | undefined
@@ -896,9 +873,6 @@ export class AnalysisOrchestrator {
     }
   }
 
-  /**
-   * Log language detection results for debugging (when verbose/DEBUG=1)
-   */
   private logLanguageDetection(result: LanguageDetectionResult): void {
     if (!this.config.verbose) return;
 
@@ -920,9 +894,6 @@ export class AnalysisOrchestrator {
     console.log('===========================\n');
   }
 
-  /**
-   * Extract session info for display
-   */
   private extractAnalyzedSessions(sessions: ParsedSession[]): VerboseEvaluation['analyzedSessions'] {
     return sessions.map((session) => ({
       sessionId: session.sessionId,
@@ -934,9 +905,6 @@ export class AnalysisOrchestrator {
     }));
   }
 
-  /**
-   * Collect a phase output for debugging (no-op when debug is disabled)
-   */
   private collectDebugOutput(
     phase: string,
     phaseName: string,
@@ -956,18 +924,12 @@ export class AnalysisOrchestrator {
     });
   }
 
-  /**
-   * Log a message if verbose mode is enabled
-   */
   private log(message: string): void {
     if (this.config.verbose) {
       console.log(`[Orchestrator] ${message}`);
     }
   }
 
-  /**
-   * Log pipeline summary
-   */
   private logPipelineSummary(stageUsages: StageTokenUsage[], totalTimeMs: number): void {
     if (!this.config.verbose) return;
 

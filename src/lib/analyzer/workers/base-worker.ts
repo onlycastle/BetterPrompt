@@ -3,15 +3,16 @@
  *
  * Workers are independent units of analysis that:
  * - Have a specific phase (1, 2, or 3)
- * - Have a minimum tier requirement
  * - Can run independently and fail gracefully
  * - Return standardized WorkerResult
+ *
+ * Note: Tier-based filtering is handled at the ContentGateway/API level,
+ * not at the worker level. All workers run for all users.
  *
  * @module analyzer/workers/base-worker
  */
 
 import { GeminiClient, type GeminiClientConfig } from '../clients/gemini-client';
-import type { Tier } from '../content-gateway';
 import type {
   WorkerResult,
   WorkerContext,
@@ -36,7 +37,6 @@ export type { WorkerResult, WorkerContext, Phase, Phase2WorkerContext } from '..
  * class DataAnalystWorker extends BaseWorker<StructuredAnalysisData> {
  *   readonly name = 'DataAnalyst';
  *   readonly phase = 1;
- *   readonly minTier = 'free';
  *
  *   canRun(context: WorkerContext): boolean {
  *     return context.sessions.length > 0;
@@ -103,15 +103,6 @@ export abstract class BaseWorker<TOutput> {
    */
   abstract readonly phase: Phase;
 
-  /**
-   * Minimum tier required to run this worker
-   *
-   * - 'free': Runs for all users
-   * - 'premium': Runs for premium and enterprise
-   * - 'enterprise': Runs only for enterprise
-   */
-  abstract readonly minTier: Tier;
-
   // ─────────────────────────────────────────────────────────────────────────
   // Abstract Methods (must be implemented by subclasses)
   // ─────────────────────────────────────────────────────────────────────────
@@ -139,31 +130,7 @@ export abstract class BaseWorker<TOutput> {
   // Protected Helper Methods
   // ─────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Check if user tier is sufficient for this worker
-   *
-   * @param tier - User's tier
-   * @returns true if tier is sufficient
-   */
-  protected isTierSufficient(tier: Tier): boolean {
-    const tierOrder: Tier[] = ['free', 'premium', 'enterprise'];
-    return tierOrder.indexOf(tier) >= tierOrder.indexOf(this.minTier);
-  }
-
-  /**
-   * Check basic preconditions for running
-   *
-   * NOTE: Tier check removed - all workers now run for all tiers.
-   * Tier-based filtering happens at the ContentGateway/API level,
-   * allowing premium agent outputs to be stored and shown as teasers.
-   *
-   * @param context - Worker context
-   * @returns true if basic preconditions are met
-   */
   protected checkBasicPreconditions(context: WorkerContext): boolean {
-    // Tier check removed - all workers always run
-    // Premium agents show teasers for free users, full data after payment
-
     // Check sessions exist
     if (context.sessions.length === 0) {
       return false;
@@ -172,24 +139,12 @@ export abstract class BaseWorker<TOutput> {
     return true;
   }
 
-  /**
-   * Log a message if verbose mode is enabled
-   *
-   * @param message - Message to log
-   */
   protected log(message: string): void {
     if (this.baseConfig?.verbose) {
       console.log(`[${this.name}] ${message}`);
     }
   }
 
-  /**
-   * Create a successful result
-   *
-   * @param data - Worker output data
-   * @param usage - Token usage
-   * @returns WorkerResult
-   */
   protected createSuccessResult(
     data: TOutput,
     usage: WorkerResult<TOutput>['usage']
@@ -219,9 +174,6 @@ export interface WorkerRegistryEntry<TOutput = unknown> {
 
   /** Phase this worker runs in */
   phase: Phase;
-
-  /** Minimum tier */
-  minTier: Tier;
 
   /** Factory to create the worker */
   factory: WorkerFactory<TOutput>;

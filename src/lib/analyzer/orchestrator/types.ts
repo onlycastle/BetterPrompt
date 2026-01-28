@@ -97,7 +97,7 @@ export interface WorkerResultWithStatus<T> extends WorkerResult<T> {
  * const baseContext: WorkerContext = {
  *   sessions,
  *   metrics,
- *   tier: 'premium',
+ *   tier: 'pro',
  * };
  * ```
  */
@@ -466,15 +466,15 @@ export interface AnalysisMetadataResult {
  */
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.70;
 
-/**
- * Calculate data quality based on session count
- *
- * @param sessionCount - Number of sessions analyzed
- * @returns Quality indicator
- */
 export function calculateDataQuality(sessionCount: number): 'high' | 'medium' | 'low' {
-  if (sessionCount >= 10) return 'high';
-  if (sessionCount >= 5) return 'medium';
+  if (sessionCount >= 10) {
+    return 'high';
+  }
+
+  if (sessionCount >= 5) {
+    return 'medium';
+  }
+
   return 'low';
 }
 

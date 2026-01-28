@@ -96,7 +96,7 @@ const DEFAULT_CONFIG: Required<Omit<VerboseAnalyzerConfig, 'geminiApiKey' | 'kno
       maxOutputTokens: 65536,
     },
   },
-  tier: 'enterprise', // Generate full content by default
+  tier: 'pro', // Generate full content by default
   debug: false,
 };
 
