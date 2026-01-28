@@ -19,30 +19,16 @@ import { BaseWorker } from '../../../../src/lib/analyzer/workers/base-worker.js'
 // Mock dependencies
 vi.mock('../../../../src/lib/analyzer/stages/content-writer.js', () => ({
   ContentWriterStage: class MockContentWriterStage {
-    // Legacy method (deprecated)
-    async transform() {
-      return this.transformV3();
-    }
-    // v2 method (deprecated)
-    async transformV2() {
-      return this.transformV3();
-    }
-    // v3 method (used by orchestrator v2)
+    // v3 method: returns narrative-only fields (Phase 3 purification)
     async transformV3() {
       return {
         data: {
-          primaryType: 'architect',
-          controlLevel: 'cartographer',
-          distribution: {
-            architect: 40,
-            scientist: 25,
-            collaborator: 20,
-            speedrunner: 10,
-            craftsman: 5,
-          },
           personalitySummary: 'Test personality summary',
-          dimensionInsights: [],
-          promptPatterns: [],
+          promptPatterns: [
+            { patternName: 'Test Pattern', description: 'desc', frequency: 'often', examples: [], effectiveness: 'effective', tip: 'tip' },
+            { patternName: 'Pattern 2', description: 'desc2', frequency: 'sometimes', examples: [], effectiveness: 'moderate', tip: 'tip2' },
+            { patternName: 'Pattern 3', description: 'desc3', frequency: 'rare', examples: [], effectiveness: 'developing', tip: 'tip3' },
+          ],
         },
         usage: {
           promptTokens: 1000,
@@ -50,6 +36,10 @@ vi.mock('../../../../src/lib/analyzer/stages/content-writer.js', () => ({
           totalTokens: 1500,
         },
       };
+    }
+    // Public method called by orchestrator before assembly
+    verifyPhase2WorkerExamples() {
+      // No-op in tests
     }
   },
 }));
@@ -263,7 +253,7 @@ describe('AnalysisOrchestrator', () => {
         const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
 
         expect(result).toBeDefined();
-        expect(result.evaluation.primaryType).toBe('architect');
+        expect(result.evaluation.personalitySummary).toBe('Test personality summary');
       });
 
       // NO FALLBACK POLICY: Workers must be registered
@@ -381,8 +371,8 @@ describe('AnalysisOrchestrator', () => {
         const result = await orchestrator.analyze(mockSessions, mockMetrics, 'premium');
 
         expect(result).toBeDefined();
-        // Content writer transforms data from Phase 1
-        expect(result.evaluation.primaryType).toBe('architect');
+        // Content writer produces narrative from Phase 1 + Phase 2 data
+        expect(result.evaluation.personalitySummary).toBe('Test personality summary');
       });
     });
   });
@@ -571,7 +561,8 @@ describe('AnalysisOrchestrator', () => {
 
       expect(result).toBeDefined();
       // ContentGateway.filter is mocked to pass through
-      expect(result.evaluation.primaryType).toBe('architect');
+      // personalitySummary comes from narrative (Phase 3)
+      expect(result.evaluation.personalitySummary).toBe('Test personality summary');
     });
 
     it('should pass correct tier to content gateway', async () => {
@@ -600,6 +591,221 @@ describe('AnalysisOrchestrator', () => {
       });
 
       expect(orchestrator).toBeInstanceOf(AnalysisOrchestrator);
+    });
+  });
+
+  describe('Phase 2.5 - Sequential Execution', () => {
+    beforeEach(() => {
+      const dataExtractorWorker = new MockDataExtractorWorker();
+      orchestrator.registerPhase1Worker(dataExtractorWorker);
+    });
+
+    it('should run Phase 2.5 workers sequentially (order preserved)', async () => {
+      const executionOrder: string[] = [];
+
+      class MockSynthesizerWorker extends BaseWorker<any> {
+        readonly name = 'StrengthGrowth';
+        readonly phase = 2 as const;
+        readonly minTier: Tier = 'free';
+
+        canRun(context: WorkerContext): boolean {
+          return !!(context as any).agentOutputs;
+        }
+
+        async execute(context: WorkerContext): Promise<WorkerResult<any>> {
+          executionOrder.push('StrengthGrowth');
+          return {
+            data: { strengths: [], growthAreas: [], confidenceScore: 0.8 },
+            usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+          };
+        }
+      }
+
+      class MockTypeClassifierWorker extends BaseWorker<any> {
+        readonly name = 'TypeClassifier';
+        readonly phase = 2 as const;
+        readonly minTier: Tier = 'free';
+
+        canRun(context: WorkerContext): boolean {
+          return !!(context as any).agentOutputs;
+        }
+
+        async execute(context: WorkerContext): Promise<WorkerResult<any>> {
+          executionOrder.push('TypeClassifier');
+          return {
+            data: {
+              primaryType: 'architect',
+              distribution: { architect: 40, scientist: 20, collaborator: 20, speedrunner: 10, craftsman: 10 },
+              controlLevel: 'navigator',
+              controlScore: 50,
+              matrixName: 'Systems Architect',
+              matrixEmoji: '🏗️',
+              confidenceScore: 0.8,
+            },
+            usage: { promptTokens: 200, completionTokens: 100, totalTokens: 300 },
+          };
+        }
+      }
+
+      orchestrator.registerPhase2Point5Worker(new MockSynthesizerWorker());
+      orchestrator.registerPhase2Point5Worker(new MockTypeClassifierWorker());
+
+      const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
+
+      expect(result).toBeDefined();
+      // Verify sequential execution: Synthesizer FIRST, then TypeClassifier
+      expect(executionOrder).toEqual(['StrengthGrowth', 'TypeClassifier']);
+    });
+
+    it('should merge Synthesizer result into agentOutputs before TypeClassifier runs', async () => {
+      let typeClassifierReceivedStrengthGrowth = false;
+
+      class MockSynthesizerWorker extends BaseWorker<any> {
+        readonly name = 'StrengthGrowth';
+        readonly phase = 2 as const;
+        readonly minTier: Tier = 'free';
+
+        canRun(context: WorkerContext): boolean {
+          return !!(context as any).agentOutputs;
+        }
+
+        async execute(): Promise<WorkerResult<any>> {
+          return {
+            data: {
+              strengths: [{ title: 'Test Strength', description: 'desc', evidence: [], dimension: 'aiCollaboration' }],
+              growthAreas: [],
+              confidenceScore: 0.85,
+            },
+            usage: null,
+          };
+        }
+      }
+
+      class MockTypeClassifierWorker extends BaseWorker<any> {
+        readonly name = 'TypeClassifier';
+        readonly phase = 2 as const;
+        readonly minTier: Tier = 'free';
+
+        canRun(context: WorkerContext): boolean {
+          const ctx = context as any;
+          // Check if agentOutputs has strengthGrowth from Synthesizer
+          if (ctx.agentOutputs?.strengthGrowth?.strengths?.length > 0) {
+            typeClassifierReceivedStrengthGrowth = true;
+          }
+          return !!(ctx.agentOutputs);
+        }
+
+        async execute(): Promise<WorkerResult<any>> {
+          return {
+            data: {
+              primaryType: 'architect',
+              distribution: { architect: 40, scientist: 20, collaborator: 20, speedrunner: 10, craftsman: 10 },
+              controlLevel: 'navigator',
+              controlScore: 50,
+              matrixName: 'Systems Architect',
+              matrixEmoji: '🏗️',
+              confidenceScore: 0.8,
+            },
+            usage: null,
+          };
+        }
+      }
+
+      orchestrator.registerPhase2Point5Worker(new MockSynthesizerWorker());
+      orchestrator.registerPhase2Point5Worker(new MockTypeClassifierWorker());
+
+      await orchestrator.analyze(mockSessions, mockMetrics, 'free');
+
+      // TypeClassifier should have received the Synthesizer's strengthGrowth output
+      expect(typeClassifierReceivedStrengthGrowth).toBe(true);
+    });
+
+    it('should not include strengthGrowth in Phase 2 merge', async () => {
+      // Phase 2 worker named StrengthGrowth should NOT be merged (it moved to Phase 2.5)
+      class MockPhase2NamedSG extends BaseWorker<any> {
+        readonly name = 'SomeWorker';
+        readonly phase = 2 as const;
+        readonly minTier: Tier = 'free';
+
+        canRun(): boolean { return true; }
+
+        async execute(): Promise<WorkerResult<any>> {
+          return { data: { testData: true }, usage: null };
+        }
+      }
+
+      class MockTypeClassifierForMerge extends BaseWorker<any> {
+        readonly name = 'TypeClassifier';
+        readonly phase = 2 as const;
+        readonly minTier: Tier = 'free';
+
+        canRun(context: WorkerContext): boolean {
+          return !!(context as any).agentOutputs;
+        }
+
+        async execute(): Promise<WorkerResult<any>> {
+          return {
+            data: {
+              primaryType: 'architect',
+              distribution: { architect: 40, scientist: 20, collaborator: 20, speedrunner: 10, craftsman: 10 },
+              controlLevel: 'navigator',
+              controlScore: 50,
+              matrixName: 'Systems Architect',
+              matrixEmoji: '🏗️',
+              confidenceScore: 0.8,
+            },
+            usage: null,
+          };
+        }
+      }
+
+      orchestrator.registerPhase2Worker(new MockPhase2NamedSG());
+      orchestrator.registerPhase2Point5Worker(new MockTypeClassifierForMerge());
+
+      const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
+
+      // Phase 2 merge should NOT include strengthGrowth
+      // (SomeWorker output would not map to strengthGrowth because name doesn't match)
+      expect(result.evaluation.agentOutputs?.strengthGrowth).toBeUndefined();
+    });
+
+    it('should pass phase1Output to Phase 2.5 workers', async () => {
+      let receivedPhase1Output = false;
+
+      class MockPhase25Worker extends BaseWorker<any> {
+        readonly name = 'TypeClassifier';
+        readonly phase = 2 as const;
+        readonly minTier: Tier = 'free';
+
+        canRun(context: WorkerContext): boolean {
+          const ctx = context as any;
+          if (ctx.phase1Output) {
+            receivedPhase1Output = true;
+          }
+          return !!(ctx.agentOutputs);
+        }
+
+        async execute(): Promise<WorkerResult<any>> {
+          return {
+            data: {
+              primaryType: 'architect',
+              distribution: { architect: 40, scientist: 20, collaborator: 20, speedrunner: 10, craftsman: 10 },
+              controlLevel: 'navigator',
+              controlScore: 50,
+              matrixName: 'Systems Architect',
+              matrixEmoji: '🏗️',
+              confidenceScore: 0.8,
+            },
+            usage: null,
+          };
+        }
+      }
+
+      orchestrator.registerPhase2Point5Worker(new MockPhase25Worker());
+
+      await orchestrator.analyze(mockSessions, mockMetrics, 'free');
+
+      expect(receivedPhase1Output).toBe(true);
     });
   });
 
