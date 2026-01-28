@@ -84,39 +84,47 @@ function computeMatrixDistribution(
   controlScore: number
 ): { explorer: number; navigator: number; cartographer: number } {
   const score = Math.max(0, Math.min(100, controlScore));
-  let explorerWeight: number;
-  let navigatorWeight: number;
-  let cartographerWeight: number;
 
-  if (score <= 34) {
-    // Explorer-dominant zone
-    explorerWeight = 0.6 + (34 - score) / 85;
-    navigatorWeight = (1 - explorerWeight) * 0.7;
-    cartographerWeight = (1 - explorerWeight) * 0.3;
-  } else if (score <= 64) {
-    // Navigator-dominant zone
-    const distFromCenter = Math.abs(score - 50) / 15;
-    navigatorWeight = 0.5 + (1 - distFromCenter) * 0.3;
-    const remainingWeight = 1 - navigatorWeight;
-    const explorerBias = score < 50 ? 0.6 : 0.4;
-    explorerWeight = remainingWeight * explorerBias;
-    cartographerWeight = remainingWeight * (1 - explorerBias);
-  } else {
-    // Cartographer-dominant zone
-    cartographerWeight = 0.6 + (score - 65) / 87.5;
-    navigatorWeight = (1 - cartographerWeight) * 0.7;
-    explorerWeight = (1 - cartographerWeight) * 0.3;
-  }
-
-  const total = explorerWeight + navigatorWeight + cartographerWeight;
+  const weights = calculateWeights(score);
+  const total = weights.explorer + weights.navigator + weights.cartographer;
   const calcPct = (weight: number): number =>
     Math.round(typeDistribution * (weight / total) * 10) / 10;
 
   return {
-    explorer: calcPct(explorerWeight),
-    navigator: calcPct(navigatorWeight),
-    cartographer: calcPct(cartographerWeight),
+    explorer: calcPct(weights.explorer),
+    navigator: calcPct(weights.navigator),
+    cartographer: calcPct(weights.cartographer),
   };
+}
+
+/**
+ * Calculate weight distribution based on control score
+ */
+function calculateWeights(score: number): { explorer: number; navigator: number; cartographer: number } {
+  if (score <= 34) {
+    // Explorer-dominant zone
+    const explorerWeight = 0.6 + (34 - score) / 85;
+    const navigatorWeight = (1 - explorerWeight) * 0.7;
+    const cartographerWeight = (1 - explorerWeight) * 0.3;
+    return { explorer: explorerWeight, navigator: navigatorWeight, cartographer: cartographerWeight };
+  }
+
+  if (score <= 64) {
+    // Navigator-dominant zone
+    const distFromCenter = Math.abs(score - 50) / 15;
+    const navigatorWeight = 0.5 + (1 - distFromCenter) * 0.3;
+    const remainingWeight = 1 - navigatorWeight;
+    const explorerBias = score < 50 ? 0.6 : 0.4;
+    const explorerWeight = remainingWeight * explorerBias;
+    const cartographerWeight = remainingWeight * (1 - explorerBias);
+    return { explorer: explorerWeight, navigator: navigatorWeight, cartographer: cartographerWeight };
+  }
+
+  // Cartographer-dominant zone
+  const cartographerWeight = 0.6 + (score - 65) / 87.5;
+  const navigatorWeight = (1 - cartographerWeight) * 0.7;
+  const explorerWeight = (1 - cartographerWeight) * 0.3;
+  return { explorer: explorerWeight, navigator: navigatorWeight, cartographer: cartographerWeight };
 }
 
 /**
@@ -434,8 +442,8 @@ export function displayResultsWithCelebration(result: AnalysisResult): void {
   // Show regular results
   displayResults(result);
 
-  // Show actual token usage if DEBUG is enabled and tokenUsage is available
-  if (process.env.DEBUG && result.tokenUsage) {
+  // Show actual token usage if NOSLOP_DEBUG is enabled and tokenUsage is available
+  if (process.env.NOSLOP_DEBUG === '1' && result.tokenUsage) {
     console.log(renderActualTokenUsage(result.tokenUsage));
   }
 }
