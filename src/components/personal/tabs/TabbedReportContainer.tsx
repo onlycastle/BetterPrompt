@@ -11,7 +11,7 @@
  * - Removes legacy GrowthInsightsSection, DimensionInsightsClean, AgentInsightsSection
  */
 
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { TypeResultMinimal } from './TypeResultMinimal';
 import { PersonalitySummaryClean } from './PersonalitySummaryClean';
 import { PromptPatternsClean } from './PromptPatternsClean';
@@ -68,8 +68,8 @@ export function TabbedReportContainer({
   // This replaces the centralized StrengthGrowthSynthesizer approach
   const workerInsights = useMemo(() => {
     // First check if workerInsights is already on the analysis (from DB)
-    if ((analysis as any).workerInsights) {
-      return (analysis as any).workerInsights;
+    if (analysis.workerInsights) {
+      return analysis.workerInsights;
     }
     // Otherwise aggregate from agentOutputs
     if (agentOutputs) {
@@ -80,7 +80,7 @@ export function TabbedReportContainer({
 
   // Extract translatedAgentInsights for non-English translations
   // Phase 4 Translator produces this when output language != English
-  const translatedAgentInsights = (analysis as any).translatedAgentInsights;
+  const translatedAgentInsights = analysis.translatedAgentInsights;
 
   // Handle tab change with scroll-to-top
   const handleTabChange = useCallback((tabId: ReportTabId) => {
@@ -108,9 +108,14 @@ export function TabbedReportContainer({
 
   // Set default tab to first available
   const defaultTab = availableTabs[0]?.id || 'patterns';
-  if (activeTab !== defaultTab && !availableTabs.find(t => t.id === activeTab)) {
-    setActiveTab(defaultTab);
-  }
+
+  // Sync activeTab with available tabs when current tab becomes unavailable
+  // Using useEffect to avoid state updates during render (React anti-pattern)
+  useEffect(() => {
+    if (!availableTabs.find(t => t.id === activeTab)) {
+      setActiveTab(defaultTab);
+    }
+  }, [activeTab, availableTabs, defaultTab]);
 
   // Calculate next available tab
   const currentAvailableIndex = availableTabs.findIndex(t => t.id === activeTab);
