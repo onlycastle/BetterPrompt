@@ -21,7 +21,8 @@ import type { StrengthGrowthOutput } from '../../models/strength-growth-data';
 import type { TrustVerificationOutput } from '../../models/trust-verification-data';
 import type { WorkflowHabitOutput } from '../../models/workflow-habit-data';
 import type { TypeClassifierOutput } from '../../models/agent-outputs';
-import type { DimensionResourceMatch, DimensionNameEnum } from '../../models/verbose-evaluation';
+import type { DimensionResourceMatch } from '../../models/verbose-evaluation';
+import { validateDimension } from '../../models/dimension-schema';
 import {
   DIMENSION_NAMES,
   DIMENSION_DISPLAY_NAMES,
@@ -205,11 +206,11 @@ function sanitizeTopFocusAreas(topFocusAreas: any): any {
 // ============================================================================
 
 /**
- * Copy all TypeClassifier fields to VerboseEvaluation
+ * Copy core TypeClassifier fields to VerboseEvaluation top-level.
  *
- * Previously only 4 fields were copied (primaryType, controlLevel, distribution, controlScore).
- * Now we copy ALL fields to ensure matrixName, matrixEmoji, and collaborationMaturity
- * are available in the final output.
+ * Only primaryType, controlLevel, distribution, controlScore are promoted.
+ * matrixName, matrixEmoji, collaborationMaturity remain accessible via
+ * evaluation.agentOutputs.typeClassifier.* (not duplicated at top-level).
  */
 function assembleTypeClassification(tc: TypeClassifierOutput): Record<string, unknown> {
   return {
@@ -502,7 +503,7 @@ function parsePersonalizedPriorities(data: string): any[] {
       const parts = entry.split('|');
       return {
         rank: index + 1,
-        dimension: (parts[0]?.trim() || 'aiCollaboration') as DimensionNameEnum,
+        dimension: validateDimension(parts[0], 'personalizedPriority'),
         title: parts[1]?.trim() || '',
         narrative: parts[2]?.trim() || '',
         expectedImpact: parts[3]?.trim() || '',
