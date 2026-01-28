@@ -281,7 +281,7 @@ export class GeminiClient {
       // Retry on transient network errors (fetch failed, ECONNRESET, etc.)
       if (error instanceof TypeError && message.includes('fetch failed')) return true;
       if (message.includes('econnreset') || message.includes('etimedout')) return true;
-      if (message.includes('socket hang up') || message.includes('network')) return true;
+      if (message.includes('socket hang up') || message.includes('network error')) return true;
     }
     return false;
   }
