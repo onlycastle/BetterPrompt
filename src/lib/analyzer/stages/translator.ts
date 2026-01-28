@@ -19,6 +19,9 @@ import { TranslatorOutputSchema, type TranslatorOutput } from '../../models/tran
 import type { AgentOutputs } from '../../models/agent-outputs';
 import type { SupportedLanguage } from './content-writer-prompts';
 import { TRANSLATOR_SYSTEM_PROMPT, buildTranslatorUserPrompt } from './translator-prompts';
+import type { StrengthGrowthOutput } from '../../models/strength-growth-data';
+import type { TrustVerificationOutput } from '../../models/trust-verification-data';
+import type { WorkflowHabitOutput } from '../../models/workflow-habit-data';
 
 /**
  * Configuration for the Translator stage
@@ -100,7 +103,8 @@ export class TranslatorStage {
     agentOutputs: AgentOutputs
   ): Promise<TranslatorResult> {
     const englishDataJson = JSON.stringify(englishResponse, null, 2);
-    const agentOutputsJson = JSON.stringify(agentOutputs, null, 2);
+    const preparedOutputs = this.prepareAgentOutputsForTranslator(agentOutputs);
+    const agentOutputsJson = JSON.stringify(preparedOutputs, null, 2);
 
     const userPrompt = buildTranslatorUserPrompt(
       englishDataJson,
@@ -114,5 +118,108 @@ export class TranslatorStage {
       responseSchema: TranslatorOutputSchema,
       maxOutputTokens: this.config.maxOutputTokens,
     });
+  }
+
+  /**
+   * Prepare agentOutputs for translator by normalizing all agents to
+   * flat pipe-delimited string format matching what the translator prompt expects.
+   *
+   * The translator prompt expects each agent to have `strengthsData` and `growthAreasData`
+   * as pipe-delimited strings (e.g., "title|description|evidence;...").
+   * - knowledgeGap, contextEfficiency: already have this format (pass through)
+   * - strengthGrowth, trustVerification, workflowHabit: structured arrays → pre-converted
+   */
+  private prepareAgentOutputsForTranslator(agentOutputs: AgentOutputs): Record<string, unknown> {
+    const prepared: Record<string, unknown> = {};
+
+    // Agents that already output flat pipe-delimited strings
+    const flatStringAgentKeys = ['knowledgeGap', 'contextEfficiency'] as const;
+
+    for (const key of flatStringAgentKeys) {
+      if (agentOutputs[key]) {
+        const agent = agentOutputs[key] as Record<string, unknown>;
+        prepared[key] = {
+          strengthsData: agent.strengthsData ?? '',
+          growthAreasData: agent.growthAreasData ?? '',
+        };
+      }
+    }
+
+    // Convert v2 strengthGrowth structured arrays → flat strings
+    if (agentOutputs.strengthGrowth) {
+      prepared.strengthGrowth = this.flattenStrengthGrowth(agentOutputs.strengthGrowth);
+    }
+
+    // Convert v2 trustVerification structured arrays → flat strings
+    if (agentOutputs.trustVerification) {
+      prepared.trustVerification = this.flattenTrustVerification(agentOutputs.trustVerification);
+    }
+
+    // Convert v2 workflowHabit structured arrays → flat strings
+    if (agentOutputs.workflowHabit) {
+      prepared.workflowHabit = this.flattenWorkflowHabit(agentOutputs.workflowHabit);
+    }
+
+    return prepared;
+  }
+
+  /**
+   * Flatten StrengthGrowth structured data to pipe-delimited strings.
+   * Output format matches TranslatedAgentInsight expectations:
+   * - strengthsData: "title|description|quote1,quote2;..."
+   * - growthAreasData: "title|description|evidence|recommendation|frequency|severity|priority;..."
+   */
+  private flattenStrengthGrowth(sg: StrengthGrowthOutput): { strengthsData: string; growthAreasData: string } {
+    const strengthsData = (sg.strengths ?? []).map(s => {
+      const quotes = (s.evidence ?? []).map(e => e.quote).join(',');
+      return `${s.title}|${s.description}|${quotes}`;
+    }).join(';');
+
+    const growthAreasData = (sg.growthAreas ?? []).map(g => {
+      const quotes = (g.evidence ?? []).map(e => e.quote).join(',');
+      return `${g.title}|${g.description}|${quotes}|${g.recommendation}|${g.frequency ?? ''}|${g.severity ?? ''}|${g.priorityScore ?? ''}`;
+    }).join(';');
+
+    return { strengthsData, growthAreasData };
+  }
+
+  /**
+   * Flatten TrustVerification structured data to pipe-delimited strings.
+   * Converts anti-patterns to growthAreasData format for translation.
+   */
+  private flattenTrustVerification(tv: TrustVerificationOutput): { strengthsData: string; growthAreasData: string } {
+    // TrustVerification has anti-patterns → growth areas
+    const growthAreasData = (tv.antiPatterns ?? []).map(ap => {
+      const quotes = (ap.examples ?? []).map(e => e.quote).join(',');
+      const title = `Anti-Pattern: ${ap.type.replace(/_/g, ' ')}`;
+      const description = ap.improvement ?? `Detected ${ap.type} pattern`;
+      const severity = ap.severity === 'critical' ? 'critical' :
+        ap.severity === 'significant' ? 'high' :
+        ap.severity === 'moderate' ? 'medium' : 'low';
+      const priority = ap.severity === 'critical' ? '90' :
+        ap.severity === 'significant' ? '70' :
+        ap.severity === 'moderate' ? '50' : '30';
+      return `${title}|${description}|${quotes}|${ap.improvement ?? ''}|${ap.sessionPercentage ?? ''}|${severity}|${priority}`;
+    }).join(';');
+
+    return { strengthsData: '', growthAreasData };
+  }
+
+  /**
+   * Flatten WorkflowHabit structured data to pipe-delimited strings.
+   * Converts weak planning habits to growthAreasData format for translation.
+   */
+  private flattenWorkflowHabit(wh: WorkflowHabitOutput): { strengthsData: string; growthAreasData: string } {
+    const weakHabits = (wh.planningHabits ?? []).filter(h =>
+      h.effectiveness === 'low' || h.frequency === 'rarely' || h.frequency === 'never'
+    );
+
+    const growthAreasData = weakHabits.map(h => {
+      const typeLabel = h.type.replace(/_/g, ' ');
+      const quotes = (h.examples ?? []).join(',');
+      return `Planning: ${typeLabel}|Planning habit "${typeLabel}" is ${h.frequency}|${quotes}|Improve ${typeLabel} frequency||medium|50`;
+    }).join(';');
+
+    return { strengthsData: '', growthAreasData };
   }
 }
