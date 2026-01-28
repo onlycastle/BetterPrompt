@@ -7,9 +7,10 @@
 
 import type { CodingStyleType, AIControlLevel } from './enterprise';
 import type { TypeDistribution } from './report';
+import type { AggregatedWorkerInsights } from '../lib/models/worker-insights';
 
 // Re-export for convenience
-export type { CodingStyleType, AIControlLevel, TypeDistribution };
+export type { CodingStyleType, AIControlLevel, TypeDistribution, AggregatedWorkerInsights };
 
 // ============================================================================
 // Matrix Distribution (5 types × 3 levels = 15 combinations)
@@ -166,6 +167,8 @@ export interface VerboseAnalysisData {
   promptPatterns: PromptPattern[];
   // Agent outputs (from Wow Agents - Premium)
   agentOutputs?: import('../lib/models/agent-outputs').AgentOutputs;
+  // Aggregated worker insights from Phase 2 workers (from DB cache or aggregated at runtime)
+  workerInsights?: AggregatedWorkerInsights;
   // Translated agent insights (for non-English output)
   // Contains translated strengths/growthAreas from Content Writer
   translatedAgentInsights?: import('../lib/models/verbose-evaluation').TranslatedAgentInsights;
