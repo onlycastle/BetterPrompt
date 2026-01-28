@@ -31,6 +31,8 @@ import type {
   AggregatedTokenUsage,
   Phase1Output,
   AnalysisResult,
+  DebugPhaseOutput,
+  ProgressCallback,
 } from './types';
 import {
   DEFAULT_ORCHESTRATOR_CONFIG,
@@ -80,6 +82,7 @@ export class AnalysisOrchestrator {
   private contentWriter: ContentWriterStage;
   private translator: TranslatorStage;
   private contentGateway: ContentGateway;
+  private debugOutputs: DebugPhaseOutput[] = [];
 
   constructor(config: OrchestratorConfig) {
     this.config = {
@@ -167,10 +170,25 @@ export class AnalysisOrchestrator {
   async analyze(
     sessions: ParsedSession[],
     metrics: SessionMetrics,
-    tier: Tier
+    tier: Tier,
+    onProgress?: ProgressCallback
   ): Promise<AnalysisResult> {
     const startTime = Date.now();
     const stageUsages: StageTokenUsage[] = [];
+    this.debugOutputs = [];
+
+    // Progress tracking: 8 LLM stages total (5 Phase2 + Phase2.5 + Phase3 + Phase4)
+    const TOTAL_LLM_STAGES = 8;
+    const PROGRESS_START = 40;
+    const PROGRESS_RANGE = 49; // 40% → 89%
+    const STEP = Math.floor(PROGRESS_RANGE / TOTAL_LLM_STAGES); // 6 points per stage
+    let completedLLMStages = 0;
+
+    const reportProgress = (stage: string, message: string) => {
+      if (!onProgress) return;
+      const progress = PROGRESS_START + completedLLMStages * STEP;
+      onProgress(stage, progress, message);
+    };
 
     this.log('Starting analysis pipeline...');
     this.log(`Sessions: ${sessions.length}, Tier: ${tier}`);
@@ -186,12 +204,22 @@ export class AnalysisOrchestrator {
     // Phase 1: Data Extraction (deterministic, no LLM)
     // ─────────────────────────────────────────────────────────────────────
     this.log('Phase 1: Data Extraction...');
+    const phase1Start = Date.now();
     const phase1Results = await this.runPhase1(baseContext);
 
     // Validate Phase 1 output before proceeding (No Fallback Policy)
     if (!phase1Results.dataExtractor.data) {
       throw new Error('Phase 1 DataExtractor produced no output. Analysis cannot proceed.');
     }
+
+    this.collectDebugOutput(
+      'phase1', 'DataExtractor', phase1Start,
+      phase1Results.dataExtractor.data,
+      phase1Results.dataExtractor.usage
+    );
+
+    // Report Phase 1 completion (deterministic, no LLM — progress stays at 40%)
+    reportProgress('phase1', 'Extracting session data...');
 
     // DataExtractor is deterministic — track token usage only if present
     if (phase1Results.dataExtractor.usage) {
@@ -224,21 +252,36 @@ export class AnalysisOrchestrator {
 
       this.log(`Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasPhase1Output: ${!!phase2Context.phase1Output}`);
 
-      const phase2Results = await this.runPhase2(phase2Context);
+      const phase2Start = Date.now();
+      const phase2WorkerCount = this.phase2Workers.length;
+      const phase2Results = await this.runPhase2(phase2Context, (workerName, workerIndex) => {
+        completedLLMStages++;
+        const isLast = workerIndex === phase2WorkerCount;
+        const message = isLast
+          ? `Insight generation complete (${workerIndex}/${phase2WorkerCount})`
+          : `Analyzing ${workerName}... (${workerIndex}/${phase2WorkerCount})`;
+        reportProgress('phase2', message);
+      });
       this.log(`Phase 2 results keys: ${Object.keys(phase2Results).join(', ')}`);
+
+      // Collect debug output and token usage in a single pass
+      for (const [workerName, result] of Object.entries(phase2Results)) {
+        if (result) {
+          this.collectDebugOutput(
+            `phase2_${workerName}`, workerName, phase2Start,
+            result.data, result.usage
+          );
+          if (result.usage) {
+            stageUsages.push({
+              stage: `${workerName} (Agent)`,
+              ...result.usage,
+            });
+          }
+        }
+      }
 
       agentOutputs = this.mergeAgentOutputs(phase2Results);
       this.log(`Merged agentOutputs keys: ${Object.keys(agentOutputs).join(', ')}`);
-
-      // Track Phase 2 token usage
-      for (const [workerName, result] of Object.entries(phase2Results)) {
-        if (result?.usage) {
-          stageUsages.push({
-            stage: `${workerName} (Agent)`,
-            ...result.usage,
-          });
-        }
-      }
     } else {
       this.log('Phase 2: Skipped (no workers registered)');
     }
@@ -251,6 +294,7 @@ export class AnalysisOrchestrator {
     this.log(`Phase 2.5 workers registered: ${this.phase2Point5Workers.length}`);
     if (this.phase2Point5Workers.length > 0) {
       this.log('Phase 2.5: Type Classification...');
+      const phase2Point5Start = Date.now();
       const phase2Point5Context: WorkerContext = {
         ...baseContext,
         // outputLanguage intentionally NOT passed - Phase 2.5 always uses English
@@ -268,6 +312,15 @@ export class AnalysisOrchestrator {
         const errorMessage = typeClassifierResult?.error?.message || 'Unknown error';
         throw new Error(`TypeClassifier failed: ${errorMessage}. Analysis cannot proceed without type classification.`);
       }
+
+      this.collectDebugOutput(
+        'phase2.5_TypeClassifier', 'TypeClassifier', phase2Point5Start,
+        typeClassifierResult.data, typeClassifierResult.usage
+      );
+
+      // Report Phase 2.5 completion
+      completedLLMStages++;
+      reportProgress('phase2.5', 'Classifying developer type...');
 
       // Merge TypeClassifier results into agentOutputs
       agentOutputs = this.mergePhase2Point5Outputs(agentOutputs, phase2Point5Results);
@@ -303,12 +356,24 @@ export class AnalysisOrchestrator {
     // Phase 3: Content Generation (Phase1Output + AgentOutputs → narrative)
     // ─────────────────────────────────────────────────────────────────────
     this.log('Phase 3: Content Generation...');
+    const phase3Start = Date.now();
     const sessionCount = phase1Results.dataExtractor.data.sessionMetrics.totalSessions;
     const contentResult = await this.contentWriter.transformV3(
       sessionCount,
       agentOutputs,
-      phase1Results.dataExtractor.data // Phase1Output for evidence verification
+      phase1Results.dataExtractor.data, // Phase1Output for evidence verification
+      knowledgeResources
     );
+
+    // Capture Phase 3 output BEFORE translation (pre-translation English)
+    this.collectDebugOutput(
+      'phase3', 'ContentWriter', phase3Start,
+      contentResult.data, contentResult.usage
+    );
+
+    // Report Phase 3 completion
+    completedLLMStages++;
+    reportProgress('phase3', 'Generating personalized narrative...');
 
     stageUsages.push({
       stage: 'Content Writer (Stage 2)',
@@ -329,10 +394,16 @@ export class AnalysisOrchestrator {
 
     if (languageResult.primary !== 'en') {
       this.log(`Phase 4: Translation to ${languageResult.primary}...`);
+      const phase4Start = Date.now();
       const translatorResult = await this.translator.translate(
         contentResult.data,
         languageResult.primary,
         agentOutputs
+      );
+
+      this.collectDebugOutput(
+        'phase4', 'Translator', phase4Start,
+        translatorResult.data, translatorResult.usage
       );
 
       stageUsages.push({
@@ -340,10 +411,17 @@ export class AnalysisOrchestrator {
         ...translatorResult.usage,
       });
 
+      // Report Phase 4 completion
+      completedLLMStages++;
+      reportProgress('phase4', `Translating to ${LANGUAGE_DISPLAY_NAMES[languageResult.primary] || languageResult.primary}...`);
+
       // Merge translated text fields into the English response
       this.mergeTranslatedFields(contentResult.data, translatorResult.data);
       this.log('Phase 4: Translation complete');
     } else {
+      // Translation skipped — jump to 89% to match expected end of analysis range
+      completedLLMStages++;
+      reportProgress('phase4_skipped', 'Analysis complete');
       this.log('Phase 4: Skipped (English detected)');
     }
 
@@ -412,10 +490,16 @@ export class AnalysisOrchestrator {
     this.logPipelineSummary(stageUsages, totalTime);
 
     // Apply tier-based filtering and return with Phase1Output
-    return {
+    const result: AnalysisResult = {
       evaluation: this.contentGateway.filter(evaluation, tier),
       phase1Output: phase1Results.dataExtractor.data,
     };
+
+    if (this.config.debug && this.debugOutputs.length > 0) {
+      result.debugOutputs = this.debugOutputs;
+    }
+
+    return result;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -449,9 +533,11 @@ export class AnalysisOrchestrator {
    * NO FALLBACK: Worker failures propagate as errors.
    */
   private async runPhase2(
-    context: WorkerContext
+    context: WorkerContext,
+    onWorkerComplete?: (workerName: string, completedCount: number) => void
   ): Promise<Record<string, WorkerResult<unknown> | undefined>> {
     const results: Record<string, WorkerResult<unknown> | undefined> = {};
+    let completedCount = 0;
 
     // Run all Phase 2 workers in parallel - errors will propagate
     const workerPromises = this.phase2Workers.map(async (worker) => {
@@ -463,7 +549,9 @@ export class AnalysisOrchestrator {
       // NO try-catch: let errors propagate to identify issues
       const result = await worker.execute(context);
       results[worker.name] = result;
+      completedCount++;
       this.log(`Worker ${worker.name} completed`);
+      onWorkerComplete?.(worker.name, completedCount);
     });
 
     // Use Promise.all instead of Promise.allSettled to propagate errors
@@ -774,6 +862,28 @@ export class AnalysisOrchestrator {
       messageCount: session.messages.length,
       durationMinutes: Math.round(session.durationSeconds / 60),
     }));
+  }
+
+  /**
+   * Collect a phase output for debugging (no-op when debug is disabled)
+   */
+  private collectDebugOutput(
+    phase: string,
+    phaseName: string,
+    startTime: number,
+    data: unknown,
+    tokenUsage: import('../clients/gemini-client').TokenUsage | null
+  ): void {
+    if (!this.config.debug) return;
+
+    this.debugOutputs.push({
+      phase,
+      phaseName,
+      completedAt: new Date().toISOString(),
+      durationMs: Date.now() - startTime,
+      data,
+      tokenUsage,
+    });
   }
 
   /**
