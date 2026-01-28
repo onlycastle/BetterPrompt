@@ -106,7 +106,7 @@ export class GeminiClient {
       throw new Error('GOOGLE_GEMINI_API_KEY is required');
     }
 
-    this.ai = new GoogleGenAI({ apiKey });
+    this.ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: 300_000 } });
     this.model = config.model || DEFAULT_CONFIG.model;
     this.temperature = config.temperature ?? DEFAULT_CONFIG.temperature;
     this.maxRetries = config.maxRetries ?? DEFAULT_CONFIG.maxRetries;
@@ -152,8 +152,13 @@ export class GeminiClient {
           throw error;
         }
 
+        const delay = Math.pow(2, attempt) * 1000;
+        console.warn(
+          `[GeminiClient] Retryable error (attempt ${attempt + 1}/${this.maxRetries}): ${(error as Error).message}. Retrying in ${delay}ms...`
+        );
+
         // Exponential backoff
-        await this.sleep(Math.pow(2, attempt) * 1000);
+        await this.sleep(delay);
       }
     }
 
@@ -273,6 +278,10 @@ export class GeminiClient {
       if (message.includes('rate') || message.includes('429')) return true;
       if (message.includes('500') || message.includes('503')) return true;
       if (message.includes('internal') || message.includes('server error')) return true;
+      // Retry on transient network errors (fetch failed, ECONNRESET, etc.)
+      if (error instanceof TypeError && message.includes('fetch failed')) return true;
+      if (message.includes('econnreset') || message.includes('etimedout')) return true;
+      if (message.includes('socket hang up') || message.includes('network error')) return true;
     }
     return false;
   }
