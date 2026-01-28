@@ -178,7 +178,15 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 - Output: `VerboseLLMResponse` → `VerboseEvaluation`
 - 1 LLM call
 
-**Total: 7 LLM calls (0 + 5 + 1 + 1)**
+**Phase 4: Translator (Conditional)**
+- **TranslatorStage** (`src/lib/analyzer/stages/translator.ts`)
+- Runs only when non-English language detected (5% character threshold)
+- Translates text fields while preserving English structure and technical terms
+- Supported languages: Korean, Japanese, Chinese
+- Output: `TranslatorOutput` (text fields only, merged with English response)
+- 0-1 LLM call (conditional)
+
+**Total: 7-8 LLM calls (0 + 5 + 1 + 1 + 0-1)**
 
 **Prompt Engineering:**
 - Prompts in `src/lib/analyzer/workers/prompts/phase2-worker-prompts.ts` and `content-writer-prompts.ts`
