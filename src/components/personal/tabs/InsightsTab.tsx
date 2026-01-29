@@ -8,9 +8,9 @@ import { useMemo } from 'react';
 import { GrowthAreasSection } from './GrowthAreasSection';
 import { RecommendationsList } from '../RecommendationsList';
 import { EmptyStatePrompt } from './EmptyStatePrompt';
-import { parseRecommendedResourcesData, type ParsedResource, type AgentOutputs } from '../../../lib/models/agent-outputs';
+import type { ParsedResource, AgentOutputs } from '../../../lib/models/agent-outputs';
 import type { PersonalAnalytics } from '../../../types/personal';
-import type { VerboseAnalysisData, DimensionGrowthArea } from '../../../types/verbose';
+import type { VerboseAnalysisData, DimensionGrowthArea, DimensionResourceMatch } from '../../../types/verbose';
 import styles from './InsightsTab.module.css';
 
 interface InsightsTabProps {
@@ -27,33 +27,44 @@ export function InsightsTab({ analytics, analysis, agentOutputs, isPaid = false 
       ?.flatMap((d) => d.growthAreas)
       ?.slice(0, 5) ?? [];
 
-  // Build resources map from Knowledge Gap agent output
-  // Match resources to growth areas by topic similarity
+  // Build resources map from Knowledge Base (Phase 2.75 deterministic matching)
+  // Resources are already matched to dimensions, we map them to growth area titles
   const resourcesMap = useMemo(() => {
     const map = new Map<string, ParsedResource[]>();
 
-    if (agentOutputs?.knowledgeGap?.recommendedResourcesData) {
-      const allResources = parseRecommendedResourcesData(
-        agentOutputs.knowledgeGap.recommendedResourcesData
-      );
-
-      // Match resources to growth areas by topic similarity
-      growthAreas.forEach((area) => {
-        const areaTitle = area.title.toLowerCase();
-        const matchingResources = allResources.filter((r) => {
-          const resourceTopic = r.topic.toLowerCase();
-          // Check if area title contains resource topic or vice versa
-          return areaTitle.includes(resourceTopic) ||
-            resourceTopic.includes(areaTitle.split(' ')[0]);
-        });
-        if (matchingResources.length > 0) {
-          map.set(area.title, matchingResources);
-        }
-      });
+    if (!analysis?.knowledgeResources || analysis.knowledgeResources.length === 0) {
+      return map;
     }
 
+    // Build dimension -> resources lookup
+    const dimensionResources = new Map<string, ParsedResource[]>();
+    for (const dimMatch of analysis.knowledgeResources) {
+      const resources: ParsedResource[] = dimMatch.knowledgeItems.map(item => ({
+        topic: item.title,
+        type: item.contentType as ParsedResource['type'],
+        url: item.sourceUrl,
+      }));
+      dimensionResources.set(dimMatch.dimension, resources);
+    }
+
+    // Match growth areas to dimension resources
+    // Each growth area comes from dimensionInsights which has a dimension field
+    growthAreas.forEach((area) => {
+      // Find the dimension this growth area belongs to
+      const parentDimension = analysis.dimensionInsights?.find(
+        d => d.growthAreas.some(ga => ga.title === area.title)
+      );
+
+      if (parentDimension) {
+        const resources = dimensionResources.get(parentDimension.dimension);
+        if (resources && resources.length > 0) {
+          map.set(area.title, resources.slice(0, 3)); // Limit to 3 per area
+        }
+      }
+    });
+
     return map;
-  }, [agentOutputs, growthAreas]);
+  }, [analysis, growthAreas]);
 
   const hasRecommendations = analytics?.recommendations && analytics.recommendations.length > 0;
   const hasGrowthAreas = growthAreas.length > 0;

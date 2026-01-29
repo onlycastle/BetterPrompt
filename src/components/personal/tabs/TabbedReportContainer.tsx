@@ -19,10 +19,32 @@ import { WorkerInsightsSection } from './WorkerInsightsSection';
 import { NextTabButton } from './NextTabButton';
 import { ResourceSidebar } from './ResourceSidebar';
 import { DataQualityBadge } from './DataQualityBadge';
-import type { VerboseAnalysisData, AnalysisMetadata } from '../../../types/verbose';
-import type { AgentOutputs } from '../../../lib/models/agent-outputs';
-import { aggregateWorkerInsights, parseRecommendedResourcesData, type ParsedResource } from '../../../lib/models/agent-outputs';
+import type { VerboseAnalysisData, AnalysisMetadata, DimensionResourceMatch } from '../../../types/verbose';
+import type { AgentOutputs, ParsedResource } from '../../../lib/models/agent-outputs';
+import { aggregateWorkerInsights } from '../../../lib/models/agent-outputs';
 import styles from './TabbedReportContainer.module.css';
+
+/**
+ * Convert DimensionResourceMatch[] to ParsedResource[] for ResourceSidebar.
+ *
+ * DimensionResourceMatch is grouped by dimension, while ParsedResource is a flat array.
+ * We extract knowledge items from each dimension and convert to ParsedResource format.
+ */
+function convertKnowledgeResourcesToFlat(resources: DimensionResourceMatch[]): ParsedResource[] {
+  const result: ParsedResource[] = [];
+
+  for (const dimMatch of resources) {
+    for (const item of dimMatch.knowledgeItems) {
+      result.push({
+        topic: item.title,
+        type: item.contentType as ParsedResource['type'],
+        url: item.sourceUrl,
+      });
+    }
+  }
+
+  return result;
+}
 
 export type ReportTabId = 'patterns' | 'insights';
 
@@ -58,11 +80,14 @@ export function TabbedReportContainer({
   const [activeTab, setActiveTab] = useState<ReportTabId>('patterns');
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Parse all resources for sidebar display (flat array)
+  // Get matched resources from Knowledge Base (Phase 2.75 deterministic matching)
+  // These are validated URLs from our curated database, NOT LLM-generated URLs
   const allResources = useMemo(() => {
-    if (!agentOutputs?.knowledgeGap?.recommendedResourcesData) return [];
-    return parseRecommendedResourcesData(agentOutputs.knowledgeGap.recommendedResourcesData);
-  }, [agentOutputs]);
+    if (!analysis.knowledgeResources || analysis.knowledgeResources.length === 0) {
+      return [];
+    }
+    return convertKnowledgeResourcesToFlat(analysis.knowledgeResources);
+  }, [analysis.knowledgeResources]);
 
   // Aggregate worker insights from Phase 2 workers
   // This replaces the centralized StrengthGrowthSynthesizer approach
@@ -99,11 +124,13 @@ export function TabbedReportContainer({
 
   // Filter tabs to only show those with content
   const availableTabs = REPORT_TABS.filter(tab => {
-    switch (tab.id) {
-      case 'patterns': return hasPatterns;
-      case 'insights': return hasInsights;
-      default: return false;
+    if (tab.id === 'patterns') {
+      return hasPatterns;
     }
+    if (tab.id === 'insights') {
+      return hasInsights;
+    }
+    return false;
   });
 
   // Set default tab to first available
