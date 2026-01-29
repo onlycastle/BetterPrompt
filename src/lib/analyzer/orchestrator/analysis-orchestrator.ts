@@ -458,6 +458,16 @@ export class AnalysisOrchestrator {
 
       // Store translation data — DO NOT merge here, must merge AFTER assembleEvaluation
       translatorData = translatorResult.data;
+
+      // Debug logging: Translator data flow tracking (dev only)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Orchestrator] translatorData.translatedAgentInsights present: ${!!translatorData?.translatedAgentInsights}`);
+        if (translatorData?.translatedAgentInsights) {
+          const keys = Object.keys(translatorData.translatedAgentInsights);
+          console.log(`[Orchestrator] translatedAgentInsights keys: ${keys.join(', ')}`);
+        }
+      }
+
       this.log('Phase 4: Translation complete');
     } else {
       // Translation skipped — jump to 89% to match expected end of analysis range
@@ -539,6 +549,15 @@ export class AnalysisOrchestrator {
         insightsFiltered: confidenceMetadata.insightsFiltered,
       },
     } as VerboseEvaluation;
+
+    // Debug logging: Final evaluation data flow tracking (dev only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Orchestrator] Final evaluation.translatedAgentInsights present: ${!!evaluation.translatedAgentInsights}`);
+      if (evaluation.translatedAgentInsights) {
+        const keys = Object.keys(evaluation.translatedAgentInsights);
+        console.log(`[Orchestrator] Final translatedAgentInsights keys: ${keys.join(', ')}`);
+      }
+    }
 
     this.log(`Final evaluation - hasAgentOutputs: ${!!evaluation.agentOutputs}`);
     this.log(`Final agentOutputs keys: ${evaluation.agentOutputs ? Object.keys(evaluation.agentOutputs).join(', ') : 'none'}`);

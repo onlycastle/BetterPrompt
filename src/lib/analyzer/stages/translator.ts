@@ -107,6 +107,18 @@ export class TranslatorStage {
     const preparedOutputs = this.prepareAgentOutputsForTranslator(agentOutputs);
     const agentOutputsJson = JSON.stringify(preparedOutputs, null, 2);
 
+    // Debug logging: Input data flow tracking (dev only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Translator] Input agentOutputs keys: ${Object.keys(agentOutputs).join(', ')}`);
+      console.log(`[Translator] Prepared for translation keys: ${Object.keys(preparedOutputs).join(', ')}`);
+
+      // Log individual agent data availability
+      for (const key of ['trustVerification', 'workflowHabit', 'knowledgeGap', 'contextEfficiency']) {
+        const data = preparedOutputs[key] as { strengthsData?: string; growthAreasData?: string } | undefined;
+        console.log(`[Translator] ${key}: strengths=${data?.strengthsData?.length ?? 0}chars, growth=${data?.growthAreasData?.length ?? 0}chars`);
+      }
+    }
+
     const userPrompt = buildTranslatorUserPrompt(
       englishDataJson,
       agentOutputsJson,
@@ -119,6 +131,20 @@ export class TranslatorStage {
       responseSchema: TranslatorOutputSchema,
       maxOutputTokens: this.config.maxOutputTokens,
     });
+
+    // Debug logging: Output data flow tracking (dev only)
+    if (process.env.NODE_ENV === 'development') {
+      const transInsights = result.data.translatedAgentInsights;
+      console.log(`[Translator] Output translatedAgentInsights present: ${!!transInsights}`);
+      if (transInsights) {
+        const keys = Object.keys(transInsights).filter(k => transInsights[k as keyof typeof transInsights]);
+        console.log(`[Translator] Output translatedAgentInsights keys with data: ${keys.join(', ')}`);
+        for (const key of keys) {
+          const insight = transInsights[key as keyof typeof transInsights];
+          console.log(`[Translator] ${key}: strengthsData=${insight?.strengthsData?.length ?? 0}chars, growthAreasData=${insight?.growthAreasData?.length ?? 0}chars`);
+        }
+      }
+    }
 
     return result;
   }

@@ -29,12 +29,19 @@ import type { ParsedSession, ParsedMessage } from '../../models/session';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import { strategicSampleUtterances, strategicSampleAIResponses } from '../shared/sampling-utils';
 import { PHASE1_MAX_UTTERANCES, PHASE1_MAX_AI_RESPONSES } from '../shared/constants';
+import { GeminiClient, type TokenUsage } from '../clients/gemini-client';
+import {
+  BatchClassificationResultSchema,
+  type ContentClassification,
+  type ClassificationInput,
+} from '../../models/content-classification';
 
 /**
  * DataExtractorWorker - Extracts raw text and structural metadata
  *
  * Phase 1 worker that creates the Phase1Output used by Phase 2 workers.
- * This is a deterministic extraction - no LLM calls needed.
+ * Performs deterministic extraction followed by optional LLM-based filtering
+ * to remove system-injected metadata from developer utterances.
  */
 export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   readonly name = 'DataExtractor';
@@ -46,12 +53,34 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   private static readonly MAX_AI_RESPONSES = PHASE1_MAX_AI_RESPONSES;
   private static readonly TRUNCATION_MARKER = '... [truncated]';
 
+  // LLM filtering configuration
+  private static readonly LLM_FILTER_MIN_LENGTH = 100; // Skip LLM for short utterances
+  private static readonly LLM_FILTER_CONFIDENCE_THRESHOLD = 0.7; // Filter if confidence >= threshold
+  private static readonly LLM_FILTER_BATCH_SIZE = 20; // Max utterances per LLM call
+
+  /** Dedicated Gemini client for LLM filtering (created lazily) */
+  private filterClient?: GeminiClient;
+
+  /** Accumulated token usage from LLM filtering */
+  private filterTokenUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+
   constructor(config?: OrchestratorConfig) {
     if (config) {
       super(config);
     } else {
       super();
     }
+  }
+
+  /**
+   * Get or create the Gemini client for LLM filtering
+   */
+  private getFilterClient(): GeminiClient {
+    if (!this.filterClient) {
+      // Use existing client from BaseWorker if available, otherwise create new one
+      this.filterClient = this.client ?? new GeminiClient();
+    }
+    return this.filterClient;
   }
 
   /**
@@ -64,11 +93,16 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   /**
    * Execute the extraction
    *
-   * This is a deterministic extraction - no LLM calls.
+   * Performs deterministic extraction followed by LLM-based filtering
+   * to remove system-injected metadata from developer utterances.
+   *
    * NO FALLBACK: Errors propagate to fail the analysis.
    */
   async execute(context: WorkerContext): Promise<WorkerResult<Phase1Output>> {
     this.log(`Extracting from ${context.sessions.length} sessions...`);
+
+    // Reset token usage for this execution
+    this.filterTokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
     const allDeveloperUtterances: DeveloperUtterance[] = [];
     const allAIResponses: AIResponse[] = [];
@@ -80,11 +114,16 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       allAIResponses.push(...responses);
     }
 
-    // Compute metrics from FULL data (preserves accurate totals)
-    const sessionMetrics = this.computeSessionMetrics(context.sessions, allDeveloperUtterances);
+    // NEW: Apply LLM-based filtering to remove system metadata
+    const filteredUtterances = await this.filterSystemMetadataWithLLM(allDeveloperUtterances);
+
+    this.log(`Filtered ${allDeveloperUtterances.length - filteredUtterances.length} system metadata utterances`);
+
+    // Compute metrics from filtered data (accurate representation of developer input)
+    const sessionMetrics = this.computeSessionMetrics(context.sessions, filteredUtterances);
 
     // Apply strategic sampling to reduce downstream token usage
-    const sampledUtterances = this.sampleUtterances(allDeveloperUtterances, DataExtractorWorker.MAX_UTTERANCES);
+    const sampledUtterances = this.sampleUtterances(filteredUtterances, DataExtractorWorker.MAX_UTTERANCES);
     const sampledResponses = this.sampleAIResponses(allAIResponses, DataExtractorWorker.MAX_AI_RESPONSES);
 
     const output: Phase1Output = {
@@ -94,18 +133,19 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       extractionConfidence: this.computeExtractionConfidence(context.sessions),
       extractionWarnings: this.generateWarnings(
         context.sessions,
-        allDeveloperUtterances,
+        filteredUtterances,
         sampledUtterances,
         allAIResponses,
         sampledResponses
       ),
     };
 
-    this.log(`Extracted ${allDeveloperUtterances.length} utterances, sampled to ${sampledUtterances.length}`);
+    this.log(`Extracted ${filteredUtterances.length} utterances, sampled to ${sampledUtterances.length}`);
     this.log(`Extracted ${allAIResponses.length} AI responses, sampled to ${sampledResponses.length}`);
 
-    // No token usage since this is deterministic extraction
-    return this.createSuccessResult(output, null);
+    // Return token usage from LLM filtering (if any)
+    const usage = this.filterTokenUsage.totalTokens > 0 ? this.filterTokenUsage : null;
+    return this.createSuccessResult(output, usage);
   }
 
   /**
@@ -512,6 +552,214 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     }
 
     return cleaned.replace(/\s{2,}/g, ' ').trim();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LLM-based System Metadata Filtering
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Filter system metadata from developer utterances using LLM classification.
+   *
+   * This method identifies and removes plain-text system metadata that isn't
+   * caught by the regex-based stripSystemTags() method, such as:
+   * - Skill documentation blocks ("Base directory for this skill: /path/...")
+   * - Session continuation summaries ("This session is being continued...")
+   * - Other system-injected content addressed TO Claude, not FROM the developer
+   *
+   * Optimization strategies:
+   * 1. Skip short utterances (< 100 chars) - likely genuine developer input
+   * 2. Batch processing - classify multiple utterances in one LLM call
+   * 3. Use regex pre-filtering for known patterns before LLM
+   *
+   * @param utterances - All extracted developer utterances
+   * @returns Filtered utterances with system metadata removed
+   */
+  private async filterSystemMetadataWithLLM(
+    utterances: DeveloperUtterance[]
+  ): Promise<DeveloperUtterance[]> {
+    // Pre-filter with known regex patterns (fast path)
+    const preFiltered = utterances.filter(u => !this.isKnownSystemMetadata(u.text));
+
+    // Separate utterances that need LLM classification
+    const needsClassification = preFiltered.filter(
+      u => u.text.length >= DataExtractorWorker.LLM_FILTER_MIN_LENGTH
+    );
+    const shortUtterances = preFiltered.filter(
+      u => u.text.length < DataExtractorWorker.LLM_FILTER_MIN_LENGTH
+    );
+
+    if (needsClassification.length === 0) {
+      // No LLM needed - all utterances are short enough to pass through
+      return preFiltered;
+    }
+
+    this.log(`Classifying ${needsClassification.length} utterances for system metadata...`);
+
+    // Process in batches to manage token usage
+    const classifiedUtterances: DeveloperUtterance[] = [];
+
+    for (let i = 0; i < needsClassification.length; i += DataExtractorWorker.LLM_FILTER_BATCH_SIZE) {
+      const batch = needsClassification.slice(i, i + DataExtractorWorker.LLM_FILTER_BATCH_SIZE);
+      const classifications = await this.classifyBatch(batch);
+
+      // Keep only utterances classified as developer input with sufficient confidence
+      for (let j = 0; j < batch.length; j++) {
+        const classification = classifications[j];
+        if (
+          classification?.classification === 'developer' ||
+          (classification?.classification === 'system' &&
+            classification.confidence < DataExtractorWorker.LLM_FILTER_CONFIDENCE_THRESHOLD)
+        ) {
+          classifiedUtterances.push(batch[j]!);
+        } else {
+          this.log(`Filtered: "${batch[j]!.text.slice(0, 50)}..." (${classification?.reason ?? 'system metadata'})`);
+        }
+      }
+    }
+
+    // Combine short utterances (passed through) with classified ones
+    return [...shortUtterances, ...classifiedUtterances];
+  }
+
+  /**
+   * Check if text matches known system metadata patterns (regex fast path).
+   * Returns true if the utterance should be filtered out.
+   */
+  private isKnownSystemMetadata(text: string): boolean {
+    const knownPatterns = [
+      // Skill documentation blocks
+      /^Base directory for this skill:/i,
+      /^This skill is located at:/i,
+
+      // Session continuation summaries
+      /^This session is being continued from a previous conversation/i,
+      /^Continuing from previous session/i,
+
+      // Claude Code internal instructions
+      /^IMPORTANT: this context may or may not be relevant/i,
+      /^The following skills are available/i,
+    ];
+
+    return knownPatterns.some(pattern => pattern.test(text.trim()));
+  }
+
+  /**
+   * Classify a batch of utterances using LLM.
+   *
+   * @param batch - Utterances to classify
+   * @returns Array of classifications in the same order as input
+   */
+  private async classifyBatch(
+    batch: DeveloperUtterance[]
+  ): Promise<ContentClassification[]> {
+    const inputs: ClassificationInput[] = batch.map(u => ({
+      id: u.id,
+      text: u.text,
+    }));
+
+    const systemPrompt = this.buildFilterSystemPrompt();
+    const userPrompt = this.buildFilterUserPrompt(inputs);
+
+    try {
+      const client = this.getFilterClient();
+      const result = await client.generateStructured({
+        systemPrompt,
+        userPrompt,
+        responseSchema: BatchClassificationResultSchema,
+        maxOutputTokens: 4096,
+      });
+
+      // Accumulate token usage
+      this.filterTokenUsage.promptTokens += result.usage.promptTokens;
+      this.filterTokenUsage.completionTokens += result.usage.completionTokens;
+      this.filterTokenUsage.totalTokens += result.usage.totalTokens;
+
+      const classifications = result.data.classifications;
+
+      // Validate response length matches input batch
+      if (classifications.length !== batch.length) {
+        this.log(`Warning: LLM returned ${classifications.length} classifications for ${batch.length} inputs`);
+        // Pad with conservative defaults if LLM returned fewer
+        while (classifications.length < batch.length) {
+          classifications.push({
+            classification: 'developer',
+            confidence: 0.5,
+            reason: 'Missing classification, defaulting to developer',
+          });
+        }
+        // Truncate if LLM returned more (unlikely but defensive)
+        if (classifications.length > batch.length) {
+          classifications.length = batch.length;
+        }
+      }
+
+      return classifications;
+    } catch (error) {
+      // On LLM failure, fall back to keeping all utterances (conservative approach)
+      // This is an exception to the No Fallback policy because filtering is optional
+      console.warn('[DataExtractor] LLM classification failed, keeping all utterances:', error);
+      return batch.map(() => ({
+        classification: 'developer' as const,
+        confidence: 0.5,
+        reason: 'LLM classification failed, defaulting to developer',
+      }));
+    }
+  }
+
+  /**
+   * Build the system prompt for the content classification LLM.
+   */
+  private buildFilterSystemPrompt(): string {
+    return `You are a content classifier for developer-AI conversation analysis.
+
+Your task: Classify each text segment as either:
+1. "developer" - Actual developer input (questions, requests, code, feedback)
+2. "system" - System-injected metadata (skill docs, session summaries, hook outputs)
+
+SYSTEM METADATA PATTERNS (filter these out):
+- Skill documentation blocks starting with "Base directory for this skill:"
+- Session continuation summaries starting with "This session is being continued"
+- Claude Code system instructions or context injections
+- Hook outputs, command outputs, tool results embedded in user messages
+- Any instructional content addressed TO Claude, not FROM the developer
+- Technical documentation that appears to be system-injected rather than user-provided
+
+DEVELOPER INPUT PATTERNS (keep these):
+- Questions, requests, or instructions for the AI assistant
+- Code snippets the developer wants help with
+- Feedback on AI responses
+- Error messages the developer is reporting/asking about
+- Conversational responses
+- Implementation requests or bug reports
+- Any content that represents the developer's direct communication
+
+IMPORTANT GUIDELINES:
+- When in doubt, classify as "developer" to avoid filtering genuine input
+- Use confidence scores to indicate certainty (0.0-1.0)
+- A high confidence (>0.8) "system" classification means you're very sure it's metadata
+- Low confidence means the content is ambiguous
+
+Respond with a JSON object containing an array of classifications, one per input.`;
+  }
+
+  /**
+   * Build the user prompt with the batch of texts to classify.
+   */
+  private buildFilterUserPrompt(inputs: ClassificationInput[]): string {
+    const items = inputs.map((input, i) => {
+      // Truncate very long texts for the classification prompt
+      const truncatedText = input.text.length > 500
+        ? input.text.slice(0, 500) + '...[truncated]'
+        : input.text;
+      return `[${i + 1}] ID: ${input.id}\nText: ${truncatedText}`;
+    }).join('\n\n---\n\n');
+
+    return `Classify each of the following ${inputs.length} text segments as "developer" or "system":
+
+${items}
+
+Return exactly ${inputs.length} classifications in order.`;
   }
 
   private hadError(message: ParsedMessage | null): boolean {

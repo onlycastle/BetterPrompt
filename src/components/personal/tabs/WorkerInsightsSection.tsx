@@ -262,6 +262,13 @@ export function WorkerInsightsSection({
   translatedAgentInsights,
   isPaid = false,
 }: WorkerInsightsSectionProps) {
+  // Debug logging: Frontend data flow tracking (dev only)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[WorkerInsightsSection] translatedAgentInsights:', translatedAgentInsights);
+    console.log('[WorkerInsightsSection] translatedAgentInsights keys:',
+      translatedAgentInsights ? Object.keys(translatedAgentInsights) : 'undefined');
+  }
+
   // Count total insights for empty state
   const totalInsights = useMemo(() => {
     if (!workerInsights) return 0;
