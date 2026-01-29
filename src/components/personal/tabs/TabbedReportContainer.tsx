@@ -24,6 +24,13 @@ import type { AgentOutputs, ParsedResource } from '../../../lib/models/agent-out
 import { aggregateWorkerInsights } from '../../../lib/models/agent-outputs';
 import styles from './TabbedReportContainer.module.css';
 
+// Valid ParsedResource types for validation
+const VALID_RESOURCE_TYPES = new Set(['docs', 'tutorial', 'course', 'article', 'video']);
+
+function isValidResourceType(type: string): type is ParsedResource['type'] {
+  return VALID_RESOURCE_TYPES.has(type);
+}
+
 /**
  * Convert DimensionResourceMatch[] to ParsedResource[] for ResourceSidebar.
  *
@@ -35,11 +42,14 @@ function convertKnowledgeResourcesToFlat(resources: DimensionResourceMatch[]): P
 
   for (const dimMatch of resources) {
     for (const item of dimMatch.knowledgeItems) {
-      result.push({
-        topic: item.title,
-        type: item.contentType as ParsedResource['type'],
-        url: item.sourceUrl,
-      });
+      // Validate contentType before adding to prevent runtime type mismatches
+      if (isValidResourceType(item.contentType)) {
+        result.push({
+          topic: item.title,
+          type: item.contentType,
+          url: item.sourceUrl,
+        });
+      }
     }
   }
 
@@ -122,24 +132,24 @@ export function TabbedReportContainer({
     (domain: any) => domain && (domain.strengths?.length > 0 || domain.growthAreas?.length > 0)
   );
 
-  // Filter tabs to only show those with content
-  const availableTabs = REPORT_TABS.filter(tab => {
-    if (tab.id === 'patterns') {
-      return hasPatterns;
-    }
-    if (tab.id === 'insights') {
-      return hasInsights;
-    }
-    return false;
-  });
+  // Memoize availableTabs to prevent unnecessary recalculations and useEffect triggers
+  const availableTabs = useMemo(() => {
+    return REPORT_TABS.filter(tab => {
+      if (tab.id === 'patterns') return hasPatterns;
+      if (tab.id === 'insights') return hasInsights;
+      return false;
+    });
+  }, [hasPatterns, hasInsights]);
 
-  // Set default tab to first available
-  const defaultTab = availableTabs[0]?.id || 'patterns';
+  // Memoize defaultTab based on availableTabs
+  const defaultTab = useMemo(() => {
+    return availableTabs[0]?.id || 'patterns';
+  }, [availableTabs]);
 
   // Sync activeTab with available tabs when current tab becomes unavailable
-  // Using useEffect to avoid state updates during render (React anti-pattern)
   useEffect(() => {
-    if (!availableTabs.find(t => t.id === activeTab)) {
+    const isActiveTabAvailable = availableTabs.some(t => t.id === activeTab);
+    if (!isActiveTabAvailable) {
       setActiveTab(defaultTab);
     }
   }, [activeTab, availableTabs, defaultTab]);

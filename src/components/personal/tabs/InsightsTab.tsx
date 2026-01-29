@@ -20,12 +20,20 @@ interface InsightsTabProps {
   isPaid?: boolean;
 }
 
+// Valid ParsedResource types for validation
+const VALID_RESOURCE_TYPES = new Set(['docs', 'tutorial', 'course', 'article', 'video']);
+
+function isValidResourceType(type: string): type is ParsedResource['type'] {
+  return VALID_RESOURCE_TYPES.has(type);
+}
+
 export function InsightsTab({ analytics, analysis, agentOutputs, isPaid = false }: InsightsTabProps) {
-  // Extract growth areas from dimension insights
-  const growthAreas: DimensionGrowthArea[] =
-    analysis?.dimensionInsights
+  // Extract growth areas from dimension insights (memoized to prevent unnecessary recomputation)
+  const growthAreas = useMemo<DimensionGrowthArea[]>(() => {
+    return analysis?.dimensionInsights
       ?.flatMap((d) => d.growthAreas)
       ?.slice(0, 5) ?? [];
+  }, [analysis?.dimensionInsights]);
 
   // Build resources map from Knowledge Base (Phase 2.75 deterministic matching)
   // Resources are already matched to dimensions, we map them to growth area titles
@@ -39,11 +47,13 @@ export function InsightsTab({ analytics, analysis, agentOutputs, isPaid = false 
     // Build dimension -> resources lookup
     const dimensionResources = new Map<string, ParsedResource[]>();
     for (const dimMatch of analysis.knowledgeResources) {
-      const resources: ParsedResource[] = dimMatch.knowledgeItems.map(item => ({
-        topic: item.title,
-        type: item.contentType as ParsedResource['type'],
-        url: item.sourceUrl,
-      }));
+      const resources: ParsedResource[] = dimMatch.knowledgeItems
+        .filter(item => isValidResourceType(item.contentType))
+        .map(item => ({
+          topic: item.title,
+          type: item.contentType as ParsedResource['type'],
+          url: item.sourceUrl,
+        }));
       dimensionResources.set(dimMatch.dimension, resources);
     }
 
@@ -64,7 +74,7 @@ export function InsightsTab({ analytics, analysis, agentOutputs, isPaid = false 
     });
 
     return map;
-  }, [analysis, growthAreas]);
+  }, [analysis?.knowledgeResources, analysis?.dimensionInsights, growthAreas]);
 
   const hasRecommendations = analytics?.recommendations && analytics.recommendations.length > 0;
   const hasGrowthAreas = growthAreas.length > 0;
