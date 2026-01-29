@@ -73,7 +73,7 @@ Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation
 | `src/lib/infrastructure/` | Supabase & local storage adapters | Infrastructure |
 | `src/lib/analyzer/` | LLM analysis (prompts, dimensions, insights) | Application |
 | `src/lib/analyzer/orchestrator/` | 4-phase analysis orchestration | Application |
-| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency) + Phase 2.5 TypeClassifier | Application |
+| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (4 workers: TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency) + Phase 2.5 TypeClassifier | Application |
 | `src/lib/analyzer/stages/` | Content Writer stage (Phase 3 narrative generation) | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/parser/` | JSONL session parsing | Infrastructure |
@@ -87,7 +87,8 @@ The `app/` directory serves as the **single web interface** using Next.js 15 App
 app/
 ├── layout.tsx                  # Root layout with providers
 ├── page.tsx                    # Home page
-├── browse/page.tsx             # Knowledge base discovery
+├── docs/page.tsx               # Documentation page
+├── auth/device/page.tsx        # Device authorization
 ├── learn/page.tsx              # Add YouTube/URL content
 ├── dashboard/page.tsx          # Knowledge analytics
 ├── personal/page.tsx           # Individual growth journey
@@ -96,6 +97,12 @@ app/
 ├── comparison/[reportId]/page.tsx  # Compare multiple analyses
 ├── r/[resultId]/page.tsx       # Public result pages
 └── api/                        # API routes
+    ├── auth/                   # Authentication
+    ├── credits/                # Credit management
+    ├── payments/               # Payments
+    ├── webhooks/polar/         # Polar webhook
+    ├── waitlist/               # Waitlist
+    ├── og-metadata/            # OG metadata
     ├── knowledge/              # Knowledge base operations
     ├── learn/                  # YouTube/URL learning
     ├── reports/                # Report sharing
@@ -129,7 +136,9 @@ src/hooks/
 ├── useComparison.ts            # Analysis comparison
 ├── useEnterprise.ts            # Enterprise/team features
 ├── usePersonalAnalytics.ts     # Personal analytics
-└── useLatestAnalysis.ts        # Latest analysis fetching
+├── useLatestAnalysis.ts        # Latest analysis fetching
+├── useCredits.ts               # Credit management
+└── useOGMetadata.ts            # OG metadata fetching
 ```
 
 **Key Features:**
@@ -187,7 +196,14 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 **Total: 6-7 LLM calls (0 + 4 + 1 + 1 + 0-1)**
 
 **Prompt Engineering:**
-- Prompts in `src/lib/analyzer/workers/prompts/phase2-worker-prompts.ts` and `content-writer-prompts.ts`
+- Worker prompts in domain-specific files:
+  - `src/lib/analyzer/workers/prompts/trust-verification-prompts.ts`
+  - `src/lib/analyzer/workers/prompts/workflow-habit-prompts.ts`
+  - `src/lib/analyzer/workers/prompts/knowledge-gap-prompts.ts`
+  - `src/lib/analyzer/workers/prompts/context-efficiency-prompts.ts`
+  - `src/lib/analyzer/workers/prompts/type-classifier-prompts.ts`
+- Stage prompts:
+  - `src/lib/analyzer/stages/content-writer-prompts.ts`
 - Uses PTCF framework (Persona · Task · Context · Format)
 - Zod schemas → JSON Schema via `zod-to-json-schema`
 
@@ -266,7 +282,13 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 
 | Route | Purpose | Auth | Directory |
 |-------|---------|------|-----------|
-| `/api/analysis` | Local and remote analysis | Optional | `app/api/analysis/` |
+| `/api/analysis` | Analysis operations | Optional | `app/api/analysis/` |
+| `/api/auth` | Authentication | Public | `app/api/auth/` |
+| `/api/credits` | Credit management | Required | `app/api/credits/` |
+| `/api/payments` | Payment processing | Required | `app/api/payments/` |
+| `/api/webhooks/polar` | Polar webhook handler | Public | `app/api/webhooks/polar/` |
+| `/api/waitlist` | Waitlist management | Public | `app/api/waitlist/` |
+| `/api/og-metadata` | OG metadata generation | Public | `app/api/og-metadata/` |
 | `/api/reports` | Report sharing and OG images | Public | `app/api/reports/` |
 | `/api/knowledge` | Knowledge base operations | PREMIUM | `app/api/knowledge/` |
 | `/api/learn` | YouTube/URL learning | PREMIUM | `app/api/learn/` |
@@ -277,8 +299,31 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 **Key Endpoints:**
 
 **Analysis Route** (`app/api/analysis/`):
-- `POST /api/analysis/remote` - Analyze session data remotely
 - `GET /api/analysis/results/:resultId` - Retrieve analysis by ID
+
+**Auth Route** (`app/api/auth/`):
+- `GET /api/auth/me` - Get current user
+- `POST /api/auth/refresh` - Refresh token
+- `POST /api/auth/device` - Initiate device flow
+- `POST /api/auth/device/authorize` - Authorize device
+- `POST /api/auth/device/token` - Exchange device code for token
+
+**Credits Route** (`app/api/credits/`):
+- `GET /api/credits` - Get user credits
+- `POST /api/credits/use` - Use credits
+
+**Payments Route** (`app/api/payments/`):
+- `POST /api/payments/checkout` - Create checkout session
+- `GET /api/payments/success` - Payment success handler
+
+**Webhooks Route** (`app/api/webhooks/polar/`):
+- `POST /api/webhooks/polar` - Polar webhook handler
+
+**Waitlist Route** (`app/api/waitlist/`):
+- `POST /api/waitlist` - Join waitlist
+
+**OG Metadata Route** (`app/api/og-metadata/`):
+- `GET /api/og-metadata` - Get OG metadata for URLs
 
 **Reports Route** (`app/api/reports/`):
 - `GET /api/reports/:reportId` - Get shared report

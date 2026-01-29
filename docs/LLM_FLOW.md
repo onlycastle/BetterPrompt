@@ -1104,12 +1104,17 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Workflow Habit Schema | `src/lib/models/workflow-habit-data.ts` | — | WorkflowHabitOutput |
 | Knowledge Gap Schema | (reuses existing) | — | KnowledgeGapOutput |
 | Context Efficiency Schema | (reuses existing) | — | ContextEfficiencyOutput |
+| Trust Verification Prompts | `src/lib/analyzer/workers/prompts/trust-verification-prompts.ts` | — | PTCF prompts for trust analysis |
+| Workflow Habit Prompts | `src/lib/analyzer/workers/prompts/workflow-habit-prompts.ts` | — | PTCF prompts for workflow analysis |
+| Knowledge Gap Prompts | `src/lib/analyzer/workers/prompts/knowledge-gap-prompts.ts` | — | PTCF prompts for knowledge analysis |
+| Context Efficiency Prompts | `src/lib/analyzer/workers/prompts/context-efficiency-prompts.ts` | — | PTCF prompts for context analysis |
 
 ### Phase 2.5: Classification (1 worker, 1 LLM call)
 
 | Component | File | Tier | Description |
 |-----------|------|------|-------------|
 | TypeClassifier Worker | `src/lib/analyzer/workers/type-classifier-worker.ts` | free | Type classification |
+| TypeClassifier Prompts | `src/lib/analyzer/workers/prompts/type-classifier-prompts.ts` | — | PTCF prompts for type classification |
 | Type Detector | `src/lib/analyzer/type-detector.ts` | — | Pattern-based type detection utilities |
 | Coding Style Types | `src/lib/models/coding-style.ts` | — | 5×3 matrix types (15 combinations) |
 | AI Control Dimension | `src/lib/analyzer/dimensions/ai-control.ts` | — | Control level calculation |
