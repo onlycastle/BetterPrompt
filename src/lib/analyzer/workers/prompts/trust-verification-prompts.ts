@@ -60,21 +60,42 @@ Return JSON with:
 
 ## DOMAIN-SPECIFIC STRENGTHS & GROWTH AREAS (REQUIRED)
 
-You MUST also output explicit strengths and growth areas for this domain:
+You MUST output detailed, comprehensive strengths and growth areas for this domain.
 
-- \`strengthsData\`: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)
+**CRITICAL: Write DETAILED analysis, not summaries.**
+
+- \`strengthsData\`: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
   - title: Clear pattern name (e.g., "Systematic Output Verification", "Proactive Security Checks")
-  - description: 2-3 sentences explaining the strength
-  - quotes: Direct developer quotes demonstrating this (remove surrounding quotes in output)
-  - frequency: Percentage of sessions showing this pattern (0-100, optional)
+  - description: **6-10 sentences** providing comprehensive analysis including:
+    - WHEN and WHERE this pattern occurs (specific situations, session types)
+    - Quantitative data (observed in X of Y sessions, frequency %)
+    - IMPACT on development workflow (how this helps quality/speed/learning)
+    - Comparison with typical developer behavior (what makes this noteworthy)
+    - Specific examples of how the pattern manifests
+  - quotes: Direct developer quotes demonstrating this (2-8 quotes, remove surrounding quotes)
+  - frequency: Percentage of sessions showing this pattern (0-100)
 
-- \`growthAreasData\`: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)
+- \`growthAreasData\`: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
   - title: Clear pattern name (e.g., "Error Loop Pattern", "Blind Acceptance Habit")
-  - description: 2-3 sentences describing the issue
-  - quotes: Direct developer quotes showing this pattern
-  - recommendation: Actionable advice (1-2 sentences)
+  - description: **6-10 sentences** providing comprehensive analysis including:
+    - WHEN and WHERE this pattern occurs
+    - Root cause analysis (why the developer might be doing this)
+    - Consequences and technical debt implications
+    - How this pattern evolves across sessions
+  - quotes: Direct developer quotes showing this pattern (2-8 quotes)
+  - recommendation: **4-6 sentences** with:
+    - Step-by-step actionable advice
+    - Specific tools, techniques, or prompts to try
+    - Expected outcome when implemented
+    - How to measure improvement
   - severity: critical | high | medium | low
-  - frequency: Percentage of sessions where observed (0-100, optional)
+  - frequency: Percentage of sessions where observed (0-100)
+
+**EXAMPLE - BAD (too short):**
+"Blind Approval Pattern|Developer accepts AI output without verification|ok,looks good|Before accepting, ask 'What could go wrong?'|high|75"
+
+**EXAMPLE - GOOD (comprehensive):**
+"Blind Approval Pattern|The developer consistently accepts AI-generated code without verification, particularly after extended debugging sessions. This pattern was observed in 5 of 7 sessions (71%), with highest frequency during late-session interactions. The typical manifestation involves accepting code changes immediately after an AI proposes a fix, using responses like 'ok' or 'looks good' without requesting tests or reviewing edge cases. This behavior correlates strongly with session fatigue—early in sessions, the developer shows more skepticism. The pattern creates technical debt through untested code paths and potential regressions. When AI solutions were later found to be incomplete, the developer had to revisit the same issues, extending debugging time by an average of 3-4 turns per instance.|ok do it,looks good ship it,that works thanks,sure proceed,just fix it|Before accepting any AI-proposed code change, pause and ask yourself: 'What edge cases might this miss?' Implement a personal rule: every code acceptance must include either running a test or explicitly asking the AI about potential failure modes. Create a pre-merge checklist: 1) Has the code been tested? 2) Do I understand the changes? 3) What could break? Consider using Claude's /review command after significant changes. Track your verification rate for one week to establish a baseline for improvement.|critical|71"
 
 **Strengths examples for Trust domain:**
 - "Consistent Output Verification" — developer regularly asks AI to verify results
