@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DataExtractorWorker } from '../../../../src/lib/analyzer/workers/data-extractor-worker.js';
 import type { ParsedSession, ParsedMessage } from '../../../../src/lib/models/session.js';
 import type { WorkerContext } from '../../../../src/lib/analyzer/workers/base-worker.js';
+import * as geminiClientModule from '../../../../src/lib/analyzer/clients/gemini-client.js';
 
 /**
  * Unit tests for DataExtractorWorker system tag stripping.
@@ -208,6 +209,187 @@ with various content
       const result = await worker.execute(context);
       expect(result.error).toBeUndefined();
       expect(result.data.developerUtterances[0]?.text).toBe('Check the result');
+    });
+  });
+
+  describe('LLM-based system metadata filtering', () => {
+    /**
+     * Helper to create a long text that exceeds the LLM filter threshold (100 chars)
+     */
+    function createLongText(base: string, minLength: number = 150): string {
+      const padding = ' This is additional context to make the message longer.';
+      let result = base;
+      while (result.length < minLength) {
+        result += padding;
+      }
+      return result;
+    }
+
+    it('should filter skill documentation blocks via regex pre-filter', async () => {
+      const session = createSession([
+        'Base directory for this skill: /Users/test/.claude/skills/my-skill',
+        'Can you help me with this bug?',
+      ]);
+      const context = createContext([session]);
+
+      const result = await worker.execute(context);
+      expect(result.error).toBeUndefined();
+      // Skill documentation should be filtered out
+      expect(result.data.developerUtterances.length).toBe(1);
+      expect(result.data.developerUtterances[0]?.text).toBe('Can you help me with this bug?');
+    });
+
+    it('should filter session continuation summaries via regex pre-filter', async () => {
+      const session = createSession([
+        'This session is being continued from a previous conversation. Here is a summary of the work done so far...',
+        'Please continue with the implementation.',
+      ]);
+      const context = createContext([session]);
+
+      const result = await worker.execute(context);
+      expect(result.error).toBeUndefined();
+      // Session continuation should be filtered out
+      expect(result.data.developerUtterances.length).toBe(1);
+      expect(result.data.developerUtterances[0]?.text).toBe('Please continue with the implementation.');
+    });
+
+    it('should skip LLM classification for short utterances', async () => {
+      // Short messages (< 100 chars) should pass through without LLM call
+      const session = createSession([
+        'Fix the bug', // Short - no LLM needed
+        'Add tests',   // Short - no LLM needed
+      ]);
+      const context = createContext([session]);
+
+      const result = await worker.execute(context);
+      expect(result.error).toBeUndefined();
+      expect(result.data.developerUtterances.length).toBe(2);
+    });
+
+    it('should use LLM to classify long utterances when API is available', async () => {
+      // Mock the GeminiClient to simulate LLM classification
+      const mockGenerateStructured = vi.fn().mockResolvedValue({
+        data: {
+          classifications: [
+            { classification: 'system', confidence: 0.95, reason: 'Skill documentation' },
+            { classification: 'developer', confidence: 0.9, reason: 'User request' },
+          ],
+        },
+        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+      });
+
+      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(() => ({
+        generateStructured: mockGenerateStructured,
+      }) as unknown as geminiClientModule.GeminiClient);
+
+      const longSystemMetadata = createLongText(
+        'This is some skill documentation that explains how to use the feature.'
+      );
+      const longDeveloperInput = createLongText(
+        'Can you help me implement the authentication system?'
+      );
+
+      const session = createSession([
+        longSystemMetadata,
+        longDeveloperInput,
+      ]);
+      const context = createContext([session]);
+
+      const testWorker = new DataExtractorWorker();
+      const result = await testWorker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      // LLM should have been called for the long utterances
+      expect(mockGenerateStructured).toHaveBeenCalledTimes(1);
+      // First utterance (system) should be filtered, second (developer) should remain
+      expect(result.data.developerUtterances.length).toBe(1);
+      expect(result.data.developerUtterances[0]?.text).toContain('authentication system');
+
+      vi.restoreAllMocks();
+    });
+
+    it('should keep utterances when LLM classification fails', async () => {
+      // Mock LLM failure
+      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(() => ({
+        generateStructured: vi.fn().mockRejectedValue(new Error('API error')),
+      }) as unknown as geminiClientModule.GeminiClient);
+
+      const longText = createLongText('This is a long developer message about implementing features.');
+
+      const session = createSession([longText]);
+      const context = createContext([session]);
+
+      const testWorker = new DataExtractorWorker();
+      const result = await testWorker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      // On LLM failure, utterances should be kept (conservative approach)
+      expect(result.data.developerUtterances.length).toBe(1);
+
+      vi.restoreAllMocks();
+    });
+
+    it('should only filter system content with high confidence', async () => {
+      // Mock LLM returning low confidence system classification
+      const mockGenerateStructured = vi.fn().mockResolvedValue({
+        data: {
+          classifications: [
+            // Low confidence - should NOT be filtered
+            { classification: 'system', confidence: 0.5, reason: 'Uncertain' },
+          ],
+        },
+        usage: { promptTokens: 50, completionTokens: 25, totalTokens: 75 },
+      });
+
+      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(() => ({
+        generateStructured: mockGenerateStructured,
+      }) as unknown as geminiClientModule.GeminiClient);
+
+      const ambiguousText = createLongText(
+        'The system configuration requires specific setup steps.'
+      );
+
+      const session = createSession([ambiguousText]);
+      const context = createContext([session]);
+
+      const testWorker = new DataExtractorWorker();
+      const result = await testWorker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      // Low confidence system classification should keep the utterance
+      expect(result.data.developerUtterances.length).toBe(1);
+
+      vi.restoreAllMocks();
+    });
+
+    it('should accumulate token usage from LLM filtering', async () => {
+      const mockGenerateStructured = vi.fn().mockResolvedValue({
+        data: {
+          classifications: [
+            { classification: 'developer', confidence: 0.9, reason: 'User request' },
+          ],
+        },
+        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+      });
+
+      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(() => ({
+        generateStructured: mockGenerateStructured,
+      }) as unknown as geminiClientModule.GeminiClient);
+
+      const longText = createLongText('Help me implement this feature please.');
+
+      const session = createSession([longText]);
+      const context = createContext([session]);
+
+      const testWorker = new DataExtractorWorker();
+      const result = await testWorker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      // Token usage should be reported
+      expect(result.usage).toBeDefined();
+      expect(result.usage?.totalTokens).toBe(150);
+
+      vi.restoreAllMocks();
     });
   });
 });
