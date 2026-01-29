@@ -639,6 +639,9 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       // Claude Code internal instructions
       /^IMPORTANT: this context may or may not be relevant/i,
       /^The following skills are available/i,
+
+      // Plan execution prompts (system-injected by /plan skill)
+      /^Implement the following plan:/i,
     ];
 
     return knownPatterns.some(pattern => pattern.test(text.trim()));

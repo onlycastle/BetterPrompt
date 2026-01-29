@@ -253,6 +253,20 @@ with various content
       expect(result.data.developerUtterances[0]?.text).toBe('Please continue with the implementation.');
     });
 
+    it('should filter plan execution prompts via regex pre-filter', async () => {
+      const session = createSession([
+        'Implement the following plan: # My Plan ## Step 1 Do something...',
+        'Can you add error handling?',
+      ]);
+      const context = createContext([session]);
+
+      const result = await worker.execute(context);
+      expect(result.error).toBeUndefined();
+      // Plan execution prompt should be filtered out
+      expect(result.data.developerUtterances.length).toBe(1);
+      expect(result.data.developerUtterances[0]?.text).toBe('Can you add error handling?');
+    });
+
     it('should skip LLM classification for short utterances', async () => {
       // Short messages (< 100 chars) should pass through without LLM call
       const session = createSession([
