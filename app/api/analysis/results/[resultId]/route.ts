@@ -15,6 +15,7 @@ import { cookies } from 'next/headers';
 import type { VerboseEvaluation, PromptPattern, PerDimensionInsight } from '@/lib/models/verbose-evaluation';
 import type { AgentOutputs } from '@/lib/models/agent-outputs';
 import { createAgentTeasers } from '@/lib/models/agent-teasers';
+import { aggregateWorkerInsights } from '@/lib/models/agent-outputs';
 
 interface RouteContext {
   params: Promise<{ resultId: string }>;
@@ -104,6 +105,18 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
 
     // Analysis metadata - always show (transparency builds trust)
     analysisMetadata: evaluation.analysisMetadata,
+
+    // Worker insights - needed for "Your Insights" section
+    // This is FREE content, generated from Phase 2 workers
+    // Generate from agentOutputs if not stored in DB (backwards compatibility)
+    workerInsights: evaluation.workerInsights
+      ?? (evaluation.agentOutputs
+        ? aggregateWorkerInsights(evaluation.agentOutputs) as VerboseEvaluation['workerInsights']
+        : undefined),
+
+    // Translated agent insights - needed for non-English users
+    // Without this, "Your Insights" section shows in English
+    translatedAgentInsights: evaluation.translatedAgentInsights,
   };
 }
 
