@@ -96,8 +96,6 @@ describe('isValidDimension', () => {
   });
 
   it('should return false for invalid dimensions', () => {
-    expect(isValidDimension('iterationEfficiency')).toBe(false);
-    expect(isValidDimension('learningVelocity')).toBe(false);
     expect(isValidDimension('')).toBe(false);
     expect(isValidDimension('nonExistent')).toBe(false);
   });
@@ -108,12 +106,6 @@ describe('validateDimension', () => {
     expect(validateDimension('aiControl')).toBe('aiControl');
     expect(validateDimension('burnoutRisk')).toBe('burnoutRisk');
     expect(validateDimension('contextEngineering')).toBe('contextEngineering');
-  });
-
-  it('should remap known legacy dimensions', () => {
-    expect(validateDimension('iterationEfficiency')).toBe('aiControl');
-    expect(validateDimension('learningVelocity')).toBe('skillResilience');
-    expect(validateDimension('scopeManagement')).toBe('aiControl');
   });
 
   it('should default unknown to aiCollaboration', () => {
@@ -129,7 +121,6 @@ describe('validateDimension', () => {
 
   it('should trim whitespace before validation', () => {
     expect(validateDimension('  aiControl  ')).toBe('aiControl');
-    expect(validateDimension('  iterationEfficiency  ')).toBe('aiControl');
   });
 });
 
@@ -144,25 +135,7 @@ describe('dimension validation in parseStrengthsLLMData', () => {
     expect(result[0].dimension).toBe('aiControl');
   });
 
-  it('should remap iterationEfficiency to aiControl', () => {
-    const data = 'Test|desc|iterationEfficiency|tip|sess_1:quote:ctx';
-    const result = parseStrengthsLLMData(data);
-    expect(result[0].dimension).toBe('aiControl');
-  });
-
-  it('should remap learningVelocity to skillResilience', () => {
-    const data = 'Test|desc|learningVelocity|tip|sess_1:quote:ctx';
-    const result = parseStrengthsLLMData(data);
-    expect(result[0].dimension).toBe('skillResilience');
-  });
-
-  it('should remap scopeManagement to aiControl', () => {
-    const data = 'Test|desc|scopeManagement|tip|sess_1:quote:ctx';
-    const result = parseStrengthsLLMData(data);
-    expect(result[0].dimension).toBe('aiControl');
-  });
-
-  it('should default completely unknown dimensions to aiCollaboration', () => {
+  it('should default unknown dimensions to aiCollaboration', () => {
     const data = 'Test|desc|nonExistentDimension|tip|sess_1:quote:ctx';
     const result = parseStrengthsLLMData(data);
     expect(result[0].dimension).toBe('aiCollaboration');
@@ -180,12 +153,6 @@ describe('dimension validation in parseGrowthAreasLLMData', () => {
     const data = 'Test|desc|burnoutRisk|rec|50|high|75|sess_1:q:ctx';
     const result = parseGrowthAreasLLMData(data);
     expect(result[0].dimension).toBe('burnoutRisk');
-  });
-
-  it('should remap legacy dimensions', () => {
-    const data = 'Test|desc|iterationEfficiency|rec|50|high|75|sess_1:q:ctx';
-    const result = parseGrowthAreasLLMData(data);
-    expect(result[0].dimension).toBe('aiControl');
   });
 
   it('should default unknown dimensions to aiCollaboration', () => {

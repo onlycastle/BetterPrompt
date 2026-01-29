@@ -464,21 +464,21 @@ describe('DimensionGrowthAreaSchema', () => {
 // Parser Function Tests (C1, M3 fixes)
 // ============================================================================
 
-describe('parseExamplesData (M3 fix: pipe in quotes)', () => {
-  it('should parse basic examples', () => {
-    const data = 'hello world|good greeting;bye|farewell';
+describe('parseExamplesData (v3 utteranceId format)', () => {
+  it('should parse v3 format with utteranceId', () => {
+    const data = 'abc123_5|analysis for first;def456_12|second analysis';
     const result = parseExamplesData(data);
     expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({ quote: 'hello world', analysis: 'good greeting' });
-    expect(result[1]).toEqual({ quote: 'bye', analysis: 'farewell' });
+    expect(result[0]).toEqual({ utteranceId: 'abc123_5', analysis: 'analysis for first' });
+    expect(result[1]).toEqual({ utteranceId: 'def456_12', analysis: 'second analysis' });
   });
 
   it('should handle pipe characters within the analysis field', () => {
-    const data = 'quote text|analysis with | pipe character;another|simple';
+    const data = 'session_0|analysis with | pipe;session_1|simple';
     const result = parseExamplesData(data);
     expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({ quote: 'quote text', analysis: 'analysis with | pipe character' });
-    expect(result[1]).toEqual({ quote: 'another', analysis: 'simple' });
+    expect(result[0]).toEqual({ utteranceId: 'session_0', analysis: 'analysis with | pipe' });
+    expect(result[1]).toEqual({ utteranceId: 'session_1', analysis: 'simple' });
   });
 
   it('should return empty array for undefined input', () => {
@@ -489,16 +489,31 @@ describe('parseExamplesData (M3 fix: pipe in quotes)', () => {
     expect(parseExamplesData('')).toEqual([]);
   });
 
-  it('should handle single entry', () => {
+  it('should treat legacy quote format as empty utteranceId', () => {
+    // Legacy format: direct quote text (contains spaces, no underscore pattern)
     const result = parseExamplesData('single quote|single analysis');
     expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ quote: 'single quote', analysis: 'single analysis' });
+    // Legacy quotes don't match utteranceId format, so utteranceId is empty
+    expect(result[0]).toEqual({ utteranceId: '', analysis: 'single analysis' });
   });
 
-  it('should handle missing analysis', () => {
-    const result = parseExamplesData('only quote');
+  it('should handle entries without analysis', () => {
+    const result = parseExamplesData('session_3');
     expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ quote: 'only quote', analysis: '' });
+    expect(result[0]).toEqual({ utteranceId: 'session_3', analysis: '' });
+  });
+
+  it('should recognize valid utteranceId format', () => {
+    // Valid: short, contains underscore, no spaces
+    const valid = parseExamplesData('abc_123|good');
+    expect(valid[0].utteranceId).toBe('abc_123');
+
+    // Invalid: too long (80+ chars) or has spaces
+    const tooLong = parseExamplesData('a'.repeat(81) + '_1|analysis');
+    expect(tooLong[0].utteranceId).toBe('');
+
+    const hasSpaces = parseExamplesData('has space_1|analysis');
+    expect(hasSpaces[0].utteranceId).toBe('');
   });
 });
 
