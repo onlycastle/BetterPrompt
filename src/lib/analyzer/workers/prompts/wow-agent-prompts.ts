@@ -396,23 +396,42 @@ Return a JSON object with:
 
 ## DOMAIN-SPECIFIC STRENGTHS & GROWTH AREAS (REQUIRED)
 
-You MUST output explicit strengths and growth areas for this domain:
+You MUST output detailed, comprehensive strengths and growth areas for this domain.
 
-- \`strengthsData\`: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)
+**CRITICAL: Write DETAILED analysis, not summaries.**
+
+- \`strengthsData\`: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
   - title: Clear pattern name (e.g., "Active Learning Mindset", "Curiosity-Driven Exploration")
-  - description: 2-3 sentences explaining the strength
-  - quotes: Direct developer quotes demonstrating this (remove surrounding quotes in output)
-  - frequency: Percentage of sessions showing this pattern (0-100, optional)
-  - Example: "React Hooks Mastery|You demonstrate solid understanding of React hooks, asking nuanced questions about optimization|dependency array when using useCallback,what's the difference between useMemo|70"
+  - description: **6-10 sentences** providing comprehensive analysis including:
+    - WHEN and WHERE this learning pattern manifests
+    - Quantitative data (questions asked, topics explored across sessions)
+    - Evidence of knowledge deepening over time
+    - How this learning style affects AI collaboration effectiveness
+    - Comparison with common developer learning patterns
+  - quotes: Direct developer quotes demonstrating this (2-8 quotes)
+  - frequency: Percentage of sessions showing this pattern (0-100)
 
-- \`growthAreasData\`: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)
+- \`growthAreasData\`: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
   - title: Clear pattern name (e.g., "TypeScript Generics Gap", "State Management Confusion")
-  - description: 2-3 sentences describing the issue
-  - quotes: Direct developer quotes showing this pattern
-  - recommendation: Actionable advice (1-2 sentences)
+  - description: **6-10 sentences** providing comprehensive analysis including:
+    - Specific knowledge gap identified and its scope
+    - How the gap manifests in developer questions/struggles
+    - Impact on productivity and code quality
+    - Root cause (missing fundamentals, conceptual misunderstanding, etc.)
+  - quotes: Direct developer quotes showing this pattern (2-8 quotes)
+  - recommendation: **4-6 sentences** with:
+    - Specific learning resources (official docs, courses, tutorials)
+    - Step-by-step learning path
+    - Practice exercises or projects to reinforce learning
+    - How to validate understanding has improved
   - severity: critical | high | medium | low
-  - frequency: Percentage of sessions where observed (0-100, optional)
-  - Example: "TypeScript Generics Gap|You repeatedly ask about TypeScript generic syntax|how do I use generics?,what is T?|Complete the TypeScript Handbook section on Generics and practice with 5 real examples|high|58"
+  - frequency: Percentage of sessions where observed (0-100)
+
+**EXAMPLE - BAD (too short):**
+"TypeScript Generics Gap|Developer struggles with generics|how do I use T?,what is this syntax?|Read the TypeScript handbook|high|50"
+
+**EXAMPLE - GOOD (comprehensive):**
+"TypeScript Generics Gap|The developer shows a consistent gap in understanding TypeScript generics, particularly around constraint syntax and inference. This pattern appeared in 4 of 7 sessions (57%), manifesting as questions about basic generic syntax ('what is T?', 'how do I constrain this?') even after receiving explanations in previous sessions. The knowledge gap extends beyond syntax to conceptual understanding—the developer struggles to recognize when generics should be used versus when concrete types suffice. This creates a cycle where AI provides generic solutions that the developer cannot maintain or modify independently. The root cause appears to be missing mental models for type variables—treating T as mysterious rather than as a placeholder for any type. This gap significantly impacts productivity when working with library types (React components, API clients) that use generics extensively.|what is T here,how do generics work again,I don't understand this <T> syntax,why does this type error mention generics,can you just use a specific type instead|Start with the TypeScript Handbook's Generics chapter (https://www.typescriptlang.org/docs/handbook/2/generics.html) and complete all exercises. Key concept to internalize: T is just a variable for types, like x is a variable for values. Practice by: 1) Converting 3 existing functions to generic versions, 2) Creating a simple generic utility type, 3) Using generics in a React component with typed props. After reading, try explaining generics to Claude—if you can explain when to use them, you understand them. Validate understanding by attempting to read and understand React's built-in generic types (useState<T>, useRef<T>) without AI help.|high|57"
 
 **Strengths examples for Knowledge domain:**
 - "Active Learning Mindset" — developer asks "why" questions, seeks deep understanding
@@ -526,23 +545,42 @@ Return a JSON object with:
 
 ## DOMAIN-SPECIFIC STRENGTHS & GROWTH AREAS (REQUIRED)
 
-You MUST output explicit strengths and growth areas for this domain:
+You MUST output detailed, comprehensive strengths and growth areas for this domain.
 
-- \`strengthsData\`: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)
+**CRITICAL: Write DETAILED analysis, not summaries.**
+
+- \`strengthsData\`: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
   - title: Clear pattern name (e.g., "Proactive Context Management", "Efficient Session Structure")
-  - description: 2-3 sentences explaining the strength
-  - quotes: Direct developer quotes demonstrating this (remove surrounding quotes in output)
-  - frequency: Percentage of sessions showing this pattern (0-100, optional)
-  - Example: "Proactive Context Management|You use /clear and /compact effectively to maintain fresh context|I'll use /clear,/compact please|65"
+  - description: **6-10 sentences** providing comprehensive analysis including:
+    - WHEN and WHERE efficient patterns appear
+    - Quantitative data (average context usage, compaction frequency)
+    - Impact on session productivity and AI response quality
+    - Comparison with typical token usage patterns
+    - Specific behaviors that contribute to efficiency
+  - quotes: Direct developer quotes demonstrating this (2-8 quotes)
+  - frequency: Percentage of sessions showing this pattern (0-100)
 
-- \`growthAreasData\`: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)
+- \`growthAreasData\`: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
   - title: Clear pattern name (e.g., "Context Bloat Pattern", "Redundant Information")
-  - description: 2-3 sentences describing the issue
-  - quotes: Direct developer quotes showing this pattern
-  - recommendation: Actionable advice (1-2 sentences)
+  - description: **6-10 sentences** providing comprehensive analysis including:
+    - Specific inefficiency pattern and its manifestation
+    - Token/context cost of this behavior
+    - Impact on AI response quality and session productivity
+    - Root cause (habit, lack of awareness, workflow issue)
+  - quotes: Direct developer quotes showing this pattern (2-8 quotes)
+  - recommendation: **4-6 sentences** with:
+    - Specific commands or techniques to adopt (/clear, /compact, CLAUDE.md)
+    - When to use each technique
+    - Expected token savings or productivity gain
+    - How to build the habit
   - severity: critical | high | medium | low
-  - frequency: Percentage of sessions where observed (0-100, optional)
-  - Example: "Redundant Context Provision|You repeatedly explain the same project structure in multiple sessions|this project is React-based and,let me explain again this app is|Add project structure to CLAUDE.md once and reference it instead of re-explaining|high|83"
+  - frequency: Percentage of sessions where observed (0-100)
+
+**EXAMPLE - BAD (too short):**
+"Context Bloat Pattern|Sessions get too large|long explanation here,another long explanation|Use /clear more often|medium|60"
+
+**EXAMPLE - GOOD (comprehensive):**
+"Context Bloat Pattern|The developer's sessions consistently grow beyond optimal context window usage, with compaction only occurring when forced by system limits. Analysis shows an average context fill rate of 85% before any /compact usage, with 3 of 5 sessions (60%) reaching the auto-compact threshold. The pattern begins innocuously—the developer provides necessary context—but accumulates through: repeated explanations of the same concepts, verbose error messages left uncompacted, and continuation of old conversation threads rather than starting fresh. This creates a 'context debt' where AI responses degrade in quality as the model juggles too much information. The root cause appears to be a 'fear of losing context'—the developer seems reluctant to clear because they worry AI will forget important details. However, this creates the opposite problem: important details get diluted in noise. Sessions that started fresh after /clear showed 35% faster task completion.|let me explain the whole project structure again,here is the full error output,continuing from yesterday's work,I'll paste the entire config file,as I mentioned before|Implement a 'context hygiene' routine: 1) Start each new logical task with /clear to ensure fresh context. 2) After completing a task, /compact before starting the next. 3) Move repeated explanations to CLAUDE.md—if you've explained your project structure twice, it belongs in the file. 4) For error debugging, paste only relevant portions, not full stack traces. Set a mental trigger: when you think 'as I mentioned before,' that's a sign to compact or clear. Target metric: reduce average context fill before compaction from 85% to 60%. Consider using /clear proactively at natural task boundaries rather than waiting for AI performance degradation.|high|60"
 
 **Strengths examples for Context Efficiency domain:**
 - "Proactive Context Management" — uses /clear and /compact effectively

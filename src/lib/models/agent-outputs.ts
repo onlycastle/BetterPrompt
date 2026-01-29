@@ -651,11 +651,11 @@ export const KnowledgeGapOutputSchema = z.object({
   // Domain-specific Strengths & Growth Areas (replaces StrengthGrowthSynthesizer)
   // ─────────────────────────────────────────────────────────────────────────
 
-  // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)
-  strengthsData: z.string().max(4000).optional(),
+  // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
+  strengthsData: z.string().max(12000).optional(),
 
-  // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)
-  growthAreasData: z.string().max(4000).optional(),
+  // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
+  growthAreasData: z.string().max(12000).optional(),
 
   // Parsed structured strengths (populated by parsing function)
   strengths: z.array(WorkerStrengthSchema).optional(),
@@ -731,11 +731,11 @@ export const ContextEfficiencyOutputSchema = z.object({
   // Domain-specific Strengths & Growth Areas (replaces StrengthGrowthSynthesizer)
   // ─────────────────────────────────────────────────────────────────────────
 
-  // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)
-  strengthsData: z.string().max(4000).optional(),
+  // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
+  strengthsData: z.string().max(12000).optional(),
 
-  // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)
-  growthAreasData: z.string().max(4000).optional(),
+  // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
+  growthAreasData: z.string().max(12000).optional(),
 
   // Parsed structured strengths (populated by parsing function)
   strengths: z.array(WorkerStrengthSchema).optional(),

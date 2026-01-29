@@ -117,7 +117,7 @@ function summarizeStrengthGrowth(sg: StrengthGrowthOutput): string {
       lines.push(`   "${s.description}"`);
       if (s.evidence && s.evidence.length > 0) {
         const evidenceStr = s.evidence
-          .slice(0, 5)
+          .slice(0, 8)
           .map(e => `${e.utteranceId}: "${truncateQuote(e.quote)}"`)
           .join(', ');
         lines.push(`   Evidence: ${evidenceStr}`);
@@ -142,7 +142,7 @@ function summarizeStrengthGrowth(sg: StrengthGrowthOutput): string {
       lines.push(`   "${g.description}"`);
       if (g.evidence && g.evidence.length > 0) {
         const evidenceStr = g.evidence
-          .slice(0, 4)
+          .slice(0, 8)
           .map(e => `${e.utteranceId}: "${truncateQuote(e.quote)}"`)
           .join(', ');
         lines.push(`   Evidence: ${evidenceStr}`);
@@ -320,7 +320,7 @@ function summarizeContextEfficiency(ce: ContextEfficiencyOutput): string {
  * Truncate a quote string to a max length for the summary.
  * Preserves readability by cutting at word boundaries.
  */
-function truncateQuote(text: string, maxLength: number = 500): string {
+function truncateQuote(text: string, maxLength: number = 1000): string {
   if (text.length <= maxLength) return text;
   const cutPoint = text.lastIndexOf(' ', maxLength);
   const truncated = cutPoint > maxLength * 0.6 ? text.slice(0, cutPoint) : text.slice(0, maxLength);

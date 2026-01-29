@@ -59,21 +59,42 @@ Return JSON with:
 
 ## DOMAIN-SPECIFIC STRENGTHS & GROWTH AREAS (REQUIRED)
 
-You MUST also output explicit strengths and growth areas for this domain:
+You MUST output detailed, comprehensive strengths and growth areas for this domain.
 
-- \`strengthsData\`: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)
+**CRITICAL: Write DETAILED analysis, not summaries.**
+
+- \`strengthsData\`: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
   - title: Clear pattern name (e.g., "Structured Planning Approach", "Active Critical Thinking")
-  - description: 2-3 sentences explaining the strength
-  - quotes: Direct developer quotes demonstrating this (remove surrounding quotes in output)
-  - frequency: Percentage of sessions showing this pattern (0-100, optional)
+  - description: **6-10 sentences** providing comprehensive analysis including:
+    - WHEN and WHERE this pattern occurs (specific situations, task types)
+    - Quantitative data (observed in X of Y sessions, frequency %)
+    - IMPACT on development workflow (time saved, quality improvement)
+    - How this compares to typical developer workflow
+    - Specific examples of how the pattern manifests
+  - quotes: Direct developer quotes demonstrating this (2-8 quotes, remove surrounding quotes)
+  - frequency: Percentage of sessions showing this pattern (0-100)
 
-- \`growthAreasData\`: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)
+- \`growthAreasData\`: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
   - title: Clear pattern name (e.g., "Reactive Problem Solving", "Context Pollution")
-  - description: 2-3 sentences describing the issue
-  - quotes: Direct developer quotes showing this pattern
-  - recommendation: Actionable advice (1-2 sentences)
+  - description: **6-10 sentences** providing comprehensive analysis including:
+    - WHEN and WHERE this pattern occurs
+    - Root cause analysis (why the developer might be doing this)
+    - Consequences for code quality and development efficiency
+    - How this pattern affects collaboration with AI
+  - quotes: Direct developer quotes showing this pattern (2-8 quotes)
+  - recommendation: **4-6 sentences** with:
+    - Step-by-step actionable advice
+    - Specific tools, commands, or techniques to adopt
+    - Expected outcome when implemented
+    - How to measure improvement
   - severity: critical | high | medium | low
-  - frequency: Percentage of sessions where observed (0-100, optional)
+  - frequency: Percentage of sessions where observed (0-100)
+
+**EXAMPLE - BAD (too short):**
+"Reactive Problem Solving|Developer jumps into implementation without planning|fix this,do it now|Use /plan before starting complex tasks|high|60"
+
+**EXAMPLE - GOOD (comprehensive):**
+"Reactive Problem Solving|The developer exhibits a pattern of diving directly into implementation without establishing a clear plan or understanding requirements. This was observed in 4 of 6 sessions (67%), particularly pronounced when facing bugs or feature requests that seem superficially simple. The pattern typically manifests with direct commands like 'fix this' or 'add that feature' without first exploring the problem space or considering edge cases. When AI attempts to ask clarifying questions, the developer often responds with 'just do it' or skips the investigation phase entirely. This approach leads to multiple iteration cycles—an average of 4.2 back-and-forth turns per issue versus the expected 2-3 turns for similar complexity tasks. The root cause appears to be time pressure or an underestimation of task complexity. Sessions that started with planning (/plan command or explicit scoping) showed 40% fewer revision cycles.|fix this bug,just make it work,add this feature real quick,do it now,why isn't this working fix it|Adopt a '5-minute rule' before any implementation: spend 5 minutes asking questions or using /plan to scope the work. Start each significant task with: 'Before implementing, let me understand: 1) What's the current behavior? 2) What's the desired behavior? 3) What could go wrong?' Consider using TodoWrite to break down tasks into explicit steps—this creates natural checkpoints. Track your iteration count for one week; aim to reduce average turns per task by 25%. For bugs specifically, always ask 'What changed recently?' before attempting fixes.|high|67"
 
 **Strengths examples for Workflow domain:**
 - "Structured Planning Approach" — developer breaks down tasks before implementation

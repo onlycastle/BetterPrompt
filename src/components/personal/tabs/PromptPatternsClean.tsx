@@ -3,6 +3,7 @@
  * Notion/Linear style prompt patterns display
  */
 
+import { useState } from 'react';
 import { Card } from '../../ui/Card';
 import type { PromptPattern, PromptFrequency, PromptEffectiveness } from '../../../types/verbose';
 import styles from './PromptPatternsClean.module.css';
@@ -25,6 +26,18 @@ const EFFECTIVENESS_STYLES: Record<PromptEffectiveness, { label: string; classNa
 };
 
 export function PromptPatternsClean({ patterns, isPaid = false }: PromptPatternsCleanProps) {
+  // Track which patterns have expanded examples
+  const [expandedPatterns, setExpandedPatterns] = useState<Set<number>>(new Set());
+
+  const togglePattern = (idx: number) => {
+    setExpandedPatterns(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
   if (!patterns || patterns.length === 0) {
     return null;
   }
@@ -50,17 +63,41 @@ export function PromptPatternsClean({ patterns, isPaid = false }: PromptPatterns
 
           <p className={styles.description}>{pattern.description}</p>
 
-          {pattern.examples.length > 0 && (
-            <div className={styles.examples}>
-              <div className={styles.examplesLabel}>Examples</div>
-              {pattern.examples.slice(0, 2).map((ex, exIdx) => (
-                <div key={exIdx} className={styles.example}>
-                  <blockquote className={styles.quote}>"{ex.quote}"</blockquote>
-                  <p className={styles.analysis}>{ex.analysis}</p>
-                </div>
-              ))}
-            </div>
-          )}
+          {pattern.examples.length > 0 && (() => {
+            const isExpanded = expandedPatterns.has(idx);
+            const displayedExamples = isExpanded
+              ? pattern.examples
+              : pattern.examples.slice(0, 2);
+            const hasMore = pattern.examples.length > 2;
+
+            return (
+              <div className={styles.examples}>
+                <div className={styles.examplesLabel}>Examples</div>
+                {displayedExamples.map((ex, exIdx) => (
+                  <div key={exIdx} className={styles.example}>
+                    <blockquote className={styles.quote}>"{ex.quote}"</blockquote>
+                    <p className={styles.analysis}>{ex.analysis}</p>
+                  </div>
+                ))}
+                {hasMore && !isExpanded && (
+                  <button
+                    className={styles.showMoreButton}
+                    onClick={() => togglePattern(idx)}
+                  >
+                    +{pattern.examples.length - 2} more examples
+                  </button>
+                )}
+                {isExpanded && hasMore && (
+                  <button
+                    className={styles.showLessButton}
+                    onClick={() => togglePattern(idx)}
+                  >
+                    Show less
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           {pattern.tip && (
             <div className={`${styles.tip} ${!isPaid ? styles.tipLocked : ''}`}>

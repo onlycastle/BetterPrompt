@@ -228,6 +228,7 @@ export function TabbedReportContainer({
               <WorkerInsightsSection
                 workerInsights={workerInsights}
                 translatedAgentInsights={translatedAgentInsights}
+                utteranceLookup={analysis.utteranceLookup}
                 isPaid={isPaid}
               />
             </div>

@@ -141,6 +141,32 @@
   padding-left: var(--space-md);
 }
 
+/* Show more/less buttons for examples */
+.showMoreButton,
+.showLessButton {
+  background: transparent;
+  border: 1.5px dashed var(--ink-muted);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin-top: var(--space-sm);
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+  width: 100%;
+  text-align: center;
+}
+
+.showMoreButton:hover,
+.showLessButton:hover {
+  border-color: var(--sketch-cyan);
+  color: var(--sketch-cyan-text);
+}
+
 .tip {
   display: flex;
   gap: var(--space-sm);

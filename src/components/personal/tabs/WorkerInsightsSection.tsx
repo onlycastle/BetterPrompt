@@ -22,14 +22,15 @@
  */
 
 import { useMemo } from 'react';
-import type { AggregatedWorkerInsights, WorkerStrength, WorkerGrowth } from '../../../lib/models/worker-insights';
+import type { AggregatedWorkerInsights, WorkerStrength, WorkerGrowth, EvidenceItem } from '../../../lib/models/worker-insights';
 import {
   WORKER_DOMAIN_CONFIGS,
   type WorkerDomainConfig,
   applyTranslatedStrengths,
   applyTranslatedGrowthAreas,
 } from '../../../lib/models/worker-insights';
-import type { TranslatedAgentInsights } from '../../../lib/models/verbose-evaluation';
+import type { TranslatedAgentInsights, UtteranceLookupEntry } from '../../../lib/models/verbose-evaluation';
+import { ExpandableEvidence } from './ExpandableEvidence';
 import styles from './WorkerInsightsSection.module.css';
 
 interface WorkerInsightsSectionProps {
@@ -37,6 +38,8 @@ interface WorkerInsightsSectionProps {
   workerInsights?: AggregatedWorkerInsights;
   /** Translated agent insights from Phase 4 Translator (non-English only) */
   translatedAgentInsights?: TranslatedAgentInsights;
+  /** Utterance lookup for evidence linking */
+  utteranceLookup?: UtteranceLookupEntry[];
   /** Whether user has paid tier for full content */
   isPaid?: boolean;
 }
@@ -77,7 +80,15 @@ function ScoreGauge({ score, label }: { score: number; label: string }) {
  * Card component for a single strength
  * CSS ::before pseudo-element handles the '+' prefix
  */
-function StrengthCard({ strength, isPaid }: { strength: WorkerStrength; isPaid: boolean }) {
+function StrengthCard({
+  strength,
+  utteranceLookup,
+  isPaid,
+}: {
+  strength: WorkerStrength;
+  utteranceLookup?: Map<string, UtteranceLookupEntry>;
+  isPaid: boolean;
+}) {
   return (
     <div className={styles.insightCard}>
       <div className={styles.cardHeader}>
@@ -87,17 +98,13 @@ function StrengthCard({ strength, isPaid }: { strength: WorkerStrength; isPaid: 
         )}
       </div>
       <p className={styles.cardDescription}>{strength.description}</p>
-      {isPaid && strength.evidence.length > 0 && (
-        <div className={styles.evidenceSection}>
-          <span className={styles.evidenceLabel}>Evidence</span>
-          <ul className={styles.evidenceList}>
-            {strength.evidence.slice(0, 2).map((quote, idx) => (
-              <li key={idx} className={styles.evidenceItem}>
-                {quote.length > 100 ? `${quote.slice(0, 97)}...` : quote}
-              </li>
-            ))}
-          </ul>
-        </div>
+      {strength.evidence.length > 0 && (
+        <ExpandableEvidence
+          evidence={strength.evidence}
+          utteranceLookup={utteranceLookup}
+          isPaid={isPaid}
+          maxItems={4}
+        />
       )}
     </div>
   );
@@ -107,7 +114,15 @@ function StrengthCard({ strength, isPaid }: { strength: WorkerStrength; isPaid: 
  * Card component for a single growth area
  * CSS ::before pseudo-element handles the '!' prefix
  */
-function GrowthCard({ growth, isPaid }: { growth: WorkerGrowth; isPaid: boolean }) {
+function GrowthCard({
+  growth,
+  utteranceLookup,
+  isPaid,
+}: {
+  growth: WorkerGrowth;
+  utteranceLookup?: Map<string, UtteranceLookupEntry>;
+  isPaid: boolean;
+}) {
   const severityClass = growth.severity ? styles[`severity${growth.severity.charAt(0).toUpperCase() + growth.severity.slice(1)}`] : '';
 
   return (
@@ -121,27 +136,19 @@ function GrowthCard({ growth, isPaid }: { growth: WorkerGrowth; isPaid: boolean 
         )}
       </div>
       <p className={styles.cardDescription}>{growth.description}</p>
-      {isPaid && (
-        <>
-          {growth.evidence.length > 0 && (
-            <div className={styles.evidenceSection}>
-              <span className={styles.evidenceLabel}>Evidence</span>
-              <ul className={styles.evidenceList}>
-                {growth.evidence.slice(0, 2).map((quote, idx) => (
-                  <li key={idx} className={styles.evidenceItem}>
-                    {quote.length > 100 ? `${quote.slice(0, 97)}...` : quote}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {growth.recommendation && (
-            <div className={styles.recommendationSection}>
-              <span className={styles.recommendationLabel}>Recommendation</span>
-              <p className={styles.recommendationText}>{growth.recommendation}</p>
-            </div>
-          )}
-        </>
+      {growth.evidence.length > 0 && (
+        <ExpandableEvidence
+          evidence={growth.evidence}
+          utteranceLookup={utteranceLookup}
+          isPaid={isPaid}
+          maxItems={4}
+        />
+      )}
+      {isPaid && growth.recommendation && (
+        <div className={styles.recommendationSection}>
+          <span className={styles.recommendationLabel}>Recommendation</span>
+          <p className={styles.recommendationText}>{growth.recommendation}</p>
+        </div>
       )}
       {!isPaid && growth.recommendation && (
         <div className={styles.lockedContent}>
@@ -166,6 +173,7 @@ function WorkerDomainSection({
   growthAreas,
   translatedStrengthsData,
   translatedGrowthAreasData,
+  utteranceLookup,
   domainScore,
   isPaid,
 }: {
@@ -174,6 +182,7 @@ function WorkerDomainSection({
   growthAreas: WorkerGrowth[];
   translatedStrengthsData?: string;
   translatedGrowthAreasData?: string;
+  utteranceLookup?: Map<string, UtteranceLookupEntry>;
   domainScore?: number;
   isPaid: boolean;
 }) {
@@ -216,7 +225,12 @@ function WorkerDomainSection({
             <h4 className={styles.columnTitle}>Strengths</h4>
             <div className={styles.cardsContainer}>
               {displayStrengths.map((strength, idx) => (
-                <StrengthCard key={idx} strength={strength} isPaid={isPaid} />
+                <StrengthCard
+                  key={idx}
+                  strength={strength}
+                  utteranceLookup={utteranceLookup}
+                  isPaid={isPaid}
+                />
               ))}
             </div>
           </div>
@@ -228,7 +242,12 @@ function WorkerDomainSection({
             <h4 className={styles.columnTitle}>Growth Areas</h4>
             <div className={styles.cardsContainer}>
               {displayGrowthAreas.map((growth, idx) => (
-                <GrowthCard key={idx} growth={growth} isPaid={isPaid} />
+                <GrowthCard
+                  key={idx}
+                  growth={growth}
+                  utteranceLookup={utteranceLookup}
+                  isPaid={isPaid}
+                />
               ))}
             </div>
           </div>
@@ -260,6 +279,7 @@ const DOMAIN_TO_TRANSLATION_KEY: Record<keyof AggregatedWorkerInsights, keyof Tr
 export function WorkerInsightsSection({
   workerInsights,
   translatedAgentInsights,
+  utteranceLookup,
   isPaid = false,
 }: WorkerInsightsSectionProps) {
   // Debug logging: Frontend data flow tracking (dev only)
@@ -267,7 +287,18 @@ export function WorkerInsightsSection({
     console.log('[WorkerInsightsSection] translatedAgentInsights:', translatedAgentInsights);
     console.log('[WorkerInsightsSection] translatedAgentInsights keys:',
       translatedAgentInsights ? Object.keys(translatedAgentInsights) : 'undefined');
+    console.log('[WorkerInsightsSection] utteranceLookup count:', utteranceLookup?.length ?? 0);
   }
+
+  // Build utterance lookup map for O(1) access
+  const utteranceLookupMap = useMemo(() => {
+    if (!utteranceLookup || utteranceLookup.length === 0) return undefined;
+    const map = new Map<string, UtteranceLookupEntry>();
+    for (const entry of utteranceLookup) {
+      map.set(entry.id, entry);
+    }
+    return map;
+  }, [utteranceLookup]);
 
   // Count total insights for empty state
   const totalInsights = useMemo(() => {
@@ -319,6 +350,7 @@ export function WorkerInsightsSection({
               growthAreas={domain.growthAreas}
               translatedStrengthsData={translatedInsight?.strengthsData}
               translatedGrowthAreasData={translatedInsight?.growthAreasData}
+              utteranceLookup={utteranceLookupMap}
               domainScore={domain.domainScore}
               isPaid={isPaid}
             />

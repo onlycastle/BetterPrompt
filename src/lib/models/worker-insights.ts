@@ -13,6 +13,40 @@
 import { z } from 'zod';
 
 // ============================================================================
+// Insight Evidence Schema (NEW - utterance-linked evidence)
+// ============================================================================
+
+/**
+ * Structured evidence with utterance ID linking.
+ *
+ * This enables linking evidence quotes back to original developer utterances
+ * for verification and detailed context display in the frontend.
+ *
+ * Format from LLM: "utteranceId:quote:context" parsed into this structure.
+ */
+export const InsightEvidenceSchema = z.object({
+  /** Utterance ID from Phase 1 (format: {sessionId}_{turnIndex}) */
+  utteranceId: z.string(),
+
+  /** Direct quote or paraphrase from the developer's message */
+  quote: z.string().max(800),
+
+  /** Brief context description (optional) */
+  context: z.string().max(400).optional(),
+});
+export type InsightEvidence = z.infer<typeof InsightEvidenceSchema>;
+
+/**
+ * Evidence can be either a simple string (legacy) or structured with utterance linking (new).
+ * Union type enables backward compatibility with existing data.
+ */
+export const EvidenceItemSchema = z.union([
+  z.string().max(500),
+  InsightEvidenceSchema,
+]);
+export type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
+
+// ============================================================================
 // Worker Strength Schema
 // ============================================================================
 
@@ -24,13 +58,16 @@ import { z } from 'zod';
  */
 export const WorkerStrengthSchema = z.object({
   /** Clear, specific title (e.g., "Systematic Output Verification") */
-  title: z.string().max(100),
+  title: z.string().max(150),
 
-  /** 2-3 sentences explaining the strength */
-  description: z.string().max(500),
+  /** 6-10 sentences providing comprehensive analysis */
+  description: z.string().max(1500),
 
-  /** Direct quotes from developer messages demonstrating this (2-3 quotes) */
-  evidence: z.array(z.string().max(300)).min(1).max(4),
+  /**
+   * Direct quotes from developer messages demonstrating this (2-8 items).
+   * Can be simple strings (legacy) or structured with utterance linking (new).
+   */
+  evidence: z.array(EvidenceItemSchema).min(1).max(8),
 
   /** Percentage of sessions showing this pattern (optional, 0-100) */
   frequency: z.number().min(0).max(100).optional(),
@@ -60,16 +97,19 @@ export type WorkerGrowthSeverity = z.infer<typeof WorkerGrowthSeveritySchema>;
  */
 export const WorkerGrowthSchema = z.object({
   /** Clear, specific title (e.g., "Error Loop Pattern") */
-  title: z.string().max(100),
+  title: z.string().max(150),
 
-  /** 2-3 sentences describing the issue */
-  description: z.string().max(500),
+  /** 6-10 sentences providing comprehensive analysis */
+  description: z.string().max(1500),
 
-  /** Direct quotes from developer messages showing this pattern (2-3 quotes) */
-  evidence: z.array(z.string().max(300)).min(1).max(4),
+  /**
+   * Direct quotes from developer messages showing this pattern (2-8 items).
+   * Can be simple strings (legacy) or structured with utterance linking (new).
+   */
+  evidence: z.array(EvidenceItemSchema).min(1).max(8),
 
-  /** Actionable advice (1-2 sentences) */
-  recommendation: z.string().max(400),
+  /** 4-6 sentences with step-by-step actionable advice */
+  recommendation: z.string().max(1200),
 
   /** How critical this growth area is to address */
   severity: WorkerGrowthSeveritySchema.optional(),
@@ -89,11 +129,11 @@ export type WorkerGrowth = z.infer<typeof WorkerGrowthSchema>;
  * Each Phase 2 Worker outputs this structure alongside its domain-specific data.
  */
 export const WorkerInsightsContainerSchema = z.object({
-  /** Strengths identified in this domain (1-4 items) */
-  strengths: z.array(WorkerStrengthSchema).min(1).max(4),
+  /** Strengths identified in this domain (1-6 items) */
+  strengths: z.array(WorkerStrengthSchema).min(1).max(6),
 
-  /** Growth areas identified in this domain (1-4 items) */
-  growthAreas: z.array(WorkerGrowthSchema).min(1).max(4),
+  /** Growth areas identified in this domain (1-6 items) */
+  growthAreas: z.array(WorkerGrowthSchema).min(1).max(6),
 
   /** Domain-specific score (0-100) */
   domainScore: z.number().min(0).max(100).optional(),
@@ -112,13 +152,13 @@ export type WorkerInsightsContainer = z.infer<typeof WorkerInsightsContainerSche
  * - growthAreasData: "title|description|quote1,quote2|recommendation|severity|frequency;..."
  */
 export const WorkerInsightsLLMOutputSchema = z.object({
-  /** Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items) */
-  strengthsData: z.string().max(4000)
-    .describe('Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)'),
+  /** Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items) */
+  strengthsData: z.string().max(12000)
+    .describe('Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)'),
 
-  /** Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items) */
-  growthAreasData: z.string().max(4000)
-    .describe('Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)'),
+  /** Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items) */
+  growthAreasData: z.string().max(12000)
+    .describe('Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)'),
 });
 export type WorkerInsightsLLMOutput = z.infer<typeof WorkerInsightsLLMOutputSchema>;
 
@@ -127,11 +167,61 @@ export type WorkerInsightsLLMOutput = z.infer<typeof WorkerInsightsLLMOutputSche
 // ============================================================================
 
 /**
+ * Parse a single evidence item, detecting if it's structured (utteranceId:quote:context)
+ * or a simple string.
+ *
+ * Format detection:
+ * - Structured: "sessionId_turnIndex:quote text:context text" (contains underscore in first segment)
+ * - Simple: "just a quote" (no colon-based structure or no valid utteranceId pattern)
+ *
+ * @param evidenceStr - Raw evidence string from LLM output
+ * @returns EvidenceItem - either InsightEvidence object or plain string
+ */
+export function parseEvidenceItem(evidenceStr: string): EvidenceItem {
+  const trimmed = evidenceStr.trim().replace(/^['"]|['"]$/g, '');
+  if (!trimmed) return trimmed;
+
+  // Check for structured format: utteranceId:quote[:context]
+  // utteranceId pattern: sessionId_turnIndex (e.g., "abc123_5")
+  const colonIndex = trimmed.indexOf(':');
+  if (colonIndex > 0) {
+    const potentialUtteranceId = trimmed.slice(0, colonIndex);
+    // Valid utteranceId contains underscore and ends with a number
+    if (/_\d+$/.test(potentialUtteranceId)) {
+      const remainder = trimmed.slice(colonIndex + 1);
+      const secondColonIndex = remainder.indexOf(':');
+
+      if (secondColonIndex > 0) {
+        // Has context: utteranceId:quote:context
+        return {
+          utteranceId: potentialUtteranceId,
+          quote: remainder.slice(0, secondColonIndex).trim(),
+          context: remainder.slice(secondColonIndex + 1).trim() || undefined,
+        };
+      } else {
+        // No context: utteranceId:quote
+        return {
+          utteranceId: potentialUtteranceId,
+          quote: remainder.trim(),
+        };
+      }
+    }
+  }
+
+  // Fallback: simple string evidence
+  return trimmed;
+}
+
+/**
  * Parse strengthsData string into structured array.
- * Format: "title|description|quote1,quote2,quote3|frequency;..."
+ * Format: "title|description|evidence1,evidence2,evidence3|frequency;..."
+ *
+ * Evidence items can be:
+ * - Simple quotes: "let me check"
+ * - Structured: "sessionId_5:let me check:verifying output"
  *
  * @example
- * parseWorkerStrengthsData("Systematic Verification|You consistently verify...|'let me check','verifying this'|75")
+ * parseWorkerStrengthsData("Systematic Verification|You consistently verify...|session1_5:let me check:verifying,session1_8:looks good|75")
  */
 export function parseWorkerStrengthsData(data: string | undefined): WorkerStrength[] {
   if (!data || data.trim() === '') return [];
@@ -146,11 +236,11 @@ export function parseWorkerStrengthsData(data: string | undefined): WorkerStreng
       const evidenceStr = parts[2]?.trim() || '';
       const frequencyStr = parts[3]?.trim();
 
-      // Parse evidence: comma-separated, remove surrounding quotes
-      const evidence = evidenceStr
+      // Parse evidence: comma-separated, each item may be structured or simple
+      const evidence: EvidenceItem[] = evidenceStr
         .split(',')
-        .map((e) => e.trim().replace(/^['"]|['"]$/g, ''))
-        .filter(Boolean);
+        .map((e) => parseEvidenceItem(e))
+        .filter((e) => (typeof e === 'string' ? e.length > 0 : e.quote.length > 0));
 
       const frequency = frequencyStr ? parseFloat(frequencyStr) : undefined;
 
@@ -166,10 +256,14 @@ export function parseWorkerStrengthsData(data: string | undefined): WorkerStreng
 
 /**
  * Parse growthAreasData string into structured array.
- * Format: "title|description|quote1,quote2|recommendation|severity|frequency;..."
+ * Format: "title|description|evidence1,evidence2|recommendation|severity|frequency;..."
+ *
+ * Evidence items can be:
+ * - Simple quotes: "fix it"
+ * - Structured: "sessionId_5:fix it:debugging attempt"
  *
  * @example
- * parseWorkerGrowthAreasData("Error Loop|You tend to retry...|'fix it','still broken'|Try pausing...|high|65")
+ * parseWorkerGrowthAreasData("Error Loop|You tend to retry...|session1_3:fix it:debugging,session1_5:still broken|Try pausing...|high|65")
  */
 export function parseWorkerGrowthAreasData(data: string | undefined): WorkerGrowth[] {
   if (!data || data.trim() === '') return [];
@@ -186,11 +280,11 @@ export function parseWorkerGrowthAreasData(data: string | undefined): WorkerGrow
       const severityStr = parts[4]?.trim() as WorkerGrowthSeverity | undefined;
       const frequencyStr = parts[5]?.trim();
 
-      // Parse evidence: comma-separated, remove surrounding quotes
-      const evidence = evidenceStr
+      // Parse evidence: comma-separated, each item may be structured or simple
+      const evidence: EvidenceItem[] = evidenceStr
         .split(',')
-        .map((e) => e.trim().replace(/^['"]|['"]$/g, ''))
-        .filter(Boolean);
+        .map((e) => parseEvidenceItem(e))
+        .filter((e) => (typeof e === 'string' ? e.length > 0 : e.quote.length > 0));
 
       const result: WorkerGrowth = {
         title,
