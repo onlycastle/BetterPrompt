@@ -392,8 +392,44 @@ async function runAnalysis(): Promise<void> {
 
   scanSpinner.succeed('Sessions loaded');
 
-  // Auto-select all sessions (no manual selection)
-  const selectedSessions = scanResult.sessions;
+  // Debug mode: allow manual session selection
+  let selectedSessions = scanResult.sessions;
+  const isDebugMode = process.env.NOSLOP_DEBUG === '1';
+
+  if (isDebugMode && scanResult.sessions.length > 1) {
+    console.log('');
+    console.log(pc.bold(pc.yellow('🐛 DEBUG MODE: Session Selection')));
+    console.log('');
+
+    // Display session list with numbers
+    scanResult.sessions.forEach((session, idx) => {
+      const date = new Date(session.metadata.timestamp).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      });
+      const project = session.metadata.projectName;
+      const msgs = session.metadata.messageCount;
+      const sessionId = session.metadata.sessionId;
+      const filePath = session.metadata.filePath;
+      console.log(pc.dim(`  ${idx + 1}) `) + `${project} - ${msgs} msgs (${date})`);
+      console.log(pc.dim(`     ID: ${sessionId}`));
+      console.log(pc.dim(`     ${filePath}`));
+    });
+    console.log('');
+    console.log(pc.dim('  Enter: all | 1 | 1,3 | 1-5'));
+
+    const selection = await promptSessionSelection(scanResult.sessions.length);
+
+    if (selection === 'all') {
+      console.log(pc.dim('  → Using all sessions'));
+    } else if (selection.length === 0) {
+      console.log(pc.dim('  → Using all sessions (no valid selection)'));
+    } else {
+      selectedSessions = selection.map(idx => scanResult.sessions[idx]);
+      console.log(pc.dim(`  → Selected ${selectedSessions.length} session(s)`));
+    }
+    console.log('');
+  }
 
   // Estimate cost (displayed when NOSLOP_DEBUG=1)
   const parsedSessions = selectedSessions.map(s => s.parsed);
