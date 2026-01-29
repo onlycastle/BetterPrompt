@@ -40,7 +40,8 @@ import {
  * DataExtractorWorker - Extracts raw text and structural metadata
  *
  * Phase 1 worker that creates the Phase1Output used by Phase 2 workers.
- * This is a deterministic extraction - no LLM calls needed.
+ * Performs deterministic extraction followed by optional LLM-based filtering
+ * to remove system-injected metadata from developer utterances.
  */
 export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   readonly name = 'DataExtractor';
@@ -674,7 +675,26 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       this.filterTokenUsage.completionTokens += result.usage.completionTokens;
       this.filterTokenUsage.totalTokens += result.usage.totalTokens;
 
-      return result.data.classifications;
+      const classifications = result.data.classifications;
+
+      // Validate response length matches input batch
+      if (classifications.length !== batch.length) {
+        this.log(`Warning: LLM returned ${classifications.length} classifications for ${batch.length} inputs`);
+        // Pad with conservative defaults if LLM returned fewer
+        while (classifications.length < batch.length) {
+          classifications.push({
+            classification: 'developer',
+            confidence: 0.5,
+            reason: 'Missing classification, defaulting to developer',
+          });
+        }
+        // Truncate if LLM returned more (unlikely but defensive)
+        if (classifications.length > batch.length) {
+          classifications.length = batch.length;
+        }
+      }
+
+      return classifications;
     } catch (error) {
       // On LLM failure, fall back to keeping all utterances (conservative approach)
       // This is an exception to the No Fallback policy because filtering is optional
