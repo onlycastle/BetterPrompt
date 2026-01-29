@@ -26,6 +26,7 @@ import { ContentGateway, type Tier } from '../content-gateway';
 import { BaseWorker } from '../workers/base-worker';
 import type { DimensionResourceMatch } from '../../models/verbose-evaluation';
 import { matchKnowledgeResources } from '../stages/knowledge-resource-matcher';
+import { EvidenceVerifierStage, type EvidenceVerifierResult } from '../stages/evidence-verifier';
 import type {
   WorkerResult,
   WorkerContext,
@@ -104,6 +105,7 @@ export class AnalysisOrchestrator {
   private phase2Point5Workers: BaseWorker<unknown>[] = []; // Type Synthesis workers
   private contentWriter: ContentWriterStage;
   private translator: TranslatorStage;
+  private evidenceVerifier: EvidenceVerifierStage;
   private contentGateway: ContentGateway;
   private debugOutputs: DebugPhaseOutput[] = [];
 
@@ -130,6 +132,14 @@ export class AnalysisOrchestrator {
       model: this.config.model,
       temperature: this.config.temperature,
       maxOutputTokens: this.config.maxOutputTokens,
+      maxRetries: this.config.maxRetries,
+    });
+
+    // Initialize evidence verifier (Phase 2.8 - evidence quality verification)
+    this.evidenceVerifier = new EvidenceVerifierStage({
+      apiKey: this.config.geminiApiKey,
+      model: this.config.model,
+      verbose: this.config.verbose,
       maxRetries: this.config.maxRetries,
     });
 
@@ -200,9 +210,10 @@ export class AnalysisOrchestrator {
     const stageUsages: StageTokenUsage[] = [];
     this.debugOutputs = [];
 
-    // Progress tracking: 7 LLM stages total (4 Phase2 + 1 Phase2.5 + Phase3 + Phase4)
+    // Progress tracking: 8 LLM stages total (4 Phase2 + 1 Phase2.5 + 1 Phase2.8 + Phase3 + Phase4)
     // Note: StrengthGrowth removed - workers output insights directly
-    const TOTAL_LLM_STAGES = 7;
+    // Phase 2.8 added - Evidence Verifier validates evidence relevance
+    const TOTAL_LLM_STAGES = 8;
     const PROGRESS_START = 40;
     const PROGRESS_RANGE = 49; // 40% → 89%
     const STEP = Math.floor(PROGRESS_RANGE / TOTAL_LLM_STAGES); // 6 points per stage
@@ -365,6 +376,40 @@ export class AnalysisOrchestrator {
           });
         }
       }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Phase 2.8: Evidence Verification (LLM-based relevance check)
+    //
+    // Verifies that worker-selected evidence quotes actually support
+    // their associated insights. Filters out low-relevance evidence.
+    // ─────────────────────────────────────────────────────────────────────
+    this.log('Phase 2.8: Evidence Verification...');
+    const phase2Point8Start = Date.now();
+
+    const verificationResult = await this.evidenceVerifier.verify(
+      agentOutputs,
+      phase1Results.dataExtractor.data
+    );
+
+    this.collectDebugOutput(
+      'phase2.8', 'EvidenceVerifier', phase2Point8Start,
+      { stats: verificationResult.stats }, verificationResult.usage
+    );
+
+    // Apply verified insights back to agentOutputs
+    this.applyVerifiedInsights(agentOutputs, verificationResult.verifiedInsights);
+
+    this.log(`Phase 2.8: Evidence verification complete - kept=${verificationResult.stats.kept}/${verificationResult.stats.total} (filtered=${verificationResult.stats.filtered})`);
+
+    // Track Phase 2.8 token usage
+    if (verificationResult.usage.totalTokens > 0) {
+      stageUsages.push({
+        stage: 'Evidence Verifier (Phase 2.8)',
+        ...verificationResult.usage,
+      });
+      completedLLMStages++;
+      reportProgress('phase2.8', 'Verifying evidence quality...');
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -706,6 +751,44 @@ export class AnalysisOrchestrator {
     }
 
     return merged;
+  }
+
+  /**
+   * Apply verified insights from Phase 2.8 back to agentOutputs
+   *
+   * Updates the strengths/growthAreas in each worker's output with
+   * filtered evidence from the verification stage.
+   *
+   * @param agentOutputs - Original agent outputs to update (mutated in place)
+   * @param verifiedInsights - Insights with filtered evidence from verifier
+   */
+  private applyVerifiedInsights(
+    agentOutputs: AgentOutputs,
+    verifiedInsights: import('../../models/worker-insights').AggregatedWorkerInsights
+  ): void {
+    // TrustVerification domain
+    if (agentOutputs.trustVerification && verifiedInsights.trustVerification) {
+      agentOutputs.trustVerification.strengths = verifiedInsights.trustVerification.strengths;
+      agentOutputs.trustVerification.growthAreas = verifiedInsights.trustVerification.growthAreas;
+    }
+
+    // WorkflowHabit domain
+    if (agentOutputs.workflowHabit && verifiedInsights.workflowHabit) {
+      agentOutputs.workflowHabit.strengths = verifiedInsights.workflowHabit.strengths;
+      agentOutputs.workflowHabit.growthAreas = verifiedInsights.workflowHabit.growthAreas;
+    }
+
+    // KnowledgeGap domain
+    if (agentOutputs.knowledgeGap && verifiedInsights.knowledgeGap) {
+      agentOutputs.knowledgeGap.strengths = verifiedInsights.knowledgeGap.strengths;
+      agentOutputs.knowledgeGap.growthAreas = verifiedInsights.knowledgeGap.growthAreas;
+    }
+
+    // ContextEfficiency domain
+    if (agentOutputs.contextEfficiency && verifiedInsights.contextEfficiency) {
+      agentOutputs.contextEfficiency.strengths = verifiedInsights.contextEfficiency.strengths;
+      agentOutputs.contextEfficiency.growthAreas = verifiedInsights.contextEfficiency.growthAreas;
+    }
   }
 
   /**

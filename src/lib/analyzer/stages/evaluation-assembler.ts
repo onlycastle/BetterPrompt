@@ -37,6 +37,8 @@ import {
   type AggregatedWorkerInsights,
   WORKER_DOMAIN_CONFIGS,
 } from '../../models/agent-outputs';
+import type { InsightEvidence } from '../../models/worker-insights';
+import type { UtteranceLookupEntry } from '../../models/verbose-evaluation';
 
 // ============================================================================
 // Main Assembly Function
@@ -78,7 +80,15 @@ export function assembleEvaluation(
   // Each Phase 2 worker (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency)
   // outputs strengths/growthAreas directly in their domain.
   // This replaces the centralized StrengthGrowthSynthesizer approach.
-  result.workerInsights = doAggregateWorkerInsights(agentOutputs);
+  const workerInsights = doAggregateWorkerInsights(agentOutputs);
+  result.workerInsights = workerInsights;
+
+  // ── Utterance Lookup: Extract referenced utterances for evidence linking ──
+  // Only includes utterances that are referenced by structured evidence items
+  // in workerInsights. This enables frontend to show original context on expand.
+  if (phase1Output?.developerUtterances && workerInsights) {
+    result.utteranceLookup = buildUtteranceLookup(workerInsights, phase1Output);
+  }
 
   // BACKWARD COMPATIBILITY: dimensionInsights from legacy StrengthGrowth (if present)
   // New data uses workerInsights; dimensionInsights kept for old reports in DB
@@ -641,4 +651,83 @@ function effectivenessToSophistication(eff: string | undefined): 'basic' | 'inte
     case 'low': return 'basic';
     default: return 'intermediate';
   }
+}
+
+// ============================================================================
+// Utterance Lookup Builder
+// ============================================================================
+
+/**
+ * Build utterance lookup from workerInsights evidence references.
+ *
+ * Scans all evidence items in workerInsights (strengths + growthAreas across all domains)
+ * and extracts unique utteranceIds. Then looks up full text from Phase1Output.
+ *
+ * Only includes utterances that are:
+ * 1. Referenced by structured evidence (has utteranceId field)
+ * 2. Found in Phase1Output.developerUtterances
+ *
+ * @returns Array of UtteranceLookupEntry for referenced utterances
+ */
+function buildUtteranceLookup(
+  workerInsights: AggregatedWorkerInsights,
+  phase1Output: Phase1Output
+): UtteranceLookupEntry[] {
+  // Collect all unique utteranceIds from workerInsights evidence
+  const referencedIds = new Set<string>();
+
+  for (const domain of Object.values(workerInsights)) {
+    if (!domain) continue;
+
+    // Scan strengths evidence
+    for (const strength of domain.strengths || []) {
+      for (const evidence of strength.evidence || []) {
+        if (typeof evidence === 'object' && evidence.utteranceId) {
+          referencedIds.add(evidence.utteranceId);
+        }
+      }
+    }
+
+    // Scan growthAreas evidence
+    for (const growth of domain.growthAreas || []) {
+      for (const evidence of growth.evidence || []) {
+        if (typeof evidence === 'object' && evidence.utteranceId) {
+          referencedIds.add(evidence.utteranceId);
+        }
+      }
+    }
+  }
+
+  // If no structured evidence references, return empty array
+  if (referencedIds.size === 0) {
+    return [];
+  }
+
+  // Build lookup from Phase1Output
+  const lookup: UtteranceLookupEntry[] = [];
+  const utteranceMap = new Map<string, Phase1Output['developerUtterances'][0]>();
+
+  for (const u of phase1Output.developerUtterances) {
+    utteranceMap.set(u.id, u);
+  }
+
+  for (const id of referencedIds) {
+    const utterance = utteranceMap.get(id);
+    if (utterance) {
+      // Parse utteranceId format: "{sessionId}_{turnIndex}"
+      const lastUnderscore = id.lastIndexOf('_');
+      const sessionId = lastUnderscore > 0 ? id.slice(0, lastUnderscore) : id;
+      const turnIndex = lastUnderscore > 0 ? parseInt(id.slice(lastUnderscore + 1), 10) : 0;
+
+      lookup.push({
+        id,
+        text: utterance.text,
+        timestamp: utterance.timestamp,
+        sessionId,
+        turnIndex: isNaN(turnIndex) ? 0 : turnIndex,
+      });
+    }
+  }
+
+  return lookup;
 }
