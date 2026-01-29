@@ -361,6 +361,8 @@ export class EvidenceVerifierStage {
       // Filter strengths' evidence
       let strengthPairIndex = 0;
       for (const strength of container.strengths) {
+        // Store original length BEFORE filtering to maintain correct pairId alignment
+        const originalLength = strength.evidence.length;
         strength.evidence = strength.evidence.filter((_, i) => {
           const pairId = `${domain}_s_${strengthPairIndex + i}`;
           const result = resultLookup.get(pairId);
@@ -371,12 +373,14 @@ export class EvidenceVerifierStage {
           }
           return result.shouldKeep;
         });
-        strengthPairIndex += strength.evidence.length;
+        strengthPairIndex += originalLength; // Use original length to maintain pairId alignment
       }
 
       // Filter growth areas' evidence
       let growthPairIndex = 0;
       for (const growth of container.growthAreas) {
+        // Store original length BEFORE filtering to maintain correct pairId alignment
+        const originalLength = growth.evidence.length;
         growth.evidence = growth.evidence.filter((_, i) => {
           const pairId = `${domain}_g_${growthPairIndex + i}`;
           const result = resultLookup.get(pairId);
@@ -387,7 +391,7 @@ export class EvidenceVerifierStage {
           }
           return result.shouldKeep;
         });
-        growthPairIndex += growth.evidence.length;
+        growthPairIndex += originalLength; // Use original length to maintain pairId alignment
       }
     };
 
