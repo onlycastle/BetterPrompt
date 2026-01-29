@@ -65,7 +65,7 @@ NoMoreAISlop uses a **web-first architecture with Lambda analysis backend**:
 │   │                                                                     │   │
 │   │ 3. 4-Phase Analysis Pipeline (Gemini 3 Flash)                       │   │
 │   │    ├── Phase 1: DataExtractor (deterministic extraction, no LLM)    │   │
-│   │    ├── Phase 2: 5 insight workers (parallel LLM analysis)           │   │
+│   │    ├── Phase 2: 4 insight workers (parallel LLM analysis)           │   │
 │   │    │   ├── ContextEfficiencyWorker                                  │   │
 │   │    │   ├── KnowledgeGapWorker                                       │   │
 │   │    │   ├── TrustVerificationWorker                                  │   │
@@ -102,7 +102,7 @@ NoMoreAISlop uses a **web-first architecture with Lambda analysis backend**:
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
 │   │ ✓ Parsing 5 session(s)...                                           │   │
 │   │ ✓ Phase 1: Extracting data...                                       │   │
-│   │ ✓ Phase 2: Analyzing insights (5 workers)...                        │   │
+│   │ ✓ Phase 2: Analyzing insights (4 workers)...                        │   │
 │   │ ✓ Phase 2.5: Classifying coding type...                             │   │
 │   │ ✓ Phase 3: Generating personalized narrative...                     │   │
 │   │ ✓ Analysis complete!                                                │   │
@@ -290,7 +290,7 @@ Real-time communication between Lambda and client:
 | **Lambda Handler** | `lambda/analysis.ts` | Lambda handler (streaming) |
 | **Analysis Orchestrator** | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | 4-phase pipeline coordinator |
 | **Phase 1 Worker** | `src/lib/analyzer/workers/data-extractor-worker.ts` | Deterministic data extraction |
-| **Phase 2 Workers** | `src/lib/analyzer/workers/*.ts` | 5 insight workers (parallel) |
+| **Phase 2 Workers** | `src/lib/analyzer/workers/*.ts` | 4 insight workers (parallel) |
 | **Phase 2.5 Worker** | `src/lib/analyzer/workers/type-classifier-worker.ts` | Coding type classification |
 | **Phase 3 Stage** | `src/lib/analyzer/stages/content-writer.ts` | Narrative generation |
 | **SST Config** | `sst.config.ts` | SST app configuration |
