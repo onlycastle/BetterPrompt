@@ -147,27 +147,43 @@ export type PromptPattern = z.infer<typeof PromptPatternSchema>;
 /**
  * LLM Prompt pattern - FLATTENED for Gemini API compatibility
  * Uses semicolon-separated string for examples instead of nested array
+ *
+ * v3 format: examplesData contains utteranceIds, not quotes.
+ * The actual quote text is looked up from Phase1Output in evaluation-assembler.
  */
 export const LLMPromptPatternSchema = z.object({
   patternName: z.string().max(80).describe('Distinctive name for this pattern'),
   description: z.string().max(2000).describe('Detailed description of what this pattern is and why it matters'),
   frequency: z.enum(['frequent', 'occasional', 'rare']),
-  /** Examples as "quote|analysis;quote|analysis;..." format */
+  /** Examples as "utteranceId|analysis;utteranceId|analysis;..." format */
   examplesData: z.string().max(3000).optional()
-    .describe('Examples as "quote|analysis;quote|analysis;..." format'),
+    .describe('Examples as "utteranceId|analysis;..." format - utteranceId references Developer Utterances'),
   effectiveness: z.enum(['highly_effective', 'effective', 'could_improve']),
   tip: z.string().max(1000).optional().describe('Educational tip with expert insights (600-1000 chars) from knowledge base'),
 });
 export type LLMPromptPattern = z.infer<typeof LLMPromptPatternSchema>;
 
 /**
- * Helper to parse examplesData string into array of {quote, analysis}
+ * Helper to parse examplesData string into array of {utteranceId, analysis}
+ *
+ * New format (v3): "utteranceId1|analysis1;utteranceId2|analysis2;..."
+ * The actual quote text is looked up from Phase1Output using utteranceId.
+ *
+ * Legacy format support: If the first field looks like a quote (>50 chars or contains spaces),
+ * it's treated as a direct quote for backward compatibility.
  */
-export function parseExamplesData(data: string | undefined): Array<{ quote: string; analysis: string }> {
+export function parseExamplesData(data: string | undefined): Array<{ utteranceId: string; analysis: string }> {
   if (!data) return [];
   return data.split(';').filter(Boolean).map((s) => {
     const parts = s.split('|');
-    return { quote: parts[0] || '', analysis: parts.slice(1).join('|') || '' };
+    const firstPart = parts[0] || '';
+    // utteranceId format: "sessionId_turnIndex" (e.g., "abc123_5")
+    // It should be relatively short and contain underscore
+    const looksLikeUtteranceId = firstPart.length < 80 && firstPart.includes('_') && !firstPart.includes(' ');
+    return {
+      utteranceId: looksLikeUtteranceId ? firstPart : '',
+      analysis: parts.slice(1).join('|') || '',
+    };
   });
 }
 
