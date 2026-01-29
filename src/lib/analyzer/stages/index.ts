@@ -13,8 +13,6 @@ export { ContentWriterStage, type ContentWriterConfig } from './content-writer';
 
 // Translator
 export { TranslatorStage, type TranslatorConfig } from './translator';
-export { TRANSLATOR_SYSTEM_PROMPT } from './translator-prompts';
 
 // Evidence Verifier (Phase 2.8)
 export { EvidenceVerifierStage, type EvidenceVerifierResult } from './evidence-verifier';
-export { EVIDENCE_VERIFIER_SYSTEM_PROMPT } from './evidence-verifier-prompts';

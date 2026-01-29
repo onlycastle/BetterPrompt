@@ -127,6 +127,9 @@ function createMockOutput(): ContextEfficiencyOutput {
     overallEfficiencyScore: 65,
     avgContextFillPercent: 84,
     confidenceScore: 0.79,
+    // New fields added by parseContextEfficiencyLLMOutput() (parsed from undefined strengthsData/growthAreasData)
+    strengths: [],
+    growthAreas: [],
   };
 }
 

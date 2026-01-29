@@ -77,9 +77,6 @@ export const DeveloperUtteranceSchema = z.object({
   /** Tool calls made in the preceding AI response */
   precedingAIToolCalls: z.array(z.string()).optional(),
 
-  /** Length of the preceding AI response text */
-  precedingAIResponseLength: z.number().int().min(0).optional(),
-
   /** Whether the preceding AI response contained an error */
   precedingAIHadError: z.boolean().optional(),
 });
@@ -176,13 +173,6 @@ export const Phase1SessionMetricsSchema = z.object({
 
   /** Tool usage counts */
   toolUsageCounts: z.record(z.string(), z.number()).optional(),
-
-  /** Session duration statistics (in minutes) */
-  sessionDurations: z.object({
-    min: z.number(),
-    max: z.number(),
-    avg: z.number(),
-  }).optional(),
 });
 export type Phase1SessionMetrics = z.infer<typeof Phase1SessionMetricsSchema>;
 
@@ -210,59 +200,5 @@ export const Phase1OutputSchema = z.object({
 
   /** Computed session metrics */
   sessionMetrics: Phase1SessionMetricsSchema,
-
-  /** Confidence score for the extraction (0-1) */
-  extractionConfidence: z.number().min(0).max(1).optional(),
-
-  /** Any warnings or issues encountered during extraction */
-  extractionWarnings: z.array(z.string()).optional(),
 });
 export type Phase1Output = z.infer<typeof Phase1OutputSchema>;
-
-// ============================================================================
-// Factory Functions
-// ============================================================================
-
-/**
- * Create an empty Phase 1 output for fallback cases
- */
-export function createEmptyPhase1Output(): Phase1Output {
-  return {
-    developerUtterances: [],
-    aiResponses: [],
-    sessionMetrics: {
-      totalSessions: 0,
-      totalMessages: 0,
-      totalDeveloperUtterances: 0,
-      totalAIResponses: 0,
-      avgMessagesPerSession: 0,
-      avgDeveloperMessageLength: 0,
-      questionRatio: 0,
-      codeBlockRatio: 0,
-      dateRange: {
-        earliest: new Date().toISOString(),
-        latest: new Date().toISOString(),
-      },
-    },
-    extractionConfidence: 0,
-    extractionWarnings: ['Empty output - no sessions to analyze'],
-  };
-}
-
-/**
- * Validate and parse Phase 1 output
- */
-export function parsePhase1Output(data: unknown): Phase1Output {
-  return Phase1OutputSchema.parse(data);
-}
-
-/**
- * Safely parse Phase 1 output with error handling
- */
-export function safeParsePhase1Output(data: unknown): { success: true; data: Phase1Output } | { success: false; error: z.ZodError } {
-  const result = Phase1OutputSchema.safeParse(data);
-  if (result.success) {
-    return { success: true, data: result.data };
-  }
-  return { success: false, error: result.error };
-}

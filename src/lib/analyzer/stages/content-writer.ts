@@ -240,23 +240,15 @@ export class ContentWriterStage {
   /**
    * Sanitize narrative-only LLM response
    *
-   * Minimal sanitization — only verify that prompt pattern examples
-   * contain developer utterances (not AI responses).
-   * All structural assembly is handled by evaluation-assembler.
+   * Deep clones to avoid mutation. Prompt pattern example verification
+   * is handled by evaluation-assembler.sanitizePromptPatterns().
    */
   private sanitizeNarrativeResponse(
     input: NarrativeLLMResponse,
-    phase1Output?: Phase1Output
+    _phase1Output?: Phase1Output
   ): NarrativeLLMResponse {
     // Deep clone to avoid mutation
-    const sanitized = JSON.parse(JSON.stringify(input)) as NarrativeLLMResponse;
-
-    // Verify prompt pattern examples contain only developer utterances
-    if (phase1Output) {
-      this.verifyPromptPatternExamples(sanitized, phase1Output);
-    }
-
-    return sanitized;
+    return JSON.parse(JSON.stringify(input)) as NarrativeLLMResponse;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -311,24 +303,6 @@ export class ContentWriterStage {
     if (prefixLen >= 20 && normalized1.slice(0, prefixLen) === normalized2.slice(0, prefixLen)) return true;
 
     return false;
-  }
-
-  /**
-   * Verify prompt pattern examples (v3: no-op, handled by evaluation-assembler)
-   *
-   * In v3 architecture, LLM outputs utteranceId references instead of quotes.
-   * The evaluation-assembler resolves utteranceIds to actual quotes from Phase1Output,
-   * filtering out any invalid references. No verification needed here.
-   *
-   * This method is kept for backward compatibility but does nothing.
-   */
-  private verifyPromptPatternExamples(
-    _sanitized: any,
-    _phase1Output: Phase1Output
-  ): void {
-    // v3: utteranceId resolution and validation is handled by evaluation-assembler.
-    // No filtering needed here since LLM outputs IDs, not quotes.
-    this.log('v3: Prompt pattern verification delegated to evaluation-assembler');
   }
 
   /**

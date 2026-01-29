@@ -130,14 +130,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       developerUtterances: sampledUtterances,
       aiResponses: sampledResponses,
       sessionMetrics,
-      extractionConfidence: this.computeExtractionConfidence(context.sessions),
-      extractionWarnings: this.generateWarnings(
-        context.sessions,
-        filteredUtterances,
-        sampledUtterances,
-        allAIResponses,
-        sampledResponses
-      ),
     };
 
     this.log(`Extracted ${filteredUtterances.length} utterances, sampled to ${sampledUtterances.length}`);
@@ -218,7 +210,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
 
       // Context from preceding AI response
       precedingAIToolCalls: precedingAI?.toolCalls?.map(tc => tc.name),
-      precedingAIResponseLength: precedingAI?.content.length ?? 0,
       precedingAIHadError: this.hadError(precedingAI),
     };
   }
@@ -346,14 +337,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       }
     }
 
-    // Calculate session durations
-    const durations = sessions.map(s => s.durationSeconds / 60); // Convert to minutes
-    const minDuration = durations.length > 0 ? Math.min(...durations) : 0;
-    const maxDuration = durations.length > 0 ? Math.max(...durations) : 0;
-    const avgDuration = durations.length > 0
-      ? durations.reduce((a, b) => a + b, 0) / durations.length
-      : 0;
-
     // Calculate date range
     const timestamps = sessions.flatMap(s =>
       s.messages.map(m => m.timestamp.toISOString())
@@ -374,81 +357,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
         latest: timestamps[timestamps.length - 1] ?? new Date().toISOString(),
       },
       toolUsageCounts,
-      sessionDurations: {
-        min: minDuration,
-        max: maxDuration,
-        avg: avgDuration,
-      },
     };
-  }
-
-  /**
-   * Compute extraction confidence based on data quality
-   */
-  private computeExtractionConfidence(sessions: ParsedSession[]): number {
-    if (sessions.length === 0) return 0;
-
-    // Higher confidence with more sessions
-    const sessionFactor = Math.min(sessions.length / 10, 1);
-
-    // Higher confidence with more messages
-    const totalMessages = sessions.reduce((sum, s) => sum + s.messages.length, 0);
-    const messageFactor = Math.min(totalMessages / 50, 1);
-
-    // Average of both factors
-    return Math.round((sessionFactor + messageFactor) / 2 * 100) / 100;
-  }
-
-  /**
-   * Generate warnings about the extraction
-   */
-  private generateWarnings(
-    sessions: ParsedSession[],
-    allUtterances: DeveloperUtterance[],
-    sampledUtterances?: DeveloperUtterance[],
-    allResponses?: AIResponse[],
-    sampledResponses?: AIResponse[]
-  ): string[] {
-    const warnings: string[] = [];
-
-    if (sessions.length < 3) {
-      warnings.push('Few sessions available - analysis may be limited');
-    }
-
-    if (allUtterances.length < 10) {
-      warnings.push('Few developer utterances - insights may be limited');
-    }
-
-    const avgLength = allUtterances.length > 0
-      ? allUtterances.reduce((sum, u) => sum + u.characterCount, 0) / allUtterances.length
-      : 0;
-
-    if (avgLength < 50) {
-      warnings.push('Short average message length - may indicate brief interactions');
-    }
-
-    // Report sampling stats
-    if (sampledUtterances && sampledUtterances.length < allUtterances.length) {
-      warnings.push(
-        `Utterances sampled: ${sampledUtterances.length}/${allUtterances.length} (strategic sampling applied)`
-      );
-    }
-
-    if (allResponses && sampledResponses && sampledResponses.length < allResponses.length) {
-      warnings.push(
-        `AI responses sampled: ${sampledResponses.length}/${allResponses.length} (strategic sampling applied)`
-      );
-    }
-
-    // Report text truncation stats
-    const truncatedCount = (sampledUtterances ?? allUtterances)
-      .filter(u => u.text.endsWith(DataExtractorWorker.TRUNCATION_MARKER))
-      .length;
-    if (truncatedCount > 0) {
-      warnings.push(`${truncatedCount} utterance(s) truncated to ${DataExtractorWorker.MAX_TEXT_LENGTH} chars`);
-    }
-
-    return warnings;
   }
 
   // ─────────────────────────────────────────────────────────────────────────

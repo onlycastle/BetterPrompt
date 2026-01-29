@@ -41,6 +41,94 @@ import type { InsightEvidence } from '../../models/worker-insights';
 import type { UtteranceLookupEntry } from '../../models/verbose-evaluation';
 
 // ============================================================================
+// Debug Logging
+// ============================================================================
+
+const DEBUG_PROMPT_PATTERNS = process.env.DEBUG_PROMPT_PATTERNS === 'true';
+
+function debugLog(message: string): void {
+  if (DEBUG_PROMPT_PATTERNS) {
+    console.log(`[EvalAssembler] ${message}`);
+  }
+}
+
+// ============================================================================
+// Quote Verification Utilities
+// ============================================================================
+
+/**
+ * Normalize text for comparison: trim, lowercase, collapse whitespace.
+ */
+function normalizeText(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/**
+ * Check if two quote strings match (allowing for truncation and minor differences)
+ *
+ * Uses a substring containment check: if the shorter quote is contained
+ * within the longer one, or vice versa, they're considered matching.
+ */
+function quotesMatch(quote1: string, quote2: string): boolean {
+  const normalized1 = quote1.trim().toLowerCase().replace(/\s+/g, ' ');
+  const normalized2 = quote2.trim().toLowerCase().replace(/\s+/g, ' ');
+
+  if (normalized1 === normalized2) return true;
+
+  // Check substring containment (handles truncation)
+  const shorter = normalized1.length <= normalized2.length ? normalized1 : normalized2;
+  const longer = normalized1.length > normalized2.length ? normalized1 : normalized2;
+
+  // If the shorter string is at least 30 chars and is contained in the longer, match
+  if (shorter.length >= 30 && longer.includes(shorter)) return true;
+
+  // Check prefix match (first 50 chars) — handles minor ending differences
+  const prefixLen = Math.min(50, shorter.length);
+  if (prefixLen >= 20 && normalized1.slice(0, prefixLen) === normalized2.slice(0, prefixLen)) return true;
+
+  return false;
+}
+
+/**
+ * Check if a normalized quote matches any text in a corpus.
+ */
+function matchesCorpus(normalizedQuote: string, corpus: string[]): boolean {
+  return corpus.some(text => text.length > 0 && quotesMatch(normalizedQuote, text));
+}
+
+/**
+ * Filter a quote by substring matching against developer and AI corpora.
+ * Returns true to keep, false to remove.
+ *
+ * @param quote - The quote to verify
+ * @param devTexts - Normalized developer utterance texts
+ * @param aiTexts - Normalized AI response texts
+ * @returns true if quote should be kept, false if it's an AI response
+ */
+function isValidDeveloperQuote(
+  quote: string,
+  devTexts: string[],
+  aiTexts: string[]
+): boolean {
+  if (!quote || typeof quote !== 'string') return true;
+
+  const normalized = normalizeText(quote);
+  if (normalized.length < 15) {
+    return true; // Too short to verify
+  }
+
+  const matchesDev = matchesCorpus(normalized, devTexts);
+  const matchesAI = matchesCorpus(normalized, aiTexts);
+
+  // Remove if it matches AI response but NOT developer utterance
+  if (matchesAI && !matchesDev) {
+    return false;
+  }
+
+  return true;
+}
+
+// ============================================================================
 // Main Assembly Function
 // ============================================================================
 
@@ -150,10 +238,20 @@ export function assembleEvaluation(
 // ============================================================================
 
 /**
- * Truncate personalitySummary to 3000 chars, preserving bold markers
+ * Truncate personalitySummary to 3000 chars, preserving bold markers.
+ * Also logs a warning if content is below the target minimum length.
  */
 function truncatePersonalitySummary(summary: string): string {
   if (!summary || typeof summary !== 'string') return '';
+
+  // Warn if content is below target minimum (2500 chars expected, warn below 2000)
+  if (summary.length < 2000) {
+    console.warn(
+      `[EvaluationAssembler] Short personalitySummary: ${summary.length} chars (target: 2500-3000). ` +
+      `Consider investigating ContentWriter prompt effectiveness.`
+    );
+  }
+
   if (summary.length <= 3000) return summary;
 
   let truncated = summary.slice(0, 2997);
@@ -173,6 +271,10 @@ function truncatePersonalitySummary(summary: string): string {
  * - LLM outputs examplesData as "utteranceId|analysis;..."
  * - This function looks up the actual quote from Phase1Output using utteranceId
  * - Invalid or missing utteranceIds are filtered out
+ *
+ * CRITICAL: When falling back to pattern.examples (LLM-generated quotes),
+ * we must verify that quotes are from developer utterances, NOT AI responses.
+ * This prevents the bug where AI responses appear as examples in the frontend.
  */
 function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | undefined): any[] {
   if (!Array.isArray(patterns)) return [];
@@ -186,32 +288,79 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
     }
   }
 
-  const result = patterns.map((pattern: any) => {
+  // Build corpora for fallback verification
+  let devTexts: string[] = [];
+  let aiTexts: string[] = [];
+  if (phase1Output) {
+    devTexts = phase1Output.developerUtterances.map(u => normalizeText(u.text));
+    aiTexts = phase1Output.aiResponses.map(r => normalizeText(r.textSnippet));
+  }
+
+  const result = patterns.map((pattern: any, patternIndex: number) => {
     // Parse examplesData (v3 format: "utteranceId|analysis;...")
     const parsedExamples = pattern.examplesData
       ? parseExamplesData(pattern.examplesData)
       : [];
+
+    debugLog(`Pattern ${patternIndex + 1}: ${pattern.patternName}`);
+    debugLog(`  examplesData: ${pattern.examplesData?.slice(0, 80) || 'EMPTY'}...`);
+    debugLog(`  parsedExamples: ${parsedExamples.length} items`);
 
     // Resolve utteranceIds to actual quotes, filter invalid ones
     const resolvedExamples = parsedExamples
       .map(ex => {
         if (!ex.utteranceId) {
           // Legacy format or invalid - skip
+          debugLog(`  Skip: empty utteranceId`);
           return null;
         }
         const quote = utteranceLookup.get(ex.utteranceId);
         if (!quote) {
           // utteranceId not found in Phase1Output - skip
+          debugLog(`  Skip: utteranceId "${ex.utteranceId}" not found in Phase1Output`);
           return null;
         }
         return { quote, analysis: ex.analysis };
       })
       .filter((ex): ex is { quote: string; analysis: string } => ex !== null);
 
-    // Fall back to existing examples if resolution yields nothing
-    const examples = resolvedExamples.length > 0
-      ? resolvedExamples
-      : (pattern.examples || []);
+    debugLog(`  resolvedExamples: ${resolvedExamples.length} items`);
+
+    // Determine final examples with verification
+    let examples: Array<{ quote: string; analysis: string }>;
+    let verificationStats = { kept: 0, filtered: 0 };
+
+    if (resolvedExamples.length > 0) {
+      // utteranceId resolution succeeded - these are verified developer utterances
+      examples = resolvedExamples;
+      debugLog(`  → Using resolved examples (${examples.length} items)`);
+    } else if (pattern.examples && Array.isArray(pattern.examples) && devTexts.length > 0) {
+      // Fallback to LLM-generated examples WITH VERIFICATION
+      // Filter out any quotes that match AI responses but not developer utterances
+      debugLog(`  ⚠️ FALLBACK: Using LLM examples with verification`);
+      const originalCount = pattern.examples.length;
+      examples = pattern.examples.filter((ex: any) => {
+        if (!ex || typeof ex.quote !== 'string') {
+          verificationStats.filtered++;
+          return false;
+        }
+        const isValid = isValidDeveloperQuote(ex.quote, devTexts, aiTexts);
+        if (isValid) {
+          verificationStats.kept++;
+        } else {
+          verificationStats.filtered++;
+          debugLog(`  Filtered AI response: "${ex.quote.slice(0, 60)}..."`);
+        }
+        return isValid;
+      });
+      debugLog(`  Verification: kept=${verificationStats.kept}, filtered=${verificationStats.filtered} (original=${originalCount})`);
+    } else {
+      // No phase1Output for verification or no examples - use as-is
+      examples = pattern.examples || [];
+      if (!phase1Output) {
+        debugLog(`  → No phase1Output for verification, using examples as-is`);
+      }
+    }
 
     return {
       patternName: pattern.patternName,

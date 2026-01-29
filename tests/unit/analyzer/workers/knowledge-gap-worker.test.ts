@@ -112,6 +112,9 @@ function createMockOutput(): KnowledgeGapOutput {
     ],
     overallKnowledgeScore: 68,
     confidenceScore: 0.82,
+    // New fields added by parseKnowledgeGapLLMOutput() (parsed from undefined strengthsData/growthAreasData)
+    strengths: [],
+    growthAreas: [],
   };
 }
 
