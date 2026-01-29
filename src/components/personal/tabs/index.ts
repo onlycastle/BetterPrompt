@@ -2,25 +2,40 @@
  * Personal Tab Components
  * Barrel exports for tab content components
  *
- * REFACTORED: Simplified to 2-tab structure
- * - Communication Patterns (promptPatterns)
- * - Your Insights (Worker-specific strengths/growthAreas)
- *
- * REMOVED: DimensionInsightsClean, AgentInsightsSection, GrowthInsightsSection
- *          These are replaced by WorkerInsightsSection
+ * Organized into domain subfolders:
+ * - containers/: Entry point containers (TabbedReportContainer, ReportTab, etc.)
+ * - insights/: Domain-specific insights (WorkerInsightsSection, GrowthAreasSection)
+ * - type-result/: Type classification display (TypeResultMinimal, MatrixDistributionDisplay)
+ * - patterns/: Communication patterns (PromptPatternsClean)
+ * - resources/: Learning resources sidebar (ResourceSidebar, ResourceBubble)
+ * - shared/: Reusable UI elements (DataQualityBadge, EmptyStatePrompt, NextTabButton)
  */
 
-export { ReportTab } from './ReportTab';
-export { ProgressTab } from './ProgressTab';
-export { InsightsTab } from './InsightsTab';
+// Container components
+export { TabbedReportContainer, type ReportTabId } from './containers';
+export { ReportTab } from './containers';
+export { ProgressTab } from './containers';
+export { InsightsTab } from './containers';
 
-export { TypeResultMinimal } from './TypeResultMinimal';
-export { PersonalitySummaryClean } from './PersonalitySummaryClean';
-export { PromptPatternsClean } from './PromptPatternsClean';
-export { GrowthAreasSection } from './GrowthAreasSection';
-export { EmptyStatePrompt } from './EmptyStatePrompt';
+// Type result components
+export { TypeResultMinimal } from './type-result';
+export { MatrixDistributionDisplay } from './type-result';
+export { PersonalitySummaryClean } from './type-result';
 
-// New tabbed components
-export { TabbedReportContainer } from './TabbedReportContainer';
-export { WorkerInsightsSection } from './WorkerInsightsSection';
-export { NextTabButton } from './NextTabButton';
+// Insights components
+export { WorkerInsightsSection } from './insights';
+export { GrowthAreasSection } from './insights';
+export { ExpandableEvidence } from './insights';
+
+// Patterns components
+export { PromptPatternsClean } from './patterns';
+
+// Resources components
+export { ResourceSidebar } from './resources';
+export { ResourcePreviewCard } from './resources';
+export { ResourceBubble } from './resources';
+
+// Shared components
+export { DataQualityBadge } from './shared';
+export { EmptyStatePrompt } from './shared';
+export { NextTabButton } from './shared';

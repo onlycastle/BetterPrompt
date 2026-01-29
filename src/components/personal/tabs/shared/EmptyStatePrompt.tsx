@@ -4,7 +4,7 @@
  */
 
 import { FileText, Terminal } from 'lucide-react';
-import { Card } from '../../ui/Card';
+import { Card } from '../../../ui/Card';
 import styles from './EmptyStatePrompt.module.css';
 
 interface EmptyStatePromptProps {

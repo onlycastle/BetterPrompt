@@ -12,16 +12,16 @@
  */
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { TypeResultMinimal } from './TypeResultMinimal';
-import { PersonalitySummaryClean } from './PersonalitySummaryClean';
-import { PromptPatternsClean } from './PromptPatternsClean';
-import { WorkerInsightsSection } from './WorkerInsightsSection';
-import { NextTabButton } from './NextTabButton';
-import { ResourceSidebar } from './ResourceSidebar';
-import { DataQualityBadge } from './DataQualityBadge';
-import type { VerboseAnalysisData, AnalysisMetadata, DimensionResourceMatch } from '../../../types/verbose';
-import type { AgentOutputs, ParsedResource } from '../../../lib/models/agent-outputs';
-import { aggregateWorkerInsights } from '../../../lib/models/agent-outputs';
+import { TypeResultMinimal } from '../type-result/TypeResultMinimal';
+import { PersonalitySummaryClean } from '../type-result/PersonalitySummaryClean';
+import { PromptPatternsClean } from '../patterns/PromptPatternsClean';
+import { WorkerInsightsSection } from '../insights/WorkerInsightsSection';
+import { NextTabButton } from '../shared/NextTabButton';
+import { ResourceSidebar } from '../resources/ResourceSidebar';
+import { DataQualityBadge } from '../shared/DataQualityBadge';
+import type { VerboseAnalysisData, AnalysisMetadata, DimensionResourceMatch } from '../../../../types/verbose';
+import type { AgentOutputs, ParsedResource } from '../../../../lib/models/agent-outputs';
+import { aggregateWorkerInsights } from '../../../../lib/models/agent-outputs';
 import styles from './TabbedReportContainer.module.css';
 
 // Valid ParsedResource types for validation

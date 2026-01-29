@@ -3,8 +3,8 @@
  * Notion/Linear style minimal type result display
  */
 
-import { VERBOSE_TYPE_METADATA } from '../../../types/verbose';
-import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixDistribution } from '../../../types/verbose';
+import { VERBOSE_TYPE_METADATA } from '../../../../types/verbose';
+import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixDistribution } from '../../../../types/verbose';
 import { MatrixDistributionDisplay } from './MatrixDistributionDisplay';
 import styles from './TypeResultMinimal.module.css';
 

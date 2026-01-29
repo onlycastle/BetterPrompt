@@ -4,8 +4,8 @@
  * Supports **bold markers** for emphasized text
  */
 
-import { Card } from '../../ui/Card';
-import { FormattedText } from '../../../utils/textFormatting';
+import { Card } from '../../../ui/Card';
+import { FormattedText } from '../../../../utils/textFormatting';
 import styles from './PersonalitySummaryClean.module.css';
 
 interface PersonalitySummaryCleanProps {

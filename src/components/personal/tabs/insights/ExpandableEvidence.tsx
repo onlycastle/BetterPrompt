@@ -15,8 +15,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import type { EvidenceItem, InsightEvidence } from '../../../lib/models/worker-insights';
-import type { UtteranceLookupEntry } from '../../../lib/models/verbose-evaluation';
+import type { EvidenceItem, InsightEvidence } from '../../../../lib/models/worker-insights';
+import type { UtteranceLookupEntry } from '../../../../lib/models/verbose-evaluation';
 import styles from './ExpandableEvidence.module.css';
 
 interface ExpandableEvidenceProps {

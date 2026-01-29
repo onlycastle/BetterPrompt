@@ -12,7 +12,7 @@
 
 'use client';
 
-import type { ParsedResource } from '../../../lib/models/agent-outputs';
+import type { ParsedResource } from '../../../../lib/models/agent-outputs';
 import { ResourcePreviewCard } from './ResourcePreviewCard';
 import styles from './ResourceSidebar.module.css';
 

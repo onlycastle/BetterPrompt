@@ -12,8 +12,8 @@
 
 'use client';
 
-import { useOGMetadata } from '../../../hooks/useOGMetadata';
-import type { ParsedResource } from '../../../lib/models/agent-outputs';
+import { useOGMetadata } from '../../../../hooks/useOGMetadata';
+import type { ParsedResource } from '../../../../lib/models/agent-outputs';
 import styles from './ResourcePreviewCard.module.css';
 
 interface ResourcePreviewCardProps {

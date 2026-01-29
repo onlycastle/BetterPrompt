@@ -6,7 +6,7 @@
  */
 
 import { type RefObject } from 'react';
-import { useTabScrollNavigation } from '../../../hooks/useTabScrollNavigation';
+import { useTabScrollNavigation } from '../../../../hooks/useTabScrollNavigation';
 import styles from './NextTabButton.module.css';
 
 interface NextTabButtonProps {

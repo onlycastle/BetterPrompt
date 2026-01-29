@@ -6,9 +6,9 @@
  */
 
 import { useState, useMemo } from 'react';
-import { VERBOSE_TYPE_METADATA } from '../../../types/verbose';
-import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixDistribution } from '../../../types/verbose';
-import { MATRIX_NAMES, deriveMatrixDistribution } from '../../../lib/models/coding-style';
+import { VERBOSE_TYPE_METADATA } from '../../../../types/verbose';
+import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixDistribution } from '../../../../types/verbose';
+import { MATRIX_NAMES, deriveMatrixDistribution } from '../../../../lib/models/coding-style';
 import styles from './MatrixDistributionDisplay.module.css';
 
 interface MatrixDistributionDisplayProps {

@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useRemoteResult } from '@/hooks/useRemoteResult';
-import { TabbedReportContainer } from '@/components/personal/tabs/TabbedReportContainer';
+import { TabbedReportContainer } from '@/components/personal/tabs';
 import { UnlockSection } from '@/components/report/UnlockSection';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 import styles from './page.module.css';

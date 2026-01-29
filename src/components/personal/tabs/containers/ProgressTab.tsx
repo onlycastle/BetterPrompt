@@ -4,16 +4,16 @@
  */
 
 import { Lock } from 'lucide-react';
-import { Card } from '../../ui/Card';
-import { TrendLineChart } from '../../enterprise';
+import { Card } from '../../../ui/Card';
+import { TrendLineChart } from '../../../enterprise';
 import {
   JourneyHeader,
   ScoreComparisonCard,
   DimensionBreakdown,
   StreakCard,
-} from '../';
-import { EmptyStatePrompt } from './EmptyStatePrompt';
-import type { PersonalAnalytics } from '../../../types/personal';
+} from '../../';
+import { EmptyStatePrompt } from '../shared/EmptyStatePrompt';
+import type { PersonalAnalytics } from '../../../../types/personal';
 import styles from './ProgressTab.module.css';
 
 interface ProgressTabProps {

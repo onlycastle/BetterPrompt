@@ -5,12 +5,12 @@
  */
 
 import { useMemo } from 'react';
-import { GrowthAreasSection } from './GrowthAreasSection';
-import { RecommendationsList } from '../RecommendationsList';
-import { EmptyStatePrompt } from './EmptyStatePrompt';
-import type { ParsedResource, AgentOutputs } from '../../../lib/models/agent-outputs';
-import type { PersonalAnalytics } from '../../../types/personal';
-import type { VerboseAnalysisData, DimensionGrowthArea, DimensionResourceMatch } from '../../../types/verbose';
+import { GrowthAreasSection } from '../insights/GrowthAreasSection';
+import { RecommendationsList } from '../../RecommendationsList';
+import { EmptyStatePrompt } from '../shared/EmptyStatePrompt';
+import type { ParsedResource, AgentOutputs } from '../../../../lib/models/agent-outputs';
+import type { PersonalAnalytics } from '../../../../types/personal';
+import type { VerboseAnalysisData, DimensionGrowthArea, DimensionResourceMatch } from '../../../../types/verbose';
 import styles from './InsightsTab.module.css';
 
 interface InsightsTabProps {

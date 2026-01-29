@@ -22,14 +22,14 @@
  */
 
 import { useMemo } from 'react';
-import type { AggregatedWorkerInsights, WorkerStrength, WorkerGrowth, EvidenceItem } from '../../../lib/models/worker-insights';
+import type { AggregatedWorkerInsights, WorkerStrength, WorkerGrowth, EvidenceItem } from '../../../../lib/models/worker-insights';
 import {
   WORKER_DOMAIN_CONFIGS,
   type WorkerDomainConfig,
   applyTranslatedStrengths,
   applyTranslatedGrowthAreas,
-} from '../../../lib/models/worker-insights';
-import type { TranslatedAgentInsights, UtteranceLookupEntry } from '../../../lib/models/verbose-evaluation';
+} from '../../../../lib/models/worker-insights';
+import type { TranslatedAgentInsights, UtteranceLookupEntry } from '../../../../lib/models/verbose-evaluation';
 import { ExpandableEvidence } from './ExpandableEvidence';
 import styles from './WorkerInsightsSection.module.css';
 

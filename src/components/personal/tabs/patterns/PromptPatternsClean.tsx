@@ -4,8 +4,8 @@
  */
 
 import { useState } from 'react';
-import { Card } from '../../ui/Card';
-import type { PromptPattern, PromptFrequency, PromptEffectiveness } from '../../../types/verbose';
+import { Card } from '../../../ui/Card';
+import type { PromptPattern, PromptFrequency, PromptEffectiveness } from '../../../../types/verbose';
 import styles from './PromptPatternsClean.module.css';
 
 interface PromptPatternsCleanProps {

@@ -9,7 +9,7 @@
 
 import Link from 'next/link';
 import { useRemoteResult } from '@/hooks/useRemoteResult';
-import { TabbedReportContainer } from '@/components/personal/tabs/TabbedReportContainer';
+import { TabbedReportContainer } from '@/components/personal/tabs';
 import { UnlockSection } from '@/components/report/UnlockSection';
 import { VERBOSE_TYPE_METADATA } from '@/types/verbose';
 import styles from './page.module.css';

@@ -4,8 +4,8 @@
  */
 
 import { TabbedReportContainer } from './TabbedReportContainer';
-import { EmptyStatePrompt } from './EmptyStatePrompt';
-import type { VerboseAnalysisData } from '../../../types/verbose';
+import { EmptyStatePrompt } from '../shared/EmptyStatePrompt';
+import type { VerboseAnalysisData } from '../../../../types/verbose';
 import styles from './ReportTab.module.css';
 
 interface ReportTabProps {

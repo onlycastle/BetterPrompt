@@ -9,7 +9,7 @@
  * Free users see 1 resource + locked teaser; paid users see all resources
  */
 
-import type { ParsedResource } from '../../../lib/models/agent-outputs';
+import type { ParsedResource } from '../../../../lib/models/agent-outputs';
 import styles from './ResourceBubble.module.css';
 
 interface ResourceBubbleProps {

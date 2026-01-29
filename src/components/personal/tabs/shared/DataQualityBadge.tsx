@@ -11,7 +11,7 @@
 
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Info } from 'lucide-react';
-import type { AnalysisMetadata } from '../../../types/verbose';
+import type { AnalysisMetadata } from '../../../../types/verbose';
 import styles from './DataQualityBadge.module.css';
 
 interface DataQualityBadgeProps {

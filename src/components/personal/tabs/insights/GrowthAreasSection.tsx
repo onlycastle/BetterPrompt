@@ -5,10 +5,10 @@
  * Now includes ResourceBubble for learning materials in 2-column layout
  */
 
-import { Card } from '../../ui/Card';
-import { ResourceBubble } from './ResourceBubble';
-import type { DimensionGrowthArea, Evidence } from '../../../types/verbose';
-import type { ParsedResource } from '../../../lib/models/agent-outputs';
+import { Card } from '../../../ui/Card';
+import { ResourceBubble } from '../resources/ResourceBubble';
+import type { DimensionGrowthArea, Evidence } from '../../../../types/verbose';
+import type { ParsedResource } from '../../../../lib/models/agent-outputs';
 import styles from './GrowthAreasSection.module.css';
 
 /** Extract display quote from evidence (handles both string and EvidenceItem formats) */

@@ -1,6 +1,6 @@
 import styles from './TypeResultSection.module.css';
 import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixDistribution } from '../../types/report';
-import { MatrixDistributionDisplay } from '../personal/tabs/MatrixDistributionDisplay';
+import { MatrixDistributionDisplay } from '../personal/tabs';
 
 interface TypeResult {
   primaryType: CodingStyleType;
