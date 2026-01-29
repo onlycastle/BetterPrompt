@@ -22,6 +22,7 @@ import { TRANSLATOR_SYSTEM_PROMPT, buildTranslatorUserPrompt } from './translato
 import type { StrengthGrowthOutput } from '../../models/strength-growth-data';
 import type { TrustVerificationOutput } from '../../models/trust-verification-data';
 import type { WorkflowHabitOutput } from '../../models/workflow-habit-data';
+import type { WorkerStrength, WorkerGrowth } from '../../models/worker-insights';
 
 /**
  * Configuration for the Translator stage
@@ -112,12 +113,14 @@ export class TranslatorStage {
       targetLanguage
     );
 
-    return this.client.generateStructured({
+    const result = await this.client.generateStructured({
       systemPrompt: TRANSLATOR_SYSTEM_PROMPT,
       userPrompt,
       responseSchema: TranslatorOutputSchema,
       maxOutputTokens: this.config.maxOutputTokens,
     });
+
+    return result;
   }
 
   /**
@@ -138,9 +141,29 @@ export class TranslatorStage {
     for (const key of flatStringAgentKeys) {
       if (agentOutputs[key]) {
         const agent = agentOutputs[key] as Record<string, unknown>;
+
+        // If strengthsData string exists and is non-empty, use it;
+        // otherwise convert strengths[] array to flat string
+        let strengthsData = agent.strengthsData as string | undefined;
+        if (!strengthsData || strengthsData.trim() === '') {
+          const strengths = agent.strengths as WorkerStrength[] | undefined;
+          if (strengths && strengths.length > 0) {
+            strengthsData = this.flattenWorkerStrengths(strengths);
+          }
+        }
+
+        // Same for growthAreasData
+        let growthAreasData = agent.growthAreasData as string | undefined;
+        if (!growthAreasData || growthAreasData.trim() === '') {
+          const growthAreas = agent.growthAreas as WorkerGrowth[] | undefined;
+          if (growthAreas && growthAreas.length > 0) {
+            growthAreasData = this.flattenWorkerGrowthAreas(growthAreas);
+          }
+        }
+
         prepared[key] = {
-          strengthsData: agent.strengthsData ?? '',
-          growthAreasData: agent.growthAreasData ?? '',
+          strengthsData: strengthsData ?? '',
+          growthAreasData: growthAreasData ?? '',
         };
       }
     }
@@ -188,32 +211,18 @@ export class TranslatorStage {
    * Converts strengths array and anti-patterns to translation format.
    */
   private flattenTrustVerification(tv: TrustVerificationOutput): { strengthsData: string; growthAreasData: string } {
-    // Flatten actual strengths array (WorkerStrength.evidence is string[])
-    const strengthsData = (tv.strengths ?? []).map(s => {
-      const quotes = (s.evidence ?? []).join(',');
-      return `${s.title}|${s.description}|${quotes}|${s.frequency ?? ''}`;
-    }).join(';');
+    const strengthsData = this.flattenWorkerStrengths(tv.strengths ?? []);
 
     // Convert anti-patterns to growth areas format, then merge with actual growthAreas
     const antiPatternGrowth = (tv.antiPatterns ?? []).map(ap => {
       const quotes = (ap.examples ?? []).map(e => e.quote).join(',');
       const title = `Anti-Pattern: ${ap.type.replace(/_/g, ' ')}`;
       const description = ap.improvement ?? `Detected ${ap.type} pattern`;
-      const severity = ap.severity === 'critical' ? 'critical' :
-        ap.severity === 'significant' ? 'high' :
-        ap.severity === 'moderate' ? 'medium' : 'low';
-      const priority = ap.severity === 'critical' ? '90' :
-        ap.severity === 'significant' ? '70' :
-        ap.severity === 'moderate' ? '50' : '30';
+      const { severity, priority } = this.mapSeverityToPriority(ap.severity);
       return `${title}|${description}|${quotes}|${ap.improvement ?? ''}|${ap.sessionPercentage ?? ''}|${severity}|${priority}`;
     });
 
-    // Include actual growthAreas from the worker (WorkerGrowth.evidence is string[])
-    const workerGrowth = (tv.growthAreas ?? []).map(g => {
-      const quotes = (g.evidence ?? []).join(',');
-      return `${g.title}|${g.description}|${quotes}|${g.recommendation}|${g.frequency ?? ''}|${g.severity ?? ''}|${g.frequency ?? ''}`;
-    });
-
+    const workerGrowth = this.flattenWorkerGrowthToArray(tv.growthAreas ?? []);
     const growthAreasData = [...antiPatternGrowth, ...workerGrowth].join(';');
 
     return { strengthsData, growthAreasData };
@@ -224,11 +233,7 @@ export class TranslatorStage {
    * Converts strengths array and weak planning habits to translation format.
    */
   private flattenWorkflowHabit(wh: WorkflowHabitOutput): { strengthsData: string; growthAreasData: string } {
-    // Flatten actual strengths array (WorkerStrength.evidence is string[])
-    const strengthsData = (wh.strengths ?? []).map(s => {
-      const quotes = (s.evidence ?? []).join(',');
-      return `${s.title}|${s.description}|${quotes}|${s.frequency ?? ''}`;
-    }).join(';');
+    const strengthsData = this.flattenWorkerStrengths(wh.strengths ?? []);
 
     // Convert weak planning habits to growth areas format
     const weakHabits = (wh.planningHabits ?? []).filter(h =>
@@ -241,14 +246,56 @@ export class TranslatorStage {
       return `Planning: ${typeLabel}|Planning habit "${typeLabel}" is ${h.frequency}|${quotes}|Improve ${typeLabel} frequency||medium|50`;
     });
 
-    // Include actual growthAreas from the worker (WorkerGrowth.evidence is string[])
-    const workerGrowth = (wh.growthAreas ?? []).map(g => {
-      const quotes = (g.evidence ?? []).join(',');
-      return `${g.title}|${g.description}|${quotes}|${g.recommendation}|${g.frequency ?? ''}|${g.severity ?? ''}|${g.frequency ?? ''}`;
-    });
-
+    const workerGrowth = this.flattenWorkerGrowthToArray(wh.growthAreas ?? []);
     const growthAreasData = [...weakHabitGrowth, ...workerGrowth].join(';');
 
     return { strengthsData, growthAreasData };
+  }
+
+  /**
+   * Map severity level to priority score.
+   */
+  private mapSeverityToPriority(severity: string | undefined): { severity: string; priority: string } {
+    switch (severity) {
+      case 'critical': return { severity: 'critical', priority: '90' };
+      case 'significant': return { severity: 'high', priority: '70' };
+      case 'moderate': return { severity: 'medium', priority: '50' };
+      default: return { severity: 'low', priority: '30' };
+    }
+  }
+
+  /**
+   * Flatten WorkerGrowth array to string array (before joining).
+   * Format: "title|description|evidence|recommendation|frequency|severity|frequency"
+   */
+  private flattenWorkerGrowthToArray(growthAreas: WorkerGrowth[]): string[] {
+    return growthAreas.map(g => {
+      const quotes = (g.evidence ?? []).join(',');
+      return `${g.title}|${g.description}|${quotes}|${g.recommendation}|${g.frequency ?? ''}|${g.severity ?? ''}|${g.frequency ?? ''}`;
+    });
+  }
+
+  /**
+   * Flatten generic WorkerStrength array to pipe-delimited string.
+   * Used as fallback when strengthsData string is empty but strengths[] exists.
+   * Format: "title|description|quote1,quote2;..."
+   */
+  private flattenWorkerStrengths(strengths: WorkerStrength[]): string {
+    return strengths.map(s => {
+      const quotes = (s.evidence ?? []).join(',');
+      return `${s.title}|${s.description}|${quotes}|${s.frequency ?? ''}`;
+    }).join(';');
+  }
+
+  /**
+   * Flatten generic WorkerGrowth array to pipe-delimited string.
+   * Used as fallback when growthAreasData string is empty but growthAreas[] exists.
+   * Format: "title|description|evidence|recommendation|frequency|severity|priority;..."
+   */
+  private flattenWorkerGrowthAreas(growthAreas: WorkerGrowth[]): string {
+    return growthAreas.map(g => {
+      const quotes = (g.evidence ?? []).join(',');
+      return `${g.title}|${g.description}|${quotes}|${g.recommendation}|${g.frequency ?? ''}|${g.severity ?? ''}|`;
+    }).join(';');
   }
 }

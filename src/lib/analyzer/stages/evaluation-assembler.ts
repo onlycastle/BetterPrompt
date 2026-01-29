@@ -60,7 +60,7 @@ export function assembleEvaluation(
 
   // ── Phase 3 Narrative (LLM-generated) ──────────────────────────────────
   result.personalitySummary = truncatePersonalitySummary(narrativeResult.personalitySummary);
-  result.promptPatterns = sanitizePromptPatterns(narrativeResult.promptPatterns);
+  result.promptPatterns = sanitizePromptPatterns(narrativeResult.promptPatterns, phase1Output);
 
   // topFocusAreas: prefer Phase 3 narrative, fall back to Phase 2 data
   if (narrativeResult.topFocusAreas) {
@@ -157,23 +157,63 @@ function truncatePersonalitySummary(summary: string): string {
 }
 
 /**
- * Convert flattened LLM prompt patterns to nested format and truncate tips
+ * Convert flattened LLM prompt patterns to nested format and truncate tips.
+ *
+ * utteranceId-based quote resolution (v3):
+ * - LLM outputs examplesData as "utteranceId|analysis;..."
+ * - This function looks up the actual quote from Phase1Output using utteranceId
+ * - Invalid or missing utteranceIds are filtered out
  */
-function sanitizePromptPatterns(patterns: any[]): any[] {
+function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | undefined): any[] {
   if (!Array.isArray(patterns)) return [];
 
-  const result = patterns.map((pattern: any) => ({
-    patternName: pattern.patternName,
-    description: pattern.description,
-    frequency: pattern.frequency,
-    examples: pattern.examplesData
+  // Build utterance lookup map for O(1) access
+  const utteranceLookup = new Map<string, string>();
+  if (phase1Output?.developerUtterances) {
+    for (const u of phase1Output.developerUtterances) {
+      // Store truncated quote (max 500 chars for display)
+      utteranceLookup.set(u.id, u.text.slice(0, 500));
+    }
+  }
+
+  const result = patterns.map((pattern: any) => {
+    // Parse examplesData (v3 format: "utteranceId|analysis;...")
+    const parsedExamples = pattern.examplesData
       ? parseExamplesData(pattern.examplesData)
-      : (pattern.examples || []),
-    effectiveness: pattern.effectiveness,
-    tip: typeof pattern.tip === 'string' && pattern.tip.length > 2000
-      ? pattern.tip.slice(0, 1997) + '...'
-      : pattern.tip,
-  }));
+      : [];
+
+    // Resolve utteranceIds to actual quotes, filter invalid ones
+    const resolvedExamples = parsedExamples
+      .map(ex => {
+        if (!ex.utteranceId) {
+          // Legacy format or invalid - skip
+          return null;
+        }
+        const quote = utteranceLookup.get(ex.utteranceId);
+        if (!quote) {
+          // utteranceId not found in Phase1Output - skip
+          return null;
+        }
+        return { quote, analysis: ex.analysis };
+      })
+      .filter((ex): ex is { quote: string; analysis: string } => ex !== null);
+
+    // Fall back to existing examples if resolution yields nothing
+    const examples = resolvedExamples.length > 0
+      ? resolvedExamples
+      : (pattern.examples || []);
+
+    return {
+      patternName: pattern.patternName,
+      description: pattern.description,
+      frequency: pattern.frequency,
+      examples,
+      effectiveness: pattern.effectiveness,
+      tip: typeof pattern.tip === 'string' && pattern.tip.length > 2000
+        ? pattern.tip.slice(0, 1997) + '...'
+        : pattern.tip,
+    };
+  });
 
   // Ensure minimum 3 prompt patterns
   while (result.length < 3) {

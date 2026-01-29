@@ -209,10 +209,11 @@ export class ContentWriterStage {
 
     // 4. StrengthGrowth evidence (strengths + growth areas)
     if (agentOutputs.strengthGrowth) {
-      if (agentOutputs.strengthGrowth.strengths) {
-        for (const strength of agentOutputs.strengthGrowth.strengths) {
-          if (!Array.isArray(strength.evidence)) continue;
-          strength.evidence = strength.evidence.filter((ev: any) => {
+      const filterEvidence = (items: any[] | undefined): void => {
+        if (!items) return;
+        for (const item of items) {
+          if (!Array.isArray(item.evidence)) continue;
+          item.evidence = item.evidence.filter((ev: any) => {
             if (ev.utteranceId) {
               return this.verifyQuoteByUtteranceId(ev, utteranceLookup, stats);
             }
@@ -220,19 +221,10 @@ export class ContentWriterStage {
             return this.filterBySubstringMatch(ev.quote, devTexts, aiTexts, stats);
           });
         }
-      }
-      if (agentOutputs.strengthGrowth.growthAreas) {
-        for (const area of agentOutputs.strengthGrowth.growthAreas) {
-          if (!Array.isArray(area.evidence)) continue;
-          area.evidence = area.evidence.filter((ev: any) => {
-            if (ev.utteranceId) {
-              return this.verifyQuoteByUtteranceId(ev, utteranceLookup, stats);
-            }
-            if (!ev.quote || typeof ev.quote !== 'string') return true;
-            return this.filterBySubstringMatch(ev.quote, devTexts, aiTexts, stats);
-          });
-        }
-      }
+      };
+
+      filterEvidence(agentOutputs.strengthGrowth.strengths);
+      filterEvidence(agentOutputs.strengthGrowth.growthAreas);
     }
 
     const total = stats.verified + stats.replaced + stats.removed;
@@ -276,10 +268,9 @@ export class ContentWriterStage {
    * Returns developer utterance texts and AI response texts, both normalized.
    */
   private buildCorpora(phase1Output: Phase1Output): { devTexts: string[]; aiTexts: string[] } {
-    return {
-      devTexts: phase1Output.developerUtterances.map(u => this.normalizeText(u.text)),
-      aiTexts: phase1Output.aiResponses.map(r => this.normalizeText(r.textSnippet)),
-    };
+    const devTexts = phase1Output.developerUtterances.map(u => this.normalizeText(u.text));
+    const aiTexts = phase1Output.aiResponses.map(r => this.normalizeText(r.textSnippet));
+    return { devTexts, aiTexts };
   }
 
   /**
@@ -323,36 +314,21 @@ export class ContentWriterStage {
   }
 
   /**
-   * Verify that prompt pattern example quotes are developer utterances, not AI responses.
+   * Verify prompt pattern examples (v3: no-op, handled by evaluation-assembler)
    *
-   * Strategy: For each prompt pattern example quote:
-   * - If quote matches an AI response but NOT a developer utterance → remove
-   * - Otherwise → keep (matches developer, matches both, or paraphrased)
+   * In v3 architecture, LLM outputs utteranceId references instead of quotes.
+   * The evaluation-assembler resolves utteranceIds to actual quotes from Phase1Output,
+   * filtering out any invalid references. No verification needed here.
+   *
+   * This method is kept for backward compatibility but does nothing.
    */
   private verifyPromptPatternExamples(
-    sanitized: any,
-    phase1Output: Phase1Output
+    _sanitized: any,
+    _phase1Output: Phase1Output
   ): void {
-    if (!Array.isArray(sanitized.promptPatterns)) return;
-
-    const { devTexts, aiTexts } = this.buildCorpora(phase1Output);
-    if (devTexts.length === 0) return;
-
-    const stats = { verified: 0, replaced: 0, removed: 0 };
-
-    for (const pattern of sanitized.promptPatterns) {
-      if (!Array.isArray(pattern.examples)) continue;
-
-      pattern.examples = pattern.examples.filter((example: any) => {
-        const quote = typeof example === 'string' ? example : example?.quote;
-        if (!quote || typeof quote !== 'string') return true;
-        return this.filterBySubstringMatch(quote, devTexts, aiTexts, stats);
-      });
-    }
-
-    if (stats.removed > 0) {
-      this.log(`Prompt pattern verification: removed ${stats.removed} AI-only quotes`);
-    }
+    // v3: utteranceId resolution and validation is handled by evaluation-assembler.
+    // No filtering needed here since LLM outputs IDs, not quotes.
+    this.log('v3: Prompt pattern verification delegated to evaluation-assembler');
   }
 
   /**
@@ -396,7 +372,9 @@ export class ContentWriterStage {
     if (!quote || typeof quote !== 'string') return true;
 
     const normalized = this.normalizeText(quote);
-    if (normalized.length < 15) return true; // Too short to verify
+    if (normalized.length < 15) {
+      return true; // Too short to verify
+    }
 
     const matchesDev = this.matchesCorpus(normalized, devTexts);
     const matchesAI = this.matchesCorpus(normalized, aiTexts);
