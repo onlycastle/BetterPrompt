@@ -426,9 +426,10 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
   - **WHAT**: Describe the observable behavior pattern concretely
   - **WHY**: Explain what this pattern reveals about their mindset
   - **HOW**: Describe how this affects their AI collaboration and code quality
-- Show examples with actual quotes from Phase 2 evidence or the Developer Utterances section
-  - CRITICAL: Every quote in examplesData MUST be the developer's own words, NEVER AI responses
-  - Example quotes should be 100-500 chars
+- Show examples by referencing Developer Utterances using their IDs
+  - CRITICAL: Use utteranceId from the Developer Utterances section (e.g., "abc123_5")
+  - DO NOT write quotes directly - only reference by ID
+  - The actual quote text will be looked up from the original data
 - Rate effectiveness
 - **Tip (600-1000 chars):** Write expert-level coaching advice
 
@@ -441,15 +442,18 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 **IMPORTANT: FLATTENED FORMAT for nested data**
 
 **promptPatterns** - Use pipe-separated fields, semicolon between items:
-- examplesData: "quote1|analysis1;quote2|analysis2;..." (NOT an array)
+- examplesData: "utteranceId1|analysis1;utteranceId2|analysis2;..." (NOT an array)
+- utteranceId format: "sessionId_turnIndex" (e.g., "abc123_5", "def456_12")
+- ONLY use IDs from the Developer Utterances section above
+- The actual quote text will be resolved from Phase 1 data
 
 **topFocusAreas.areas** - Use pipe-separated fields for actions:
 - actionsData: "start_action|stop_action|continue_action" (NOT an object)
 
 **Critical Rules:**
-- Use ACTUAL quotes from Phase 2 evidence data. Do not invent quotes.
-- EVERY quote in examplesData must be text the developer typed, not AI output.
-- ESCAPE any pipe (|) or semicolon (;) characters within text fields with backslash.
+- Reference Developer Utterances by ID only. Do not write quotes directly.
+- ONLY use utteranceIds that appear in the Developer Utterances section.
+- ESCAPE any pipe (|) or semicolon (;) characters within analysis text with backslash.
 
 ${NO_HEDGING_DIRECTIVE}`;
 
@@ -769,10 +773,11 @@ You generate ONLY narrative content. Structural data is assembled separately.
 
 2. **Prompt Patterns** (5-12 for comprehensive analysis)
    - Derive patterns from Phase 2 insights and the Developer Utterances section
-   - Use the "Developer Utterances" section as your PRIMARY source for example quotes
-   - Select quotes that are 200-500 chars to show the developer's full intent
+   - Use the "Developer Utterances" section as your PRIMARY source for examples
+   - Reference utterances by their ID (e.g., "abc123_5") - DO NOT copy quote text
+   - examplesData format: "utteranceId|analysis;utteranceId|analysis;..."
    - **Description (600-800 chars):** WHAT-WHY-HOW framework
-   - Include 2-5 example quotes
+   - Include 2-5 example references by ID
    - **Tip (600-1000 chars):** Expert coaching using Knowledge Base context
 
 3. **Top 3 Focus Areas** (from StrengthGrowth personalizedPrioritiesData)

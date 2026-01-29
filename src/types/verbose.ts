@@ -8,9 +8,10 @@
 import type { CodingStyleType, AIControlLevel } from './enterprise';
 import type { TypeDistribution } from './report';
 import type { AggregatedWorkerInsights } from '../lib/models/worker-insights';
+import type { DimensionResourceMatch } from '../lib/models/verbose-evaluation';
 
 // Re-export for convenience
-export type { CodingStyleType, AIControlLevel, TypeDistribution, AggregatedWorkerInsights };
+export type { CodingStyleType, AIControlLevel, TypeDistribution, AggregatedWorkerInsights, DimensionResourceMatch };
 
 // ============================================================================
 // Matrix Distribution (5 types × 3 levels = 15 combinations)
@@ -174,6 +175,9 @@ export interface VerboseAnalysisData {
   translatedAgentInsights?: import('../lib/models/verbose-evaluation').TranslatedAgentInsights;
   // Analysis metadata with confidence scores (for transparency)
   analysisMetadata?: AnalysisMetadata;
+  // Matched Knowledge Resources from Phase 2.75 (deterministic matching)
+  // Contains validated resources from Knowledge Base, NOT LLM-generated URLs
+  knowledgeResources?: DimensionResourceMatch[];
   // Premium fields (optional)
   toolUsageDeepDive?: unknown[];
   tokenEfficiency?: unknown;

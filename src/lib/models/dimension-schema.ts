@@ -39,18 +39,8 @@ export const DIMENSION_NAMES = DimensionNameEnumSchema.options;
 export type DimensionName = DimensionNameEnum;
 
 // ============================================================================
-// Dimension Validation & Remapping
+// Dimension Validation
 // ============================================================================
-
-/**
- * Known legacy/non-standard dimension remappings.
- * Mirrors migration 023 logic for runtime consistency.
- */
-const DIMENSION_REMAP: Record<string, DimensionNameEnum> = {
-  iterationEfficiency: 'aiControl',
-  learningVelocity: 'skillResilience',
-  scopeManagement: 'aiControl',
-};
 
 /**
  * Runtime type guard for dimension names.
@@ -60,9 +50,8 @@ export function isValidDimension(value: string): value is DimensionNameEnum {
 }
 
 /**
- * Validate and remap a dimension string from LLM output.
+ * Validate a dimension string from LLM output.
  * - Valid dimension → returned as-is
- * - Known legacy dimension → remapped per migration 023 strategy
  * - Unknown value → falls back to 'aiCollaboration'
  */
 export function validateDimension(
@@ -72,12 +61,6 @@ export function validateDimension(
   const trimmed = value?.trim() || '';
 
   if (isValidDimension(trimmed)) return trimmed;
-
-  if (trimmed in DIMENSION_REMAP) {
-    const remapped = DIMENSION_REMAP[trimmed];
-    console.warn(`[DimensionValidation] Remapped legacy dimension "${trimmed}" → "${remapped}"${context ? ` (${context})` : ''}`);
-    return remapped;
-  }
 
   console.warn(`[DimensionValidation] Unknown dimension "${trimmed}", defaulting to "aiCollaboration"${context ? ` (${context})` : ''}`);
   return 'aiCollaboration';

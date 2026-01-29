@@ -73,7 +73,7 @@ Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation
 | `src/lib/infrastructure/` | Supabase & local storage adapters | Infrastructure |
 | `src/lib/analyzer/` | LLM analysis (prompts, dimensions, insights) | Application |
 | `src/lib/analyzer/orchestrator/` | 4-phase analysis orchestration | Application |
-| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency) + Phase 2.5 StrengthGrowthSynthesizer → TypeClassifier | Application |
+| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency) + Phase 2.5 TypeClassifier | Application |
 | `src/lib/analyzer/stages/` | Content Writer stage (Phase 3 narrative generation) | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/parser/` | JSONL session parsing | Infrastructure |
@@ -161,20 +161,14 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 - Output: `AgentOutputs` (merged results, excluding strengthGrowth)
 - 4 LLM calls (parallel)
 
-**Phase 2.5: Synthesis → Classification (Sequential, 2 workers)**
-- **StrengthGrowthSynthesizer** (free) - Cross-domain strengths/growth from ALL Phase 2 outputs
-  - Receives structured Phase 2 worker summaries + Phase 1 utterances for evidence
-  - Detects cross-domain patterns (e.g., blind_retry + no_planning → reactive problem-solving)
-  - Output: `StrengthGrowthOutput` (identical schema to original, backward compatible)
-  - 1 LLM call
-- **TypeClassifierWorker** (free) - Type classification using all Phase 2 + synthesized data
-  - Uses semantic analysis from Phase 2 agents + Synthesizer to improve accuracy of:
+**Phase 2.5: Classification (1 worker)**
+- **TypeClassifierWorker** (free) - Type classification using Phase 2 outputs
+  - Uses semantic analysis from Phase 2 agents to determine:
     - 5 coding styles: architect, scientist, collaborator, speedrunner, craftsman
     - 3 control levels: explorer, navigator, cartographer
     - 15 combination matrix (5×3 = unique personalities)
-  - Output: `TypeClassifierOutput` with refined classification and evidence
+  - Output: `TypeClassifierOutput` with classification and evidence
   - 1 LLM call
-- Workers run sequentially: Synthesizer output is merged into agentOutputs before TypeClassifier runs
 
 **Phase 3: Content Writer**
 - **ContentWriterStage** (`src/lib/analyzer/stages/content-writer.ts`)
@@ -190,7 +184,7 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 - Output: `TranslatorOutput` (text fields only, merged with English response)
 - 0-1 LLM call (conditional)
 
-**Total: 7-8 LLM calls (0 + 4 + 2 + 1 + 0-1)**
+**Total: 6-7 LLM calls (0 + 4 + 1 + 1 + 0-1)**
 
 **Prompt Engineering:**
 - Prompts in `src/lib/analyzer/workers/prompts/phase2-worker-prompts.ts` and `content-writer-prompts.ts`
@@ -330,8 +324,7 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 
 | Variable | Purpose |
 |----------|---------|
-| `GOOGLE_GEMINI_API_KEY` | Gemini 3 Flash API (two-stage pipeline) |
-| `ANTHROPIC_API_KEY` | Claude API (legacy/fallback) |
+| `GOOGLE_GEMINI_API_KEY` | Gemini 3 Flash API (4-phase pipeline) |
 | `SUPABASE_URL` | Database URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Backend access |
 | `POLAR_ACCESS_TOKEN` | Payments |
