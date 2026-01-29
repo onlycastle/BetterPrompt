@@ -38,16 +38,15 @@ npm test               # Run all tests
 |-------|-----------|-----------|-------------|
 | 1 | DataExtractor | 0 | Deterministic extraction (no LLM) |
 | 2 | 4 Insight Workers | 4 | Parallel analysis (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency) |
-| 2.5 | StrengthGrowthSynthesizer | 1 | Cross-domain strengths/growth from Phase 2 outputs (sequential) |
-| 2.5 | TypeClassifier | 1 | Developer type classification (5x3 matrix, sequential after Synthesizer) |
+| 2.5 | TypeClassifier | 1 | Developer type classification (5x3 matrix) |
 | 3 | ContentWriter | 1 | Personalized narrative generation |
 | 4 | Translator | 0-1 | Conditional translation (non-English only) |
 
-- **Total**: 7 LLM calls (English), 8 LLM calls (non-English)
+- **Total**: 6 LLM calls (English), 7 LLM calls (non-English)
 - Prompts use PTCF framework (Persona · Task · Context · Format)
 - Temperature: 1.0 (Gemini's recommended default)
 
-**Structured Outputs**: Gemini stages use `responseJsonSchema` with `responseMimeType: "application/json"`. Zod schemas in `src/lib/models/` → JSON Schema via `zod-to-json-schema`. Legacy single-stage mode uses Anthropic's beta feature.
+**Structured Outputs**: Gemini stages use `responseJsonSchema` with `responseMimeType: "application/json"`. Zod schemas in `src/lib/models/` → JSON Schema via `zod-to-json-schema`.
 
 > ⚠️ **Gemini Schema Nesting Limit**: Gemini API has a **maximum nesting depth of ~4 levels** for `responseJsonSchema`. When adding new Zod schemas:
 > - Avoid deeply nested objects (e.g., `array[].object.nested.field`)
@@ -75,7 +74,6 @@ npm test               # Run all tests
 **Implementation**:
 - Workers throw errors instead of returning empty data via `createFailedResult`
 - Orchestrator uses `Promise.all()` (not `Promise.allSettled()`) to fail fast
-- No `fallbackToLegacy` option - if the pipeline fails, the entire analysis fails
 - Frontend should show clear error states, not fake/empty results
 
 **Do NOT**:
@@ -102,7 +100,6 @@ return await analyze(); // Error surfaces to user, root cause can be identified
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (client-side) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key (client-side) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
-| `NOSLOP_MODEL` | Override model (legacy mode only) |
 
 ## Release Workflow
 
