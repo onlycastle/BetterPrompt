@@ -16,7 +16,8 @@
 
 import { BaseWorker, type WorkerResult, type WorkerContext, type Phase2WorkerContext } from './base-worker';
 import {
-  ContextEfficiencyOutputSchema,
+  ContextEfficiencyLLMOutputSchema,
+  parseContextEfficiencyLLMOutput,
   type ContextEfficiencyOutput,
 } from '../../models/agent-outputs';
 import type { Phase1Output } from '../../models/phase1-output';
@@ -74,14 +75,17 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
     const result = await this.client!.generateStructured({
       systemPrompt: CONTEXT_EFFICIENCY_SYSTEM_PROMPT,
       userPrompt,
-      responseSchema: ContextEfficiencyOutputSchema,
+      responseSchema: ContextEfficiencyLLMOutputSchema,
       maxOutputTokens: 8192,
     });
 
-    this.log(`Efficiency score: ${result.data.overallEfficiencyScore}`);
-    this.log(`Avg context fill: ${result.data.avgContextFillPercent}%`);
+    // Parse LLM output to structured format (populates strengths/growthAreas from string data)
+    const parsedOutput = parseContextEfficiencyLLMOutput(result.data);
 
-    return this.createSuccessResult(result.data, result.usage);
+    this.log(`Efficiency score: ${parsedOutput.overallEfficiencyScore}`);
+    this.log(`Avg context fill: ${parsedOutput.avgContextFillPercent}%`);
+
+    return this.createSuccessResult(parsedOutput, result.usage);
   }
 
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {

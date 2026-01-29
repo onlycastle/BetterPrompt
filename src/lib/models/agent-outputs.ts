@@ -667,6 +667,71 @@ export const KnowledgeGapOutputSchema = z.object({
 export type KnowledgeGapOutput = z.infer<typeof KnowledgeGapOutputSchema>;
 
 // ============================================================================
+// Knowledge Gap LLM Output Schema (Flattened for Gemini API)
+// ============================================================================
+
+/**
+ * Flattened schema for Gemini API (avoids nesting depth limit).
+ *
+ * Excludes `strengths` and `growthAreas` arrays which contain deeply nested
+ * EvidenceItemSchema. These are populated after parsing from the string fields.
+ */
+export const KnowledgeGapLLMOutputSchema = z.object({
+  // Knowledge gaps - "topic:question_count:depth:example;..."
+  knowledgeGapsData: z.string().max(2000),
+
+  // Learning progress - "topic:start_level:current_level:evidence;..."
+  learningProgressData: z.string().max(1500),
+
+  // Recommended resources - "topic:resource_type:url_or_name;..."
+  recommendedResourcesData: z.string().max(1000),
+
+  // Top 3 Wow Insights
+  topInsights: z.array(z.string().max(3000)).max(3),
+
+  // KPT (Keep/Problem/Try) structured fields for balanced feedback
+  kptKeep: z.array(z.string().max(500)).max(2).optional(),
+  kptProblem: z.array(z.string().max(500)).max(2).optional(),
+  kptTry: z.array(z.string().max(500)).max(2).optional(),
+
+  // Overall knowledge score (0-100)
+  overallKnowledgeScore: z.number().min(0).max(100),
+
+  // Confidence score (0-1)
+  confidenceScore: z.number().min(0).max(1),
+
+  // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
+  strengthsData: z.string().max(12000).optional()
+    .describe('Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)'),
+
+  // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
+  growthAreasData: z.string().max(12000).optional()
+    .describe('Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)'),
+});
+export type KnowledgeGapLLMOutput = z.infer<typeof KnowledgeGapLLMOutputSchema>;
+
+/**
+ * Convert LLM output to structured KnowledgeGapOutput
+ */
+export function parseKnowledgeGapLLMOutput(llmOutput: KnowledgeGapLLMOutput): KnowledgeGapOutput {
+  return {
+    knowledgeGapsData: llmOutput.knowledgeGapsData,
+    learningProgressData: llmOutput.learningProgressData,
+    recommendedResourcesData: llmOutput.recommendedResourcesData,
+    topInsights: llmOutput.topInsights,
+    kptKeep: llmOutput.kptKeep,
+    kptProblem: llmOutput.kptProblem,
+    kptTry: llmOutput.kptTry,
+    overallKnowledgeScore: llmOutput.overallKnowledgeScore,
+    confidenceScore: llmOutput.confidenceScore,
+    strengthsData: llmOutput.strengthsData,
+    growthAreasData: llmOutput.growthAreasData,
+    strengths: parseWorkerStrengthsData(llmOutput.strengthsData),
+    growthAreas: parseWorkerGrowthAreasData(llmOutput.growthAreasData),
+  };
+}
+
+// ============================================================================
 // Context Efficiency Analyzer: Token Inefficiency Patterns
 // ============================================================================
 
@@ -758,6 +823,89 @@ export const ContextEfficiencyOutputSchema = z.object({
 });
 
 export type ContextEfficiencyOutput = z.infer<typeof ContextEfficiencyOutputSchema>;
+
+// ============================================================================
+// Context Efficiency LLM Output Schema (Flattened for Gemini API)
+// ============================================================================
+
+/**
+ * Flattened schema for Gemini API (avoids nesting depth limit).
+ *
+ * Excludes `strengths` and `growthAreas` arrays which contain deeply nested
+ * EvidenceItemSchema. These are populated after parsing from the string fields.
+ */
+export const ContextEfficiencyLLMOutputSchema = z.object({
+  // Context usage pattern - "session_id:avg_fill_percent:compact_trigger_percent;..."
+  contextUsagePatternData: z.string().max(1500),
+
+  // Inefficiency patterns - "pattern:frequency:impact:example;..."
+  inefficiencyPatternsData: z.string().max(2000),
+
+  // Prompt length trend - "session_part:avg_length;..."
+  promptLengthTrendData: z.string().max(500),
+
+  // Redundant info patterns - "info_type:repeat_count;..."
+  redundantInfoData: z.string().max(1000),
+
+  // Top 3 Wow Insights
+  topInsights: z.array(z.string().max(3000)).max(3),
+
+  // KPT (Keep/Problem/Try) structured fields for balanced feedback
+  kptKeep: z.array(z.string().max(500)).max(2).optional(),
+  kptProblem: z.array(z.string().max(500)).max(2).optional(),
+  kptTry: z.array(z.string().max(500)).max(2).optional(),
+
+  // Overall efficiency score (0-100)
+  overallEfficiencyScore: z.number().min(0).max(100),
+
+  // Average context fill percent (0-100)
+  avgContextFillPercent: z.number().min(0).max(100),
+
+  // Confidence score (0-1)
+  confidenceScore: z.number().min(0).max(1),
+
+  // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
+  strengthsData: z.string().max(12000).optional()
+    .describe('Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)'),
+
+  // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
+  growthAreasData: z.string().max(12000).optional()
+    .describe('Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)'),
+
+  // Productivity metrics (consolidated from ProductivityAnalyst)
+  iterationSummaryData: z.string().max(3000).optional(),
+  collaborationEfficiencyScore: z.number().min(0).max(100).optional(),
+  overallProductivityScore: z.number().min(0).max(100).optional(),
+  productivitySummary: z.string().max(2000).optional(),
+});
+export type ContextEfficiencyLLMOutput = z.infer<typeof ContextEfficiencyLLMOutputSchema>;
+
+/**
+ * Convert LLM output to structured ContextEfficiencyOutput
+ */
+export function parseContextEfficiencyLLMOutput(llmOutput: ContextEfficiencyLLMOutput): ContextEfficiencyOutput {
+  return {
+    contextUsagePatternData: llmOutput.contextUsagePatternData,
+    inefficiencyPatternsData: llmOutput.inefficiencyPatternsData,
+    promptLengthTrendData: llmOutput.promptLengthTrendData,
+    redundantInfoData: llmOutput.redundantInfoData,
+    topInsights: llmOutput.topInsights,
+    kptKeep: llmOutput.kptKeep,
+    kptProblem: llmOutput.kptProblem,
+    kptTry: llmOutput.kptTry,
+    overallEfficiencyScore: llmOutput.overallEfficiencyScore,
+    avgContextFillPercent: llmOutput.avgContextFillPercent,
+    confidenceScore: llmOutput.confidenceScore,
+    strengthsData: llmOutput.strengthsData,
+    growthAreasData: llmOutput.growthAreasData,
+    strengths: parseWorkerStrengthsData(llmOutput.strengthsData),
+    growthAreas: parseWorkerGrowthAreasData(llmOutput.growthAreasData),
+    iterationSummaryData: llmOutput.iterationSummaryData,
+    collaborationEfficiencyScore: llmOutput.collaborationEfficiencyScore,
+    overallProductivityScore: llmOutput.overallProductivityScore,
+    productivitySummary: llmOutput.productivitySummary,
+  };
+}
 
 // ============================================================================
 // Metacognition Output (NEW)

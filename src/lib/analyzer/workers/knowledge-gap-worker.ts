@@ -13,7 +13,8 @@
 
 import { BaseWorker, type WorkerResult, type WorkerContext, type Phase2WorkerContext } from './base-worker';
 import {
-  KnowledgeGapOutputSchema,
+  KnowledgeGapLLMOutputSchema,
+  parseKnowledgeGapLLMOutput,
   type KnowledgeGapOutput,
 } from '../../models/agent-outputs';
 import type { Phase1Output } from '../../models/phase1-output';
@@ -71,14 +72,17 @@ export class KnowledgeGapWorker extends BaseWorker<KnowledgeGapOutput> {
     const result = await this.client!.generateStructured({
       systemPrompt: KNOWLEDGE_GAP_SYSTEM_PROMPT,
       userPrompt,
-      responseSchema: KnowledgeGapOutputSchema,
+      responseSchema: KnowledgeGapLLMOutputSchema,
       maxOutputTokens: 8192,
     });
 
-    this.log(`Knowledge score: ${result.data.overallKnowledgeScore}`);
-    this.log(`Found ${result.data.topInsights.length} knowledge insights`);
+    // Parse LLM output to structured format (populates strengths/growthAreas from string data)
+    const parsedOutput = parseKnowledgeGapLLMOutput(result.data);
 
-    return this.createSuccessResult(result.data, result.usage);
+    this.log(`Knowledge score: ${parsedOutput.overallKnowledgeScore}`);
+    this.log(`Found ${parsedOutput.topInsights.length} knowledge insights`);
+
+    return this.createSuccessResult(parsedOutput, result.usage);
   }
 
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
