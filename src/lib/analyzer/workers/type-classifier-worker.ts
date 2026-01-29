@@ -25,7 +25,7 @@ import type { OrchestratorConfig } from '../orchestrator/types';
 import {
   TYPE_CLASSIFIER_SYSTEM_PROMPT,
   buildTypeClassifierUserPrompt,
-} from './prompts/phase2-worker-prompts';
+} from './prompts/type-classifier-prompts';
 import { z } from 'zod';
 
 /**

@@ -22,7 +22,7 @@ import type { OrchestratorConfig } from '../orchestrator/types';
 import {
   KNOWLEDGE_GAP_SYSTEM_PROMPT,
   buildKnowledgeGapUserPrompt,
-} from './prompts/wow-agent-prompts';
+} from './prompts/knowledge-gap-prompts';
 
 /**
  * Knowledge Gap Worker - Analyzes knowledge gaps and learning

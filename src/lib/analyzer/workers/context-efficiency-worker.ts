@@ -25,7 +25,7 @@ import type { OrchestratorConfig } from '../orchestrator/types';
 import {
   CONTEXT_EFFICIENCY_SYSTEM_PROMPT,
   buildContextEfficiencyUserPrompt,
-} from './prompts/wow-agent-prompts';
+} from './prompts/context-efficiency-prompts';
 
 /**
  * Context Efficiency Worker - Analyzes token and context efficiency + productivity

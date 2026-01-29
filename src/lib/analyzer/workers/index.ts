@@ -39,9 +39,3 @@ export { ContextEfficiencyWorker, createContextEfficiencyWorker } from './contex
 // ============================================================================
 
 export { TypeClassifierWorker, createTypeClassifierWorker } from './type-classifier-worker';
-
-// ============================================================================
-// Phase 2 Prompts
-// ============================================================================
-
-export * from './prompts/phase2-worker-prompts';
