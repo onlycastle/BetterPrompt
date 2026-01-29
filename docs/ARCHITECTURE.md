@@ -106,9 +106,8 @@ app/
     ├── knowledge/              # Knowledge base operations
     ├── learn/                  # YouTube/URL learning
     ├── reports/                # Report sharing
-    ├── enterprise/             # Team analytics
     ├── analysis/               # Analysis operations
-    └── influencers/            # Influencer management
+    └── health/                 # Health check
 ```
 
 **Components Structure** (`src/components/`):
@@ -292,8 +291,6 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 | `/api/reports` | Report sharing and OG images | Public | `app/api/reports/` |
 | `/api/knowledge` | Knowledge base operations | PREMIUM | `app/api/knowledge/` |
 | `/api/learn` | YouTube/URL learning | PREMIUM | `app/api/learn/` |
-| `/api/enterprise` | Team analytics | ENTERPRISE | `app/api/enterprise/` |
-| `/api/influencers` | Influencer management | Internal | `app/api/influencers/` |
 | `/api/health` | Health check | Public | `app/api/health/` |
 
 **Key Endpoints:**
@@ -343,21 +340,6 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 - `POST /api/learn/youtube` - Learn from YouTube video
 - `POST /api/learn/url` - Learn from URL content
 - `GET /api/learn/status/:id` - Get job status
-
-**Enterprise Route** (`app/api/enterprise/`):
-- `GET /api/enterprise/team/demo` - Get demo team data
-- `GET /api/enterprise/team/demo/members` - Get team members
-- `GET /api/enterprise/team/demo/trends` - Get trend data
-- `GET /api/enterprise/personal/history` - Personal history
-- `POST /api/enterprise/personal/tracking` - Personal tracking
-
-**Influencers Route** (`app/api/influencers/`):
-- `GET /api/influencers` - List influencers
-- `POST /api/influencers` - Create influencer
-- `GET /api/influencers/active` - Get active influencers
-- `GET /api/influencers/:id` - Get specific influencer
-- `DELETE /api/influencers/:id/deactivate` - Deactivate influencer
-- `GET /api/influencers/tier/:tier` - Filter by tier
 
 ## Authentication
 
