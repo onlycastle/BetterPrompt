@@ -1049,6 +1049,32 @@ export const DimensionResourceMatchSchema = z.object({
 export type DimensionResourceMatch = z.infer<typeof DimensionResourceMatchSchema>;
 
 // ============================================================================
+// UTTERANCE LOOKUP SCHEMA (for evidence linking)
+// ============================================================================
+
+/**
+ * Utterance lookup entry for evidence linking.
+ *
+ * Enables frontend to display full original text when user expands
+ * an evidence item that references a specific utterance by ID.
+ *
+ * Only utterances referenced by Worker evidence are included to minimize payload size.
+ */
+export const UtteranceLookupEntrySchema = z.object({
+  /** Utterance ID (format: {sessionId}_{turnIndex}) */
+  id: z.string(),
+  /** Full original text of the developer's message */
+  text: z.string(),
+  /** Timestamp of the message (ISO 8601) */
+  timestamp: z.string(),
+  /** Session ID extracted from the utterance ID */
+  sessionId: z.string(),
+  /** Turn index within the session */
+  turnIndex: z.number(),
+});
+export type UtteranceLookupEntry = z.infer<typeof UtteranceLookupEntrySchema>;
+
+// ============================================================================
 // COMPLETE VERBOSE EVALUATION SCHEMA
 // ============================================================================
 
@@ -1137,13 +1163,27 @@ export const VerboseEvaluationSchema = z.object({
     strengths: z.array(z.object({
       title: z.string(),
       description: z.string(),
-      evidence: z.array(z.string()),
+      evidence: z.array(z.union([
+        z.string(),
+        z.object({
+          utteranceId: z.string(),
+          quote: z.string(),
+          context: z.string().optional(),
+        }),
+      ])),
       frequency: z.number().optional(),
     })),
     growthAreas: z.array(z.object({
       title: z.string(),
       description: z.string(),
-      evidence: z.array(z.string()),
+      evidence: z.array(z.union([
+        z.string(),
+        z.object({
+          utteranceId: z.string(),
+          quote: z.string(),
+          context: z.string().optional(),
+        }),
+      ])),
       recommendation: z.string(),
       severity: z.enum(['critical', 'high', 'medium', 'low']).optional(),
       frequency: z.number().optional(),
@@ -1151,6 +1191,12 @@ export const VerboseEvaluationSchema = z.object({
     domainScore: z.number().optional(),
   })).optional()
     .describe('Domain-specific strengths/growthAreas from Phase 2 workers (replaces StrengthGrowthSynthesizer)'),
+
+  // Utterance Lookup - Map of utterance IDs to full text for evidence linking
+  // Only includes utterances referenced by Worker evidence to minimize payload size.
+  // Frontend uses this to show original context when user expands an evidence item.
+  utteranceLookup: z.array(UtteranceLookupEntrySchema).optional()
+    .describe('Utterance lookup for evidence linking - only referenced utterances are included'),
 
   // Matched Knowledge Resources (Phase 2.75 - deterministic matching)
   knowledgeResources: z.array(DimensionResourceMatchSchema).optional()

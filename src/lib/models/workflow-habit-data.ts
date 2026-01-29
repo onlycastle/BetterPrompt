@@ -97,13 +97,13 @@ export const WorkflowHabitLLMOutputSchema = z.object({
   // Domain-specific Strengths & Growth Areas (NEW)
   // ─────────────────────────────────────────────────────────────────────────
 
-  /** Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items) */
-  strengthsData: z.string().max(4000).optional()
-    .describe('Strengths in workflow domain: "title|description|quote1,quote2,quote3|frequency;..." (1-4 items)'),
+  /** Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items) */
+  strengthsData: z.string().max(12000).optional()
+    .describe('Strengths in workflow domain: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)'),
 
-  /** Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items) */
-  growthAreasData: z.string().max(4000).optional()
-    .describe('Growth areas in workflow domain: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-4 items)'),
+  /** Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items) */
+  growthAreasData: z.string().max(12000).optional()
+    .describe('Growth areas in workflow domain: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)'),
 });
 export type WorkflowHabitLLMOutput = z.infer<typeof WorkflowHabitLLMOutputSchema>;
 

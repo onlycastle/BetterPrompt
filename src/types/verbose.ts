@@ -8,10 +8,10 @@
 import type { CodingStyleType, AIControlLevel } from './enterprise';
 import type { TypeDistribution } from './report';
 import type { AggregatedWorkerInsights } from '../lib/models/worker-insights';
-import type { DimensionResourceMatch } from '../lib/models/verbose-evaluation';
+import type { DimensionResourceMatch, UtteranceLookupEntry } from '../lib/models/verbose-evaluation';
 
 // Re-export for convenience
-export type { CodingStyleType, AIControlLevel, TypeDistribution, AggregatedWorkerInsights, DimensionResourceMatch };
+export type { CodingStyleType, AIControlLevel, TypeDistribution, AggregatedWorkerInsights, DimensionResourceMatch, UtteranceLookupEntry };
 
 // ============================================================================
 // Matrix Distribution (5 types × 3 levels = 15 combinations)
@@ -178,6 +178,9 @@ export interface VerboseAnalysisData {
   // Matched Knowledge Resources from Phase 2.75 (deterministic matching)
   // Contains validated resources from Knowledge Base, NOT LLM-generated URLs
   knowledgeResources?: DimensionResourceMatch[];
+  // Utterance Lookup for evidence linking (only includes referenced utterances)
+  // Enables frontend to display full original text when user expands an evidence item
+  utteranceLookup?: UtteranceLookupEntry[];
   // Premium fields (optional)
   toolUsageDeepDive?: unknown[];
   tokenEfficiency?: unknown;
