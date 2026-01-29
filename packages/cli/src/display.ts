@@ -273,14 +273,14 @@ function estimateSingleSessionCost(messageCount: number): number {
 
   const stageOverhead = (2500 + 1500); // System prompt + schema per stage
 
-  // Phase 2: 5 workers × (Phase1Output + overhead)
-  const phase2Input = 5 * (phase1OutputTokens + stageOverhead);
+  // Phase 2: 4 workers × (Phase1Output + overhead)
+  const phase2Input = 4 * (phase1OutputTokens + stageOverhead);
   // Phase 2.5 + Phase 3 + Phase 4
   const laterStagesInput = (6000 + stageOverhead) + (9500 + stageOverhead) + (14000 + stageOverhead);
 
   const totalInput = phase2Input + laterStagesInput;
-  // 5 workers + TypeClassifier + ContentWriter + Translator
-  const totalOutput = 8000 + 8000 + 8000 + 4000 + 4000 + 2000 + 12000 + 10000;
+  // 4 workers + TypeClassifier + ContentWriter + Translator
+  const totalOutput = 8000 + 8000 + 4000 + 4000 + 2000 + 12000 + 10000;
 
   return totalInput * inputPrice + totalOutput * outputPrice;
 }

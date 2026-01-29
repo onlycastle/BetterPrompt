@@ -7,9 +7,9 @@
  * - Expected output tokens per stage
  * - Model-specific pricing
  *
- * Multi-phase pipeline (7-8 LLM calls):
+ * Multi-phase pipeline (6-7 LLM calls):
  * - Phase 1: DataExtractor (deterministic, no LLM)
- * - Phase 2: 5 insight workers in parallel (StrengthGrowth, TrustVerification,
+ * - Phase 2: 4 insight workers in parallel (TrustVerification,
  *            WorkflowHabit, KnowledgeGap, ContextEfficiency)
  * - Phase 2.5: TypeClassifier (1 LLM call)
  * - Phase 3: ContentWriter (1 LLM call, always English)
@@ -49,15 +49,14 @@ const SCHEMA_OVERHEAD_PER_STAGE = 1500;
 const STAGE_OVERHEAD = SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
 
 /**
- * Number of LLM stages in the pipeline (7 base, +1 conditional translator)
+ * Number of LLM stages in the pipeline (6 base, +1 conditional translator)
  */
-const PIPELINE_LLM_STAGES = 8;
+const PIPELINE_LLM_STAGES = 7;
 
 /**
  * Estimated output tokens per stage
  */
 const ESTIMATED_OUTPUT_PER_STAGE = {
-  strengthGrowth: 8000,
   trustVerification: 8000,
   workflowHabit: 8000,
   knowledgeGap: 4000,
@@ -162,8 +161,8 @@ export function estimateAnalysisCost(sessions: ParsedSession[]): CostEstimate {
   const systemPromptOverhead = SYSTEM_PROMPT_TOKENS_PER_STAGE * PIPELINE_LLM_STAGES;
   const schemaOverhead = SCHEMA_OVERHEAD_PER_STAGE * PIPELINE_LLM_STAGES;
 
-  // Phase 2: 5 workers, each receives Phase1Output + overhead
-  const phase2WorkersInput = 5 * (phase1OutputTokens + STAGE_OVERHEAD);
+  // Phase 2: 4 workers, each receives Phase1Output + overhead
+  const phase2WorkersInput = 4 * (phase1OutputTokens + STAGE_OVERHEAD);
 
   // Phase 2.5: TypeClassifier receives ~6K tokens (agent output summaries + overhead)
   const typeClassifierInput = 6000 + STAGE_OVERHEAD;
@@ -178,7 +177,6 @@ export function estimateAnalysisCost(sessions: ParsedSession[]): CostEstimate {
 
   // Total output tokens
   const totalOutputTokens =
-    ESTIMATED_OUTPUT_PER_STAGE.strengthGrowth +
     ESTIMATED_OUTPUT_PER_STAGE.trustVerification +
     ESTIMATED_OUTPUT_PER_STAGE.workflowHabit +
     ESTIMATED_OUTPUT_PER_STAGE.knowledgeGap +
@@ -219,15 +217,15 @@ export function renderCostEstimate(
   lines.push('');
   lines.push(`  ${pc.dim('Sessions to analyze:')} ${pc.white(sessionCount.toString())}`);
   lines.push(`  ${pc.dim('Model:')} ${pc.white(estimate.modelName)}`);
-  lines.push(`  ${pc.dim('Pipeline:')} ${pc.white('7-8 LLM calls (Workers → TypeClassifier → Content → Translator)')}`);
+  lines.push(`  ${pc.dim('Pipeline:')} ${pc.white('6-7 LLM calls (Workers → TypeClassifier → Content → Translator)')}`);
   lines.push('');
   lines.push(`  ${pc.dim('Input tokens:')} ${pc.white(estimate.totalInputTokens.toLocaleString())}`);
-  lines.push(`    ${pc.dim('├─ Phase 2 Workers (5x):')} ${estimate.breakdown.phase2WorkersInput.toLocaleString()}`);
+  lines.push(`    ${pc.dim('├─ Phase 2 Workers (4x):')} ${estimate.breakdown.phase2WorkersInput.toLocaleString()}`);
   lines.push(`    ${pc.dim('├─ TypeClassifier:')} ${estimate.breakdown.typeClassifierInput.toLocaleString()}`);
   lines.push(`    ${pc.dim('├─ Content Writer:')} ${estimate.breakdown.contentWriterInput.toLocaleString()}`);
   lines.push(`    ${pc.dim('└─ Translator:')} ${estimate.breakdown.translatorInput.toLocaleString()}`);
   lines.push(`  ${pc.dim('Output tokens (est):')} ${pc.white(estimate.estimatedOutputTokens.toLocaleString())}`);
-  lines.push(`    ${pc.dim('├─ Phase 2 Workers:')} ${(ESTIMATED_OUTPUT_PER_STAGE.strengthGrowth + ESTIMATED_OUTPUT_PER_STAGE.trustVerification + ESTIMATED_OUTPUT_PER_STAGE.workflowHabit + ESTIMATED_OUTPUT_PER_STAGE.knowledgeGap + ESTIMATED_OUTPUT_PER_STAGE.contextEfficiency).toLocaleString()}`);
+  lines.push(`    ${pc.dim('├─ Phase 2 Workers:')} ${(ESTIMATED_OUTPUT_PER_STAGE.trustVerification + ESTIMATED_OUTPUT_PER_STAGE.workflowHabit + ESTIMATED_OUTPUT_PER_STAGE.knowledgeGap + ESTIMATED_OUTPUT_PER_STAGE.contextEfficiency).toLocaleString()}`);
   lines.push(`    ${pc.dim('├─ TypeClassifier:')} ${ESTIMATED_OUTPUT_PER_STAGE.typeClassifier.toLocaleString()}`);
   lines.push(`    ${pc.dim('├─ Content Writer:')} ${ESTIMATED_OUTPUT_PER_STAGE.contentWriter.toLocaleString()}`);
   lines.push(`    ${pc.dim('└─ Translator:')} ${ESTIMATED_OUTPUT_PER_STAGE.translator.toLocaleString()}`);
