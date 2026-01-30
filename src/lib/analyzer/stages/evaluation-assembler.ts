@@ -53,83 +53,6 @@ function debugLog(message: string): void {
 }
 
 // ============================================================================
-// Quote Verification Utilities
-// ============================================================================
-
-/**
- * Normalize text for comparison: trim, lowercase, collapse whitespace.
- */
-function normalizeText(text: string): string {
-  return text.trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-/**
- * Check if two quote strings match (allowing for truncation and minor differences)
- *
- * Uses a substring containment check: if the shorter quote is contained
- * within the longer one, or vice versa, they're considered matching.
- */
-function quotesMatch(quote1: string, quote2: string): boolean {
-  const normalized1 = quote1.trim().toLowerCase().replace(/\s+/g, ' ');
-  const normalized2 = quote2.trim().toLowerCase().replace(/\s+/g, ' ');
-
-  if (normalized1 === normalized2) return true;
-
-  // Check substring containment (handles truncation)
-  const [shorter, longer] = normalized1.length <= normalized2.length
-    ? [normalized1, normalized2]
-    : [normalized2, normalized1];
-
-  // If the shorter string is at least 30 chars and is contained in the longer, match
-  if (shorter.length >= 30 && longer.includes(shorter)) return true;
-
-  // Check prefix match (first 50 chars) — handles minor ending differences
-  const prefixLen = Math.min(50, shorter.length);
-  if (prefixLen >= 20 && normalized1.slice(0, prefixLen) === normalized2.slice(0, prefixLen)) return true;
-
-  return false;
-}
-
-/**
- * Check if a normalized quote matches any text in a corpus.
- */
-function matchesCorpus(normalizedQuote: string, corpus: string[]): boolean {
-  return corpus.some(text => text.length > 0 && quotesMatch(normalizedQuote, text));
-}
-
-/**
- * Filter a quote by substring matching against developer and AI corpora.
- * Returns true to keep, false to remove.
- *
- * @param quote - The quote to verify
- * @param devTexts - Normalized developer utterance texts
- * @param aiTexts - Normalized AI response texts
- * @returns true if quote should be kept, false if it's an AI response
- */
-function isValidDeveloperQuote(
-  quote: string,
-  devTexts: string[],
-  aiTexts: string[]
-): boolean {
-  if (!quote || typeof quote !== 'string') return true;
-
-  const normalized = normalizeText(quote);
-  if (normalized.length < 15) {
-    return true; // Too short to verify
-  }
-
-  const matchesDev = matchesCorpus(normalized, devTexts);
-  const matchesAI = matchesCorpus(normalized, aiTexts);
-
-  // Remove if it matches AI response but NOT developer utterance
-  if (matchesAI && !matchesDev) {
-    return false;
-  }
-
-  return true;
-}
-
-// ============================================================================
 // Main Assembly Function
 // ============================================================================
 
@@ -278,14 +201,6 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
   // Track used utteranceIds across all patterns to prevent duplicates
   const usedUtteranceIds = new Set<string>();
 
-  // Build corpora for fallback verification
-  let devTexts: string[] = [];
-  let aiTexts: string[] = [];
-  if (phase1Output) {
-    devTexts = phase1Output.developerUtterances.map(u => normalizeText(u.text));
-    aiTexts = phase1Output.aiResponses.map(r => normalizeText(r.textSnippet));
-  }
-
   const result = patterns.map((pattern: any, patternIndex: number) => {
     // Parse examplesData (v3 format: "utteranceId|analysis;...")
     const parsedExamples = pattern.examplesData
@@ -327,36 +242,15 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
 
     debugLog(`  resolvedExamples: ${resolvedExamples.length} items`);
 
-    // Determine final examples with verification
-    let examples: Array<{ quote: string; analysis: string }>;
-    const verificationStats = { kept: 0, filtered: 0 };
+    // Use ONLY resolved examples (ID-based matching from Phase1Output)
+    // NO FALLBACK: LLM-generated examples are never used directly
+    // This prevents Phase 2 analysis text from appearing as quotes
+    const examples = resolvedExamples;
 
-    if (resolvedExamples.length > 0) {
-      examples = resolvedExamples;
-      debugLog(`  → Using resolved examples (${examples.length} items)`);
-    } else if (pattern.examples && Array.isArray(pattern.examples) && devTexts.length > 0) {
-      debugLog(`  ⚠️ FALLBACK: Using LLM examples with verification`);
-      const originalCount = pattern.examples.length;
-      examples = pattern.examples.filter((ex: any) => {
-        if (!ex || typeof ex.quote !== 'string') {
-          verificationStats.filtered++;
-          return false;
-        }
-        const isValid = isValidDeveloperQuote(ex.quote, devTexts, aiTexts);
-        if (isValid) {
-          verificationStats.kept++;
-        } else {
-          verificationStats.filtered++;
-          debugLog(`  Filtered AI response: "${ex.quote.slice(0, 60)}..."`);
-        }
-        return isValid;
-      });
-      debugLog(`  Verification: kept=${verificationStats.kept}, filtered=${verificationStats.filtered} (original=${originalCount})`);
+    if (examples.length === 0) {
+      debugLog(`  ⚠️ No valid examples for pattern "${pattern.patternName}" - all utteranceIds failed to match`);
     } else {
-      examples = pattern.examples || [];
-      if (!phase1Output) {
-        debugLog(`  → No phase1Output for verification, using examples as-is`);
-      }
+      debugLog(`  → Using resolved examples (${examples.length} items)`);
     }
 
     return {
@@ -377,7 +271,7 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
       patternName: `Pattern ${result.length + 1}`,
       description: 'A detected pattern in your prompting style.',
       frequency: 'occasional',
-      examples: [{ quote: 'Example quote', analysis: 'Pattern analysis' }],
+      examples: [],  // Empty array - no dummy data
       effectiveness: 'effective',
       tip: 'Continue developing this pattern through practice.',
     });
