@@ -662,14 +662,14 @@ Create a display-friendly version (displayText) that:
 - If text has NO machine-generated content, displayText = original text (unchanged)
 
 EXAMPLE INPUT:
-"좋았어 이제 로그인 잘 된다. 그런데 로그인하고 회사 이름을 CT라고 이름지었더니 ## Error Type Console Error ## Error Message No workspace ID set at SupabaseStorageManager.getData (lib/supabase-storage.ts:91:15) at DashboardOverviewPage.useEffect.loadData (app/dashboard/page.tsx:94:41)"
+"Great, login works now. But after logging in and naming the company CT, I got this: ## Error Type Console Error ## Error Message No workspace ID set at SupabaseStorageManager.getData (lib/supabase-storage.ts:91:15) at DashboardOverviewPage.useEffect.loadData (app/dashboard/page.tsx:94:41)"
 
 EXAMPLE OUTPUT:
 {
   "classification": "developer",
   "confidence": 0.95,
   "reason": "Developer reporting an error encountered during login",
-  "displayText": "좋았어 이제 로그인 잘 된다. 그런데 로그인하고 회사 이름을 CT라고 이름지었더니 [Error: No workspace ID set][Stack trace]"
+  "displayText": "Great, login works now. But after logging in and naming the company CT, I got this: [Error: No workspace ID set][Stack trace]"
 }
 
 IMPORTANT GUIDELINES:

@@ -116,7 +116,7 @@ You MUST output detailed, comprehensive strengths and growth areas for this doma
 
 "Copy-paste only" error reporting is NOT a Strength:
 - ❌ NOT STRENGTH: Just pasting error without context (e.g., "ERROR: 42P07: relation profiles already exists")
-- ❌ NOT STRENGTH: "이거 왜 안돼?" or "이거 고쳐줘" style without explanation
+- ❌ NOT STRENGTH: "Why doesn't this work?" or "Fix this" style without explanation
 - ❌ NOT STRENGTH: Error log dump without any developer words explaining the situation
 
 If a developer ONLY pastes error messages without context:
