@@ -131,21 +131,21 @@ export {
  */
 export const KnowledgeGapOutputSchema = z.object({
   // Knowledge gaps - "topic:question_count:depth:example;..."
-  knowledgeGapsData: z.string().max(2000),
+  knowledgeGapsData: z.string(),
 
   // Learning progress - "topic:start_level:current_level:evidence;..."
-  learningProgressData: z.string().max(1500),
+  learningProgressData: z.string(),
 
   // Recommended resources - "topic:resource_type:url_or_name;..."
-  recommendedResourcesData: z.string().max(1000),
+  recommendedResourcesData: z.string(),
 
   // Top 3 Wow Insights
-  topInsights: z.array(z.string().max(3000)).max(3),
+  topInsights: z.array(z.string()).max(3),
 
   // KPT (Keep/Problem/Try) structured fields for balanced feedback
-  kptKeep: z.array(z.string().max(500)).max(2).optional(),     // Knowledge strengths (0-1)
-  kptProblem: z.array(z.string().max(500)).max(2).optional(),  // Knowledge gaps to address (1-2, expected)
-  kptTry: z.array(z.string().max(500)).max(2).optional(),      // Learning recommendations (1-2, expected)
+  kptKeep: z.array(z.string()).max(2).optional(),     // Knowledge strengths (0-1)
+  kptProblem: z.array(z.string()).max(2).optional(),  // Knowledge gaps to address (1-2, expected)
+  kptTry: z.array(z.string()).max(2).optional(),      // Learning recommendations (1-2, expected)
 
   // Overall knowledge score (0-100)
   overallKnowledgeScore: z.number().min(0).max(100),
@@ -158,10 +158,10 @@ export const KnowledgeGapOutputSchema = z.object({
   // ─────────────────────────────────────────────────────────────────────────
 
   // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
-  strengthsData: z.string().max(12000).optional(),
+  strengthsData: z.string().optional(),
 
   // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
-  growthAreasData: z.string().max(12000).optional(),
+  growthAreasData: z.string().optional(),
 
   // Parsed structured strengths (populated by parsing function)
   strengths: z.array(WorkerStrengthSchema).optional(),
@@ -184,21 +184,21 @@ export type KnowledgeGapOutput = z.infer<typeof KnowledgeGapOutputSchema>;
  */
 export const KnowledgeGapLLMOutputSchema = z.object({
   // Knowledge gaps - "topic:question_count:depth:example;..."
-  knowledgeGapsData: z.string().max(2000),
+  knowledgeGapsData: z.string(),
 
   // Learning progress - "topic:start_level:current_level:evidence;..."
-  learningProgressData: z.string().max(1500),
+  learningProgressData: z.string(),
 
   // Recommended resources - "topic:resource_type:url_or_name;..."
-  recommendedResourcesData: z.string().max(1000),
+  recommendedResourcesData: z.string(),
 
   // Top 3 Wow Insights
-  topInsights: z.array(z.string().max(3000)).max(3),
+  topInsights: z.array(z.string()).max(3),
 
   // KPT (Keep/Problem/Try) structured fields for balanced feedback
-  kptKeep: z.array(z.string().max(500)).max(2).optional(),
-  kptProblem: z.array(z.string().max(500)).max(2).optional(),
-  kptTry: z.array(z.string().max(500)).max(2).optional(),
+  kptKeep: z.array(z.string()).max(2).optional(),
+  kptProblem: z.array(z.string()).max(2).optional(),
+  kptTry: z.array(z.string()).max(2).optional(),
 
   // Overall knowledge score (0-100)
   overallKnowledgeScore: z.number().min(0).max(100),
@@ -270,24 +270,24 @@ export function parseKnowledgeGapLLMOutput(llmOutput: KnowledgeGapLLMOutput): Kn
  */
 export const ContextEfficiencyOutputSchema = z.object({
   // Context usage pattern - "session_id:avg_fill_percent:compact_trigger_percent;..."
-  contextUsagePatternData: z.string().max(1500),
+  contextUsagePatternData: z.string(),
 
   // Inefficiency patterns - "pattern:frequency:impact:example;..."
-  inefficiencyPatternsData: z.string().max(2000),
+  inefficiencyPatternsData: z.string(),
 
   // Prompt length trend - "session_part:avg_length;..."
-  promptLengthTrendData: z.string().max(500),
+  promptLengthTrendData: z.string(),
 
   // Redundant info patterns - "info_type:repeat_count;..."
-  redundantInfoData: z.string().max(1000),
+  redundantInfoData: z.string(),
 
   // Top 3 Wow Insights
-  topInsights: z.array(z.string().max(3000)).max(3),
+  topInsights: z.array(z.string()).max(3),
 
   // KPT (Keep/Problem/Try) structured fields for balanced feedback
-  kptKeep: z.array(z.string().max(500)).max(2).optional(),     // Efficient habits (0-1)
-  kptProblem: z.array(z.string().max(500)).max(2).optional(),  // Inefficiencies to address (1-2, expected)
-  kptTry: z.array(z.string().max(500)).max(2).optional(),      // Efficiency improvements (1-2, expected)
+  kptKeep: z.array(z.string()).max(2).optional(),     // Efficient habits (0-1)
+  kptProblem: z.array(z.string()).max(2).optional(),  // Inefficiencies to address (1-2, expected)
+  kptTry: z.array(z.string()).max(2).optional(),      // Efficiency improvements (1-2, expected)
 
   // Overall efficiency score (0-100)
   overallEfficiencyScore: z.number().min(0).max(100),
@@ -303,10 +303,10 @@ export const ContextEfficiencyOutputSchema = z.object({
   // ─────────────────────────────────────────────────────────────────────────
 
   // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
-  strengthsData: z.string().max(12000).optional(),
+  strengthsData: z.string().optional(),
 
   // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
-  growthAreasData: z.string().max(12000).optional(),
+  growthAreasData: z.string().optional(),
 
   // Parsed structured strengths (populated by parsing function)
   strengths: z.array(WorkerStrengthSchema).optional(),
@@ -316,7 +316,7 @@ export const ContextEfficiencyOutputSchema = z.object({
 
   // Productivity metrics (consolidated from ProductivityAnalyst)
   // Iteration data: "sessionId|iterationCount|avgTurnsPerIteration;..."
-  iterationSummaryData: z.string().max(3000).optional(),
+  iterationSummaryData: z.string().optional(),
 
   // Collaboration efficiency score (0-100)
   collaborationEfficiencyScore: z.number().min(0).max(100).optional(),
@@ -324,8 +324,8 @@ export const ContextEfficiencyOutputSchema = z.object({
   // Overall productivity score (0-100)
   overallProductivityScore: z.number().min(0).max(100).optional(),
 
-  // Productivity summary (max 2000 chars)
-  productivitySummary: z.string().max(2000).optional(),
+  // Productivity summary
+  productivitySummary: z.string().optional(),
 });
 
 export type ContextEfficiencyOutput = z.infer<typeof ContextEfficiencyOutputSchema>;
@@ -342,24 +342,24 @@ export type ContextEfficiencyOutput = z.infer<typeof ContextEfficiencyOutputSche
  */
 export const ContextEfficiencyLLMOutputSchema = z.object({
   // Context usage pattern - "session_id:avg_fill_percent:compact_trigger_percent;..."
-  contextUsagePatternData: z.string().max(1500),
+  contextUsagePatternData: z.string(),
 
   // Inefficiency patterns - "pattern:frequency:impact:example;..."
-  inefficiencyPatternsData: z.string().max(2000),
+  inefficiencyPatternsData: z.string(),
 
   // Prompt length trend - "session_part:avg_length;..."
-  promptLengthTrendData: z.string().max(500),
+  promptLengthTrendData: z.string(),
 
   // Redundant info patterns - "info_type:repeat_count;..."
-  redundantInfoData: z.string().max(1000),
+  redundantInfoData: z.string(),
 
   // Top 3 Wow Insights
-  topInsights: z.array(z.string().max(3000)).max(3),
+  topInsights: z.array(z.string()).max(3),
 
   // KPT (Keep/Problem/Try) structured fields for balanced feedback
-  kptKeep: z.array(z.string().max(500)).max(2).optional(),
-  kptProblem: z.array(z.string().max(500)).max(2).optional(),
-  kptTry: z.array(z.string().max(500)).max(2).optional(),
+  kptKeep: z.array(z.string()).max(2).optional(),
+  kptProblem: z.array(z.string()).max(2).optional(),
+  kptTry: z.array(z.string()).max(2).optional(),
 
   // Overall efficiency score (0-100)
   overallEfficiencyScore: z.number().min(0).max(100),
@@ -379,10 +379,10 @@ export const ContextEfficiencyLLMOutputSchema = z.object({
     .describe('Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)'),
 
   // Productivity metrics (consolidated from ProductivityAnalyst)
-  iterationSummaryData: z.string().max(3000).optional(),
+  iterationSummaryData: z.string().optional(),
   collaborationEfficiencyScore: z.number().min(0).max(100).optional(),
   overallProductivityScore: z.number().min(0).max(100).optional(),
-  productivitySummary: z.string().max(2000).optional(),
+  productivitySummary: z.string().optional(),
 });
 export type ContextEfficiencyLLMOutput = z.infer<typeof ContextEfficiencyLLMOutputSchema>;
 
@@ -489,39 +489,39 @@ export const TypeClassifierOutputSchema = z.object({
   controlScore: z.number().min(0).max(100),
 
   /** Combined matrix name (e.g., "Systems Architect", "Yolo Coder") */
-  matrixName: z.string().max(50),
+  matrixName: z.string(),
 
   /** Matrix emoji */
-  matrixEmoji: z.string().max(10),
+  matrixEmoji: z.string(),
 
   /** Vibe Coder Spectrum assessment (from Addy Osmani research) */
   collaborationMaturity: z.object({
     /** Where on the spectrum: vibe_coder → ai_assisted_engineer */
     level: z.enum(['vibe_coder', 'supervised_coder', 'ai_assisted_engineer', 'reluctant_user']),
     /** Human-readable description */
-    description: z.string().max(300),
+    description: z.string(),
     /** Key indicators that led to this assessment */
-    indicators: z.array(z.string().max(200)),
+    indicators: z.array(z.string()),
   }).optional(),
 
   /** Confidence score (0-1) */
   confidenceScore: z.number().min(0).max(1),
 
   /** Reasoning for the classification */
-  reasoning: z.string().max(500).optional(),
+  reasoning: z.string().optional(),
 
   // ─────────────────────────────────────────────────────────────────────────
   // Synthesis Fields (merged from TypeSynthesis)
   // ─────────────────────────────────────────────────────────────────────────
 
   /** Reasons for adjustments from initial or pattern-based classification */
-  adjustmentReasons: z.array(z.string().max(3000)).max(5).optional(),
+  adjustmentReasons: z.array(z.string()).max(5).optional(),
 
   /** How much confidence increased from agent synthesis (0-1) */
   confidenceBoost: z.number().min(0).max(1).optional(),
 
   /** Evidence from other Phase 2 agent outputs - "agent:key_signal:detail;..." */
-  synthesisEvidence: z.string().max(1000).optional(),
+  synthesisEvidence: z.string().optional(),
 });
 export type TypeClassifierOutput = z.infer<typeof TypeClassifierOutputSchema>;
 

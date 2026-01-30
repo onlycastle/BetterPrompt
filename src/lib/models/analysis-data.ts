@@ -114,7 +114,7 @@ export const ExtractedQuoteSchema = z.object({
   signal: z.enum(['strength', 'growth']),
 
   /** Specific behavior this quote demonstrates (e.g., "Iterative refinement", "Verification habit") */
-  behavioralMarker: z.string().max(150),
+  behavioralMarker: z.string(),
 
   /** Confidence level in this quote's significance (0.0 - 1.0) */
   confidence: z.number().min(0).max(1),
@@ -134,10 +134,10 @@ export const ExtractedQuoteSchema = z.object({
 
   // ---- C: Insight fields (FLATTENED from QuoteInsightSchema) ----
   /** Root cause of this behavior (max 200 chars) */
-  insightRootCause: z.string().max(3000).optional(),
+  insightRootCause: z.string().optional(),
 
   /** What this behavior implies about the developer's growth */
-  insightImplication: z.string().max(3000).optional(),
+  insightImplication: z.string().optional(),
 
   /** Whether this behavior is deliberate, reactive, or habitual */
   insightGrowthSignal: GrowthSignalEnum.optional(),
@@ -186,7 +186,7 @@ export const DetectedPatternSchema = z.object({
   examples: z.array(z.string()),
 
   /** Why this pattern matters and its impact (max 400 chars for detailed analysis) */
-  significance: z.string().max(400),
+  significance: z.string(),
 });
 export type DetectedPattern = z.infer<typeof DetectedPatternSchema>;
 
@@ -206,10 +206,10 @@ export const ActionablePatternMatchSchema = z.object({
   practiced: z.boolean(),
 
   /** Evidence quotes (empty array if not practiced) */
-  evidence: z.array(z.string().max(3000)),
+  evidence: z.array(z.string()),
 
   /** Feedback message (from if_found or if_missing template) */
-  feedback: z.string().max(500),
+  feedback: z.string(),
 
   /** Source of this advice (e.g., "Anthropic", "Karpathy") */
   source: z.string(),
@@ -249,13 +249,13 @@ export const DetectedAntiPatternSchema = z.object({
   frequency: z.number(),
 
   /** Evidence quotes showing this pattern (target: 1-3 examples) */
-  examples: z.array(z.string().max(3000)),
+  examples: z.array(z.string()),
 
   /** Severity assessment */
   severity: z.enum(['mild', 'moderate', 'significant']),
 
   /** Context in which this anti-pattern occurred */
-  triggerContext: z.string().max(3000),
+  triggerContext: z.string(),
 });
 export type DetectedAntiPattern = z.infer<typeof DetectedAntiPatternSchema>;
 
@@ -269,7 +269,7 @@ export type DetectedAntiPattern = z.infer<typeof DetectedAntiPatternSchema>;
  */
 export const CriticalThinkingMomentSchema = z.object({
   /** The actual moment/quote showing critical thinking */
-  moment: z.string().max(500),
+  moment: z.string(),
 
   /** Type of critical thinking behavior */
   type: z.enum([
@@ -288,7 +288,7 @@ export const CriticalThinkingMomentSchema = z.object({
   ]),
 
   /** What result this critical thinking led to */
-  result: z.string().max(3000),
+  result: z.string(),
 
   /** Which dimension this relates to */
   dimension: DimensionNameEnumSchema,
@@ -309,7 +309,7 @@ export type CriticalThinkingMoment = z.infer<typeof CriticalThinkingMomentSchema
  */
 export const PlanningBehaviorSchema = z.object({
   /** Description of the planning behavior */
-  behavior: z.string().max(3000),
+  behavior: z.string(),
 
   /** Type of planning behavior */
   behaviorType: z.enum([
@@ -324,14 +324,14 @@ export const PlanningBehaviorSchema = z.object({
   frequency: z.enum(['always', 'often', 'sometimes', 'rarely']),
 
   /** Example quotes demonstrating this behavior (as semicolon-separated string to reduce nesting) */
-  examples: z.string().max(1500),
+  examples: z.string(),
 
   /** Effectiveness assessment */
   effectiveness: z.enum(['high', 'medium', 'low']),
 
   // ---- Plan details (FLATTENED from nested object) ----
   /** Summary of the plan content (for slash_plan_usage) */
-  planContentSummary: z.string().max(500).optional(),
+  planContentSummary: z.string().optional(),
 
   /** Whether the plan decomposed the problem into smaller parts */
   planHasDecomposition: z.boolean().optional(),
@@ -365,16 +365,16 @@ export const AbsenceBasedGrowthSignalSchema = z.object({
   sessionsChecked: z.number(),
 
   /** Human-readable title for this growth area */
-  growthTitle: z.string().max(100),
+  growthTitle: z.string(),
 
   /** Detailed explanation of why this matters */
-  growthDescription: z.string().max(500),
+  growthDescription: z.string(),
 
   /** Actionable recommendation */
-  recommendation: z.string().max(400),
+  recommendation: z.string(),
 
   /** Source of this recommendation (e.g., "Anthropic Best Practices", "Expected Pattern") */
-  source: z.string().max(100).optional(),
+  source: z.string().optional(),
 });
 export type AbsenceBasedGrowthSignal = z.infer<typeof AbsenceBasedGrowthSignalSchema>;
 
@@ -410,19 +410,19 @@ export const PriorityItemSchema = z.object({
   dimension: DimensionNameEnumSchema,
 
   /** Specific focus area within this dimension */
-  focusArea: z.string().max(3000),
+  focusArea: z.string(),
 
   /** Why this is a priority for THIS developer (personalized reasoning) */
-  rationale: z.string().max(3000),
+  rationale: z.string(),
 
   /** Expected impact if they focus on this */
-  expectedImpact: z.string().max(3000),
+  expectedImpact: z.string(),
 
   /** Calculated priority score (0-100) based on frequency, impact, potential, relevance */
   priorityScore: z.number().min(0).max(100),
 
   /** Related cluster IDs as comma-separated string (e.g., "dim1_s_1,dim1_g_2") */
-  relatedClusterIds: z.string().max(500),
+  relatedClusterIds: z.string(),
 });
 export type PriorityItem = z.infer<typeof PriorityItemSchema>;
 
@@ -434,30 +434,30 @@ export type PriorityItem = z.infer<typeof PriorityItemSchema>;
 export const PersonalizedPrioritySchema = z.object({
   /** Priority 1 - highest priority focus area */
   priority1Dimension: DimensionNameEnumSchema.optional(),
-  priority1FocusArea: z.string().max(3000).optional(),
-  priority1Rationale: z.string().max(3000).optional(),
-  priority1ExpectedImpact: z.string().max(3000).optional(),
+  priority1FocusArea: z.string().optional(),
+  priority1Rationale: z.string().optional(),
+  priority1ExpectedImpact: z.string().optional(),
   priority1Score: z.number().min(0).max(100).optional(),
-  priority1ClusterIds: z.string().max(500).optional(),
+  priority1ClusterIds: z.string().optional(),
 
   /** Priority 2 */
   priority2Dimension: DimensionNameEnumSchema.optional(),
-  priority2FocusArea: z.string().max(3000).optional(),
-  priority2Rationale: z.string().max(3000).optional(),
-  priority2ExpectedImpact: z.string().max(3000).optional(),
+  priority2FocusArea: z.string().optional(),
+  priority2Rationale: z.string().optional(),
+  priority2ExpectedImpact: z.string().optional(),
   priority2Score: z.number().min(0).max(100).optional(),
-  priority2ClusterIds: z.string().max(500).optional(),
+  priority2ClusterIds: z.string().optional(),
 
   /** Priority 3 */
   priority3Dimension: DimensionNameEnumSchema.optional(),
-  priority3FocusArea: z.string().max(3000).optional(),
-  priority3Rationale: z.string().max(3000).optional(),
-  priority3ExpectedImpact: z.string().max(3000).optional(),
+  priority3FocusArea: z.string().optional(),
+  priority3Rationale: z.string().optional(),
+  priority3ExpectedImpact: z.string().optional(),
   priority3Score: z.number().min(0).max(100).optional(),
-  priority3ClusterIds: z.string().max(500).optional(),
+  priority3ClusterIds: z.string().optional(),
 
   /** Explanation of how priorities were selected */
-  selectionRationale: z.string().max(500),
+  selectionRationale: z.string(),
 });
 export type PersonalizedPriority = z.infer<typeof PersonalizedPrioritySchema>;
 
@@ -477,16 +477,16 @@ export const DimensionSignalSchema = z.object({
   dimension: DimensionNameEnumSchema,
 
   /** Positive signals (strengths) as simple string descriptions */
-  strengthSignals: z.array(z.string().max(150)),
+  strengthSignals: z.array(z.string()),
 
   /** Growth signals (opportunities) as simple string descriptions */
-  growthSignals: z.array(z.string().max(150)),
+  growthSignals: z.array(z.string()),
 
   /** Cluster themes for strength quotes (format: "clusterId:theme" pairs as strings) */
-  strengthClusterThemes: z.array(z.string().max(3000)).optional(),
+  strengthClusterThemes: z.array(z.string()).optional(),
 
   /** Cluster themes for growth quotes (format: "clusterId:theme" pairs as strings) */
-  growthClusterThemes: z.array(z.string().max(3000)).optional(),
+  growthClusterThemes: z.array(z.string()).optional(),
 });
 export type DimensionSignal = z.infer<typeof DimensionSignalSchema>;
 
@@ -525,7 +525,7 @@ export const StructuredAnalysisDataSchema = z.object({
     distribution: TypeDistributionSchema,
 
     /** Explanation of why this classification was chosen (max 800 chars) */
-    reasoning: z.string().max(800),
+    reasoning: z.string(),
   }),
 
   /** Raw quotes extracted from sessions (target: 15-50 quotes with metadata) */

@@ -47,13 +47,13 @@ export const TrustVerificationOutputSchema = z.object({
   confidenceScore: z.number().min(0).max(1),
 
   /** Brief summary */
-  summary: z.string().max(500).optional(),
+  summary: z.string().optional(),
 
   /** Detected pattern types for KB matching - "patternType|frequency|significance;..." */
-  detectedPatternsData: z.string().max(3000).optional(),
+  detectedPatternsData: z.string().optional(),
 
   /** Actionable pattern matches from KB - "patternId|matchScore|recommendation;..." */
-  actionablePatternMatchesData: z.string().max(3000).optional(),
+  actionablePatternMatchesData: z.string().optional(),
 
   // ─────────────────────────────────────────────────────────────────────────
   // Domain-specific Strengths & Growth Areas (NEW - replaces StrengthGrowthSynthesizer)
@@ -73,11 +73,11 @@ export type TrustVerificationOutput = z.infer<typeof TrustVerificationOutputSche
 
 export const TrustVerificationLLMOutputSchema = z.object({
   /** Anti-patterns: "type|frequency|severity|sessionPct|improvement|utteranceId:quote:context:whatWentWrong,...;..." */
-  antiPatternsData: z.string().max(6000)
+  antiPatternsData: z.string()
     .describe('Anti-patterns: "type|frequency|severity|sessionPct|improvement|examples;..." where examples = "id:quote:context:whatWentWrong,..."'),
 
   /** Verification behavior: "level|recommendation|example1,example2" */
-  verificationBehaviorData: z.string().max(1500)
+  verificationBehaviorData: z.string()
     .describe('Verification behavior: "level|recommendation|example1,example2"'),
 
   /** Overall trust health score (0-100) */
@@ -87,14 +87,14 @@ export const TrustVerificationLLMOutputSchema = z.object({
   confidenceScore: z.number().min(0).max(1),
 
   /** Summary */
-  summary: z.string().max(500).optional(),
+  summary: z.string().optional(),
 
   /** Detected patterns for KB matching: "patternType|frequency|significance;..." */
-  detectedPatternsData: z.string().max(3000).optional()
+  detectedPatternsData: z.string().optional()
     .describe('Detected pattern types: "patternType|frequency|significance;..."'),
 
   /** Actionable pattern matches: "patternId|matchScore|recommendation;..." */
-  actionablePatternMatchesData: z.string().max(3000).optional()
+  actionablePatternMatchesData: z.string().optional()
     .describe('Actionable KB matches: "patternId|matchScore|recommendation;..."'),
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -102,11 +102,11 @@ export const TrustVerificationLLMOutputSchema = z.object({
   // ─────────────────────────────────────────────────────────────────────────
 
   /** Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items) */
-  strengthsData: z.string().max(12000).optional()
+  strengthsData: z.string().optional()
     .describe('Strengths in trust domain: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)'),
 
   /** Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items) */
-  growthAreasData: z.string().max(12000).optional()
+  growthAreasData: z.string().optional()
     .describe('Growth areas in trust domain: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)'),
 });
 export type TrustVerificationLLMOutput = z.infer<typeof TrustVerificationLLMOutputSchema>;

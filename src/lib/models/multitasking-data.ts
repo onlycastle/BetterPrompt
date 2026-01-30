@@ -77,7 +77,6 @@ export const MultitaskingAnalysisOutputSchema = z.object({
   // Session focus data - "sessionId|workType|goalCoherence:0-100|pollutionScore:0-100|workDescription;..."
   sessionFocusData: z
     .string()
-    .max(5000)
     .describe(
       'Session focus metrics: "sessionId|workType|goalCoherence:0-100|pollutionScore:0-100|workDescription;..."'
     ),
@@ -85,7 +84,6 @@ export const MultitaskingAnalysisOutputSchema = z.object({
   // Context pollution instances - "sessionId|fromTask|toTask|signal|messageIndex;..."
   contextPollutionData: z
     .string()
-    .max(3000)
     .describe(
       'Context pollution instances: "sessionId|fromTask|toTask|pollutionSignal|messageIndex;..."'
     ),
@@ -93,7 +91,6 @@ export const MultitaskingAnalysisOutputSchema = z.object({
   // Work unit separation data - "projectPath|sessionId|workType|filesWorkedOn;..."
   workUnitSeparationData: z
     .string()
-    .max(5000)
     .describe(
       'Work unit separation: "projectPath|sessionId|workType|filesWorkedOn(comma-sep);..."'
     ),
@@ -101,7 +98,6 @@ export const MultitaskingAnalysisOutputSchema = z.object({
   // Strategy evaluation - "strategyType|evidence|recommendation;..."
   strategyEvaluationData: z
     .string()
-    .max(2000)
     .describe(
       'Strategy evaluation: "strategyType|evidence|recommendation;..."'
     ),
@@ -128,18 +124,18 @@ export const MultitaskingAnalysisOutputSchema = z.object({
   projectGroupCount: z.number().min(0),
 
   // Top 3 multitasking insights
-  topInsights: z.array(z.string().max(3000)).max(3),
+  topInsights: z.array(z.string()).max(3),
 
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
 
   // NEW: Structured strengths with evidence (effective multitasking habits)
   // Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
-  strengthsData: z.string().max(4000).optional(),
+  strengthsData: z.string().optional(),
 
   // NEW: Growth areas with evidence and recommendations (multitasking inefficiencies)
   // Format: "title|description|evidence1,evidence2|recommendation;title2|..."
-  growthAreasData: z.string().max(4000).optional(),
+  growthAreasData: z.string().optional(),
 
   // ============================================================================
   // NEW: Time-Based Metrics (Research-Backed)

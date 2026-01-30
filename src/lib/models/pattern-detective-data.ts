@@ -44,25 +44,25 @@ import { z } from 'zod';
  */
 export const PatternDetectiveOutputSchema = z.object({
   // Repeated questions - "topic:count:example;..."
-  repeatedQuestionsData: z.string().max(2000),
+  repeatedQuestionsData: z.string(),
 
   // Conversation style patterns - "pattern:frequency:example;..."
-  conversationStyleData: z.string().max(2000),
+  conversationStyleData: z.string(),
 
   // Request start patterns - "phrase:count;..."
-  requestStartPatternsData: z.string().max(1000),
+  requestStartPatternsData: z.string(),
 
   // Top 3 Wow Insights (displayed directly in UI)
-  topInsights: z.array(z.string().max(3000)).max(3),
+  topInsights: z.array(z.string()).max(3),
 
   // KPT (Keep/Problem/Try) structured fields for balanced feedback
   // These provide explicit categorization instead of relying on keyword matching
-  kptKeep: z.array(z.string().max(500)).max(2).optional(),     // Strengths to maintain (0-2)
-  kptProblem: z.array(z.string().max(500)).max(2).optional(),  // Issues to address (1-2, expected)
-  kptTry: z.array(z.string().max(500)).max(2).optional(),      // Actionable suggestions (1-2, expected)
+  kptKeep: z.array(z.string()).max(2).optional(),     // Strengths to maintain (0-2)
+  kptProblem: z.array(z.string()).max(2).optional(),  // Issues to address (1-2, expected)
+  kptTry: z.array(z.string()).max(2).optional(),      // Actionable suggestions (1-2, expected)
 
   // Overall summary
-  overallStyleSummary: z.string().max(3000),
+  overallStyleSummary: z.string(),
 
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
@@ -70,15 +70,15 @@ export const PatternDetectiveOutputSchema = z.object({
   // NEW: Repeated command patterns (multi-step instructions)
   // "pattern|frequency|example;..." where pattern uses → to show sequence
   // Example: "check code→analyze problem→create plan|5|check the code, analyze it, then make a plan"
-  repeatedCommandPatternsData: z.string().max(3000).optional(),
+  repeatedCommandPatternsData: z.string().optional(),
 
   // NEW: Structured strengths with evidence (replaces topInsights for positive patterns)
   // Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
-  strengthsData: z.string().max(4000).optional(),
+  strengthsData: z.string().optional(),
 
   // NEW: Growth areas with evidence and recommendations (replaces topInsights for improvements)
   // Format: "title|description|evidence1,evidence2|recommendation;title2|..."
-  growthAreasData: z.string().max(4000).optional(),
+  growthAreasData: z.string().optional(),
 });
 
 export type PatternDetectiveOutput = z.infer<typeof PatternDetectiveOutputSchema>;

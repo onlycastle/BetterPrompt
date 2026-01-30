@@ -227,7 +227,7 @@ export const ProductivityAnalysisDataSchema = z.object({
    * Format: "cycleId:turnCount:trigger:resolution:efficiency:keyMoments;..."
    * Target: 3-10 cycles
    */
-  iterationCyclesData: z.string().max(5000).optional()
+  iterationCyclesData: z.string().optional()
     .describe('Iteration cycles as "cycleId:turnCount:trigger:resolution:efficiency:keyMoments;..." (target: 3-10)'),
 
   /**
@@ -235,7 +235,7 @@ export const ProductivityAnalysisDataSchema = z.object({
    * Format: "topic:category:depth:transferability:evidence;..."
    * Target: 5-15 signals
    */
-  learningSignalsData: z.string().max(5000).optional()
+  learningSignalsData: z.string().optional()
     .describe('Learning signals as "topic:category:depth:transferability:evidence;..." (target: 5-15)'),
 
   /**
@@ -243,7 +243,7 @@ export const ProductivityAnalysisDataSchema = z.object({
    * Format: "name:value:interpretation;..."
    * Target: 4-8 metrics
    */
-  efficiencyMetricsData: z.string().max(2000).optional()
+  efficiencyMetricsData: z.string().optional()
     .describe('Efficiency metrics as "name:value:interpretation;..." (target: 4-8)'),
 
   // ---- Iteration Summary (L2 Object, L3 Primitives) ----
@@ -334,7 +334,7 @@ export const ProductivityAnalysisDataSchema = z.object({
   confidenceScore: z.number().min(0).max(1),
 
   /** Brief summary of productivity patterns */
-  summary: z.string().max(500).optional()
+  summary: z.string().optional()
     .describe('Brief summary of key productivity insights'),
 });
 

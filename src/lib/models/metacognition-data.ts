@@ -48,7 +48,6 @@ export const MetacognitionOutputSchema = z.object({
   // type: self_reflection | strategy_verbalization | learning_recognition
   awarenessInstancesData: z
     .string()
-    .max(3000)
     .describe(
       'Self-awareness moments: "type|quote|context|implication;..." where type is self_reflection, strategy_verbalization, or learning_recognition'
     ),
@@ -56,7 +55,6 @@ export const MetacognitionOutputSchema = z.object({
   // Blind spots - "pattern|frequency|sessionIds|linkedAntiPattern;..."
   blindSpotsData: z
     .string()
-    .max(2000)
     .describe(
       'Unrecognized repeated patterns: "pattern|frequency|sessionIds|linkedAntiPattern;..."'
     ),
@@ -64,11 +62,10 @@ export const MetacognitionOutputSchema = z.object({
   // Growth mindset scores - "curiosity:score|experimentation:score|resilience:score"
   growthMindsetData: z
     .string()
-    .max(200)
     .describe('Growth mindset: "curiosity:0-100|experimentation:0-100|resilience:0-100"'),
 
   // Top 3 metacognition insights
-  topInsights: z.array(z.string().max(3000)).max(3),
+  topInsights: z.array(z.string()).max(3),
 
   // Overall metacognitive awareness score (0-100)
   metacognitiveAwarenessScore: z.number().min(0).max(100),
@@ -78,11 +75,11 @@ export const MetacognitionOutputSchema = z.object({
 
   // NEW: Structured strengths with evidence (metacognitive strengths)
   // Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
-  strengthsData: z.string().max(4000).optional(),
+  strengthsData: z.string().optional(),
 
   // NEW: Growth areas with evidence and recommendations (metacognitive blind spots)
   // Format: "title|description|evidence1,evidence2|recommendation;title2|..."
-  growthAreasData: z.string().max(4000).optional(),
+  growthAreasData: z.string().optional(),
 });
 
 export type MetacognitionOutput = z.infer<typeof MetacognitionOutputSchema>;

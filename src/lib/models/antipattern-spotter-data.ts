@@ -46,21 +46,21 @@ import { z } from 'zod';
  */
 export const AntiPatternSpotterOutputSchema = z.object({
   // Error loops - "error_type:repeat_count:avg_turns:example;..."
-  errorLoopsData: z.string().max(2000),
+  errorLoopsData: z.string(),
 
   // Learning avoidance patterns - "pattern:evidence:severity;..."
-  learningAvoidanceData: z.string().max(1500),
+  learningAvoidanceData: z.string(),
 
   // Repeated mistakes - "mistake:count:sessions;..."
-  repeatedMistakesData: z.string().max(1500),
+  repeatedMistakesData: z.string(),
 
   // Top 3 Wow Insights
-  topInsights: z.array(z.string().max(3000)).max(3),
+  topInsights: z.array(z.string()).max(3),
 
   // KPT (Keep/Problem/Try) structured fields for balanced feedback
-  kptKeep: z.array(z.string().max(500)).max(2).optional(),     // Healthy habits to maintain (0-1)
-  kptProblem: z.array(z.string().max(500)).max(2).optional(),  // Anti-patterns to address (1-2, expected)
-  kptTry: z.array(z.string().max(500)).max(2).optional(),      // Actionable improvements (1-2, expected)
+  kptKeep: z.array(z.string()).max(2).optional(),     // Healthy habits to maintain (0-1)
+  kptProblem: z.array(z.string()).max(2).optional(),  // Anti-patterns to address (1-2, expected)
+  kptTry: z.array(z.string()).max(2).optional(),      // Actionable improvements (1-2, expected)
 
   // Overall health score (0-100)
   overallHealthScore: z.number().min(0).max(100),
@@ -70,11 +70,11 @@ export const AntiPatternSpotterOutputSchema = z.object({
 
   // NEW: Structured strengths with evidence (healthy habits)
   // Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
-  strengthsData: z.string().max(4000).optional(),
+  strengthsData: z.string().optional(),
 
   // NEW: Growth areas with evidence and recommendations (anti-patterns to address)
   // Format: "title|description|evidence1,evidence2|recommendation;title2|..."
-  growthAreasData: z.string().max(4000).optional(),
+  growthAreasData: z.string().optional(),
 });
 
 export type AntiPatternSpotterOutput = z.infer<typeof AntiPatternSpotterOutputSchema>;
@@ -130,19 +130,19 @@ export type AntiPatternType = CriticalAntiPattern | WarningAntiPattern | InfoAnt
  */
 export const CrossSessionAntiPatternOutputSchema = z.object({
   // Critical patterns - "pattern|severity|count|session_ids|frequency|evidence;..."
-  criticalAntiPatterns: z.string().max(3000),
+  criticalAntiPatterns: z.string(),
 
   // Warning patterns - "pattern|severity|count|session_ids|frequency|evidence;..."
-  warningAntiPatterns: z.string().max(3000),
+  warningAntiPatterns: z.string(),
 
   // Info patterns - "pattern|severity|count|session_ids|frequency|evidence;..."
-  infoAntiPatterns: z.string().max(3000),
+  infoAntiPatterns: z.string(),
 
   // Single-session occurrences (not patterns) - "incident|session_id|description;..."
-  isolatedIncidents: z.string().max(2000),
+  isolatedIncidents: z.string(),
 
   // Top 3 insights (Problem/Try/Keep structure)
-  topInsights: z.array(z.string().max(3000)).max(3),
+  topInsights: z.array(z.string()).max(3),
 
   // Pattern density score (0-100, higher = more anti-patterns)
   patternDensity: z.number().min(0).max(100),
@@ -151,13 +151,13 @@ export const CrossSessionAntiPatternOutputSchema = z.object({
   crossSessionConsistency: z.number().min(0).max(1),
 
   // Actionable recommendations (1-3)
-  recommendedInterventions: z.array(z.string().max(1000)).max(3),
+  recommendedInterventions: z.array(z.string()).max(3),
 
   // Cross-references: "pattern|quote1|quote2|quote3;..." (tracks pattern across sessions)
-  sessionCrossReferences: z.string().max(4000).optional(),
+  sessionCrossReferences: z.string().optional(),
 
   // Strengths: "behavior|sessions|quotes;..." (positive patterns across sessions)
-  strengthsAcrossSessions: z.string().max(3000).optional(),
+  strengthsAcrossSessions: z.string().optional(),
 });
 
 export type CrossSessionAntiPatternOutput = z.infer<typeof CrossSessionAntiPatternOutputSchema>;

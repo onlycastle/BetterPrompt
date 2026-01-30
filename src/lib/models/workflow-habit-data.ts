@@ -53,7 +53,7 @@ export const WorkflowHabitOutputSchema = z.object({
   confidenceScore: z.number().min(0).max(1),
 
   /** Brief summary */
-  summary: z.string().max(500).optional(),
+  summary: z.string().optional(),
 
   // ─────────────────────────────────────────────────────────────────────────
   // Domain-specific Strengths & Growth Areas (NEW - replaces StrengthGrowthSynthesizer)
@@ -73,15 +73,15 @@ export type WorkflowHabitOutput = z.infer<typeof WorkflowHabitOutputSchema>;
 
 export const WorkflowHabitLLMOutputSchema = z.object({
   /** Planning habits: "type|frequency|effectiveness|example1,example2;..." */
-  planningHabitsData: z.string().max(3000)
+  planningHabitsData: z.string()
     .describe('Planning habits: "type|frequency|effectiveness|example1,example2;..."'),
 
   /** Critical thinking: "type|quote|result|utteranceId;..." */
-  criticalThinkingData: z.string().max(3000)
+  criticalThinkingData: z.string()
     .describe('Critical thinking moments: "type|quote|result|utteranceId;..."'),
 
   /** Multitasking: "mixesTopics|focusScore|recommendation|desc:impact,desc:impact" */
-  multitaskingData: z.string().max(1500).optional()
+  multitaskingData: z.string().optional()
     .describe('Multitasking: "mixesTopics|focusScore|recommendation|desc:impact,desc:impact"'),
 
   /** Overall workflow score (0-100) */
@@ -91,18 +91,18 @@ export const WorkflowHabitLLMOutputSchema = z.object({
   confidenceScore: z.number().min(0).max(1),
 
   /** Summary */
-  summary: z.string().max(500).optional(),
+  summary: z.string().optional(),
 
   // ─────────────────────────────────────────────────────────────────────────
   // Domain-specific Strengths & Growth Areas (NEW)
   // ─────────────────────────────────────────────────────────────────────────
 
   /** Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items) */
-  strengthsData: z.string().max(12000).optional()
+  strengthsData: z.string().optional()
     .describe('Strengths in workflow domain: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)'),
 
   /** Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items) */
-  growthAreasData: z.string().max(12000).optional()
+  growthAreasData: z.string().optional()
     .describe('Growth areas in workflow domain: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)'),
 });
 export type WorkflowHabitLLMOutput = z.infer<typeof WorkflowHabitLLMOutputSchema>;
