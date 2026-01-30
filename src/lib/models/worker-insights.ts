@@ -29,10 +29,10 @@ export const InsightEvidenceSchema = z.object({
   utteranceId: z.string(),
 
   /** Direct quote or paraphrase from the developer's message */
-  quote: z.string().max(800),
+  quote: z.string(),
 
   /** Brief context description (optional) */
-  context: z.string().max(400).optional(),
+  context: z.string().optional(),
 });
 export type InsightEvidence = z.infer<typeof InsightEvidenceSchema>;
 
@@ -41,7 +41,7 @@ export type InsightEvidence = z.infer<typeof InsightEvidenceSchema>;
  * Union type enables backward compatibility with existing data.
  */
 export const EvidenceItemSchema = z.union([
-  z.string().max(500),
+  z.string(),
   InsightEvidenceSchema,
 ]);
 export type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
@@ -58,10 +58,10 @@ export type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
  */
 export const WorkerStrengthSchema = z.object({
   /** Clear, specific title (e.g., "Systematic Output Verification") */
-  title: z.string().max(150),
+  title: z.string(),
 
   /** 6-10 sentences providing comprehensive analysis */
-  description: z.string().max(1500),
+  description: z.string(),
 
   /**
    * Direct quotes from developer messages demonstrating this (2-8 items).
@@ -97,10 +97,10 @@ export type WorkerGrowthSeverity = z.infer<typeof WorkerGrowthSeveritySchema>;
  */
 export const WorkerGrowthSchema = z.object({
   /** Clear, specific title (e.g., "Error Loop Pattern") */
-  title: z.string().max(150),
+  title: z.string(),
 
   /** 6-10 sentences providing comprehensive analysis */
-  description: z.string().max(1500),
+  description: z.string(),
 
   /**
    * Direct quotes from developer messages showing this pattern (2-8 items).
@@ -109,7 +109,7 @@ export const WorkerGrowthSchema = z.object({
   evidence: z.array(EvidenceItemSchema).min(1).max(8),
 
   /** 4-6 sentences with step-by-step actionable advice */
-  recommendation: z.string().max(1200),
+  recommendation: z.string(),
 
   /** How critical this growth area is to address */
   severity: WorkerGrowthSeveritySchema.optional(),
@@ -153,11 +153,11 @@ export type WorkerInsightsContainer = z.infer<typeof WorkerInsightsContainerSche
  */
 export const WorkerInsightsLLMOutputSchema = z.object({
   /** Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items) */
-  strengthsData: z.string().max(12000)
+  strengthsData: z.string()
     .describe('Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)'),
 
   /** Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items) */
-  growthAreasData: z.string().max(12000)
+  growthAreasData: z.string()
     .describe('Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)'),
 });
 export type WorkerInsightsLLMOutput = z.infer<typeof WorkerInsightsLLMOutputSchema>;

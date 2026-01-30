@@ -30,10 +30,10 @@ export const InsightEvidenceSchema = z.object({
   utteranceId: z.string(),
 
   /** The actual quote from the developer */
-  quote: z.string().max(500),
+  quote: z.string(),
 
   /** Brief context explaining what was happening */
-  context: z.string().max(300),
+  context: z.string(),
 
   /** ISO timestamp for journey narrative */
   timestamp: z.string().optional(),
@@ -52,10 +52,10 @@ export type InsightEvidence = z.infer<typeof InsightEvidenceSchema>;
  */
 export const StrengthInsightSchema = z.object({
   /** Clear, descriptive title (e.g., "Systematic Problem Decomposition") */
-  title: z.string().max(80),
+  title: z.string(),
 
   /** 2-3 sentence detailed description of this strength */
-  description: z.string().max(500),
+  description: z.string(),
 
   /** Evidence quotes demonstrating this strength (target: 3-5) */
   evidence: z.array(InsightEvidenceSchema),
@@ -64,7 +64,7 @@ export const StrengthInsightSchema = z.object({
   dimension: DimensionNameEnumSchema,
 
   /** Tip for further developing this strength */
-  developmentTip: z.string().max(300).optional(),
+  developmentTip: z.string().optional(),
 
   /** Confidence in this strength assessment (0-1) */
   confidence: z.number().min(0).max(1).optional(),
@@ -93,16 +93,16 @@ export type GrowthSeverity = z.infer<typeof GrowthSeveritySchema>;
  */
 export const GrowthAreaInsightSchema = z.object({
   /** Clear, descriptive title (e.g., "Context Provision Habit") */
-  title: z.string().max(80),
+  title: z.string(),
 
   /** 2-3 sentence description of what could improve */
-  description: z.string().max(500),
+  description: z.string(),
 
   /** Evidence quotes showing this growth opportunity (target: 2-4) */
   evidence: z.array(InsightEvidenceSchema),
 
   /** Specific, actionable recommendation */
-  recommendation: z.string().max(400),
+  recommendation: z.string(),
 
   /** Which analysis dimension this growth area belongs to */
   dimension: DimensionNameEnumSchema,
@@ -146,7 +146,7 @@ export const StrengthGrowthOutputSchema = z.object({
   growthAreas: z.array(GrowthAreaInsightSchema),
 
   /** Summary of overall strength/growth balance */
-  summary: z.string().max(500).optional(),
+  summary: z.string().optional(),
 
   /** Overall confidence in this analysis (0-1) */
   confidenceScore: z.number().min(0).max(1),
@@ -158,10 +158,10 @@ export const StrengthGrowthOutputSchema = z.object({
   warnings: z.array(z.string()).optional(),
 
   /** Personalized priorities: "dimension|focusArea|rationale|impact|score;..." */
-  personalizedPrioritiesData: z.string().max(3000).optional(),
+  personalizedPrioritiesData: z.string().optional(),
 
   /** Absence-based growth signals (things the developer should do but doesn't) */
-  absenceBasedSignalsData: z.string().max(3000).optional(),
+  absenceBasedSignalsData: z.string().optional(),
 });
 export type StrengthGrowthOutput = z.infer<typeof StrengthGrowthOutputSchema>;
 
@@ -178,25 +178,25 @@ export type StrengthGrowthOutput = z.infer<typeof StrengthGrowthOutputSchema>;
  */
 export const StrengthGrowthLLMOutputSchema = z.object({
   /** Strengths as flattened string */
-  strengthsData: z.string().max(8000)
+  strengthsData: z.string()
     .describe('Strengths: "title|description|dimension|developmentTip|evidenceId:quote:context,evidenceId:quote:context;..." (target: 5-7)'),
 
   /** Growth areas as flattened string */
-  growthAreasData: z.string().max(8000)
+  growthAreasData: z.string()
     .describe('Growth areas: "title|description|dimension|recommendation|frequency|severity|priority|evidenceId:quote:context,evidenceId:quote:context;..." (target: 5-7)'),
 
   /** Summary */
-  summary: z.string().max(500).optional(),
+  summary: z.string().optional(),
 
   /** Confidence score (0-1) */
   confidenceScore: z.number().min(0).max(1),
 
   /** Personalized priorities: "dimension|focusArea|rationale|impact|score;..." */
-  personalizedPrioritiesData: z.string().max(3000).optional()
+  personalizedPrioritiesData: z.string().optional()
     .describe('Personalized priorities: "dimension|focusArea|rationale|impact|score;..."'),
 
   /** Absence-based growth signals: "signal|description|recommendation;..." */
-  absenceBasedSignalsData: z.string().max(3000).optional()
+  absenceBasedSignalsData: z.string().optional()
     .describe('Absence-based signals: "signal|description|recommendation;..."'),
 });
 export type StrengthGrowthLLMOutput = z.infer<typeof StrengthGrowthLLMOutputSchema>;

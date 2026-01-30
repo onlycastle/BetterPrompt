@@ -133,7 +133,6 @@ function createMockLLMOutput(): any {
   return {
     planningHabitsData: 'uses_plan_command:often:session-1_0|/plan Let me think:high;task_decomposition:sometimes:session-1_2|Break this into smaller tasks:medium',
     criticalThinkingMomentsData: 'verification:session-1_4|Wait that assumption might be wrong:Caught potential issue early',
-    multitaskingPatternsData: '',
     overallWorkflowScore: 82,
     summary: 'Developer shows strong planning habits with /plan command usage and task decomposition.',
     confidenceScore: 0.85,

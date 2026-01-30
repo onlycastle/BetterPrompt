@@ -149,7 +149,7 @@ export function assembleEvaluation(
   const result: Record<string, unknown> = {};
 
   // ── Phase 3 Narrative (LLM-generated) ──────────────────────────────────
-  result.personalitySummary = truncatePersonalitySummary(narrativeResult.personalitySummary);
+  result.personalitySummary = narrativeResult.personalitySummary;
   result.promptPatterns = sanitizePromptPatterns(narrativeResult.promptPatterns, phase1Output);
 
   // topFocusAreas: prefer Phase 3 narrative, fall back to Phase 2 data
@@ -236,35 +236,6 @@ export function assembleEvaluation(
 // ============================================================================
 // Narrative Sanitization
 // ============================================================================
-
-/**
- * Truncate personalitySummary to 3000 chars, preserving bold markers.
- * Also logs a warning if content is below the target minimum length.
- *
- * Exported for use in orchestrator when merging translated fields.
- */
-export function truncatePersonalitySummary(summary: string): string {
-  if (!summary || typeof summary !== 'string') return '';
-
-  // Warn if content is below target minimum (2500 chars expected, warn below 2000)
-  if (summary.length < 2000) {
-    console.warn(
-      `[EvaluationAssembler] Short personalitySummary: ${summary.length} chars (target: 2500-3000). ` +
-      `Consider investigating ContentWriter prompt effectiveness.`
-    );
-  }
-
-  if (summary.length <= 3000) return summary;
-
-  let truncated = summary.slice(0, 2997);
-  // Don't leave dangling bold markers
-  const lastBoldStart = truncated.lastIndexOf('**');
-  const beforeLastBold = truncated.slice(0, lastBoldStart).lastIndexOf('**');
-  if (lastBoldStart > beforeLastBold && lastBoldStart > 0) {
-    truncated = truncated.slice(0, lastBoldStart).trimEnd();
-  }
-  return truncated + '...';
-}
 
 /**
  * Convert flattened LLM prompt patterns to nested format and truncate tips.

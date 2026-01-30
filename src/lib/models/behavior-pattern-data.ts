@@ -69,16 +69,16 @@ export const DetectedAntiPatternSchema = z.object({
   /** Examples showing this pattern */
   examples: z.array(z.object({
     utteranceId: z.string(),
-    quote: z.string().max(400),
-    context: z.string().max(200).optional(),
-    whatWentWrong: z.string().max(300).optional(),
+    quote: z.string(),
+    context: z.string().optional(),
+    whatWentWrong: z.string().optional(),
   })),
 
   /** Severity assessment */
   severity: PatternSeveritySchema,
 
   /** Specific improvement suggestion */
-  improvement: z.string().max(400).optional(),
+  improvement: z.string().optional(),
 
   /** Percentage of sessions where this occurred (0-100) */
   sessionPercentage: z.number().min(0).max(100).optional(),
@@ -118,7 +118,7 @@ export const PlanningHabitSchema = z.object({
   frequency: HabitFrequencySchema,
 
   /** Example quotes demonstrating this habit */
-  examples: z.array(z.string().max(400)),
+  examples: z.array(z.string()),
 
   /** Effectiveness assessment */
   effectiveness: z.enum(['high', 'medium', 'low']).optional(),
@@ -150,10 +150,10 @@ export const CriticalThinkingMomentSchema = z.object({
   type: CriticalThinkingTypeSchema,
 
   /** The quote showing critical thinking */
-  quote: z.string().max(400),
+  quote: z.string(),
 
   /** What result this critical thinking led to */
-  result: z.string().max(300),
+  result: z.string(),
 
   /** Utterance ID for reference */
   utteranceId: z.string().optional(),
@@ -189,10 +189,10 @@ export const VerificationBehaviorSchema = z.object({
   level: VerificationLevelSchema,
 
   /** Examples supporting this assessment */
-  examples: z.array(z.string().max(400)),
+  examples: z.array(z.string()),
 
   /** Recommendation for improvement */
-  recommendation: z.string().max(400),
+  recommendation: z.string(),
 
   /** Confidence in this assessment (0-1) */
   confidence: z.number().min(0).max(1).optional(),
@@ -208,7 +208,7 @@ export type VerificationBehavior = z.infer<typeof VerificationBehaviorSchema>;
  */
 export const ContextPollutionSchema = z.object({
   /** Description of the pollution */
-  description: z.string().max(300),
+  description: z.string(),
 
   /** Session where it occurred */
   sessionId: z.string().optional(),
@@ -232,7 +232,7 @@ export const MultitaskingPatternSchema = z.object({
   focusScore: z.number().min(0).max(100).optional(),
 
   /** Recommendation for better context management */
-  recommendation: z.string().max(400).optional(),
+  recommendation: z.string().optional(),
 });
 export type MultitaskingPattern = z.infer<typeof MultitaskingPatternSchema>;
 
@@ -273,7 +273,7 @@ export const BehaviorPatternOutputSchema = z.object({
   confidenceScore: z.number().min(0).max(1),
 
   /** Summary of behavioral patterns */
-  summary: z.string().max(500).optional(),
+  summary: z.string().optional(),
 });
 export type BehaviorPatternOutput = z.infer<typeof BehaviorPatternOutputSchema>;
 
@@ -286,23 +286,23 @@ export type BehaviorPatternOutput = z.infer<typeof BehaviorPatternOutputSchema>;
  */
 export const BehaviorPatternLLMOutputSchema = z.object({
   /** Anti-patterns: "type|frequency|severity|sessionPct|improvement|utteranceId:quote:context:whatWentWrong,...;..." */
-  antiPatternsData: z.string().max(6000)
+  antiPatternsData: z.string()
     .describe('Anti-patterns: "type|frequency|severity|sessionPct|improvement|examples;..." where examples = "id:quote:context:whatWentWrong,..."'),
 
   /** Planning habits: "type|frequency|effectiveness|example1,example2;..." */
-  planningHabitsData: z.string().max(3000)
+  planningHabitsData: z.string()
     .describe('Planning habits: "type|frequency|effectiveness|example1,example2;..."'),
 
   /** Critical thinking: "type|quote|result|utteranceId;..." */
-  criticalThinkingData: z.string().max(3000)
+  criticalThinkingData: z.string()
     .describe('Critical thinking moments: "type|quote|result|utteranceId;..."'),
 
   /** Verification behavior: "level|recommendation|example1,example2" */
-  verificationBehaviorData: z.string().max(1500)
+  verificationBehaviorData: z.string()
     .describe('Verification behavior: "level|recommendation|example1,example2"'),
 
   /** Multitasking: "mixesTopics|focusScore|recommendation|pollution1,pollution2" */
-  multitaskingData: z.string().max(1500).optional()
+  multitaskingData: z.string().optional()
     .describe('Multitasking: "mixesTopics|focusScore|recommendation|desc:impact,desc:impact"'),
 
   /** Overall health score (0-100) */
@@ -312,7 +312,7 @@ export const BehaviorPatternLLMOutputSchema = z.object({
   confidenceScore: z.number().min(0).max(1),
 
   /** Summary */
-  summary: z.string().max(500).optional(),
+  summary: z.string().optional(),
 });
 export type BehaviorPatternLLMOutput = z.infer<typeof BehaviorPatternLLMOutputSchema>;
 

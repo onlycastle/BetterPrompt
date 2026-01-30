@@ -359,30 +359,6 @@ describe('ContentGateway', () => {
 
       // Phase 2 - Agent Outputs (Wow Agents)
       agentOutputs: {
-        patternDetective: {
-          repeatedQuestionsData: 'React hooks:5:useEffect cleanup;TypeScript:3:generics',
-          conversationStyleData: 'vague_request:23:just do it;proactive_context:15:provides context',
-          requestStartPatternsData: 'Can you:45;fix this:12;help me:8',
-          topInsights: [
-            'TypeScript generics questions appeared 12 times',
-            '67% of requests lack specific context',
-            'Just do it pattern detected 23 times',
-          ],
-          overallStyleSummary: 'Direct communicator who tends to skip context',
-          confidenceScore: 0.85,
-        },
-        antiPatternSpotter: {
-          errorLoopsData: 'TypeScript error:8:4.2:same error in 3 sessions',
-          learningAvoidanceData: 'copy_paste_no_read:copied without understanding:high',
-          repeatedMistakesData: 'ESLint ignore:12:session1,session3,session7',
-          topInsights: [
-            'ESLint errors repeated 8 times with 4.2 turns to resolve',
-            '34% of code copied without understanding',
-            'Same approach persisted 3+ times in 8 cases',
-          ],
-          overallHealthScore: 72,
-          confidenceScore: 0.78,
-        },
         knowledgeGap: {
           knowledgeGapsData: 'async/await:7:shallow:Promise chaining unclear',
           learningProgressData: 'React hooks:shallow:moderate:useEffect questions decreased',
@@ -476,14 +452,7 @@ describe('ContentGateway', () => {
 
         // Free tier gets teaser version of agentOutputs
         expect(filtered.agentOutputs).toBeDefined();
-        // patternDetective is a premium agent in teaser mode - has limited insights
-        expect(filtered.agentOutputs?.patternDetective?.topInsights).toHaveLength(2); // TEASER_INSIGHTS_LIMIT
-        expect(filtered.agentOutputs?.patternDetective?.confidenceScore).toBe(0.85);
         // Premium agents get teaser (limited insights, diagnostic data preserved, prescriptions locked)
-        expect(filtered.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(2);
-        expect(filtered.agentOutputs?.antiPatternSpotter?.errorLoopsData).toBe(
-          'TypeScript error:8:4.2:same error in 3 sessions'
-        );
         expect(filtered.agentOutputs?.contextEfficiency?.topInsights).toHaveLength(2);
         expect(filtered.agentOutputs?.contextEfficiency?.contextUsagePatternData).toBe(
           'session1:85:92;session2:78:88'
@@ -535,8 +504,6 @@ describe('ContentGateway', () => {
         const filtered = gateway.filter(fullEvaluation, 'pro');
 
         expect(filtered.agentOutputs).toBeDefined();
-        expect(filtered.agentOutputs?.patternDetective?.confidenceScore).toBe(0.85);
-        expect(filtered.agentOutputs?.antiPatternSpotter?.overallHealthScore).toBe(72);
         expect(filtered.agentOutputs?.knowledgeGap?.overallKnowledgeScore).toBe(68);
         expect(filtered.agentOutputs?.contextEfficiency?.overallEfficiencyScore).toBe(65);
       });
@@ -639,8 +606,7 @@ describe('ContentGateway', () => {
       expect(freeTier.productivityAnalysis).toBeUndefined();
       // Free tier gets teaser agentOutputs (all agents in teaser mode with limited insights)
       expect(freeTier.agentOutputs).toBeDefined();
-      expect(freeTier.agentOutputs?.patternDetective).toBeDefined();
-      expect(freeTier.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(2);
+      expect(freeTier.agentOutputs?.contextEfficiency?.topInsights).toHaveLength(2);
 
       // Pro tier: full access (all dimensions, prompt patterns, analytics, agents)
       expect(proTier.dimensionInsights[2].strengths).toBeTruthy();
@@ -704,9 +670,7 @@ describe('ContentGateway', () => {
       const evalWithPartialAgents: VerboseEvaluation = {
         ...fullEvaluation,
         agentOutputs: {
-          patternDetective: fullEvaluation.agentOutputs?.patternDetective,
-          antiPatternSpotter: undefined,
-          knowledgeGap: undefined,
+          knowledgeGap: fullEvaluation.agentOutputs?.knowledgeGap,
           contextEfficiency: undefined,
         },
       };
@@ -714,9 +678,7 @@ describe('ContentGateway', () => {
       const proTier = gateway.filter(evalWithPartialAgents, 'pro');
 
       expect(proTier.agentOutputs).toBeDefined();
-      expect(proTier.agentOutputs?.patternDetective).toBeDefined();
-      expect(proTier.agentOutputs?.antiPatternSpotter).toBeUndefined();
-      expect(proTier.agentOutputs?.knowledgeGap).toBeUndefined();
+      expect(proTier.agentOutputs?.knowledgeGap).toBeDefined();
       expect(proTier.agentOutputs?.contextEfficiency).toBeUndefined();
     });
 
@@ -747,13 +709,13 @@ describe('ContentGateway', () => {
       // Free tier gets teaser version (not undefined, not full)
       expect(filtered.agentOutputs).toBeDefined();
       // Premium agents: diagnostic data preserved, prescriptions locked
-      expect(filtered.agentOutputs?.antiPatternSpotter?.errorLoopsData).toBe(
-        'TypeScript error:8:4.2:same error in 3 sessions'
+      expect(filtered.agentOutputs?.contextEfficiency?.contextUsagePatternData).toBe(
+        'session1:85:92;session2:78:88'
       );
-      expect(filtered.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(2);
+      expect(filtered.agentOutputs?.contextEfficiency?.topInsights).toHaveLength(2);
       // But ensure full version was present in original
       expect(fullEvaluation.agentOutputs).toBeDefined();
-      expect(fullEvaluation.agentOutputs?.antiPatternSpotter?.topInsights?.length).toBeGreaterThan(1);
+      expect(fullEvaluation.agentOutputs?.contextEfficiency?.topInsights?.length).toBeGreaterThan(1);
     });
   });
 
@@ -772,27 +734,18 @@ describe('ContentGateway', () => {
 
       // Free tier gets teaser agentOutputs (limited data for all premium agents)
       expect(freeTier.agentOutputs).toBeDefined();
-      // PatternDetective is in teaser mode with limited insights
-      expect(freeTier.agentOutputs?.patternDetective?.topInsights).toHaveLength(2);
-      expect(freeTier.agentOutputs?.patternDetective?.confidenceScore).toBe(0.85);
       // Premium agents get teaser (limited insights, diagnostic data preserved, prescriptions locked)
-      expect(freeTier.agentOutputs?.antiPatternSpotter?.topInsights).toHaveLength(2);
-      expect(freeTier.agentOutputs?.antiPatternSpotter?.errorLoopsData).toBe(
-        'TypeScript error:8:4.2:same error in 3 sessions'
+      expect(freeTier.agentOutputs?.contextEfficiency?.topInsights).toHaveLength(2);
+      expect(freeTier.agentOutputs?.contextEfficiency?.contextUsagePatternData).toBe(
+        'session1:85:92;session2:78:88'
       );
       // Verify the full version exists in original
-      expect(fullEvaluation.agentOutputs?.antiPatternSpotter?.topInsights?.length).toBeGreaterThan(1);
+      expect(fullEvaluation.agentOutputs?.contextEfficiency?.topInsights?.length).toBeGreaterThan(1);
     });
 
     it('should preserve all agent output fields in pro tier', () => {
       const proTier = gateway.filter(fullEvaluation, 'pro');
 
-      expect(proTier.agentOutputs?.patternDetective?.repeatedQuestionsData).toBe(
-        'React hooks:5:useEffect cleanup;TypeScript:3:generics'
-      );
-      expect(proTier.agentOutputs?.antiPatternSpotter?.errorLoopsData).toBe(
-        'TypeScript error:8:4.2:same error in 3 sessions'
-      );
       expect(proTier.agentOutputs?.knowledgeGap?.knowledgeGapsData).toBe(
         'async/await:7:shallow:Promise chaining unclear'
       );

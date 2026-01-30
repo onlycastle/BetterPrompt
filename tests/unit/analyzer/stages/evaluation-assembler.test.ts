@@ -503,21 +503,5 @@ describe('assembleEvaluation', () => {
       expect((result.promptPatterns as any[]).length).toBeGreaterThanOrEqual(3);
     });
 
-    it('should truncate long personalitySummary', () => {
-      const longSummary = 'A'.repeat(5000);
-      const narrativeWithLongSummary: NarrativeLLMResponse = {
-        ...createMockNarrativeResponse(),
-        personalitySummary: longSummary,
-      };
-
-      const result = assembleEvaluation(
-        createMockAgentOutputs(),
-        narrativeWithLongSummary,
-        createMockPhase1Output(),
-        5
-      );
-
-      expect((result.personalitySummary as string).length).toBeLessThanOrEqual(3000);
-    });
   });
 });

@@ -94,42 +94,6 @@ export function createAgentTeasers(agentOutputs: AgentOutputs | undefined): Agen
   // PREMIUM agents - show teaser (1 insight + scores only)
   // Each agent has unique structure, so teasers are defined explicitly
 
-  // Pattern Detective: Show full diagnostic data with locked prescriptions
-  if (agentOutputs.patternDetective) {
-    const pd = agentOutputs.patternDetective;
-    result.patternDetective = {
-      repeatedQuestionsData: str(pd.repeatedQuestionsData),
-      conversationStyleData: str(pd.conversationStyleData),
-      requestStartPatternsData: str(pd.requestStartPatternsData),
-      overallStyleSummary: str(pd.overallStyleSummary),
-      topInsights: limitInsights(pd.topInsights),
-      confidenceScore: pd.confidenceScore,
-      strengthsData: str(pd.strengthsData),
-      growthAreasData: lockPrescriptions(pd.growthAreasData),
-      kptKeep: pd.kptKeep,
-      kptProblem: pd.kptProblem,
-      kptTry: [], // Locked
-    };
-  }
-
-  // Anti-Pattern Spotter: Show full diagnostic data with locked prescriptions
-  if (agentOutputs.antiPatternSpotter) {
-    const ap = agentOutputs.antiPatternSpotter;
-    result.antiPatternSpotter = {
-      errorLoopsData: str(ap.errorLoopsData),
-      learningAvoidanceData: str(ap.learningAvoidanceData),
-      repeatedMistakesData: str(ap.repeatedMistakesData),
-      topInsights: limitInsights(ap.topInsights),
-      overallHealthScore: ap.overallHealthScore,
-      confidenceScore: ap.confidenceScore,
-      strengthsData: str(ap.strengthsData),
-      growthAreasData: lockPrescriptions(ap.growthAreasData),
-      kptKeep: ap.kptKeep,
-      kptProblem: ap.kptProblem,
-      kptTry: [], // Locked
-    };
-  }
-
   // Context Efficiency: Show full diagnostic metrics with locked prescriptions
   if (agentOutputs.contextEfficiency) {
     const ce = agentOutputs.contextEfficiency;
@@ -164,31 +128,6 @@ export function createAgentTeasers(agentOutputs: AgentOutputs | undefined): Agen
         growthAreasData: lockPrescriptions(insights?.growthAreasData),
         confidenceScore: insights?.confidenceScore ?? 0,
       },
-    };
-  }
-
-  // Multitasking: Show full diagnostic metrics with locked prescriptions
-  if (agentOutputs.multitasking) {
-    const mt = agentOutputs.multitasking;
-    result.multitasking = {
-      sessionFocusData: str(mt.sessionFocusData),
-      contextPollutionData: str(mt.contextPollutionData),
-      workUnitSeparationData: str(mt.workUnitSeparationData),
-      strategyEvaluationData: str(mt.strategyEvaluationData),
-      avgGoalCoherence: mt.avgGoalCoherence,
-      avgContextPollutionScore: mt.avgContextPollutionScore,
-      workUnitSeparationScore: mt.workUnitSeparationScore,
-      fileOverlapRate: mt.fileOverlapRate,
-      multitaskingEfficiencyScore: mt.multitaskingEfficiencyScore,
-      totalSessionsAnalyzed: mt.totalSessionsAnalyzed,
-      projectGroupCount: mt.projectGroupCount,
-      topInsights: limitInsights(mt.topInsights),
-      confidenceScore: mt.confidenceScore,
-      strengthsData: str(mt.strengthsData),
-      growthAreasData: lockPrescriptions(mt.growthAreasData),
-      contextSwitchCountMin: mt.contextSwitchCountMin,
-      contextSwitchCountMax: mt.contextSwitchCountMax,
-      longestFocusBlockMinutes: mt.longestFocusBlockMinutes,
     };
   }
 

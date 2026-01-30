@@ -108,76 +108,6 @@ export {
 } from './coding-style';
 
 // ============================================================================
-// Unified Report Types (v3.0 - Hyper-Personalized)
-// ============================================================================
-export {
-  // Schemas
-  UnifiedReportSchema,
-  ProfileSchema,
-  DimensionResultSchema,
-  DimensionInsightSchema,
-  EvidenceQuoteSchema,
-  RecommendationSchema,
-  ReportSummarySchema,
-  PremiumContentSchema,
-  // Types
-  type UnifiedReport,
-  type Profile,
-  type DimensionResult,
-  type DimensionInsight,
-  type DimensionName,
-  type DimensionLevel,
-  type EvidenceQuote,
-  type Recommendation,
-  type ReportSummary,
-  type PremiumContent,
-  type Tier,
-  type CodingStyleType as UnifiedCodingStyleType,
-  type ControlLevel,
-  type InsightType,
-  type ConversationInsight,
-  type ResearchInsight,
-  type LearningResource,
-  // Constants
-  DIMENSION_DISPLAY_NAMES,
-  STRENGTH_THRESHOLD,
-  MATRIX_NAMES,
-} from './unified-report';
-
-// ============================================================================
-// Schema Bridge (Conversion Utilities)
-// ============================================================================
-export {
-  verboseToProfile,
-  typeResultToProfile,
-  dimensionsToDimensionResults,
-  generateSummary,
-  extractEvidence,
-  toUnifiedReport,
-  isDimensionStrength,
-  getMatrixInfo,
-  type ConversionInput,
-} from './schema-bridge';
-
-// ============================================================================
-// Metacognition Analysis Types (NEW)
-// ============================================================================
-export {
-  MetacognitionOutputSchema,
-  type MetacognitionOutput,
-  type AwarenessType,
-  type AwarenessInstance,
-  type BlindSpot,
-  type GrowthMindsetIndicators,
-  type MetacognitionAnalysis,
-  parseAwarenessInstancesData,
-  parseBlindSpotsData,
-  parseGrowthMindsetData,
-  parseMetacognitionOutput,
-  createDefaultMetacognitionOutput,
-} from './metacognition-data';
-
-// ============================================================================
 // Temporal Analysis Types (REDESIGNED)
 // ============================================================================
 export {
@@ -227,48 +157,6 @@ export {
   HourlyEngagementSchema,
   createEmptyTemporalMetrics,
 } from './temporal-metrics';
-
-// ============================================================================
-// Risk Signal Types (NEW)
-// ============================================================================
-export {
-  RiskTypeSchema,
-  RiskSignalSchema,
-  RiskAnalysisSchema,
-  type RiskType,
-  type RiskSignal,
-  type RiskAnalysis,
-  RISK_TYPE_WEIGHTS,
-  RISK_TO_KB_MAPPING,
-  PATTERN_TO_RISK_TYPE,
-  calculateRiskScore,
-  calculateRiskByType,
-  getKBRecommendations,
-  getRiskTypeForPattern,
-  createDefaultRiskAnalysis,
-  createRiskSignalFromPattern,
-} from './risk-signal';
-
-// ============================================================================
-// Multitasking Analysis Types (NEW)
-// ============================================================================
-export {
-  MultitaskingAnalysisOutputSchema,
-  type MultitaskingAnalysisOutput,
-  type WorkType,
-  type MultitaskingStrategyType,
-  type SessionFocus,
-  type ContextPollutionInstance,
-  type WorkUnit,
-  type StrategyEvaluation,
-  type MultitaskingAnalysis,
-  parseSessionFocusData,
-  parseContextPollutionData,
-  parseWorkUnitSeparationData,
-  parseStrategyEvaluationData,
-  parseMultitaskingAnalysisOutput,
-  createDefaultMultitaskingAnalysisOutput,
-} from './multitasking-data';
 
 // ============================================================================
 // Dimension Schema (Extracted to break circular dependencies)

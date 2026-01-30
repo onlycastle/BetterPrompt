@@ -69,7 +69,7 @@ export const EvidenceVerificationItemSchema = z.object({
   relevanceScore: z.number().min(0).max(100),
 
   /** Brief explanation of the scoring decision (for debugging) */
-  reasoning: z.string().max(300),
+  reasoning: z.string(),
 });
 export type EvidenceVerificationItem = z.infer<typeof EvidenceVerificationItemSchema>;
 

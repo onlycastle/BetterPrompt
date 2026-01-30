@@ -14,11 +14,10 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import type { UnifiedReport } from '../models/unified-report';
 import type { VerboseEvaluation } from '../models/verbose-evaluation';
 
 /** Analysis type identifier */
-export type AnalysisType = 'verbose' | 'unified';
+export type AnalysisType = 'verbose';
 
 /** Information about a single analyzed session */
 export interface SessionFileInfo {
@@ -52,7 +51,7 @@ export interface LocalAnalysis {
   /** When the analysis expires (optional) */
   expiresAt?: string;
   /** The analysis data */
-  data: VerboseEvaluation | UnifiedReport;
+  data: VerboseEvaluation;
   /** Optional metadata */
   metadata?: AnalysisMetadata;
 }
@@ -138,7 +137,7 @@ function calculateExpiration(days: number): string | undefined {
  * ```
  */
 export async function saveAnalysisLocally(
-  data: VerboseEvaluation | UnifiedReport,
+  data: VerboseEvaluation,
   options: {
     type?: AnalysisType;
     expirationDays?: number;

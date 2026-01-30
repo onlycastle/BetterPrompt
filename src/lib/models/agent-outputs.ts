@@ -56,50 +56,6 @@ export {
   parseRepeatedCommandPatternsData,
 };
 
-// Import and re-export PatternDetective schema from dedicated file
-import {
-  PatternDetectiveOutputSchema,
-  type PatternDetectiveOutput,
-} from './pattern-detective-data';
-export { PatternDetectiveOutputSchema, type PatternDetectiveOutput };
-
-// Import and re-export AntiPatternSpotter and CrossSession schemas from dedicated file
-import {
-  AntiPatternSpotterOutputSchema,
-  type AntiPatternSpotterOutput,
-  ANTI_PATTERN_HIERARCHY,
-  type AntiPatternSeverity,
-  type CriticalAntiPattern,
-  type WarningAntiPattern,
-  type InfoAntiPattern,
-  type AntiPatternType,
-  CrossSessionAntiPatternOutputSchema,
-  type CrossSessionAntiPatternOutput,
-  type ParsedCrossSessionPattern,
-  parseCrossSessionPatternsData,
-  getAllCrossSessionPatterns,
-  getAntiPatternSeverity,
-  type ParsedIsolatedIncident,
-  parseIsolatedIncidentsData,
-} from './antipattern-spotter-data';
-export {
-  AntiPatternSpotterOutputSchema,
-  type AntiPatternSpotterOutput,
-  ANTI_PATTERN_HIERARCHY,
-  type AntiPatternSeverity,
-  type CriticalAntiPattern,
-  type WarningAntiPattern,
-  type InfoAntiPattern,
-  type AntiPatternType,
-  CrossSessionAntiPatternOutputSchema,
-  type CrossSessionAntiPatternOutput,
-  type ParsedCrossSessionPattern,
-  parseCrossSessionPatternsData,
-  getAllCrossSessionPatterns,
-  getAntiPatternSeverity,
-  type ParsedIsolatedIncident,
-  parseIsolatedIncidentsData,
-};
 
 // ============================================================================
 // Knowledge Gap Analyzer: Knowledge Gaps + Learning Suggestions
@@ -131,21 +87,21 @@ export {
  */
 export const KnowledgeGapOutputSchema = z.object({
   // Knowledge gaps - "topic:question_count:depth:example;..."
-  knowledgeGapsData: z.string().max(2000),
+  knowledgeGapsData: z.string(),
 
   // Learning progress - "topic:start_level:current_level:evidence;..."
-  learningProgressData: z.string().max(1500),
+  learningProgressData: z.string(),
 
   // Recommended resources - "topic:resource_type:url_or_name;..."
-  recommendedResourcesData: z.string().max(1000),
+  recommendedResourcesData: z.string(),
 
   // Top 3 Wow Insights
-  topInsights: z.array(z.string().max(3000)).max(3),
+  topInsights: z.array(z.string()).max(3),
 
   // KPT (Keep/Problem/Try) structured fields for balanced feedback
-  kptKeep: z.array(z.string().max(500)).max(2).optional(),     // Knowledge strengths (0-1)
-  kptProblem: z.array(z.string().max(500)).max(2).optional(),  // Knowledge gaps to address (1-2, expected)
-  kptTry: z.array(z.string().max(500)).max(2).optional(),      // Learning recommendations (1-2, expected)
+  kptKeep: z.array(z.string()).max(2).optional(),     // Knowledge strengths (0-1)
+  kptProblem: z.array(z.string()).max(2).optional(),  // Knowledge gaps to address (1-2, expected)
+  kptTry: z.array(z.string()).max(2).optional(),      // Learning recommendations (1-2, expected)
 
   // Overall knowledge score (0-100)
   overallKnowledgeScore: z.number().min(0).max(100),
@@ -158,10 +114,10 @@ export const KnowledgeGapOutputSchema = z.object({
   // ─────────────────────────────────────────────────────────────────────────
 
   // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
-  strengthsData: z.string().max(12000).optional(),
+  strengthsData: z.string().optional(),
 
   // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
-  growthAreasData: z.string().max(12000).optional(),
+  growthAreasData: z.string().optional(),
 
   // Parsed structured strengths (populated by parsing function)
   strengths: z.array(WorkerStrengthSchema).optional(),
@@ -184,21 +140,21 @@ export type KnowledgeGapOutput = z.infer<typeof KnowledgeGapOutputSchema>;
  */
 export const KnowledgeGapLLMOutputSchema = z.object({
   // Knowledge gaps - "topic:question_count:depth:example;..."
-  knowledgeGapsData: z.string().max(2000),
+  knowledgeGapsData: z.string(),
 
   // Learning progress - "topic:start_level:current_level:evidence;..."
-  learningProgressData: z.string().max(1500),
+  learningProgressData: z.string(),
 
   // Recommended resources - "topic:resource_type:url_or_name;..."
-  recommendedResourcesData: z.string().max(1000),
+  recommendedResourcesData: z.string(),
 
   // Top 3 Wow Insights
-  topInsights: z.array(z.string().max(3000)).max(3),
+  topInsights: z.array(z.string()).max(3),
 
   // KPT (Keep/Problem/Try) structured fields for balanced feedback
-  kptKeep: z.array(z.string().max(500)).max(2).optional(),
-  kptProblem: z.array(z.string().max(500)).max(2).optional(),
-  kptTry: z.array(z.string().max(500)).max(2).optional(),
+  kptKeep: z.array(z.string()).max(2).optional(),
+  kptProblem: z.array(z.string()).max(2).optional(),
+  kptTry: z.array(z.string()).max(2).optional(),
 
   // Overall knowledge score (0-100)
   overallKnowledgeScore: z.number().min(0).max(100),
@@ -270,24 +226,24 @@ export function parseKnowledgeGapLLMOutput(llmOutput: KnowledgeGapLLMOutput): Kn
  */
 export const ContextEfficiencyOutputSchema = z.object({
   // Context usage pattern - "session_id:avg_fill_percent:compact_trigger_percent;..."
-  contextUsagePatternData: z.string().max(1500),
+  contextUsagePatternData: z.string(),
 
   // Inefficiency patterns - "pattern:frequency:impact:example;..."
-  inefficiencyPatternsData: z.string().max(2000),
+  inefficiencyPatternsData: z.string(),
 
   // Prompt length trend - "session_part:avg_length;..."
-  promptLengthTrendData: z.string().max(500),
+  promptLengthTrendData: z.string(),
 
   // Redundant info patterns - "info_type:repeat_count;..."
-  redundantInfoData: z.string().max(1000),
+  redundantInfoData: z.string(),
 
   // Top 3 Wow Insights
-  topInsights: z.array(z.string().max(3000)).max(3),
+  topInsights: z.array(z.string()).max(3),
 
   // KPT (Keep/Problem/Try) structured fields for balanced feedback
-  kptKeep: z.array(z.string().max(500)).max(2).optional(),     // Efficient habits (0-1)
-  kptProblem: z.array(z.string().max(500)).max(2).optional(),  // Inefficiencies to address (1-2, expected)
-  kptTry: z.array(z.string().max(500)).max(2).optional(),      // Efficiency improvements (1-2, expected)
+  kptKeep: z.array(z.string()).max(2).optional(),     // Efficient habits (0-1)
+  kptProblem: z.array(z.string()).max(2).optional(),  // Inefficiencies to address (1-2, expected)
+  kptTry: z.array(z.string()).max(2).optional(),      // Efficiency improvements (1-2, expected)
 
   // Overall efficiency score (0-100)
   overallEfficiencyScore: z.number().min(0).max(100),
@@ -303,10 +259,10 @@ export const ContextEfficiencyOutputSchema = z.object({
   // ─────────────────────────────────────────────────────────────────────────
 
   // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
-  strengthsData: z.string().max(12000).optional(),
+  strengthsData: z.string().optional(),
 
   // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
-  growthAreasData: z.string().max(12000).optional(),
+  growthAreasData: z.string().optional(),
 
   // Parsed structured strengths (populated by parsing function)
   strengths: z.array(WorkerStrengthSchema).optional(),
@@ -316,7 +272,7 @@ export const ContextEfficiencyOutputSchema = z.object({
 
   // Productivity metrics (consolidated from ProductivityAnalyst)
   // Iteration data: "sessionId|iterationCount|avgTurnsPerIteration;..."
-  iterationSummaryData: z.string().max(3000).optional(),
+  iterationSummaryData: z.string().optional(),
 
   // Collaboration efficiency score (0-100)
   collaborationEfficiencyScore: z.number().min(0).max(100).optional(),
@@ -324,8 +280,8 @@ export const ContextEfficiencyOutputSchema = z.object({
   // Overall productivity score (0-100)
   overallProductivityScore: z.number().min(0).max(100).optional(),
 
-  // Productivity summary (max 2000 chars)
-  productivitySummary: z.string().max(2000).optional(),
+  // Productivity summary
+  productivitySummary: z.string().optional(),
 });
 
 export type ContextEfficiencyOutput = z.infer<typeof ContextEfficiencyOutputSchema>;
@@ -342,24 +298,24 @@ export type ContextEfficiencyOutput = z.infer<typeof ContextEfficiencyOutputSche
  */
 export const ContextEfficiencyLLMOutputSchema = z.object({
   // Context usage pattern - "session_id:avg_fill_percent:compact_trigger_percent;..."
-  contextUsagePatternData: z.string().max(1500),
+  contextUsagePatternData: z.string(),
 
   // Inefficiency patterns - "pattern:frequency:impact:example;..."
-  inefficiencyPatternsData: z.string().max(2000),
+  inefficiencyPatternsData: z.string(),
 
   // Prompt length trend - "session_part:avg_length;..."
-  promptLengthTrendData: z.string().max(500),
+  promptLengthTrendData: z.string(),
 
   // Redundant info patterns - "info_type:repeat_count;..."
-  redundantInfoData: z.string().max(1000),
+  redundantInfoData: z.string(),
 
   // Top 3 Wow Insights
-  topInsights: z.array(z.string().max(3000)).max(3),
+  topInsights: z.array(z.string()).max(3),
 
   // KPT (Keep/Problem/Try) structured fields for balanced feedback
-  kptKeep: z.array(z.string().max(500)).max(2).optional(),
-  kptProblem: z.array(z.string().max(500)).max(2).optional(),
-  kptTry: z.array(z.string().max(500)).max(2).optional(),
+  kptKeep: z.array(z.string()).max(2).optional(),
+  kptProblem: z.array(z.string()).max(2).optional(),
+  kptTry: z.array(z.string()).max(2).optional(),
 
   // Overall efficiency score (0-100)
   overallEfficiencyScore: z.number().min(0).max(100),
@@ -379,10 +335,10 @@ export const ContextEfficiencyLLMOutputSchema = z.object({
     .describe('Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)'),
 
   // Productivity metrics (consolidated from ProductivityAnalyst)
-  iterationSummaryData: z.string().max(3000).optional(),
+  iterationSummaryData: z.string().optional(),
   collaborationEfficiencyScore: z.number().min(0).max(100).optional(),
   overallProductivityScore: z.number().min(0).max(100).optional(),
-  productivitySummary: z.string().max(2000).optional(),
+  productivitySummary: z.string().optional(),
 });
 export type ContextEfficiencyLLMOutput = z.infer<typeof ContextEfficiencyLLMOutputSchema>;
 
@@ -414,14 +370,6 @@ export function parseContextEfficiencyLLMOutput(llmOutput: ContextEfficiencyLLMO
 }
 
 // ============================================================================
-// Metacognition Output (NEW)
-// ============================================================================
-
-// Import from dedicated schema file
-import { MetacognitionOutputSchema, type MetacognitionOutput } from './metacognition-data';
-export { MetacognitionOutputSchema, type MetacognitionOutput };
-
-// ============================================================================
 // Temporal Analysis Output (REDESIGNED)
 // ============================================================================
 
@@ -448,14 +396,6 @@ export {
   TemporalMetricsSchema,
   type TemporalMetrics,
 };
-
-// ============================================================================
-// Multitasking Analysis Output (NEW)
-// ============================================================================
-
-// Import from dedicated schema file
-import { MultitaskingAnalysisOutputSchema, type MultitaskingAnalysisOutput } from './multitasking-data';
-export { MultitaskingAnalysisOutputSchema, type MultitaskingAnalysisOutput };
 
 // ============================================================================
 // Type Classifier Output (v2 Architecture)
@@ -489,39 +429,39 @@ export const TypeClassifierOutputSchema = z.object({
   controlScore: z.number().min(0).max(100),
 
   /** Combined matrix name (e.g., "Systems Architect", "Yolo Coder") */
-  matrixName: z.string().max(50),
+  matrixName: z.string(),
 
   /** Matrix emoji */
-  matrixEmoji: z.string().max(10),
+  matrixEmoji: z.string(),
 
   /** Vibe Coder Spectrum assessment (from Addy Osmani research) */
   collaborationMaturity: z.object({
     /** Where on the spectrum: vibe_coder → ai_assisted_engineer */
     level: z.enum(['vibe_coder', 'supervised_coder', 'ai_assisted_engineer', 'reluctant_user']),
     /** Human-readable description */
-    description: z.string().max(300),
+    description: z.string(),
     /** Key indicators that led to this assessment */
-    indicators: z.array(z.string().max(200)),
+    indicators: z.array(z.string()),
   }).optional(),
 
   /** Confidence score (0-1) */
   confidenceScore: z.number().min(0).max(1),
 
   /** Reasoning for the classification */
-  reasoning: z.string().max(500).optional(),
+  reasoning: z.string().optional(),
 
   // ─────────────────────────────────────────────────────────────────────────
   // Synthesis Fields (merged from TypeSynthesis)
   // ─────────────────────────────────────────────────────────────────────────
 
   /** Reasons for adjustments from initial or pattern-based classification */
-  adjustmentReasons: z.array(z.string().max(3000)).max(5).optional(),
+  adjustmentReasons: z.array(z.string()).max(5).optional(),
 
   /** How much confidence increased from agent synthesis (0-1) */
   confidenceBoost: z.number().min(0).max(1).optional(),
 
   /** Evidence from other Phase 2 agent outputs - "agent:key_signal:detail;..." */
-  synthesisEvidence: z.string().max(1000).optional(),
+  synthesisEvidence: z.string().optional(),
 });
 export type TypeClassifierOutput = z.infer<typeof TypeClassifierOutputSchema>;
 
@@ -532,34 +472,24 @@ export type TypeClassifierOutput = z.infer<typeof TypeClassifierOutputSchema>;
 /**
  * Combined outputs from all Wow-Focused Agents
  *
- * Original 4 agents:
- * - Pattern Detective: Conversation patterns, repeated questions
- * - Anti-Pattern Spotter: Error loops, bad habits
- * - Knowledge Gap: Knowledge gaps + learning suggestions
- * - Context Efficiency: Token inefficiency patterns
- *
- * NEW agents (Premium+):
- * - Metacognition: Self-awareness patterns, blind spots, growth mindset
- * - Temporal Analyzer: Time-based quality patterns, fatigue signals
+ * Current workers (v2 architecture):
+ * - TrustVerification: Anti-patterns and verification behavior
+ * - WorkflowHabit: Planning habits and critical thinking
+ * - KnowledgeGap: Knowledge gaps and learning resources
+ * - ContextEfficiency: Token efficiency patterns
+ * - TypeClassifier: Developer type classification
  *
  * All fields are optional since agents may fail independently.
  */
 export const AgentOutputsSchema = z.object({
   // =========================================================================
-  // Legacy Agents (kept for backward compatibility)
+  // Legacy Agents (kept for backward compatibility with cached data)
   // =========================================================================
-  patternDetective: PatternDetectiveOutputSchema.optional(),
-  antiPatternSpotter: AntiPatternSpotterOutputSchema.optional(),
   knowledgeGap: KnowledgeGapOutputSchema.optional(),
   contextEfficiency: ContextEfficiencyOutputSchema.optional(),
 
-  // Legacy: Metacognition + Temporal Analysis agents (deprecated in v2)
-  metacognition: MetacognitionOutputSchema.optional(),
+  // Legacy: Temporal Analysis (kept for stored data)
   temporalAnalysis: TemporalAnalysisResultSchema.optional(),
-  multitasking: MultitaskingAnalysisOutputSchema.optional(),
-
-  // Legacy: Cross-Session Anti-Pattern Detection (deprecated in v2, kept for stored data)
-  crossSessionAntiPatterns: CrossSessionAntiPatternOutputSchema.optional(),
 
   // =========================================================================
   // v2 Architecture Workers
@@ -595,15 +525,10 @@ export function createEmptyAgentOutputs(): AgentOutputs {
  */
 export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
   return !!(
-    // Legacy agents
-    outputs.patternDetective ||
-    outputs.antiPatternSpotter ||
+    // Legacy agents (kept for cached data)
     outputs.knowledgeGap ||
     outputs.contextEfficiency ||
-    outputs.metacognition ||
     outputs.temporalAnalysis ||
-    outputs.multitasking ||
-    outputs.crossSessionAntiPatterns ||
     // v2 agents
     outputs.strengthGrowth ||
     outputs.trustVerification ||
@@ -618,33 +543,16 @@ export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
 export function getAllTopInsights(outputs: AgentOutputs): string[] {
   const insights: string[] = [];
 
-  if (outputs.patternDetective?.topInsights) {
-    insights.push(...outputs.patternDetective.topInsights);
-  }
-  if (outputs.antiPatternSpotter?.topInsights) {
-    insights.push(...outputs.antiPatternSpotter.topInsights);
-  }
+  // Legacy agents (kept for cached data)
   if (outputs.knowledgeGap?.topInsights) {
     insights.push(...outputs.knowledgeGap.topInsights);
   }
   if (outputs.contextEfficiency?.topInsights) {
     insights.push(...outputs.contextEfficiency.topInsights);
   }
-  // NEW: Include metacognition and temporal insights
-  if (outputs.metacognition?.topInsights) {
-    insights.push(...outputs.metacognition.topInsights);
-  }
-  // REDESIGNED: Temporal insights are now nested under insights.topInsights
+  // Temporal insights are nested under insights.topInsights
   if (outputs.temporalAnalysis?.insights?.topInsights) {
     insights.push(...outputs.temporalAnalysis.insights.topInsights);
-  }
-  // NEW: Include multitasking insights
-  if (outputs.multitasking?.topInsights) {
-    insights.push(...outputs.multitasking.topInsights);
-  }
-  // NEW: Include cross-session anti-pattern insights
-  if (outputs.crossSessionAntiPatterns?.topInsights) {
-    insights.push(...outputs.crossSessionAntiPatterns.topInsights);
   }
 
   return insights;
@@ -1011,13 +919,9 @@ import type { TranslatedAgentInsights, TranslatedAgentInsight } from './verbose-
  * Agent keys that may have translated insights
  */
 export type TranslatedAgentKey =
-  | 'patternDetective'
-  | 'metacognition'
-  | 'antiPatternSpotter'
   | 'knowledgeGap'
   | 'contextEfficiency'
   | 'temporalAnalysis'
-  | 'multitasking'
   | 'strengthGrowth'
   | 'trustVerification'
   | 'workflowHabit';
@@ -1090,19 +994,13 @@ export function getAllGrowthAreasHybrid(
     }
   };
 
-  // Free tier agents
-  addFromLegacyAgent(translatedInsights?.patternDetective, outputs.patternDetective?.growthAreasData);
-  addFromLegacyAgent(translatedInsights?.metacognition, outputs.metacognition?.growthAreasData);
-
-  // Premium tier agents
-  addFromLegacyAgent(translatedInsights?.antiPatternSpotter, outputs.antiPatternSpotter?.growthAreasData);
+  // Legacy agents (kept for cached data)
   addFromLegacyAgent(translatedInsights?.knowledgeGap, outputs.knowledgeGap?.growthAreasData);
   addFromLegacyAgent(translatedInsights?.contextEfficiency, outputs.contextEfficiency?.growthAreasData);
   addFromLegacyAgent(
     translatedInsights?.temporalAnalysis,
     outputs.temporalAnalysis?.insights?.growthAreasData
   );
-  addFromLegacyAgent(translatedInsights?.multitasking, outputs.multitasking?.growthAreasData);
 
   // v2 strengthGrowth — translated flat string OR original structured data
   if (translatedInsights?.strengthGrowth?.growthAreasData) {

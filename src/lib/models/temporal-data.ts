@@ -50,7 +50,6 @@ export const TemporalAnalysisOutputSchema = z.object({
   // Hourly patterns - "hour:sampleCount:counterQuestionRate:criticalRate:verificationRate:typoRate:passiveAcceptanceRate;..."
   hourlyPatternsData: z
     .string()
-    .max(3000)
     .describe(
       'Hourly quality metrics: "hour:sampleCount:counterQuestionRate:criticalRate:verificationRate:typoRate:passiveAcceptanceRate;..."'
     ),
@@ -58,7 +57,6 @@ export const TemporalAnalysisOutputSchema = z.object({
   // Peak hours - "hours|characteristics|evidence(counterQ:critical:verification)"
   peakHoursData: z
     .string()
-    .max(500)
     .describe(
       'Best hours: "hours(comma-sep)|characteristics|avgCounterQ:avgCritical:avgVerification"'
     ),
@@ -66,7 +64,6 @@ export const TemporalAnalysisOutputSchema = z.object({
   // Caution hours - "hours|characteristics|evidence(passiveRate:typoRate:criticalDrop)"
   cautionHoursData: z
     .string()
-    .max(500)
     .describe(
       'Caution hours: "hours(comma-sep)|characteristics|passiveAcceptanceRate:typoRate:criticalThinkingDrop%"'
     ),
@@ -75,7 +72,6 @@ export const TemporalAnalysisOutputSchema = z.object({
   // type: late_night_drop | post_lunch_dip | end_of_day_rush | typo_spike
   fatiguePatternsData: z
     .string()
-    .max(1500)
     .describe(
       'Fatigue patterns: "type|hours(comma-sep)|evidence|recommendation;..."'
     ),
@@ -84,24 +80,23 @@ export const TemporalAnalysisOutputSchema = z.object({
   // type: strength | improvement
   qualitativeInsightsData: z
     .string()
-    .max(1500)
     .describe(
       'Insights: "type(strength/improvement)|insight|evidence|linkedHours(comma-sep);..."'
     ),
 
   // Top 3 temporal insights
-  topInsights: z.array(z.string().max(3000)).max(3),
+  topInsights: z.array(z.string()).max(3),
 
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
 
   // NEW: Structured strengths with evidence (temporal performance strengths)
   // Format: "title|description|quote1,quote2,quote3;title2|description2|quotes;..."
-  strengthsData: z.string().max(4000).optional(),
+  strengthsData: z.string().optional(),
 
   // NEW: Growth areas with evidence and recommendations (temporal weaknesses/fatigue patterns)
   // Format: "title|description|evidence1,evidence2|recommendation;title2|..."
-  growthAreasData: z.string().max(4000).optional(),
+  growthAreasData: z.string().optional(),
 });
 
 export type TemporalAnalysisOutput = z.infer<typeof TemporalAnalysisOutputSchema>;
@@ -396,7 +391,6 @@ export const TemporalInsightsOutputSchema = z.object({
   // Activity pattern narrative (based on heatmap data)
   activityPatternSummary: z
     .string()
-    .max(500)
     .describe(
       'Human-readable summary of when the user is most active (e.g., "Most active during morning hours, particularly 9-11 AM on weekdays")'
     ),
@@ -404,14 +398,13 @@ export const TemporalInsightsOutputSchema = z.object({
   // Session style description
   sessionStyleSummary: z
     .string()
-    .max(500)
     .describe(
       'Description of typical session patterns (e.g., "Prefers longer, deep-dive sessions averaging 25 minutes with 8+ turns")'
     ),
 
   // Top 3 temporal insights (actionable)
   topInsights: z
-    .array(z.string().max(300))
+    .array(z.string())
     .max(3)
     .describe('Top 3 actionable insights about temporal patterns'),
 
@@ -419,7 +412,6 @@ export const TemporalInsightsOutputSchema = z.object({
   // Format: "title|description|evidence1,evidence2;..."
   strengthsData: z
     .string()
-    .max(2000)
     .describe(
       'Temporal strengths: "title|description|metric-based evidence;..." (e.g., "Consistent Deep Engagement|You frequently engage in sessions with 5+ turns...|deepSessionRate: 65%")'
     ),
@@ -428,7 +420,6 @@ export const TemporalInsightsOutputSchema = z.object({
   // Format: "title|description|evidence|recommendation;..."
   growthAreasData: z
     .string()
-    .max(2000)
     .describe(
       'Temporal growth areas: "title|description|evidence|recommendation;..." (focus on time-based patterns, NOT fatigue accusations)'
     ),
