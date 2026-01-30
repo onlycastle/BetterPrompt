@@ -108,58 +108,6 @@ export {
 } from './coding-style';
 
 // ============================================================================
-// Unified Report Types (v3.0 - Hyper-Personalized)
-// ============================================================================
-export {
-  // Schemas
-  UnifiedReportSchema,
-  ProfileSchema,
-  DimensionResultSchema,
-  DimensionInsightSchema,
-  EvidenceQuoteSchema,
-  RecommendationSchema,
-  ReportSummarySchema,
-  PremiumContentSchema,
-  // Types
-  type UnifiedReport,
-  type Profile,
-  type DimensionResult,
-  type DimensionInsight,
-  type DimensionName,
-  type DimensionLevel,
-  type EvidenceQuote,
-  type Recommendation,
-  type ReportSummary,
-  type PremiumContent,
-  type Tier,
-  type CodingStyleType as UnifiedCodingStyleType,
-  type ControlLevel,
-  type InsightType,
-  type ConversationInsight,
-  type ResearchInsight,
-  type LearningResource,
-  // Constants
-  DIMENSION_DISPLAY_NAMES,
-  STRENGTH_THRESHOLD,
-  MATRIX_NAMES,
-} from './unified-report';
-
-// ============================================================================
-// Schema Bridge (Conversion Utilities)
-// ============================================================================
-export {
-  verboseToProfile,
-  typeResultToProfile,
-  dimensionsToDimensionResults,
-  generateSummary,
-  extractEvidence,
-  toUnifiedReport,
-  isDimensionStrength,
-  getMatrixInfo,
-  type ConversionInput,
-} from './schema-bridge';
-
-// ============================================================================
 // Metacognition Analysis Types (NEW)
 // ============================================================================
 export {
