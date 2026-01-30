@@ -39,6 +39,21 @@ export const DeveloperUtteranceSchema = z.object({
   /** Raw text content from the developer's message */
   text: z.string(),
 
+  /**
+   * Display-friendly text with machine-generated content summarized.
+   *
+   * This field contains a sanitized version of the text where:
+   * - Error logs → [Error: {brief message}]
+   * - Stack traces → [Stack trace]
+   * - Code blocks → [Code: {language}]
+   * - CLI output → [CLI output]
+   * - JSON data → [JSON data]
+   *
+   * The developer's natural language is preserved.
+   * Used for display in reports (Communication Patterns quotes, etc.)
+   */
+  displayText: z.string().optional(),
+
   /** ISO 8601 timestamp of the message */
   timestamp: z.string(),
 
