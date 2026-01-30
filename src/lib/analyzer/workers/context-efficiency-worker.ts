@@ -92,7 +92,10 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
     return {
       developerUtterances: phase1.developerUtterances.map((u) => ({
         id: u.id,
-        text: u.text.slice(0, 1500), // Longer for context analysis
+        // Use displayText (sanitized) if available, fallback to raw text
+        // displayText has machine-generated content (error logs, stack traces, code) summarized
+        // Longer limit for context analysis
+        text: (u.displayText || u.text).slice(0, 1500),
         sessionId: u.sessionId,
         turnIndex: u.turnIndex,
         characterCount: u.characterCount,
