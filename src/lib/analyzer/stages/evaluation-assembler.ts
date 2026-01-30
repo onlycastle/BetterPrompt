@@ -240,8 +240,10 @@ export function assembleEvaluation(
 /**
  * Truncate personalitySummary to 3000 chars, preserving bold markers.
  * Also logs a warning if content is below the target minimum length.
+ *
+ * Exported for use in orchestrator when merging translated fields.
  */
-function truncatePersonalitySummary(summary: string): string {
+export function truncatePersonalitySummary(summary: string): string {
   if (!summary || typeof summary !== 'string') return '';
 
   // Warn if content is below target minimum (2500 chars expected, warn below 2000)

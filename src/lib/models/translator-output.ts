@@ -109,8 +109,8 @@ const TranslatedAgentInsightEntrySchema = z.object({
  * response, preserving all structural/numeric fields from the English version.
  */
 export const TranslatorOutputSchema = z.object({
-  /** Translated personality summary */
-  personalitySummary: z.string().max(3000)
+  /** Translated personality summary (no max - may exceed 3000 when translated) */
+  personalitySummary: z.string()
     .describe('Translated personality summary — keep **bold markers** and technical terms in English'),
 
   /** Translated dimension insights (6 items) */
