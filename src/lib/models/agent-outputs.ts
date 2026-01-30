@@ -56,50 +56,6 @@ export {
   parseRepeatedCommandPatternsData,
 };
 
-// Import and re-export PatternDetective schema from dedicated file
-import {
-  PatternDetectiveOutputSchema,
-  type PatternDetectiveOutput,
-} from './pattern-detective-data';
-export { PatternDetectiveOutputSchema, type PatternDetectiveOutput };
-
-// Import and re-export AntiPatternSpotter and CrossSession schemas from dedicated file
-import {
-  AntiPatternSpotterOutputSchema,
-  type AntiPatternSpotterOutput,
-  ANTI_PATTERN_HIERARCHY,
-  type AntiPatternSeverity,
-  type CriticalAntiPattern,
-  type WarningAntiPattern,
-  type InfoAntiPattern,
-  type AntiPatternType,
-  CrossSessionAntiPatternOutputSchema,
-  type CrossSessionAntiPatternOutput,
-  type ParsedCrossSessionPattern,
-  parseCrossSessionPatternsData,
-  getAllCrossSessionPatterns,
-  getAntiPatternSeverity,
-  type ParsedIsolatedIncident,
-  parseIsolatedIncidentsData,
-} from './antipattern-spotter-data';
-export {
-  AntiPatternSpotterOutputSchema,
-  type AntiPatternSpotterOutput,
-  ANTI_PATTERN_HIERARCHY,
-  type AntiPatternSeverity,
-  type CriticalAntiPattern,
-  type WarningAntiPattern,
-  type InfoAntiPattern,
-  type AntiPatternType,
-  CrossSessionAntiPatternOutputSchema,
-  type CrossSessionAntiPatternOutput,
-  type ParsedCrossSessionPattern,
-  parseCrossSessionPatternsData,
-  getAllCrossSessionPatterns,
-  getAntiPatternSeverity,
-  type ParsedIsolatedIncident,
-  parseIsolatedIncidentsData,
-};
 
 // ============================================================================
 // Knowledge Gap Analyzer: Knowledge Gaps + Learning Suggestions
@@ -414,14 +370,6 @@ export function parseContextEfficiencyLLMOutput(llmOutput: ContextEfficiencyLLMO
 }
 
 // ============================================================================
-// Metacognition Output (NEW)
-// ============================================================================
-
-// Import from dedicated schema file
-import { MetacognitionOutputSchema, type MetacognitionOutput } from './metacognition-data';
-export { MetacognitionOutputSchema, type MetacognitionOutput };
-
-// ============================================================================
 // Temporal Analysis Output (REDESIGNED)
 // ============================================================================
 
@@ -448,14 +396,6 @@ export {
   TemporalMetricsSchema,
   type TemporalMetrics,
 };
-
-// ============================================================================
-// Multitasking Analysis Output (NEW)
-// ============================================================================
-
-// Import from dedicated schema file
-import { MultitaskingAnalysisOutputSchema, type MultitaskingAnalysisOutput } from './multitasking-data';
-export { MultitaskingAnalysisOutputSchema, type MultitaskingAnalysisOutput };
 
 // ============================================================================
 // Type Classifier Output (v2 Architecture)
@@ -532,34 +472,24 @@ export type TypeClassifierOutput = z.infer<typeof TypeClassifierOutputSchema>;
 /**
  * Combined outputs from all Wow-Focused Agents
  *
- * Original 4 agents:
- * - Pattern Detective: Conversation patterns, repeated questions
- * - Anti-Pattern Spotter: Error loops, bad habits
- * - Knowledge Gap: Knowledge gaps + learning suggestions
- * - Context Efficiency: Token inefficiency patterns
- *
- * NEW agents (Premium+):
- * - Metacognition: Self-awareness patterns, blind spots, growth mindset
- * - Temporal Analyzer: Time-based quality patterns, fatigue signals
+ * Current workers (v2 architecture):
+ * - TrustVerification: Anti-patterns and verification behavior
+ * - WorkflowHabit: Planning habits and critical thinking
+ * - KnowledgeGap: Knowledge gaps and learning resources
+ * - ContextEfficiency: Token efficiency patterns
+ * - TypeClassifier: Developer type classification
  *
  * All fields are optional since agents may fail independently.
  */
 export const AgentOutputsSchema = z.object({
   // =========================================================================
-  // Legacy Agents (kept for backward compatibility)
+  // Legacy Agents (kept for backward compatibility with cached data)
   // =========================================================================
-  patternDetective: PatternDetectiveOutputSchema.optional(),
-  antiPatternSpotter: AntiPatternSpotterOutputSchema.optional(),
   knowledgeGap: KnowledgeGapOutputSchema.optional(),
   contextEfficiency: ContextEfficiencyOutputSchema.optional(),
 
-  // Legacy: Metacognition + Temporal Analysis agents (deprecated in v2)
-  metacognition: MetacognitionOutputSchema.optional(),
+  // Legacy: Temporal Analysis (kept for stored data)
   temporalAnalysis: TemporalAnalysisResultSchema.optional(),
-  multitasking: MultitaskingAnalysisOutputSchema.optional(),
-
-  // Legacy: Cross-Session Anti-Pattern Detection (deprecated in v2, kept for stored data)
-  crossSessionAntiPatterns: CrossSessionAntiPatternOutputSchema.optional(),
 
   // =========================================================================
   // v2 Architecture Workers
@@ -595,15 +525,10 @@ export function createEmptyAgentOutputs(): AgentOutputs {
  */
 export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
   return !!(
-    // Legacy agents
-    outputs.patternDetective ||
-    outputs.antiPatternSpotter ||
+    // Legacy agents (kept for cached data)
     outputs.knowledgeGap ||
     outputs.contextEfficiency ||
-    outputs.metacognition ||
     outputs.temporalAnalysis ||
-    outputs.multitasking ||
-    outputs.crossSessionAntiPatterns ||
     // v2 agents
     outputs.strengthGrowth ||
     outputs.trustVerification ||
@@ -618,33 +543,16 @@ export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
 export function getAllTopInsights(outputs: AgentOutputs): string[] {
   const insights: string[] = [];
 
-  if (outputs.patternDetective?.topInsights) {
-    insights.push(...outputs.patternDetective.topInsights);
-  }
-  if (outputs.antiPatternSpotter?.topInsights) {
-    insights.push(...outputs.antiPatternSpotter.topInsights);
-  }
+  // Legacy agents (kept for cached data)
   if (outputs.knowledgeGap?.topInsights) {
     insights.push(...outputs.knowledgeGap.topInsights);
   }
   if (outputs.contextEfficiency?.topInsights) {
     insights.push(...outputs.contextEfficiency.topInsights);
   }
-  // NEW: Include metacognition and temporal insights
-  if (outputs.metacognition?.topInsights) {
-    insights.push(...outputs.metacognition.topInsights);
-  }
-  // REDESIGNED: Temporal insights are now nested under insights.topInsights
+  // Temporal insights are nested under insights.topInsights
   if (outputs.temporalAnalysis?.insights?.topInsights) {
     insights.push(...outputs.temporalAnalysis.insights.topInsights);
-  }
-  // NEW: Include multitasking insights
-  if (outputs.multitasking?.topInsights) {
-    insights.push(...outputs.multitasking.topInsights);
-  }
-  // NEW: Include cross-session anti-pattern insights
-  if (outputs.crossSessionAntiPatterns?.topInsights) {
-    insights.push(...outputs.crossSessionAntiPatterns.topInsights);
   }
 
   return insights;
@@ -1011,13 +919,9 @@ import type { TranslatedAgentInsights, TranslatedAgentInsight } from './verbose-
  * Agent keys that may have translated insights
  */
 export type TranslatedAgentKey =
-  | 'patternDetective'
-  | 'metacognition'
-  | 'antiPatternSpotter'
   | 'knowledgeGap'
   | 'contextEfficiency'
   | 'temporalAnalysis'
-  | 'multitasking'
   | 'strengthGrowth'
   | 'trustVerification'
   | 'workflowHabit';
@@ -1090,19 +994,13 @@ export function getAllGrowthAreasHybrid(
     }
   };
 
-  // Free tier agents
-  addFromLegacyAgent(translatedInsights?.patternDetective, outputs.patternDetective?.growthAreasData);
-  addFromLegacyAgent(translatedInsights?.metacognition, outputs.metacognition?.growthAreasData);
-
-  // Premium tier agents
-  addFromLegacyAgent(translatedInsights?.antiPatternSpotter, outputs.antiPatternSpotter?.growthAreasData);
+  // Legacy agents (kept for cached data)
   addFromLegacyAgent(translatedInsights?.knowledgeGap, outputs.knowledgeGap?.growthAreasData);
   addFromLegacyAgent(translatedInsights?.contextEfficiency, outputs.contextEfficiency?.growthAreasData);
   addFromLegacyAgent(
     translatedInsights?.temporalAnalysis,
     outputs.temporalAnalysis?.insights?.growthAreasData
   );
-  addFromLegacyAgent(translatedInsights?.multitasking, outputs.multitasking?.growthAreasData);
 
   // v2 strengthGrowth — translated flat string OR original structured data
   if (translatedInsights?.strengthGrowth?.growthAreasData) {

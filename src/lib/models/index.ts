@@ -108,24 +108,6 @@ export {
 } from './coding-style';
 
 // ============================================================================
-// Metacognition Analysis Types (NEW)
-// ============================================================================
-export {
-  MetacognitionOutputSchema,
-  type MetacognitionOutput,
-  type AwarenessType,
-  type AwarenessInstance,
-  type BlindSpot,
-  type GrowthMindsetIndicators,
-  type MetacognitionAnalysis,
-  parseAwarenessInstancesData,
-  parseBlindSpotsData,
-  parseGrowthMindsetData,
-  parseMetacognitionOutput,
-  createDefaultMetacognitionOutput,
-} from './metacognition-data';
-
-// ============================================================================
 // Temporal Analysis Types (REDESIGNED)
 // ============================================================================
 export {
@@ -175,48 +157,6 @@ export {
   HourlyEngagementSchema,
   createEmptyTemporalMetrics,
 } from './temporal-metrics';
-
-// ============================================================================
-// Risk Signal Types (NEW)
-// ============================================================================
-export {
-  RiskTypeSchema,
-  RiskSignalSchema,
-  RiskAnalysisSchema,
-  type RiskType,
-  type RiskSignal,
-  type RiskAnalysis,
-  RISK_TYPE_WEIGHTS,
-  RISK_TO_KB_MAPPING,
-  PATTERN_TO_RISK_TYPE,
-  calculateRiskScore,
-  calculateRiskByType,
-  getKBRecommendations,
-  getRiskTypeForPattern,
-  createDefaultRiskAnalysis,
-  createRiskSignalFromPattern,
-} from './risk-signal';
-
-// ============================================================================
-// Multitasking Analysis Types (NEW)
-// ============================================================================
-export {
-  MultitaskingAnalysisOutputSchema,
-  type MultitaskingAnalysisOutput,
-  type WorkType,
-  type MultitaskingStrategyType,
-  type SessionFocus,
-  type ContextPollutionInstance,
-  type WorkUnit,
-  type StrategyEvaluation,
-  type MultitaskingAnalysis,
-  parseSessionFocusData,
-  parseContextPollutionData,
-  parseWorkUnitSeparationData,
-  parseStrategyEvaluationData,
-  parseMultitaskingAnalysisOutput,
-  createDefaultMultitaskingAnalysisOutput,
-} from './multitasking-data';
 
 // ============================================================================
 // Dimension Schema (Extracted to break circular dependencies)
