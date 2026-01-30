@@ -20,7 +20,7 @@ import { createEmptyAgentOutputs } from '../../models/agent-outputs';
 import { ContentWriterStage } from '../stages/content-writer';
 import { TranslatorStage } from '../stages/translator';
 import { detectPrimaryLanguage, LANGUAGE_DISPLAY_NAMES, type LanguageDetectionResult } from '../stages/content-writer-prompts';
-import { assembleEvaluation, truncatePersonalitySummary } from '../stages/evaluation-assembler';
+import { assembleEvaluation } from '../stages/evaluation-assembler';
 import type { TranslatorOutput } from '../../models/translator-output';
 import { ContentGateway, type Tier } from '../content-gateway';
 import { BaseWorker } from '../workers/base-worker';
@@ -795,9 +795,9 @@ export class AnalysisOrchestrator {
    * Merge translated text fields into the English ContentWriter response
    */
   private mergeTranslatedFields(englishResponse: any, translated: TranslatorOutput): void {
-    // Personality summary (truncate to 3000 chars like English version)
+    // Personality summary
     if (translated.personalitySummary) {
-      englishResponse.personalitySummary = truncatePersonalitySummary(translated.personalitySummary);
+      englishResponse.personalitySummary = translated.personalitySummary;
     }
 
     // Dimension insights — overlay text fields, preserve structure
