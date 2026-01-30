@@ -245,33 +245,13 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     const tools = message.toolCalls?.map(tc => tc.name) ?? [];
     const content = message.content.toLowerCase();
 
-    if (this.isPlanningResponse(tools)) {
-      return 'planning';
-    }
-
-    if (this.isCodeEditResponse(tools)) {
-      return 'code_edit';
-    }
-
-    if (this.isCodeGenerationResponse(tools)) {
-      return 'code_generation';
-    }
-
-    if (this.isErrorFixResponse(content)) {
-      return 'error_fix';
-    }
-
-    if (this.isToolExecutionResponse(tools)) {
-      return 'tool_execution';
-    }
-
-    if (this.isQuestionResponse(content)) {
-      return 'question';
-    }
-
-    if (this.isExplanationResponse(content)) {
-      return 'explanation';
-    }
+    if (this.isPlanningResponse(tools)) return 'planning';
+    if (this.isCodeEditResponse(tools)) return 'code_edit';
+    if (this.isCodeGenerationResponse(tools)) return 'code_generation';
+    if (this.isErrorFixResponse(content)) return 'error_fix';
+    if (this.isToolExecutionResponse(tools)) return 'tool_execution';
+    if (this.isQuestionResponse(content)) return 'question';
+    if (this.isExplanationResponse(content)) return 'explanation';
 
     return 'other';
   }
@@ -520,10 +500,31 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
           (classification?.classification === 'system' &&
             classification.confidence < DataExtractorWorker.LLM_FILTER_CONFIDENCE_THRESHOLD)
         ) {
-          classifiedUtterances.push(batch[j]!);
+          const utterance = batch[j]!;
+
+          // Apply displayText from LLM sanitization
+          // If LLM provided a sanitized displayText, use it
+          // Otherwise fallback to truncated original text
+          if (classification?.displayText && classification.displayText.trim()) {
+            utterance.displayText = classification.displayText;
+          } else {
+            // No displayText from LLM - use original text (truncated for display)
+            utterance.displayText = utterance.text.length > 300
+              ? utterance.text.slice(0, 297) + '...'
+              : utterance.text;
+          }
+
+          classifiedUtterances.push(utterance);
         } else {
           this.log(`Filtered: "${batch[j]!.text.slice(0, 50)}..." (${classification?.reason ?? 'system metadata'})`);
         }
+      }
+    }
+
+    // Set displayText for short utterances (they bypass LLM, so set displayText = text)
+    for (const utterance of shortUtterances) {
+      if (!utterance.displayText) {
+        utterance.displayText = utterance.text;
       }
     }
 
@@ -621,11 +622,16 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
 
   /**
    * Build the system prompt for the content classification LLM.
+   *
+   * This prompt performs TWO tasks in one call:
+   * 1. Classification: developer vs system metadata
+   * 2. Sanitization: Create display-friendly text for developer utterances
    */
   private buildFilterSystemPrompt(): string {
-    return `You are a content classifier for developer-AI conversation analysis.
+    return `You are a content classifier AND sanitizer for developer-AI conversation analysis.
 
-Your task: Classify each text segment as either:
+## TASK 1: Classification
+Classify each text segment as either:
 1. "developer" - Actual developer input (questions, requests, code, feedback)
 2. "system" - System-injected metadata (skill docs, session summaries, hook outputs)
 
@@ -635,24 +641,44 @@ SYSTEM METADATA PATTERNS (filter these out):
 - Claude Code system instructions or context injections
 - Hook outputs, command outputs, tool results embedded in user messages
 - Any instructional content addressed TO Claude, not FROM the developer
-- Technical documentation that appears to be system-injected rather than user-provided
 
 DEVELOPER INPUT PATTERNS (keep these):
 - Questions, requests, or instructions for the AI assistant
 - Code snippets the developer wants help with
 - Feedback on AI responses
 - Error messages the developer is reporting/asking about
-- Conversational responses
-- Implementation requests or bug reports
-- Any content that represents the developer's direct communication
+- Conversational responses, implementation requests, bug reports
+
+## TASK 2: Sanitization (for "developer" texts only)
+Create a display-friendly version (displayText) that:
+- PRESERVES the developer's actual words and intent verbatim
+- SUMMARIZES machine-generated content they pasted:
+  - Error logs (## Error Type, Error:, Exception:) → [Error: {brief message, max 50 chars}]
+  - Stack traces (at Function.method, Traceback, file:line) → [Stack trace]
+  - Code blocks (\`\`\`...\`\`\`) → [Code: {language or 'snippet'}]
+  - CLI/terminal output (npm logs, git output, command results) → [CLI output]
+  - JSON data (large JSON objects/arrays) → [JSON data]
+- KEEPS the result under 300 characters when possible
+- If text has NO machine-generated content, displayText = original text (unchanged)
+
+EXAMPLE INPUT:
+"좋았어 이제 로그인 잘 된다. 그런데 로그인하고 회사 이름을 CT라고 이름지었더니 ## Error Type Console Error ## Error Message No workspace ID set at SupabaseStorageManager.getData (lib/supabase-storage.ts:91:15) at DashboardOverviewPage.useEffect.loadData (app/dashboard/page.tsx:94:41)"
+
+EXAMPLE OUTPUT:
+{
+  "classification": "developer",
+  "confidence": 0.95,
+  "reason": "Developer reporting an error encountered during login",
+  "displayText": "좋았어 이제 로그인 잘 된다. 그런데 로그인하고 회사 이름을 CT라고 이름지었더니 [Error: No workspace ID set][Stack trace]"
+}
 
 IMPORTANT GUIDELINES:
-- When in doubt, classify as "developer" to avoid filtering genuine input
+- Only provide displayText for "developer" classified texts (not for "system")
+- NEVER alter the developer's natural language - only summarize pasted technical content
+- When in doubt about classification, default to "developer"
 - Use confidence scores to indicate certainty (0.0-1.0)
-- A high confidence (>0.8) "system" classification means you're very sure it's metadata
-- Low confidence means the content is ambiguous
 
-Respond with a JSON object containing an array of classifications, one per input.`;
+Respond with a JSON object containing an array of classifications.`;
   }
 
   /**
@@ -677,24 +703,16 @@ Return exactly ${inputs.length} classifications in order.`;
   private hadError(message: ParsedMessage | null): boolean {
     if (!message) return false;
 
-    // Check tool call errors
-    if (message.toolCalls?.some(tc => tc.isError)) {
-      return true;
-    }
+    if (message.toolCalls?.some(tc => tc.isError)) return true;
 
-    // Check content for error indicators
     const content = message.content.toLowerCase();
     return content.includes('error:') || content.includes('failed') ||
            content.includes('exception') || content.includes('traceback');
   }
 
   private wasSuccessful(message: ParsedMessage): boolean {
-    // Check if tools completed without errors
-    if (message.toolCalls?.length && !this.hadError(message)) {
-      return true;
-    }
+    if (message.toolCalls?.length && !this.hadError(message)) return true;
 
-    // Check content for success indicators
     const content = message.content.toLowerCase();
     return content.includes('done') || content.includes('completed') ||
            content.includes('success') || content.includes('created');
