@@ -33,6 +33,18 @@ export const ContentClassificationSchema = z.object({
 
   /** Brief explanation for the classification decision */
   reason: z.string().optional(),
+
+  /**
+   * Display-friendly text with machine-generated content summarized.
+   *
+   * Only provided for "developer" classified texts. Contains the original
+   * developer text with pasted technical content (error logs, stack traces,
+   * code blocks, CLI output) summarized into short tags like [Error: ...].
+   *
+   * If the original text is already clean (no logs/traces/code), this will
+   * match the original text.
+   */
+  displayText: z.string().optional(),
 });
 
 export type ContentClassification = z.infer<typeof ContentClassificationSchema>;

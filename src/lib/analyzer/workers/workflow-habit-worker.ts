@@ -93,7 +93,9 @@ export class WorkflowHabitWorker extends BaseWorker<WorkflowHabitOutput> {
     return {
       developerUtterances: phase1.developerUtterances.map((u) => ({
         id: u.id,
-        text: u.text.slice(0, 1000),
+        // Use displayText (sanitized) if available, fallback to raw text
+        // displayText has machine-generated content (error logs, stack traces, code) summarized
+        text: (u.displayText || u.text).slice(0, 1000),
         sessionId: u.sessionId,
         turnIndex: u.turnIndex,
         wordCount: u.wordCount,

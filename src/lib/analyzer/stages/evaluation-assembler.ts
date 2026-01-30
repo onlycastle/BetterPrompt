@@ -76,8 +76,9 @@ function quotesMatch(quote1: string, quote2: string): boolean {
   if (normalized1 === normalized2) return true;
 
   // Check substring containment (handles truncation)
-  const shorter = normalized1.length <= normalized2.length ? normalized1 : normalized2;
-  const longer = normalized1.length > normalized2.length ? normalized1 : normalized2;
+  const [shorter, longer] = normalized1.length <= normalized2.length
+    ? [normalized1, normalized2]
+    : [normalized2, normalized1];
 
   // If the shorter string is at least 30 chars and is contained in the longer, match
   if (shorter.length >= 30 && longer.includes(shorter)) return true;
@@ -248,18 +249,34 @@ export function assembleEvaluation(
  * CRITICAL: When falling back to pattern.examples (LLM-generated quotes),
  * we must verify that quotes are from developer utterances, NOT AI responses.
  * This prevents the bug where AI responses appear as examples in the frontend.
+ *
+ * QUOTE SANITIZATION (v4):
+ * - Uses displayText (sanitized) instead of raw text when available
+ * - displayText has machine-generated content (error logs, stack traces, code)
+ *   summarized into short tags like [Error: ...], [Stack trace], [Code: ...]
+ * - This makes quotes more readable in the frontend
+ *
+ * DEDUPLICATION:
+ * - Tracks used utteranceIds across all patterns to prevent the same quote
+ *   appearing in multiple patterns
  */
 function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | undefined): any[] {
   if (!Array.isArray(patterns)) return [];
 
   // Build utterance lookup map for O(1) access
+  // Use displayText (sanitized) if available, fallback to text
   const utteranceLookup = new Map<string, string>();
   if (phase1Output?.developerUtterances) {
     for (const u of phase1Output.developerUtterances) {
-      // Store truncated quote (max 500 chars for display)
-      utteranceLookup.set(u.id, u.text.slice(0, 500));
+      // Prefer displayText (machine-generated content is summarized)
+      // Fallback to truncated raw text if displayText not available
+      const quote = u.displayText || u.text.slice(0, 500);
+      utteranceLookup.set(u.id, quote.slice(0, 500)); // Ensure max 500 chars
     }
   }
+
+  // Track used utteranceIds across all patterns to prevent duplicates
+  const usedUtteranceIds = new Set<string>();
 
   // Build corpora for fallback verification
   let devTexts: string[] = [];
@@ -279,7 +296,7 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
     debugLog(`  examplesData: ${pattern.examplesData?.slice(0, 80) || 'EMPTY'}...`);
     debugLog(`  parsedExamples: ${parsedExamples.length} items`);
 
-    // Resolve utteranceIds to actual quotes, filter invalid ones
+    // Resolve utteranceIds to actual quotes, filter invalid ones and duplicates
     const resolvedExamples = parsedExamples
       .map(ex => {
         if (!ex.utteranceId) {
@@ -287,12 +304,23 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
           debugLog(`  Skip: empty utteranceId`);
           return null;
         }
+
+        // Check for duplicate utteranceId (already used in another pattern)
+        if (usedUtteranceIds.has(ex.utteranceId)) {
+          debugLog(`  Skip duplicate: ${ex.utteranceId}`);
+          return null;
+        }
+
         const quote = utteranceLookup.get(ex.utteranceId);
         if (!quote) {
           // utteranceId not found in Phase1Output - skip
           debugLog(`  Skip: utteranceId "${ex.utteranceId}" not found in Phase1Output`);
           return null;
         }
+
+        // Mark utteranceId as used
+        usedUtteranceIds.add(ex.utteranceId);
+
         return { quote, analysis: ex.analysis };
       })
       .filter((ex): ex is { quote: string; analysis: string } => ex !== null);
@@ -301,15 +329,12 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
 
     // Determine final examples with verification
     let examples: Array<{ quote: string; analysis: string }>;
-    let verificationStats = { kept: 0, filtered: 0 };
+    const verificationStats = { kept: 0, filtered: 0 };
 
     if (resolvedExamples.length > 0) {
-      // utteranceId resolution succeeded - these are verified developer utterances
       examples = resolvedExamples;
       debugLog(`  → Using resolved examples (${examples.length} items)`);
     } else if (pattern.examples && Array.isArray(pattern.examples) && devTexts.length > 0) {
-      // Fallback to LLM-generated examples WITH VERIFICATION
-      // Filter out any quotes that match AI responses but not developer utterances
       debugLog(`  ⚠️ FALLBACK: Using LLM examples with verification`);
       const originalCount = pattern.examples.length;
       examples = pattern.examples.filter((ex: any) => {
@@ -328,7 +353,6 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
       });
       debugLog(`  Verification: kept=${verificationStats.kept}, filtered=${verificationStats.filtered} (original=${originalCount})`);
     } else {
-      // No phase1Output for verification or no examples - use as-is
       examples = pattern.examples || [];
       if (!phase1Output) {
         debugLog(`  → No phase1Output for verification, using examples as-is`);
@@ -563,11 +587,16 @@ function assemblePlanning(wh: WorkflowHabitOutput): any | null {
   const hasTodoWrite = wh.planningHabits.some(ph => ph.type === 'todowrite_usage');
   const hasTaskDecomp = wh.planningHabits.some(ph => ph.type === 'task_decomposition');
 
-  // Determine maturity level
-  let maturityLevel: 'reactive' | 'emerging' | 'structured' | 'expert' = 'reactive';
-  if (hasSlashPlan && hasTaskDecomp) maturityLevel = 'expert';
-  else if (hasSlashPlan) maturityLevel = 'structured';
-  else if (hasTodoWrite || hasTaskDecomp) maturityLevel = 'emerging';
+  let maturityLevel: 'reactive' | 'emerging' | 'structured' | 'expert';
+  if (hasSlashPlan && hasTaskDecomp) {
+    maturityLevel = 'expert';
+  } else if (hasSlashPlan) {
+    maturityLevel = 'structured';
+  } else if (hasTodoWrite || hasTaskDecomp) {
+    maturityLevel = 'emerging';
+  } else {
+    maturityLevel = 'reactive';
+  }
 
   // Convert habits to insights, split by effectiveness
   const strengths: any[] = [];
@@ -720,13 +749,15 @@ function mapEvidence(evidence: Array<{ utteranceId?: string; quote?: string }> |
 function mapAntiPatternSeverity(
   severity: string | undefined
 ): 'mild' | 'moderate' | 'significant' {
-  if (severity === 'critical' || severity === 'significant') {
-    return 'significant';
+  switch (severity) {
+    case 'critical':
+    case 'significant':
+      return 'significant';
+    case 'mild':
+      return 'mild';
+    default:
+      return 'moderate';
   }
-  if (severity === 'mild') {
-    return 'mild';
-  }
-  return 'moderate';
 }
 
 /**
@@ -843,7 +874,8 @@ function buildUtteranceLookup(
 
       lookup.push({
         id,
-        text: utterance.text,
+        // Use displayText (sanitized) if available, fallback to raw text
+        text: utterance.displayText || utterance.text,
         timestamp: utterance.timestamp,
         sessionId,
         turnIndex: isNaN(turnIndex) ? 0 : turnIndex,

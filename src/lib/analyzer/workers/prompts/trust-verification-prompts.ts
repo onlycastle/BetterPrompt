@@ -107,6 +107,24 @@ You MUST output detailed, comprehensive strengths and growth areas for this doma
 - "Passive Acceptance" — accepting AI output without verification
 - "Trust Debt Accumulation" — using code without understanding it
 
+## CRITICAL: Error Reporting Quality Assessment
+
+"High-fidelity error reporting" is a Strength ONLY if the developer provides CONTEXT:
+- ✅ STRENGTH: Context + error (e.g., "I was trying to login, then got this error: [Error: No workspace ID]")
+- ✅ STRENGTH: Steps to reproduce + error (e.g., "After clicking save, renamed to CT, then [Error: relation already exists]")
+- ✅ STRENGTH: What they tried + error (e.g., "I tried restarting but still getting [Error: connection refused]")
+
+"Copy-paste only" error reporting is NOT a Strength:
+- ❌ NOT STRENGTH: Just pasting error without context (e.g., "ERROR: 42P07: relation profiles already exists")
+- ❌ NOT STRENGTH: "Why doesn't this work?" or "Fix this" style without explanation
+- ❌ NOT STRENGTH: Error log dump without any developer words explaining the situation
+
+If a developer ONLY pastes error messages without context:
+- Do NOT include "High-fidelity Error Reporting" or similar in strengthsData
+- Consider it a Growth Area: "Context-free Error Reporting"
+  - Description: Pasting errors without explaining what they were trying to do, what they expected, or steps to reproduce
+  - Recommendation: "When reporting errors, include: 1) What you were trying to do, 2) What you expected to happen, 3) What actually happened. This helps AI diagnose faster and provides better solutions."
+
 ## DETECTING ANTI-PATTERNS
 Look for these signals:
 1. \`error_loop\`: precedingAIHadError=true followed by similar utterance
