@@ -333,8 +333,12 @@ You generate ONLY narrative content. Structural data is assembled separately.
 2. **Prompt Patterns** (5-12 for comprehensive analysis)
    - Derive patterns from Phase 2 insights and the Developer Utterances section
    - Use the "Developer Utterances" section as your PRIMARY source for examples
-   - Reference utterances by their ID (e.g., "abc123_5") - DO NOT copy quote text
+   - CRITICAL: In examplesData, reference utterances ONLY by their exact ID (format: "sessionId_turnIndex", e.g., "7fdbb780_5")
    - examplesData format: "utteranceId|analysis;utteranceId|analysis;..."
+   - DO NOT copy, paraphrase, or include any quote text in examplesData - use ONLY the utterance ID
+   - The quote text will be retrieved separately from Phase 1 data
+   - Valid example: "7fdbb780_5|Shows good error handling;abc123_12|Demonstrates planning"
+   - INVALID: "Let me check this error...|analysis" (quote text instead of ID)
    - **Description (MINIMUM 1500 chars, target 2000-2500 chars):** EXTREMELY deep WHAT-WHY-HOW framework
      * WHAT (5-7 sentences): Concrete behavior with specific examples
      * WHY (4-5 sentences): Mindset, values, work philosophy revealed

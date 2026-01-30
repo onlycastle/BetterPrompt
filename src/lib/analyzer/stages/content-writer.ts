@@ -120,7 +120,11 @@ export class ContentWriterStage {
             return b.wordCount - a.wordCount;
           })
           .slice(0, 20)
-          .map(u => ({ id: u.id, text: u.text.slice(0, 1500), wordCount: u.wordCount }))
+          .map(u => ({
+            id: u.id,
+            text: (u.displayText || u.text).slice(0, 1500),
+            wordCount: u.wordCount
+          }))
       : undefined;
 
     const userPrompt = buildContentWriterUserPromptV3(
