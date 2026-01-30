@@ -8,7 +8,6 @@ import type { ParsedSession, ParsedMessage } from '../../src/lib/models/session.
 import type { TypeResult, CodingStyleType } from '../../src/lib/models/coding-style.js';
 import type { FullAnalysisResult } from '../../src/lib/analyzer/dimensions/index.js';
 import type { VerboseEvaluation } from '../../src/lib/models/verbose-evaluation.js';
-import type { UnifiedReport, DimensionResult } from '../../src/lib/models/unified-report.js';
 
 // ============================================
 // Session Factories
@@ -280,29 +279,6 @@ export function createMockDimensions(overrides: Partial<FullAnalysisResult> = {}
   };
 }
 
-/**
- * Create a single dimension result for UnifiedReport
- */
-export function createMockDimensionResult(
-  name: string,
-  overrides: Partial<DimensionResult> = {}
-): DimensionResult {
-  return {
-    name: name as DimensionResult['name'],
-    displayName: name.replace(/([A-Z])/g, ' $1').trim(),
-    score: 75,
-    level: 'proficient',
-    isStrength: true,
-    breakdown: { metric1: 80, metric2: 70 },
-    highlights: {
-      strengths: ['Good practices observed'],
-      growthAreas: ['Could improve in some areas'],
-    },
-    insights: [],
-    interpretation: 'Overall strong performance in this dimension.',
-    ...overrides,
-  };
-}
 
 // ============================================
 // Verbose Evaluation Factories
@@ -360,56 +336,6 @@ export function createMockVerboseEvaluation(
         effectiveness: 'highly_effective',
       },
     ],
-    ...overrides,
-  };
-}
-
-// ============================================
-// Unified Report Factories
-// ============================================
-
-/**
- * Create mock UnifiedReport
- */
-export function createMockUnifiedReport(overrides: Partial<UnifiedReport> = {}): UnifiedReport {
-  return {
-    id: 'unified-report-001',
-    createdAt: new Date().toISOString(),
-    sessionsAnalyzed: 5,
-    profile: {
-      primaryType: 'architect',
-      controlLevel: 'cartographer',
-      matrixName: 'Systems Architect',
-      matrixEmoji: '🏛️',
-      distribution: {
-        architect: 40,
-        scientist: 25,
-        collaborator: 20,
-        speedrunner: 10,
-        craftsman: 5,
-      },
-      personalitySummary: 'A strategic thinker who approaches AI collaboration systematically.',
-    },
-    dimensions: [
-      createMockDimensionResult('aiCollaboration'),
-      createMockDimensionResult('contextEngineering'),
-      createMockDimensionResult('toolMastery'),
-      createMockDimensionResult('burnoutRisk', { score: 30, isStrength: true }),
-      createMockDimensionResult('aiControl'),
-      createMockDimensionResult('skillResilience'),
-    ],
-    summary: {
-      overallMessage: 'Strong AI collaboration skills with room for growth.',
-      topStrengths: [
-        { dimension: 'aiCollaboration', displayName: 'AI Collaboration', score: 75, highlight: 'Excellent planning' },
-      ],
-      topGrowthAreas: [
-        { dimension: 'skillResilience', displayName: 'Skill Resilience', score: 65, highlight: 'Keep practicing' },
-      ],
-    },
-    evidence: [],
-    recommendations: [],
-    tier: 'free',
     ...overrides,
   };
 }
