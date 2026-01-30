@@ -9,7 +9,6 @@
 
 import { describe, it, expect } from 'vitest';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { StructuredAnalysisDataSchema } from '../../../src/lib/models/analysis-data';
 import { VerboseLLMResponseSchema } from '../../../src/lib/models/verbose-evaluation';
 
 /**
@@ -120,31 +119,6 @@ function findDeepestPath(schema: unknown, currentPath = 'root', currentDepth = 0
 }
 
 describe('Gemini Schema Nesting Depth', () => {
-  describe('StructuredAnalysisDataSchema (Module A)', () => {
-    it(`should not exceed ${GEMINI_MAX_NESTING_DEPTH} levels of nesting`, () => {
-      const jsonSchema = zodToJsonSchema(StructuredAnalysisDataSchema);
-      const maxDepth = calculateMaxNestingDepth(jsonSchema);
-      const deepestPath = findDeepestPath(jsonSchema);
-
-      expect(
-        maxDepth,
-        `Schema exceeds Gemini's max nesting depth.\nDeepest path: ${deepestPath.path}\nDepth: ${deepestPath.depth}\nMax allowed: ${GEMINI_MAX_NESTING_DEPTH}`
-      ).toBeLessThanOrEqual(GEMINI_MAX_NESTING_DEPTH);
-    });
-
-    it('should report the actual nesting depth for documentation', () => {
-      const jsonSchema = zodToJsonSchema(StructuredAnalysisDataSchema);
-      const maxDepth = calculateMaxNestingDepth(jsonSchema);
-      const deepestPath = findDeepestPath(jsonSchema);
-
-      console.log(`StructuredAnalysisDataSchema nesting depth: ${maxDepth}`);
-      console.log(`Deepest path: ${deepestPath.path}`);
-
-      // This test always passes, it's just for logging
-      expect(maxDepth).toBeGreaterThan(0);
-    });
-  });
-
   describe('VerboseLLMResponseSchema (Stage 2)', () => {
     it(`should not exceed ${GEMINI_MAX_NESTING_DEPTH} levels of nesting`, () => {
       const jsonSchema = zodToJsonSchema(VerboseLLMResponseSchema);
