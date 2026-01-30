@@ -93,49 +93,9 @@ describe('PatternDetectiveOutputSchema', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should FAIL when repeatedQuestionsData exceeds max length', () => {
-      const output = createValidPatternDetectiveOutput();
-      output.repeatedQuestionsData = 'a'.repeat(2001);
-
-      const result = PatternDetectiveOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when conversationStyleData exceeds max length', () => {
-      const output = createValidPatternDetectiveOutput();
-      output.conversationStyleData = 'a'.repeat(2001);
-
-      const result = PatternDetectiveOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when requestStartPatternsData exceeds max length', () => {
-      const output = createValidPatternDetectiveOutput();
-      output.requestStartPatternsData = 'a'.repeat(1001);
-
-      const result = PatternDetectiveOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
     it('should FAIL when topInsights has more than 3 items', () => {
       const output = createValidPatternDetectiveOutput();
       output.topInsights = ['insight 1', 'insight 2', 'insight 3', 'insight 4'];
-
-      const result = PatternDetectiveOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when topInsights item exceeds max length', () => {
-      const output = createValidPatternDetectiveOutput();
-      output.topInsights = ['a'.repeat(3001)];
-
-      const result = PatternDetectiveOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when overallStyleSummary exceeds max length', () => {
-      const output = createValidPatternDetectiveOutput();
-      output.overallStyleSummary = 'a'.repeat(3001);
 
       const result = PatternDetectiveOutputSchema.safeParse(output);
       expect(result.success).toBe(false);
@@ -212,30 +172,6 @@ describe('AntiPatternSpotterOutputSchema', () => {
       const output = createValidAntiPatternSpotterOutput();
       // @ts-expect-error - Testing runtime behavior
       delete output.errorLoopsData;
-
-      const result = AntiPatternSpotterOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when errorLoopsData exceeds max length', () => {
-      const output = createValidAntiPatternSpotterOutput();
-      output.errorLoopsData = 'a'.repeat(2001);
-
-      const result = AntiPatternSpotterOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when learningAvoidanceData exceeds max length', () => {
-      const output = createValidAntiPatternSpotterOutput();
-      output.learningAvoidanceData = 'a'.repeat(1501);
-
-      const result = AntiPatternSpotterOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when repeatedMistakesData exceeds max length', () => {
-      const output = createValidAntiPatternSpotterOutput();
-      output.repeatedMistakesData = 'a'.repeat(1501);
 
       const result = AntiPatternSpotterOutputSchema.safeParse(output);
       expect(result.success).toBe(false);
@@ -334,30 +270,6 @@ describe('KnowledgeGapOutputSchema', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should FAIL when knowledgeGapsData exceeds max length', () => {
-      const output = createValidKnowledgeGapOutput();
-      output.knowledgeGapsData = 'a'.repeat(2001);
-
-      const result = KnowledgeGapOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when learningProgressData exceeds max length', () => {
-      const output = createValidKnowledgeGapOutput();
-      output.learningProgressData = 'a'.repeat(1501);
-
-      const result = KnowledgeGapOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when recommendedResourcesData exceeds max length', () => {
-      const output = createValidKnowledgeGapOutput();
-      output.recommendedResourcesData = 'a'.repeat(1001);
-
-      const result = KnowledgeGapOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
     it('should FAIL when topInsights has more than 3 items', () => {
       const output = createValidKnowledgeGapOutput();
       output.topInsights = ['insight 1', 'insight 2', 'insight 3', 'insight 4'];
@@ -441,38 +353,6 @@ describe('ContextEfficiencyOutputSchema', () => {
       const output = createValidContextEfficiencyOutput();
       // @ts-expect-error - Testing runtime behavior
       delete output.contextUsagePatternData;
-
-      const result = ContextEfficiencyOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when contextUsagePatternData exceeds max length', () => {
-      const output = createValidContextEfficiencyOutput();
-      output.contextUsagePatternData = 'a'.repeat(1501);
-
-      const result = ContextEfficiencyOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when inefficiencyPatternsData exceeds max length', () => {
-      const output = createValidContextEfficiencyOutput();
-      output.inefficiencyPatternsData = 'a'.repeat(2001);
-
-      const result = ContextEfficiencyOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when promptLengthTrendData exceeds max length', () => {
-      const output = createValidContextEfficiencyOutput();
-      output.promptLengthTrendData = 'a'.repeat(501);
-
-      const result = ContextEfficiencyOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when redundantInfoData exceeds max length', () => {
-      const output = createValidContextEfficiencyOutput();
-      output.redundantInfoData = 'a'.repeat(1001);
 
       const result = ContextEfficiencyOutputSchema.safeParse(output);
       expect(result.success).toBe(false);

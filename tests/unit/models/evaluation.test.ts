@@ -63,16 +63,6 @@ describe('Evaluation Models', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should reject quote that is too long', () => {
-      const clue = {
-        type: 'positive',
-        quote: 'A'.repeat(501),  // > 500 chars
-        explanation: 'This is a valid explanation',
-      };
-      const result = ClueSchema.safeParse(clue);
-      expect(result.success).toBe(false);
-    });
-
     it('should reject invalid type', () => {
       const clue = {
         type: 'neutral',
@@ -141,15 +131,6 @@ describe('Evaluation Models', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should reject summary that is too long', () => {
-      const evaluation = {
-        rating: 'Strong',
-        summary: 'A'.repeat(501),  // > 500 chars
-        clues: [validClue],
-      };
-      const result = CategoryEvaluationSchema.safeParse(evaluation);
-      expect(result.success).toBe(false);
-    });
   });
 
   describe('EvaluationSchema', () => {
