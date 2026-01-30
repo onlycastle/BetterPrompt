@@ -1346,10 +1346,10 @@ export type VerboseLLMResponse = z.infer<typeof VerboseLLMResponseSchema>;
  */
 export const NarrativeLLMResponseSchema = z.object({
   // Narrative content (Phase 2 doesn't produce these)
+  // Note: No .max() - LLM may exceed target; truncation handled in evaluation-assembler
   personalitySummary: z
     .string()
-    .max(3000)
-    .describe('Hyper-personalized summary of their AI coding personality (target: 300-3000 chars)'),
+    .describe('Hyper-personalized summary of their AI coding personality (target: 2500-3000 chars, will be truncated if exceeded)'),
 
   // Prompt patterns with WHAT-WHY-HOW analysis
   promptPatterns: z.array(LLMPromptPatternSchema),
