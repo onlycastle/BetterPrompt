@@ -54,7 +54,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   private static readonly TRUNCATION_MARKER = '... [truncated]';
 
   // LLM filtering configuration
-  private static readonly LLM_FILTER_MIN_LENGTH = 100; // Skip LLM for short utterances
+  private static readonly LLM_FILTER_MIN_LENGTH = 10; // Skip LLM for very short utterances only
   private static readonly LLM_FILTER_CONFIDENCE_THRESHOLD = 0.7; // Filter if confidence >= threshold
   private static readonly LLM_FILTER_BATCH_SIZE = 20; // Max utterances per LLM call
 
@@ -537,6 +537,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    * Returns true if the utterance should be filtered out.
    */
   private isKnownSystemMetadata(text: string): boolean {
+    const trimmedText = text.trim();
     const knownPatterns = [
       // Skill documentation blocks
       /^Base directory for this skill:/i,
@@ -552,9 +553,21 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
 
       // Plan execution prompts (system-injected by /plan skill)
       /^Implement the following plan:/i,
+
+      // Claude-generated Insight blocks (injected via session context)
+      /★ Insight/,
+      /`★ Insight/,
+      /^─{10,}/,
+
+      // Error stacks and tracebacks (pasted debug output, not developer intent)
+      /^Error:|^ERROR:|^Exception:|^Traceback \(most recent call last\):/,
+      /^\s+at \w+\.\w+\s*\(/m,
+
+      // Server logs (pasted terminal output, not developer intent)
+      /^(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD) \/\S+.*\d{3}/m,
     ];
 
-    return knownPatterns.some(pattern => pattern.test(text.trim()));
+    return knownPatterns.some(pattern => pattern.test(trimmedText));
   }
 
   /**
