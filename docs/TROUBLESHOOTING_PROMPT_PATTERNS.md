@@ -150,6 +150,7 @@ const topUtterances = phase1Output.developerUtterances
 | StrengthGrowth | `strengths[].evidence[].utteranceId`, `growthAreas[].evidence[].utteranceId` |
 | KnowledgeGap | `strengths[].evidence[].utteranceId`, `growthAreas[].evidence[].utteranceId` |
 | ContextEfficiency | `strengths[].evidence[].utteranceId`, `growthAreas[].evidence[].utteranceId` |
+| CommunicationPatterns | `patterns[].examples[].utteranceId`, `strengths[].evidence[].utteranceId`, `growthAreas[].evidence[].utteranceId` |
 
 ### Implementation Notes
 
