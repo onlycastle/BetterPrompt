@@ -297,12 +297,21 @@ export function buildContentWriterUserPromptV3(
 
   const utterancesSection = topUtterances && topUtterances.length > 0
     ? `
-## Developer Utterances (Top ${topUtterances.length} selected for richness — use across ALL sections)
+## Developer Utterances (Reference by utteranceId in examplesData)
 
-These are the developer's actual messages, selected for their richness of thought and reasoning.
-Use these for Prompt Patterns examples and Personality Summary quotes.
+IMPORTANT: Use the utteranceId (first column) for examplesData, NOT the quote text.
+The utteranceId format is "{sessionId}_{turnIndex}" (e.g., "7fdbb780_5", "abc123def_12").
 
-${topUtterances.map((u, i) => `${i + 1}. [${u.id}] (${u.wordCount} words): "${u.text}"`).join('\n\n')}
+| # | utteranceId | Words | Preview |
+|---|-------------|-------|---------|
+${topUtterances.map((u, i) => `| ${i + 1} | ${u.id} | ${u.wordCount} | "${u.text.slice(0, 150)}${u.text.length > 150 ? '...' : ''}" |`).join('\n')}
+
+### examplesData Format Rules
+- examplesData must contain ONLY utteranceIds from the table above
+- Format: "utteranceId|analysis;utteranceId|analysis;..."
+- VALID example: "7fdbb780_5|Shows systematic debugging;abc123_12|Demonstrates planning"
+- INVALID: "분석 텍스트...|analysis" — Do NOT use quote text, Korean, or spaces in the ID part
+- If no matching utteranceId found, leave examplesData empty
 `
     : '';
 
