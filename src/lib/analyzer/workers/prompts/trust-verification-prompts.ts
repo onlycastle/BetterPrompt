@@ -134,6 +134,29 @@ Look for these signals:
 5. \`trust_debt\`: Accepting complex code without asking questions about it
 6. \`passive_acceptance\`: Compare developer's reply to AI's textSnippet — short "ok"/"continue" after substantial AI output indicates blind acceptance
 
+## EVIDENCE FORMAT (REQUIRED)
+
+All evidence items MUST use this format:
+  "utteranceId:quote"  OR  "utteranceId:quote:context"
+
+WHERE:
+- utteranceId = ID from developerUtterances[] (e.g., "7fdbb780_5")
+- quote = the developer's exact words (can be truncated for length)
+- context = optional additional context about when this occurred
+
+VALID examples:
+- "abc123_5:How do I fix this error?"
+- "def456_12:Let me think about this first:before planning"
+- "7fdbb780_3:ok do it:after AI proposed solution"
+
+INVALID examples (will be filtered out):
+- "How do I fix this error?" (missing utteranceId)
+- "This is what the user said" (paraphrased, no ID)
+- "just a quote without ID"
+
+The utteranceId is REQUIRED for every evidence item.
+Without utteranceId, the evidence cannot be verified against the original and will be removed.
+
 ## EVIDENCE QUOTE SELECTION
 - Evidence quotes MUST come from developerUtterances[].text — the user's OWN words
 - NEVER quote text from aiResponses[].textSnippet — those are the AI's words, not the developer's

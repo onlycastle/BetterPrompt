@@ -120,6 +120,28 @@ Look for:
 3. Alternative exploration: "what about using X instead?"
 4. Edge case mentions: "what happens when...", "what if..."
 
+## EVIDENCE FORMAT (REQUIRED)
+
+All evidence items MUST use this format:
+  "utteranceId:quote"  OR  "utteranceId:quote:context"
+
+WHERE:
+- utteranceId = ID from developerUtterances[] (e.g., "7fdbb780_5")
+- quote = the developer's exact words (can be truncated for length)
+- context = optional additional context about when this occurred
+
+VALID examples:
+- "abc123_5:Let me break this into steps"
+- "def456_12:Wait, what about the null case?:questioning AI assumption"
+- "7fdbb780_3:run tests first:before merging"
+
+INVALID examples (will be filtered out):
+- "Let me plan this out" (missing utteranceId)
+- "The developer said to plan first" (paraphrased, no ID)
+
+The utteranceId is REQUIRED for every evidence item.
+Without utteranceId, the evidence cannot be verified against the original and will be removed.
+
 ## EVIDENCE QUOTE SELECTION
 - Evidence quotes MUST come from developerUtterances[].text — the user's OWN words
 - NEVER quote text from aiResponses[].textSnippet — those are the AI's words, not the developer's

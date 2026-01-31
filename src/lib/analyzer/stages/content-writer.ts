@@ -151,7 +151,10 @@ export class ContentWriterStage {
    * contain only developer utterances, not AI responses.
    *
    * Must run BEFORE evaluation assembly since premium sections read from agentOutputs.
-   * Mutates agentOutputs in place to filter out AI-only quotes.
+   * Mutates agentOutputs in place to filter out invalid quotes and replace with originals.
+   *
+   * Uses utteranceId-based lookup for verification. Evidence without utteranceId
+   * will be logged as warnings and removed (this should be rare after prompt updates).
    */
   public verifyPhase2WorkerExamples(
     agentOutputs: AgentOutputs,
@@ -162,63 +165,74 @@ export class ContentWriterStage {
       utteranceLookup.set(u.id, u);
     }
 
-    const { devTexts, aiTexts } = this.buildCorpora(phase1Output);
-    if (devTexts.length === 0) return;
+    const stats = { verified: 0, replaced: 0, removed: 0, noUtteranceId: 0 };
 
-    const stats = { verified: 0, replaced: 0, removed: 0 };
-
-    // 1. Anti-pattern examples (have utteranceId → ID-based lookup)
+    // 1. Anti-pattern examples (should have utteranceId)
     if (agentOutputs.trustVerification?.antiPatterns) {
       for (const ap of agentOutputs.trustVerification.antiPatterns) {
         if (!Array.isArray(ap.examples)) continue;
 
         ap.examples = ap.examples.filter((ex: any) => {
           if (!ex.utteranceId) {
-            return this.filterBySubstringMatch(ex.quote, devTexts, aiTexts, stats);
+            this.log(`Anti-pattern example missing utteranceId — removing: "${String(ex.quote || ex).slice(0, 50)}..."`);
+            stats.noUtteranceId++;
+            return false;
           }
           return this.verifyQuoteByUtteranceId(ex, utteranceLookup, stats);
         });
       }
     }
 
-    // 2. Critical thinking moments (have optional utteranceId + quote)
+    // 2. Critical thinking moments (should have utteranceId)
     if (agentOutputs.workflowHabit?.criticalThinkingMoments) {
       agentOutputs.workflowHabit.criticalThinkingMoments =
         agentOutputs.workflowHabit.criticalThinkingMoments.filter((moment: any) => {
           if (!moment.quote || typeof moment.quote !== 'string') return true;
 
-          if (moment.utteranceId) {
-            return this.verifyQuoteByUtteranceId(moment, utteranceLookup, stats);
+          if (!moment.utteranceId) {
+            this.log(`Critical thinking moment missing utteranceId — removing: "${moment.quote.slice(0, 50)}..."`);
+            stats.noUtteranceId++;
+            return false;
           }
-
-          return this.filterBySubstringMatch(moment.quote, devTexts, aiTexts, stats);
+          return this.verifyQuoteByUtteranceId(moment, utteranceLookup, stats);
         });
     }
 
-    // 3. Planning habit examples (plain strings, no utteranceId)
+    // 3. Planning habit examples (should have utteranceId in structured format)
     if (agentOutputs.workflowHabit?.planningHabits) {
       for (const habit of agentOutputs.workflowHabit.planningHabits) {
         if (!Array.isArray(habit.examples)) continue;
 
-        habit.examples = habit.examples.filter((example: string) => {
-          if (!example || typeof example !== 'string') return true;
-          return this.filterBySubstringMatch(example, devTexts, aiTexts, stats);
+        habit.examples = habit.examples.filter((example: any) => {
+          // Handle both string and object formats
+          if (typeof example === 'string') {
+            this.log(`Planning habit example is plain string (no utteranceId) — removing: "${example.slice(0, 50)}..."`);
+            stats.noUtteranceId++;
+            return false;
+          }
+          if (!example.utteranceId) {
+            this.log(`Planning habit example missing utteranceId — removing: "${String(example.quote || example).slice(0, 50)}..."`);
+            stats.noUtteranceId++;
+            return false;
+          }
+          return this.verifyQuoteByUtteranceId(example, utteranceLookup, stats);
         });
       }
     }
 
-    // 4. StrengthGrowth evidence (strengths + growth areas)
+    // 4. StrengthGrowth evidence (should have utteranceId after parsing)
     if (agentOutputs.strengthGrowth) {
       const filterEvidence = (items: any[] | undefined): void => {
         if (!items) return;
         for (const item of items) {
           if (!Array.isArray(item.evidence)) continue;
           item.evidence = item.evidence.filter((ev: any) => {
-            if (ev.utteranceId) {
-              return this.verifyQuoteByUtteranceId(ev, utteranceLookup, stats);
+            if (!ev.utteranceId) {
+              this.log(`StrengthGrowth evidence missing utteranceId — removing: "${String(ev.quote || ev).slice(0, 50)}..."`);
+              stats.noUtteranceId++;
+              return false;
             }
-            if (!ev.quote || typeof ev.quote !== 'string') return true;
-            return this.filterBySubstringMatch(ev.quote, devTexts, aiTexts, stats);
+            return this.verifyQuoteByUtteranceId(ev, utteranceLookup, stats);
           });
         }
       };
@@ -227,9 +241,9 @@ export class ContentWriterStage {
       filterEvidence(agentOutputs.strengthGrowth.growthAreas);
     }
 
-    const total = stats.verified + stats.replaced + stats.removed;
+    const total = stats.verified + stats.replaced + stats.removed + stats.noUtteranceId;
     if (total > 0) {
-      this.log(`Phase 2 worker verification: verified=${stats.verified}, replaced=${stats.replaced}, removed=${stats.removed}`);
+      this.log(`Phase 2 worker verification: verified=${stats.verified}, replaced=${stats.replaced}, removed=${stats.removed}, noUtteranceId=${stats.noUtteranceId}`);
     }
   }
 
@@ -252,32 +266,8 @@ export class ContentWriterStage {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // User-Message-Only Verification Layer
+  // Utterance ID-Based Verification Layer
   // ─────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Build normalized text corpora from Phase1Output for quote verification.
-   * Returns developer utterance texts and AI response texts, both normalized.
-   */
-  private buildCorpora(phase1Output: Phase1Output): { devTexts: string[]; aiTexts: string[] } {
-    const devTexts = phase1Output.developerUtterances.map(u => this.normalizeText(u.text));
-    const aiTexts = phase1Output.aiResponses.map(r => this.normalizeText(r.textSnippet));
-    return { devTexts, aiTexts };
-  }
-
-  /**
-   * Normalize text for comparison: trim, lowercase, collapse whitespace.
-   */
-  private normalizeText(text: string): string {
-    return text.trim().toLowerCase().replace(/\s+/g, ' ');
-  }
-
-  /**
-   * Check if a normalized quote matches any text in a corpus.
-   */
-  private matchesCorpus(normalizedQuote: string, corpus: string[]): boolean {
-    return corpus.some(text => text.length > 0 && this.quotesMatch(normalizedQuote, text));
-  }
 
   /**
    * Check if two quote strings match (allowing for truncation and minor differences)
@@ -308,8 +298,9 @@ export class ContentWriterStage {
   /**
    * Verify a quote against a known utterance by ID.
    * If the utteranceId is not found, removes the entry.
-   * If the quote doesn't match the original, replaces it with the original text.
-   * Returns true to keep, false to remove. Mutates the entry's quote if mismatched.
+   * Always replaces the quote with the original displayText (or text) to guarantee accuracy.
+   * This ensures LLM paraphrasing doesn't corrupt the original developer words.
+   * Returns true to keep, false to remove. Mutates the entry's quote.
    */
   private verifyQuoteByUtteranceId(
     entry: { utteranceId: string; quote: string },
@@ -323,46 +314,19 @@ export class ContentWriterStage {
       return false;
     }
 
-    const originalQuote = original.text.slice(0, 500);
+    // Always use displayText (sanitized) if available, otherwise fall back to raw text
+    // This guarantees the quote is the original developer's words, not LLM paraphrase
+    const originalQuote = (original.displayText || original.text).slice(0, 500);
+
     if (this.quotesMatch(entry.quote, originalQuote)) {
+      // Quote already matches original — mark verified but still ensure we use original
+      entry.quote = originalQuote;
       stats.verified++;
     } else {
+      // Quote was paraphrased by LLM — replace with original
       entry.quote = originalQuote;
       stats.replaced++;
     }
-    return true;
-  }
-
-  /**
-   * Filter a quote by substring matching against developer and AI corpora.
-   * Returns true to keep, false to remove.
-   */
-  private filterBySubstringMatch(
-    quote: string,
-    devTexts: string[],
-    aiTexts: string[],
-    stats: { verified: number; replaced: number; removed: number }
-  ): boolean {
-    if (!quote || typeof quote !== 'string') return true;
-
-    const normalized = this.normalizeText(quote);
-    if (normalized.length < 15) {
-      return true; // Too short to verify
-    }
-
-    const matchesDev = this.matchesCorpus(normalized, devTexts);
-    const matchesAI = this.matchesCorpus(normalized, aiTexts);
-
-    if (matchesAI && !matchesDev) {
-      this.log(`Quote matches AI response, not developer — removing: "${quote.slice(0, 80)}..."`);
-      stats.removed++;
-      return false;
-    }
-
-    if (matchesDev) {
-      stats.verified++;
-    }
-    // No match either way → keep (paraphrased)
     return true;
   }
 
