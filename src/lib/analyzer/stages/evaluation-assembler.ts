@@ -21,6 +21,7 @@ import type { AgentOutputs } from '../../models/agent-outputs';
 import type { StrengthGrowthOutput } from '../../models/strength-growth-data';
 import type { TrustVerificationOutput } from '../../models/trust-verification-data';
 import type { WorkflowHabitOutput } from '../../models/workflow-habit-data';
+import type { CommunicationPatternsOutput, CommunicationPattern } from '../../models/communication-patterns-data';
 import type { TypeClassifierOutput } from '../../models/agent-outputs';
 import type { DimensionResourceMatch } from '../../models/verbose-evaluation';
 import { validateDimension } from '../../models/dimension-schema';
@@ -74,7 +75,21 @@ export function assembleEvaluation(
 
   // ── Phase 3 Narrative (LLM-generated) ──────────────────────────────────
   result.personalitySummary = narrativeResult.personalitySummary;
-  result.promptPatterns = sanitizePromptPatterns(narrativeResult.promptPatterns, phase1Output);
+
+  // ── Prompt Patterns: Prefer Phase 2 CommunicationPatterns, fallback to Phase 3 ──
+  // Phase 2 CommunicationPatterns provides utteranceId-based evidence directly
+  // Phase 3 promptPatterns is kept as fallback for backward compatibility
+  if (agentOutputs.communicationPatterns?.patterns && agentOutputs.communicationPatterns.patterns.length > 0) {
+    result.promptPatterns = resolvePatternQuotes(agentOutputs.communicationPatterns.patterns, phase1Output);
+    debugLog(`Using Phase 2 CommunicationPatterns (${agentOutputs.communicationPatterns.patterns.length} patterns)`);
+  } else if (narrativeResult.promptPatterns && narrativeResult.promptPatterns.length > 0) {
+    result.promptPatterns = sanitizePromptPatterns(narrativeResult.promptPatterns, phase1Output);
+    debugLog('Falling back to Phase 3 promptPatterns (CommunicationPatterns not available)');
+  } else {
+    // Both sources unavailable - create minimal placeholder
+    result.promptPatterns = [];
+    debugLog('No promptPatterns available from Phase 2 or Phase 3');
+  }
 
   // topFocusAreas: prefer Phase 3 narrative, fall back to Phase 2 data
   if (narrativeResult.topFocusAreas) {
@@ -158,7 +173,98 @@ export function assembleEvaluation(
 }
 
 // ============================================================================
-// Narrative Sanitization
+// Phase 2 Communication Patterns Resolution
+// ============================================================================
+
+/**
+ * Resolve Phase 2 CommunicationPatterns to VerboseEvaluation promptPatterns format.
+ *
+ * Phase 2 CommunicationPatternsWorker outputs patterns with utteranceId-based examples.
+ * This function looks up the actual quote text from Phase1Output.
+ *
+ * Advantages over Phase 3 approach:
+ * - Direct utterance access (all utterances, not limited topUtterances)
+ * - utteranceId verification guaranteed (worker sees all data)
+ * - Analysis and narrative generation separated (Phase 2 analyzes, Phase 3 narrates)
+ *
+ * @param patterns - CommunicationPattern[] from Phase 2 worker
+ * @param phase1Output - Phase1Output for utterance lookup
+ * @returns PromptPattern[] format for VerboseEvaluation
+ */
+function resolvePatternQuotes(
+  patterns: CommunicationPattern[],
+  phase1Output: Phase1Output | undefined
+): any[] {
+  // Build utterance lookup map for O(1) access
+  const utteranceLookup = new Map<string, string>();
+  if (phase1Output?.developerUtterances) {
+    for (const u of phase1Output.developerUtterances) {
+      // Prefer displayText (machine-generated content is summarized)
+      const quote = u.displayText || u.text.slice(0, 500);
+      utteranceLookup.set(u.id, quote.slice(0, 500));
+    }
+  }
+
+  // Track used utteranceIds across all patterns to prevent duplicates
+  const usedUtteranceIds = new Set<string>();
+
+  const result = patterns.map((pattern, patternIndex) => {
+    debugLog(`Pattern ${patternIndex + 1}: ${pattern.patternName}`);
+    debugLog(`  examples: ${pattern.examples.length} items`);
+
+    // Resolve utteranceIds to actual quotes, filter duplicates
+    const resolvedExamples = pattern.examples
+      .map(ex => {
+        // Check for duplicate utteranceId (already used in another pattern)
+        if (usedUtteranceIds.has(ex.utteranceId)) {
+          debugLog(`  Skip duplicate: ${ex.utteranceId}`);
+          return null;
+        }
+
+        const quote = utteranceLookup.get(ex.utteranceId);
+        if (!quote) {
+          debugLog(`  Skip: utteranceId "${ex.utteranceId}" not found in Phase1Output`);
+          return null;
+        }
+
+        // Mark utteranceId as used
+        usedUtteranceIds.add(ex.utteranceId);
+
+        return { quote, analysis: ex.analysis };
+      })
+      .filter((ex): ex is { quote: string; analysis: string } => ex !== null);
+
+    debugLog(`  resolved: ${resolvedExamples.length} items`);
+
+    return {
+      patternName: pattern.patternName,
+      description: pattern.description,
+      frequency: pattern.frequency,
+      examples: resolvedExamples,
+      effectiveness: pattern.effectiveness,
+      tip: typeof pattern.tip === 'string' && pattern.tip.length > 2000
+        ? pattern.tip.slice(0, 1997) + '...'
+        : pattern.tip,
+    };
+  });
+
+  // Ensure minimum 3 prompt patterns (same as sanitizePromptPatterns)
+  while (result.length < 3) {
+    result.push({
+      patternName: `Pattern ${result.length + 1}`,
+      description: 'A detected pattern in your prompting style.',
+      frequency: 'occasional',
+      examples: [],
+      effectiveness: 'effective',
+      tip: 'Continue developing this pattern through practice.',
+    });
+  }
+
+  return result;
+}
+
+// ============================================================================
+// Narrative Sanitization (Legacy - Fallback for Phase 3)
 // ============================================================================
 
 /**

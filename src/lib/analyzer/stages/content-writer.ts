@@ -5,7 +5,8 @@
  * Uses Gemini 3 Flash for narrative-only content generation.
  * Temperature: 1.0 (Gemini's recommended default).
  *
- * Generates: personalitySummary, promptPatterns, topFocusAreas
+ * Generates: personalitySummary, topFocusAreas
+ * NOTE: promptPatterns generation moved to Phase 2 CommunicationPatternsWorker.
  * All structural assembly is handled by evaluation-assembler.ts
  *
  * Key Design Decision (v4):

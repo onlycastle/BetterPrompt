@@ -126,11 +126,14 @@ export function detectPrimaryLanguage(texts: string[]): LanguageDetectionResult 
  *
  * Generates narrative-only content from Phase 2 worker outputs:
  * - personalitySummary: Personality narrative from all Phase 2 data
- * - promptPatterns: WHAT-WHY-HOW analysis of prompting habits
  * - topFocusAreas: Narrative-enriched focus areas (optional)
  *
+ * NOTE: promptPatterns generation moved to Phase 2 CommunicationPatternsWorker.
+ * Phase 3 only generates narrative content; structural analysis is in Phase 2.
+ *
  * Structural data (dimensionInsights, type classification, anti-patterns,
- * critical thinking, planning) is assembled deterministically by evaluation-assembler.
+ * critical thinking, planning, promptPatterns) is assembled deterministically
+ * by evaluation-assembler from Phase 2 outputs.
  */
 export const CONTENT_WRITER_SYSTEM_PROMPT_V3 = `# Persona
 
@@ -138,12 +141,15 @@ You are a developer career coach writing deeply personal narrative content. Thin
 
 # Task
 
-Generate personalized narrative content using Phase 2 worker outputs. You produce ONLY three outputs:
+Generate personalized narrative content using Phase 2 worker outputs. You produce ONLY two outputs:
 1. **personalitySummary** — A personality narrative synthesized from all Phase 2 data
-2. **promptPatterns** — WHAT-WHY-HOW analysis of prompting habits
-3. **topFocusAreas** — Narrative-enriched focus areas (optional)
+2. **topFocusAreas** — Narrative-enriched focus areas (optional)
 
-All other data (dimensionInsights, type classification, anti-patterns, critical thinking, planning, actionablePractices) is assembled deterministically from Phase 2 outputs. Do NOT generate these.
+NOTE: Communication patterns (promptPatterns) are now analyzed by Phase 2 CommunicationPatternsWorker.
+You do NOT need to generate promptPatterns - they will be assembled from Phase 2 data.
+
+All other data (dimensionInsights, type classification, anti-patterns, critical thinking, planning,
+actionablePractices, promptPatterns) is assembled deterministically from Phase 2 outputs. Do NOT generate these.
 
 **Writing Principles:**
 - Use their actual words frequently (quotes from the Phase 2 evidence data)
@@ -167,6 +173,7 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 | KnowledgeGap | \`knowledgeGap\` | Knowledge gaps, learning progress |
 | ContextEfficiency | \`contextEfficiency\` | Token efficiency patterns |
 | TypeClassifier | \`typeClassifier\` | primaryType, controlLevel, distribution |
+| CommunicationPatterns | \`communicationPatterns\` | promptPatterns (assembled by evaluation-assembler) |
 
 # Output Rules
 
@@ -182,24 +189,6 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 - Use **bold markers** to emphasize 5-7 key personality traits or distinctive phrases
 - Make them feel "truly understood" - this should read like a professional career assessment
 
-**Prompt Patterns** (5-12 patterns for comprehensive analysis)
-- Name each pattern distinctively based on its characteristics
-- **Description (MINIMUM 1500 chars, target 2000-2500 chars):** Write an EXTREMELY DEEP analysis using WHAT-WHY-HOW framework:
-  - **WHAT section (5-7 sentences)**: Describe the observable behavior pattern concretely with specific examples
-  - **WHY section (4-5 sentences)**: Explain what this pattern reveals about their mindset, values, and work philosophy
-  - **HOW section (4-5 sentences)**: Describe how this affects their AI collaboration and code quality
-  - Include behavioral context and session-specific observations
-  - Include the IMPACT: productivity, code quality, learning speed, or team dynamics
-- Show examples by referencing Developer Utterances using their IDs
-  - CRITICAL: Use utteranceId from the Developer Utterances section (e.g., "abc123_5")
-  - DO NOT write quotes directly - only reference by ID
-  - The actual quote text will be looked up from the original data
-- Rate effectiveness
-- **Tip (MINIMUM 1000 chars, target 1200-1500 chars):** Write expert-level coaching advice:
-  - Reference knowledge base insights with natural attribution
-  - Provide 3-4 concrete "try this" examples
-  - Explain the reasoning behind each recommendation
-
 **Top 3 Focus Areas** (from strengthGrowth.personalizedPrioritiesData)
 - Transform each priority into an engaging narrative
 - Include specific action steps (START/STOP/CONTINUE)
@@ -208,19 +197,8 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 
 **IMPORTANT: FLATTENED FORMAT for nested data**
 
-**promptPatterns** - Use pipe-separated fields, semicolon between items:
-- examplesData: "utteranceId1|analysis1;utteranceId2|analysis2;..." (NOT an array)
-- utteranceId format: "sessionId_turnIndex" (e.g., "abc123_5", "def456_12")
-- ONLY use IDs from the Developer Utterances section above
-- The actual quote text will be resolved from Phase 1 data
-
 **topFocusAreas.areas** - Use pipe-separated fields for actions:
 - actionsData: "start_action|stop_action|continue_action" (NOT an object)
-
-**Critical Rules:**
-- Reference Developer Utterances by ID only. Do not write quotes directly.
-- ONLY use utteranceIds that appear in the Developer Utterances section.
-- ESCAPE any pipe (|) or semicolon (;) characters within analysis text with backslash.
 
 ${NO_HEDGING_DIRECTIVE}`;
 
@@ -280,10 +258,13 @@ export const LANGUAGE_DISPLAY_NAMES: Record<SupportedLanguage, string> = {
  *
  * Constructs a prompt from Phase 2 worker outputs for narrative generation.
  *
+ * NOTE: promptPatterns generation moved to Phase 2 CommunicationPatternsWorker.
+ * Phase 3 now focuses on personalitySummary and topFocusAreas only.
+ *
  * @param agentOutputsSummary - Structured text summary of Phase 2 + 2.5 agent outputs
  * @param sessionCount - Number of sessions analyzed
  * @param knowledgeResources - Optional DB-backed knowledge resources from Phase 2.75
- * @param topUtterances - Top 20 longest utterances for direct quoting
+ * @param topUtterances - Top utterances for direct quoting in personalitySummary
  */
 export function buildContentWriterUserPromptV3(
   agentOutputsSummary: string,
@@ -295,23 +276,16 @@ export function buildContentWriterUserPromptV3(
     ? buildKnowledgeContextFromResources(knowledgeResources)
     : '';
 
+  // Utterances section for personality summary quotes (simplified - no longer for promptPatterns)
   const utterancesSection = topUtterances && topUtterances.length > 0
     ? `
-## Developer Utterances (Reference by utteranceId in examplesData)
+## Developer Utterances (for quoting in personalitySummary)
 
-IMPORTANT: Use the utteranceId (first column) for examplesData, NOT the quote text.
-The utteranceId format is "{sessionId}_{turnIndex}" (e.g., "7fdbb780_5", "abc123def_12").
+Use these actual developer quotes in the personality summary to make it personal.
 
 | # | utteranceId | Words | Preview |
 |---|-------------|-------|---------|
-${topUtterances.map((u, i) => `| ${i + 1} | ${u.id} | ${u.wordCount} | "${u.text.slice(0, 150)}${u.text.length > 150 ? '...' : ''}" |`).join('\n')}
-
-### examplesData Format Rules
-- examplesData must contain ONLY utteranceIds from the table above
-- Format: "utteranceId|analysis;utteranceId|analysis;..."
-- VALID example: "7fdbb780_5|Shows systematic debugging;abc123_12|Demonstrates planning"
-- INVALID: "분석 텍스트...|analysis" — Do NOT use quote text, Korean, or spaces in the ID part
-- If no matching utteranceId found, leave examplesData empty
+${topUtterances.slice(0, 15).map((u, i) => `| ${i + 1} | ${u.id} | ${u.wordCount} | "${u.text.slice(0, 150)}${u.text.length > 150 ? '...' : ''}" |`).join('\n')}
 `
     : '';
 
@@ -321,44 +295,32 @@ This developer has ${sessionCount} sessions analyzed.
 
 ## Phase 2 Analysis Outputs (Structured Summary from Specialized Workers)
 
-Below is a structured summary from 5 Phase 2 workers + 1 Phase 2.5 worker.
+Below is a structured summary from 6 Phase 2 workers + 1 Phase 2.5 worker.
 Each section uses ## headers with key scores.
+
+NOTE: CommunicationPatterns (promptPatterns) are already analyzed in Phase 2.
+You do NOT need to generate promptPatterns - focus on personality narrative only.
 
 ${agentOutputsSummary}
 ${utterancesSection}${kbContextSection}
 # Generation Instructions
 
-You generate ONLY narrative content. Structural data is assembled separately.
+You generate ONLY narrative content. Structural data (including promptPatterns) is assembled separately from Phase 2.
 
 1. **Personality Summary** (MINIMUM 2500 characters, target 2500-3000 characters)
    - This is the MOST IMPORTANT section - make it deeply personal and comprehensive
-   - REQUIRED: Include 8-10 direct quotes from Phase 2 evidence
+   - REQUIRED: Include 8-10 direct quotes from Phase 2 evidence and Developer Utterances
    - REQUIRED: Write 15-20 sentences minimum
    - Synthesize TypeClassifier reasoning + StrengthGrowth insights into engaging prose
    - Lead with their most distinctive trait and elaborate extensively
    - Emphasize 5-7 key phrases with **bold markers**
    - Make them feel "truly understood"
 
-2. **Prompt Patterns** (5-12 for comprehensive analysis)
-   - Derive patterns from Phase 2 insights and the Developer Utterances section
-   - Use the "Developer Utterances" section as your PRIMARY source for examples
-   - CRITICAL: In examplesData, reference utterances ONLY by their exact ID (format: "sessionId_turnIndex", e.g., "7fdbb780_5")
-   - examplesData format: "utteranceId|analysis;utteranceId|analysis;..."
-   - DO NOT copy, paraphrase, or include any quote text in examplesData - use ONLY the utterance ID
-   - The quote text will be retrieved separately from Phase 1 data
-   - Valid example: "7fdbb780_5|Shows good error handling;abc123_12|Demonstrates planning"
-   - INVALID: "Let me check this error...|analysis" (quote text instead of ID)
-   - **Description (MINIMUM 1500 chars, target 2000-2500 chars):** EXTREMELY deep WHAT-WHY-HOW framework
-     * WHAT (5-7 sentences): Concrete behavior with specific examples
-     * WHY (4-5 sentences): Mindset, values, work philosophy revealed
-     * HOW (4-5 sentences): Impact on AI collaboration and code quality
-   - Include 2-5 example references by ID
-   - **Tip (MINIMUM 1000 chars, target 1200-1500 chars):** Expert coaching using Knowledge Base context
-     * 3-4 concrete "try this" examples
-     * Explain reasoning behind recommendations
-
-3. **Top 3 Focus Areas** (from StrengthGrowth personalizedPrioritiesData)
+2. **Top 3 Focus Areas** (from StrengthGrowth personalizedPrioritiesData)
    - Create ranked focus areas with narrative and actions (start/stop/continue)
+   - actionsData format: "start_action|stop_action|continue_action"
+
+NOTE: Do NOT generate promptPatterns - they are handled by Phase 2 CommunicationPatternsWorker.
 
 Make this developer feel truly understood. Use their actual words.`;
 }
