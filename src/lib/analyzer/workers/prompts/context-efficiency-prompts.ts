@@ -118,6 +118,28 @@ Generate exactly 3 insights with this MANDATORY structure:
 IMPORTANT: Identifying inefficiencies is MORE VALUABLE than praising efficiency.
 Specific, actionable suggestions with numbers create clear improvement paths.
 
+## EVIDENCE FORMAT (REQUIRED)
+
+All evidence items MUST use this format:
+  "utteranceId:quote"  OR  "utteranceId:quote:context"
+
+WHERE:
+- utteranceId = ID from developerUtterances[] (e.g., "7fdbb780_5")
+- quote = the developer's exact words (can be truncated for length)
+- context = optional additional context about when this occurred
+
+VALID examples:
+- "abc123_5:I need to clear context because we've gone off track"
+- "def456_12:/compact:after long debugging session"
+- "7fdbb780_3:let me explain the project structure again"
+
+INVALID examples (will be filtered out):
+- "I should use /clear more" (missing utteranceId)
+- "The developer cleared context" (paraphrased, no ID)
+
+The utteranceId is REQUIRED for every evidence item.
+Without utteranceId, the evidence cannot be verified against the original and will be removed.
+
 ## EVIDENCE QUOTE SELECTION
 - All quotes in strengthsData and growthAreasData MUST be the developer's own words from developerUtterances
 - NEVER quote text from aiResponses — those are the AI's words, not the developer's
