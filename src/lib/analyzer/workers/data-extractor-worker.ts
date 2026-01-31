@@ -62,12 +62,17 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    * @returns Sanitized displayText safe for frontend rendering
    */
   private static sanitizeDisplayText(text: string): string {
-    return text
-      // Fix vertical text: Remove newlines between individual characters
-      // Pattern: single char followed by newline followed by single char
-      // Apply repeatedly to handle "S\nu\np\na" -> "Supa"
-      .replace(/(.)\n(.)/g, '$1$2')
-      .replace(/(.)\n(.)/g, '$1$2') // Second pass for adjacent matches
+    // Fix vertical text: Remove newlines between individual characters
+    // Pattern: single char followed by newline followed by single char
+    // Apply repeatedly until no more matches (handles any length vertical text)
+    let result = text;
+    let prev = '';
+    while (result !== prev) {
+      prev = result;
+      result = result.replace(/(.)\n(.)/g, '$1$2');
+    }
+
+    return result
       // Strip markdown headers: "# Title" or "## Subtitle" -> "Title" or "Subtitle"
       .replace(/^#{1,6}\s+/gm, '')
       // Strip markdown bold: **text** or __text__ -> text
@@ -79,6 +84,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       .replace(/\s+/g, ' ')
       .trim();
   }
+
   private static readonly MAX_UTTERANCES = PHASE1_MAX_UTTERANCES;
   private static readonly MAX_AI_RESPONSES = PHASE1_MAX_AI_RESPONSES;
   private static readonly TRUNCATION_MARKER = '... [truncated]';

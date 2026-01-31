@@ -3,20 +3,31 @@ import { describe, it, expect } from 'vitest';
 /**
  * Test utilities for text sanitization functions.
  *
- * These functions are implemented in:
+ * IMPLEMENTATION LOCATIONS:
  * - DataExtractorWorker.sanitizeDisplayText() - src/lib/analyzer/workers/data-extractor-worker.ts
  * - smartTruncate() - src/lib/analyzer/stages/evaluation-assembler.ts
  *
- * We test the logic here by reimplementing the functions to ensure correctness,
- * since the actual implementations are private/module-scoped.
+ * NOTE: These tests use reimplemented versions of the functions because
+ * the actual implementations are private (sanitizeDisplayText) or module-scoped
+ * (smartTruncate). When modifying the actual implementations, ensure these
+ * test implementations are kept in sync.
+ *
+ * SYNC CHECK: If tests pass but production code behaves differently,
+ * compare the logic below with the actual implementations.
  */
 
 // Reimplementation of sanitizeDisplayText for testing
+// SYNC WITH: DataExtractorWorker.sanitizeDisplayText() in data-extractor-worker.ts
 function sanitizeDisplayText(text: string): string {
-  return text
-    // Fix vertical text: Remove newlines between individual characters
-    .replace(/(.)\n(.)/g, '$1$2')
-    .replace(/(.)\n(.)/g, '$1$2') // Second pass for adjacent matches
+  // Fix vertical text with iterative replacement (handles any length)
+  let result = text;
+  let prev = '';
+  while (result !== prev) {
+    prev = result;
+    result = result.replace(/(.)\n(.)/g, '$1$2');
+  }
+
+  return result
     // Strip markdown headers
     .replace(/^#{1,6}\s+/gm, '')
     // Strip markdown bold
@@ -30,6 +41,7 @@ function sanitizeDisplayText(text: string): string {
 }
 
 // Reimplementation of smartTruncate for testing
+// SYNC WITH: smartTruncate() in evaluation-assembler.ts
 function smartTruncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
 
