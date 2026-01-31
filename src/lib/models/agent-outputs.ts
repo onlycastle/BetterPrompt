@@ -505,6 +505,9 @@ export const AgentOutputsSchema = z.object({
 
   /** Type Classification (v2) - can replace TypeSynthesis */
   typeClassifier: TypeClassifierOutputSchema.optional(),
+
+  /** Communication Patterns analysis (prompt patterns with utteranceId-based evidence) */
+  communicationPatterns: CommunicationPatternsOutputSchema.optional(),
 });
 
 export type AgentOutputs = z.infer<typeof AgentOutputsSchema>;
@@ -533,7 +536,8 @@ export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
     outputs.strengthGrowth ||
     outputs.trustVerification ||
     outputs.workflowHabit ||
-    outputs.typeClassifier
+    outputs.typeClassifier ||
+    outputs.communicationPatterns
   );
 }
 
@@ -1064,6 +1068,13 @@ import {
   type WorkflowHabitLLMOutput,
 } from './workflow-habit-data';
 
+import {
+  CommunicationPatternsOutputSchema,
+  type CommunicationPatternsOutput,
+  CommunicationPatternsLLMOutputSchema,
+  type CommunicationPatternsLLMOutput,
+} from './communication-patterns-data';
+
 // Re-export for convenience
 export {
   Phase1OutputSchema,
@@ -1084,6 +1095,10 @@ export {
   type WorkflowHabitOutput,
   WorkflowHabitLLMOutputSchema,
   type WorkflowHabitLLMOutput,
+  CommunicationPatternsOutputSchema,
+  type CommunicationPatternsOutput,
+  CommunicationPatternsLLMOutputSchema,
+  type CommunicationPatternsLLMOutput,
 };
 
 // ============================================================================
