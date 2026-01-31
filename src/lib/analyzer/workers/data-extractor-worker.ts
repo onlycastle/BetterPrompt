@@ -208,6 +208,9 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       isSessionStart: turnIndex === 0,
       isContinuation: this.isContinuation(originalText),
 
+      // Noteworthy flag for evidence filtering
+      isNoteworthy: this.determineNoteworthy(originalText),
+
       // Context from preceding AI response
       precedingAIToolCalls: precedingAI?.toolCalls?.map(tc => tc.name),
       precedingAIHadError: this.hadError(precedingAI),
@@ -408,6 +411,46 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       'and then', 'also', 'additionally', 'furthermore',
     ];
     return continuationPhrases.some(phrase => lowerText.startsWith(phrase));
+  }
+
+  /**
+   * Determine if an utterance is semantically meaningful enough for evidence.
+   *
+   * Noteworthy utterances should:
+   * 1. Have sufficient length (8+ words) for context
+   * 2. Contain structural importance (questions, code blocks)
+   * 3. Include explanatory context keywords
+   *
+   * Short confirmations like "ok", "좋았어", "이건 잘 되었어" are filtered out.
+   *
+   * @param text - The utterance text to evaluate
+   * @returns true if the utterance is noteworthy
+   */
+  private determineNoteworthy(text: string): boolean {
+    const wordCount = this.countWords(text);
+
+    // Minimum word count threshold
+    if (wordCount < 8) {
+      return false;
+    }
+
+    // Has structural importance: questions or code blocks
+    if (this.hasQuestion(text) || this.hasCodeBlock(text)) {
+      return true;
+    }
+
+    // Contains explanatory context keywords (EN + KO)
+    const contextPatterns = /\b(because|since|therefore|however|although|considering|specifically|actually|instead|before|after|first|then|next|finally)\b|그래서|왜냐하면|때문에|확인|체크|살펴|분석|이유|방법|문제|해결|수정|변경|추가|삭제|구현|테스트/i;
+    if (contextPatterns.test(text)) {
+      return true;
+    }
+
+    // Minimum threshold for longer texts (20+ words are likely meaningful)
+    if (wordCount >= 20) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
