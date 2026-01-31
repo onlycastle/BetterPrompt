@@ -167,58 +167,67 @@ export type WorkerInsightsLLMOutput = z.infer<typeof WorkerInsightsLLMOutputSche
 // ============================================================================
 
 /**
- * Parse a single evidence item, detecting if it's structured (utteranceId:quote:context)
- * or a simple string.
+ * Parse a single evidence item with REQUIRED utteranceId format.
  *
- * Format detection:
- * - Structured: "sessionId_turnIndex:quote text:context text" (contains underscore in first segment)
- * - Simple: "just a quote" (no colon-based structure or no valid utteranceId pattern)
+ * Format: "utteranceId:quote[:context]"
+ * - utteranceId: Required - sessionId_turnIndex (e.g., "abc123_5")
+ * - quote: Required - the developer's exact words
+ * - context: Optional - additional context
+ *
+ * Returns null if utteranceId is missing or invalid, which will be filtered out.
+ * This ensures all evidence can be verified against original utterances.
  *
  * @param evidenceStr - Raw evidence string from LLM output
- * @returns EvidenceItem - either InsightEvidence object or plain string
+ * @returns InsightEvidence object or null if utteranceId is missing/invalid
  */
-export function parseEvidenceItem(evidenceStr: string): EvidenceItem {
+export function parseEvidenceItem(evidenceStr: string): InsightEvidence | null {
   const trimmed = evidenceStr.trim().replace(/^['"]|['"]$/g, '');
-  if (!trimmed) return trimmed;
+  if (!trimmed) return null;
 
   // Check for structured format: utteranceId:quote[:context]
   // utteranceId pattern: sessionId_turnIndex (e.g., "abc123_5")
   const colonIndex = trimmed.indexOf(':');
-  if (colonIndex > 0) {
-    const potentialUtteranceId = trimmed.slice(0, colonIndex);
-    // Valid utteranceId contains underscore and ends with a number
-    if (/_\d+$/.test(potentialUtteranceId)) {
-      const remainder = trimmed.slice(colonIndex + 1);
-      const secondColonIndex = remainder.indexOf(':');
-
-      if (secondColonIndex > 0) {
-        // Has context: utteranceId:quote:context
-        return {
-          utteranceId: potentialUtteranceId,
-          quote: remainder.slice(0, secondColonIndex).trim(),
-          context: remainder.slice(secondColonIndex + 1).trim() || undefined,
-        };
-      } else {
-        // No context: utteranceId:quote
-        return {
-          utteranceId: potentialUtteranceId,
-          quote: remainder.trim(),
-        };
-      }
+  if (colonIndex <= 0) {
+    // No colon found - missing utteranceId
+    if (trimmed.length > 0) {
+      console.warn(`[parseEvidenceItem] No utteranceId found (missing colon): "${trimmed.slice(0, 50)}..."`);
     }
+    return null;
   }
 
-  // Fallback: simple string evidence
-  return trimmed;
+  const potentialUtteranceId = trimmed.slice(0, colonIndex);
+
+  // Valid utteranceId contains underscore and ends with a number
+  if (!/_\d+$/.test(potentialUtteranceId)) {
+    console.warn(`[parseEvidenceItem] Invalid utteranceId format: "${potentialUtteranceId}" (must match sessionId_turnIndex pattern)`);
+    return null;
+  }
+
+  const remainder = trimmed.slice(colonIndex + 1);
+  const secondColonIndex = remainder.indexOf(':');
+
+  if (secondColonIndex > 0) {
+    // Has context: utteranceId:quote:context
+    return {
+      utteranceId: potentialUtteranceId,
+      quote: remainder.slice(0, secondColonIndex).trim(),
+      context: remainder.slice(secondColonIndex + 1).trim() || undefined,
+    };
+  } else {
+    // No context: utteranceId:quote
+    return {
+      utteranceId: potentialUtteranceId,
+      quote: remainder.trim(),
+    };
+  }
 }
 
 /**
  * Parse strengthsData string into structured array.
  * Format: "title|description|evidence1,evidence2,evidence3|frequency;..."
  *
- * Evidence items can be:
- * - Simple quotes: "let me check"
- * - Structured: "sessionId_5:let me check:verifying output"
+ * Evidence items MUST have utteranceId format: "sessionId_turnIndex:quote[:context]"
+ * Evidence without valid utteranceId will be filtered out.
  *
  * @example
  * parseWorkerStrengthsData("Systematic Verification|You consistently verify...|session1_5:let me check:verifying,session1_8:looks good|75")
@@ -236,11 +245,12 @@ export function parseWorkerStrengthsData(data: string | undefined): WorkerStreng
       const evidenceStr = parts[2]?.trim() || '';
       const frequencyStr = parts[3]?.trim();
 
-      // Parse evidence: comma-separated, each item may be structured or simple
+      // Parse evidence: comma-separated, each item MUST have utteranceId
+      // parseEvidenceItem returns null for items without valid utteranceId
       const evidence: EvidenceItem[] = evidenceStr
         .split(',')
         .map((e) => parseEvidenceItem(e))
-        .filter((e) => (typeof e === 'string' ? e.length > 0 : e.quote.length > 0));
+        .filter((e): e is InsightEvidence => e !== null && e.quote.length > 0);
 
       const frequency = frequencyStr ? parseFloat(frequencyStr) : undefined;
 
@@ -258,9 +268,8 @@ export function parseWorkerStrengthsData(data: string | undefined): WorkerStreng
  * Parse growthAreasData string into structured array.
  * Format: "title|description|evidence1,evidence2|recommendation|severity|frequency;..."
  *
- * Evidence items can be:
- * - Simple quotes: "fix it"
- * - Structured: "sessionId_5:fix it:debugging attempt"
+ * Evidence items MUST have utteranceId format: "sessionId_turnIndex:quote[:context]"
+ * Evidence without valid utteranceId will be filtered out.
  *
  * @example
  * parseWorkerGrowthAreasData("Error Loop|You tend to retry...|session1_3:fix it:debugging,session1_5:still broken|Try pausing...|high|65")
@@ -280,11 +289,12 @@ export function parseWorkerGrowthAreasData(data: string | undefined): WorkerGrow
       const severityStr = parts[4]?.trim() as WorkerGrowthSeverity | undefined;
       const frequencyStr = parts[5]?.trim();
 
-      // Parse evidence: comma-separated, each item may be structured or simple
+      // Parse evidence: comma-separated, each item MUST have utteranceId
+      // parseEvidenceItem returns null for items without valid utteranceId
       const evidence: EvidenceItem[] = evidenceStr
         .split(',')
         .map((e) => parseEvidenceItem(e))
-        .filter((e) => (typeof e === 'string' ? e.length > 0 : e.quote.length > 0));
+        .filter((e): e is InsightEvidence => e !== null && e.quote.length > 0);
 
       const result: WorkerGrowth = {
         title,
