@@ -49,6 +49,36 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
 
   // Truncation/sampling limits to control downstream token usage
   private static readonly MAX_TEXT_LENGTH = 2000;
+
+  /**
+   * Sanitize displayText from LLM to fix formatting issues.
+   *
+   * Fixes three known issues:
+   * 1. Vertical text: LLM sometimes inserts \n between individual characters
+   * 2. Raw markdown: Headers (# Title), bold (**text**), etc. appear as-is
+   * 3. Whitespace: Multiple spaces or newlines need normalization
+   *
+   * @param text - The displayText from LLM classification
+   * @returns Sanitized displayText safe for frontend rendering
+   */
+  private static sanitizeDisplayText(text: string): string {
+    return text
+      // Fix vertical text: Remove newlines between individual characters
+      // Pattern: single char followed by newline followed by single char
+      // Apply repeatedly to handle "S\nu\np\na" -> "Supa"
+      .replace(/(.)\n(.)/g, '$1$2')
+      .replace(/(.)\n(.)/g, '$1$2') // Second pass for adjacent matches
+      // Strip markdown headers: "# Title" or "## Subtitle" -> "Title" or "Subtitle"
+      .replace(/^#{1,6}\s+/gm, '')
+      // Strip markdown bold: **text** or __text__ -> text
+      .replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1')
+      .replace(/_{1,2}([^_]+)_{1,2}/g, '$1')
+      // Strip markdown inline code: `code` -> code
+      .replace(/`([^`]+)`/g, '$1')
+      // Normalize multiple spaces/newlines to single space
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
   private static readonly MAX_UTTERANCES = PHASE1_MAX_UTTERANCES;
   private static readonly MAX_AI_RESPONSES = PHASE1_MAX_AI_RESPONSES;
   private static readonly TRUNCATION_MARKER = '... [truncated]';
@@ -546,10 +576,12 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
           const utterance = batch[j]!;
 
           // Apply displayText from LLM sanitization
-          // If LLM provided a sanitized displayText, use it
+          // If LLM provided a sanitized displayText, use it (with additional sanitization)
           // Otherwise fallback to truncated original text
           if (classification?.displayText && classification.displayText.trim()) {
-            utterance.displayText = classification.displayText;
+            // Apply post-processing to fix LLM formatting issues
+            // (vertical text, raw markdown, whitespace)
+            utterance.displayText = DataExtractorWorker.sanitizeDisplayText(classification.displayText);
           } else {
             // No displayText from LLM - use original text (truncated for display)
             utterance.displayText = utterance.text.length > 300
@@ -740,6 +772,18 @@ IMPORTANT GUIDELINES:
 - NEVER alter the developer's natural language - only summarize pasted technical content
 - When in doubt about classification, default to "developer"
 - Use confidence scores to indicate certainty (0.0-1.0)
+
+CRITICAL FORMATTING RULES for displayText:
+- NEVER insert newlines (\\n) between individual characters - text must flow horizontally
+- REMOVE all markdown syntax from output:
+  - Headers: "# Ship-It" → "Ship-It"
+  - Bold/italic: "**important**" → "important"
+  - Inline code: "\`function\`" → "function"
+- Preserve natural sentence structure - use spaces between words, not newlines
+- When truncating long text, end at natural word boundaries, never mid-word or mid-parenthesis
+  - BAD: "(lib/supabase-storage.ts" (unclosed parenthesis)
+  - GOOD: "in lib/supabase-storage.ts"
+- Ensure displayText is a continuous, readable sentence/paragraph on a single line
 
 Respond with a JSON object containing an array of classifications.`;
   }

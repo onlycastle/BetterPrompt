@@ -54,6 +54,55 @@ function debugLog(message: string): void {
 }
 
 // ============================================================================
+// Text Truncation Utilities
+// ============================================================================
+
+/**
+ * Truncate text at natural boundaries (sentence or word) to avoid
+ * cutting mid-word or leaving unclosed parentheses/brackets.
+ *
+ * Priority order:
+ * 1. Sentence boundary (". " or "! " or "? ") if within 70% of maxLen
+ * 2. Word boundary (space) if within 80% of maxLen
+ * 3. Hard cut with ellipsis as fallback
+ *
+ * @param text - Text to truncate
+ * @param maxLen - Maximum length allowed
+ * @returns Truncated text with appropriate ending
+ */
+function smartTruncate(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+
+  // Look for sentence boundary (70% threshold)
+  const sentenceEndPatterns = ['. ', '! ', '? ', '.\n', '!\n', '?\n'];
+  let bestSentenceEnd = -1;
+  const minSentencePos = maxLen * 0.7;
+
+  for (const pattern of sentenceEndPatterns) {
+    const pos = text.lastIndexOf(pattern, maxLen - 3);
+    if (pos > minSentencePos && pos > bestSentenceEnd) {
+      bestSentenceEnd = pos;
+    }
+  }
+
+  if (bestSentenceEnd > 0) {
+    // Include the punctuation, exclude the space/newline
+    return text.slice(0, bestSentenceEnd + 1);
+  }
+
+  // Look for word boundary (80% threshold)
+  const minWordPos = maxLen * 0.8;
+  const lastSpace = text.lastIndexOf(' ', maxLen - 4);
+
+  if (lastSpace > minWordPos) {
+    return text.slice(0, lastSpace) + '...';
+  }
+
+  // Fallback: hard cut with ellipsis
+  return text.slice(0, maxLen - 3) + '...';
+}
+
+// ============================================================================
 // Main Assembly Function
 // ============================================================================
 
@@ -200,8 +249,9 @@ function resolvePatternQuotes(
   if (phase1Output?.developerUtterances) {
     for (const u of phase1Output.developerUtterances) {
       // Prefer displayText (machine-generated content is summarized)
-      const quote = u.displayText || u.text.slice(0, 500);
-      utteranceLookup.set(u.id, quote.slice(0, 500));
+      // Use smartTruncate to avoid cutting mid-word or leaving unclosed parens
+      const rawQuote = u.displayText || u.text;
+      utteranceLookup.set(u.id, smartTruncate(rawQuote, 500));
     }
   }
 
@@ -298,9 +348,9 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
   if (phase1Output?.developerUtterances) {
     for (const u of phase1Output.developerUtterances) {
       // Prefer displayText (machine-generated content is summarized)
-      // Fallback to truncated raw text if displayText not available
-      const quote = u.displayText || u.text.slice(0, 500);
-      utteranceLookup.set(u.id, quote.slice(0, 500)); // Ensure max 500 chars
+      // Use smartTruncate to avoid cutting mid-word or leaving unclosed parens
+      const rawQuote = u.displayText || u.text;
+      utteranceLookup.set(u.id, smartTruncate(rawQuote, 500));
     }
   }
 
