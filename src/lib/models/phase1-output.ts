@@ -85,6 +85,19 @@ export const DeveloperUtteranceSchema = z.object({
   /** Whether this appears to be a continuation of previous work */
   isContinuation: z.boolean().optional(),
 
+  /**
+   * Whether this utterance is semantically meaningful enough for evidence.
+   *
+   * Determined by Phase 1 based on:
+   * - Minimum word count (8+ words)
+   * - Presence of questions or code blocks
+   * - Context keywords (because, since, therefore, etc.)
+   *
+   * Utterances marked as noteworthy=false should be filtered out
+   * before being used as evidence examples in Phase 2/3.
+   */
+  isNoteworthy: z.boolean().optional(),
+
   // ─────────────────────────────────────────────────────────────────────────
   // Context from Preceding AI Response
   // ─────────────────────────────────────────────────────────────────────────
