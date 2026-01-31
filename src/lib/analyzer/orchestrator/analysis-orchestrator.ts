@@ -1,9 +1,10 @@
 /**
  * Analysis Orchestrator - Main orchestrator for the analysis pipeline
  *
- * Coordinates 5 phases of analysis (6-7 LLM calls total):
+ * Coordinates 5 phases of analysis (7-8 LLM calls total):
  * - Phase 1: DataExtractor (deterministic, no LLM)
- * - Phase 2: 4 insight workers in parallel (4 LLM calls)
+ * - Phase 2: 5 insight workers in parallel (5 LLM calls)
+ *            TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency, CommunicationPatterns
  *            Each worker outputs domain-specific strengths/growthAreas
  * - Phase 2.5: TypeClassifier only (1 LLM call)
  *            StrengthGrowthSynthesizer REMOVED - workers output insights directly
@@ -210,10 +211,11 @@ export class AnalysisOrchestrator {
     const stageUsages: StageTokenUsage[] = [];
     this.debugOutputs = [];
 
-    // Progress tracking: 8 LLM stages total (4 Phase2 + 1 Phase2.5 + 1 Phase2.8 + Phase3 + Phase4)
+    // Progress tracking: 9 LLM stages total (5 Phase2 + 1 Phase2.5 + 1 Phase2.8 + Phase3 + Phase4)
     // Note: StrengthGrowth removed - workers output insights directly
     // Phase 2.8 added - Evidence Verifier validates evidence relevance
-    const TOTAL_LLM_STAGES = 8;
+    // CommunicationPatterns added to Phase 2 (moved from Phase 3 ContentWriter)
+    const TOTAL_LLM_STAGES = 9;
     const PROGRESS_START = 40;
     const PROGRESS_RANGE = 49; // 40% → 89%
     const STEP = Math.floor(PROGRESS_RANGE / TOTAL_LLM_STAGES); // 6 points per stage
@@ -737,6 +739,7 @@ export class AnalysisOrchestrator {
       workflowHabit: results['WorkflowHabit']?.data as AgentOutputs['workflowHabit'],
       knowledgeGap: results['KnowledgeGap']?.data as AgentOutputs['knowledgeGap'],
       contextEfficiency: results['ContextEfficiency']?.data as AgentOutputs['contextEfficiency'],
+      communicationPatterns: results['CommunicationPatterns']?.data as AgentOutputs['communicationPatterns'],
     };
   }
 

@@ -1335,8 +1335,12 @@ export type VerboseLLMResponse = z.infer<typeof VerboseLLMResponseSchema>;
  *
  * Phase 3 LLM generates ONLY content that doesn't exist in Phase 2:
  * - personalitySummary: Synthesized personality narrative
- * - promptPatterns: WHAT-WHY-HOW prompt pattern analysis
+ * - promptPatterns: FALLBACK only - prefer Phase 2 CommunicationPatterns
  * - topFocusAreas: Narrative-enriched focus areas (optional)
+ *
+ * NOTE: promptPatterns generation moved to Phase 2 CommunicationPatternsWorker.
+ * Phase 3 promptPatterns is kept for backward compatibility but evaluation-assembler
+ * will prefer Phase 2 data when available.
  *
  * All structural/quantitative data (dimensionInsights, type classification,
  * premium sections, actionablePractices) are assembled deterministically
@@ -1350,7 +1354,10 @@ export const NarrativeLLMResponseSchema = z.object({
     .describe('Hyper-personalized summary of their AI coding personality (target: 2500-3000 chars, will be truncated if exceeded)'),
 
   // Prompt patterns with WHAT-WHY-HOW analysis
-  promptPatterns: z.array(LLMPromptPatternSchema),
+  // NOTE: This is FALLBACK only - Phase 2 CommunicationPatterns is preferred
+  // Kept for backward compatibility with older pipelines
+  promptPatterns: z.array(LLMPromptPatternSchema).optional()
+    .describe('FALLBACK: Prompt patterns (prefer Phase 2 CommunicationPatterns when available)'),
 
   // Top 3 Focus Areas narrative (optional - may fall back to Phase 2 data)
   topFocusAreas: LLMTopFocusAreasSchema.optional()
