@@ -91,6 +91,26 @@
   border-left: 2px solid var(--neon-purple);
 }
 
+.aiContext {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed rgba(139, 92, 246, 0.2);
+  opacity: 0.8;
+}
+
+.aiLabel {
+  font-weight: 600;
+  color: var(--neon-cyan);
+}
+
+.userLabel {
+  font-weight: 600;
+  color: var(--neon-purple);
+  margin-right: 4px;
+}
+
 .exampleQuote {
   font-size: 12px;
   font-style: italic;

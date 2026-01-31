@@ -816,6 +816,9 @@ function effectivenessToSophistication(eff: string | undefined): 'basic' | 'inte
  * Scans all evidence items in workerInsights (strengths + growthAreas across all domains)
  * and extracts unique utteranceIds. Then looks up full text from Phase1Output.
  *
+ * Also includes preceding AI response snippet for context display,
+ * showing what the AI said before the developer's message.
+ *
  * Only includes utterances that are:
  * 1. Referenced by structured evidence (has utteranceId field)
  * 2. Found in Phase1Output.developerUtterances
@@ -856,13 +859,20 @@ function buildUtteranceLookup(
     return [];
   }
 
-  // Build lookup from Phase1Output
-  const lookup: UtteranceLookupEntry[] = [];
+  // Build lookup maps from Phase1Output
   const utteranceMap = new Map<string, Phase1Output['developerUtterances'][0]>();
+  const aiResponseMap = new Map<string, Phase1Output['aiResponses'][0]>();
 
   for (const u of phase1Output.developerUtterances) {
     utteranceMap.set(u.id, u);
   }
+
+  // Build AI response map keyed by "{sessionId}_{turnIndex}"
+  for (const r of phase1Output.aiResponses) {
+    aiResponseMap.set(r.id, r);
+  }
+
+  const lookup: UtteranceLookupEntry[] = [];
 
   for (const id of referencedIds) {
     const utterance = utteranceMap.get(id);
@@ -872,6 +882,20 @@ function buildUtteranceLookup(
       const sessionId = lastUnderscore > 0 ? id.slice(0, lastUnderscore) : id;
       const turnIndex = lastUnderscore > 0 ? parseInt(id.slice(lastUnderscore + 1), 10) : 0;
 
+      // Look up preceding AI response (turnIndex - 1)
+      let precedingAISnippet: string | undefined;
+      if (turnIndex > 0) {
+        const precedingId = `${sessionId}_${turnIndex - 1}`;
+        const aiResponse = aiResponseMap.get(precedingId);
+        if (aiResponse?.textSnippet) {
+          // Truncate to ~150 chars for context display
+          precedingAISnippet = aiResponse.textSnippet.slice(0, 150);
+          if (aiResponse.textSnippet.length > 150) {
+            precedingAISnippet += '...';
+          }
+        }
+      }
+
       lookup.push({
         id,
         // Use displayText (sanitized) if available, fallback to raw text
@@ -879,6 +903,7 @@ function buildUtteranceLookup(
         timestamp: utterance.timestamp,
         sessionId,
         turnIndex: isNaN(turnIndex) ? 0 : turnIndex,
+        precedingAISnippet,
       });
     }
   }

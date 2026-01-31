@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/react';
 import { Providers } from '@/components/providers';
 import '@/styles/global.css';
 import '@/styles/variables.css';
@@ -37,6 +38,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${plusJakarta.variable} ${jetbrainsMono.variable}`}>
         <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );

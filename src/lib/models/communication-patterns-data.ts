@@ -27,6 +27,56 @@ import {
 } from './worker-insights';
 
 // ============================================================================
+// Signature Quote Schema (Tier S - Top-level "Wow" moments)
+// ============================================================================
+
+/**
+ * A signature quote representing the developer's most impressive moments.
+ *
+ * Tier S quotes are selected for:
+ * - 50+ words with clear thought process
+ * - Strategic/architectural thinking
+ * - Unique expression of expertise
+ *
+ * These are displayed separately in a "Your Signature Moments" section.
+ */
+export const SignatureQuoteSchema = z.object({
+  /** Utterance ID from Phase 1 (format: {sessionId}_{turnIndex}) */
+  utteranceId: z.string(),
+
+  /** What makes this quote particularly impressive */
+  significance: z.string(),
+
+  /** The strength/skill this quote represents */
+  representedStrength: z.string(),
+});
+export type SignatureQuote = z.infer<typeof SignatureQuoteSchema>;
+
+// ============================================================================
+// Hidden Insight Schema (Statistical discoveries without quotes)
+// ============================================================================
+
+/**
+ * A statistical discovery about the developer's behavior.
+ *
+ * Hidden insights provide "Did You Know?" facts based on metrics,
+ * without requiring direct quotes. Examples:
+ * - "Requests alternatives 2.3x per session (top 15%)"
+ * - "First message plans the approach 85% of the time"
+ */
+export const HiddenInsightSchema = z.object({
+  /** The observed statistical pattern */
+  observation: z.string(),
+
+  /** What this statistic means for the developer */
+  meaning: z.string(),
+
+  /** Percentile ranking if available (e.g., 12 = top 12%) */
+  percentile: z.number().min(0).max(100).optional(),
+});
+export type HiddenInsight = z.infer<typeof HiddenInsightSchema>;
+
+// ============================================================================
 // Pattern Example Schema
 // ============================================================================
 
@@ -113,6 +163,22 @@ export const CommunicationPatternsOutputSchema = z.object({
   summary: z.string().optional(),
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Signature Quotes & Hidden Insights (3-Layer Architecture)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Tier S signature quotes (2-3) - developer's most impressive moments.
+   * Displayed in a separate "Your Signature Moments" section.
+   */
+  signatureQuotes: z.array(SignatureQuoteSchema).optional(),
+
+  /**
+   * Statistical insights without quotes - "Did You Know?" facts.
+   * Displayed in a "Did You Know?" section.
+   */
+  hiddenInsights: z.array(HiddenInsightSchema).optional(),
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Domain-specific Strengths & Growth Areas (shared pattern)
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -150,10 +216,10 @@ export const CommunicationPatternsLLMOutputSchema = z.object({
    * - frequency: frequent | occasional | rare
    * - effectiveness: highly_effective | effective | could_improve
    * - tip: Educational advice (1000-1500 chars)
-   * - examples: comma-separated "utteranceId:analysis" pairs
+   * - examples: comma-separated "utteranceId:analysis" pairs (1 per pattern, best representative)
    */
   patternsData: z.string()
-    .describe('Patterns: "name|description|frequency|effectiveness|tip|id1:analysis1,id2:analysis2;;" (DOUBLE semicolon separator)'),
+    .describe('Patterns: "name|description|frequency|effectiveness|tip|id1:analysis1;;" (DOUBLE semicolon separator, 1 best example per pattern)'),
 
   /** Overall communication effectiveness score (0-100) */
   overallEffectivenessScore: z.number().min(0).max(100),
@@ -163,6 +229,24 @@ export const CommunicationPatternsLLMOutputSchema = z.object({
 
   /** Summary of communication style */
   summary: z.string().optional(),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Signature Quotes & Hidden Insights (3-Layer Architecture)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Signature quotes (2-3 Tier S): "utteranceId|significance|representedStrength;..."
+   * Developer's MOST impressive moments for "Your Signature Moments" section.
+   */
+  signatureQuotesData: z.string().optional()
+    .describe('Signature quotes (2-3): "utteranceId|significance|representedStrength;..." - 50+ word utterances showing strategic thinking'),
+
+  /**
+   * Hidden insights (2-4): "observation|meaning|percentile;..."
+   * Statistical discoveries for "Did You Know?" section.
+   */
+  hiddenInsightsData: z.string().optional()
+    .describe('Hidden insights (2-4): "observation|meaning|percentile;..." - statistical patterns without quotes'),
 
   // ─────────────────────────────────────────────────────────────────────────
   // Domain-specific Strengths & Growth Areas
@@ -254,6 +338,61 @@ export function parsePatternsData(data: string | undefined): CommunicationPatter
 }
 
 /**
+ * Parse signatureQuotesData string into structured array.
+ *
+ * Format: "utteranceId|significance|representedStrength;..."
+ */
+export function parseSignatureQuotesData(data: string | undefined): SignatureQuote[] {
+  if (!data || data.trim() === '') return [];
+
+  return data
+    .split(';')
+    .filter(entry => entry.trim().length > 0)
+    .map((entry) => {
+      const parts = entry.split('|');
+      const utteranceId = parts[0]?.trim() || '';
+      const significance = parts[1]?.trim() || '';
+      const representedStrength = parts[2]?.trim() || '';
+
+      // Validate utteranceId format: sessionId_turnIndex
+      if (!/_\d+$/.test(utteranceId)) {
+        console.warn(`[parseSignatureQuotesData] Invalid utteranceId: "${utteranceId}"`);
+        return null;
+      }
+
+      return { utteranceId, significance, representedStrength };
+    })
+    .filter((sq): sq is SignatureQuote => sq !== null && sq.significance.length > 0);
+}
+
+/**
+ * Parse hiddenInsightsData string into structured array.
+ *
+ * Format: "observation|meaning|percentile;..."
+ */
+export function parseHiddenInsightsData(data: string | undefined): HiddenInsight[] {
+  if (!data || data.trim() === '') return [];
+
+  return data
+    .split(';')
+    .filter(entry => entry.trim().length > 0)
+    .map((entry) => {
+      const parts = entry.split('|');
+      const observation = parts[0]?.trim() || '';
+      const meaning = parts[1]?.trim() || '';
+      const percentileStr = parts[2]?.trim() || '';
+      const percentile = percentileStr ? parseInt(percentileStr, 10) : undefined;
+
+      return {
+        observation,
+        meaning,
+        percentile: percentile && !isNaN(percentile) ? percentile : undefined,
+      };
+    })
+    .filter((hi) => hi.observation.length > 0 && hi.meaning.length > 0);
+}
+
+/**
  * Convert LLM output to structured CommunicationPatternsOutput.
  */
 export function parseCommunicationPatternsLLMOutput(
@@ -264,6 +403,8 @@ export function parseCommunicationPatternsLLMOutput(
     overallEffectivenessScore: llmOutput.overallEffectivenessScore,
     confidenceScore: llmOutput.confidenceScore,
     summary: llmOutput.summary,
+    signatureQuotes: parseSignatureQuotesData(llmOutput.signatureQuotesData),
+    hiddenInsights: parseHiddenInsightsData(llmOutput.hiddenInsightsData),
     strengths: parseWorkerStrengthsData(llmOutput.strengthsData),
     growthAreas: parseWorkerGrowthAreasData(llmOutput.growthAreasData),
   };

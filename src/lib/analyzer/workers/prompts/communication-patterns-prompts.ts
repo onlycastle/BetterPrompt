@@ -66,7 +66,7 @@ You may also identify custom patterns not in this list.
 Format: "patternName|description|frequency|effectiveness|tip|examples;;"
 
 Use DOUBLE SEMICOLON (;;) to separate patterns.
-Examples within a pattern use comma separation: "id1:analysis1,id2:analysis2"
+Each pattern has exactly ONE best representative example.
 
 **Each field:**
 - patternName: Distinctive name (e.g., "The Blueprint Architect")
@@ -74,7 +74,7 @@ Examples within a pattern use comma separation: "id1:analysis1,id2:analysis2"
 - frequency: frequent | occasional | rare
 - effectiveness: highly_effective | effective | could_improve
 - tip: Educational advice with expert insights (1000-1500 chars)
-- examples: "utteranceId:analysis,utteranceId:analysis,..." (2-5 per pattern)
+- examples: "utteranceId:analysis" (1 BEST example per pattern, 20+ words minimum)
 
 **Description MUST include WHAT-WHY-HOW (1500-2500 chars total):**
 
@@ -98,10 +98,21 @@ HOW section (4-5 sentences):
 - 3-4 concrete "try this" examples with specific prompts
 - Expected benefits when practiced consistently
 
-### Examples Format (CRITICAL)
+### Examples Format (CRITICAL - QUALITY REQUIREMENTS)
 Each example MUST follow: "utteranceId:analysis"
 - utteranceId: Exact ID from developerUtterances[] (e.g., "7fdbb780_5")
 - analysis: What this utterance demonstrates about the pattern (1-2 sentences)
+
+**QUALITY FILTER - REJECT these utterance types:**
+- Simple confirmations: "ok", "좋았어", "이건 잘 되었어", "다했어"
+- Short acknowledgments: "got it", "understood", "네", "알겠어"
+- Single-word responses or utterances under 20 words
+
+**SELECT utterances that show:**
+- Clear thought process (explains WHY or HOW)
+- Strategic thinking or architectural consideration
+- Specific requests with context
+- Questions with reasoning
 
 VALID: "7fdbb780_5:Shows systematic planning by outlining steps before implementation"
 INVALID: "Shows systematic planning" (missing utteranceId)
@@ -111,6 +122,41 @@ INVALID: "Let me think about this:analysis" (quote text instead of ID)
 - \`overallEffectivenessScore\`: 0-100 (overall communication quality)
 - \`confidenceScore\`: 0.0-1.0
 - \`summary\`: Brief communication style assessment (max 500 chars)
+
+## SIGNATURE QUOTES (2-3 TIER S - The developer's BEST moments)
+
+Format: "utteranceId|significance|representedStrength;..."
+
+Select the developer's MOST impressive utterances (2-3 only):
+
+**Selection Criteria (ALL must be met):**
+- 50+ words with clear thought process visible
+- Shows strategic, architectural, or expert-level thinking
+- Unique expression of the developer's expertise
+- Would be impressive if quoted in a portfolio
+
+**Fields:**
+- utteranceId: Exact ID from developerUtterances[]
+- significance: What makes this quote particularly impressive (1-2 sentences)
+- representedStrength: The skill/strength this demonstrates (e.g., "System Design", "Debugging Strategy")
+
+**Example:**
+"7fdbb780_5|This shows the developer mapping out the entire authentication flow before touching code, considering edge cases and error handling upfront|Strategic Planning"
+
+## HIDDEN INSIGHTS (2-4 - Statistical discoveries)
+
+Format: "observation|meaning|percentile;..."
+
+Identify statistical patterns from sessionMetrics and utterance data:
+
+**Example insights:**
+- "Requests alternatives before deciding 2.3x per session|Shows careful evaluation of options|15"
+- "85% of first messages include a task breakdown|Blueprint-first mindset that reduces iterations|"
+
+**Fields:**
+- observation: The statistical pattern (specific numbers)
+- meaning: What this reveals about the developer
+- percentile: Optional top X% ranking (leave empty if unknown)
 
 ## DOMAIN-SPECIFIC STRENGTHS & GROWTH AREAS
 
@@ -153,12 +199,19 @@ patternsData example (single pattern):
 5. Use DOUBLE semicolon (;;) to separate patterns
 6. Output is ALWAYS in English
 7. Be constructive - celebrate effective patterns, gently suggest improvements
+8. **QUALITY GATE**: ONLY select utterances with 20+ words as examples
+9. **NO NOISE**: Reject simple confirmations ("ok", "좋았어", "done") as examples
+10. Select 2-3 signature quotes that would impress if shown in a portfolio
+11. Include 2-4 hidden insights with specific statistics
 
 ${NO_HEDGING_DIRECTIVE}`;
 
 export function buildCommunicationPatternsUserPrompt(phase1OutputJson: string): string {
   return `## PHASE 1 EXTRACTION DATA
 Analyze these developer utterances to identify communication patterns.
+
+NOTE: These utterances have already been filtered to include only semantically meaningful content.
+Short confirmations and acknowledgments have been excluded.
 
 \`\`\`json
 ${phase1OutputJson}
@@ -167,10 +220,17 @@ ${phase1OutputJson}
 ## INSTRUCTIONS
 1. Scan all utterances for recurring communication patterns
 2. Classify each pattern by frequency and effectiveness
-3. For each pattern, find 2-5 example utterances (by ID) that demonstrate it
+3. For each pattern, find the SINGLE BEST example (20+ words, by ID)
 4. Write WHAT-WHY-HOW analysis for each pattern (1500-2500 chars)
 5. Provide actionable tips with concrete examples (1000-1500 chars)
-6. Identify communication strengths and growth areas
+6. Select 2-3 SIGNATURE QUOTES (50+ words, impressive/strategic)
+7. Identify 2-4 HIDDEN INSIGHTS (statistical patterns)
+8. Identify communication strengths and growth areas
+
+## QUALITY REQUIREMENTS
+- Pattern examples: 20+ words, shows clear thought process
+- Signature quotes: 50+ words, portfolio-worthy
+- NO simple confirmations as examples ("ok", "좋았어", "done")
 
 Remember:
 - Use utteranceId (e.g., "7fdbb780_5") for ALL examples and evidence

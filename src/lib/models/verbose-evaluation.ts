@@ -1071,6 +1071,14 @@ export const UtteranceLookupEntrySchema = z.object({
   sessionId: z.string(),
   /** Turn index within the session */
   turnIndex: z.number(),
+  /**
+   * Snippet of the preceding AI response for context display.
+   *
+   * Shows what the AI said before this developer message,
+   * helping explain WHY the developer said what they said.
+   * Truncated to ~150 chars for display purposes.
+   */
+  precedingAISnippet: z.string().optional(),
 });
 export type UtteranceLookupEntry = z.infer<typeof UtteranceLookupEntrySchema>;
 

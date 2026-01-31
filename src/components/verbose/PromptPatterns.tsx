@@ -6,6 +6,8 @@ type Effectiveness = 'highly_effective' | 'effective' | 'could_improve';
 interface PromptPatternExample {
   quote: string;
   analysis: string;
+  /** Optional preceding AI snippet for context (from utterance lookup) */
+  precedingAISnippet?: string;
 }
 
 interface PromptPattern {
@@ -17,8 +19,16 @@ interface PromptPattern {
   tip?: string;
 }
 
+interface UtteranceLookupEntry {
+  id: string;
+  text: string;
+  precedingAISnippet?: string;
+}
+
 interface PromptPatternsProps {
   promptPatterns: PromptPattern[];
+  /** Optional utterance lookup for AI context display */
+  utteranceLookup?: UtteranceLookupEntry[];
 }
 
 const FREQUENCY_COLORS: Record<Frequency, string> = {
@@ -40,8 +50,23 @@ function formatEffectiveness(effectiveness: Effectiveness): string {
 /**
  * Prompt patterns analysis component
  * Shows detected patterns with frequency, effectiveness badges, and examples
+ *
+ * When utteranceLookup is provided, displays AI context for each example,
+ * showing what the AI said before the developer's message.
  */
-export function PromptPatterns({ promptPatterns }: PromptPatternsProps) {
+export function PromptPatterns({ promptPatterns, utteranceLookup }: PromptPatternsProps) {
+  // Build a map for quick lookup of AI context by quote text
+  // This is a best-effort match since we don't have utteranceId in the example
+  const aiContextMap = new Map<string, string>();
+  if (utteranceLookup) {
+    for (const entry of utteranceLookup) {
+      if (entry.precedingAISnippet) {
+        // Store by text for lookup
+        aiContextMap.set(entry.text, entry.precedingAISnippet);
+      }
+    }
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.title}>Your Prompt Patterns</div>
@@ -71,12 +96,25 @@ export function PromptPatterns({ promptPatterns }: PromptPatternsProps) {
           <p className={styles.patternDescription}>{pattern.description}</p>
           <div className={styles.examplesSection}>
             <div className={styles.examplesLabel}>Examples:</div>
-            {pattern.examples.map((ex, exIdx) => (
-              <div key={exIdx} className={styles.example}>
-                <div className={styles.exampleQuote}>"{ex.quote}"</div>
-                <div className={styles.exampleAnalysis}>{ex.analysis}</div>
-              </div>
-            ))}
+            {pattern.examples.map((ex, exIdx) => {
+              // Try to find AI context for this quote
+              const aiContext = ex.precedingAISnippet || aiContextMap.get(ex.quote);
+
+              return (
+                <div key={exIdx} className={styles.example}>
+                  {aiContext && (
+                    <div className={styles.aiContext}>
+                      <span className={styles.aiLabel}>AI:</span> {aiContext}
+                    </div>
+                  )}
+                  <div className={styles.exampleQuote}>
+                    {aiContext && <span className={styles.userLabel}>You:</span>}
+                    "{ex.quote}"
+                  </div>
+                  <div className={styles.exampleAnalysis}>{ex.analysis}</div>
+                </div>
+              );
+            })}
           </div>
           {pattern.tip && (
             <div className={styles.tipBox}>

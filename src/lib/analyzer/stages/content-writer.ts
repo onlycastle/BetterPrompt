@@ -81,7 +81,10 @@ const DEFAULT_CONFIG: Required<Omit<ContentWriterConfig, 'apiKey'>> = {
  * Scans evidence from:
  * - TrustVerification: antiPatterns examples
  * - WorkflowHabit: criticalThinkingMoments, planningHabits examples
- * - StrengthGrowth: strengths/growthAreas evidence (if present)
+ * - StrengthGrowth: strengths/growthAreas evidence
+ * - KnowledgeGap: strengths/growthAreas evidence
+ * - ContextEfficiency: strengths/growthAreas evidence
+ * - CommunicationPatterns: patterns examples, strengths/growthAreas evidence
  *
  * @param agentOutputs - All Phase 2 worker outputs
  * @returns Set of utteranceIds that workers used as evidence
@@ -162,6 +165,30 @@ function extractEvidenceUtteranceIds(agentOutputs: AgentOutputs): Set<string> {
     };
     extractFromItems(agentOutputs.contextEfficiency.strengths);
     extractFromItems(agentOutputs.contextEfficiency.growthAreas);
+  }
+
+  // 7. CommunicationPatterns patterns examples
+  // This worker produces the most evidence (5-12 patterns × 1-5 examples each)
+  if (agentOutputs.communicationPatterns?.patterns) {
+    for (const pattern of agentOutputs.communicationPatterns.patterns) {
+      for (const ex of pattern.examples || []) {
+        if (ex.utteranceId) ids.add(ex.utteranceId);
+      }
+    }
+  }
+
+  // 8. CommunicationPatterns strengths/growthAreas evidence
+  if (agentOutputs.communicationPatterns) {
+    const extractFromItems = (items: any[] | undefined) => {
+      if (!items) return;
+      for (const item of items) {
+        for (const ev of item.evidence || []) {
+          if (ev.utteranceId) ids.add(ev.utteranceId);
+        }
+      }
+    };
+    extractFromItems(agentOutputs.communicationPatterns.strengths);
+    extractFromItems(agentOutputs.communicationPatterns.growthAreas);
   }
 
   return ids;

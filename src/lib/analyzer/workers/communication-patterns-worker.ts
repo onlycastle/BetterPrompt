@@ -107,10 +107,22 @@ export class CommunicationPatternsWorker extends BaseWorker<CommunicationPattern
    * - Full utterance text (with displayText preference)
    * - Metadata for context (wordCount, hasQuestion, etc.)
    * - Session metrics for frequency calculations
+   *
+   * IMPORTANT: Only noteworthy utterances are included.
+   * This filters out short confirmations ("ok", "좋았어") that would
+   * result in low-quality evidence examples.
    */
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
+    // Filter to noteworthy utterances only
+    // These have been pre-flagged by DataExtractorWorker as semantically meaningful
+    const noteworthyUtterances = phase1.developerUtterances.filter(
+      (u) => u.isNoteworthy !== false && u.wordCount >= 8
+    );
+
+    this.log(`Filtered to ${noteworthyUtterances.length} noteworthy utterances (from ${phase1.developerUtterances.length} total)`);
+
     return {
-      developerUtterances: phase1.developerUtterances.map((u) => ({
+      developerUtterances: noteworthyUtterances.map((u) => ({
         id: u.id,
         // Use displayText (sanitized) if available, fallback to raw text
         // Truncate to reasonable length for prompt
@@ -127,6 +139,8 @@ export class CommunicationPatternsWorker extends BaseWorker<CommunicationPattern
       sessionMetrics: {
         totalSessions: phase1.sessionMetrics.totalSessions,
         totalDeveloperUtterances: phase1.sessionMetrics.totalDeveloperUtterances,
+        // Include noteworthy count for LLM context
+        noteworthyUtteranceCount: noteworthyUtterances.length,
         avgDeveloperMessageLength: phase1.sessionMetrics.avgDeveloperMessageLength,
         avgMessagesPerSession: phase1.sessionMetrics.avgMessagesPerSession,
       },
