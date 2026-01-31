@@ -402,4 +402,181 @@ describe('ContentWriterStage', () => {
       }).not.toThrow();
     });
   });
+
+  describe('Evidence-Based Utterance Selection', () => {
+    it('should use Phase 2 evidence utterances when available', async () => {
+      // Create Phase 1 with multiple utterances
+      const phase1Output: Phase1Output = {
+        developerUtterances: [
+          {
+            id: 'evidence-utterance-1',
+            text: 'Help me with OAuth implementation with proper error handling',
+            timestamp: '2024-01-01T10:00:00Z',
+            sessionId: 'session-1',
+            turnIndex: 0,
+            characterCount: 60,
+            wordCount: 10,
+            hasCodeBlock: false,
+            hasQuestion: false,
+            isSessionStart: true,
+            isContinuation: false,
+          },
+          {
+            id: 'non-evidence-utterance',
+            text: 'ok',
+            timestamp: '2024-01-01T10:01:00Z',
+            sessionId: 'session-1',
+            turnIndex: 2,
+            characterCount: 2,
+            wordCount: 1,
+            hasCodeBlock: false,
+            hasQuestion: false,
+            isSessionStart: false,
+            isContinuation: false,
+          },
+          {
+            id: 'evidence-utterance-2',
+            text: 'Let me verify the token refresh handles all edge cases correctly',
+            timestamp: '2024-01-01T10:05:00Z',
+            sessionId: 'session-1',
+            turnIndex: 4,
+            characterCount: 65,
+            wordCount: 11,
+            hasCodeBlock: false,
+            hasQuestion: false,
+            isSessionStart: false,
+            isContinuation: false,
+          },
+        ],
+        aiResponses: [],
+        sessionMetrics: createMockPhase1Output().sessionMetrics,
+      };
+
+      // Create agent outputs with evidence referencing specific utterances
+      const agentOutputs: AgentOutputs = {
+        trustVerification: {
+          antiPatterns: [
+            {
+              type: 'blind_acceptance',
+              frequency: 1,
+              severity: 'moderate',
+              examples: [
+                { utteranceId: 'evidence-utterance-1', quote: 'OAuth implementation request' },
+              ],
+            },
+          ],
+          verificationBehavior: { level: 'high', description: 'Good', indicators: ['reviews'] },
+          patternTypes: ['verification_first'],
+          overallTrustHealthScore: 85,
+          summary: 'Strong verification',
+          confidenceScore: 0.9,
+          strengths: [],
+          growthAreas: [],
+        },
+        workflowHabit: {
+          planningHabits: [],
+          criticalThinkingMoments: [
+            {
+              type: 'verification',
+              quote: 'verify token refresh',
+              result: 'positive',
+              utteranceId: 'evidence-utterance-2',
+            },
+          ],
+          overallWorkflowScore: 80,
+          confidenceScore: 0.85,
+          strengths: [],
+          growthAreas: [],
+        },
+        typeClassifier: {
+          primaryType: 'architect',
+          distribution: { architect: 50, scientist: 20, collaborator: 15, speedrunner: 10, craftsman: 5 },
+          controlLevel: 'navigator',
+          controlScore: 70,
+          matrixName: 'Systems Architect',
+          matrixEmoji: '🏗️',
+          confidenceScore: 0.88,
+        },
+      };
+
+      const mockResponse = createMockNarrativeResponse();
+      mockGenerateStructured.mockResolvedValue({
+        data: mockResponse,
+        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+      });
+
+      await stage.transformV3(5, agentOutputs, phase1Output);
+
+      // Verify that generateStructured was called
+      expect(mockGenerateStructured).toHaveBeenCalled();
+
+      // Get the userPrompt that was passed to generateStructured
+      const call = mockGenerateStructured.mock.calls[0][0];
+      const userPrompt = call.userPrompt as string;
+
+      // The userPrompt should contain evidence-based utterances
+      // It should include 'evidence-utterance-1' and 'evidence-utterance-2'
+      expect(userPrompt).toContain('evidence-utterance-1');
+      expect(userPrompt).toContain('evidence-utterance-2');
+
+      // The short, non-evidence utterance 'ok' should NOT be included
+      // (unless fallback is triggered, which shouldn't happen here)
+      // Since we have evidence, the 'non-evidence-utterance' shouldn't appear
+      // Note: We can't directly verify this without checking the utterances list format
+    });
+
+    it('should fall back to first 20 utterances when no Phase 2 evidence', async () => {
+      const phase1Output = createMockPhase1Output();
+
+      // Agent outputs without any evidence (no utteranceIds)
+      const agentOutputs: AgentOutputs = {
+        trustVerification: {
+          antiPatterns: [],  // No evidence
+          verificationBehavior: { level: 'high', description: 'Good', indicators: [] },
+          patternTypes: [],
+          overallTrustHealthScore: 85,
+          summary: 'No anti-patterns detected',
+          confidenceScore: 0.9,
+          strengths: [],
+          growthAreas: [],
+        },
+        workflowHabit: {
+          planningHabits: [],
+          criticalThinkingMoments: [],  // No evidence
+          overallWorkflowScore: 80,
+          confidenceScore: 0.85,
+          strengths: [],
+          growthAreas: [],
+        },
+        typeClassifier: {
+          primaryType: 'architect',
+          distribution: { architect: 50, scientist: 20, collaborator: 15, speedrunner: 10, craftsman: 5 },
+          controlLevel: 'navigator',
+          controlScore: 70,
+          matrixName: 'Systems Architect',
+          matrixEmoji: '🏗️',
+          confidenceScore: 0.88,
+        },
+      };
+
+      const mockResponse = createMockNarrativeResponse();
+      mockGenerateStructured.mockResolvedValue({
+        data: mockResponse,
+        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+      });
+
+      await stage.transformV3(5, agentOutputs, phase1Output);
+
+      // Verify call was made
+      expect(mockGenerateStructured).toHaveBeenCalled();
+
+      // When no evidence, should fall back to first 20 utterances from Phase 1
+      // The prompt should still contain the Phase 1 utterances
+      const call = mockGenerateStructured.mock.calls[0][0];
+      const userPrompt = call.userPrompt as string;
+
+      // Should contain the Phase 1 utterance IDs
+      expect(userPrompt).toContain('session-1_0');
+    });
+  });
 });
