@@ -97,7 +97,14 @@ function createMockAgentOutputs(): AgentOutputs {
       overallTrustHealthScore: 85,
       summary: 'Strong verification habits',
       confidenceScore: 0.9,
-      strengths: [],
+      strengths: [
+        {
+          title: 'Verification mindset',
+          description: 'Consistently verifies before proceeding',
+          evidence: [{ utteranceId: 'session-1_2', quote: 'verify that the token refresh logic handles edge cases' }],
+          frequency: 'consistent',
+        },
+      ],
       growthAreas: [],
     },
     workflowHabit: {
@@ -109,7 +116,14 @@ function createMockAgentOutputs(): AgentOutputs {
           effectiveness: 'high',
         },
       ],
-      criticalThinkingMoments: [],
+      criticalThinkingMoments: [
+        {
+          type: 'verification',
+          quote: 'verify that the token refresh logic handles edge cases',
+          result: 'Caught potential edge case',
+          utteranceId: 'session-1_2',
+        },
+      ],
       overallWorkflowScore: 80,
       summary: 'Good workflow structure',
       confidenceScore: 0.85,
@@ -525,7 +539,7 @@ describe('ContentWriterStage', () => {
       // Note: We can't directly verify this without checking the utterances list format
     });
 
-    it('should fall back to first 20 utterances when no Phase 2 evidence', async () => {
+    it('should throw error when no Phase 2 evidence (No Fallback Policy)', async () => {
       const phase1Output = createMockPhase1Output();
 
       // Agent outputs without any evidence (no utteranceIds)
@@ -559,24 +573,9 @@ describe('ContentWriterStage', () => {
         },
       };
 
-      const mockResponse = createMockNarrativeResponse();
-      mockGenerateStructured.mockResolvedValue({
-        data: mockResponse,
-        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
-      });
-
-      await stage.transformV3(5, agentOutputs, phase1Output);
-
-      // Verify call was made
-      expect(mockGenerateStructured).toHaveBeenCalled();
-
-      // When no evidence, should fall back to first 20 utterances from Phase 1
-      // The prompt should still contain the Phase 1 utterances
-      const call = mockGenerateStructured.mock.calls[0][0];
-      const userPrompt = call.userPrompt as string;
-
-      // Should contain the Phase 1 utterance IDs
-      expect(userPrompt).toContain('session-1_0');
+      // Should throw error instead of silently falling back (No Fallback Policy)
+      await expect(stage.transformV3(5, agentOutputs, phase1Output))
+        .rejects.toThrow('Phase 2 evidence extraction produced no utteranceIds');
     });
   });
 });

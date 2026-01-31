@@ -106,14 +106,16 @@ function extractEvidenceUtteranceIds(agentOutputs: AgentOutputs): Set<string> {
 
   // 3. WorkflowHabit planningHabits examples
   // Note: PlanningHabit.examples schema is string[], but after verifyPhase2WorkerExamples
-  // mutation, they may have { utteranceId, quote } structure. Use any cast for runtime flexibility.
+  // mutation, they may have { utteranceId, quote } structure. Use runtime type guards.
   if (agentOutputs.workflowHabit?.planningHabits) {
     for (const ph of agentOutputs.workflowHabit.planningHabits) {
       for (const ex of (ph.examples || []) as unknown[]) {
-        // Handle both string and object formats
+        // Handle both string and object formats with full type validation
         if (typeof ex === 'object' && ex !== null && 'utteranceId' in ex) {
-          const exObj = ex as { utteranceId: string };
-          ids.add(exObj.utteranceId);
+          const exObj = ex as { utteranceId?: unknown };
+          if (typeof exObj.utteranceId === 'string') {
+            ids.add(exObj.utteranceId);
+          }
         }
       }
     }
@@ -222,40 +224,42 @@ export class ContentWriterStage {
     //
     // This ensures:
     // - LLM only sees utterances that workers deemed significant
-    // - Prevents pattern-example mismatch (e.g., "아키텍처 청사진" + "다했어")
+    // - Prevents pattern-example mismatch (e.g., "architecture blueprint" + "done")
     // - Avoids short/generic utterances that don't demonstrate patterns
     //
-    // Fallback: If no evidence utterances found, fall back to first 20
-    // (shouldn't happen in normal cases since workers always produce evidence)
+    // No Fallback Policy: If no evidence utterances found, throw error.
+    // This indicates Phase 2 workers failed to produce any evidence, which
+    // should be investigated rather than silently hidden with default data.
     const evidenceIds = extractEvidenceUtteranceIds(agentOutputs);
 
     let topUtterances: { id: string; text: string; wordCount: number }[] | undefined;
 
     if (phase1Output) {
-      if (evidenceIds.size > 0) {
-        // Primary path: Use Phase 2 evidence-based utterances
-        topUtterances = phase1Output.developerUtterances
-          .filter(u => evidenceIds.has(u.id))
-          .map(u => ({
-            id: u.id,
-            text: (u.displayText || u.text).slice(0, 1500),
-            wordCount: u.wordCount
-          }));
-
-        this.log(`Using ${topUtterances.length} evidence-based utterances (from ${evidenceIds.size} Phase 2 evidence IDs)`);
+      if (evidenceIds.size === 0) {
+        throw new Error(
+          'Phase 2 evidence extraction produced no utteranceIds. ' +
+          'This indicates a failure in insight generation that must be investigated. ' +
+          'Check that Phase 2 workers are correctly outputting evidence with utteranceId fields.'
+        );
       }
 
-      // Fallback: If no evidence found, use first 20 (legacy behavior)
-      if (!topUtterances || topUtterances.length === 0) {
-        topUtterances = phase1Output.developerUtterances
-          .slice(0, 20)
-          .map(u => ({
-            id: u.id,
-            text: (u.displayText || u.text).slice(0, 1500),
-            wordCount: u.wordCount
-          }));
+      // Use Phase 2 evidence-based utterances
+      topUtterances = phase1Output.developerUtterances
+        .filter(u => evidenceIds.has(u.id))
+        .map(u => ({
+          id: u.id,
+          text: (u.displayText || u.text).slice(0, 1500),
+          wordCount: u.wordCount
+        }));
 
-        this.log(`Fallback: Using first ${topUtterances.length} utterances (no Phase 2 evidence found)`);
+      this.log(`Using ${topUtterances.length} evidence-based utterances (from ${evidenceIds.size} Phase 2 evidence IDs)`);
+
+      // Verify we actually matched some utterances
+      if (topUtterances.length === 0) {
+        throw new Error(
+          `Phase 2 produced ${evidenceIds.size} evidence IDs but none matched Phase 1 utterances. ` +
+          'This indicates a mismatch between Phase 1 and Phase 2 data.'
+        );
       }
     }
 
