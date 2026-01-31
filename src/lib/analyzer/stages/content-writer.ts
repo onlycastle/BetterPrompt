@@ -111,14 +111,10 @@ export class ContentWriterStage {
   ): Promise<ContentWriterResult> {
     const agentOutputsSummary = summarizeAgentOutputsForPhase3(agentOutputs);
 
-    // Select top 20 richest utterances for Content Writer to quote directly
+    // Select top 20 utterances for Content Writer to quote directly
+    // No length-based filtering to include diverse utterances
     const topUtterances = phase1Output
       ? phase1Output.developerUtterances
-          .filter(u => u.characterCount > 200)
-          .sort((a, b) => {
-            if (a.hasCodeBlock !== b.hasCodeBlock) return a.hasCodeBlock ? 1 : -1;
-            return b.wordCount - a.wordCount;
-          })
           .slice(0, 20)
           .map(u => ({
             id: u.id,

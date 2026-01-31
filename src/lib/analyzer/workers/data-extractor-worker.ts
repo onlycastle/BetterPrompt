@@ -538,6 +538,13 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    */
   private isKnownSystemMetadata(text: string): boolean {
     const trimmedText = text.trim();
+
+    // Filter out single-character utterances (too short to be meaningful)
+    // Examples: ".", "ㅇ", "k", "y" — these are noise, not developer intent
+    if (trimmedText.length <= 1) {
+      return true;
+    }
+
     const knownPatterns = [
       // Skill documentation blocks
       /^Base directory for this skill:/i,
