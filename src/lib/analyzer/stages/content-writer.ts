@@ -8,6 +8,11 @@
  * Generates: personalitySummary, promptPatterns, topFocusAreas
  * All structural assembly is handled by evaluation-assembler.ts
  *
+ * Key Design Decision (v4):
+ * - topUtterances are now selected from Phase 2 evidence, not arbitrary first 20
+ * - This ensures LLM only sees utterances that workers already identified as significant
+ * - Prevents pattern-quote mismatch (e.g., "아키텍처 청사진 설계" with "다했어" example)
+ *
  * @module analyzer/stages/content-writer
  */
 
@@ -58,6 +63,108 @@ const DEFAULT_CONFIG: Required<Omit<ContentWriterConfig, 'apiKey'>> = {
   maxRetries: 2,
   verbose: false,
 };
+
+// ─────────────────────────────────────────────────────────────────────────
+// Evidence-Based Utterance Extraction
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Extract unique utteranceIds that Phase 2 workers used as evidence.
+ *
+ * These are the utterances that have already been identified as significant
+ * by the Phase 2 analysis pipeline. Using these for topUtterances ensures:
+ * - LLM only sees contextually relevant utterances
+ * - Prevents pattern-example mismatch (e.g., "아키텍처 청사진" with "다했어")
+ * - Avoids short, generic utterances that don't demonstrate patterns
+ *
+ * Scans evidence from:
+ * - TrustVerification: antiPatterns examples
+ * - WorkflowHabit: criticalThinkingMoments, planningHabits examples
+ * - StrengthGrowth: strengths/growthAreas evidence (if present)
+ *
+ * @param agentOutputs - All Phase 2 worker outputs
+ * @returns Set of utteranceIds that workers used as evidence
+ */
+function extractEvidenceUtteranceIds(agentOutputs: AgentOutputs): Set<string> {
+  const ids = new Set<string>();
+
+  // 1. TrustVerification antiPatterns examples
+  if (agentOutputs.trustVerification?.antiPatterns) {
+    for (const ap of agentOutputs.trustVerification.antiPatterns) {
+      for (const ex of ap.examples || []) {
+        if (ex.utteranceId) ids.add(ex.utteranceId);
+      }
+    }
+  }
+
+  // 2. WorkflowHabit criticalThinkingMoments
+  if (agentOutputs.workflowHabit?.criticalThinkingMoments) {
+    for (const ct of agentOutputs.workflowHabit.criticalThinkingMoments) {
+      if (ct.utteranceId) ids.add(ct.utteranceId);
+    }
+  }
+
+  // 3. WorkflowHabit planningHabits examples
+  // Note: PlanningHabit.examples schema is string[], but after verifyPhase2WorkerExamples
+  // mutation, they may have { utteranceId, quote } structure. Use runtime type guards.
+  if (agentOutputs.workflowHabit?.planningHabits) {
+    for (const ph of agentOutputs.workflowHabit.planningHabits) {
+      for (const ex of (ph.examples || []) as unknown[]) {
+        // Handle both string and object formats with full type validation
+        if (typeof ex === 'object' && ex !== null && 'utteranceId' in ex) {
+          const exObj = ex as { utteranceId?: unknown };
+          if (typeof exObj.utteranceId === 'string') {
+            ids.add(exObj.utteranceId);
+          }
+        }
+      }
+    }
+  }
+
+  // 4. StrengthGrowth strengths/growthAreas evidence
+  if (agentOutputs.strengthGrowth) {
+    const extractFromItems = (items: any[] | undefined) => {
+      if (!items) return;
+      for (const item of items) {
+        for (const ev of item.evidence || []) {
+          if (ev.utteranceId) ids.add(ev.utteranceId);
+        }
+      }
+    };
+    extractFromItems(agentOutputs.strengthGrowth.strengths);
+    extractFromItems(agentOutputs.strengthGrowth.growthAreas);
+  }
+
+  // 5. KnowledgeGap strengths/growthAreas evidence (if present)
+  if (agentOutputs.knowledgeGap) {
+    const extractFromItems = (items: any[] | undefined) => {
+      if (!items) return;
+      for (const item of items) {
+        for (const ev of item.evidence || []) {
+          if (ev.utteranceId) ids.add(ev.utteranceId);
+        }
+      }
+    };
+    extractFromItems(agentOutputs.knowledgeGap.strengths);
+    extractFromItems(agentOutputs.knowledgeGap.growthAreas);
+  }
+
+  // 6. ContextEfficiency strengths/growthAreas evidence (if present)
+  if (agentOutputs.contextEfficiency) {
+    const extractFromItems = (items: any[] | undefined) => {
+      if (!items) return;
+      for (const item of items) {
+        for (const ev of item.evidence || []) {
+          if (ev.utteranceId) ids.add(ev.utteranceId);
+        }
+      }
+    };
+    extractFromItems(agentOutputs.contextEfficiency.strengths);
+    extractFromItems(agentOutputs.contextEfficiency.growthAreas);
+  }
+
+  return ids;
+}
 
 /**
  * Content Writer Stage - Generates narrative content from Phase 2 analysis
@@ -111,17 +218,50 @@ export class ContentWriterStage {
   ): Promise<ContentWriterResult> {
     const agentOutputsSummary = summarizeAgentOutputsForPhase3(agentOutputs);
 
-    // Select top 20 utterances for Content Writer to quote directly
-    // No length-based filtering to include diverse utterances
-    const topUtterances = phase1Output
-      ? phase1Output.developerUtterances
-          .slice(0, 20)
-          .map(u => ({
-            id: u.id,
-            text: (u.displayText || u.text).slice(0, 1500),
-            wordCount: u.wordCount
-          }))
-      : undefined;
+    // ── Evidence-Based Utterance Selection (v4) ─────────────────────────────
+    // Instead of selecting arbitrary first 20 utterances, we now use
+    // utterances that Phase 2 workers identified as evidence.
+    //
+    // This ensures:
+    // - LLM only sees utterances that workers deemed significant
+    // - Prevents pattern-example mismatch (e.g., "architecture blueprint" + "done")
+    // - Avoids short/generic utterances that don't demonstrate patterns
+    //
+    // No Fallback Policy: If no evidence utterances found, throw error.
+    // This indicates Phase 2 workers failed to produce any evidence, which
+    // should be investigated rather than silently hidden with default data.
+    const evidenceIds = extractEvidenceUtteranceIds(agentOutputs);
+
+    let topUtterances: { id: string; text: string; wordCount: number }[] | undefined;
+
+    if (phase1Output) {
+      if (evidenceIds.size === 0) {
+        throw new Error(
+          'Phase 2 evidence extraction produced no utteranceIds. ' +
+          'This indicates a failure in insight generation that must be investigated. ' +
+          'Check that Phase 2 workers are correctly outputting evidence with utteranceId fields.'
+        );
+      }
+
+      // Use Phase 2 evidence-based utterances
+      topUtterances = phase1Output.developerUtterances
+        .filter(u => evidenceIds.has(u.id))
+        .map(u => ({
+          id: u.id,
+          text: (u.displayText || u.text).slice(0, 1500),
+          wordCount: u.wordCount
+        }));
+
+      this.log(`Using ${topUtterances.length} evidence-based utterances (from ${evidenceIds.size} Phase 2 evidence IDs)`);
+
+      // Verify we actually matched some utterances
+      if (topUtterances.length === 0) {
+        throw new Error(
+          `Phase 2 produced ${evidenceIds.size} evidence IDs but none matched Phase 1 utterances. ` +
+          'This indicates a mismatch between Phase 1 and Phase 2 data.'
+        );
+      }
+    }
 
     const userPrompt = buildContentWriterUserPromptV3(
       agentOutputsSummary,
