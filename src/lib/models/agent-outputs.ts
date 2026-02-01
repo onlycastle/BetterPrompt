@@ -95,13 +95,13 @@ export const KnowledgeGapOutputSchema = z.object({
   // Recommended resources - "topic:resource_type:url_or_name;..."
   recommendedResourcesData: z.string(),
 
-  // Top 3 Wow Insights
-  topInsights: z.array(z.string()).max(3),
+  // Top 3 Wow Insights (sliced to 3 since Gemini's maxItems constraint is removed)
+  topInsights: z.array(z.string()).transform((arr) => arr.slice(0, 3)),
 
   // KPT (Keep/Problem/Try) structured fields for balanced feedback
-  kptKeep: z.array(z.string()).max(2).optional(),     // Knowledge strengths (0-1)
-  kptProblem: z.array(z.string()).max(2).optional(),  // Knowledge gaps to address (1-2, expected)
-  kptTry: z.array(z.string()).max(2).optional(),      // Learning recommendations (1-2, expected)
+  kptKeep: z.array(z.string()).transform((arr) => arr.slice(0, 2)).optional(),     // Knowledge strengths (0-1)
+  kptProblem: z.array(z.string()).transform((arr) => arr.slice(0, 2)).optional(),  // Knowledge gaps to address (1-2, expected)
+  kptTry: z.array(z.string()).transform((arr) => arr.slice(0, 2)).optional(),      // Learning recommendations (1-2, expected)
 
   // Overall knowledge score (0-100)
   overallKnowledgeScore: z.number().min(0).max(100),
@@ -148,13 +148,13 @@ export const KnowledgeGapLLMOutputSchema = z.object({
   // Recommended resources - "topic:resource_type:url_or_name;..."
   recommendedResourcesData: z.string(),
 
-  // Top 3 Wow Insights
-  topInsights: z.array(z.string()).max(3),
+  // Top 3 Wow Insights (sliced to 3 since Gemini's maxItems constraint is removed)
+  topInsights: z.array(z.string()).transform((arr) => arr.slice(0, 3)),
 
   // KPT (Keep/Problem/Try) structured fields for balanced feedback
-  kptKeep: z.array(z.string()).max(2).optional(),
-  kptProblem: z.array(z.string()).max(2).optional(),
-  kptTry: z.array(z.string()).max(2).optional(),
+  kptKeep: z.array(z.string()).transform((arr) => arr.slice(0, 2)).optional(),
+  kptProblem: z.array(z.string()).transform((arr) => arr.slice(0, 2)).optional(),
+  kptTry: z.array(z.string()).transform((arr) => arr.slice(0, 2)).optional(),
 
   // Overall knowledge score (0-100)
   overallKnowledgeScore: z.number().min(0).max(100),
@@ -237,13 +237,13 @@ export const ContextEfficiencyOutputSchema = z.object({
   // Redundant info patterns - "info_type:repeat_count;..."
   redundantInfoData: z.string(),
 
-  // Top 3 Wow Insights
-  topInsights: z.array(z.string()).max(3),
+  // Top 3 Wow Insights (sliced to 3 since Gemini's maxItems constraint is removed)
+  topInsights: z.array(z.string()).transform((arr) => arr.slice(0, 3)),
 
   // KPT (Keep/Problem/Try) structured fields for balanced feedback
-  kptKeep: z.array(z.string()).max(2).optional(),     // Efficient habits (0-1)
-  kptProblem: z.array(z.string()).max(2).optional(),  // Inefficiencies to address (1-2, expected)
-  kptTry: z.array(z.string()).max(2).optional(),      // Efficiency improvements (1-2, expected)
+  kptKeep: z.array(z.string()).transform((arr) => arr.slice(0, 2)).optional(),     // Efficient habits (0-1)
+  kptProblem: z.array(z.string()).transform((arr) => arr.slice(0, 2)).optional(),  // Inefficiencies to address (1-2, expected)
+  kptTry: z.array(z.string()).transform((arr) => arr.slice(0, 2)).optional(),      // Efficiency improvements (1-2, expected)
 
   // Overall efficiency score (0-100)
   overallEfficiencyScore: z.number().min(0).max(100),
@@ -309,13 +309,13 @@ export const ContextEfficiencyLLMOutputSchema = z.object({
   // Redundant info patterns - "info_type:repeat_count;..."
   redundantInfoData: z.string(),
 
-  // Top 3 Wow Insights
-  topInsights: z.array(z.string()).max(3),
+  // Top 3 Wow Insights (sliced to 3 since Gemini's maxItems constraint is removed)
+  topInsights: z.array(z.string()).transform((arr) => arr.slice(0, 3)),
 
   // KPT (Keep/Problem/Try) structured fields for balanced feedback
-  kptKeep: z.array(z.string()).max(2).optional(),
-  kptProblem: z.array(z.string()).max(2).optional(),
-  kptTry: z.array(z.string()).max(2).optional(),
+  kptKeep: z.array(z.string()).transform((arr) => arr.slice(0, 2)).optional(),
+  kptProblem: z.array(z.string()).transform((arr) => arr.slice(0, 2)).optional(),
+  kptTry: z.array(z.string()).transform((arr) => arr.slice(0, 2)).optional(),
 
   // Overall efficiency score (0-100)
   overallEfficiencyScore: z.number().min(0).max(100),
