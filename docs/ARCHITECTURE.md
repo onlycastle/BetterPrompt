@@ -1,6 +1,6 @@
 # NoMoreAISlop - Architecture
 
-> Version: 5.0.0 | Status: Closed-Source SaaS
+> Version: 5.1.0 | Status: Closed-Source SaaS | Last Updated: 2026-02-01
 
 ## Business Model
 
@@ -77,6 +77,7 @@ Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation
 | `src/lib/analyzer/stages/` | Content Writer stage (Phase 3 narrative generation) | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/parser/` | JSONL session parsing | Infrastructure |
+| `src/lib/scanner/` | Multi-source session discovery (Claude Code + Cursor) | Infrastructure |
 | `src/lib/search-agent/` | Knowledge curation system | Application |
 
 ### Next.js 15 App Router Architecture
@@ -201,12 +202,52 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
   - `src/lib/analyzer/workers/prompts/knowledge-gap-prompts.ts`
   - `src/lib/analyzer/workers/prompts/context-efficiency-prompts.ts`
   - `src/lib/analyzer/workers/prompts/type-classifier-prompts.ts`
+  - `src/lib/analyzer/workers/prompts/knowledge-mapping.ts` — Dynamic prompt injection system
 - Stage prompts:
   - `src/lib/analyzer/stages/content-writer-prompts.ts`
 - Uses PTCF framework (Persona · Task · Context · Format)
 - Zod schemas → JSON Schema via `zod-to-json-schema`
 
+**Dynamic Prompt System (Knowledge Mapping):**
+- Maps each Worker to applicable dimensions (e.g., TrustVerification → aiControl, skillResilience)
+- Filters INITIAL_INSIGHTS by dimension to inject domain-specific expert knowledge
+- `getInsightsForWorker()` retrieves up to 5 priority-sorted insights per worker
+- `formatInsightsForPrompt()` creates structured PROFESSIONAL KNOWLEDGE sections
+
 **Model:** `gemini-3-flash-preview` for all phases
+
+### Multi-Source Session Scanning
+
+Session discovery supports multiple AI coding assistant sources:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    MULTI-SOURCE SESSION SCANNER                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Supported Sources:                                                      │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  claude-code  │  ~/.claude/projects/**/*.jsonl                   │   │
+│  │               │  Standard JSONL parsing                          │   │
+│  ├───────────────┼──────────────────────────────────────────────────┤   │
+│  │  cursor       │  ~/.cursor/chats/**/*.db                         │   │
+│  │               │  SQLite parsing (better-sqlite3)                 │   │
+│  └───────────────┴──────────────────────────────────────────────────┘   │
+│                                                                          │
+│  Architecture:                                                           │
+│  - SessionSource interface (abstract contract)                          │
+│  - SourceRegistry (manages available sources)                           │
+│  - MultiSourceScanner (coordinates cross-source scanning)              │
+│                                                                          │
+│  Key Files:                                                              │
+│  - src/lib/scanner/index.ts                                             │
+│  - src/lib/scanner/sources/claude-code.ts                               │
+│  - src/lib/scanner/sources/cursor.ts                                    │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Type:** `SessionSourceType = 'claude-code' | 'cursor'`
 
 ## Port Interfaces
 

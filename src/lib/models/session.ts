@@ -145,6 +145,11 @@ export type JSONLLine = z.infer<typeof JSONLLineSchema>;
 // ============================================================================
 
 /**
+ * Supported session source identifiers
+ */
+export type SessionSourceType = 'claude-code' | 'cursor';
+
+/**
  * Tool call representation (simplified from raw format)
  */
 export interface ToolCall {
@@ -194,6 +199,8 @@ export interface ParsedSession {
   claudeCodeVersion: string;
   messages: ParsedMessage[];
   stats: SessionStats;
+  /** Source identifier (claude-code, cursor, etc.) */
+  source?: SessionSourceType;
 }
 
 /**
@@ -206,10 +213,12 @@ export interface SessionMetadata {
   timestamp: Date;
   messageCount: number;
   durationSeconds: number;
-  filePath: string; // Full path to JSONL file
+  filePath: string; // Full path to JSONL or store.db file
   // Context utilization metrics (0-100)
   avgContextUtilization?: number; // Average context window usage %
   maxContextUtilization?: number; // Peak context window usage %
+  /** Source identifier (claude-code, cursor, etc.) */
+  source?: SessionSourceType;
 }
 
 // ============================================================================

@@ -62,9 +62,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    * @returns Sanitized displayText safe for frontend rendering
    */
   private static sanitizeDisplayText(text: string): string {
-    // Fix vertical text: Remove newlines between individual characters
-    // Pattern: single char followed by newline followed by single char
-    // Apply repeatedly until no more matches (handles any length vertical text)
     let result = text;
     let prev = '';
     while (result !== prev) {
@@ -73,14 +70,10 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     }
 
     return result
-      // Strip markdown headers: "# Title" or "## Subtitle" -> "Title" or "Subtitle"
       .replace(/^#{1,6}\s+/gm, '')
-      // Strip markdown bold: **text** or __text__ -> text
       .replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1')
       .replace(/_{1,2}([^_]+)_{1,2}/g, '$1')
-      // Strip markdown inline code: `code` -> code
       .replace(/`([^`]+)`/g, '$1')
-      // Normalize multiple spaces/newlines to single space
       .replace(/\s+/g, ' ')
       .trim();
   }
@@ -101,11 +94,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   private filterTokenUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
   constructor(config?: OrchestratorConfig) {
-    if (config) {
-      super(config);
-    } else {
-      super();
-    }
+    super(config);
   }
 
   /**
@@ -229,12 +218,33 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     const text = this.truncateText(originalText, DataExtractorWorker.MAX_TEXT_LENGTH);
     const id = `${session.sessionId}_${turnIndex}`;
 
+    // Extract natural language segments (immutable developer text)
+    const naturalLanguageSegments = this.extractNaturalLanguageSegments(originalText);
+
+    // Calculate machine content ratio: 1 - (natural language chars / total chars)
+    // Ratio of 1.0 = all machine content, 0.0 = all developer text
+    // Use segment range (end - start) for accurate ratio, not trimmed text length
+    const totalChars = originalText.length;
+    const naturalLanguageChars = naturalLanguageSegments.reduce(
+      (sum, segment) => sum + (segment.end - segment.start),
+      0
+    );
+    const machineContentRatio = totalChars > 0
+      ? 1 - (naturalLanguageChars / totalChars)
+      : 0;
+
     return {
       id,
       text,
       timestamp: message.timestamp.toISOString(),
       sessionId: session.sessionId,
       turnIndex,
+
+      // Natural language segments (protected from modification)
+      naturalLanguageSegments: naturalLanguageSegments.length > 0 ? naturalLanguageSegments : undefined,
+
+      // Machine content ratio for Phase 2 error reporting evaluation
+      machineContentRatio,
 
       // Structural metadata computed from ORIGINAL text (preserves accurate metrics)
       characterCount: originalText.length,
@@ -291,7 +301,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     if (this.isToolExecutionResponse(tools)) return 'tool_execution';
     if (this.isQuestionResponse(content)) return 'question';
     if (this.isExplanationResponse(content)) return 'explanation';
-
     return 'other';
   }
 
@@ -587,7 +596,29 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
           if (classification?.displayText && classification.displayText.trim()) {
             // Apply post-processing to fix LLM formatting issues
             // (vertical text, raw markdown, whitespace)
-            utterance.displayText = DataExtractorWorker.sanitizeDisplayText(classification.displayText);
+            const sanitized = DataExtractorWorker.sanitizeDisplayText(classification.displayText);
+            const originalLength = utterance.text.length;
+            const sanitizedLength = sanitized.length;
+            const compressionRatio = sanitizedLength / originalLength;
+
+            // CRITICAL: Tiered validation based on original text length
+            // Short texts (developer's natural language) must be preserved more strictly
+            // Long texts may contain machine-generated content that can be summarized
+            const validationResult = this.validateDisplayTextCompression(
+              originalLength,
+              sanitizedLength,
+              compressionRatio
+            );
+
+            if (!validationResult.valid) {
+              // LLM corrupted the text - fallback to original
+              this.log(`Rejected LLM displayText (${sanitizedLength}/${originalLength} chars, ratio=${compressionRatio.toFixed(2)}, reason=${validationResult.reason}): "${sanitized.slice(0, 30)}..."`);
+              utterance.displayText = utterance.text.length > 300
+                ? utterance.text.slice(0, 297) + '...'
+                : utterance.text;
+            } else {
+              utterance.displayText = sanitized;
+            }
           } else {
             // No displayText from LLM - use original text (truncated for display)
             utterance.displayText = utterance.text.length > 300
@@ -779,6 +810,53 @@ IMPORTANT GUIDELINES:
 - When in doubt about classification, default to "developer"
 - Use confidence scores to indicate certainty (0.0-1.0)
 
+## CRITICAL RULE: Never Summarize Developer's Natural Language
+- displayText must contain ALL of the developer's original words
+- ONLY machine-generated content (error logs, stack traces, code blocks) can be summarized to tags
+- If original text is "1번을 실행하면 이렇게 나와", displayText MUST be "1번을 실행하면 이렇게 나와" (unchanged)
+- NEVER reduce developer text to just numbers, single words, or short phrases
+- When in doubt, return the original text unchanged
+
+## LENGTH-BASED RULES (MANDATORY):
+- SHORT TEXT (< 50 chars): displayText MUST be identical to original text
+  - These are pure developer natural language with NO machine content
+  - Example: "1번을 실행해봐" → displayText = "1번을 실행해봐" (unchanged)
+  - Example: "로그인 테스트 해봐" → displayText = "로그인 테스트 해봐" (unchanged)
+  - NEVER summarize, shorten, or modify short texts
+
+- MEDIUM TEXT (50-200 chars): displayText must preserve at least 50% of original length
+  - May contain some machine content that can be tagged
+  - Developer's words MUST be preserved verbatim
+
+- LONG TEXT (200+ chars): displayText may summarize machine content more aggressively
+  - Still preserve ALL developer natural language segments
+
+INVALID displayText EXAMPLES (DO NOT DO THIS):
+  text: "1번을 실행하면 이렇게 나와"
+  displayText: "1" ← WRONG! This destroys developer's actual words
+
+  text: "이건 잘 되었어"
+  displayText: "잘" ← WRONG! This loses context
+
+  text: "로그인 테스트 해봐"
+  displayText: "테스트" ← WRONG! Too short, loses intent
+
+  text: "Great, this works!"
+  displayText: "works" ← WRONG! Developer's full sentence must be preserved
+
+VALID displayText EXAMPLES:
+  text: "1번을 실행하면 이렇게 나와"
+  displayText: "1번을 실행하면 이렇게 나와" ← CORRECT! Unchanged (short text)
+
+  text: "이건 잘 되었어"
+  displayText: "이건 잘 되었어" ← CORRECT! Unchanged (short text)
+
+  text: "Great, this works!"
+  displayText: "Great, this works!" ← CORRECT! Unchanged (short text)
+
+  text: "로그인 잘 된다. 그런데 Error: No workspace ID 에러가 나왔어"
+  displayText: "로그인 잘 된다. 그런데 [Error: No workspace ID] 에러가 나왔어" ← CORRECT! Only error is tagged
+
 CRITICAL FORMATTING RULES for displayText:
 - NEVER insert newlines (\\n) between individual characters - text must flow horizontally
 - REMOVE all markdown syntax from output:
@@ -811,6 +889,162 @@ Respond with a JSON object containing an array of classifications.`;
 ${items}
 
 Return exactly ${inputs.length} classifications in order.`;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Natural Language Preservation Methods
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Validate displayText compression ratio based on original text length.
+   *
+   * Tiered validation ensures developer's natural language is preserved:
+   * - Short texts (< 50 chars): Likely pure developer input, require 80% preservation
+   * - Medium texts (50-200 chars): Mixed content, require 50% preservation
+   * - Long texts (200+ chars): May contain machine content, require 30% preservation
+   *
+   * @returns { valid: boolean, reason: string }
+   */
+  private validateDisplayTextCompression(
+    originalLength: number,
+    sanitizedLength: number,
+    compressionRatio: number
+  ): { valid: boolean; reason: string } {
+    if (sanitizedLength < 10) {
+      return { valid: false, reason: 'too_short_absolute' };
+    }
+
+    if (originalLength < 50 && compressionRatio < 0.8) {
+      return { valid: false, reason: 'short_text_over_compressed' };
+    }
+
+    if (originalLength >= 50 && originalLength < 200 && compressionRatio < 0.5) {
+      return { valid: false, reason: 'medium_text_over_compressed' };
+    }
+
+    if (originalLength >= 200 && compressionRatio < 0.3) {
+      return { valid: false, reason: 'long_text_over_compressed' };
+    }
+
+    return { valid: true, reason: 'passed' };
+  }
+
+  /**
+   * Extract natural language segments from text.
+   *
+   * Identifies which parts of the text are developer's actual words
+   * vs machine-generated content (error logs, stack traces, code blocks).
+   *
+   * Machine content patterns:
+   * - Error messages: Error:, Exception:, ERROR:
+   * - Stack traces: at Function.method, Traceback
+   * - Code blocks: ```...```
+   * - JSON data: { "key": ... }
+   * - CLI output: npm ERR!, git push output
+   *
+   * @param text - The original developer utterance text
+   * @returns Array of natural language segments with start/end positions
+   */
+  private extractNaturalLanguageSegments(text: string): Array<{ start: number; end: number; text: string }> {
+    const segments: Array<{ start: number; end: number; text: string }> = [];
+
+    // Patterns for machine-generated content (to EXCLUDE from natural language)
+    const machinePatterns: RegExp[] = [
+      // Error messages and stack traces
+      /(?:Error|ERROR|Exception|TypeError|SyntaxError|ReferenceError):\s*[^\n]+/g,
+      /(?:at\s+\w+\.\w+\s*\([^)]+\))/g,
+      /Traceback \(most recent call last\):[\s\S]*?(?=\n[^\s]|$)/g,
+
+      // Code blocks
+      /```[\s\S]*?```/g,
+
+      // JSON data (objects and arrays)
+      /\{[\s\S]*?\}/g,
+      /\[[\s\S]*?\]/g,
+
+      // CLI/terminal output patterns
+      /npm\s+(?:ERR!|WARN)[^\n]*/g,
+      /(?:GET|POST|PUT|DELETE|PATCH)\s+\/\S+\s+\d{3}/g,
+
+      // File paths with line numbers
+      /(?:at\s+)?[/\\]?(?:\w+[/\\])+\w+\.\w+:\d+(?::\d+)?/g,
+    ];
+
+    // Find all machine content ranges
+    const machineRanges: Array<{ start: number; end: number }> = [];
+
+    for (const pattern of machinePatterns) {
+      let match;
+      // Reset regex state for global patterns
+      pattern.lastIndex = 0;
+      while ((match = pattern.exec(text)) !== null) {
+        machineRanges.push({
+          start: match.index,
+          end: match.index + match[0].length,
+        });
+      }
+    }
+
+    // Sort and merge overlapping ranges
+    machineRanges.sort((a, b) => a.start - b.start);
+    const mergedRanges: Array<{ start: number; end: number }> = [];
+    for (const range of machineRanges) {
+      const last = mergedRanges[mergedRanges.length - 1];
+      if (last && range.start <= last.end) {
+        last.end = Math.max(last.end, range.end);
+      } else {
+        mergedRanges.push({ ...range });
+      }
+    }
+
+    // Extract natural language segments (gaps between machine content)
+    let currentPos = 0;
+    for (const range of mergedRanges) {
+      if (range.start > currentPos) {
+        const rawSegment = text.slice(currentPos, range.start);
+        const trimmed = rawSegment.trim();
+        if (trimmed.length > 0) {
+          // Adjust indices to match trimmed text
+          const leadingWhitespace = rawSegment.length - rawSegment.trimStart().length;
+          const trailingWhitespace = rawSegment.length - rawSegment.trimEnd().length;
+          segments.push({
+            start: currentPos + leadingWhitespace,
+            end: range.start - trailingWhitespace,
+            text: trimmed,
+          });
+        }
+      }
+      currentPos = range.end;
+    }
+
+    // Add final segment if any text remains
+    if (currentPos < text.length) {
+      const rawSegment = text.slice(currentPos);
+      const trimmed = rawSegment.trim();
+      if (trimmed.length > 0) {
+        const leadingWhitespace = rawSegment.length - rawSegment.trimStart().length;
+        const trailingWhitespace = rawSegment.length - rawSegment.trimEnd().length;
+        segments.push({
+          start: currentPos + leadingWhitespace,
+          end: text.length - trailingWhitespace,
+          text: trimmed,
+        });
+      }
+    }
+
+    // If no machine content was found, the entire text is natural language
+    if (segments.length === 0 && text.trim().length > 0) {
+      const trimmed = text.trim();
+      const leadingWhitespace = text.length - text.trimStart().length;
+      const trailingWhitespace = text.length - text.trimEnd().length;
+      segments.push({
+        start: leadingWhitespace,
+        end: text.length - trailingWhitespace,
+        text: trimmed,
+      });
+    }
+
+    return segments;
   }
 
   private hadError(message: ParsedMessage | null): boolean {

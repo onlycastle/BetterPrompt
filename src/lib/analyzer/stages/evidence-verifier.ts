@@ -208,6 +208,7 @@ export class EvidenceVerifierStage {
     addFromDomain('workflowHabit', insights.workflowHabit);
     addFromDomain('knowledgeGap', insights.knowledgeGap);
     addFromDomain('contextEfficiency', insights.contextEfficiency);
+    addFromDomain('communicationPatterns', insights.communicationPatterns);
 
     return pairs;
   }

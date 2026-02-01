@@ -1,0 +1,273 @@
+/**
+ * Multi-Source Session Scanner
+ *
+ * Unified scanner that discovers and parses sessions from multiple
+ * AI coding assistant sources (Claude Code, Cursor, etc.)
+ *
+ * Architecture:
+ * - SessionSource interface defines the contract for each source
+ * - SourceRegistry maintains available sources
+ * - MultiSourceScanner coordinates scanning across all sources
+ */
+
+// Export types
+export type {
+  SessionSourceType,
+  FileMetadata,
+  SourcedSessionMetadata,
+  SourcedParsedSession,
+  DiscoveryConfig,
+  SessionSource,
+} from './sources/base';
+
+export { BaseSessionSource } from './sources/base';
+
+// Export source implementations
+export { ClaudeCodeSource, claudeCodeSource, CLAUDE_PROJECTS_DIR } from './sources/claude-code';
+export { CursorSource, cursorSource, CURSOR_CHATS_DIR } from './sources/cursor';
+
+// Export tool mapping utilities
+export {
+  TOOL_MAPPING,
+  TOOL_CATEGORIES,
+  normalizeToolName,
+  getKnownTools,
+  needsNormalization,
+  getToolCategory,
+} from './tool-mapping';
+
+// ─────────────────────────────────────────────────────────────────────────
+// Source Registry
+// ─────────────────────────────────────────────────────────────────────────
+
+import type { SessionSource, FileMetadata, SourcedSessionMetadata, SourcedParsedSession } from './sources/base';
+import { ClaudeCodeSource } from './sources/claude-code';
+import { CursorSource } from './sources/cursor';
+
+/**
+ * Registry of all available session sources
+ */
+export class SourceRegistry {
+  private sources: SessionSource[] = [];
+
+  constructor() {
+    // Register default sources
+    this.register(new ClaudeCodeSource());
+    this.register(new CursorSource());
+  }
+
+  /**
+   * Register a new session source
+   */
+  register(source: SessionSource): void {
+    this.sources.push(source);
+  }
+
+  /**
+   * Get all registered sources
+   */
+  getAll(): SessionSource[] {
+    return [...this.sources];
+  }
+
+  /**
+   * Get available sources (directory exists, dependencies met)
+   */
+  async getAvailable(): Promise<SessionSource[]> {
+    const available: SessionSource[] = [];
+
+    for (const source of this.sources) {
+      if (await source.isAvailable()) {
+        available.push(source);
+      }
+    }
+
+    return available;
+  }
+
+  /**
+   * Get a specific source by name
+   */
+  get(name: string): SessionSource | undefined {
+    return this.sources.find((s) => s.name === name);
+  }
+}
+
+// Default registry instance
+export const sourceRegistry = new SourceRegistry();
+
+// ─────────────────────────────────────────────────────────────────────────
+// Multi-Source Scanner
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Configuration for multi-source scanning
+ */
+export interface MultiSourceScanConfig {
+  /** Maximum candidates per source for pre-filtering */
+  maxCandidatesPerSource?: number;
+  /** Minimum file size to consider */
+  minFileSize?: number;
+  /** Maximum file size to consider */
+  maxFileSize?: number;
+  /** Source types to include (all if undefined) */
+  includeSources?: string[];
+  /** Source types to exclude */
+  excludeSources?: string[];
+}
+
+/**
+ * Result of multi-source file metadata collection
+ */
+export interface MultiSourceFileResult {
+  files: FileMetadata[];
+  sourceStats: Map<string, number>;
+}
+
+/**
+ * Multi-source session scanner
+ *
+ * Coordinates scanning across multiple session sources and
+ * merges results into a unified format.
+ */
+export class MultiSourceScanner {
+  constructor(private registry: SourceRegistry = sourceRegistry) {}
+
+  /**
+   * Collect file metadata from all available sources
+   */
+  async collectAllFileMetadata(
+    config?: MultiSourceScanConfig
+  ): Promise<MultiSourceFileResult> {
+    const sources = await this.getFilteredSources(config);
+    const allFiles: FileMetadata[] = [];
+    const sourceStats = new Map<string, number>();
+
+    for (const source of sources) {
+      const files = await source.collectFileMetadata({
+        minFileSize: config?.minFileSize,
+        maxFileSize: config?.maxFileSize,
+      });
+
+      allFiles.push(...files);
+      sourceStats.set(source.name, files.length);
+    }
+
+    return { files: allFiles, sourceStats };
+  }
+
+  /**
+   * Extract metadata for a file from the appropriate source
+   */
+  async extractMetadata(
+    file: FileMetadata
+  ): Promise<SourcedSessionMetadata | null> {
+    const source = this.registry.get(file.source);
+    if (!source) return null;
+
+    try {
+      const content = await source.readSessionContent(file.filePath);
+      return source.extractMetadata(file.filePath, content);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Parse a session from the appropriate source
+   */
+  async parseSession(
+    metadata: SourcedSessionMetadata
+  ): Promise<SourcedParsedSession | null> {
+    const source = this.registry.get(metadata.source);
+    if (!source) return null;
+
+    try {
+      // Handle Cursor's special case (SQLite requires parseFromFile)
+      if (metadata.source === 'cursor') {
+        const cursorSource = source as CursorSource;
+        return cursorSource.parseFromFile(metadata.filePath);
+      }
+
+      // Standard path: read content and parse
+      const content = await source.readSessionContent(metadata.filePath);
+      return source.parseSessionContent(
+        metadata.sessionId,
+        metadata.projectPath,
+        metadata.projectName,
+        content
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get available source names
+   */
+  async getAvailableSources(): Promise<string[]> {
+    const sources = await this.registry.getAvailable();
+    return sources.map((s) => s.name);
+  }
+
+  /**
+   * Check source availability status
+   */
+  async getSourceStatus(): Promise<Map<string, boolean>> {
+    const status = new Map<string, boolean>();
+
+    for (const source of this.registry.getAll()) {
+      status.set(source.name, await source.isAvailable());
+    }
+
+    return status;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Private helpers
+  // ─────────────────────────────────────────────────────────────────────────
+
+  private async getFilteredSources(
+    config?: MultiSourceScanConfig
+  ): Promise<SessionSource[]> {
+    let sources = await this.registry.getAvailable();
+
+    // Apply include filter
+    if (config?.includeSources && config.includeSources.length > 0) {
+      sources = sources.filter((s) => config.includeSources!.includes(s.name));
+    }
+
+    // Apply exclude filter
+    if (config?.excludeSources && config.excludeSources.length > 0) {
+      sources = sources.filter((s) => !config.excludeSources!.includes(s.name));
+    }
+
+    return sources;
+  }
+}
+
+// Default scanner instance
+export const multiSourceScanner = new MultiSourceScanner();
+
+// ─────────────────────────────────────────────────────────────────────────
+// Convenience functions
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Check if any session sources are available
+ */
+export async function hasAnySources(): Promise<boolean> {
+  const sources = await sourceRegistry.getAvailable();
+  return sources.length > 0;
+}
+
+/**
+ * Get display names for available sources
+ */
+export async function getAvailableSourceNames(): Promise<{ name: string; displayName: string }[]> {
+  const sources = await sourceRegistry.getAvailable();
+  return sources.map((s) => ({
+    name: s.name,
+    displayName: s.displayName,
+  }));
+}

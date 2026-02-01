@@ -23,9 +23,10 @@ import {
 import type { Phase1Output } from '../../models/phase1-output';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
-  CONTEXT_EFFICIENCY_SYSTEM_PROMPT,
+  buildContextEfficiencySystemPrompt,
   buildContextEfficiencyUserPrompt,
 } from './prompts/context-efficiency-prompts';
+import { getInsightsForWorker } from './prompts/knowledge-mapping';
 
 /**
  * Context Efficiency Worker - Analyzes token and context efficiency + productivity
@@ -72,8 +73,14 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
     const phase1Json = JSON.stringify(phase1ForPrompt, null, 2);
     const userPrompt = buildContextEfficiencyUserPrompt(phase1Json);
 
+    // Get relevant professional insights for this worker's domain
+    const relevantInsights = getInsightsForWorker(this.name);
+    const systemPrompt = buildContextEfficiencySystemPrompt(relevantInsights);
+
+    this.log(`Injected ${relevantInsights.length} professional insights`);
+
     const result = await this.client!.generateStructured({
-      systemPrompt: CONTEXT_EFFICIENCY_SYSTEM_PROMPT,
+      systemPrompt,
       userPrompt,
       responseSchema: ContextEfficiencyLLMOutputSchema,
       maxOutputTokens: 8192,
@@ -89,8 +96,14 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
   }
 
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
+    // Filter to noteworthy utterances only (same as CommunicationPatterns)
+    // This prevents LLM from selecting low-quality utterances as evidence
+    const noteworthyUtterances = phase1.developerUtterances.filter(
+      (u) => u.isNoteworthy !== false && u.wordCount >= 8
+    );
+
     return {
-      developerUtterances: phase1.developerUtterances.map((u) => ({
+      developerUtterances: noteworthyUtterances.map((u) => ({
         id: u.id,
         // Use displayText (sanitized) if available, fallback to raw text
         // displayText has machine-generated content (error logs, stack traces, code) summarized

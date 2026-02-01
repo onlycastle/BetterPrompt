@@ -985,6 +985,7 @@ export const TranslatedAgentInsightsSchema = z.object({
   strengthGrowth: TranslatedAgentInsightSchema.optional(),
   trustVerification: TranslatedAgentInsightSchema.optional(),
   workflowHabit: TranslatedAgentInsightSchema.optional(),
+  communicationPatterns: TranslatedAgentInsightSchema.optional(),
 });
 export type TranslatedAgentInsights = z.infer<typeof TranslatedAgentInsightsSchema>;
 
@@ -1047,6 +1048,102 @@ export const DimensionResourceMatchSchema = z.object({
   professionalInsights: z.array(MatchedProfessionalInsightSchema),
 });
 export type DimensionResourceMatch = z.infer<typeof DimensionResourceMatchSchema>;
+
+// ============================================================================
+// TRANSFORMATION AUDIT SCHEMA (Data Integrity Tracking)
+// ============================================================================
+
+/**
+ * Transformation type for audit trail
+ *
+ * Tracks what kind of transformation was applied to the original text:
+ * - 'none': No transformation, displayText = original text
+ * - 'system_tag_removed': System-injected tags were stripped
+ * - 'error_summarized': Error messages were summarized to [Error: ...]
+ * - 'stack_trace_summarized': Stack traces were replaced with [Stack trace]
+ * - 'code_block_summarized': Code blocks were replaced with [Code: ...]
+ * - 'truncated': Text was truncated due to length limits
+ * - 'mixed': Multiple transformation types applied
+ */
+export const TransformationTypeSchema = z.enum([
+  'none',
+  'system_tag_removed',
+  'error_summarized',
+  'stack_trace_summarized',
+  'code_block_summarized',
+  'truncated',
+  'mixed',
+]);
+export type TransformationType = z.infer<typeof TransformationTypeSchema>;
+
+/**
+ * Individual transformation segment within an utterance.
+ *
+ * Records exactly what was changed and why, enabling:
+ * - Post-hoc audit of text transformations
+ * - Debugging LLM behavior
+ * - User transparency ("why does my text look different?")
+ */
+export const TransformationSegmentSchema = z.object({
+  /** Original text before transformation */
+  original: z.string(),
+
+  /** Transformed text after processing */
+  transformed: z.string(),
+
+  /** Why this transformation was applied */
+  reason: z.string(),
+
+  /** Start position in original text (for segment-level tracking) */
+  startPos: z.number().optional(),
+
+  /** End position in original text */
+  endPos: z.number().optional(),
+});
+export type TransformationSegment = z.infer<typeof TransformationSegmentSchema>;
+
+/**
+ * Transformation audit entry for a single utterance.
+ *
+ * Provides complete traceability from original developer text to displayed text.
+ * Enables:
+ * - Data integrity verification
+ * - Debugging LLM displayText generation issues
+ * - User transparency about what was changed
+ * - Compliance auditing (did we preserve developer intent?)
+ */
+export const TransformationAuditEntrySchema = z.object({
+  /** Utterance ID (format: {sessionId}_{turnIndex}) */
+  utteranceId: z.string(),
+
+  /** Original text before any transformation */
+  originalText: z.string(),
+
+  /** Final display text after all transformations */
+  displayText: z.string(),
+
+  /** Primary transformation type applied */
+  transformationType: TransformationTypeSchema,
+
+  /** Whether original text matches displayText exactly */
+  isVerbatim: z.boolean(),
+
+  /** Compression ratio (displayText.length / originalText.length) */
+  compressionRatio: z.number().min(0).max(1),
+
+  /** Detailed segments showing what was transformed */
+  transformedSegments: z.array(TransformationSegmentSchema).optional(),
+
+  /** Timestamp when transformation was applied */
+  transformedAt: z.string().optional(),
+
+  /** Whether this transformation passed validation */
+  validationPassed: z.boolean().optional(),
+
+  /** Validation failure reason (if any) */
+  validationFailureReason: z.string().optional(),
+});
+export type TransformationAuditEntry = z.infer<typeof TransformationAuditEntrySchema>;
 
 // ============================================================================
 // UTTERANCE LOOKUP SCHEMA (for evidence linking)
@@ -1204,6 +1301,12 @@ export const VerboseEvaluationSchema = z.object({
   // Frontend uses this to show original context when user expands an evidence item.
   utteranceLookup: z.array(UtteranceLookupEntrySchema).optional()
     .describe('Utterance lookup for evidence linking - only referenced utterances are included'),
+
+  // Transformation Audit - Tracks how original text was transformed to displayText
+  // Enables data integrity verification, debugging, and user transparency.
+  // Only includes utterances where transformations occurred.
+  transformationAudit: z.array(TransformationAuditEntrySchema).optional()
+    .describe('Audit trail of text transformations for data integrity verification'),
 
   // Matched Knowledge Resources (Phase 2.75 - deterministic matching)
   knowledgeResources: z.array(DimensionResourceMatchSchema).optional()

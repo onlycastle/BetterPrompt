@@ -45,6 +45,11 @@ export interface SessionStats {
 }
 
 /**
+ * Supported session source types
+ */
+export type SessionSourceType = 'claude-code' | 'cursor';
+
+/**
  * Parsed session ready for analysis
  */
 export interface ParsedSession {
@@ -57,6 +62,8 @@ export interface ParsedSession {
   claudeCodeVersion: string;
   messages: ParsedMessage[];
   stats: SessionStats;
+  /** Source identifier (claude-code, cursor, etc.) */
+  source?: SessionSourceType;
 }
 
 /**

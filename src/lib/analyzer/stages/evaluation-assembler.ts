@@ -39,7 +39,11 @@ import {
   WORKER_DOMAIN_CONFIGS,
 } from '../../models/agent-outputs';
 import type { InsightEvidence } from '../../models/worker-insights';
-import type { UtteranceLookupEntry } from '../../models/verbose-evaluation';
+import type {
+  UtteranceLookupEntry,
+  TransformationAuditEntry,
+  TransformationType,
+} from '../../models/verbose-evaluation';
 
 // ============================================================================
 // Debug Logging
@@ -75,8 +79,8 @@ function smartTruncate(text: string, maxLen: number): string {
 
   // Look for sentence boundary (70% threshold)
   const sentenceEndPatterns = ['. ', '! ', '? ', '.\n', '!\n', '?\n'];
-  let bestSentenceEnd = -1;
   const minSentencePos = maxLen * 0.7;
+  let bestSentenceEnd = -1;
 
   for (const pattern of sentenceEndPatterns) {
     const pos = text.lastIndexOf(pattern, maxLen - 3);
@@ -86,7 +90,6 @@ function smartTruncate(text: string, maxLen: number): string {
   }
 
   if (bestSentenceEnd > 0) {
-    // Include the punctuation, exclude the space/newline
     return text.slice(0, bestSentenceEnd + 1);
   }
 
@@ -164,6 +167,13 @@ export function assembleEvaluation(
   // in workerInsights. This enables frontend to show original context on expand.
   if (phase1Output?.developerUtterances && workerInsights) {
     result.utteranceLookup = buildUtteranceLookup(workerInsights, phase1Output);
+  }
+
+  // ── Transformation Audit: Track text transformations for data integrity ──
+  // Records how original text was transformed to displayText.
+  // Enables post-hoc verification and debugging of text transformations.
+  if (phase1Output?.developerUtterances) {
+    result.transformationAudit = buildTransformationAudit(phase1Output);
   }
 
   // BACKWARD COMPATIBILITY: dimensionInsights from legacy StrengthGrowth (if present)
@@ -245,9 +255,15 @@ function resolvePatternQuotes(
   phase1Output: Phase1Output | undefined
 ): any[] {
   // Build utterance lookup map for O(1) access
+  // Only include noteworthy utterances with sufficient word count (quality gate)
   const utteranceLookup = new Map<string, string>();
   if (phase1Output?.developerUtterances) {
     for (const u of phase1Output.developerUtterances) {
+      // Quality gate: skip low-quality utterances
+      // Same threshold as worker preparePhase1ForPrompt filters
+      if (u.wordCount < 8 || u.isNoteworthy === false) {
+        continue;
+      }
       // Prefer displayText (machine-generated content is summarized)
       // Use smartTruncate to avoid cutting mid-word or leaving unclosed parens
       const rawQuote = u.displayText || u.text;
@@ -262,10 +278,8 @@ function resolvePatternQuotes(
     debugLog(`Pattern ${patternIndex + 1}: ${pattern.patternName}`);
     debugLog(`  examples: ${pattern.examples.length} items`);
 
-    // Resolve utteranceIds to actual quotes, filter duplicates
     const resolvedExamples = pattern.examples
       .map(ex => {
-        // Check for duplicate utteranceId (already used in another pattern)
         if (usedUtteranceIds.has(ex.utteranceId)) {
           debugLog(`  Skip duplicate: ${ex.utteranceId}`);
           return null;
@@ -277,14 +291,16 @@ function resolvePatternQuotes(
           return null;
         }
 
-        // Mark utteranceId as used
         usedUtteranceIds.add(ex.utteranceId);
-
         return { quote, analysis: ex.analysis };
       })
       .filter((ex): ex is { quote: string; analysis: string } => ex !== null);
 
     debugLog(`  resolved: ${resolvedExamples.length} items`);
+
+    const tip = typeof pattern.tip === 'string' && pattern.tip.length > 2000
+      ? pattern.tip.slice(0, 1997) + '...'
+      : pattern.tip;
 
     return {
       patternName: pattern.patternName,
@@ -292,9 +308,7 @@ function resolvePatternQuotes(
       frequency: pattern.frequency,
       examples: resolvedExamples,
       effectiveness: pattern.effectiveness,
-      tip: typeof pattern.tip === 'string' && pattern.tip.length > 2000
-        ? pattern.tip.slice(0, 1997) + '...'
-        : pattern.tip,
+      tip,
     };
   });
 
@@ -358,7 +372,6 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
   const usedUtteranceIds = new Set<string>();
 
   const result = patterns.map((pattern: any, patternIndex: number) => {
-    // Parse examplesData (v3 format: "utteranceId|analysis;...")
     const parsedExamples = pattern.examplesData
       ? parseExamplesData(pattern.examplesData)
       : [];
@@ -367,16 +380,13 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
     debugLog(`  examplesData: ${pattern.examplesData?.slice(0, 80) || 'EMPTY'}...`);
     debugLog(`  parsedExamples: ${parsedExamples.length} items`);
 
-    // Resolve utteranceIds to actual quotes, filter invalid ones and duplicates
     const resolvedExamples = parsedExamples
       .map(ex => {
         if (!ex.utteranceId) {
-          // Legacy format or invalid - skip
           debugLog(`  Skip: empty utteranceId`);
           return null;
         }
 
-        // Check for duplicate utteranceId (already used in another pattern)
         if (usedUtteranceIds.has(ex.utteranceId)) {
           debugLog(`  Skip duplicate: ${ex.utteranceId}`);
           return null;
@@ -384,40 +394,34 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
 
         const quote = utteranceLookup.get(ex.utteranceId);
         if (!quote) {
-          // utteranceId not found in Phase1Output - skip
           debugLog(`  Skip: utteranceId "${ex.utteranceId}" not found in Phase1Output`);
           return null;
         }
 
-        // Mark utteranceId as used
         usedUtteranceIds.add(ex.utteranceId);
-
         return { quote, analysis: ex.analysis };
       })
       .filter((ex): ex is { quote: string; analysis: string } => ex !== null);
 
     debugLog(`  resolvedExamples: ${resolvedExamples.length} items`);
 
-    // Use ONLY resolved examples (ID-based matching from Phase1Output)
-    // NO FALLBACK: LLM-generated examples are never used directly
-    // This prevents Phase 2 analysis text from appearing as quotes
-    const examples = resolvedExamples;
-
-    if (examples.length === 0) {
+    if (resolvedExamples.length === 0) {
       debugLog(`  ⚠️ No valid examples for pattern "${pattern.patternName}" - all utteranceIds failed to match`);
     } else {
-      debugLog(`  → Using resolved examples (${examples.length} items)`);
+      debugLog(`  → Using resolved examples (${resolvedExamples.length} items)`);
     }
+
+    const tip = typeof pattern.tip === 'string' && pattern.tip.length > 2000
+      ? pattern.tip.slice(0, 1997) + '...'
+      : pattern.tip;
 
     return {
       patternName: pattern.patternName,
       description: pattern.description,
       frequency: pattern.frequency,
-      examples,
+      examples: resolvedExamples,
       effectiveness: pattern.effectiveness,
-      tip: typeof pattern.tip === 'string' && pattern.tip.length > 2000
-        ? pattern.tip.slice(0, 1997) + '...'
-        : pattern.tip,
+      tip,
     };
   });
 
@@ -796,18 +800,10 @@ function mapEvidence(evidence: Array<{ utteranceId?: string; quote?: string }> |
  * Phase 2: critical | significant | moderate | mild
  * VerboseEvaluation: significant | moderate | mild
  */
-function mapAntiPatternSeverity(
-  severity: string | undefined
-): 'mild' | 'moderate' | 'significant' {
-  switch (severity) {
-    case 'critical':
-    case 'significant':
-      return 'significant';
-    case 'mild':
-      return 'mild';
-    default:
-      return 'moderate';
-  }
+function mapAntiPatternSeverity(severity: string | undefined): 'mild' | 'moderate' | 'significant' {
+  if (severity === 'critical' || severity === 'significant') return 'significant';
+  if (severity === 'mild') return 'mild';
+  return 'moderate';
 }
 
 /**
@@ -834,26 +830,22 @@ function extractSessionId(utteranceId: string): string | undefined {
  * Convert habit frequency to a numeric value
  */
 function frequencyToNumber(freq: string | undefined): number {
-  switch (freq) {
-    case 'always': return 5;
-    case 'often': return 4;
-    case 'sometimes': return 3;
-    case 'rarely': return 2;
-    case 'never': return 1;
-    default: return 3;
-  }
+  if (freq === 'always') return 5;
+  if (freq === 'often') return 4;
+  if (freq === 'sometimes') return 3;
+  if (freq === 'rarely') return 2;
+  if (freq === 'never') return 1;
+  return 3;
 }
 
 /**
  * Convert effectiveness to sophistication level
  */
 function effectivenessToSophistication(eff: string | undefined): 'basic' | 'intermediate' | 'advanced' {
-  switch (eff) {
-    case 'high': return 'advanced';
-    case 'medium': return 'intermediate';
-    case 'low': return 'basic';
-    default: return 'intermediate';
-  }
+  if (eff === 'high') return 'advanced';
+  if (eff === 'medium') return 'intermediate';
+  if (eff === 'low') return 'basic';
+  return 'intermediate';
 }
 
 // ============================================================================
@@ -959,4 +951,84 @@ function buildUtteranceLookup(
   }
 
   return lookup;
+}
+
+// ============================================================================
+// Transformation Audit Builder
+// ============================================================================
+
+/**
+ * Build transformation audit from Phase1Output.
+ *
+ * Scans all developer utterances and records transformations:
+ * - Original text vs displayText comparison
+ * - Compression ratio calculation
+ * - Transformation type detection (error summarized, stack trace, etc.)
+ *
+ * Only includes utterances where a transformation occurred (displayText differs from text).
+ *
+ * @param phase1Output - Phase1Output containing developerUtterances
+ * @returns Array of TransformationAuditEntry for transformed utterances
+ */
+function buildTransformationAudit(phase1Output: Phase1Output): TransformationAuditEntry[] {
+  const audit: TransformationAuditEntry[] = [];
+
+  for (const utterance of phase1Output.developerUtterances) {
+    const originalText = utterance.text;
+    const displayText = utterance.displayText || originalText;
+
+    // Skip if no transformation occurred
+    if (originalText === displayText) {
+      continue;
+    }
+
+    const compressionRatio = displayText.length / originalText.length;
+    const isVerbatim = false; // By definition, if we're here, it's not verbatim
+
+    // Detect transformation type based on displayText content
+    const transformationType = detectTransformationType(originalText, displayText);
+
+    audit.push({
+      utteranceId: utterance.id,
+      originalText: originalText.slice(0, 500), // Truncate for storage
+      displayText: displayText.slice(0, 500),
+      transformationType,
+      isVerbatim,
+      compressionRatio: Math.round(compressionRatio * 100) / 100,
+      transformedAt: new Date().toISOString(),
+      validationPassed: compressionRatio >= getMinCompressionRatio(originalText.length),
+    });
+  }
+
+  return audit;
+}
+
+/**
+ * Detect the type of transformation applied based on content analysis.
+ */
+function detectTransformationType(original: string, display: string): TransformationType {
+  const hasErrorTag = display.includes('[Error:') && !original.includes('[Error:');
+  const hasStackTag = display.includes('[Stack trace]') && !original.includes('[Stack trace]');
+  const hasCodeTag = display.includes('[Code:') && !original.includes('[Code:');
+  const isTruncated = display.endsWith('...');
+
+  const transformationCount = [hasErrorTag, hasStackTag, hasCodeTag, isTruncated].filter(Boolean).length;
+
+  if (transformationCount === 0) return 'none';
+  if (transformationCount > 1) return 'mixed';
+  if (hasErrorTag) return 'error_summarized';
+  if (hasStackTag) return 'stack_trace_summarized';
+  if (hasCodeTag) return 'code_block_summarized';
+  if (isTruncated) return 'truncated';
+  return 'none';
+}
+
+/**
+ * Get minimum acceptable compression ratio based on original text length.
+ * Mirrors the validation logic in DataExtractorWorker.
+ */
+function getMinCompressionRatio(originalLength: number): number {
+  if (originalLength < 50) return 0.8;
+  if (originalLength < 200) return 0.5;
+  return 0.3;
 }

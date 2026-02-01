@@ -48,6 +48,7 @@ export {
   type FileHistorySnapshot,
   type JSONLLine,
   // Parsed types
+  type SessionSourceType,
   type ToolCall,
   type ParsedMessage,
   type SessionStats,

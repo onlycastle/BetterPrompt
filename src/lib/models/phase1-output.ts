@@ -19,6 +19,34 @@ import { z } from 'zod';
 // Developer Utterance Schema (Raw Text + Structural Metadata)
 // ============================================================================
 
+// ============================================================================
+// Natural Language Segment Schema (Immutable Developer Text)
+// ============================================================================
+
+/**
+ * A segment of the developer's natural language that must NEVER be modified.
+ *
+ * These segments represent the developer's actual words, thoughts, and intentions.
+ * Unlike error logs, stack traces, or code blocks which can be summarized,
+ * natural language segments must be preserved verbatim at all stages.
+ *
+ * Use cases:
+ * - Evidence quotes in reports
+ * - Communication pattern examples
+ * - Audit trail verification
+ */
+export const NaturalLanguageSegmentSchema = z.object({
+  /** Start character index in the original text (0-based) */
+  start: z.number().int().min(0),
+
+  /** End character index in the original text (exclusive) */
+  end: z.number().int().min(0),
+
+  /** The exact text content (immutable, never modify) */
+  text: z.string(),
+});
+export type NaturalLanguageSegment = z.infer<typeof NaturalLanguageSegmentSchema>;
+
 /**
  * A single developer utterance extracted from a session.
  *
@@ -53,6 +81,24 @@ export const DeveloperUtteranceSchema = z.object({
    * Used for display in reports (Communication Patterns quotes, etc.)
    */
   displayText: z.string().optional(),
+
+  /**
+   * Segments containing the developer's natural language (immutable).
+   *
+   * These segments mark which parts of the text are the developer's actual words
+   * vs machine-generated content (error logs, stack traces, code blocks).
+   *
+   * CRITICAL: Text within these segments must NEVER be modified, summarized,
+   * or paraphrased by any downstream component (LLM, sanitizer, etc.).
+   *
+   * Example:
+   * Original: "로그인 잘 된다. 그런데 Error: No workspace ID 에러가 나왔어"
+   * Segments: [
+   *   { start: 0, end: 17, text: "로그인 잘 된다. 그런데 " },
+   *   { start: 40, end: 50, text: " 에러가 나왔어" }
+   * ]
+   */
+  naturalLanguageSegments: z.array(NaturalLanguageSegmentSchema).optional(),
 
   /** ISO 8601 timestamp of the message */
   timestamp: z.string(),
@@ -97,6 +143,20 @@ export const DeveloperUtteranceSchema = z.object({
    * before being used as evidence examples in Phase 2/3.
    */
   isNoteworthy: z.boolean().optional(),
+
+  /**
+   * Ratio of machine-generated content (errors, stack traces, code blocks)
+   * to total content. Range: 0.0 (all developer text) to 1.0 (all machine content).
+   *
+   * Used by Phase 2 workers to evaluate error reporting quality:
+   * - machineContentRatio > 0.95: Almost entirely machine content
+   * - machineContentRatio > 0.70: Mostly machine content with some developer text
+   * - machineContentRatio < 0.30: Mostly developer's natural language
+   *
+   * High machineContentRatio alone is NOT negative — it's a valid workflow.
+   * Only becomes a Growth Area when combined with error_loop pattern.
+   */
+  machineContentRatio: z.number().min(0).max(1).optional(),
 
   // ─────────────────────────────────────────────────────────────────────────
   // Context from Preceding AI Response

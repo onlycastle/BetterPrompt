@@ -21,9 +21,10 @@ import {
 import type { Phase1Output } from '../../models/phase1-output';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
-  WORKFLOW_HABIT_SYSTEM_PROMPT,
+  buildWorkflowHabitSystemPrompt,
   buildWorkflowHabitUserPrompt,
 } from './prompts/workflow-habit-prompts';
+import { getInsightsForWorker } from './prompts/knowledge-mapping';
 
 /**
  * WorkflowHabitWorker - Detects workflow structure and critical thinking
@@ -71,9 +72,15 @@ export class WorkflowHabitWorker extends BaseWorker<WorkflowHabitOutput> {
 
     const userPrompt = buildWorkflowHabitUserPrompt(phase1Json);
 
+    // Get relevant professional insights for this worker's domain
+    const relevantInsights = getInsightsForWorker(this.name);
+    const systemPrompt = buildWorkflowHabitSystemPrompt(relevantInsights);
+
+    this.log(`Injected ${relevantInsights.length} professional insights`);
+
     // Call Gemini with the flattened schema
     const result = await this.client!.generateStructured({
-      systemPrompt: WORKFLOW_HABIT_SYSTEM_PROMPT,
+      systemPrompt,
       userPrompt,
       responseSchema: WorkflowHabitLLMOutputSchema,
       maxOutputTokens: 16384,
@@ -90,8 +97,14 @@ export class WorkflowHabitWorker extends BaseWorker<WorkflowHabitOutput> {
   }
 
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
+    // Filter to noteworthy utterances only (same as CommunicationPatterns)
+    // This prevents LLM from selecting low-quality utterances as evidence
+    const noteworthyUtterances = phase1.developerUtterances.filter(
+      (u) => u.isNoteworthy !== false && u.wordCount >= 8
+    );
+
     return {
-      developerUtterances: phase1.developerUtterances.map((u) => ({
+      developerUtterances: noteworthyUtterances.map((u) => ({
         id: u.id,
         // Use displayText (sanitized) if available, fallback to raw text
         // displayText has machine-generated content (error logs, stack traces, code) summarized

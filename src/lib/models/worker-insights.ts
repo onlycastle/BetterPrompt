@@ -247,10 +247,11 @@ export function parseWorkerStrengthsData(data: string | undefined): WorkerStreng
 
       // Parse evidence: comma-separated, each item MUST have utteranceId
       // parseEvidenceItem returns null for items without valid utteranceId
+      // Require minimum quote length of 15 chars to filter out corrupted/too-short quotes
       const evidence: EvidenceItem[] = evidenceStr
         .split(',')
         .map((e) => parseEvidenceItem(e))
-        .filter((e): e is InsightEvidence => e !== null && e.quote.length > 0);
+        .filter((e): e is InsightEvidence => e !== null && e.quote.length >= 15);
 
       const frequency = frequencyStr ? parseFloat(frequencyStr) : undefined;
 
@@ -291,10 +292,11 @@ export function parseWorkerGrowthAreasData(data: string | undefined): WorkerGrow
 
       // Parse evidence: comma-separated, each item MUST have utteranceId
       // parseEvidenceItem returns null for items without valid utteranceId
+      // Require minimum quote length of 15 chars to filter out corrupted/too-short quotes
       const evidence: EvidenceItem[] = evidenceStr
         .split(',')
         .map((e) => parseEvidenceItem(e))
-        .filter((e): e is InsightEvidence => e !== null && e.quote.length > 0);
+        .filter((e): e is InsightEvidence => e !== null && e.quote.length >= 15);
 
       const result: WorkerGrowth = {
         title,
@@ -352,6 +354,9 @@ export interface AggregatedWorkerInsights {
 
   /** Context Efficiency domain insights */
   contextEfficiency?: WorkerInsightsContainer;
+
+  /** Communication Patterns domain insights */
+  communicationPatterns?: WorkerInsightsContainer;
 }
 
 /**

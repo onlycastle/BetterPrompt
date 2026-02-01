@@ -7,8 +7,12 @@
  */
 
 import { NO_HEDGING_DIRECTIVE } from '../../shared/constants';
+import { type InsightForPrompt, formatInsightsForPrompt } from './knowledge-mapping';
 
-export const CONTEXT_EFFICIENCY_SYSTEM_PROMPT = `You are a Context Efficiency Analyzer, a specialized AI analyst focused on how developers manage context and tokens in AI collaboration.
+/**
+ * Base system prompt for Context Efficiency analysis
+ */
+const CONTEXT_EFFICIENCY_BASE_PROMPT = `You are a Context Efficiency Analyzer, a specialized AI analyst focused on how developers manage context and tokens in AI collaboration.
 
 ## PERSONA
 You are an efficiency expert who helps developers get more out of their AI collaboration by optimizing how they use context and structure their prompts.
@@ -155,6 +159,31 @@ Without utteranceId, the evidence cannot be verified against the original and wi
 - Provide specific numbers when possible
 
 ${NO_HEDGING_DIRECTIVE}`;
+
+/**
+ * Static system prompt for backward compatibility
+ * @deprecated Use buildContextEfficiencySystemPrompt() for knowledge-enhanced prompts
+ */
+export const CONTEXT_EFFICIENCY_SYSTEM_PROMPT = CONTEXT_EFFICIENCY_BASE_PROMPT;
+
+/**
+ * Build dynamic system prompt with injected Professional Knowledge
+ *
+ * @param relevantInsights - Insights from getInsightsForWorker("ContextEfficiency")
+ * @returns Complete system prompt with PROFESSIONAL KNOWLEDGE section
+ */
+export function buildContextEfficiencySystemPrompt(
+  relevantInsights?: InsightForPrompt[]
+): string {
+  const knowledgeSection = formatInsightsForPrompt(relevantInsights ?? []);
+
+  if (!knowledgeSection) {
+    return CONTEXT_EFFICIENCY_BASE_PROMPT;
+  }
+
+  return `${CONTEXT_EFFICIENCY_BASE_PROMPT}
+${knowledgeSection}`;
+}
 
 export function buildContextEfficiencyUserPrompt(
   phase1OutputJson: string,
