@@ -55,7 +55,7 @@ export type SessionSourceType = 'claude-code' | 'cursor';
 export interface ParsedSession {
   sessionId: string;
   projectPath: string;
-  projectName: string;
+  projectName?: string;
   startTime: Date;
   endTime: Date;
   durationSeconds: number;
