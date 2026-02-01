@@ -125,7 +125,7 @@ async function loadSqlite(): Promise<(new (path: string) => Database) | null> {
 
   try {
     // Dynamic import to avoid hard dependency
-    // @ts-expect-error - better-sqlite3 may not be installed
+    // @ts-ignore - better-sqlite3 may not be installed (types optional)
     const sqlite = await import('better-sqlite3');
     DatabaseConstructor = sqlite.default as unknown as new (path: string) => Database;
     return DatabaseConstructor;
