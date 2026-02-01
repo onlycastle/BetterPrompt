@@ -1,8 +1,8 @@
 /**
  * Session Scanner
  *
- * Scans ~/.claude/projects/ for Claude Code session logs,
- * parses JSONL into structured sessions, and prepares for analysis.
+ * Multi-source scanner for AI coding assistant session logs.
+ * Supports Claude Code (~/.claude/projects/) and Cursor (~/.cursor/chats/).
  *
  * Memory-efficient 4-phase implementation:
  * - Phase 1: Collect file metadata (size, mtime) using fs.stat only
@@ -14,11 +14,22 @@
  * when users have thousands of session files.
  */
 
-import { readFile, readdir, stat } from 'node:fs/promises';
-import { join, basename } from 'node:path';
+import { readFile, stat } from 'node:fs/promises';
+import { basename, join } from 'node:path';
 import { homedir } from 'node:os';
 import { parseSessionContent, type ParsedSession } from './session-formatter.js';
 import { extractQualityMetrics, calculateQualityScore } from './session-scoring.js';
+
+// Import multi-source scanner infrastructure
+import {
+  multiSourceScanner,
+  hasAnySources,
+  getAvailableSourceNames,
+  type FileMetadata as SourceFileMetadata,
+  type SourcedSessionMetadata,
+  type SourcedParsedSession,
+  type SessionSourceType,
+} from '../../../src/lib/scanner/index.js';
 
 export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
@@ -74,6 +85,8 @@ interface FileMetadata {
   fileSize: number;
   mtime: Date;
   projectDirName: string;
+  /** Source type for multi-source support */
+  source?: SessionSourceType;
 }
 
 export interface SessionMetadata {
@@ -85,6 +98,8 @@ export interface SessionMetadata {
   durationSeconds: number;
   filePath: string;
   qualityScore?: number;
+  /** Source type for multi-source support */
+  source?: SessionSourceType;
 }
 
 /**
@@ -92,7 +107,7 @@ export interface SessionMetadata {
  */
 export interface ScannedSession {
   metadata: SessionMetadata;
-  content: string; // Raw JSONL content
+  content: string; // Raw JSONL content or empty for SQLite sources
 }
 
 /**
@@ -107,6 +122,8 @@ export interface ScanResult {
   sessions: SessionWithParsed[];
   totalMessages: number;
   totalDurationMinutes: number;
+  /** Source statistics: number of sessions from each source */
+  sourceStats?: Map<string, number>;
 }
 
 /**
@@ -156,83 +173,10 @@ function isConversationLine(parsed: { type: string } | null): boolean {
 /**
  * Update timestamp bounds (min/max) with a new timestamp
  */
-function updateTimestampBounds(
-  timestamp: string,
-  bounds: { first: Date | null; last: Date | null }
-): void {
+function updateTimestampBounds(timestamp: string, bounds: { first: Date | null; last: Date | null }): void {
   const ts = new Date(timestamp);
   if (!bounds.first || ts < bounds.first) bounds.first = ts;
   if (!bounds.last || ts > bounds.last) bounds.last = ts;
-}
-
-/**
- * List all project directories
- */
-export async function listProjectDirs(): Promise<string[]> {
-  try {
-    const entries = await readdir(CLAUDE_PROJECTS_DIR);
-    const dirs: string[] = [];
-
-    for (const entry of entries) {
-      const fullPath = join(CLAUDE_PROJECTS_DIR, entry);
-      try {
-        const stats = await stat(fullPath);
-        if (stats.isDirectory()) {
-          dirs.push(fullPath);
-        }
-      } catch {
-        // Skip inaccessible entries
-      }
-    }
-
-    return dirs;
-  } catch {
-    return [];
-  }
-}
-
-/**
- * List session files in a directory
- */
-export async function listSessionFiles(projectDir: string): Promise<string[]> {
-  try {
-    const files = await readdir(projectDir);
-    return files
-      .filter(f => f.endsWith('.jsonl'))
-      .map(f => join(projectDir, f));
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Phase 1: Collect lightweight file metadata (no content read)
- * Only uses fs.stat, so memory usage is minimal.
- */
-async function collectFileMetadata(): Promise<FileMetadata[]> {
-  const projectDirs = await listProjectDirs();
-  const allFiles: FileMetadata[] = [];
-
-  for (const dir of projectDirs) {
-    const files = await listSessionFiles(dir);
-    for (const file of files) {
-      try {
-        const stats = await stat(file);
-        if (stats.isFile()) {
-          allFiles.push({
-            filePath: file,
-            fileSize: stats.size,
-            mtime: stats.mtime,
-            projectDirName: basename(dir),
-          });
-        }
-      } catch {
-        // Skip inaccessible files
-      }
-    }
-  }
-
-  return allFiles;
 }
 
 /**
@@ -240,28 +184,22 @@ async function collectFileMetadata(): Promise<FileMetadata[]> {
  * This is a heuristic to select likely-good candidates without reading content.
  */
 function calculatePrefilterScore(file: FileMetadata, newestMtime: number, oldestMtime: number): number {
-  // Size score: files in the "ideal" range get higher scores
   let sizeScore: number;
   if (file.fileSize < PREFILTER_CONFIG.IDEAL_SIZE_MIN) {
-    // Small files: linear scale from 0 to 50
     sizeScore = (file.fileSize / PREFILTER_CONFIG.IDEAL_SIZE_MIN) * 50;
   } else if (file.fileSize <= PREFILTER_CONFIG.IDEAL_SIZE_MAX) {
-    // Ideal range: full score
     sizeScore = 100;
   } else {
-    // Large files: gradually decrease score
     const overSize = file.fileSize - PREFILTER_CONFIG.IDEAL_SIZE_MAX;
     const maxOverSize = PREFILTER_CONFIG.MAX_FILE_SIZE - PREFILTER_CONFIG.IDEAL_SIZE_MAX;
     sizeScore = Math.max(30, 100 - (overSize / maxOverSize) * 70);
   }
 
-  // Recency score: linear scale based on mtime
   const mtimeRange = newestMtime - oldestMtime;
   const recencyScore = mtimeRange > 0
     ? ((file.mtime.getTime() - oldestMtime) / mtimeRange) * 100
     : 100;
 
-  // Weighted combination
   return sizeScore * PREFILTER_CONFIG.SIZE_WEIGHT + recencyScore * PREFILTER_CONFIG.RECENCY_WEIGHT;
 }
 
@@ -320,24 +258,79 @@ function prefilterCandidates(allFiles: FileMetadata[]): FileMetadata[] {
 }
 
 /**
+ * Scored session for diversity selection
+ */
+interface ScoredSession {
+  metadata: SessionMetadata;
+  content: string;
+  /** Parsed session for SQLite sources (already parsed during scoring) */
+  parsedSession?: SourcedParsedSession;
+}
+
+/**
  * Phase 3: Full quality scoring on candidates.
  * Reads file content but only for pre-filtered candidates.
+ * Handles both JSONL (Claude Code) and SQLite (Cursor) sources.
  */
 async function scoreCandidates(
   candidates: FileMetadata[]
-): Promise<Array<{ metadata: SessionMetadata; content: string }>> {
-  const results: Array<{ metadata: SessionMetadata; content: string }> = [];
+): Promise<ScoredSession[]> {
+  const results: ScoredSession[] = [];
 
   for (const file of candidates) {
     try {
-      const content = await readFile(file.filePath, 'utf-8');
-      const metadata = extractMetadataFromContent(file.filePath, content);
+      // Handle different source types
+      if (file.source === 'cursor') {
+        // Cursor: parse directly from SQLite file
+        const parsed = await multiSourceScanner.parseSession({
+          sessionId: basename(file.filePath, '.db'),
+          projectPath: decodeProjectPath(file.projectDirName),
+          projectName: getProjectName(decodeProjectPath(file.projectDirName)),
+          timestamp: file.mtime,
+          messageCount: 0, // Will be updated after parsing
+          durationSeconds: 0, // Will be updated after parsing
+          filePath: file.filePath,
+          source: 'cursor',
+        } as SourcedSessionMetadata);
 
-      if (metadata && metadata.messageCount >= SELECTION_CONFIG.MIN_MESSAGE_COUNT) {
-        // Calculate quality score
-        const qualityMetrics = extractQualityMetrics(content);
-        metadata.qualityScore = calculateQualityScore(qualityMetrics);
-        results.push({ metadata, content });
+        if (parsed && parsed.messages.length >= SELECTION_CONFIG.MIN_MESSAGE_COUNT) {
+          // Calculate quality score based on parsed content
+          const qualityMetrics = {
+            messageCount: parsed.messages.length,
+            toolCallCount: parsed.stats.toolCallCount,
+            hasErrors: parsed.messages.some(m =>
+              m.toolCalls?.some(t => t.isError)
+            ),
+          };
+          const qualityScore = calculateQualityScore(qualityMetrics);
+
+          results.push({
+            metadata: {
+              sessionId: parsed.sessionId,
+              projectPath: parsed.projectPath,
+              projectName: getProjectName(parsed.projectPath),
+              timestamp: parsed.startTime,
+              messageCount: parsed.messages.length,
+              durationSeconds: parsed.durationSeconds,
+              filePath: file.filePath,
+              qualityScore,
+              source: 'cursor',
+            },
+            content: '', // Empty for SQLite sources
+            parsedSession: parsed,
+          });
+        }
+      } else {
+        // Claude Code or other JSONL sources: read content
+        const content = await readFile(file.filePath, 'utf-8');
+        const metadata = extractMetadataFromContent(file.filePath, content, file.source);
+
+        if (metadata && metadata.messageCount >= SELECTION_CONFIG.MIN_MESSAGE_COUNT) {
+          // Calculate quality score
+          const qualityMetrics = extractQualityMetrics(content);
+          metadata.qualityScore = calculateQualityScore(qualityMetrics);
+          results.push({ metadata, content });
+        }
       }
     } catch {
       // Skip unreadable files
@@ -345,14 +338,6 @@ async function scoreCandidates(
   }
 
   return results;
-}
-
-/**
- * Scored session for diversity selection
- */
-interface ScoredSession {
-  metadata: SessionMetadata;
-  content: string;
 }
 
 /**
@@ -466,15 +451,12 @@ function distributeByProjects(
   const selectedIds = new Set<string>();
   const projects = Array.from(byProject.keys());
 
-  // Helper: Round-robin selection up to maxPerProject
   const roundRobinSelect = (maxPerProject: number) => {
-    let round = 0;
     while (selected.length < maxSessions) {
       let addedThisRound = false;
 
       for (const project of projects) {
         const projectSessions = byProject.get(project)!;
-        // Find next unselected session for this project
         let projectCount = 0;
         for (const s of selected) {
           if (s.metadata.projectName === project) projectCount++;
@@ -493,7 +475,6 @@ function distributeByProjects(
       }
 
       if (!addedThisRound) break;
-      round++;
     }
   };
 
@@ -562,16 +543,30 @@ function selectOptimalSessions(
  * 2. Pre-filter to top candidates based on size + recency
  * 3. Full quality scoring only on candidates
  * 4. Parse only the final selected sessions
+ *
+ * Supports multiple sources (Claude Code, Cursor) via multiSourceScanner.
  */
 export async function scanSessions(maxSessions: number = 30): Promise<ScanResult> {
-  // Phase 1: Collect file metadata (memory efficient - no content read)
-  const allFiles = await collectFileMetadata();
+  // Phase 1: Collect file metadata from all sources (memory efficient)
+  const { files: sourceFiles, sourceStats } = await multiSourceScanner.collectAllFileMetadata({
+    minFileSize: PREFILTER_CONFIG.MIN_FILE_SIZE,
+    maxFileSize: PREFILTER_CONFIG.MAX_FILE_SIZE,
+  });
+
+  // Convert to local FileMetadata format
+  const allFiles: FileMetadata[] = sourceFiles.map(f => ({
+    filePath: f.filePath,
+    fileSize: f.fileSize,
+    mtime: f.mtime,
+    projectDirName: f.projectDirName,
+    source: f.source,
+  }));
 
   // Phase 2: Pre-filter to top candidates
   const candidates = prefilterCandidates(allFiles);
 
   if (candidates.length === 0) {
-    return { sessions: [], totalMessages: 0, totalDurationMinutes: 0 };
+    return { sessions: [], totalMessages: 0, totalDurationMinutes: 0, sourceStats };
   }
 
   // Phase 3: Full quality scoring on candidates only
@@ -586,18 +581,36 @@ export async function scanSessions(maxSessions: number = 30): Promise<ScanResult
   let totalMessages = 0;
   let totalDurationMinutes = 0;
 
-  for (const { metadata, content } of selected) {
-    const parsed = parseSessionContent(
-      metadata.sessionId,
-      metadata.projectPath,
-      metadata.projectName,
-      content
-    );
+  // Track source distribution in final selection
+  const finalSourceStats = new Map<string, number>();
+
+  for (const { metadata, content, parsedSession } of selected) {
+    let parsed: ParsedSession | null = null;
+
+    if (parsedSession) {
+      // Already parsed (Cursor source)
+      parsed = parsedSession;
+    } else {
+      // Parse JSONL content (Claude Code source)
+      parsed = parseSessionContent(
+        metadata.sessionId,
+        metadata.projectPath,
+        metadata.projectName,
+        content
+      );
+    }
 
     if (parsed) {
+      // Add source info to parsed session
+      parsed.source = metadata.source;
+
       sessions.push({ metadata, parsed });
       totalMessages += metadata.messageCount;
       totalDurationMinutes += Math.round(metadata.durationSeconds / 60);
+
+      // Track source distribution
+      const source = metadata.source ?? 'claude-code';
+      finalSourceStats.set(source, (finalSourceStats.get(source) ?? 0) + 1);
     }
   }
 
@@ -605,13 +618,18 @@ export async function scanSessions(maxSessions: number = 30): Promise<ScanResult
     sessions,
     totalMessages,
     totalDurationMinutes,
+    sourceStats: finalSourceStats,
   };
 }
 
 /**
  * Extract metadata from already-read content (avoids double file read)
  */
-function extractMetadataFromContent(filePath: string, content: string): SessionMetadata | null {
+function extractMetadataFromContent(
+  filePath: string,
+  content: string,
+  source?: SessionSourceType
+): SessionMetadata | null {
   const lines = content.split('\n').filter(l => l.trim());
 
   if (lines.length === 0) return null;
@@ -646,17 +664,30 @@ function extractMetadataFromContent(filePath: string, content: string): SessionM
     messageCount,
     durationSeconds,
     filePath,
+    source,
   };
 }
 
 /**
- * Check if Claude projects directory exists
+ * Check if any session sources are available
  */
 export async function hasClaudeProjects(): Promise<boolean> {
-  try {
-    await stat(CLAUDE_PROJECTS_DIR);
-    return true;
-  } catch {
-    return false;
-  }
+  return hasAnySources();
 }
+
+/**
+ * Get list of available source names with display names
+ */
+export async function getAvailableSources(): Promise<{ name: string; displayName: string }[]> {
+  return getAvailableSourceNames();
+}
+
+/**
+ * Get source status (which sources are available)
+ */
+export async function getSourceStatus(): Promise<Map<string, boolean>> {
+  return multiSourceScanner.getSourceStatus();
+}
+
+// Re-export for backwards compatibility
+export { CLAUDE_PROJECTS_DIR as PROJECTS_DIR };
