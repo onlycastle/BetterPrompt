@@ -1238,5 +1238,22 @@ export function aggregateWorkerInsights(outputs: AgentOutputs): AggregatedWorker
     }
   }
 
+  // CommunicationPatterns domain
+  // NOTE: patterns.examples are handled separately in EvidenceVerifier
+  // This only covers the top-level strengths/growthAreas
+  if (outputs.communicationPatterns) {
+    const cp = outputs.communicationPatterns;
+    const strengths = cp.strengths ?? [];
+    const growthAreas = cp.growthAreas ?? [];
+
+    if (strengths.length > 0 || growthAreas.length > 0) {
+      result.communicationPatterns = {
+        strengths,
+        growthAreas,
+        domainScore: cp.overallEffectivenessScore,
+      };
+    }
+  }
+
   return result;
 }
