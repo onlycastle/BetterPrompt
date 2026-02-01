@@ -94,7 +94,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   private filterTokenUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
   constructor(config?: OrchestratorConfig) {
-    super(config ?? {});
+    super(config);
   }
 
   /**

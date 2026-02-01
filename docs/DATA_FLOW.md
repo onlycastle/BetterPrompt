@@ -1,6 +1,6 @@
 # NoMoreAISlop - Data Flow
 
-> Version: 3.0.0 | Last Updated: 2026-01-26
+> Version: 3.1.0 | Last Updated: 2026-02-01
 
 ## Overview
 
@@ -18,6 +18,9 @@ NoMoreAISlop uses a **web-first architecture with Lambda analysis backend**:
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                   1. Client (Web App / Claude Code Plugin)                  │
 │                                                                             │
+│   Multi-Source Session Discovery:                                           │
+│                                                                             │
+│   Source 1: Claude Code (JSONL)                                             │
 │   ~/.claude/projects/                                                       │
 │   └── -Users-name-project/                                                  │
 │       └── sessions/                                                         │
@@ -25,7 +28,13 @@ NoMoreAISlop uses a **web-first architecture with Lambda analysis backend**:
 │           ├── def456.jsonl                                                  │
 │           └── ...                                                           │
 │                                                                             │
-│   [Session Upload] → [JSONL Parsing] → [gzip compress] → [HTTP POST]       │
+│   Source 2: Cursor (SQLite)                                                 │
+│   ~/.cursor/chats/                                                          │
+│   └── workspace/                                                            │
+│       ├── chat1.db             ←── Cursor chat database (better-sqlite3)    │
+│       └── chat2.db                                                          │
+│                                                                             │
+│   [Multi-Source Scan] → [Parse (JSONL/SQLite)] → [gzip compress] → [HTTP]  │
 │                                                                             │
 │   Headers:                                                                  │
 │   ├── Content-Type: application/octet-stream                                │
@@ -58,10 +67,11 @@ NoMoreAISlop uses a **web-first architecture with Lambda analysis backend**:
 │   │    ├── Gzip detect (magic bytes: 0x1f 0x8b)                         │   │
 │   │    └── gunzipSync() → JSON parse                                    │   │
 │   │                                                                     │   │
-│   │ 2. Session Parsing                                                  │   │
-│   │    ├── Line-by-line JSONL parsing                                   │   │
+│   │ 2. Session Parsing (Multi-Source)                                   │   │
+│   │    ├── Claude Code: Line-by-line JSONL parsing                      │   │
+│   │    ├── Cursor: SQLite database reading (better-sqlite3)             │   │
 │   │    ├── user/assistant message extraction                            │   │
-│   │    └── tool_use/tool_result mapping                                 │   │
+│   │    └── tool_use/tool_result mapping (normalized across sources)     │   │
 │   │                                                                     │   │
 │   │ 3. 4-Phase Analysis Pipeline (Gemini 3 Flash)                       │   │
 │   │    ├── Phase 1: DataExtractor (deterministic extraction, no LLM)    │   │
@@ -288,11 +298,15 @@ Real-time communication between Lambda and client:
 |-----------|------|---------|
 | **API Client** | `src/lib/api.ts` | Lambda communication, SSE handling |
 | **Lambda Handler** | `lambda/analysis.ts` | Lambda handler (streaming) |
+| **Multi-Source Scanner** | `src/lib/scanner/index.ts` | Unified session discovery (Claude Code + Cursor) |
+| **Claude Code Source** | `src/lib/scanner/sources/claude-code.ts` | JSONL session parsing |
+| **Cursor Source** | `src/lib/scanner/sources/cursor.ts` | SQLite session parsing |
 | **Analysis Orchestrator** | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | 4-phase pipeline coordinator |
 | **Phase 1 Worker** | `src/lib/analyzer/workers/data-extractor-worker.ts` | Deterministic data extraction |
 | **Phase 2 Workers** | `src/lib/analyzer/workers/*.ts` | 4 insight workers (parallel) |
 | **Phase 2.5 Worker** | `src/lib/analyzer/workers/type-classifier-worker.ts` | Coding type classification |
 | **Phase 3 Stage** | `src/lib/analyzer/stages/content-writer.ts` | Narrative generation |
+| **Knowledge Mapping** | `src/lib/analyzer/workers/prompts/knowledge-mapping.ts` | Dynamic prompt injection |
 | **SST Config** | `sst.config.ts` | SST app configuration |
 | **Lambda Infra** | `infra/api.ts` | Lambda function definition |
 | **Next Config** | `next.config.ts` | Next.js configuration |

@@ -1,6 +1,7 @@
 # Orchestrator + Workers Analysis Pipeline
 
 > Pipeline that analyzes developer-AI collaboration sessions and generates personalized reports
+> Version: 2.1.0 | Last Updated: 2026-02-01
 
 ## Overview
 
@@ -102,9 +103,13 @@
 
 ## Pipeline Stages
 
-### Stage 0: Session Parsing
+### Stage 0: Session Parsing (Multi-Source)
 
 ```
+Multi-Source Session Discovery
+==============================
+
+Source 1: Claude Code (JSONL)
 ~/.claude/projects/
 ├── -Users-dev-projectA/
 │   ├── abc123.jsonl    ◀── Claude Code session logs
@@ -112,15 +117,25 @@
 └── -Users-dev-projectB/
     └── ghi789.jsonl
 
+Source 2: Cursor (SQLite)
+~/.cursor/chats/
+├── workspace1/
+│   ├── chat1.db        ◀── Cursor chat database (better-sqlite3)
+│   └── chat2.db
+└── workspace2/
+    └── chat3.db
+
          │
-         │  SessionParser.parseSessionFile()
+         │  multiSourceScanner.collectAllFileMetadata()
+         │  → SourceRegistry dispatches to available sources
          ▼
 
 ┌─────────────────────────────────────────────────┐
-│  ParsedSession                                   │
+│  SourcedParsedSession                            │
 ├─────────────────────────────────────────────────┤
 │  sessionId: "abc123"                            │
 │  projectPath: "/Users/dev/projectA"             │
+│  source: "claude-code" | "cursor"               │ ◀── New: source type
 │  messages: [                                     │
 │    { role: "user", content: "Fix the bug..." } │
 │    { role: "assistant", toolCalls: [...] }      │
@@ -214,6 +229,15 @@ Phase1Output
 All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
 - Phase 1 = Pure Extraction (deterministic)
 - Phase 2 = Semantic Analysis (on extracted data only)
+
+**Worker Input Filtering**
+All 4 workers apply identical quality filters on utterances:
+```typescript
+// Filter applied before LLM analysis
+utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
+```
+- `isNoteworthy !== false`: Excludes utterances explicitly marked as not noteworthy
+- `wordCount >= 8`: Excludes very short utterances lacking analytical value
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -794,7 +818,32 @@ Now, translations are applied AFTER assembly:
 
 ---
 
-## Knowledge Context Injection
+## Knowledge Context Injection (Dynamic Prompt System)
+
+Expert knowledge structure is dynamically injected into Phase 2 workers via the **Knowledge Mapping System** (`knowledge-mapping.ts`):
+
+**Worker → Dimension Mapping:**
+| Worker | Applicable Dimensions |
+|--------|----------------------|
+| TrustVerification | aiControl, skillResilience |
+| WorkflowHabit | aiCollaboration, toolMastery |
+| KnowledgeGap | skillResilience |
+| ContextEfficiency | contextEngineering |
+
+**Dynamic Prompt Injection Flow:**
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Worker starts → getInsightsForWorker("TrustVerification")             │
+│                                                                         │
+│  1. Lookup dimensions: ['aiControl', 'skillResilience']                │
+│  2. Filter INITIAL_INSIGHTS by applicableDimensions                    │
+│  3. Sort by priority (higher first)                                    │
+│  4. Limit to MAX_INSIGHTS_PER_WORKER (5)                              │
+│  5. formatInsightsForPrompt() → PROFESSIONAL KNOWLEDGE section        │
+│                                                                         │
+│  Result: Worker receives domain-specific insights in system prompt     │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 Expert knowledge structure injected into Phase 2 workers via prompts:
 
@@ -1108,6 +1157,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Workflow Habit Prompts | `src/lib/analyzer/workers/prompts/workflow-habit-prompts.ts` | — | PTCF prompts for workflow analysis |
 | Knowledge Gap Prompts | `src/lib/analyzer/workers/prompts/knowledge-gap-prompts.ts` | — | PTCF prompts for knowledge analysis |
 | Context Efficiency Prompts | `src/lib/analyzer/workers/prompts/context-efficiency-prompts.ts` | — | PTCF prompts for context analysis |
+| Knowledge Mapping | `src/lib/analyzer/workers/prompts/knowledge-mapping.ts` | — | Dynamic prompt injection (dimension→insight mapping) |
 
 ### Phase 2.5: Classification (1 worker, 1 LLM call)
 
@@ -1150,18 +1200,23 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Component | File | Description |
 |-----------|------|-------------|
 | Evaluation Assembler | `src/lib/analyzer/stages/evaluation-assembler.ts` | `assembleEvaluation()` — merges Phase 2 structural data + Phase 3 narrative into VerboseEvaluation fields (English defaults) |
+| Evidence Verifier | `src/lib/analyzer/stages/evidence-verifier.ts` | Validates utteranceId references; supports domains: strengthGrowth, trustVerification, workflowHabit, knowledgeGap, contextEfficiency, communicationPatterns |
 | Translation Merge | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | `mergeTranslatedFields()` — overlays translations onto assembled data (called AFTER assembleEvaluation) |
 | Translator Output Schema | `src/lib/models/translator-output.ts` | `TranslatorOutput` schema (translated text fields + translatedAgentInsights) |
 | Output Schema | `src/lib/models/verbose-evaluation.ts` | `VerboseEvaluation` schema (full evaluation including assembled fields + metadata + translatedAgentInsights) |
 
-### Session Parsing (Stage 0)
+### Session Parsing (Stage 0) — Multi-Source
 
 | Component | File | Description |
 |-----------|------|-------------|
+| Multi-Source Scanner | `src/lib/scanner/index.ts` | Unified scanner for all sources (Claude Code + Cursor) |
+| Claude Code Source | `src/lib/scanner/sources/claude-code.ts` | JSONL session source (~/.claude/projects/) |
+| Cursor Source | `src/lib/scanner/sources/cursor.ts` | SQLite session source (~/.cursor/chats/) |
+| Tool Mapping | `src/lib/scanner/tool-mapping.ts` | Cross-source tool name normalization |
 | JSONL Reader | `src/lib/parser/jsonl-reader.ts` | JSONL parsing, path encoding/decoding |
 | Session Selector | `src/lib/parser/session-selector.ts` | Duration-based optimal session selection (max 10) |
 | Session Formatter | `src/lib/analyzer/shared/session-formatter.ts` | Session data formatting (shared by Workers) |
-| Session Types | `src/lib/models/session.ts` | JSONLLine, SessionMetadata types |
+| Session Types | `src/lib/models/session.ts` | JSONLLine, SessionMetadata types, SessionSourceType |
 | Domain Types | `src/lib/domain/models/analysis.ts` | ParsedSession, SessionMetrics types |
 
 ### Knowledge Context
