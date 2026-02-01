@@ -81,12 +81,17 @@ describe('KnowledgeGapOutputSchema', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should FAIL when topInsights has more than 3 items', () => {
+    it('should truncate topInsights to 3 items when more are provided', () => {
+      // Due to Gemini API's maxItems constraint being removed, we use transform
+      // to slice arrays instead of failing validation
       const output = createValidKnowledgeGapOutput();
       output.topInsights = ['insight 1', 'insight 2', 'insight 3', 'insight 4'];
 
       const result = KnowledgeGapOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.topInsights).toEqual(['insight 1', 'insight 2', 'insight 3']);
+      }
     });
 
     it('should FAIL when overallKnowledgeScore is below 0', () => {
@@ -169,12 +174,17 @@ describe('ContextEfficiencyOutputSchema', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should FAIL when topInsights has more than 3 items', () => {
+    it('should truncate topInsights to 3 items when more are provided', () => {
+      // Due to Gemini API's maxItems constraint being removed, we use transform
+      // to slice arrays instead of failing validation
       const output = createValidContextEfficiencyOutput();
       output.topInsights = ['insight 1', 'insight 2', 'insight 3', 'insight 4'];
 
       const result = ContextEfficiencyOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.topInsights).toEqual(['insight 1', 'insight 2', 'insight 3']);
+      }
     });
 
     it('should FAIL when overallEfficiencyScore is out of range', () => {
