@@ -17,6 +17,14 @@ import type { ScanResult } from './scanner.js';
 import type { ParsedSession, ParsedMessage } from './session-formatter.js';
 
 /**
+ * Get project name from path (last segment)
+ */
+function getProjectNameFromPath(projectPath: string): string {
+  const parts = projectPath.split('/').filter(Boolean);
+  return parts[parts.length - 1] || 'unknown';
+}
+
+/**
  * Debug mode - set NOSLOP_DEBUG=1 to enable verbose logging
  */
 const DEBUG = process.env.NOSLOP_DEBUG === '1';
@@ -129,7 +137,7 @@ function serializeSession(session: ParsedSession): SerializedSession {
   return {
     sessionId: session.sessionId,
     projectPath: session.projectPath,
-    projectName: session.projectName,
+    projectName: session.projectName ?? getProjectNameFromPath(session.projectPath),
     startTime: session.startTime.toISOString(),
     endTime: session.endTime.toISOString(),
     durationSeconds: session.durationSeconds,

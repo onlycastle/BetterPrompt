@@ -464,3 +464,87 @@ export function calculateQualityScore(metrics: SessionQualityMetrics): number {
 
   return Math.round(Math.max(0, Math.min(100, score)));
 }
+
+/**
+ * Extract quality metrics from a parsed session (for SQLite sources like Cursor)
+ * This is a simplified version that works with already-parsed data
+ */
+export function extractQualityMetricsFromParsed(parsed: {
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    toolCalls?: Array<{ name: string; isError?: boolean; input?: Record<string, unknown> }>;
+  }>;
+  stats: {
+    userMessageCount: number;
+    assistantMessageCount: number;
+    toolCallCount: number;
+    uniqueToolsUsed: string[];
+  };
+}): SessionQualityMetrics {
+  const metrics: SessionQualityMetrics = {
+    userMessageCount: parsed.stats.userMessageCount,
+    assistantMessageCount: parsed.stats.assistantMessageCount,
+    totalUserTextLength: 0,
+    questionCount: 0,
+    iterationCount: 0,
+    uniqueToolsUsed: new Set(parsed.stats.uniqueToolsUsed),
+    editWriteCount: 0,
+    searchToolCount: 0,
+    errorCount: 0,
+    errorRecoveryCount: 0,
+    uniqueFilesRead: new Set(),
+    uniqueFilesModified: new Set(),
+    promptVocabularySize: 0,
+    totalPromptWords: 0,
+  };
+
+  const vocabularySet = new Set<string>();
+
+  for (const msg of parsed.messages) {
+    if (msg.role === 'user') {
+      metrics.totalUserTextLength += msg.content.length;
+
+      // Count questions
+      for (const pattern of QUESTION_PATTERNS) {
+        const matches = msg.content.match(pattern);
+        if (matches) metrics.questionCount += matches.length;
+      }
+
+      // Count iteration patterns
+      for (const pattern of ITERATION_PATTERNS) {
+        const matches = msg.content.match(pattern);
+        if (matches) metrics.iterationCount += matches.length;
+      }
+
+      // Track vocabulary
+      const words = msg.content.match(/\b[a-zA-Z]{3,}\b/g) || [];
+      metrics.totalPromptWords += words.length;
+      for (const word of words) {
+        vocabularySet.add(word.toLowerCase());
+      }
+    } else if (msg.role === 'assistant' && msg.toolCalls) {
+      for (const tool of msg.toolCalls) {
+        if (EDIT_WRITE_TOOLS.has(tool.name)) {
+          metrics.editWriteCount++;
+          const filePath = tool.input?.file_path as string | undefined;
+          if (filePath) metrics.uniqueFilesModified.add(filePath);
+        }
+        if (SEARCH_TOOLS.has(tool.name)) {
+          metrics.searchToolCount++;
+          if (tool.name === 'Read') {
+            const filePath = tool.input?.file_path as string | undefined;
+            if (filePath) metrics.uniqueFilesRead.add(filePath);
+          }
+        }
+        if (tool.isError) {
+          metrics.errorCount++;
+        }
+      }
+    }
+  }
+
+  metrics.promptVocabularySize = vocabularySet.size;
+
+  return metrics;
+}
