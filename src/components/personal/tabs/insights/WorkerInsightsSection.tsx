@@ -268,6 +268,7 @@ const DOMAIN_TO_TRANSLATION_KEY: Record<keyof AggregatedWorkerInsights, keyof Tr
   workflowHabit: 'workflowHabit',
   knowledgeGap: 'knowledgeGap',
   contextEfficiency: 'contextEfficiency',
+  communicationPatterns: 'communicationPatterns',
 };
 
 /**

@@ -8,6 +8,7 @@
  * - Full original utterance text (from utteranceLookup)
  * - Session ID and turn index metadata
  * - Timestamp of the original message
+ * - Data integrity validation badge (original match indicator)
  *
  * For Free tier: Shows "Unlock to see full context" when expanded.
  */
@@ -16,14 +17,59 @@
 
 import { useState, useCallback } from 'react';
 import type { EvidenceItem, InsightEvidence } from '../../../../lib/models/worker-insights';
-import type { UtteranceLookupEntry } from '../../../../lib/models/verbose-evaluation';
+import type { UtteranceLookupEntry, TransformationAuditEntry } from '../../../../lib/models/verbose-evaluation';
 import styles from './ExpandableEvidence.module.css';
+
+/**
+ * Integrity status for evidence display
+ *
+ * Indicates whether the displayed quote matches the original developer text:
+ * - 'verbatim': Quote is unchanged from original (100% match)
+ * - 'summarized': Machine content summarized (error logs, stack traces, etc.)
+ * - 'mismatch': Unexpected deviation from original (potential data corruption)
+ * - 'unknown': No audit data available (legacy entries)
+ */
+type IntegrityStatus = 'verbatim' | 'summarized' | 'mismatch' | 'unknown';
+
+/**
+ * Get integrity badge configuration based on status
+ */
+function getIntegrityBadge(status: IntegrityStatus): { icon: string; text: string; className: string } {
+  if (status === 'verbatim') {
+    return { icon: '✓', text: 'Original', className: styles.integrityVerbatim };
+  }
+  if (status === 'summarized') {
+    return { icon: '◐', text: 'Summarized', className: styles.integritySummarized };
+  }
+  if (status === 'mismatch') {
+    return { icon: '⚠', text: 'Check original', className: styles.integrityMismatch };
+  }
+  return { icon: '', text: '', className: '' };
+}
+
+/**
+ * Determine integrity status from transformation audit data
+ */
+function getIntegrityStatus(
+  utteranceId: string | undefined,
+  transformationAudit?: Map<string, TransformationAuditEntry>
+): IntegrityStatus {
+  if (!utteranceId || !transformationAudit) return 'unknown';
+
+  const audit = transformationAudit.get(utteranceId);
+  if (!audit) return 'verbatim';
+  if (audit.isVerbatim) return 'verbatim';
+  if (audit.validationPassed === false) return 'mismatch';
+  return 'summarized';
+}
 
 interface ExpandableEvidenceProps {
   /** Evidence items - can be string (legacy) or InsightEvidence (new) */
   evidence: EvidenceItem[];
   /** Lookup map for utterance details (keyed by utteranceId) */
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
+  /** Transformation audit map for data integrity verification (keyed by utteranceId) */
+  transformationAudit?: Map<string, TransformationAuditEntry>;
   /** Whether user has paid tier for full content */
   isPaid: boolean;
   /** Maximum number of evidence items to show initially */
@@ -70,10 +116,12 @@ function formatTimestamp(isoString: string): string {
 function EvidenceItemRow({
   item,
   utteranceLookup,
+  transformationAudit,
   isPaid,
 }: {
   item: EvidenceItem;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
+  transformationAudit?: Map<string, TransformationAuditEntry>;
   isPaid: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -83,6 +131,10 @@ function EvidenceItemRow({
   const utteranceId = isStructured ? item.utteranceId : undefined;
   const utterance = utteranceId ? utteranceLookup?.get(utteranceId) : undefined;
   const hasExpandableContent = isStructured && utterance;
+
+  // Data integrity status
+  const integrityStatus = getIntegrityStatus(utteranceId, transformationAudit);
+  const integrityBadge = getIntegrityBadge(integrityStatus);
 
   const toggleExpand = useCallback(() => {
     if (hasExpandableContent) {
@@ -106,6 +158,17 @@ function EvidenceItemRow({
           {hasExpandableContent ? (isExpanded ? '▼' : '▶') : '›'}
         </span>
         <span className={styles.quoteText}>{displayQuote}</span>
+        {/* Data Integrity Badge */}
+        {integrityBadge.icon && (
+          <span
+            className={`${styles.integrityBadge} ${integrityBadge.className}`}
+            title={integrityStatus === 'verbatim' ? 'Quote matches original exactly'
+              : integrityStatus === 'summarized' ? 'Machine content (errors, code) summarized for readability'
+              : 'Quote may differ from original - click to view source'}
+          >
+            {integrityBadge.icon}
+          </span>
+        )}
         {isStructured && item.context && (
           <span className={styles.contextBadge}>{item.context}</span>
         )}
@@ -116,7 +179,15 @@ function EvidenceItemRow({
           {isPaid ? (
             <>
               <div className={styles.originalUtterance}>
-                <span className={styles.utteranceLabel}>Original Message</span>
+                <span className={styles.utteranceLabel}>
+                  Original Message
+                  {/* Show integrity status in expanded view */}
+                  {integrityBadge.text && (
+                    <span className={`${styles.integrityTag} ${integrityBadge.className}`}>
+                      {integrityBadge.icon} {integrityBadge.text}
+                    </span>
+                  )}
+                </span>
                 <p className={styles.utteranceText}>{utterance.text}</p>
               </div>
               <div className={styles.metadata}>
@@ -152,6 +223,7 @@ function EvidenceItemRow({
 export function ExpandableEvidence({
   evidence,
   utteranceLookup,
+  transformationAudit,
   isPaid,
   maxItems = 3,
 }: ExpandableEvidenceProps) {
@@ -173,6 +245,7 @@ export function ExpandableEvidence({
             key={idx}
             item={item}
             utteranceLookup={utteranceLookup}
+            transformationAudit={transformationAudit}
             isPaid={isPaid}
           />
         ))}
