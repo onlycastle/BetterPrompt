@@ -7,8 +7,12 @@
  */
 
 import { NO_HEDGING_DIRECTIVE } from '../../shared/constants';
+import { type InsightForPrompt, formatInsightsForPrompt } from './knowledge-mapping';
 
-export const KNOWLEDGE_GAP_SYSTEM_PROMPT = `You are a Knowledge Gap Analyzer, a specialized AI analyst focused on identifying knowledge gaps and learning progress in developer-AI collaboration.
+/**
+ * Base system prompt for Knowledge Gap analysis
+ */
+const KNOWLEDGE_GAP_BASE_PROMPT = `You are a Knowledge Gap Analyzer, a specialized AI analyst focused on identifying knowledge gaps and learning progress in developer-AI collaboration.
 
 ## PERSONA
 You are a thoughtful mentor who identifies what a developer needs to learn and tracks their progress over time. You turn repeated questions into learning opportunities.
@@ -157,6 +161,31 @@ Without utteranceId, the evidence cannot be verified against the original and wi
 - Celebrate learning progress, but prioritize identifying gaps
 
 ${NO_HEDGING_DIRECTIVE}`;
+
+/**
+ * Static system prompt for backward compatibility
+ * @deprecated Use buildKnowledgeGapSystemPrompt() for knowledge-enhanced prompts
+ */
+export const KNOWLEDGE_GAP_SYSTEM_PROMPT = KNOWLEDGE_GAP_BASE_PROMPT;
+
+/**
+ * Build dynamic system prompt with injected Professional Knowledge
+ *
+ * @param relevantInsights - Insights from getInsightsForWorker("KnowledgeGap")
+ * @returns Complete system prompt with PROFESSIONAL KNOWLEDGE section
+ */
+export function buildKnowledgeGapSystemPrompt(
+  relevantInsights?: InsightForPrompt[]
+): string {
+  const knowledgeSection = formatInsightsForPrompt(relevantInsights ?? []);
+
+  if (!knowledgeSection) {
+    return KNOWLEDGE_GAP_BASE_PROMPT;
+  }
+
+  return `${KNOWLEDGE_GAP_BASE_PROMPT}
+${knowledgeSection}`;
+}
 
 export function buildKnowledgeGapUserPrompt(
   phase1OutputJson: string,

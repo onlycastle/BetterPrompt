@@ -9,8 +9,12 @@
  */
 
 import { NO_HEDGING_DIRECTIVE } from '../../shared/constants';
+import { type InsightForPrompt, formatInsightsForPrompt } from './knowledge-mapping';
 
-export const WORKFLOW_HABIT_SYSTEM_PROMPT = `You are a Workflow Habit Analyst, specializing in assessing how developers structure their work and apply critical thinking in AI collaboration.
+/**
+ * Base system prompt for Workflow Habit analysis
+ */
+const WORKFLOW_HABIT_BASE_PROMPT = `You are a Workflow Habit Analyst, specializing in assessing how developers structure their work and apply critical thinking in AI collaboration.
 
 ## PERSONA
 You are an expert productivity coach who identifies positive workflow patterns. Your focus is on planning habits, critical thinking moments, and focus management.
@@ -159,6 +163,31 @@ Without utteranceId, the evidence cannot be verified against the original and wi
 5. Output is ALWAYS in English
 
 ${NO_HEDGING_DIRECTIVE}`;
+
+/**
+ * Static system prompt for backward compatibility
+ * @deprecated Use buildWorkflowHabitSystemPrompt() for knowledge-enhanced prompts
+ */
+export const WORKFLOW_HABIT_SYSTEM_PROMPT = WORKFLOW_HABIT_BASE_PROMPT;
+
+/**
+ * Build dynamic system prompt with injected Professional Knowledge
+ *
+ * @param relevantInsights - Insights from getInsightsForWorker("WorkflowHabit")
+ * @returns Complete system prompt with PROFESSIONAL KNOWLEDGE section
+ */
+export function buildWorkflowHabitSystemPrompt(
+  relevantInsights?: InsightForPrompt[]
+): string {
+  const knowledgeSection = formatInsightsForPrompt(relevantInsights ?? []);
+
+  if (!knowledgeSection) {
+    return WORKFLOW_HABIT_BASE_PROMPT;
+  }
+
+  return `${WORKFLOW_HABIT_BASE_PROMPT}
+${knowledgeSection}`;
+}
 
 export function buildWorkflowHabitUserPrompt(phase1OutputJson: string): string {
   return `## PHASE 1 EXTRACTION DATA

@@ -9,8 +9,13 @@
  */
 
 import { NO_HEDGING_DIRECTIVE } from '../../shared/constants';
+import { type InsightForPrompt, formatInsightsForPrompt } from './knowledge-mapping';
 
-export const TRUST_VERIFICATION_SYSTEM_PROMPT = `You are a Trust & Verification Analyst, specializing in detecting anti-patterns and assessing developer verification behavior in AI collaboration.
+/**
+ * Base system prompt for Trust Verification analysis
+ * This constant is kept for backward compatibility
+ */
+const TRUST_VERIFICATION_BASE_PROMPT = `You are a Trust & Verification Analyst, specializing in detecting anti-patterns and assessing developer verification behavior in AI collaboration.
 
 ## PERSONA
 You are an expert security-minded reviewer who identifies trust issues and verification gaps. Your focus is on detecting where developers blindly trust AI output vs. where they properly verify.
@@ -107,23 +112,35 @@ You MUST output detailed, comprehensive strengths and growth areas for this doma
 - "Passive Acceptance" — accepting AI output without verification
 - "Trust Debt Accumulation" — using code without understanding it
 
-## CRITICAL: Error Reporting Quality Assessment
+## Error Reporting Evaluation (Outcome-Based)
 
-"High-fidelity error reporting" is a Strength ONLY if the developer provides CONTEXT:
-- ✅ STRENGTH: Context + error (e.g., "I was trying to login, then got this error: [Error: No workspace ID]")
-- ✅ STRENGTH: Steps to reproduce + error (e.g., "After clicking save, renamed to CT, then [Error: relation already exists]")
-- ✅ STRENGTH: What they tried + error (e.g., "I tried restarting but still getting [Error: connection refused]")
+Error reporting should be evaluated based on OUTCOMES, not input style.
+Pasting error messages is a valid workflow — do not penalize it by default.
 
-"Copy-paste only" error reporting is NOT a Strength:
-- ❌ NOT STRENGTH: Just pasting error without context (e.g., "ERROR: 42P07: relation profiles already exists")
-- ❌ NOT STRENGTH: "Why doesn't this work?" or "Fix this" style without explanation
-- ❌ NOT STRENGTH: Error log dump without any developer words explaining the situation
+### STRENGTH Examples (Context + Error):
+- ✅ "I was trying to login, then got this error: [Error: No workspace ID]"
+- ✅ "After clicking save, renamed to CT, then [Error: relation already exists]"
+- ✅ "I tried restarting but still getting [Error: connection refused]"
 
-If a developer ONLY pastes error messages without context:
-- Do NOT include "High-fidelity Error Reporting" or similar in strengthsData
-- Consider it a Growth Area: "Context-free Error Reporting"
-  - Description: Pasting errors without explaining what they were trying to do, what they expected, or steps to reproduce
-  - Recommendation: "When reporting errors, include: 1) What you were trying to do, 2) What you expected to happen, 3) What actually happened. This helps AI diagnose faster and provides better solutions."
+### NEUTRAL Examples (Error Only → Valid Workflow):
+- ⚪ Just pasting error without context (e.g., "ERROR: 42P07: relation profiles already exists")
+- ⚪ Self-explanatory errors (SyntaxError, ModuleNotFoundError, ECONNREFUSED)
+- ⚪ Error resolved within 1-2 turns — efficient debugging, not a problem
+
+### GROWTH AREA Examples (Pattern Problems):
+- ⚠️ GROWTH AREA: Same error repeated 3+ times without change in approach (error_loop pattern)
+- ⚠️ GROWTH AREA: machineContentRatio > 0.95 AND developerWordCount < 5 AND error not resolved
+  - This indicates minimal engagement with zero context
+- ⚠️ GROWTH AREA: Frustrated dumps like "this is broken" + long error without any diagnostic effort
+
+### Key Distinction
+The problem is NOT "pasting errors" — the problem is "error loops" (same error, same approach, no learning).
+Use machineContentRatio field to identify context-free reports:
+- machineContentRatio > 0.95: Almost entirely machine content (error/code)
+- machineContentRatio > 0.95 + error_loop: This IS a Growth Area
+- machineContentRatio > 0.70 + quick resolution: This is NEUTRAL (efficient workflow)
+
+Avoid labeling error paste as "lazy" — many effective developers paste errors and solve them quickly.
 
 ## DETECTING ANTI-PATTERNS
 Look for these signals:
@@ -176,6 +193,35 @@ Without utteranceId, the evidence cannot be verified against the original and wi
 6. For detectedPatternsData, classify each pattern with significance: critical | high | medium | low
 
 ${NO_HEDGING_DIRECTIVE}`;
+
+/**
+ * Static system prompt for backward compatibility
+ * @deprecated Use buildTrustVerificationSystemPrompt() for knowledge-enhanced prompts
+ */
+export const TRUST_VERIFICATION_SYSTEM_PROMPT = TRUST_VERIFICATION_BASE_PROMPT;
+
+/**
+ * Build dynamic system prompt with injected Professional Knowledge
+ *
+ * @param relevantInsights - Insights from getInsightsForWorker("TrustVerification")
+ * @returns Complete system prompt with PROFESSIONAL KNOWLEDGE section
+ *
+ * @example
+ * const insights = getInsightsForWorker("TrustVerification");
+ * const systemPrompt = buildTrustVerificationSystemPrompt(insights);
+ */
+export function buildTrustVerificationSystemPrompt(
+  relevantInsights?: InsightForPrompt[]
+): string {
+  const knowledgeSection = formatInsightsForPrompt(relevantInsights ?? []);
+
+  if (!knowledgeSection) {
+    return TRUST_VERIFICATION_BASE_PROMPT;
+  }
+
+  return `${TRUST_VERIFICATION_BASE_PROMPT}
+${knowledgeSection}`;
+}
 
 export function buildTrustVerificationUserPrompt(phase1OutputJson: string): string {
   return `## PHASE 1 EXTRACTION DATA
