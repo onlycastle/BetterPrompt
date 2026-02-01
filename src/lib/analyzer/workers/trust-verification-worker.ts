@@ -23,9 +23,10 @@ import {
 import type { Phase1Output } from '../../models/phase1-output';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
-  TRUST_VERIFICATION_SYSTEM_PROMPT,
+  buildTrustVerificationSystemPrompt,
   buildTrustVerificationUserPrompt,
 } from './prompts/trust-verification-prompts';
+import { getInsightsForWorker } from './prompts/knowledge-mapping';
 
 /**
  * TrustVerificationWorker - Detects trust issues and verification gaps
@@ -74,9 +75,15 @@ export class TrustVerificationWorker extends BaseWorker<TrustVerificationOutput>
 
     const userPrompt = buildTrustVerificationUserPrompt(phase1Json);
 
+    // Get relevant professional insights for this worker's domain
+    const relevantInsights = getInsightsForWorker(this.name);
+    const systemPrompt = buildTrustVerificationSystemPrompt(relevantInsights);
+
+    this.log(`Injected ${relevantInsights.length} professional insights`);
+
     // Call Gemini with the flattened schema
     const result = await this.client!.generateStructured({
-      systemPrompt: TRUST_VERIFICATION_SYSTEM_PROMPT,
+      systemPrompt,
       userPrompt,
       responseSchema: TrustVerificationLLMOutputSchema,
       maxOutputTokens: 16384,
@@ -93,8 +100,14 @@ export class TrustVerificationWorker extends BaseWorker<TrustVerificationOutput>
   }
 
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
+    // Filter to noteworthy utterances only (same as CommunicationPatterns)
+    // This prevents LLM from selecting low-quality utterances as evidence
+    const noteworthyUtterances = phase1.developerUtterances.filter(
+      (u) => u.isNoteworthy !== false && u.wordCount >= 8
+    );
+
     return {
-      developerUtterances: phase1.developerUtterances.map((u) => ({
+      developerUtterances: noteworthyUtterances.map((u) => ({
         id: u.id,
         // Use displayText (sanitized) if available, fallback to raw text
         // displayText has machine-generated content (error logs, stack traces, code) summarized
@@ -109,6 +122,10 @@ export class TrustVerificationWorker extends BaseWorker<TrustVerificationOutput>
         precedingAIHadError: u.precedingAIHadError,
         precedingAIToolCalls: u.precedingAIToolCalls,
         timestamp: u.timestamp,
+        // Machine content ratio for error reporting evaluation
+        // > 0.95 = almost entirely machine content (error/code dump)
+        // Used to distinguish context-free error paste from normal workflow
+        machineContentRatio: u.machineContentRatio,
       })),
       aiResponses: phase1.aiResponses.map((r) => ({
         id: r.id,

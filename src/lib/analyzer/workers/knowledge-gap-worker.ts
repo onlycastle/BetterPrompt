@@ -20,9 +20,10 @@ import {
 import type { Phase1Output } from '../../models/phase1-output';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
-  KNOWLEDGE_GAP_SYSTEM_PROMPT,
+  buildKnowledgeGapSystemPrompt,
   buildKnowledgeGapUserPrompt,
 } from './prompts/knowledge-gap-prompts';
+import { getInsightsForWorker } from './prompts/knowledge-mapping';
 
 /**
  * Knowledge Gap Worker - Analyzes knowledge gaps and learning
@@ -69,8 +70,14 @@ export class KnowledgeGapWorker extends BaseWorker<KnowledgeGapOutput> {
     const phase1Json = JSON.stringify(phase1ForPrompt, null, 2);
     const userPrompt = buildKnowledgeGapUserPrompt(phase1Json);
 
+    // Get relevant professional insights for this worker's domain
+    const relevantInsights = getInsightsForWorker(this.name);
+    const systemPrompt = buildKnowledgeGapSystemPrompt(relevantInsights);
+
+    this.log(`Injected ${relevantInsights.length} professional insights`);
+
     const result = await this.client!.generateStructured({
-      systemPrompt: KNOWLEDGE_GAP_SYSTEM_PROMPT,
+      systemPrompt,
       userPrompt,
       responseSchema: KnowledgeGapLLMOutputSchema,
       maxOutputTokens: 8192,
@@ -86,8 +93,14 @@ export class KnowledgeGapWorker extends BaseWorker<KnowledgeGapOutput> {
   }
 
   private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
+    // Filter to noteworthy utterances only (same as CommunicationPatterns)
+    // This prevents LLM from selecting low-quality utterances as evidence
+    const noteworthyUtterances = phase1.developerUtterances.filter(
+      (u) => u.isNoteworthy !== false && u.wordCount >= 8
+    );
+
     return {
-      developerUtterances: phase1.developerUtterances.map((u) => ({
+      developerUtterances: noteworthyUtterances.map((u) => ({
         id: u.id,
         // Use displayText (sanitized) if available, fallback to raw text
         // displayText has machine-generated content (error logs, stack traces, code) summarized
