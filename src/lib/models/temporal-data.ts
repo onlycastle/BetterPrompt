@@ -84,8 +84,8 @@ export const TemporalAnalysisOutputSchema = z.object({
       'Insights: "type(strength/improvement)|insight|evidence|linkedHours(comma-sep);..."'
     ),
 
-  // Top 3 temporal insights
-  topInsights: z.array(z.string()).max(3),
+  // Top 3 temporal insights (sliced to 3 since Gemini's maxItems constraint is removed)
+  topInsights: z.array(z.string()).transform((arr) => arr.slice(0, 3)),
 
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
@@ -402,10 +402,10 @@ export const TemporalInsightsOutputSchema = z.object({
       'Description of typical session patterns (e.g., "Prefers longer, deep-dive sessions averaging 25 minutes with 8+ turns")'
     ),
 
-  // Top 3 temporal insights (actionable)
+  // Top 3 temporal insights (actionable, sliced to 3 since Gemini's maxItems constraint is removed)
   topInsights: z
     .array(z.string())
-    .max(3)
+    .transform((arr) => arr.slice(0, 3))
     .describe('Top 3 actionable insights about temporal patterns'),
 
   // Strengths with evidence (2-3 items)
