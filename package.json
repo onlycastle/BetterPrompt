@@ -41,6 +41,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.35.0",
     "@google/genai": "^1.35.0",
+    "better-sqlite3": "^11.0.0",
     "@polar-sh/nextjs": "^0.9.3",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.90.1",
@@ -64,6 +65,7 @@
     "@eslint/js": "^9.39.2",
     "@playwright/test": "^1.57.0",
     "@types/aws-lambda": "^8.10.147",
+    "@types/better-sqlite3": "^7.6.0",
     "@types/jsdom": "^27.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "19.2.8",
