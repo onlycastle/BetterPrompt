@@ -18,7 +18,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { homedir } from 'node:os';
 import { parseSessionContent, type ParsedSession } from './session-formatter.js';
-import { extractQualityMetrics, calculateQualityScore } from './session-scoring.js';
+import { extractQualityMetrics, extractQualityMetricsFromParsed, calculateQualityScore } from './session-scoring.js';
 
 // Import multi-source scanner infrastructure
 import {
@@ -29,7 +29,7 @@ import {
   type SourcedSessionMetadata,
   type SourcedParsedSession,
   type SessionSourceType,
-} from '../../../src/lib/scanner/index.js';
+} from './lib/scanner/index.js';
 
 export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
@@ -295,13 +295,7 @@ async function scoreCandidates(
 
         if (parsed && parsed.messages.length >= SELECTION_CONFIG.MIN_MESSAGE_COUNT) {
           // Calculate quality score based on parsed content
-          const qualityMetrics = {
-            messageCount: parsed.messages.length,
-            toolCallCount: parsed.stats.toolCallCount,
-            hasErrors: parsed.messages.some(m =>
-              m.toolCalls?.some(t => t.isError)
-            ),
-          };
+          const qualityMetrics = extractQualityMetricsFromParsed(parsed);
           const qualityScore = calculateQualityScore(qualityMetrics);
 
           results.push({
