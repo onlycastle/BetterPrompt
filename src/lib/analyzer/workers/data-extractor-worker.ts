@@ -223,9 +223,10 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
 
     // Calculate machine content ratio: 1 - (natural language chars / total chars)
     // Ratio of 1.0 = all machine content, 0.0 = all developer text
+    // Use segment range (end - start) for accurate ratio, not trimmed text length
     const totalChars = originalText.length;
     const naturalLanguageChars = naturalLanguageSegments.reduce(
-      (sum, segment) => sum + segment.text.length,
+      (sum, segment) => sum + (segment.end - segment.start),
       0
     );
     const machineContentRatio = totalChars > 0
@@ -1000,12 +1001,16 @@ Return exactly ${inputs.length} classifications in order.`;
     let currentPos = 0;
     for (const range of mergedRanges) {
       if (range.start > currentPos) {
-        const segmentText = text.slice(currentPos, range.start).trim();
-        if (segmentText.length > 0) {
+        const rawSegment = text.slice(currentPos, range.start);
+        const trimmed = rawSegment.trim();
+        if (trimmed.length > 0) {
+          // Adjust indices to match trimmed text
+          const leadingWhitespace = rawSegment.length - rawSegment.trimStart().length;
+          const trailingWhitespace = rawSegment.length - rawSegment.trimEnd().length;
           segments.push({
-            start: currentPos,
-            end: range.start,
-            text: segmentText,
+            start: currentPos + leadingWhitespace,
+            end: range.start - trailingWhitespace,
+            text: trimmed,
           });
         }
       }
@@ -1014,22 +1019,28 @@ Return exactly ${inputs.length} classifications in order.`;
 
     // Add final segment if any text remains
     if (currentPos < text.length) {
-      const segmentText = text.slice(currentPos).trim();
-      if (segmentText.length > 0) {
+      const rawSegment = text.slice(currentPos);
+      const trimmed = rawSegment.trim();
+      if (trimmed.length > 0) {
+        const leadingWhitespace = rawSegment.length - rawSegment.trimStart().length;
+        const trailingWhitespace = rawSegment.length - rawSegment.trimEnd().length;
         segments.push({
-          start: currentPos,
-          end: text.length,
-          text: segmentText,
+          start: currentPos + leadingWhitespace,
+          end: text.length - trailingWhitespace,
+          text: trimmed,
         });
       }
     }
 
     // If no machine content was found, the entire text is natural language
     if (segments.length === 0 && text.trim().length > 0) {
+      const trimmed = text.trim();
+      const leadingWhitespace = text.length - text.trimStart().length;
+      const trailingWhitespace = text.length - text.trimEnd().length;
       segments.push({
-        start: 0,
-        end: text.length,
-        text: text.trim(),
+        start: leadingWhitespace,
+        end: text.length - trailingWhitespace,
+        text: trimmed,
       });
     }
 

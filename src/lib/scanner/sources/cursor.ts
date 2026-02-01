@@ -307,101 +307,96 @@ export class CursorSource extends BaseSessionSource {
     const Database = await loadSqlite();
     if (!Database) return null;
 
+    let db: Database | null = null;
     try {
-      const db = new Database(filePath);
+      db = new Database(filePath);
 
-      try {
-        const conversation = this.parseConversation(db);
-        if (!conversation || conversation.messages.length === 0) {
-          db.close();
-          return null;
-        }
+      const conversation = this.parseConversation(db);
+      if (!conversation || conversation.messages.length === 0) {
+        return null;
+      }
 
-        // Get session info
-        const sessionDir = dirname(filePath);
-        const sessionId = basename(sessionDir);
-        const workspaceDir = dirname(sessionDir);
-        const workspaceHash = basename(workspaceDir);
-        const projectPath = conversation.metadata?.workspacePath
-          ?? conversation.metadata?.projectPath
-          ?? this.decodeProjectPath(workspaceHash);
+      // Get session info
+      const sessionDir = dirname(filePath);
+      const sessionId = basename(sessionDir);
+      const workspaceDir = dirname(sessionDir);
+      const workspaceHash = basename(workspaceDir);
+      const projectPath = conversation.metadata?.workspacePath
+        ?? conversation.metadata?.projectPath
+        ?? this.decodeProjectPath(workspaceHash);
 
-        // Build tool results map for matching
-        const toolResultsMap = new Map<string, { content: string; isError: boolean }>();
-        for (const msg of conversation.messages) {
-          if (msg.role === 'tool' && msg.toolResults) {
-            for (const result of msg.toolResults) {
-              const toolId = result.tool_use_id ?? result.toolCallId;
-              if (toolId) {
-                toolResultsMap.set(toolId, {
-                  content: result.content,
-                  isError: result.isError ?? result.is_error ?? false,
-                });
-              }
+      // Build tool results map for matching
+      const toolResultsMap = new Map<string, { content: string; isError: boolean }>();
+      for (const msg of conversation.messages) {
+        if (msg.role === 'tool' && msg.toolResults) {
+          for (const result of msg.toolResults) {
+            const toolId = result.tool_use_id ?? result.toolCallId;
+            if (toolId) {
+              toolResultsMap.set(toolId, {
+                content: result.content,
+                isError: result.isError ?? result.is_error ?? false,
+              });
             }
           }
         }
-
-        // Parse messages
-        const messages: ParsedMessage[] = [];
-
-        for (const msg of conversation.messages) {
-          if (msg.role === 'user') {
-            const content = msg.content ?? msg.text ?? '';
-            if (!content.trim()) continue;
-
-            messages.push({
-              uuid: msg.id ?? this.generateUUID(),
-              role: 'user',
-              timestamp: this.extractTimestamp(msg) ?? new Date(),
-              content,
-            });
-          } else if (msg.role === 'assistant') {
-            const content = msg.content ?? msg.text ?? '';
-            const toolCalls = this.extractToolCalls(msg, toolResultsMap);
-
-            messages.push({
-              uuid: msg.id ?? this.generateUUID(),
-              role: 'assistant',
-              timestamp: this.extractTimestamp(msg) ?? new Date(),
-              content,
-              toolCalls,
-            });
-          }
-        }
-
-        db.close();
-
-        if (messages.length === 0) return null;
-
-        // Calculate timestamps
-        const timestamps = messages.map((m) => m.timestamp);
-        const startTime = new Date(
-          Math.min(...timestamps.map((t) => t.getTime()))
-        );
-        const endTime = new Date(
-          Math.max(...timestamps.map((t) => t.getTime()))
-        );
-
-        const stats = this.computeStats(messages);
-
-        return {
-          sessionId,
-          projectPath,
-          startTime,
-          endTime,
-          durationSeconds: this.calculateDuration(startTime, endTime),
-          claudeCodeVersion: 'cursor', // Use 'cursor' as version identifier
-          messages,
-          stats,
-          source: this.name,
-        };
-      } catch {
-        db.close();
-        return null;
       }
+
+      // Parse messages
+      const messages: ParsedMessage[] = [];
+
+      for (const msg of conversation.messages) {
+        if (msg.role === 'user') {
+          const content = msg.content ?? msg.text ?? '';
+          if (!content.trim()) continue;
+
+          messages.push({
+            uuid: msg.id ?? this.generateUUID(),
+            role: 'user',
+            timestamp: this.extractTimestamp(msg) ?? new Date(),
+            content,
+          });
+        } else if (msg.role === 'assistant') {
+          const content = msg.content ?? msg.text ?? '';
+          const toolCalls = this.extractToolCalls(msg, toolResultsMap);
+
+          messages.push({
+            uuid: msg.id ?? this.generateUUID(),
+            role: 'assistant',
+            timestamp: this.extractTimestamp(msg) ?? new Date(),
+            content,
+            toolCalls,
+          });
+        }
+      }
+
+      if (messages.length === 0) return null;
+
+      // Calculate timestamps
+      const timestamps = messages.map((m) => m.timestamp);
+      const startTime = new Date(
+        Math.min(...timestamps.map((t) => t.getTime()))
+      );
+      const endTime = new Date(
+        Math.max(...timestamps.map((t) => t.getTime()))
+      );
+
+      const stats = this.computeStats(messages);
+
+      return {
+        sessionId,
+        projectPath,
+        startTime,
+        endTime,
+        durationSeconds: this.calculateDuration(startTime, endTime),
+        claudeCodeVersion: 'cursor', // Use 'cursor' as version identifier
+        messages,
+        stats,
+        source: this.name,
+      };
     } catch {
       return null;
+    } finally {
+      db?.close();
     }
   }
 
@@ -508,7 +503,7 @@ export class CursorSource extends BaseSessionSource {
       });
 
       return {
-        id: basename(dirname(db.prepare('SELECT 1').get() ? '' : '')),
+        id: this.generateUUID(),
         messages,
         metadata,
       };
@@ -566,13 +561,21 @@ export class CursorSource extends BaseSessionSource {
       if (call.input) {
         input = call.input;
       } else if (call.arguments) {
-        input = typeof call.arguments === 'string'
-          ? JSON.parse(call.arguments)
-          : call.arguments;
+        try {
+          input = typeof call.arguments === 'string'
+            ? JSON.parse(call.arguments)
+            : call.arguments;
+        } catch {
+          input = { raw: call.arguments };
+        }
       } else if (call.function?.arguments) {
-        input = typeof call.function.arguments === 'string'
-          ? JSON.parse(call.function.arguments)
-          : call.function.arguments;
+        try {
+          input = typeof call.function.arguments === 'string'
+            ? JSON.parse(call.function.arguments)
+            : call.function.arguments;
+        } catch {
+          input = { raw: call.function.arguments };
+        }
       }
 
       // Get result if available
