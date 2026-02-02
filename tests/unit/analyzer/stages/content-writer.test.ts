@@ -47,19 +47,6 @@ function createMockPhase1Output(): Phase1Output {
         timestamp: '2024-01-01T10:05:00Z',
       }),
     ],
-    aiResponses: [
-      {
-        id: 'session-1_1',
-        sessionId: 'session-1',
-        turnIndex: 1,
-        responseType: 'code_change',
-        toolsUsed: ['Edit', 'Write'],
-        textSnippet: 'I will help you implement OAuth authentication...',
-        fullTextLength: 500,
-        hadError: false,
-        wasSuccessful: true,
-      },
-    ],
     sessionMetrics: {
       totalSessions: 1,
       totalMessages: 3,
@@ -315,7 +302,6 @@ describe('ContentWriterStage', () => {
     it('should handle empty utterances', () => {
       const phase1Output: Phase1Output = {
         developerUtterances: [],
-        aiResponses: [],
         sessionMetrics: createMockPhase1Output().sessionMetrics,
       };
       expect(() => stage.verifyPhase2WorkerExamples(createMockAgentOutputs(), phase1Output)).not.toThrow();
@@ -330,7 +316,6 @@ describe('ContentWriterStage', () => {
           createUtterance('non-evidence-utterance', 'ok', { turnIndex: 2, timestamp: '2024-01-01T10:01:00Z' }),
           createUtterance('evidence-utterance-2', 'Let me verify the token refresh handles all edge cases correctly', { turnIndex: 4, timestamp: '2024-01-01T10:05:00Z' }),
         ],
-        aiResponses: [],
         sessionMetrics: createMockPhase1Output().sessionMetrics,
       };
 

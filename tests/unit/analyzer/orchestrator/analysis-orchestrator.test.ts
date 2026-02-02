@@ -69,7 +69,6 @@ class MockDataExtractorWorker extends BaseWorker<Phase1Output> {
     return {
       data: {
         developerUtterances: [],
-        aiResponses: [],
         sessionMetrics: {
           totalSessions: context.sessions.length,
           totalMessages: 10,

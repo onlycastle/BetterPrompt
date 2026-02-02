@@ -37,17 +37,6 @@ function createMockPhase1Output(): Phase1Output {
       createUtterance('session-1_0', 'Help me implement a new feature for user authentication'),
       createUtterance('session-1_2', 'Let me verify this works before we continue', { turnIndex: 2, timestamp: '2024-01-01T10:05:00Z' }),
     ],
-    aiResponses: [{
-      id: 'session-1_1',
-      sessionId: 'session-1',
-      turnIndex: 1,
-      responseType: 'code_change',
-      toolsUsed: ['Edit'],
-      textSnippet: 'Here is the implementation...',
-      fullTextLength: 300,
-      hadError: false,
-      wasSuccessful: true,
-    }],
     sessionMetrics: {
       totalSessions: 1,
       totalMessages: 3,

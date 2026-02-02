@@ -49,17 +49,6 @@ function createMockContext(tier: 'free' | 'premium' = 'premium'): WorkerContext 
       createUtterance('session-1_0', 'Here is the project structure again...'),
       createUtterance('session-1_2', 'Can you review this code?', { turnIndex: 2, timestamp: '2024-01-01T10:05:00Z' }),
     ],
-    aiResponses: [{
-      id: 'session-1_1',
-      sessionId: 'session-1',
-      turnIndex: 1,
-      responseType: 'explanation',
-      toolsUsed: ['Read', 'Grep'],
-      textSnippet: 'I can see the project structure...',
-      fullTextLength: 150,
-      hadError: false,
-      wasSuccessful: true,
-    }],
     sessionMetrics: {
       totalSessions: 1,
       totalMessages: 3,
