@@ -1453,7 +1453,7 @@ export type VerboseLLMResponse = z.infer<typeof VerboseLLMResponseSchema>;
  * - promptPatterns: FALLBACK only - prefer Phase 2 CommunicationPatterns
  * - topFocusAreas: Narrative-enriched focus areas (optional)
  *
- * NOTE: promptPatterns generation moved to Phase 2 CommunicationPatternsWorker.
+ * NOTE: promptPatterns generation moved to Phase 2 ThinkingQualityWorker (communicationPatterns field).
  * Phase 3 promptPatterns is kept for backward compatibility but evaluation-assembler
  * will prefer Phase 2 data when available.
  *

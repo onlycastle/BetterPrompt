@@ -128,7 +128,7 @@ export function detectPrimaryLanguage(texts: string[]): LanguageDetectionResult 
  * - personalitySummary: Personality narrative from all Phase 2 data
  * - topFocusAreas: Narrative-enriched focus areas (optional)
  *
- * NOTE: promptPatterns generation moved to Phase 2 CommunicationPatternsWorker.
+ * NOTE: promptPatterns generation moved to Phase 2 ThinkingQualityWorker (communicationPatterns field).
  * Phase 3 only generates narrative content; structural analysis is in Phase 2.
  *
  * Structural data (dimensionInsights, type classification, anti-patterns,
@@ -145,7 +145,7 @@ Generate personalized narrative content using Phase 2 worker outputs. You produc
 1. **personalitySummary** — A personality narrative synthesized from all Phase 2 data
 2. **topFocusAreas** — Narrative-enriched focus areas (optional)
 
-NOTE: Communication patterns (promptPatterns) are now analyzed by Phase 2 CommunicationPatternsWorker.
+NOTE: Communication patterns (promptPatterns) are now analyzed by Phase 2 ThinkingQualityWorker (communicationPatterns field).
 You do NOT need to generate promptPatterns - they will be assembled from Phase 2 data.
 
 All other data (dimensionInsights, type classification, anti-patterns, critical thinking, planning,
@@ -295,7 +295,7 @@ This developer has ${sessionCount} sessions analyzed.
 Below is a structured summary from 6 Phase 2 workers + 1 Phase 2.5 worker.
 Each section uses ## headers with key scores.
 
-NOTE: CommunicationPatterns (promptPatterns) are already analyzed in Phase 2.
+NOTE: Communication patterns (promptPatterns) are already analyzed by ThinkingQualityWorker in Phase 2.
 You do NOT need to generate promptPatterns - focus on personality narrative only.
 
 ${agentOutputsSummary}
@@ -317,7 +317,7 @@ You generate ONLY narrative content. Structural data (including promptPatterns) 
    - Create ranked focus areas with narrative and actions (start/stop/continue)
    - actionsData format: "start_action|stop_action|continue_action"
 
-NOTE: Do NOT generate promptPatterns - they are handled by Phase 2 CommunicationPatternsWorker.
+NOTE: Do NOT generate promptPatterns - they are handled by Phase 2 ThinkingQualityWorker.
 
 Make this developer feel truly understood. Use their actual words.`;
 }

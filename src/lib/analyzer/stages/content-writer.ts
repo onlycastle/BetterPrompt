@@ -6,7 +6,7 @@
  * Temperature: 1.0 (Gemini's recommended default).
  *
  * Generates: personalitySummary, topFocusAreas
- * NOTE: promptPatterns generation moved to Phase 2 CommunicationPatternsWorker.
+ * NOTE: promptPatterns generation moved to Phase 2 ThinkingQualityWorker (communicationPatterns field).
  * All structural assembly is handled by evaluation-assembler.ts
  *
  * Key Design Decision (v4):
