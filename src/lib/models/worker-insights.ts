@@ -309,13 +309,29 @@ export function parseWorkerStrengthsData(data: string | undefined): WorkerStreng
       const title = parts[0]?.trim() || '';
       const description = parts[1]?.trim() || '';
       const evidenceStr = parts[2]?.trim() || '';
+
+      // Track seen quotes for deduplication within this strength item
+      const seenQuotes = new Set<string>();
+
       // Parse evidence: comma-separated, each item MUST have utteranceId
       // parseEvidenceItem returns null for items without valid utteranceId
       // Require minimum quote length of 15 chars to filter out corrupted/too-short quotes
+      // Deduplicate by normalized quote text
       const evidence: EvidenceItem[] = evidenceStr
         .split(',')
         .map((e) => parseEvidenceItem(e))
-        .filter((e): e is InsightEvidence => e !== null && e.quote.length >= 15);
+        .filter((e): e is InsightEvidence => {
+          if (e === null || e.quote.length < 15) return false;
+          const normalizedQuote = e.quote.trim().toLowerCase();
+          if (seenQuotes.has(normalizedQuote)) {
+            console.warn(
+              `[parseWorkerStrengthsData] Duplicate quote filtered: "${e.quote.slice(0, 50)}..."`
+            );
+            return false;
+          }
+          seenQuotes.add(normalizedQuote);
+          return true;
+        });
 
       const result: WorkerStrength = { title, description, evidence };
 
@@ -348,13 +364,28 @@ export function parseWorkerGrowthAreasData(data: string | undefined): WorkerGrow
       const recommendation = parts[3]?.trim() || '';
       const severityStr = parts[4]?.trim() as WorkerGrowthSeverity | undefined;
 
+      // Track seen quotes for deduplication within this growth area item
+      const seenQuotes = new Set<string>();
+
       // Parse evidence: comma-separated, each item MUST have utteranceId
       // parseEvidenceItem returns null for items without valid utteranceId
       // Require minimum quote length of 15 chars to filter out corrupted/too-short quotes
+      // Deduplicate by normalized quote text
       const evidence: EvidenceItem[] = evidenceStr
         .split(',')
         .map((e) => parseEvidenceItem(e))
-        .filter((e): e is InsightEvidence => e !== null && e.quote.length >= 15);
+        .filter((e): e is InsightEvidence => {
+          if (e === null || e.quote.length < 15) return false;
+          const normalizedQuote = e.quote.trim().toLowerCase();
+          if (seenQuotes.has(normalizedQuote)) {
+            console.warn(
+              `[parseWorkerGrowthAreasData] Duplicate quote filtered: "${e.quote.slice(0, 50)}..."`
+            );
+            return false;
+          }
+          seenQuotes.add(normalizedQuote);
+          return true;
+        });
 
       const result: WorkerGrowth = {
         title,
@@ -403,14 +434,21 @@ export function parseEvidenceStrings(evidenceStrings: string[]): InsightEvidence
  * Parse structured evidence objects from LLM output.
  *
  * Each evidence item is already a JSON object: {utteranceId, quote, context?}
- * This function validates and filters the evidence objects.
+ * This function validates, filters, and deduplicates the evidence objects.
+ *
+ * Deduplication is performed by normalizing quote text (trimmed, lowercased).
+ * This handles cases where LLMs hallucinate different utteranceIds for the same quote,
+ * or when users genuinely repeated the same message across different turns.
+ * Only the first occurrence is kept.
  *
  * @param evidenceObjects - Array of StructuredEvidenceLLM from LLM output
- * @returns Array of InsightEvidence objects (invalid items filtered out)
+ * @returns Array of InsightEvidence objects (invalid/duplicate items filtered out)
  */
 export function parseStructuredEvidence(
   evidenceObjects: StructuredEvidenceLLM[]
 ): InsightEvidence[] {
+  const seenQuotes = new Set<string>(); // Track seen quotes for deduplication
+
   return evidenceObjects
     .filter((e) => {
       // Validate utteranceId format: sessionId_turnIndex
@@ -427,6 +465,17 @@ export function parseStructuredEvidence(
         );
         return false;
       }
+
+      // Deduplicate by normalized quote text (trim + lowercase)
+      const normalizedQuote = e.quote.trim().toLowerCase();
+      if (seenQuotes.has(normalizedQuote)) {
+        console.warn(
+          `[parseStructuredEvidence] Duplicate quote filtered: "${e.quote.slice(0, 50)}..."`
+        );
+        return false;
+      }
+      seenQuotes.add(normalizedQuote);
+
       return true;
     })
     .map((e) => ({
