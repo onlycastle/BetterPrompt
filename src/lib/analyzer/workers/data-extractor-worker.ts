@@ -85,7 +85,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   // LLM filtering configuration
   private static readonly LLM_FILTER_MIN_LENGTH = 10; // Skip LLM for very short utterances only
   private static readonly LLM_FILTER_CONFIDENCE_THRESHOLD = 0.7; // Filter if confidence >= threshold
-  private static readonly LLM_FILTER_BATCH_SIZE = 5; // Max utterances per LLM call (small to avoid token limit)
+  private static readonly LLM_FILTER_BATCH_SIZE = 100; // Max utterances per LLM call (increased for efficiency)
 
   /** Dedicated Gemini client for LLM filtering (created lazily) */
   private filterClient?: GeminiClient;
@@ -125,6 +125,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    */
   async execute(context: WorkerContext): Promise<WorkerResult<Phase1Output>> {
     this.log(`Extracting from ${context.sessions.length} sessions...`);
+    const totalStartTime = Date.now();
 
     // Reset token usage for this execution
     this.filterTokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
@@ -133,19 +134,28 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     const allAIResponses: AIResponse[] = [];
 
     // Process each session — extract ALL utterances/responses first
+    const extractStartTime = Date.now();
     for (const session of context.sessions) {
       const { utterances, responses } = this.extractFromSession(session);
       allDeveloperUtterances.push(...utterances);
       allAIResponses.push(...responses);
     }
+    const extractElapsed = Date.now() - extractStartTime;
+    this.log(`[Timing] Session extraction: ${extractElapsed}ms (${allDeveloperUtterances.length} utterances, ${allAIResponses.length} responses)`);
 
     // NEW: Apply LLM-based filtering to remove system metadata
+    const filterStartTime = Date.now();
     const filteredUtterances = await this.filterSystemMetadataWithLLM(allDeveloperUtterances);
+    const filterElapsed = Date.now() - filterStartTime;
+    this.log(`[Timing] LLM filtering: ${filterElapsed}ms`);
 
     this.log(`Filtered ${allDeveloperUtterances.length - filteredUtterances.length} system metadata utterances`);
 
     // Compute metrics from filtered data (accurate representation of developer input)
+    const metricsStartTime = Date.now();
     const sessionMetrics = this.computeSessionMetrics(context.sessions, filteredUtterances);
+    const metricsElapsed = Date.now() - metricsStartTime;
+    this.log(`[Timing] Metrics computation: ${metricsElapsed}ms`);
 
     // Apply strategic sampling to reduce downstream token usage
     const sampledUtterances = this.sampleUtterances(filteredUtterances, DataExtractorWorker.MAX_UTTERANCES);
@@ -157,6 +167,8 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       sessionMetrics,
     };
 
+    const totalElapsed = Date.now() - totalStartTime;
+    this.log(`[Timing] Total execute(): ${totalElapsed}ms`);
     this.log(`Extracted ${filteredUtterances.length} utterances, sampled to ${sampledUtterances.length}`);
     this.log(`Extracted ${allAIResponses.length} AI responses, sampled to ${sampledResponses.length}`);
 
@@ -529,15 +541,44 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       return preFiltered;
     }
 
-    this.log(`Classifying ${needsClassification.length} utterances for system metadata...`);
+    const totalBatches = Math.ceil(needsClassification.length / DataExtractorWorker.LLM_FILTER_BATCH_SIZE);
+    const PARALLEL_LIMIT = 3;
+    this.log(`Classifying ${needsClassification.length} utterances for system metadata... (${totalBatches} batches, ${PARALLEL_LIMIT} parallel)`);
 
-    // Process in batches to manage token usage
+    // Prepare all batches
+    const batches: { index: number; items: DeveloperUtterance[] }[] = [];
+    for (let i = 0; i < needsClassification.length; i += DataExtractorWorker.LLM_FILTER_BATCH_SIZE) {
+      batches.push({
+        index: batches.length + 1,
+        items: needsClassification.slice(i, i + DataExtractorWorker.LLM_FILTER_BATCH_SIZE),
+      });
+    }
+
+    // Process batches in parallel with concurrency limit
+    const allResults: { batch: DeveloperUtterance[]; classifications: ContentClassification[] }[] = [];
+
+    for (let i = 0; i < batches.length; i += PARALLEL_LIMIT) {
+      const parallelBatches = batches.slice(i, i + PARALLEL_LIMIT);
+      const roundStartTime = Date.now();
+
+      const results = await Promise.all(
+        parallelBatches.map(async ({ index, items }) => {
+          const classifications = await this.classifyBatch(items);
+          return { index, batch: items, classifications };
+        })
+      );
+
+      const roundElapsed = Date.now() - roundStartTime;
+      const processedIndices = parallelBatches.map(b => b.index).join(',');
+      this.log(`[Timing] Batches [${processedIndices}]/${totalBatches}: ${roundElapsed}ms (${parallelBatches.length} parallel)`);
+
+      allResults.push(...results.map(r => ({ batch: r.batch, classifications: r.classifications })));
+    }
+
+    // Process all classification results
     const classifiedUtterances: DeveloperUtterance[] = [];
 
-    for (let i = 0; i < needsClassification.length; i += DataExtractorWorker.LLM_FILTER_BATCH_SIZE) {
-      const batch = needsClassification.slice(i, i + DataExtractorWorker.LLM_FILTER_BATCH_SIZE);
-      const classifications = await this.classifyBatch(batch);
-
+    for (const { batch, classifications } of allResults) {
       // Keep only utterances classified as developer input with sufficient confidence
       for (let j = 0; j < batch.length; j++) {
         const classification = classifications[j];
@@ -601,7 +642,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
         systemPrompt,
         userPrompt,
         responseSchema: BatchClassificationResultSchema,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 65536,
       });
 
       // Accumulate token usage
@@ -647,159 +688,38 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    * This prompt performs TWO tasks in one call:
    * 1. Classification: developer vs system metadata
    * 2. Sanitization: Create display-friendly text for developer utterances
+   *
+   * OPTIMIZED: Reduced from ~4,500 tokens to ~1,200 tokens while preserving core logic.
+   * Formatting issues (vertical text, markdown) are handled by sanitizeDisplayText().
    */
   private buildFilterSystemPrompt(): string {
-    return `You are a content classifier AND sanitizer for developer-AI conversation analysis.
+    return `You are a content classifier for developer-AI conversation analysis.
 
-## TASK 1: Classification
-Classify each text segment as either:
-1. "developer" - Actual developer input (questions, requests, code, feedback)
-2. "system" - System-injected metadata (skill docs, session summaries, hook outputs)
+## Classification
+Classify as "developer" (keep) or "system" (filter):
 
-SYSTEM METADATA PATTERNS (filter these out):
-- Skill documentation blocks starting with "Base directory for this skill:"
-- Session continuation summaries starting with "This session is being continued"
-- Claude Code system instructions or context injections
-- Hook outputs, command outputs, tool results embedded in user messages
-- Any instructional content addressed TO Claude, not FROM the developer
+**SYSTEM (filter out):**
+- Skill docs: "Base directory for this skill:", session summaries
+- CLI output without context: build logs, npm/git output, status symbols (✓✕⚠)
+- Plan documents: "Implement the following plan:" + markdown content
+- System instructions addressed TO Claude
 
-### CLI/Terminal Output (CRITICAL - classify as "system"):
-- **Build tool status**: "✓ Starting...", "⚠ Warning...", "Compiling...", "Ready in Xms"
-- **Status symbols at line start**: ✓, ✕, ⚠, ℹ, →, ●, ○, ★
-- **Package manager logs**: "npm WARN", "yarn info", "pnpm ERR"
-- **Deprecation warnings**: "The X is deprecated", "Learn more: https://..."
-- **Dev server logs**: "GET /path 200 in 50ms", "POST /api 201"
-- **Git output**: "On branch main", "hint:", "Your branch is up to date"
-- **Next.js/Webpack**: "○ (Static)", "● (SSG)", "λ (Server)", "Compiled successfully"
+**DEVELOPER (keep):**
+- Questions, requests, instructions, code snippets, feedback
+- Error reports WITH developer context: "I got this error: [error]"
 
-### Key Distinction:
-- Raw terminal/console output pasted without context → "system"
-- Developer saying "I got this error: [error]" with their own words → "developer"
+## Sanitization (developer texts only)
+Create displayText that:
+- PRESERVES developer's words verbatim
+- SUMMARIZES machine content: errors → [Error: brief], stack traces → [Stack trace], code → [Code: lang]
+- SHORT TEXT (<50 chars): return UNCHANGED
+- Target: <300 chars
 
-### Plan Documents (classify as "system"):
-- Messages starting with "Implement the following plan:" followed by markdown content
-- Messages containing full plan documents with headers like "## Problem", "## Solution", "## Implementation"
-- Any message where the bulk of content is machine-generated markdown documentation
-- Pasted markdown documentation, PRD documents, or specification files
+EXAMPLE:
+Input: "Login works. But got this: Error: No workspace ID at getData (storage.ts:91)"
+Output: {"classification":"developer","confidence":0.95,"reason":"Developer reporting error","displayText":"Login works. But got this: [Error: No workspace ID][Stack trace]"}
 
-**Key Distinction:**
-- "Implement the plan we discussed" (short request) → "developer"
-- "Implement the following plan: # Terminal Output Filtering ## Problem..." → "system"
-
-DEVELOPER INPUT PATTERNS (keep these):
-- Questions, requests, or instructions for the AI assistant
-- Code snippets the developer wants help with
-- Feedback on AI responses
-- Error messages WITH developer context ("I ran X and got this error:")
-- Conversational responses, implementation requests, bug reports
-
-## TASK 2: Sanitization (for "developer" texts only)
-Create a display-friendly version (displayText) that:
-- PRESERVES the developer's actual words and intent verbatim
-- SUMMARIZES machine-generated content they pasted:
-  - Error logs (## Error Type, Error:, Exception:) → [Error: {brief message, max 50 chars}]
-  - Stack traces (at Function.method, Traceback, file:line) → [Stack trace]
-  - Code blocks (\`\`\`...\`\`\`) → [Code: {language or 'snippet'}]
-  - CLI/terminal output (npm logs, git output, command results) → [CLI output]
-  - JSON data (large JSON objects/arrays) → [JSON data]
-- KEEPS the result under 300 characters when possible
-- If text has NO machine-generated content, displayText = original text (unchanged)
-
-EXAMPLE INPUT:
-"Great, login works now. But after logging in and naming the company CT, I got this: ## Error Type Console Error ## Error Message No workspace ID set at SupabaseStorageManager.getData (lib/supabase-storage.ts:91:15) at DashboardOverviewPage.useEffect.loadData (app/dashboard/page.tsx:94:41)"
-
-EXAMPLE OUTPUT:
-{
-  "classification": "developer",
-  "confidence": 0.95,
-  "reason": "Developer reporting an error encountered during login",
-  "displayText": "Great, login works now. But after logging in and naming the company CT, I got this: [Error: No workspace ID set][Stack trace]"
-}
-
-IMPORTANT GUIDELINES:
-- Only provide displayText for "developer" classified texts (not for "system")
-- NEVER alter the developer's natural language - only summarize pasted technical content
-- When in doubt about classification, default to "developer"
-- Use confidence scores to indicate certainty (0.0-1.0)
-
-## CRITICAL RULE: Never Summarize Developer's Natural Language
-- displayText must contain ALL of the developer's original words
-- ONLY machine-generated content (error logs, stack traces, code blocks) can be summarized to tags
-- If original text is "1번을 실행하면 이렇게 나와", displayText MUST be "1번을 실행하면 이렇게 나와" (unchanged)
-- NEVER reduce developer text to just numbers, single words, or short phrases
-- When in doubt, return the original text unchanged
-
-## LENGTH-BASED RULES (MANDATORY):
-- SHORT TEXT (< 50 chars): displayText MUST be identical to original text
-  - These are pure developer natural language with NO machine content
-  - Example: "1번을 실행해봐" → displayText = "1번을 실행해봐" (unchanged)
-  - Example: "로그인 테스트 해봐" → displayText = "로그인 테스트 해봐" (unchanged)
-  - NEVER summarize, shorten, or modify short texts
-
-- MEDIUM TEXT (50-200 chars): displayText must preserve at least 50% of original length
-  - May contain some machine content that can be tagged
-  - Developer's words MUST be preserved verbatim
-
-- LONG TEXT (200+ chars): displayText may summarize machine content more aggressively
-  - Still preserve ALL developer natural language segments
-
-INVALID displayText EXAMPLES (DO NOT DO THIS):
-  text: "1번을 실행하면 이렇게 나와"
-  displayText: "1" ← WRONG! This destroys developer's actual words
-
-  text: "이건 잘 되었어"
-  displayText: "잘" ← WRONG! This loses context
-
-  text: "로그인 테스트 해봐"
-  displayText: "테스트" ← WRONG! Too short, loses intent
-
-  text: "Great, this works!"
-  displayText: "works" ← WRONG! Developer's full sentence must be preserved
-
-VALID displayText EXAMPLES:
-  text: "1번을 실행하면 이렇게 나와"
-  displayText: "1번을 실행하면 이렇게 나와" ← CORRECT! Unchanged (short text)
-
-  text: "이건 잘 되었어"
-  displayText: "이건 잘 되었어" ← CORRECT! Unchanged (short text)
-
-  text: "Great, this works!"
-  displayText: "Great, this works!" ← CORRECT! Unchanged (short text)
-
-  text: "로그인 잘 된다. 그런데 Error: No workspace ID 에러가 나왔어"
-  displayText: "로그인 잘 된다. 그런데 [Error: No workspace ID] 에러가 나왔어" ← CORRECT! Only error is tagged
-
-CRITICAL FORMATTING RULES for displayText:
-- NEVER insert newlines (\\n) between individual characters - text must flow horizontally
-- REMOVE all markdown syntax from output:
-  - Headers: "# Ship-It" → "Ship-It"
-  - Bold/italic: "**important**" → "important"
-  - Inline code: "\`function\`" → "function"
-- Preserve natural sentence structure - use spaces between words, not newlines
-- When truncating long text, end at natural word boundaries, never mid-word or mid-parenthesis
-  - BAD: "(lib/supabase-storage.ts" (unclosed parenthesis)
-  - GOOD: "in lib/supabase-storage.ts"
-- Ensure displayText is a continuous, readable sentence/paragraph on a single line
-
-### Log Pattern Summarization:
-- Repeated log lines (same [Component] prefix) → Keep first line, add "..." to indicate more
-- ALWAYS preserve user's natural language question/comment at the end
-- Format: "[Component] brief error... <user's question>"
-
-EXAMPLE INPUT (Log with user question):
-"[GeminiClient] Retryable error (attempt 1/2): Response truncated: Output exceeded...
-[GeminiClient] Retryable error (attempt 2/2): Response truncated: Output exceeded...
-이런 에러가 나오는데 어디서 LLM이 많이 쓰이길래 이런게 나오는거지?"
-
-EXAMPLE OUTPUT:
-{
-  "classification": "developer",
-  "confidence": 0.95,
-  "reason": "Developer asking about error logs they encountered",
-  "displayText": "[GeminiClient] Retryable error... 이런 에러가 나오는데 어디서 LLM이 많이 쓰이길래 이런게 나오는거지?"
-}
-
-Respond with a JSON object containing an array of classifications.`;
+When in doubt, classify as "developer". Return JSON with classifications array.`;
   }
 
   /**
