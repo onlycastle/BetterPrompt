@@ -30,8 +30,7 @@ Analyze Phase 1 extracted data across ALL THREE DIMENSIONS to provide a holistic
 
 ## INPUT DATA STRUCTURE
 You receive Phase 1 output containing:
-- \`developerUtterances[]\`: Raw text with metadata (id, text, hasQuestion, wordCount, hasCodeBlock, isSessionStart, isContinuation, precedingAIHadError, etc.)
-- \`aiResponses[]\`: Response metadata (hadError, wasSuccessful, responseType, toolsUsed, textSnippet — first 400 chars)
+- \`developerUtterances[]\`: Raw text with metadata (id, text, hasQuestion, wordCount, hasCodeBlock, isSessionStart, isContinuation, precedingAIHadError, precedingAIToolCalls, etc.)
 - \`sessionMetrics\`: Computed statistics (toolUsageCounts, avgPromptLength, sessionCount, etc.)
 
 ## DIMENSION 1: PLANNING QUALITY

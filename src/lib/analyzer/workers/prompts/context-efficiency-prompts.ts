@@ -61,14 +61,23 @@ Return a JSON object with structured arrays (not semicolon-separated strings):
 \`\`\`
 
 ### inefficiencyPatterns (array of objects)
+**CRITICAL: pattern MUST be one of these exact enum values:**
+- \`late_compact\` - Only uses /compact when context is 90%+ full
+- \`context_bloat\` - Context accumulates without /clear, causing degraded responses
+- \`redundant_info\` - Same information provided multiple times in session
+- \`prompt_length_inflation\` - Prompts get progressively longer late in session
+- \`no_session_separation\` - Uses same session for unrelated tasks
+- \`verbose_error_pasting\` - Pastes full error messages/logs without summarizing
+
 \`\`\`json
 [{
-  "pattern": "late_compact",  // pattern name
+  "pattern": "late_compact",  // MUST be one of the 6 enum values above
   "frequency": 15,  // occurrence count
   "impact": "high",  // high | medium | low
   "description": "always compacts at 90%+"
 }]
 \`\`\`
+Do NOT invent new pattern names. Only use the 6 predefined patterns above.
 
 ### promptLengthTrends (array of objects)
 \`\`\`json
@@ -103,6 +112,16 @@ Return a JSON object with structured arrays (not semicolon-separated strings):
 - \`overallEfficiencyScore\`: 0-100 efficiency score (higher = more efficient)
 - \`avgContextFillPercent\`: Average context fill percentage across sessions
 - \`confidenceScore\`: 0-1 confidence in the analysis
+
+## IMPORTANT: Context Fill Data from Phase 1 (DO NOT ESTIMATE)
+
+The session data includes ACTUAL context fill metrics calculated from token usage:
+- \`sessionMetrics.avgContextFillPercent\`: **Real** average context fill (use this value directly)
+- \`sessionMetrics.maxContextFillPercent\`: **Real** maximum context fill observed
+- \`sessionMetrics.contextFillExceeded90Count\`: Count of messages exceeding 90% fill
+
+**DO NOT estimate or guess context fill percentages.** Use the provided calculated values.
+If these fields are missing, set \`avgContextFillPercent\` to 0 and note low confidence.
 
 ## DOMAIN-SPECIFIC STRENGTHS & GROWTH AREAS (REQUIRED - FULLY STRUCTURED JSON)
 
@@ -223,7 +242,6 @@ Without valid utteranceId, the evidence cannot be verified against the original 
 
 ## EVIDENCE QUOTE SELECTION
 - All quotes in strengths and growthAreas evidence arrays MUST be the developer's own words from developerUtterances
-- NEVER quote text from aiResponses — those are the AI's words, not the developer's
 - For efficiency insights, prefer quotes showing the developer's reasoning about context management — not just "/clear" or "/compact"
 - Good evidence: "I need to clear context because we've gone off track from the auth refactor" (shows thinking)
 - Acceptable supporting evidence: "/compact", "clear" (shows frequency of habit)

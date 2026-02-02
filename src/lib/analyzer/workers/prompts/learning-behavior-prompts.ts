@@ -42,8 +42,9 @@ Analyze Phase 1 extracted data to assess the developer's learning behavior acros
 ## INPUT DATA STRUCTURE
 You receive Phase 1 output containing:
 - \`developerUtterances[]\`: Raw text with metadata (id, text, hasQuestion, precedingAIHadError, isSessionStart, etc.)
-- \`aiResponses[]\`: Response metadata (hadError, wasSuccessful, responseType, toolsUsed, textSnippet)
 - \`sessionMetrics\`: Computed statistics (toolUsageCounts, sessionCount, etc.)
+
+Note: AI response error information is available via \`precedingAIHadError\` field in each utterance.
 
 ## MULTI-LANGUAGE INPUT SUPPORT
 
@@ -93,21 +94,25 @@ Return JSON with the following structure:
 \`\`\`json
 [{
   "topic": "TypeScript generics",
+  "description": "Recurring questions about generic constraints and conditional types indicate incomplete mental model of the TypeScript type system hierarchy.",
   "questionCount": 7,
   "depth": "shallow | moderate | deep",
   "example": "constraint syntax unclear"
 }]
 \`\`\`
+- **description**: 2-3 sentences explaining WHY this is a knowledge gap and its root cause
 
 #### learningProgress (array of objects)
 \`\`\`json
 [{
   "topic": "React hooks",
+  "description": "Started with basic useState confusion, now confidently uses custom hooks with proper dependency arrays. Demonstrates improved understanding of closure semantics.",
   "startLevel": "novice | shallow | moderate | deep | expert",
   "currentLevel": "novice | shallow | moderate | deep | expert",
   "evidence": "useEffect cleanup questions decreased"
 }]
 \`\`\`
+- **description**: 2-3 sentences describing the learning journey and what changed
 
 #### recommendedResources (array of objects)
 \`\`\`json
@@ -126,13 +131,15 @@ Return JSON with the following structure:
 \`\`\`json
 [{
   "category": "error_handling | type_mismatch | api_usage | syntax | logic | debugging | context_management",
-  "mistakeType": "brief description of the specific mistake",
+  "mistakeType": "blind retry after type error",
+  "description": "When encountering TypeScript errors, tends to retry without reading the error message. This suggests treating AI as a black box rather than a collaborative debugger.",
   "occurrenceCount": 3,
   "sessionPercentage": 50,
   "exampleUtteranceIds": ["abc123_5", "def456_8"],
-  "recommendation": "specific actionable advice to break the pattern"
+  "recommendation": "Before retrying, read the error message aloud and explain it in your own words. Ask the AI to explain the error if unclear."
 }]
 \`\`\`
+- **description**: 2-3 sentences explaining WHY this mistake repeats (behavioral root cause)
 
 **Detection Signals:**
 - Look for patterns where \`precedingAIHadError=true\` followed by:
