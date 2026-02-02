@@ -173,6 +173,16 @@ function printSessionMetrics(metrics: Phase1Output['sessionMetrics']): void {
   console.log(`- codeBlockRatio: ${(metrics.codeBlockRatio * 100).toFixed(1)}%`);
   console.log(`- dateRange: ${metrics.dateRange.earliest} ~ ${metrics.dateRange.latest}`);
 
+  // Context Fill Metrics (deterministic, calculated from token data)
+  console.log('- contextFillMetrics:');
+  if (metrics.avgContextFillPercent !== undefined) {
+    console.log(`    avgContextFillPercent: ${metrics.avgContextFillPercent}%`);
+    console.log(`    maxContextFillPercent: ${metrics.maxContextFillPercent}%`);
+    console.log(`    contextFillExceeded90Count: ${metrics.contextFillExceeded90Count}`);
+  } else {
+    console.log('    (no token data available)');
+  }
+
   if (metrics.toolUsageCounts && Object.keys(metrics.toolUsageCounts).length > 0) {
     console.log('- toolUsageCounts:');
     const sorted = Object.entries(metrics.toolUsageCounts)

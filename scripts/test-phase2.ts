@@ -106,17 +106,23 @@ function loadPhase1Cache(): Phase1Cache {
 // Helper Functions
 // ============================================================================
 
-function printWorkerInput(workerName: string, inputData: Record<string, unknown>): void {
-  console.log(`\n${'─'.repeat(60)}`);
-  console.log(`📥 ${workerName} INPUT`);
-  console.log('─'.repeat(60));
-  // Exclude aiResponses from output (too verbose, not needed for debugging)
-  const { aiResponses: _, ...dataWithoutAiResponses } = inputData;
-  console.log(JSON.stringify(dataWithoutAiResponses, null, 2));
-}
-
 function truncateText(text: string, _maxLength: number): string {
   return text;
+}
+
+/**
+ * Convert snake_case to Title Case for human-readable labels.
+ * Examples:
+ *   structure_first → "Structure First"
+ *   verification_request → "Verification Request"
+ *   vibe_coder → "Vibe Coder"
+ *   ai_assisted_engineer → "Ai Assisted Engineer"
+ */
+function toTitleCase(snakeCase: string): string {
+  return snakeCase
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 function createMockMetrics(): SessionMetrics {
@@ -242,7 +248,7 @@ function printThinkingQualityOutput(output: ThinkingQualityOutput): void {
 
   // Verification Behavior
   if (output.verificationBehavior) {
-    console.log(`\nVerification Level: ${output.verificationBehavior.level}`);
+    console.log(`\nVerification Level: ${toTitleCase(output.verificationBehavior.level)}`);
     if (output.verificationBehavior.recommendation) {
       console.log(`Recommendation: ${truncateText(output.verificationBehavior.recommendation, 150)}`);
     }
@@ -259,7 +265,7 @@ function printThinkingQualityOutput(output: ThinkingQualityOutput): void {
     console.log(`\nVerification Anti-Patterns (${output.verificationAntiPatterns.length}):`);
     for (const ap of output.verificationAntiPatterns) {
       const severity = ap.severity ? `[${ap.severity.toUpperCase()}]` : '';
-      console.log(`  - ${ap.type} ${severity}`);
+      console.log(`  - ${toTitleCase(ap.type)} ${severity}`);
       console.log(`    Frequency: ${ap.frequency} | Session %: ${ap.sessionPercentage ?? 'N/A'}%`);
       if (ap.improvement) {
         console.log(`    Improvement: ${truncateText(ap.improvement, 100)}`);
@@ -278,7 +284,7 @@ function printThinkingQualityOutput(output: ThinkingQualityOutput): void {
     console.log(`\nPlanning Habits (${output.planningHabits.length}):`);
     for (const ph of output.planningHabits) {
       const effectiveness = ph.effectiveness ? `(${ph.effectiveness})` : '';
-      console.log(`  - ${ph.type}: ${ph.frequency} ${effectiveness}`);
+      console.log(`  - ${toTitleCase(ph.type)}: ${ph.frequency} ${effectiveness}`);
     }
   }
 
@@ -286,7 +292,7 @@ function printThinkingQualityOutput(output: ThinkingQualityOutput): void {
   if (output.criticalThinkingMoments && output.criticalThinkingMoments.length > 0) {
     console.log(`\nCritical Thinking Moments (${output.criticalThinkingMoments.length}):`);
     for (const ct of output.criticalThinkingMoments.slice(0, 5)) {
-      console.log(`  - [${ct.type}] "${truncateText(ct.quote, 60)}"`);
+      console.log(`  - [${toTitleCase(ct.type)}] "${truncateText(ct.quote, 60)}"`);
       if (ct.result) console.log(`    Result: ${ct.result}`);
     }
   }
@@ -330,32 +336,55 @@ function printLearningBehaviorOutput(output: LearningBehaviorOutput): void {
     }
   }
 
-  // Knowledge Gaps
+  // Knowledge Gaps (IMPROVED with description)
   if (output.knowledgeGaps && output.knowledgeGaps.length > 0) {
     console.log(`\nKnowledge Gaps (${output.knowledgeGaps.length}):`);
-    for (const gap of output.knowledgeGaps.slice(0, 5)) {
-      console.log(`  - ${gap.topic}: ${gap.questionCount} questions (depth: ${gap.depth})`);
-      if (gap.example) console.log(`    Example: ${truncateText(gap.example, 60)}`);
+    for (let i = 0; i < Math.min(output.knowledgeGaps.length, 5); i++) {
+      const gap = output.knowledgeGaps[i];
+      const depthEmoji = gap.depth === 'deep' ? '🔴' : gap.depth === 'moderate' ? '🟡' : '🟢';
+      console.log(`  ${i + 1}. ${gap.topic}`);
+      console.log(`     │ Depth: ${depthEmoji} ${gap.depth} (${gap.questionCount} questions)`);
+      if (gap.description) {
+        console.log(`     │ ${truncateText(gap.description, 100)}`);
+      }
+      if (gap.example) {
+        console.log(`     │ Example: "${truncateText(gap.example, 60)}"`);
+      }
     }
   }
 
-  // Learning Progress
+  // Learning Progress (IMPROVED with description)
   if (output.learningProgress && output.learningProgress.length > 0) {
+    const levelOrder = ['novice', 'shallow', 'moderate', 'deep', 'expert'];
     console.log(`\nLearning Progress (${output.learningProgress.length}):`);
-    for (const p of output.learningProgress.slice(0, 5)) {
-      console.log(`  - ${p.topic}: ${p.startLevel} → ${p.currentLevel}`);
-      if (p.evidence) console.log(`    Evidence: ${truncateText(p.evidence, 60)}`);
+    for (let i = 0; i < Math.min(output.learningProgress.length, 5); i++) {
+      const p = output.learningProgress[i];
+      const startIdx = levelOrder.indexOf(p.startLevel);
+      const currentIdx = levelOrder.indexOf(p.currentLevel);
+      const progressEmoji = currentIdx > startIdx ? '⬆️' : currentIdx === startIdx ? '➡️' : '⬇️';
+      console.log(`  ${i + 1}. ${p.topic}`);
+      console.log(`     │ Progress: ${p.startLevel} → ${p.currentLevel} ${progressEmoji}`);
+      if (p.description) {
+        console.log(`     │ ${truncateText(p.description, 100)}`);
+      }
+      if (p.evidence) {
+        console.log(`     │ Evidence: "${truncateText(p.evidence, 60)}"`);
+      }
     }
   }
 
-  // Repeated Mistake Patterns
+  // Repeated Mistake Patterns (FIXED: use correct field names + description)
   if (output.repeatedMistakePatterns && output.repeatedMistakePatterns.length > 0) {
     console.log(`\nRepeated Mistake Patterns (${output.repeatedMistakePatterns.length}):`);
     for (const mp of output.repeatedMistakePatterns) {
-      console.log(`  - ${mp.category}: ${mp.repetitionCount}x`);
-      console.log(`    Pattern: ${truncateText(mp.pattern, 80)}`);
-      if (mp.improvement) {
-        console.log(`    Improvement: ${truncateText(mp.improvement, 80)}`);
+      const percentage = mp.sessionPercentage ? ` (${mp.sessionPercentage}% of sessions)` : '';
+      console.log(`  - [${mp.category}] ${mp.mistakeType}: ${mp.occurrenceCount}x${percentage}`);
+      if (mp.description) {
+        console.log(`    │ ${truncateText(mp.description, 100)}`);
+      }
+      console.log(`    │ Recommendation: ${truncateText(mp.recommendation, 80)}`);
+      if (mp.exampleUtteranceIds && mp.exampleUtteranceIds.length > 0) {
+        console.log(`    │ Examples: ${mp.exampleUtteranceIds.slice(0, 3).join(', ')}`);
       }
     }
   }
@@ -436,7 +465,7 @@ function printTypeClassifierOutput(output: TypeClassifierOutput): void {
   if (output.collaborationMaturity) {
     const cm = output.collaborationMaturity;
     console.log(`\nCollaboration Maturity:`);
-    console.log(`  Level: ${cm.level.replace(/_/g, ' ').toUpperCase()}`);
+    console.log(`  Level: ${toTitleCase(cm.level)}`);
     console.log(`  Description: ${truncateText(cm.description, 150)}`);
     if (cm.indicators.length > 0) {
       console.log(`  Indicators:`);
@@ -596,10 +625,6 @@ async function main() {
     console.log('\n[1/3] ThinkingQuality Worker...');
     const worker = new ThinkingQualityWorker(config);
 
-    // Print INPUT before execution
-    const inputData = worker.preparePhase1ForPrompt(phase2Context.phase1Output);
-    printWorkerInput('ThinkingQuality', inputData);
-
     const startTime = Date.now();
     const result = await worker.execute(phase2Context);
     workerTimes['ThinkingQuality'] = Date.now() - startTime;
@@ -621,10 +646,6 @@ async function main() {
     console.log('\n[2/3] LearningBehavior Worker...');
     const worker = new LearningBehaviorWorker(config);
 
-    // Print INPUT before execution
-    const inputData = worker.preparePhase1ForPrompt(phase2Context.phase1Output);
-    printWorkerInput('LearningBehavior', inputData);
-
     const startTime = Date.now();
     const result = await worker.execute(phase2Context);
     workerTimes['LearningBehavior'] = Date.now() - startTime;
@@ -645,10 +666,6 @@ async function main() {
   if (!selectedWorker || selectedWorker === 'ContextEfficiency') {
     console.log('\n[3/3] ContextEfficiency Worker...');
     const worker = new ContextEfficiencyWorker(config);
-
-    // Print INPUT before execution
-    const inputData = worker.preparePhase1ForPrompt(phase2Context.phase1Output);
-    printWorkerInput('ContextEfficiency', inputData);
 
     const startTime = Date.now();
     const result = await worker.execute(phase2Context);
