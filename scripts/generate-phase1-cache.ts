@@ -28,6 +28,7 @@ import type { SessionMetrics } from '../src/lib/domain/models/analysis';
 import type { Phase1Output } from '../src/lib/models/phase1-output';
 import type { TokenUsage } from '../src/lib/analyzer/clients/gemini-client';
 import type { ParsedSession } from '../src/lib/models/session';
+import { calculateActualCost, GEMINI_PRICING } from '../src/lib/analyzer/cost-estimator';
 
 // ============================================================================
 // Configuration
@@ -39,7 +40,7 @@ const CACHE_FILE = path.join(CACHE_DIR, 'phase1-cache.json');
 /** Version for cache invalidation. Bump when Phase1Output schema changes. */
 const GENERATOR_VERSION = '1.0.0';
 
-const DEFAULT_MAX_SESSIONS = 30;
+const DEFAULT_MAX_SESSIONS = 200;
 
 // ============================================================================
 // Types
@@ -110,6 +111,13 @@ function createMockMetrics(): SessionMetrics {
   };
 }
 
+function createConfig() {
+  return {
+    geminiApiKey: process.env.GOOGLE_GEMINI_API_KEY ?? '',
+    verbose: true,
+  };
+}
+
 function parseArgs(): { maxSessions: number; force: boolean } {
   const args = process.argv.slice(2);
   let maxSessions = DEFAULT_MAX_SESSIONS;
@@ -154,7 +162,11 @@ async function main() {
 
   // Step 1: Scan sessions
   console.log('Step 1: Scanning sessions...');
+  const scanStartTime = Date.now();
   const scanResult = await scanSessions(maxSessions);
+  const scanElapsed = Date.now() - scanStartTime;
+
+  console.log(`Scan completed in ${scanElapsed}ms`);
 
   if (scanResult.sessions.length === 0) {
     console.error('No sessions found. Check that Claude projects exist in ~/.claude/projects/');
@@ -207,7 +219,7 @@ async function main() {
     tier: 'pro',
   };
 
-  const worker = new DataExtractorWorker();
+  const worker = new DataExtractorWorker(createConfig());
   const startTime = Date.now();
   const result = await worker.execute(context);
   const executionMs = Date.now() - startTime;
@@ -222,7 +234,25 @@ async function main() {
   console.log(`Extracted ${result.data.aiResponses.length} AI responses`);
 
   if (result.usage) {
-    console.log(`Token usage: ${result.usage.totalTokens} total`);
+    const cachedTokens = result.usage.cachedTokens ?? 0;
+    const cachedInfo = cachedTokens > 0 ? `, ${cachedTokens} cached` : '';
+    console.log(`Token usage: ${result.usage.totalTokens} total (${result.usage.promptTokens} prompt, ${result.usage.completionTokens} completion${cachedInfo})`);
+
+    // Cost Estimation
+    const pricing = GEMINI_PRICING['gemini-3-flash-preview'];
+    const cost = calculateActualCost({
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens,
+      cachedTokens,
+    });
+    console.log('');
+    console.log('Estimated Cost (Gemini 3 Flash):');
+    console.log(`  Input:  $${cost.inputCost.toFixed(6)} (${result.usage.promptTokens - cachedTokens} tokens × $${(pricing.input * 1_000_000).toFixed(2)}/1M)`);
+    if (cachedTokens > 0) {
+      console.log(`  Cached: $${cost.cachedCost.toFixed(6)} (${cachedTokens} tokens × $${(pricing.cached * 1_000_000).toFixed(2)}/1M)`);
+    }
+    console.log(`  Output: $${cost.outputCost.toFixed(6)} (${result.usage.completionTokens} tokens × $${(pricing.output * 1_000_000).toFixed(2)}/1M)`);
+    console.log(`  TOTAL:  $${cost.totalCost.toFixed(6)}`);
   }
   console.log('');
 

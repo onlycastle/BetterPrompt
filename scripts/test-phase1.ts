@@ -27,6 +27,7 @@ import type { WorkerContext, OrchestratorConfig } from '../src/lib/analyzer/orch
 import type { SessionMetrics } from '../src/lib/domain/models/analysis';
 import type { Phase1Output, DeveloperUtterance, AIResponse } from '../src/lib/models/phase1-output';
 import type { ParsedSession } from '../src/lib/models/session';
+import { calculateActualCost, GEMINI_PRICING } from '../src/lib/analyzer/cost-estimator';
 
 // ============================================================================
 // Configuration
@@ -339,10 +340,28 @@ async function main() {
 
     // Token usage (if any)
     if (result.usage) {
+      const cachedTokens = result.usage.cachedTokens ?? 0;
+      const cachedInfo = cachedTokens > 0 ? `, ${cachedTokens} cached` : '';
       console.log('LLM Token Usage:');
       console.log(`- Prompt tokens: ${result.usage.promptTokens}`);
       console.log(`- Completion tokens: ${result.usage.completionTokens}`);
-      console.log(`- Total tokens: ${result.usage.totalTokens}`);
+      console.log(`- Total tokens: ${result.usage.totalTokens}${cachedInfo}`);
+
+      // Cost Estimation
+      const pricing = GEMINI_PRICING['gemini-3-flash-preview'];
+      const cost = calculateActualCost({
+        promptTokens: result.usage.promptTokens,
+        completionTokens: result.usage.completionTokens,
+        cachedTokens,
+      });
+      console.log('');
+      console.log('Estimated Cost (Gemini 3 Flash):');
+      console.log(`  Input:  $${cost.inputCost.toFixed(6)} (${result.usage.promptTokens - cachedTokens} tokens × $${(pricing.input * 1_000_000).toFixed(2)}/1M)`);
+      if (cachedTokens > 0) {
+        console.log(`  Cached: $${cost.cachedCost.toFixed(6)} (${cachedTokens} tokens × $${(pricing.cached * 1_000_000).toFixed(2)}/1M)`);
+      }
+      console.log(`  Output: $${cost.outputCost.toFixed(6)} (${result.usage.completionTokens} tokens × $${(pricing.output * 1_000_000).toFixed(2)}/1M)`);
+      console.log(`  TOTAL:  $${cost.totalCost.toFixed(6)}`);
       console.log('');
     }
   }
