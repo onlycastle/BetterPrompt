@@ -1,7 +1,7 @@
 /**
  * WorkerInsightsSection Component
  *
- * Renders domain-specific insights from Phase 2 workers directly.
+ * Renders capability-specific insights from Phase 2 workers directly.
  * Each worker's strengths and growth areas are displayed in a dedicated section.
  *
  * Design: "Terminal Diagnostic Report" - A code editor/terminal aesthetic
@@ -14,11 +14,10 @@
  * - Vertical flow layout
  * - Shimmer effect for locked content
  *
- * Workers displayed:
- * - Trust & Verification (TrustVerificationWorker)
- * - Workflow & Planning (WorkflowHabitWorker)
- * - Knowledge & Learning (KnowledgeGapWorker)
- * - Context Efficiency (ContextEfficiencyWorker)
+ * v3 Workers displayed (2026-02):
+ * - Thinking Quality (ThinkingQualityWorker): Planning + Critical Thinking + Communication
+ * - Learning Behavior (LearningBehaviorWorker): Knowledge Gaps + Repeated Mistakes
+ * - Context Efficiency (ContextEfficiencyWorker): Token efficiency patterns
  */
 
 import { useMemo } from 'react';
@@ -47,17 +46,17 @@ interface WorkerInsightsSectionProps {
 /**
  * Circular score gauge with animated SVG ring
  */
-function ScoreGauge({ score, label }: { score: number; label: string }) {
-  // SVG circle circumference: 2 * PI * radius (radius = 25)
-  const circumference = 2 * Math.PI * 25; // ≈ 157
-  const offset = circumference - (circumference * score / 100);
+const CIRCUMFERENCE = 2 * Math.PI * 25; // SVG circle circumference (radius = 25)
 
-  let scoreClass = styles.scoreLow;
-  if (score >= 70) {
-    scoreClass = styles.scoreHigh;
-  } else if (score >= 40) {
-    scoreClass = styles.scoreMedium;
-  }
+function getScoreClass(score: number): string {
+  if (score >= 70) return styles.scoreHigh;
+  if (score >= 40) return styles.scoreMedium;
+  return styles.scoreLow;
+}
+
+function ScoreGauge({ score, label }: { score: number; label: string }) {
+  const offset = CIRCUMFERENCE - (CIRCUMFERENCE * score / 100);
+  const scoreClass = getScoreClass(score);
 
   return (
     <div className={`${styles.scoreGauge} ${scoreClass}`} title={label}>
@@ -93,9 +92,6 @@ function StrengthCard({
     <div className={styles.insightCard}>
       <div className={styles.cardHeader}>
         <h4 className={styles.cardTitle}>{strength.title}</h4>
-        {strength.frequency !== undefined && (
-          <span className={styles.frequencyBadge}>{Math.round(strength.frequency)}%</span>
-        )}
       </div>
       <p className={styles.cardDescription}>{strength.description}</p>
       {strength.evidence.length > 0 && (
@@ -123,7 +119,9 @@ function GrowthCard({
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
   isPaid: boolean;
 }) {
-  const severityClass = growth.severity ? styles[`severity${growth.severity.charAt(0).toUpperCase() + growth.severity.slice(1)}`] : '';
+  const severityClass = growth.severity
+    ? styles[`severity${growth.severity[0].toUpperCase()}${growth.severity.slice(1)}`]
+    : '';
 
   return (
     <div className={`${styles.insightCard} ${styles.growthCard}`}>
@@ -260,15 +258,17 @@ function WorkerDomainSection({
 /**
  * Map worker domain keys to TranslatedAgentInsights keys.
  *
- * The worker domain keys match the TranslatedAgentInsights keys directly
- * for v2 workers (trustVerification, workflowHabit, knowledgeGap, contextEfficiency).
+ * v3 workers (thinkingQuality, learningBehavior, contextEfficiency) handle translations
+ * directly in their output, so no mapping is needed here.
+ *
+ * Legacy keys (knowledgeGap, contextEfficiency, temporalAnalysis) are kept in
+ * TranslatedAgentInsightsSchema for cached data compatibility.
  */
-const DOMAIN_TO_TRANSLATION_KEY: Record<keyof AggregatedWorkerInsights, keyof TranslatedAgentInsights> = {
-  trustVerification: 'trustVerification',
-  workflowHabit: 'workflowHabit',
+const DOMAIN_TO_TRANSLATION_KEY: Partial<Record<keyof AggregatedWorkerInsights, keyof TranslatedAgentInsights>> = {
+  // v3 workers output translations directly - no mapping needed
+  // Legacy workers (kept for cached data)
   knowledgeGap: 'knowledgeGap',
   contextEfficiency: 'contextEfficiency',
-  communicationPatterns: 'communicationPatterns',
 };
 
 /**
@@ -340,8 +340,9 @@ export function WorkerInsightsSection({
           if (!domain) return null;
 
           // Get translated data for this domain if available
+          // v3 workers (thinkingQuality, learningBehavior) don't have translation keys yet
           const translationKey = DOMAIN_TO_TRANSLATION_KEY[config.key];
-          const translatedInsight = translatedAgentInsights?.[translationKey];
+          const translatedInsight = translationKey ? translatedAgentInsights?.[translationKey] : undefined;
 
           return (
             <WorkerDomainSection

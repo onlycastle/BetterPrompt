@@ -28,6 +28,17 @@ import { REPORT_TYPE_METADATA } from '../types/report';
 import { extractTypeResult } from '../utils/reportHelpers';
 import styles from './ResultsPage.module.css';
 
+function getEffectivenessLabel(effectiveness: string): string {
+  switch (effectiveness) {
+    case 'highly_effective':
+      return 'Highly Effective';
+    case 'effective':
+      return 'Effective';
+    default:
+      return 'Could Improve';
+  }
+}
+
 interface ResultsPageProps {
   resultId: string;
   onBack: () => void;
@@ -338,7 +349,7 @@ export default function ResultsPage({ resultId, onBack }: ResultsPageProps) {
                         <p>{strength.description}</p>
                         {strength.evidence && strength.evidence.length > 0 && (
                           <div className={styles.evidenceList}>
-                            {strength.evidence.slice(0, 2).map((ev, j) => (
+                            {strength.evidence.slice(0, 4).map((ev, j) => (
                               <blockquote key={j} className={styles.evidence}>
                                 "{ev.quote}"
                                 <cite>{ev.context}</cite>
@@ -383,8 +394,7 @@ export default function ResultsPage({ resultId, onBack }: ResultsPageProps) {
                             </span>
                             {pattern.effectiveness && (
                               <span className={`${styles.effectiveness} ${styles[pattern.effectiveness]}`}>
-                                {pattern.effectiveness === 'highly_effective' ? 'Highly Effective' :
-                                 pattern.effectiveness === 'effective' ? 'Effective' : 'Could Improve'}
+                                {getEffectivenessLabel(pattern.effectiveness)}
                               </span>
                             )}
                           </div>
@@ -392,7 +402,7 @@ export default function ResultsPage({ resultId, onBack }: ResultsPageProps) {
                         <p>{pattern.description}</p>
                         {pattern.examples && pattern.examples.length > 0 && (
                           <div className={styles.exampleList}>
-                            {pattern.examples.slice(0, 2).map((ex, j) => (
+                            {pattern.examples.slice(0, 4).map((ex, j) => (
                               <div key={j} className={styles.example}>
                                 <code>"{ex.quote}"</code>
                                 <span>{ex.analysis}</span>

@@ -37,8 +37,8 @@ interface DimensionCardProps {
 /** Expandable evidence list component */
 function EvidenceList({ evidence, accentColor }: { evidence: string[]; accentColor?: string }) {
   const [showAll, setShowAll] = useState(false);
-  const hasMore = evidence.length > 2;
-  const displayedEvidence = showAll ? evidence : evidence.slice(0, 2);
+  const hasMore = evidence.length > 4;
+  const displayedEvidence = showAll ? evidence : evidence.slice(0, 4);
 
   return (
     <div className={styles.evidenceList}>

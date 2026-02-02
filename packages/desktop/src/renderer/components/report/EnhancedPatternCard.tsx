@@ -17,25 +17,31 @@ interface EnhancedPatternCardProps {
   index: number;
 }
 
-const EFFECTIVENESS_LABELS = {
+const EFFECTIVENESS_LABELS: Record<string, string> = {
   highly_effective: 'Highly Effective',
   effective: 'Effective',
   could_improve: 'Could Improve',
 };
+
+const TIP_TRUNCATE_LENGTH = 200;
+const MAX_VISIBLE_EXAMPLES = 4;
+
+function truncateTip(tip: string | undefined, showFull: boolean): string | undefined {
+  if (!tip) return undefined;
+  if (showFull || tip.length <= TIP_TRUNCATE_LENGTH) return tip;
+  return `${tip.slice(0, TIP_TRUNCATE_LENGTH)}...`;
+}
 
 export function EnhancedPatternCard({ pattern, index }: EnhancedPatternCardProps) {
   const [showAllExamples, setShowAllExamples] = useState(false);
   const [showFullTip, setShowFullTip] = useState(false);
 
   const examples = pattern.examples || [];
-  const hasMoreExamples = examples.length > 2;
-  const displayedExamples = showAllExamples ? examples : examples.slice(0, 2);
+  const hasMoreExamples = examples.length > MAX_VISIBLE_EXAMPLES;
+  const displayedExamples = showAllExamples ? examples : examples.slice(0, MAX_VISIBLE_EXAMPLES);
 
-  // Check if tip is long (more than 200 chars)
-  const tipIsLong = pattern.tip && pattern.tip.length > 200;
-  const displayedTip = showFullTip || !tipIsLong
-    ? pattern.tip
-    : pattern.tip?.slice(0, 200) + '...';
+  const tipIsLong = (pattern.tip?.length ?? 0) > TIP_TRUNCATE_LENGTH;
+  const displayedTip = truncateTip(pattern.tip, showFullTip);
 
   return (
     <div className={styles.card}>
