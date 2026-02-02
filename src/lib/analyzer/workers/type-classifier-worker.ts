@@ -1,5 +1,5 @@
 /**
- * Type Classifier Worker (Phase 2.5 - v2 Architecture)
+ * Type Classifier Worker (Phase 2.5)
  *
  * Phase 2.5 worker that classifies developers into the AI Collaboration Matrix
  * using ALL Phase 2 worker outputs for informed classification:
@@ -20,7 +20,6 @@ import {
   type TypeClassifierOutput,
   type AgentOutputs,
 } from '../../models/agent-outputs';
-import type { StrengthGrowthOutput } from '../../models/strength-growth-data';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
   TYPE_CLASSIFIER_SYSTEM_PROMPT,
@@ -28,20 +27,17 @@ import {
 } from './prompts/type-classifier-prompts';
 import { z } from 'zod';
 
-/**
- * Extended WorkerContext for TypeClassifier (Phase 2.5)
- *
- * TypeClassifier runs AFTER all Phase 2 workers to incorporate their insights.
- * It receives agentOutputs containing all Phase 2 results — no raw Phase1Output needed.
- */
+/** Extended WorkerContext for TypeClassifier (Phase 2.5) */
 interface TypeClassifierContext extends WorkerContext {
   agentOutputs?: AgentOutputs;
 }
 
-/**
- * LLM output schema for TypeClassifier
- * Includes synthesis fields merged from TypeSynthesis
- */
+/** Distribution type keys */
+type DistributionKey = 'architect' | 'scientist' | 'collaborator' | 'speedrunner' | 'craftsman';
+
+const DISTRIBUTION_KEYS: DistributionKey[] = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'];
+
+/** LLM output schema for TypeClassifier */
 const TypeClassifierLLMSchema = z.object({
   primaryType: z.enum(['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman']),
   distribution: z.object({
@@ -62,7 +58,6 @@ const TypeClassifierLLMSchema = z.object({
   }).optional(),
   confidenceScore: z.number().min(0).max(1),
   reasoning: z.string().max(500).optional(),
-  // Synthesis fields (merged from TypeSynthesis)
   adjustmentReasons: z.array(z.string().max(3000)).max(5).optional(),
   confidenceBoost: z.number().min(0).max(1).optional(),
   synthesisEvidence: z.string().max(1000).optional(),
@@ -76,23 +71,21 @@ const TypeClassifierLLMSchema = z.object({
  */
 export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   readonly name = 'TypeClassifier';
-  readonly phase = 2 as const; // Registered as Phase 2.5 via registerPhase2Point5Worker
+  readonly phase = 2 as const;
 
   constructor(config: OrchestratorConfig) {
     super(config);
   }
 
   canRun(context: WorkerContext): boolean {
-    const tcContext = context as TypeClassifierContext;
+    const { agentOutputs } = context as TypeClassifierContext;
 
-    // Must have Phase 2 agent outputs to classify from
-    if (!tcContext.agentOutputs) {
+    if (!agentOutputs) {
       this.log('Cannot run: Phase 2 agent outputs not available');
       return false;
     }
 
-    // Must have at least one Phase 2 worker output
-    const hasAnyOutput = Object.values(tcContext.agentOutputs).some(v => v != null);
+    const hasAnyOutput = Object.values(agentOutputs).some((v) => v != null);
     if (!hasAnyOutput) {
       this.log('Cannot run: No Phase 2 worker outputs available');
       return false;
@@ -102,26 +95,13 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   }
 
   async execute(context: WorkerContext): Promise<WorkerResult<TypeClassifierOutput>> {
-    const tcContext = context as TypeClassifierContext;
-
-    const agentOutputs = tcContext.agentOutputs ?? {};
+    const { agentOutputs = {} } = context as TypeClassifierContext;
 
     this.log('Classifying developer into AI Collaboration Matrix (Phase 2.5)...');
 
-    // Prepare summaries from ALL Phase 2 workers
-    const strengthGrowthSummary = agentOutputs.strengthGrowth
-      ? this.summarizeStrengthGrowth(agentOutputs.strengthGrowth)
-      : undefined;
-
-    // Build combined Phase 2 summary for the prompt
     const phase2Summary = this.buildPhase2Summary(agentOutputs);
+    const userPrompt = buildTypeClassifierUserPrompt(phase2Summary || undefined);
 
-    const userPrompt = buildTypeClassifierUserPrompt(
-      strengthGrowthSummary,
-      phase2Summary || undefined
-    );
-
-    // Call Gemini
     const result = await this.client!.generateStructured({
       systemPrompt: TYPE_CLASSIFIER_SYSTEM_PROMPT,
       userPrompt,
@@ -129,14 +109,12 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
       maxOutputTokens: 8192,
     });
 
-    // Validate distribution sums to 100
     const dist = result.data.distribution;
-    const sum = dist.architect + dist.scientist + dist.collaborator + dist.speedrunner + dist.craftsman;
-    const keys: (keyof typeof dist)[] = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'];
+    const sum = DISTRIBUTION_KEYS.reduce((acc, key) => acc + dist[key], 0);
 
     if (Math.abs(sum - 100) > 1) {
       this.log(`Warning: Distribution sums to ${sum}, normalizing...`);
-      this.normalizeDistribution(dist, keys, sum);
+      this.normalizeDistribution(dist, sum);
     }
 
     this.log(`Type: ${result.data.primaryType}`);
@@ -150,64 +128,52 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   }
 
   /**
-   * Build a comprehensive Phase 2 summary from all available worker outputs
+   * Build a comprehensive Phase 2 summary from unified worker outputs
    *
-   * This replaces the old TypeSynthesis approach of reading from legacy agents.
-   * Now uses the new v2 workers: TrustVerification, WorkflowHabit,
-   * KnowledgeGap, ContextEfficiency.
+   * Uses v3 unified workers (capability-based):
+   * - ThinkingQuality: Planning + Critical Thinking + Communication
+   * - LearningBehavior: Knowledge Gaps + Repeated Mistakes
+   * - Efficiency (ContextEfficiency)
    */
   private buildPhase2Summary(agentOutputs: AgentOutputs): string | null {
     const sections: string[] = [];
 
-    // TrustVerification: anti-patterns + verification behavior
-    if (agentOutputs.trustVerification) {
-      const tv = agentOutputs.trustVerification;
-      const antiPatternTypes = tv.antiPatterns?.map(ap => ap.type).join(', ') || 'none';
-      sections.push(`### Trust & Verification
-- Anti-patterns detected: ${tv.antiPatterns?.length ?? 0} (types: ${antiPatternTypes})
-- Verification level: ${tv.verificationBehavior?.level ?? 'unknown'}
-- Trust health score: ${tv.overallTrustHealthScore}/100
-- Confidence: ${tv.confidenceScore}`);
+    // ThinkingQuality: Planning + Critical Thinking + Communication
+    if (agentOutputs.thinkingQuality) {
+      const tq = agentOutputs.thinkingQuality;
+      const antiPatternTypes = tq.verificationAntiPatterns?.map(ap => ap.type).join(', ') || 'none';
+      const commPatternTypes = tq.communicationPatterns?.map(p => p.patternName).join(', ') || 'none';
+      sections.push(`### Thinking Quality
+- Plan quality score: ${tq.planQualityScore}/100
+- Verification level: ${tq.verificationBehavior?.level ?? 'unknown'}
+- Verification anti-patterns: ${tq.verificationAntiPatterns?.length ?? 0} (types: ${antiPatternTypes})
+- Communication patterns: ${tq.communicationPatterns?.length ?? 0} (types: ${commPatternTypes})
+- Overall thinking quality: ${tq.overallThinkingQualityScore}/100
+- Confidence: ${tq.confidenceScore}`);
     }
 
-    // WorkflowHabit: planning + critical thinking + multitasking
-    if (agentOutputs.workflowHabit) {
-      const wh = agentOutputs.workflowHabit;
-      const planningDetails = wh.planningHabits?.map(ph => `${ph.type}(${ph.frequency}, effectiveness=${ph.effectiveness ?? 'unknown'})`).join(', ') || 'none';
-      const ctTypes = wh.criticalThinkingMoments?.map(ct => ct.type).join(', ') || 'none';
-      sections.push(`### Workflow Habits
-- Planning habits: ${planningDetails}
-- Critical thinking moments: ${wh.criticalThinkingMoments?.length ?? 0} (types: ${ctTypes})
-- Workflow score: ${wh.overallWorkflowScore}/100
-- Confidence: ${wh.confidenceScore}`);
+    // LearningBehavior: Knowledge Gaps + Repeated Mistakes
+    if (agentOutputs.learningBehavior) {
+      const lb = agentOutputs.learningBehavior;
+      const gapTopics = lb.knowledgeGaps?.map(g => g.topic).join(', ') || 'none';
+      const learningTopics = lb.learningProgress?.map(p => p.topic).join(', ') || 'none';
+      const mistakeCategories = lb.repeatedMistakePatterns?.map(m => m.category).join(', ') || 'none';
+      sections.push(`### Learning Behavior
+- Overall learning score: ${lb.overallLearningScore}/100
+- Knowledge gaps: ${lb.knowledgeGaps?.length ?? 0} (topics: ${gapTopics})
+- Learning progress: ${lb.learningProgress?.length ?? 0} (topics: ${learningTopics})
+- Repeated mistake patterns: ${lb.repeatedMistakePatterns?.length ?? 0} (categories: ${mistakeCategories})
+- Top insights: ${lb.topInsights?.join('; ') || 'none'}
+- Confidence: ${lb.confidenceScore}`);
     }
 
-    // KnowledgeGap
-    if (agentOutputs.knowledgeGap) {
-      const kg = agentOutputs.knowledgeGap;
-      // Extract topic names from the flattened knowledgeGapsData ("topic:question_count:depth:example;...")
-      const gapTopics = kg.knowledgeGapsData
-        ? kg.knowledgeGapsData.split(';').filter(Boolean).map(entry => entry.split(':')[0]).join(', ')
-        : 'none';
-      // Extract learning topics from learningProgressData ("topic:start_level:current_level:evidence;...")
-      const learningTopics = kg.learningProgressData
-        ? kg.learningProgressData.split(';').filter(Boolean).map(entry => entry.split(':')[0]).join(', ')
-        : 'none';
-      sections.push(`### Knowledge Gap
-- Knowledge score: ${kg.overallKnowledgeScore}/100
-- Gap topics: ${gapTopics}
-- Learning progress topics: ${learningTopics}
-- Top insights: ${kg.topInsights?.join('; ') || 'none'}
-- Confidence: ${kg.confidenceScore}`);
-    }
-
-    // ContextEfficiency
-    if (agentOutputs.contextEfficiency) {
-      const ce = agentOutputs.contextEfficiency;
-      sections.push(`### Context Efficiency
-- Efficiency score: ${ce.overallEfficiencyScore}/100
-- Avg context fill: ${ce.avgContextFillPercent}%
-- Confidence: ${ce.confidenceScore}`);
+    // Efficiency: Context usage and token management
+    if (agentOutputs.efficiency) {
+      const ef = agentOutputs.efficiency;
+      sections.push(`### Efficiency
+- Efficiency score: ${ef.overallEfficiencyScore}/100
+- Avg context fill: ${ef.avgContextFillPercent}%
+- Confidence: ${ef.confidenceScore}`);
     }
 
     if (sections.length === 0) return null;
@@ -219,44 +185,26 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
    * Normalize distribution percentages to sum exactly to 100
    */
   private normalizeDistribution(
-    dist: Record<string, number>,
-    keys: string[],
+    dist: Record<DistributionKey, number>,
     sum: number
   ): void {
     if (sum === 0) {
-      for (const key of keys) {
+      for (const key of DISTRIBUTION_KEYS) {
         dist[key] = 20;
       }
       return;
     }
 
     const factor = 100 / sum;
-    for (const key of keys) {
+    for (const key of DISTRIBUTION_KEYS) {
       dist[key] = Math.round(dist[key] * factor);
     }
 
-    const newSum = keys.reduce((s, k) => s + dist[k], 0);
+    const newSum = DISTRIBUTION_KEYS.reduce((s, k) => s + dist[k], 0);
     if (newSum !== 100) {
-      const maxKey = keys.reduce((a, b) => (dist[a] >= dist[b] ? a : b));
+      const maxKey = DISTRIBUTION_KEYS.reduce((a, b) => (dist[a] >= dist[b] ? a : b));
       dist[maxKey] += 100 - newSum;
     }
-  }
-
-  /**
-   * Summarize StrengthGrowth output for type classification
-   */
-  private summarizeStrengthGrowth(output: StrengthGrowthOutput): string {
-    const strengthTitles = output.strengths.map(s => s.title).slice(0, 5).join(', ');
-    const growthTitles = output.growthAreas.map(g => g.title).slice(0, 5).join(', ');
-    const dimensions = new Set([
-      ...output.strengths.map(s => s.dimension),
-      ...output.growthAreas.map(g => g.dimension),
-    ]);
-
-    return `Strengths: ${strengthTitles || 'None identified'}
-Growth Areas: ${growthTitles || 'None identified'}
-Dimensions covered: ${Array.from(dimensions).join(', ')}
-Confidence: ${output.confidenceScore}`;
   }
 }
 

@@ -167,13 +167,10 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 
 | Worker | Field | What it provides |
 |--------|-------|------------------|
-| StrengthGrowth | \`strengthGrowth\` | strengths[], growthAreas[], personalizedPrioritiesData |
-| TrustVerification | \`trustVerification\` | antiPatterns[], overallTrustHealthScore |
-| WorkflowHabit | \`workflowHabit\` | criticalThinkingMoments[], planningHabits[] |
-| KnowledgeGap | \`knowledgeGap\` | Knowledge gaps, learning progress |
+| ThinkingQuality | \`thinkingQuality\` | verificationAntiPatterns[], planningHabits[], criticalThinkingMoments[], communicationPatterns[] |
+| LearningBehavior | \`learningBehavior\` | repeatedMistakePatterns[], knowledgeGaps[], learningProgressIndicators[] |
 | ContextEfficiency | \`contextEfficiency\` | Token efficiency patterns |
 | TypeClassifier | \`typeClassifier\` | primaryType, controlLevel, distribution |
-| CommunicationPatterns | \`communicationPatterns\` | promptPatterns (assembled by evaluation-assembler) |
 
 # Output Rules
 
@@ -181,7 +178,7 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 - This is the MOST IMPORTANT section - it must feel deeply personal and comprehensive
 - REQUIRED: Include at least 8-10 direct quotes from the developer's messages
 - REQUIRED: Write 15-20 sentences minimum
-- Synthesize TypeClassifier reasoning + StrengthGrowth insights into engaging prose
+- Synthesize TypeClassifier reasoning + ThinkingQuality/LearningBehavior insights into engaging prose
 - Lead with their most distinctive trait and elaborate extensively with examples
 - Connect multiple quotes to reveal deep personality patterns
 - Discuss their collaboration style, problem-solving approach, and communication preferences
@@ -189,7 +186,7 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 - Use **bold markers** to emphasize 5-7 key personality traits or distinctive phrases
 - Make them feel "truly understood" - this should read like a professional career assessment
 
-**Top 3 Focus Areas** (from strengthGrowth.personalizedPrioritiesData)
+**Top 3 Focus Areas** (from learningBehavior + thinkingQuality analysis)
 - Transform each priority into an engaging narrative
 - Include specific action steps (START/STOP/CONTINUE)
 
@@ -311,7 +308,7 @@ You generate ONLY narrative content. Structural data (including promptPatterns) 
    - This is the MOST IMPORTANT section - make it deeply personal and comprehensive
    - REQUIRED: Include 8-10 direct quotes from Phase 2 evidence and Developer Utterances
    - REQUIRED: Write 15-20 sentences minimum
-   - Synthesize TypeClassifier reasoning + StrengthGrowth insights into engaging prose
+   - Synthesize TypeClassifier reasoning + ThinkingQuality/LearningBehavior insights into engaging prose
    - Lead with their most distinctive trait and elaborate extensively
    - Emphasize 5-7 key phrases with **bold markers**
    - Make them feel "truly understood"

@@ -114,18 +114,9 @@ Return JSON with:
 ${NO_HEDGING_DIRECTIVE}`;
 
 export function buildTypeClassifierUserPrompt(
-  strengthGrowthSummary?: string,
   phase2Summary?: string
 ): string {
-  let analysisContext = '';
-
-  if (strengthGrowthSummary) {
-    analysisContext += `\n## STRENGTH/GROWTH ANALYSIS SUMMARY\n${strengthGrowthSummary}\n`;
-  }
-
-  if (phase2Summary) {
-    analysisContext += `\n${phase2Summary}\n`;
-  }
+  const analysisContext = phase2Summary ? `\n${phase2Summary}\n` : '';
 
   return `## PHASE 2 ANALYSIS DATA
 Use the following Phase 2 worker analysis summaries to classify the developer.

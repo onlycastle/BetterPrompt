@@ -19,9 +19,6 @@ import { TranslatorOutputSchema, type TranslatorOutput } from '../../models/tran
 import type { AgentOutputs } from '../../models/agent-outputs';
 import type { SupportedLanguage } from './content-writer-prompts';
 import { TRANSLATOR_SYSTEM_PROMPT, buildTranslatorUserPrompt } from './translator-prompts';
-import type { StrengthGrowthOutput } from '../../models/strength-growth-data';
-import type { TrustVerificationOutput } from '../../models/trust-verification-data';
-import type { WorkflowHabitOutput } from '../../models/workflow-habit-data';
 import type { WorkerStrength, WorkerGrowth } from '../../models/worker-insights';
 
 /**
@@ -107,17 +104,8 @@ export class TranslatorStage {
     const preparedOutputs = this.prepareAgentOutputsForTranslator(agentOutputs);
     const agentOutputsJson = JSON.stringify(preparedOutputs, null, 2);
 
-    // Debug logging: Input data flow tracking (dev only)
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Translator] Input agentOutputs keys: ${Object.keys(agentOutputs).join(', ')}`);
-      console.log(`[Translator] Prepared for translation keys: ${Object.keys(preparedOutputs).join(', ')}`);
-
-      // Log individual agent data availability
-      for (const key of ['trustVerification', 'workflowHabit', 'knowledgeGap', 'contextEfficiency']) {
-        const data = preparedOutputs[key] as { strengthsData?: string; growthAreasData?: string } | undefined;
-        console.log(`[Translator] ${key}: strengths=${data?.strengthsData?.length ?? 0}chars, growth=${data?.growthAreasData?.length ?? 0}chars`);
-      }
-    }
+    this.logDebug('Input agentOutputs keys', Object.keys(agentOutputs));
+    this.logDebug('Prepared for translation keys', Object.keys(preparedOutputs));
 
     const userPrompt = buildTranslatorUserPrompt(
       englishDataJson,
@@ -132,19 +120,7 @@ export class TranslatorStage {
       maxOutputTokens: this.config.maxOutputTokens,
     });
 
-    // Debug logging: Output data flow tracking (dev only)
-    if (process.env.NODE_ENV === 'development') {
-      const transInsights = result.data.translatedAgentInsights;
-      console.log(`[Translator] Output translatedAgentInsights present: ${!!transInsights}`);
-      if (transInsights) {
-        const keys = Object.keys(transInsights).filter(k => transInsights[k as keyof typeof transInsights]);
-        console.log(`[Translator] Output translatedAgentInsights keys with data: ${keys.join(', ')}`);
-        for (const key of keys) {
-          const insight = transInsights[key as keyof typeof transInsights];
-          console.log(`[Translator] ${key}: strengthsData=${insight?.strengthsData?.length ?? 0}chars, growthAreasData=${insight?.growthAreasData?.length ?? 0}chars`);
-        }
-      }
-    }
+    this.logTranslatedInsightsDebug(result.data.translatedAgentInsights);
 
     return result;
   }
@@ -156,7 +132,7 @@ export class TranslatorStage {
    * The translator prompt expects each agent to have `strengthsData` and `growthAreasData`
    * as pipe-delimited strings (e.g., "title|description|evidence;...").
    * - knowledgeGap, contextEfficiency: already have this format (pass through)
-   * - strengthGrowth, trustVerification, workflowHabit: structured arrays → pre-converted
+   * - thinkingQuality, learningBehavior: structured arrays → pre-converted
    */
   private prepareAgentOutputsForTranslator(agentOutputs: AgentOutputs): Record<string, unknown> {
     const prepared: Record<string, unknown> = {};
@@ -194,111 +170,10 @@ export class TranslatorStage {
       }
     }
 
-    // Convert v2 strengthGrowth structured arrays → flat strings
-    if (agentOutputs.strengthGrowth) {
-      prepared.strengthGrowth = this.flattenStrengthGrowth(agentOutputs.strengthGrowth);
-    }
-
-    // Convert v2 trustVerification structured arrays → flat strings
-    if (agentOutputs.trustVerification) {
-      prepared.trustVerification = this.flattenTrustVerification(agentOutputs.trustVerification);
-    }
-
-    // Convert v2 workflowHabit structured arrays → flat strings
-    if (agentOutputs.workflowHabit) {
-      prepared.workflowHabit = this.flattenWorkflowHabit(agentOutputs.workflowHabit);
-    }
+    // v3 workers (thinkingQuality, learningBehavior) output translations directly
+    // in their strengths/growthAreas arrays, no conversion needed
 
     return prepared;
-  }
-
-  /**
-   * Flatten StrengthGrowth structured data to pipe-delimited strings.
-   * Output format matches TranslatedAgentInsight expectations:
-   * - strengthsData: "title|description|quote1,quote2;..."
-   * - growthAreasData: "title|description|evidence|recommendation|frequency|severity|priority;..."
-   */
-  private flattenStrengthGrowth(sg: StrengthGrowthOutput): { strengthsData: string; growthAreasData: string } {
-    const strengthsData = (sg.strengths ?? []).map(s => {
-      const quotes = (s.evidence ?? []).map(e => e.quote).join(',');
-      return `${s.title}|${s.description}|${quotes}`;
-    }).join(';');
-
-    const growthAreasData = (sg.growthAreas ?? []).map(g => {
-      const quotes = (g.evidence ?? []).map(e => e.quote).join(',');
-      return `${g.title}|${g.description}|${quotes}|${g.recommendation}|${g.frequency ?? ''}|${g.severity ?? ''}|${g.priorityScore ?? ''}`;
-    }).join(';');
-
-    return { strengthsData, growthAreasData };
-  }
-
-  /**
-   * Flatten TrustVerification structured data to pipe-delimited strings.
-   * Converts strengths array and anti-patterns to translation format.
-   */
-  private flattenTrustVerification(tv: TrustVerificationOutput): { strengthsData: string; growthAreasData: string } {
-    const strengthsData = this.flattenWorkerStrengths(tv.strengths ?? []);
-
-    // Convert anti-patterns to growth areas format, then merge with actual growthAreas
-    const antiPatternGrowth = (tv.antiPatterns ?? []).map(ap => {
-      const quotes = (ap.examples ?? []).map(e => e.quote).join(',');
-      const title = `Anti-Pattern: ${ap.type.replace(/_/g, ' ')}`;
-      const description = ap.improvement ?? `Detected ${ap.type} pattern`;
-      const { severity, priority } = this.mapSeverityToPriority(ap.severity);
-      return `${title}|${description}|${quotes}|${ap.improvement ?? ''}|${ap.sessionPercentage ?? ''}|${severity}|${priority}`;
-    });
-
-    const workerGrowth = this.flattenWorkerGrowthToArray(tv.growthAreas ?? []);
-    const growthAreasData = [...antiPatternGrowth, ...workerGrowth].join(';');
-
-    return { strengthsData, growthAreasData };
-  }
-
-  /**
-   * Flatten WorkflowHabit structured data to pipe-delimited strings.
-   * Converts strengths array and weak planning habits to translation format.
-   */
-  private flattenWorkflowHabit(wh: WorkflowHabitOutput): { strengthsData: string; growthAreasData: string } {
-    const strengthsData = this.flattenWorkerStrengths(wh.strengths ?? []);
-
-    // Convert weak planning habits to growth areas format
-    const weakHabits = (wh.planningHabits ?? []).filter(h =>
-      h.effectiveness === 'low' || h.frequency === 'rarely' || h.frequency === 'never'
-    );
-
-    const weakHabitGrowth = weakHabits.map(h => {
-      const typeLabel = h.type.replace(/_/g, ' ');
-      const quotes = (h.examples ?? []).join(',');
-      return `Planning: ${typeLabel}|Planning habit "${typeLabel}" is ${h.frequency}|${quotes}|Improve ${typeLabel} frequency||medium|50`;
-    });
-
-    const workerGrowth = this.flattenWorkerGrowthToArray(wh.growthAreas ?? []);
-    const growthAreasData = [...weakHabitGrowth, ...workerGrowth].join(';');
-
-    return { strengthsData, growthAreasData };
-  }
-
-  /**
-   * Map severity level to priority score.
-   */
-  private mapSeverityToPriority(severity: string | undefined): { severity: string; priority: string } {
-    switch (severity) {
-      case 'critical': return { severity: 'critical', priority: '90' };
-      case 'significant': return { severity: 'high', priority: '70' };
-      case 'moderate': return { severity: 'medium', priority: '50' };
-      default: return { severity: 'low', priority: '30' };
-    }
-  }
-
-  /**
-   * Flatten WorkerGrowth array to string array (before joining).
-   * Format: "title|description|evidence|recommendation|frequency|severity|frequency"
-   */
-  private flattenWorkerGrowthToArray(growthAreas: WorkerGrowth[]): string[] {
-    return growthAreas.map(g => {
-      const quotes = (g.evidence ?? []).join(',');
-      return `${g.title}|${g.description}|${quotes}|${g.recommendation}|${g.frequency ?? ''}|${g.severity ?? ''}|${g.frequency ?? ''}`;
-    });
   }
 
   /**
@@ -309,19 +184,46 @@ export class TranslatorStage {
   private flattenWorkerStrengths(strengths: WorkerStrength[]): string {
     return strengths.map(s => {
       const quotes = (s.evidence ?? []).join(',');
-      return `${s.title}|${s.description}|${quotes}|${s.frequency ?? ''}`;
+      return `${s.title}|${s.description}|${quotes}`;
     }).join(';');
   }
 
   /**
    * Flatten generic WorkerGrowth array to pipe-delimited string.
    * Used as fallback when growthAreasData string is empty but growthAreas[] exists.
-   * Format: "title|description|evidence|recommendation|frequency|severity|priority;..."
+   * Format: "title|description|evidence|recommendation|severity;..."
    */
   private flattenWorkerGrowthAreas(growthAreas: WorkerGrowth[]): string {
     return growthAreas.map(g => {
       const quotes = (g.evidence ?? []).join(',');
-      return `${g.title}|${g.description}|${quotes}|${g.recommendation}|${g.frequency ?? ''}|${g.severity ?? ''}|`;
+      return `${g.title}|${g.description}|${quotes}|${g.recommendation}|${g.severity ?? ''}`;
     }).join(';');
+  }
+
+  /**
+   * Log debug message in development mode
+   */
+  private logDebug(label: string, data: unknown): void {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Translator] ${label}: ${Array.isArray(data) ? data.join(', ') : data}`);
+    }
+  }
+
+  /**
+   * Log translated insights debug info
+   */
+  private logTranslatedInsightsDebug(transInsights: any): void {
+    if (process.env.NODE_ENV !== 'development') return;
+
+    console.log(`[Translator] Output translatedAgentInsights present: ${!!transInsights}`);
+    if (!transInsights) return;
+
+    const keys = Object.keys(transInsights).filter(k => transInsights[k]);
+    console.log(`[Translator] Keys with data: ${keys.join(', ')}`);
+
+    for (const key of keys) {
+      const insight = transInsights[key];
+      console.log(`[Translator] ${key}: strengthsData=${insight?.strengthsData?.length ?? 0}chars, growthAreasData=${insight?.growthAreasData?.length ?? 0}chars`);
+    }
   }
 }

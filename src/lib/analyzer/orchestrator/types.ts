@@ -315,46 +315,31 @@ export interface Phase1Results {
   dataExtractor: WorkerResult<Phase1Output>;
 }
 
-/**
- * Results from Phase 2 (Insight Generation)
- * Note: strengthGrowth moved to Phase 2.5 (Synthesizer)
- */
-export interface Phase2Results {
-  trustVerification?: WorkerResultWithStatus<unknown>;
-  workflowHabit?: WorkerResultWithStatus<unknown>;
-  knowledgeGap?: WorkerResultWithStatus<unknown>;
-  contextEfficiency?: WorkerResultWithStatus<unknown>;
-}
-
 // ============================================================================
-// v2 Architecture Phase Results Types
+// v3 Architecture Phase Results Types
 // ============================================================================
 
-import type { StrengthGrowthOutput } from '../../models/strength-growth-data';
-import type { TrustVerificationOutput } from '../../models/trust-verification-data';
-import type { WorkflowHabitOutput } from '../../models/workflow-habit-data';
 import type { TypeClassifierOutput, KnowledgeGapOutput, ContextEfficiencyOutput } from '../../models/agent-outputs';
+import type { ThinkingQualityOutput } from '../../models/thinking-quality-data';
+import type { LearningBehaviorOutput } from '../../models/learning-behavior-data';
 
 /**
- * Results from Phase 2 workers (Context Isolated)
+ * Results from Phase 2 workers (v3 Context Isolated)
  *
  * These workers receive only Phase 1 output (no raw sessions).
  */
-export interface Phase2V2Results {
-  /** Strengths & Growth Areas analysis */
-  strengthGrowth?: WorkerResult<StrengthGrowthOutput>;
+export interface Phase2V3Results {
+  /** Thinking Quality analysis (planning + critical thinking + communication) */
+  thinkingQuality?: WorkerResult<ThinkingQualityOutput>;
 
-  /** Trust Verification analysis (anti-patterns + verification behavior) */
-  trustVerification?: WorkerResult<TrustVerificationOutput>;
-
-  /** Workflow Habit analysis (planning + critical thinking + multitasking) */
-  workflowHabit?: WorkerResult<WorkflowHabitOutput>;
-
-  /** Knowledge Gap analysis */
-  knowledgeGap?: WorkerResult<KnowledgeGapOutput>;
+  /** Learning Behavior analysis (knowledge gaps + repeated mistakes) */
+  learningBehavior?: WorkerResult<LearningBehaviorOutput>;
 
   /** Context Efficiency analysis */
   contextEfficiency?: WorkerResult<ContextEfficiencyOutput>;
+
+  /** Knowledge Gap analysis (legacy, kept for cached data) */
+  knowledgeGap?: WorkerResult<KnowledgeGapOutput>;
 
   /** Type Classification (Phase 2.5) */
   typeClassifier?: WorkerResult<TypeClassifierOutput>;
@@ -467,14 +452,8 @@ export interface AnalysisMetadataResult {
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.70;
 
 export function calculateDataQuality(sessionCount: number): 'high' | 'medium' | 'low' {
-  if (sessionCount >= 10) {
-    return 'high';
-  }
-
-  if (sessionCount >= 5) {
-    return 'medium';
-  }
-
+  if (sessionCount >= 10) return 'high';
+  if (sessionCount >= 5) return 'medium';
   return 'low';
 }
 

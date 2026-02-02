@@ -16,10 +16,9 @@
 
 import type { AgentOutputs } from '../../models/agent-outputs';
 import type { TypeClassifierOutput } from '../../models/agent-outputs';
-import type { StrengthGrowthOutput } from '../../models/strength-growth-data';
-import type { TrustVerificationOutput } from '../../models/trust-verification-data';
-import type { WorkflowHabitOutput } from '../../models/workflow-habit-data';
 import type { KnowledgeGapOutput, ContextEfficiencyOutput } from '../../models/agent-outputs';
+import type { ThinkingQualityOutput } from '../../models/thinking-quality-data';
+import type { LearningBehaviorOutput } from '../../models/learning-behavior-data';
 
 /**
  * Summarize all Phase 2 agent outputs into structured text for Phase 3.
@@ -33,18 +32,20 @@ export function summarizeAgentOutputsForPhase3(agentOutputs: AgentOutputs): stri
     sections.push(summarizeTypeClassifier(agentOutputs.typeClassifier));
   }
 
-  if (agentOutputs.strengthGrowth) {
-    sections.push(summarizeStrengthGrowth(agentOutputs.strengthGrowth));
+  // v3 workers
+  if (agentOutputs.thinkingQuality) {
+    sections.push(summarizeThinkingQuality(agentOutputs.thinkingQuality));
   }
 
-  if (agentOutputs.trustVerification) {
-    sections.push(summarizeTrustVerification(agentOutputs.trustVerification));
+  if (agentOutputs.learningBehavior) {
+    sections.push(summarizeLearningBehavior(agentOutputs.learningBehavior));
   }
 
-  if (agentOutputs.workflowHabit) {
-    sections.push(summarizeWorkflowHabit(agentOutputs.workflowHabit));
+  if (agentOutputs.efficiency) {
+    sections.push(summarizeEfficiency(agentOutputs.efficiency));
   }
 
+  // Legacy workers (kept for cached data)
   if (agentOutputs.knowledgeGap) {
     sections.push(summarizeKnowledgeGap(agentOutputs.knowledgeGap));
   }
@@ -99,86 +100,53 @@ function summarizeTypeClassifier(tc: TypeClassifierOutput): string {
   return lines.join('\n');
 }
 
-function summarizeStrengthGrowth(sg: StrengthGrowthOutput): string {
+/**
+ * v3 ThinkingQuality summarizer
+ * Combines: Planning, Critical Thinking, Verification, Communication
+ */
+function summarizeThinkingQuality(tq: ThinkingQualityOutput): string {
   const lines: string[] = [
-    `## StrengthGrowth (confidence: ${sg.confidenceScore})`,
+    `## ThinkingQuality (score: ${tq.overallThinkingQualityScore}/100, planQuality: ${tq.planQualityScore}/100, confidence: ${tq.confidenceScore})`,
   ];
 
-  if (sg.summary) {
-    lines.push(`summary: ${sg.summary}`);
+  if (tq.summary) {
+    lines.push(`summary: ${tq.summary}`);
   }
 
-  // Strengths
-  if (sg.strengths.length > 0) {
-    lines.push(`### Strengths (${sg.strengths.length})`);
-    for (let i = 0; i < sg.strengths.length; i++) {
-      const s = sg.strengths[i];
-      lines.push(`${i + 1}. [${s.dimension}] ${s.title}`);
-      lines.push(`   "${s.description}"`);
-      if (s.evidence && s.evidence.length > 0) {
-        const evidenceStr = s.evidence
-          .slice(0, 8)
-          .map(e => `${e.utteranceId}: "${truncateQuote(e.quote)}"`)
-          .join(', ');
-        lines.push(`   Evidence: ${evidenceStr}`);
-      }
-      if (s.developmentTip) {
-        lines.push(`   Tip: ${s.developmentTip}`);
+  // Planning Habits
+  if (tq.planningHabits.length > 0) {
+    lines.push(`### Planning Habits (${tq.planningHabits.length})`);
+    for (let i = 0; i < tq.planningHabits.length; i++) {
+      const ph = tq.planningHabits[i];
+      const meta: string[] = [`freq: ${ph.frequency}`];
+      if (ph.effectiveness) meta.push(`effectiveness: ${ph.effectiveness}`);
+      lines.push(`${i + 1}. [${ph.type}] ${meta.join(', ')}`);
+      if (ph.examples && ph.examples.length > 0) {
+        lines.push(`   Examples: ${ph.examples.slice(0, 3).map(e => `"${truncateQuote(e)}"`).join(', ')}`);
       }
     }
   }
 
-  // Growth Areas
-  if (sg.growthAreas.length > 0) {
-    lines.push(`### Growth Areas (${sg.growthAreas.length})`);
-    for (let i = 0; i < sg.growthAreas.length; i++) {
-      const g = sg.growthAreas[i];
-      const meta: string[] = [];
-      if (g.frequency !== undefined) meta.push(`freq: ${g.frequency}%`);
-      if (g.severity) meta.push(`severity: ${g.severity}`);
-      if (g.priorityScore !== undefined) meta.push(`priority: ${g.priorityScore}`);
-      const metaStr = meta.length > 0 ? ` (${meta.join(', ')})` : '';
-      lines.push(`${i + 1}. [${g.dimension}] ${g.title}${metaStr}`);
-      lines.push(`   "${g.description}"`);
-      if (g.evidence && g.evidence.length > 0) {
-        const evidenceStr = g.evidence
-          .slice(0, 8)
-          .map(e => `${e.utteranceId}: "${truncateQuote(e.quote)}"`)
-          .join(', ');
-        lines.push(`   Evidence: ${evidenceStr}`);
-      }
-      lines.push(`   Recommendation: ${g.recommendation}`);
+  // Critical Thinking Moments
+  if (tq.criticalThinkingMoments.length > 0) {
+    lines.push(`### Critical Thinking Moments (${tq.criticalThinkingMoments.length})`);
+    for (let i = 0; i < tq.criticalThinkingMoments.length; i++) {
+      const ct = tq.criticalThinkingMoments[i];
+      lines.push(`${i + 1}. [${ct.type}] "${truncateQuote(ct.quote)}" → ${ct.result}`);
     }
   }
 
-  // Pass-through data strings
-  if (sg.personalizedPrioritiesData) {
-    lines.push(`### PersonalizedPriorities`);
-    lines.push(sg.personalizedPrioritiesData);
-  }
+  // Verification Behavior
+  const vb = tq.verificationBehavior;
+  lines.push(`### Verification Behavior`);
+  lines.push(`level: ${vb.level}`);
+  lines.push(`recommendation: "${vb.recommendation}"`);
 
-  if (sg.absenceBasedSignalsData) {
-    lines.push(`### AbsenceBasedSignals`);
-    lines.push(sg.absenceBasedSignalsData);
-  }
-
-  return lines.join('\n');
-}
-
-function summarizeTrustVerification(tv: TrustVerificationOutput): string {
-  const lines: string[] = [
-    `## TrustVerification (trustHealth: ${tv.overallTrustHealthScore}/100, confidence: ${tv.confidenceScore})`,
-  ];
-
-  if (tv.summary) {
-    lines.push(`summary: ${tv.summary}`);
-  }
-
-  // Anti-Patterns
-  if (tv.antiPatterns.length > 0) {
-    lines.push(`### Anti-Patterns (${tv.antiPatterns.length})`);
-    for (let i = 0; i < tv.antiPatterns.length; i++) {
-      const ap = tv.antiPatterns[i];
+  // Verification Anti-Patterns
+  if (tq.verificationAntiPatterns && tq.verificationAntiPatterns.length > 0) {
+    lines.push(`### Verification Anti-Patterns (${tq.verificationAntiPatterns.length})`);
+    for (let i = 0; i < tq.verificationAntiPatterns.length; i++) {
+      const ap = tq.verificationAntiPatterns[i];
       const meta: string[] = [`freq: ${ap.frequency}`];
       meta.push(`severity: ${ap.severity}`);
       if (ap.sessionPercentage !== undefined) meta.push(`sessionPct: ${ap.sessionPercentage}%`);
@@ -196,69 +164,84 @@ function summarizeTrustVerification(tv: TrustVerificationOutput): string {
     }
   }
 
-  // Verification Behavior
-  // Mapping: blind_trust ↔ vibe_coder, occasional_review ↔ supervised_coder,
-  //          systematic_verification ↔ ai_assisted_engineer, skeptical ↔ reluctant_user
-  // ContentWriter should reconcile this with TypeClassifier's collaborationMaturity.level
-  const vb = tv.verificationBehavior;
-  lines.push(`### Verification Behavior`);
-  lines.push(`level: ${vb.level}`);
-  lines.push(`recommendation: "${vb.recommendation}"`);
-
-  // Pass-through data strings
-  if (tv.detectedPatternsData) {
-    lines.push(`### DetectedPatterns`);
-    lines.push(tv.detectedPatternsData);
-  }
-
-  if (tv.actionablePatternMatchesData) {
-    lines.push(`### ActionablePatternMatches`);
-    lines.push(tv.actionablePatternMatchesData);
-  }
-
-  return lines.join('\n');
-}
-
-function summarizeWorkflowHabit(wh: WorkflowHabitOutput): string {
-  const lines: string[] = [
-    `## WorkflowHabit (workflowScore: ${wh.overallWorkflowScore}/100, confidence: ${wh.confidenceScore})`,
-  ];
-
-  if (wh.summary) {
-    lines.push(`summary: ${wh.summary}`);
-  }
-
-  // Planning Habits
-  if (wh.planningHabits.length > 0) {
-    lines.push(`### Planning Habits (${wh.planningHabits.length})`);
-    for (let i = 0; i < wh.planningHabits.length; i++) {
-      const ph = wh.planningHabits[i];
-      const meta: string[] = [`freq: ${ph.frequency}`];
-      if (ph.effectiveness) meta.push(`effectiveness: ${ph.effectiveness}`);
-      lines.push(`${i + 1}. [${ph.type}] ${meta.join(', ')}`);
-      if (ph.examples && ph.examples.length > 0) {
-        lines.push(`   Examples: ${ph.examples.slice(0, 3).map(e => `"${truncateQuote(e)}"`).join(', ')}`);
-      }
-    }
-  }
-
-  // Critical Thinking Moments
-  if (wh.criticalThinkingMoments.length > 0) {
-    lines.push(`### Critical Thinking Moments (${wh.criticalThinkingMoments.length})`);
-    for (let i = 0; i < wh.criticalThinkingMoments.length; i++) {
-      const ct = wh.criticalThinkingMoments[i];
-      lines.push(`${i + 1}. [${ct.type}] "${truncateQuote(ct.quote)}" → ${ct.result}`);
-    }
-  }
-
   // Multitasking
-  if (wh.multitaskingPattern) {
-    const mt = wh.multitaskingPattern;
+  if (tq.multitaskingPattern) {
+    const mt = tq.multitaskingPattern;
     lines.push(`### Multitasking`);
     if (mt.focusScore !== undefined) lines.push(`focusScore: ${mt.focusScore}`);
     lines.push(`mixesTopics: ${mt.mixesTopicsInSessions}`);
     if (mt.recommendation) lines.push(`recommendation: "${mt.recommendation}"`);
   }
+
+  // Communication Patterns
+  if (tq.communicationPatterns && tq.communicationPatterns.length > 0) {
+    lines.push(`### Communication Patterns (${tq.communicationPatterns.length})`);
+    for (let i = 0; i < tq.communicationPatterns.length; i++) {
+      const cp = tq.communicationPatterns[i];
+      lines.push(`${i + 1}. "${cp.patternName}" [${cp.frequency}, ${cp.effectiveness}]`);
+      lines.push(`   ${truncateQuote(cp.description, 200)}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * v3 LearningBehavior summarizer
+ * Combines: Knowledge Gaps, Learning Progress, Repeated Mistakes
+ */
+function summarizeLearningBehavior(lb: LearningBehaviorOutput): string {
+  const lines: string[] = [
+    `## LearningBehavior (score: ${lb.overallLearningScore}/100, confidence: ${lb.confidenceScore})`,
+  ];
+
+  if (lb.summary) {
+    lines.push(`summary: ${lb.summary}`);
+  }
+
+  // Knowledge Gaps
+  if (lb.knowledgeGaps && lb.knowledgeGaps.length > 0) {
+    lines.push(`### Knowledge Gaps (${lb.knowledgeGaps.length})`);
+    for (let i = 0; i < lb.knowledgeGaps.length; i++) {
+      const kg = lb.knowledgeGaps[i];
+      lines.push(`${i + 1}. [${kg.topic}] depth: ${kg.depth}, count: ${kg.questionCount}`);
+    }
+  }
+
+  // Learning Progress
+  if (lb.learningProgress && lb.learningProgress.length > 0) {
+    lines.push(`### Learning Progress (${lb.learningProgress.length})`);
+    for (let i = 0; i < lb.learningProgress.length; i++) {
+      const lp = lb.learningProgress[i];
+      lines.push(`${i + 1}. [${lp.topic}] ${lp.startLevel} → ${lp.currentLevel}`);
+    }
+  }
+
+  // Repeated Mistake Patterns
+  if (lb.repeatedMistakePatterns && lb.repeatedMistakePatterns.length > 0) {
+    lines.push(`### Repeated Mistake Patterns (${lb.repeatedMistakePatterns.length})`);
+    for (let i = 0; i < lb.repeatedMistakePatterns.length; i++) {
+      const rm = lb.repeatedMistakePatterns[i];
+      lines.push(`${i + 1}. [${rm.category}] ${rm.mistakeType} (${rm.occurrenceCount}x)`);
+      if (rm.recommendation) {
+        lines.push(`   Recommendation: "${rm.recommendation}"`);
+      }
+    }
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * v3 Efficiency summarizer (new v3 worker, replaces contextEfficiency)
+ */
+function summarizeEfficiency(ce: ContextEfficiencyOutput): string {
+  const lines: string[] = [
+    `## Efficiency (efficiencyScore: ${ce.overallEfficiencyScore}/100, avgFill: ${ce.avgContextFillPercent}%, confidence: ${ce.confidenceScore})`,
+  ];
+
+  addTopInsights(lines, ce.topInsights);
+  addOptionalSection(lines, 'ProductivitySummary', ce.productivitySummary);
 
   return lines.join('\n');
 }
@@ -268,24 +251,9 @@ function summarizeKnowledgeGap(kg: KnowledgeGapOutput): string {
     `## KnowledgeGap (knowledgeScore: ${kg.overallKnowledgeScore}/100, confidence: ${kg.confidenceScore})`,
   ];
 
-  // Top Insights
-  if (kg.topInsights && kg.topInsights.length > 0) {
-    lines.push(`### Top Insights`);
-    for (const insight of kg.topInsights) {
-      lines.push(`- "${insight}"`);
-    }
-  }
-
-  // Pass-through data strings
-  if (kg.knowledgeGapsData) {
-    lines.push(`### KnowledgeGaps`);
-    lines.push(kg.knowledgeGapsData);
-  }
-
-  if (kg.learningProgressData) {
-    lines.push(`### LearningProgress`);
-    lines.push(kg.learningProgressData);
-  }
+  addTopInsights(lines, kg.topInsights);
+  addOptionalSection(lines, 'KnowledgeGaps', kg.knowledgeGapsData);
+  addOptionalSection(lines, 'LearningProgress', kg.learningProgressData);
 
   return lines.join('\n');
 }
@@ -295,19 +263,8 @@ function summarizeContextEfficiency(ce: ContextEfficiencyOutput): string {
     `## ContextEfficiency (efficiencyScore: ${ce.overallEfficiencyScore}/100, avgFill: ${ce.avgContextFillPercent}%, confidence: ${ce.confidenceScore})`,
   ];
 
-  // Top Insights
-  if (ce.topInsights && ce.topInsights.length > 0) {
-    lines.push(`### Top Insights`);
-    for (const insight of ce.topInsights) {
-      lines.push(`- "${insight}"`);
-    }
-  }
-
-  // Pass-through productivity data
-  if (ce.productivitySummary) {
-    lines.push(`### ProductivitySummary`);
-    lines.push(ce.productivitySummary);
-  }
+  addTopInsights(lines, ce.topInsights);
+  addOptionalSection(lines, 'ProductivitySummary', ce.productivitySummary);
 
   return lines.join('\n');
 }
@@ -325,4 +282,24 @@ function truncateQuote(text: string, maxLength: number = 1000): string {
   const cutPoint = text.lastIndexOf(' ', maxLength);
   const truncated = cutPoint > maxLength * 0.6 ? text.slice(0, cutPoint) : text.slice(0, maxLength);
   return truncated + '...';
+}
+
+/**
+ * Add top insights section if available
+ */
+function addTopInsights(lines: string[], insights: string[] | undefined): void {
+  if (!insights || insights.length === 0) return;
+  lines.push(`### Top Insights`);
+  for (const insight of insights) {
+    lines.push(`- "${insight}"`);
+  }
+}
+
+/**
+ * Add optional section with header if data exists
+ */
+function addOptionalSection(lines: string[], header: string, data: string | undefined): void {
+  if (!data) return;
+  lines.push(`### ${header}`);
+  lines.push(data);
 }

@@ -7,27 +7,28 @@
  *
  * This module handles:
  * - workerInsights: Aggregated strengths/growthAreas from each Phase 2 worker
- *                   (replaces dimensionInsights from StrengthGrowthSynthesizer)
+ *                   (ThinkingQuality, LearningBehavior, ContextEfficiency)
  * - Type classification: TypeClassifier → primaryType, controlLevel, distribution
- * - antiPatternsAnalysis: TrustVerification → deterministic transform
- * - criticalThinkingAnalysis: WorkflowHabit → deterministic transform
- * - planningAnalysis: WorkflowHabit → deterministic transform
- * - actionablePractices: TrustVerification → deterministic transform
+ * - antiPatternsAnalysis: ThinkingQuality → deterministic transform
+ * - criticalThinkingAnalysis: ThinkingQuality → deterministic transform
+ * - planningAnalysis: ThinkingQuality → deterministic transform
+ * - actionablePractices: derived from growthAreas
+ *
+ * v3 Architecture (2026-02): Consolidated domain workers into capability workers.
  *
  * @module analyzer/stages/evaluation-assembler
  */
 
-import type { AgentOutputs } from '../../models/agent-outputs';
-import type { StrengthGrowthOutput } from '../../models/strength-growth-data';
-import type { TrustVerificationOutput } from '../../models/trust-verification-data';
-import type { WorkflowHabitOutput } from '../../models/workflow-habit-data';
-import type { CommunicationPatternsOutput, CommunicationPattern } from '../../models/communication-patterns-data';
-import type { TypeClassifierOutput } from '../../models/agent-outputs';
+import type { AgentOutputs, TypeClassifierOutput } from '../../models/agent-outputs';
 import type { DimensionResourceMatch } from '../../models/verbose-evaluation';
-import { validateDimension } from '../../models/dimension-schema';
+import type {
+  CommunicationPattern,
+  ThinkingQualityOutput,
+  DetectedAntiPattern,
+  CriticalThinkingMoment,
+  PlanningHabit,
+} from '../../models/thinking-quality-data';
 import {
-  DIMENSION_NAMES,
-  DIMENSION_DISPLAY_NAMES,
   parseExamplesData,
   parseActionsData,
 } from '../../models/verbose-evaluation';
@@ -128,15 +129,14 @@ export function assembleEvaluation(
   // ── Phase 3 Narrative (LLM-generated) ──────────────────────────────────
   result.personalitySummary = narrativeResult.personalitySummary;
 
-  // ── Prompt Patterns: Prefer Phase 2 CommunicationPatterns, fallback to Phase 3 ──
-  // Phase 2 CommunicationPatterns provides utteranceId-based evidence directly
-  // Phase 3 promptPatterns is kept as fallback for backward compatibility
-  if (agentOutputs.communicationPatterns?.patterns && agentOutputs.communicationPatterns.patterns.length > 0) {
-    result.promptPatterns = resolvePatternQuotes(agentOutputs.communicationPatterns.patterns, phase1Output);
-    debugLog(`Using Phase 2 CommunicationPatterns (${agentOutputs.communicationPatterns.patterns.length} patterns)`);
+  // ── Prompt Patterns: From ThinkingQuality communicationPatterns or Phase 3 fallback ──
+  // v3 ThinkingQuality worker includes communicationPatterns directly
+  if (agentOutputs.thinkingQuality?.communicationPatterns && agentOutputs.thinkingQuality.communicationPatterns.length > 0) {
+    result.promptPatterns = resolvePatternQuotes(agentOutputs.thinkingQuality.communicationPatterns, phase1Output);
+    debugLog(`Using ThinkingQuality communicationPatterns (${agentOutputs.thinkingQuality.communicationPatterns.length} patterns)`);
   } else if (narrativeResult.promptPatterns && narrativeResult.promptPatterns.length > 0) {
     result.promptPatterns = sanitizePromptPatterns(narrativeResult.promptPatterns, phase1Output);
-    debugLog('Falling back to Phase 3 promptPatterns (CommunicationPatterns not available)');
+    debugLog('Falling back to Phase 3 promptPatterns (ThinkingQuality patterns not available)');
   } else {
     // Both sources unavailable - create minimal placeholder
     result.promptPatterns = [];
@@ -156,9 +156,7 @@ export function assembleEvaluation(
   }
 
   // ── Worker Insights: Domain-specific strengths/growthAreas from Phase 2 workers ──
-  // Each Phase 2 worker (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency)
-  // outputs strengths/growthAreas directly in their domain.
-  // This replaces the centralized StrengthGrowthSynthesizer approach.
+  // v3 workers (ThinkingQuality, LearningBehavior, Efficiency) output strengths/growthAreas directly.
   const workerInsights = doAggregateWorkerInsights(agentOutputs);
   result.workerInsights = workerInsights;
 
@@ -176,59 +174,105 @@ export function assembleEvaluation(
     result.transformationAudit = buildTransformationAudit(phase1Output);
   }
 
-  // BACKWARD COMPATIBILITY: dimensionInsights from legacy StrengthGrowth (if present)
-  // New data uses workerInsights; dimensionInsights kept for old reports in DB
-  if (agentOutputs.strengthGrowth) {
-    result.dimensionInsights = assembleDimensionInsights(agentOutputs.strengthGrowth);
-  } else {
-    // No StrengthGrowth data — leave dimensionInsights empty
-    // Frontend should prefer workerInsights when available
-    result.dimensionInsights = [];
-  }
+  // dimensionInsights is empty - v3 uses workerInsights instead
+  result.dimensionInsights = [];
 
-  // Anti-patterns from TrustVerification
-  if (agentOutputs.trustVerification) {
-    const antiPatterns = assembleAntiPatterns(agentOutputs.trustVerification);
+  // Anti-patterns from ThinkingQuality verificationAntiPatterns
+  if (agentOutputs.thinkingQuality?.verificationAntiPatterns) {
+    const antiPatterns = assembleAntiPatternsFromThinkingQuality(agentOutputs.thinkingQuality);
     if (antiPatterns) {
       result.antiPatternsAnalysis = antiPatterns;
     }
   }
 
-  // Critical thinking + Planning from WorkflowHabit
-  if (agentOutputs.workflowHabit) {
-    const criticalThinking = assembleCriticalThinking(agentOutputs.workflowHabit);
+  // Critical thinking from ThinkingQuality criticalThinkingMoments
+  if (agentOutputs.thinkingQuality?.criticalThinkingMoments) {
+    const criticalThinking = assembleCriticalThinkingFromThinkingQuality(agentOutputs.thinkingQuality);
     if (criticalThinking) {
       result.criticalThinkingAnalysis = criticalThinking;
     }
+  }
 
-    const planning = assemblePlanning(agentOutputs.workflowHabit);
+  // Planning from ThinkingQuality planningHabits
+  if (agentOutputs.thinkingQuality?.planningHabits) {
+    const planning = assemblePlanningFromThinkingQuality(agentOutputs.thinkingQuality);
     if (planning) {
       result.planningAnalysis = planning;
     }
   }
 
-  // Actionable practices from TrustVerification
-  if (agentOutputs.trustVerification?.actionablePatternMatchesData) {
-    const practices = assembleActionablePractices(agentOutputs.trustVerification);
-    if (practices) {
-      result.actionablePractices = practices;
-    }
-  }
-
-  // Top focus areas fallback: if Phase 3 didn't produce them, use Phase 2 data
-  // Note: This fallback uses legacy strengthGrowth data if available (backward compatibility)
-  // New analyses don't have strengthGrowth, so ContentWriter (Phase 3) must provide topFocusAreas
-  if (!result.topFocusAreas && agentOutputs.strengthGrowth?.personalizedPrioritiesData) {
-    const areas = parsePersonalizedPriorities(agentOutputs.strengthGrowth.personalizedPrioritiesData);
-    if (areas.length > 0) {
-      result.topFocusAreas = {
-        areas,
-        summary: 'Personalized priorities based on your analysis results.',
-      };
-    }
-  }
-
   return result;
+}
+
+// ============================================================================
+// Shared Helper Functions
+// ============================================================================
+
+/**
+ * Build utterance text lookup map for O(1) access.
+ * Prefers displayText (sanitized) over raw text.
+ */
+function buildUtteranceTextLookup(phase1Output: Phase1Output | undefined): Map<string, string> {
+  const lookup = new Map<string, string>();
+  if (!phase1Output?.developerUtterances) return lookup;
+
+  for (const u of phase1Output.developerUtterances) {
+    const rawQuote = u.displayText || u.text;
+    lookup.set(u.id, smartTruncate(rawQuote, 500));
+  }
+  return lookup;
+}
+
+/**
+ * Resolve examples with utteranceId lookup and deduplication.
+ */
+function resolveExamples(
+  examples: Array<{ utteranceId?: string; analysis: string }>,
+  utteranceLookup: Map<string, string>,
+  usedUtteranceIds: Set<string>
+): Array<{ quote: string; analysis: string }> {
+  return examples
+    .map(ex => {
+      if (!ex.utteranceId || usedUtteranceIds.has(ex.utteranceId)) {
+        debugLog(`  Skip: ${!ex.utteranceId ? 'empty' : 'duplicate'} utteranceId`);
+        return null;
+      }
+
+      const quote = utteranceLookup.get(ex.utteranceId);
+      if (!quote) {
+        debugLog(`  Skip: utteranceId "${ex.utteranceId}" not found`);
+        return null;
+      }
+
+      usedUtteranceIds.add(ex.utteranceId);
+      return { quote, analysis: ex.analysis };
+    })
+    .filter((ex): ex is { quote: string; analysis: string } => ex !== null);
+}
+
+/**
+ * Truncate tip to maximum length.
+ */
+function truncateTip(tip: string | undefined): string | undefined {
+  if (typeof tip !== 'string') return tip;
+  return tip.length > 2000 ? tip.slice(0, 1997) + '...' : tip;
+}
+
+/**
+ * Ensure minimum 3 prompt patterns with placeholder content.
+ */
+function ensureMinimumPatterns(patterns: any[]): any[] {
+  while (patterns.length < 3) {
+    patterns.push({
+      patternName: `Pattern ${patterns.length + 1}`,
+      description: 'A detected pattern in your prompting style.',
+      frequency: 'occasional',
+      examples: [],
+      effectiveness: 'effective',
+      tip: 'Continue developing this pattern through practice.',
+    });
+  }
+  return patterns;
 }
 
 // ============================================================================
@@ -237,70 +281,25 @@ export function assembleEvaluation(
 
 /**
  * Resolve Phase 2 CommunicationPatterns to VerboseEvaluation promptPatterns format.
- *
- * Phase 2 CommunicationPatternsWorker outputs patterns with utteranceId-based examples.
- * This function looks up the actual quote text from Phase1Output.
- *
- * Advantages over Phase 3 approach:
- * - Direct utterance access (all utterances, not limited topUtterances)
- * - utteranceId verification guaranteed (worker sees all data)
- * - Analysis and narrative generation separated (Phase 2 analyzes, Phase 3 narrates)
- *
- * @param patterns - CommunicationPattern[] from Phase 2 worker
- * @param phase1Output - Phase1Output for utterance lookup
- * @returns PromptPattern[] format for VerboseEvaluation
+ * Looks up actual quote text from Phase1Output using utteranceId.
  */
 function resolvePatternQuotes(
   patterns: CommunicationPattern[],
   phase1Output: Phase1Output | undefined
 ): any[] {
-  // Build utterance lookup map for O(1) access
-  // Only include noteworthy utterances with sufficient word count (quality gate)
-  const utteranceLookup = new Map<string, string>();
-  if (phase1Output?.developerUtterances) {
-    for (const u of phase1Output.developerUtterances) {
-      // Quality gate: skip low-quality utterances
-      // Same threshold as worker preparePhase1ForPrompt filters
-      if (u.wordCount < 8 || u.isNoteworthy === false) {
-        continue;
-      }
-      // Prefer displayText (machine-generated content is summarized)
-      // Use smartTruncate to avoid cutting mid-word or leaving unclosed parens
-      const rawQuote = u.displayText || u.text;
-      utteranceLookup.set(u.id, smartTruncate(rawQuote, 500));
-    }
-  }
-
-  // Track used utteranceIds across all patterns to prevent duplicates
+  const utteranceLookup = buildUtteranceTextLookup(phase1Output);
   const usedUtteranceIds = new Set<string>();
 
   const result = patterns.map((pattern, patternIndex) => {
     debugLog(`Pattern ${patternIndex + 1}: ${pattern.patternName}`);
-    debugLog(`  examples: ${pattern.examples.length} items`);
 
-    const resolvedExamples = pattern.examples
-      .map(ex => {
-        if (usedUtteranceIds.has(ex.utteranceId)) {
-          debugLog(`  Skip duplicate: ${ex.utteranceId}`);
-          return null;
-        }
+    const resolvedExamples = resolveExamples(
+      pattern.examples,
+      utteranceLookup,
+      usedUtteranceIds
+    );
 
-        const quote = utteranceLookup.get(ex.utteranceId);
-        if (!quote) {
-          debugLog(`  Skip: utteranceId "${ex.utteranceId}" not found in Phase1Output`);
-          return null;
-        }
-
-        usedUtteranceIds.add(ex.utteranceId);
-        return { quote, analysis: ex.analysis };
-      })
-      .filter((ex): ex is { quote: string; analysis: string } => ex !== null);
-
-    debugLog(`  resolved: ${resolvedExamples.length} items`);
-
-    const tip = typeof pattern.tip === 'string' && pattern.tip.length > 2000
-      ? pattern.tip.slice(0, 1997) + '...'
-      : pattern.tip;
+    debugLog(`  resolved: ${resolvedExamples.length}/${pattern.examples.length} items`);
 
     return {
       patternName: pattern.patternName,
@@ -308,23 +307,11 @@ function resolvePatternQuotes(
       frequency: pattern.frequency,
       examples: resolvedExamples,
       effectiveness: pattern.effectiveness,
-      tip,
+      tip: truncateTip(pattern.tip),
     };
   });
 
-  // Ensure minimum 3 prompt patterns (same as sanitizePromptPatterns)
-  while (result.length < 3) {
-    result.push({
-      patternName: `Pattern ${result.length + 1}`,
-      description: 'A detected pattern in your prompting style.',
-      frequency: 'occasional',
-      examples: [],
-      effectiveness: 'effective',
-      tip: 'Continue developing this pattern through practice.',
-    });
-  }
-
-  return result;
+  return ensureMinimumPatterns(result);
 }
 
 // ============================================================================
@@ -332,43 +319,13 @@ function resolvePatternQuotes(
 // ============================================================================
 
 /**
- * Convert flattened LLM prompt patterns to nested format and truncate tips.
- *
- * utteranceId-based quote resolution (v3):
- * - LLM outputs examplesData as "utteranceId|analysis;..."
- * - This function looks up the actual quote from Phase1Output using utteranceId
- * - Invalid or missing utteranceIds are filtered out
- *
- * CRITICAL: When falling back to pattern.examples (LLM-generated quotes),
- * we must verify that quotes are from developer utterances, NOT AI responses.
- * This prevents the bug where AI responses appear as examples in the frontend.
- *
- * QUOTE SANITIZATION (v4):
- * - Uses displayText (sanitized) instead of raw text when available
- * - displayText has machine-generated content (error logs, stack traces, code)
- *   summarized into short tags like [Error: ...], [Stack trace], [Code: ...]
- * - This makes quotes more readable in the frontend
- *
- * DEDUPLICATION:
- * - Tracks used utteranceIds across all patterns to prevent the same quote
- *   appearing in multiple patterns
+ * Convert flattened LLM prompt patterns to nested format.
+ * Uses utteranceId-based quote resolution for accuracy.
  */
 function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | undefined): any[] {
   if (!Array.isArray(patterns)) return [];
 
-  // Build utterance lookup map for O(1) access
-  // Use displayText (sanitized) if available, fallback to text
-  const utteranceLookup = new Map<string, string>();
-  if (phase1Output?.developerUtterances) {
-    for (const u of phase1Output.developerUtterances) {
-      // Prefer displayText (machine-generated content is summarized)
-      // Use smartTruncate to avoid cutting mid-word or leaving unclosed parens
-      const rawQuote = u.displayText || u.text;
-      utteranceLookup.set(u.id, smartTruncate(rawQuote, 500));
-    }
-  }
-
-  // Track used utteranceIds across all patterns to prevent duplicates
+  const utteranceLookup = buildUtteranceTextLookup(phase1Output);
   const usedUtteranceIds = new Set<string>();
 
   const result = patterns.map((pattern: any, patternIndex: number) => {
@@ -378,42 +335,14 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
 
     debugLog(`Pattern ${patternIndex + 1}: ${pattern.patternName}`);
     debugLog(`  examplesData: ${pattern.examplesData?.slice(0, 80) || 'EMPTY'}...`);
-    debugLog(`  parsedExamples: ${parsedExamples.length} items`);
 
-    const resolvedExamples = parsedExamples
-      .map(ex => {
-        if (!ex.utteranceId) {
-          debugLog(`  Skip: empty utteranceId`);
-          return null;
-        }
+    const resolvedExamples = resolveExamples(
+      parsedExamples,
+      utteranceLookup,
+      usedUtteranceIds
+    );
 
-        if (usedUtteranceIds.has(ex.utteranceId)) {
-          debugLog(`  Skip duplicate: ${ex.utteranceId}`);
-          return null;
-        }
-
-        const quote = utteranceLookup.get(ex.utteranceId);
-        if (!quote) {
-          debugLog(`  Skip: utteranceId "${ex.utteranceId}" not found in Phase1Output`);
-          return null;
-        }
-
-        usedUtteranceIds.add(ex.utteranceId);
-        return { quote, analysis: ex.analysis };
-      })
-      .filter((ex): ex is { quote: string; analysis: string } => ex !== null);
-
-    debugLog(`  resolvedExamples: ${resolvedExamples.length} items`);
-
-    if (resolvedExamples.length === 0) {
-      debugLog(`  ⚠️ No valid examples for pattern "${pattern.patternName}" - all utteranceIds failed to match`);
-    } else {
-      debugLog(`  → Using resolved examples (${resolvedExamples.length} items)`);
-    }
-
-    const tip = typeof pattern.tip === 'string' && pattern.tip.length > 2000
-      ? pattern.tip.slice(0, 1997) + '...'
-      : pattern.tip;
+    debugLog(`  resolved: ${resolvedExamples.length}/${parsedExamples.length} items`);
 
     return {
       patternName: pattern.patternName,
@@ -421,23 +350,11 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
       frequency: pattern.frequency,
       examples: resolvedExamples,
       effectiveness: pattern.effectiveness,
-      tip,
+      tip: truncateTip(pattern.tip),
     };
   });
 
-  // Ensure minimum 3 prompt patterns
-  while (result.length < 3) {
-    result.push({
-      patternName: `Pattern ${result.length + 1}`,
-      description: 'A detected pattern in your prompting style.',
-      frequency: 'occasional',
-      examples: [],  // Empty array - no dummy data
-      effectiveness: 'effective',
-      tip: 'Continue developing this pattern through practice.',
-    });
-  }
-
-  return result;
+  return ensureMinimumPatterns(result);
 }
 
 /**
@@ -483,70 +400,13 @@ function assembleTypeClassification(tc: TypeClassifierOutput): Record<string, un
 }
 
 // ============================================================================
-// Dimension Insights Assembly
+// Anti-Patterns Assembly (v3 - ThinkingQuality)
 // ============================================================================
 
 /**
- * Group StrengthGrowth strengths and growthAreas by dimension into 6 PerDimensionInsight objects.
+ * Convert ThinkingQuality verificationAntiPatterns to AntiPatternsAnalysis format.
  *
- * Each strength/growthArea from Phase 2 has a `dimension` field.
- * We group them, preserving order, and map to the VerboseEvaluation format.
- */
-function assembleDimensionInsights(sg: StrengthGrowthOutput): any[] {
-  // Build dimension → { strengths, growthAreas } map
-  const byDimension = new Map<string, { strengths: any[]; growthAreas: any[] }>();
-
-  // Initialize all 6 dimensions
-  for (const dim of DIMENSION_NAMES) {
-    byDimension.set(dim, { strengths: [], growthAreas: [] });
-  }
-
-  // Group strengths by dimension
-  for (const s of sg.strengths) {
-    const group = byDimension.get(s.dimension || 'aiCollaboration');
-    if (group) {
-      group.strengths.push({
-        title: s.title,
-        description: s.description,
-        evidence: mapEvidence(s.evidence),
-      });
-    }
-  }
-
-  // Group growth areas by dimension
-  for (const g of sg.growthAreas) {
-    const group = byDimension.get(g.dimension || 'aiCollaboration');
-    if (group) {
-      group.growthAreas.push({
-        title: g.title,
-        description: g.description,
-        recommendation: g.recommendation,
-        frequency: g.frequency,
-        severity: g.severity,
-        priorityScore: g.priorityScore,
-        evidence: mapEvidence(g.evidence),
-      });
-    }
-  }
-
-  // Convert to array in DIMENSION_NAMES order
-  return DIMENSION_NAMES.map((dim) => {
-    const data = byDimension.get(dim)!;
-    return {
-      dimension: dim,
-      dimensionDisplayName: DIMENSION_DISPLAY_NAMES[dim],
-      strengths: data.strengths,
-      growthAreas: data.growthAreas,
-    };
-  });
-}
-
-// ============================================================================
-// Anti-Patterns Assembly
-// ============================================================================
-
-/**
- * Convert TrustVerification anti-patterns to AntiPatternsAnalysis format.
+ * v3 architecture: Uses ThinkingQualityOutput instead of legacy TrustVerificationOutput
  *
  * Mapping:
  * - type → antiPatternType + displayName (human-readable)
@@ -555,10 +415,10 @@ function assembleDimensionInsights(sg: StrengthGrowthOutput): any[] {
  * - improvement → growthOpportunity + actionableTip
  * - examples[].quote → evidence[]
  */
-function assembleAntiPatterns(tv: TrustVerificationOutput): any | null {
-  if (!tv.antiPatterns || tv.antiPatterns.length === 0) return null;
+function assembleAntiPatternsFromThinkingQuality(tq: ThinkingQualityOutput): any | null {
+  if (!tq.verificationAntiPatterns || tq.verificationAntiPatterns.length === 0) return null;
 
-  const detected = tv.antiPatterns.map(ap => {
+  const detected = tq.verificationAntiPatterns.map((ap: DetectedAntiPattern) => {
     const displayName = formatDisplayName(ap.type);
     const readableType = ap.type.replace(/_/g, ' ');
 
@@ -578,19 +438,24 @@ function assembleAntiPatterns(tv: TrustVerificationOutput): any | null {
     };
   });
 
+  // Calculate overall health score from thinking quality score
+  const overallHealthScore = tq.overallThinkingQualityScore ?? 80;
+
   return {
     detected,
-    summary: tv.summary || 'Some growth opportunities were identified. These are common learning patterns that every developer experiences.',
-    overallHealthScore: tv.overallTrustHealthScore ?? 80,
+    summary: tq.summary || 'Some growth opportunities were identified. These are common learning patterns that every developer experiences.',
+    overallHealthScore,
   };
 }
 
 // ============================================================================
-// Critical Thinking Assembly
+// Critical Thinking Assembly (v3 - ThinkingQuality)
 // ============================================================================
 
 /**
- * Convert WorkflowHabit critical thinking moments to CriticalThinkingAnalysis format.
+ * Convert ThinkingQuality criticalThinkingMoments to CriticalThinkingAnalysis format.
+ *
+ * v3 architecture: Uses ThinkingQualityOutput instead of legacy WorkflowHabitOutput
  *
  * Mapping:
  * - type → indicatorType + displayName
@@ -598,10 +463,10 @@ function assembleAntiPatterns(tv: TrustVerificationOutput): any | null {
  * - result → description
  * - Split into strengths (all moments are strengths by default)
  */
-function assembleCriticalThinking(wh: WorkflowHabitOutput): any | null {
-  if (!wh.criticalThinkingMoments || wh.criticalThinkingMoments.length === 0) return null;
+function assembleCriticalThinkingFromThinkingQuality(tq: ThinkingQualityOutput): any | null {
+  if (!tq.criticalThinkingMoments || tq.criticalThinkingMoments.length === 0) return null;
 
-  const strengths = wh.criticalThinkingMoments.map(ct => ({
+  const strengths = tq.criticalThinkingMoments.map((ct: CriticalThinkingMoment) => ({
     indicatorType: ct.type,
     displayName: formatDisplayName(ct.type),
     description: ct.result || `Demonstrated ${ct.type.replace(/_/g, ' ')}`,
@@ -611,35 +476,37 @@ function assembleCriticalThinking(wh: WorkflowHabitOutput): any | null {
   }));
 
   // Calculate overall score based on number and variety of moments
-  const uniqueTypes = new Set(wh.criticalThinkingMoments.map(ct => ct.type));
-  const overallScore = Math.min(100, 40 + uniqueTypes.size * 10 + wh.criticalThinkingMoments.length * 5);
+  const uniqueTypes = new Set(tq.criticalThinkingMoments.map((ct: CriticalThinkingMoment) => ct.type));
+  const overallScore = Math.min(100, 40 + uniqueTypes.size * 10 + tq.criticalThinkingMoments.length * 5);
 
   return {
     strengths,
     opportunities: [],
-    summary: wh.summary || 'Shows signs of critical evaluation when working with AI-generated content.',
+    summary: tq.summary || 'Shows signs of critical evaluation when working with AI-generated content.',
     overallScore,
   };
 }
 
 // ============================================================================
-// Planning Assembly
+// Planning Assembly (v3 - ThinkingQuality)
 // ============================================================================
 
 /**
- * Convert WorkflowHabit planning habits to PlanningAnalysis format.
+ * Convert ThinkingQuality planningHabits to PlanningAnalysis format.
+ *
+ * v3 architecture: Uses ThinkingQualityOutput instead of legacy WorkflowHabitOutput
  *
  * Mapping:
  * - type → behaviorType + displayName
  * - frequency/effectiveness → sophistication mapping
  * - examples → evidence[]
  */
-function assemblePlanning(wh: WorkflowHabitOutput): any | null {
-  if (!wh.planningHabits || wh.planningHabits.length === 0) return null;
+function assemblePlanningFromThinkingQuality(tq: ThinkingQualityOutput): any | null {
+  if (!tq.planningHabits || tq.planningHabits.length === 0) return null;
 
-  const hasSlashPlan = wh.planningHabits.some(ph => ph.type === 'uses_plan_command');
-  const hasTodoWrite = wh.planningHabits.some(ph => ph.type === 'todowrite_usage');
-  const hasTaskDecomp = wh.planningHabits.some(ph => ph.type === 'task_decomposition');
+  const hasSlashPlan = tq.planningHabits.some((ph: PlanningHabit) => ph.type === 'uses_plan_command');
+  const hasTodoWrite = tq.planningHabits.some((ph: PlanningHabit) => ph.type === 'todowrite_usage');
+  const hasTaskDecomp = tq.planningHabits.some((ph: PlanningHabit) => ph.type === 'task_decomposition');
 
   let maturityLevel: 'reactive' | 'emerging' | 'structured' | 'expert';
   if (hasSlashPlan && hasTaskDecomp) {
@@ -656,7 +523,7 @@ function assemblePlanning(wh: WorkflowHabitOutput): any | null {
   const strengths: any[] = [];
   const opportunities: any[] = [];
 
-  for (const habit of wh.planningHabits) {
+  for (const habit of tq.planningHabits) {
     const isStrength = habit.effectiveness === 'high' ||
       (habit.frequency === 'always' || habit.frequency === 'often');
 
@@ -677,122 +544,21 @@ function assemblePlanning(wh: WorkflowHabitOutput): any | null {
   }
 
   // Calculate /plan stats from planning habits
-  const slashPlanCount = wh.planningHabits.filter(ph => ph.type === 'uses_plan_command').length;
+  const slashPlanCount = tq.planningHabits.filter((ph: PlanningHabit) => ph.type === 'uses_plan_command').length;
   const slashPlanStats = slashPlanCount > 0 ? { totalUsage: slashPlanCount } : undefined;
 
   return {
     strengths,
     opportunities,
-    summary: wh.summary || 'Shows planning awareness in development workflow.',
+    summary: tq.summary || 'Shows planning awareness in development workflow.',
     planningMaturityLevel: maturityLevel,
     slashPlanStats,
   };
 }
 
 // ============================================================================
-// Actionable Practices Assembly
-// ============================================================================
-
-/**
- * Parse TrustVerification actionablePatternMatchesData into practiced/opportunities.
- *
- * Format: "patternId|practiced|advice|source|feedback_or_tip|dimension|priority;..."
- * - practiced=true → practiced[]
- * - practiced=false → opportunities[]
- */
-function assembleActionablePractices(tv: TrustVerificationOutput): any | null {
-  const data = tv.actionablePatternMatchesData;
-  if (!data || data.trim() === '') return null;
-
-  const practiced: any[] = [];
-  const opportunities: any[] = [];
-
-  const entries = data.split(';').filter(Boolean);
-  for (const entry of entries) {
-    const parts = entry.split('|');
-    const patternId = parts[0]?.trim() || '';
-    const isPracticed = parts[1]?.trim().toLowerCase() === 'true';
-    const advice = parts[2]?.trim() || '';
-    const source = parts[3]?.trim() || '';
-    const feedbackOrTip = parts[4]?.trim() || '';
-    const dimension = parts[5]?.trim() || '';
-    const priority = parts[6] ? parseInt(parts[6], 10) : 5;
-
-    if (!patternId) continue;
-
-    if (isPracticed) {
-      practiced.push({
-        patternId,
-        advice,
-        source,
-        feedback: feedbackOrTip,
-        evidence: [],
-        dimension,
-      });
-    } else {
-      opportunities.push({
-        patternId,
-        advice,
-        source,
-        tip: feedbackOrTip,
-        dimension,
-        priority: isNaN(priority) ? 5 : priority,
-      });
-    }
-  }
-
-  if (practiced.length === 0 && opportunities.length === 0) return null;
-
-  return {
-    practiced,
-    opportunities,
-    summary: `Developer follows ${practiced.length} expert practices and has ${opportunities.length} opportunities to adopt.`,
-  };
-}
-
-// ============================================================================
-// Helper: Parse Personalized Priorities
-// ============================================================================
-
-/**
- * Parse personalizedPrioritiesData into focus areas
- * Format: "dimension|focusArea|rationale|impact|score;..."
- */
-function parsePersonalizedPriorities(data: string): any[] {
-  if (!data || data.trim() === '') return [];
-
-  return data
-    .split(';')
-    .filter(Boolean)
-    .slice(0, 3)
-    .map((entry, index) => {
-      const parts = entry.split('|');
-      return {
-        rank: index + 1,
-        dimension: validateDimension(parts[0], 'personalizedPriority'),
-        title: parts[1]?.trim() || '',
-        narrative: parts[2]?.trim() || '',
-        expectedImpact: parts[3]?.trim() || '',
-        priorityScore: parts[4] ? parseFloat(parts[4]) : 0,
-      };
-    })
-    .filter(a => a.title);
-}
-
-// ============================================================================
 // Utility Functions
 // ============================================================================
-
-/**
- * Map InsightEvidence[] to the VerboseEvaluation evidence format with sessionId extraction.
- */
-function mapEvidence(evidence: Array<{ utteranceId?: string; quote?: string }> | undefined): any[] {
-  return evidence?.map(e => ({
-    utteranceId: e.utteranceId ?? '',
-    quote: e.quote ?? '',
-    sessionId: extractSessionId(e.utteranceId ?? ''),
-  })) ?? [];
-}
 
 /**
  * Map Phase 2 anti-pattern severity to VerboseEvaluation severity.

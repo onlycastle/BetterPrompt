@@ -85,7 +85,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   // LLM filtering configuration
   private static readonly LLM_FILTER_MIN_LENGTH = 10; // Skip LLM for very short utterances only
   private static readonly LLM_FILTER_CONFIDENCE_THRESHOLD = 0.7; // Filter if confidence >= threshold
-  private static readonly LLM_FILTER_BATCH_SIZE = 20; // Max utterances per LLM call
+  private static readonly LLM_FILTER_BATCH_SIZE = 5; // Max utterances per LLM call (small to avoid token limit)
 
   /** Dedicated Gemini client for LLM filtering (created lazily) */
   private filterClient?: GeminiClient;
@@ -253,9 +253,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       hasQuestion: this.hasQuestion(originalText),
       isSessionStart: turnIndex === 0,
       isContinuation: this.isContinuation(originalText),
-
-      // Noteworthy flag for evidence filtering
-      isNoteworthy: this.determineNoteworthy(originalText),
 
       // Context from preceding AI response
       precedingAIToolCalls: precedingAI?.toolCalls?.map(tc => tc.name),
@@ -459,46 +456,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   }
 
   /**
-   * Determine if an utterance is semantically meaningful enough for evidence.
-   *
-   * Noteworthy utterances should:
-   * 1. Have sufficient length (8+ words) for context
-   * 2. Contain structural importance (questions, code blocks)
-   * 3. Include explanatory context keywords
-   *
-   * Short confirmations like "ok", "좋았어", "이건 잘 되었어" are filtered out.
-   *
-   * @param text - The utterance text to evaluate
-   * @returns true if the utterance is noteworthy
-   */
-  private determineNoteworthy(text: string): boolean {
-    const wordCount = this.countWords(text);
-
-    // Minimum word count threshold
-    if (wordCount < 8) {
-      return false;
-    }
-
-    // Has structural importance: questions or code blocks
-    if (this.hasQuestion(text) || this.hasCodeBlock(text)) {
-      return true;
-    }
-
-    // Contains explanatory context keywords (EN + KO)
-    const contextPatterns = /\b(because|since|therefore|however|although|considering|specifically|actually|instead|before|after|first|then|next|finally)\b|그래서|왜냐하면|때문에|확인|체크|살펴|분석|이유|방법|문제|해결|수정|변경|추가|삭제|구현|테스트/i;
-    if (contextPatterns.test(text)) {
-      return true;
-    }
-
-    // Minimum threshold for longer texts (20+ words are likely meaningful)
-    if (wordCount >= 20) {
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
    * Strip system-injected tags from user message content.
    * Claude Code injects these tags into user-role messages.
    * These are not the developer's own words.
@@ -555,8 +512,9 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   private async filterSystemMetadataWithLLM(
     utterances: DeveloperUtterance[]
   ): Promise<DeveloperUtterance[]> {
-    // Pre-filter with known regex patterns (fast path)
-    const preFiltered = utterances.filter(u => !this.isKnownSystemMetadata(u.text));
+    // Skip regex pre-filtering - rely solely on LLM classification
+    // This allows LLM to handle all patterns including CLI/terminal output
+    const preFiltered = utterances;
 
     // Separate utterances that need LLM classification
     const needsClassification = preFiltered.filter(
@@ -592,38 +550,14 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
 
           // Apply displayText from LLM sanitization
           // If LLM provided a sanitized displayText, use it (with additional sanitization)
-          // Otherwise fallback to truncated original text
+          // Otherwise fallback to original text (no truncation - Phase 2 Workers handle as needed)
           if (classification?.displayText && classification.displayText.trim()) {
             // Apply post-processing to fix LLM formatting issues
             // (vertical text, raw markdown, whitespace)
-            const sanitized = DataExtractorWorker.sanitizeDisplayText(classification.displayText);
-            const originalLength = utterance.text.length;
-            const sanitizedLength = sanitized.length;
-            const compressionRatio = sanitizedLength / originalLength;
-
-            // CRITICAL: Tiered validation based on original text length
-            // Short texts (developer's natural language) must be preserved more strictly
-            // Long texts may contain machine-generated content that can be summarized
-            const validationResult = this.validateDisplayTextCompression(
-              originalLength,
-              sanitizedLength,
-              compressionRatio
-            );
-
-            if (!validationResult.valid) {
-              // LLM corrupted the text - fallback to original
-              this.log(`Rejected LLM displayText (${sanitizedLength}/${originalLength} chars, ratio=${compressionRatio.toFixed(2)}, reason=${validationResult.reason}): "${sanitized.slice(0, 30)}..."`);
-              utterance.displayText = utterance.text.length > 300
-                ? utterance.text.slice(0, 297) + '...'
-                : utterance.text;
-            } else {
-              utterance.displayText = sanitized;
-            }
+            utterance.displayText = DataExtractorWorker.sanitizeDisplayText(classification.displayText);
           } else {
-            // No displayText from LLM - use original text (truncated for display)
-            utterance.displayText = utterance.text.length > 300
-              ? utterance.text.slice(0, 297) + '...'
-              : utterance.text;
+            // No displayText from LLM - use original text as-is
+            utterance.displayText = utterance.text;
           }
 
           classifiedUtterances.push(utterance);
@@ -642,51 +576,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
 
     // Combine short utterances (passed through) with classified ones
     return [...shortUtterances, ...classifiedUtterances];
-  }
-
-  /**
-   * Check if text matches known system metadata patterns (regex fast path).
-   * Returns true if the utterance should be filtered out.
-   */
-  private isKnownSystemMetadata(text: string): boolean {
-    const trimmedText = text.trim();
-
-    // Filter out single-character utterances (too short to be meaningful)
-    // Examples: ".", "ㅇ", "k", "y" — these are noise, not developer intent
-    if (trimmedText.length <= 1) {
-      return true;
-    }
-
-    const knownPatterns = [
-      // Skill documentation blocks
-      /^Base directory for this skill:/i,
-      /^This skill is located at:/i,
-
-      // Session continuation summaries
-      /^This session is being continued from a previous conversation/i,
-      /^Continuing from previous session/i,
-
-      // Claude Code internal instructions
-      /^IMPORTANT: this context may or may not be relevant/i,
-      /^The following skills are available/i,
-
-      // Plan execution prompts (system-injected by /plan skill)
-      /^Implement the following plan:/i,
-
-      // Claude-generated Insight blocks (injected via session context)
-      /★ Insight/,
-      /`★ Insight/,
-      /^─{10,}/,
-
-      // Error stacks and tracebacks (pasted debug output, not developer intent)
-      /^Error:|^ERROR:|^Exception:|^Traceback \(most recent call last\):/,
-      /^\s+at \w+\.\w+\s*\(/m,
-
-      // Server logs (pasted terminal output, not developer intent)
-      /^(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD) \/\S+.*\d{3}/m,
-    ];
-
-    return knownPatterns.some(pattern => pattern.test(trimmedText));
   }
 
   /**
@@ -712,7 +601,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
         systemPrompt,
         userPrompt,
         responseSchema: BatchClassificationResultSchema,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8192,
       });
 
       // Accumulate token usage
@@ -774,11 +663,34 @@ SYSTEM METADATA PATTERNS (filter these out):
 - Hook outputs, command outputs, tool results embedded in user messages
 - Any instructional content addressed TO Claude, not FROM the developer
 
+### CLI/Terminal Output (CRITICAL - classify as "system"):
+- **Build tool status**: "✓ Starting...", "⚠ Warning...", "Compiling...", "Ready in Xms"
+- **Status symbols at line start**: ✓, ✕, ⚠, ℹ, →, ●, ○, ★
+- **Package manager logs**: "npm WARN", "yarn info", "pnpm ERR"
+- **Deprecation warnings**: "The X is deprecated", "Learn more: https://..."
+- **Dev server logs**: "GET /path 200 in 50ms", "POST /api 201"
+- **Git output**: "On branch main", "hint:", "Your branch is up to date"
+- **Next.js/Webpack**: "○ (Static)", "● (SSG)", "λ (Server)", "Compiled successfully"
+
+### Key Distinction:
+- Raw terminal/console output pasted without context → "system"
+- Developer saying "I got this error: [error]" with their own words → "developer"
+
+### Plan Documents (classify as "system"):
+- Messages starting with "Implement the following plan:" followed by markdown content
+- Messages containing full plan documents with headers like "## Problem", "## Solution", "## Implementation"
+- Any message where the bulk of content is machine-generated markdown documentation
+- Pasted markdown documentation, PRD documents, or specification files
+
+**Key Distinction:**
+- "Implement the plan we discussed" (short request) → "developer"
+- "Implement the following plan: # Terminal Output Filtering ## Problem..." → "system"
+
 DEVELOPER INPUT PATTERNS (keep these):
 - Questions, requests, or instructions for the AI assistant
 - Code snippets the developer wants help with
 - Feedback on AI responses
-- Error messages the developer is reporting/asking about
+- Error messages WITH developer context ("I ran X and got this error:")
 - Conversational responses, implementation requests, bug reports
 
 ## TASK 2: Sanitization (for "developer" texts only)
@@ -869,6 +781,24 @@ CRITICAL FORMATTING RULES for displayText:
   - GOOD: "in lib/supabase-storage.ts"
 - Ensure displayText is a continuous, readable sentence/paragraph on a single line
 
+### Log Pattern Summarization:
+- Repeated log lines (same [Component] prefix) → Keep first line, add "..." to indicate more
+- ALWAYS preserve user's natural language question/comment at the end
+- Format: "[Component] brief error... <user's question>"
+
+EXAMPLE INPUT (Log with user question):
+"[GeminiClient] Retryable error (attempt 1/2): Response truncated: Output exceeded...
+[GeminiClient] Retryable error (attempt 2/2): Response truncated: Output exceeded...
+이런 에러가 나오는데 어디서 LLM이 많이 쓰이길래 이런게 나오는거지?"
+
+EXAMPLE OUTPUT:
+{
+  "classification": "developer",
+  "confidence": 0.95,
+  "reason": "Developer asking about error logs they encountered",
+  "displayText": "[GeminiClient] Retryable error... 이런 에러가 나오는데 어디서 LLM이 많이 쓰이길래 이런게 나오는거지?"
+}
+
 Respond with a JSON object containing an array of classifications.`;
   }
 
@@ -894,40 +824,6 @@ Return exactly ${inputs.length} classifications in order.`;
   // ─────────────────────────────────────────────────────────────────────────
   // Natural Language Preservation Methods
   // ─────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Validate displayText compression ratio based on original text length.
-   *
-   * Tiered validation ensures developer's natural language is preserved:
-   * - Short texts (< 50 chars): Likely pure developer input, require 80% preservation
-   * - Medium texts (50-200 chars): Mixed content, require 50% preservation
-   * - Long texts (200+ chars): May contain machine content, require 30% preservation
-   *
-   * @returns { valid: boolean, reason: string }
-   */
-  private validateDisplayTextCompression(
-    originalLength: number,
-    sanitizedLength: number,
-    compressionRatio: number
-  ): { valid: boolean; reason: string } {
-    if (sanitizedLength < 10) {
-      return { valid: false, reason: 'too_short_absolute' };
-    }
-
-    if (originalLength < 50 && compressionRatio < 0.8) {
-      return { valid: false, reason: 'short_text_over_compressed' };
-    }
-
-    if (originalLength >= 50 && originalLength < 200 && compressionRatio < 0.5) {
-      return { valid: false, reason: 'medium_text_over_compressed' };
-    }
-
-    if (originalLength >= 200 && compressionRatio < 0.3) {
-      return { valid: false, reason: 'long_text_over_compressed' };
-    }
-
-    return { valid: true, reason: 'passed' };
-  }
 
   /**
    * Extract natural language segments from text.

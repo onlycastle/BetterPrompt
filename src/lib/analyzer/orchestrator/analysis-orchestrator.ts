@@ -1,15 +1,19 @@
 /**
  * Analysis Orchestrator - Main orchestrator for the analysis pipeline
  *
- * Coordinates 5 phases of analysis (7-8 LLM calls total):
+ * Coordinates 4 phases of analysis (5-6 LLM calls total):
  * - Phase 1: DataExtractor (deterministic, no LLM)
- * - Phase 2: 5 insight workers in parallel (5 LLM calls)
- *            TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency, CommunicationPatterns
+ * - Phase 2: 3 insight workers in parallel (3 LLM calls)
+ *            ThinkingQuality, LearningBehavior, ContextEfficiency
  *            Each worker outputs domain-specific strengths/growthAreas
  * - Phase 2.5: TypeClassifier only (1 LLM call)
- *            StrengthGrowthSynthesizer REMOVED - workers output insights directly
  * - Phase 3: ContentWriter (1 LLM call, always English)
- * - Phase 4: Translator (1 LLM call, conditional — only for non-English users)
+ * - Phase 4: Translator (0-1 LLM call, conditional — only for non-English users)
+ *
+ * v3 Architecture (2026-02):
+ * - ThinkingQuality: Planning + Critical Thinking + Communication (consolidated)
+ * - LearningBehavior: Knowledge Gaps + Repeated Mistakes (redesigned)
+ * - ContextEfficiency: Token efficiency patterns (retained)
  *
  * @module analyzer/orchestrator/analysis-orchestrator
  */
@@ -539,22 +543,7 @@ export class AnalysisOrchestrator {
     );
 
     // Calculate date range
-    const sessionDates = sessions
-      .map((s) => {
-        const ts = s.messages[0]?.timestamp;
-        if (!ts) return null;
-        // Handle both Date objects and ISO strings
-        return ts instanceof Date ? ts.toISOString() : String(ts);
-      })
-      .filter((d): d is string => d !== null && d.length > 0)
-      .sort();
-    const analysisDateRange =
-      sessionDates.length >= 2
-        ? {
-            earliest: sessionDates[0],
-            latest: sessionDates[sessionDates.length - 1],
-          }
-        : undefined;
+    const analysisDateRange = this.calculateDateRange(sessions);
 
     // Deterministic assembly: Phase 2 structural data + Phase 3 narrative → VerboseEvaluation
     const assembledData = assembleEvaluation(
@@ -735,11 +724,13 @@ export class AnalysisOrchestrator {
 
   private mergeAgentOutputs(results: Record<string, WorkerResult<unknown> | undefined>): AgentOutputs {
     return {
-      trustVerification: results['TrustVerification']?.data as AgentOutputs['trustVerification'],
-      workflowHabit: results['WorkflowHabit']?.data as AgentOutputs['workflowHabit'],
+      // v3 workers
+      thinkingQuality: results['ThinkingQuality']?.data as AgentOutputs['thinkingQuality'],
+      learningBehavior: results['LearningBehavior']?.data as AgentOutputs['learningBehavior'],
+      efficiency: results['ContextEfficiency']?.data as AgentOutputs['efficiency'],
+      // Legacy workers (kept for cached data)
       knowledgeGap: results['KnowledgeGap']?.data as AgentOutputs['knowledgeGap'],
       contextEfficiency: results['ContextEfficiency']?.data as AgentOutputs['contextEfficiency'],
-      communicationPatterns: results['CommunicationPatterns']?.data as AgentOutputs['communicationPatterns'],
     };
   }
 
@@ -769,28 +760,27 @@ export class AnalysisOrchestrator {
     agentOutputs: AgentOutputs,
     verifiedInsights: import('../../models/worker-insights').AggregatedWorkerInsights
   ): void {
-    // TrustVerification domain
-    if (agentOutputs.trustVerification && verifiedInsights.trustVerification) {
-      agentOutputs.trustVerification.strengths = verifiedInsights.trustVerification.strengths;
-      agentOutputs.trustVerification.growthAreas = verifiedInsights.trustVerification.growthAreas;
+    // v3 workers
+    if (agentOutputs.thinkingQuality && verifiedInsights.thinkingQuality) {
+      agentOutputs.thinkingQuality.strengths = verifiedInsights.thinkingQuality.strengths;
+      agentOutputs.thinkingQuality.growthAreas = verifiedInsights.thinkingQuality.growthAreas;
     }
 
-    // WorkflowHabit domain
-    if (agentOutputs.workflowHabit && verifiedInsights.workflowHabit) {
-      agentOutputs.workflowHabit.strengths = verifiedInsights.workflowHabit.strengths;
-      agentOutputs.workflowHabit.growthAreas = verifiedInsights.workflowHabit.growthAreas;
+    if (agentOutputs.learningBehavior && verifiedInsights.learningBehavior) {
+      agentOutputs.learningBehavior.strengths = verifiedInsights.learningBehavior.strengths;
+      agentOutputs.learningBehavior.growthAreas = verifiedInsights.learningBehavior.growthAreas;
     }
 
-    // KnowledgeGap domain
-    if (agentOutputs.knowledgeGap && verifiedInsights.knowledgeGap) {
-      agentOutputs.knowledgeGap.strengths = verifiedInsights.knowledgeGap.strengths;
-      agentOutputs.knowledgeGap.growthAreas = verifiedInsights.knowledgeGap.growthAreas;
-    }
-
-    // ContextEfficiency domain
+    // ContextEfficiency domain (legacy, kept for cached data)
     if (agentOutputs.contextEfficiency && verifiedInsights.contextEfficiency) {
       agentOutputs.contextEfficiency.strengths = verifiedInsights.contextEfficiency.strengths;
       agentOutputs.contextEfficiency.growthAreas = verifiedInsights.contextEfficiency.growthAreas;
+    }
+
+    // KnowledgeGap domain (legacy, kept for cached data)
+    if (agentOutputs.knowledgeGap && verifiedInsights.knowledgeGap) {
+      agentOutputs.knowledgeGap.strengths = verifiedInsights.knowledgeGap.strengths;
+      agentOutputs.knowledgeGap.growthAreas = verifiedInsights.knowledgeGap.growthAreas;
     }
   }
 
@@ -798,170 +788,171 @@ export class AnalysisOrchestrator {
    * Merge translated text fields into the English ContentWriter response
    */
   private mergeTranslatedFields(englishResponse: any, translated: TranslatorOutput): void {
-    // Personality summary
+    // Direct field assignments
     if (translated.personalitySummary) {
       englishResponse.personalitySummary = translated.personalitySummary;
     }
-
-    // Dimension insights — overlay text fields, preserve structure
-    if (Array.isArray(translated.dimensionInsights) && Array.isArray(englishResponse.dimensionInsights)) {
-      for (const translatedDim of translated.dimensionInsights) {
-        const englishDim = englishResponse.dimensionInsights.find(
-          (d: any) => d.dimension === translatedDim.dimension
-        );
-        if (englishDim) {
-          englishDim.dimensionDisplayName = translatedDim.dimensionDisplayName;
-          // Re-parse translated flattened strings into nested format
-          if (translatedDim.strengthsData) {
-            const translatedStrengths = translatedDim.strengthsData.split(';').filter(Boolean);
-            if (Array.isArray(englishDim.strengths)) {
-              for (let i = 0; i < Math.min(translatedStrengths.length, englishDim.strengths.length); i++) {
-                const parts = translatedStrengths[i].split('|');
-                if (parts.length >= 3) {
-                  // clusterId preserved, title and description translated
-                  englishDim.strengths[i].title = parts[1];
-                  englishDim.strengths[i].description = parts.slice(2).join('|');
-                }
-              }
-            }
-          }
-          if (translatedDim.growthAreasData) {
-            const translatedGrowth = translatedDim.growthAreasData.split(';').filter(Boolean);
-            if (Array.isArray(englishDim.growthAreas)) {
-              for (let i = 0; i < Math.min(translatedGrowth.length, englishDim.growthAreas.length); i++) {
-                const parts = translatedGrowth[i].split('|');
-                if (parts.length >= 4) {
-                  // clusterId preserved, title/description/recommendation translated
-                  englishDim.growthAreas[i].title = parts[1];
-                  englishDim.growthAreas[i].description = parts[2];
-                  englishDim.growthAreas[i].recommendation = parts[3];
-                  // frequency, severity, priorityScore remain from English
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // Prompt patterns — overlay text fields, preserve structure
-    if (Array.isArray(translated.promptPatterns) && Array.isArray(englishResponse.promptPatterns)) {
-      for (let i = 0; i < Math.min(translated.promptPatterns.length, englishResponse.promptPatterns.length); i++) {
-        const tp = translated.promptPatterns[i];
-        const ep = englishResponse.promptPatterns[i];
-        if (tp.patternName) ep.patternName = tp.patternName;
-        if (tp.description) ep.description = tp.description;
-        if (tp.tip) ep.tip = tp.tip;
-        // Translate analysis in examples, keep quotes original
-        if (tp.examplesData && Array.isArray(ep.examples)) {
-          const translatedExamples = tp.examplesData.split(';').filter(Boolean);
-          for (let j = 0; j < Math.min(translatedExamples.length, ep.examples.length); j++) {
-            const parts = translatedExamples[j].split('|');
-            if (parts.length >= 2) {
-              // Quote stays original, analysis translated
-              ep.examples[j].analysis = parts[1];
-            }
-          }
-        }
-      }
-    }
-
-    // Top focus areas
-    if (translated.topFocusAreas && englishResponse.topFocusAreas) {
-      if (translated.topFocusAreas.summary) {
-        englishResponse.topFocusAreas.summary = translated.topFocusAreas.summary;
-      }
-      if (Array.isArray(translated.topFocusAreas.areas) && Array.isArray(englishResponse.topFocusAreas.areas)) {
-        for (const ta of translated.topFocusAreas.areas) {
-          const ea = englishResponse.topFocusAreas.areas.find((a: any) => a.rank === ta.rank);
-          if (ea) {
-            if (ta.title) ea.title = ta.title;
-            if (ta.narrative) ea.narrative = ta.narrative;
-            if (ta.expectedImpact) ea.expectedImpact = ta.expectedImpact;
-            if (ta.actionsData && ea.actions) {
-              const [start, stop, cont] = ta.actionsData.split('|');
-              ea.actions = { start: start || '', stop: stop || '', continue: cont || '' };
-            }
-          }
-        }
-      }
-    }
-
-    // Anti-patterns analysis text fields
-    if (translated.antiPatternsAnalysis && englishResponse.antiPatternsAnalysis) {
-      if (translated.antiPatternsAnalysis.summary) {
-        englishResponse.antiPatternsAnalysis.summary = translated.antiPatternsAnalysis.summary;
-      }
-      if (Array.isArray(translated.antiPatternsAnalysis.detected) && Array.isArray(englishResponse.antiPatternsAnalysis.detected)) {
-        for (const td of translated.antiPatternsAnalysis.detected) {
-          const ed = englishResponse.antiPatternsAnalysis.detected.find(
-            (d: any) => d.antiPatternType === td.antiPatternType
-          );
-          if (ed) {
-            if (td.displayName) ed.displayName = td.displayName;
-            if (td.description) ed.description = td.description;
-            if (td.growthOpportunity) ed.growthOpportunity = td.growthOpportunity;
-            if (td.actionableTip) ed.actionableTip = td.actionableTip;
-          }
-        }
-      }
-    }
-
-    // Critical thinking analysis text fields
-    if (translated.criticalThinkingAnalysis && englishResponse.criticalThinkingAnalysis) {
-      if (translated.criticalThinkingAnalysis.summary) {
-        englishResponse.criticalThinkingAnalysis.summary = translated.criticalThinkingAnalysis.summary;
-      }
-      this.mergeHighlightTranslations(
-        translated.criticalThinkingAnalysis.strengths,
-        englishResponse.criticalThinkingAnalysis.strengths
-      );
-      this.mergeHighlightTranslations(
-        translated.criticalThinkingAnalysis.opportunities,
-        englishResponse.criticalThinkingAnalysis.opportunities
-      );
-    }
-
-    // Planning analysis text fields
-    if (translated.planningAnalysis && englishResponse.planningAnalysis) {
-      if (translated.planningAnalysis.summary) {
-        englishResponse.planningAnalysis.summary = translated.planningAnalysis.summary;
-      }
-      this.mergeHighlightTranslations(
-        translated.planningAnalysis.strengths,
-        englishResponse.planningAnalysis.strengths
-      );
-      this.mergeHighlightTranslations(
-        translated.planningAnalysis.opportunities,
-        englishResponse.planningAnalysis.opportunities
-      );
-    }
-
-    // Translated agent insights — set directly on the response
     if (translated.translatedAgentInsights) {
       englishResponse.translatedAgentInsights = translated.translatedAgentInsights;
     }
 
-    // Actionable practices text fields
-    if (translated.actionablePractices && englishResponse.actionablePractices) {
-      if (translated.actionablePractices.summary) {
-        englishResponse.actionablePractices.summary = translated.actionablePractices.summary;
+    // Dimension insights
+    this.mergeDimensionInsights(englishResponse, translated);
+
+    // Prompt patterns
+    this.mergePromptPatterns(englishResponse, translated);
+
+    // Top focus areas
+    this.mergeTopFocusAreas(englishResponse, translated);
+
+    // Anti-patterns analysis
+    this.mergeAntiPatternsAnalysis(englishResponse, translated);
+
+    // Critical thinking and planning analysis
+    this.mergeAnalysisSection(englishResponse, translated, 'criticalThinkingAnalysis');
+    this.mergeAnalysisSection(englishResponse, translated, 'planningAnalysis');
+
+    // Actionable practices
+    this.mergeActionablePractices(englishResponse, translated);
+  }
+
+  private mergeDimensionInsights(englishResponse: any, translated: TranslatorOutput): void {
+    if (!Array.isArray(translated.dimensionInsights) || !Array.isArray(englishResponse.dimensionInsights)) return;
+
+    for (const translatedDim of translated.dimensionInsights) {
+      const englishDim = englishResponse.dimensionInsights.find((d: any) => d.dimension === translatedDim.dimension);
+      if (!englishDim) continue;
+
+      englishDim.dimensionDisplayName = translatedDim.dimensionDisplayName;
+      this.parseFlattenedStrengths(translatedDim.strengthsData, englishDim.strengths);
+      this.parseFlattenedGrowthAreas(translatedDim.growthAreasData, englishDim.growthAreas);
+    }
+  }
+
+  private parseFlattenedStrengths(flattenedData: string | undefined, targetArray: any[] | undefined): void {
+    if (!flattenedData || !Array.isArray(targetArray)) return;
+
+    const items = flattenedData.split(';').filter(Boolean);
+    for (let i = 0; i < Math.min(items.length, targetArray.length); i++) {
+      const parts = items[i].split('|');
+      if (parts.length >= 3) {
+        targetArray[i].title = parts[1];
+        targetArray[i].description = parts.slice(2).join('|');
       }
-      if (Array.isArray(translated.actionablePractices.practiced) && Array.isArray(englishResponse.actionablePractices.practiced)) {
-        for (const tp of translated.actionablePractices.practiced) {
-          const ep = englishResponse.actionablePractices.practiced.find(
-            (p: any) => p.patternId === tp.patternId
-          );
-          if (ep && tp.feedback) ep.feedback = tp.feedback;
+    }
+  }
+
+  private parseFlattenedGrowthAreas(flattenedData: string | undefined, targetArray: any[] | undefined): void {
+    if (!flattenedData || !Array.isArray(targetArray)) return;
+
+    const items = flattenedData.split(';').filter(Boolean);
+    for (let i = 0; i < Math.min(items.length, targetArray.length); i++) {
+      const parts = items[i].split('|');
+      if (parts.length >= 4) {
+        targetArray[i].title = parts[1];
+        targetArray[i].description = parts[2];
+        targetArray[i].recommendation = parts[3];
+      }
+    }
+  }
+
+  private mergePromptPatterns(englishResponse: any, translated: TranslatorOutput): void {
+    if (!Array.isArray(translated.promptPatterns) || !Array.isArray(englishResponse.promptPatterns)) return;
+
+    const minLength = Math.min(translated.promptPatterns.length, englishResponse.promptPatterns.length);
+    for (let i = 0; i < minLength; i++) {
+      const tp = translated.promptPatterns[i];
+      const ep = englishResponse.promptPatterns[i];
+
+      if (tp.patternName) ep.patternName = tp.patternName;
+      if (tp.description) ep.description = tp.description;
+      if (tp.tip) ep.tip = tp.tip;
+
+      if (tp.examplesData && Array.isArray(ep.examples)) {
+        const translatedExamples = tp.examplesData.split(';').filter(Boolean);
+        for (let j = 0; j < Math.min(translatedExamples.length, ep.examples.length); j++) {
+          const parts = translatedExamples[j].split('|');
+          if (parts.length >= 2) {
+            ep.examples[j].analysis = parts[1];
+          }
         }
       }
-      if (Array.isArray(translated.actionablePractices.opportunities) && Array.isArray(englishResponse.actionablePractices.opportunities)) {
-        for (const to of translated.actionablePractices.opportunities) {
-          const eo = englishResponse.actionablePractices.opportunities.find(
-            (o: any) => o.patternId === to.patternId
-          );
-          if (eo && to.tip) eo.tip = to.tip;
-        }
+    }
+  }
+
+  private mergeTopFocusAreas(englishResponse: any, translated: TranslatorOutput): void {
+    if (!translated.topFocusAreas || !englishResponse.topFocusAreas) return;
+
+    if (translated.topFocusAreas.summary) {
+      englishResponse.topFocusAreas.summary = translated.topFocusAreas.summary;
+    }
+
+    if (!Array.isArray(translated.topFocusAreas.areas) || !Array.isArray(englishResponse.topFocusAreas.areas)) return;
+
+    for (const ta of translated.topFocusAreas.areas) {
+      const ea = englishResponse.topFocusAreas.areas.find((a: any) => a.rank === ta.rank);
+      if (!ea) continue;
+
+      if (ta.title) ea.title = ta.title;
+      if (ta.narrative) ea.narrative = ta.narrative;
+      if (ta.expectedImpact) ea.expectedImpact = ta.expectedImpact;
+      if (ta.actionsData && ea.actions) {
+        const [start, stop, cont] = ta.actionsData.split('|');
+        ea.actions = { start: start || '', stop: stop || '', continue: cont || '' };
+      }
+    }
+  }
+
+  private mergeAntiPatternsAnalysis(englishResponse: any, translated: TranslatorOutput): void {
+    if (!translated.antiPatternsAnalysis || !englishResponse.antiPatternsAnalysis) return;
+
+    if (translated.antiPatternsAnalysis.summary) {
+      englishResponse.antiPatternsAnalysis.summary = translated.antiPatternsAnalysis.summary;
+    }
+
+    if (!Array.isArray(translated.antiPatternsAnalysis.detected) || !Array.isArray(englishResponse.antiPatternsAnalysis.detected)) return;
+
+    for (const td of translated.antiPatternsAnalysis.detected) {
+      const ed = englishResponse.antiPatternsAnalysis.detected.find((d: any) => d.antiPatternType === td.antiPatternType);
+      if (!ed) continue;
+
+      if (td.displayName) ed.displayName = td.displayName;
+      if (td.description) ed.description = td.description;
+      if (td.growthOpportunity) ed.growthOpportunity = td.growthOpportunity;
+      if (td.actionableTip) ed.actionableTip = td.actionableTip;
+    }
+  }
+
+  private mergeAnalysisSection(englishResponse: any, translated: TranslatorOutput, sectionKey: 'criticalThinkingAnalysis' | 'planningAnalysis'): void {
+    const translatedSection = translated[sectionKey];
+    const englishSection = englishResponse[sectionKey];
+    if (!translatedSection || !englishSection) return;
+
+    if (translatedSection.summary) {
+      englishSection.summary = translatedSection.summary;
+    }
+    this.mergeHighlightTranslations(translatedSection.strengths, englishSection.strengths);
+    this.mergeHighlightTranslations(translatedSection.opportunities, englishSection.opportunities);
+  }
+
+  private mergeActionablePractices(englishResponse: any, translated: TranslatorOutput): void {
+    if (!translated.actionablePractices || !englishResponse.actionablePractices) return;
+
+    if (translated.actionablePractices.summary) {
+      englishResponse.actionablePractices.summary = translated.actionablePractices.summary;
+    }
+
+    if (Array.isArray(translated.actionablePractices.practiced) && Array.isArray(englishResponse.actionablePractices.practiced)) {
+      for (const tp of translated.actionablePractices.practiced) {
+        const ep = englishResponse.actionablePractices.practiced.find((p: any) => p.patternId === tp.patternId);
+        if (ep && tp.feedback) ep.feedback = tp.feedback;
+      }
+    }
+
+    if (Array.isArray(translated.actionablePractices.opportunities) && Array.isArray(englishResponse.actionablePractices.opportunities)) {
+      for (const to of translated.actionablePractices.opportunities) {
+        const eo = englishResponse.actionablePractices.opportunities.find((o: any) => o.patternId === to.patternId);
+        if (eo && to.tip) eo.tip = to.tip;
       }
     }
   }
@@ -1008,6 +999,24 @@ export class AnalysisOrchestrator {
       messageCount: session.messages.length,
       durationMinutes: Math.round(session.durationSeconds / 60),
     }));
+  }
+
+  private calculateDateRange(sessions: ParsedSession[]): { earliest: string; latest: string } | undefined {
+    const sessionDates = sessions
+      .map((s) => {
+        const ts = s.messages[0]?.timestamp;
+        if (!ts) return null;
+        return ts instanceof Date ? ts.toISOString() : String(ts);
+      })
+      .filter((d): d is string => d !== null && d.length > 0)
+      .sort();
+
+    if (sessionDates.length < 2) return undefined;
+
+    return {
+      earliest: sessionDates[0],
+      latest: sessionDates[sessionDates.length - 1],
+    };
   }
 
   private collectDebugOutput(

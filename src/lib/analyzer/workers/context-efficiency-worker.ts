@@ -14,7 +14,7 @@
  * @module analyzer/workers/context-efficiency-worker
  */
 
-import { BaseWorker, type WorkerResult, type WorkerContext, type Phase2WorkerContext } from './base-worker';
+import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker';
 import {
   ContextEfficiencyLLMOutputSchema,
   parseContextEfficiencyLLMOutput,
@@ -26,7 +26,12 @@ import {
   buildContextEfficiencySystemPrompt,
   buildContextEfficiencyUserPrompt,
 } from './prompts/context-efficiency-prompts';
-import { getInsightsForWorker } from './prompts/knowledge-mapping';
+import {
+  getInsightsForWorker,
+  resolveKnowledgeBaseReferences,
+  type WorkerInsightContext,
+  type ReferencedInsight,
+} from './prompts/knowledge-mapping';
 
 /**
  * Context Efficiency Worker - Analyzes token and context efficiency + productivity
@@ -43,41 +48,26 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
   }
 
   canRun(context: WorkerContext): boolean {
-    const phase2Context = context as Phase2WorkerContext;
-
-    if (!phase2Context.phase1Output) {
-      this.log('Cannot run: Phase 1 output not available');
-      return false;
-    }
-
-    if (phase2Context.phase1Output.developerUtterances.length === 0) {
-      this.log('Cannot run: No developer utterances to analyze');
-      return false;
-    }
-
-    return true;
+    return this.checkPhase2Preconditions(context);
   }
 
   async execute(context: WorkerContext): Promise<WorkerResult<ContextEfficiencyOutput>> {
-    const phase2Context = context as Phase2WorkerContext;
+    const { phase1Output } = this.getPhase2Context(context);
 
-    if (!phase2Context.phase1Output) {
+    if (!phase1Output) {
       throw new Error('Phase 1 output required for ContextEfficiencyWorker');
     }
 
     this.log('Analyzing context efficiency and productivity...');
-    this.log(`Utterances: ${phase2Context.phase1Output.developerUtterances.length}`);
+    this.log(`Utterances: ${phase1Output.developerUtterances.length}`);
 
-    // Prepare Phase 1 output for the prompt
-    const phase1ForPrompt = this.preparePhase1ForPrompt(phase2Context.phase1Output);
+    const phase1ForPrompt = this.preparePhase1ForPrompt(phase1Output);
     const phase1Json = JSON.stringify(phase1ForPrompt, null, 2);
     const userPrompt = buildContextEfficiencyUserPrompt(phase1Json);
 
-    // Get relevant professional insights for this worker's domain
-    const relevantInsights = getInsightsForWorker(this.name);
-    const systemPrompt = buildContextEfficiencySystemPrompt(relevantInsights);
-
-    this.log(`Injected ${relevantInsights.length} professional insights`);
+    const insightContext = getInsightsForWorker(this.name);
+    const systemPrompt = buildContextEfficiencySystemPrompt(insightContext.insights);
+    this.log(`Injected ${insightContext.insights.length} professional insights`);
 
     const result = await this.client!.generateStructured({
       systemPrompt,
@@ -86,24 +76,71 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
       maxOutputTokens: 8192,
     });
 
-    // Parse LLM output to structured format (populates strengths/growthAreas from string data)
     const parsedOutput = parseContextEfficiencyLLMOutput(result.data);
+    const processedOutput = this.resolveAllReferences(parsedOutput, insightContext);
 
-    this.log(`Efficiency score: ${parsedOutput.overallEfficiencyScore}`);
-    this.log(`Avg context fill: ${parsedOutput.avgContextFillPercent}%`);
+    this.log(`Efficiency score: ${processedOutput.overallEfficiencyScore}`);
+    this.log(`Avg context fill: ${processedOutput.avgContextFillPercent}%`);
+    if (processedOutput.referencedInsights?.length) {
+      this.log(`Referenced ${processedOutput.referencedInsights.length} professional insights`);
+    }
 
-    return this.createSuccessResult(parsedOutput, result.usage);
+    return this.createSuccessResult(processedOutput, result.usage);
   }
 
-  private preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
-    // Filter to noteworthy utterances only (same as CommunicationPatterns)
-    // This prevents LLM from selecting low-quality utterances as evidence
-    const noteworthyUtterances = phase1.developerUtterances.filter(
-      (u) => u.isNoteworthy !== false && u.wordCount >= 8
+  /**
+   * Resolve all [pi-XXX] references in output text fields.
+   *
+   * Replaces [pi-XXX] patterns with human-readable titles (e.g., "Context Engineering")
+   * and collects all referenced insights with their URLs.
+   */
+  private resolveAllReferences(
+    output: ContextEfficiencyOutput,
+    ctx: WorkerInsightContext
+  ): ContextEfficiencyOutput {
+    const allRefs: ReferencedInsight[] = [];
+
+    const processText = (text: string | undefined): string | undefined => {
+      if (!text) return text;
+      const { resolvedText, referencedInsights } = resolveKnowledgeBaseReferences(text, ctx);
+      allRefs.push(...referencedInsights);
+      return resolvedText;
+    };
+
+    const processedOutput: ContextEfficiencyOutput = {
+      ...output,
+      productivitySummary: processText(output.productivitySummary),
+      strengths: output.strengths?.map((s) => ({
+        ...s,
+        description: processText(s.description) || s.description,
+      })),
+      growthAreas: output.growthAreas?.map((g) => ({
+        ...g,
+        description: processText(g.description) || g.description,
+        recommendation: processText(g.recommendation) || g.recommendation,
+      })),
+      // Process KPT fields too
+      kptKeep: output.kptKeep?.map((k) => processText(k) || k),
+      kptProblem: output.kptProblem?.map((p) => processText(p) || p),
+      kptTry: output.kptTry?.map((t) => processText(t) || t),
+      topInsights: output.topInsights?.map((i) => processText(i) || i),
+    };
+
+    // Deduplicate referenced insights by ID
+    const uniqueRefs = Array.from(
+      new Map(allRefs.map((r) => [r.id, r])).values()
     );
 
+    if (uniqueRefs.length > 0) {
+      processedOutput.referencedInsights = uniqueRefs;
+    }
+
+    return processedOutput;
+  }
+
+  public preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
     return {
-      developerUtterances: noteworthyUtterances.map((u) => ({
+      developerUtterances: phase1.developerUtterances.map((u) => ({
         id: u.id,
         // Use displayText (sanitized) if available, fallback to raw text
         // displayText has machine-generated content (error logs, stack traces, code) summarized

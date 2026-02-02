@@ -17,8 +17,13 @@ import type {
   WorkerResult,
   WorkerContext,
   Phase,
+  Phase2WorkerContext,
   OrchestratorConfig,
 } from '../orchestrator/types';
+import {
+  getInsightsForWorker,
+  type WorkerInsightContext,
+} from './prompts/knowledge-mapping';
 
 // Re-export types for worker implementations
 export type { WorkerResult, WorkerContext, Phase, Phase2WorkerContext } from '../orchestrator/types';
@@ -152,6 +157,73 @@ export abstract class BaseWorker<TOutput> {
     return {
       data,
       usage,
+    };
+  }
+
+  /**
+   * Check standard Phase 2 worker preconditions.
+   *
+   * @param context - Worker context (will be type-checked as Phase2WorkerContext)
+   * @returns true if Phase 1 output is available with utterances
+   */
+  protected checkPhase2Preconditions(context: WorkerContext): boolean {
+    const phase2Context = context as Phase2WorkerContext;
+
+    if (!phase2Context.phase1Output) {
+      this.log('Cannot run: Phase 1 output not available');
+      return false;
+    }
+
+    if (phase2Context.phase1Output.developerUtterances.length === 0) {
+      this.log('Cannot run: No developer utterances to analyze');
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Get Phase 2 context with type assertion.
+   *
+   * @param context - Worker context
+   * @returns Typed Phase2WorkerContext
+   */
+  protected getPhase2Context(context: WorkerContext): Phase2WorkerContext {
+    return context as Phase2WorkerContext;
+  }
+
+  /**
+   * Combine insights from multiple worker domains.
+   *
+   * Merges insights from multiple domains, deduplicates by ID, and combines lookup maps.
+   *
+   * @param workerNames - Array of worker names to get insights for
+   * @returns Combined WorkerInsightContext with deduplicated insights
+   */
+  protected getCombinedInsights(workerNames: string[]): WorkerInsightContext {
+    const allContexts = workerNames.map((name) => getInsightsForWorker(name));
+
+    const allInsights = allContexts.flatMap((ctx) => ctx.insights);
+    const uniqueInsights = Array.from(
+      new Map(allInsights.map((i) => [i.id, i])).values()
+    );
+
+    const combinedUrlLookup = new Map<string, string>();
+    const combinedTitleLookup = new Map<string, string>();
+
+    for (const ctx of allContexts) {
+      for (const [key, value] of ctx.urlLookup) {
+        combinedUrlLookup.set(key, value);
+      }
+      for (const [key, value] of ctx.titleLookup) {
+        combinedTitleLookup.set(key, value);
+      }
+    }
+
+    return {
+      insights: uniqueInsights,
+      urlLookup: combinedUrlLookup,
+      titleLookup: combinedTitleLookup,
     };
   }
 }
