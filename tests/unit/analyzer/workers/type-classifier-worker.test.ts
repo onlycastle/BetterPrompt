@@ -1,22 +1,19 @@
 /**
  * TypeClassifierWorker Tests
  *
- * Tests for Phase 2.5 TypeClassifierWorker.
- * Classifies developers into the AI Collaboration Matrix.
+ * Phase 2.5 TypeClassifierWorker classifies developers into the AI Collaboration Matrix.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { WorkerContext } from '../../../../src/lib/analyzer/workers/base-worker.js';
 import type { TypeClassifierOutput, AgentOutputs } from '../../../../src/lib/models/agent-outputs.js';
 
-// Mock the GeminiClient
 vi.mock('../../../../src/lib/analyzer/clients/gemini-client.js', () => ({
   GeminiClient: vi.fn().mockImplementation(() => ({
     generateStructured: vi.fn(),
   })),
 }));
 
-// Import after mocking
 import {
   TypeClassifierWorker,
   createTypeClassifierWorker,
@@ -24,47 +21,20 @@ import {
 import type { OrchestratorConfig } from '../../../../src/lib/analyzer/orchestrator/types.js';
 import { GeminiClient } from '../../../../src/lib/analyzer/clients/gemini-client.js';
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
 function createMockAgentOutputs(): AgentOutputs {
   return {
-    trustVerification: {
-      antiPatterns: [],
-      verificationBehavior: {
-        level: 'moderate',
-        description: 'Shows verification habits',
-        indicators: ['reviews_output', 'questions_results'],
-      },
-      patternTypes: ['iterative_refinement'],
-      overallTrustHealthScore: 75,
-      summary: 'Good verification patterns',
-      confidenceScore: 0.8,
-      strengths: [],
-      growthAreas: [],
-    },
-    workflowHabit: {
-      planningHabits: [
-        {
-          type: 'task_decomposition',
-          frequency: 'often',
-          examples: ['Break this into steps'],
-          effectiveness: 'high',
-        },
-      ],
-      criticalThinkingMoments: [
-        {
-          type: 'verification',
-          quote: 'Let me verify this works',
-          result: 'Caught a bug before deployment',
-        },
-      ],
-      overallWorkflowScore: 78,
-      summary: 'Well-structured workflow',
+    thinkingQuality: {
+      verificationAntiPatterns: [],
+      planningHabits: [{ habitType: 'task_decomposition', displayName: 'Task Decomposition', description: 'Breaking tasks into steps', frequency: 'often', effectiveness: 'high', examples: ['Break this into steps'] }],
+      criticalThinkingMoments: [{ momentType: 'verification', displayName: 'Verification', description: 'Verifies before proceeding', quote: 'Let me verify this works', result: 'Caught a bug before deployment', utteranceId: 'sess1_5' }],
+      communicationPatterns: [],
       confidenceScore: 0.82,
-      strengths: [],
-      growthAreas: [],
+    },
+    learningBehavior: {
+      repeatedMistakePatterns: [],
+      knowledgeGaps: [{ topic: 'TypeScript generics', displayName: 'TypeScript Generics', depthLevel: 'shallow', frequencyOfQuestions: 3, examples: ['generics unclear'], suggestedResource: 'TypeScript docs' }],
+      learningProgressIndicators: [{ area: 'React', displayName: 'React', startingLevel: 'novice', currentLevel: 'intermediate', evidenceOfProgress: 'improved understanding' }],
+      confidenceScore: 0.75,
     },
     knowledgeGap: {
       knowledgeGapsData: 'TypeScript:3:shallow:generics unclear',
@@ -97,13 +67,7 @@ function createMockContext(
 ): WorkerContext & { agentOutputs?: AgentOutputs } {
   return {
     sessions: [],
-    metrics: {
-      totalSessions: 5,
-      totalTurns: 50,
-      averageTurnsPerSession: 10,
-      sessionDurations: [3600000],
-      averageSessionDuration: 3600000,
-    },
+    metrics: { totalSessions: 5, totalTurns: 50, averageTurnsPerSession: 10, sessionDurations: [3600000], averageSessionDuration: 3600000 },
     tier,
     agentOutputs: agentOutputs ?? createMockAgentOutputs(),
   };
@@ -112,77 +76,41 @@ function createMockContext(
 function createMockLLMOutput(): TypeClassifierOutput {
   return {
     primaryType: 'architect',
-    distribution: {
-      architect: 45,
-      scientist: 20,
-      collaborator: 15,
-      speedrunner: 10,
-      craftsman: 10,
-    },
+    distribution: { architect: 45, scientist: 20, collaborator: 15, speedrunner: 10, craftsman: 10 },
     controlLevel: 'navigator',
     controlScore: 65,
     matrixName: 'Systems Architect',
     matrixEmoji: '🏗️',
-    collaborationMaturity: {
-      level: 'ai_assisted_engineer',
-      description: 'Uses AI as a capable tool while maintaining control',
-      indicators: ['verifies_output', 'guides_direction', 'maintains_ownership'],
-    },
+    collaborationMaturity: { level: 'ai_assisted_engineer', description: 'Uses AI as a capable tool while maintaining control', indicators: ['verifies_output', 'guides_direction', 'maintains_ownership'] },
     confidenceScore: 0.85,
     reasoning: 'Based on planning habits and verification patterns',
   };
 }
 
-// ============================================================================
-// Test Suite
-// ============================================================================
-
 describe('TypeClassifierWorker', () => {
   let worker: TypeClassifierWorker;
   let context: WorkerContext & { agentOutputs?: AgentOutputs };
-  let mockGenerateStructured: any;
+  let mockGenerateStructured: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     context = createMockContext('premium');
-
     mockGenerateStructured = vi.fn();
-    vi.mocked(GeminiClient).mockImplementation(
-      () =>
-        ({
-          generateStructured: mockGenerateStructured,
-        }) as any
-    );
-
-    const config: OrchestratorConfig = {
-      geminiApiKey: 'test-key',
-      verbose: false,
-    };
-
-    worker = new TypeClassifierWorker(config);
+    vi.mocked(GeminiClient).mockImplementation(() => ({ generateStructured: mockGenerateStructured }) as unknown as GeminiClient);
+    worker = new TypeClassifierWorker({ geminiApiKey: 'test-key', verbose: false });
   });
 
   describe('worker properties', () => {
-    it('should have correct name', () => {
+    it('should have correct name and phase', () => {
       expect(worker.name).toBe('TypeClassifier');
-    });
-
-    it('should be phase 2 worker (registered as 2.5)', () => {
       expect(worker.phase).toBe(2);
     });
   });
 
   describe('constructor', () => {
     it('should create worker with config', () => {
-      const config: OrchestratorConfig = {
-        geminiApiKey: 'test-key',
-        model: 'gemini-3-flash-preview',
-        temperature: 1.0,
-        verbose: true,
-      };
-      const worker = new TypeClassifierWorker(config);
-      expect(worker).toBeDefined();
-      expect(worker.name).toBe('TypeClassifier');
+      const newWorker = new TypeClassifierWorker({ geminiApiKey: 'test-key', model: 'gemini-3-flash-preview', temperature: 1.0, verbose: true });
+      expect(newWorker.name).toBe('TypeClassifier');
     });
   });
 
@@ -192,164 +120,89 @@ describe('TypeClassifierWorker', () => {
     });
 
     it('should return false when agentOutputs missing', () => {
-      const contextWithoutOutputs = {
-        ...context,
-        agentOutputs: undefined,
-      };
-      expect(worker.canRun(contextWithoutOutputs)).toBe(false);
+      expect(worker.canRun({ ...context, agentOutputs: undefined })).toBe(false);
     });
 
     it('should return false when agentOutputs is empty object', () => {
-      const contextWithEmptyOutputs = {
-        ...context,
-        agentOutputs: {},
-      };
-      expect(worker.canRun(contextWithEmptyOutputs)).toBe(false);
+      expect(worker.canRun({ ...context, agentOutputs: {} })).toBe(false);
     });
 
     it('should return true with only one Phase 2 output', () => {
-      const contextWithOneOutput = {
-        ...context,
-        agentOutputs: {
-          trustVerification: createMockAgentOutputs().trustVerification,
-        },
-      };
-      expect(worker.canRun(contextWithOneOutput)).toBe(true);
+      expect(worker.canRun({ ...context, agentOutputs: { thinkingQuality: createMockAgentOutputs().thinkingQuality } })).toBe(true);
     });
   });
 
   describe('execute()', () => {
+    function setupMockResponse(output = createMockLLMOutput(), usage = { promptTokens: 800, completionTokens: 400, totalTokens: 1200 }) {
+      mockGenerateStructured.mockResolvedValue({ data: output, usage });
+    }
+
     it('should execute classification and return result', async () => {
-      const mockOutput = createMockLLMOutput();
-      mockGenerateStructured.mockResolvedValue({
-        data: mockOutput,
-        usage: {
-          promptTokens: 800,
-          completionTokens: 400,
-          totalTokens: 1200,
-        },
-      });
+      setupMockResponse();
 
       const result = await worker.execute(context);
 
-      expect(mockGenerateStructured).toHaveBeenCalledWith(
-        expect.objectContaining({
-          maxOutputTokens: 8192,
-        })
-      );
-      expect(result.data).toBeDefined();
+      expect(mockGenerateStructured).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 8192 }));
       expect(result.data.primaryType).toBe('architect');
       expect(result.data.controlLevel).toBe('navigator');
-      expect(result.usage).toEqual({
-        promptTokens: 800,
-        completionTokens: 400,
-        totalTokens: 1200,
-      });
+      expect(result.usage).toEqual({ promptTokens: 800, completionTokens: 400, totalTokens: 1200 });
       expect(result.error).toBeUndefined();
     });
 
     it('should normalize distribution to sum to 100', async () => {
-      const mockOutput = {
-        ...createMockLLMOutput(),
-        distribution: {
-          architect: 40,
-          scientist: 20,
-          collaborator: 15,
-          speedrunner: 10,
-          craftsman: 10, // Sum = 95, needs normalization
-        },
-      };
-      mockGenerateStructured.mockResolvedValue({
-        data: mockOutput,
-        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
-      });
+      const mockOutput = { ...createMockLLMOutput(), distribution: { architect: 40, scientist: 20, collaborator: 15, speedrunner: 10, craftsman: 10 } };
+      setupMockResponse(mockOutput, { promptTokens: 100, completionTokens: 50, totalTokens: 150 });
 
       const result = await worker.execute(context);
 
       const dist = result.data.distribution;
       const sum = dist.architect + dist.scientist + dist.collaborator + dist.speedrunner + dist.craftsman;
-      // Distribution should be normalized close to 100
       expect(Math.abs(sum - 100)).toBeLessThanOrEqual(1);
     });
 
     it('should include matrix classification fields', async () => {
-      const mockOutput = createMockLLMOutput();
-      mockGenerateStructured.mockResolvedValue({
-        data: mockOutput,
-        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
-      });
+      setupMockResponse(createMockLLMOutput(), { promptTokens: 100, completionTokens: 50, totalTokens: 150 });
 
       const result = await worker.execute(context);
 
       expect(result.data.matrixName).toBe('Systems Architect');
       expect(result.data.matrixEmoji).toBe('🏗️');
-      expect(result.data.collaborationMaturity).toBeDefined();
       expect(result.data.collaborationMaturity?.level).toBe('ai_assisted_engineer');
     });
 
     it('should log progress when verbose enabled', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const verboseConfig: OrchestratorConfig = {
-        geminiApiKey: 'test-key',
-        verbose: true,
-      };
-      const verboseWorker = new TypeClassifierWorker(verboseConfig);
-
-      const mockOutput = createMockLLMOutput();
-      mockGenerateStructured.mockResolvedValue({
-        data: mockOutput,
-        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
-      });
+      const verboseWorker = new TypeClassifierWorker({ geminiApiKey: 'test-key', verbose: true });
+      setupMockResponse(createMockLLMOutput(), { promptTokens: 100, completionTokens: 50, totalTokens: 150 });
 
       await verboseWorker.execute(context);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[TypeClassifier] Classifying developer into AI Collaboration Matrix (Phase 2.5)...'
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('[TypeClassifier] Classifying developer into AI Collaboration Matrix (Phase 2.5)...');
       expect(consoleSpy).toHaveBeenCalledWith('[TypeClassifier] Type: architect');
       expect(consoleSpy).toHaveBeenCalledWith('[TypeClassifier] Control: navigator (65)');
       expect(consoleSpy).toHaveBeenCalledWith('[TypeClassifier] Matrix: Systems Architect 🏗️');
-
       consoleSpy.mockRestore();
     });
 
     it('should throw on analysis failure (NO FALLBACK policy)', async () => {
-      const error = new Error('LLM API error');
-      mockGenerateStructured.mockRejectedValue(error);
-
+      mockGenerateStructured.mockRejectedValue(new Error('LLM API error'));
       await expect(worker.execute(context)).rejects.toThrow('LLM API error');
     });
 
-    it('should handle missing strengthGrowth gracefully', async () => {
-      const contextNoStrengthGrowth = {
-        ...context,
-        agentOutputs: {
-          trustVerification: createMockAgentOutputs().trustVerification,
-          // No strengthGrowth
-        },
-      };
+    it('should handle missing learningBehavior gracefully', async () => {
+      setupMockResponse(createMockLLMOutput(), { promptTokens: 100, completionTokens: 50, totalTokens: 150 });
 
-      const mockOutput = createMockLLMOutput();
-      mockGenerateStructured.mockResolvedValue({
-        data: mockOutput,
-        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
-      });
+      const result = await worker.execute({ ...context, agentOutputs: { thinkingQuality: createMockAgentOutputs().thinkingQuality } });
 
-      const result = await worker.execute(contextNoStrengthGrowth);
-
-      expect(result.data).toBeDefined();
       expect(result.data.primaryType).toBe('architect');
     });
   });
 
   describe('factory function', () => {
     it('should create worker with config', () => {
-      const config: OrchestratorConfig = {
-        geminiApiKey: 'test-key',
-      };
-      const worker = createTypeClassifierWorker(config);
-      expect(worker).toBeInstanceOf(TypeClassifierWorker);
-      expect(worker.name).toBe('TypeClassifier');
+      const factoryWorker = createTypeClassifierWorker({ geminiApiKey: 'test-key' });
+      expect(factoryWorker).toBeInstanceOf(TypeClassifierWorker);
+      expect(factoryWorker.name).toBe('TypeClassifier');
     });
   });
 });

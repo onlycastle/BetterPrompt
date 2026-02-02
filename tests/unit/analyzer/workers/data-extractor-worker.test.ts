@@ -225,46 +225,100 @@ with various content
       return result;
     }
 
-    it('should filter skill documentation blocks via regex pre-filter', async () => {
+    it('should filter skill documentation blocks via LLM classification', async () => {
+      // Mock LLM to classify skill documentation as system metadata
+      const mockGenerateStructured = vi.fn().mockResolvedValue({
+        data: {
+          classifications: [
+            { classification: 'system', confidence: 0.95, reason: 'Skill documentation' },
+            { classification: 'developer', confidence: 0.9, reason: 'User request' },
+          ],
+        },
+        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+      });
+
+      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(() => ({
+        generateStructured: mockGenerateStructured,
+      }) as unknown as geminiClientModule.GeminiClient);
+
       const session = createSession([
-        'Base directory for this skill: /Users/test/.claude/skills/my-skill',
-        'Can you help me with this bug?',
+        'Base directory for this skill: /Users/test/.claude/skills/my-skill ' + 'x'.repeat(100),  // Make long enough for LLM
+        'Can you help me with this bug? ' + 'x'.repeat(100),  // Make long enough for LLM
       ]);
       const context = createContext([session]);
 
-      const result = await worker.execute(context);
+      const testWorker = new DataExtractorWorker();
+      const result = await testWorker.execute(context);
       expect(result.error).toBeUndefined();
-      // Skill documentation should be filtered out
+      // Skill documentation should be filtered out (LLM classified as system)
       expect(result.data.developerUtterances.length).toBe(1);
-      expect(result.data.developerUtterances[0]?.text).toBe('Can you help me with this bug?');
+      expect(result.data.developerUtterances[0]?.text).toContain('Can you help me with this bug');
+
+      vi.restoreAllMocks();
     });
 
-    it('should filter session continuation summaries via regex pre-filter', async () => {
+    it('should filter session continuation summaries via LLM classification', async () => {
+      // Mock LLM to classify session continuation as system metadata
+      const mockGenerateStructured = vi.fn().mockResolvedValue({
+        data: {
+          classifications: [
+            { classification: 'system', confidence: 0.95, reason: 'Session continuation summary' },
+            { classification: 'developer', confidence: 0.9, reason: 'User request' },
+          ],
+        },
+        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+      });
+
+      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(() => ({
+        generateStructured: mockGenerateStructured,
+      }) as unknown as geminiClientModule.GeminiClient);
+
       const session = createSession([
-        'This session is being continued from a previous conversation. Here is a summary of the work done so far...',
-        'Please continue with the implementation.',
+        'This session is being continued from a previous conversation. Here is a summary of the work done so far... ' + 'x'.repeat(100),
+        'Please continue with the implementation. ' + 'x'.repeat(100),
       ]);
       const context = createContext([session]);
 
-      const result = await worker.execute(context);
+      const testWorker = new DataExtractorWorker();
+      const result = await testWorker.execute(context);
       expect(result.error).toBeUndefined();
-      // Session continuation should be filtered out
+      // Session continuation should be filtered out (LLM classified as system)
       expect(result.data.developerUtterances.length).toBe(1);
-      expect(result.data.developerUtterances[0]?.text).toBe('Please continue with the implementation.');
+      expect(result.data.developerUtterances[0]?.text).toContain('Please continue with the implementation');
+
+      vi.restoreAllMocks();
     });
 
-    it('should filter plan execution prompts via regex pre-filter', async () => {
+    it('should filter plan execution prompts via LLM classification', async () => {
+      // Mock LLM to classify plan execution prompt as system metadata
+      const mockGenerateStructured = vi.fn().mockResolvedValue({
+        data: {
+          classifications: [
+            { classification: 'system', confidence: 0.95, reason: 'Plan execution prompt' },
+            { classification: 'developer', confidence: 0.9, reason: 'User request' },
+          ],
+        },
+        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+      });
+
+      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(() => ({
+        generateStructured: mockGenerateStructured,
+      }) as unknown as geminiClientModule.GeminiClient);
+
       const session = createSession([
-        'Implement the following plan: # My Plan ## Step 1 Do something...',
-        'Can you add error handling?',
+        'Implement the following plan: # My Plan ## Step 1 Do something... ' + 'x'.repeat(100),
+        'Can you add error handling? ' + 'x'.repeat(100),
       ]);
       const context = createContext([session]);
 
-      const result = await worker.execute(context);
+      const testWorker = new DataExtractorWorker();
+      const result = await testWorker.execute(context);
       expect(result.error).toBeUndefined();
-      // Plan execution prompt should be filtered out
+      // Plan execution prompt should be filtered out (LLM classified as system)
       expect(result.data.developerUtterances.length).toBe(1);
-      expect(result.data.developerUtterances[0]?.text).toBe('Can you add error handling?');
+      expect(result.data.developerUtterances[0]?.text).toContain('Can you add error handling');
+
+      vi.restoreAllMocks();
     });
 
     it('should skip LLM classification for short utterances', async () => {

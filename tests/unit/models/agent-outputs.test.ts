@@ -28,6 +28,20 @@ import {
 
 describe('KnowledgeGapOutputSchema', () => {
   const createValidKnowledgeGapOutput = (): KnowledgeGapOutput => ({
+    // v3: Required structured arrays
+    knowledgeGaps: [
+      { topic: 'async/await', questionCount: 7, depth: 'shallow', example: 'Promise chaining not understood' },
+      { topic: 'TypeScript generics', questionCount: 4, depth: 'moderate', example: 'constraint syntax unclear' },
+    ],
+    learningProgress: [
+      { topic: 'React hooks', startLevel: 'shallow', currentLevel: 'moderate', evidence: 'useEffect cleanup questions decreased' },
+      { topic: 'CSS Grid', startLevel: 'novice', currentLevel: 'moderate', evidence: 'fewer layout questions' },
+    ],
+    recommendedResources: [
+      { topic: 'TypeScript generics', resourceType: 'docs', url: 'https://typescriptlang.org' },
+      { topic: 'async/await', resourceType: 'tutorial', url: 'https://javascript.info' },
+    ],
+    // Legacy string fields (optional, for backward compatibility)
     knowledgeGapsData:
       'async/await:7:shallow:Promise chaining not understood;TypeScript generics:4:moderate:constraint syntax unclear',
     learningProgressData:
@@ -74,8 +88,8 @@ describe('KnowledgeGapOutputSchema', () => {
   describe('invalid data', () => {
     it('should FAIL when required fields are missing', () => {
       const output = createValidKnowledgeGapOutput();
-      // @ts-expect-error - Testing runtime behavior
-      delete output.knowledgeGapsData;
+      // @ts-expect-error - Testing runtime behavior: knowledgeGaps array is required
+      delete output.knowledgeGaps;
 
       const result = KnowledgeGapOutputSchema.safeParse(output);
       expect(result.success).toBe(false);
@@ -118,6 +132,27 @@ describe('KnowledgeGapOutputSchema', () => {
 
 describe('ContextEfficiencyOutputSchema', () => {
   const createValidContextEfficiencyOutput = (): ContextEfficiencyOutput => ({
+    // v3: Required structured arrays
+    contextUsagePatterns: [
+      { sessionId: 'session1', avgFillPercent: 85, compactTriggerPercent: 92 },
+      { sessionId: 'session2', avgFillPercent: 78, compactTriggerPercent: 88 },
+      { sessionId: 'session3', avgFillPercent: 91, compactTriggerPercent: 95 },
+    ],
+    inefficiencyPatterns: [
+      { pattern: 'late_compact', frequency: 15, impact: 'high', description: 'always compacts at 90%+' },
+      { pattern: 'context_bloat', frequency: 8, impact: 'medium', description: 'never uses /clear' },
+    ],
+    promptLengthTrends: [
+      { phase: 'early', avgLength: 150 },
+      { phase: 'mid', avgLength: 280 },
+      { phase: 'late', avgLength: 450 },
+    ],
+    redundantInfo: [
+      { infoType: 'project_structure', repeatCount: 5 },
+      { infoType: 'tech_stack', repeatCount: 3 },
+      { infoType: 'file_paths', repeatCount: 7 },
+    ],
+    // Legacy string fields (optional, for backward compatibility)
     contextUsagePatternData: 'session1:85:92;session2:78:88;session3:91:95',
     inefficiencyPatternsData:
       'late_compact:15:high:always compacts at 90%+;context_bloat:8:medium:never uses /clear',
@@ -167,8 +202,8 @@ describe('ContextEfficiencyOutputSchema', () => {
   describe('invalid data', () => {
     it('should FAIL when required fields are missing', () => {
       const output = createValidContextEfficiencyOutput();
-      // @ts-expect-error - Testing runtime behavior
-      delete output.contextUsagePatternData;
+      // @ts-expect-error - Testing runtime behavior: contextUsagePatterns array is required
+      delete output.contextUsagePatterns;
 
       const result = ContextEfficiencyOutputSchema.safeParse(output);
       expect(result.success).toBe(false);
@@ -214,6 +249,11 @@ describe('ContextEfficiencyOutputSchema', () => {
 describe('AgentOutputsSchema', () => {
   const createValidAgentOutputs = (): AgentOutputs => ({
     knowledgeGap: {
+      // v3: Required structured arrays
+      knowledgeGaps: [{ topic: 'async/await', questionCount: 7, depth: 'shallow', example: 'example' }],
+      learningProgress: [{ topic: 'React', startLevel: 'shallow', currentLevel: 'moderate', evidence: 'progress' }],
+      recommendedResources: [{ topic: 'TypeScript', resourceType: 'docs', url: 'https://example.com' }],
+      // Legacy string fields (optional)
       knowledgeGapsData: 'async/await:7:shallow:example',
       learningProgressData: 'React:shallow:moderate:progress',
       recommendedResourcesData: 'TypeScript:docs:url',
@@ -222,6 +262,12 @@ describe('AgentOutputsSchema', () => {
       confidenceScore: 0.82,
     },
     contextEfficiency: {
+      // v3: Required structured arrays
+      contextUsagePatterns: [{ sessionId: 'session1', avgFillPercent: 85, compactTriggerPercent: 92 }],
+      inefficiencyPatterns: [{ pattern: 'late_compact', frequency: 15, impact: 'high', description: 'example' }],
+      promptLengthTrends: [{ phase: 'early', avgLength: 150 }, { phase: 'mid', avgLength: 280 }],
+      redundantInfo: [{ infoType: 'structure', repeatCount: 5 }],
+      // Legacy string fields (optional)
       contextUsagePatternData: 'session1:85:92',
       inefficiencyPatternsData: 'late_compact:15:high:example',
       promptLengthTrendData: 'early:150;mid:280',
@@ -251,6 +297,11 @@ describe('AgentOutputsSchema', () => {
     it('should accept partial outputs (some agents)', () => {
       const outputs = {
         knowledgeGap: {
+          // v3: Required structured arrays (can be empty)
+          knowledgeGaps: [],
+          learningProgress: [],
+          recommendedResources: [],
+          // Legacy string fields (optional)
           knowledgeGapsData: '',
           learningProgressData: '',
           recommendedResourcesData: '',
