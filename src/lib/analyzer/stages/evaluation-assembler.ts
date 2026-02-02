@@ -667,17 +667,11 @@ function buildUtteranceLookup(
     return [];
   }
 
-  // Build lookup maps from Phase1Output
+  // Build lookup map from Phase1Output
   const utteranceMap = new Map<string, Phase1Output['developerUtterances'][0]>();
-  const aiResponseMap = new Map<string, Phase1Output['aiResponses'][0]>();
 
   for (const u of phase1Output.developerUtterances) {
     utteranceMap.set(u.id, u);
-  }
-
-  // Build AI response map keyed by "{sessionId}_{turnIndex}"
-  for (const r of phase1Output.aiResponses) {
-    aiResponseMap.set(r.id, r);
   }
 
   const lookup: UtteranceLookupEntry[] = [];
@@ -690,19 +684,8 @@ function buildUtteranceLookup(
       const sessionId = lastUnderscore > 0 ? id.slice(0, lastUnderscore) : id;
       const turnIndex = lastUnderscore > 0 ? parseInt(id.slice(lastUnderscore + 1), 10) : 0;
 
-      // Look up preceding AI response (turnIndex - 1)
-      let precedingAISnippet: string | undefined;
-      if (turnIndex > 0) {
-        const precedingId = `${sessionId}_${turnIndex - 1}`;
-        const aiResponse = aiResponseMap.get(precedingId);
-        if (aiResponse?.textSnippet) {
-          // Truncate to ~150 chars for context display
-          precedingAISnippet = aiResponse.textSnippet.slice(0, 150);
-          if (aiResponse.textSnippet.length > 150) {
-            precedingAISnippet += '...';
-          }
-        }
-      }
+      // Note: precedingAISnippet is no longer available as aiResponses was removed from Phase1Output
+      // to reduce token usage. The field remains in UtteranceLookupEntry but is always undefined.
 
       lookup.push({
         id,
@@ -711,7 +694,7 @@ function buildUtteranceLookup(
         timestamp: utterance.timestamp,
         sessionId,
         turnIndex: isNaN(turnIndex) ? 0 : turnIndex,
-        precedingAISnippet,
+        precedingAISnippet: undefined,
       });
     }
   }
