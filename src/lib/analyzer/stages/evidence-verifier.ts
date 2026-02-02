@@ -203,12 +203,13 @@ export class EvidenceVerifierStage {
       }
     };
 
-    // Process each worker domain
-    addFromDomain('trustVerification', insights.trustVerification);
-    addFromDomain('workflowHabit', insights.workflowHabit);
-    addFromDomain('knowledgeGap', insights.knowledgeGap);
+    // Process v3 worker domains
+    addFromDomain('thinkingQuality', insights.thinkingQuality);
+    addFromDomain('learningBehavior', insights.learningBehavior);
     addFromDomain('contextEfficiency', insights.contextEfficiency);
-    addFromDomain('communicationPatterns', insights.communicationPatterns);
+
+    // Legacy (kept for cached data)
+    addFromDomain('knowledgeGap', insights.knowledgeGap);
 
     return pairs;
   }
@@ -268,29 +269,26 @@ export class EvidenceVerifierStage {
   private async verifyBatch(
     pairs: EvidenceVerificationPair[]
   ): Promise<{ results: EvidenceVerificationResult[]; usage: TokenUsage }> {
-    // Split into batches if needed
-    if (shouldSplitBatch(pairs)) {
-      return this.verifyInBatches(pairs);
+    if (!shouldSplitBatch(pairs)) {
+      return this.verifySingleBatch(pairs);
     }
+    return this.verifyInBatches(pairs);
+  }
 
-    // Single batch verification
-    const userPrompt = buildEvidenceVerifierUserPrompt(pairs);
-
+  /**
+   * Verify a single batch of evidence pairs
+   */
+  private async verifySingleBatch(
+    pairs: EvidenceVerificationPair[]
+  ): Promise<{ results: EvidenceVerificationResult[]; usage: TokenUsage }> {
     const response = await this.client.generateStructured({
       systemPrompt: EVIDENCE_VERIFIER_SYSTEM_PROMPT,
-      userPrompt,
+      userPrompt: buildEvidenceVerifierUserPrompt(pairs),
       responseSchema: EvidenceVerificationResponseSchema,
-      maxOutputTokens: 8192, // Sufficient for ~100 pairs with reasoning
+      maxOutputTokens: 8192,
     });
 
-    // Convert LLM results to processed results with shouldKeep decision
-    const results = response.data.results.map((r) => ({
-      pairId: r.pairId,
-      relevanceScore: r.relevanceScore,
-      reasoning: r.reasoning,
-      shouldKeep: r.relevanceScore >= this.config.threshold,
-    }));
-
+    const results = this.convertToVerificationResults(response.data.results);
     return { results, usage: response.usage };
   }
 
@@ -301,35 +299,37 @@ export class EvidenceVerifierStage {
     pairs: EvidenceVerificationPair[]
   ): Promise<{ results: EvidenceVerificationResult[]; usage: TokenUsage }> {
     const allResults: EvidenceVerificationResult[] = [];
-    let totalUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+    const totalUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+    const batchCount = Math.ceil(pairs.length / MAX_PAIRS_PER_BATCH);
 
-    // Split into chunks
     for (let i = 0; i < pairs.length; i += MAX_PAIRS_PER_BATCH) {
+      const batchIndex = Math.floor(i / MAX_PAIRS_PER_BATCH) + 1;
+      this.log(`Processing batch ${batchIndex}/${batchCount}`);
+
       const batch = pairs.slice(i, i + MAX_PAIRS_PER_BATCH);
-      this.log(`Processing batch ${Math.floor(i / MAX_PAIRS_PER_BATCH) + 1}/${Math.ceil(pairs.length / MAX_PAIRS_PER_BATCH)}`);
+      const { results, usage } = await this.verifySingleBatch(batch);
 
-      const userPrompt = buildEvidenceVerifierUserPrompt(batch);
-      const response = await this.client.generateStructured({
-        systemPrompt: EVIDENCE_VERIFIER_SYSTEM_PROMPT,
-        userPrompt,
-        responseSchema: EvidenceVerificationResponseSchema,
-        maxOutputTokens: 8192,
-      });
-
-      const batchResults = response.data.results.map((r) => ({
-        pairId: r.pairId,
-        relevanceScore: r.relevanceScore,
-        reasoning: r.reasoning,
-        shouldKeep: r.relevanceScore >= this.config.threshold,
-      }));
-
-      allResults.push(...batchResults);
-      totalUsage.promptTokens += response.usage.promptTokens;
-      totalUsage.completionTokens += response.usage.completionTokens;
-      totalUsage.totalTokens += response.usage.totalTokens;
+      allResults.push(...results);
+      totalUsage.promptTokens += usage.promptTokens;
+      totalUsage.completionTokens += usage.completionTokens;
+      totalUsage.totalTokens += usage.totalTokens;
     }
 
     return { results: allResults, usage: totalUsage };
+  }
+
+  /**
+   * Convert LLM results to processed results with shouldKeep decision
+   */
+  private convertToVerificationResults(
+    llmResults: Array<{ pairId: string; relevanceScore: number; reasoning: string }>
+  ): EvidenceVerificationResult[] {
+    return llmResults.map((r) => ({
+      pairId: r.pairId,
+      relevanceScore: r.relevanceScore,
+      reasoning: r.reasoning,
+      shouldKeep: r.relevanceScore >= this.config.threshold,
+    }));
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -396,11 +396,13 @@ export class EvidenceVerifierStage {
       }
     };
 
-    // Apply filtering to each domain
-    filterContainer('trustVerification', verified.trustVerification);
-    filterContainer('workflowHabit', verified.workflowHabit);
-    filterContainer('knowledgeGap', verified.knowledgeGap);
+    // Apply filtering to v3 worker domains
+    filterContainer('thinkingQuality', verified.thinkingQuality);
+    filterContainer('learningBehavior', verified.learningBehavior);
     filterContainer('contextEfficiency', verified.contextEfficiency);
+
+    // Legacy (kept for cached data)
+    filterContainer('knowledgeGap', verified.knowledgeGap);
 
     return verified;
   }

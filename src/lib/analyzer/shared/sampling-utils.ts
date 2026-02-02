@@ -12,7 +12,7 @@
  * @module analyzer/shared/sampling-utils
  */
 
-import type { DeveloperUtterance, AIResponse } from '../../models/phase1-output';
+import type { DeveloperUtterance } from '../../models/phase1-output';
 
 /**
  * Strategic sampling of developer utterances.
@@ -56,38 +56,4 @@ export function strategicSampleUtterances(
 
   // Return in original chronological order
   return all.filter(u => sampled.has(u));
-}
-
-/**
- * Strategic sampling of AI responses.
- *
- * Prioritizes error responses (up to half the limit), fills rest with
- * evenly-spaced non-error responses. Preserves chronological order.
- */
-export function strategicSampleAIResponses(
-  all: AIResponse[],
-  maxCount: number
-): AIResponse[] {
-  if (all.length <= maxCount) return all;
-
-  const sampled: Set<AIResponse> = new Set();
-  const errorResponses = all.filter(r => r.hadError);
-  const nonErrorResponses = all.filter(r => !r.hadError);
-
-  // Prioritize error responses (up to half the limit)
-  const errorLimit = Math.floor(maxCount / 2);
-  const errorSample = errorResponses.slice(0, errorLimit);
-  for (const r of errorSample) sampled.add(r);
-
-  // Fill rest with evenly-spaced non-error responses
-  const remaining = maxCount - sampled.size;
-  if (remaining > 0 && nonErrorResponses.length > 0) {
-    const step = Math.max(1, Math.floor(nonErrorResponses.length / remaining));
-    for (let i = 0; i < nonErrorResponses.length && sampled.size < maxCount; i += step) {
-      sampled.add(nonErrorResponses[i]);
-    }
-  }
-
-  // Return in original chronological order
-  return all.filter(r => sampled.has(r));
 }

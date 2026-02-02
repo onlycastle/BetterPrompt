@@ -18,13 +18,23 @@
  */
 
 import type { AgentOutputs } from '../../models/agent-outputs';
-import type { GrowthAreaInsight } from '../../models/strength-growth-data';
 import type {
   DimensionResourceMatch,
   MatchedKnowledgeItem,
   MatchedProfessionalInsight,
   DimensionNameEnum,
 } from '../../models/verbose-evaluation';
+
+/**
+ * Growth area insight for knowledge matching.
+ * Extracted from v3 workers (ThinkingQuality, LearningBehavior).
+ */
+interface GrowthAreaInsight {
+  title: string;
+  description: string;
+  recommendation: string;
+  dimension: string;
+}
 import { DIMENSION_DISPLAY_NAMES } from '../../models/verbose-evaluation';
 import type { IKnowledgeRepository, IProfessionalInsightRepository } from '../../application/ports/storage';
 import type { KnowledgeItem, ProfessionalInsight, DimensionName } from '../../domain/models/knowledge';
@@ -143,20 +153,59 @@ export async function matchKnowledgeResources(
 /**
  * Extract matching context from agentOutputs.
  *
- * Groups growth areas by their dimension field. Sources from:
- * - strengthGrowth.growthAreas (primary source with dimension assignment)
+ * Groups growth areas by dimension. Sources from v3 workers:
+ * - ThinkingQuality.verificationAntiPatterns → TrustVerification dimension
+ * - LearningBehavior.repeatedMistakePatterns → category-based dimension
  */
 export function extractMatchingContext(agentOutputs: AgentOutputs): MatchingContext {
   const growthAreasByDimension = new Map<string, GrowthAreaInsight[]>();
 
-  // Primary source: StrengthGrowthWorker provides dimension-assigned growth areas
-  if (agentOutputs.strengthGrowth?.growthAreas) {
-    for (const ga of agentOutputs.strengthGrowth.growthAreas) {
-      const dim = ga.dimension;
+  // Source 1: ThinkingQuality anti-patterns → TrustVerification dimension
+  if (agentOutputs.thinkingQuality?.verificationAntiPatterns) {
+    const dim = 'TrustVerification';
+    if (!growthAreasByDimension.has(dim)) {
+      growthAreasByDimension.set(dim, []);
+    }
+    for (const ap of agentOutputs.thinkingQuality.verificationAntiPatterns) {
+      growthAreasByDimension.get(dim)!.push({
+        title: ap.type.replace(/_/g, ' '),
+        description: `Detected ${ap.type} pattern with ${ap.frequency} frequency`,
+        recommendation: ap.improvement || `Address the ${ap.type} pattern`,
+        dimension: dim,
+      });
+    }
+  }
+
+  // Source 2: LearningBehavior repeated mistakes → category-based dimension
+  if (agentOutputs.learningBehavior?.repeatedMistakePatterns) {
+    for (const rm of agentOutputs.learningBehavior.repeatedMistakePatterns) {
+      // Map category to dimension (e.g., "debugging" → "WorkflowHabit")
+      const dim = mapMistakeCategoryToDimension(rm.category);
       if (!growthAreasByDimension.has(dim)) {
         growthAreasByDimension.set(dim, []);
       }
-      growthAreasByDimension.get(dim)!.push(ga);
+      growthAreasByDimension.get(dim)!.push({
+        title: rm.mistakeType,
+        description: `Repeated ${rm.occurrenceCount}x: ${rm.mistakeType}`,
+        recommendation: rm.recommendation || `Address the ${rm.mistakeType} pattern`,
+        dimension: dim,
+      });
+    }
+  }
+
+  // Source 3: LearningBehavior knowledge gaps → KnowledgeGap dimension
+  if (agentOutputs.learningBehavior?.knowledgeGaps) {
+    const dim = 'KnowledgeGap';
+    if (!growthAreasByDimension.has(dim)) {
+      growthAreasByDimension.set(dim, []);
+    }
+    for (const kg of agentOutputs.learningBehavior.knowledgeGaps) {
+      growthAreasByDimension.get(dim)!.push({
+        title: kg.topic,
+        description: `Knowledge gap in ${kg.topic} (depth: ${kg.depth})`,
+        recommendation: `Study ${kg.topic} to strengthen understanding`,
+        dimension: dim,
+      });
     }
   }
 
@@ -165,6 +214,23 @@ export function extractMatchingContext(agentOutputs: AgentOutputs): MatchingCont
     controlLevel: agentOutputs.typeClassifier?.controlLevel,
     growthAreasByDimension,
   };
+}
+
+/**
+ * Map mistake category to a dimension for resource matching.
+ */
+function mapMistakeCategoryToDimension(category: string): string {
+  const categoryMap: Record<string, string> = {
+    debugging: 'WorkflowHabit',
+    syntax: 'KnowledgeGap',
+    logic: 'WorkflowHabit',
+    testing: 'TrustVerification',
+    security: 'TrustVerification',
+    architecture: 'ContextEfficiency',
+    performance: 'ContextEfficiency',
+    documentation: 'CommunicationPatterns',
+  };
+  return categoryMap[category.toLowerCase()] || 'WorkflowHabit';
 }
 
 // ============================================================================

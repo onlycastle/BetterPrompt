@@ -33,6 +33,7 @@ export const TOOL_MAPPING: Record<SessionSourceType, Record<string, string>> = {
     'edit_file': 'Edit',
     'list_dir': 'Bash', // ls equivalent
     'list_directory': 'Bash',
+    'LS': 'Bash', // Cursor's PascalCase variant
 
     // Search operations
     'grep_search': 'Grep',
@@ -55,6 +56,10 @@ export const TOOL_MAPPING: Record<SessionSourceType, Record<string, string>> = {
     'apply_diff': 'Edit',
     'insert_code': 'Edit',
     'replace_code': 'Edit',
+    'ApplyPatch': 'Edit', // Cursor's PascalCase variant
+
+    // Shell operations (Cursor uses 'Shell' directly)
+    'Shell': 'Bash',
 
     // Notebook operations
     'notebook_edit': 'NotebookEdit',

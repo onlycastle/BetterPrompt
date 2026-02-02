@@ -1,12 +1,11 @@
 /**
  * Workers Module Exports
  *
- * Pipeline (7 LLM calls total):
+ * Pipeline (5 LLM calls total):
  * - Phase 1: DataExtractor (deterministic, no LLM)
- * - Phase 2: TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency, CommunicationPatterns (5 LLM calls)
- *            Each worker outputs domain-specific strengths/growthAreas directly
+ * - Phase 2: ThinkingQuality, LearningBehavior, ContextEfficiency (3 LLM calls)
+ *            Each worker outputs capability-specific strengths/growthAreas directly
  * - Phase 2.5: TypeClassifier only (1 LLM call)
- *            StrengthGrowthSynthesizer REMOVED - workers output insights directly
  * - Phase 3: ContentWriter (1 LLM call, managed by orchestrator)
  *
  * @module analyzer/workers
@@ -21,23 +20,20 @@ export * from './base-worker';
 export { DataExtractorWorker, createDataExtractorWorker } from './data-extractor-worker';
 
 // ============================================================================
-// Phase 2: Insight Generation (5 workers, parallel LLM calls)
-// Each worker outputs domain-specific strengths/growthAreas directly
+// Phase 2: Unified Workers (Capability-based, 3 workers)
 // ============================================================================
 
-export { TrustVerificationWorker, createTrustVerificationWorker } from './trust-verification-worker';
+/** ThinkingQuality: Planning + Critical Thinking + Communication */
+export { ThinkingQualityWorker, createThinkingQualityWorker } from './thinking-quality-worker';
 
-export { WorkflowHabitWorker, createWorkflowHabitWorker } from './workflow-habit-worker';
+/** LearningBehavior: Knowledge Gaps + Repeated Mistakes */
+export { LearningBehaviorWorker, createLearningBehaviorWorker } from './learning-behavior-worker';
 
-export { KnowledgeGapWorker, createKnowledgeGapWorker } from './knowledge-gap-worker';
-
+/** ContextEfficiency: Token usage and context management */
 export { ContextEfficiencyWorker, createContextEfficiencyWorker } from './context-efficiency-worker';
-
-export { CommunicationPatternsWorker, createCommunicationPatternsWorker } from './communication-patterns-worker';
 
 // ============================================================================
 // Phase 2.5: TypeClassifier only (1 LLM call)
-// StrengthGrowthSynthesizer REMOVED - insights come from Phase 2 workers directly
 // ============================================================================
 
 export { TypeClassifierWorker, createTypeClassifierWorker } from './type-classifier-worker';

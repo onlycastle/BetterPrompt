@@ -128,7 +128,7 @@ export function detectPrimaryLanguage(texts: string[]): LanguageDetectionResult 
  * - personalitySummary: Personality narrative from all Phase 2 data
  * - topFocusAreas: Narrative-enriched focus areas (optional)
  *
- * NOTE: promptPatterns generation moved to Phase 2 CommunicationPatternsWorker.
+ * NOTE: promptPatterns generation moved to Phase 2 ThinkingQualityWorker (communicationPatterns field).
  * Phase 3 only generates narrative content; structural analysis is in Phase 2.
  *
  * Structural data (dimensionInsights, type classification, anti-patterns,
@@ -145,7 +145,7 @@ Generate personalized narrative content using Phase 2 worker outputs. You produc
 1. **personalitySummary** — A personality narrative synthesized from all Phase 2 data
 2. **topFocusAreas** — Narrative-enriched focus areas (optional)
 
-NOTE: Communication patterns (promptPatterns) are now analyzed by Phase 2 CommunicationPatternsWorker.
+NOTE: Communication patterns (promptPatterns) are now analyzed by Phase 2 ThinkingQualityWorker (communicationPatterns field).
 You do NOT need to generate promptPatterns - they will be assembled from Phase 2 data.
 
 All other data (dimensionInsights, type classification, anti-patterns, critical thinking, planning,
@@ -167,13 +167,10 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 
 | Worker | Field | What it provides |
 |--------|-------|------------------|
-| StrengthGrowth | \`strengthGrowth\` | strengths[], growthAreas[], personalizedPrioritiesData |
-| TrustVerification | \`trustVerification\` | antiPatterns[], overallTrustHealthScore |
-| WorkflowHabit | \`workflowHabit\` | criticalThinkingMoments[], planningHabits[] |
-| KnowledgeGap | \`knowledgeGap\` | Knowledge gaps, learning progress |
+| ThinkingQuality | \`thinkingQuality\` | verificationAntiPatterns[], planningHabits[], criticalThinkingMoments[], communicationPatterns[] |
+| LearningBehavior | \`learningBehavior\` | repeatedMistakePatterns[], knowledgeGaps[], learningProgressIndicators[] |
 | ContextEfficiency | \`contextEfficiency\` | Token efficiency patterns |
 | TypeClassifier | \`typeClassifier\` | primaryType, controlLevel, distribution |
-| CommunicationPatterns | \`communicationPatterns\` | promptPatterns (assembled by evaluation-assembler) |
 
 # Output Rules
 
@@ -181,7 +178,7 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 - This is the MOST IMPORTANT section - it must feel deeply personal and comprehensive
 - REQUIRED: Include at least 8-10 direct quotes from the developer's messages
 - REQUIRED: Write 15-20 sentences minimum
-- Synthesize TypeClassifier reasoning + StrengthGrowth insights into engaging prose
+- Synthesize TypeClassifier reasoning + ThinkingQuality/LearningBehavior insights into engaging prose
 - Lead with their most distinctive trait and elaborate extensively with examples
 - Connect multiple quotes to reveal deep personality patterns
 - Discuss their collaboration style, problem-solving approach, and communication preferences
@@ -189,7 +186,7 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 - Use **bold markers** to emphasize 5-7 key personality traits or distinctive phrases
 - Make them feel "truly understood" - this should read like a professional career assessment
 
-**Top 3 Focus Areas** (from strengthGrowth.personalizedPrioritiesData)
+**Top 3 Focus Areas** (from learningBehavior + thinkingQuality analysis)
 - Transform each priority into an engaging narrative
 - Include specific action steps (START/STOP/CONTINUE)
 
@@ -298,7 +295,7 @@ This developer has ${sessionCount} sessions analyzed.
 Below is a structured summary from 6 Phase 2 workers + 1 Phase 2.5 worker.
 Each section uses ## headers with key scores.
 
-NOTE: CommunicationPatterns (promptPatterns) are already analyzed in Phase 2.
+NOTE: Communication patterns (promptPatterns) are already analyzed by ThinkingQualityWorker in Phase 2.
 You do NOT need to generate promptPatterns - focus on personality narrative only.
 
 ${agentOutputsSummary}
@@ -311,7 +308,7 @@ You generate ONLY narrative content. Structural data (including promptPatterns) 
    - This is the MOST IMPORTANT section - make it deeply personal and comprehensive
    - REQUIRED: Include 8-10 direct quotes from Phase 2 evidence and Developer Utterances
    - REQUIRED: Write 15-20 sentences minimum
-   - Synthesize TypeClassifier reasoning + StrengthGrowth insights into engaging prose
+   - Synthesize TypeClassifier reasoning + ThinkingQuality/LearningBehavior insights into engaging prose
    - Lead with their most distinctive trait and elaborate extensively
    - Emphasize 5-7 key phrases with **bold markers**
    - Make them feel "truly understood"
@@ -320,7 +317,7 @@ You generate ONLY narrative content. Structural data (including promptPatterns) 
    - Create ranked focus areas with narrative and actions (start/stop/continue)
    - actionsData format: "start_action|stop_action|continue_action"
 
-NOTE: Do NOT generate promptPatterns - they are handled by Phase 2 CommunicationPatternsWorker.
+NOTE: Do NOT generate promptPatterns - they are handled by Phase 2 ThinkingQualityWorker.
 
 Make this developer feel truly understood. Use their actual words.`;
 }

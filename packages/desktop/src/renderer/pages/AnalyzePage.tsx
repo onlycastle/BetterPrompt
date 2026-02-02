@@ -45,6 +45,144 @@ function DimensionBar({ name, percent }: { name: string; percent: number }) {
   );
 }
 
+interface UnlockSectionProps {
+  preview?: { totalPromptPatterns?: number; totalGrowthAreas?: number };
+  credits: number | null;
+  isUnlocking: boolean;
+  isCheckingOut: boolean;
+  onUseCredit: () => void;
+  onCheckout: () => void;
+}
+
+function UnlockSection({
+  preview,
+  credits,
+  isUnlocking,
+  isCheckingOut,
+  onUseCredit,
+  onCheckout,
+}: UnlockSectionProps) {
+  const hasCredits = credits !== null && credits > 0;
+
+  return (
+    <div className={styles.unlockSection}>
+      <h2 className={styles.unlockTitle}>Unlock Full Analysis</h2>
+      <p className={styles.unlockDescription}>
+        Get access to detailed prompt patterns, growth areas, and
+        personalized recommendations.
+      </p>
+
+      <ul className={styles.featureList}>
+        <li>{preview?.totalPromptPatterns || 0} unique prompt patterns analyzed</li>
+        <li>{preview?.totalGrowthAreas || 0} personalized growth areas</li>
+        <li>Full dimension breakdowns with detailed metrics</li>
+        <li>Actionable recommendations for each area</li>
+      </ul>
+
+      {credits !== null && (
+        <div className={styles.creditBalance}>
+          <span className={styles.creditIcon}>Credit:</span>
+          <span className={styles.creditCount}>
+            {credits} credit{credits !== 1 ? 's' : ''} remaining
+          </span>
+        </div>
+      )}
+
+      {hasCredits ? (
+        <button
+          className={styles.unlockButton}
+          onClick={onUseCredit}
+          disabled={isUnlocking}
+        >
+          {isUnlocking ? 'Unlocking...' : 'Use 1 Credit to Unlock'}
+        </button>
+      ) : (
+        <button
+          className={styles.checkoutButton}
+          onClick={onCheckout}
+          disabled={isCheckingOut}
+        >
+          {isCheckingOut ? 'Opening checkout...' : 'Buy Credits ($4.99)'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+interface FullResultsSectionProps {
+  evaluation: NonNullable<AnalysisResultResponse['evaluation']>;
+}
+
+function FullResultsSection({ evaluation }: FullResultsSectionProps) {
+  return (
+    <div className={styles.fullResults}>
+      {evaluation.strengths && evaluation.strengths.length > 0 && (
+        <div className={styles.strengthsSection}>
+          <h2 className={styles.sectionTitle}>Your Strengths</h2>
+          {evaluation.strengths.map((strength, i) => (
+            <div key={i} className={styles.strengthCard}>
+              <h3>{strength.title}</h3>
+              <FormattedText text={strength.description} as="p" />
+              {strength.evidence && strength.evidence.length > 0 && (
+                <div className={styles.evidenceList}>
+                  {strength.evidence.slice(0, 4).map((ev, j) => (
+                    <blockquote key={j} className={styles.evidence}>
+                      "{ev.quote}"
+                      <cite>{ev.context}</cite>
+                    </blockquote>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {evaluation.growthAreas && evaluation.growthAreas.length > 0 && (
+        <div className={styles.growthSection}>
+          <h2 className={styles.sectionTitle}>Growth Areas</h2>
+          {evaluation.growthAreas.map((area, i) => (
+            <div key={i} className={styles.growthCard}>
+              <h3>{area.title}</h3>
+              <FormattedText text={area.description} as="p" />
+              {area.recommendation && (
+                <div className={styles.recommendation}>
+                  <strong>Recommendation:</strong>{' '}
+                  <FormattedText text={area.recommendation} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {evaluation.topFocusAreas && (
+        <TopFocusAreasSection focusAreas={evaluation.topFocusAreas} />
+      )}
+
+      {evaluation.promptPatterns && evaluation.promptPatterns.length > 0 && (
+        <div className={styles.patternsSection}>
+          <h2 className={styles.sectionTitle}>Prompt Patterns</h2>
+          {evaluation.promptPatterns.map((pattern, i) => (
+            <EnhancedPatternCard key={i} pattern={pattern} index={i} />
+          ))}
+        </div>
+      )}
+
+      {evaluation.dimensionInsights && evaluation.dimensionInsights.length > 0 && (
+        <DimensionInsightsTerminal
+          insights={evaluation.dimensionInsights}
+          sessionsAnalyzed={evaluation.sessionsAnalyzed}
+        />
+      )}
+
+      {evaluation.agentOutputs && (
+        <AgentInsightsSection agentOutputs={evaluation.agentOutputs} />
+      )}
+    </div>
+  );
+}
+
 interface AnalyzePageProps {
   /** Optional: pre-populated resultId from deep link */
   initialResultId?: string | null;
@@ -396,10 +534,6 @@ export default function AnalyzePage({ initialResultId }: AnalyzePageProps) {
   // Render: Report View
   // ============================================
   function renderReportView() {
-    const evaluation = result?.evaluation;
-    const isPaid = result?.isPaid ?? false;
-    const typeResult = extractTypeResult(evaluation);
-
     return (
       <main className={styles.mainReport}>
         <TerminalWindow
@@ -407,165 +541,70 @@ export default function AnalyzePage({ initialResultId }: AnalyzePageProps) {
           variant="inline"
           onNewAnalysis={handleNewAnalysis}
         >
-          {isLoadingResult ? (
-            <div className={styles.reportLoading}>
-              <div className={styles.spinner} />
-              <p>Loading results...</p>
-            </div>
-          ) : resultError ? (
-            <div className={styles.reportError}>
-              <p>Error: {resultError}</p>
-              <button onClick={handleNewAnalysis}>Try Again</button>
-            </div>
-          ) : (
-            <div className={styles.reportContent}>
-              {/* Type Result Section */}
-              {typeResult && (
-                <TypeResultSection
-                  typeResult={typeResult}
-                  typeMetadata={REPORT_TYPE_METADATA}
-                />
-              )}
-
-              {/* Personality Summary */}
-              {evaluation?.personalitySummary && (
-                <div className={styles.summarySection}>
-                  <h2 className={styles.sectionTitle}>📝 Personality Summary</h2>
-                  <FormattedText
-                    text={evaluation.personalitySummary}
-                    as="p"
-                    className={styles.summaryText}
-                  />
-                </div>
-              )}
-
-              {/* Unlock Section */}
-              {!isPaid && (
-                <div className={styles.unlockSection}>
-                  <h2 className={styles.unlockTitle}>🔓 Unlock Full Analysis</h2>
-                  <p className={styles.unlockDescription}>
-                    Get access to detailed prompt patterns, growth areas, and
-                    personalized recommendations.
-                  </p>
-
-                  <ul className={styles.featureList}>
-                    <li>🎯 {result?.preview?.totalPromptPatterns || 0} unique prompt patterns analyzed</li>
-                    <li>🌱 {result?.preview?.totalGrowthAreas || 0} personalized growth areas</li>
-                    <li>📊 Full dimension breakdowns with detailed metrics</li>
-                    <li>💡 Actionable recommendations for each area</li>
-                  </ul>
-
-                  {credits !== null && (
-                    <div className={styles.creditBalance}>
-                      <span className={styles.creditIcon}>🎟️</span>
-                      <span className={styles.creditCount}>
-                        {credits} credit{credits !== 1 ? 's' : ''} remaining
-                      </span>
-                    </div>
-                  )}
-
-                  {credits !== null && credits > 0 ? (
-                    <button
-                      className={styles.unlockButton}
-                      onClick={handleUseCredit}
-                      disabled={isUnlocking}
-                    >
-                      {isUnlocking ? 'Unlocking...' : 'Use 1 Credit to Unlock'}
-                    </button>
-                  ) : (
-                    <button
-                      className={styles.checkoutButton}
-                      onClick={handleCheckout}
-                      disabled={isCheckingOut}
-                    >
-                      {isCheckingOut ? 'Opening checkout...' : 'Buy Credits ($4.99)'}
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Full Results (when paid) */}
-              {isPaid && evaluation && (
-                <div className={styles.fullResults}>
-                  {/* Strengths */}
-                  {evaluation.strengths && evaluation.strengths.length > 0 && (
-                    <div className={styles.strengthsSection}>
-                      <h2 className={styles.sectionTitle}>✨ Your Strengths</h2>
-                      {evaluation.strengths.map((strength, i) => (
-                        <div key={i} className={styles.strengthCard}>
-                          <h3>{strength.title}</h3>
-                          <FormattedText text={strength.description} as="p" />
-                          {strength.evidence && strength.evidence.length > 0 && (
-                            <div className={styles.evidenceList}>
-                              {strength.evidence.slice(0, 2).map((ev, j) => (
-                                <blockquote key={j} className={styles.evidence}>
-                                  "{ev.quote}"
-                                  <cite>{ev.context}</cite>
-                                </blockquote>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Growth Areas */}
-                  {evaluation.growthAreas && evaluation.growthAreas.length > 0 && (
-                    <div className={styles.growthSection}>
-                      <h2 className={styles.sectionTitle}>🌱 Growth Areas</h2>
-                      {evaluation.growthAreas.map((area, i) => (
-                        <div key={i} className={styles.growthCard}>
-                          <h3>{area.title}</h3>
-                          <FormattedText text={area.description} as="p" />
-                          {area.recommendation && (
-                            <div className={styles.recommendation}>
-                              <strong>💡 Recommendation:</strong>{' '}
-                              <FormattedText text={area.recommendation} />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Top 3 Focus Areas - Most actionable section */}
-                  {evaluation.topFocusAreas && (
-                    <TopFocusAreasSection focusAreas={evaluation.topFocusAreas} />
-                  )}
-
-                  {/* Prompt Patterns - Enhanced with full examples and tips */}
-                  {evaluation.promptPatterns && evaluation.promptPatterns.length > 0 && (
-                    <div className={styles.patternsSection}>
-                      <h2 className={styles.sectionTitle}>🎯 Prompt Patterns</h2>
-                      {evaluation.promptPatterns.map((pattern, i) => (
-                        <EnhancedPatternCard
-                          key={i}
-                          pattern={pattern}
-                          index={i}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Dimension Insights */}
-                  {evaluation.dimensionInsights && evaluation.dimensionInsights.length > 0 && (
-                    <DimensionInsightsTerminal
-                      insights={evaluation.dimensionInsights}
-                      sessionsAnalyzed={evaluation.sessionsAnalyzed}
-                    />
-                  )}
-
-                  {/* Agent Insights - 4 Wow Agents (Premium only) */}
-                  {evaluation.agentOutputs && (
-                    <AgentInsightsSection agentOutputs={evaluation.agentOutputs} />
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+          {renderReportContent()}
         </TerminalWindow>
       </main>
+    );
+  }
+
+  function renderReportContent() {
+    if (isLoadingResult) {
+      return (
+        <div className={styles.reportLoading}>
+          <div className={styles.spinner} />
+          <p>Loading results...</p>
+        </div>
+      );
+    }
+
+    if (resultError) {
+      return (
+        <div className={styles.reportError}>
+          <p>Error: {resultError}</p>
+          <button onClick={handleNewAnalysis}>Try Again</button>
+        </div>
+      );
+    }
+
+    const evaluation = result?.evaluation;
+    const isPaid = result?.isPaid ?? false;
+    const typeResult = extractTypeResult(evaluation);
+
+    return (
+      <div className={styles.reportContent}>
+        {typeResult && (
+          <TypeResultSection
+            typeResult={typeResult}
+            typeMetadata={REPORT_TYPE_METADATA}
+          />
+        )}
+
+        {evaluation?.personalitySummary && (
+          <div className={styles.summarySection}>
+            <h2 className={styles.sectionTitle}>Personality Summary</h2>
+            <FormattedText
+              text={evaluation.personalitySummary}
+              as="p"
+              className={styles.summaryText}
+            />
+          </div>
+        )}
+
+        {!isPaid && (
+          <UnlockSection
+            preview={result?.preview}
+            credits={credits}
+            isUnlocking={isUnlocking}
+            isCheckingOut={isCheckingOut}
+            onUseCredit={handleUseCredit}
+            onCheckout={handleCheckout}
+          />
+        )}
+
+        {isPaid && evaluation && (
+          <FullResultsSection evaluation={evaluation} />
+        )}
+      </div>
     );
   }
 

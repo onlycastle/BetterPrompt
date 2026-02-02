@@ -22,13 +22,12 @@ import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker
 import {
   type Phase1Output,
   type DeveloperUtterance,
-  type AIResponse,
   type Phase1SessionMetrics,
 } from '../../models/phase1-output';
 import type { ParsedSession, ParsedMessage } from '../../models/session';
 import type { OrchestratorConfig } from '../orchestrator/types';
-import { strategicSampleUtterances, strategicSampleAIResponses } from '../shared/sampling-utils';
-import { PHASE1_MAX_UTTERANCES, PHASE1_MAX_AI_RESPONSES } from '../shared/constants';
+import { strategicSampleUtterances } from '../shared/sampling-utils';
+import { PHASE1_MAX_UTTERANCES } from '../shared/constants';
 import { GeminiClient, type TokenUsage } from '../clients/gemini-client';
 import {
   BatchClassificationResultSchema,
@@ -79,13 +78,12 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   }
 
   private static readonly MAX_UTTERANCES = PHASE1_MAX_UTTERANCES;
-  private static readonly MAX_AI_RESPONSES = PHASE1_MAX_AI_RESPONSES;
   private static readonly TRUNCATION_MARKER = '... [truncated]';
 
   // LLM filtering configuration
   private static readonly LLM_FILTER_MIN_LENGTH = 10; // Skip LLM for very short utterances only
   private static readonly LLM_FILTER_CONFIDENCE_THRESHOLD = 0.7; // Filter if confidence >= threshold
-  private static readonly LLM_FILTER_BATCH_SIZE = 20; // Max utterances per LLM call
+  private static readonly LLM_FILTER_BATCH_SIZE = 100; // Max utterances per LLM call (increased for efficiency)
 
   /** Dedicated Gemini client for LLM filtering (created lazily) */
   private filterClient?: GeminiClient;
@@ -125,40 +123,47 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    */
   async execute(context: WorkerContext): Promise<WorkerResult<Phase1Output>> {
     this.log(`Extracting from ${context.sessions.length} sessions...`);
+    const totalStartTime = Date.now();
 
     // Reset token usage for this execution
     this.filterTokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
     const allDeveloperUtterances: DeveloperUtterance[] = [];
-    const allAIResponses: AIResponse[] = [];
 
-    // Process each session — extract ALL utterances/responses first
+    // Process each session — extract ALL utterances first
+    const extractStartTime = Date.now();
     for (const session of context.sessions) {
-      const { utterances, responses } = this.extractFromSession(session);
+      const utterances = this.extractFromSession(session);
       allDeveloperUtterances.push(...utterances);
-      allAIResponses.push(...responses);
     }
+    const extractElapsed = Date.now() - extractStartTime;
+    this.log(`[Timing] Session extraction: ${extractElapsed}ms (${allDeveloperUtterances.length} utterances)`);
 
     // NEW: Apply LLM-based filtering to remove system metadata
+    const filterStartTime = Date.now();
     const filteredUtterances = await this.filterSystemMetadataWithLLM(allDeveloperUtterances);
+    const filterElapsed = Date.now() - filterStartTime;
+    this.log(`[Timing] LLM filtering: ${filterElapsed}ms`);
 
     this.log(`Filtered ${allDeveloperUtterances.length - filteredUtterances.length} system metadata utterances`);
 
     // Compute metrics from filtered data (accurate representation of developer input)
+    const metricsStartTime = Date.now();
     const sessionMetrics = this.computeSessionMetrics(context.sessions, filteredUtterances);
+    const metricsElapsed = Date.now() - metricsStartTime;
+    this.log(`[Timing] Metrics computation: ${metricsElapsed}ms`);
 
     // Apply strategic sampling to reduce downstream token usage
     const sampledUtterances = this.sampleUtterances(filteredUtterances, DataExtractorWorker.MAX_UTTERANCES);
-    const sampledResponses = this.sampleAIResponses(allAIResponses, DataExtractorWorker.MAX_AI_RESPONSES);
 
     const output: Phase1Output = {
       developerUtterances: sampledUtterances,
-      aiResponses: sampledResponses,
       sessionMetrics,
     };
 
+    const totalElapsed = Date.now() - totalStartTime;
+    this.log(`[Timing] Total execute(): ${totalElapsed}ms`);
     this.log(`Extracted ${filteredUtterances.length} utterances, sampled to ${sampledUtterances.length}`);
-    this.log(`Extracted ${allAIResponses.length} AI responses, sampled to ${sampledResponses.length}`);
 
     // Return token usage from LLM filtering (if any)
     const usage = this.filterTokenUsage.totalTokens > 0 ? this.filterTokenUsage : null;
@@ -166,14 +171,10 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   }
 
   /**
-   * Extract utterances and responses from a single session
+   * Extract utterances from a single session
    */
-  private extractFromSession(session: ParsedSession): {
-    utterances: DeveloperUtterance[];
-    responses: AIResponse[];
-  } {
+  private extractFromSession(session: ParsedSession): DeveloperUtterance[] {
     const utterances: DeveloperUtterance[] = [];
-    const responses: AIResponse[] = [];
 
     let precedingAIResponse: ParsedMessage | null = null;
 
@@ -194,13 +195,12 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
         }
         precedingAIResponse = null;
       } else if (message.role === 'assistant') {
-        const response = this.extractAIResponse(session, message, turnIndex);
-        responses.push(response);
+        // Track preceding AI response for context metadata on next user utterance
         precedingAIResponse = message;
       }
     }
 
-    return { utterances, responses };
+    return utterances;
   }
 
   /**
@@ -254,85 +254,57 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       isSessionStart: turnIndex === 0,
       isContinuation: this.isContinuation(originalText),
 
-      // Noteworthy flag for evidence filtering
-      isNoteworthy: this.determineNoteworthy(originalText),
-
       // Context from preceding AI response
       precedingAIToolCalls: precedingAI?.toolCalls?.map(tc => tc.name),
       precedingAIHadError: this.hadError(precedingAI),
     };
   }
 
+  // Claude Code context window size in tokens
+  private static readonly CONTEXT_WINDOW_SIZE = 200_000;
+
   /**
-   * Extract AI response metadata
+   * Compute context fill metrics from token usage data.
+   *
+   * Calculates deterministic context fill percentages based on actual input_tokens
+   * from ParsedMessage.tokenUsage. This replaces LLM estimation with real data.
+   *
+   * @param sessions - All parsed sessions
+   * @returns Context fill metrics or undefined if no token data available
    */
-  private extractAIResponse(
-    session: ParsedSession,
-    message: ParsedMessage,
-    turnIndex: number
-  ): AIResponse {
-    const id = `${session.sessionId}_${turnIndex}`;
-    const toolsUsed = message.toolCalls?.map(tc => tc.name) ?? [];
+  private computeContextFillMetrics(
+    sessions: ParsedSession[]
+  ): {
+    avgContextFillPercent?: number;
+    maxContextFillPercent?: number;
+    contextFillExceeded90Count?: number;
+  } {
+    const fillPercentages: number[] = [];
+
+    for (const session of sessions) {
+      for (const message of session.messages) {
+        // Only assistant messages have tokenUsage (input represents context at that point)
+        if (message.role === 'assistant' && message.tokenUsage?.input) {
+          const fillPercent = (message.tokenUsage.input / DataExtractorWorker.CONTEXT_WINDOW_SIZE) * 100;
+          fillPercentages.push(fillPercent);
+        }
+      }
+    }
+
+    if (fillPercentages.length === 0) {
+      // No token data available
+      return {};
+    }
+
+    const avgFill = fillPercentages.reduce((sum, p) => sum + p, 0) / fillPercentages.length;
+    const maxFill = Math.max(...fillPercentages);
+    const exceeded90Count = fillPercentages.filter(p => p >= 90).length;
 
     return {
-      id,
-      sessionId: session.sessionId,
-      turnIndex,
-      responseType: this.classifyResponseType(message),
-      toolsUsed,
-      textSnippet: message.content.slice(0, 1500),
-      fullTextLength: message.content.length,
-      hadError: this.hadError(message),
-      wasSuccessful: this.wasSuccessful(message),
+      avgContextFillPercent: Math.round(avgFill * 10) / 10, // 1 decimal place
+      maxContextFillPercent: Math.round(maxFill * 10) / 10,
+      contextFillExceeded90Count: exceeded90Count,
     };
-  }
-
-  /**
-   * Classify the response type based on content and tools used
-   */
-  private classifyResponseType(message: ParsedMessage): AIResponse['responseType'] {
-    const tools = message.toolCalls?.map(tc => tc.name) ?? [];
-    const content = message.content.toLowerCase();
-
-    if (this.isPlanningResponse(tools)) return 'planning';
-    if (this.isCodeEditResponse(tools)) return 'code_edit';
-    if (this.isCodeGenerationResponse(tools)) return 'code_generation';
-    if (this.isErrorFixResponse(content)) return 'error_fix';
-    if (this.isToolExecutionResponse(tools)) return 'tool_execution';
-    if (this.isQuestionResponse(content)) return 'question';
-    if (this.isExplanationResponse(content)) return 'explanation';
-    return 'other';
-  }
-
-  private isPlanningResponse(tools: string[]): boolean {
-    return tools.some(t => ['EnterPlanMode', 'ExitPlanMode', 'TodoWrite', 'TodoRead'].includes(t));
-  }
-
-  private isCodeEditResponse(tools: string[]): boolean {
-    return tools.includes('Edit') || tools.includes('Write');
-  }
-
-  private isCodeGenerationResponse(tools: string[]): boolean {
-    return tools.includes('Write') && !tools.includes('Read');
-  }
-
-  private isErrorFixResponse(content: string): boolean {
-    const errorKeywords = ['error', 'fix', 'bug', 'issue'];
-    return errorKeywords.some(keyword => content.includes(keyword));
-  }
-
-  private isToolExecutionResponse(tools: string[]): boolean {
-    return tools.includes('Bash') || tools.includes('Task');
-  }
-
-  private isQuestionResponse(content: string): boolean {
-    const questionIndicators = ['?', 'would you', 'do you want'];
-    return questionIndicators.some(indicator => content.includes(indicator));
-  }
-
-  private isExplanationResponse(content: string): boolean {
-    const explanationIndicators = ['let me explain', 'this means', 'because'];
-    return explanationIndicators.some(indicator => content.includes(indicator));
   }
 
   /**
@@ -371,6 +343,9 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     );
     timestamps.sort();
 
+    // Calculate context fill metrics (deterministic, from token data)
+    const contextFillMetrics = this.computeContextFillMetrics(sessions);
+
     return {
       totalSessions: sessions.length,
       totalMessages,
@@ -385,6 +360,8 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
         latest: timestamps[timestamps.length - 1] ?? new Date().toISOString(),
       },
       toolUsageCounts,
+      // Context fill metrics (deterministic calculation)
+      ...contextFillMetrics,
     };
   }
 
@@ -422,17 +399,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     return strategicSampleUtterances(all, maxCount);
   }
 
-  /**
-   * Strategic sampling of AI responses.
-   * Delegates to shared utility (error-prioritized + even spacing strategy).
-   */
-  private sampleAIResponses(
-    all: AIResponse[],
-    maxCount: number
-  ): AIResponse[] {
-    return strategicSampleAIResponses(all, maxCount);
-  }
-
   // ─────────────────────────────────────────────────────────────────────────
   // Helper Methods (Structural, NOT Semantic)
   // ─────────────────────────────────────────────────────────────────────────
@@ -456,46 +422,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       'and then', 'also', 'additionally', 'furthermore',
     ];
     return continuationPhrases.some(phrase => lowerText.startsWith(phrase));
-  }
-
-  /**
-   * Determine if an utterance is semantically meaningful enough for evidence.
-   *
-   * Noteworthy utterances should:
-   * 1. Have sufficient length (8+ words) for context
-   * 2. Contain structural importance (questions, code blocks)
-   * 3. Include explanatory context keywords
-   *
-   * Short confirmations like "ok", "좋았어", "이건 잘 되었어" are filtered out.
-   *
-   * @param text - The utterance text to evaluate
-   * @returns true if the utterance is noteworthy
-   */
-  private determineNoteworthy(text: string): boolean {
-    const wordCount = this.countWords(text);
-
-    // Minimum word count threshold
-    if (wordCount < 8) {
-      return false;
-    }
-
-    // Has structural importance: questions or code blocks
-    if (this.hasQuestion(text) || this.hasCodeBlock(text)) {
-      return true;
-    }
-
-    // Contains explanatory context keywords (EN + KO)
-    const contextPatterns = /\b(because|since|therefore|however|although|considering|specifically|actually|instead|before|after|first|then|next|finally)\b|그래서|왜냐하면|때문에|확인|체크|살펴|분석|이유|방법|문제|해결|수정|변경|추가|삭제|구현|테스트/i;
-    if (contextPatterns.test(text)) {
-      return true;
-    }
-
-    // Minimum threshold for longer texts (20+ words are likely meaningful)
-    if (wordCount >= 20) {
-      return true;
-    }
-
-    return false;
   }
 
   /**
@@ -555,8 +481,9 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   private async filterSystemMetadataWithLLM(
     utterances: DeveloperUtterance[]
   ): Promise<DeveloperUtterance[]> {
-    // Pre-filter with known regex patterns (fast path)
-    const preFiltered = utterances.filter(u => !this.isKnownSystemMetadata(u.text));
+    // Skip regex pre-filtering - rely solely on LLM classification
+    // This allows LLM to handle all patterns including CLI/terminal output
+    const preFiltered = utterances;
 
     // Separate utterances that need LLM classification
     const needsClassification = preFiltered.filter(
@@ -571,15 +498,44 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       return preFiltered;
     }
 
-    this.log(`Classifying ${needsClassification.length} utterances for system metadata...`);
+    const totalBatches = Math.ceil(needsClassification.length / DataExtractorWorker.LLM_FILTER_BATCH_SIZE);
+    const PARALLEL_LIMIT = 3;
+    this.log(`Classifying ${needsClassification.length} utterances for system metadata... (${totalBatches} batches, ${PARALLEL_LIMIT} parallel)`);
 
-    // Process in batches to manage token usage
+    // Prepare all batches
+    const batches: { index: number; items: DeveloperUtterance[] }[] = [];
+    for (let i = 0; i < needsClassification.length; i += DataExtractorWorker.LLM_FILTER_BATCH_SIZE) {
+      batches.push({
+        index: batches.length + 1,
+        items: needsClassification.slice(i, i + DataExtractorWorker.LLM_FILTER_BATCH_SIZE),
+      });
+    }
+
+    // Process batches in parallel with concurrency limit
+    const allResults: { batch: DeveloperUtterance[]; classifications: ContentClassification[] }[] = [];
+
+    for (let i = 0; i < batches.length; i += PARALLEL_LIMIT) {
+      const parallelBatches = batches.slice(i, i + PARALLEL_LIMIT);
+      const roundStartTime = Date.now();
+
+      const results = await Promise.all(
+        parallelBatches.map(async ({ index, items }) => {
+          const classifications = await this.classifyBatch(items);
+          return { index, batch: items, classifications };
+        })
+      );
+
+      const roundElapsed = Date.now() - roundStartTime;
+      const processedIndices = parallelBatches.map(b => b.index).join(',');
+      this.log(`[Timing] Batches [${processedIndices}]/${totalBatches}: ${roundElapsed}ms (${parallelBatches.length} parallel)`);
+
+      allResults.push(...results.map(r => ({ batch: r.batch, classifications: r.classifications })));
+    }
+
+    // Process all classification results
     const classifiedUtterances: DeveloperUtterance[] = [];
 
-    for (let i = 0; i < needsClassification.length; i += DataExtractorWorker.LLM_FILTER_BATCH_SIZE) {
-      const batch = needsClassification.slice(i, i + DataExtractorWorker.LLM_FILTER_BATCH_SIZE);
-      const classifications = await this.classifyBatch(batch);
-
+    for (const { batch, classifications } of allResults) {
       // Keep only utterances classified as developer input with sufficient confidence
       for (let j = 0; j < batch.length; j++) {
         const classification = classifications[j];
@@ -592,38 +548,14 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
 
           // Apply displayText from LLM sanitization
           // If LLM provided a sanitized displayText, use it (with additional sanitization)
-          // Otherwise fallback to truncated original text
+          // Otherwise fallback to original text (no truncation - Phase 2 Workers handle as needed)
           if (classification?.displayText && classification.displayText.trim()) {
             // Apply post-processing to fix LLM formatting issues
             // (vertical text, raw markdown, whitespace)
-            const sanitized = DataExtractorWorker.sanitizeDisplayText(classification.displayText);
-            const originalLength = utterance.text.length;
-            const sanitizedLength = sanitized.length;
-            const compressionRatio = sanitizedLength / originalLength;
-
-            // CRITICAL: Tiered validation based on original text length
-            // Short texts (developer's natural language) must be preserved more strictly
-            // Long texts may contain machine-generated content that can be summarized
-            const validationResult = this.validateDisplayTextCompression(
-              originalLength,
-              sanitizedLength,
-              compressionRatio
-            );
-
-            if (!validationResult.valid) {
-              // LLM corrupted the text - fallback to original
-              this.log(`Rejected LLM displayText (${sanitizedLength}/${originalLength} chars, ratio=${compressionRatio.toFixed(2)}, reason=${validationResult.reason}): "${sanitized.slice(0, 30)}..."`);
-              utterance.displayText = utterance.text.length > 300
-                ? utterance.text.slice(0, 297) + '...'
-                : utterance.text;
-            } else {
-              utterance.displayText = sanitized;
-            }
+            utterance.displayText = DataExtractorWorker.sanitizeDisplayText(classification.displayText);
           } else {
-            // No displayText from LLM - use original text (truncated for display)
-            utterance.displayText = utterance.text.length > 300
-              ? utterance.text.slice(0, 297) + '...'
-              : utterance.text;
+            // No displayText from LLM - use original text as-is
+            utterance.displayText = utterance.text;
           }
 
           classifiedUtterances.push(utterance);
@@ -642,51 +574,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
 
     // Combine short utterances (passed through) with classified ones
     return [...shortUtterances, ...classifiedUtterances];
-  }
-
-  /**
-   * Check if text matches known system metadata patterns (regex fast path).
-   * Returns true if the utterance should be filtered out.
-   */
-  private isKnownSystemMetadata(text: string): boolean {
-    const trimmedText = text.trim();
-
-    // Filter out single-character utterances (too short to be meaningful)
-    // Examples: ".", "ㅇ", "k", "y" — these are noise, not developer intent
-    if (trimmedText.length <= 1) {
-      return true;
-    }
-
-    const knownPatterns = [
-      // Skill documentation blocks
-      /^Base directory for this skill:/i,
-      /^This skill is located at:/i,
-
-      // Session continuation summaries
-      /^This session is being continued from a previous conversation/i,
-      /^Continuing from previous session/i,
-
-      // Claude Code internal instructions
-      /^IMPORTANT: this context may or may not be relevant/i,
-      /^The following skills are available/i,
-
-      // Plan execution prompts (system-injected by /plan skill)
-      /^Implement the following plan:/i,
-
-      // Claude-generated Insight blocks (injected via session context)
-      /★ Insight/,
-      /`★ Insight/,
-      /^─{10,}/,
-
-      // Error stacks and tracebacks (pasted debug output, not developer intent)
-      /^Error:|^ERROR:|^Exception:|^Traceback \(most recent call last\):/,
-      /^\s+at \w+\.\w+\s*\(/m,
-
-      // Server logs (pasted terminal output, not developer intent)
-      /^(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD) \/\S+.*\d{3}/m,
-    ];
-
-    return knownPatterns.some(pattern => pattern.test(trimmedText));
   }
 
   /**
@@ -712,7 +599,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
         systemPrompt,
         userPrompt,
         responseSchema: BatchClassificationResultSchema,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 65536,
       });
 
       // Accumulate token usage
@@ -758,118 +645,38 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    * This prompt performs TWO tasks in one call:
    * 1. Classification: developer vs system metadata
    * 2. Sanitization: Create display-friendly text for developer utterances
+   *
+   * OPTIMIZED: Reduced from ~4,500 tokens to ~1,200 tokens while preserving core logic.
+   * Formatting issues (vertical text, markdown) are handled by sanitizeDisplayText().
    */
   private buildFilterSystemPrompt(): string {
-    return `You are a content classifier AND sanitizer for developer-AI conversation analysis.
+    return `You are a content classifier for developer-AI conversation analysis.
 
-## TASK 1: Classification
-Classify each text segment as either:
-1. "developer" - Actual developer input (questions, requests, code, feedback)
-2. "system" - System-injected metadata (skill docs, session summaries, hook outputs)
+## Classification
+Classify as "developer" (keep) or "system" (filter):
 
-SYSTEM METADATA PATTERNS (filter these out):
-- Skill documentation blocks starting with "Base directory for this skill:"
-- Session continuation summaries starting with "This session is being continued"
-- Claude Code system instructions or context injections
-- Hook outputs, command outputs, tool results embedded in user messages
-- Any instructional content addressed TO Claude, not FROM the developer
+**SYSTEM (filter out):**
+- Skill docs: "Base directory for this skill:", session summaries
+- CLI output without context: build logs, npm/git output, status symbols (✓✕⚠)
+- Plan documents: "Implement the following plan:" + markdown content
+- System instructions addressed TO Claude
 
-DEVELOPER INPUT PATTERNS (keep these):
-- Questions, requests, or instructions for the AI assistant
-- Code snippets the developer wants help with
-- Feedback on AI responses
-- Error messages the developer is reporting/asking about
-- Conversational responses, implementation requests, bug reports
+**DEVELOPER (keep):**
+- Questions, requests, instructions, code snippets, feedback
+- Error reports WITH developer context: "I got this error: [error]"
 
-## TASK 2: Sanitization (for "developer" texts only)
-Create a display-friendly version (displayText) that:
-- PRESERVES the developer's actual words and intent verbatim
-- SUMMARIZES machine-generated content they pasted:
-  - Error logs (## Error Type, Error:, Exception:) → [Error: {brief message, max 50 chars}]
-  - Stack traces (at Function.method, Traceback, file:line) → [Stack trace]
-  - Code blocks (\`\`\`...\`\`\`) → [Code: {language or 'snippet'}]
-  - CLI/terminal output (npm logs, git output, command results) → [CLI output]
-  - JSON data (large JSON objects/arrays) → [JSON data]
-- KEEPS the result under 300 characters when possible
-- If text has NO machine-generated content, displayText = original text (unchanged)
+## Sanitization (developer texts only)
+Create displayText that:
+- PRESERVES developer's words verbatim
+- SUMMARIZES machine content: errors → [Error: brief], stack traces → [Stack trace], code → [Code: lang]
+- SHORT TEXT (<50 chars): return UNCHANGED
+- Target: <300 chars
 
-EXAMPLE INPUT:
-"Great, login works now. But after logging in and naming the company CT, I got this: ## Error Type Console Error ## Error Message No workspace ID set at SupabaseStorageManager.getData (lib/supabase-storage.ts:91:15) at DashboardOverviewPage.useEffect.loadData (app/dashboard/page.tsx:94:41)"
+EXAMPLE:
+Input: "Login works. But got this: Error: No workspace ID at getData (storage.ts:91)"
+Output: {"classification":"developer","confidence":0.95,"reason":"Developer reporting error","displayText":"Login works. But got this: [Error: No workspace ID][Stack trace]"}
 
-EXAMPLE OUTPUT:
-{
-  "classification": "developer",
-  "confidence": 0.95,
-  "reason": "Developer reporting an error encountered during login",
-  "displayText": "Great, login works now. But after logging in and naming the company CT, I got this: [Error: No workspace ID set][Stack trace]"
-}
-
-IMPORTANT GUIDELINES:
-- Only provide displayText for "developer" classified texts (not for "system")
-- NEVER alter the developer's natural language - only summarize pasted technical content
-- When in doubt about classification, default to "developer"
-- Use confidence scores to indicate certainty (0.0-1.0)
-
-## CRITICAL RULE: Never Summarize Developer's Natural Language
-- displayText must contain ALL of the developer's original words
-- ONLY machine-generated content (error logs, stack traces, code blocks) can be summarized to tags
-- If original text is "1번을 실행하면 이렇게 나와", displayText MUST be "1번을 실행하면 이렇게 나와" (unchanged)
-- NEVER reduce developer text to just numbers, single words, or short phrases
-- When in doubt, return the original text unchanged
-
-## LENGTH-BASED RULES (MANDATORY):
-- SHORT TEXT (< 50 chars): displayText MUST be identical to original text
-  - These are pure developer natural language with NO machine content
-  - Example: "1번을 실행해봐" → displayText = "1번을 실행해봐" (unchanged)
-  - Example: "로그인 테스트 해봐" → displayText = "로그인 테스트 해봐" (unchanged)
-  - NEVER summarize, shorten, or modify short texts
-
-- MEDIUM TEXT (50-200 chars): displayText must preserve at least 50% of original length
-  - May contain some machine content that can be tagged
-  - Developer's words MUST be preserved verbatim
-
-- LONG TEXT (200+ chars): displayText may summarize machine content more aggressively
-  - Still preserve ALL developer natural language segments
-
-INVALID displayText EXAMPLES (DO NOT DO THIS):
-  text: "1번을 실행하면 이렇게 나와"
-  displayText: "1" ← WRONG! This destroys developer's actual words
-
-  text: "이건 잘 되었어"
-  displayText: "잘" ← WRONG! This loses context
-
-  text: "로그인 테스트 해봐"
-  displayText: "테스트" ← WRONG! Too short, loses intent
-
-  text: "Great, this works!"
-  displayText: "works" ← WRONG! Developer's full sentence must be preserved
-
-VALID displayText EXAMPLES:
-  text: "1번을 실행하면 이렇게 나와"
-  displayText: "1번을 실행하면 이렇게 나와" ← CORRECT! Unchanged (short text)
-
-  text: "이건 잘 되었어"
-  displayText: "이건 잘 되었어" ← CORRECT! Unchanged (short text)
-
-  text: "Great, this works!"
-  displayText: "Great, this works!" ← CORRECT! Unchanged (short text)
-
-  text: "로그인 잘 된다. 그런데 Error: No workspace ID 에러가 나왔어"
-  displayText: "로그인 잘 된다. 그런데 [Error: No workspace ID] 에러가 나왔어" ← CORRECT! Only error is tagged
-
-CRITICAL FORMATTING RULES for displayText:
-- NEVER insert newlines (\\n) between individual characters - text must flow horizontally
-- REMOVE all markdown syntax from output:
-  - Headers: "# Ship-It" → "Ship-It"
-  - Bold/italic: "**important**" → "important"
-  - Inline code: "\`function\`" → "function"
-- Preserve natural sentence structure - use spaces between words, not newlines
-- When truncating long text, end at natural word boundaries, never mid-word or mid-parenthesis
-  - BAD: "(lib/supabase-storage.ts" (unclosed parenthesis)
-  - GOOD: "in lib/supabase-storage.ts"
-- Ensure displayText is a continuous, readable sentence/paragraph on a single line
-
-Respond with a JSON object containing an array of classifications.`;
+When in doubt, classify as "developer". Return JSON with classifications array.`;
   }
 
   /**
@@ -894,40 +701,6 @@ Return exactly ${inputs.length} classifications in order.`;
   // ─────────────────────────────────────────────────────────────────────────
   // Natural Language Preservation Methods
   // ─────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Validate displayText compression ratio based on original text length.
-   *
-   * Tiered validation ensures developer's natural language is preserved:
-   * - Short texts (< 50 chars): Likely pure developer input, require 80% preservation
-   * - Medium texts (50-200 chars): Mixed content, require 50% preservation
-   * - Long texts (200+ chars): May contain machine content, require 30% preservation
-   *
-   * @returns { valid: boolean, reason: string }
-   */
-  private validateDisplayTextCompression(
-    originalLength: number,
-    sanitizedLength: number,
-    compressionRatio: number
-  ): { valid: boolean; reason: string } {
-    if (sanitizedLength < 10) {
-      return { valid: false, reason: 'too_short_absolute' };
-    }
-
-    if (originalLength < 50 && compressionRatio < 0.8) {
-      return { valid: false, reason: 'short_text_over_compressed' };
-    }
-
-    if (originalLength >= 50 && originalLength < 200 && compressionRatio < 0.5) {
-      return { valid: false, reason: 'medium_text_over_compressed' };
-    }
-
-    if (originalLength >= 200 && compressionRatio < 0.3) {
-      return { valid: false, reason: 'long_text_over_compressed' };
-    }
-
-    return { valid: true, reason: 'passed' };
-  }
 
   /**
    * Extract natural language segments from text.

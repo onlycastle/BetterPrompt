@@ -50,17 +50,20 @@ interface BlobRow {
 
 /**
  * Cursor message structure (parsed from blob)
+ * Cursor stores messages in individual JSON blobs with role field
  */
 interface CursorMessage {
   id?: string;
-  role: 'user' | 'assistant' | 'tool';
-  content?: string;
+  role: 'user' | 'assistant' | 'tool' | 'system';
+  content?: string | Array<{ type: string; [key: string]: unknown }>;
   text?: string;
   timestamp?: string;
   createdAt?: number;
   toolCalls?: CursorToolCall[];
   tool_calls?: CursorToolCall[];
   toolResults?: CursorToolResult[];
+  // Cursor-specific: signature contains reasoning summary for assistant messages
+  signature?: string;
 }
 
 interface CursorToolCall {
@@ -73,6 +76,28 @@ interface CursorToolCall {
   };
   input?: Record<string, unknown>;
   arguments?: string | Record<string, unknown>;
+}
+
+/**
+ * Cursor tool-call content block (inside content array)
+ * This is how Cursor actually stores tool calls - in the content array
+ */
+interface CursorToolCallBlock {
+  type: 'tool-call';
+  toolCallId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+}
+
+/**
+ * Cursor tool-result content block (inside tool message content array)
+ */
+interface CursorToolResultBlock {
+  type: 'tool-result';
+  toolCallId: string;
+  toolName: string;
+  result: string;
+  experimental_content?: Array<{ type: string; text?: string }>;
 }
 
 interface CursorToolResult {
@@ -99,10 +124,22 @@ interface CursorConversation {
 
 /**
  * Parsed blob data structure
+ * Cursor blobs can contain:
+ * 1. Individual messages with { role, content, ... }
+ * 2. Array of messages with { messages: [...] }
+ * 3. Metadata with workspace info
  */
 interface ParsedBlobData {
   messages?: CursorMessage[];
-  role?: string;
+  role?: 'user' | 'assistant' | 'tool' | 'system';
+  content?: string | Array<{ type: string; [key: string]: unknown }>;
+  text?: string;
+  id?: string;
+  timestamp?: string;
+  createdAt?: number;
+  signature?: string;
+  toolCalls?: CursorToolCall[];
+  tool_calls?: CursorToolCall[];
   metadata?: {
     workspacePath?: string;
     projectPath?: string;
@@ -111,7 +148,6 @@ interface ParsedBlobData {
   };
   workspacePath?: string;
   projectPath?: string;
-  createdAt?: number;
   updatedAt?: number;
 }
 
@@ -125,9 +161,9 @@ async function loadSqlite(): Promise<(new (path: string) => Database) | null> {
 
   try {
     // Dynamic import to avoid hard dependency
-    // @ts-ignore - better-sqlite3 may not be installed (types optional)
     const sqlite = await import('better-sqlite3');
-    DatabaseConstructor = sqlite.default as unknown as new (path: string) => Database;
+    // Handle both ESM default export and CommonJS module
+    DatabaseConstructor = (sqlite.default ?? sqlite) as unknown as new (path: string) => Database;
     return DatabaseConstructor;
   } catch {
     // better-sqlite3 not installed
@@ -326,16 +362,38 @@ export class CursorSource extends BaseSessionSource {
         ?? this.decodeProjectPath(workspaceHash);
 
       // Build tool results map for matching
-      const toolResultsMap = new Map<string, { content: string; isError: boolean }>();
+      // Cursor stores tool results in 'tool' role messages with content array
+      const toolResultsMap = new Map<string, { content: string; isError: boolean; toolName: string }>();
       for (const msg of conversation.messages) {
-        if (msg.role === 'tool' && msg.toolResults) {
-          for (const result of msg.toolResults) {
-            const toolId = result.tool_use_id ?? result.toolCallId;
-            if (toolId) {
-              toolResultsMap.set(toolId, {
-                content: result.content,
-                isError: result.isError ?? result.is_error ?? false,
-              });
+        if (msg.role === 'tool') {
+          // Check for tool results in content array (Cursor's actual format)
+          if (Array.isArray(msg.content)) {
+            for (const block of msg.content) {
+              if (block.type === 'tool-result') {
+                const resultBlock = block as unknown as CursorToolResultBlock;
+                if (resultBlock.toolCallId) {
+                  const resultText = resultBlock.result || '';
+                  const isError = resultText.toLowerCase().includes('error');
+                  toolResultsMap.set(resultBlock.toolCallId, {
+                    content: resultText,
+                    isError,
+                    toolName: resultBlock.toolName || 'unknown',
+                  });
+                }
+              }
+            }
+          }
+          // Also check legacy format
+          if (msg.toolResults) {
+            for (const result of msg.toolResults) {
+              const toolId = result.tool_use_id ?? result.toolCallId;
+              if (toolId) {
+                toolResultsMap.set(toolId, {
+                  content: result.content,
+                  isError: result.isError ?? result.is_error ?? false,
+                  toolName: 'unknown',
+                });
+              }
             }
           }
         }
@@ -346,7 +404,8 @@ export class CursorSource extends BaseSessionSource {
 
       for (const msg of conversation.messages) {
         if (msg.role === 'user') {
-          const content = msg.content ?? msg.text ?? '';
+          // Content can be string or array (from tool messages)
+          const content = typeof msg.content === 'string' ? msg.content : (msg.text ?? '');
           if (!content.trim()) continue;
 
           messages.push({
@@ -356,15 +415,21 @@ export class CursorSource extends BaseSessionSource {
             content,
           });
         } else if (msg.role === 'assistant') {
-          const content = msg.content ?? msg.text ?? '';
-          const toolCalls = this.extractToolCalls(msg, toolResultsMap);
+          // Extract text content and tool calls from content array
+          const { textContent, toolCallBlocks } = this.parseAssistantContent(msg);
+          const toolCalls = this.extractToolCallsFromBlocks(toolCallBlocks, toolResultsMap);
+
+          // Also check legacy toolCalls/tool_calls fields
+          const legacyToolCalls = this.extractLegacyToolCalls(msg, toolResultsMap);
+          const allToolCalls = toolCalls.length > 0 ? toolCalls :
+            (legacyToolCalls && legacyToolCalls.length > 0 ? legacyToolCalls : undefined);
 
           messages.push({
             uuid: msg.id ?? this.generateUUID(),
             role: 'assistant',
             timestamp: this.extractTimestamp(msg) ?? new Date(),
-            content,
-            toolCalls,
+            content: textContent,
+            toolCalls: allToolCalls,
           });
         }
       }
@@ -409,13 +474,16 @@ export class CursorSource extends BaseSessionSource {
   // Private helper methods
   // ─────────────────────────────────────────────────────────────────────────
 
-  private async listWorkspaceDirs(): Promise<string[]> {
+  /**
+   * List all subdirectories within a given directory
+   */
+  private async listSubdirectories(parentDir: string): Promise<string[]> {
     try {
-      const entries = await readdir(this.baseDir);
+      const entries = await readdir(parentDir);
       const dirs: string[] = [];
 
       for (const entry of entries) {
-        const fullPath = join(this.baseDir, entry);
+        const fullPath = join(parentDir, entry);
         try {
           const stats = await stat(fullPath);
           if (stats.isDirectory()) {
@@ -432,27 +500,12 @@ export class CursorSource extends BaseSessionSource {
     }
   }
 
+  private async listWorkspaceDirs(): Promise<string[]> {
+    return this.listSubdirectories(this.baseDir);
+  }
+
   private async listSessionDirs(workspaceDir: string): Promise<string[]> {
-    try {
-      const entries = await readdir(workspaceDir);
-      const dirs: string[] = [];
-
-      for (const entry of entries) {
-        const fullPath = join(workspaceDir, entry);
-        try {
-          const stats = await stat(fullPath);
-          if (stats.isDirectory()) {
-            dirs.push(fullPath);
-          }
-        } catch {
-          // Skip inaccessible entries
-        }
-      }
-
-      return dirs;
-    } catch {
-      return [];
-    }
+    return this.listSubdirectories(workspaceDir);
   }
 
   private parseConversation(db: Database): CursorConversation | null {
@@ -473,11 +526,45 @@ export class CursorSource extends BaseSessionSource {
           if (!data) continue;
 
           if (data.messages && Array.isArray(data.messages)) {
-            // This blob contains conversation messages
+            // This blob contains conversation messages array
             messages.push(...data.messages);
           } else if (data.role) {
-            // This blob is a single message
-            messages.push(data as unknown as CursorMessage);
+            // This blob is a single message object
+            // Convert to CursorMessage format
+            const msg: CursorMessage = {
+              id: data.id ?? row.id,
+              role: data.role,
+              // IMPORTANT: Preserve content array for assistant messages (contains tool-call blocks)
+              content: data.content,
+              text: data.text,
+              timestamp: data.timestamp,
+              createdAt: data.createdAt,
+              toolCalls: data.toolCalls ?? data.tool_calls,
+              signature: data.signature,
+            };
+
+            // Handle content array for tool messages (extract tool results)
+            if (Array.isArray(data.content) && msg.role === 'tool') {
+              for (const block of data.content) {
+                if (block.type === 'tool-result' && typeof block.result === 'string') {
+                  // Tool result - store for later matching
+                  const toolId = block.toolCallId as string | undefined;
+                  if (toolId) {
+                    msg.toolResults = msg.toolResults ?? [];
+                    msg.toolResults.push({
+                      toolCallId: toolId,
+                      content: block.result as string,
+                      isError: (block.result as string).toLowerCase().includes('error'),
+                    });
+                  }
+                }
+              }
+            }
+
+            // Skip system messages (prompts)
+            if (msg.role !== 'system') {
+              messages.push(msg);
+            }
           }
 
           // Extract metadata if present
@@ -513,38 +600,298 @@ export class CursorSource extends BaseSessionSource {
   }
 
   private parseBlob(data: Buffer): Record<string, unknown> | null {
+    // 1. Try parsing as UTF-8 JSON first
     try {
-      // Try parsing as UTF-8 JSON first
       const text = data.toString('utf-8');
       return JSON.parse(text);
     } catch {
-      // Try decompressing if it looks like compressed data
-      try {
-        const zlib = require('zlib');
-        const decompressed = zlib.inflateSync(data);
-        return JSON.parse(decompressed.toString('utf-8'));
-      } catch {
-        // Not JSON or compressed JSON
-        return null;
-      }
+      // Not JSON
     }
-  }
 
-  private extractTimestamp(msg: CursorMessage): Date | null {
-    if (msg.timestamp) {
-      return new Date(msg.timestamp);
+    // 2. Try decompressing if it looks like compressed data
+    try {
+      const zlib = require('zlib');
+      const decompressed = zlib.inflateSync(data);
+      return JSON.parse(decompressed.toString('utf-8'));
+    } catch {
+      // Not compressed JSON
     }
-    if (msg.createdAt) {
-      // Unix timestamp (milliseconds or seconds)
-      const ts = msg.createdAt > 1e12 ? msg.createdAt : msg.createdAt * 1000;
-      return new Date(ts);
+
+    // 3. Try parsing as Protobuf (Cursor uses protobuf for some blobs)
+    try {
+      return this.parseProtobuf(data);
+    } catch {
+      // Not protobuf
     }
+
     return null;
   }
 
-  private extractToolCalls(
+  /**
+   * Parse a varint from buffer at given offset
+   * Protobuf uses variable-length encoding for integers
+   */
+  private parseVarint(data: Buffer, offset: number): { value: number; bytesRead: number } | null {
+    if (offset >= data.length) return null;
+
+    let value = 0;
+    let shift = 0;
+    let bytesRead = 0;
+    const MAX_VARINT_BYTES = 10;
+
+    while (offset + bytesRead < data.length) {
+      const byte = data[offset + bytesRead]!;
+      value |= (byte & 0x7f) << shift;
+      bytesRead++;
+
+      const isLastByte = (byte & 0x80) === 0;
+      if (isLastByte) break;
+
+      shift += 7;
+      if (bytesRead > MAX_VARINT_BYTES) return null;
+    }
+
+    return { value, bytesRead };
+  }
+
+  /**
+   * Parse Cursor protobuf blob format
+   *
+   * Cursor stores some messages in a simple protobuf format:
+   * - field1 (wire2): text content (message body, tool results)
+   * - field2 (wire2): UUID (message ID)
+   * - field3 (wire2): usually empty
+   * - field4 (wire2): nested JSON (full message object)
+   *
+   * Wire type 2 = length-delimited (string, bytes, embedded messages)
+   */
+  private parseProtobuf(data: Buffer): Record<string, unknown> | null {
+    const fields = new Map<number, Array<{ wireType: number; content: Buffer | number }>>();
+    let offset = 0;
+
+    while (offset < data.length) {
+      // Read tag (varint)
+      const tagVarint = this.parseVarint(data, offset);
+      if (!tagVarint) break;
+
+      const tag = tagVarint.value;
+      const fieldNumber = tag >> 3;
+      const wireType = tag & 0x07;
+      offset += tagVarint.bytesRead;
+
+      let fieldContent: Buffer | number;
+
+      switch (wireType) {
+        case 0: { // Varint
+          const varint = this.parseVarint(data, offset);
+          if (!varint) break;
+          fieldContent = varint.value;
+          offset += varint.bytesRead;
+          break;
+        }
+        case 1: { // 64-bit fixed
+          if (offset + 8 > data.length) return null;
+          fieldContent = data.subarray(offset, offset + 8);
+          offset += 8;
+          break;
+        }
+        case 2: { // Length-delimited (string, bytes, nested message)
+          const lengthVarint = this.parseVarint(data, offset);
+          if (!lengthVarint) return null;
+          const length = lengthVarint.value;
+          offset += lengthVarint.bytesRead;
+          if (offset + length > data.length) return null;
+          fieldContent = data.subarray(offset, offset + length);
+          offset += length;
+          break;
+        }
+        case 5: { // 32-bit fixed
+          if (offset + 4 > data.length) return null;
+          fieldContent = data.subarray(offset, offset + 4);
+          offset += 4;
+          break;
+        }
+        default:
+          // Unknown wire type, stop parsing
+          return null;
+      }
+
+      if (!fields.has(fieldNumber)) {
+        fields.set(fieldNumber, []);
+      }
+      fields.get(fieldNumber)!.push({ wireType, content: fieldContent! });
+    }
+
+    return this.mapProtobufFields(fields);
+  }
+
+  /**
+   * Map protobuf fields to a message-like structure
+   */
+  private mapProtobufFields(
+    fields: Map<number, Array<{ wireType: number; content: Buffer | number }>>
+  ): Record<string, unknown> | null {
+    // Check for field4 first - it contains full JSON message
+    const field4 = fields.get(4);
+    if (field4 && field4.length > 0) {
+      for (const { content } of field4) {
+        if (Buffer.isBuffer(content)) {
+          try {
+            const jsonStr = content.toString('utf-8');
+            const parsed = JSON.parse(jsonStr);
+            // Return the full JSON object if it has message structure
+            if (parsed && (parsed.role || parsed.messages || parsed.content)) {
+              return parsed;
+            }
+          } catch {
+            // Not JSON
+          }
+        }
+      }
+    }
+
+    // Try to construct message from individual fields
+    const result: Record<string, unknown> = {};
+
+    // Field 1: text content
+    const field1 = fields.get(1);
+    if (field1 && field1.length > 0) {
+      const { content } = field1[0]!;
+      if (Buffer.isBuffer(content)) {
+        const text = content.toString('utf-8');
+        // Check if it's printable text
+        if (text.length > 0 && this.isPrintableText(text)) {
+          result.text = text;
+        }
+      }
+    }
+
+    // Field 2: UUID
+    const field2 = fields.get(2);
+    if (field2 && field2.length > 0) {
+      const { content } = field2[0]!;
+      if (Buffer.isBuffer(content)) {
+        const uuid = content.toString('utf-8');
+        // Check if it looks like a UUID
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid)) {
+          result.id = uuid;
+        }
+      }
+    }
+
+    // Only return if we found meaningful content
+    if (Object.keys(result).length > 0) {
+      return result;
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if a string is printable text (not binary garbage)
+   */
+  private isPrintableText(str: string): boolean {
+    // Check first 100 characters for printability
+    const sample = str.substring(0, 100);
+    // Allow common printable characters, newlines, tabs
+    return /^[\x20-\x7E\n\r\t\u00A0-\uFFFF]+$/.test(sample);
+  }
+
+  /**
+   * Convert Unix timestamp to Date, handling both seconds and milliseconds
+   */
+  private unixToDate(timestamp: number): Date {
+    const MILLISECONDS_THRESHOLD = 1e12;
+    const normalizedTs = timestamp > MILLISECONDS_THRESHOLD ? timestamp : timestamp * 1000;
+    return new Date(normalizedTs);
+  }
+
+  private extractTimestamp(msg: CursorMessage): Date | null {
+    if (msg.timestamp) return new Date(msg.timestamp);
+    if (msg.createdAt) return this.unixToDate(msg.createdAt);
+    return null;
+  }
+
+  /**
+   * Parse assistant message content array to extract text and tool-call blocks
+   * Cursor stores tool calls in the content array with type: 'tool-call'
+   */
+  private parseAssistantContent(msg: CursorMessage): {
+    textContent: string;
+    toolCallBlocks: CursorToolCallBlock[];
+  } {
+    const textParts: string[] = [];
+    const toolCallBlocks: CursorToolCallBlock[] = [];
+
+    if (typeof msg.content === 'string') {
+      return { textContent: msg.content, toolCallBlocks: [] };
+    }
+
+    if (!Array.isArray(msg.content)) {
+      return { textContent: msg.text ?? '', toolCallBlocks: [] };
+    }
+
+    for (const block of msg.content) {
+      if (block.type === 'text' && typeof block.text === 'string') {
+        textParts.push(block.text);
+      } else if (block.type === 'reasoning' && typeof block.text === 'string') {
+        // Include reasoning as part of content for analysis
+        textParts.push(block.text);
+      } else if (block.type === 'tool-call') {
+        // Cursor's tool call format
+        const toolBlock = block as unknown as CursorToolCallBlock;
+        if (toolBlock.toolCallId && toolBlock.toolName) {
+          toolCallBlocks.push(toolBlock);
+        }
+      }
+    }
+
+    return {
+      textContent: textParts.join('\n'),
+      toolCallBlocks,
+    };
+  }
+
+  /**
+   * Extract tool calls from Cursor's tool-call blocks
+   */
+  private extractToolCallsFromBlocks(
+    blocks: CursorToolCallBlock[],
+    toolResultsMap: Map<string, { content: string; isError: boolean; toolName: string }>
+  ): NonNullable<ParsedMessage['toolCalls']> {
+    const toolCalls: NonNullable<ParsedMessage['toolCalls']> = [];
+
+    for (const block of blocks) {
+      const id = block.toolCallId;
+      const name = block.toolName;
+      const input = block.args || {};
+
+      // Get result if available
+      const result = toolResultsMap.get(id);
+
+      // Normalize tool name to Claude Code format
+      // Note: Cursor already uses PascalCase (Grep, Read, Write, etc.)
+      // but we still normalize for consistency
+      const normalizedName = normalizeToolName(name, this.name);
+
+      toolCalls.push({
+        id,
+        name: normalizedName,
+        input,
+        result: result?.content,
+        isError: result?.isError,
+      });
+    }
+
+    return toolCalls;
+  }
+
+  /**
+   * Extract tool calls from legacy toolCalls/tool_calls fields
+   */
+  private extractLegacyToolCalls(
     msg: CursorMessage,
-    toolResultsMap: Map<string, { content: string; isError: boolean }>
+    toolResultsMap: Map<string, { content: string; isError: boolean; toolName: string }>
   ): ParsedMessage['toolCalls'] {
     const rawCalls = msg.toolCalls ?? msg.tool_calls ?? [];
     if (rawCalls.length === 0) return undefined;

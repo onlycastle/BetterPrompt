@@ -73,7 +73,7 @@ Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation
 | `src/lib/infrastructure/` | Supabase & local storage adapters | Infrastructure |
 | `src/lib/analyzer/` | LLM analysis (prompts, dimensions, insights) | Application |
 | `src/lib/analyzer/orchestrator/` | 4-phase analysis orchestration | Application |
-| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (4 workers: TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency) + Phase 2.5 TypeClassifier | Application |
+| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (3 workers: ThinkingQuality, LearningBehavior, ContextEfficiency) + Phase 2.5 TypeClassifier | Application |
 | `src/lib/analyzer/stages/` | Content Writer stage (Phase 3 narrative generation) | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/parser/` | JSONL session parsing | Infrastructure |
@@ -162,13 +162,12 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 - Output: `Phase1Output` (DeveloperUtterances[], AIResponses[], SessionMetrics)
 - 0 LLM calls
 
-**Phase 2: Insight Generation (Parallel, 4 workers)**
-- **TrustVerificationWorker** (premium) - Anti-patterns and verification behavior analysis
-- **WorkflowHabitWorker** (premium) - Planning, critical thinking, multitasking patterns
-- **KnowledgeGapWorker** (premium) - Knowledge gaps and learning suggestions
-- **ContextEfficiencyWorker** (premium) - Token inefficiency patterns
-- Output: `AgentOutputs` (merged results, excluding strengthGrowth)
-- 4 LLM calls (parallel)
+**Phase 2: Insight Generation (Parallel, 3 workers)**
+- **ThinkingQualityWorker** - Planning, critical thinking, communication patterns
+- **LearningBehaviorWorker** - Knowledge gaps and repeated mistakes
+- **ContextEfficiencyWorker** - Token inefficiency patterns
+- Output: `AgentOutputs` (merged results)
+- 3 LLM calls (parallel)
 
 **Phase 2.5: Classification (1 worker)**
 - **TypeClassifierWorker** (free) - Type classification using Phase 2 outputs
@@ -193,13 +192,12 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 - Output: `TranslatorOutput` (text fields only, merged with English response)
 - 0-1 LLM call (conditional)
 
-**Total: 6-7 LLM calls (0 + 4 + 1 + 1 + 0-1)**
+**Total: 5-6 LLM calls (0 + 3 + 1 + 1 + 0-1)**
 
 **Prompt Engineering:**
 - Worker prompts in domain-specific files:
-  - `src/lib/analyzer/workers/prompts/trust-verification-prompts.ts`
-  - `src/lib/analyzer/workers/prompts/workflow-habit-prompts.ts`
-  - `src/lib/analyzer/workers/prompts/knowledge-gap-prompts.ts`
+  - `src/lib/analyzer/workers/prompts/thinking-quality-prompts.ts`
+  - `src/lib/analyzer/workers/prompts/learning-behavior-prompts.ts`
   - `src/lib/analyzer/workers/prompts/context-efficiency-prompts.ts`
   - `src/lib/analyzer/workers/prompts/type-classifier-prompts.ts`
   - `src/lib/analyzer/workers/prompts/knowledge-mapping.ts` — Dynamic prompt injection system
@@ -209,7 +207,7 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 - Zod schemas → JSON Schema via `zod-to-json-schema`
 
 **Dynamic Prompt System (Knowledge Mapping):**
-- Maps each Worker to applicable dimensions (e.g., TrustVerification → aiControl, skillResilience)
+- Maps each Worker to applicable dimensions (e.g., ThinkingQuality → aiCollaboration, toolMastery)
 - Filters INITIAL_INSIGHTS by dimension to inject domain-specific expert knowledge
 - `getInsightsForWorker()` retrieves up to 5 priority-sorted insights per worker
 - `formatInsightsForPrompt()` creates structured PROFESSIONAL KNOWLEDGE sections

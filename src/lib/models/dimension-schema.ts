@@ -1,13 +1,9 @@
 /**
  * Dimension Schema - Shared dimension definitions
  *
- * This file exists to break circular dependencies between:
- * - verbose-evaluation.ts (needs DimensionNameEnumSchema)
- * - agent-outputs.ts (imports from strength-growth-data.ts)
- * - strength-growth-data.ts (needs DimensionNameEnumSchema)
- *
+ * This file exists to break circular dependencies between modules.
  * By extracting DimensionNameEnumSchema to its own file with NO imports
- * from the above modules, we break the circular dependency chain.
+ * from other model modules, we break the circular dependency chain.
  *
  * @module models/dimension-schema
  */

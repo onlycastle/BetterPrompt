@@ -175,8 +175,6 @@ export {
 export {
   DeveloperUtteranceSchema,
   type DeveloperUtterance,
-  AIResponseSchema,
-  type AIResponse,
   Phase1SessionMetricsSchema,
   type Phase1SessionMetrics,
   Phase1OutputSchema,
@@ -184,33 +182,27 @@ export {
 } from './phase1-output';
 
 // ============================================================================
-// Strength & Growth Data Types (NEW - v2 Architecture)
+// v3 Agent Outputs
 // ============================================================================
 export {
-  InsightEvidenceSchema,
-  type InsightEvidence,
-  StrengthInsightSchema,
-  type StrengthInsight,
-  GrowthSeveritySchema,
-  type GrowthSeverity,
-  GrowthAreaInsightSchema,
-  type GrowthAreaInsight,
-  StrengthGrowthOutputSchema,
-  type StrengthGrowthOutput,
-  StrengthGrowthLLMOutputSchema,
-  type StrengthGrowthLLMOutput,
-  parseStrengthsLLMData,
-  parseGrowthAreasLLMData,
-  parseStrengthGrowthLLMOutput,
-  createEmptyStrengthGrowthOutput,
-} from './strength-growth-data';
+  TypeClassifierOutputSchema,
+  type TypeClassifierOutput,
+  AgentOutputsSchema,
+  type AgentOutputs,
+  hasAnyAgentOutput,
+} from './agent-outputs';
 
 // ============================================================================
-// Behavior Pattern Data Types (NEW - v2 Architecture)
+// v3 Thinking Quality Types
 // ============================================================================
 export {
-  AntiPatternTypeSchema,
-  type AntiPatternType,
+  ThinkingQualityOutputSchema,
+  type ThinkingQualityOutput,
+  ThinkingQualityLLMOutputSchema,
+  type ThinkingQualityLLMOutput,
+  parseThinkingQualityLLMOutput,
+  createEmptyThinkingQualityOutput,
+  // Re-export types that were moved from behavior-pattern-data
   PatternSeveritySchema,
   type PatternSeverity,
   DetectedAntiPatternSchema,
@@ -229,30 +221,18 @@ export {
   type VerificationLevel,
   VerificationBehaviorSchema,
   type VerificationBehavior,
-  ContextPollutionSchema,
-  type ContextPollution,
   MultitaskingPatternSchema,
   type MultitaskingPattern,
-  BehaviorPatternOutputSchema,
-  type BehaviorPatternOutput,
-  BehaviorPatternLLMOutputSchema,
-  type BehaviorPatternLLMOutput,
-  parseAntiPatternsData,
-  parsePlanningHabitsData,
-  parseCriticalThinkingData,
-  parseVerificationBehaviorData,
-  parseMultitaskingData,
-  parseBehaviorPatternLLMOutput,
-  createEmptyBehaviorPatternOutput,
-} from './behavior-pattern-data';
+} from './thinking-quality-data';
 
 // ============================================================================
-// New Agent Outputs (v2 Architecture)
+// v3 Learning Behavior Types
 // ============================================================================
 export {
-  TypeClassifierOutputSchema,
-  type TypeClassifierOutput,
-  NewAgentOutputsSchema,
-  type NewAgentOutputs,
-  hasAnyNewAgentOutput,
-} from './agent-outputs';
+  LearningBehaviorOutputSchema,
+  type LearningBehaviorOutput,
+  LearningBehaviorLLMOutputSchema,
+  type LearningBehaviorLLMOutput,
+  parseLearningBehaviorLLMOutput,
+  createEmptyLearningBehaviorOutput,
+} from './learning-behavior-data';

@@ -378,48 +378,58 @@ export interface ParsedGrowthArea {
  * Helper to parse growthAreasData string into array of growth areas
  *
  * Supported formats:
- * - Extended: "clusterId|title|description|recommendation|frequency|severity|priorityScore;..."
- * - Standard: "clusterId|title|description|recommendation;..."
- * - Legacy: "title|description|recommendation;..."
+ * - Extended (7 parts): "clusterId|title|desc|rec|freq|severity|priority;..."
+ * - V3 (6 parts): "title|desc|rec|freq|severity|priority;..."
+ * - Standard (4+ parts): "clusterId|title|desc|rec;..."
+ * - Legacy (3 parts): "title|desc|rec;..."
  */
 export function parseGrowthAreasData(data: string | undefined): ParsedGrowthArea[] {
   if (!data) return [];
+
+  const validSeverities = ['critical', 'high', 'medium', 'low'];
+  const parseSeverity = (s: string | undefined): SeverityLevel | undefined =>
+    validSeverities.includes(s || '') ? (s as SeverityLevel) : undefined;
+  const parseOptionalNumber = (s: string | undefined): number | undefined => {
+    const n = parseFloat(s || '');
+    return isNaN(n) ? undefined : n;
+  };
+
   return data.split(';').filter(Boolean).map((s) => {
     const parts = s.split('|');
-    if (parts.length >= 7) {
-      // Extended format with clusterId: clusterId|title|desc|rec|freq|severity|priority
-      const freq = parseFloat(parts[4]);
-      const sev = parts[5] as SeverityLevel | undefined;
-      const priority = parseFloat(parts[6]);
+    const len = parts.length;
+
+    if (len >= 7) {
+      // Extended format with clusterId
       return {
         clusterId: parts[0],
         title: parts[1],
         description: parts[2],
         recommendation: parts[3],
-        frequency: isNaN(freq) ? undefined : freq,
-        severity: ['critical', 'high', 'medium', 'low'].includes(sev || '') ? sev : undefined,
-        priorityScore: isNaN(priority) ? undefined : priority,
+        frequency: parseOptionalNumber(parts[4]),
+        severity: parseSeverity(parts[5]),
+        priorityScore: parseOptionalNumber(parts[6]),
       };
-    } else if (parts.length === 6) {
-      // V3 format without clusterId: title|desc|rec|freq|severity|priority
-      const freq = parseFloat(parts[3]);
-      const sev = parts[4] as SeverityLevel | undefined;
-      const priority = parseFloat(parts[5]);
+    }
+    if (len === 6) {
+      // V3 format without clusterId
       return {
         title: parts[0],
         description: parts[1],
         recommendation: parts[2],
-        frequency: isNaN(freq) ? undefined : freq,
-        severity: ['critical', 'high', 'medium', 'low'].includes(sev || '') ? sev : undefined,
-        priorityScore: isNaN(priority) ? undefined : priority,
+        frequency: parseOptionalNumber(parts[3]),
+        severity: parseSeverity(parts[4]),
+        priorityScore: parseOptionalNumber(parts[5]),
       };
-    } else if (parts.length >= 4) {
-      // Standard format: clusterId|title|description|recommendation
+    }
+    if (len >= 4) {
+      // Standard format with clusterId
       return { clusterId: parts[0], title: parts[1], description: parts[2], recommendation: parts.slice(3).join('|') };
-    } else if (parts.length === 3) {
-      // Legacy format: title|description|recommendation
+    }
+    if (len === 3) {
+      // Legacy format
       return { title: parts[0], description: parts[1], recommendation: parts[2] };
-    } else if (parts.length === 2) {
+    }
+    if (len === 2) {
       return { title: parts[0], description: parts[1], recommendation: '' };
     }
     return { title: s, description: '', recommendation: '' };
@@ -975,17 +985,11 @@ export type TranslatedAgentInsight = z.infer<typeof TranslatedAgentInsightSchema
  * Frontend should use this when available, falling back to original agentOutputs.
  */
 export const TranslatedAgentInsightsSchema = z.object({
-  patternDetective: TranslatedAgentInsightSchema.optional(),
-  metacognition: TranslatedAgentInsightSchema.optional(),
-  antiPatternSpotter: TranslatedAgentInsightSchema.optional(),
+  // Legacy agents (kept for cached data compatibility)
   knowledgeGap: TranslatedAgentInsightSchema.optional(),
   contextEfficiency: TranslatedAgentInsightSchema.optional(),
   temporalAnalysis: TranslatedAgentInsightSchema.optional(),
-  multitasking: TranslatedAgentInsightSchema.optional(),
-  strengthGrowth: TranslatedAgentInsightSchema.optional(),
-  trustVerification: TranslatedAgentInsightSchema.optional(),
-  workflowHabit: TranslatedAgentInsightSchema.optional(),
-  communicationPatterns: TranslatedAgentInsightSchema.optional(),
+  // v3 workers - translations handled differently (in worker output directly)
 });
 export type TranslatedAgentInsights = z.infer<typeof TranslatedAgentInsightsSchema>;
 
@@ -1255,14 +1259,14 @@ export const VerboseEvaluationSchema = z.object({
   productivityAnalysis: ProductivityAnalysisDataSchema.optional()
     .describe('Productivity metrics including iteration efficiency, learning velocity, and collaboration effectiveness'),
 
-  // Agent Outputs (Phase 2 Wow Agents - Premium only)
+  // Agent Outputs (Phase 2 Workers - Premium only)
   agentOutputs: AgentOutputsSchema.optional()
-    .describe('Insights from Phase 2 workers: TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency, TypeClassifier'),
+    .describe('Insights from Phase 2 workers: ThinkingQuality, LearningBehavior, ContextEfficiency, TypeClassifier'),
 
   // Worker Insights - Aggregated strengths/growthAreas from each Phase 2 worker
   // This is the NEW preferred way to access domain-specific insights.
-  // Each worker's insights are keyed by worker domain (trustVerification, workflowHabit, etc.)
-  // Frontend should use this for the "Your Insights" tab with 4 worker sections.
+  // Each worker's insights are keyed by worker domain (thinkingQuality, learningBehavior, etc.)
+  // Frontend should use this for the "Your Insights" tab with 3 worker sections.
   workerInsights: z.record(z.string(), z.object({
     strengths: z.array(z.object({
       title: z.string(),
@@ -1449,7 +1453,7 @@ export type VerboseLLMResponse = z.infer<typeof VerboseLLMResponseSchema>;
  * - promptPatterns: FALLBACK only - prefer Phase 2 CommunicationPatterns
  * - topFocusAreas: Narrative-enriched focus areas (optional)
  *
- * NOTE: promptPatterns generation moved to Phase 2 CommunicationPatternsWorker.
+ * NOTE: promptPatterns generation moved to Phase 2 ThinkingQualityWorker (communicationPatterns field).
  * Phase 3 promptPatterns is kept for backward compatibility but evaluation-assembler
  * will prefer Phase 2 data when available.
  *

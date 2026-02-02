@@ -6,7 +6,7 @@
  * Temperature: 1.0 (Gemini's recommended default).
  *
  * Generates: personalitySummary, topFocusAreas
- * NOTE: promptPatterns generation moved to Phase 2 CommunicationPatternsWorker.
+ * NOTE: promptPatterns generation moved to Phase 2 ThinkingQualityWorker (communicationPatterns field).
  * All structural assembly is handled by evaluation-assembler.ts
  *
  * Key Design Decision (v4):
@@ -70,125 +70,86 @@ const DEFAULT_CONFIG: Required<Omit<ContentWriterConfig, 'apiKey'>> = {
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
+ * Add utteranceId to the set if it exists
+ */
+function addUtteranceId(ids: Set<string>, item: { utteranceId?: string }): void {
+  if (item.utteranceId) {
+    ids.add(item.utteranceId);
+  }
+}
+
+/**
+ * Extract utteranceIds from an array of items with evidence property
+ */
+function extractFromEvidenceItems(ids: Set<string>, items: any[] | undefined): void {
+  if (!items) return;
+  for (const item of items) {
+    for (const ev of item.evidence || []) {
+      addUtteranceId(ids, ev);
+    }
+  }
+}
+
+/**
+ * Extract utteranceIds from an array of items with examples property
+ */
+function extractFromExampleItems(ids: Set<string>, items: any[] | undefined): void {
+  if (!items) return;
+  for (const item of items) {
+    for (const ex of item.examples || []) {
+      if (typeof ex === 'object' && ex !== null) {
+        addUtteranceId(ids, ex);
+      }
+    }
+  }
+}
+
+/**
  * Extract unique utteranceIds that Phase 2 workers used as evidence.
  *
  * These are the utterances that have already been identified as significant
  * by the Phase 2 analysis pipeline. Using these for topUtterances ensures:
  * - LLM only sees contextually relevant utterances
- * - Prevents pattern-example mismatch (e.g., "아키텍처 청사진" with "다했어")
+ * - Prevents pattern-example mismatch (e.g., "architecture blueprint" with "done")
  * - Avoids short, generic utterances that don't demonstrate patterns
- *
- * Scans evidence from:
- * - TrustVerification: antiPatterns examples
- * - WorkflowHabit: criticalThinkingMoments, planningHabits examples
- * - StrengthGrowth: strengths/growthAreas evidence
- * - KnowledgeGap: strengths/growthAreas evidence
- * - ContextEfficiency: strengths/growthAreas evidence
- * - CommunicationPatterns: patterns examples, strengths/growthAreas evidence
  *
  * @param agentOutputs - All Phase 2 worker outputs
  * @returns Set of utteranceIds that workers used as evidence
  */
 function extractEvidenceUtteranceIds(agentOutputs: AgentOutputs): Set<string> {
   const ids = new Set<string>();
+  const tq = agentOutputs.thinkingQuality;
 
-  // 1. TrustVerification antiPatterns examples
-  if (agentOutputs.trustVerification?.antiPatterns) {
-    for (const ap of agentOutputs.trustVerification.antiPatterns) {
-      for (const ex of ap.examples || []) {
-        if (ex.utteranceId) ids.add(ex.utteranceId);
-      }
+  // ThinkingQuality extractions
+  if (tq) {
+    extractFromExampleItems(ids, tq.verificationAntiPatterns);
+    extractFromExampleItems(ids, tq.planningHabits);
+    extractFromExampleItems(ids, tq.communicationPatterns);
+
+    // criticalThinkingMoments have direct utteranceId
+    for (const ct of tq.criticalThinkingMoments || []) {
+      addUtteranceId(ids, ct);
     }
+
+    extractFromEvidenceItems(ids, tq.strengths);
+    extractFromEvidenceItems(ids, tq.growthAreas);
   }
 
-  // 2. WorkflowHabit criticalThinkingMoments
-  if (agentOutputs.workflowHabit?.criticalThinkingMoments) {
-    for (const ct of agentOutputs.workflowHabit.criticalThinkingMoments) {
-      if (ct.utteranceId) ids.add(ct.utteranceId);
-    }
+  // LearningBehavior extractions
+  if (agentOutputs.learningBehavior) {
+    extractFromEvidenceItems(ids, agentOutputs.learningBehavior.strengths);
+    extractFromEvidenceItems(ids, agentOutputs.learningBehavior.growthAreas);
   }
 
-  // 3. WorkflowHabit planningHabits examples
-  // Note: PlanningHabit.examples schema is string[], but after verifyPhase2WorkerExamples
-  // mutation, they may have { utteranceId, quote } structure. Use runtime type guards.
-  if (agentOutputs.workflowHabit?.planningHabits) {
-    for (const ph of agentOutputs.workflowHabit.planningHabits) {
-      for (const ex of (ph.examples || []) as unknown[]) {
-        // Handle both string and object formats with full type validation
-        if (typeof ex === 'object' && ex !== null && 'utteranceId' in ex) {
-          const exObj = ex as { utteranceId?: unknown };
-          if (typeof exObj.utteranceId === 'string') {
-            ids.add(exObj.utteranceId);
-          }
-        }
-      }
-    }
-  }
-
-  // 4. StrengthGrowth strengths/growthAreas evidence
-  if (agentOutputs.strengthGrowth) {
-    const extractFromItems = (items: any[] | undefined) => {
-      if (!items) return;
-      for (const item of items) {
-        for (const ev of item.evidence || []) {
-          if (ev.utteranceId) ids.add(ev.utteranceId);
-        }
-      }
-    };
-    extractFromItems(agentOutputs.strengthGrowth.strengths);
-    extractFromItems(agentOutputs.strengthGrowth.growthAreas);
-  }
-
-  // 5. KnowledgeGap strengths/growthAreas evidence (if present)
-  if (agentOutputs.knowledgeGap) {
-    const extractFromItems = (items: any[] | undefined) => {
-      if (!items) return;
-      for (const item of items) {
-        for (const ev of item.evidence || []) {
-          if (ev.utteranceId) ids.add(ev.utteranceId);
-        }
-      }
-    };
-    extractFromItems(agentOutputs.knowledgeGap.strengths);
-    extractFromItems(agentOutputs.knowledgeGap.growthAreas);
-  }
-
-  // 6. ContextEfficiency strengths/growthAreas evidence (if present)
+  // Legacy workers (kept for cached data)
   if (agentOutputs.contextEfficiency) {
-    const extractFromItems = (items: any[] | undefined) => {
-      if (!items) return;
-      for (const item of items) {
-        for (const ev of item.evidence || []) {
-          if (ev.utteranceId) ids.add(ev.utteranceId);
-        }
-      }
-    };
-    extractFromItems(agentOutputs.contextEfficiency.strengths);
-    extractFromItems(agentOutputs.contextEfficiency.growthAreas);
+    extractFromEvidenceItems(ids, agentOutputs.contextEfficiency.strengths);
+    extractFromEvidenceItems(ids, agentOutputs.contextEfficiency.growthAreas);
   }
 
-  // 7. CommunicationPatterns patterns examples
-  // This worker produces the most evidence (5-12 patterns × 1-5 examples each)
-  if (agentOutputs.communicationPatterns?.patterns) {
-    for (const pattern of agentOutputs.communicationPatterns.patterns) {
-      for (const ex of pattern.examples || []) {
-        if (ex.utteranceId) ids.add(ex.utteranceId);
-      }
-    }
-  }
-
-  // 8. CommunicationPatterns strengths/growthAreas evidence
-  if (agentOutputs.communicationPatterns) {
-    const extractFromItems = (items: any[] | undefined) => {
-      if (!items) return;
-      for (const item of items) {
-        for (const ev of item.evidence || []) {
-          if (ev.utteranceId) ids.add(ev.utteranceId);
-        }
-      }
-    };
-    extractFromItems(agentOutputs.communicationPatterns.strengths);
-    extractFromItems(agentOutputs.communicationPatterns.growthAreas);
+  if (agentOutputs.knowledgeGap) {
+    extractFromEvidenceItems(ids, agentOutputs.knowledgeGap.strengths);
+    extractFromEvidenceItems(ids, agentOutputs.knowledgeGap.growthAreas);
   }
 
   return ids;
@@ -315,14 +276,10 @@ export class ContentWriterStage {
   }
 
   /**
-   * Verify that Phase 2 worker examples (anti-patterns, critical thinking, planning)
-   * contain only developer utterances, not AI responses.
+   * Verify that Phase 2 worker examples contain only developer utterances.
    *
    * Must run BEFORE evaluation assembly since premium sections read from agentOutputs.
    * Mutates agentOutputs in place to filter out invalid quotes and replace with originals.
-   *
-   * Uses utteranceId-based lookup for verification. Evidence without utteranceId
-   * will be logged as warnings and removed (this should be rare after prompt updates).
    */
   public verifyPhase2WorkerExamples(
     agentOutputs: AgentOutputs,
@@ -335,84 +292,84 @@ export class ContentWriterStage {
 
     const stats = { verified: 0, replaced: 0, removed: 0, noUtteranceId: 0 };
 
-    // 1. Anti-pattern examples (should have utteranceId)
-    if (agentOutputs.trustVerification?.antiPatterns) {
-      for (const ap of agentOutputs.trustVerification.antiPatterns) {
-        if (!Array.isArray(ap.examples)) continue;
-
-        ap.examples = ap.examples.filter((ex: any) => {
-          if (!ex.utteranceId) {
-            this.log(`Anti-pattern example missing utteranceId — removing: "${String(ex.quote || ex).slice(0, 50)}..."`);
-            stats.noUtteranceId++;
-            return false;
-          }
-          return this.verifyQuoteByUtteranceId(ex, utteranceLookup, stats);
-        });
+    const filterExamplesArray = (items: any[] | undefined, label: string): void => {
+      if (!items) return;
+      for (const item of items) {
+        if (!Array.isArray(item.examples)) continue;
+        item.examples = item.examples.filter((ex: any) =>
+          this.verifyExampleItem(ex, utteranceLookup, stats, label)
+        );
       }
-    }
+    };
 
-    // 2. Critical thinking moments (should have utteranceId)
-    if (agentOutputs.workflowHabit?.criticalThinkingMoments) {
-      agentOutputs.workflowHabit.criticalThinkingMoments =
-        agentOutputs.workflowHabit.criticalThinkingMoments.filter((moment: any) => {
+    const filterEvidenceArray = (items: any[] | undefined, label: string): void => {
+      if (!items) return;
+      for (const item of items) {
+        if (!Array.isArray(item.evidence)) continue;
+        item.evidence = item.evidence.filter((ev: any) =>
+          this.verifyExampleItem(ev, utteranceLookup, stats, label)
+        );
+      }
+    };
+
+    const tq = agentOutputs.thinkingQuality;
+    if (tq) {
+      filterExamplesArray(tq.verificationAntiPatterns, 'Anti-pattern');
+      filterExamplesArray(tq.planningHabits, 'Planning habit');
+      filterEvidenceArray(tq.strengths, 'ThinkingQuality');
+      filterEvidenceArray(tq.growthAreas, 'ThinkingQuality');
+
+      // criticalThinkingMoments require special handling (top-level array)
+      if (tq.criticalThinkingMoments) {
+        tq.criticalThinkingMoments = tq.criticalThinkingMoments.filter((moment: any) => {
           if (!moment.quote || typeof moment.quote !== 'string') return true;
-
-          if (!moment.utteranceId) {
-            this.log(`Critical thinking moment missing utteranceId — removing: "${moment.quote.slice(0, 50)}..."`);
-            stats.noUtteranceId++;
-            return false;
-          }
-          return this.verifyQuoteByUtteranceId(moment, utteranceLookup, stats);
-        });
-    }
-
-    // 3. Planning habit examples (should have utteranceId in structured format)
-    if (agentOutputs.workflowHabit?.planningHabits) {
-      for (const habit of agentOutputs.workflowHabit.planningHabits) {
-        if (!Array.isArray(habit.examples)) continue;
-
-        habit.examples = habit.examples.filter((example: any) => {
-          // Handle both string and object formats
-          if (typeof example === 'string') {
-            this.log(`Planning habit example is plain string (no utteranceId) — removing: "${example.slice(0, 50)}..."`);
-            stats.noUtteranceId++;
-            return false;
-          }
-          if (!example.utteranceId) {
-            this.log(`Planning habit example missing utteranceId — removing: "${String(example.quote || example).slice(0, 50)}..."`);
-            stats.noUtteranceId++;
-            return false;
-          }
-          return this.verifyQuoteByUtteranceId(example, utteranceLookup, stats);
+          return this.verifyExampleItem(moment, utteranceLookup, stats, 'Critical thinking');
         });
       }
     }
 
-    // 4. StrengthGrowth evidence (should have utteranceId after parsing)
-    if (agentOutputs.strengthGrowth) {
-      const filterEvidence = (items: any[] | undefined): void => {
-        if (!items) return;
-        for (const item of items) {
-          if (!Array.isArray(item.evidence)) continue;
-          item.evidence = item.evidence.filter((ev: any) => {
-            if (!ev.utteranceId) {
-              this.log(`StrengthGrowth evidence missing utteranceId — removing: "${String(ev.quote || ev).slice(0, 50)}..."`);
-              stats.noUtteranceId++;
-              return false;
-            }
-            return this.verifyQuoteByUtteranceId(ev, utteranceLookup, stats);
-          });
-        }
-      };
+    if (agentOutputs.learningBehavior) {
+      filterEvidenceArray(agentOutputs.learningBehavior.strengths, 'LearningBehavior');
+      filterEvidenceArray(agentOutputs.learningBehavior.growthAreas, 'LearningBehavior');
+    }
 
-      filterEvidence(agentOutputs.strengthGrowth.strengths);
-      filterEvidence(agentOutputs.strengthGrowth.growthAreas);
+    // Legacy workers
+    if (agentOutputs.contextEfficiency) {
+      filterEvidenceArray(agentOutputs.contextEfficiency.strengths, 'ContextEfficiency');
+      filterEvidenceArray(agentOutputs.contextEfficiency.growthAreas, 'ContextEfficiency');
+    }
+
+    if (agentOutputs.knowledgeGap) {
+      filterEvidenceArray(agentOutputs.knowledgeGap.strengths, 'KnowledgeGap');
+      filterEvidenceArray(agentOutputs.knowledgeGap.growthAreas, 'KnowledgeGap');
     }
 
     const total = stats.verified + stats.replaced + stats.removed + stats.noUtteranceId;
     if (total > 0) {
-      this.log(`Phase 2 worker verification: verified=${stats.verified}, replaced=${stats.replaced}, removed=${stats.removed}, noUtteranceId=${stats.noUtteranceId}`);
+      this.log(`Phase 2 verification: verified=${stats.verified}, replaced=${stats.replaced}, removed=${stats.removed}, noUtteranceId=${stats.noUtteranceId}`);
     }
+  }
+
+  /**
+   * Verify a single example/evidence item. Returns true to keep, false to remove.
+   */
+  private verifyExampleItem(
+    item: any,
+    utteranceLookup: Map<string, DeveloperUtterance>,
+    stats: { verified: number; replaced: number; removed: number; noUtteranceId: number },
+    label: string
+  ): boolean {
+    if (typeof item === 'string') {
+      this.log(`${label} is plain string (no utteranceId) - removing: "${item.slice(0, 50)}..."`);
+      stats.noUtteranceId++;
+      return false;
+    }
+    if (!item.utteranceId) {
+      this.log(`${label} missing utteranceId - removing: "${String(item.quote || item).slice(0, 50)}..."`);
+      stats.noUtteranceId++;
+      return false;
+    }
+    return this.verifyQuoteByUtteranceId(item, utteranceLookup, stats);
   }
 
   // ─────────────────────────────────────────────────────────────────────────

@@ -25,6 +25,37 @@ const EFFECTIVENESS_STYLES: Record<PromptEffectiveness, { label: string; classNa
   could_improve: { label: 'Opportunity', className: styles.effectivenessLow },
 };
 
+interface ExamplesSectionProps {
+  examples: PromptPattern['examples'];
+  isExpanded: boolean;
+  onToggle: () => void;
+}
+
+function ExamplesSection({ examples, isExpanded, onToggle }: ExamplesSectionProps) {
+  const displayedExamples = isExpanded ? examples : examples.slice(0, 4);
+  const hasMore = examples.length > 4;
+
+  return (
+    <div className={styles.examples}>
+      <div className={styles.examplesLabel}>Examples</div>
+      {displayedExamples.map((ex, exIdx) => (
+        <div key={exIdx} className={styles.example}>
+          <blockquote className={styles.quote}>"{ex.quote}"</blockquote>
+          <p className={styles.analysis}>{ex.analysis}</p>
+        </div>
+      ))}
+      {hasMore && (
+        <button
+          className={isExpanded ? styles.showLessButton : styles.showMoreButton}
+          onClick={onToggle}
+        >
+          {isExpanded ? 'Show less' : `+${examples.length - 4} more examples`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function PromptPatternsClean({ patterns, isPaid = false }: PromptPatternsCleanProps) {
   // Track which patterns have expanded examples
   const [expandedPatterns, setExpandedPatterns] = useState<Set<number>>(new Set());
@@ -63,41 +94,13 @@ export function PromptPatternsClean({ patterns, isPaid = false }: PromptPatterns
 
           <p className={styles.description}>{pattern.description}</p>
 
-          {pattern.examples.length > 0 && (() => {
-            const isExpanded = expandedPatterns.has(idx);
-            const displayedExamples = isExpanded
-              ? pattern.examples
-              : pattern.examples.slice(0, 2);
-            const hasMore = pattern.examples.length > 2;
-
-            return (
-              <div className={styles.examples}>
-                <div className={styles.examplesLabel}>Examples</div>
-                {displayedExamples.map((ex, exIdx) => (
-                  <div key={exIdx} className={styles.example}>
-                    <blockquote className={styles.quote}>"{ex.quote}"</blockquote>
-                    <p className={styles.analysis}>{ex.analysis}</p>
-                  </div>
-                ))}
-                {hasMore && !isExpanded && (
-                  <button
-                    className={styles.showMoreButton}
-                    onClick={() => togglePattern(idx)}
-                  >
-                    +{pattern.examples.length - 2} more examples
-                  </button>
-                )}
-                {isExpanded && hasMore && (
-                  <button
-                    className={styles.showLessButton}
-                    onClick={() => togglePattern(idx)}
-                  >
-                    Show less
-                  </button>
-                )}
-              </div>
-            );
-          })()}
+          {pattern.examples.length > 0 && (
+            <ExamplesSection
+              examples={pattern.examples}
+              isExpanded={expandedPatterns.has(idx)}
+              onToggle={() => togglePattern(idx)}
+            />
+          )}
 
           {pattern.tip && (
             <div className={`${styles.tip} ${!isPaid ? styles.tipLocked : ''}`}>

@@ -120,7 +120,7 @@ Return a TranslatorOutput JSON object containing ONLY the translated text fields
 
 7. **planningAnalysis** (if present): Translate displayName, description, tip. Keep structural fields in English.
 
-8. **translatedAgentInsights**: For each agent that has data in the Agent Outputs above (patternDetective, metacognition, antiPatternSpotter, knowledgeGap, contextEfficiency, temporalAnalysis, multitasking, strengthGrowth, trustVerification, workflowHabit):
+8. **translatedAgentInsights**: For each agent that has data in the Agent Outputs above (patternDetective, metacognition, antiPatternSpotter, knowledgeGap, contextEfficiency, temporalAnalysis, multitasking):
    - strengthsData: Translate title and description to ${langName}. Keep evidence quotes in original language. Format: "translatedTitle|translatedDescription|originalQuotes;..."
    - growthAreasData: Translate title, description, recommendation to ${langName}. Keep evidence in original language. Format: "translatedTitle|translatedDesc|originalEvidence|translatedRec|freq|severity|priority;..."
 

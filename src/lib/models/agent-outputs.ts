@@ -1,19 +1,16 @@
 /**
  * Agent Outputs - Zod schemas for Phase 2 worker outputs
  *
- * Current workers (v2 architecture):
- * - StrengthGrowth: Strengths and growth areas with evidence
- * - TrustVerification: Anti-patterns and verification behavior
- * - WorkflowHabit: Planning habits and critical thinking
- * - KnowledgeGap: Knowledge gaps and learning resources
+ * Current workers (v3 architecture, 2026-02):
+ * - ThinkingQuality: Planning + Critical Thinking + Communication patterns
+ * - LearningBehavior: Knowledge gaps + repeated mistakes analysis
  * - ContextEfficiency: Token efficiency patterns
  *
- * Legacy agent schemas (PatternDetective, AntiPatternSpotter, Metacognition,
- * TemporalAnalysis, Multitasking) are kept for backward compatibility with
- * cached data in the database (30-day retention).
+ * Legacy schemas (TrustVerification, WorkflowHabit, KnowledgeGap, etc.)
+ * are kept for backward compatibility with cached data (30-day retention).
  *
- * Schemas use flattened semicolon-separated strings to comply with
- * Gemini's 4-level nesting limit.
+ * Schemas use structured arrays (not semicolon-separated strings) to comply
+ * with Gemini's 4-level nesting limit while maintaining type safety.
  *
  * @module models/agent-outputs
  */
@@ -24,11 +21,33 @@ import {
   type WorkerStrength,
   WorkerGrowthSchema,
   type WorkerGrowth,
+  StructuredStrengthLLMSchema,
+  StructuredGrowthLLMSchema,
   parseWorkerStrengthsData,
   parseWorkerGrowthAreasData,
+  parseStructuredStrengths,
+  parseStructuredGrowthAreas,
   type AggregatedWorkerInsights,
   WORKER_DOMAIN_CONFIGS,
 } from './worker-insights';
+
+// ============================================================================
+// Referenced Insight Schema (for Knowledge Base references)
+// ============================================================================
+
+/**
+ * Referenced insight from Knowledge Base.
+ * Used to provide links to source materials for [pi-XXX] references.
+ */
+export const ReferencedInsightSchema = z.object({
+  /** Insight ID (e.g., "pi-001") */
+  id: z.string(),
+  /** Human-readable title (e.g., "Skill Atrophy Self-Diagnosis") */
+  title: z.string(),
+  /** Source URL for the insight */
+  url: z.string(),
+});
+export type ReferencedInsight = z.infer<typeof ReferencedInsightSchema>;
 
 // Import shared parsing utilities from legacy-agent-parsers
 import {
@@ -62,38 +81,73 @@ export {
 // ============================================================================
 
 /**
+ * LLM output schema for knowledge gap (nesting depth: 2)
+ * root{} → knowledgeGaps[] → KnowledgeGapLLM{}
+ */
+export const KnowledgeGapItemLLMSchema = z.object({
+  /** Topic name (e.g., "TypeScript generics", "async/await") */
+  topic: z.string(),
+  /** Number of times this topic was questioned */
+  questionCount: z.number().int().min(1),
+  /** Depth level: shallow | moderate | deep */
+  depth: z.enum(['shallow', 'moderate', 'deep']),
+  /** Example question or evidence */
+  example: z.string(),
+});
+export type KnowledgeGapItemLLM = z.infer<typeof KnowledgeGapItemLLMSchema>;
+
+/**
+ * LLM output schema for learning progress (nesting depth: 2)
+ * root{} → learningProgress[] → LearningProgressLLM{}
+ */
+export const LearningProgressLLMSchema = z.object({
+  /** Topic name */
+  topic: z.string(),
+  /** Starting level: novice | shallow | moderate | deep | expert */
+  startLevel: z.enum(['novice', 'shallow', 'moderate', 'deep', 'expert']),
+  /** Current level: novice | shallow | moderate | deep | expert */
+  currentLevel: z.enum(['novice', 'shallow', 'moderate', 'deep', 'expert']),
+  /** Evidence of progress */
+  evidence: z.string(),
+});
+export type LearningProgressLLM = z.infer<typeof LearningProgressLLMSchema>;
+
+/**
+ * LLM output schema for recommended resource (nesting depth: 2)
+ * root{} → recommendedResources[] → ResourceLLM{}
+ */
+export const ResourceLLMSchema = z.object({
+  /** Topic this resource addresses */
+  topic: z.string(),
+  /** Resource type: docs | tutorial | course | article | video */
+  resourceType: z.enum(['docs', 'tutorial', 'course', 'article', 'video']),
+  /** Full URL starting with https:// */
+  url: z.string(),
+});
+export type ResourceLLM = z.infer<typeof ResourceLLMSchema>;
+
+/**
  * Knowledge Gap Analyzer Output Schema
  *
  * Detects:
  * - Knowledge gaps from repeated questions
  * - Learning progress tracking
  * - Resource recommendations
- *
- * @example
- * ```json
- * {
- *   "knowledgeGapsData": "async/await:7:shallow:Promise chaining not understood;TypeScript generics:4:moderate:constraint syntax unclear",
- *   "learningProgressData": "React hooks:shallow:moderate:useEffect cleanup questions decreased;CSS Grid:novice:intermediate:fewer layout questions",
- *   "recommendedResourcesData": "TypeScript generics:docs:typescriptlang.org;async/await:tutorial:javascript.info",
- *   "topInsights": [
- *     "async/await questions appeared 7 times - fundamental concept learning needed",
- *     "React hooks understanding: shallow -> moderate (progress over 5 sessions)",
- *     "Recommended: TypeScript generics official documentation"
- *   ],
- *   "overallKnowledgeScore": 68,
- *   "confidenceScore": 0.82
- * }
- * ```
  */
 export const KnowledgeGapOutputSchema = z.object({
-  // Knowledge gaps - "topic:question_count:depth:example;..."
-  knowledgeGapsData: z.string(),
+  /** Knowledge gaps detected (structured array) */
+  knowledgeGaps: z.array(KnowledgeGapItemLLMSchema),
 
-  // Learning progress - "topic:start_level:current_level:evidence;..."
-  learningProgressData: z.string(),
+  /** Learning progress tracked (structured array) */
+  learningProgress: z.array(LearningProgressLLMSchema),
 
-  // Recommended resources - "topic:resource_type:url_or_name;..."
-  recommendedResourcesData: z.string(),
+  /** Recommended resources (structured array) */
+  recommendedResources: z.array(ResourceLLMSchema),
+
+  // Legacy string fields for backward compatibility with cached data
+  knowledgeGapsData: z.string().optional(),
+  learningProgressData: z.string().optional(),
+  recommendedResourcesData: z.string().optional(),
 
   // Top 3 Wow Insights (sliced to 3 since Gemini's maxItems constraint is removed)
   topInsights: z.array(z.string()).transform((arr) => arr.slice(0, 3)),
@@ -113,10 +167,8 @@ export const KnowledgeGapOutputSchema = z.object({
   // Domain-specific Strengths & Growth Areas (replaces StrengthGrowthSynthesizer)
   // ─────────────────────────────────────────────────────────────────────────
 
-  // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
+  // Legacy string fields (deprecated, kept for backward compatibility)
   strengthsData: z.string().optional(),
-
-  // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
   growthAreasData: z.string().optional(),
 
   // Parsed structured strengths (populated by parsing function)
@@ -124,29 +176,39 @@ export const KnowledgeGapOutputSchema = z.object({
 
   // Parsed structured growth areas (populated by parsing function)
   growthAreas: z.array(WorkerGrowthSchema).optional(),
+
+  /** Referenced insights from Knowledge Base (post-processed from [pi-XXX] references) */
+  referencedInsights: z.array(ReferencedInsightSchema).optional(),
 });
 
 export type KnowledgeGapOutput = z.infer<typeof KnowledgeGapOutputSchema>;
 
 // ============================================================================
-// Knowledge Gap LLM Output Schema (Flattened for Gemini API)
+// Knowledge Gap LLM Output Schema (Structured Arrays for Gemini API)
 // ============================================================================
 
 /**
- * Flattened schema for Gemini API (avoids nesting depth limit).
- *
- * Excludes `strengths` and `growthAreas` arrays which contain deeply nested
- * EvidenceItemSchema. These are populated after parsing from the string fields.
+ * Structured schema for Gemini API (uses arrays instead of semicolon-separated strings).
+ * Nesting depth is safe: root{} → array[] → object{} = 2 levels
  */
 export const KnowledgeGapLLMOutputSchema = z.object({
-  // Knowledge gaps - "topic:question_count:depth:example;..."
-  knowledgeGapsData: z.string(),
+  /**
+   * Knowledge gaps detected (structured array, nesting depth: 2)
+   * Replaces semicolon-separated knowledgeGapsData string
+   */
+  knowledgeGaps: z.array(KnowledgeGapItemLLMSchema),
 
-  // Learning progress - "topic:start_level:current_level:evidence;..."
-  learningProgressData: z.string(),
+  /**
+   * Learning progress tracked (structured array, nesting depth: 2)
+   * Replaces semicolon-separated learningProgressData string
+   */
+  learningProgress: z.array(LearningProgressLLMSchema),
 
-  // Recommended resources - "topic:resource_type:url_or_name;..."
-  recommendedResourcesData: z.string(),
+  /**
+   * Recommended resources (structured array, nesting depth: 2)
+   * Replaces semicolon-separated recommendedResourcesData string
+   */
+  recommendedResources: z.array(ResourceLLMSchema),
 
   // Top 3 Wow Insights (sliced to 3 since Gemini's maxItems constraint is removed)
   topInsights: z.array(z.string()).transform((arr) => arr.slice(0, 3)),
@@ -162,40 +224,170 @@ export const KnowledgeGapLLMOutputSchema = z.object({
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
 
-  // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
-  strengthsData: z.string().max(12000).optional()
-    .describe('Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)'),
+  /**
+   * Strengths identified in knowledge & learning domain (1-6 items).
+   * Evidence format: "utteranceId:quote[:context]"
+   */
+  strengths: z.array(StructuredStrengthLLMSchema).min(1).max(6).optional(),
 
-  // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
-  growthAreasData: z.string().max(12000).optional()
-    .describe('Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)'),
+  /**
+   * Growth areas identified in knowledge & learning domain (1-6 items).
+   * Evidence format: "utteranceId:quote[:context]"
+   */
+  growthAreas: z.array(StructuredGrowthLLMSchema).min(1).max(6),
 });
 export type KnowledgeGapLLMOutput = z.infer<typeof KnowledgeGapLLMOutputSchema>;
 
+// ============================================================================
+// Legacy String Conversion Helpers (for backward compatibility)
+// ============================================================================
+
+/** Generic converter for array to semicolon-separated string */
+function toSemicolonString<T>(items: T[], formatter: (item: T) => string): string {
+  return items.map(formatter).join(';');
+}
+
+function convertKnowledgeGapsToString(gaps: KnowledgeGapItemLLM[]): string {
+  return toSemicolonString(gaps, (g) => `${g.topic}:${g.questionCount}:${g.depth}:${g.example}`);
+}
+
+function convertLearningProgressToString(progress: LearningProgressLLM[]): string {
+  return toSemicolonString(progress, (p) => `${p.topic}:${p.startLevel}:${p.currentLevel}:${p.evidence}`);
+}
+
+function convertResourcesToString(resources: ResourceLLM[]): string {
+  return toSemicolonString(resources, (r) => `${r.topic}:${r.resourceType}:${r.url}`);
+}
+
 /**
  * Convert LLM output to structured KnowledgeGapOutput
+ * Now uses structured arrays directly and generates legacy strings for backward compatibility
  */
 export function parseKnowledgeGapLLMOutput(llmOutput: KnowledgeGapLLMOutput): KnowledgeGapOutput {
+  // Parse structured LLM output - evidence strings are converted to InsightEvidence objects
+  const strengths = parseStructuredStrengths(llmOutput.strengths);
+  const growthAreas = parseStructuredGrowthAreas(llmOutput.growthAreas);
+
   return {
-    knowledgeGapsData: llmOutput.knowledgeGapsData,
-    learningProgressData: llmOutput.learningProgressData,
-    recommendedResourcesData: llmOutput.recommendedResourcesData,
+    // Structured arrays (new format)
+    knowledgeGaps: llmOutput.knowledgeGaps || [],
+    learningProgress: llmOutput.learningProgress || [],
+    recommendedResources: llmOutput.recommendedResources || [],
+
+    // Legacy string format for backward compatibility
+    knowledgeGapsData: convertKnowledgeGapsToString(llmOutput.knowledgeGaps || []),
+    learningProgressData: convertLearningProgressToString(llmOutput.learningProgress || []),
+    recommendedResourcesData: convertResourcesToString(llmOutput.recommendedResources || []),
+
     topInsights: llmOutput.topInsights,
     kptKeep: llmOutput.kptKeep,
     kptProblem: llmOutput.kptProblem,
     kptTry: llmOutput.kptTry,
     overallKnowledgeScore: llmOutput.overallKnowledgeScore,
     confidenceScore: llmOutput.confidenceScore,
-    strengthsData: llmOutput.strengthsData,
-    growthAreasData: llmOutput.growthAreasData,
-    strengths: parseWorkerStrengthsData(llmOutput.strengthsData),
-    growthAreas: parseWorkerGrowthAreasData(llmOutput.growthAreasData),
+    strengths,
+    growthAreas,
   };
 }
 
 // ============================================================================
 // Context Efficiency Analyzer: Token Inefficiency Patterns
 // ============================================================================
+
+/**
+ * LLM output schema for context usage pattern (nesting depth: 2)
+ * root{} → contextUsagePatterns[] → ContextUsageLLM{}
+ */
+export const ContextUsageLLMSchema = z.object({
+  /** Session ID */
+  sessionId: z.string(),
+  /** Average fill percentage (0-100) */
+  avgFillPercent: z.number().min(0).max(100),
+  /** Compact trigger percentage (0-100) */
+  compactTriggerPercent: z.number().min(0).max(100).optional(),
+});
+export type ContextUsageLLM = z.infer<typeof ContextUsageLLMSchema>;
+
+/**
+ * Predefined inefficiency pattern types.
+ *
+ * These are the ONLY allowed pattern values for inefficiencyPatterns.
+ * LLM must choose from this enum, ensuring consistent output for:
+ * - UI rendering (icons, colors, localized descriptions)
+ * - Analytics aggregation
+ * - Cross-session comparisons
+ *
+ * Pattern definitions:
+ * - late_compact: Only uses /compact when context is 90%+ full
+ * - context_bloat: Context accumulates without /clear, causing degraded responses
+ * - redundant_info: Same information provided multiple times in session
+ * - prompt_length_inflation: Prompts get progressively longer late in session
+ * - no_session_separation: Uses same session for unrelated tasks
+ * - verbose_error_pasting: Pastes full error messages/logs without summarizing
+ */
+export const InefficiencyPatternEnum = z.enum([
+  'late_compact',           // Only uses /compact at 90%+ context fill
+  'context_bloat',          // No /clear usage, context keeps accumulating
+  'redundant_info',         // Same information repeated multiple times
+  'prompt_length_inflation',// Prompts get longer as session progresses
+  'no_session_separation',  // Uses same session for different tasks
+  'verbose_error_pasting',  // Pastes entire error messages/stack traces
+]);
+export type InefficiencyPattern = z.infer<typeof InefficiencyPatternEnum>;
+
+/**
+ * LLM output schema for inefficiency pattern (nesting depth: 2)
+ * root{} → inefficiencyPatterns[] → InefficiencyLLM{}
+ */
+export const InefficiencyLLMSchema = z.object({
+  /** Pattern type (MUST be one of the predefined enum values) */
+  pattern: InefficiencyPatternEnum,
+  /** Frequency count */
+  frequency: z.number().int().min(1),
+  /** Impact level */
+  impact: z.enum(['high', 'medium', 'low']),
+  /** Description/example */
+  description: z.string(),
+});
+export type InefficiencyLLM = z.infer<typeof InefficiencyLLMSchema>;
+
+/**
+ * LLM output schema for prompt length trend (nesting depth: 2)
+ * root{} → promptLengthTrends[] → TrendLLM{}
+ */
+export const PromptLengthTrendLLMSchema = z.object({
+  /** Session phase: early | mid | late */
+  phase: z.enum(['early', 'mid', 'late']),
+  /** Average character length */
+  avgLength: z.number().int().min(0),
+});
+export type PromptLengthTrendLLM = z.infer<typeof PromptLengthTrendLLMSchema>;
+
+/**
+ * LLM output schema for redundant info (nesting depth: 2)
+ * root{} → redundantInfo[] → RedundantLLM{}
+ */
+export const RedundantInfoLLMSchema = z.object({
+  /** Info type (e.g., "project_structure", "tech_stack") */
+  infoType: z.string(),
+  /** Repeat count */
+  repeatCount: z.number().int().min(1),
+});
+export type RedundantInfoLLM = z.infer<typeof RedundantInfoLLMSchema>;
+
+/**
+ * LLM output schema for iteration summary (nesting depth: 2)
+ * root{} → iterationSummaries[] → IterationLLM{}
+ */
+export const IterationSummaryLLMSchema = z.object({
+  /** Session ID */
+  sessionId: z.string(),
+  /** Number of iteration cycles */
+  iterationCount: z.number().int().min(0),
+  /** Average turns per iteration */
+  avgTurnsPerIteration: z.number().min(0),
+});
+export type IterationSummaryLLM = z.infer<typeof IterationSummaryLLMSchema>;
 
 /**
  * Context Efficiency Analyzer Output Schema
@@ -205,37 +397,25 @@ export function parseKnowledgeGapLLMOutput(llmOutput: KnowledgeGapLLMOutput): Kn
  * - Inefficiency patterns (late compact, etc.)
  * - Prompt length trends
  * - Redundant information patterns
- *
- * @example
- * ```json
- * {
- *   "contextUsagePatternData": "session1:85:92;session2:78:88;session3:91:95",
- *   "inefficiencyPatternsData": "late_compact:15:high:always compacts at 90%+;context_bloat:8:medium:never uses /clear",
- *   "promptLengthTrendData": "early:150;mid:280;late:450",
- *   "redundantInfoData": "project_structure:5;tech_stack:3;file_paths:7",
- *   "topInsights": [
- *     "Average 85% context fill before compact - consider earlier compaction",
- *     "Prompt length increases 2.3x in late session",
- *     "Project structure explained 5 times - set in context once"
- *   ],
- *   "overallEfficiencyScore": 65,
- *   "avgContextFillPercent": 84,
- *   "confidenceScore": 0.79
- * }
- * ```
  */
 export const ContextEfficiencyOutputSchema = z.object({
-  // Context usage pattern - "session_id:avg_fill_percent:compact_trigger_percent;..."
-  contextUsagePatternData: z.string(),
+  /** Context usage patterns (structured array) */
+  contextUsagePatterns: z.array(ContextUsageLLMSchema),
 
-  // Inefficiency patterns - "pattern:frequency:impact:example;..."
-  inefficiencyPatternsData: z.string(),
+  /** Inefficiency patterns (structured array) */
+  inefficiencyPatterns: z.array(InefficiencyLLMSchema),
 
-  // Prompt length trend - "session_part:avg_length;..."
-  promptLengthTrendData: z.string(),
+  /** Prompt length trends (structured array) */
+  promptLengthTrends: z.array(PromptLengthTrendLLMSchema),
 
-  // Redundant info patterns - "info_type:repeat_count;..."
-  redundantInfoData: z.string(),
+  /** Redundant info patterns (structured array) */
+  redundantInfo: z.array(RedundantInfoLLMSchema),
+
+  // Legacy string fields for backward compatibility
+  contextUsagePatternData: z.string().optional(),
+  inefficiencyPatternsData: z.string().optional(),
+  promptLengthTrendData: z.string().optional(),
+  redundantInfoData: z.string().optional(),
 
   // Top 3 Wow Insights (sliced to 3 since Gemini's maxItems constraint is removed)
   topInsights: z.array(z.string()).transform((arr) => arr.slice(0, 3)),
@@ -258,10 +438,8 @@ export const ContextEfficiencyOutputSchema = z.object({
   // Domain-specific Strengths & Growth Areas (replaces StrengthGrowthSynthesizer)
   // ─────────────────────────────────────────────────────────────────────────
 
-  // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
+  // Legacy string fields (deprecated, kept for backward compatibility)
   strengthsData: z.string().optional(),
-
-  // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
   growthAreasData: z.string().optional(),
 
   // Parsed structured strengths (populated by parsing function)
@@ -270,8 +448,14 @@ export const ContextEfficiencyOutputSchema = z.object({
   // Parsed structured growth areas (populated by parsing function)
   growthAreas: z.array(WorkerGrowthSchema).optional(),
 
+  /** Referenced insights from Knowledge Base (post-processed from [pi-XXX] references) */
+  referencedInsights: z.array(ReferencedInsightSchema).optional(),
+
   // Productivity metrics (consolidated from ProductivityAnalyst)
-  // Iteration data: "sessionId|iterationCount|avgTurnsPerIteration;..."
+  /** Iteration summaries (structured array) */
+  iterationSummaries: z.array(IterationSummaryLLMSchema).optional(),
+
+  // Legacy string field
   iterationSummaryData: z.string().optional(),
 
   // Collaboration efficiency score (0-100)
@@ -287,27 +471,37 @@ export const ContextEfficiencyOutputSchema = z.object({
 export type ContextEfficiencyOutput = z.infer<typeof ContextEfficiencyOutputSchema>;
 
 // ============================================================================
-// Context Efficiency LLM Output Schema (Flattened for Gemini API)
+// Context Efficiency LLM Output Schema (Structured Arrays for Gemini API)
 // ============================================================================
 
 /**
- * Flattened schema for Gemini API (avoids nesting depth limit).
- *
- * Excludes `strengths` and `growthAreas` arrays which contain deeply nested
- * EvidenceItemSchema. These are populated after parsing from the string fields.
+ * Structured schema for Gemini API (uses arrays instead of semicolon-separated strings).
+ * Nesting depth is safe: root{} → array[] → object{} = 2 levels
  */
 export const ContextEfficiencyLLMOutputSchema = z.object({
-  // Context usage pattern - "session_id:avg_fill_percent:compact_trigger_percent;..."
-  contextUsagePatternData: z.string(),
+  /**
+   * Context usage patterns (structured array, nesting depth: 2)
+   * Replaces semicolon-separated contextUsagePatternData string
+   */
+  contextUsagePatterns: z.array(ContextUsageLLMSchema),
 
-  // Inefficiency patterns - "pattern:frequency:impact:example;..."
-  inefficiencyPatternsData: z.string(),
+  /**
+   * Inefficiency patterns (structured array, nesting depth: 2)
+   * Replaces semicolon-separated inefficiencyPatternsData string
+   */
+  inefficiencyPatterns: z.array(InefficiencyLLMSchema),
 
-  // Prompt length trend - "session_part:avg_length;..."
-  promptLengthTrendData: z.string(),
+  /**
+   * Prompt length trends (structured array, nesting depth: 2)
+   * Replaces semicolon-separated promptLengthTrendData string
+   */
+  promptLengthTrends: z.array(PromptLengthTrendLLMSchema),
 
-  // Redundant info patterns - "info_type:repeat_count;..."
-  redundantInfoData: z.string(),
+  /**
+   * Redundant info patterns (structured array, nesting depth: 2)
+   * Replaces semicolon-separated redundantInfoData string
+   */
+  redundantInfo: z.array(RedundantInfoLLMSchema),
 
   // Top 3 Wow Insights (sliced to 3 since Gemini's maxItems constraint is removed)
   topInsights: z.array(z.string()).transform((arr) => arr.slice(0, 3)),
@@ -326,31 +520,76 @@ export const ContextEfficiencyLLMOutputSchema = z.object({
   // Confidence score (0-1)
   confidenceScore: z.number().min(0).max(1),
 
-  // Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)
-  strengthsData: z.string().max(12000).optional()
-    .describe('Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)'),
+  /**
+   * Strengths identified in context efficiency domain (1-6 items).
+   * Evidence format: "utteranceId:quote[:context]"
+   */
+  strengths: z.array(StructuredStrengthLLMSchema).min(1).max(6).optional(),
 
-  // Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)
-  growthAreasData: z.string().max(12000).optional()
-    .describe('Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)'),
+  /**
+   * Growth areas identified in context efficiency domain (1-6 items).
+   * Evidence format: "utteranceId:quote[:context]"
+   */
+  growthAreas: z.array(StructuredGrowthLLMSchema).min(1).max(6),
 
   // Productivity metrics (consolidated from ProductivityAnalyst)
-  iterationSummaryData: z.string().optional(),
+  /**
+   * Iteration summaries (structured array, nesting depth: 2)
+   * Replaces semicolon-separated iterationSummaryData string
+   */
+  iterationSummaries: z.array(IterationSummaryLLMSchema).optional(),
+
   collaborationEfficiencyScore: z.number().min(0).max(100).optional(),
   overallProductivityScore: z.number().min(0).max(100).optional(),
   productivitySummary: z.string().optional(),
 });
 export type ContextEfficiencyLLMOutput = z.infer<typeof ContextEfficiencyLLMOutputSchema>;
 
+function convertContextUsageToString(patterns: ContextUsageLLM[]): string {
+  return toSemicolonString(patterns, (p) => `${p.sessionId}:${p.avgFillPercent}:${p.compactTriggerPercent ?? ''}`);
+}
+
+function convertInefficiencyToString(patterns: InefficiencyLLM[]): string {
+  return toSemicolonString(patterns, (p) => `${p.pattern}:${p.frequency}:${p.impact}:${p.description}`);
+}
+
+function convertPromptLengthTrendToString(trends: PromptLengthTrendLLM[]): string {
+  return toSemicolonString(trends, (t) => `${t.phase}:${t.avgLength}`);
+}
+
+function convertRedundantInfoToString(info: RedundantInfoLLM[]): string {
+  return toSemicolonString(info, (i) => `${i.infoType}:${i.repeatCount}`);
+}
+
+function convertIterationSummaryToString(summaries: IterationSummaryLLM[] | undefined): string | undefined {
+  if (!summaries || summaries.length === 0) return undefined;
+  return summaries.map((s) => `${s.sessionId}|${s.iterationCount}|${s.avgTurnsPerIteration}`).join(';');
+}
+
 /**
  * Convert LLM output to structured ContextEfficiencyOutput
+ * Now uses structured arrays directly and generates legacy strings for backward compatibility
  */
 export function parseContextEfficiencyLLMOutput(llmOutput: ContextEfficiencyLLMOutput): ContextEfficiencyOutput {
+  // Parse structured LLM output - evidence strings are converted to InsightEvidence objects
+  const strengths = parseStructuredStrengths(llmOutput.strengths);
+  const growthAreas = parseStructuredGrowthAreas(llmOutput.growthAreas);
+
   return {
-    contextUsagePatternData: llmOutput.contextUsagePatternData,
-    inefficiencyPatternsData: llmOutput.inefficiencyPatternsData,
-    promptLengthTrendData: llmOutput.promptLengthTrendData,
-    redundantInfoData: llmOutput.redundantInfoData,
+    // Structured arrays (new format)
+    contextUsagePatterns: llmOutput.contextUsagePatterns || [],
+    inefficiencyPatterns: llmOutput.inefficiencyPatterns || [],
+    promptLengthTrends: llmOutput.promptLengthTrends || [],
+    redundantInfo: llmOutput.redundantInfo || [],
+    iterationSummaries: llmOutput.iterationSummaries,
+
+    // Legacy string format for backward compatibility
+    contextUsagePatternData: convertContextUsageToString(llmOutput.contextUsagePatterns || []),
+    inefficiencyPatternsData: convertInefficiencyToString(llmOutput.inefficiencyPatterns || []),
+    promptLengthTrendData: convertPromptLengthTrendToString(llmOutput.promptLengthTrends || []),
+    redundantInfoData: convertRedundantInfoToString(llmOutput.redundantInfo || []),
+    iterationSummaryData: convertIterationSummaryToString(llmOutput.iterationSummaries),
+
     topInsights: llmOutput.topInsights,
     kptKeep: llmOutput.kptKeep,
     kptProblem: llmOutput.kptProblem,
@@ -358,11 +597,8 @@ export function parseContextEfficiencyLLMOutput(llmOutput: ContextEfficiencyLLMO
     overallEfficiencyScore: llmOutput.overallEfficiencyScore,
     avgContextFillPercent: llmOutput.avgContextFillPercent,
     confidenceScore: llmOutput.confidenceScore,
-    strengthsData: llmOutput.strengthsData,
-    growthAreasData: llmOutput.growthAreasData,
-    strengths: parseWorkerStrengthsData(llmOutput.strengthsData),
-    growthAreas: parseWorkerGrowthAreasData(llmOutput.growthAreasData),
-    iterationSummaryData: llmOutput.iterationSummaryData,
+    strengths,
+    growthAreas,
     collaborationEfficiencyScore: llmOutput.collaborationEfficiencyScore,
     overallProductivityScore: llmOutput.overallProductivityScore,
     productivitySummary: llmOutput.productivitySummary,
@@ -470,13 +706,12 @@ export type TypeClassifierOutput = z.infer<typeof TypeClassifierOutputSchema>;
 // ============================================================================
 
 /**
- * Combined outputs from all Wow-Focused Agents
+ * Combined outputs from all Phase 2 Workers
  *
- * Current workers (v2 architecture):
- * - TrustVerification: Anti-patterns and verification behavior
- * - WorkflowHabit: Planning habits and critical thinking
- * - KnowledgeGap: Knowledge gaps and learning resources
- * - ContextEfficiency: Token efficiency patterns
+ * v3 architecture workers:
+ * - ThinkingQuality: Planning, critical thinking, communication patterns
+ * - LearningBehavior: Knowledge gaps, learning progress, repeated mistakes
+ * - Efficiency: Token efficiency patterns
  * - TypeClassifier: Developer type classification
  *
  * All fields are optional since agents may fail independently.
@@ -492,22 +727,42 @@ export const AgentOutputsSchema = z.object({
   temporalAnalysis: TemporalAnalysisResultSchema.optional(),
 
   // =========================================================================
-  // v2 Architecture Workers
+  // Type Classification
   // =========================================================================
-  /** Strengths & Growth Areas analysis */
-  strengthGrowth: StrengthGrowthOutputSchema.optional(),
-
-  /** Trust Verification analysis (anti-patterns + verification behavior) */
-  trustVerification: TrustVerificationOutputSchema.optional(),
-
-  /** Workflow Habit analysis (planning + critical thinking) */
-  workflowHabit: WorkflowHabitOutputSchema.optional(),
-
-  /** Type Classification (v2) - can replace TypeSynthesis */
   typeClassifier: TypeClassifierOutputSchema.optional(),
 
-  /** Communication Patterns analysis (prompt patterns with utteranceId-based evidence) */
-  communicationPatterns: CommunicationPatternsOutputSchema.optional(),
+  // =========================================================================
+  // v3 Architecture Workers (Capability-based unified workers)
+  // =========================================================================
+
+  /**
+   * Thinking Quality analysis
+   *
+   * Answers: "How intentionally, critically, and clearly does this developer work?"
+   * - Planning: How structured are their plans?
+   * - Critical Thinking: Do they verify AI outputs?
+   * - Communication: How clearly do they express needs?
+   */
+  thinkingQuality: ThinkingQualityOutputSchema.optional(),
+
+  /**
+   * Learning Behavior analysis
+   *
+   * Answers: "How much does this developer try to learn? Do they repeat mistakes?"
+   * - Knowledge Gaps: What topics do they struggle with?
+   * - Learning Progress: Are they improving over time?
+   * - Repeated Mistakes: Do they learn from errors?
+   */
+  learningBehavior: LearningBehaviorOutputSchema.optional(),
+
+  /**
+   * Efficiency analysis (from ContextEfficiency)
+   *
+   * Answers: "How efficiently do they use tokens?"
+   * - Context Usage: How well do they manage context window?
+   * - Inefficiency Patterns: What wastes tokens?
+   */
+  efficiency: ContextEfficiencyOutputSchema.optional(),
 });
 
 export type AgentOutputs = z.infer<typeof AgentOutputsSchema>;
@@ -528,16 +783,16 @@ export function createEmptyAgentOutputs(): AgentOutputs {
  */
 export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
   return !!(
-    // Legacy agents (kept for cached data)
+    // v3 unified workers (primary)
+    outputs.thinkingQuality ||
+    outputs.learningBehavior ||
+    outputs.efficiency ||
+    // Type classifier
+    outputs.typeClassifier ||
+    // Legacy agents (kept for cached data compatibility)
     outputs.knowledgeGap ||
     outputs.contextEfficiency ||
-    outputs.temporalAnalysis ||
-    // v2 agents
-    outputs.strengthGrowth ||
-    outputs.trustVerification ||
-    outputs.workflowHabit ||
-    outputs.typeClassifier ||
-    outputs.communicationPatterns
+    outputs.temporalAnalysis
   );
 }
 
@@ -557,6 +812,14 @@ export function getAllTopInsights(outputs: AgentOutputs): string[] {
   // Temporal insights are nested under insights.topInsights
   if (outputs.temporalAnalysis?.insights?.topInsights) {
     insights.push(...outputs.temporalAnalysis.insights.topInsights);
+  }
+
+  // v3 unified workers
+  if (outputs.learningBehavior?.topInsights) {
+    insights.push(...outputs.learningBehavior.topInsights);
+  }
+  if (outputs.efficiency?.topInsights) {
+    insights.push(...outputs.efficiency.topInsights);
   }
 
   return insights;
@@ -626,58 +889,47 @@ function calculateSimilarity(a: string, b: string): number {
  * Merge a group of similar growth areas into a single representative item
  *
  * Merging strategy:
- * - Title: Use the shortest (most concise) title
- * - Description: Use the longest (most detailed) description
- * - Evidence: Merge all, deduplicate
- * - Recommendation: Use the longest (most comprehensive)
- * - Frequency: Use maximum value (most frequent observation)
- * - Severity: Use highest severity level
- * - PriorityScore: Use maximum value
+ * - Title: shortest (most concise)
+ * - Description: longest (most detailed)
+ * - Evidence: merge all, deduplicate
+ * - Recommendation: longest (most comprehensive)
+ * - Frequency/PriorityScore: maximum value
+ * - Severity: highest level
  */
 function mergeGrowthAreaGroup(group: AgentGrowthArea[]): AgentGrowthArea {
   if (group.length === 1) return group[0];
 
-  // Title: shortest (most concise)
-  const title = group.reduce((a, b) =>
-    a.title.length <= b.title.length ? a : b
-  ).title;
+  // Helper: find item by string field length comparison
+  const byLength = <T extends { [K in F]?: string | undefined }, F extends string>(
+    items: T[],
+    field: F,
+    preferLonger: boolean
+  ): T => items.reduce((a, b) => {
+    const lenA = (a[field] as string | undefined)?.length ?? 0;
+    const lenB = (b[field] as string | undefined)?.length ?? 0;
+    return preferLonger ? (lenA >= lenB ? a : b) : (lenA <= lenB ? a : b);
+  });
 
-  // Description: longest (most detailed)
-  const description = group.reduce((a, b) =>
-    a.description.length >= b.description.length ? a : b
-  ).description;
+  // Helper: get max from optional numbers
+  const maxOf = (nums: (number | undefined)[]): number | undefined => {
+    const valid = nums.filter((n): n is number => n !== undefined);
+    return valid.length > 0 ? Math.max(...valid) : undefined;
+  };
 
-  // Evidence: merge all, deduplicate
-  const evidence = [...new Set(group.flatMap(g => g.evidence))];
-
-  // Recommendation: longest (most comprehensive)
-  const recommendation = group.reduce((a, b) =>
-    (a.recommendation?.length || 0) >= (b.recommendation?.length || 0) ? a : b
-  ).recommendation;
-
-  // Frequency: maximum value
-  const frequencies = group.map(g => g.frequency).filter((f): f is number => f !== undefined);
-  const frequency = frequencies.length > 0 ? Math.max(...frequencies) : undefined;
-
-  // Severity: highest level
+  // Severity ordering
   const severityOrder: Record<AgentSeverityLevel, number> = { critical: 4, high: 3, medium: 2, low: 1 };
   const severities = group.map(g => g.severity).filter((s): s is AgentSeverityLevel => s !== undefined);
-  const severity = severities.length > 0
-    ? severities.reduce((a, b) => severityOrder[a] >= severityOrder[b] ? a : b)
-    : undefined;
-
-  // Priority Score: maximum value
-  const priorities = group.map(g => g.priorityScore).filter((p): p is number => p !== undefined);
-  const priorityScore = priorities.length > 0 ? Math.max(...priorities) : undefined;
 
   return {
-    title,
-    description,
-    evidence,
-    recommendation,
-    frequency,
-    severity,
-    priorityScore,
+    title: byLength(group, 'title', false).title,
+    description: byLength(group, 'description', true).description,
+    evidence: [...new Set(group.flatMap(g => g.evidence))],
+    recommendation: byLength(group, 'recommendation', true).recommendation,
+    frequency: maxOf(group.map(g => g.frequency)),
+    severity: severities.length > 0
+      ? severities.reduce((a, b) => severityOrder[a] >= severityOrder[b] ? a : b)
+      : undefined,
+    priorityScore: maxOf(group.map(g => g.priorityScore)),
   };
 }
 
@@ -729,67 +981,6 @@ function groupSimilarGrowthAreas(areas: AgentGrowthArea[]): AgentGrowthArea[] {
   }
 
   return groups.map(mergeGrowthAreaGroup);
-}
-
-// ============================================================================
-// v2 Worker → Growth Area Conversion Helpers
-// ============================================================================
-
-/**
- * Convert StrengthGrowth worker growth areas to AgentGrowthArea format
- */
-function convertStrengthGrowthAreas(
-  growthAreas: NonNullable<StrengthGrowthOutput['growthAreas']>
-): AgentGrowthArea[] {
-  return growthAreas.map(ga => ({
-    title: ga.title,
-    description: ga.description,
-    evidence: ga.evidence?.map(e => e.quote) ?? [],
-    recommendation: ga.recommendation,
-    frequency: ga.frequency,
-    severity: ga.severity,
-    priorityScore: ga.priorityScore,
-  }));
-}
-
-/**
- * Convert TrustVerification anti-patterns to AgentGrowthArea format
- */
-function convertAntiPatternsToGrowthAreas(
-  antiPatterns: NonNullable<TrustVerificationOutput['antiPatterns']>
-): AgentGrowthArea[] {
-  return antiPatterns.map(ap => ({
-    title: `Anti-Pattern: ${ap.type.replace(/_/g, ' ')}`,
-    description: ap.improvement ?? `Detected ${ap.type} pattern`,
-    evidence: ap.examples?.map(e => e.quote) ?? [],
-    recommendation: ap.improvement ?? '',
-    frequency: ap.sessionPercentage,
-    severity: (
-      ap.severity === 'critical' ? 'critical' :
-      ap.severity === 'significant' ? 'high' :
-      ap.severity === 'moderate' ? 'medium' : 'low'
-    ) as AgentSeverityLevel,
-    priorityScore: ap.severity === 'critical' ? 90 : ap.severity === 'significant' ? 70 : ap.severity === 'moderate' ? 50 : 30,
-  }));
-}
-
-/**
- * Convert weak WorkflowHabit planning habits to AgentGrowthArea format
- */
-function convertWeakHabitsToGrowthAreas(
-  workflowHabit: WorkflowHabitOutput
-): AgentGrowthArea[] {
-  const weakHabits = workflowHabit.planningHabits?.filter(h =>
-    h.effectiveness === 'low' || h.frequency === 'rarely' || h.frequency === 'never'
-  ) ?? [];
-  return weakHabits.map(h => ({
-    title: `Planning: ${h.type.replace(/_/g, ' ')}`,
-    description: `Planning habit "${h.type.replace(/_/g, ' ')}" is ${h.frequency}`,
-    evidence: h.examples ?? [],
-    recommendation: `Improve ${h.type.replace(/_/g, ' ')} frequency`,
-    severity: 'medium' as AgentSeverityLevel,
-    priorityScore: 50,
-  }));
 }
 
 // ============================================================================
@@ -925,10 +1116,7 @@ import type { TranslatedAgentInsights, TranslatedAgentInsight } from './verbose-
 export type TranslatedAgentKey =
   | 'knowledgeGap'
   | 'contextEfficiency'
-  | 'temporalAnalysis'
-  | 'strengthGrowth'
-  | 'trustVerification'
-  | 'workflowHabit';
+  | 'temporalAnalysis';
 
 /**
  * Get growth areas from a specific translated agent
@@ -969,13 +1157,10 @@ export function getTranslatedAgentStrengths(
 }
 
 /**
- * Collect growth areas from ALL agents with per-agent translation fallback.
+ * Collect growth areas from v3 unified workers.
  *
- * For each agent, prefers translated data when available, falls back to
- * original agentOutputs data when translation is missing.
- *
- * Handles both legacy agents (pipe-delimited strings from old cached data)
- * and v2 agents (structured arrays from current workers).
+ * Uses v3 unified workers (ThinkingQuality, LearningBehavior, Efficiency).
+ * Legacy agents (KnowledgeGap, ContextEfficiency) are also supported for cached data.
  *
  * @example
  * const areas = getAllGrowthAreasHybrid(agentOutputs, translatedAgentInsights);
@@ -998,7 +1183,44 @@ export function getAllGrowthAreasHybrid(
     }
   };
 
-  // Legacy agents (kept for cached data)
+  // Helper: extract quote from evidence item (handles both string and structured format)
+  const extractQuote = (e: string | { utteranceId: string; quote: string; context?: string }): string => {
+    return typeof e === 'string' ? e : e.quote;
+  };
+
+  // v3 Unified Workers: ThinkingQuality, LearningBehavior, Efficiency
+  // These workers output strengths/growthAreas directly in structured format
+  if (outputs.thinkingQuality?.growthAreas) {
+    allAreas.push(...outputs.thinkingQuality.growthAreas.map(ga => ({
+      title: ga.title,
+      description: ga.description,
+      evidence: ga.evidence?.map(extractQuote) ?? [],
+      recommendation: ga.recommendation,
+      severity: ga.severity,
+    })));
+  }
+
+  if (outputs.learningBehavior?.growthAreas) {
+    allAreas.push(...outputs.learningBehavior.growthAreas.map(ga => ({
+      title: ga.title,
+      description: ga.description,
+      evidence: ga.evidence?.map(extractQuote) ?? [],
+      recommendation: ga.recommendation,
+      severity: ga.severity,
+    })));
+  }
+
+  if (outputs.efficiency?.growthAreas) {
+    allAreas.push(...outputs.efficiency.growthAreas.map(ga => ({
+      title: ga.title,
+      description: ga.description,
+      evidence: ga.evidence?.map(extractQuote) ?? [],
+      recommendation: ga.recommendation,
+      severity: ga.severity,
+    })));
+  }
+
+  // Legacy agents (kept for cached data compatibility)
   addFromLegacyAgent(translatedInsights?.knowledgeGap, outputs.knowledgeGap?.growthAreasData);
   addFromLegacyAgent(translatedInsights?.contextEfficiency, outputs.contextEfficiency?.growthAreasData);
   addFromLegacyAgent(
@@ -1006,149 +1228,53 @@ export function getAllGrowthAreasHybrid(
     outputs.temporalAnalysis?.insights?.growthAreasData
   );
 
-  // v2 strengthGrowth — translated flat string OR original structured data
-  if (translatedInsights?.strengthGrowth?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(translatedInsights.strengthGrowth.growthAreasData));
-  } else if (outputs.strengthGrowth?.growthAreas) {
-    allAreas.push(...convertStrengthGrowthAreas(outputs.strengthGrowth.growthAreas));
-  }
-
-  // v2 trustVerification — translated flat string OR original structured data
-  if (translatedInsights?.trustVerification?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(translatedInsights.trustVerification.growthAreasData));
-  } else if (outputs.trustVerification?.antiPatterns) {
-    allAreas.push(...convertAntiPatternsToGrowthAreas(outputs.trustVerification.antiPatterns));
-  }
-
-  // v2 workflowHabit — translated flat string OR original structured data
-  if (translatedInsights?.workflowHabit?.growthAreasData) {
-    allAreas.push(...parseGrowthAreasData(translatedInsights.workflowHabit.growthAreasData));
-  } else if (outputs.workflowHabit) {
-    allAreas.push(...convertWeakHabitsToGrowthAreas(outputs.workflowHabit));
-  }
-
   return groupSimilarGrowthAreas(allAreas);
 }
 
 // ============================================================================
-// NEW PHASE 2 WORKER OUTPUTS (v2 Architecture)
+// Phase 1 Output (re-exported for convenience)
 // ============================================================================
 
-// Import new Phase 2 schemas
 import {
   Phase1OutputSchema,
   type Phase1Output,
 } from './phase1-output';
 
-import {
-  StrengthGrowthOutputSchema,
-  type StrengthGrowthOutput,
-  StrengthGrowthLLMOutputSchema,
-  type StrengthGrowthLLMOutput,
-} from './strength-growth-data';
-
-import {
-  BehaviorPatternOutputSchema,
-  type BehaviorPatternOutput,
-  BehaviorPatternLLMOutputSchema,
-  type BehaviorPatternLLMOutput,
-} from './behavior-pattern-data';
-
-import {
-  TrustVerificationOutputSchema,
-  type TrustVerificationOutput,
-  TrustVerificationLLMOutputSchema,
-  type TrustVerificationLLMOutput,
-} from './trust-verification-data';
-
-import {
-  WorkflowHabitOutputSchema,
-  type WorkflowHabitOutput,
-  WorkflowHabitLLMOutputSchema,
-  type WorkflowHabitLLMOutput,
-} from './workflow-habit-data';
-
-import {
-  CommunicationPatternsOutputSchema,
-  type CommunicationPatternsOutput,
-  CommunicationPatternsLLMOutputSchema,
-  type CommunicationPatternsLLMOutput,
-} from './communication-patterns-data';
-
-// Re-export for convenience
 export {
   Phase1OutputSchema,
   type Phase1Output,
-  StrengthGrowthOutputSchema,
-  type StrengthGrowthOutput,
-  StrengthGrowthLLMOutputSchema,
-  type StrengthGrowthLLMOutput,
-  BehaviorPatternOutputSchema,
-  type BehaviorPatternOutput,
-  BehaviorPatternLLMOutputSchema,
-  type BehaviorPatternLLMOutput,
-  TrustVerificationOutputSchema,
-  type TrustVerificationOutput,
-  TrustVerificationLLMOutputSchema,
-  type TrustVerificationLLMOutput,
-  WorkflowHabitOutputSchema,
-  type WorkflowHabitOutput,
-  WorkflowHabitLLMOutputSchema,
-  type WorkflowHabitLLMOutput,
-  CommunicationPatternsOutputSchema,
-  type CommunicationPatternsOutput,
-  CommunicationPatternsLLMOutputSchema,
-  type CommunicationPatternsLLMOutput,
 };
 
 // ============================================================================
-// Combined New Agent Outputs Schema (v2)
+// v3 Architecture Workers (Capability-based unified workers)
 // ============================================================================
 
-/**
- * Combined outputs from the new Phase 2 workers (v2 architecture).
- *
- * Core workers:
- * - StrengthGrowth: Strengths & growth areas with evidence
- * - BehaviorPattern: Anti-patterns, planning, verification
- * - KnowledgeGap: Repeated questions, learning progress, recommendations
- * - ContextEfficiency: Context usage patterns
- * - TypeClassifier: Type classification (fun/viral element)
- */
-export const NewAgentOutputsSchema = z.object({
-  /** Strengths & Growth Areas analysis */
-  strengthGrowth: StrengthGrowthOutputSchema.optional(),
+import {
+  ThinkingQualityOutputSchema,
+  type ThinkingQualityOutput,
+  ThinkingQualityLLMOutputSchema,
+  type ThinkingQualityLLMOutput,
+} from './thinking-quality-data';
 
-  /** Trust Verification analysis (anti-patterns + verification behavior) */
-  trustVerification: TrustVerificationOutputSchema.optional(),
+import {
+  LearningBehaviorOutputSchema,
+  type LearningBehaviorOutput,
+  LearningBehaviorLLMOutputSchema,
+  type LearningBehaviorLLMOutput,
+} from './learning-behavior-data';
 
-  /** Workflow Habit analysis (planning + critical thinking + multitasking) */
-  workflowHabit: WorkflowHabitOutputSchema.optional(),
+// Re-export v3 unified workers
+export {
+  ThinkingQualityOutputSchema,
+  type ThinkingQualityOutput,
+  ThinkingQualityLLMOutputSchema,
+  type ThinkingQualityLLMOutput,
+  LearningBehaviorOutputSchema,
+  type LearningBehaviorOutput,
+  LearningBehaviorLLMOutputSchema,
+  type LearningBehaviorLLMOutput,
+};
 
-  /** Knowledge Gap analysis (reuses existing schema) */
-  knowledgeGap: KnowledgeGapOutputSchema.optional(),
-
-  /** Context Efficiency analysis (reuses existing schema) */
-  contextEfficiency: ContextEfficiencyOutputSchema.optional(),
-
-  /** Type Classification */
-  typeClassifier: TypeClassifierOutputSchema.optional(),
-});
-export type NewAgentOutputs = z.infer<typeof NewAgentOutputsSchema>;
-
-/**
- * Check if any new agent produced output
- */
-export function hasAnyNewAgentOutput(outputs: NewAgentOutputs): boolean {
-  return !!(
-    outputs.strengthGrowth ||
-    outputs.trustVerification ||
-    outputs.workflowHabit ||
-    outputs.knowledgeGap ||
-    outputs.contextEfficiency ||
-    outputs.typeClassifier
-  );
-}
 
 // ============================================================================
 // Worker Insights Aggregation (NEW - replaces StrengthGrowthSynthesizer)
@@ -1167,9 +1293,7 @@ export {
 /**
  * Aggregate strengths/growthAreas from all Phase 2 Workers into a unified structure.
  *
- * This replaces the StrengthGrowthSynthesizer by collecting domain-specific
- * insights directly from each worker. Each worker already identifies
- * strengths and growth areas within its domain during its LLM call.
+ * Uses v3 unified workers (ThinkingQuality, LearningBehavior, Efficiency).
  *
  * @param outputs - AgentOutputs from all Phase 2 workers
  * @returns AggregatedWorkerInsights with per-domain strengths/growthAreas
@@ -1177,39 +1301,61 @@ export {
 export function aggregateWorkerInsights(outputs: AgentOutputs): AggregatedWorkerInsights {
   const result: AggregatedWorkerInsights = {};
 
-  // TrustVerification domain
-  if (outputs.trustVerification) {
-    const tv = outputs.trustVerification;
-    // Parse from string data if structured arrays not present
-    const strengths = tv.strengths ?? parseWorkerStrengthsData((tv as any).strengthsData);
-    const growthAreas = tv.growthAreas ?? parseWorkerGrowthAreasData((tv as any).growthAreasData);
+  // =========================================================================
+  // v3 Unified Workers
+  // =========================================================================
+
+  // ThinkingQuality domain
+  if (outputs.thinkingQuality) {
+    const tq = outputs.thinkingQuality;
+    const strengths = tq.strengths ?? [];
+    const growthAreas = tq.growthAreas ?? [];
 
     if (strengths.length > 0 || growthAreas.length > 0) {
-      result.trustVerification = {
+      result.thinkingQuality = {
         strengths,
         growthAreas,
-        domainScore: tv.overallTrustHealthScore,
+        domainScore: tq.overallThinkingQualityScore,
       };
     }
   }
 
-  // WorkflowHabit domain
-  if (outputs.workflowHabit) {
-    const wh = outputs.workflowHabit;
-    const strengths = wh.strengths ?? parseWorkerStrengthsData((wh as any).strengthsData);
-    const growthAreas = wh.growthAreas ?? parseWorkerGrowthAreasData((wh as any).growthAreasData);
+  // LearningBehavior domain
+  if (outputs.learningBehavior) {
+    const lb = outputs.learningBehavior;
+    const strengths = lb.strengths ?? [];
+    const growthAreas = lb.growthAreas ?? [];
 
     if (strengths.length > 0 || growthAreas.length > 0) {
-      result.workflowHabit = {
+      result.learningBehavior = {
         strengths,
         growthAreas,
-        domainScore: wh.overallWorkflowScore,
+        domainScore: lb.overallLearningScore,
       };
     }
   }
 
-  // KnowledgeGap domain
-  if (outputs.knowledgeGap) {
+  // Efficiency domain (from ContextEfficiency v3 output)
+  if (outputs.efficiency) {
+    const ef = outputs.efficiency;
+    const strengths = ef.strengths ?? parseWorkerStrengthsData(ef.strengthsData);
+    const growthAreas = ef.growthAreas ?? parseWorkerGrowthAreasData(ef.growthAreasData);
+
+    if (strengths.length > 0 || growthAreas.length > 0) {
+      result.contextEfficiency = {
+        strengths,
+        growthAreas,
+        domainScore: ef.overallEfficiencyScore,
+      };
+    }
+  }
+
+  // =========================================================================
+  // Legacy workers (kept for cached data compatibility)
+  // =========================================================================
+
+  // KnowledgeGap domain (legacy, only if learningBehavior not present)
+  if (outputs.knowledgeGap && !outputs.learningBehavior) {
     const kg = outputs.knowledgeGap;
     const strengths = kg.strengths ?? parseWorkerStrengthsData(kg.strengthsData);
     const growthAreas = kg.growthAreas ?? parseWorkerGrowthAreasData(kg.growthAreasData);
@@ -1223,8 +1369,8 @@ export function aggregateWorkerInsights(outputs: AgentOutputs): AggregatedWorker
     }
   }
 
-  // ContextEfficiency domain
-  if (outputs.contextEfficiency) {
+  // ContextEfficiency domain (legacy, only if efficiency not present)
+  if (outputs.contextEfficiency && !outputs.efficiency) {
     const ce = outputs.contextEfficiency;
     const strengths = ce.strengths ?? parseWorkerStrengthsData(ce.strengthsData);
     const growthAreas = ce.growthAreas ?? parseWorkerGrowthAreasData(ce.growthAreasData);
@@ -1234,23 +1380,6 @@ export function aggregateWorkerInsights(outputs: AgentOutputs): AggregatedWorker
         strengths,
         growthAreas,
         domainScore: ce.overallEfficiencyScore,
-      };
-    }
-  }
-
-  // CommunicationPatterns domain
-  // NOTE: patterns.examples are handled separately in EvidenceVerifier
-  // This only covers the top-level strengths/growthAreas
-  if (outputs.communicationPatterns) {
-    const cp = outputs.communicationPatterns;
-    const strengths = cp.strengths ?? [];
-    const growthAreas = cp.growthAreas ?? [];
-
-    if (strengths.length > 0 || growthAreas.length > 0) {
-      result.communicationPatterns = {
-        strengths,
-        growthAreas,
-        domainScore: cp.overallEffectivenessScore,
       };
     }
   }

@@ -78,9 +78,10 @@ Phase 3 ContentWriter (Verification)
 | 2026-01-31 | **utteranceId enforcement** | utteranceId required in Phase 2 evidence, ID-based verification only | `worker-insights.ts`, `content-writer.ts`, 4 worker prompts |
 | 2026-01-31 | Empty Communication Patterns examples | LLM prompt table format + explicit examplesData rules | `content-writer-prompts.ts` |
 | 2026-01-31 | topUtterances length bias | Removed `characterCount > 200` filter, use `displayText` | `content-writer.ts` |
-| 2026-01-31 | Single-char utterances (".", "ㅇ") | Added `length <= 1` check in `isKnownSystemMetadata()` | `data-extractor-worker.ts` |
-| 2026-01-31 | Error stacks in examples | Added regex patterns for `^Error:`, stack traces | `data-extractor-worker.ts` |
-| 2026-01-31 | Server logs in examples | Added regex patterns for HTTP request logs | `data-extractor-worker.ts` |
+| 2026-02-01 | **Removed regex pre-filtering** | Deleted `isKnownSystemMetadata()`, rely solely on LLM classification with enhanced CLI patterns | `data-extractor-worker.ts` |
+| ~~2026-01-31~~ | ~~Single-char utterances (".", "ㅇ")~~ | ~~Added `length <= 1` check in `isKnownSystemMetadata()`~~ | ~~Removed~~ |
+| ~~2026-01-31~~ | ~~Error stacks in examples~~ | ~~Added regex patterns for `^Error:`, stack traces~~ | ~~Removed~~ |
+| ~~2026-01-31~~ | ~~Server logs in examples~~ | ~~Added regex patterns for HTTP request logs~~ | ~~Removed~~ |
 | 2026-01-31 | LLM threshold too high | Changed `LLM_FILTER_MIN_LENGTH`: 100 → 10 | `data-extractor-worker.ts` |
 | 2026-01-30 | AI responses in examples | Added fallback verification in `sanitizePromptPatterns()` | `evaluation-assembler.ts` |
 

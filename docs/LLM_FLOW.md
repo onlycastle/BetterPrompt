@@ -35,13 +35,13 @@
 │   ║  └─────────────────────────────────────────────────────────────────────────┘ ║   │
 │   ║                              │                                                ║   │
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
-│   ║  │ PHASE 2: Insight Generation (parallel, 4 workers, 4 LLM calls)        │   ║   │
+│   ║  │ PHASE 2: Insight Generation (parallel, 3 workers, 3 LLM calls)        │   ║   │
 │   ║  │                                                                         │   ║   │
-│   ║  │ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────────┐         │   ║   │
-│   ║  │ │   Trust    │ │  Workflow  │ │ Knowledge  │ │   Context    │         │   ║   │
-│   ║  │ │Verification│ │   Habit    │ │    Gap     │ │  Efficiency  │         │   ║   │
-│   ║  │ │ (premium)  │ │ (premium)  │ │  (free)    │ │  (premium)   │         │   ║   │
-│   ║  │ └────────────┘ └────────────┘ └────────────┘ └──────────────┘         │   ║   │
+│   ║  │ ┌────────────────┐ ┌────────────────┐ ┌──────────────────┐            │   ║   │
+│   ║  │ │    Thinking    │ │    Learning    │ │     Context      │            │   ║   │
+│   ║  │ │    Quality     │ │    Behavior    │ │    Efficiency    │            │   ║   │
+│   ║  │ └────────────────┘ └────────────────┘ └──────────────────┘            │   ║   │
+│   ║  │                                                                         │   ║   │
 │   ║  │                                   │                                     │   ║   │
 │   ║  │                                   ▼                                     │   ║   │
 │   ║  │                            AgentOutputs                                 │   ║   │
@@ -211,19 +211,23 @@ Phase1Output
 │   ├── toolCalls: string[] (tools used)
 │   └── sessionId: string
 │
-└── sessionMetrics
-    ├── totalTurns: number
-    ├── avgPromptLength: number
-    └── toolUsage: Record<string, number>
+├── sessionMetrics
+│   ├── totalTurns: number
+│   ├── avgPromptLength: number
+│   └── toolUsage: Record<string, number>
+│
+├── displayText: string (optional) — LLM-sanitized text for UI display
+├── naturalLanguageSegments: [{start, end, text}] (optional) — Extracted natural language portions
+└── machineContentRatio: number (optional, 0.0-1.0) — Ratio of machine-generated content
 ```
 
 ---
 
 ### Phase 2: Insight Generation Workers
 
-**Purpose**: Generate deep insights based on Phase 1 results
+**Purpose**: Generate deep insights based on Phase 1 results (capability-based approach)
 
-> 4 workers run in parallel. Some workers are free tier, some require premium.
+> 3 workers run in parallel. Each outputs capability-specific strengths/growthAreas directly.
 
 **IMPORTANT: Context Isolation**
 All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
@@ -231,7 +235,7 @@ All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
 - Phase 2 = Semantic Analysis (on extracted data only)
 
 **Worker Input Filtering**
-All 4 workers apply identical quality filters on utterances:
+All 3 workers apply identical quality filters on utterances:
 ```typescript
 // Filter applied before LLM analysis
 utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
@@ -241,7 +245,7 @@ utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    PHASE 2: 4 WORKERS (PARALLEL)                        │
+│                    PHASE 2: 3 WORKERS (PARALLEL)                        │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌──────────────────────────────┐                                       │
@@ -251,12 +255,11 @@ utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
 │               │                                                          │
 │  ┌────────────┴───────────────────────────────────────────────────┐    │
 │  │                                                                  │    │
-│  │  4 Parallel Workers (LLM-based)                                 │    │
-│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐  │    │
-│  │  │   Trust    │ │  Workflow  │ │ Knowledge  │ │  Context   │  │    │
-│  │  │Verification│ │   Habit    │ │    Gap     │ │ Efficiency │  │    │
-│  │  │ (premium)  │ │ (premium)  │ │  (free)    │ │ (premium)  │  │    │
-│  │  └────────────┘ └────────────┘ └────────────┘ └────────────┘  │    │
+│  │  3 Parallel Workers (LLM-based, capability-focused)            │    │
+│  │  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐     │    │
+│  │  │    Thinking    │ │    Learning    │ │    Context     │     │    │
+│  │  │    Quality     │ │    Behavior    │ │   Efficiency   │     │    │
+│  │  └────────────────┘ └────────────────┘ └────────────────┘     │    │
 │  │                                                                  │    │
 │  └──────────────────────────────────┬──────────────────────────────┘    │
 │                                      │                                   │
@@ -271,23 +274,20 @@ utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
 
 #### Phase 2 Worker Descriptions
 
-| Worker | Tier | Purpose | Output Schema |
-|--------|------|---------|---------------|
-| **TrustVerification** | premium | Anti-patterns & trust verification behavior | `TrustVerificationOutput` |
-| **WorkflowHabit** | premium | Planning, critical thinking, multitasking | `WorkflowHabitOutput` |
-| **KnowledgeGap** | free | Knowledge gaps & learning suggestions | `KnowledgeGapOutput` |
-| **ContextEfficiency** | premium | Token inefficiency patterns | `ContextEfficiencyOutput` |
+| Worker | Question | Output Schema |
+|--------|----------|---------------|
+| **ThinkingQuality** | How intentionally, critically, and clearly does this developer work? | `ThinkingQualityOutput` |
+| **LearningBehavior** | How much does this developer try to learn? Do they repeat the same mistakes? | `LearningBehaviorOutput` |
+| **ContextEfficiency** | How effectively does this developer manage tokens and context? | `ContextEfficiencyOutput` |
 
 #### Agent Output Schema (AgentOutputs)
 
 ```
 AgentOutputs
 │
-├── strengthGrowth: StrengthGrowthOutput | null  (populated by workers directly)
-├── trustVerification: TrustVerificationOutput | null
-├── workflowHabit: WorkflowHabitOutput | null
-├── knowledgeGap: KnowledgeGapOutput | null
-├── contextEfficiency: ContextEfficiencyOutput | null
+├── thinkingQuality: ThinkingQualityOutput | null  (planning, critical thinking, communication)
+├── learningBehavior: LearningBehaviorOutput | null  (knowledge gaps, repeated mistakes)
+├── contextEfficiency: ContextEfficiencyOutput | null  (token usage, context management)
 └── typeClassifier: TypeClassifierOutput | null  (added at Phase 2.5)
 ```
 
@@ -308,9 +308,8 @@ AgentOutputs
 │  │  INPUT (from Phase 1 + 2)    │                                       │
 │  │  - Phase1Output              │  ◀── Utterances for evidence          │
 │  │  - AgentOutputs              │  ◀── Phase 2 worker results           │
-│  │    ├── trustVerification     │                                       │
-│  │    ├── workflowHabit         │                                       │
-│  │    ├── knowledgeGap          │                                       │
+│  │    ├── thinkingQuality       │                                       │
+│  │    ├── learningBehavior      │                                       │
 │  │    └── contextEfficiency     │                                       │
 │  └────────────┬─────────────────┘                                       │
 │               │                                                          │
@@ -380,12 +379,12 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 │  │  topFocusAreas ──────────▶ Top 3 personalized priorities         │    │
 │  │                                                                   │    │
 │  │  MOVED TO EvaluationAssembler (deterministic, no LLM):           │    │
-│  │  ✗ dimensionInsights[] ── from StrengthGrowth                    │    │
+│  │  ✗ dimensionInsights[] ── from LearningBehavior                  │    │
 │  │  ✗ primaryType/control ── from TypeClassifier                    │    │
-│  │  ✗ antiPatternsAnalysis ─ from TrustVerification                 │    │
-│  │  ✗ criticalThinking ───── from WorkflowHabit                     │    │
-│  │  ✗ planningAnalysis ───── from WorkflowHabit                     │    │
-│  │  ✗ actionablePractices ── from TrustVerification                 │    │
+│  │  ✗ antiPatternsAnalysis ─ from ThinkingQuality                   │    │
+│  │  ✗ criticalThinking ───── from ThinkingQuality                   │    │
+│  │  ✗ planningAnalysis ───── from ThinkingQuality                   │    │
+│  │  ✗ actionablePractices ── from ThinkingQuality                   │    │
 │  │                                                                   │    │
 │  │  TONE: "Your habit of saying 'let me think'..."                  │    │
 │  │    NOT: "You demonstrate good planning behaviors..."             │    │
@@ -430,11 +429,19 @@ PATH 1: Phase 2 AgentOutputs → EvaluationAssembler → Structural Fields
 AgentOutputs                                        VerboseEvaluation (structural)
 ────────────────────────                            ──────────────────────────────
 
-strengthGrowth
-┌────────────────────────┐     group by dimension   dimensionInsights[]
-│ strengths[]            │─────────────────────────▶┌──────────────────────────────┐
-│ growthAreas[]          │                          │ dimension: "aiCollaboration" │
-│ (each has .dimension)  │                          │ strengths: [...]             │
+thinkingQuality
+┌────────────────────────┐     severity mapping     antiPatternsAnalysis
+│ verificationAntiPatterns│───────────────────────▶{ detected[], summary, score }
+│ planningHabits[]       │─────────────────────────▶planningAnalysis
+│ criticalThinkingMoments│─────────────────────────▶criticalThinkingAnalysis
+│ communicationPatterns[]│───────────────────────▶promptPatterns (assembled)
+└────────────────────────┘
+
+learningBehavior
+┌────────────────────────┐     group by topic       dimensionInsights[]
+│ repeatedMistakePatterns│─────────────────────────▶┌──────────────────────────────┐
+│ knowledgeGaps[]        │                          │ dimension: "aiCollaboration" │
+│ learningProgress[]     │                          │ strengths: [...]             │
 └────────────────────────┘                          │ growthAreas: [...]           │
                                                     └──────────────────────────────┘
 
@@ -444,18 +451,6 @@ typeClassifier
 │ controlLevel           │
 │ distribution           │
 └────────────────────────┘
-
-trustVerification
-┌────────────────────────┐     severity mapping     antiPatternsAnalysis
-│ antiPatterns[]         │─────────────────────────▶{ detected[], summary, score }
-│ actionablePatternData  │─────────────────────────▶actionablePractices
-└────────────────────────┘                          { practiced[], opportunities[] }
-
-workflowHabit
-┌────────────────────────┐     score calculation    criticalThinkingAnalysis
-│ criticalThinkingMoments│─────────────────────────▶{ strengths[], score }
-│ planningHabits[]       │─────────────────────────▶planningAnalysis
-└────────────────────────┘     maturity assessment  { strengths[], maturityLevel }
 
 
 ═══════════════════════════════════════════════════════════════════════════
@@ -613,12 +608,12 @@ Now, translations are applied AFTER assembly:
 │  │  INPUT A                      │  │  INPUT B                      │    │
 │  │  AgentOutputs                 │  │  NarrativeLLMResponse         │    │
 │  │  (Phase 2 + 2.5 structural)  │  │  (Phase 3 narrative, ENGLISH) │    │
-│  │  ├── strengthGrowth          │  │  ├── personalitySummary       │    │
-│  │  ├── typeClassifier          │  │  ├── promptPatterns[]         │    │
-│  │  ├── trustVerification       │  │  └── topFocusAreas            │    │
-│  │  ├── workflowHabit           │  │                                │    │
-│  │  ├── knowledgeGap            │  └──────────────┬───────────────┘    │
-│  │  └── contextEfficiency       │                  │                    │
+│  │  ├── thinkingQuality         │  │  ├── personalitySummary       │    │
+│  │  ├── learningBehavior        │  │  ├── promptPatterns[]         │    │
+│  │  ├── contextEfficiency       │  │  └── topFocusAreas            │    │
+│  │  └── typeClassifier          │  │                                │    │
+│  │                               │  └──────────────┬───────────────┘    │
+│  │                               │                  │                    │
 │  └──────────────┬───────────────┘                  │                    │
 │                 │                                   │                    │
 │                 └─────────────┬─────────────────────┘                    │
@@ -628,18 +623,18 @@ Now, translations are applied AFTER assembly:
 │  │  ASSEMBLY RULES (no LLM)                                         │    │
 │  │                                                                   │    │
 │  │  FROM AgentOutputs (deterministic):                              │    │
-│  │  strengthGrowth.strengths/growthAreas                            │    │
-│  │    → dimensionInsights[] (grouped by 6 dimensions)               │    │
+│  │  thinkingQuality.verificationAntiPatterns[]                      │    │
+│  │    → antiPatternsAnalysis (severity mapping, evidence)           │    │
+│  │  thinkingQuality.planningHabits[]                                │    │
+│  │    → planningAnalysis (maturity level assessment)                │    │
+│  │  thinkingQuality.criticalThinkingMoments[]                       │    │
+│  │    → criticalThinkingAnalysis (score calculation)                │    │
+│  │  thinkingQuality.communicationPatterns[]                         │    │
+│  │    → promptPatterns (assembled)                                  │    │
+│  │  learningBehavior.knowledgeGaps[]                                │    │
+│  │    → dimensionInsights[] (grouped by topics)                     │    │
 │  │  typeClassifier                                                   │    │
 │  │    → primaryType, controlLevel, distribution, controlScore       │    │
-│  │  trustVerification.antiPatterns[]                                 │    │
-│  │    → antiPatternsAnalysis (severity mapping, evidence)           │    │
-│  │  trustVerification.actionablePatternMatchesData                  │    │
-│  │    → actionablePractices (parse semicolon-separated data)        │    │
-│  │  workflowHabit.criticalThinkingMoments[]                        │    │
-│  │    → criticalThinkingAnalysis (score calculation)                │    │
-│  │  workflowHabit.planningHabits[]                                  │    │
-│  │    → planningAnalysis (maturity level assessment)                │    │
 │  │                                                                   │    │
 │  │  FROM NarrativeLLMResponse (direct copy):                        │    │
 │  │  personalitySummary → personalitySummary (truncate ≤3000)        │    │
@@ -734,12 +729,12 @@ Now, translations are applied AFTER assembly:
 
 | Source (Phase 2 AgentOutputs) | Target (VerboseEvaluation) | Transformation |
 |-------------------------------|---------------------------|----------------|
-| `strengthGrowth.strengths[]` + `.growthAreas[]` | `dimensionInsights[]` | Group by `.dimension` into 6 dimension buckets, map evidence |
+| `thinkingQuality.verificationAntiPatterns[]` | `antiPatternsAnalysis.detected[]` | Severity mapping (critical/significant→significant), evidence extraction |
+| `thinkingQuality.planningHabits[]` | `planningAnalysis` | Assess `planningMaturityLevel` (reactive→expert), split by effectiveness |
+| `thinkingQuality.criticalThinkingMoments[]` | `criticalThinkingAnalysis` | Convert to highlights, calculate `overallScore` from type variety |
+| `thinkingQuality.communicationPatterns[]` | `promptPatterns[]` (assembled) | Map to prompt patterns with evidence |
+| `learningBehavior.knowledgeGaps[]` | `dimensionInsights[]` | Group by topic, map to dimension buckets |
 | `typeClassifier` | `primaryType`, `controlLevel`, `distribution`, `controlScore` | Direct field copy |
-| `trustVerification.antiPatterns[]` | `antiPatternsAnalysis.detected[]` | Severity mapping (critical/significant→significant), evidence extraction |
-| `trustVerification.actionablePatternMatchesData` | `actionablePractices` | Parse semicolon-separated entries into `practiced[]`/`opportunities[]` |
-| `workflowHabit.criticalThinkingMoments[]` | `criticalThinkingAnalysis` | Convert to highlights, calculate `overallScore` from type variety |
-| `workflowHabit.planningHabits[]` | `planningAnalysis` | Assess `planningMaturityLevel` (reactive→expert), split by effectiveness |
 
 | Source (Phase 3 Narrative) | Target (VerboseEvaluation) | Transformation |
 |---------------------------|---------------------------|----------------|
@@ -825,17 +820,16 @@ Expert knowledge structure is dynamically injected into Phase 2 workers via the 
 **Worker → Dimension Mapping:**
 | Worker | Applicable Dimensions |
 |--------|----------------------|
-| TrustVerification | aiControl, skillResilience |
-| WorkflowHabit | aiCollaboration, toolMastery |
-| KnowledgeGap | skillResilience |
+| ThinkingQuality | aiCollaboration, toolMastery, aiControl |
+| LearningBehavior | skillResilience |
 | ContextEfficiency | contextEngineering |
 
 **Dynamic Prompt Injection Flow:**
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  Worker starts → getInsightsForWorker("TrustVerification")             │
+│  Worker starts → getInsightsForWorker("ThinkingQuality")               │
 │                                                                         │
-│  1. Lookup dimensions: ['aiControl', 'skillResilience']                │
+│  1. Lookup dimensions: ['aiCollaboration', 'toolMastery', 'aiControl'] │
 │  2. Filter INITIAL_INSIGHTS by applicableDimensions                    │
 │  3. Sort by priority (higher first)                                    │
 │  4. Limit to MAX_INSIGHTS_PER_WORKER (5)                              │
@@ -944,16 +938,15 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
                        │ [3] Pass Phase1Output to Phase 2 (Premium+ only)
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║         PHASE 2: INSIGHT GENERATION (4 workers, 4 LLM calls)      ║
+  ║         PHASE 2: INSIGHT GENERATION (3 workers, 3 LLM calls)      ║
   ║                                                                    ║
-  ║   [4 parallel workers, tier requirements vary per worker]          ║
+  ║   [3 parallel workers]                                             ║
   ║                                                                    ║
   ║   INPUT:  Phase1Output (ONLY - no raw sessions)                   ║
-  ║   OUTPUT: AgentOutputs (merged, excluding strengthGrowth)          ║
-  ║           - TrustVerificationWorker → anti-patterns (premium)     ║
-  ║           - WorkflowHabitWorker → planning/thinking (premium)     ║
-  ║           - KnowledgeGapWorker → knowledge gaps (free)            ║
-  ║           - ContextEfficiencyWorker → context usage (premium)     ║
+  ║   OUTPUT: AgentOutputs (merged)                                    ║
+  ║           - ThinkingQualityWorker → planning, critical thinking   ║
+  ║           - LearningBehaviorWorker → knowledge gaps, mistakes     ║
+  ║           - ContextEfficiencyWorker → token usage                 ║
   ║                                                                    ║
   ║   NO FALLBACK POLICY: Worker failures propagate as errors         ║
   ╚═══════════════════════════════════════════════════════════════════╝
@@ -1082,10 +1075,10 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 │  ┌──────────────────────────────────────────────────────────┐           │
 │  │  PHASE 1: DataExtractor (deterministic, no LLM cost)     │           │
 │  │                                                           │           │
-│  │  PHASE 2 (Parallel): 4 Workers (tier-gated)              │           │
-│  │  ~4K tokens per worker, ~16K total (all workers)         │           │
-│  │  Free tier runs: KnowledgeGap (1 LLM)                     │           │
-│  │  Premium runs: all 4 workers (4 LLM calls)               │           │
+│  │  PHASE 2 (Parallel): 3 Workers                            │           │
+│  │  ~4K tokens per worker, ~12K total (all workers)         │           │
+│  │  All workers run: ThinkingQuality, LearningBehavior,     │           │
+│  │  ContextEfficiency (3 LLM calls)                         │           │
 │  │                                                           │           │
 │  │  PHASE 2.5: TypeClassifier (1 LLM call)                  │           │
 │  │  Input: ~4K tokens    Output: ~1K tokens                 │           │
@@ -1100,13 +1093,10 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 │  │  Input: ~8K tokens    Output: ~6K tokens                 │           │
 │  │                                                           │           │
 │  │  Total LLM Calls:                                         │           │
-│  │  - Free (English):     3 calls (1+1+1+0)                 │           │
-│  │  - Free (non-English): 4 calls (1+1+1+1)                 │           │
-│  │  - Premium (English):  6 calls (4+1+1+0)                 │           │
-│  │  - Premium (non-EN):   7 calls (4+1+1+1)                 │           │
+│  │  - English:     5 calls (3+1+1+0)                        │           │
+│  │  - Non-English: 6 calls (3+1+1+1)                        │           │
 │  │                                                           │           │
-│  │  Total Cost (Free):    ~$0.02-0.03 per analysis          │           │
-│  │  Total Cost (Premium): ~$0.06-0.08 per analysis          │           │
+│  │  Total Cost: ~$0.04-0.05 per analysis                    │           │
 │  └──────────────────────────────────────────────────────────┘           │
 │                                                                          │
 │  Key Benefits:                                                           │
@@ -1129,7 +1119,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 |-----------|------|-------------|
 | Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | Pipeline coordination (Phase 1→2→2.5→3→4→Assembly→TranslationOverlay), Worker registration/execution, `mergeTranslatedFields()` |
 | Orchestrator Types | `src/lib/analyzer/orchestrator/types.ts` | WorkerResult, WorkerContext, Phase types |
-| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, registers all workers (1 Phase 1, 4 Phase 2, 2 Phase 2.5) |
+| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, registers all workers (1 Phase 1, 3 Phase 2, 1 Phase 2.5) |
 | Content Gateway | `src/lib/analyzer/content-gateway.ts` | Tier-based content filtering (free/premium) |
 
 ### Phase 1: Data Extraction Worker (1 worker, deterministic)
@@ -1140,24 +1130,21 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Data Extractor Worker | `src/lib/analyzer/workers/data-extractor-worker.ts` | Phase 1 - deterministic extraction (no LLM) |
 | Phase 1 Output Schema | `src/lib/models/phase1-output.ts` | Phase1Output Zod schema |
 
-### Phase 2: Insight Generation Workers (4 workers, 4 LLM calls)
+### Phase 2: Insight Generation Workers (3 workers, 3 LLM calls)
 
-| Component | File | Tier | Description |
-|-----------|------|------|-------------|
-| Trust Verification | `src/lib/analyzer/workers/trust-verification-worker.ts` | premium | Anti-patterns & verification |
-| Workflow Habit | `src/lib/analyzer/workers/workflow-habit-worker.ts` | premium | Planning, critical thinking |
-| Knowledge Gap | `src/lib/analyzer/workers/knowledge-gap-worker.ts` | free | Knowledge gaps & learning |
-| Context Efficiency | `src/lib/analyzer/workers/context-efficiency-worker.ts` | premium | Token inefficiency |
-| Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | — | AgentOutputs Zod schemas |
-| Trust Verification Schema | `src/lib/models/trust-verification-data.ts` | — | TrustVerificationOutput |
-| Workflow Habit Schema | `src/lib/models/workflow-habit-data.ts` | — | WorkflowHabitOutput |
-| Knowledge Gap Schema | (reuses existing) | — | KnowledgeGapOutput |
-| Context Efficiency Schema | (reuses existing) | — | ContextEfficiencyOutput |
-| Trust Verification Prompts | `src/lib/analyzer/workers/prompts/trust-verification-prompts.ts` | — | PTCF prompts for trust analysis |
-| Workflow Habit Prompts | `src/lib/analyzer/workers/prompts/workflow-habit-prompts.ts` | — | PTCF prompts for workflow analysis |
-| Knowledge Gap Prompts | `src/lib/analyzer/workers/prompts/knowledge-gap-prompts.ts` | — | PTCF prompts for knowledge analysis |
-| Context Efficiency Prompts | `src/lib/analyzer/workers/prompts/context-efficiency-prompts.ts` | — | PTCF prompts for context analysis |
-| Knowledge Mapping | `src/lib/analyzer/workers/prompts/knowledge-mapping.ts` | — | Dynamic prompt injection (dimension→insight mapping) |
+| Component | File | Description |
+|-----------|------|-------------|
+| Thinking Quality | `src/lib/analyzer/workers/thinking-quality-worker.ts` | Planning, critical thinking, communication |
+| Learning Behavior | `src/lib/analyzer/workers/learning-behavior-worker.ts` | Knowledge gaps & repeated mistakes |
+| Context Efficiency | `src/lib/analyzer/workers/context-efficiency-worker.ts` | Token inefficiency |
+| Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | AgentOutputs Zod schemas |
+| Thinking Quality Schema | `src/lib/models/thinking-quality-data.ts` | ThinkingQualityOutput |
+| Learning Behavior Schema | `src/lib/models/learning-behavior-data.ts` | LearningBehaviorOutput |
+| Context Efficiency Schema | (reuses existing) | ContextEfficiencyOutput |
+| Thinking Quality Prompts | `src/lib/analyzer/workers/prompts/thinking-quality-prompts.ts` | PTCF prompts for thinking analysis |
+| Learning Behavior Prompts | `src/lib/analyzer/workers/prompts/learning-behavior-prompts.ts` | PTCF prompts for learning analysis |
+| Context Efficiency Prompts | `src/lib/analyzer/workers/prompts/context-efficiency-prompts.ts` | PTCF prompts for context analysis |
+| Knowledge Mapping | `src/lib/analyzer/workers/prompts/knowledge-mapping.ts` | Dynamic prompt injection (dimension→insight mapping) |
 
 ### Phase 2.5: Classification (1 worker, 1 LLM call)
 
@@ -1200,7 +1187,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Component | File | Description |
 |-----------|------|-------------|
 | Evaluation Assembler | `src/lib/analyzer/stages/evaluation-assembler.ts` | `assembleEvaluation()` — merges Phase 2 structural data + Phase 3 narrative into VerboseEvaluation fields (English defaults) |
-| Evidence Verifier | `src/lib/analyzer/stages/evidence-verifier.ts` | Validates utteranceId references; supports domains: strengthGrowth, trustVerification, workflowHabit, knowledgeGap, contextEfficiency, communicationPatterns |
+| Evidence Verifier | `src/lib/analyzer/stages/evidence-verifier.ts` | Validates utteranceId references; supports domains: thinkingQuality, learningBehavior, contextEfficiency |
 | Translation Merge | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | `mergeTranslatedFields()` — overlays translations onto assembled data (called AFTER assembleEvaluation) |
 | Translator Output Schema | `src/lib/models/translator-output.ts` | `TranslatorOutput` schema (translated text fields + translatedAgentInsights) |
 | Output Schema | `src/lib/models/verbose-evaluation.ts` | `VerboseEvaluation` schema (full evaluation including assembled fields + metadata + translatedAgentInsights) |
@@ -1267,11 +1254,10 @@ Worker Registration (src/lib/analyzer/verbose-analyzer.ts):
 ├── Phase 1 (1 worker):
 │   └── DataExtractorWorker (deterministic, no LLM)
 │
-├── Phase 2 (4 workers, parallel):
-│   ├── TrustVerificationWorker (premium)
-│   ├── WorkflowHabitWorker (premium)
-│   ├── KnowledgeGapWorker (free)
-│   └── ContextEfficiencyWorker (premium)
+├── Phase 2 (3 workers, parallel):
+│   ├── ThinkingQualityWorker (planning, critical thinking, communication)
+│   ├── LearningBehaviorWorker (knowledge gaps, repeated mistakes)
+│   └── ContextEfficiencyWorker (token inefficiency)
 │
 └── Phase 2.5 (1 worker):
     └── TypeClassifierWorker (free)

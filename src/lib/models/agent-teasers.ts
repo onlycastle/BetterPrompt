@@ -24,22 +24,14 @@ import { FREE_AGENT_IDS } from '../domain/models';
 // Helper Functions
 // ============================================================================
 
-/** Maximum number of top insights to show in teaser mode */
 const TEASER_INSIGHTS_LIMIT = 2;
 
-/**
- * Convert undefined/null to empty string for data fields
- */
-function str(value: string | undefined | null): string {
-  return value || '';
-}
+/** Convert undefined/null to empty string */
+const str = (value: string | undefined | null): string => value || '';
 
-/**
- * Limit topInsights array for teaser display
- */
-function limitInsights(insights: string[] | undefined): string[] {
-  return insights?.slice(0, TEASER_INSIGHTS_LIMIT) || [];
-}
+/** Limit topInsights array for teaser display */
+const limitInsights = (insights: string[] | undefined): string[] =>
+  insights?.slice(0, TEASER_INSIGHTS_LIMIT) || [];
 
 /**
  * Create a growth areas string with recommendations locked
@@ -98,6 +90,12 @@ export function createAgentTeasers(agentOutputs: AgentOutputs | undefined): Agen
   if (agentOutputs.contextEfficiency) {
     const ce = agentOutputs.contextEfficiency;
     result.contextEfficiency = {
+      // Structured arrays (new format)
+      contextUsagePatterns: ce.contextUsagePatterns || [],
+      inefficiencyPatterns: ce.inefficiencyPatterns || [],
+      promptLengthTrends: ce.promptLengthTrends || [],
+      redundantInfo: ce.redundantInfo || [],
+      // Legacy string format for backward compatibility
       contextUsagePatternData: str(ce.contextUsagePatternData),
       inefficiencyPatternsData: str(ce.inefficiencyPatternsData),
       promptLengthTrendData: str(ce.promptLengthTrendData),

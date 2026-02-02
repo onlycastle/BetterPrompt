@@ -155,45 +155,43 @@ export function displayResults(result: AnalysisResult): void {
   lines.push(pc.dim(`(${result.primaryType.charAt(0).toUpperCase() + result.primaryType.slice(1)} × ${formatControlLevel(result.controlLevel)})`));
   lines.push('');
 
-  // Distribution bars with matrix sub-types under primary type
+  // Distribution bars with matrix sub-types under ALL types (5×3 matrix)
   const types = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'] as const;
+  const levels = ['explorer', 'navigator', 'cartographer'] as const;
+  const userType = result.primaryType.toLowerCase();
+  const userLevel = result.controlLevel.toLowerCase();
 
   for (const type of types) {
     const value = result.distribution[type];
     const label = type.charAt(0).toUpperCase() + type.slice(1);
-    const bar = progressBar(value);
-    lines.push(`${pc.dim(label.padEnd(12))} ${bar} ${pc.dim(`${value}%`)}`);
+    const isPrimaryType = type === userType;
+    const colorFn = TYPE_COLORS[type] || pc.white;
+    const bar = isPrimaryType ? progressBar(value, 10, colorFn) : progressBar(value);
 
-    // Add matrix sub-type bars under the primary type only
-    if (type === result.primaryType.toLowerCase()) {
-      const matrixDist = computeMatrixDistribution(value, result.controlScore);
-      const levels = ['explorer', 'navigator', 'cartographer'] as const;
+    // PRIMARY marker for the main type
+    const primaryMarker = isPrimaryType ? pc.magenta(' ← PRIMARY') : '';
+    const typeLabel = isPrimaryType
+      ? colorFn(label.padEnd(12))
+      : pc.dim(label.padEnd(12));
 
-      // Find the highest percentage level for this type
-      let highestLevel: typeof levels[number] = levels[0];
-      let highestPct = matrixDist[levels[0]];
-      for (const level of levels) {
-        if (matrixDist[level] > highestPct) {
-          highestPct = matrixDist[level];
-          highestLevel = level;
-        }
-      }
+    lines.push(`${typeLabel} ${bar} ${pc.dim(`${value}%`)}${primaryMarker}`);
 
-      for (const level of levels) {
-        const levelValue = matrixDist[level];
-        const matrixName = MATRIX_NAMES[type][level];
-        const colorFn = LEVEL_COLORS[level];
-        // Scale bar to type's max percentage for better visualization
-        const barScale = value > 0 ? Math.min((levelValue / value) * 100, 100) : 0;
-        const levelBar = progressBar(barScale, 10, colorFn);
+    // Add matrix sub-type bars under ALL types
+    const matrixDist = computeMatrixDistribution(value, result.controlScore);
 
-        // Highlight the highest percentage matrix combo
-        const isHighest = level === highestLevel;
-        const marker = isHighest ? pc.cyan(' ← Your Type') : '';
+    for (const level of levels) {
+      const levelValue = matrixDist[level];
+      const matrixName = MATRIX_NAMES[type][level];
+      const levelColorFn = LEVEL_COLORS[level];
+      // Scale bar to type's max percentage for better visualization
+      const barScale = value > 0 ? Math.min((levelValue / value) * 100, 100) : 0;
+      const levelBar = progressBar(barScale, 10, levelColorFn);
 
-        lines.push(`  └ ${pc.dim(matrixName.padEnd(16))} ${levelBar} ${pc.dim(`${levelValue.toFixed(1)}%`)}${marker}`);
-      }
-      lines.push(''); // Blank line after matrix bars
+      // YOU ARE HERE marker for the user's exact position (type + level combination)
+      const isUserPosition = isPrimaryType && level === userLevel;
+      const marker = isUserPosition ? pc.cyan(' ← YOU ARE HERE') : '';
+
+      lines.push(`  └ ${pc.dim(matrixName.padEnd(16))} ${levelBar} ${pc.dim(`${levelValue.toFixed(1)}%`)}${marker}`);
     }
   }
 
