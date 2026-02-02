@@ -42,7 +42,7 @@ const PREFILTER_CONFIG = {
   // Files larger than this are suspicious or would dominate memory
   MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB
   // How many candidates to fully read for quality scoring
-  MAX_CANDIDATES: 150, // Increased from 100 to ensure 30 sessions can be found
+  MAX_CANDIDATES: 500, // Increased to support 200 max sessions
   // Weight for size score vs recency score in pre-filtering
   SIZE_WEIGHT: 0.3,
   RECENCY_WEIGHT: 0.7,
@@ -74,7 +74,7 @@ const SELECTION_CONFIG = {
   MIN_MESSAGE_COUNT: 3, // Relaxed from 5 to include shorter meaningful sessions
 
   // Final selection
-  MAX_SESSIONS: 30, // Default max sessions
+  MAX_SESSIONS: 200, // Increased for broader analysis coverage
 };
 
 /**
