@@ -158,55 +158,6 @@ export const DeveloperUtteranceSchema = z.object({
 export type DeveloperUtterance = z.infer<typeof DeveloperUtteranceSchema>;
 
 // ============================================================================
-// AI Response Schema
-// ============================================================================
-
-/**
- * Extracted AI response metadata.
- *
- * Captures what the AI did in response to the developer's request.
- * This helps Phase 2 workers understand the interaction context.
- */
-export const AIResponseSchema = z.object({
-  /** Unique identifier: "{sessionId}_{turnIndex}" */
-  id: z.string(),
-
-  /** Session UUID */
-  sessionId: z.string(),
-
-  /** Turn index within the session (0-based) */
-  turnIndex: z.number().int().min(0),
-
-  /** Type of response */
-  responseType: z.enum([
-    'explanation',      // Explaining concepts or code
-    'code_generation',  // Writing new code
-    'code_edit',        // Editing existing code
-    'error_fix',        // Fixing an error
-    'question',         // Asking clarifying questions
-    'tool_execution',   // Running tools/commands
-    'planning',         // Creating or discussing plans
-    'other',            // Other response types
-  ]),
-
-  /** Tools used in this response */
-  toolsUsed: z.array(z.string()),
-
-  /** Snippet of the response text (up to 1500 chars) */
-  textSnippet: z.string().max(1500),
-
-  /** Full length of the response text */
-  fullTextLength: z.number().int().min(0),
-
-  /** Whether this response contained an error or failure */
-  hadError: z.boolean().optional(),
-
-  /** Whether this response was successful (tool executed, code worked, etc.) */
-  wasSuccessful: z.boolean().optional(),
-});
-export type AIResponse = z.infer<typeof AIResponseSchema>;
-
-// ============================================================================
 // Session Metrics Schema (Computed Statistics)
 // ============================================================================
 
@@ -248,6 +199,35 @@ export const Phase1SessionMetricsSchema = z.object({
 
   /** Tool usage counts */
   toolUsageCounts: z.record(z.string(), z.number()).optional(),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Context Fill Metrics (Deterministic, calculated from tokenUsage.input)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Average context fill percentage across all messages with token data.
+   * Calculated as: (input_tokens / 200,000) × 100
+   *
+   * This is a deterministic value based on actual token counts,
+   * NOT an LLM estimate. Used by ContextEfficiencyWorker for accurate analysis.
+   *
+   * @example 42.3 means average 42.3% of context window used
+   */
+  avgContextFillPercent: z.number().min(0).max(100).optional(),
+
+  /**
+   * Maximum context fill percentage observed in any single message.
+   * Useful for identifying sessions that approached context limits.
+   *
+   * @example 78.1 means highest observed was 78.1% of context window
+   */
+  maxContextFillPercent: z.number().min(0).max(100).optional(),
+
+  /**
+   * Count of messages where context fill exceeded 90%.
+   * High count indicates frequent near-limit usage, potential efficiency issue.
+   */
+  contextFillExceeded90Count: z.number().int().min(0).optional(),
 });
 export type Phase1SessionMetrics = z.infer<typeof Phase1SessionMetricsSchema>;
 
@@ -269,9 +249,6 @@ export type Phase1SessionMetrics = z.infer<typeof Phase1SessionMetricsSchema>;
 export const Phase1OutputSchema = z.object({
   /** Extracted developer utterances with structural metadata */
   developerUtterances: z.array(DeveloperUtteranceSchema),
-
-  /** Extracted AI responses */
-  aiResponses: z.array(AIResponseSchema),
 
   /** Computed session metrics */
   sessionMetrics: Phase1SessionMetricsSchema,

@@ -309,12 +309,39 @@ export const ContextUsageLLMSchema = z.object({
 export type ContextUsageLLM = z.infer<typeof ContextUsageLLMSchema>;
 
 /**
+ * Predefined inefficiency pattern types.
+ *
+ * These are the ONLY allowed pattern values for inefficiencyPatterns.
+ * LLM must choose from this enum, ensuring consistent output for:
+ * - UI rendering (icons, colors, localized descriptions)
+ * - Analytics aggregation
+ * - Cross-session comparisons
+ *
+ * Pattern definitions:
+ * - late_compact: Only uses /compact when context is 90%+ full
+ * - context_bloat: Context accumulates without /clear, causing degraded responses
+ * - redundant_info: Same information provided multiple times in session
+ * - prompt_length_inflation: Prompts get progressively longer late in session
+ * - no_session_separation: Uses same session for unrelated tasks
+ * - verbose_error_pasting: Pastes full error messages/logs without summarizing
+ */
+export const InefficiencyPatternEnum = z.enum([
+  'late_compact',           // Only uses /compact at 90%+ context fill
+  'context_bloat',          // No /clear usage, context keeps accumulating
+  'redundant_info',         // Same information repeated multiple times
+  'prompt_length_inflation',// Prompts get longer as session progresses
+  'no_session_separation',  // Uses same session for different tasks
+  'verbose_error_pasting',  // Pastes entire error messages/stack traces
+]);
+export type InefficiencyPattern = z.infer<typeof InefficiencyPatternEnum>;
+
+/**
  * LLM output schema for inefficiency pattern (nesting depth: 2)
  * root{} → inefficiencyPatterns[] → InefficiencyLLM{}
  */
 export const InefficiencyLLMSchema = z.object({
-  /** Pattern name (e.g., "late_compact", "context_bloat") */
-  pattern: z.string(),
+  /** Pattern type (MUST be one of the predefined enum values) */
+  pattern: InefficiencyPatternEnum,
   /** Frequency count */
   frequency: z.number().int().min(1),
   /** Impact level */

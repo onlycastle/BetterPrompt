@@ -38,6 +38,8 @@ import {
 export const KnowledgeGapItemLLMSchema = z.object({
   /** Topic name (e.g., "TypeScript generics", "async/await") */
   topic: z.string(),
+  /** 2-3 sentences explaining WHY this is a knowledge gap and its root cause */
+  description: z.string(),
   /** Number of times this topic was questioned */
   questionCount: z.number().int().min(1),
   /** Depth level: shallow | moderate | deep */
@@ -54,6 +56,8 @@ export type KnowledgeGapItemLLM = z.infer<typeof KnowledgeGapItemLLMSchema>;
 export const LearningProgressLLMSchema = z.object({
   /** Topic name */
   topic: z.string(),
+  /** 2-3 sentences describing the learning journey and what changed */
+  description: z.string(),
   /** Starting level: novice | shallow | moderate | deep | expert */
   startLevel: z.enum(['novice', 'shallow', 'moderate', 'deep', 'expert']),
   /** Current level: novice | shallow | moderate | deep | expert */
@@ -112,6 +116,9 @@ export const RepeatedMistakePatternSchema = z.object({
   /** Specific type of mistake within the category */
   mistakeType: z.string(),
 
+  /** 2-3 sentences explaining WHY this mistake repeats (behavioral root cause) */
+  description: z.string(),
+
   /** How many times this mistake was observed */
   occurrenceCount: z.number().int().min(2),
 
@@ -135,6 +142,8 @@ export const RepeatedMistakeLLMSchema = z.object({
   category: z.string(),
   /** Specific type of mistake */
   mistakeType: z.string(),
+  /** 2-3 sentences explaining WHY this mistake repeats (behavioral root cause) */
+  description: z.string(),
   /** Occurrence count */
   occurrenceCount: z.number().int().min(2),
   /** Session percentage (0-100) */
@@ -328,6 +337,7 @@ function parseRepeatedMistakePatternsLLM(
     .map((p) => ({
       category: p.category,
       mistakeType: p.mistakeType,
+      description: p.description,
       occurrenceCount: p.occurrenceCount,
       sessionPercentage: p.sessionPercentage,
       exampleUtteranceIds: p.exampleUtteranceIds || [],
@@ -418,6 +428,7 @@ export function extractRepeatedMistakesFromAntiPatterns(
     .map((ap) => ({
       category: getCategoryFromAntiPatternType(ap.type),
       mistakeType: ap.type.replace(/_/g, ' '),
+      description: getDescriptionFromAntiPatternType(ap.type),
       occurrenceCount: ap.frequency,
       sessionPercentage: ap.sessionPercentage,
       exampleUtteranceIds: (ap.examples || []).map((e) => e.utteranceId).slice(0, 5),
@@ -435,4 +446,16 @@ function getCategoryFromAntiPatternType(type: string): string {
     repeated_question: 'context_management',
   };
   return categoryMap[type] || 'general';
+}
+
+/**
+ * Generate description for anti-pattern type
+ */
+function getDescriptionFromAntiPatternType(type: string): string {
+  const descriptionMap: Record<string, string> = {
+    error_loop: 'Same error encountered multiple times without addressing the root cause. This indicates a pattern of not fully understanding error messages before attempting fixes.',
+    blind_retry: 'Retrying failed operations without analyzing the error or changing approach. This suggests treating the AI as a black box rather than a collaborative debugging partner.',
+    repeated_question: 'Asking similar questions multiple times across sessions. This may indicate incomplete mental models or lack of note-taking habits for important learnings.',
+  };
+  return descriptionMap[type] || `Repeated occurrence of ${type.replace(/_/g, ' ')} pattern.`;
 }

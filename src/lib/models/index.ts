@@ -175,8 +175,6 @@ export {
 export {
   DeveloperUtteranceSchema,
   type DeveloperUtterance,
-  AIResponseSchema,
-  type AIResponse,
   Phase1SessionMetricsSchema,
   type Phase1SessionMetrics,
   Phase1OutputSchema,
