@@ -1,11 +1,14 @@
 /**
  * Worker Insights - Common types for Phase 2 Worker strengths/growthAreas output
  *
- * All Phase 2 Workers (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency)
- * output their domain-specific strengths and growth areas using these shared types.
+ * v3 Workers (2026-02):
+ * - ThinkingQuality: Planning + Critical Thinking + Communication (consolidated)
+ * - LearningBehavior: Knowledge Gaps + Repeated Mistakes (redesigned)
+ * - ContextEfficiency: Token efficiency patterns (retained)
  *
- * This replaces the centralized StrengthGrowthSynthesizer approach, allowing each
- * worker to directly identify positive/negative patterns within its domain.
+ * Each worker outputs domain-specific strengths and growth areas using shared types.
+ * This decentralized approach allows workers to directly identify positive/negative
+ * patterns within their capability domain.
  *
  * @module models/worker-insights
  */
@@ -68,9 +71,6 @@ export const WorkerStrengthSchema = z.object({
    * Can be simple strings (legacy) or structured with utterance linking (new).
    */
   evidence: z.array(EvidenceItemSchema).min(1).max(8),
-
-  /** Percentage of sessions showing this pattern (optional, 0-100) */
-  frequency: z.number().min(0).max(100).optional(),
 });
 export type WorkerStrength = z.infer<typeof WorkerStrengthSchema>;
 
@@ -113,9 +113,6 @@ export const WorkerGrowthSchema = z.object({
 
   /** How critical this growth area is to address */
   severity: WorkerGrowthSeveritySchema.optional(),
-
-  /** Percentage of sessions where this pattern was observed (optional, 0-100) */
-  frequency: z.number().min(0).max(100).optional(),
 });
 export type WorkerGrowth = z.infer<typeof WorkerGrowthSchema>;
 
@@ -141,24 +138,93 @@ export const WorkerInsightsContainerSchema = z.object({
 export type WorkerInsightsContainer = z.infer<typeof WorkerInsightsContainerSchema>;
 
 // ============================================================================
-// Flattened String Formats for Gemini API
+// Structured LLM Output Schemas (NEW - replaces pipe-delimited strings)
 // ============================================================================
 
 /**
- * Flattened schema for LLM output (to avoid Gemini nesting limits).
+ * Structured evidence for LLM output.
  *
- * Formats:
- * - strengthsData: "title|description|quote1,quote2,quote3|frequency;..."
- * - growthAreasData: "title|description|quote1,quote2|recommendation|severity|frequency;..."
+ * This is the LLM output format - each evidence is a JSON object with:
+ * - utteranceId: Required - sessionId_turnIndex (e.g., "abc123_5")
+ * - quote: Required - the developer's exact words (min 15 chars)
+ * - context: Optional - additional context
+ *
+ * Gemini Nesting Depth Analysis (4 levels max, arrays don't count):
+ * root{} → strengths[] → strength{} → evidence[] → evidenceItem{}
+ *   L1                      L2                         L3 (safe)
+ */
+export const StructuredEvidenceLLMSchema = z.object({
+  /** Utterance ID from Phase 1 (format: {sessionId}_{turnIndex}) */
+  utteranceId: z.string(),
+
+  /** Direct quote from the developer's message (min 15 chars) */
+  quote: z.string(),
+
+  /** Brief context description (optional) */
+  context: z.string().optional(),
+});
+export type StructuredEvidenceLLM = z.infer<typeof StructuredEvidenceLLMSchema>;
+
+/**
+ * Structured strength for LLM output.
+ *
+ * Uses StructuredEvidenceLLMSchema for evidence to provide type-safe structured output.
+ *
+ * Gemini Nesting Depth (arrays don't count toward 4-level limit):
+ * root{} → strengths[] → strength{} → evidence[] → evidenceItem{}
+ *   L1                      L2                         L3 (safe)
+ */
+export const StructuredStrengthLLMSchema = z.object({
+  /** Clear, specific title (e.g., "Systematic Output Verification") */
+  title: z.string(),
+
+  /** 6-10 sentences providing comprehensive analysis */
+  description: z.string(),
+
+  /**
+   * Evidence objects with utteranceId linking (2-8 items).
+   * Each item: {utteranceId: "sessionId_turnIndex", quote: "...", context?: "..."}
+   */
+  evidence: z.array(StructuredEvidenceLLMSchema).min(1).max(8),
+});
+export type StructuredStrengthLLM = z.infer<typeof StructuredStrengthLLMSchema>;
+
+/**
+ * Structured growth area for LLM output.
+ *
+ * Uses StructuredEvidenceLLMSchema for evidence to provide type-safe structured output.
+ */
+export const StructuredGrowthLLMSchema = z.object({
+  /** Clear, specific title (e.g., "Error Loop Pattern") */
+  title: z.string(),
+
+  /** 6-10 sentences providing comprehensive analysis */
+  description: z.string(),
+
+  /**
+   * Evidence objects with utteranceId linking (2-8 items).
+   * Each item: {utteranceId: "sessionId_turnIndex", quote: "...", context?: "..."}
+   */
+  evidence: z.array(StructuredEvidenceLLMSchema).min(1).max(8),
+
+  /** 4-6 sentences with step-by-step actionable advice */
+  recommendation: z.string(),
+
+  /** Severity level: critical | high | medium | low */
+  severity: WorkerGrowthSeveritySchema.optional(),
+});
+export type StructuredGrowthLLM = z.infer<typeof StructuredGrowthLLMSchema>;
+
+// ============================================================================
+// Flattened String Formats for Gemini API (LEGACY - kept for backward compatibility)
+// ============================================================================
+
+/**
+ * @deprecated Use StructuredStrengthLLMSchema and StructuredGrowthLLMSchema instead.
  */
 export const WorkerInsightsLLMOutputSchema = z.object({
-  /** Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items) */
-  strengthsData: z.string()
-    .describe('Strengths: "title|description|quote1,quote2,quote3|frequency;..." (1-6 items)'),
-
-  /** Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items) */
-  growthAreasData: z.string()
-    .describe('Growth areas: "title|description|quote1,quote2|recommendation|severity|frequency;..." (1-6 items)'),
+  strengthsData: z.string(),
+  growthAreasData: z.string(),
 });
 export type WorkerInsightsLLMOutput = z.infer<typeof WorkerInsightsLLMOutputSchema>;
 
@@ -243,8 +309,6 @@ export function parseWorkerStrengthsData(data: string | undefined): WorkerStreng
       const title = parts[0]?.trim() || '';
       const description = parts[1]?.trim() || '';
       const evidenceStr = parts[2]?.trim() || '';
-      const frequencyStr = parts[3]?.trim();
-
       // Parse evidence: comma-separated, each item MUST have utteranceId
       // parseEvidenceItem returns null for items without valid utteranceId
       // Require minimum quote length of 15 chars to filter out corrupted/too-short quotes
@@ -253,12 +317,7 @@ export function parseWorkerStrengthsData(data: string | undefined): WorkerStreng
         .map((e) => parseEvidenceItem(e))
         .filter((e): e is InsightEvidence => e !== null && e.quote.length >= 15);
 
-      const frequency = frequencyStr ? parseFloat(frequencyStr) : undefined;
-
       const result: WorkerStrength = { title, description, evidence };
-      if (frequency !== undefined && !isNaN(frequency)) {
-        result.frequency = frequency;
-      }
 
       return result;
     })
@@ -288,7 +347,6 @@ export function parseWorkerGrowthAreasData(data: string | undefined): WorkerGrow
       const evidenceStr = parts[2]?.trim() || '';
       const recommendation = parts[3]?.trim() || '';
       const severityStr = parts[4]?.trim() as WorkerGrowthSeverity | undefined;
-      const frequencyStr = parts[5]?.trim();
 
       // Parse evidence: comma-separated, each item MUST have utteranceId
       // parseEvidenceItem returns null for items without valid utteranceId
@@ -308,10 +366,6 @@ export function parseWorkerGrowthAreasData(data: string | undefined): WorkerGrow
       if (severityStr && ['critical', 'high', 'medium', 'low'].includes(severityStr)) {
         result.severity = severityStr;
       }
-      const frequency = frequencyStr ? parseFloat(frequencyStr) : undefined;
-      if (frequency !== undefined && !isNaN(frequency)) {
-        result.frequency = frequency;
-      }
 
       return result;
     })
@@ -319,7 +373,7 @@ export function parseWorkerGrowthAreasData(data: string | undefined): WorkerGrow
 }
 
 /**
- * Convert LLM output to structured WorkerInsightsContainer.
+ * @deprecated Use parseStructuredStrengths and parseStructuredGrowthAreas instead.
  */
 export function parseWorkerInsightsLLMOutput(
   llmOutput: WorkerInsightsLLMOutput,
@@ -333,30 +387,130 @@ export function parseWorkerInsightsLLMOutput(
 }
 
 // ============================================================================
+// NEW Structured Parsing Functions (for StructuredStrengthLLM/StructuredGrowthLLM)
+// ============================================================================
+
+/**
+ * @deprecated Use parseStructuredEvidence() for new structured evidence format.
+ */
+export function parseEvidenceStrings(evidenceStrings: string[]): InsightEvidence[] {
+  return evidenceStrings
+    .map((str) => parseEvidenceItem(str))
+    .filter((e): e is InsightEvidence => e !== null && e.quote.length >= 15);
+}
+
+/**
+ * Parse structured evidence objects from LLM output.
+ *
+ * Each evidence item is already a JSON object: {utteranceId, quote, context?}
+ * This function validates and filters the evidence objects.
+ *
+ * @param evidenceObjects - Array of StructuredEvidenceLLM from LLM output
+ * @returns Array of InsightEvidence objects (invalid items filtered out)
+ */
+export function parseStructuredEvidence(
+  evidenceObjects: StructuredEvidenceLLM[]
+): InsightEvidence[] {
+  return evidenceObjects
+    .filter((e) => {
+      // Validate utteranceId format: sessionId_turnIndex
+      if (!e.utteranceId || !/_\d+$/.test(e.utteranceId)) {
+        console.warn(
+          `[parseStructuredEvidence] Invalid utteranceId format: "${e.utteranceId}"`
+        );
+        return false;
+      }
+      // Validate quote minimum length
+      if (!e.quote || e.quote.length < 15) {
+        console.warn(
+          `[parseStructuredEvidence] Quote too short (min 15 chars): "${e.quote?.slice(0, 30)}..."`
+        );
+        return false;
+      }
+      return true;
+    })
+    .map((e) => ({
+      utteranceId: e.utteranceId,
+      quote: e.quote.trim(),
+      context: e.context?.trim() || undefined,
+    }));
+}
+
+/**
+ * Convert structured LLM strengths to WorkerStrength array.
+ *
+ * Directly maps structured evidence objects (no string parsing needed).
+ *
+ * @param llmStrengths - Array of StructuredStrengthLLM from LLM output
+ * @returns Array of WorkerStrength with validated evidence
+ */
+export function parseStructuredStrengths(
+  llmStrengths: StructuredStrengthLLM[] | undefined
+): WorkerStrength[] {
+  if (!llmStrengths || llmStrengths.length === 0) return [];
+
+  return llmStrengths
+    .map((s) => ({
+      title: s.title,
+      description: s.description,
+      evidence: parseStructuredEvidence(s.evidence),
+    }))
+    .filter((s) => s.title && s.description && s.evidence.length > 0);
+}
+
+/**
+ * Convert structured LLM growth areas to WorkerGrowth array.
+ *
+ * Directly maps structured evidence objects (no string parsing needed).
+ *
+ * @param llmGrowthAreas - Array of StructuredGrowthLLM from LLM output
+ * @returns Array of WorkerGrowth with validated evidence
+ */
+export function parseStructuredGrowthAreas(
+  llmGrowthAreas: StructuredGrowthLLM[] | undefined
+): WorkerGrowth[] {
+  if (!llmGrowthAreas || llmGrowthAreas.length === 0) return [];
+
+  return llmGrowthAreas
+    .map((g) => ({
+      title: g.title,
+      description: g.description,
+      evidence: parseStructuredEvidence(g.evidence),
+      recommendation: g.recommendation,
+      severity: g.severity,
+    }))
+    .filter((g) => g.title && g.description && g.evidence.length > 0);
+}
+
+// ============================================================================
 // Aggregated Worker Insights (for VerboseEvaluation)
 // ============================================================================
 
 /**
  * All Worker insights aggregated for the VerboseEvaluation.
  *
- * This structure replaces dimensionInsights from StrengthGrowthSynthesizer.
  * Each worker's insights are accessed by key for direct frontend rendering.
  */
 export interface AggregatedWorkerInsights {
-  /** Trust & Verification domain insights */
-  trustVerification?: WorkerInsightsContainer;
+  // =========================================================================
+  // v3 Unified Workers
+  // =========================================================================
 
-  /** Workflow & Planning domain insights */
-  workflowHabit?: WorkerInsightsContainer;
+  /** Thinking Quality domain insights (planning + critical thinking + communication) */
+  thinkingQuality?: WorkerInsightsContainer;
 
-  /** Knowledge & Learning domain insights */
-  knowledgeGap?: WorkerInsightsContainer;
+  /** Learning Behavior domain insights (knowledge gaps + repeated mistakes) */
+  learningBehavior?: WorkerInsightsContainer;
 
   /** Context Efficiency domain insights */
   contextEfficiency?: WorkerInsightsContainer;
 
-  /** Communication Patterns domain insights */
-  communicationPatterns?: WorkerInsightsContainer;
+  // =========================================================================
+  // Legacy workers (kept for cached data compatibility)
+  // =========================================================================
+
+  /** Knowledge & Learning domain insights (legacy, use learningBehavior instead) */
+  knowledgeGap?: WorkerInsightsContainer;
 }
 
 /**
@@ -371,30 +525,23 @@ export interface WorkerDomainConfig {
 }
 
 /**
- * Configuration for all 4 Worker domains.
+ * Configuration for v3 Worker domains.
  * Used by frontend to render consistent UI sections.
  */
 export const WORKER_DOMAIN_CONFIGS: WorkerDomainConfig[] = [
   {
-    key: 'trustVerification',
-    icon: '🛡️',
-    title: 'Trust & Verification',
-    subtitle: 'How do you verify AI outputs?',
-    scoreLabel: 'Trust Health Score',
+    key: 'thinkingQuality',
+    icon: '🧠',
+    title: 'Thinking Quality',
+    subtitle: 'How intentionally and critically do you work?',
+    scoreLabel: 'Thinking Score',
   },
   {
-    key: 'workflowHabit',
-    icon: '📋',
-    title: 'Workflow & Planning',
-    subtitle: 'How do you structure your work?',
-    scoreLabel: 'Workflow Score',
-  },
-  {
-    key: 'knowledgeGap',
-    icon: '📚',
-    title: 'Knowledge & Learning',
-    subtitle: 'What are you learning?',
-    scoreLabel: 'Knowledge Score',
+    key: 'learningBehavior',
+    icon: '📈',
+    title: 'Learning Behavior',
+    subtitle: 'How much do you learn from AI?',
+    scoreLabel: 'Learning Score',
   },
   {
     key: 'contextEfficiency',

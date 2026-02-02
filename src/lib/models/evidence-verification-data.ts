@@ -26,7 +26,7 @@ export interface EvidenceVerificationPair {
   /** Whether this is a strength or growth area insight */
   insightType: 'strength' | 'growth';
 
-  /** Which worker domain this came from (trustVerification, workflowHabit, etc.) */
+  /** Which worker domain this came from (thinkingQuality, learningBehavior, etc.) */
   workerDomain: string;
 
   /** The insight title being supported */
