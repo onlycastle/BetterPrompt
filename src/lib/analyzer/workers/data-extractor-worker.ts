@@ -22,13 +22,12 @@ import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker
 import {
   type Phase1Output,
   type DeveloperUtterance,
-  type AIResponse,
   type Phase1SessionMetrics,
 } from '../../models/phase1-output';
 import type { ParsedSession, ParsedMessage } from '../../models/session';
 import type { OrchestratorConfig } from '../orchestrator/types';
-import { strategicSampleUtterances, strategicSampleAIResponses } from '../shared/sampling-utils';
-import { PHASE1_MAX_UTTERANCES, PHASE1_MAX_AI_RESPONSES } from '../shared/constants';
+import { strategicSampleUtterances } from '../shared/sampling-utils';
+import { PHASE1_MAX_UTTERANCES } from '../shared/constants';
 import { GeminiClient, type TokenUsage } from '../clients/gemini-client';
 import {
   BatchClassificationResultSchema,
@@ -79,7 +78,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   }
 
   private static readonly MAX_UTTERANCES = PHASE1_MAX_UTTERANCES;
-  private static readonly MAX_AI_RESPONSES = PHASE1_MAX_AI_RESPONSES;
   private static readonly TRUNCATION_MARKER = '... [truncated]';
 
   // LLM filtering configuration
@@ -131,17 +129,15 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     this.filterTokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
     const allDeveloperUtterances: DeveloperUtterance[] = [];
-    const allAIResponses: AIResponse[] = [];
 
-    // Process each session — extract ALL utterances/responses first
+    // Process each session — extract ALL utterances first
     const extractStartTime = Date.now();
     for (const session of context.sessions) {
-      const { utterances, responses } = this.extractFromSession(session);
+      const utterances = this.extractFromSession(session);
       allDeveloperUtterances.push(...utterances);
-      allAIResponses.push(...responses);
     }
     const extractElapsed = Date.now() - extractStartTime;
-    this.log(`[Timing] Session extraction: ${extractElapsed}ms (${allDeveloperUtterances.length} utterances, ${allAIResponses.length} responses)`);
+    this.log(`[Timing] Session extraction: ${extractElapsed}ms (${allDeveloperUtterances.length} utterances)`);
 
     // NEW: Apply LLM-based filtering to remove system metadata
     const filterStartTime = Date.now();
@@ -159,18 +155,15 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
 
     // Apply strategic sampling to reduce downstream token usage
     const sampledUtterances = this.sampleUtterances(filteredUtterances, DataExtractorWorker.MAX_UTTERANCES);
-    const sampledResponses = this.sampleAIResponses(allAIResponses, DataExtractorWorker.MAX_AI_RESPONSES);
 
     const output: Phase1Output = {
       developerUtterances: sampledUtterances,
-      aiResponses: sampledResponses,
       sessionMetrics,
     };
 
     const totalElapsed = Date.now() - totalStartTime;
     this.log(`[Timing] Total execute(): ${totalElapsed}ms`);
     this.log(`Extracted ${filteredUtterances.length} utterances, sampled to ${sampledUtterances.length}`);
-    this.log(`Extracted ${allAIResponses.length} AI responses, sampled to ${sampledResponses.length}`);
 
     // Return token usage from LLM filtering (if any)
     const usage = this.filterTokenUsage.totalTokens > 0 ? this.filterTokenUsage : null;
@@ -178,14 +171,10 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   }
 
   /**
-   * Extract utterances and responses from a single session
+   * Extract utterances from a single session
    */
-  private extractFromSession(session: ParsedSession): {
-    utterances: DeveloperUtterance[];
-    responses: AIResponse[];
-  } {
+  private extractFromSession(session: ParsedSession): DeveloperUtterance[] {
     const utterances: DeveloperUtterance[] = [];
-    const responses: AIResponse[] = [];
 
     let precedingAIResponse: ParsedMessage | null = null;
 
@@ -206,13 +195,12 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
         }
         precedingAIResponse = null;
       } else if (message.role === 'assistant') {
-        const response = this.extractAIResponse(session, message, turnIndex);
-        responses.push(response);
+        // Track preceding AI response for context metadata on next user utterance
         precedingAIResponse = message;
       }
     }
 
-    return { utterances, responses };
+    return utterances;
   }
 
   /**
@@ -272,76 +260,51 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     };
   }
 
+  // Claude Code context window size in tokens
+  private static readonly CONTEXT_WINDOW_SIZE = 200_000;
+
   /**
-   * Extract AI response metadata
+   * Compute context fill metrics from token usage data.
+   *
+   * Calculates deterministic context fill percentages based on actual input_tokens
+   * from ParsedMessage.tokenUsage. This replaces LLM estimation with real data.
+   *
+   * @param sessions - All parsed sessions
+   * @returns Context fill metrics or undefined if no token data available
    */
-  private extractAIResponse(
-    session: ParsedSession,
-    message: ParsedMessage,
-    turnIndex: number
-  ): AIResponse {
-    const id = `${session.sessionId}_${turnIndex}`;
-    const toolsUsed = message.toolCalls?.map(tc => tc.name) ?? [];
+  private computeContextFillMetrics(
+    sessions: ParsedSession[]
+  ): {
+    avgContextFillPercent?: number;
+    maxContextFillPercent?: number;
+    contextFillExceeded90Count?: number;
+  } {
+    const fillPercentages: number[] = [];
+
+    for (const session of sessions) {
+      for (const message of session.messages) {
+        // Only assistant messages have tokenUsage (input represents context at that point)
+        if (message.role === 'assistant' && message.tokenUsage?.input) {
+          const fillPercent = (message.tokenUsage.input / DataExtractorWorker.CONTEXT_WINDOW_SIZE) * 100;
+          fillPercentages.push(fillPercent);
+        }
+      }
+    }
+
+    if (fillPercentages.length === 0) {
+      // No token data available
+      return {};
+    }
+
+    const avgFill = fillPercentages.reduce((sum, p) => sum + p, 0) / fillPercentages.length;
+    const maxFill = Math.max(...fillPercentages);
+    const exceeded90Count = fillPercentages.filter(p => p >= 90).length;
 
     return {
-      id,
-      sessionId: session.sessionId,
-      turnIndex,
-      responseType: this.classifyResponseType(message),
-      toolsUsed,
-      textSnippet: message.content.slice(0, 1500),
-      fullTextLength: message.content.length,
-      hadError: this.hadError(message),
-      wasSuccessful: this.wasSuccessful(message),
+      avgContextFillPercent: Math.round(avgFill * 10) / 10, // 1 decimal place
+      maxContextFillPercent: Math.round(maxFill * 10) / 10,
+      contextFillExceeded90Count: exceeded90Count,
     };
-  }
-
-  /**
-   * Classify the response type based on content and tools used
-   */
-  private classifyResponseType(message: ParsedMessage): AIResponse['responseType'] {
-    const tools = message.toolCalls?.map(tc => tc.name) ?? [];
-    const content = message.content.toLowerCase();
-
-    if (this.isPlanningResponse(tools)) return 'planning';
-    if (this.isCodeEditResponse(tools)) return 'code_edit';
-    if (this.isCodeGenerationResponse(tools)) return 'code_generation';
-    if (this.isErrorFixResponse(content)) return 'error_fix';
-    if (this.isToolExecutionResponse(tools)) return 'tool_execution';
-    if (this.isQuestionResponse(content)) return 'question';
-    if (this.isExplanationResponse(content)) return 'explanation';
-    return 'other';
-  }
-
-  private isPlanningResponse(tools: string[]): boolean {
-    return tools.some(t => ['EnterPlanMode', 'ExitPlanMode', 'TodoWrite', 'TodoRead'].includes(t));
-  }
-
-  private isCodeEditResponse(tools: string[]): boolean {
-    return tools.includes('Edit') || tools.includes('Write');
-  }
-
-  private isCodeGenerationResponse(tools: string[]): boolean {
-    return tools.includes('Write') && !tools.includes('Read');
-  }
-
-  private isErrorFixResponse(content: string): boolean {
-    const errorKeywords = ['error', 'fix', 'bug', 'issue'];
-    return errorKeywords.some(keyword => content.includes(keyword));
-  }
-
-  private isToolExecutionResponse(tools: string[]): boolean {
-    return tools.includes('Bash') || tools.includes('Task');
-  }
-
-  private isQuestionResponse(content: string): boolean {
-    const questionIndicators = ['?', 'would you', 'do you want'];
-    return questionIndicators.some(indicator => content.includes(indicator));
-  }
-
-  private isExplanationResponse(content: string): boolean {
-    const explanationIndicators = ['let me explain', 'this means', 'because'];
-    return explanationIndicators.some(indicator => content.includes(indicator));
   }
 
   /**
@@ -380,6 +343,9 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     );
     timestamps.sort();
 
+    // Calculate context fill metrics (deterministic, from token data)
+    const contextFillMetrics = this.computeContextFillMetrics(sessions);
+
     return {
       totalSessions: sessions.length,
       totalMessages,
@@ -394,6 +360,8 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
         latest: timestamps[timestamps.length - 1] ?? new Date().toISOString(),
       },
       toolUsageCounts,
+      // Context fill metrics (deterministic calculation)
+      ...contextFillMetrics,
     };
   }
 
@@ -429,17 +397,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     maxCount: number
   ): DeveloperUtterance[] {
     return strategicSampleUtterances(all, maxCount);
-  }
-
-  /**
-   * Strategic sampling of AI responses.
-   * Delegates to shared utility (error-prioritized + even spacing strategy).
-   */
-  private sampleAIResponses(
-    all: AIResponse[],
-    maxCount: number
-  ): AIResponse[] {
-    return strategicSampleAIResponses(all, maxCount);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
