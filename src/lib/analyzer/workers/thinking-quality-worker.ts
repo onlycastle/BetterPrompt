@@ -167,12 +167,16 @@ export class ThinkingQualityWorker extends BaseWorker<ThinkingQualityOutput> {
    * Includes more data than individual workers since this is a unified worker.
    */
   public preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
+    // Note: aiResponses intentionally excluded - ThinkingQuality analyzes developer's
+    // thinking patterns from their utterances only. AI responses are not needed for
+    // planning, critical thinking, or communication pattern analysis.
+    // This optimization saves ~15,000-20,000 tokens per analysis.
     return {
       developerUtterances: phase1.developerUtterances.map((u) => ({
         id: u.id,
         // Use displayText (sanitized) if available, fallback to raw text
         // displayText has machine-generated content summarized
-        text: (u.displayText || u.text).slice(0, 1500), // Slightly larger for unified analysis
+        text: (u.displayText || u.text).slice(0, 1000),
         sessionId: u.sessionId,
         turnIndex: u.turnIndex,
         wordCount: u.wordCount,
@@ -180,19 +184,9 @@ export class ThinkingQualityWorker extends BaseWorker<ThinkingQualityOutput> {
         hasQuestion: u.hasQuestion,
         isSessionStart: u.isSessionStart,
         isContinuation: u.isContinuation,
-        precedingAIToolCalls: u.precedingAIToolCalls,
+        // precedingAIToolCalls excluded - not used in thinking quality analysis
         precedingAIHadError: u.precedingAIHadError,
         timestamp: u.timestamp,
-      })),
-      aiResponses: phase1.aiResponses.map((r) => ({
-        id: r.id,
-        sessionId: r.sessionId,
-        turnIndex: r.turnIndex,
-        responseType: r.responseType,
-        toolsUsed: r.toolsUsed,
-        wasSuccessful: r.wasSuccessful,
-        hadError: r.hadError,
-        textSnippet: r.textSnippet?.slice(0, 400), // More context for critical thinking analysis
       })),
       sessionMetrics: phase1.sessionMetrics,
     };

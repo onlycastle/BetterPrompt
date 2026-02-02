@@ -61,6 +61,14 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
     this.log('Analyzing context efficiency and productivity...');
     this.log(`Utterances: ${phase1Output.developerUtterances.length}`);
 
+    // Log Phase 1 calculated context fill metrics (deterministic values)
+    const { avgContextFillPercent, maxContextFillPercent, contextFillExceeded90Count } = phase1Output.sessionMetrics;
+    if (avgContextFillPercent !== undefined) {
+      this.log(`Phase 1 context fill: avg=${avgContextFillPercent}%, max=${maxContextFillPercent}%, exceeded90=${contextFillExceeded90Count}`);
+    } else {
+      this.log('Phase 1 context fill: no token data available');
+    }
+
     const phase1ForPrompt = this.preparePhase1ForPrompt(phase1Output);
     const phase1Json = JSON.stringify(phase1ForPrompt, null, 2);
     const userPrompt = buildContextEfficiencyUserPrompt(phase1Json);

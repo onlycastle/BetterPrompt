@@ -157,6 +157,10 @@ export class LearningBehaviorWorker extends BaseWorker<LearningBehaviorOutput> {
    * Prepare Phase 1 output for the prompt.
    */
   public preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
+    // Note: aiResponses intentionally excluded - LearningBehavior analyzes learning patterns
+    // from developer utterances only. The key signal `precedingAIHadError` is already included
+    // in developerUtterances, making aiResponses redundant for this analysis.
+    // This optimization saves ~15,000-20,000 tokens per analysis.
     return {
       developerUtterances: phase1.developerUtterances.map((u) => ({
         id: u.id,
@@ -169,19 +173,9 @@ export class LearningBehaviorWorker extends BaseWorker<LearningBehaviorOutput> {
         hasQuestion: u.hasQuestion,
         isSessionStart: u.isSessionStart,
         isContinuation: u.isContinuation,
-        precedingAIToolCalls: u.precedingAIToolCalls,
+        // precedingAIToolCalls excluded - not used in learning behavior analysis
         precedingAIHadError: u.precedingAIHadError,
         timestamp: u.timestamp,
-      })),
-      aiResponses: phase1.aiResponses.map((r) => ({
-        id: r.id,
-        sessionId: r.sessionId,
-        turnIndex: r.turnIndex,
-        responseType: r.responseType,
-        toolsUsed: r.toolsUsed,
-        wasSuccessful: r.wasSuccessful,
-        hadError: r.hadError,
-        textSnippet: r.textSnippet?.slice(0, 200),
       })),
       sessionMetrics: phase1.sessionMetrics,
     };
