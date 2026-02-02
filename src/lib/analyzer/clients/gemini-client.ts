@@ -68,6 +68,8 @@ export interface TokenUsage {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  /** Cached input tokens (if context caching is used) */
+  cachedTokens?: number;
 }
 
 /**
@@ -173,6 +175,7 @@ export class GeminiClient {
       promptTokenCount?: number;
       candidatesTokenCount?: number;
       totalTokenCount?: number;
+      cachedContentTokenCount?: number;
     };
   }): TokenUsage {
     const metadata = response.usageMetadata;
@@ -180,6 +183,7 @@ export class GeminiClient {
       promptTokens: metadata?.promptTokenCount ?? 0,
       completionTokens: metadata?.candidatesTokenCount ?? 0,
       totalTokens: metadata?.totalTokenCount ?? 0,
+      cachedTokens: metadata?.cachedContentTokenCount,
     };
   }
 
@@ -272,18 +276,20 @@ export class GeminiClient {
    * Check if an error is retryable
    */
   private isRetryable(error: unknown): boolean {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      // Retry on rate limits and server errors
-      if (message.includes('rate') || message.includes('429')) return true;
-      if (message.includes('500') || message.includes('503')) return true;
-      if (message.includes('internal') || message.includes('server error')) return true;
-      // Retry on transient network errors (fetch failed, ECONNRESET, etc.)
-      if (error instanceof TypeError && message.includes('fetch failed')) return true;
-      if (message.includes('econnreset') || message.includes('etimedout')) return true;
-      if (message.includes('socket hang up') || message.includes('network error')) return true;
-    }
-    return false;
+    if (!(error instanceof Error)) return false;
+
+    const message = error.message.toLowerCase();
+
+    // Retryable patterns: rate limits, server errors, and transient network issues
+    const retryablePatterns = [
+      'rate', '429',                           // Rate limits
+      '500', '503', 'internal', 'server error', // Server errors
+      'fetch failed',                           // Network errors (TypeError)
+      'econnreset', 'etimedout',               // Connection errors
+      'socket hang up', 'network error',       // Other network issues
+    ];
+
+    return retryablePatterns.some(pattern => message.includes(pattern));
   }
 
   /**

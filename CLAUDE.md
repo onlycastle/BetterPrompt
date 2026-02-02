@@ -37,22 +37,35 @@ npm test               # Run all tests
 | Phase | Component | LLM Calls | Description |
 |-------|-----------|-----------|-------------|
 | 1 | DataExtractor | 0 | Deterministic extraction (no LLM) |
-| 2 | 4 Insight Workers | 4 | Parallel analysis (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency) |
+| 2 | 3 Insight Workers | 3 | Parallel analysis (ThinkingQuality, LearningBehavior, ContextEfficiency) |
 | 2.5 | TypeClassifier | 1 | Developer type classification (5x3 matrix) |
 | 3 | ContentWriter | 1 | Personalized narrative generation |
 | 4 | Translator | 0-1 | Conditional translation (non-English only) |
 
-- **Total**: 6 LLM calls (English), 7 LLM calls (non-English)
+- **Total**: 5 LLM calls (English), 6 LLM calls (non-English)
 - Prompts use PTCF framework (Persona · Task · Context · Format)
 - Temperature: 1.0 (Gemini's recommended default)
 
 **Structured Outputs**: Gemini stages use `responseJsonSchema` with `responseMimeType: "application/json"`. Zod schemas in `src/lib/models/` → JSON Schema via `zod-to-json-schema`.
 
-> ⚠️ **Gemini Schema Nesting Limit**: Gemini API has a **maximum nesting depth of ~4 levels** for `responseJsonSchema`. When adding new Zod schemas:
-> - Avoid deeply nested objects (e.g., `array[].object.nested.field`)
-> - Flatten nested objects by inlining fields (e.g., `contextSituationType` instead of `context.situationType`)
-> - Use semicolon-separated strings instead of nested arrays (e.g., `signalsData: "type:evidence:confidence;..."`)
-> - Use comma-separated strings for ID lists (e.g., `clusterIds: "id1,id2,id3"`)
+> ⚠️ **Gemini Schema Nesting Limit**: Gemini API has a **maximum nesting depth of 4 levels** for `responseJsonSchema`.
+>
+> **Key Finding (2026-02-01)**: Only `object` (`{}`) counts toward nesting depth. `array` (`[]`) does NOT count.
+>
+> ```
+> ✅ VALID (4 object levels):
+> root{} → antiPatterns[] → pattern{} → examples[] → example{}
+>   L1                        L2                        L3 (array skipped) L4
+>
+> ❌ INVALID (5 object levels):
+> root{} → config{} → settings{} → options{} → nested{}
+>   L1       L2          L3          L4          L5 (exceeds limit)
+> ```
+>
+> **Guidelines**:
+> - `z.array(z.object({...}))` is safe - arrays don't add nesting
+> - Avoid `z.object({ nested: z.object({ deep: z.object({...}) }) })` chains
+> - Structured arrays preferred over semicolon-separated strings for type safety
 >
 > Error symptom: `"A schema in GenerationConfig in the request exceeds the maximum allowed nesting depth"`
 

@@ -7,10 +7,10 @@
  * - Expected output tokens per stage
  * - Model-specific pricing
  *
- * Multi-phase pipeline (6-7 LLM calls):
+ * Multi-phase pipeline (5-6 LLM calls):
  * - Phase 1: DataExtractor (deterministic, no LLM)
- * - Phase 2: 4 insight workers in parallel (TrustVerification,
- *            WorkflowHabit, KnowledgeGap, ContextEfficiency)
+ * - Phase 2: 3 insight workers in parallel (ThinkingQuality,
+ *            LearningBehavior, ContextEfficiency)
  * - Phase 2.5: TypeClassifier (1 LLM call)
  * - Phase 3: ContentWriter (1 LLM call, always English)
  * - Phase 4: Translator (1 LLM call, conditional — only for non-English users)
@@ -22,21 +22,27 @@ import { PHASE1_MAX_UTTERANCES, PHASE1_MAX_AI_RESPONSES } from './shared/constan
 /**
  * Model pricing configuration
  */
-type ModelPricing = Record<string, { input: number; output: number; name: string }>;
+type ModelPricing = Record<string, { input: number; output: number; cached: number; name: string }>;
 
 /**
- * Google Gemini pricing as of 2025 (per token)
+ * Google Gemini pricing as of 2026 (per token)
  * Source: https://ai.google.dev/gemini-api/docs/pricing
+ *
+ * - Input: $0.50 per 1M tokens
+ * - Output: $3.00 per 1M tokens
+ * - Cached Input: $0.05 per 1M tokens (90% discount)
  */
 export const GEMINI_PRICING: ModelPricing = {
   'gemini-3-flash-preview': {
     input: 0.5 / 1_000_000, // $0.50 per 1M tokens
     output: 3.0 / 1_000_000, // $3.00 per 1M tokens
+    cached: 0.05 / 1_000_000, // $0.05 per 1M tokens (90% discount)
     name: 'Gemini 3 Flash',
   },
   'gemini-3-flash': {
     input: 0.5 / 1_000_000,
     output: 3.0 / 1_000_000,
+    cached: 0.05 / 1_000_000,
     name: 'Gemini 3 Flash',
   },
 };
@@ -45,7 +51,7 @@ export const GEMINI_PRICING: ModelPricing = {
  * Stage-specific breakdown for cost estimation
  *
  * Reflects the current multi-phase pipeline:
- * - phase2Workers: 4 parallel LLM calls (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency)
+ * - phase2Workers: 3 parallel LLM calls (ThinkingQuality, LearningBehavior, ContextEfficiency)
  * - typeClassifier: Phase 2.5 (1 LLM call)
  * - contentWriter: Phase 3 (1 LLM call)
  * - translator: Phase 4 (1 LLM call, conditional)
@@ -84,22 +90,21 @@ const SCHEMA_OVERHEAD_PER_STAGE = 1500;
 const STAGE_OVERHEAD = SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
 
 /**
- * Number of LLM stages in the pipeline (6 base, +1 conditional translator)
- * - Phase 2: 4 workers (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency)
+ * Number of LLM stages in the pipeline (5 base, +1 conditional translator)
+ * - Phase 2: 3 workers (ThinkingQuality, LearningBehavior, ContextEfficiency)
  * - Phase 2.5: TypeClassifier (1 call)
  * - Phase 3: ContentWriter (1 call)
  * - Phase 4: Translator (1 call, conditional)
  */
-const PIPELINE_LLM_STAGES = 7;
+const PIPELINE_LLM_STAGES = 6;
 
 /**
  * Estimated output tokens per stage
  */
 const ESTIMATED_OUTPUT_PER_STAGE = {
-  trustVerification: 8000,
-  workflowHabit: 8000,
-  knowledgeGap: 4000,
-  contextEfficiency: 4000,
+  thinkingQuality: 10000,    // Anti-patterns, habits, patterns
+  learningBehavior: 8000,    // Mistakes, knowledge gaps
+  contextEfficiency: 4000,   // Token efficiency
   typeClassifier: 2000,
   contentWriter: 12000,
   translator: 10000,
@@ -171,8 +176,8 @@ function estimateWithPricing(
   const systemPromptOverhead = SYSTEM_PROMPT_TOKENS_PER_STAGE * PIPELINE_LLM_STAGES;
   const schemaOverhead = SCHEMA_OVERHEAD_PER_STAGE * PIPELINE_LLM_STAGES;
 
-  // Phase 2: 4 workers, each receives Phase1Output + overhead
-  const phase2WorkersInput = 4 * (phase1OutputTokens + STAGE_OVERHEAD);
+  // Phase 2: 3 workers, each receives Phase1Output + overhead
+  const phase2WorkersInput = 3 * (phase1OutputTokens + STAGE_OVERHEAD);
 
   // Phase 2.5: TypeClassifier receives ~6K tokens (agent output summaries + overhead)
   const typeClassifierInput = 6000 + STAGE_OVERHEAD;
@@ -187,9 +192,8 @@ function estimateWithPricing(
 
   // Total output tokens
   const totalOutputTokens =
-    ESTIMATED_OUTPUT_PER_STAGE.trustVerification +
-    ESTIMATED_OUTPUT_PER_STAGE.workflowHabit +
-    ESTIMATED_OUTPUT_PER_STAGE.knowledgeGap +
+    ESTIMATED_OUTPUT_PER_STAGE.thinkingQuality +
+    ESTIMATED_OUTPUT_PER_STAGE.learningBehavior +
     ESTIMATED_OUTPUT_PER_STAGE.contextEfficiency +
     ESTIMATED_OUTPUT_PER_STAGE.typeClassifier +
     ESTIMATED_OUTPUT_PER_STAGE.contentWriter +
@@ -266,19 +270,45 @@ export interface PipelineTokenUsage {
 }
 
 /**
+ * Detailed cost breakdown
+ */
+export interface CostBreakdown {
+  inputCost: number;
+  outputCost: number;
+  cachedCost: number;
+  totalCost: number;
+}
+
+/**
  * Calculate actual cost from token usage
+ *
+ * @param usage - Token usage from API response
+ * @param model - Model name for pricing lookup
+ * @returns Cost breakdown with input, output, cached, and total costs
  */
 export function calculateActualCost(
-  usage: { promptTokens: number; completionTokens: number },
+  usage: { promptTokens: number; completionTokens: number; cachedTokens?: number },
   model: string = 'gemini-3-flash-preview'
-): { inputCost: number; outputCost: number; totalCost: number } {
-  const pricing = GEMINI_PRICING[model] || GEMINI_PRICING['gemini-3-flash-preview'];
+): CostBreakdown {
+  const pricing = getPricing(model);
 
-  const inputCost = usage.promptTokens * pricing.input;
+  const cachedTokens = usage.cachedTokens ?? 0;
+  // Non-cached input tokens = total prompt tokens - cached tokens
+  const nonCachedInputTokens = Math.max(0, usage.promptTokens - cachedTokens);
+
+  const inputCost = nonCachedInputTokens * pricing.input;
+  const cachedCost = cachedTokens * pricing.cached;
   const outputCost = usage.completionTokens * pricing.output;
-  const totalCost = inputCost + outputCost;
+  const totalCost = inputCost + cachedCost + outputCost;
 
-  return { inputCost, outputCost, totalCost };
+  return { inputCost, outputCost, cachedCost, totalCost };
+}
+
+/**
+ * Get pricing for a model with fallback to default
+ */
+function getPricing(model: string): { input: number; output: number; cached: number; name: string } {
+  return GEMINI_PRICING[model] || GEMINI_PRICING['gemini-3-flash-preview'];
 }
 
 /**
@@ -298,7 +328,7 @@ export function aggregateTokenUsage(
   );
 
   const cost = calculateActualCost(totals, model);
-  const pricing = GEMINI_PRICING[model] || GEMINI_PRICING['gemini-3-flash-preview'];
+  const pricing = getPricing(model);
 
   return {
     stages,

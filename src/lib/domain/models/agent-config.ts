@@ -25,10 +25,6 @@ export const AgentIdSchema = z.enum([
   'contextEfficiency',
   'temporalAnalysis',
   'multitasking',
-  // v2 agent IDs
-  'strengthGrowth',
-  'trustVerification',
-  'workflowHabit',
   'typeClassifier',
 ]);
 export type AgentId = z.infer<typeof AgentIdSchema>;
@@ -132,37 +128,6 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     scoreKey: 'multitaskingEfficiencyScore',
     scoreMax: 100,
   },
-  // v2 agents
-  {
-    id: 'strengthGrowth',
-    tier: 'free',
-    name: 'Strength & Growth',
-    icon: '💪',
-    color: 'emerald',
-    scoreLabel: 'Confidence',
-    scoreKey: 'confidenceScore',
-    scoreMax: 1,
-  },
-  {
-    id: 'trustVerification',
-    tier: 'premium',
-    name: 'Trust Verification',
-    icon: '🛡️',
-    color: 'red',
-    scoreLabel: 'Trust Score',
-    scoreKey: 'overallTrustHealthScore',
-    scoreMax: 100,
-  },
-  {
-    id: 'workflowHabit',
-    tier: 'premium',
-    name: 'Workflow Habits',
-    icon: '🔧',
-    color: 'amber',
-    scoreLabel: 'Workflow Score',
-    scoreKey: 'overallWorkflowScore',
-    scoreMax: 100,
-  },
   {
     id: 'typeClassifier',
     tier: 'free',
@@ -179,23 +144,28 @@ export const AGENT_CONFIGS: AgentConfig[] = [
 // Helper Functions
 // ============================================================================
 
+// ============================================================================
+// Derived Constants & Helper Functions
+// ============================================================================
+
+/** Get all agents filtered by tier */
+export function getAgentsByTier(tier: AgentTier): AgentConfig[] {
+  return AGENT_CONFIGS.filter((c) => c.tier === tier);
+}
+
 /** IDs of all FREE tier agents */
-export const FREE_AGENT_IDS = AGENT_CONFIGS.filter((c) => c.tier === 'free').map((c) => c.id);
+export const FREE_AGENT_IDS = getAgentsByTier('free').map((c) => c.id);
 
 /** IDs of all PREMIUM tier agents */
-export const PREMIUM_AGENT_IDS = AGENT_CONFIGS.filter((c) => c.tier === 'premium').map((c) => c.id);
+export const PREMIUM_AGENT_IDS = getAgentsByTier('premium').map((c) => c.id);
 
 /** Check if an agent is in the FREE tier */
 export function isAgentFree(id: AgentId): boolean {
-  return FREE_AGENT_IDS.includes(id);
+  const config = AGENT_CONFIGS.find((c) => c.id === id);
+  return config?.tier === 'free';
 }
 
 /** Get configuration for a specific agent */
 export function getAgentConfig(id: AgentId): AgentConfig | undefined {
   return AGENT_CONFIGS.find((c) => c.id === id);
-}
-
-/** Get all agents filtered by tier */
-export function getAgentsByTier(tier: AgentTier): AgentConfig[] {
-  return AGENT_CONFIGS.filter((c) => c.tier === tier);
 }

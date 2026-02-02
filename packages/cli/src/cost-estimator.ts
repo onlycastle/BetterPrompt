@@ -7,10 +7,10 @@
  * - Expected output tokens per stage
  * - Model-specific pricing
  *
- * Multi-phase pipeline (6-7 LLM calls):
+ * Multi-phase pipeline (5-6 LLM calls):
  * - Phase 1: DataExtractor (deterministic, no LLM)
- * - Phase 2: 4 insight workers in parallel (TrustVerification,
- *            WorkflowHabit, KnowledgeGap, ContextEfficiency)
+ * - Phase 2: 3 insight workers in parallel (ThinkingQuality,
+ *            LearningBehavior, ContextEfficiency)
  * - Phase 2.5: TypeClassifier (1 LLM call)
  * - Phase 3: ContentWriter (1 LLM call, always English)
  * - Phase 4: Translator (1 LLM call, conditional — only for non-English users)
@@ -49,18 +49,17 @@ const SCHEMA_OVERHEAD_PER_STAGE = 1500;
 const STAGE_OVERHEAD = SYSTEM_PROMPT_TOKENS_PER_STAGE + SCHEMA_OVERHEAD_PER_STAGE;
 
 /**
- * Number of LLM stages in the pipeline (6 base, +1 conditional translator)
+ * Number of LLM stages in the pipeline (5 base, +1 conditional translator)
  */
-const PIPELINE_LLM_STAGES = 7;
+const PIPELINE_LLM_STAGES = 6;
 
 /**
  * Estimated output tokens per stage
  */
 const ESTIMATED_OUTPUT_PER_STAGE = {
-  trustVerification: 8000,
-  workflowHabit: 8000,
-  knowledgeGap: 4000,
-  contextEfficiency: 4000,
+  thinkingQuality: 10000,    // Anti-patterns, habits, patterns
+  learningBehavior: 8000,    // Mistakes, knowledge gaps
+  contextEfficiency: 4000,   // Token efficiency
   typeClassifier: 2000,
   contentWriter: 12000,
   translator: 10000,
@@ -99,32 +98,33 @@ export interface CostEstimate {
 }
 
 /**
+ * Count regex matches in text, returning 0 if no matches
+ */
+function countMatches(text: string, pattern: RegExp): number {
+  return text.match(pattern)?.length ?? 0;
+}
+
+/**
  * Legacy token counter for raw content (used during scanning)
  * @deprecated Use estimatePhase1OutputTokens for accurate estimation
  */
 export function countTokensAccurate(text: string): number {
   if (!text) return 0;
 
-  let baseCount = text.length / 4;
+  const baseCount = text.length / 4;
+  const codeBlockBonus = countMatches(text, /```[\s\S]*?```/g) * 50;
+  const jsonBraceBonus = countMatches(text, /[{}[\]]/g) * 0.5;
+  const newlineBonus = countMatches(text, /\n/g) * 0.1;
+  const specialCharBonus = countMatches(text, /[<>()=;:,."'`]/g) * 0.1;
 
-  const codeBlockMatches = text.match(/```[\s\S]*?```/g);
-  const codeBlockCount = codeBlockMatches ? codeBlockMatches.length : 0;
-  baseCount += codeBlockCount * 50;
-
-  const jsonBraceMatches = text.match(/[{}[\]]/g);
-  const jsonBraceCount = jsonBraceMatches ? jsonBraceMatches.length : 0;
-  baseCount += jsonBraceCount * 0.5;
-
-  const newlineMatches = text.match(/\n/g);
-  const newlineCount = newlineMatches ? newlineMatches.length : 0;
-  baseCount += newlineCount * 0.1;
-
-  const specialCharMatches = text.match(/[<>()=;:,."'`]/g);
-  const specialCharCount = specialCharMatches ? specialCharMatches.length : 0;
-  baseCount += specialCharCount * 0.1;
-
-  return Math.ceil(baseCount);
+  return Math.ceil(baseCount + codeBlockBonus + jsonBraceBonus + newlineBonus + specialCharBonus);
 }
+
+/** Session metrics overhead for structured metadata */
+const METRICS_OVERHEAD_TOKENS = 500;
+
+/** Approximate ratio of user messages in a session */
+const USER_MESSAGE_RATIO = 0.6;
 
 /**
  * Estimate Phase1Output token count from session data
@@ -132,20 +132,32 @@ export function countTokensAccurate(text: string): number {
 function estimatePhase1OutputTokens(sessions: ParsedSession[]): number {
   const totalMessages = sessions.reduce((sum, s) => sum + s.messages.length, 0);
 
-  // Approximate: ~60% user messages, ~40% assistant messages
-  const userMessages = Math.ceil(totalMessages * 0.6);
+  const userMessages = Math.ceil(totalMessages * USER_MESSAGE_RATIO);
   const assistantMessages = totalMessages - userMessages;
 
-  // Apply Phase 1 sampling limits
   const sampledUtterances = Math.min(userMessages, PHASE1_MAX_UTTERANCES);
   const sampledAiResponses = Math.min(assistantMessages, PHASE1_MAX_AI_RESPONSES);
 
-  // Session metrics overhead (~500 tokens for structured metadata)
-  const metricsOverhead = 500;
+  return (
+    sampledUtterances * TOKENS_PER_UTTERANCE +
+    sampledAiResponses * TOKENS_PER_AI_RESPONSE +
+    METRICS_OVERHEAD_TOKENS
+  );
+}
 
-  return (sampledUtterances * TOKENS_PER_UTTERANCE) +
-    (sampledAiResponses * TOKENS_PER_AI_RESPONSE) +
-    metricsOverhead;
+/** Fixed input token estimates for specific stages */
+const STAGE_INPUT_ESTIMATES = {
+  typeClassifier: 6000,
+  contentWriter: 9500,
+  translator: 14000,
+  phase2WorkerCount: 3,
+} as const;
+
+/**
+ * Calculate total output tokens across all stages
+ */
+function calculateTotalOutputTokens(): number {
+  return Object.values(ESTIMATED_OUTPUT_PER_STAGE).reduce((sum, tokens) => sum + tokens, 0);
 }
 
 /**
@@ -153,38 +165,18 @@ function estimatePhase1OutputTokens(sessions: ParsedSession[]): number {
  */
 export function estimateAnalysisCost(sessions: ParsedSession[]): CostEstimate {
   const pricing = GEMINI_PRICING['gemini-3-flash-preview'];
-
-  // Estimate Phase1Output size (shared input for Phase 2 workers)
   const phase1OutputTokens = estimatePhase1OutputTokens(sessions);
 
-  // System prompt and schema overhead across all LLM stages
   const systemPromptOverhead = SYSTEM_PROMPT_TOKENS_PER_STAGE * PIPELINE_LLM_STAGES;
   const schemaOverhead = SCHEMA_OVERHEAD_PER_STAGE * PIPELINE_LLM_STAGES;
 
-  // Phase 2: 4 workers, each receives Phase1Output + overhead
-  const phase2WorkersInput = 4 * (phase1OutputTokens + STAGE_OVERHEAD);
-
-  // Phase 2.5: TypeClassifier receives ~6K tokens (agent output summaries + overhead)
-  const typeClassifierInput = 6000 + STAGE_OVERHEAD;
-
-  // Phase 3: ContentWriter receives Phase1Output + AgentOutputs (~9.5K combined)
-  const contentWriterInput = 9500 + STAGE_OVERHEAD;
-
-  // Phase 4: Translator (conditional — receives ContentWriter output ~14K)
-  const translatorInput = 14000 + STAGE_OVERHEAD;
+  const phase2WorkersInput = STAGE_INPUT_ESTIMATES.phase2WorkerCount * (phase1OutputTokens + STAGE_OVERHEAD);
+  const typeClassifierInput = STAGE_INPUT_ESTIMATES.typeClassifier + STAGE_OVERHEAD;
+  const contentWriterInput = STAGE_INPUT_ESTIMATES.contentWriter + STAGE_OVERHEAD;
+  const translatorInput = STAGE_INPUT_ESTIMATES.translator + STAGE_OVERHEAD;
 
   const totalInputTokens = phase2WorkersInput + typeClassifierInput + contentWriterInput + translatorInput;
-
-  // Total output tokens
-  const totalOutputTokens =
-    ESTIMATED_OUTPUT_PER_STAGE.trustVerification +
-    ESTIMATED_OUTPUT_PER_STAGE.workflowHabit +
-    ESTIMATED_OUTPUT_PER_STAGE.knowledgeGap +
-    ESTIMATED_OUTPUT_PER_STAGE.contextEfficiency +
-    ESTIMATED_OUTPUT_PER_STAGE.typeClassifier +
-    ESTIMATED_OUTPUT_PER_STAGE.contentWriter +
-    ESTIMATED_OUTPUT_PER_STAGE.translator;
-
+  const totalOutputTokens = calculateTotalOutputTokens();
   const totalCost = totalInputTokens * pricing.input + totalOutputTokens * pricing.output;
 
   return {
@@ -225,7 +217,7 @@ export function renderCostEstimate(
   lines.push(`    ${pc.dim('├─ Content Writer:')} ${estimate.breakdown.contentWriterInput.toLocaleString()}`);
   lines.push(`    ${pc.dim('└─ Translator:')} ${estimate.breakdown.translatorInput.toLocaleString()}`);
   lines.push(`  ${pc.dim('Output tokens (est):')} ${pc.white(estimate.estimatedOutputTokens.toLocaleString())}`);
-  lines.push(`    ${pc.dim('├─ Phase 2 Workers:')} ${(ESTIMATED_OUTPUT_PER_STAGE.trustVerification + ESTIMATED_OUTPUT_PER_STAGE.workflowHabit + ESTIMATED_OUTPUT_PER_STAGE.knowledgeGap + ESTIMATED_OUTPUT_PER_STAGE.contextEfficiency).toLocaleString()}`);
+  lines.push(`    ${pc.dim('├─ Phase 2 Workers:')} ${(ESTIMATED_OUTPUT_PER_STAGE.thinkingQuality + ESTIMATED_OUTPUT_PER_STAGE.learningBehavior + ESTIMATED_OUTPUT_PER_STAGE.contextEfficiency).toLocaleString()}`);
   lines.push(`    ${pc.dim('├─ TypeClassifier:')} ${ESTIMATED_OUTPUT_PER_STAGE.typeClassifier.toLocaleString()}`);
   lines.push(`    ${pc.dim('├─ Content Writer:')} ${ESTIMATED_OUTPUT_PER_STAGE.contentWriter.toLocaleString()}`);
   lines.push(`    ${pc.dim('└─ Translator:')} ${ESTIMATED_OUTPUT_PER_STAGE.translator.toLocaleString()}`);

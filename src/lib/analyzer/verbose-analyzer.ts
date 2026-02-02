@@ -3,9 +3,11 @@
  *
  * Multi-phase pipeline using Gemini 3 Flash (requires GOOGLE_GEMINI_API_KEY):
  * - Phase 1: DataExtractor (deterministic, no LLM)
- * - Phase 2: 4 parallel workers (TrustVerification, WorkflowHabit, KnowledgeGap, ContextEfficiency)
- *            Each worker outputs domain-specific strengths/growthAreas directly
- * - Phase 2.5: TypeClassifier only (1 LLM call) - StrengthGrowthSynthesizer REMOVED
+ * - Phase 2: Unified Workers (3 workers, ~68K tokens)
+ *   - ThinkingQuality: Planning + Critical Thinking + Communication
+ *   - LearningBehavior: Knowledge Gaps + Repeated Mistakes
+ *   - ContextEfficiency: Token usage and context management
+ * - Phase 2.5: TypeClassifier only (1 LLM call)
  * - Phase 3: ContentWriter (1 LLM call)
  */
 
@@ -18,13 +20,11 @@ import type { IKnowledgeRepository, IProfessionalInsightRepository } from '../ap
 import {
   // Phase 1: Pure extraction (produces Phase1Output for Phase 2 workers)
   createDataExtractorWorker,
-  // Phase 2: Semantic analysis (receives Phase1Output) — 4 parallel workers
-  // Each worker outputs domain-specific strengths/growthAreas directly
-  createTrustVerificationWorker,
-  createWorkflowHabitWorker,
-  createKnowledgeGapWorker,
+  // Phase 2: Unified capability-based workers
+  createThinkingQualityWorker,
+  createLearningBehaviorWorker,
   createContextEfficiencyWorker,
-  // Phase 2.5: TypeClassifier only (StrengthGrowthSynthesizer REMOVED)
+  // Phase 2.5: TypeClassifier only
   createTypeClassifierWorker,
 } from './workers';
 
@@ -149,11 +149,16 @@ export class VerboseAnalyzer {
     this.orchestrator.registerPhase1Worker(createDataExtractorWorker(orchestratorConfig));
 
     // =========================================================================
-    // PHASE 2: Insight Generation (4 workers, parallel LLM calls)
+    // PHASE 2: Insight Generation (3 workers, parallel LLM calls)
+    //
+    // Unified Workers (capability-based):
+    //   - ThinkingQuality: Planning + Critical Thinking + Communication
+    //   - LearningBehavior: Knowledge Gaps + Repeated Mistakes
+    //   - ContextEfficiency: Token usage and context management
+    //   Total: 3 workers (~68K tokens)
     // =========================================================================
-    this.orchestrator.registerPhase2Worker(createTrustVerificationWorker(orchestratorConfig));
-    this.orchestrator.registerPhase2Worker(createWorkflowHabitWorker(orchestratorConfig));
-    this.orchestrator.registerPhase2Worker(createKnowledgeGapWorker(orchestratorConfig));
+    this.orchestrator.registerPhase2Worker(createThinkingQualityWorker(orchestratorConfig));
+    this.orchestrator.registerPhase2Worker(createLearningBehaviorWorker(orchestratorConfig));
     this.orchestrator.registerPhase2Worker(createContextEfficiencyWorker(orchestratorConfig));
 
     // =========================================================================

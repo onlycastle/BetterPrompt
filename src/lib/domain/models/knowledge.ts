@@ -259,6 +259,7 @@ export const ProfessionalInsightSchema = z.object({
     type: InsightSourceTypeSchema,
     url: z.string().url(),
     author: z.string(),
+    authorHandle: z.string().optional(), // @handle for X posts
     engagement: z
       .object({
         likes: z.number().optional(),
@@ -983,6 +984,222 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
     },
     applicableDimensions: ['contextEngineering', 'toolMastery'],
     minScore: 70,
+    priority: 8,
+    enabled: true,
+  },
+  // ============================================================================
+  // Anthropic Research: AI Assistance Impact on Coding Skills (3 insights)
+  // Source: https://www.anthropic.com/research/AI-assistance-coding-skills
+  // ============================================================================
+  {
+    version: '1.0.0',
+    category: 'diagnosis',
+    title: 'The 17% Comprehension Gap',
+    keyTakeaway:
+      'Anthropic research found that AI-assisted developers showed 17% lower comprehension of the code they produced compared to unassisted developers. Speed gains come at a hidden cost.',
+    actionableAdvice: [
+      'After AI generates code, explain it to yourself line-by-line before accepting',
+      'Keep a "learning journal" of new patterns you encounter in AI-generated code',
+      "If you can't explain a section, ask AI 'why this approach?' before moving on",
+    ],
+    source: {
+      type: 'research',
+      url: 'https://www.anthropic.com/research/AI-assistance-coding-skills',
+      author: 'Anthropic Research',
+    },
+    applicableDimensions: ['aiControl', 'skillResilience'],
+    priority: 10,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'diagnosis',
+    title: 'Debugging Skills Suffer Most',
+    keyTakeaway:
+      'Anthropic study showed debugging abilities declined more than other coding skills with AI assistance. Debugging requires understanding code deeply - exactly what passive acceptance undermines.',
+    actionableAdvice: [
+      'When bugs occur, attempt diagnosis yourself before asking AI',
+      'Practice reading stack traces and error messages without AI interpretation',
+      'Weekly challenge: debug one issue using only documentation and logs',
+    ],
+    source: {
+      type: 'research',
+      url: 'https://www.anthropic.com/research/AI-assistance-coding-skills',
+      author: 'Anthropic Research',
+    },
+    applicableDimensions: ['skillResilience', 'aiControl'],
+    priority: 9,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'trend',
+    title: 'Cognitive Effort is the Learning Mechanism',
+    keyTakeaway:
+      'The same struggle that AI eliminates is what builds lasting skill. Anthropic research suggests the discomfort of problem-solving is the mechanism of learning, not a bug to be optimized away.',
+    actionableAdvice: [
+      'Embrace productive struggle - 10-15 minutes of effort before asking AI',
+      'Use AI as a tutor, not an answer machine: ask for hints, not solutions',
+      'Treat easy AI wins as learning debt that needs repayment',
+    ],
+    source: {
+      type: 'research',
+      url: 'https://www.anthropic.com/research/AI-assistance-coding-skills',
+      author: 'Anthropic Research',
+    },
+    applicableDimensions: ['skillResilience'],
+    priority: 8,
+    enabled: true,
+  },
+  // ============================================================================
+  // Boris Cherny Thread: Claude Code Power Tips (7 insights)
+  // Source: https://x.com/bcherny/status/2017742741636321619
+  // Author: Boris Cherny (Anthropic Engineer)
+  // ============================================================================
+  {
+    version: '1.0.0',
+    category: 'tool',
+    title: 'Invest in CLAUDE.md: Let Claude Write Its Own Rules',
+    keyTakeaway:
+      'Boris Cherny recommends having Claude update its own CLAUDE.md when you give feedback. This creates a compounding improvement loop where Claude learns your preferences over time.',
+    actionableAdvice: [
+      'When you correct Claude, say "update CLAUDE.md with this preference"',
+      'Include coding style, error handling patterns, and testing requirements',
+      'Review CLAUDE.md monthly - remove outdated rules, keep what works',
+    ],
+    source: {
+      type: 'x-post',
+      url: 'https://x.com/bcherny/status/2017742741636321619',
+      author: 'Boris Cherny',
+      authorHandle: '@bcherny',
+    },
+    applicableDimensions: ['contextEngineering', 'toolMastery', 'aiControl'],
+    priority: 9,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'tool',
+    title: 'Turn Repeated Tasks into Skills',
+    keyTakeaway:
+      'Use the /skill command to capture common workflows. This reduces context overhead and ensures consistent execution of repeated tasks.',
+    actionableAdvice: [
+      'Identify tasks you do repeatedly (commit, deploy, test patterns)',
+      'Create custom skills with /skill for these workflows',
+      'Skills are reusable prompts - invest time to craft them well',
+    ],
+    source: {
+      type: 'x-post',
+      url: 'https://x.com/bcherny/status/2017742741636321619',
+      author: 'Boris Cherny',
+      authorHandle: '@bcherny',
+    },
+    applicableDimensions: ['toolMastery'],
+    priority: 8,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'trend',
+    title: 'Zero-Context Bug Fixing with MCP',
+    keyTakeaway:
+      'Using MCP servers like Sentry integration, you can paste a bug URL and Claude will fix it with zero context - it fetches everything it needs automatically.',
+    actionableAdvice: [
+      'Set up Sentry MCP for automatic error context fetching',
+      'Paste issue URLs directly instead of copying error details manually',
+      'MCP turns external tools into context sources Claude can query directly',
+    ],
+    source: {
+      type: 'x-post',
+      url: 'https://x.com/bcherny/status/2017742741636321619',
+      author: 'Boris Cherny',
+      authorHandle: '@bcherny',
+    },
+    applicableDimensions: ['toolMastery', 'aiCollaboration'],
+    priority: 7,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'tool',
+    title: 'Make Claude Your Code Reviewer',
+    keyTakeaway:
+      'Train Claude to review code the way you like by teaching it your standards in CLAUDE.md. "Review this PR" becomes a powerful command when Claude knows your preferences.',
+    actionableAdvice: [
+      'Document your code review criteria in CLAUDE.md',
+      'Include what you look for: error handling, naming, test coverage',
+      'Use "review this like you\'re me" for personalized feedback',
+    ],
+    source: {
+      type: 'x-post',
+      url: 'https://x.com/bcherny/status/2017742741636321619',
+      author: 'Boris Cherny',
+      authorHandle: '@bcherny',
+    },
+    applicableDimensions: ['aiControl', 'aiCollaboration'],
+    priority: 8,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'trend',
+    title: 'Subagents Keep Your Context Window Clean',
+    keyTakeaway:
+      'Subagents run in isolated context windows. Delegate exploratory tasks to them to keep your main conversation focused and prevent context pollution.',
+    actionableAdvice: [
+      'Use Task tool to delegate research and exploration to subagents',
+      'Subagent results come back summarized, not raw',
+      'Reserve main context for decision-making and implementation',
+    ],
+    source: {
+      type: 'x-post',
+      url: 'https://x.com/bcherny/status/2017742741636321619',
+      author: 'Boris Cherny',
+      authorHandle: '@bcherny',
+    },
+    applicableDimensions: ['contextEngineering', 'toolMastery'],
+    priority: 7,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'tool',
+    title: 'Use Claude for Data Analysis via CLI',
+    keyTakeaway:
+      'Claude Code can analyze CSVs, logs, and data files directly. Pipe data through Claude for quick analysis without switching to specialized tools.',
+    actionableAdvice: [
+      'Pipe log files directly: "cat logs.txt | claude \'find errors\'"',
+      'Analyze CSVs: "claude \'summarize this data\' < data.csv"',
+      'Combine with shell tools for powerful data pipelines',
+    ],
+    source: {
+      type: 'x-post',
+      url: 'https://x.com/bcherny/status/2017742741636321619',
+      author: 'Boris Cherny',
+      authorHandle: '@bcherny',
+    },
+    applicableDimensions: ['toolMastery'],
+    priority: 6,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'diagnosis',
+    title: 'Use Explanatory Mode for Active Learning',
+    keyTakeaway:
+      'Claude Code has an explanatory output style that teaches as it works. Use this mode when learning new codebases or unfamiliar patterns to build understanding, not just output.',
+    actionableAdvice: [
+      'Enable explanatory mode when exploring unfamiliar code',
+      'Ask Claude to explain its reasoning, not just its output',
+      'Treat AI sessions as learning opportunities, not just task completion',
+    ],
+    source: {
+      type: 'x-post',
+      url: 'https://x.com/bcherny/status/2017742741636321619',
+      author: 'Boris Cherny',
+      authorHandle: '@bcherny',
+    },
+    applicableDimensions: ['skillResilience'],
     priority: 8,
     enabled: true,
   },
