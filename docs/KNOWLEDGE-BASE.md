@@ -675,3 +675,44 @@ npm run typecheck
 - `version: '1.0.0'` is required
 - `source.type` must be one of `'arxiv' | 'blog' | 'official' | 'research' | 'x-post'`
 - `priority` must be between 1-10
+
+---
+
+## Research References
+
+### AI Skill Formation Research
+
+| Paper | Key Finding | Related Dimensions |
+|-------|-------------|-------------------|
+| "How AI Impacts Skill Formation" (arXiv:2601.20245) | Scaffolding Collapse - AI support can prevent skill development | skillResilience, aiControl |
+| "AI Assistance Impact on Coding Skills" (Anthropic Research) | 17% comprehension gap with AI assistance | skillResilience |
+| VCP Paper (arXiv:2601.02410) | Heavy AI reliance leads to skill decay | skillResilience |
+
+### Integrated Insights from "How AI Impacts Skill Formation"
+
+The following concepts from Shen & Tamkin's research have been integrated:
+
+1. **Scaffolding Collapse** (pi-new-1)
+   - AI's structural support can prevent independent problem-solving development
+   - Detection: "can't start without AI" patterns
+
+2. **Selective Learning Trap** (pi-new-2)
+   - Delegating "boring" parts creates hidden knowledge gaps
+   - Detection: Consistent delegation of specific topic areas
+
+3. **Skill Formation Spectrum** (pi-new-3)
+   - Optimal AI integration varies by task complexity
+   - Recommendation: Less AI for learning, more AI for familiar tasks
+
+4. **Trial-and-Error Learning Debt** (pi-new-4)
+   - Instant AI solutions remove learning opportunities
+   - Recommendation: Ask "why" after AI fixes bugs
+
+### Skill Formation Research (pi-new-1 ~ pi-new-4)
+
+| ID | Title | Dimensions | Score Range |
+|----|-------|------------|-------------|
+| pi-new-1 | Scaffolding Collapse Warning | skillResilience, aiControl | maxScore: 50 |
+| pi-new-2 | The Selective Learning Trap | skillResilience | maxScore: 60 |
+| pi-new-3 | The Skill Formation Spectrum | aiCollaboration, skillResilience | all |
+| pi-new-4 | Trial-and-Error Learning Debt | skillResilience, aiControl | maxScore: 50 |
