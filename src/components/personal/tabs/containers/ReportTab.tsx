@@ -11,11 +11,13 @@ import styles from './ReportTab.module.css';
 interface ReportTabProps {
   analysis: VerboseAnalysisData | null;
   hasAnalysis: boolean;
-  /** Whether the user has unlocked premium content */
-  isPaid?: boolean;
 }
 
-export function ReportTab({ analysis, hasAnalysis, isPaid = false }: ReportTabProps) {
+/**
+ * Data-driven UI: No isPaid prop needed.
+ * Backend pre-filters data based on tier.
+ */
+export function ReportTab({ analysis, hasAnalysis }: ReportTabProps) {
   if (!hasAnalysis || !analysis) {
     return <EmptyStatePrompt />;
   }
@@ -25,7 +27,6 @@ export function ReportTab({ analysis, hasAnalysis, isPaid = false }: ReportTabPr
       <TabbedReportContainer
         analysis={analysis}
         agentOutputs={analysis.agentOutputs}
-        isPaid={isPaid}
         analysisMetadata={analysis.analysisMetadata}
       />
     </div>
