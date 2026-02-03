@@ -172,9 +172,18 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
 
   /**
    * Extract utterances from a single session
+   *
+   * NOTE: Claude Code may split complex messages (image+text) into multiple
+   * JSONL lines with identical timestamps and text content. We deduplicate
+   * by tracking timestamp+text combinations to avoid counting the same
+   * developer input multiple times.
    */
   private extractFromSession(session: ParsedSession): DeveloperUtterance[] {
     const utterances: DeveloperUtterance[] = [];
+
+    // Track seen messages to deduplicate split complex messages
+    // Key: timestamp ISO string + first 200 chars of cleaned text
+    const seenKeys = new Set<string>();
 
     let precedingAIResponse: ParsedMessage | null = null;
 
@@ -183,6 +192,19 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       const turnIndex = i;
 
       if (message.role === 'user') {
+        // Strip system tags first to get clean text for deduplication
+        const cleanText = this.stripSystemTags(message.content).trim();
+
+        // Generate deduplication key from timestamp + cleaned text prefix
+        const dedupeKey = this.getDeduplicationKey(message.timestamp, cleanText);
+
+        // Skip if we've already seen this timestamp+text combination
+        if (seenKeys.has(dedupeKey)) {
+          this.log(`Skipping duplicate utterance: timestamp=${message.timestamp.toISOString()}, text="${cleanText.slice(0, 50)}..."`);
+          continue;
+        }
+        seenKeys.add(dedupeKey);
+
         const utterance = this.extractDeveloperUtterance(
           session,
           message,
@@ -836,6 +858,24 @@ Return exactly ${inputs.length} classifications in order.`;
     const content = message.content.toLowerCase();
     return content.includes('done') || content.includes('completed') ||
            content.includes('success') || content.includes('created');
+  }
+
+  /**
+   * Generate a deduplication key for a message.
+   *
+   * Uses timestamp + text content prefix for uniqueness.
+   * Claude Code may split complex messages (image+text) into multiple
+   * JSONL lines with identical timestamps and text content.
+   *
+   * @param timestamp - Message timestamp
+   * @param text - Cleaned text content (after system tag removal)
+   * @returns Deduplication key string
+   */
+  private getDeduplicationKey(timestamp: Date, text: string): string {
+    const isoTimestamp = timestamp.toISOString();
+    // Use first 200 chars to avoid issues with very long identical messages
+    const textPrefix = text.slice(0, 200);
+    return `${isoTimestamp}|${textPrefix}`;
   }
 
 }
