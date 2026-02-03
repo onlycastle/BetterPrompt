@@ -19,12 +19,6 @@
  */
 
 import 'dotenv/config';
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 import { SessionParser } from '../src/lib/parser';
 import type { Phase1Output } from '../src/lib/models/phase1-output';
@@ -34,8 +28,7 @@ import { ThinkingQualityWorker } from '../src/lib/analyzer/workers/thinking-qual
 import { LearningBehaviorWorker } from '../src/lib/analyzer/workers/learning-behavior-worker';
 import { ContextEfficiencyWorker } from '../src/lib/analyzer/workers/context-efficiency-worker';
 import { TypeClassifierWorker } from '../src/lib/analyzer/workers/type-classifier-worker';
-import type { Phase2WorkerContext, OrchestratorConfig } from '../src/lib/analyzer/orchestrator/types';
-import type { SessionMetrics } from '../src/lib/domain/models/analysis';
+import type { Phase2WorkerContext } from '../src/lib/analyzer/orchestrator/types';
 import type { ThinkingQualityOutput } from '../src/lib/models/thinking-quality-data';
 import type { LearningBehaviorOutput } from '../src/lib/models/learning-behavior-data';
 import type {
@@ -45,149 +38,27 @@ import type {
 } from '../src/lib/models/agent-outputs';
 import type { TokenUsage } from '../src/lib/analyzer/clients/gemini-client';
 import type { WorkerStrength, WorkerGrowth } from '../src/lib/models/worker-insights';
-import { calculateActualCost, GEMINI_PRICING } from '../src/lib/analyzer/cost-estimator';
+
+// Import shared utilities
+import {
+  loadPhase1Cache,
+  createMockMetrics,
+  createOrchestratorConfig,
+  printTokenUsage,
+  truncateText,
+  toTitleCase,
+  formatEvidence,
+  calculateActualCost,
+  GEMINI_PRICING,
+  type WorkerName,
+  VALID_WORKERS,
+} from './utils/test-utils';
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
 const DEFAULT_JSONL_PATH = '/Users/sungmancho/.claude/projects/-Users-sungmancho-projects-nomoreaislop/e3988e3b-3c6c-4fe5-bd90-99b93009c4cb.jsonl';
-const CACHE_FILE = path.join(__dirname, 'fixtures', 'phase1-cache', 'phase1-cache.json');
-
-type WorkerName = 'ThinkingQuality' | 'LearningBehavior' | 'ContextEfficiency' | 'TypeClassifier';
-
-// ============================================================================
-// Cache Types & Loader
-// ============================================================================
-
-interface Phase1CacheMetadata {
-  generatedAt: string;
-  generatorVersion: string;
-  scannerConfig: {
-    maxSessions: number;
-  };
-  sessions: Array<{
-    sessionId: string;
-    projectPath: string;
-    projectName: string;
-    messageCount: number;
-    filePath: string;
-    source?: 'claude-code' | 'cursor';
-  }>;
-  stats: {
-    totalSessions: number;
-    totalMessages: number;
-    phase1ExecutionMs: number;
-    tokenUsage?: TokenUsage;
-  };
-}
-
-interface Phase1Cache {
-  metadata: Phase1CacheMetadata;
-  phase1Output: Phase1Output;
-}
-
-function loadPhase1Cache(): Phase1Cache {
-  if (!fs.existsSync(CACHE_FILE)) {
-    console.error('Cache file not found at:', CACHE_FILE);
-    console.error('');
-    console.error('Generate the cache first:');
-    console.error('  npx tsx scripts/generate-phase1-cache.ts');
-    process.exit(1);
-  }
-
-  const content = fs.readFileSync(CACHE_FILE, 'utf-8');
-  const cache = JSON.parse(content) as Phase1Cache;
-
-  return cache;
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-function truncateText(text: string, _maxLength: number): string {
-  return text;
-}
-
-/**
- * Convert snake_case to Title Case for human-readable labels.
- * Examples:
- *   structure_first → "Structure First"
- *   verification_request → "Verification Request"
- *   vibe_coder → "Vibe Coder"
- *   ai_assisted_engineer → "Ai Assisted Engineer"
- */
-function toTitleCase(snakeCase: string): string {
-  return snakeCase
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
-function createMockMetrics(): SessionMetrics {
-  return {
-    avgPromptLength: 0,
-    avgFirstPromptLength: 0,
-    maxPromptLength: 0,
-    avgTurnsPerSession: 0,
-    totalTurns: 0,
-    questionFrequency: 0,
-    whyHowWhatCount: 0,
-    toolUsage: {
-      read: 0,
-      grep: 0,
-      glob: 0,
-      task: 0,
-      plan: 0,
-      bash: 0,
-      write: 0,
-      edit: 0,
-      total: 0,
-    },
-    modificationRequestCount: 0,
-    modificationRate: 0,
-    refactorKeywordCount: 0,
-    styleKeywordCount: 0,
-    qualityTermCount: 0,
-    positiveFeedbackCount: 0,
-    negativeFeedbackCount: 0,
-    avgCycleTimeSeconds: 0,
-    sessionDurationSeconds: 0,
-  };
-}
-
-function createOrchestratorConfig(): OrchestratorConfig {
-  const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GOOGLE_GEMINI_API_KEY is required for Phase 2 workers');
-  }
-  return {
-    geminiApiKey: apiKey,
-    verbose: true,
-  };
-}
-
-function printTokenUsage(usage: TokenUsage | null, label: string): void {
-  if (usage) {
-    console.log(`${label} Token Usage:`);
-    console.log(`  - Prompt tokens: ${usage.promptTokens}`);
-    console.log(`  - Completion tokens: ${usage.completionTokens}`);
-    console.log(`  - Total tokens: ${usage.totalTokens}`);
-  }
-}
-
-/**
- * Format evidence for display.
- * Returns formatted string with utteranceId if available.
- */
-function formatEvidence(evidence: string | { quote?: string; utteranceId?: string; context?: string }): string {
-  if (typeof evidence === 'string') return evidence;
-  const quote = evidence.quote ?? '';
-  const id = evidence.utteranceId;
-  // Include utteranceId in parentheses like antiPatterns examples
-  return id ? `${quote} (${id})` : quote;
-}
 
 function printWorkerStrengths(strengths: WorkerStrength[] | undefined, workerName: string): void {
   if (!strengths || strengths.length === 0) {
@@ -198,7 +69,7 @@ function printWorkerStrengths(strengths: WorkerStrength[] | undefined, workerNam
   console.log(`[${workerName}] Strengths (${strengths.length}):`);
   for (const s of strengths) {
     console.log(`  ✓ ${s.title ?? 'Untitled'}`);
-    console.log(`    Description: ${truncateText(s.description ?? '', 100)}`);
+    console.log(`    Description: ${truncateText(s.description ?? '')}`);
     if (s.evidence && s.evidence.length > 0) {
       console.log(`    Evidence (${s.evidence.length} quotes):`);
       for (const e of s.evidence.slice(0, 4)) {
@@ -219,9 +90,9 @@ function printWorkerGrowthAreas(growthAreas: WorkerGrowth[] | undefined, workerN
   for (const g of growthAreas) {
     const severityBadge = g.severity ? `[${g.severity.toUpperCase()}]` : '';
     console.log(`  ⚠ ${g.title ?? 'Untitled'} ${severityBadge}`);
-    console.log(`    Description: ${truncateText(g.description ?? '', 100)}`);
+    console.log(`    Description: ${truncateText(g.description ?? '')}`);
     if (g.recommendation) {
-      console.log(`    Recommendation: ${truncateText(g.recommendation, 100)}`);
+      console.log(`    Recommendation: ${truncateText(g.recommendation)}`);
     }
     if (g.evidence && g.evidence.length > 0) {
       console.log(`    Evidence (${g.evidence.length} quotes):`);
@@ -497,10 +368,9 @@ async function main() {
       useCache = true;
     } else if (arg.startsWith('--worker=')) {
       const workerArg = arg.replace('--worker=', '') as WorkerName;
-      const validWorkers: WorkerName[] = ['ThinkingQuality', 'LearningBehavior', 'ContextEfficiency', 'TypeClassifier'];
-      if (!validWorkers.includes(workerArg)) {
+      if (!VALID_WORKERS.includes(workerArg)) {
         console.error(`Invalid worker: ${workerArg}`);
-        console.error(`Valid workers: ${validWorkers.join(', ')}`);
+        console.error(`Valid workers: ${VALID_WORKERS.join(', ')}`);
         process.exit(1);
       }
       selectedWorker = workerArg;
@@ -548,7 +418,7 @@ async function main() {
     console.log(`Sessions: ${cache.metadata.sessions.length}`);
     console.log(`Total messages: ${cache.metadata.stats.totalMessages}`);
     console.log(`Utterances: ${phase1Output.developerUtterances.length}`);
-    console.log(`AI responses: ${phase1Output.aiResponses.length}`);
+    console.log(`Total AI responses: ${phase1Output.sessionMetrics.totalAIResponses}`);
     console.log('');
 
     sessions = [];
