@@ -37,10 +37,8 @@ interface WorkerInsightsSectionProps {
   workerInsights?: AggregatedWorkerInsights;
   /** Translated agent insights from Phase 4 Translator (non-English only) */
   translatedAgentInsights?: TranslatedAgentInsights;
-  /** Utterance lookup for evidence linking */
+  /** Utterance lookup for evidence linking (undefined = locked for free tier) */
   utteranceLookup?: UtteranceLookupEntry[];
-  /** Whether user has paid tier for full content */
-  isPaid?: boolean;
 }
 
 /**
@@ -82,11 +80,9 @@ function ScoreGauge({ score, label }: { score: number; label: string }) {
 function StrengthCard({
   strength,
   utteranceLookup,
-  isPaid,
 }: {
   strength: WorkerStrength;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
-  isPaid: boolean;
 }) {
   return (
     <div className={styles.insightCard}>
@@ -98,7 +94,6 @@ function StrengthCard({
         <ExpandableEvidence
           evidence={strength.evidence}
           utteranceLookup={utteranceLookup}
-          isPaid={isPaid}
           maxItems={4}
         />
       )}
@@ -107,21 +102,57 @@ function StrengthCard({
 }
 
 /**
+ * Get severity display label for localization
+ */
+function getSeverityLabel(severity: string): string {
+  const labels: Record<string, string> = {
+    critical: 'Critical',
+    high: 'High',
+    medium: 'Medium',
+    low: 'Low',
+  };
+  return labels[severity] || severity;
+}
+
+/**
  * Card component for a single growth area
  * CSS ::before pseudo-element handles the '!' prefix
+ *
+ * Data-driven UI: recommendation presence determines what to show
+ * - recommendation exists & non-empty: show recommendation
+ * - recommendation empty/missing: show locked UI with blur effect
+ *
+ * FREE tier enhancements:
+ * - Evidence count: "Found in N sessions" - shows data-driven specificity
+ * - Severity badge: Visual urgency indicator
+ * - Blur + partial reveal: Teases recommendation content
  */
 function GrowthCard({
   growth,
   utteranceLookup,
-  isPaid,
 }: {
   growth: WorkerGrowth;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
-  isPaid: boolean;
 }) {
   const severityClass = growth.severity
     ? styles[`severity${growth.severity[0].toUpperCase()}${growth.severity.slice(1)}`]
     : '';
+
+  // Data-driven: recommendation presence indicates paid tier
+  const hasRecommendation = Boolean(growth.recommendation);
+
+  // Count unique sessions from evidence (for "Found in N sessions" display)
+  const sessionCount = useMemo(() => {
+    const sessions = new Set<string>();
+    for (const ev of growth.evidence) {
+      if (typeof ev === 'object' && 'utteranceId' in ev) {
+        // Extract sessionId from utteranceId (format: sessionId_turnIndex)
+        const sessionId = ev.utteranceId.split('_')[0];
+        if (sessionId) sessions.add(sessionId);
+      }
+    }
+    return sessions.size;
+  }, [growth.evidence]);
 
   return (
     <div className={`${styles.insightCard} ${styles.growthCard}`}>
@@ -133,25 +164,46 @@ function GrowthCard({
           </span>
         )}
       </div>
+
+      {/* Growth metadata: evidence count + severity level */}
+      <div className={styles.growthMeta}>
+        {sessionCount > 0 && (
+          <span className={styles.evidenceCount}>
+            📊 Found in {sessionCount} session{sessionCount !== 1 ? 's' : ''}
+          </span>
+        )}
+        {growth.severity && (
+          <span className={styles.severityLevel} data-severity={growth.severity}>
+            Severity: {getSeverityLabel(growth.severity)}
+          </span>
+        )}
+      </div>
+
       <p className={styles.cardDescription}>{growth.description}</p>
       {growth.evidence.length > 0 && (
         <ExpandableEvidence
           evidence={growth.evidence}
           utteranceLookup={utteranceLookup}
-          isPaid={isPaid}
           maxItems={4}
         />
       )}
-      {isPaid && growth.recommendation && (
+      {hasRecommendation ? (
         <div className={styles.recommendationSection}>
           <span className={styles.recommendationLabel}>Recommendation</span>
           <p className={styles.recommendationText}>{growth.recommendation}</p>
         </div>
-      )}
-      {!isPaid && growth.recommendation && (
-        <div className={styles.lockedContent}>
-          <span className={styles.lockIcon}>🔒</span>
-          <span>Unlock recommendations with Premium</span>
+      ) : (
+        <div className={styles.lockedRecommendation}>
+          <div className={styles.blurredPreview}>
+            <span className={styles.recommendationLabel}>Recommendation</span>
+            <p className={styles.blurredText}>
+              To improve this pattern, start by analyzing your recent sessions and identifying the trigger points...
+            </p>
+          </div>
+          <button className={styles.unlockCta} type="button">
+            <span className={styles.lockIcon}>🔓</span>
+            View Full Solution
+          </button>
         </div>
       )}
     </div>
@@ -173,7 +225,6 @@ function WorkerDomainSection({
   translatedGrowthAreasData,
   utteranceLookup,
   domainScore,
-  isPaid,
 }: {
   config: WorkerDomainConfig;
   strengths: WorkerStrength[];
@@ -182,7 +233,6 @@ function WorkerDomainSection({
   translatedGrowthAreasData?: string;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
   domainScore?: number;
-  isPaid: boolean;
 }) {
   // Apply translations if available
   const displayStrengths = useMemo(
@@ -227,7 +277,6 @@ function WorkerDomainSection({
                   key={idx}
                   strength={strength}
                   utteranceLookup={utteranceLookup}
-                  isPaid={isPaid}
                 />
               ))}
             </div>
@@ -244,7 +293,6 @@ function WorkerDomainSection({
                   key={idx}
                   growth={growth}
                   utteranceLookup={utteranceLookup}
-                  isPaid={isPaid}
                 />
               ))}
             </div>
@@ -265,10 +313,12 @@ function WorkerDomainSection({
  * TranslatedAgentInsightsSchema for cached data compatibility.
  */
 const DOMAIN_TO_TRANSLATION_KEY: Partial<Record<keyof AggregatedWorkerInsights, keyof TranslatedAgentInsights>> = {
-  // v3 workers output translations directly - no mapping needed
+  // v3 workers (2026-02)
+  thinkingQuality: 'thinkingQuality',
+  learningBehavior: 'learningBehavior',
+  contextEfficiency: 'contextEfficiency',
   // Legacy workers (kept for cached data)
   knowledgeGap: 'knowledgeGap',
-  contextEfficiency: 'contextEfficiency',
 };
 
 /**
@@ -276,12 +326,15 @@ const DOMAIN_TO_TRANSLATION_KEY: Partial<Record<keyof AggregatedWorkerInsights, 
  *
  * Renders domain-specific insights from Phase 2 workers with optional
  * translation overlay from Phase 4 Translator output.
+ *
+ * Data-driven UI: No isPaid prop needed.
+ * - recommendation presence in growth areas indicates paid tier
+ * - utteranceLookup presence enables "View original" feature
  */
 export function WorkerInsightsSection({
   workerInsights,
   translatedAgentInsights,
   utteranceLookup,
-  isPaid = false,
 }: WorkerInsightsSectionProps) {
   // Debug logging: Frontend data flow tracking (dev only)
   if (process.env.NODE_ENV === 'development') {
@@ -340,7 +393,6 @@ export function WorkerInsightsSection({
           if (!domain) return null;
 
           // Get translated data for this domain if available
-          // v3 workers (thinkingQuality, learningBehavior) don't have translation keys yet
           const translationKey = DOMAIN_TO_TRANSLATION_KEY[config.key];
           const translatedInsight = translationKey ? translatedAgentInsights?.[translationKey] : undefined;
 
@@ -354,7 +406,6 @@ export function WorkerInsightsSection({
               translatedGrowthAreasData={translatedInsight?.growthAreasData}
               utteranceLookup={utteranceLookupMap}
               domainScore={domain.domainScore}
-              isPaid={isPaid}
             />
           );
         })}

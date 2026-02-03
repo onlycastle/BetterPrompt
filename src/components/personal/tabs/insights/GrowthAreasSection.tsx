@@ -19,22 +19,30 @@ function getEvidenceQuote(evidence: Evidence): string {
 
 interface GrowthAreasSectionProps {
   areas: DimensionGrowthArea[];
-  isPaid?: boolean;
   resourcesMap?: Map<string, ParsedResource[]>;
 }
 
-export function GrowthAreasSection({ areas, isPaid = false, resourcesMap }: GrowthAreasSectionProps) {
+/**
+ * GrowthAreasSection Component
+ *
+ * Data-driven UI: No isPaid prop needed.
+ * - recommendation presence in each area determines show/lock state
+ * - resources array is pre-filtered by backend
+ */
+export function GrowthAreasSection({ areas, resourcesMap }: GrowthAreasSectionProps) {
   if (!areas || areas.length === 0) {
     return null;
   }
 
-  // Count recommendations for teaser
-  const recommendationCount = areas.filter(a => a.recommendation).length;
+  // Count locked recommendations for teaser (empty string = locked)
+  const lockedRecommendationCount = areas.filter(a => a.recommendation === '').length;
 
   return (
     <div className={styles.container}>
       {areas.map((area, idx) => {
         const resources = resourcesMap?.get(area.title) || [];
+        // Data-driven: non-empty recommendation = show, empty = locked
+        const hasRecommendation = Boolean(area.recommendation);
 
         return (
           <div key={idx} className={styles.areaRow}>
@@ -49,34 +57,34 @@ export function GrowthAreasSection({ areas, isPaid = false, resourcesMap }: Grow
                 </blockquote>
               )}
 
-              {area.recommendation && (
-                <div className={`${styles.recommendation} ${!isPaid ? styles.recommendationLocked : ''}`}>
+              {hasRecommendation ? (
+                <div className={styles.recommendation}>
                   <span className={styles.recommendationIcon}>💡</span>
-                  {isPaid ? (
-                    <span className={styles.recommendationText}>{area.recommendation}</span>
-                  ) : (
-                    <span className={styles.lockedContent}>
-                      <span className={styles.blurredText}>{area.recommendation.slice(0, 25)}...</span>
-                      <span className={styles.unlockBadge}>🔒 See recommendation</span>
-                    </span>
-                  )}
+                  <span className={styles.recommendationText}>{area.recommendation}</span>
+                </div>
+              ) : (
+                <div className={`${styles.recommendation} ${styles.recommendationLocked}`}>
+                  <span className={styles.recommendationIcon}>💡</span>
+                  <span className={styles.lockedContent}>
+                    <span className={styles.unlockBadge}>🔒 See recommendation</span>
+                  </span>
                 </div>
               )}
             </Card>
 
-            {/* Right: Resource Bubble (if resources exist) */}
+            {/* Right: Resource Bubble (if resources exist, already filtered by backend) */}
             {resources.length > 0 && (
-              <ResourceBubble resources={resources} isPaid={isPaid} />
+              <ResourceBubble resources={resources} />
             )}
           </div>
         );
       })}
 
-      {/* Teaser for free users */}
-      {!isPaid && recommendationCount > 0 && (
+      {/* Teaser for free users (when some recommendations are locked) */}
+      {lockedRecommendationCount > 0 && (
         <div className={styles.teaser}>
           <span className={styles.teaserIcon}>🔓</span>
-          <span className={styles.teaserText}>{recommendationCount} personalized recommendations</span>
+          <span className={styles.teaserText}>{lockedRecommendationCount} personalized recommendations</span>
         </div>
       )}
     </div>
