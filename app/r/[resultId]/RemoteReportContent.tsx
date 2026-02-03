@@ -189,12 +189,11 @@ export function RemoteReportContent({ resultId }: RemoteReportContentProps) {
           />
         )}
 
-        {/* Main report content */}
+        {/* Main report content - data is pre-filtered by backend based on tier */}
         <div className={styles.reportWrapper}>
           <TabbedReportContainer
             analysis={data}
             agentOutputs={data.agentOutputs}
-            isPaid={isPaid}
             analysisMetadata={data.analysisMetadata}
           />
         </div>
