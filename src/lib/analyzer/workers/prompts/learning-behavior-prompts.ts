@@ -75,6 +75,8 @@ The developer's session data may contain non-English text (Korean, Japanese, Chi
 - \`logic\`: Logic errors (off-by-one, null checks)
 - \`debugging\`: Debugging approach issues
 - \`context_management\`: Context window issues, repeated context
+- \`scaffolding_collapse\`: Cannot start without AI - always asks AI first even for simple tasks
+- \`selective_learning\`: Consistently delegates certain topics, creating hidden knowledge gaps
 
 ### Detection Criteria
 A mistake is "repeated" if:
@@ -83,6 +85,16 @@ A mistake is "repeated" if:
 - Similar confusion expressed about the same topic
 
 Look for patterns where \`precedingAIHadError=true\` and the developer's response doesn't include analysis or diagnostic questions.
+
+A "scaffolding_collapse" is detected if:
+- Developer asks AI to start every task, even simple ones
+- Expressions of helplessness without AI ("I don't know where to start", "can't start without AI", "어디서 시작해야 할지 모르겠다")
+- No evidence of independent problem-solving attempts
+
+A "selective_learning" is detected if:
+- Same topic categories are consistently delegated to AI
+- Developer shows understanding in some areas but complete delegation in others
+- No questions asked about delegated topics (just "do it for me" pattern)
 
 ## OUTPUT FORMAT (STRUCTURED JSON)
 
@@ -147,6 +159,22 @@ Return JSON with the following structure:
   - Same request rephrased (didn't understand the error)
   - Frustration signals ("why isn't this working", "fix it")
 - Track similar questions across sessions about the same topic
+
+### Scaffolding Collapse Detection
+
+Look for signs that the developer cannot function without AI support:
+
+**Strong Signals (scaffolding_collapse):**
+- "I don't know where to start" before every task
+- "Can you just write the whole thing" pattern
+- No pseudocode or planning before AI request
+- Simple tasks (variable naming, basic functions) delegated to AI
+
+**Selective Learning Signals:**
+- Certain topic areas ALWAYS delegated (e.g., tests, configs)
+- Questions are asked in some domains but not others
+- "Just do it" pattern for specific categories
+- No follow-up questions about AI-generated code in certain areas
 
 ### Insights
 
