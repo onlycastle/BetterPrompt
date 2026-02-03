@@ -126,52 +126,112 @@ export class TranslatorStage {
   }
 
   /**
-   * Prepare agentOutputs for translator by normalizing all agents to
+   * Prepare agentOutputs for translator by normalizing all workers to
    * flat pipe-delimited string format matching what the translator prompt expects.
    *
-   * The translator prompt expects each agent to have `strengthsData` and `growthAreasData`
+   * The translator prompt expects each worker to have `strengthsData` and `growthAreasData`
    * as pipe-delimited strings (e.g., "title|description|evidence;...").
-   * - knowledgeGap, contextEfficiency: already have this format (pass through)
-   * - thinkingQuality, learningBehavior: structured arrays → pre-converted
+   *
+   * v3 Architecture:
+   * - thinkingQuality, learningBehavior: consolidated workers with structured arrays
+   * - contextEfficiency, knowledgeGap: may have string or array format
+   * - efficiency: alias for contextEfficiency in v3
    */
   private prepareAgentOutputsForTranslator(agentOutputs: AgentOutputs): Record<string, unknown> {
     const prepared: Record<string, unknown> = {};
 
-    // Agents that already output flat pipe-delimited strings
-    const flatStringAgentKeys = ['knowledgeGap', 'contextEfficiency'] as const;
+    // v3 Workers (primary - 3 consolidated workers)
+    // Note: These are the only workers defined in AgentOutputs type
+    const v3WorkerKeys = ['thinkingQuality', 'learningBehavior'] as const;
 
-    for (const key of flatStringAgentKeys) {
-      if (agentOutputs[key]) {
-        const agent = agentOutputs[key] as Record<string, unknown>;
+    // Process v3 workers that have structured arrays
+    for (const key of v3WorkerKeys) {
+      const agent = agentOutputs[key];
+      if (agent) {
+        const agentRecord = agent as Record<string, unknown>;
 
-        // If strengthsData string exists and is non-empty, use it;
-        // otherwise convert strengths[] array to flat string
-        let strengthsData = agent.strengthsData as string | undefined;
+        // v3 workers output strengths/growthAreas as structured arrays
+        let strengthsData = agentRecord.strengthsData as string | undefined;
         if (!strengthsData || strengthsData.trim() === '') {
-          const strengths = agent.strengths as WorkerStrength[] | undefined;
+          const strengths = agentRecord.strengths as WorkerStrength[] | undefined;
           if (strengths && strengths.length > 0) {
             strengthsData = this.flattenWorkerStrengths(strengths);
           }
         }
 
-        // Same for growthAreasData
-        let growthAreasData = agent.growthAreasData as string | undefined;
+        let growthAreasData = agentRecord.growthAreasData as string | undefined;
         if (!growthAreasData || growthAreasData.trim() === '') {
-          const growthAreas = agent.growthAreas as WorkerGrowth[] | undefined;
+          const growthAreas = agentRecord.growthAreas as WorkerGrowth[] | undefined;
           if (growthAreas && growthAreas.length > 0) {
             growthAreasData = this.flattenWorkerGrowthAreas(growthAreas);
           }
         }
 
-        prepared[key] = {
+        if ((strengthsData && strengthsData.trim() !== '') || (growthAreasData && growthAreasData.trim() !== '')) {
+          prepared[key] = {
+            strengthsData: strengthsData ?? '',
+            growthAreasData: growthAreasData ?? '',
+          };
+        }
+      }
+    }
+
+    // Process contextEfficiency (may be in agentOutputs.contextEfficiency or agentOutputs.efficiency)
+    const contextEfficiency = agentOutputs.contextEfficiency ?? agentOutputs.efficiency;
+    if (contextEfficiency) {
+      const ceRecord = contextEfficiency as Record<string, unknown>;
+
+      let strengthsData = ceRecord.strengthsData as string | undefined;
+      if (!strengthsData || strengthsData.trim() === '') {
+        const strengths = ceRecord.strengths as WorkerStrength[] | undefined;
+        if (strengths && strengths.length > 0) {
+          strengthsData = this.flattenWorkerStrengths(strengths);
+        }
+      }
+
+      let growthAreasData = ceRecord.growthAreasData as string | undefined;
+      if (!growthAreasData || growthAreasData.trim() === '') {
+        const growthAreas = ceRecord.growthAreas as WorkerGrowth[] | undefined;
+        if (growthAreas && growthAreas.length > 0) {
+          growthAreasData = this.flattenWorkerGrowthAreas(growthAreas);
+        }
+      }
+
+      if ((strengthsData && strengthsData.trim() !== '') || (growthAreasData && growthAreasData.trim() !== '')) {
+        prepared['contextEfficiency'] = {
           strengthsData: strengthsData ?? '',
           growthAreasData: growthAreasData ?? '',
         };
       }
     }
 
-    // v3 workers (thinkingQuality, learningBehavior) output translations directly
-    // in their strengths/growthAreas arrays, no conversion needed
+    // Process knowledgeGap (legacy but still in AgentOutputs type)
+    if (agentOutputs.knowledgeGap) {
+      const kgRecord = agentOutputs.knowledgeGap as Record<string, unknown>;
+
+      let strengthsData = kgRecord.strengthsData as string | undefined;
+      if (!strengthsData || strengthsData.trim() === '') {
+        const strengths = kgRecord.strengths as WorkerStrength[] | undefined;
+        if (strengths && strengths.length > 0) {
+          strengthsData = this.flattenWorkerStrengths(strengths);
+        }
+      }
+
+      let growthAreasData = kgRecord.growthAreasData as string | undefined;
+      if (!growthAreasData || growthAreasData.trim() === '') {
+        const growthAreas = kgRecord.growthAreas as WorkerGrowth[] | undefined;
+        if (growthAreas && growthAreas.length > 0) {
+          growthAreasData = this.flattenWorkerGrowthAreas(growthAreas);
+        }
+      }
+
+      if ((strengthsData && strengthsData.trim() !== '') || (growthAreasData && growthAreasData.trim() !== '')) {
+        prepared['knowledgeGap'] = {
+          strengthsData: strengthsData ?? '',
+          growthAreasData: growthAreasData ?? '',
+        };
+      }
+    }
 
     return prepared;
   }
