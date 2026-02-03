@@ -101,10 +101,8 @@ Return a TranslatorOutput JSON object containing ONLY the translated text fields
 
 1. **personalitySummary**: Translate to ${langName}. Keep **bold markers** and technical terms in English.
 
-2. **dimensionInsights** (exactly 6): For each dimension:
-   - dimensionDisplayName: Translate to ${langName}
-   - strengthsData: Translate title and description to ${langName}. Keep clusterId as-is. Format: "clusterId|translatedTitle|translatedDescription;..."
-   - growthAreasData: Translate title, description, recommendation to ${langName}. Keep clusterId, frequency, severity, priorityScore as-is. Format: "clusterId|translatedTitle|translatedDesc|translatedRec|freq|severity|priority;..."
+2. **dimensionInsights**: SKIP this field. v3 architecture does not use dimensionInsights.
+   Return an empty array or omit entirely: \`"dimensionInsights": []\`
 
 3. **promptPatterns**: For each pattern:
    - patternName: Translate to ${langName}
@@ -120,9 +118,10 @@ Return a TranslatorOutput JSON object containing ONLY the translated text fields
 
 7. **planningAnalysis** (if present): Translate displayName, description, tip. Keep structural fields in English.
 
-8. **translatedAgentInsights**: For each agent that has data in the Agent Outputs above (patternDetective, metacognition, antiPatternSpotter, knowledgeGap, contextEfficiency, temporalAnalysis, multitasking):
+8. **translatedAgentInsights**: For each v3 WORKER that has data in the Agent Outputs above (thinkingQuality, learningBehavior, contextEfficiency):
    - strengthsData: Translate title and description to ${langName}. Keep evidence quotes in original language. Format: "translatedTitle|translatedDescription|originalQuotes;..."
    - growthAreasData: Translate title, description, recommendation to ${langName}. Keep evidence in original language. Format: "translatedTitle|translatedDesc|originalEvidence|translatedRec|freq|severity|priority;..."
+   Note: Legacy v2 agents (patternDetective, metacognition, etc.) are deprecated. Only translate v3 workers if present.
 
 9. **actionablePractices** (if present): Translate feedback, tip, summary. Keep patternId in English.
 

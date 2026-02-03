@@ -231,7 +231,7 @@ async function main() {
 
   console.log(`Phase 1 completed in ${executionMs}ms`);
   console.log(`Extracted ${result.data.developerUtterances.length} utterances`);
-  console.log(`Extracted ${result.data.aiResponses.length} AI responses`);
+  console.log(`Total AI responses: ${result.data.sessionMetrics.totalAIResponses}`);
 
   if (result.usage) {
     const cachedTokens = result.usage.cachedTokens ?? 0;

@@ -45,6 +45,7 @@ import type {
   TransformationAuditEntry,
   TransformationType,
 } from '../../models/verbose-evaluation';
+import type { TranslatorOutput } from '../../models/translator-output';
 
 // ============================================================================
 // Debug Logging
@@ -780,4 +781,274 @@ function getMinCompressionRatio(originalLength: number): number {
   if (originalLength < 50) return 0.8;
   if (originalLength < 200) return 0.5;
   return 0.3;
+}
+
+// ============================================================================
+// Translation Overlay
+// ============================================================================
+
+/**
+ * Merge translated text fields into the English evaluation response.
+ *
+ * This function overlays translated fields from Phase 4 Translator onto
+ * the assembled English evaluation, preserving all structural/numeric
+ * fields while replacing text content with translations.
+ *
+ * Must be called AFTER assembleEvaluation() to properly overlay translations
+ * on top of the English defaults.
+ *
+ * @param englishResponse - The assembled evaluation (mutated in place)
+ * @param translated - TranslatorOutput from Phase 4
+ */
+export function mergeTranslatedFields(
+  englishResponse: Record<string, unknown>,
+  translated: TranslatorOutput
+): void {
+  // Direct field assignments
+  if (translated.personalitySummary) {
+    englishResponse.personalitySummary = translated.personalitySummary;
+  }
+  if (translated.translatedAgentInsights) {
+    englishResponse.translatedAgentInsights = translated.translatedAgentInsights;
+  }
+
+  // Dimension insights
+  mergeDimensionInsights(englishResponse, translated);
+
+  // Prompt patterns
+  mergePromptPatterns(englishResponse, translated);
+
+  // Top focus areas
+  mergeTopFocusAreas(englishResponse, translated);
+
+  // Anti-patterns analysis
+  mergeAntiPatternsAnalysis(englishResponse, translated);
+
+  // Critical thinking and planning analysis
+  mergeAnalysisSection(englishResponse, translated, 'criticalThinkingAnalysis');
+  mergeAnalysisSection(englishResponse, translated, 'planningAnalysis');
+
+  // Actionable practices
+  mergeActionablePractices(englishResponse, translated);
+}
+
+// ============================================================================
+// Translation Merge Helpers
+// ============================================================================
+
+function mergeDimensionInsights(
+  englishResponse: Record<string, unknown>,
+  translated: TranslatorOutput
+): void {
+  if (
+    !Array.isArray(translated.dimensionInsights) ||
+    !Array.isArray(englishResponse.dimensionInsights)
+  )
+    return;
+
+  for (const translatedDim of translated.dimensionInsights) {
+    const englishDim = (englishResponse.dimensionInsights as any[]).find(
+      (d: any) => d.dimension === translatedDim.dimension
+    );
+    if (!englishDim) continue;
+
+    englishDim.dimensionDisplayName = translatedDim.dimensionDisplayName;
+    parseFlattenedStrengths(translatedDim.strengthsData, englishDim.strengths);
+    parseFlattenedGrowthAreas(translatedDim.growthAreasData, englishDim.growthAreas);
+  }
+}
+
+function parseFlattenedStrengths(
+  flattenedData: string | undefined,
+  targetArray: any[] | undefined
+): void {
+  if (!flattenedData || !Array.isArray(targetArray)) return;
+
+  const items = flattenedData.split(';').filter(Boolean);
+  for (let i = 0; i < Math.min(items.length, targetArray.length); i++) {
+    const parts = items[i].split('|');
+    if (parts.length >= 3) {
+      targetArray[i].title = parts[1];
+      targetArray[i].description = parts.slice(2).join('|');
+    }
+  }
+}
+
+function parseFlattenedGrowthAreas(
+  flattenedData: string | undefined,
+  targetArray: any[] | undefined
+): void {
+  if (!flattenedData || !Array.isArray(targetArray)) return;
+
+  const items = flattenedData.split(';').filter(Boolean);
+  for (let i = 0; i < Math.min(items.length, targetArray.length); i++) {
+    const parts = items[i].split('|');
+    if (parts.length >= 4) {
+      targetArray[i].title = parts[1];
+      targetArray[i].description = parts[2];
+      targetArray[i].recommendation = parts[3];
+    }
+  }
+}
+
+function mergePromptPatterns(
+  englishResponse: Record<string, unknown>,
+  translated: TranslatorOutput
+): void {
+  if (
+    !Array.isArray(translated.promptPatterns) ||
+    !Array.isArray(englishResponse.promptPatterns)
+  )
+    return;
+
+  const minLength = Math.min(
+    translated.promptPatterns.length,
+    (englishResponse.promptPatterns as any[]).length
+  );
+  for (let i = 0; i < minLength; i++) {
+    const tp = translated.promptPatterns[i];
+    const ep = (englishResponse.promptPatterns as any[])[i];
+
+    if (tp.patternName) ep.patternName = tp.patternName;
+    if (tp.description) ep.description = tp.description;
+    if (tp.tip) ep.tip = tp.tip;
+
+    if (tp.examplesData && Array.isArray(ep.examples)) {
+      const translatedExamples = tp.examplesData.split(';').filter(Boolean);
+      for (let j = 0; j < Math.min(translatedExamples.length, ep.examples.length); j++) {
+        const parts = translatedExamples[j].split('|');
+        if (parts.length >= 2) {
+          ep.examples[j].analysis = parts[1];
+        }
+      }
+    }
+  }
+}
+
+function mergeTopFocusAreas(
+  englishResponse: Record<string, unknown>,
+  translated: TranslatorOutput
+): void {
+  if (!translated.topFocusAreas || !englishResponse.topFocusAreas) return;
+
+  const topFocusAreas = englishResponse.topFocusAreas as any;
+
+  if (translated.topFocusAreas.summary) {
+    topFocusAreas.summary = translated.topFocusAreas.summary;
+  }
+
+  if (
+    !Array.isArray(translated.topFocusAreas.areas) ||
+    !Array.isArray(topFocusAreas.areas)
+  )
+    return;
+
+  for (const ta of translated.topFocusAreas.areas) {
+    const ea = (topFocusAreas.areas as any[]).find((a: any) => a.rank === ta.rank);
+    if (!ea) continue;
+
+    if (ta.title) ea.title = ta.title;
+    if (ta.narrative) ea.narrative = ta.narrative;
+    if (ta.expectedImpact) ea.expectedImpact = ta.expectedImpact;
+    if (ta.actionsData && ea.actions) {
+      const [start, stop, cont] = ta.actionsData.split('|');
+      ea.actions = { start: start || '', stop: stop || '', continue: cont || '' };
+    }
+  }
+}
+
+function mergeAntiPatternsAnalysis(
+  englishResponse: Record<string, unknown>,
+  translated: TranslatorOutput
+): void {
+  if (!translated.antiPatternsAnalysis || !englishResponse.antiPatternsAnalysis) return;
+
+  const antiPatternsAnalysis = englishResponse.antiPatternsAnalysis as any;
+
+  if (translated.antiPatternsAnalysis.summary) {
+    antiPatternsAnalysis.summary = translated.antiPatternsAnalysis.summary;
+  }
+
+  if (
+    !Array.isArray(translated.antiPatternsAnalysis.detected) ||
+    !Array.isArray(antiPatternsAnalysis.detected)
+  )
+    return;
+
+  for (const td of translated.antiPatternsAnalysis.detected) {
+    const ed = (antiPatternsAnalysis.detected as any[]).find(
+      (d: any) => d.antiPatternType === td.antiPatternType
+    );
+    if (!ed) continue;
+
+    if (td.displayName) ed.displayName = td.displayName;
+    if (td.description) ed.description = td.description;
+    if (td.growthOpportunity) ed.growthOpportunity = td.growthOpportunity;
+    if (td.actionableTip) ed.actionableTip = td.actionableTip;
+  }
+}
+
+function mergeAnalysisSection(
+  englishResponse: Record<string, unknown>,
+  translated: TranslatorOutput,
+  sectionKey: 'criticalThinkingAnalysis' | 'planningAnalysis'
+): void {
+  const translatedSection = translated[sectionKey];
+  const englishSection = englishResponse[sectionKey] as any;
+  if (!translatedSection || !englishSection) return;
+
+  if (translatedSection.summary) {
+    englishSection.summary = translatedSection.summary;
+  }
+  mergeHighlightTranslations(translatedSection.strengths, englishSection.strengths);
+  mergeHighlightTranslations(translatedSection.opportunities, englishSection.opportunities);
+}
+
+function mergeActionablePractices(
+  englishResponse: Record<string, unknown>,
+  translated: TranslatorOutput
+): void {
+  if (!translated.actionablePractices || !englishResponse.actionablePractices) return;
+
+  const actionablePractices = englishResponse.actionablePractices as any;
+
+  if (translated.actionablePractices.summary) {
+    actionablePractices.summary = translated.actionablePractices.summary;
+  }
+
+  if (
+    Array.isArray(translated.actionablePractices.practiced) &&
+    Array.isArray(actionablePractices.practiced)
+  ) {
+    for (const tp of translated.actionablePractices.practiced) {
+      const ep = (actionablePractices.practiced as any[]).find(
+        (p: any) => p.patternId === tp.patternId
+      );
+      if (ep && tp.feedback) ep.feedback = tp.feedback;
+    }
+  }
+
+  if (
+    Array.isArray(translated.actionablePractices.opportunities) &&
+    Array.isArray(actionablePractices.opportunities)
+  ) {
+    for (const to of translated.actionablePractices.opportunities) {
+      const eo = (actionablePractices.opportunities as any[]).find(
+        (o: any) => o.patternId === to.patternId
+      );
+      if (eo && to.tip) eo.tip = to.tip;
+    }
+  }
+}
+
+function mergeHighlightTranslations(
+  translated: Array<{ displayName: string; description: string; tip?: string }> | undefined,
+  english: any[] | undefined
+): void {
+  if (!translated || !english) return;
+  for (let i = 0; i < Math.min(translated.length, english.length); i++) {
+    if (translated[i].displayName) english[i].displayName = translated[i].displayName;
+    if (translated[i].description) english[i].description = translated[i].description;
+    if (translated[i].tip) english[i].tip = translated[i].tip;
+  }
 }

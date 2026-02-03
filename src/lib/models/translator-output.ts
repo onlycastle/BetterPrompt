@@ -113,10 +113,10 @@ export const TranslatorOutputSchema = z.object({
   personalitySummary: z.string()
     .describe('Translated personality summary — keep **bold markers** and technical terms in English'),
 
-  /** Translated dimension insights (6 items) */
+  /** Translated dimension insights (DEPRECATED in v3 - kept for backward compatibility) */
   dimensionInsights: z.array(TranslatedDimensionInsightSchema)
-    .length(6)
-    .describe('Translated insights for each dimension'),
+    .optional()
+    .describe('DEPRECATED: v3 architecture uses translatedAgentInsights instead. Optional for backward compatibility.'),
 
   /** Translated prompt patterns */
   promptPatterns: z.array(TranslatedPromptPatternSchema)
@@ -148,14 +148,18 @@ export const TranslatorOutputSchema = z.object({
 
   /** Translated agent insights (Phase 2 worker outputs) */
   translatedAgentInsights: z.object({
+    // v3 Workers (primary - 3 consolidated workers)
+    thinkingQuality: TranslatedAgentInsightEntrySchema.optional(),
+    learningBehavior: TranslatedAgentInsightEntrySchema.optional(),
+    contextEfficiency: TranslatedAgentInsightEntrySchema.optional(),
+    // v2 Legacy Workers (backward compatibility)
     patternDetective: TranslatedAgentInsightEntrySchema.optional(),
     metacognition: TranslatedAgentInsightEntrySchema.optional(),
     antiPatternSpotter: TranslatedAgentInsightEntrySchema.optional(),
     knowledgeGap: TranslatedAgentInsightEntrySchema.optional(),
-    contextEfficiency: TranslatedAgentInsightEntrySchema.optional(),
     temporalAnalysis: TranslatedAgentInsightEntrySchema.optional(),
     multitasking: TranslatedAgentInsightEntrySchema.optional(),
-  }).optional().describe('Translated Phase 2 agent insights — keep evidence quotes in original language'),
+  }).optional().describe('Translated Phase 2 worker insights — v3 uses thinkingQuality, learningBehavior, contextEfficiency'),
 
   /** Translated premium section text fields */
   toolUsageDeepDive: z.string().optional()

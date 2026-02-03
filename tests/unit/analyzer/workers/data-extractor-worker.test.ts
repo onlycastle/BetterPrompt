@@ -212,6 +212,152 @@ with various content
     });
   });
 
+  describe('duplicate message deduplication', () => {
+    /**
+     * Tests for deduplicating messages that Claude Code splits into multiple
+     * JSONL lines (e.g., complex messages with image+text).
+     *
+     * Root cause: Claude Code may split a single user input into multiple
+     * JSONL entries with identical timestamps and content.
+     */
+
+    /**
+     * Helper to create a ParsedSession with messages that have specific timestamps
+     */
+    function createSessionWithTimestamps(
+      messages: Array<{ content: string; timestamp: Date; role?: 'user' | 'assistant' }>
+    ): ParsedSession {
+      const parsedMessages: ParsedMessage[] = messages.map((msg) => ({
+        role: msg.role ?? 'user',
+        content: msg.content,
+        timestamp: msg.timestamp,
+        toolCalls: [],
+      }));
+
+      return {
+        sessionId: 'test-session',
+        projectPath: '/test/project',
+        messages: parsedMessages,
+        messageCount: parsedMessages.length,
+        durationSeconds: 60,
+      };
+    }
+
+    it('should deduplicate messages with identical timestamp and text', async () => {
+      const sameTimestamp = new Date('2026-01-28T09:12:34.518Z');
+      const duplicateText = '이 프로젝트는 모바일 청첩장을 커스텀하게 만들어주는 서비스입니다.';
+
+      const session = createSessionWithTimestamps([
+        { content: duplicateText, timestamp: sameTimestamp },
+        { content: duplicateText, timestamp: sameTimestamp }, // Duplicate
+        { content: duplicateText, timestamp: sameTimestamp }, // Duplicate
+      ]);
+      const context = createContext([session]);
+
+      const result = await worker.execute(context);
+      expect(result.error).toBeUndefined();
+      // Should only have 1 utterance after deduplication
+      expect(result.data.developerUtterances.length).toBe(1);
+      expect(result.data.developerUtterances[0]?.text).toBe(duplicateText);
+    });
+
+    it('should keep messages with same text but different timestamps', async () => {
+      const text = 'Please help me with this code.';
+      const timestamp1 = new Date('2026-01-28T09:00:00.000Z');
+      const timestamp2 = new Date('2026-01-28T10:00:00.000Z');
+
+      const session = createSessionWithTimestamps([
+        { content: text, timestamp: timestamp1 },
+        { content: text, timestamp: timestamp2 }, // Different timestamp = not a duplicate
+      ]);
+      const context = createContext([session]);
+
+      const result = await worker.execute(context);
+      expect(result.error).toBeUndefined();
+      // Should have 2 utterances (different timestamps)
+      expect(result.data.developerUtterances.length).toBe(2);
+    });
+
+    it('should keep messages with same timestamp but different text', async () => {
+      const sameTimestamp = new Date('2026-01-28T09:12:34.518Z');
+
+      const session = createSessionWithTimestamps([
+        { content: 'First message content', timestamp: sameTimestamp },
+        { content: 'Second message content', timestamp: sameTimestamp }, // Same timestamp but different text
+      ]);
+      const context = createContext([session]);
+
+      const result = await worker.execute(context);
+      expect(result.error).toBeUndefined();
+      // Should have 2 utterances (different text)
+      expect(result.data.developerUtterances.length).toBe(2);
+    });
+
+    it('should preserve turnIndex of first occurrence', async () => {
+      const sameTimestamp = new Date('2026-01-28T09:12:34.518Z');
+      const duplicateText = 'Duplicate message here.';
+
+      const session = createSessionWithTimestamps([
+        { content: 'First unique message', timestamp: new Date('2026-01-28T09:00:00.000Z') },
+        { content: duplicateText, timestamp: sameTimestamp },
+        { content: duplicateText, timestamp: sameTimestamp }, // Duplicate - should be skipped
+        { content: 'Another unique message', timestamp: new Date('2026-01-28T09:15:00.000Z') },
+      ]);
+      const context = createContext([session]);
+
+      const result = await worker.execute(context);
+      expect(result.error).toBeUndefined();
+      // Should have 3 utterances (first, duplicate, and another)
+      expect(result.data.developerUtterances.length).toBe(3);
+      // The duplicate message should have turnIndex 1 (first occurrence)
+      const duplicateUtterance = result.data.developerUtterances.find(u => u.text === duplicateText);
+      expect(duplicateUtterance?.turnIndex).toBe(1);
+    });
+
+    it('should deduplicate after stripping system tags', async () => {
+      const sameTimestamp = new Date('2026-01-28T09:12:34.518Z');
+      const coreText = 'Help me with this bug.';
+
+      const session = createSessionWithTimestamps([
+        { content: `<system-reminder>Some reminder</system-reminder>${coreText}`, timestamp: sameTimestamp },
+        { content: coreText, timestamp: sameTimestamp }, // Same text after tag stripping
+      ]);
+      const context = createContext([session]);
+
+      const result = await worker.execute(context);
+      expect(result.error).toBeUndefined();
+      // Should only have 1 utterance after deduplication
+      expect(result.data.developerUtterances.length).toBe(1);
+      expect(result.data.developerUtterances[0]?.text).toBe(coreText);
+    });
+
+    it('should handle mixed duplicates and unique messages', async () => {
+      const ts1 = new Date('2026-01-28T09:00:00.000Z');
+      const ts2 = new Date('2026-01-28T09:10:00.000Z');
+      const ts3 = new Date('2026-01-28T09:20:00.000Z');
+
+      const session = createSessionWithTimestamps([
+        { content: 'Message A', timestamp: ts1 },
+        { content: 'Message A', timestamp: ts1 }, // Duplicate of first
+        { content: 'Message B', timestamp: ts2 },
+        { content: 'Message C', timestamp: ts3 },
+        { content: 'Message C', timestamp: ts3 }, // Duplicate of fourth
+        { content: 'Message C', timestamp: ts3 }, // Another duplicate
+      ]);
+      const context = createContext([session]);
+
+      const result = await worker.execute(context);
+      expect(result.error).toBeUndefined();
+      // Should have 3 unique utterances: A, B, C
+      expect(result.data.developerUtterances.length).toBe(3);
+      expect(result.data.developerUtterances.map(u => u.text)).toEqual([
+        'Message A',
+        'Message B',
+        'Message C',
+      ]);
+    });
+  });
+
   describe('LLM-based system metadata filtering', () => {
     /**
      * Helper to create a long text that exceeds the LLM filter threshold (100 chars)

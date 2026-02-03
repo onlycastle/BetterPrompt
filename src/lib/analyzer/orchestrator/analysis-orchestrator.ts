@@ -25,7 +25,7 @@ import { createEmptyAgentOutputs } from '../../models/agent-outputs';
 import { ContentWriterStage } from '../stages/content-writer';
 import { TranslatorStage } from '../stages/translator';
 import { detectPrimaryLanguage, LANGUAGE_DISPLAY_NAMES, type LanguageDetectionResult } from '../stages/content-writer-prompts';
-import { assembleEvaluation } from '../stages/evaluation-assembler';
+import { assembleEvaluation, mergeTranslatedFields } from '../stages/evaluation-assembler';
 import type { TranslatorOutput } from '../../models/translator-output';
 import { ContentGateway, type Tier } from '../content-gateway';
 import { BaseWorker } from '../workers/base-worker';
@@ -557,7 +557,7 @@ export class AnalysisOrchestrator {
     // Apply translations AFTER assembly so they overlay English defaults
     // (fixes bug where assembleEvaluation rebuilt fields from English agentOutputs)
     if (translatorData) {
-      this.mergeTranslatedFields(assembledData as any, translatorData);
+      mergeTranslatedFields(assembledData, translatorData);
     }
 
     const evaluation = {
@@ -781,191 +781,6 @@ export class AnalysisOrchestrator {
     if (agentOutputs.knowledgeGap && verifiedInsights.knowledgeGap) {
       agentOutputs.knowledgeGap.strengths = verifiedInsights.knowledgeGap.strengths;
       agentOutputs.knowledgeGap.growthAreas = verifiedInsights.knowledgeGap.growthAreas;
-    }
-  }
-
-  /**
-   * Merge translated text fields into the English ContentWriter response
-   */
-  private mergeTranslatedFields(englishResponse: any, translated: TranslatorOutput): void {
-    // Direct field assignments
-    if (translated.personalitySummary) {
-      englishResponse.personalitySummary = translated.personalitySummary;
-    }
-    if (translated.translatedAgentInsights) {
-      englishResponse.translatedAgentInsights = translated.translatedAgentInsights;
-    }
-
-    // Dimension insights
-    this.mergeDimensionInsights(englishResponse, translated);
-
-    // Prompt patterns
-    this.mergePromptPatterns(englishResponse, translated);
-
-    // Top focus areas
-    this.mergeTopFocusAreas(englishResponse, translated);
-
-    // Anti-patterns analysis
-    this.mergeAntiPatternsAnalysis(englishResponse, translated);
-
-    // Critical thinking and planning analysis
-    this.mergeAnalysisSection(englishResponse, translated, 'criticalThinkingAnalysis');
-    this.mergeAnalysisSection(englishResponse, translated, 'planningAnalysis');
-
-    // Actionable practices
-    this.mergeActionablePractices(englishResponse, translated);
-  }
-
-  private mergeDimensionInsights(englishResponse: any, translated: TranslatorOutput): void {
-    if (!Array.isArray(translated.dimensionInsights) || !Array.isArray(englishResponse.dimensionInsights)) return;
-
-    for (const translatedDim of translated.dimensionInsights) {
-      const englishDim = englishResponse.dimensionInsights.find((d: any) => d.dimension === translatedDim.dimension);
-      if (!englishDim) continue;
-
-      englishDim.dimensionDisplayName = translatedDim.dimensionDisplayName;
-      this.parseFlattenedStrengths(translatedDim.strengthsData, englishDim.strengths);
-      this.parseFlattenedGrowthAreas(translatedDim.growthAreasData, englishDim.growthAreas);
-    }
-  }
-
-  private parseFlattenedStrengths(flattenedData: string | undefined, targetArray: any[] | undefined): void {
-    if (!flattenedData || !Array.isArray(targetArray)) return;
-
-    const items = flattenedData.split(';').filter(Boolean);
-    for (let i = 0; i < Math.min(items.length, targetArray.length); i++) {
-      const parts = items[i].split('|');
-      if (parts.length >= 3) {
-        targetArray[i].title = parts[1];
-        targetArray[i].description = parts.slice(2).join('|');
-      }
-    }
-  }
-
-  private parseFlattenedGrowthAreas(flattenedData: string | undefined, targetArray: any[] | undefined): void {
-    if (!flattenedData || !Array.isArray(targetArray)) return;
-
-    const items = flattenedData.split(';').filter(Boolean);
-    for (let i = 0; i < Math.min(items.length, targetArray.length); i++) {
-      const parts = items[i].split('|');
-      if (parts.length >= 4) {
-        targetArray[i].title = parts[1];
-        targetArray[i].description = parts[2];
-        targetArray[i].recommendation = parts[3];
-      }
-    }
-  }
-
-  private mergePromptPatterns(englishResponse: any, translated: TranslatorOutput): void {
-    if (!Array.isArray(translated.promptPatterns) || !Array.isArray(englishResponse.promptPatterns)) return;
-
-    const minLength = Math.min(translated.promptPatterns.length, englishResponse.promptPatterns.length);
-    for (let i = 0; i < minLength; i++) {
-      const tp = translated.promptPatterns[i];
-      const ep = englishResponse.promptPatterns[i];
-
-      if (tp.patternName) ep.patternName = tp.patternName;
-      if (tp.description) ep.description = tp.description;
-      if (tp.tip) ep.tip = tp.tip;
-
-      if (tp.examplesData && Array.isArray(ep.examples)) {
-        const translatedExamples = tp.examplesData.split(';').filter(Boolean);
-        for (let j = 0; j < Math.min(translatedExamples.length, ep.examples.length); j++) {
-          const parts = translatedExamples[j].split('|');
-          if (parts.length >= 2) {
-            ep.examples[j].analysis = parts[1];
-          }
-        }
-      }
-    }
-  }
-
-  private mergeTopFocusAreas(englishResponse: any, translated: TranslatorOutput): void {
-    if (!translated.topFocusAreas || !englishResponse.topFocusAreas) return;
-
-    if (translated.topFocusAreas.summary) {
-      englishResponse.topFocusAreas.summary = translated.topFocusAreas.summary;
-    }
-
-    if (!Array.isArray(translated.topFocusAreas.areas) || !Array.isArray(englishResponse.topFocusAreas.areas)) return;
-
-    for (const ta of translated.topFocusAreas.areas) {
-      const ea = englishResponse.topFocusAreas.areas.find((a: any) => a.rank === ta.rank);
-      if (!ea) continue;
-
-      if (ta.title) ea.title = ta.title;
-      if (ta.narrative) ea.narrative = ta.narrative;
-      if (ta.expectedImpact) ea.expectedImpact = ta.expectedImpact;
-      if (ta.actionsData && ea.actions) {
-        const [start, stop, cont] = ta.actionsData.split('|');
-        ea.actions = { start: start || '', stop: stop || '', continue: cont || '' };
-      }
-    }
-  }
-
-  private mergeAntiPatternsAnalysis(englishResponse: any, translated: TranslatorOutput): void {
-    if (!translated.antiPatternsAnalysis || !englishResponse.antiPatternsAnalysis) return;
-
-    if (translated.antiPatternsAnalysis.summary) {
-      englishResponse.antiPatternsAnalysis.summary = translated.antiPatternsAnalysis.summary;
-    }
-
-    if (!Array.isArray(translated.antiPatternsAnalysis.detected) || !Array.isArray(englishResponse.antiPatternsAnalysis.detected)) return;
-
-    for (const td of translated.antiPatternsAnalysis.detected) {
-      const ed = englishResponse.antiPatternsAnalysis.detected.find((d: any) => d.antiPatternType === td.antiPatternType);
-      if (!ed) continue;
-
-      if (td.displayName) ed.displayName = td.displayName;
-      if (td.description) ed.description = td.description;
-      if (td.growthOpportunity) ed.growthOpportunity = td.growthOpportunity;
-      if (td.actionableTip) ed.actionableTip = td.actionableTip;
-    }
-  }
-
-  private mergeAnalysisSection(englishResponse: any, translated: TranslatorOutput, sectionKey: 'criticalThinkingAnalysis' | 'planningAnalysis'): void {
-    const translatedSection = translated[sectionKey];
-    const englishSection = englishResponse[sectionKey];
-    if (!translatedSection || !englishSection) return;
-
-    if (translatedSection.summary) {
-      englishSection.summary = translatedSection.summary;
-    }
-    this.mergeHighlightTranslations(translatedSection.strengths, englishSection.strengths);
-    this.mergeHighlightTranslations(translatedSection.opportunities, englishSection.opportunities);
-  }
-
-  private mergeActionablePractices(englishResponse: any, translated: TranslatorOutput): void {
-    if (!translated.actionablePractices || !englishResponse.actionablePractices) return;
-
-    if (translated.actionablePractices.summary) {
-      englishResponse.actionablePractices.summary = translated.actionablePractices.summary;
-    }
-
-    if (Array.isArray(translated.actionablePractices.practiced) && Array.isArray(englishResponse.actionablePractices.practiced)) {
-      for (const tp of translated.actionablePractices.practiced) {
-        const ep = englishResponse.actionablePractices.practiced.find((p: any) => p.patternId === tp.patternId);
-        if (ep && tp.feedback) ep.feedback = tp.feedback;
-      }
-    }
-
-    if (Array.isArray(translated.actionablePractices.opportunities) && Array.isArray(englishResponse.actionablePractices.opportunities)) {
-      for (const to of translated.actionablePractices.opportunities) {
-        const eo = englishResponse.actionablePractices.opportunities.find((o: any) => o.patternId === to.patternId);
-        if (eo && to.tip) eo.tip = to.tip;
-      }
-    }
-  }
-
-  private mergeHighlightTranslations(
-    translated: Array<{ displayName: string; description: string; tip?: string }> | undefined,
-    english: any[] | undefined
-  ): void {
-    if (!translated || !english) return;
-    for (let i = 0; i < Math.min(translated.length, english.length); i++) {
-      if (translated[i].displayName) english[i].displayName = translated[i].displayName;
-      if (translated[i].description) english[i].description = translated[i].description;
-      if (translated[i].tip) english[i].tip = translated[i].tip;
     }
   }
 
