@@ -10,11 +10,18 @@ This document describes the local test scripts for debugging and developing the 
 scripts/
 ├── test-phase1.ts              # Phase 1 (DataExtractor) testing
 ├── test-phase2.ts              # Phase 2 (Insight Workers) testing
-├── generate-phase1-cache.ts    # Cache generator for faster Phase 2 testing
+├── test-phase3.ts              # Phase 3 (ContentWriter) testing
+├── test-phase4.ts              # Phase 4 (Translator) testing
+├── generate-phase1-cache.ts    # Phase 1 cache generator
+├── generate-phase2-cache.ts    # Phase 2 cache generator
+├── utils/
+│   └── test-utils.ts           # Shared utilities (cache loaders, helpers)
 └── fixtures/
-    └── phase1-cache/
-        ├── phase1-cache.json   # Cached Phase 1 output (gitignored)
-        └── README.md           # Cache usage documentation
+    ├── phase1-cache/
+    │   ├── phase1-cache.json   # Cached Phase 1 output (gitignored)
+    │   └── README.md           # Cache usage documentation
+    └── phase2-cache/
+        └── phase2-cache.json   # Cached Phase 2 output (gitignored)
 ```
 
 ## Prerequisites
@@ -99,27 +106,23 @@ npx tsx scripts/test-phase2.ts
 npx tsx scripts/test-phase2.ts /path/to/session.jsonl
 
 # Test specific worker only
-npx tsx scripts/test-phase2.ts --worker=TrustVerification
-npx tsx scripts/test-phase2.ts --worker=WorkflowHabit
-npx tsx scripts/test-phase2.ts --worker=KnowledgeGap
+npx tsx scripts/test-phase2.ts --worker=ThinkingQuality
+npx tsx scripts/test-phase2.ts --worker=LearningBehavior
 npx tsx scripts/test-phase2.ts --worker=ContextEfficiency
-npx tsx scripts/test-phase2.ts --worker=CommunicationPatterns
 npx tsx scripts/test-phase2.ts --worker=TypeClassifier
 
 # Use cached Phase 1 output (FAST - recommended for iterative testing)
 npx tsx scripts/test-phase2.ts --use-cache
-npx tsx scripts/test-phase2.ts --use-cache --worker=TrustVerification
+npx tsx scripts/test-phase2.ts --use-cache --worker=ThinkingQuality
 ```
 
 ### Available Workers
 
 | Worker | Description | Phase |
 |--------|-------------|-------|
-| TrustVerification | Trust patterns, anti-patterns, verification behavior | 2 |
-| WorkflowHabit | Planning habits, critical thinking, multitasking | 2 |
-| KnowledgeGap | Knowledge gaps, learning progress, resources | 2 |
+| ThinkingQuality | Critical thinking, verification behavior, trust patterns | 2 |
+| LearningBehavior | Learning progress, knowledge gaps, skill development | 2 |
 | ContextEfficiency | Context usage, inefficiency patterns, productivity | 2 |
-| CommunicationPatterns | Communication styles, effectiveness | 2 |
 | TypeClassifier | Developer type classification (5x3 matrix) | 2.5 |
 
 ### Cache Mode vs Fresh Mode
@@ -175,9 +178,96 @@ Token Usage:
   TOTAL: 339923 tokens
 ```
 
+## test-phase3.ts
+
+Tests the **ContentWriterStage** (Phase 3) which generates personalized narrative content from Phase 2 worker outputs.
+
+### Usage
+
+```bash
+# Full pipeline (Phase 1 → 2 → 3) - slowest
+npx tsx scripts/test-phase3.ts
+
+# Use Phase 1 cache, run Phase 2 → 3
+npx tsx scripts/test-phase3.ts --use-cache
+
+# Use Phase 2 cache (fastest) - recommended for iterative testing
+npx tsx scripts/test-phase3.ts --use-phase2-cache
+
+# Specify a custom JSONL file
+npx tsx scripts/test-phase3.ts /path/to/session.jsonl
+```
+
+### Cache Options
+
+| Option | Description | Speed |
+|--------|-------------|-------|
+| `--use-phase2-cache` | Load Phase 2 cache directly (skip Phase 1 & 2) | ⚡ Fastest |
+| `--use-cache` | Load Phase 1 cache, run Phase 2 | 🏃 Medium |
+| (none) | Fresh run: Parse JSONL → Phase 1 → Phase 2 → Phase 3 | 🐢 Slowest |
+
+### Output
+
+- Personality summary (personalized narrative text)
+- Top focus areas with priority scores and actionable recommendations
+- Prompt patterns analysis (optional fallback)
+- Token usage and cost estimation
+
+---
+
+## test-phase4.ts
+
+Tests the **TranslatorStage** (Phase 4) which translates English ContentWriter output into the target language.
+
+### Usage
+
+```bash
+# Full pipeline with auto-detected language
+npx tsx scripts/test-phase4.ts
+
+# Force Korean translation
+npx tsx scripts/test-phase4.ts --lang=ko
+
+# Force Japanese translation
+npx tsx scripts/test-phase4.ts --lang=ja
+
+# Use Phase 2 cache with forced language
+npx tsx scripts/test-phase4.ts --use-phase2-cache --lang=ko
+```
+
+### Cache Options
+
+Same as `test-phase3.ts`:
+
+| Option | Description |
+|--------|-------------|
+| `--use-phase2-cache` | Load Phase 2 cache directly (fastest) |
+| `--use-cache` | Load Phase 1 cache, run Phase 2 |
+| (none) | Fresh run (Phase 1 → 2 → 3 → 4) |
+
+### Language Options
+
+| Option | Description |
+|--------|-------------|
+| `--lang=en` | Force English (skips Phase 4) |
+| `--lang=ko` | Force Korean translation |
+| `--lang=ja` | Force Japanese translation |
+| `--lang=zh` | Force Chinese translation |
+| (none) | Auto-detect from developer utterances |
+
+### Output
+
+- Side-by-side comparison of English and translated content
+- Translation quality metrics
+- Token usage and cost estimation
+
+> **Note**: If the target language is English (auto-detected or forced), Phase 4 is skipped entirely.
+
+---
+
 ## generate-phase1-cache.ts
 
-Generates cached Phase 1 output for faster `test-phase2.ts` execution.
+Generates cached Phase 1 output for faster testing of Phase 2, 3, and 4.
 
 ### Usage
 
@@ -213,6 +303,93 @@ This file is **gitignored** because it contains user-specific session data.
 | Phase 1: ~13 min | Phase 1: ~1 ms |
 | 240K tokens consumed | 0 tokens (cached) |
 
+---
+
+## generate-phase2-cache.ts
+
+Generates cached Phase 2 output (all Insight Workers + TypeClassifier) for faster testing of Phase 3 and 4.
+
+### Prerequisites
+
+Phase 1 cache must exist. If not, generate it first:
+
+```bash
+npx tsx scripts/generate-phase1-cache.ts
+```
+
+### Usage
+
+```bash
+# Generate Phase 2 cache
+npx tsx scripts/generate-phase2-cache.ts
+
+# Overwrite existing cache
+npx tsx scripts/generate-phase2-cache.ts --force
+```
+
+### Cache Location
+
+```
+scripts/fixtures/phase2-cache/phase2-cache.json
+```
+
+This file is **gitignored** because it contains user-specific analysis data.
+
+### What's Included
+
+The Phase 2 cache contains:
+- Phase 1 output (from Phase 1 cache)
+- ThinkingQuality worker output
+- LearningBehavior worker output
+- ContextEfficiency worker output
+- TypeClassifier output (Phase 2.5)
+
+### When to Regenerate
+
+1. **Phase 2 worker logic/prompts change** - Worker outputs need refresh
+2. **Phase1Output schema changes** - Regenerate Phase 1 first, then Phase 2
+3. **AgentOutputs schema changes** - Cached data won't match expected schema
+
+---
+
+## Cache Architecture
+
+The caching system is hierarchical, allowing you to skip expensive LLM calls:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Data Flow                                    │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  JSONL Files ──→ Phase 1 ──→ Phase 1 Cache                          │
+│                     │             │                                  │
+│                     ↓             ↓                                  │
+│               Phase 2 Workers ←───┘                                  │
+│                     │                                                │
+│                     ↓                                                │
+│               Phase 2 Cache ────────────────────────────────┐       │
+│                     │                                        │       │
+│                     ↓                                        ↓       │
+│  test-phase2.ts ←───┴──→ test-phase3.ts ──→ test-phase4.ts         │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+Cache Dependency:
+  Phase 1 Cache ← generate-phase1-cache.ts
+       ↓
+  Phase 2 Cache ← generate-phase2-cache.ts (requires Phase 1 Cache)
+```
+
+### Cache Usage Summary
+
+| Script | `--use-cache` | `--use-phase2-cache` |
+|--------|---------------|----------------------|
+| test-phase2.ts | ✅ Load Phase 1 cache | ❌ N/A |
+| test-phase3.ts | ✅ Load Phase 1 cache, run Phase 2 | ✅ Load Phase 2 cache |
+| test-phase4.ts | ✅ Load Phase 1 cache, run Phase 2 | ✅ Load Phase 2 cache |
+
+---
+
 ## Common Workflows
 
 ### Workflow 1: Developing a Phase 2 Worker
@@ -222,38 +399,75 @@ This file is **gitignored** because it contains user-specific session data.
 npx tsx scripts/generate-phase1-cache.ts
 
 # 2. Iterate on worker development
-npx tsx scripts/test-phase2.ts --use-cache --worker=TrustVerification
+npx tsx scripts/test-phase2.ts --use-cache --worker=ThinkingQuality
 # Make changes...
-npx tsx scripts/test-phase2.ts --use-cache --worker=TrustVerification
+npx tsx scripts/test-phase2.ts --use-cache --worker=ThinkingQuality
 # Repeat...
 ```
 
-### Workflow 2: Testing Phase 1 Changes
+### Workflow 2: Developing Phase 3 (ContentWriter)
+
+```bash
+# 1. Generate both caches
+npx tsx scripts/generate-phase1-cache.ts
+npx tsx scripts/generate-phase2-cache.ts
+
+# 2. Iterate on ContentWriter development (fastest)
+npx tsx scripts/test-phase3.ts --use-phase2-cache
+# Make changes...
+npx tsx scripts/test-phase3.ts --use-phase2-cache
+# Repeat...
+```
+
+### Workflow 3: Developing Phase 4 (Translator)
+
+```bash
+# 1. Ensure Phase 2 cache exists
+npx tsx scripts/generate-phase2-cache.ts
+
+# 2. Iterate on Translator with forced language
+npx tsx scripts/test-phase4.ts --use-phase2-cache --lang=ko
+# Make changes...
+npx tsx scripts/test-phase4.ts --use-phase2-cache --lang=ja
+# Test different languages...
+```
+
+### Workflow 4: Testing Phase 1 Changes
 
 ```bash
 # Test with specific sessions
 npx tsx scripts/test-phase1.ts -n=10
 
-# After confirming changes, regenerate cache
+# After confirming changes, regenerate ALL caches
 npx tsx scripts/generate-phase1-cache.ts --force
+npx tsx scripts/generate-phase2-cache.ts --force
 ```
 
-### Workflow 3: Full Pipeline Test
+### Workflow 5: Full Pipeline Test (with caches)
 
 ```bash
-# Fresh run (no cache)
-npx tsx scripts/test-phase2.ts /path/to/session.jsonl
+# Most efficient full pipeline test
+npx tsx scripts/test-phase4.ts --use-phase2-cache --lang=ko
 
-# Or run all workers with cache
-npx tsx scripts/test-phase2.ts --use-cache
+# Or without translation (English)
+npx tsx scripts/test-phase3.ts --use-phase2-cache
 ```
 
-### Workflow 4: Debugging Specific Session
+### Workflow 6: Full Pipeline Test (fresh)
 
 ```bash
-# Test specific session file
+# Fresh run without any cache (slowest, uses real data)
+npx tsx scripts/test-phase4.ts /path/to/session.jsonl --lang=ko
+```
+
+### Workflow 7: Debugging Specific Session
+
+```bash
+# Test specific session file through each phase
 npx tsx scripts/test-phase1.ts /path/to/problematic-session.jsonl
-npx tsx scripts/test-phase2.ts /path/to/problematic-session.jsonl --worker=TrustVerification
+npx tsx scripts/test-phase2.ts /path/to/problematic-session.jsonl --worker=ThinkingQuality
+npx tsx scripts/test-phase3.ts /path/to/problematic-session.jsonl
+npx tsx scripts/test-phase4.ts /path/to/problematic-session.jsonl --lang=ko
 ```
 
 ## Troubleshooting
@@ -268,11 +482,21 @@ echo $GOOGLE_GEMINI_API_KEY
 echo "GOOGLE_GEMINI_API_KEY=your_key" >> .env
 ```
 
-### "Cache file not found"
+### "Phase 1 cache file not found"
 
 ```bash
-# Generate the cache first
+# Generate the Phase 1 cache first
 npx tsx scripts/generate-phase1-cache.ts
+```
+
+### "Phase 2 cache file not found"
+
+```bash
+# Generate Phase 1 cache first (if not exists)
+npx tsx scripts/generate-phase1-cache.ts
+
+# Then generate Phase 2 cache
+npx tsx scripts/generate-phase2-cache.ts
 ```
 
 ### "No sessions found"
