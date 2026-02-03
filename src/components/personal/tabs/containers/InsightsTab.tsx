@@ -17,7 +17,6 @@ interface InsightsTabProps {
   analytics: PersonalAnalytics | null;
   analysis: VerboseAnalysisData | null;
   agentOutputs?: AgentOutputs;
-  isPaid?: boolean;
 }
 
 // Valid ParsedResource types for validation
@@ -27,7 +26,13 @@ function isValidResourceType(type: string): type is ParsedResource['type'] {
   return VALID_RESOURCE_TYPES.has(type);
 }
 
-export function InsightsTab({ analytics, analysis, agentOutputs, isPaid = false }: InsightsTabProps) {
+/**
+ * Data-driven UI: No isPaid prop needed.
+ * Backend pre-filters data based on tier.
+ * - growthAreas.recommendation: empty = locked
+ * - knowledgeResources: pre-filtered to tier limit
+ */
+export function InsightsTab({ analytics, analysis, agentOutputs }: InsightsTabProps) {
   // Extract growth areas from dimension insights (memoized to prevent unnecessary recomputation)
   const growthAreas = useMemo<DimensionGrowthArea[]>(() => {
     return analysis?.dimensionInsights
@@ -98,7 +103,7 @@ export function InsightsTab({ analytics, analysis, agentOutputs, isPaid = false 
           <p className={styles.sectionDescription}>
             Key opportunities to improve your AI collaboration based on your recent sessions.
           </p>
-          <GrowthAreasSection areas={growthAreas} isPaid={isPaid} resourcesMap={resourcesMap} />
+          <GrowthAreasSection areas={growthAreas} resourcesMap={resourcesMap} />
         </section>
       )}
 

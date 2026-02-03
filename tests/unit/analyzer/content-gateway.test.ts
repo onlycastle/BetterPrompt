@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ContentGateway, createContentGateway, type Tier } from '../../../src/lib/analyzer/content-gateway.js';
+import { ContentGateway, createContentGateway, TIER_POLICY, type Tier } from '../../../src/lib/analyzer/content-gateway.js';
 import type { VerboseEvaluation } from '../../../src/lib/models/verbose-evaluation.js';
 
 describe('ContentGateway', () => {
@@ -591,6 +591,92 @@ describe('ContentGateway', () => {
       const gateway = createContentGateway();
 
       expect(gateway).toBeInstanceOf(ContentGateway);
+    });
+  });
+
+  describe('TIER_POLICY', () => {
+    it('should define workerInsights policy correctly', () => {
+      expect(TIER_POLICY.workerInsights.strengths).toBe('free');
+      expect(TIER_POLICY.workerInsights.growthAreas.diagnosis).toBe('free');
+      expect(TIER_POLICY.workerInsights.growthAreas.prescription).toBe('paid');
+    });
+
+    it('should define dimensionInsights policy correctly', () => {
+      expect(TIER_POLICY.dimensionInsights.freeCount).toBe(2);
+    });
+
+    it('should define resources policy correctly', () => {
+      expect(TIER_POLICY.resources.freeLimit).toBe(1);
+    });
+
+    it('should define evidence policy correctly', () => {
+      expect(TIER_POLICY.evidence.quotes).toBe('free');
+      expect(TIER_POLICY.evidence.originalContext).toBe('paid');
+    });
+  });
+
+  describe('filterWorkerInsights', () => {
+    const mockWorkerInsights = {
+      thinkingQuality: {
+        strengths: [
+          {
+            title: 'Systematic Verification',
+            description: 'You consistently verify outputs',
+            evidence: [{ utteranceId: 'sess1_5', quote: 'let me check this' }],
+          },
+        ],
+        growthAreas: [
+          {
+            title: 'Error Loop Pattern',
+            description: 'Sometimes retry without pausing',
+            evidence: [{ utteranceId: 'sess1_10', quote: 'fix it again' }],
+            recommendation: 'Try pausing to analyze root cause before retrying',
+            severity: 'medium' as const,
+          },
+        ],
+        domainScore: 75,
+      },
+    };
+
+    it('should return undefined for undefined input', () => {
+      const result = gateway.filterWorkerInsights(undefined, 'free');
+      expect(result).toBeUndefined();
+    });
+
+    it('should return full data for paid tiers', () => {
+      const paidTiers: Tier[] = ['one_time', 'pro', 'enterprise'];
+
+      for (const tier of paidTiers) {
+        const result = gateway.filterWorkerInsights(mockWorkerInsights, tier);
+        expect(result).toEqual(mockWorkerInsights);
+      }
+    });
+
+    it('should lock recommendations for free tier', () => {
+      const result = gateway.filterWorkerInsights(mockWorkerInsights, 'free');
+
+      expect(result).toBeDefined();
+      expect(result?.thinkingQuality).toBeDefined();
+
+      // Strengths should be unchanged
+      expect(result?.thinkingQuality?.strengths).toEqual(mockWorkerInsights.thinkingQuality.strengths);
+
+      // Growth areas should have empty recommendation
+      expect(result?.thinkingQuality?.growthAreas[0].title).toBe('Error Loop Pattern');
+      expect(result?.thinkingQuality?.growthAreas[0].description).toBe('Sometimes retry without pausing');
+      expect(result?.thinkingQuality?.growthAreas[0].recommendation).toBe('');
+    });
+
+    it('should preserve all diagnosis fields in growth areas for free tier', () => {
+      const result = gateway.filterWorkerInsights(mockWorkerInsights, 'free');
+
+      const growthArea = result?.thinkingQuality?.growthAreas[0];
+      expect(growthArea?.title).toBe('Error Loop Pattern');
+      expect(growthArea?.description).toBe('Sometimes retry without pausing');
+      expect(growthArea?.evidence).toEqual(mockWorkerInsights.thinkingQuality.growthAreas[0].evidence);
+      expect(growthArea?.severity).toBe('medium');
+      // Only recommendation should be empty
+      expect(growthArea?.recommendation).toBe('');
     });
   });
 

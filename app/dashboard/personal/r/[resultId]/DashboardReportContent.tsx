@@ -134,12 +134,11 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
         </div>
       )}
 
-      {/* Main Report */}
+      {/* Main Report - data is pre-filtered by backend based on tier */}
       <div className={styles.reportWrapper}>
         <TabbedReportContainer
           analysis={data}
           agentOutputs={data.agentOutputs}
-          isPaid={isPaid}
           analysisMetadata={data.analysisMetadata}
         />
       </div>

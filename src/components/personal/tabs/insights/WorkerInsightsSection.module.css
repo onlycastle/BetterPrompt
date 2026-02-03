@@ -447,7 +447,65 @@
 }
 
 /* ============================================================================
-   Locked Content - Shimmer Effect
+   Growth Card Metadata - Evidence count + Severity level
+   ============================================================================ */
+
+.growthMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.evidenceCount {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--sketch-orange-soft, rgba(255, 152, 0, 0.1));
+  color: var(--sketch-orange, #f57c00);
+  border: 1px solid var(--sketch-orange, #f57c00);
+}
+
+.severityLevel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--ink-secondary);
+}
+
+.severityLevel[data-severity="critical"] {
+  background: var(--sketch-red-soft, rgba(244, 67, 54, 0.1));
+  color: var(--sketch-red, #f44336);
+  border: 1px solid var(--sketch-red, #f44336);
+  animation: insightPulse 2s infinite;
+}
+
+.severityLevel[data-severity="high"] {
+  background: var(--sketch-orange-soft, rgba(255, 152, 0, 0.1));
+  color: var(--sketch-orange, #f57c00);
+  border: 1px solid var(--sketch-orange, #f57c00);
+}
+
+.severityLevel[data-severity="medium"] {
+  background: var(--sketch-yellow-soft);
+  color: var(--sketch-yellow-dark);
+  border: 1px solid var(--sketch-yellow);
+}
+
+.severityLevel[data-severity="low"] {
+  background: var(--sketch-green-soft);
+  color: var(--sketch-green-text);
+  border: 1px solid var(--sketch-green-light);
+}
+
+/* ============================================================================
+   Locked Content - Legacy (kept for backward compatibility)
    ============================================================================ */
 
 .lockedContent {
@@ -483,6 +541,77 @@
   font-size: var(--text-sm);
   color: var(--sketch-cyan-text);
   font-weight: var(--weight-medium);
+}
+
+/* ============================================================================
+   Locked Recommendation - Blur + Partial Reveal (NEW)
+   ============================================================================ */
+
+.lockedRecommendation {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  background: var(--surface-2);
+  border: 2px dashed var(--sketch-cyan);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.blurredPreview {
+  position: relative;
+}
+
+.blurredPreview .recommendationLabel {
+  opacity: 0.6;
+}
+
+.blurredText {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  margin: var(--space-xs) 0 var(--space-md) 0;
+  line-height: var(--leading-relaxed);
+  filter: blur(4px);
+  user-select: none;
+  pointer-events: none;
+}
+
+.unlockCta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  background: linear-gradient(
+    90deg,
+    var(--sketch-cyan-soft) 0%,
+    var(--sketch-cyan) 50%,
+    var(--sketch-cyan-soft) 100%
+  );
+  background-size: 200% 100%;
+  animation: insightShimmer 3s ease-in-out infinite;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-cyan-dark, #006064);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.unlockCta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
+}
+
+.unlockCta:active {
+  transform: translateY(0);
+}
+
+.unlockCta .lockIcon {
+  font-size: var(--text-md);
 }
 
 /* ============================================================================

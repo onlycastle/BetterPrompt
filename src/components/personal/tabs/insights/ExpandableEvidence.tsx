@@ -66,12 +66,14 @@ function getIntegrityStatus(
 interface ExpandableEvidenceProps {
   /** Evidence items - can be string (legacy) or InsightEvidence (new) */
   evidence: EvidenceItem[];
-  /** Lookup map for utterance details (keyed by utteranceId) */
+  /**
+   * Lookup map for utterance details (keyed by utteranceId).
+   * When undefined, "View original" is locked (free tier).
+   * Data-driven: presence of lookup = paid tier access.
+   */
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
   /** Transformation audit map for data integrity verification (keyed by utteranceId) */
   transformationAudit?: Map<string, TransformationAuditEntry>;
-  /** Whether user has paid tier for full content */
-  isPaid: boolean;
   /** Maximum number of evidence items to show initially */
   maxItems?: number;
 }
@@ -112,17 +114,19 @@ function formatTimestamp(isoString: string): string {
 
 /**
  * Single expandable evidence item
+ *
+ * Data-driven UI:
+ * - utterance presence = paid tier (show "View original")
+ * - utterance absence = free tier (show locked state)
  */
 function EvidenceItemRow({
   item,
   utteranceLookup,
   transformationAudit,
-  isPaid,
 }: {
   item: EvidenceItem;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
   transformationAudit?: Map<string, TransformationAuditEntry>;
-  isPaid: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -130,6 +134,7 @@ function EvidenceItemRow({
   const isStructured = isStructuredEvidence(item);
   const utteranceId = isStructured ? item.utteranceId : undefined;
   const utterance = utteranceId ? utteranceLookup?.get(utteranceId) : undefined;
+  // Data-driven: utterance presence indicates paid tier access
   const hasExpandableContent = isStructured && utterance;
 
   // Data integrity status
@@ -174,43 +179,36 @@ function EvidenceItemRow({
         )}
       </div>
 
+      {/* Data-driven: if we have utterance, we can show it (paid tier).
+          If hasExpandableContent is true, utterance is defined. */}
       {isExpanded && hasExpandableContent && (
         <div className={styles.expandedContent}>
-          {isPaid ? (
-            <>
-              <div className={styles.originalUtterance}>
-                <span className={styles.utteranceLabel}>
-                  Original Message
-                  {/* Show integrity status in expanded view */}
-                  {integrityBadge.text && (
-                    <span className={`${styles.integrityTag} ${integrityBadge.className}`}>
-                      {integrityBadge.icon} {integrityBadge.text}
-                    </span>
-                  )}
+          <div className={styles.originalUtterance}>
+            <span className={styles.utteranceLabel}>
+              Original Message
+              {/* Show integrity status in expanded view */}
+              {integrityBadge.text && (
+                <span className={`${styles.integrityTag} ${integrityBadge.className}`}>
+                  {integrityBadge.icon} {integrityBadge.text}
                 </span>
-                <p className={styles.utteranceText}>{utterance.text}</p>
-              </div>
-              <div className={styles.metadata}>
-                <span className={styles.metaItem}>
-                  <span className={styles.metaIcon}>📁</span>
-                  Session: {utterance.sessionId.slice(0, 8)}...
-                </span>
-                <span className={styles.metaItem}>
-                  <span className={styles.metaIcon}>💬</span>
-                  Turn #{utterance.turnIndex}
-                </span>
-                <span className={styles.metaItem}>
-                  <span className={styles.metaIcon}>🕐</span>
-                  {formatTimestamp(utterance.timestamp)}
-                </span>
-              </div>
-            </>
-          ) : (
-            <div className={styles.lockedExpand}>
-              <span className={styles.lockIcon}>🔒</span>
-              <span className={styles.lockText}>Unlock to see full context</span>
-            </div>
-          )}
+              )}
+            </span>
+            <p className={styles.utteranceText}>{utterance.text}</p>
+          </div>
+          <div className={styles.metadata}>
+            <span className={styles.metaItem}>
+              <span className={styles.metaIcon}>📁</span>
+              Session: {utterance.sessionId.slice(0, 8)}...
+            </span>
+            <span className={styles.metaItem}>
+              <span className={styles.metaIcon}>💬</span>
+              Turn #{utterance.turnIndex}
+            </span>
+            <span className={styles.metaItem}>
+              <span className={styles.metaIcon}>🕐</span>
+              {formatTimestamp(utterance.timestamp)}
+            </span>
+          </div>
         </div>
       )}
     </li>
@@ -219,12 +217,14 @@ function EvidenceItemRow({
 
 /**
  * Main ExpandableEvidence component
+ *
+ * Data-driven UI: No isPaid prop needed.
+ * utteranceLookup presence determines if "View original" is available.
  */
 export function ExpandableEvidence({
   evidence,
   utteranceLookup,
   transformationAudit,
-  isPaid,
   maxItems = 3,
 }: ExpandableEvidenceProps) {
   const [showAll, setShowAll] = useState(false);
@@ -246,7 +246,6 @@ export function ExpandableEvidence({
             item={item}
             utteranceLookup={utteranceLookup}
             transformationAudit={transformationAudit}
-            isPaid={isPaid}
           />
         ))}
       </ul>

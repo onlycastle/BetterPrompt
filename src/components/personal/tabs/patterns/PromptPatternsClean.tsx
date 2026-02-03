@@ -9,8 +9,8 @@ import type { PromptPattern, PromptFrequency, PromptEffectiveness } from '../../
 import styles from './PromptPatternsClean.module.css';
 
 interface PromptPatternsCleanProps {
+  /** Patterns to display (only available for paid tier - backend returns [] for free) */
   patterns: PromptPattern[];
-  isPaid?: boolean;
 }
 
 const FREQUENCY_STYLES: Record<PromptFrequency, { label: string; className: string }> = {
@@ -56,7 +56,12 @@ function ExamplesSection({ examples, isExpanded, onToggle }: ExamplesSectionProp
   );
 }
 
-export function PromptPatternsClean({ patterns, isPaid = false }: PromptPatternsCleanProps) {
+/**
+ * Data-driven UI: No isPaid prop needed.
+ * This component only renders for paid tier (backend returns [] for free tier).
+ * All tips are shown since this component won't render for free users.
+ */
+export function PromptPatternsClean({ patterns }: PromptPatternsCleanProps) {
   // Track which patterns have expanded examples
   const [expandedPatterns, setExpandedPatterns] = useState<Set<number>>(new Set());
 
@@ -72,9 +77,6 @@ export function PromptPatternsClean({ patterns, isPaid = false }: PromptPatterns
   if (!patterns || patterns.length === 0) {
     return null;
   }
-
-  // All patterns visible to everyone - "진단 무료, 처방 유료"
-  const tipsCount = patterns.filter(p => p.tip).length;
 
   return (
     <div className={styles.container}>
@@ -103,28 +105,13 @@ export function PromptPatternsClean({ patterns, isPaid = false }: PromptPatterns
           )}
 
           {pattern.tip && (
-            <div className={`${styles.tip} ${!isPaid ? styles.tipLocked : ''}`}>
+            <div className={styles.tip}>
               <span className={styles.tipLabel}>💡 Tip:</span>
-              {isPaid ? (
-                <span className={styles.tipText}>{pattern.tip}</span>
-              ) : (
-                <span className={styles.tipLockedContent}>
-                  <span className={styles.blurredText}>{pattern.tip.slice(0, 30)}...</span>
-                  <span className={styles.unlockBadge}>🔒 See improvement tip</span>
-                </span>
-              )}
+              <span className={styles.tipText}>{pattern.tip}</span>
             </div>
           )}
         </Card>
       ))}
-
-      {/* Teaser for free users - shows tips count */}
-      {!isPaid && tipsCount > 0 && (
-        <div className={styles.teaser}>
-          <span className={styles.teaserIcon}>🔓</span>
-          <span className={styles.teaserText}>{tipsCount} improvement tips + personalized recommendations</span>
-        </div>
-      )}
     </div>
   );
 }

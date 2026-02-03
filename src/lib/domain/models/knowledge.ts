@@ -1203,4 +1203,91 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
     priority: 8,
     enabled: true,
   },
+  // ============================================================================
+  // AI Skill Formation Research (arXiv:2601.20245 - Shen & Tamkin)
+  // Source: https://arxiv.org/abs/2601.20245
+  // ============================================================================
+  {
+    version: '1.0.0',
+    category: 'diagnosis',
+    title: 'Scaffolding Collapse: When AI Support Becomes a Crutch',
+    keyTakeaway:
+      'AI assistance can prevent the productive struggle that builds lasting skills. The comfort of scaffolded help may collapse your independent problem-solving ability.',
+    actionableAdvice: [
+      'Before asking AI, spend 5-10 minutes attempting the problem yourself',
+      'Write pseudocode or outline your approach before involving AI',
+      'Periodically solve problems without AI to maintain independence',
+    ],
+    source: {
+      type: 'arxiv',
+      url: 'https://arxiv.org/abs/2601.20245',
+      author: 'Shen & Tamkin (How AI Impacts Skill Formation)',
+    },
+    applicableDimensions: ['skillResilience', 'aiControl'],
+    maxScore: 50,
+    priority: 9,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'diagnosis',
+    title: 'The Selective Learning Trap',
+    keyTakeaway:
+      'Delegating "boring" parts to AI while only learning "interesting" parts creates dangerous knowledge gaps. Full-stack understanding requires uncomfortable practice.',
+    actionableAdvice: [
+      'Identify topics you consistently delegate to AI - these are likely knowledge gaps',
+      'Force yourself to understand the "boring" parts at least once',
+      'Ask AI to explain delegated tasks, not just do them',
+    ],
+    source: {
+      type: 'arxiv',
+      url: 'https://arxiv.org/abs/2601.20245',
+      author: 'Shen & Tamkin (How AI Impacts Skill Formation)',
+    },
+    applicableDimensions: ['skillResilience'],
+    maxScore: 60,
+    priority: 8,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'trend',
+    title: 'The Skill Formation Spectrum: Finding Your Optimal AI Level',
+    keyTakeaway:
+      'Research shows optimal AI integration varies by task complexity. For learning new skills: less AI. For familiar tasks: more AI. Match AI level to your growth goals.',
+    actionableAdvice: [
+      'New concepts: Ask AI for explanations, not implementations',
+      'Familiar tasks: Use AI freely for productivity',
+      'Periodically audit which category each task falls into',
+    ],
+    source: {
+      type: 'arxiv',
+      url: 'https://arxiv.org/abs/2601.20245',
+      author: 'Shen & Tamkin (How AI Impacts Skill Formation)',
+    },
+    applicableDimensions: ['aiCollaboration', 'skillResilience'],
+    priority: 8,
+    enabled: true,
+  },
+  {
+    version: '1.0.0',
+    category: 'diagnosis',
+    title: 'Trial-and-Error Learning Debt',
+    keyTakeaway:
+      'Every problem AI solves instantly is a learning opportunity you did not take. Accumulating this debt weakens your debugging and architectural intuition.',
+    actionableAdvice: [
+      'When AI fixes a bug, ask "why did this work?" before moving on',
+      'Keep a failure journal - what would you have tried without AI?',
+      'Occasionally debug without AI to maintain diagnostic skills',
+    ],
+    source: {
+      type: 'arxiv',
+      url: 'https://arxiv.org/abs/2601.20245',
+      author: 'Shen & Tamkin (How AI Impacts Skill Formation)',
+    },
+    applicableDimensions: ['skillResilience', 'aiControl'],
+    maxScore: 50,
+    priority: 9,
+    enabled: true,
+  },
 ];

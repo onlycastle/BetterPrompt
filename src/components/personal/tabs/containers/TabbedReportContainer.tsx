@@ -76,15 +76,20 @@ const REPORT_TABS: TabConfig[] = [
 interface TabbedReportContainerProps {
   analysis: VerboseAnalysisData;
   agentOutputs?: AgentOutputs;
-  isPaid?: boolean;
   /** Analysis metadata for confidence display */
   analysisMetadata?: AnalysisMetadata;
 }
 
+/**
+ * Data-driven UI: No isPaid prop needed.
+ * Backend pre-filters data based on tier before sending to client.
+ * - workerInsights.growthAreas.recommendation: empty = locked
+ * - knowledgeResources: pre-filtered to tier limit
+ * - utteranceLookup: undefined = locked "View original" feature
+ */
 export function TabbedReportContainer({
   analysis,
   agentOutputs,
-  isPaid = false,
   analysisMetadata,
 }: TabbedReportContainerProps) {
   const [activeTab, setActiveTab] = useState<ReportTabId>('patterns');
@@ -218,7 +223,7 @@ export function TabbedReportContainer({
           {activeTab === 'patterns' && hasPatterns && (
             <div className={styles.tabPanel}>
               <h3 className={styles.sectionTitle}>Communication Patterns</h3>
-              <PromptPatternsClean patterns={analysis.promptPatterns} isPaid={isPaid} />
+              <PromptPatternsClean patterns={analysis.promptPatterns} />
             </div>
           )}
 
@@ -229,7 +234,6 @@ export function TabbedReportContainer({
                 workerInsights={workerInsights}
                 translatedAgentInsights={translatedAgentInsights}
                 utteranceLookup={analysis.utteranceLookup}
-                isPaid={isPaid}
               />
             </div>
           )}
@@ -245,10 +249,10 @@ export function TabbedReportContainer({
         </div>
       </div>
 
-      {/* Resource Sidebar - Right column */}
+      {/* Resource Sidebar - Right column (resources pre-filtered by backend) */}
       {allResources.length > 0 && (
         <aside className={styles.sidebar}>
-          <ResourceSidebar resources={allResources} isPaid={isPaid} />
+          <ResourceSidebar resources={allResources} />
         </aside>
       )}
     </div>
