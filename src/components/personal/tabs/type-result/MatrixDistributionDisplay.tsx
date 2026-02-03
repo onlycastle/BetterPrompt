@@ -62,6 +62,26 @@ export function MatrixDistributionDisplay({
     return deriveMatrixDistribution(distribution, controlLevel, controlScore);
   }, [distribution, controlLevel, controlScore, matrixDistribution]);
 
+  // Find the control level with highest percentage within primaryType
+  // This determines "YOU ARE HERE" position based on actual distribution data
+  const dominantControlLevel = useMemo(() => {
+    if (!matrix) return controlLevel;
+
+    let maxLevel: AIControlLevel = controlLevel;
+    let maxPct = 0;
+
+    for (const level of CONTROL_LEVELS) {
+      const key = `${primaryType}_${level}` as keyof MatrixDistribution;
+      const pct = matrix[key] || 0;
+      if (pct > maxPct) {
+        maxPct = pct;
+        maxLevel = level;
+      }
+    }
+
+    return maxLevel;
+  }, [matrix, primaryType, controlLevel]);
+
   return (
     <div className={`${styles.container} ${compact ? styles.compact : ''}`}>
       <div className={styles.header}>
@@ -99,7 +119,7 @@ export function MatrixDistributionDisplay({
                   const matrixKey = `${type}_${level}` as keyof MatrixDistribution;
                   const levelPct = matrix[matrixKey] || 0;
                   const matrixName = MATRIX_NAMES[type][level];
-                  const isUserPosition = isPrimaryType && level === controlLevel;
+                  const isUserPosition = isPrimaryType && level === dominantControlLevel;
 
                   return (
                     <div

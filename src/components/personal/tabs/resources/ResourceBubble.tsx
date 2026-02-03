@@ -6,15 +6,17 @@
  * - Default: Speech bubble style positioned next to the card (standalone)
  * - Inline (inline=true): Displays inside the card with a left border separator
  *
- * Free users see 1 resource + locked teaser; paid users see all resources
+ * Data-driven UI: No isPaid prop needed.
+ * Backend pre-filters resources array (free tier gets 1 resource).
+ * Component simply renders what it receives.
  */
 
 import type { ParsedResource } from '../../../../lib/models/agent-outputs';
 import styles from './ResourceBubble.module.css';
 
 interface ResourceBubbleProps {
+  /** Resources to display (pre-filtered by backend based on tier) */
   resources: ParsedResource[];
-  isPaid: boolean;
   /** When true, displays inline within the card instead of as a speech bubble */
   inline?: boolean;
 }
@@ -39,11 +41,12 @@ function getResourceTypeIcon(type: ParsedResource['type']): string {
   }
 }
 
-export function ResourceBubble({ resources, isPaid, inline = false }: ResourceBubbleProps) {
+/**
+ * Data-driven UI: Resources array is pre-filtered by backend.
+ * Component renders all resources it receives without client-side filtering.
+ */
+export function ResourceBubble({ resources, inline = false }: ResourceBubbleProps) {
   if (resources.length === 0) return null;
-
-  const visibleResources = isPaid ? resources : resources.slice(0, 1);
-  const hiddenCount = resources.length - visibleResources.length;
 
   const bubbleClassName = inline
     ? `${styles.bubble} ${styles.inlineBubble}`
@@ -61,7 +64,7 @@ export function ResourceBubble({ resources, isPaid, inline = false }: ResourceBu
         </div>
 
         <ul className={styles.resourceList}>
-          {visibleResources.map((resource, idx) => (
+          {resources.map((resource, idx) => (
             <li key={idx} className={styles.resourceItem}>
               <a
                 href={resource.url}
@@ -77,16 +80,6 @@ export function ResourceBubble({ resources, isPaid, inline = false }: ResourceBu
             </li>
           ))}
         </ul>
-
-        {/* Locked teaser for free users */}
-        {!isPaid && hiddenCount > 0 && (
-          <div className={styles.lockedTeaser}>
-            <span className={styles.lockIcon}>🔒</span>
-            <span>
-              {hiddenCount} more resource{hiddenCount > 1 ? 's' : ''}
-            </span>
-          </div>
-        )}
       </div>
     </div>
   );
