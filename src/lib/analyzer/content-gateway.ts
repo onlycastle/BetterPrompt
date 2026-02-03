@@ -32,7 +32,65 @@ import type {
   DimensionResourceMatch,
 } from '../models/verbose-evaluation';
 import type { AgentOutputs } from '../models/agent-outputs';
-import { createAgentTeasers } from '../models/agent-teasers';
+import type { WorkerGrowth } from '../models/worker-insights';
+import { FREE_AGENT_IDS } from '../domain/models';
+
+// Extract the workerInsights type from VerboseEvaluation for type safety
+type WorkerInsightsRecord = VerboseEvaluation['workerInsights'];
+
+// ============================================================================
+// Tier Policy - Single Source of Truth for content filtering
+// ============================================================================
+
+/**
+ * TIER_POLICY: Declarative definition of what content is available at each tier.
+ *
+ * Philosophy: "Diagnosis Free, Prescription Paid"
+ * - FREE: Show problems (strengths, growth area diagnosis, evidence quotes)
+ * - PAID: Show solutions (recommendations, full context, more resources)
+ *
+ * All tier-based filtering decisions should reference this policy.
+ */
+export const TIER_POLICY = {
+  /** Worker insights filtering */
+  workerInsights: {
+    /** Strengths are always free (positive feedback builds trust) */
+    strengths: 'free',
+    /** Growth areas: diagnosis free, prescription paid */
+    growthAreas: {
+      diagnosis: 'free',      // title, description, evidence
+      prescription: 'paid',   // recommendation
+    },
+  },
+
+  /** Dimension insights filtering */
+  dimensionInsights: {
+    /** Number of dimensions shown with full detail for free tier */
+    freeCount: 2,
+  },
+
+  /** Knowledge resources filtering */
+  resources: {
+    /** Number of resources per dimension for free tier */
+    freeLimit: 1,
+  },
+
+  /** Evidence/utterance display */
+  evidence: {
+    /** Evidence quotes are free (they show the problem) */
+    quotes: 'free',
+    /** Original context lookup requires paid tier */
+    originalContext: 'paid',
+  },
+
+  /** Agent outputs (legacy agents) */
+  agentOutputs: {
+    /** Agent IDs that are free (defined in agent-config.ts) */
+    freeAgentIds: FREE_AGENT_IDS,
+    /** Premium agent teaser limits */
+    teaserInsightsLimit: 2,
+  },
+} as const;
 
 // ============================================================================
 // Types
@@ -248,10 +306,13 @@ export class ContentGateway {
       // Phase 2 Wow Agents outputs - TEASERS for free users
       // Free agents (patternDetective, metacognition) show full data
       // Premium agents show 1 insight + scores only
-      agentOutputs: createAgentTeasers(evaluation.agentOutputs),
+      agentOutputs: this.filterAgentOutputs(evaluation.agentOutputs, 'free'),
 
       // Knowledge Resources - top 1 per type per dimension for free tier
       knowledgeResources: this.filterKnowledgeResourcesFree(evaluation.knowledgeResources),
+
+      // Worker insights - filter recommendations for free tier
+      workerInsights: this.filterWorkerInsights(evaluation.workerInsights, 'free'),
     };
   }
 
@@ -283,6 +344,180 @@ export class ContentGateway {
       strengths: [], // Empty - locked for free tier
       growthAreas: [], // Empty - locked for free tier
     };
+  }
+
+  // ==========================================================================
+  // Worker Insights Filtering (Phase 2 v3 Workers)
+  // ==========================================================================
+
+  /**
+   * Filter worker insights based on tier.
+   *
+   * For FREE tier:
+   * - Strengths: Full data (positive feedback builds trust)
+   * - Growth Areas: Diagnosis (title, description, evidence) but NO recommendation
+   *
+   * For PAID tier:
+   * - Full data including recommendations
+   *
+   * @param workerInsights - Full worker insights from analysis
+   * @param tier - User tier level
+   * @returns Filtered worker insights with recommendations locked for free tier
+   */
+  filterWorkerInsights(
+    workerInsights: WorkerInsightsRecord,
+    tier: Tier
+  ): WorkerInsightsRecord {
+    if (!workerInsights) return undefined;
+
+    // Paid tiers get full access
+    if (tier !== 'free') return workerInsights;
+
+    // Free tier: lock recommendations (prescription) but keep diagnosis
+    const filtered: NonNullable<WorkerInsightsRecord> = {};
+
+    for (const [key, domain] of Object.entries(workerInsights)) {
+      if (!domain) continue;
+
+      filtered[key] = {
+        ...domain,
+        // Strengths: full (free)
+        strengths: domain.strengths,
+        // Growth areas: lock recommendation (prescription paid)
+        growthAreas: domain.growthAreas.map((g) => this.lockRecommendation(g as WorkerGrowth)),
+      };
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Lock recommendation field in a growth area (for free tier).
+   * Keeps all diagnosis fields (title, description, evidence, severity).
+   */
+  private lockRecommendation(growth: WorkerGrowth): WorkerGrowth {
+    return {
+      ...growth,
+      recommendation: '', // Empty = locked (frontend shows lock UI)
+    };
+  }
+
+  // ==========================================================================
+  // Agent Outputs Filtering (Legacy Agents)
+  // ==========================================================================
+
+  /**
+   * Create agent teasers for free tier users.
+   *
+   * FREE agents (defined in agent-config.ts): Full data
+   * PREMIUM agents: Limited preview (teaser insights, locked prescriptions)
+   *
+   * This method is the single source of truth for agent tier filtering,
+   * replacing the standalone createAgentTeasers function.
+   */
+  filterAgentOutputs(
+    agentOutputs: AgentOutputs | undefined,
+    tier: Tier
+  ): AgentOutputs | undefined {
+    if (!agentOutputs) return undefined;
+
+    // Paid tiers get full access
+    if (tier !== 'free') return agentOutputs;
+
+    // Free tier: apply teaser logic
+    return this.createAgentTeasersInternal(agentOutputs);
+  }
+
+  /**
+   * Internal implementation of agent teaser creation.
+   *
+   * Strategy: "Diagnosis Free, Prescription Premium"
+   * - FREE tier: Full diagnosis (title, description, evidence, frequency, severity)
+   * - PREMIUM tier: Full prescription (recommendations, resources, action steps)
+   */
+  private createAgentTeasersInternal(agentOutputs: AgentOutputs): AgentOutputs {
+    const result: Partial<AgentOutputs> = {};
+    const { freeAgentIds, teaserInsightsLimit } = TIER_POLICY.agentOutputs;
+
+    // FREE tier agents - pass through unchanged
+    for (const id of freeAgentIds) {
+      const key = id as keyof AgentOutputs;
+      if (agentOutputs[key]) {
+        (result as Record<string, unknown>)[key] = agentOutputs[key];
+      }
+    }
+
+    // PREMIUM agents - create teasers with locked prescriptions
+
+    // Context Efficiency: Show diagnostic metrics with locked prescriptions
+    if (agentOutputs.contextEfficiency) {
+      const ce = agentOutputs.contextEfficiency;
+      result.contextEfficiency = {
+        // Structured arrays (new format)
+        contextUsagePatterns: ce.contextUsagePatterns || [],
+        inefficiencyPatterns: ce.inefficiencyPatterns || [],
+        promptLengthTrends: ce.promptLengthTrends || [],
+        redundantInfo: ce.redundantInfo || [],
+        // Legacy string format for backward compatibility
+        contextUsagePatternData: ce.contextUsagePatternData || '',
+        inefficiencyPatternsData: ce.inefficiencyPatternsData || '',
+        promptLengthTrendData: ce.promptLengthTrendData || '',
+        redundantInfoData: ce.redundantInfoData || '',
+        topInsights: ce.topInsights?.slice(0, teaserInsightsLimit) || [],
+        overallEfficiencyScore: ce.overallEfficiencyScore,
+        avgContextFillPercent: ce.avgContextFillPercent,
+        confidenceScore: ce.confidenceScore,
+        strengthsData: ce.strengthsData || '',
+        growthAreasData: this.lockGrowthAreasDataPrescriptions(ce.growthAreasData),
+        kptKeep: ce.kptKeep,
+        kptProblem: ce.kptProblem,
+        kptTry: [], // Locked
+      };
+    }
+
+    // Temporal Analysis: Show full metrics with locked prescriptions
+    if (agentOutputs.temporalAnalysis) {
+      const ta = agentOutputs.temporalAnalysis;
+      const insights = ta.insights;
+      result.temporalAnalysis = {
+        metrics: ta.metrics, // Full metrics (deterministic)
+        insights: {
+          activityPatternSummary: insights?.activityPatternSummary || '',
+          sessionStyleSummary: insights?.sessionStyleSummary || '',
+          topInsights: insights?.topInsights?.slice(0, teaserInsightsLimit) || [],
+          strengthsData: insights?.strengthsData || '',
+          growthAreasData: this.lockGrowthAreasDataPrescriptions(insights?.growthAreasData),
+          confidenceScore: insights?.confidenceScore ?? 0,
+        },
+      };
+    }
+
+    return result as AgentOutputs;
+  }
+
+  /**
+   * Lock prescriptions in growthAreasData string format.
+   *
+   * Input format: "title|desc|evidence|rec|freq|severity|priority;..."
+   * Output: Same format with empty recommendation field
+   */
+  private lockGrowthAreasDataPrescriptions(growthAreasData: string | undefined): string {
+    if (!growthAreasData) return '';
+
+    // Parse, lock, and re-serialize
+    return growthAreasData
+      .split(';')
+      .filter(Boolean)
+      .map((entry) => {
+        const parts = entry.split('|');
+        // Format: title|desc|evidence|rec|freq|severity|priority
+        // Lock by emptying recommendation (index 3)
+        if (parts.length >= 4) {
+          parts[3] = ''; // Empty recommendation
+        }
+        return parts.join('|');
+      })
+      .join(';');
   }
 
 }

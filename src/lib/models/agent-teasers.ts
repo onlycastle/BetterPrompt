@@ -1,14 +1,29 @@
 /**
  * Agent Teasers - Create preview versions of agent outputs for free tier users
  *
+ * @deprecated This module is deprecated. Use ContentGateway.filterAgentOutputs() instead.
+ *
+ * The tier filtering logic has been consolidated into ContentGateway
+ * (src/lib/analyzer/content-gateway.ts) as the single source of truth.
+ *
+ * This file is kept for backward compatibility with existing imports.
+ * All new code should use ContentGateway directly.
+ *
+ * Migration:
+ * ```typescript
+ * // OLD (deprecated)
+ * import { createAgentTeasers } from '../models/agent-teasers';
+ * const teasers = createAgentTeasers(agentOutputs);
+ *
+ * // NEW (recommended)
+ * import { createContentGateway } from '../analyzer/content-gateway';
+ * const gateway = createContentGateway();
+ * const teasers = gateway.filterAgentOutputs(agentOutputs, 'free');
+ * ```
+ *
  * Strategy: "Diagnosis Free, Prescription Premium"
  * - FREE tier: Full diagnosis (title, description, evidence, frequency, severity)
  * - PREMIUM tier: Full prescription (recommendations, resources, action steps)
- *
- * This approach:
- * 1. Shows users the VALUE of the analysis (what's wrong, how severe)
- * 2. Motivates upgrade by showing what they could improve
- * 3. Provides actionable solutions only to paid users
  *
  * IMPORTANT: Agent tier assignments are defined in src/lib/domain/models/agent-config.ts
  * That is the SINGLE SOURCE OF TRUTH for which agents are FREE vs PREMIUM.
@@ -64,6 +79,9 @@ function lockPrescriptions(growthAreasData: string | undefined): string {
 
 /**
  * Create agent teaser outputs for free tier users
+ *
+ * @deprecated Use ContentGateway.filterAgentOutputs() instead.
+ * This function is kept for backward compatibility.
  *
  * FREE agents show full data, PREMIUM agents show limited preview.
  * Agent tier assignments come from agent-config.ts (single source of truth).
