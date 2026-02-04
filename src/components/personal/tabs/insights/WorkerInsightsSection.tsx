@@ -147,6 +147,8 @@ function GrowthCard({
   const hasRecommendation = Boolean(growth.recommendation);
 
   // Count unique sessions from evidence (for "Found in N sessions" display)
+  // Note: EvidenceItem is a union type (string | InsightEvidence), so runtime type check
+  // is required. Legacy/cached data may contain plain strings without utteranceId.
   const sessionCount = useMemo(() => {
     const sessions = new Set<string>();
     for (const ev of growth.evidence) {
@@ -320,11 +322,12 @@ export function WorkerDomainSection({
 /**
  * Map worker domain keys to TranslatedAgentInsights keys.
  *
- * v3 workers (thinkingQuality, learningBehavior, contextEfficiency) handle translations
- * directly in their output, so no mapping is needed here.
+ * v3 workers (thinkingQuality, learningBehavior, contextEfficiency) are processed
+ * by the Phase 4 Translator stage which populates TranslatedAgentInsights with
+ * matching keys. This mapping enables the frontend to look up translated data
+ * for each domain when rendering non-English reports.
  *
- * Legacy keys (knowledgeGap, contextEfficiency, temporalAnalysis) are kept in
- * TranslatedAgentInsightsSchema for cached data compatibility.
+ * Legacy keys (knowledgeGap, temporalAnalysis) are kept for cached data compatibility.
  */
 const DOMAIN_TO_TRANSLATION_KEY: Partial<Record<keyof AggregatedWorkerInsights, keyof TranslatedAgentInsights>> = {
   // v3 workers (2026-02)

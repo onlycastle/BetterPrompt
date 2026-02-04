@@ -68,10 +68,10 @@ interface TabConfig {
 }
 
 /**
- * 3-tab structure based on Phase 2 Workers:
- * - Thinking Quality: Communication Patterns + ThinkingQualityWorker insights
- * - Learning Behavior: LearningBehaviorWorker insights
- * - Context Efficiency: ContextEfficiencyWorker insights
+ * 3-tab structure combining Phase 2 Worker insights + Phase 3 ContentWriter output:
+ * - Thinking Quality: Communication Patterns (Phase 3) + ThinkingQualityWorker insights (Phase 2)
+ * - Learning Behavior: LearningBehaviorWorker insights (Phase 2)
+ * - Context Efficiency: ContextEfficiencyWorker insights (Phase 2)
  */
 const REPORT_TABS: TabConfig[] = [
   { id: 'thinking', label: 'Thinking Quality' },
