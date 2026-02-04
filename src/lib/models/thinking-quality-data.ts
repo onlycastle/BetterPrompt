@@ -26,6 +26,8 @@ import {
   StructuredGrowthLLMSchema,
   parseStructuredStrengths,
   parseStructuredGrowthAreas,
+  ReferencedInsightSchema,
+  type ReferencedInsight,
 } from './worker-insights';
 
 // ============================================================================
@@ -210,31 +212,11 @@ export {
 } from './communication-patterns-data';
 
 // ============================================================================
-// Referenced Insight Schema (for Knowledge Base references)
+// Referenced Insight Schema (re-exported from worker-insights.ts)
 // ============================================================================
 
-/**
- * Referenced insight from Knowledge Base.
- * Used to provide links to source materials for [pi-XXX] references.
- * Extended with full insight details for sidebar display.
- */
-export const ReferencedInsightSchema = z.object({
-  /** Insight ID (e.g., "pi-001") */
-  id: z.string(),
-  /** Human-readable title (e.g., "Skill Atrophy Self-Diagnosis") */
-  title: z.string(),
-  /** Source URL for the insight */
-  url: z.string(),
-  /** Main insight text */
-  keyTakeaway: z.string(),
-  /** Actionable tips array */
-  actionableAdvice: z.array(z.string()),
-  /** Insight category: diagnosis | trend | tool | type-specific */
-  category: z.string(),
-  /** Author name from source */
-  sourceAuthor: z.string(),
-});
-export type ReferencedInsight = z.infer<typeof ReferencedInsightSchema>;
+// Re-export for backward compatibility - canonical definition in worker-insights.ts
+export { ReferencedInsightSchema, type ReferencedInsight };
 
 // ============================================================================
 // Thinking Quality Output Schema
