@@ -18,6 +18,7 @@ import type { AgentOutputs } from '../../models/agent-outputs';
 import type { TypeClassifierOutput } from '../../models/agent-outputs';
 import type { KnowledgeGapOutput, ContextEfficiencyOutput } from '../../models/agent-outputs';
 import type { ThinkingQualityOutput } from '../../models/thinking-quality-data';
+import type { CommunicationPatternsOutput } from '../../models/communication-patterns-data';
 import type { LearningBehaviorOutput } from '../../models/learning-behavior-data';
 
 /**
@@ -32,9 +33,13 @@ export function summarizeAgentOutputsForPhase3(agentOutputs: AgentOutputs): stri
     sections.push(summarizeTypeClassifier(agentOutputs.typeClassifier));
   }
 
-  // v3 workers
+  // v3.1 workers
   if (agentOutputs.thinkingQuality) {
     sections.push(summarizeThinkingQuality(agentOutputs.thinkingQuality));
+  }
+
+  if (agentOutputs.communicationPatterns) {
+    sections.push(summarizeCommunicationPatterns(agentOutputs.communicationPatterns));
   }
 
   if (agentOutputs.learningBehavior) {
@@ -116,24 +121,23 @@ function summarizeThinkingQuality(tq: ThinkingQualityOutput): string {
   // Planning Habits
   if (tq.planningHabits.length > 0) {
     lines.push(`### Planning Habits (${tq.planningHabits.length})`);
-    for (let i = 0; i < tq.planningHabits.length; i++) {
-      const ph = tq.planningHabits[i];
+    tq.planningHabits.forEach((ph, i) => {
       const meta: string[] = [`freq: ${ph.frequency}`];
       if (ph.effectiveness) meta.push(`effectiveness: ${ph.effectiveness}`);
       lines.push(`${i + 1}. [${ph.type}] ${meta.join(', ')}`);
-      if (ph.examples && ph.examples.length > 0) {
-        lines.push(`   Examples: ${ph.examples.slice(0, 3).map(e => `"${truncateQuote(e)}"`).join(', ')}`);
+      if (ph.examples?.length > 0) {
+        const exampleQuotes = ph.examples.slice(0, 3).map(e => `"${truncateQuote(e)}"`).join(', ');
+        lines.push(`   Examples: ${exampleQuotes}`);
       }
-    }
+    });
   }
 
   // Critical Thinking Moments
   if (tq.criticalThinkingMoments.length > 0) {
     lines.push(`### Critical Thinking Moments (${tq.criticalThinkingMoments.length})`);
-    for (let i = 0; i < tq.criticalThinkingMoments.length; i++) {
-      const ct = tq.criticalThinkingMoments[i];
+    tq.criticalThinkingMoments.forEach((ct, i) => {
       lines.push(`${i + 1}. [${ct.type}] "${truncateQuote(ct.quote)}" → ${ct.result}`);
-    }
+    });
   }
 
   // Verification Behavior
@@ -143,25 +147,23 @@ function summarizeThinkingQuality(tq: ThinkingQualityOutput): string {
   lines.push(`recommendation: "${vb.recommendation}"`);
 
   // Verification Anti-Patterns
-  if (tq.verificationAntiPatterns && tq.verificationAntiPatterns.length > 0) {
+  if (tq.verificationAntiPatterns?.length > 0) {
     lines.push(`### Verification Anti-Patterns (${tq.verificationAntiPatterns.length})`);
-    for (let i = 0; i < tq.verificationAntiPatterns.length; i++) {
-      const ap = tq.verificationAntiPatterns[i];
-      const meta: string[] = [`freq: ${ap.frequency}`];
-      meta.push(`severity: ${ap.severity}`);
+    tq.verificationAntiPatterns.forEach((ap, i) => {
+      const meta: string[] = [`freq: ${ap.frequency}`, `severity: ${ap.severity}`];
       if (ap.sessionPercentage !== undefined) meta.push(`sessionPct: ${ap.sessionPercentage}%`);
       lines.push(`${i + 1}. [${ap.type}] ${meta.join(', ')}`);
       if (ap.improvement) {
         lines.push(`   Improvement: "${ap.improvement}"`);
       }
-      if (ap.examples && ap.examples.length > 0) {
+      if (ap.examples?.length > 0) {
         const evidenceStr = ap.examples
           .slice(0, 3)
           .map(e => `${e.utteranceId}: "${truncateQuote(e.quote)}"`)
           .join(', ');
         lines.push(`   Evidence: ${evidenceStr}`);
       }
-    }
+    });
   }
 
   // Multitasking
@@ -173,13 +175,52 @@ function summarizeThinkingQuality(tq: ThinkingQualityOutput): string {
     if (mt.recommendation) lines.push(`recommendation: "${mt.recommendation}"`);
   }
 
+  return lines.join('\n');
+}
+
+/**
+ * v3.1 CommunicationPatterns summarizer (separate worker)
+ * Summarizes communication patterns and signature quotes
+ */
+function summarizeCommunicationPatterns(cp: CommunicationPatternsOutput): string {
+  const lines: string[] = [
+    `## CommunicationPatterns (score: ${cp.overallCommunicationScore}/100, confidence: ${cp.confidenceScore})`,
+  ];
+
+  if (cp.summary) {
+    lines.push(`summary: ${cp.summary}`);
+  }
+
   // Communication Patterns
-  if (tq.communicationPatterns && tq.communicationPatterns.length > 0) {
-    lines.push(`### Communication Patterns (${tq.communicationPatterns.length})`);
-    for (let i = 0; i < tq.communicationPatterns.length; i++) {
-      const cp = tq.communicationPatterns[i];
-      lines.push(`${i + 1}. "${cp.patternName}" [${cp.frequency}, ${cp.effectiveness}]`);
-      lines.push(`   ${truncateQuote(cp.description, 200)}`);
+  if (cp.communicationPatterns?.length > 0) {
+    lines.push(`### Communication Patterns (${cp.communicationPatterns.length})`);
+    cp.communicationPatterns.forEach((pattern, i) => {
+      lines.push(`${i + 1}. "${pattern.patternName}" [${pattern.frequency}, ${pattern.effectiveness}]`);
+      lines.push(`   ${truncateQuote(pattern.description, 200)}`);
+    });
+  }
+
+  // Signature Quotes
+  if (cp.signatureQuotes && cp.signatureQuotes.length > 0) {
+    lines.push(`### Signature Quotes (${cp.signatureQuotes.length})`);
+    for (const sq of cp.signatureQuotes) {
+      lines.push(`- [${sq.utteranceId}] ${truncateQuote(sq.representedStrength, 60)}: ${truncateQuote(sq.significance, 80)}`);
+    }
+  }
+
+  // Strengths summary
+  if (cp.strengths && cp.strengths.length > 0) {
+    lines.push(`### Strengths (${cp.strengths.length})`);
+    for (const s of cp.strengths) {
+      lines.push(`- ${s.title}`);
+    }
+  }
+
+  // Growth Areas summary
+  if (cp.growthAreas && cp.growthAreas.length > 0) {
+    lines.push(`### Growth Areas (${cp.growthAreas.length})`);
+    for (const g of cp.growthAreas) {
+      lines.push(`- ${g.title} [${g.severity ?? 'medium'}]`);
     }
   }
 
