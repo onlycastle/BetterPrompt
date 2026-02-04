@@ -9,13 +9,13 @@ export function HeroSection() {
       <div className={styles.content}>
         <div className={styles.badge}>No More AI Slop</div>
         <h1 className={styles.headline}>
-          Are you getting better with AI{' '}
+          Good vibe coders know what they <span className={styles.accent}>shipped</span>.
           <br className={styles.breakDesktop} />
-          or just more <span className={styles.accent}>dependent</span>?
+          Do you?
         </h1>
 
         <p className={styles.subheadline}>
-          Analyze your real conversations to find out
+          Review your patterns. Ship better.
         </p>
 
         <div className={styles.cta}>
