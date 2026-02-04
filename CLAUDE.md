@@ -37,13 +37,13 @@ npm test               # Run all tests
 | Phase | Component | LLM Calls | Description |
 |-------|-----------|-----------|-------------|
 | 1 | DataExtractor | 0 | Deterministic extraction (no LLM) |
-| 2 | 3 Insight Workers | 3 | Parallel analysis (ThinkingQuality, LearningBehavior, ContextEfficiency) |
+| 2 | 4 Insight Workers | 4 | Parallel analysis (ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency) |
 | 2.5 | TypeClassifier | 1 | Developer type classification (5x3 matrix) |
 | 2.75 | KnowledgeResourceMatcher | 0 | Deterministic resource matching from curated database |
 | 3 | ContentWriter | 1 | Personalized narrative generation |
 | 4 | Translator | 0-1 | Conditional translation (non-English only) |
 
-- **Total**: 5 LLM calls (English), 6 LLM calls (non-English)
+- **Total**: 6 LLM calls (English), 7 LLM calls (non-English)
 - Prompts use PTCF framework (Persona · Task · Context · Format)
 - Temperature: 1.0 (Gemini's recommended default)
 
