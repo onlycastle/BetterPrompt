@@ -210,6 +210,10 @@ export abstract class BaseWorker<TOutput> {
 
     const combinedUrlLookup = new Map<string, string>();
     const combinedTitleLookup = new Map<string, string>();
+    const combinedKeyTakeawayLookup = new Map<string, string>();
+    const combinedActionableAdviceLookup = new Map<string, string[]>();
+    const combinedCategoryLookup = new Map<string, string>();
+    const combinedSourceAuthorLookup = new Map<string, string>();
 
     for (const ctx of allContexts) {
       for (const [key, value] of ctx.urlLookup) {
@@ -218,12 +222,28 @@ export abstract class BaseWorker<TOutput> {
       for (const [key, value] of ctx.titleLookup) {
         combinedTitleLookup.set(key, value);
       }
+      for (const [key, value] of ctx.keyTakeawayLookup) {
+        combinedKeyTakeawayLookup.set(key, value);
+      }
+      for (const [key, value] of ctx.actionableAdviceLookup) {
+        combinedActionableAdviceLookup.set(key, value);
+      }
+      for (const [key, value] of ctx.categoryLookup) {
+        combinedCategoryLookup.set(key, value);
+      }
+      for (const [key, value] of ctx.sourceAuthorLookup) {
+        combinedSourceAuthorLookup.set(key, value);
+      }
     }
 
     return {
       insights: uniqueInsights,
       urlLookup: combinedUrlLookup,
       titleLookup: combinedTitleLookup,
+      keyTakeawayLookup: combinedKeyTakeawayLookup,
+      actionableAdviceLookup: combinedActionableAdviceLookup,
+      categoryLookup: combinedCategoryLookup,
+      sourceAuthorLookup: combinedSourceAuthorLookup,
     };
   }
 }

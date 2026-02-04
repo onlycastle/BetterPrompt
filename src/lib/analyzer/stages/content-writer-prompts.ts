@@ -52,71 +52,52 @@ export interface LanguageDetectionResult {
  * @param texts - Array of text strings to analyze
  * @returns LanguageDetectionResult with primary language and confidence
  */
+const LANGUAGE_THRESHOLD = 0.05;
+const EMPTY_CHAR_COUNTS = { korean: 0, japanese: 0, chinese: 0, total: 0 };
+
+function countCharactersByRegex(text: string, regex: RegExp): number {
+  const matches = text.match(regex);
+  return matches ? matches.length : 0;
+}
+
+function calculateCharacterCounts(text: string) {
+  const korean = countCharactersByRegex(text, /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g);
+  const japanese = countCharactersByRegex(text, /[\u3040-\u309F\u30A0-\u30FF]/g);
+  const chinese = countCharactersByRegex(text, /[\u4E00-\u9FFF]/g);
+  const total = countCharactersByRegex(text, /[a-zA-Z0-9\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/g);
+
+  return { korean, japanese, chinese, total };
+}
+
 export function detectPrimaryLanguage(texts: string[]): LanguageDetectionResult {
   if (texts.length === 0) {
-    return { primary: 'en', confidence: 1.0, hasNonEnglish: false, charCounts: { korean: 0, japanese: 0, chinese: 0, total: 0 } };
+    return { primary: 'en', confidence: 1.0, hasNonEnglish: false, charCounts: EMPTY_CHAR_COUNTS };
   }
 
   const combinedText = texts.join(' ');
+  const charCounts = calculateCharacterCounts(combinedText);
 
-  // Count Korean characters (Hangul syllables + Jamo)
-  const koreanRegex = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g;
-  const koreanMatches = combinedText.match(koreanRegex);
-  const koreanCount = koreanMatches ? koreanMatches.length : 0;
-
-  // Count Japanese characters (Hiragana + Katakana, excluding shared CJK)
-  const japaneseRegex = /[\u3040-\u309F\u30A0-\u30FF]/g;
-  const japaneseMatches = combinedText.match(japaneseRegex);
-  const japaneseCount = japaneseMatches ? japaneseMatches.length : 0;
-
-  // Count Chinese characters (CJK Unified Ideographs)
-  // Note: This range is shared with Japanese Kanji, but we prioritize Hiragana/Katakana detection
-  const chineseRegex = /[\u4E00-\u9FFF]/g;
-  const chineseMatches = combinedText.match(chineseRegex);
-  const chineseCount = chineseMatches ? chineseMatches.length : 0;
-
-  // Count total meaningful characters (letters, numbers, CJK)
-  const meaningfulRegex = /[a-zA-Z0-9\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/g;
-  const meaningfulMatches = combinedText.match(meaningfulRegex);
-  const totalCount = meaningfulMatches ? meaningfulMatches.length : 0;
-
-  if (totalCount === 0) {
-    return { primary: 'en', confidence: 1.0, hasNonEnglish: false, charCounts: { korean: koreanCount, japanese: japaneseCount, chinese: chineseCount, total: totalCount } };
+  if (charCounts.total === 0) {
+    return { primary: 'en', confidence: 1.0, hasNonEnglish: false, charCounts };
   }
 
-  // Calculate ratios
-  const koreanRatio = koreanCount / totalCount;
-  const japaneseRatio = japaneseCount / totalCount;
-  const chineseRatio = chineseCount / totalCount;
+  const koreanRatio = charCounts.korean / charCounts.total;
+  const japaneseRatio = charCounts.japanese / charCounts.total;
+  const chineseRatio = charCounts.chinese / charCounts.total;
+  const hasNonEnglish = charCounts.korean > 0 || charCounts.japanese > 0 || charCounts.chinese > 0;
 
-  // Threshold: 5% - lowered from 20% because developer sessions mix native
-  // language with heavy English technical content (code, CLI, paths, variables),
-  // diluting the CJK ratio. Hangul is exclusive to Korean with zero false-positive
-  // risk, so even 5% is an unambiguous signal.
-  const THRESHOLD = 0.05;
-
-  const hasNonEnglish = koreanCount > 0 || japaneseCount > 0 || chineseCount > 0;
-
-  // Priority: Korean > Japanese > Chinese > English
-  // Korean takes priority as it has distinct character ranges
-  const charCounts = { korean: koreanCount, japanese: japaneseCount, chinese: chineseCount, total: totalCount };
-
-  if (koreanRatio >= THRESHOLD) {
+  if (koreanRatio >= LANGUAGE_THRESHOLD) {
     return { primary: 'ko', confidence: koreanRatio, hasNonEnglish, charCounts };
   }
 
-  // Japanese (if significant Hiragana/Katakana present)
-  if (japaneseRatio >= THRESHOLD) {
+  if (japaneseRatio >= LANGUAGE_THRESHOLD) {
     return { primary: 'ja', confidence: japaneseRatio, hasNonEnglish, charCounts };
   }
 
-  // Chinese (CJK without Japanese kana)
-  // Only consider Chinese if there's CJK but minimal Japanese kana
-  if (chineseRatio >= THRESHOLD && japaneseRatio < 0.05) {
+  if (chineseRatio >= LANGUAGE_THRESHOLD && japaneseRatio < LANGUAGE_THRESHOLD) {
     return { primary: 'zh', confidence: chineseRatio, hasNonEnglish, charCounts };
   }
 
-  // Default to English
   const englishRatio = 1 - (koreanRatio + japaneseRatio + chineseRatio);
   return { primary: 'en', confidence: englishRatio, hasNonEnglish, charCounts };
 }
@@ -179,6 +160,8 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 - REQUIRED: Include at least 8-10 direct quotes from the developer's messages
 - REQUIRED: Write 15-20 sentences minimum
 - REQUIRED: Structure into distinct paragraphs by theme (problem-solving style, communication patterns, growth mindset, collaboration approach)
+- REQUIRED: Separate paragraphs with blank lines (\\n\\n) - each thematic section should be its own paragraph
+- REQUIRED: Wrap developer quotes in double quotes "like this" - these will be visually highlighted
 - Synthesize TypeClassifier reasoning + ThinkingQuality/LearningBehavior insights into engaging prose
 - Lead with their most distinctive trait and elaborate extensively with examples
 - Connect multiple quotes to reveal deep personality patterns
@@ -310,6 +293,8 @@ You generate ONLY narrative content. Structural data (including promptPatterns) 
    - REQUIRED: Include 8-10 direct quotes from Phase 2 evidence and Developer Utterances
    - REQUIRED: Write 15-20 sentences minimum
    - REQUIRED: Separate into paragraphs by theme (problem-solving, communication, growth mindset, collaboration)
+   - REQUIRED: Use blank lines (\\n\\n) between paragraphs for visual separation
+   - REQUIRED: Wrap developer quotes in double quotes "like this" for visual highlighting
    - Synthesize TypeClassifier reasoning + ThinkingQuality/LearningBehavior insights into engaging prose
    - Lead with their most distinctive trait and elaborate extensively
    - Emphasize 5-7 key phrases with **bold markers**

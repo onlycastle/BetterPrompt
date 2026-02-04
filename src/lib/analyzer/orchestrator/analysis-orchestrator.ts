@@ -726,6 +726,7 @@ export class AnalysisOrchestrator {
     return {
       // v3 workers
       thinkingQuality: results['ThinkingQuality']?.data as AgentOutputs['thinkingQuality'],
+      communicationPatterns: results['CommunicationPatterns']?.data as AgentOutputs['communicationPatterns'],
       learningBehavior: results['LearningBehavior']?.data as AgentOutputs['learningBehavior'],
       efficiency: results['ContextEfficiency']?.data as AgentOutputs['efficiency'],
       // Legacy workers (kept for cached data)
@@ -766,6 +767,11 @@ export class AnalysisOrchestrator {
       agentOutputs.thinkingQuality.growthAreas = verifiedInsights.thinkingQuality.growthAreas;
     }
 
+    if (agentOutputs.communicationPatterns && verifiedInsights.communicationPatterns) {
+      agentOutputs.communicationPatterns.strengths = verifiedInsights.communicationPatterns.strengths;
+      agentOutputs.communicationPatterns.growthAreas = verifiedInsights.communicationPatterns.growthAreas;
+    }
+
     if (agentOutputs.learningBehavior && verifiedInsights.learningBehavior) {
       agentOutputs.learningBehavior.strengths = verifiedInsights.learningBehavior.strengths;
       agentOutputs.learningBehavior.growthAreas = verifiedInsights.learningBehavior.growthAreas;
@@ -785,15 +791,20 @@ export class AnalysisOrchestrator {
   }
 
   private logLanguageDetection(result: LanguageDetectionResult): void {
-    if (!this.config.verbose) return;
+    if (!this.config.verbose) {
+      return;
+    }
 
     const { charCounts } = result;
-    const total = charCounts.total || 1; // avoid division by zero
+    const total = charCounts.total || 1;
     const englishOther = total - charCounts.korean - charCounts.japanese - charCounts.chinese;
+    const languageName = LANGUAGE_DISPLAY_NAMES[result.primary] || result.primary;
+    const confidencePercent = (result.confidence * 100).toFixed(0);
+    const willTranslate = result.primary !== 'en' ? 'Phase 4 Translator will run' : 'Skipped (English)';
 
     console.log('\n=== Language Detection ===');
-    console.log(`Detected Language: ${LANGUAGE_DISPLAY_NAMES[result.primary] || result.primary} (${result.primary})`);
-    console.log(`Confidence: ${result.confidence.toFixed(2)} (${(result.confidence * 100).toFixed(0)}%)`);
+    console.log(`Detected Language: ${languageName} (${result.primary})`);
+    console.log(`Confidence: ${result.confidence.toFixed(2)} (${confidencePercent}%)`);
     console.log('Threshold: 5%');
     console.log('Character Breakdown:');
     console.log(`  Korean (Hangul):  ${charCounts.korean} chars (${((charCounts.korean / total) * 100).toFixed(1)}%)`);
@@ -801,7 +812,7 @@ export class AnalysisOrchestrator {
     console.log(`  Chinese (CJK):    ${charCounts.chinese} chars (${((charCounts.chinese / total) * 100).toFixed(1)}%)`);
     console.log(`  English/Other:    ${englishOther} chars (${((englishOther / total) * 100).toFixed(1)}%)`);
     console.log(`Total Meaningful:   ${total} chars`);
-    console.log(`Translation: ${result.primary !== 'en' ? 'Phase 4 Translator will run' : 'Skipped (English)'}`);
+    console.log(`Translation: ${willTranslate}`);
     console.log('===========================\n');
   }
 
