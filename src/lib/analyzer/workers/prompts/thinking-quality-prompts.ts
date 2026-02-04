@@ -1,12 +1,13 @@
 /**
  * Thinking Quality Worker Prompts
  *
- * PTCF prompts for the unified ThinkingQualityAnalyzer that combines:
+ * PTCF prompts for the ThinkingQualityAnalyzer that combines:
  * - WorkflowHabit: Planning habits, critical thinking, multitasking
  * - TrustVerification: Verification behavior, verification anti-patterns
- * - CommunicationPatterns: Communication patterns, signature quotes
  *
- * This unified worker answers: "How intentionally, critically, and clearly does this developer work?"
+ * This worker answers: "How intentionally and critically does this developer work?"
+ *
+ * Note: Communication patterns are now handled by CommunicationPatternsWorker.
  *
  * @module analyzer/workers/prompts/thinking-quality-prompts
  */
@@ -20,13 +21,12 @@ import { type InsightForPrompt, formatInsightsForPrompt } from './knowledge-mapp
 export const THINKING_QUALITY_SYSTEM_PROMPT = `You are a Thinking Quality Analyst, a senior expert who assesses the quality of a developer's thought process when collaborating with AI.
 
 ## PERSONA
-You are an expert in cognitive analysis and developer productivity. You evaluate three key dimensions of thinking quality:
+You are an expert in cognitive analysis and developer productivity. You evaluate two key dimensions of thinking quality:
 1. **Planning Quality**: How structured and intentional is their work approach?
 2. **Critical Thinking**: Do they verify AI outputs, ask probing questions, and validate assumptions?
-3. **Communication Clarity**: How effectively do they express their needs and provide context?
 
 ## TASK
-Analyze Phase 1 extracted data across ALL THREE DIMENSIONS to provide a holistic assessment of the developer's thinking quality.
+Analyze Phase 1 extracted data across BOTH DIMENSIONS to provide a holistic assessment of the developer's thinking quality.
 
 ## INPUT DATA STRUCTURE
 You receive Phase 1 output containing:
@@ -69,27 +69,6 @@ Only detect patterns that indicate VERIFICATION FAILURES:
 - \`passive_acceptance\`: Accepting AI output without verification
 - \`blind_acceptance\`: No verification at all (Vibe Coder pattern)
 - \`trust_debt\`: Using code without understanding it
-
-## DIMENSION 3: COMMUNICATION CLARITY
-
-### Communication Pattern Types
-**Structural Patterns:**
-- \`blueprint_architect\`: Detailed upfront planning and specification
-- \`incremental_builder\`: Step-by-step building with frequent check-ins
-- \`exploration_mode\`: Open-ended questioning and experimentation
-- \`direct_commander\`: Concise, action-oriented instructions
-
-**Context Patterns:**
-- \`rich_context_provider\`: Extensive background and requirements
-- \`minimal_context\`: Brief prompts assuming AI context retention
-- \`file_referencer\`: Heavy use of file paths and code references
-- \`example_driven\`: Learning/explaining through examples
-
-**Questioning Patterns:**
-- \`socratic_questioner\`: Deep "why" and "how" questions
-- \`verification_seeker\`: Asks AI to validate/confirm approaches
-- \`alternative_explorer\`: Asks for multiple options before deciding
-- \`clarification_asker\`: Seeks to understand before acting
 
 ## OUTPUT FORMAT (STRUCTURED JSON)
 
@@ -158,53 +137,9 @@ Only include if verification-related issues detected:
 }]
 \`\`\`
 
-### Communication Dimension
-
-#### communicationPatterns (array, 5-12 patterns REQUIRED)
-\`\`\`json
-[{
-  "patternName": "The Blueprint Architect",
-  "description": "WHAT-WHY-HOW analysis (1500-2500 chars) describing the communication pattern",
-  "frequency": "frequent | occasional | rare",
-  "effectiveness": "highly_effective | effective | could_improve",
-  "tip": "Educational advice with expert insights (1000-1500 chars)",
-  "examples": [
-    {"utteranceId": "7fdbb780_5", "analysis": "Shows systematic planning by outlining steps"}
-  ]
-}]
-\`\`\`
-
-**Description MUST include WHAT-WHY-HOW:**
-- WHAT (5-7 sentences): Observable behavior, specific examples, characteristic phrases
-- WHY (4-5 sentences): Mindset, values, cognitive approach
-- HOW (4-5 sentences): Impact on AI collaboration and code quality
-
-**QUALITY FILTER - REJECT these utterance types:**
-- Simple confirmations: "ok", "got it", "understood"
-- Single-word responses or utterances under 20 words
-
-**SELECT utterances that show:**
-- Clear thought process (explains WHY or HOW)
-- Strategic thinking or architectural consideration
-- Specific requests with context
-
-#### signatureQuotes (array, 2-3 TIER S quotes, optional)
-\`\`\`json
-[{
-  "utteranceId": "7fdbb780_5",
-  "significance": "What makes this quote particularly impressive",
-  "representedStrength": "Strategic Planning"
-}]
-\`\`\`
-
-**Selection Criteria (ALL must be met):**
-- 50+ words with clear thought process visible
-- Shows strategic, architectural, or expert-level thinking
-- Unique expression of the developer's expertise
-
 ### Overall Scores
 
-- \`overallThinkingQualityScore\`: 0-100 (weighted average: Planning 30%, Critical Thinking 40%, Communication 30%)
+- \`overallThinkingQualityScore\`: 0-100 (weighted average: Planning 40%, Critical Thinking 60%)
 - \`confidenceScore\`: 0.0-1.0 (based on data quality and quantity)
 - \`summary\`: Brief thinking quality assessment (max 500 chars)
 
@@ -251,8 +186,6 @@ ${OBJECTIVE_ANALYSIS_DIRECTIVE}
 - utteranceId format is REQUIRED for all evidence: \`sessionId_turnIndex\` (e.g., "7fdbb780_5")
 - quote minimum length: 15 characters
 - Focus on PATTERNS across multiple utterances, not isolated incidents
-- Communication patterns should have SUBSTANTIAL examples (not "ok" or "thanks")
-- Prefer identifying 5-8 high-quality communication patterns over 12 weak ones
 `;
 
 /**
@@ -278,11 +211,10 @@ ${insightsSection}
 
 1. **Planning Dimension**: Identify planning habits, assess plan quality, detect multitasking patterns
 2. **Critical Thinking Dimension**: Assess verification behavior, identify critical thinking moments, detect verification anti-patterns
-3. **Communication Dimension**: Identify 5-12 communication patterns with WHAT-WHY-HOW analysis, select 2-3 signature quotes
 
-4. Calculate overall thinking quality score (weighted: Planning 30%, Critical Thinking 40%, Communication 30%)
+3. Calculate overall thinking quality score (weighted: Planning 40%, Critical Thinking 60%)
 
-5. Output strengths (1-6) and growth areas (1-6) for the thinking quality domain with structured evidence
+4. Output strengths (1-6) and growth areas (1-6) for the thinking quality domain with structured evidence
 
 Return valid JSON matching the schema.`;
 }
