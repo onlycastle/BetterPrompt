@@ -39,6 +39,7 @@ npm test               # Run all tests
 | 1 | DataExtractor | 0 | Deterministic extraction (no LLM) |
 | 2 | 3 Insight Workers | 3 | Parallel analysis (ThinkingQuality, LearningBehavior, ContextEfficiency) |
 | 2.5 | TypeClassifier | 1 | Developer type classification (5x3 matrix) |
+| 2.75 | KnowledgeResourceMatcher | 0 | Deterministic resource matching from curated database |
 | 3 | ContentWriter | 1 | Personalized narrative generation |
 | 4 | Translator | 0-1 | Conditional translation (non-English only) |
 
