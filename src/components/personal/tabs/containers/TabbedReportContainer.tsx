@@ -134,7 +134,8 @@ export function TabbedReportContainer({
   const [selectedInsight, setSelectedInsight] = useState<ReferencedInsight | null>(null);
 
   // Detect mobile breakpoint for fallback to full-screen overlay
-  const [isMobile, setIsMobile] = useState(false);
+  // Initialize as null to avoid SSR hydration mismatch (server renders null, client updates after mount)
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 900);
     checkMobile();
@@ -582,8 +583,8 @@ export function TabbedReportContainer({
       {/* Context Sidebar - Right column (insight preview + resources) */}
       {(allResources.length > 0 || selectedInsight) && (
         <aside className={styles.sidebar}>
-          {/* Inline Insight Preview Card (desktop only) */}
-          {selectedInsight && !isMobile && (
+          {/* Inline Insight Preview Card (desktop only, also SSR fallback when isMobile is null) */}
+          {selectedInsight && isMobile !== true && (
             <InsightPreviewCard
               insight={selectedInsight}
               onClose={handleCloseInsight}
@@ -596,8 +597,8 @@ export function TabbedReportContainer({
         </aside>
       )}
 
-      {/* Full-screen overlay for mobile (fallback) */}
-      {isMobile && (
+      {/* Full-screen overlay for mobile (only when explicitly detected as mobile) */}
+      {isMobile === true && (
         <ProfessionalInsightSidebar
           insight={selectedInsight}
           isOpen={!!selectedInsight}
