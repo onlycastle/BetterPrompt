@@ -272,14 +272,24 @@ export type WorkerInsightsLLMOutput = z.infer<typeof WorkerInsightsLLMOutputSche
  * @param evidenceStr - Raw evidence string from LLM output
  * @returns InsightEvidence object or null if utteranceId is missing/invalid
  */
-function validateUtteranceId(id: string): boolean {
-  return /_\d+$/.test(id);
-}
+export function parseEvidenceItem(evidenceStr: string): InsightEvidence | null {
+  const trimmed = evidenceStr.trim().replace(/^['"]|['"]$/g, '');
+  if (!trimmed) {
+    return null;
+  }
 
-function parseStructuredEvidence(trimmed: string, colonIndex: number): InsightEvidence | null {
+  const colonIndex = trimmed.indexOf(':');
+  if (colonIndex <= 0) {
+    if (trimmed.length > 0) {
+      console.warn(`[parseEvidenceItem] No utteranceId found (missing colon): "${trimmed.slice(0, 50)}..."`);
+    }
+    return null;
+  }
+
   const utteranceId = trimmed.slice(0, colonIndex);
 
-  if (!validateUtteranceId(utteranceId)) {
+  // Validate utteranceId format: must end with _<number>
+  if (!/_\d+$/.test(utteranceId)) {
     console.warn(`[parseEvidenceItem] Invalid utteranceId format: "${utteranceId}" (must match sessionId_turnIndex pattern)`);
     return null;
   }
@@ -299,23 +309,6 @@ function parseStructuredEvidence(trimmed: string, colonIndex: number): InsightEv
     utteranceId,
     quote: remainder.trim(),
   };
-}
-
-export function parseEvidenceItem(evidenceStr: string): InsightEvidence | null {
-  const trimmed = evidenceStr.trim().replace(/^['"]|['"]$/g, '');
-  if (!trimmed) {
-    return null;
-  }
-
-  const colonIndex = trimmed.indexOf(':');
-  if (colonIndex <= 0) {
-    if (trimmed.length > 0) {
-      console.warn(`[parseEvidenceItem] No utteranceId found (missing colon): "${trimmed.slice(0, 50)}..."`);
-    }
-    return null;
-  }
-
-  return parseStructuredEvidence(trimmed, colonIndex);
 }
 
 /**
