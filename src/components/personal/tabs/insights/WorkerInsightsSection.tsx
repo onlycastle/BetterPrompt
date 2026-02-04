@@ -15,7 +15,8 @@
  * - Shimmer effect for locked content
  *
  * v3 Workers displayed (2026-02):
- * - Thinking Quality (ThinkingQualityWorker): Planning + Critical Thinking + Communication
+ * - Thinking Quality (ThinkingQualityWorker): Planning + Critical Thinking
+ * - Communication Patterns (CommunicationPatternsWorker): Prompt patterns analysis
  * - Learning Behavior (LearningBehaviorWorker): Knowledge Gaps + Repeated Mistakes
  * - Context Efficiency (ContextEfficiencyWorker): Token efficiency patterns
  */

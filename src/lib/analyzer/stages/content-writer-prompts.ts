@@ -276,10 +276,10 @@ This developer has ${sessionCount} sessions analyzed.
 
 ## Phase 2 Analysis Outputs (Structured Summary from Specialized Workers)
 
-Below is a structured summary from 6 Phase 2 workers + 1 Phase 2.5 worker.
+Below is a structured summary from 4 Phase 2 workers + 1 Phase 2.5 worker.
 Each section uses ## headers with key scores.
 
-NOTE: Communication patterns (promptPatterns) are already analyzed by ThinkingQualityWorker in Phase 2.
+NOTE: Communication patterns (promptPatterns) are already analyzed by CommunicationPatternsWorker in Phase 2.
 You do NOT need to generate promptPatterns - focus on personality narrative only.
 
 ${agentOutputsSummary}
@@ -304,7 +304,7 @@ You generate ONLY narrative content. Structural data (including promptPatterns) 
    - Create ranked focus areas with narrative and actions (start/stop/continue)
    - actionsData format: "start_action|stop_action|continue_action"
 
-NOTE: Do NOT generate promptPatterns - they are handled by Phase 2 ThinkingQualityWorker.
+NOTE: Do NOT generate promptPatterns - they are handled by Phase 2 CommunicationPatternsWorker.
 
 Make this developer feel truly understood. Use their actual words.`;
 }
