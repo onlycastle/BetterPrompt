@@ -78,15 +78,14 @@ function LoadingState() {
 /**
  * Preview banner for free users
  */
-function PreviewBanner({ totalPatterns, totalGrowthAreas }: { totalPatterns: number; totalGrowthAreas: number }) {
-  const hiddenPatterns = Math.max(0, totalPatterns - 3);
+function PreviewBanner() {
   return (
     <div className={styles.previewBanner}>
       <span className={styles.previewIcon}>&#128274;</span>
       <div className={styles.previewContent}>
         <p className={styles.previewTitle}>Premium Content Locked</p>
         <p className={styles.previewText}>
-          <strong>{hiddenPatterns} more patterns</strong> and <strong>{totalGrowthAreas} actionable recommendations</strong> are waiting for you.
+          Unlock to access: <strong>personalized recommendations</strong>, <strong>4 more dimensions</strong>, <strong>growth roadmap</strong>, and <strong>premium agent insights</strong>
         </p>
       </div>
     </div>
@@ -183,12 +182,7 @@ export function RemoteReportContent({ resultId }: RemoteReportContentProps) {
         <PageHeader />
 
         {/* Preview banner for free users */}
-        {!isPaid && preview && (
-          <PreviewBanner
-            totalPatterns={preview.totalPromptPatterns}
-            totalGrowthAreas={preview.totalGrowthAreas}
-          />
-        )}
+        {!isPaid && <PreviewBanner />}
 
         {/* Main report content - data is pre-filtered by backend based on tier */}
         <div className={styles.reportWrapper}>
