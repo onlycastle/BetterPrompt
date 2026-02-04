@@ -79,13 +79,14 @@ function LoadingState() {
  * Preview banner for free users
  */
 function PreviewBanner({ totalPatterns, totalGrowthAreas }: { totalPatterns: number; totalGrowthAreas: number }) {
+  const hiddenPatterns = Math.max(0, totalPatterns - 3);
   return (
     <div className={styles.previewBanner}>
       <span className={styles.previewIcon}>&#128274;</span>
       <div className={styles.previewContent}>
-        <p className={styles.previewTitle}>Preview Mode</p>
+        <p className={styles.previewTitle}>Premium Content Locked</p>
         <p className={styles.previewText}>
-          You&apos;re viewing a preview. Unlock to see all {totalPatterns} patterns and {totalGrowthAreas} growth areas.
+          <strong>{hiddenPatterns} more patterns</strong> and <strong>{totalGrowthAreas} actionable recommendations</strong> are waiting for you.
         </p>
       </div>
     </div>

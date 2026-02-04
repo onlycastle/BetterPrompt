@@ -204,12 +204,12 @@ export class TranslatorStage {
    */
   private extractOrFlattenStrengths(worker: Record<string, unknown>): string | undefined {
     const strengthsData = worker.strengthsData as string | undefined;
-    if (strengthsData && strengthsData.trim() !== '') {
+    if (strengthsData?.trim()) {
       return strengthsData;
     }
 
     const strengths = worker.strengths as WorkerStrength[] | undefined;
-    if (strengths && strengths.length > 0) {
+    if (strengths?.length) {
       return this.flattenWorkerStrengths(strengths);
     }
 
@@ -221,12 +221,12 @@ export class TranslatorStage {
    */
   private extractOrFlattenGrowthAreas(worker: Record<string, unknown>): string | undefined {
     const growthAreasData = worker.growthAreasData as string | undefined;
-    if (growthAreasData && growthAreasData.trim() !== '') {
+    if (growthAreasData?.trim()) {
       return growthAreasData;
     }
 
     const growthAreas = worker.growthAreas as WorkerGrowth[] | undefined;
-    if (growthAreas && growthAreas.length > 0) {
+    if (growthAreas?.length) {
       return this.flattenWorkerGrowthAreas(growthAreas);
     }
 
@@ -261,9 +261,10 @@ export class TranslatorStage {
    * Log debug message in development mode
    */
   private logDebug(label: string, data: unknown): void {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Translator] ${label}: ${Array.isArray(data) ? data.join(', ') : data}`);
-    }
+    if (process.env.NODE_ENV !== 'development') return;
+
+    const formattedData = Array.isArray(data) ? data.join(', ') : data;
+    console.log(`[Translator] ${label}: ${formattedData}`);
   }
 
   /**
@@ -272,7 +273,7 @@ export class TranslatorStage {
   private logTranslatedInsightsDebug(transInsights: any): void {
     if (process.env.NODE_ENV !== 'development') return;
 
-    console.log(`[Translator] Output translatedAgentInsights present: ${!!transInsights}`);
+    console.log(`[Translator] Output translatedAgentInsights present: ${Boolean(transInsights)}`);
     if (!transInsights) return;
 
     const keys = Object.keys(transInsights).filter(k => transInsights[k]);
@@ -280,7 +281,9 @@ export class TranslatorStage {
 
     for (const key of keys) {
       const insight = transInsights[key];
-      console.log(`[Translator] ${key}: strengthsData=${insight?.strengthsData?.length ?? 0}chars, growthAreasData=${insight?.growthAreasData?.length ?? 0}chars`);
+      const strengthsLength = insight?.strengthsData?.length ?? 0;
+      const growthLength = insight?.growthAreasData?.length ?? 0;
+      console.log(`[Translator] ${key}: strengthsData=${strengthsLength}chars, growthAreasData=${growthLength}chars`);
     }
   }
 }
