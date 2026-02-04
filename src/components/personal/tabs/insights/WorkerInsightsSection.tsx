@@ -47,9 +47,14 @@ interface WorkerInsightsSectionProps {
 const CIRCUMFERENCE = 2 * Math.PI * 25; // SVG circle circumference (radius = 25)
 
 function getScoreClass(score: number): string {
-  if (score >= 70) return styles.scoreHigh;
-  if (score >= 40) return styles.scoreMedium;
-  return styles.scoreLow;
+  switch (true) {
+    case score >= 70:
+      return styles.scoreHigh;
+    case score >= 40:
+      return styles.scoreMedium;
+    default:
+      return styles.scoreLow;
+  }
 }
 
 function ScoreGauge({ score, label }: { score: number; label: string }) {
@@ -211,21 +216,11 @@ function GrowthCard({
 }
 
 /**
- * Single worker domain section
+ * Props for WorkerDomainSection component.
  *
- * Applies translation overlay when translatedStrengthsData/translatedGrowthAreasData
- * are provided. This overlays translated title/description/recommendation on top
- * of the original English data while preserving evidence quotes in source language.
+ * Exported for reuse in TabbedReportContainer's 3-tab structure.
  */
-function WorkerDomainSection({
-  config,
-  strengths,
-  growthAreas,
-  translatedStrengthsData,
-  translatedGrowthAreasData,
-  utteranceLookup,
-  domainScore,
-}: {
+export interface WorkerDomainSectionProps {
   config: WorkerDomainConfig;
   strengths: WorkerStrength[];
   growthAreas: WorkerGrowth[];
@@ -233,7 +228,26 @@ function WorkerDomainSection({
   translatedGrowthAreasData?: string;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
   domainScore?: number;
-}) {
+}
+
+/**
+ * Single worker domain section
+ *
+ * Applies translation overlay when translatedStrengthsData/translatedGrowthAreasData
+ * are provided. This overlays translated title/description/recommendation on top
+ * of the original English data while preserving evidence quotes in source language.
+ *
+ * Exported for reuse in TabbedReportContainer's individual tabs.
+ */
+export function WorkerDomainSection({
+  config,
+  strengths,
+  growthAreas,
+  translatedStrengthsData,
+  translatedGrowthAreasData,
+  utteranceLookup,
+  domainScore,
+}: WorkerDomainSectionProps) {
   // Apply translations if available
   const displayStrengths = useMemo(
     () => applyTranslatedStrengths(strengths, translatedStrengthsData),
