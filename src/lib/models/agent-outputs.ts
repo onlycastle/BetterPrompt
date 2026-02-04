@@ -39,6 +39,7 @@ import {
 /**
  * Referenced insight from Knowledge Base.
  * Used to provide links to source materials for [pi-XXX] references.
+ * Extended with full insight details for sidebar display.
  */
 export const ReferencedInsightSchema = z.object({
   /** Insight ID (e.g., "pi-001") */
@@ -47,6 +48,14 @@ export const ReferencedInsightSchema = z.object({
   title: z.string(),
   /** Source URL for the insight */
   url: z.string(),
+  /** Main insight text */
+  keyTakeaway: z.string(),
+  /** Actionable tips array */
+  actionableAdvice: z.array(z.string()),
+  /** Insight category: diagnosis | trend | tool | type-specific */
+  category: z.string(),
+  /** Author name from source */
+  sourceAuthor: z.string(),
 });
 export type ReferencedInsight = z.infer<typeof ReferencedInsightSchema>;
 
@@ -243,7 +252,6 @@ export type KnowledgeGapLLMOutput = z.infer<typeof KnowledgeGapLLMOutputSchema>;
 // Legacy String Conversion Helpers (for backward compatibility)
 // ============================================================================
 
-/** Generic converter for array to semicolon-separated string */
 function toSemicolonString<T>(items: T[], formatter: (item: T) => string): string {
   return items.map(formatter).join(';');
 }
@@ -1338,6 +1346,7 @@ export function aggregateWorkerInsights(outputs: AgentOutputs): AggregatedWorker
         strengths,
         growthAreas,
         domainScore: tq.overallThinkingQualityScore,
+        referencedInsights: tq.referencedInsights,
       };
     }
   }
@@ -1353,6 +1362,7 @@ export function aggregateWorkerInsights(outputs: AgentOutputs): AggregatedWorker
         strengths,
         growthAreas,
         domainScore: cp.overallCommunicationScore,
+        referencedInsights: cp.referencedInsights,
       };
     }
   }
@@ -1368,6 +1378,7 @@ export function aggregateWorkerInsights(outputs: AgentOutputs): AggregatedWorker
         strengths,
         growthAreas,
         domainScore: lb.overallLearningScore,
+        referencedInsights: lb.referencedInsights,
       };
     }
   }
@@ -1383,6 +1394,7 @@ export function aggregateWorkerInsights(outputs: AgentOutputs): AggregatedWorker
         strengths,
         growthAreas,
         domainScore: ef.overallEfficiencyScore,
+        referencedInsights: ef.referencedInsights,
       };
     }
   }
@@ -1402,6 +1414,7 @@ export function aggregateWorkerInsights(outputs: AgentOutputs): AggregatedWorker
         strengths,
         growthAreas,
         domainScore: kg.overallKnowledgeScore,
+        referencedInsights: kg.referencedInsights,
       };
     }
   }
@@ -1417,6 +1430,7 @@ export function aggregateWorkerInsights(outputs: AgentOutputs): AggregatedWorker
         strengths,
         growthAreas,
         domainScore: ce.overallEfficiencyScore,
+        referencedInsights: ce.referencedInsights,
       };
     }
   }

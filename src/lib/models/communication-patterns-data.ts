@@ -92,6 +92,7 @@ export type SignatureQuote = z.infer<typeof SignatureQuoteSchema>;
 /**
  * Referenced insight from Knowledge Base.
  * Used to provide links to source materials for [pi-XXX] references.
+ * Extended with full insight details for sidebar display.
  */
 export const ReferencedInsightSchema = z.object({
   /** Insight ID (e.g., "pi-001") */
@@ -100,6 +101,14 @@ export const ReferencedInsightSchema = z.object({
   title: z.string(),
   /** Source URL for the insight */
   url: z.string(),
+  /** Main insight text */
+  keyTakeaway: z.string(),
+  /** Actionable tips array */
+  actionableAdvice: z.array(z.string()),
+  /** Insight category: diagnosis | trend | tool | type-specific */
+  category: z.string(),
+  /** Author name from source */
+  sourceAuthor: z.string(),
 });
 export type ReferencedInsight = z.infer<typeof ReferencedInsightSchema>;
 
