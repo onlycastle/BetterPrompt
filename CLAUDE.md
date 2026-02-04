@@ -74,6 +74,17 @@ npm test               # Run all tests
 
 **Path Encoding**: Claude Code encodes paths by replacing `/` with `-`. See `encodeProjectPath`/`decodeProjectPath` in `src/lib/parser/jsonl-reader.ts`.
 
+> ⚠️ **Worker Aggregation Checklist**: When adding or modifying Phase 2 Workers, ensure `aggregateWorkerInsights()` in `src/lib/models/agent-outputs.ts` handles all workers.
+>
+> **Required Updates**:
+> 1. Worker output schema in `src/lib/models/` (e.g., `communication-patterns-data.ts`)
+> 2. `AgentOutputs` type in `agent-outputs.ts` (add worker output field)
+> 3. `aggregateWorkerInsights()` function (add domain processing block)
+> 4. `AggregatedWorkerInsights` type in `worker-insights.ts` (add domain field)
+> 5. `WORKER_DOMAIN_CONFIGS` in `worker-insights.ts` (add UI config)
+>
+> **Bug History (2026-02-04)**: `CommunicationPatterns` worker was missing from `aggregateWorkerInsights()`, causing Communication tab to not display despite data being generated.
+
 ## No Fallback Policy
 
 > ⚠️ **CRITICAL**: This codebase follows a strict "No Fallback" policy.
