@@ -637,6 +637,66 @@ export const WORKER_DOMAIN_CONFIGS: WorkerDomainConfig[] = [
 ];
 
 // ============================================================================
+// Worker-to-Dimension Mapping (for Phase 2.75 fallback insights)
+// ============================================================================
+
+/**
+ * Maps Worker domain keys to Phase 2.75 dimension names.
+ *
+ * Phase 2.75 KnowledgeResourceMatcher groups resources by DimensionNameEnum
+ * (e.g., 'TrustVerification', 'CommunicationPatterns'), while the frontend
+ * Worker tabs use AggregatedWorkerInsights keys (e.g., 'thinkingQuality').
+ *
+ * This mapping enables retrieving fallback professionalInsights for each Worker tab
+ * when LLM doesn't reference any [pi-XXX] insights.
+ *
+ * Dimension names match DimensionNameEnum in dimension-schema.ts:
+ * - TrustVerification: Verification behavior, critical thinking
+ * - WorkflowHabit: Planning habits, structured approach
+ * - CommunicationPatterns: Communication clarity, prompt patterns
+ * - KnowledgeGap: Learning behavior, knowledge gaps
+ * - ContextEfficiency: Token efficiency, context management
+ */
+export const WORKER_TO_DIMENSIONS: Record<keyof AggregatedWorkerInsights, string[]> = {
+  thinkingQuality: ['TrustVerification', 'WorkflowHabit'],
+  communicationPatterns: ['CommunicationPatterns'],
+  learningBehavior: ['KnowledgeGap'],
+  contextEfficiency: ['ContextEfficiency'],
+  // Legacy worker (kept for backward compatibility)
+  knowledgeGap: ['KnowledgeGap'],
+};
+
+/**
+ * Convert MatchedProfessionalInsight to ReferencedInsight format.
+ *
+ * MatchedProfessionalInsight (from Phase 2.75) has matchScore and priority fields
+ * that ReferencedInsight doesn't need. This helper extracts the common fields
+ * for consistent display in the frontend.
+ *
+ * @param matched - Professional insight from Phase 2.75 matching
+ * @returns ReferencedInsight format for GrowthCard display
+ */
+export function matchedInsightToReferenced(matched: {
+  id: string;
+  title: string;
+  sourceUrl: string;
+  keyTakeaway: string;
+  actionableAdvice: string[];
+  category: string;
+  sourceAuthor: string;
+}): ReferencedInsight {
+  return {
+    id: matched.id,
+    title: matched.title,
+    url: matched.sourceUrl,
+    keyTakeaway: matched.keyTakeaway,
+    actionableAdvice: matched.actionableAdvice,
+    category: matched.category,
+    sourceAuthor: matched.sourceAuthor,
+  };
+}
+
+// ============================================================================
 // Translation Overlay Functions
 // ============================================================================
 

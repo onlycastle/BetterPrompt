@@ -149,14 +149,16 @@ export class TranslatorStage {
       }
     }
 
-    // Extract communicationPatterns from CommunicationPatterns worker for translation
+    // Extract communicationPatterns array from CommunicationPatterns worker for translation.
+    // Use separate key 'communicationPatternsArray' to avoid overwriting the
+    // strengthsData/growthAreasData set by processWorker() above.
     // The translator prompt expects promptPatterns (= communicationPatterns) to be translated:
     // patternName, description, tip → translate to target language
     // examples → keep quotes in original language, translate analysis
     if (agentOutputs.communicationPatterns?.communicationPatterns) {
       const patterns = agentOutputs.communicationPatterns.communicationPatterns;
       if (patterns.length > 0) {
-        prepared['communicationPatterns'] = patterns.map(p => ({
+        prepared['communicationPatternsArray'] = patterns.map(p => ({
           patternName: p.patternName,
           description: p.description,
           examples: p.examples,
