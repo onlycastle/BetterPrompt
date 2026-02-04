@@ -128,11 +128,15 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
  * Calculate preview metadata for frontend display
  */
 function getPreviewMetadata(evaluation: VerboseEvaluation) {
+  const totalPromptPatterns = evaluation.promptPatterns?.length ?? 0;
+  const totalGrowthAreas = evaluation.dimensionInsights?.reduce(
+    (sum, d) => sum + (d.growthAreas?.length ?? 0),
+    0
+  ) ?? 0;
+
   return {
-    totalPromptPatterns: evaluation.promptPatterns?.length || 0,
-    totalGrowthAreas: evaluation.dimensionInsights?.reduce(
-      (sum, d) => sum + (d.growthAreas?.length || 0), 0
-    ) || 0,
+    totalPromptPatterns,
+    totalGrowthAreas,
     previewCount: PREVIEW_CONFIG.FULL_ITEMS,
     hasPartialItem: PREVIEW_CONFIG.PARTIAL_ITEM,
   };
@@ -268,10 +272,7 @@ export async function GET(
         p_user_id: user.id,
         p_result_id: resultId,
       });
-
-      if (hasUnlocked) {
-        isPaid = true;
-      }
+      isPaid = Boolean(hasUnlocked);
     }
 
     // 4. Get user's credit info if authenticated
