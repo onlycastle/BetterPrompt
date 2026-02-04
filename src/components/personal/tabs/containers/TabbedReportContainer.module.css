@@ -108,6 +108,11 @@
   animation: fadeIn 0.2s ease-out;
 }
 
+/* Section within tab panel (for multi-section tabs like Thinking Quality) */
+.tabSection {
+  margin-bottom: var(--space-xl);
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
