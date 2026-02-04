@@ -16,6 +16,7 @@ import type { VerboseEvaluation, PromptPattern, PerDimensionInsight } from '@/li
 import type { AgentOutputs } from '@/lib/models/agent-outputs';
 import { createAgentTeasers } from '@/lib/models/agent-teasers';
 import { aggregateWorkerInsights } from '@/lib/models/agent-outputs';
+import { createContentGateway } from '@/lib/analyzer/content-gateway';
 
 interface RouteContext {
   params: Promise<{ resultId: string }>;
@@ -107,12 +108,15 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
     analysisMetadata: evaluation.analysisMetadata,
 
     // Worker insights - needed for "Your Insights" section
-    // This is FREE content, generated from Phase 2 workers
+    // Filter recommendations for free tier (prescription paid, diagnosis free)
     // Generate from agentOutputs if not stored in DB (backwards compatibility)
-    workerInsights: evaluation.workerInsights
-      ?? (evaluation.agentOutputs
-        ? aggregateWorkerInsights(evaluation.agentOutputs) as VerboseEvaluation['workerInsights']
-        : undefined),
+    workerInsights: createContentGateway().filterWorkerInsights(
+      evaluation.workerInsights
+        ?? (evaluation.agentOutputs
+          ? aggregateWorkerInsights(evaluation.agentOutputs) as VerboseEvaluation['workerInsights']
+          : undefined),
+      'free'
+    ),
 
     // Translated agent insights - needed for non-English users
     // Without this, "Your Insights" section shows in English
@@ -178,26 +182,34 @@ async function createSupabaseServerClient() {
 }
 
 /**
- * Get user from Authorization header (for desktop app)
+ * Get authenticated user from Authorization header or cookies.
+ * Tries Authorization header first (for desktop app), then falls back to cookies (for web).
  */
-async function getUserFromAuthHeader(request: NextRequest): Promise<User | null> {
+async function getAuthenticatedUser(request: NextRequest): Promise<User | null> {
+  // Try Authorization header first (desktop app)
   const authHeader = request.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return null;
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    const { data, error } = await supabase.auth.getUser(token);
+    if (!error && data.user) {
+      return data.user;
+    }
   }
 
-  const token = authHeader.slice(7);
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) {
+  // Fallback to cookies (web app)
+  try {
+    const serverSupabase = await createSupabaseServerClient();
+    const { data } = await serverSupabase.auth.getUser();
+    return data.user;
+  } catch {
+    // Cookie access might fail in some contexts
     return null;
   }
-
-  return data.user;
 }
 
 /**
@@ -245,17 +257,8 @@ export async function GET(
 
     const evaluation = data.evaluation as VerboseEvaluation;
 
-    // 2. Resolve authenticated user (try auth header first, then cookies)
-    let user: User | null = await getUserFromAuthHeader(request);
-    if (!user) {
-      try {
-        const serverSupabase = await createSupabaseServerClient();
-        const { data: authData } = await serverSupabase.auth.getUser();
-        user = authData.user;
-      } catch {
-        // Cookie access might fail in some contexts, continue without user
-      }
-    }
+    // 2. Resolve authenticated user
+    const user = await getAuthenticatedUser(request);
 
     // 3. Check if result is already paid (legacy or via credit unlock)
     let isPaid = data.is_paid;
@@ -330,19 +333,8 @@ export async function DELETE(
       );
     }
 
-    // 1. Authenticate user (try Authorization header first, then cookies)
-    let user: User | null = await getUserFromAuthHeader(request);
-
-    if (!user) {
-      try {
-        const serverSupabase = await createSupabaseServerClient();
-        const { data: authData } = await serverSupabase.auth.getUser();
-        user = authData.user;
-      } catch {
-        // Cookie access might fail
-      }
-    }
-
+    // 1. Authenticate user
+    const user = await getAuthenticatedUser(request);
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized', message: 'You must be logged in to delete reports' },
