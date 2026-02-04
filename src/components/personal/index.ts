@@ -4,6 +4,7 @@
  *
  * REFACTORED: Simplified tab structure
  * - DimensionInsightsClean REMOVED (replaced by WorkerInsightsSection)
+ * - PromptPatternsClean REMOVED (integrated into WorkerInsightsSection via transformer)
  */
 
 export { JourneyHeader } from './JourneyHeader';
@@ -19,7 +20,6 @@ export {
   InsightsTab,
   TypeResultMinimal,
   PersonalitySummaryClean,
-  PromptPatternsClean,
   GrowthAreasSection,
   EmptyStatePrompt,
   WorkerInsightsSection,

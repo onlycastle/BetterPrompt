@@ -1,21 +1,21 @@
 /**
  * TabbedReportContainer Component
  *
- * Organizes the report into 3 tabs based on Phase 2 Workers:
+ * Organizes the report into 4 tabs based on Phase 2 Workers:
  * - Fixed header: TypeResultMinimal + PersonalitySummary (always visible)
- * - Tabs: Thinking Quality | Learning Behavior | Context Efficiency
+ * - Tabs: Thinking Quality | Communication | Learning Behavior | Context Efficiency
  * - Smart "Next Tab" navigation at bottom
  *
  * Each tab displays the corresponding Worker's strengths/growthAreas.
- * Thinking Quality tab includes Communication Patterns (from ContentWriter).
+ * Communication tab displays patterns from CommunicationPatternsWorker.
  */
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { TypeResultMinimal } from '../type-result/TypeResultMinimal';
 import { PersonalitySummaryClean } from '../type-result/PersonalitySummaryClean';
-import { PromptPatternsClean } from '../patterns/PromptPatternsClean';
 import { WorkerDomainSection } from '../insights/WorkerInsightsSection';
 import { NextTabButton } from '../shared/NextTabButton';
+import { PremiumValueSummary } from '../shared/PremiumValueSummary';
 import { ResourceSidebar } from '../resources/ResourceSidebar';
 import { DataQualityBadge } from '../shared/DataQualityBadge';
 import type { VerboseAnalysisData, AnalysisMetadata, DimensionResourceMatch } from '../../../../types/verbose';
@@ -24,8 +24,12 @@ import { aggregateWorkerInsights } from '../../../../lib/models/agent-outputs';
 import {
   WORKER_DOMAIN_CONFIGS,
   type AggregatedWorkerInsights,
+  type WorkerInsightsContainer,
+  type WorkerStrength,
+  type WorkerGrowth,
 } from '../../../../lib/models/worker-insights';
 import type { UtteranceLookupEntry } from '../../../../lib/models/verbose-evaluation';
+import { transformCommunicationPatterns } from '../../../../lib/transformers/prompt-pattern-transformer';
 import styles from './TabbedReportContainer.module.css';
 
 // Valid ParsedResource types for validation
@@ -60,7 +64,7 @@ function convertKnowledgeResourcesToFlat(resources: DimensionResourceMatch[]): P
   return result;
 }
 
-export type ReportTabId = 'thinking' | 'learning' | 'context';
+export type ReportTabId = 'thinking' | 'communication' | 'learning' | 'context';
 
 interface TabConfig {
   id: ReportTabId;
@@ -68,16 +72,27 @@ interface TabConfig {
 }
 
 /**
- * 3-tab structure combining Phase 2 Worker insights + Phase 3 ContentWriter output:
- * - Thinking Quality: Communication Patterns (Phase 3) + ThinkingQualityWorker insights (Phase 2)
- * - Learning Behavior: LearningBehaviorWorker insights (Phase 2)
- * - Context Efficiency: ContextEfficiencyWorker insights (Phase 2)
+ * 4-tab structure based on Phase 2 Workers (v3.1):
+ * - Thinking Quality: ThinkingQualityWorker (Planning + Critical Thinking)
+ * - Communication: CommunicationPatternsWorker (Communication Patterns + Signature Quotes)
+ * - Learning Behavior: LearningBehaviorWorker (Knowledge Gaps + Repeated Mistakes)
+ * - Context Efficiency: ContextEfficiencyWorker (Token Efficiency)
  */
 const REPORT_TABS: TabConfig[] = [
   { id: 'thinking', label: 'Thinking Quality' },
+  { id: 'communication', label: 'Communication' },
   { id: 'learning', label: 'Learning Behavior' },
   { id: 'context', label: 'Context Efficiency' },
 ];
+
+/**
+ * Count locked recommendations in a worker domain.
+ * A recommendation is "locked" when it's empty (filtered by backend ContentGateway).
+ */
+function getLockedCount(domain: WorkerInsightsContainer | undefined): number {
+  if (!domain) return 0;
+  return domain.growthAreas.filter(g => !g.recommendation).length;
+}
 
 interface TabbedReportContainerProps {
   analysis: VerboseAnalysisData;
@@ -128,6 +143,34 @@ export function TabbedReportContainer({
   // Phase 4 Translator produces this when output language != English
   const translatedAgentInsights = analysis.translatedAgentInsights;
 
+  // Transform Communication Patterns (from promptPatterns) into Strengths/Growth Areas format
+  // This is used as a fallback for backward compatibility when CommunicationPatterns worker data
+  // is not available (e.g., cached data from before v3.1)
+  // Classification: highly_effective/effective → Strengths, could_improve → Growth Areas
+  const communicationInsights = useMemo(
+    () => transformCommunicationPatterns(analysis.promptPatterns),
+    [analysis.promptPatterns]
+  );
+
+  // Get CommunicationPatterns worker insights, with fallback to transformed promptPatterns
+  const communicationStrengths = useMemo((): WorkerStrength[] => {
+    // Prefer CommunicationPatterns worker output (v3.1+)
+    if (workerInsights?.communicationPatterns?.strengths?.length) {
+      return workerInsights.communicationPatterns.strengths;
+    }
+    // Fallback to transformed promptPatterns for backward compatibility
+    return communicationInsights.strengths;
+  }, [workerInsights?.communicationPatterns?.strengths, communicationInsights.strengths]);
+
+  const communicationGrowthAreas = useMemo((): WorkerGrowth[] => {
+    // Prefer CommunicationPatterns worker output (v3.1+)
+    if (workerInsights?.communicationPatterns?.growthAreas?.length) {
+      return workerInsights.communicationPatterns.growthAreas;
+    }
+    // Fallback to transformed promptPatterns for backward compatibility
+    return communicationInsights.growthAreas;
+  }, [workerInsights?.communicationPatterns?.growthAreas, communicationInsights.growthAreas]);
+
   // Handle tab change with scroll-to-top
   const handleTabChange = useCallback((tabId: ReportTabId) => {
     setActiveTab(tabId);
@@ -155,8 +198,10 @@ export function TabbedReportContainer({
   };
 
   // Check if we have content for each tab
-  const hasPatterns = analysis.promptPatterns && analysis.promptPatterns.length > 0;
-  const hasThinking = hasPatterns || hasDomainContent('thinkingQuality');
+  const hasThinking = hasDomainContent('thinkingQuality');
+  const hasCommunication =
+    communicationStrengths.length > 0 ||
+    communicationGrowthAreas.length > 0;
   const hasLearning = hasDomainContent('learningBehavior');
   const hasContext = hasDomainContent('contextEfficiency');
 
@@ -166,6 +211,8 @@ export function TabbedReportContainer({
       switch (tab.id) {
         case 'thinking':
           return hasThinking;
+        case 'communication':
+          return hasCommunication;
         case 'learning':
           return hasLearning;
         case 'context':
@@ -174,7 +221,15 @@ export function TabbedReportContainer({
           return false;
       }
     });
-  }, [hasThinking, hasLearning, hasContext]);
+  }, [hasThinking, hasCommunication, hasLearning, hasContext]);
+
+  // Calculate locked recommendation counts for each tab (for premium badge)
+  const lockedCounts = useMemo(() => ({
+    thinking: getLockedCount(workerInsights?.thinkingQuality),
+    communication: getLockedCount(workerInsights?.communicationPatterns),
+    learning: getLockedCount(workerInsights?.learningBehavior),
+    context: getLockedCount(workerInsights?.contextEfficiency),
+  }), [workerInsights]);
 
   // Memoize defaultTab based on availableTabs
   const defaultTab = useMemo(() => {
@@ -191,9 +246,8 @@ export function TabbedReportContainer({
 
   // Calculate next available tab
   const currentAvailableIndex = availableTabs.findIndex(t => t.id === activeTab);
-  const nextAvailableTab = currentAvailableIndex < availableTabs.length - 1
-    ? availableTabs[currentAvailableIndex + 1]
-    : null;
+  const hasNextTab = currentAvailableIndex >= 0 && currentAvailableIndex < availableTabs.length - 1;
+  const nextAvailableTab = hasNextTab ? availableTabs[currentAvailableIndex + 1] : null;
 
   // Handle next tab button click
   const handleNextTab = useCallback(() => {
@@ -234,51 +288,74 @@ export function TabbedReportContainer({
         {/* Tab Navigation */}
         {availableTabs.length > 1 && (
           <div className={styles.tabNav}>
-            {availableTabs.map((tab) => (
-              <button
-                key={tab.id}
-                className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-                onClick={() => handleTabChange(tab.id)}
-                type="button"
-              >
-                {tab.label}
-              </button>
-            ))}
+            {availableTabs.map((tab) => {
+              const lockedCount = lockedCounts[tab.id];
+              return (
+                <button
+                  key={tab.id}
+                  className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
+                  onClick={() => handleTabChange(tab.id)}
+                  type="button"
+                >
+                  {tab.label}
+                  {lockedCount > 0 && (
+                    <span className={styles.lockedBadge}>
+                      🔒{lockedCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
 
         {/* Tab Content - Scrollable */}
         <div ref={contentRef} className={styles.tabContent}>
-          {/* Thinking Quality Tab - Communication Patterns + ThinkingQualityWorker */}
-          {activeTab === 'thinking' && hasThinking && (
+          {/* Thinking Quality Tab - ThinkingQualityWorker (Planning + Critical Thinking) */}
+          {activeTab === 'thinking' && hasThinking && workerInsights?.thinkingQuality && (
             <div className={styles.tabPanel}>
-              {/* Communication Patterns section */}
-              {hasPatterns && (
-                <section className={styles.tabSection}>
-                  <h3 className={styles.sectionTitle}>Communication Patterns</h3>
-                  <PromptPatternsClean patterns={analysis.promptPatterns} />
-                </section>
-              )}
-              {/* ThinkingQuality strengths & growth areas */}
-              {workerInsights?.thinkingQuality && (
-                <WorkerDomainSection
-                  config={WORKER_DOMAIN_CONFIGS[0]}
-                  strengths={workerInsights.thinkingQuality.strengths}
-                  growthAreas={workerInsights.thinkingQuality.growthAreas}
-                  translatedStrengthsData={translatedAgentInsights?.thinkingQuality?.strengthsData}
-                  translatedGrowthAreasData={translatedAgentInsights?.thinkingQuality?.growthAreasData}
-                  utteranceLookup={utteranceLookupMap}
-                  domainScore={workerInsights.thinkingQuality.domainScore}
-                />
-              )}
+              <WorkerDomainSection
+                config={WORKER_DOMAIN_CONFIGS[0]}
+                strengths={workerInsights.thinkingQuality.strengths}
+                growthAreas={workerInsights.thinkingQuality.growthAreas}
+                translatedStrengthsData={translatedAgentInsights?.thinkingQuality?.strengthsData}
+                translatedGrowthAreasData={translatedAgentInsights?.thinkingQuality?.growthAreasData}
+                utteranceLookup={utteranceLookupMap}
+                domainScore={workerInsights.thinkingQuality.domainScore}
+              />
+              {/* Premium Value Summary */}
+              <PremiumValueSummary
+                lockedCount={lockedCounts.thinking}
+                domainName="Thinking Quality"
+              />
             </div>
           )}
 
-          {/* Learning Behavior Tab */}
-          {activeTab === 'learning' && hasLearning && workerInsights?.learningBehavior && (
+          {/* Communication Tab - CommunicationPatternsWorker (Patterns + Signature Quotes) */}
+          {activeTab === 'communication' && hasCommunication && (
             <div className={styles.tabPanel}>
               <WorkerDomainSection
                 config={WORKER_DOMAIN_CONFIGS[1]}
+                strengths={communicationStrengths}
+                growthAreas={communicationGrowthAreas}
+                translatedStrengthsData={translatedAgentInsights?.communicationPatterns?.strengthsData}
+                translatedGrowthAreasData={translatedAgentInsights?.communicationPatterns?.growthAreasData}
+                utteranceLookup={utteranceLookupMap}
+                domainScore={workerInsights?.communicationPatterns?.domainScore}
+              />
+              {/* Premium Value Summary */}
+              <PremiumValueSummary
+                lockedCount={lockedCounts.communication}
+                domainName="Communication"
+              />
+            </div>
+          )}
+
+          {/* Learning Behavior Tab - LearningBehaviorWorker */}
+          {activeTab === 'learning' && hasLearning && workerInsights?.learningBehavior && (
+            <div className={styles.tabPanel}>
+              <WorkerDomainSection
+                config={WORKER_DOMAIN_CONFIGS[2]}
                 strengths={workerInsights.learningBehavior.strengths}
                 growthAreas={workerInsights.learningBehavior.growthAreas}
                 translatedStrengthsData={translatedAgentInsights?.learningBehavior?.strengthsData}
@@ -286,20 +363,30 @@ export function TabbedReportContainer({
                 utteranceLookup={utteranceLookupMap}
                 domainScore={workerInsights.learningBehavior.domainScore}
               />
+              {/* Premium Value Summary */}
+              <PremiumValueSummary
+                lockedCount={lockedCounts.learning}
+                domainName="Learning Behavior"
+              />
             </div>
           )}
 
-          {/* Context Efficiency Tab */}
+          {/* Context Efficiency Tab - ContextEfficiencyWorker */}
           {activeTab === 'context' && hasContext && workerInsights?.contextEfficiency && (
             <div className={styles.tabPanel}>
               <WorkerDomainSection
-                config={WORKER_DOMAIN_CONFIGS[2]}
+                config={WORKER_DOMAIN_CONFIGS[3]}
                 strengths={workerInsights.contextEfficiency.strengths}
                 growthAreas={workerInsights.contextEfficiency.growthAreas}
                 translatedStrengthsData={translatedAgentInsights?.contextEfficiency?.strengthsData}
                 translatedGrowthAreasData={translatedAgentInsights?.contextEfficiency?.growthAreasData}
                 utteranceLookup={utteranceLookupMap}
                 domainScore={workerInsights.contextEfficiency.domainScore}
+              />
+              {/* Premium Value Summary */}
+              <PremiumValueSummary
+                lockedCount={lockedCounts.context}
+                domainName="Context Efficiency"
               />
             </div>
           )}
