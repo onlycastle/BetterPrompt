@@ -33,11 +33,16 @@ export interface InsightForPrompt {
 /**
  * Referenced insight with metadata for output
  * Used in Worker output to provide links to source materials
+ * Extended with full insight details for sidebar display
  */
 export interface ReferencedInsight {
   id: string; // "pi-001"
   title: string; // "Skill Atrophy Self-Diagnosis"
   url: string; // "https://arxiv.org/abs/2601.02410"
+  keyTakeaway: string; // Main insight text
+  actionableAdvice: string[]; // Actionable tips
+  category: string; // "diagnosis" | "trend" | "tool" | "type-specific"
+  sourceAuthor: string; // Author name
 }
 
 /**
@@ -48,6 +53,10 @@ export interface WorkerInsightContext {
   insights: InsightForPrompt[];
   urlLookup: Map<string, string>; // id -> url
   titleLookup: Map<string, string>; // id -> title
+  keyTakeawayLookup: Map<string, string>; // id -> keyTakeaway
+  actionableAdviceLookup: Map<string, string[]>; // id -> actionableAdvice[]
+  categoryLookup: Map<string, string>; // id -> category
+  sourceAuthorLookup: Map<string, string>; // id -> sourceAuthor
 }
 
 /**
@@ -92,11 +101,23 @@ const MAX_INSIGHTS_PER_WORKER = 5;
  * // insights: for 'aiControl' and 'skillResilience' dimensions
  * // urlLookup.get("pi-001") → "https://arxiv.org/..."
  */
+function createEmptyInsightContext(): WorkerInsightContext {
+  return {
+    insights: [],
+    urlLookup: new Map(),
+    titleLookup: new Map(),
+    keyTakeawayLookup: new Map(),
+    actionableAdviceLookup: new Map(),
+    categoryLookup: new Map(),
+    sourceAuthorLookup: new Map(),
+  };
+}
+
 export function getInsightsForWorker(workerName: string): WorkerInsightContext {
   const dimensions = WORKER_DIMENSION_MAP[workerName];
 
   if (!dimensions || dimensions.length === 0) {
-    return { insights: [], urlLookup: new Map(), titleLookup: new Map() };
+    return createEmptyInsightContext();
   }
 
   // Filter insights that apply to any of the worker's dimensions
@@ -125,11 +146,19 @@ export function getInsightsForWorker(workerName: string): WorkerInsightContext {
   // Build lookup maps and insights array
   const urlLookup = new Map<string, string>();
   const titleLookup = new Map<string, string>();
+  const keyTakeawayLookup = new Map<string, string>();
+  const actionableAdviceLookup = new Map<string, string[]>();
+  const categoryLookup = new Map<string, string>();
+  const sourceAuthorLookup = new Map<string, string>();
 
   const insights = sortedInsights.map((insight, index): InsightForPrompt => {
     const id = `pi-${String(index + 1).padStart(3, '0')}`;
     urlLookup.set(id, insight.source.url);
     titleLookup.set(id, insight.title);
+    keyTakeawayLookup.set(id, insight.keyTakeaway);
+    actionableAdviceLookup.set(id, insight.actionableAdvice);
+    categoryLookup.set(id, insight.category);
+    sourceAuthorLookup.set(id, insight.source.author);
 
     return {
       id,
@@ -140,7 +169,15 @@ export function getInsightsForWorker(workerName: string): WorkerInsightContext {
     };
   });
 
-  return { insights, urlLookup, titleLookup };
+  return {
+    insights,
+    urlLookup,
+    titleLookup,
+    keyTakeawayLookup,
+    actionableAdviceLookup,
+    categoryLookup,
+    sourceAuthorLookup,
+  };
 }
 
 /**
@@ -210,7 +247,15 @@ export function resolveKnowledgeBaseReferences(
   resolvedText: string;
   referencedInsights: ReferencedInsight[];
 } {
-  const { insights, urlLookup, titleLookup } = insightContext;
+  const {
+    insights,
+    urlLookup,
+    titleLookup,
+    keyTakeawayLookup,
+    actionableAdviceLookup,
+    categoryLookup,
+    sourceAuthorLookup,
+  } = insightContext;
   const referencedInsights: ReferencedInsight[] = [];
   const seen = new Set<string>();
 
@@ -230,6 +275,10 @@ export function resolveKnowledgeBaseReferences(
         id,
         title: titleLookup.get(id) || insight.title,
         url: urlLookup.get(id) || '',
+        keyTakeaway: keyTakeawayLookup.get(id) || insight.keyTakeaway,
+        actionableAdvice: actionableAdviceLookup.get(id) || insight.actionableAdvice,
+        category: categoryLookup.get(id) || insight.category,
+        sourceAuthor: sourceAuthorLookup.get(id) || '',
       });
     }
 

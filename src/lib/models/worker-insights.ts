@@ -122,6 +122,28 @@ export type WorkerGrowth = z.infer<typeof WorkerGrowthSchema>;
 // ============================================================================
 
 /**
+ * Referenced insight from Knowledge Base (imported for container schema).
+ * Full schema is defined in thinking-quality-data.ts.
+ */
+export const ReferencedInsightSchema = z.object({
+  /** Insight ID (e.g., "pi-001") */
+  id: z.string(),
+  /** Human-readable title (e.g., "Skill Atrophy Self-Diagnosis") */
+  title: z.string(),
+  /** Source URL for the insight */
+  url: z.string(),
+  /** Main insight text */
+  keyTakeaway: z.string(),
+  /** Actionable tips array */
+  actionableAdvice: z.array(z.string()),
+  /** Insight category: diagnosis | trend | tool | type-specific */
+  category: z.string(),
+  /** Author name from source */
+  sourceAuthor: z.string(),
+});
+export type ReferencedInsight = z.infer<typeof ReferencedInsightSchema>;
+
+/**
  * Container for a single Worker's strengths and growth areas.
  *
  * Each Phase 2 Worker outputs this structure alongside its domain-specific data.
@@ -135,6 +157,9 @@ export const WorkerInsightsContainerSchema = z.object({
 
   /** Domain-specific score (0-100) */
   domainScore: z.number().min(0).max(100).optional(),
+
+  /** Referenced insights from Knowledge Base (post-processed from [pi-XXX] references) */
+  referencedInsights: z.array(ReferencedInsightSchema).optional(),
 });
 export type WorkerInsightsContainer = z.infer<typeof WorkerInsightsContainerSchema>;
 
@@ -249,24 +274,23 @@ export type WorkerInsightsLLMOutput = z.infer<typeof WorkerInsightsLLMOutputSche
  */
 export function parseEvidenceItem(evidenceStr: string): InsightEvidence | null {
   const trimmed = evidenceStr.trim().replace(/^['"]|['"]$/g, '');
-  if (!trimmed) return null;
+  if (!trimmed) {
+    return null;
+  }
 
-  // Check for structured format: utteranceId:quote[:context]
-  // utteranceId pattern: sessionId_turnIndex (e.g., "abc123_5")
   const colonIndex = trimmed.indexOf(':');
   if (colonIndex <= 0) {
-    // No colon found - missing utteranceId
     if (trimmed.length > 0) {
       console.warn(`[parseEvidenceItem] No utteranceId found (missing colon): "${trimmed.slice(0, 50)}..."`);
     }
     return null;
   }
 
-  const potentialUtteranceId = trimmed.slice(0, colonIndex);
+  const utteranceId = trimmed.slice(0, colonIndex);
 
-  // Valid utteranceId contains underscore and ends with a number
-  if (!/_\d+$/.test(potentialUtteranceId)) {
-    console.warn(`[parseEvidenceItem] Invalid utteranceId format: "${potentialUtteranceId}" (must match sessionId_turnIndex pattern)`);
+  // Validate utteranceId format: must end with _<number>
+  if (!/_\d+$/.test(utteranceId)) {
+    console.warn(`[parseEvidenceItem] Invalid utteranceId format: "${utteranceId}" (must match sessionId_turnIndex pattern)`);
     return null;
   }
 
@@ -274,19 +298,17 @@ export function parseEvidenceItem(evidenceStr: string): InsightEvidence | null {
   const secondColonIndex = remainder.indexOf(':');
 
   if (secondColonIndex > 0) {
-    // Has context: utteranceId:quote:context
     return {
-      utteranceId: potentialUtteranceId,
+      utteranceId,
       quote: remainder.slice(0, secondColonIndex).trim(),
       context: remainder.slice(secondColonIndex + 1).trim() || undefined,
     };
-  } else {
-    // No context: utteranceId:quote
-    return {
-      utteranceId: potentialUtteranceId,
-      quote: remainder.trim(),
-    };
   }
+
+  return {
+    utteranceId,
+    quote: remainder.trim(),
+  };
 }
 
 /**

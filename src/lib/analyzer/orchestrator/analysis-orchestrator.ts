@@ -1,17 +1,19 @@
 /**
  * Analysis Orchestrator - Main orchestrator for the analysis pipeline
  *
- * Coordinates 4 phases of analysis (5-6 LLM calls total):
+ * Coordinates 4 phases of analysis (7-8 LLM calls total):
  * - Phase 1: DataExtractor (deterministic, no LLM)
- * - Phase 2: 3 insight workers in parallel (3 LLM calls)
- *            ThinkingQuality, LearningBehavior, ContextEfficiency
+ * - Phase 2: 4 insight workers in parallel (4 LLM calls)
+ *            ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency
  *            Each worker outputs domain-specific strengths/growthAreas
  * - Phase 2.5: TypeClassifier only (1 LLM call)
+ * - Phase 2.8: EvidenceVerifier (1 LLM call)
  * - Phase 3: ContentWriter (1 LLM call, always English)
  * - Phase 4: Translator (0-1 LLM call, conditional — only for non-English users)
  *
  * v3 Architecture (2026-02):
- * - ThinkingQuality: Planning + Critical Thinking + Communication (consolidated)
+ * - ThinkingQuality: Planning + Critical Thinking (consolidated)
+ * - CommunicationPatterns: Prompt patterns analysis (separate worker)
  * - LearningBehavior: Knowledge Gaps + Repeated Mistakes (redesigned)
  * - ContextEfficiency: Token efficiency patterns (retained)
  *
@@ -215,11 +217,11 @@ export class AnalysisOrchestrator {
     const stageUsages: StageTokenUsage[] = [];
     this.debugOutputs = [];
 
-    // Progress tracking: 9 LLM stages total (5 Phase2 + 1 Phase2.5 + 1 Phase2.8 + Phase3 + Phase4)
-    // Note: StrengthGrowth removed - workers output insights directly
-    // Phase 2.8 added - Evidence Verifier validates evidence relevance
-    // CommunicationPatterns added to Phase 2 (moved from Phase 3 ContentWriter)
-    const TOTAL_LLM_STAGES = 9;
+    // Progress tracking: 8 LLM stages total (4 Phase2 + 1 Phase2.5 + 1 Phase2.8 + 1 Phase3 + 1 Phase4)
+    // Phase 2: ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency (4 workers)
+    // Phase 2.8: Evidence Verifier validates evidence relevance
+    // Phase 4: Translator is conditional (only for non-English users)
+    const TOTAL_LLM_STAGES = 8;
     const PROGRESS_START = 40;
     const PROGRESS_RANGE = 49; // 40% → 89%
     const STEP = Math.floor(PROGRESS_RANGE / TOTAL_LLM_STAGES); // 6 points per stage
@@ -726,6 +728,7 @@ export class AnalysisOrchestrator {
     return {
       // v3 workers
       thinkingQuality: results['ThinkingQuality']?.data as AgentOutputs['thinkingQuality'],
+      communicationPatterns: results['CommunicationPatterns']?.data as AgentOutputs['communicationPatterns'],
       learningBehavior: results['LearningBehavior']?.data as AgentOutputs['learningBehavior'],
       efficiency: results['ContextEfficiency']?.data as AgentOutputs['efficiency'],
       // Legacy workers (kept for cached data)
@@ -766,6 +769,11 @@ export class AnalysisOrchestrator {
       agentOutputs.thinkingQuality.growthAreas = verifiedInsights.thinkingQuality.growthAreas;
     }
 
+    if (agentOutputs.communicationPatterns && verifiedInsights.communicationPatterns) {
+      agentOutputs.communicationPatterns.strengths = verifiedInsights.communicationPatterns.strengths;
+      agentOutputs.communicationPatterns.growthAreas = verifiedInsights.communicationPatterns.growthAreas;
+    }
+
     if (agentOutputs.learningBehavior && verifiedInsights.learningBehavior) {
       agentOutputs.learningBehavior.strengths = verifiedInsights.learningBehavior.strengths;
       agentOutputs.learningBehavior.growthAreas = verifiedInsights.learningBehavior.growthAreas;
@@ -785,15 +793,20 @@ export class AnalysisOrchestrator {
   }
 
   private logLanguageDetection(result: LanguageDetectionResult): void {
-    if (!this.config.verbose) return;
+    if (!this.config.verbose) {
+      return;
+    }
 
     const { charCounts } = result;
-    const total = charCounts.total || 1; // avoid division by zero
+    const total = charCounts.total || 1;
     const englishOther = total - charCounts.korean - charCounts.japanese - charCounts.chinese;
+    const languageName = LANGUAGE_DISPLAY_NAMES[result.primary] || result.primary;
+    const confidencePercent = (result.confidence * 100).toFixed(0);
+    const willTranslate = result.primary !== 'en' ? 'Phase 4 Translator will run' : 'Skipped (English)';
 
     console.log('\n=== Language Detection ===');
-    console.log(`Detected Language: ${LANGUAGE_DISPLAY_NAMES[result.primary] || result.primary} (${result.primary})`);
-    console.log(`Confidence: ${result.confidence.toFixed(2)} (${(result.confidence * 100).toFixed(0)}%)`);
+    console.log(`Detected Language: ${languageName} (${result.primary})`);
+    console.log(`Confidence: ${result.confidence.toFixed(2)} (${confidencePercent}%)`);
     console.log('Threshold: 5%');
     console.log('Character Breakdown:');
     console.log(`  Korean (Hangul):  ${charCounts.korean} chars (${((charCounts.korean / total) * 100).toFixed(1)}%)`);
@@ -801,7 +814,7 @@ export class AnalysisOrchestrator {
     console.log(`  Chinese (CJK):    ${charCounts.chinese} chars (${((charCounts.chinese / total) * 100).toFixed(1)}%)`);
     console.log(`  English/Other:    ${englishOther} chars (${((englishOther / total) * 100).toFixed(1)}%)`);
     console.log(`Total Meaningful:   ${total} chars`);
-    console.log(`Translation: ${result.primary !== 'en' ? 'Phase 4 Translator will run' : 'Skipped (English)'}`);
+    console.log(`Translation: ${willTranslate}`);
     console.log('===========================\n');
   }
 
