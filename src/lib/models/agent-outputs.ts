@@ -1342,6 +1342,21 @@ export function aggregateWorkerInsights(outputs: AgentOutputs): AggregatedWorker
     }
   }
 
+  // CommunicationPatterns domain
+  if (outputs.communicationPatterns) {
+    const cp = outputs.communicationPatterns;
+    const strengths = cp.strengths ?? [];
+    const growthAreas = cp.growthAreas ?? [];
+
+    if (strengths.length > 0 || growthAreas.length > 0) {
+      result.communicationPatterns = {
+        strengths,
+        growthAreas,
+        domainScore: cp.overallCommunicationScore,
+      };
+    }
+  }
+
   // LearningBehavior domain
   if (outputs.learningBehavior) {
     const lb = outputs.learningBehavior;
