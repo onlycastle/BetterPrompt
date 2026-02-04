@@ -523,6 +523,7 @@ export function WorkerDomainSection({
 const DOMAIN_TO_TRANSLATION_KEY: Partial<Record<keyof AggregatedWorkerInsights, keyof TranslatedAgentInsights>> = {
   // v3 workers (2026-02)
   thinkingQuality: 'thinkingQuality',
+  communicationPatterns: 'communicationPatterns',
   learningBehavior: 'learningBehavior',
   contextEfficiency: 'contextEfficiency',
   // Legacy workers (kept for cached data)

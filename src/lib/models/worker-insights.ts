@@ -778,7 +778,12 @@ export function applyTranslatedGrowthAreas(
       ...growth,
       title: translatedTitle || growth.title,
       description: translatedDescription || growth.description,
-      recommendation: translatedRecommendation || growth.recommendation,
+      // CRITICAL: Preserve locked state (empty recommendation) for free tier
+      // If original recommendation is empty (''), keep it empty even if translation exists
+      // This prevents premium content from leaking through the translation overlay
+      recommendation: growth.recommendation
+        ? (translatedRecommendation || growth.recommendation)
+        : growth.recommendation,
       // evidence, severity, frequency stay as original
     };
   });

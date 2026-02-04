@@ -18,6 +18,8 @@ import { NextTabButton } from '../shared/NextTabButton';
 import { PremiumValueSummary } from '../shared/PremiumValueSummary';
 import { ResourceSidebar } from '../resources/ResourceSidebar';
 import { DataQualityBadge } from '../shared/DataQualityBadge';
+import { InsightPreviewCard } from '../insights/InsightPreviewCard';
+import { ProfessionalInsightSidebar } from '../insights/ProfessionalInsightSidebar';
 import type { VerboseAnalysisData, AnalysisMetadata, DimensionResourceMatch } from '../../../../types/verbose';
 import type { AgentOutputs, ParsedResource } from '../../../../lib/models/agent-outputs';
 import { aggregateWorkerInsights } from '../../../../lib/models/agent-outputs';
@@ -127,6 +129,19 @@ export function TabbedReportContainer({
 }: TabbedReportContainerProps) {
   const [activeTab, setActiveTab] = useState<ReportTabId>('thinking');
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Professional Insight state (lifted from WorkerDomainSection for inline sidebar display)
+  const [selectedInsight, setSelectedInsight] = useState<ReferencedInsight | null>(null);
+
+  // Detect mobile breakpoint for fallback to full-screen overlay
+  // Initialize as null to avoid SSR hydration mismatch (server renders null, client updates after mount)
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 900);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Get matched resources from Knowledge Base (Phase 2.75 deterministic matching)
   // These are validated URLs from our curated database, NOT LLM-generated URLs
@@ -309,6 +324,29 @@ export function TabbedReportContainer({
     return deduplicateInsights(allGrowthWithCandidates);
   }, [workerInsights, professionalInsightsByDomain, communicationGrowthAreas]);
 
+  // Debug logging: Track data flow for Professional Insights (dev only)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[TabbedReportContainer] Professional Insights Data Check:', {
+        hasKnowledgeResources: !!analysis.knowledgeResources,
+        knowledgeResourcesLength: analysis.knowledgeResources?.length ?? 0,
+        hasWorkerInsights: !!workerInsights,
+        thinkingQualityRefs: workerInsights?.thinkingQuality?.referencedInsights?.length ?? 0,
+        communicationPatternsRefs: workerInsights?.communicationPatterns?.referencedInsights?.length ?? 0,
+        learningBehaviorRefs: workerInsights?.learningBehavior?.referencedInsights?.length ?? 0,
+        contextEfficiencyRefs: workerInsights?.contextEfficiency?.referencedInsights?.length ?? 0,
+        allResourcesLength: allResources.length,
+        insightAllocationSize: insightAllocation.size,
+        professionalInsightsByDomainKeys: Array.from(professionalInsightsByDomain.keys()),
+      });
+
+      // Log detailed insight allocation for debugging
+      if (insightAllocation.size > 0) {
+        console.log('[TabbedReportContainer] insightAllocation entries:', Object.fromEntries(insightAllocation));
+      }
+    }
+  }, [analysis.knowledgeResources, workerInsights, allResources.length, insightAllocation, professionalInsightsByDomain]);
+
   // Helper to check if a domain has content
   const hasDomainContent = (key: keyof AggregatedWorkerInsights): boolean => {
     const domain = workerInsights?.[key];
@@ -373,6 +411,16 @@ export function TabbedReportContainer({
       handleTabChange(nextAvailableTab.id);
     }
   }, [nextAvailableTab, handleTabChange]);
+
+  // Handle insight click - open insight in sidebar (or overlay on mobile)
+  const handleInsightClick = useCallback((insight: ReferencedInsight) => {
+    setSelectedInsight(insight);
+  }, []);
+
+  // Handle close insight
+  const handleCloseInsight = useCallback(() => {
+    setSelectedInsight(null);
+  }, []);
 
   return (
     <div className={styles.pageLayout}>
@@ -442,6 +490,7 @@ export function TabbedReportContainer({
                 domainScore={workerInsights.thinkingQuality.domainScore}
                 insightAllocation={insightAllocation}
                 domainKey="thinkingQuality"
+                onInsightClick={handleInsightClick}
               />
               {/* Premium Value Summary */}
               <PremiumValueSummary
@@ -464,6 +513,7 @@ export function TabbedReportContainer({
                 domainScore={workerInsights?.communicationPatterns?.domainScore}
                 insightAllocation={insightAllocation}
                 domainKey="communicationPatterns"
+                onInsightClick={handleInsightClick}
               />
               {/* Premium Value Summary */}
               <PremiumValueSummary
@@ -486,6 +536,7 @@ export function TabbedReportContainer({
                 domainScore={workerInsights.learningBehavior.domainScore}
                 insightAllocation={insightAllocation}
                 domainKey="learningBehavior"
+                onInsightClick={handleInsightClick}
               />
               {/* Premium Value Summary */}
               <PremiumValueSummary
@@ -508,6 +559,7 @@ export function TabbedReportContainer({
                 domainScore={workerInsights.contextEfficiency.domainScore}
                 insightAllocation={insightAllocation}
                 domainKey="contextEfficiency"
+                onInsightClick={handleInsightClick}
               />
               {/* Premium Value Summary */}
               <PremiumValueSummary
@@ -528,11 +580,30 @@ export function TabbedReportContainer({
         </div>
       </div>
 
-      {/* Resource Sidebar - Right column (resources pre-filtered by backend) */}
-      {allResources.length > 0 && (
+      {/* Context Sidebar - Right column (insight preview + resources) */}
+      {(allResources.length > 0 || selectedInsight) && (
         <aside className={styles.sidebar}>
-          <ResourceSidebar resources={allResources} />
+          {/* Inline Insight Preview Card (desktop only, also SSR fallback when isMobile is null) */}
+          {selectedInsight && isMobile !== true && (
+            <InsightPreviewCard
+              insight={selectedInsight}
+              onClose={handleCloseInsight}
+            />
+          )}
+          {/* Resource Sidebar (resources pre-filtered by backend) */}
+          {allResources.length > 0 && (
+            <ResourceSidebar resources={allResources} />
+          )}
         </aside>
+      )}
+
+      {/* Full-screen overlay for mobile (only when explicitly detected as mobile) */}
+      {isMobile === true && (
+        <ProfessionalInsightSidebar
+          insight={selectedInsight}
+          isOpen={!!selectedInsight}
+          onClose={handleCloseInsight}
+        />
       )}
     </div>
   );
