@@ -26,6 +26,13 @@ interface PremiumValueSummaryProps {
 export function PremiumValueSummary({ lockedCount, domainName }: PremiumValueSummaryProps) {
   if (lockedCount === 0) return null;
 
+  const handleUnlockClick = () => {
+    const unlockSection = document.getElementById('unlock-section');
+    if (unlockSection) {
+      unlockSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   // Average 5 action steps per recommendation
   const totalSteps = lockedCount * 5;
 
@@ -60,7 +67,11 @@ export function PremiumValueSummary({ lockedCount, domainName }: PremiumValueSum
       </div>
 
       {/* CTA Button */}
-      <button className={styles.ctaButton} type="button">
+      <button
+        className={styles.ctaButton}
+        type="button"
+        onClick={handleUnlockClick}
+      >
         Unlock All Recommendations - $4.99
       </button>
     </div>

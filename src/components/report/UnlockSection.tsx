@@ -129,7 +129,7 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: 
   }
 
   return (
-    <div className={styles.unlockSection}>
+    <div id="unlock-section" className={styles.unlockSection}>
       <div className={styles.lockedContent}>
           {/* Header */}
           <div className={styles.lockIcon}>
