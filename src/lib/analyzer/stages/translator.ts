@@ -140,100 +140,97 @@ export class TranslatorStage {
   private prepareAgentOutputsForTranslator(agentOutputs: AgentOutputs): Record<string, unknown> {
     const prepared: Record<string, unknown> = {};
 
-    // v3 Workers (primary - 3 consolidated workers)
-    // Note: These are the only workers defined in AgentOutputs type
+    // Process v3 workers (thinkingQuality, learningBehavior)
     const v3WorkerKeys = ['thinkingQuality', 'learningBehavior'] as const;
-
-    // Process v3 workers that have structured arrays
     for (const key of v3WorkerKeys) {
-      const agent = agentOutputs[key];
-      if (agent) {
-        const agentRecord = agent as Record<string, unknown>;
+      const worker = agentOutputs[key];
+      if (worker) {
+        this.processWorker(prepared, key, worker);
+      }
+    }
 
-        // v3 workers output strengths/growthAreas as structured arrays
-        let strengthsData = agentRecord.strengthsData as string | undefined;
-        if (!strengthsData || strengthsData.trim() === '') {
-          const strengths = agentRecord.strengths as WorkerStrength[] | undefined;
-          if (strengths && strengths.length > 0) {
-            strengthsData = this.flattenWorkerStrengths(strengths);
-          }
-        }
-
-        let growthAreasData = agentRecord.growthAreasData as string | undefined;
-        if (!growthAreasData || growthAreasData.trim() === '') {
-          const growthAreas = agentRecord.growthAreas as WorkerGrowth[] | undefined;
-          if (growthAreas && growthAreas.length > 0) {
-            growthAreasData = this.flattenWorkerGrowthAreas(growthAreas);
-          }
-        }
-
-        if ((strengthsData && strengthsData.trim() !== '') || (growthAreasData && growthAreasData.trim() !== '')) {
-          prepared[key] = {
-            strengthsData: strengthsData ?? '',
-            growthAreasData: growthAreasData ?? '',
-          };
-        }
+    // Extract communicationPatterns from thinkingQuality for translation
+    // The translator prompt expects promptPatterns (= communicationPatterns) to be translated:
+    // patternName, description, tip → translate to target language
+    // examples → keep quotes in original language, translate analysis
+    if (agentOutputs.thinkingQuality?.communicationPatterns) {
+      const patterns = agentOutputs.thinkingQuality.communicationPatterns;
+      if (patterns.length > 0) {
+        prepared['communicationPatterns'] = patterns.map(p => ({
+          patternName: p.patternName,
+          description: p.description,
+          examples: p.examples,
+          tip: p.tip,
+        }));
       }
     }
 
     // Process contextEfficiency (may be in agentOutputs.contextEfficiency or agentOutputs.efficiency)
     const contextEfficiency = agentOutputs.contextEfficiency ?? agentOutputs.efficiency;
     if (contextEfficiency) {
-      const ceRecord = contextEfficiency as Record<string, unknown>;
-
-      let strengthsData = ceRecord.strengthsData as string | undefined;
-      if (!strengthsData || strengthsData.trim() === '') {
-        const strengths = ceRecord.strengths as WorkerStrength[] | undefined;
-        if (strengths && strengths.length > 0) {
-          strengthsData = this.flattenWorkerStrengths(strengths);
-        }
-      }
-
-      let growthAreasData = ceRecord.growthAreasData as string | undefined;
-      if (!growthAreasData || growthAreasData.trim() === '') {
-        const growthAreas = ceRecord.growthAreas as WorkerGrowth[] | undefined;
-        if (growthAreas && growthAreas.length > 0) {
-          growthAreasData = this.flattenWorkerGrowthAreas(growthAreas);
-        }
-      }
-
-      if ((strengthsData && strengthsData.trim() !== '') || (growthAreasData && growthAreasData.trim() !== '')) {
-        prepared['contextEfficiency'] = {
-          strengthsData: strengthsData ?? '',
-          growthAreasData: growthAreasData ?? '',
-        };
-      }
+      this.processWorker(prepared, 'contextEfficiency', contextEfficiency);
     }
 
     // Process knowledgeGap (legacy but still in AgentOutputs type)
     if (agentOutputs.knowledgeGap) {
-      const kgRecord = agentOutputs.knowledgeGap as Record<string, unknown>;
-
-      let strengthsData = kgRecord.strengthsData as string | undefined;
-      if (!strengthsData || strengthsData.trim() === '') {
-        const strengths = kgRecord.strengths as WorkerStrength[] | undefined;
-        if (strengths && strengths.length > 0) {
-          strengthsData = this.flattenWorkerStrengths(strengths);
-        }
-      }
-
-      let growthAreasData = kgRecord.growthAreasData as string | undefined;
-      if (!growthAreasData || growthAreasData.trim() === '') {
-        const growthAreas = kgRecord.growthAreas as WorkerGrowth[] | undefined;
-        if (growthAreas && growthAreas.length > 0) {
-          growthAreasData = this.flattenWorkerGrowthAreas(growthAreas);
-        }
-      }
-
-      if ((strengthsData && strengthsData.trim() !== '') || (growthAreasData && growthAreasData.trim() !== '')) {
-        prepared['knowledgeGap'] = {
-          strengthsData: strengthsData ?? '',
-          growthAreasData: growthAreasData ?? '',
-        };
-      }
+      this.processWorker(prepared, 'knowledgeGap', agentOutputs.knowledgeGap);
     }
 
     return prepared;
+  }
+
+  /**
+   * Process a single worker output, normalizing to pipe-delimited string format.
+   * Handles both string and array formats for strengths/growthAreas.
+   */
+  private processWorker(
+    prepared: Record<string, unknown>,
+    key: string,
+    worker: Record<string, unknown>
+  ): void {
+    const strengthsData = this.extractOrFlattenStrengths(worker);
+    const growthAreasData = this.extractOrFlattenGrowthAreas(worker);
+
+    if (strengthsData || growthAreasData) {
+      prepared[key] = {
+        strengthsData: strengthsData ?? '',
+        growthAreasData: growthAreasData ?? '',
+      };
+    }
+  }
+
+  /**
+   * Extract strengthsData string or flatten strengths array to pipe-delimited string.
+   */
+  private extractOrFlattenStrengths(worker: Record<string, unknown>): string | undefined {
+    const strengthsData = worker.strengthsData as string | undefined;
+    if (strengthsData && strengthsData.trim() !== '') {
+      return strengthsData;
+    }
+
+    const strengths = worker.strengths as WorkerStrength[] | undefined;
+    if (strengths && strengths.length > 0) {
+      return this.flattenWorkerStrengths(strengths);
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Extract growthAreasData string or flatten growthAreas array to pipe-delimited string.
+   */
+  private extractOrFlattenGrowthAreas(worker: Record<string, unknown>): string | undefined {
+    const growthAreasData = worker.growthAreasData as string | undefined;
+    if (growthAreasData && growthAreasData.trim() !== '') {
+      return growthAreasData;
+    }
+
+    const growthAreas = worker.growthAreas as WorkerGrowth[] | undefined;
+    if (growthAreas && growthAreas.length > 0) {
+      return this.flattenWorkerGrowthAreas(growthAreas);
+    }
+
+    return undefined;
   }
 
   /**
