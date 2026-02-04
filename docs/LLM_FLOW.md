@@ -1,7 +1,7 @@
 # Orchestrator + Workers Analysis Pipeline
 
 > Pipeline that analyzes developer-AI collaboration sessions and generates personalized reports
-> Version: 2.1.0 | Last Updated: 2026-02-01
+> Version: 2.3.0 | Last Updated: 2026-02-04
 
 ## Overview
 
@@ -60,7 +60,7 @@
 │   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
 │   ║  │ │ ContentWriter                                                    │   │   ║   │
 │   ║  │ │ Output: NarrativeLLMResponse (personalitySummary,               │   │   ║   │
-│   ║  │ │         promptPatterns, topFocusAreas — narrative only)          │   │   ║   │
+│   ║  │ │         topFocusAreas — narrative only)                          │   │   ║   │
 │   ║  │ └─────────────────────────────────────────────────────────────────┘   │   ║   │
 │   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
 │   ║                              │                                                ║   │
@@ -349,7 +349,7 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 
 ### Phase 3: Content Writer (Narrative Only)
 
-**Purpose**: Generate narrative-only content (personalitySummary, promptPatterns, topFocusAreas) from Phase 2 analysis
+**Purpose**: Generate narrative-only content (personalitySummary, topFocusAreas) from Phase 2 analysis
 
 > Phase 3 now generates ONLY narrative content. All structural/quantitative data
 > (dimensionInsights, type classification, antiPatterns, criticalThinking, planning,
@@ -375,8 +375,10 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 │  │  NARRATIVE SCOPE (Phase 3 generates ONLY these)                  │    │
 │  │                                                                   │    │
 │  │  personalitySummary ─────▶ Hyper-personalized summary (≤3000ch) │    │
-│  │  promptPatterns[] ───────▶ 5-12 detected prompt patterns         │    │
 │  │  topFocusAreas ──────────▶ Top 3 personalized priorities         │    │
+│  │                                                                   │    │
+│  │  NOTE: promptPatterns moved to Phase 2 ThinkingQuality worker   │    │
+│  │  (communicationPatterns field) — Phase 3 only used as fallback  │    │
 │  │                                                                   │    │
 │  │  MOVED TO EvaluationAssembler (deterministic, no LLM):           │    │
 │  │  ✗ dimensionInsights[] ── from LearningBehavior                  │    │
@@ -464,11 +466,10 @@ NarrativeLLMResponse                                VerboseEvaluation (narrative
 ┌────────────────────────┐     direct copy          personalitySummary
 │ personalitySummary     │─────────────────────────▶(≤3000 chars, personalized)
 │                        │
-│ promptPatterns[]       │─────────────────────────▶promptPatterns[]
-│   (5-12 patterns)     │                          (with parsed examples)
-│                        │
 │ topFocusAreas          │─────────────────────────▶topFocusAreas
 │   (top 3 priorities)  │                          (with parsed actions)
+│                        │
+│ promptPatterns[]       │ (FALLBACK ONLY - Phase 2 communicationPatterns preferred)
 └────────────────────────┘
 
 
@@ -739,8 +740,8 @@ Now, translations are applied AFTER assembly:
 | Source (Phase 3 Narrative) | Target (VerboseEvaluation) | Transformation |
 |---------------------------|---------------------------|----------------|
 | `personalitySummary` | `personalitySummary` | Truncate to ≤3000 chars |
-| `promptPatterns[]` | `promptPatterns[]` | Parse `examplesData`, enforce minimum 3 patterns |
 | `topFocusAreas` | `topFocusAreas` | Parse `actionsData` → nested `{start, stop, continue}` |
+| `promptPatterns[]` | `promptPatterns[]` | **FALLBACK ONLY** - Phase 2 `communicationPatterns` preferred |
 
 ---
 
@@ -810,6 +811,106 @@ Now, translations are applied AFTER assembly:
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 3-Tab UI Data Flow
+
+The report UI organizes insights into 3 tabs, each powered by a Phase 2 Worker:
+
+### Tab Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          FIXED HEADER (Always Visible)                          │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  TypeResultMinimal          ← Phase 2.5 TypeClassifier           ✅ FREE       │
+│  PersonalitySummary         ← Phase 3 ContentWriter              ✅ FREE       │
+│  DataQualityBadge           ← Phase 1 DataExtractor              ✅ FREE       │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  [Tab 1: Thinking Quality]  [Tab 2: Learning Behavior]  [Tab 3: Context Eff.]  │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  TAB 1: Thinking Quality                                                        │
+│  ├── ThinkingQualityWorker.strengths[]         ← Phase 2      ✅ FREE          │
+│  ├── ThinkingQualityWorker.growthAreas[]       ← Phase 2                        │
+│  │   ├── title, description, evidence, severity               ✅ FREE          │
+│  │   └── recommendation                                        🔒 PAID          │
+│  └── ThinkingQualityWorker.communicationPatterns[]                              │
+│      → transformed via promptPatterns → Strengths/GrowthAreas  ✅ FREE*        │
+│                                                                                 │
+│  TAB 2: Learning Behavior                                                       │
+│  ├── LearningBehaviorWorker.strengths[]        ← Phase 2      ✅ FREE          │
+│  └── LearningBehaviorWorker.growthAreas[]      ← Phase 2                        │
+│      ├── title, description, evidence, severity               ✅ FREE          │
+│      └── recommendation                                        🔒 PAID          │
+│                                                                                 │
+│  TAB 3: Context Efficiency                                                      │
+│  ├── ContextEfficiencyWorker.strengths[]       ← Phase 2      ✅ FREE          │
+│  └── ContextEfficiencyWorker.growthAreas[]     ← Phase 2                        │
+│      ├── title, description, evidence, severity               ✅ FREE          │
+│      └── recommendation                                        🔒 PAID          │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  SIDEBAR: ResourceSidebar                                                       │
+│  └── knowledgeResources[]  ← Phase 2.75 KnowledgeResourceMatcher               │
+│      ├── FREE:  1 item per dimension                                           │
+│      └── PAID:  All items                                                       │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+* Communication Pattern tips are NOT filtered by ContentGateway (always free)
+
+### Communication Patterns Transformation
+
+```
+ThinkingQualityWorker.communicationPatterns[]
+                ↓
+        evaluation-assembler.ts (line 135-136)
+                ↓
+        result.promptPatterns[]
+                ↓
+        TabbedReportContainer.tsx
+                ↓
+        transformCommunicationPatterns()
+                ↓
+┌───────────────────────────────────────────────────────┐
+│  effectiveness: highly_effective | effective         │
+│  → CommunicationStrength (merged with Tab 1 Strengths)│
+├───────────────────────────────────────────────────────┤
+│  effectiveness: could_improve                         │
+│  → CommunicationGrowth (merged with Tab 1 GrowthAreas)│
+└───────────────────────────────────────────────────────┘
+```
+
+### Tier Policy Summary
+
+| Content | FREE | PAID |
+|---------|------|------|
+| Type Result | ✅ | ✅ |
+| Personality Summary | ✅ | ✅ |
+| Domain Scores | ✅ | ✅ |
+| Strengths (all) | ✅ | ✅ |
+| Growth Area Diagnosis (title, description, evidence) | ✅ | ✅ |
+| Growth Area Recommendation | ❌ | ✅ |
+| Knowledge Resources (1 per dimension) | ✅ | ✅ |
+| Knowledge Resources (all) | ❌ | ✅ |
+| Utterance Lookup (View Original) | ❌ | ✅ |
+
+Philosophy: **"Diagnosis Free, Prescription Paid"**
+
+### Key Files
+
+| Component | File |
+|-----------|------|
+| Tab Container | `src/components/personal/tabs/containers/TabbedReportContainer.tsx` |
+| Worker Section | `src/components/personal/tabs/insights/WorkerInsightsSection.tsx` |
+| Pattern Transformer | `src/lib/transformers/prompt-pattern-transformer.ts` |
+| Tier Policy | `src/lib/analyzer/content-gateway.ts` (TIER_POLICY) |
 
 ---
 
@@ -979,8 +1080,9 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
   ║           + knowledgeResources (optional)                         ║
   ║   OUTPUT: NarrativeLLMResponse (narrative only)                   ║
   ║           - personalitySummary (≤3000 chars)                      ║
-  ║           - promptPatterns[] (5-12 patterns)                      ║
   ║           - topFocusAreas (top 3 priorities, optional)            ║
+  ║   NOTE: promptPatterns from Phase 2 ThinkingQuality.              ║
+  ║         communicationPatterns (Phase 3 is fallback only)          ║
   ║                                                                    ║
   ║   LANGUAGE: Always generates in English                           ║
   ║             Translation is Phase 4 (Translator)                   ║

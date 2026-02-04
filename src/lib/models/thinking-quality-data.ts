@@ -1,17 +1,17 @@
 /**
- * Thinking Quality Data Schema - Phase 2 Unified Worker Output
+ * Thinking Quality Data Schema - Phase 2 Worker Output
  *
  * ThinkingQualityAnalyzer combines:
  * - WorkflowHabit: Planning habits, critical thinking moments, multitasking patterns
  * - TrustVerification (verification-related): Verification behavior, verification anti-patterns
- * - CommunicationPatterns: Communication patterns, signature quotes
  *
- * This worker answers: "How intentionally, critically, and clearly does this developer work?"
+ * This worker answers: "How intentionally and critically does this developer work?"
  *
  * Capability-centric approach:
  * - Planning: How concrete and structured are their plans?
  * - Critical Thinking: Do they verify AI outputs and ask questions?
- * - Communication: How clearly do they express their needs?
+ *
+ * Note: Communication patterns are now handled by CommunicationPatternsWorker.
  *
  * @module models/thinking-quality-data
  */
@@ -191,63 +191,23 @@ export const MultitaskingPatternSchema = z.object({
 export type MultitaskingPattern = z.infer<typeof MultitaskingPatternSchema>;
 
 // ============================================================================
-// Communication Pattern Types (defined directly for v3 independence)
+// Communication Pattern Types (re-exported from communication-patterns-data.ts)
 // ============================================================================
 
-/**
- * Pattern frequency classification.
- */
-export const PatternFrequencySchema = z.enum(['frequent', 'occasional', 'rare']);
-export type PatternFrequency = z.infer<typeof PatternFrequencySchema>;
-
-/**
- * Pattern effectiveness assessment.
- */
-export const PatternEffectivenessSchema = z.enum(['highly_effective', 'effective', 'could_improve']);
-export type PatternEffectiveness = z.infer<typeof PatternEffectivenessSchema>;
-
-/**
- * A single example of a communication pattern with utterance linking.
- */
-export const PatternExampleSchema = z.object({
-  /** Utterance ID from Phase 1 (format: {sessionId}_{turnIndex}) */
-  utteranceId: z.string(),
-  /** Analysis of what this utterance demonstrates about the pattern */
-  analysis: z.string(),
-});
-export type PatternExample = z.infer<typeof PatternExampleSchema>;
-
-/**
- * A detected communication pattern with WHAT-WHY-HOW analysis.
- */
-export const CommunicationPatternSchema = z.object({
-  /** Distinctive name for this pattern (e.g., "The Blueprint Architect") */
-  patternName: z.string(),
-  /** WHAT-WHY-HOW analysis */
-  description: z.string(),
-  /** How frequently this pattern appears */
-  frequency: PatternFrequencySchema,
-  /** Examples referencing actual utterances by ID with analysis */
-  examples: z.array(PatternExampleSchema).min(1).max(5),
-  /** How effective this pattern is for AI collaboration */
-  effectiveness: PatternEffectivenessSchema,
-  /** Educational tip with expert insights */
-  tip: z.string().optional(),
-});
-export type CommunicationPattern = z.infer<typeof CommunicationPatternSchema>;
-
-/**
- * A signature quote representing the developer's most impressive moments.
- */
-export const SignatureQuoteSchema = z.object({
-  /** Utterance ID from Phase 1 (format: {sessionId}_{turnIndex}) */
-  utteranceId: z.string(),
-  /** What makes this quote particularly impressive */
-  significance: z.string(),
-  /** The strength/skill this quote represents */
-  representedStrength: z.string(),
-});
-export type SignatureQuote = z.infer<typeof SignatureQuoteSchema>;
+// Re-export Communication types for backward compatibility
+// These are now defined in communication-patterns-data.ts
+export {
+  PatternFrequencySchema,
+  type PatternFrequency,
+  PatternEffectivenessSchema,
+  type PatternEffectiveness,
+  PatternExampleSchema,
+  type PatternExample,
+  CommunicationPatternSchema,
+  type CommunicationPattern,
+  SignatureQuoteSchema,
+  type SignatureQuote,
+} from './communication-patterns-data';
 
 // ============================================================================
 // Referenced Insight Schema (for Knowledge Base references)
@@ -274,10 +234,11 @@ export type ReferencedInsight = z.infer<typeof ReferencedInsightSchema>;
 /**
  * Complete output from ThinkingQualityAnalyzer.
  *
- * Combines analysis from multiple dimensions:
+ * Combines analysis from two dimensions:
  * 1. Planning Quality - How structured and intentional is their work?
  * 2. Critical Thinking - Do they verify AI outputs and ask probing questions?
- * 3. Communication Clarity - How effectively do they express their needs?
+ *
+ * Note: Communication Clarity is now handled by CommunicationPatternsWorker.
  */
 export const ThinkingQualityOutputSchema = z.object({
   // ─────────────────────────────────────────────────────────────────────────
@@ -305,16 +266,6 @@ export const ThinkingQualityOutputSchema = z.object({
 
   /** Verification-related anti-patterns (error_loop, blind_retry, etc.) */
   verificationAntiPatterns: z.array(DetectedAntiPatternSchema),
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Communication Dimension (from CommunicationPatterns)
-  // ─────────────────────────────────────────────────────────────────────────
-
-  /** Communication patterns detected (5-12 for comprehensive analysis) */
-  communicationPatterns: z.array(CommunicationPatternSchema),
-
-  /** Signature quotes - developer's most impressive moments */
-  signatureQuotes: z.array(SignatureQuoteSchema).optional(),
 
   // ─────────────────────────────────────────────────────────────────────────
   // Overall Scores
@@ -452,49 +403,6 @@ export const VerificationBehaviorLLMSchema = z.object({
 });
 export type VerificationBehaviorLLM = z.infer<typeof VerificationBehaviorLLMSchema>;
 
-/**
- * LLM output schema for pattern example (nesting depth: 3)
- */
-export const PatternExampleLLMSchema = z.object({
-  /** Utterance ID from Phase 1 (format: {sessionId}_{turnIndex}) */
-  utteranceId: z.string(),
-  /** Analysis of what this utterance demonstrates about the pattern */
-  analysis: z.string(),
-});
-export type PatternExampleLLM = z.infer<typeof PatternExampleLLMSchema>;
-
-/**
- * LLM output schema for communication pattern (nesting depth: 2-3)
- */
-export const CommunicationPatternLLMSchema = z.object({
-  /** Distinctive name for this pattern (e.g., "The Blueprint Architect") */
-  patternName: z.string(),
-  /** WHAT-WHY-HOW analysis (1500-2500 chars target) */
-  description: z.string(),
-  /** How frequently this pattern appears */
-  frequency: PatternFrequencySchema,
-  /** How effective this pattern is for AI collaboration */
-  effectiveness: PatternEffectivenessSchema,
-  /** Educational tip with expert insights (1000-1500 chars target) */
-  tip: z.string().optional(),
-  /** Examples referencing actual utterances by ID with analysis (1-5 items) */
-  examples: z.array(PatternExampleLLMSchema).min(1).max(5),
-});
-export type CommunicationPatternLLM = z.infer<typeof CommunicationPatternLLMSchema>;
-
-/**
- * LLM output schema for signature quote (nesting depth: 2)
- */
-export const SignatureQuoteLLMSchema = z.object({
-  /** Utterance ID from Phase 1 (format: {sessionId}_{turnIndex}) */
-  utteranceId: z.string(),
-  /** What makes this quote particularly impressive */
-  significance: z.string(),
-  /** The strength/skill this quote represents */
-  representedStrength: z.string(),
-});
-export type SignatureQuoteLLM = z.infer<typeof SignatureQuoteLLMSchema>;
-
 // ============================================================================
 // Main LLM Output Schema (Structured Arrays)
 // ============================================================================
@@ -505,7 +413,6 @@ export type SignatureQuoteLLM = z.infer<typeof SignatureQuoteLLMSchema>;
  * Nesting depth analysis:
  * - planningHabits[]: root → array → object = 2 levels (safe)
  * - verificationAntiPatterns[].examples[]: root → array → object → array → object = 3 levels (safe, arrays don't count)
- * - communicationPatterns[].examples[]: root → array → object → array → object = 3 levels (safe)
  */
 export const ThinkingQualityLLMOutputSchema = z.object({
   // ─────────────────────────────────────────────────────────────────────────
@@ -533,16 +440,6 @@ export const ThinkingQualityLLMOutputSchema = z.object({
 
   /** Verification-related anti-patterns (structured array) */
   verificationAntiPatterns: z.array(VerificationAntiPatternLLMSchema).optional(),
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Communication Dimension
-  // ─────────────────────────────────────────────────────────────────────────
-
-  /** Communication patterns detected (5-12 patterns) */
-  communicationPatterns: z.array(CommunicationPatternLLMSchema).min(3).max(12),
-
-  /** Signature quotes (2-3 Tier S) */
-  signatureQuotes: z.array(SignatureQuoteLLMSchema).optional(),
 
   // ─────────────────────────────────────────────────────────────────────────
   // Overall Scores
@@ -643,58 +540,6 @@ function parseVerificationAntiPatternsLLM(antiPatterns: VerificationAntiPatternL
   }));
 }
 
-function parseCommunicationPatternsLLM(patterns: CommunicationPatternLLM[] | undefined): CommunicationPattern[] {
-  if (!patterns?.length) return [];
-
-  const result: CommunicationPattern[] = [];
-
-  for (const p of patterns) {
-    if (!p.patternName || !p.description) continue;
-
-    const validExamples = (p.examples || [])
-      .filter((ex) => {
-        if (!isValidUtteranceId(ex.utteranceId)) {
-          console.warn(`[parseCommunicationPatternsLLM] Invalid utteranceId: "${ex.utteranceId}"`);
-          return false;
-        }
-        return ex.analysis?.length > 0;
-      })
-      .map((ex) => ({ utteranceId: ex.utteranceId, analysis: ex.analysis }));
-
-    if (validExamples.length === 0) continue;
-
-    const pattern: CommunicationPattern = {
-      patternName: p.patternName,
-      description: p.description,
-      frequency: p.frequency,
-      examples: validExamples,
-      effectiveness: p.effectiveness,
-    };
-    if (p.tip) pattern.tip = p.tip;
-    result.push(pattern);
-  }
-
-  return result;
-}
-
-function parseSignatureQuotesLLM(quotes: SignatureQuoteLLM[] | undefined): SignatureQuote[] {
-  if (!quotes?.length) return [];
-
-  return quotes
-    .filter((sq) => {
-      if (!isValidUtteranceId(sq.utteranceId)) {
-        console.warn(`[parseSignatureQuotesLLM] Invalid utteranceId: "${sq.utteranceId}"`);
-        return false;
-      }
-      return sq.significance?.length > 0;
-    })
-    .map((sq) => ({
-      utteranceId: sq.utteranceId,
-      significance: sq.significance,
-      representedStrength: sq.representedStrength,
-    }));
-}
-
 /**
  * Convert LLM output to structured ThinkingQualityOutput.
  */
@@ -711,10 +556,6 @@ export function parseThinkingQualityLLMOutput(
     verificationBehavior: parseVerificationBehaviorLLM(llmOutput.verificationBehavior),
     criticalThinkingMoments: parseCriticalThinkingLLM(llmOutput.criticalThinkingMoments),
     verificationAntiPatterns: parseVerificationAntiPatternsLLM(llmOutput.verificationAntiPatterns),
-
-    // Communication Dimension
-    communicationPatterns: parseCommunicationPatternsLLM(llmOutput.communicationPatterns),
-    signatureQuotes: parseSignatureQuotesLLM(llmOutput.signatureQuotes),
 
     // Overall Scores
     overallThinkingQualityScore: llmOutput.overallThinkingQualityScore,
@@ -745,7 +586,6 @@ export function createEmptyThinkingQualityOutput(): ThinkingQualityOutput {
     },
     criticalThinkingMoments: [],
     verificationAntiPatterns: [],
-    communicationPatterns: [],
     overallThinkingQualityScore: 50,
     confidenceScore: 0,
     summary: 'Insufficient data for thinking quality analysis.',

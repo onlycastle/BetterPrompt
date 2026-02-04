@@ -4,14 +4,14 @@
  * Unified Phase 2 worker that combines:
  * - WorkflowHabit: Planning habits, critical thinking, multitasking
  * - TrustVerification (verification-related): Verification behavior, verification anti-patterns
- * - CommunicationPatterns: Communication patterns, signature quotes
  *
- * This worker answers: "How intentionally, critically, and clearly does this developer work?"
+ * This worker answers: "How intentionally and critically does this developer work?"
  *
  * Capability-centric approach:
- * - Planning (30%): How structured and intentional is their work?
- * - Critical Thinking (40%): Do they verify AI outputs?
- * - Communication (30%): How clearly do they express needs?
+ * - Planning (40%): How structured and intentional is their work?
+ * - Critical Thinking (60%): Do they verify AI outputs?
+ *
+ * Note: Communication patterns are now handled by CommunicationPatternsWorker.
  *
  * @module analyzer/workers/thinking-quality-worker
  */
@@ -35,13 +35,15 @@ import {
 } from './prompts/knowledge-mapping';
 
 /** Worker names to combine insights from */
-const INSIGHT_DOMAINS = ['WorkflowHabit', 'TrustVerification', 'CommunicationPatterns'] as const;
+const INSIGHT_DOMAINS = ['WorkflowHabit', 'TrustVerification'] as const;
 
 /**
  * ThinkingQualityWorker - Unified analysis of thinking quality
  *
- * Phase 2 worker that analyzes planning, critical thinking, and communication.
- * Answers: "How intentionally, critically, and clearly does this developer work?"
+ * Phase 2 worker that analyzes planning and critical thinking.
+ * Answers: "How intentionally and critically does this developer work?"
+ *
+ * Note: Communication patterns are now handled by CommunicationPatternsWorker.
  */
 export class ThinkingQualityWorker extends BaseWorker<ThinkingQualityOutput> {
   readonly name = 'ThinkingQuality';
@@ -62,7 +64,7 @@ export class ThinkingQualityWorker extends BaseWorker<ThinkingQualityOutput> {
       throw new Error('Phase 1 output required for ThinkingQualityWorker');
     }
 
-    this.log('Analyzing thinking quality (planning + critical thinking + communication)...');
+    this.log('Analyzing thinking quality (planning + critical thinking)...');
     this.log(`Utterances: ${phase1Output.developerUtterances.length}`);
 
     const phase1ForPrompt = this.preparePhase1ForPrompt(phase1Output);
@@ -83,7 +85,6 @@ export class ThinkingQualityWorker extends BaseWorker<ThinkingQualityOutput> {
 
     this.log(`Planning score: ${processedOutput.planQualityScore}`);
     this.log(`Verification level: ${processedOutput.verificationBehavior.level}`);
-    this.log(`Communication patterns: ${processedOutput.communicationPatterns.length}`);
     this.log(`Overall thinking quality score: ${processedOutput.overallThinkingQualityScore}`);
     if (processedOutput.referencedInsights?.length) {
       this.log(`Referenced ${processedOutput.referencedInsights.length} professional insights`);
@@ -131,12 +132,6 @@ export class ThinkingQualityWorker extends BaseWorker<ThinkingQualityOutput> {
         ...ap,
         improvement: processText(ap.improvement),
       })),
-      // Process communication pattern descriptions and tips
-      communicationPatterns: output.communicationPatterns.map((p) => ({
-        ...p,
-        description: processText(p.description) || p.description,
-        tip: processText(p.tip),
-      })),
       // Process strengths descriptions
       strengths: output.strengths?.map((s) => ({
         ...s,
@@ -169,7 +164,7 @@ export class ThinkingQualityWorker extends BaseWorker<ThinkingQualityOutput> {
   public preparePhase1ForPrompt(phase1: Phase1Output): Record<string, unknown> {
     // Note: aiResponses intentionally excluded - ThinkingQuality analyzes developer's
     // thinking patterns from their utterances only. AI responses are not needed for
-    // planning, critical thinking, or communication pattern analysis.
+    // planning and critical thinking analysis.
     // This optimization saves ~15,000-20,000 tokens per analysis.
     return {
       developerUtterances: phase1.developerUtterances.map((u) => ({

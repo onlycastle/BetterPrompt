@@ -97,6 +97,27 @@
   border: 1px solid var(--sketch-cyan);
 }
 
+/* Locked recommendation badge on tabs */
+.lockedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: var(--space-xs);
+  padding: 2px 6px;
+  background: var(--sketch-yellow-soft);
+  color: var(--sketch-yellow-dark);
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.tabActive .lockedBadge {
+  background: var(--sketch-yellow);
+  color: var(--ink-primary);
+}
+
 
 /* Tab Content Area */
 .tabContent {

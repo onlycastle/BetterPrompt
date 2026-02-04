@@ -6,7 +6,7 @@
  * Temperature: 1.0 (Gemini's recommended default).
  *
  * Generates: personalitySummary, topFocusAreas
- * NOTE: promptPatterns generation moved to Phase 2 ThinkingQualityWorker (communicationPatterns field).
+ * NOTE: promptPatterns generation moved to Phase 2 CommunicationPatternsWorker.
  * All structural assembly is handled by evaluation-assembler.ts
  *
  * Key Design Decision (v4):
@@ -124,7 +124,6 @@ function extractEvidenceUtteranceIds(agentOutputs: AgentOutputs): Set<string> {
   if (tq) {
     extractFromExampleItems(ids, tq.verificationAntiPatterns);
     extractFromExampleItems(ids, tq.planningHabits);
-    extractFromExampleItems(ids, tq.communicationPatterns);
 
     // criticalThinkingMoments have direct utteranceId
     for (const ct of tq.criticalThinkingMoments || []) {
@@ -133,6 +132,13 @@ function extractEvidenceUtteranceIds(agentOutputs: AgentOutputs): Set<string> {
 
     extractFromEvidenceItems(ids, tq.strengths);
     extractFromEvidenceItems(ids, tq.growthAreas);
+  }
+
+  // CommunicationPatterns extractions (v3.1 - separate worker)
+  if (agentOutputs.communicationPatterns) {
+    extractFromExampleItems(ids, agentOutputs.communicationPatterns.communicationPatterns);
+    extractFromEvidenceItems(ids, agentOutputs.communicationPatterns.strengths);
+    extractFromEvidenceItems(ids, agentOutputs.communicationPatterns.growthAreas);
   }
 
   // LearningBehavior extractions
@@ -220,37 +226,7 @@ export class ContentWriterStage {
     // This indicates Phase 2 workers failed to produce any evidence, which
     // should be investigated rather than silently hidden with default data.
     const evidenceIds = extractEvidenceUtteranceIds(agentOutputs);
-
-    let topUtterances: { id: string; text: string; wordCount: number }[] | undefined;
-
-    if (phase1Output) {
-      if (evidenceIds.size === 0) {
-        throw new Error(
-          'Phase 2 evidence extraction produced no utteranceIds. ' +
-          'This indicates a failure in insight generation that must be investigated. ' +
-          'Check that Phase 2 workers are correctly outputting evidence with utteranceId fields.'
-        );
-      }
-
-      // Use Phase 2 evidence-based utterances
-      topUtterances = phase1Output.developerUtterances
-        .filter(u => evidenceIds.has(u.id))
-        .map(u => ({
-          id: u.id,
-          text: (u.displayText || u.text).slice(0, 1500),
-          wordCount: u.wordCount
-        }));
-
-      this.log(`Using ${topUtterances.length} evidence-based utterances (from ${evidenceIds.size} Phase 2 evidence IDs)`);
-
-      // Verify we actually matched some utterances
-      if (topUtterances.length === 0) {
-        throw new Error(
-          `Phase 2 produced ${evidenceIds.size} evidence IDs but none matched Phase 1 utterances. ` +
-          'This indicates a mismatch between Phase 1 and Phase 2 data.'
-        );
-      }
-    }
+    const topUtterances = this.extractTopUtterances(phase1Output, evidenceIds);
 
     const userPrompt = buildContentWriterUserPromptV3(
       agentOutputsSummary,
@@ -273,6 +249,44 @@ export class ContentWriterStage {
       data: sanitized,
       usage: result.usage,
     };
+  }
+
+  /**
+   * Extract top utterances from Phase 1 based on evidence IDs.
+   * Throws if no evidence found or no matches.
+   */
+  private extractTopUtterances(
+    phase1Output: Phase1Output | undefined,
+    evidenceIds: Set<string>
+  ): { id: string; text: string; wordCount: number }[] | undefined {
+    if (!phase1Output) return undefined;
+
+    if (evidenceIds.size === 0) {
+      throw new Error(
+        'Phase 2 evidence extraction produced no utteranceIds. ' +
+        'This indicates a failure in insight generation that must be investigated. ' +
+        'Check that Phase 2 workers are correctly outputting evidence with utteranceId fields.'
+      );
+    }
+
+    const topUtterances = phase1Output.developerUtterances
+      .filter(u => evidenceIds.has(u.id))
+      .map(u => ({
+        id: u.id,
+        text: (u.displayText || u.text).slice(0, 1500),
+        wordCount: u.wordCount
+      }));
+
+    this.log(`Using ${topUtterances.length} evidence-based utterances (from ${evidenceIds.size} Phase 2 evidence IDs)`);
+
+    if (topUtterances.length === 0) {
+      throw new Error(
+        `Phase 2 produced ${evidenceIds.size} evidence IDs but none matched Phase 1 utterances. ` +
+        'This indicates a mismatch between Phase 1 and Phase 2 data.'
+      );
+    }
+
+    return topUtterances;
   }
 
   /**

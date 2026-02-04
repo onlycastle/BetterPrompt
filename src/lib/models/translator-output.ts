@@ -148,8 +148,9 @@ export const TranslatorOutputSchema = z.object({
 
   /** Translated agent insights (Phase 2 worker outputs) */
   translatedAgentInsights: z.object({
-    // v3 Workers (primary - 3 consolidated workers)
+    // v3.1 Workers (primary - 4 workers)
     thinkingQuality: TranslatedAgentInsightEntrySchema.optional(),
+    communicationPatterns: TranslatedAgentInsightEntrySchema.optional(),
     learningBehavior: TranslatedAgentInsightEntrySchema.optional(),
     contextEfficiency: TranslatedAgentInsightEntrySchema.optional(),
     // v2 Legacy Workers (backward compatibility)
@@ -159,7 +160,7 @@ export const TranslatorOutputSchema = z.object({
     knowledgeGap: TranslatedAgentInsightEntrySchema.optional(),
     temporalAnalysis: TranslatedAgentInsightEntrySchema.optional(),
     multitasking: TranslatedAgentInsightEntrySchema.optional(),
-  }).optional().describe('Translated Phase 2 worker insights — v3 uses thinkingQuality, learningBehavior, contextEfficiency'),
+  }).optional().describe('Translated Phase 2 worker insights — v3.1 uses thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency'),
 
   /** Translated premium section text fields */
   toolUsageDeepDive: z.string().optional()

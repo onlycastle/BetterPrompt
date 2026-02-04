@@ -3,8 +3,9 @@
  *
  * Multi-phase pipeline using Gemini 3 Flash (requires GOOGLE_GEMINI_API_KEY):
  * - Phase 1: DataExtractor (deterministic, no LLM)
- * - Phase 2: Unified Workers (3 workers, ~68K tokens)
- *   - ThinkingQuality: Planning + Critical Thinking + Communication
+ * - Phase 2: Unified Workers (4 workers, ~90K tokens)
+ *   - ThinkingQuality: Planning + Critical Thinking
+ *   - CommunicationPatterns: Communication patterns + Signature quotes
  *   - LearningBehavior: Knowledge Gaps + Repeated Mistakes
  *   - ContextEfficiency: Token usage and context management
  * - Phase 2.5: TypeClassifier only (1 LLM call)
@@ -22,6 +23,7 @@ import {
   createDataExtractorWorker,
   // Phase 2: Unified capability-based workers
   createThinkingQualityWorker,
+  createCommunicationPatternsWorker,
   createLearningBehaviorWorker,
   createContextEfficiencyWorker,
   // Phase 2.5: TypeClassifier only
@@ -149,15 +151,17 @@ export class VerboseAnalyzer {
     this.orchestrator.registerPhase1Worker(createDataExtractorWorker(orchestratorConfig));
 
     // =========================================================================
-    // PHASE 2: Insight Generation (3 workers, parallel LLM calls)
+    // PHASE 2: Insight Generation (4 workers, parallel LLM calls)
     //
     // Unified Workers (capability-based):
-    //   - ThinkingQuality: Planning + Critical Thinking + Communication
+    //   - ThinkingQuality: Planning + Critical Thinking
+    //   - CommunicationPatterns: Communication patterns + Signature quotes
     //   - LearningBehavior: Knowledge Gaps + Repeated Mistakes
     //   - ContextEfficiency: Token usage and context management
-    //   Total: 3 workers (~68K tokens)
+    //   Total: 4 workers (~90K tokens)
     // =========================================================================
     this.orchestrator.registerPhase2Worker(createThinkingQualityWorker(orchestratorConfig));
+    this.orchestrator.registerPhase2Worker(createCommunicationPatternsWorker(orchestratorConfig));
     this.orchestrator.registerPhase2Worker(createLearningBehaviorWorker(orchestratorConfig));
     this.orchestrator.registerPhase2Worker(createContextEfficiencyWorker(orchestratorConfig));
 

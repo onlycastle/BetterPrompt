@@ -7,7 +7,7 @@
  *
  * This module handles:
  * - workerInsights: Aggregated strengths/growthAreas from each Phase 2 worker
- *                   (ThinkingQuality, LearningBehavior, ContextEfficiency)
+ *                   (ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency)
  * - Type classification: TypeClassifier → primaryType, controlLevel, distribution
  * - antiPatternsAnalysis: ThinkingQuality → deterministic transform
  * - criticalThinkingAnalysis: ThinkingQuality → deterministic transform
@@ -130,14 +130,14 @@ export function assembleEvaluation(
   // ── Phase 3 Narrative (LLM-generated) ──────────────────────────────────
   result.personalitySummary = narrativeResult.personalitySummary;
 
-  // ── Prompt Patterns: From ThinkingQuality communicationPatterns or Phase 3 fallback ──
-  // v3 ThinkingQuality worker includes communicationPatterns directly
-  if (agentOutputs.thinkingQuality?.communicationPatterns && agentOutputs.thinkingQuality.communicationPatterns.length > 0) {
-    result.promptPatterns = resolvePatternQuotes(agentOutputs.thinkingQuality.communicationPatterns, phase1Output);
-    debugLog(`Using ThinkingQuality communicationPatterns (${agentOutputs.thinkingQuality.communicationPatterns.length} patterns)`);
+  // ── Prompt Patterns: From CommunicationPatterns worker or Phase 3 fallback ──
+  // v3.1 CommunicationPatterns is a separate worker (previously part of ThinkingQuality)
+  if (agentOutputs.communicationPatterns?.communicationPatterns && agentOutputs.communicationPatterns.communicationPatterns.length > 0) {
+    result.promptPatterns = resolvePatternQuotes(agentOutputs.communicationPatterns.communicationPatterns, phase1Output);
+    debugLog(`Using CommunicationPatterns worker (${agentOutputs.communicationPatterns.communicationPatterns.length} patterns)`);
   } else if (narrativeResult.promptPatterns && narrativeResult.promptPatterns.length > 0) {
     result.promptPatterns = sanitizePromptPatterns(narrativeResult.promptPatterns, phase1Output);
-    debugLog('Falling back to Phase 3 promptPatterns (ThinkingQuality patterns not available)');
+    debugLog('Falling back to Phase 3 promptPatterns (CommunicationPatterns worker not available)');
   } else {
     // Both sources unavailable - create minimal placeholder
     result.promptPatterns = [];
@@ -509,33 +509,15 @@ function assemblePlanningFromThinkingQuality(tq: ThinkingQualityOutput): any | n
   const hasTodoWrite = tq.planningHabits.some((ph: PlanningHabit) => ph.type === 'todowrite_usage');
   const hasTaskDecomp = tq.planningHabits.some((ph: PlanningHabit) => ph.type === 'task_decomposition');
 
-  let maturityLevel: 'reactive' | 'emerging' | 'structured' | 'expert';
-  if (hasSlashPlan && hasTaskDecomp) {
-    maturityLevel = 'expert';
-  } else if (hasSlashPlan) {
-    maturityLevel = 'structured';
-  } else if (hasTodoWrite || hasTaskDecomp) {
-    maturityLevel = 'emerging';
-  } else {
-    maturityLevel = 'reactive';
-  }
+  const maturityLevel = calculatePlanningMaturityLevel(hasSlashPlan, hasTodoWrite, hasTaskDecomp);
 
   // Convert habits to insights, split by effectiveness
   const strengths: any[] = [];
   const opportunities: any[] = [];
 
   for (const habit of tq.planningHabits) {
-    const isStrength = habit.effectiveness === 'high' ||
-      (habit.frequency === 'always' || habit.frequency === 'often');
-
-    const insight = {
-      behaviorType: habit.type,
-      displayName: formatDisplayName(habit.type),
-      description: `Planning habit "${habit.type.replace(/_/g, ' ')}" observed with ${habit.frequency} frequency`,
-      frequency: frequencyToNumber(habit.frequency),
-      sophistication: effectivenessToSophistication(habit.effectiveness),
-      evidence: habit.examples ?? [],
-    };
+    const insight = createPlanningInsight(habit);
+    const isStrength = isHabitStrength(habit);
 
     if (isStrength) {
       strengths.push(insight);
@@ -568,7 +550,8 @@ function assemblePlanningFromThinkingQuality(tq: ThinkingQualityOutput): any | n
  * VerboseEvaluation: significant | moderate | mild
  */
 function mapAntiPatternSeverity(severity: string | undefined): 'mild' | 'moderate' | 'significant' {
-  if (severity === 'critical' || severity === 'significant') return 'significant';
+  if (severity === 'critical') return 'significant';
+  if (severity === 'significant') return 'significant';
   if (severity === 'mild') return 'mild';
   return 'moderate';
 }
@@ -594,25 +577,66 @@ function extractSessionId(utteranceId: string): string | undefined {
 }
 
 /**
+ * Calculate planning maturity level based on planning habits
+ */
+function calculatePlanningMaturityLevel(
+  hasSlashPlan: boolean,
+  hasTodoWrite: boolean,
+  hasTaskDecomp: boolean
+): 'reactive' | 'emerging' | 'structured' | 'expert' {
+  if (hasSlashPlan && hasTaskDecomp) return 'expert';
+  if (hasSlashPlan) return 'structured';
+  if (hasTodoWrite || hasTaskDecomp) return 'emerging';
+  return 'reactive';
+}
+
+/**
+ * Check if a planning habit represents a strength
+ */
+function isHabitStrength(habit: PlanningHabit): boolean {
+  const hasHighEffectiveness = habit.effectiveness === 'high';
+  const hasFrequentUsage = habit.frequency === 'always' || habit.frequency === 'often';
+  return hasHighEffectiveness || hasFrequentUsage;
+}
+
+/**
+ * Create a planning insight from a habit
+ */
+function createPlanningInsight(habit: PlanningHabit): any {
+  return {
+    behaviorType: habit.type,
+    displayName: formatDisplayName(habit.type),
+    description: `Planning habit "${habit.type.replace(/_/g, ' ')}" observed with ${habit.frequency} frequency`,
+    frequency: frequencyToNumber(habit.frequency),
+    sophistication: effectivenessToSophistication(habit.effectiveness),
+    evidence: habit.examples ?? [],
+  };
+}
+
+/**
  * Convert habit frequency to a numeric value
  */
 function frequencyToNumber(freq: string | undefined): number {
-  if (freq === 'always') return 5;
-  if (freq === 'often') return 4;
-  if (freq === 'sometimes') return 3;
-  if (freq === 'rarely') return 2;
-  if (freq === 'never') return 1;
-  return 3;
+  const frequencyMap: Record<string, number> = {
+    always: 5,
+    often: 4,
+    sometimes: 3,
+    rarely: 2,
+    never: 1,
+  };
+  return frequencyMap[freq || ''] ?? 3;
 }
 
 /**
  * Convert effectiveness to sophistication level
  */
 function effectivenessToSophistication(eff: string | undefined): 'basic' | 'intermediate' | 'advanced' {
-  if (eff === 'high') return 'advanced';
-  if (eff === 'medium') return 'intermediate';
-  if (eff === 'low') return 'basic';
-  return 'intermediate';
+  const sophisticationMap: Record<string, 'basic' | 'intermediate' | 'advanced'> = {
+    high: 'advanced',
+    medium: 'intermediate',
+    low: 'basic',
+  };
+  return sophisticationMap[eff || ''] ?? 'intermediate';
 }
 
 // ============================================================================
@@ -757,19 +781,23 @@ function buildTransformationAudit(phase1Output: Phase1Output): TransformationAud
  * Detect the type of transformation applied based on content analysis.
  */
 function detectTransformationType(original: string, display: string): TransformationType {
-  const hasErrorTag = display.includes('[Error:') && !original.includes('[Error:');
-  const hasStackTag = display.includes('[Stack trace]') && !original.includes('[Stack trace]');
-  const hasCodeTag = display.includes('[Code:') && !original.includes('[Code:');
-  const isTruncated = display.endsWith('...');
+  const transformations = {
+    hasErrorTag: display.includes('[Error:') && !original.includes('[Error:'),
+    hasStackTag: display.includes('[Stack trace]') && !original.includes('[Stack trace]'),
+    hasCodeTag: display.includes('[Code:') && !original.includes('[Code:'),
+    isTruncated: display.endsWith('...'),
+  };
 
-  const transformationCount = [hasErrorTag, hasStackTag, hasCodeTag, isTruncated].filter(Boolean).length;
+  const activeTransformations = Object.entries(transformations).filter(([_, active]) => active);
+  const transformationCount = activeTransformations.length;
 
   if (transformationCount === 0) return 'none';
   if (transformationCount > 1) return 'mixed';
-  if (hasErrorTag) return 'error_summarized';
-  if (hasStackTag) return 'stack_trace_summarized';
-  if (hasCodeTag) return 'code_block_summarized';
-  if (isTruncated) return 'truncated';
+
+  if (transformations.hasErrorTag) return 'error_summarized';
+  if (transformations.hasStackTag) return 'stack_trace_summarized';
+  if (transformations.hasCodeTag) return 'code_block_summarized';
+  if (transformations.isTruncated) return 'truncated';
   return 'none';
 }
 

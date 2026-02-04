@@ -22,6 +22,7 @@
 
 import { useMemo } from 'react';
 import type { AggregatedWorkerInsights, WorkerStrength, WorkerGrowth, EvidenceItem } from '../../../../lib/models/worker-insights';
+import React from 'react';
 import {
   WORKER_DOMAIN_CONFIGS,
   type WorkerDomainConfig,
@@ -29,8 +30,36 @@ import {
   applyTranslatedGrowthAreas,
 } from '../../../../lib/models/worker-insights';
 import type { TranslatedAgentInsights, UtteranceLookupEntry } from '../../../../lib/models/verbose-evaluation';
+import type { CommunicationStrength, CommunicationGrowth } from '../../../../lib/transformers/prompt-pattern-transformer';
 import { ExpandableEvidence } from './ExpandableEvidence';
 import styles from './WorkerInsightsSection.module.css';
+
+// Type guards to check if a strength/growth has communication pattern metadata
+function isCommunicationStrength(
+  item: WorkerStrength
+): item is CommunicationStrength {
+  return '_meta' in item && (item as CommunicationStrength)._meta?.source === 'communication_pattern';
+}
+
+function isCommunicationGrowth(
+  item: WorkerGrowth
+): item is CommunicationGrowth {
+  return '_meta' in item && (item as CommunicationGrowth)._meta?.source === 'communication_pattern';
+}
+
+// Frequency badge labels
+const FREQUENCY_LABELS: Record<string, string> = {
+  frequent: 'Frequent',
+  occasional: 'Occasional',
+  rare: 'Rare',
+};
+
+// Effectiveness badge labels
+const EFFECTIVENESS_LABELS: Record<string, string> = {
+  highly_effective: 'Highly Effective',
+  effective: 'Effective',
+  could_improve: 'Opportunity',
+};
 
 interface WorkerInsightsSectionProps {
   /** Aggregated insights from all Phase 2 workers */
@@ -47,14 +76,9 @@ interface WorkerInsightsSectionProps {
 const CIRCUMFERENCE = 2 * Math.PI * 25; // SVG circle circumference (radius = 25)
 
 function getScoreClass(score: number): string {
-  switch (true) {
-    case score >= 70:
-      return styles.scoreHigh;
-    case score >= 40:
-      return styles.scoreMedium;
-    default:
-      return styles.scoreLow;
-  }
+  if (score >= 70) return styles.scoreHigh;
+  if (score >= 40) return styles.scoreMedium;
+  return styles.scoreLow;
 }
 
 function ScoreGauge({ score, label }: { score: number; label: string }) {
@@ -81,6 +105,9 @@ function ScoreGauge({ score, label }: { score: number; label: string }) {
 /**
  * Card component for a single strength
  * CSS ::before pseudo-element handles the '+' prefix
+ *
+ * Supports Communication Pattern metadata (_meta) for showing
+ * frequency/effectiveness badges when present.
  */
 function StrengthCard({
   strength,
@@ -89,10 +116,23 @@ function StrengthCard({
   strength: WorkerStrength;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
 }) {
+  const isCommunication = isCommunicationStrength(strength);
+
   return (
     <div className={styles.insightCard}>
       <div className={styles.cardHeader}>
         <h4 className={styles.cardTitle}>{strength.title}</h4>
+        {/* Communication Pattern badges (frequency + effectiveness) */}
+        {isCommunication && (
+          <div className={styles.patternBadges}>
+            <span className={styles.frequencyBadge}>
+              {FREQUENCY_LABELS[strength._meta.frequency]}
+            </span>
+            <span className={styles.effectivenessBadge}>
+              {EFFECTIVENESS_LABELS[strength._meta.effectiveness]}
+            </span>
+          </div>
+        )}
       </div>
       <p className={styles.cardDescription}>{strength.description}</p>
       {strength.evidence.length > 0 && (
@@ -120,6 +160,36 @@ function getSeverityLabel(severity: string): string {
 }
 
 /**
+ * Get locked recommendation CSS class based on severity
+ */
+function getLockedRecommendationClass(severity: string | undefined): string {
+  if (severity === 'critical') return styles.lockedCritical;
+  if (severity === 'high') return styles.lockedHigh;
+  return '';
+}
+
+/**
+ * Render urgency label based on severity
+ */
+function renderUrgencyLabel(severity: string | undefined): React.ReactNode {
+  if (severity === 'critical') {
+    return (
+      <div className={styles.urgencyLabel} data-severity="critical">
+        ⚡ Critical Fix Available
+      </div>
+    );
+  }
+  if (severity === 'high') {
+    return (
+      <div className={styles.urgencyLabel} data-severity="high">
+        🔥 High-Impact Solution
+      </div>
+    );
+  }
+  return null;
+}
+
+/**
  * Card component for a single growth area
  * CSS ::before pseudo-element handles the '!' prefix
  *
@@ -131,6 +201,9 @@ function getSeverityLabel(severity: string): string {
  * - Evidence count: "Found in N sessions" - shows data-driven specificity
  * - Severity badge: Visual urgency indicator
  * - Blur + partial reveal: Teases recommendation content
+ *
+ * Supports Communication Pattern metadata (_meta) for showing
+ * frequency/effectiveness badges when present.
  */
 function GrowthCard({
   growth,
@@ -145,6 +218,9 @@ function GrowthCard({
 
   // Data-driven: recommendation presence indicates paid tier
   const hasRecommendation = Boolean(growth.recommendation);
+
+  // Check if this is a Communication Pattern (has _meta)
+  const isCommunication = isCommunicationGrowth(growth);
 
   // Count unique sessions from evidence (for "Found in N sessions" display)
   // Note: EvidenceItem is a union type (string | InsightEvidence), so runtime type check
@@ -165,26 +241,40 @@ function GrowthCard({
     <div className={`${styles.insightCard} ${styles.growthCard}`}>
       <div className={styles.cardHeader}>
         <h4 className={styles.cardTitle}>{growth.title}</h4>
-        {growth.severity && (
+        {/* Communication Pattern badges (frequency + effectiveness) */}
+        {isCommunication && (
+          <div className={styles.patternBadges}>
+            <span className={styles.frequencyBadge}>
+              {FREQUENCY_LABELS[growth._meta.frequency]}
+            </span>
+            <span className={styles.effectivenessBadgeOpportunity}>
+              {EFFECTIVENESS_LABELS[growth._meta.effectiveness]}
+            </span>
+          </div>
+        )}
+        {/* Worker Insights severity badge */}
+        {!isCommunication && growth.severity && (
           <span className={`${styles.severityBadge} ${severityClass}`}>
             {growth.severity}
           </span>
         )}
       </div>
 
-      {/* Growth metadata: evidence count + severity level */}
-      <div className={styles.growthMeta}>
-        {sessionCount > 0 && (
-          <span className={styles.evidenceCount}>
-            📊 Found in {sessionCount} session{sessionCount !== 1 ? 's' : ''}
-          </span>
-        )}
-        {growth.severity && (
-          <span className={styles.severityLevel} data-severity={growth.severity}>
-            Severity: {getSeverityLabel(growth.severity)}
-          </span>
-        )}
-      </div>
+      {/* Growth metadata: evidence count + severity level (Worker Insights only) */}
+      {!isCommunication && (
+        <div className={styles.growthMeta}>
+          {sessionCount > 0 && (
+            <span className={styles.evidenceCount}>
+              📊 Found in {sessionCount} session{sessionCount !== 1 ? 's' : ''}
+            </span>
+          )}
+          {growth.severity && (
+            <span className={styles.severityLevel} data-severity={growth.severity}>
+              Severity: {getSeverityLabel(growth.severity)}
+            </span>
+          )}
+        </div>
+      )}
 
       <p className={styles.cardDescription}>{growth.description}</p>
       {growth.evidence.length > 0 && (
@@ -200,16 +290,26 @@ function GrowthCard({
           <p className={styles.recommendationText}>{growth.recommendation}</p>
         </div>
       ) : (
-        <div className={styles.lockedRecommendation}>
-          <div className={styles.blurredPreview}>
-            <span className={styles.recommendationLabel}>Recommendation</span>
-            <p className={styles.blurredText}>
-              To improve this pattern, start by analyzing your recent sessions and identifying the trigger points...
-            </p>
+        <div className={`${styles.lockedRecommendation} ${getLockedRecommendationClass(growth.severity)}`}>
+          {/* Severity-based urgency label */}
+          {renderUrgencyLabel(growth.severity)}
+
+          {/* Action Steps Preview - visual checklist */}
+          <div className={styles.actionStepsPreview}>
+            <span className={styles.recommendationLabel}>Your personalized action plan:</span>
+            <div className={styles.stepsChecklist}>
+              <span className={styles.stepBox}>☐ Step 1</span>
+              <span className={styles.stepBox}>☐ Step 2</span>
+              <span className={styles.stepBox}>☐ Step 3</span>
+              <span className={styles.stepBox}>☐ Step 4</span>
+              <span className={styles.stepBox}>☐ Step 5</span>
+            </div>
+            <span className={styles.stepsLocked}>(5 steps locked)</span>
           </div>
+
           <button className={styles.unlockCta} type="button">
             <span className={styles.lockIcon}>🔓</span>
-            View Full Solution
+            Unlock Your Action Plan
           </button>
         </div>
       )}

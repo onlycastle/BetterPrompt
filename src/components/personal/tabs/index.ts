@@ -6,9 +6,11 @@
  * - containers/: Entry point containers (TabbedReportContainer, ReportTab, etc.)
  * - insights/: Domain-specific insights (WorkerInsightsSection, GrowthAreasSection)
  * - type-result/: Type classification display (TypeResultMinimal, MatrixDistributionDisplay)
- * - patterns/: Communication patterns (PromptPatternsClean)
  * - resources/: Learning resources sidebar (ResourceSidebar, ResourceBubble)
  * - shared/: Reusable UI elements (DataQualityBadge, EmptyStatePrompt, NextTabButton)
+ *
+ * Note: Communication Patterns are now integrated into WorkerInsightsSection
+ * via the prompt-pattern-transformer utility, not as a separate component.
  */
 
 // Container components
@@ -26,9 +28,6 @@ export { PersonalitySummaryClean } from './type-result';
 export { WorkerInsightsSection } from './insights';
 export { GrowthAreasSection } from './insights';
 export { ExpandableEvidence } from './insights';
-
-// Patterns components
-export { PromptPatternsClean } from './patterns';
 
 // Resources components
 export { ResourceSidebar } from './resources';

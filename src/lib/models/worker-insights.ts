@@ -1,8 +1,9 @@
 /**
  * Worker Insights - Common types for Phase 2 Worker strengths/growthAreas output
  *
- * v3 Workers (2026-02):
- * - ThinkingQuality: Planning + Critical Thinking + Communication (consolidated)
+ * v3.1 Workers (2026-02):
+ * - ThinkingQuality: Planning + Critical Thinking
+ * - CommunicationPatterns: Communication patterns + Signature quotes
  * - LearningBehavior: Knowledge Gaps + Repeated Mistakes (redesigned)
  * - ContextEfficiency: Token efficiency patterns (retained)
  *
@@ -542,11 +543,14 @@ export function parseStructuredGrowthAreas(
  */
 export interface AggregatedWorkerInsights {
   // =========================================================================
-  // v3 Unified Workers
+  // v3.1 Unified Workers
   // =========================================================================
 
-  /** Thinking Quality domain insights (planning + critical thinking + communication) */
+  /** Thinking Quality domain insights (planning + critical thinking) */
   thinkingQuality?: WorkerInsightsContainer;
+
+  /** Communication Patterns domain insights (communication + signature quotes) */
+  communicationPatterns?: WorkerInsightsContainer;
 
   /** Learning Behavior domain insights (knowledge gaps + repeated mistakes) */
   learningBehavior?: WorkerInsightsContainer;
@@ -574,8 +578,10 @@ export interface WorkerDomainConfig {
 }
 
 /**
- * Configuration for v3 Worker domains.
+ * Configuration for v3.1 Worker domains.
  * Used by frontend to render consistent UI sections.
+ *
+ * Tab order: Thinking → Communication → Learning → Context
  */
 export const WORKER_DOMAIN_CONFIGS: WorkerDomainConfig[] = [
   {
@@ -584,6 +590,13 @@ export const WORKER_DOMAIN_CONFIGS: WorkerDomainConfig[] = [
     title: 'Thinking Quality',
     subtitle: 'How intentionally and critically do you work?',
     scoreLabel: 'Thinking Score',
+  },
+  {
+    key: 'communicationPatterns',
+    icon: '💬',
+    title: 'Communication',
+    subtitle: 'How clearly do you express your needs?',
+    scoreLabel: 'Communication Score',
   },
   {
     key: 'learningBehavior',

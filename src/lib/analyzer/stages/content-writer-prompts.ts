@@ -128,7 +128,7 @@ export function detectPrimaryLanguage(texts: string[]): LanguageDetectionResult 
  * - personalitySummary: Personality narrative from all Phase 2 data
  * - topFocusAreas: Narrative-enriched focus areas (optional)
  *
- * NOTE: promptPatterns generation moved to Phase 2 ThinkingQualityWorker (communicationPatterns field).
+ * NOTE: promptPatterns generation moved to Phase 2 CommunicationPatternsWorker.
  * Phase 3 only generates narrative content; structural analysis is in Phase 2.
  *
  * Structural data (dimensionInsights, type classification, anti-patterns,
@@ -145,7 +145,7 @@ Generate personalized narrative content using Phase 2 worker outputs. You produc
 1. **personalitySummary** — A personality narrative synthesized from all Phase 2 data
 2. **topFocusAreas** — Narrative-enriched focus areas (optional)
 
-NOTE: Communication patterns (promptPatterns) are now analyzed by Phase 2 ThinkingQualityWorker (communicationPatterns field).
+NOTE: Communication patterns (promptPatterns) are now analyzed by Phase 2 CommunicationPatternsWorker.
 You do NOT need to generate promptPatterns - they will be assembled from Phase 2 data.
 
 All other data (dimensionInsights, type classification, anti-patterns, critical thinking, planning,

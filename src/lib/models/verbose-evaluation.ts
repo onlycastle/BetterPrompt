@@ -985,8 +985,9 @@ export type TranslatedAgentInsight = z.infer<typeof TranslatedAgentInsightSchema
  * Frontend should use this when available, falling back to original agentOutputs.
  */
 export const TranslatedAgentInsightsSchema = z.object({
-  // v3 workers (2026-02)
+  // v3.1 workers (2026-02)
   thinkingQuality: TranslatedAgentInsightSchema.optional(),
+  communicationPatterns: TranslatedAgentInsightSchema.optional(),
   learningBehavior: TranslatedAgentInsightSchema.optional(),
   contextEfficiency: TranslatedAgentInsightSchema.optional(),
   // Legacy agents (kept for cached data compatibility)

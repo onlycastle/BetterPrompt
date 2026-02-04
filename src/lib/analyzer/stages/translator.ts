@@ -140,8 +140,8 @@ export class TranslatorStage {
   private prepareAgentOutputsForTranslator(agentOutputs: AgentOutputs): Record<string, unknown> {
     const prepared: Record<string, unknown> = {};
 
-    // Process v3 workers (thinkingQuality, learningBehavior)
-    const v3WorkerKeys = ['thinkingQuality', 'learningBehavior'] as const;
+    // Process v3 workers (thinkingQuality, communicationPatterns, learningBehavior)
+    const v3WorkerKeys = ['thinkingQuality', 'communicationPatterns', 'learningBehavior'] as const;
     for (const key of v3WorkerKeys) {
       const worker = agentOutputs[key];
       if (worker) {
@@ -149,12 +149,12 @@ export class TranslatorStage {
       }
     }
 
-    // Extract communicationPatterns from thinkingQuality for translation
+    // Extract communicationPatterns from CommunicationPatterns worker for translation
     // The translator prompt expects promptPatterns (= communicationPatterns) to be translated:
     // patternName, description, tip → translate to target language
     // examples → keep quotes in original language, translate analysis
-    if (agentOutputs.thinkingQuality?.communicationPatterns) {
-      const patterns = agentOutputs.thinkingQuality.communicationPatterns;
+    if (agentOutputs.communicationPatterns?.communicationPatterns) {
+      const patterns = agentOutputs.communicationPatterns.communicationPatterns;
       if (patterns.length > 0) {
         prepared['communicationPatterns'] = patterns.map(p => ({
           patternName: p.patternName,
@@ -204,16 +204,10 @@ export class TranslatorStage {
    */
   private extractOrFlattenStrengths(worker: Record<string, unknown>): string | undefined {
     const strengthsData = worker.strengthsData as string | undefined;
-    if (strengthsData?.trim()) {
-      return strengthsData;
-    }
+    if (strengthsData?.trim()) return strengthsData;
 
     const strengths = worker.strengths as WorkerStrength[] | undefined;
-    if (strengths?.length) {
-      return this.flattenWorkerStrengths(strengths);
-    }
-
-    return undefined;
+    return strengths?.length ? this.flattenWorkerStrengths(strengths) : undefined;
   }
 
   /**
@@ -221,16 +215,10 @@ export class TranslatorStage {
    */
   private extractOrFlattenGrowthAreas(worker: Record<string, unknown>): string | undefined {
     const growthAreasData = worker.growthAreasData as string | undefined;
-    if (growthAreasData?.trim()) {
-      return growthAreasData;
-    }
+    if (growthAreasData?.trim()) return growthAreasData;
 
     const growthAreas = worker.growthAreas as WorkerGrowth[] | undefined;
-    if (growthAreas?.length) {
-      return this.flattenWorkerGrowthAreas(growthAreas);
-    }
-
-    return undefined;
+    return growthAreas?.length ? this.flattenWorkerGrowthAreas(growthAreas) : undefined;
   }
 
   /**
@@ -262,7 +250,6 @@ export class TranslatorStage {
    */
   private logDebug(label: string, data: unknown): void {
     if (process.env.NODE_ENV !== 'development') return;
-
     const formattedData = Array.isArray(data) ? data.join(', ') : data;
     console.log(`[Translator] ${label}: ${formattedData}`);
   }
@@ -271,15 +258,15 @@ export class TranslatorStage {
    * Log translated insights debug info
    */
   private logTranslatedInsightsDebug(transInsights: any): void {
-    if (process.env.NODE_ENV !== 'development') return;
+    if (process.env.NODE_ENV !== 'development' || !transInsights) {
+      console.log(`[Translator] Output translatedAgentInsights present: ${Boolean(transInsights)}`);
+      return;
+    }
 
-    console.log(`[Translator] Output translatedAgentInsights present: ${Boolean(transInsights)}`);
-    if (!transInsights) return;
+    const keysWithData = Object.keys(transInsights).filter(k => transInsights[k]);
+    console.log(`[Translator] Keys with data: ${keysWithData.join(', ')}`);
 
-    const keys = Object.keys(transInsights).filter(k => transInsights[k]);
-    console.log(`[Translator] Keys with data: ${keys.join(', ')}`);
-
-    for (const key of keys) {
+    for (const key of keysWithData) {
       const insight = transInsights[key];
       const strengthsLength = insight?.strengthsData?.length ?? 0;
       const growthLength = insight?.growthAreasData?.length ?? 0;

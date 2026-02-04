@@ -61,6 +61,7 @@ export const WORKER_DIMENSION_MAP: Record<string, DimensionName[]> = {
   WorkflowHabit: ['aiCollaboration', 'toolMastery'],
   KnowledgeGap: ['skillResilience'],
   ContextEfficiency: ['contextEngineering'],
+  CommunicationPatterns: ['aiCollaboration', 'toolMastery'],
 };
 
 /**

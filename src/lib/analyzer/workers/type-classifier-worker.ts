@@ -132,24 +132,34 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
    *
    * Uses v3 unified workers (capability-based):
    * - ThinkingQuality: Planning + Critical Thinking + Communication
+   * - CommunicationPatterns: Communication Patterns + Signature Quotes
    * - LearningBehavior: Knowledge Gaps + Repeated Mistakes
    * - Efficiency (ContextEfficiency)
    */
   private buildPhase2Summary(agentOutputs: AgentOutputs): string | null {
     const sections: string[] = [];
 
-    // ThinkingQuality: Planning + Critical Thinking + Communication
+    // ThinkingQuality: Planning + Critical Thinking (v3.1 - Communication is separate worker)
     if (agentOutputs.thinkingQuality) {
       const tq = agentOutputs.thinkingQuality;
       const antiPatternTypes = tq.verificationAntiPatterns?.map(ap => ap.type).join(', ') || 'none';
-      const commPatternTypes = tq.communicationPatterns?.map(p => p.patternName).join(', ') || 'none';
       sections.push(`### Thinking Quality
 - Plan quality score: ${tq.planQualityScore}/100
 - Verification level: ${tq.verificationBehavior?.level ?? 'unknown'}
 - Verification anti-patterns: ${tq.verificationAntiPatterns?.length ?? 0} (types: ${antiPatternTypes})
-- Communication patterns: ${tq.communicationPatterns?.length ?? 0} (types: ${commPatternTypes})
 - Overall thinking quality: ${tq.overallThinkingQualityScore}/100
 - Confidence: ${tq.confidenceScore}`);
+    }
+
+    // CommunicationPatterns: Communication Patterns + Signature Quotes (v3.1 - separate worker)
+    if (agentOutputs.communicationPatterns) {
+      const cp = agentOutputs.communicationPatterns;
+      const commPatternTypes = cp.communicationPatterns?.map(p => p.patternName).join(', ') || 'none';
+      sections.push(`### Communication Patterns
+- Communication patterns: ${cp.communicationPatterns?.length ?? 0} (types: ${commPatternTypes})
+- Signature quotes: ${cp.signatureQuotes?.length ?? 0}
+- Overall communication score: ${cp.overallCommunicationScore}/100
+- Confidence: ${cp.confidenceScore}`);
     }
 
     // LearningBehavior: Knowledge Gaps + Repeated Mistakes
@@ -189,16 +199,14 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     sum: number
   ): void {
     if (sum === 0) {
-      for (const key of DISTRIBUTION_KEYS) {
-        dist[key] = 20;
-      }
+      DISTRIBUTION_KEYS.forEach(key => { dist[key] = 20; });
       return;
     }
 
     const factor = 100 / sum;
-    for (const key of DISTRIBUTION_KEYS) {
+    DISTRIBUTION_KEYS.forEach(key => {
       dist[key] = Math.round(dist[key] * factor);
-    }
+    });
 
     const newSum = DISTRIBUTION_KEYS.reduce((s, k) => s + dist[k], 0);
     if (newSum !== 100) {
