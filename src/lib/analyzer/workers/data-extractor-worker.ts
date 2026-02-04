@@ -83,7 +83,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   // LLM filtering configuration
   private static readonly LLM_FILTER_MIN_LENGTH = 10; // Skip LLM for very short utterances only
   private static readonly LLM_FILTER_CONFIDENCE_THRESHOLD = 0.7; // Filter if confidence >= threshold
-  private static readonly LLM_FILTER_BATCH_SIZE = 100; // Max utterances per LLM call (increased for efficiency)
+  private static readonly LLM_FILTER_BATCH_SIZE = 300; // Max utterances per LLM call (optimized for API cost reduction)
 
   /** Dedicated Gemini client for LLM filtering (created lazily) */
   private filterClient?: GeminiClient;
