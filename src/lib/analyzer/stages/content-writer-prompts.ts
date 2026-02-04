@@ -178,6 +178,7 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 - This is the MOST IMPORTANT section - it must feel deeply personal and comprehensive
 - REQUIRED: Include at least 8-10 direct quotes from the developer's messages
 - REQUIRED: Write 15-20 sentences minimum
+- REQUIRED: Structure into distinct paragraphs by theme (problem-solving style, communication patterns, growth mindset, collaboration approach)
 - Synthesize TypeClassifier reasoning + ThinkingQuality/LearningBehavior insights into engaging prose
 - Lead with their most distinctive trait and elaborate extensively with examples
 - Connect multiple quotes to reveal deep personality patterns
@@ -308,6 +309,7 @@ You generate ONLY narrative content. Structural data (including promptPatterns) 
    - This is the MOST IMPORTANT section - make it deeply personal and comprehensive
    - REQUIRED: Include 8-10 direct quotes from Phase 2 evidence and Developer Utterances
    - REQUIRED: Write 15-20 sentences minimum
+   - REQUIRED: Separate into paragraphs by theme (problem-solving, communication, growth mindset, collaboration)
    - Synthesize TypeClassifier reasoning + ThinkingQuality/LearningBehavior insights into engaging prose
    - Lead with their most distinctive trait and elaborate extensively
    - Emphasize 5-7 key phrases with **bold markers**
