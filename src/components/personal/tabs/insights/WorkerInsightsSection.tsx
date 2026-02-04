@@ -423,14 +423,18 @@ export function WorkerDomainSection({
   /**
    * Get insight for a specific growth area from the deduplication allocation.
    * Falls back to referencedInsights prop for backward compatibility.
+   *
+   * @param growth - Growth area to find insight for
+   * @returns Allocated insight, or undefined if none allocated
    */
   const getInsightForGrowth = (growth: WorkerGrowth): ReferencedInsight | undefined => {
     // Prefer deduplicated allocation
     if (insightAllocation && domainKey) {
       const key = createGrowthKey(domainKey, growth.title);
       const allocated = insightAllocation.get(key);
-      if (allocated) {
-        return allocated;
+      // Check for undefined only - null means "intentionally no insight" (don't fallback)
+      if (allocated !== undefined) {
+        return allocated ?? undefined; // Convert null to undefined for consistent return type
       }
     }
     // Fallback to legacy referencedInsights (first one)
