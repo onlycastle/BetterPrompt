@@ -29,7 +29,7 @@ export interface SessionSelectionConfig {
 }
 
 export const DEFAULT_SELECTION_CONFIG: SessionSelectionConfig = {
-  maxSessions: 30,
+  maxSessions: 50,
   minMessageCount: 10, // Minimum 10 messages for meaningful analysis
   recencyWindowDays: 90,
   priorityWeight: {
