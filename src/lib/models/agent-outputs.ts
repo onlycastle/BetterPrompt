@@ -2,7 +2,8 @@
  * Agent Outputs - Zod schemas for Phase 2 worker outputs
  *
  * Current workers (v3 architecture, 2026-02):
- * - ThinkingQuality: Planning + Critical Thinking + Communication patterns
+ * - ThinkingQuality: Planning + Critical Thinking
+ * - CommunicationPatterns: Communication patterns + Signature quotes
  * - LearningBehavior: Knowledge gaps + repeated mistakes analysis
  * - ContextEfficiency: Token efficiency patterns
  *
@@ -709,7 +710,8 @@ export type TypeClassifierOutput = z.infer<typeof TypeClassifierOutputSchema>;
  * Combined outputs from all Phase 2 Workers
  *
  * v3 architecture workers:
- * - ThinkingQuality: Planning, critical thinking, communication patterns
+ * - ThinkingQuality: Planning, critical thinking
+ * - CommunicationPatterns: Communication patterns, signature quotes
  * - LearningBehavior: Knowledge gaps, learning progress, repeated mistakes
  * - Efficiency: Token efficiency patterns
  * - TypeClassifier: Developer type classification
@@ -738,12 +740,20 @@ export const AgentOutputsSchema = z.object({
   /**
    * Thinking Quality analysis
    *
-   * Answers: "How intentionally, critically, and clearly does this developer work?"
+   * Answers: "How intentionally and critically does this developer work?"
    * - Planning: How structured are their plans?
    * - Critical Thinking: Do they verify AI outputs?
-   * - Communication: How clearly do they express needs?
    */
   thinkingQuality: ThinkingQualityOutputSchema.optional(),
+
+  /**
+   * Communication Patterns analysis
+   *
+   * Answers: "How clearly does this developer communicate with AI?"
+   * - Communication Patterns: Distinctive communication styles
+   * - Signature Quotes: Most impressive communication moments
+   */
+  communicationPatterns: CommunicationPatternsOutputSchema.optional(),
 
   /**
    * Learning Behavior analysis
@@ -785,6 +795,7 @@ export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
   return !!(
     // v3 unified workers (primary)
     outputs.thinkingQuality ||
+    outputs.communicationPatterns ||
     outputs.learningBehavior ||
     outputs.efficiency ||
     // Type classifier
@@ -1263,12 +1274,23 @@ import {
   type LearningBehaviorLLMOutput,
 } from './learning-behavior-data';
 
+import {
+  CommunicationPatternsOutputSchema,
+  type CommunicationPatternsOutput,
+  CommunicationPatternsLLMOutputSchema,
+  type CommunicationPatternsLLMOutput,
+} from './communication-patterns-data';
+
 // Re-export v3 unified workers
 export {
   ThinkingQualityOutputSchema,
   type ThinkingQualityOutput,
   ThinkingQualityLLMOutputSchema,
   type ThinkingQualityLLMOutput,
+  CommunicationPatternsOutputSchema,
+  type CommunicationPatternsOutput,
+  CommunicationPatternsLLMOutputSchema,
+  type CommunicationPatternsLLMOutput,
   LearningBehaviorOutputSchema,
   type LearningBehaviorOutput,
   LearningBehaviorLLMOutputSchema,
