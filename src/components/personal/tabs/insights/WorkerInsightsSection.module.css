@@ -702,40 +702,14 @@
 }
 
 /* ============================================================================
-   Action Steps Preview - Visual Checklist
+   Coaching Preview
    ============================================================================ */
 
-.actionStepsPreview {
+.coachingPreview {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   margin-bottom: var(--space-md);
-}
-
-.stepsChecklist {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-}
-
-.stepBox {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  background: var(--surface-2);
-  border: 1px dashed var(--ink-light);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--ink-muted);
-  opacity: 0.7;
-}
-
-.stepsLocked {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--ink-muted);
-  font-style: italic;
 }
 
 /* ============================================================================

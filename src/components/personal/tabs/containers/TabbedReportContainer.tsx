@@ -23,11 +23,23 @@ import type { AgentOutputs, ParsedResource } from '../../../../lib/models/agent-
 import { aggregateWorkerInsights } from '../../../../lib/models/agent-outputs';
 import {
   WORKER_DOMAIN_CONFIGS,
+  WORKER_TO_DIMENSIONS,
+  matchedInsightToReferenced,
   type AggregatedWorkerInsights,
   type WorkerInsightsContainer,
   type WorkerStrength,
   type WorkerGrowth,
+  type ReferencedInsight,
 } from '../../../../lib/models/worker-insights';
+import type { MatchedProfessionalInsight } from '../../../../lib/models/verbose-evaluation';
+import {
+  deduplicateInsights,
+  createGrowthKey,
+  filterFallbackInsights,
+  LLM_REFERENCE_SCORE,
+  type GrowthWithCandidates,
+  type InsightCandidate,
+} from '../../../../lib/utils/insight-deduplication';
 import type { UtteranceLookupEntry } from '../../../../lib/models/verbose-evaluation';
 import { transformCommunicationPatterns } from '../../../../lib/transformers/prompt-pattern-transformer';
 import styles from './TabbedReportContainer.module.css';
@@ -191,6 +203,112 @@ export function TabbedReportContainer({
     return map;
   }, [analysis.utteranceLookup]);
 
+  // ============================================================================
+  // Professional Insights Fallback Logic (Phase 2.75)
+  // ============================================================================
+
+  // Extract professionalInsights grouped by Worker domain
+  // Converts Phase 2.75 dimension-based grouping to Worker domain-based grouping
+  const professionalInsightsByDomain = useMemo(() => {
+    const result = new Map<keyof AggregatedWorkerInsights, MatchedProfessionalInsight[]>();
+    if (!analysis.knowledgeResources) return result;
+
+    // For each worker domain, collect insights from matching dimensions
+    for (const [domainKey, dimensions] of Object.entries(WORKER_TO_DIMENSIONS)) {
+      const insights: MatchedProfessionalInsight[] = [];
+      for (const dimMatch of analysis.knowledgeResources) {
+        if (dimensions.includes(dimMatch.dimension)) {
+          insights.push(...dimMatch.professionalInsights);
+        }
+      }
+      if (insights.length > 0) {
+        result.set(domainKey as keyof AggregatedWorkerInsights, insights);
+      }
+    }
+    return result;
+  }, [analysis.knowledgeResources]);
+
+  // Build growth area candidates for deduplication
+  // Collects both LLM-referenced and fallback insights
+  const insightAllocation = useMemo(() => {
+    const allGrowthWithCandidates: GrowthWithCandidates[] = [];
+
+    // Helper to process a domain's growth areas
+    const processDomain = (
+      domainKey: keyof AggregatedWorkerInsights,
+      growthAreas: WorkerGrowth[] | undefined,
+      referencedInsights: ReferencedInsight[] | undefined
+    ) => {
+      if (!growthAreas) return;
+
+      // Get fallback insights for this domain
+      const fallbackInsights = professionalInsightsByDomain.get(domainKey);
+      const filteredFallbacks = filterFallbackInsights(fallbackInsights);
+
+      for (const growth of growthAreas) {
+        const key = createGrowthKey(domainKey, growth.title);
+        const candidates: InsightCandidate[] = [];
+
+        // Add LLM-referenced insights (highest priority)
+        if (referencedInsights && referencedInsights.length > 0) {
+          for (const insight of referencedInsights) {
+            candidates.push({
+              insight,
+              matchScore: LLM_REFERENCE_SCORE,
+              source: 'llm',
+            });
+          }
+        }
+
+        // Add fallback insights (from Phase 2.75)
+        for (const fallback of filteredFallbacks) {
+          candidates.push({
+            insight: matchedInsightToReferenced(fallback),
+            matchScore: fallback.matchScore,
+            source: 'fallback',
+          });
+        }
+
+        if (candidates.length > 0) {
+          allGrowthWithCandidates.push({ key, domainKey, growthTitle: growth.title, candidates });
+        }
+      }
+    };
+
+    // Process each Worker domain
+    if (workerInsights?.thinkingQuality) {
+      processDomain(
+        'thinkingQuality',
+        workerInsights.thinkingQuality.growthAreas,
+        workerInsights.thinkingQuality.referencedInsights
+      );
+    }
+    if (workerInsights?.communicationPatterns || communicationGrowthAreas.length > 0) {
+      processDomain(
+        'communicationPatterns',
+        workerInsights?.communicationPatterns?.growthAreas || communicationGrowthAreas,
+        workerInsights?.communicationPatterns?.referencedInsights
+      );
+    }
+    if (workerInsights?.learningBehavior) {
+      processDomain(
+        'learningBehavior',
+        workerInsights.learningBehavior.growthAreas,
+        workerInsights.learningBehavior.referencedInsights
+      );
+    }
+    if (workerInsights?.contextEfficiency) {
+      processDomain(
+        'contextEfficiency',
+        workerInsights.contextEfficiency.growthAreas,
+        workerInsights.contextEfficiency.referencedInsights
+      );
+    }
+
+    // Deduplicate across all growth areas
+    return deduplicateInsights(allGrowthWithCandidates);
+  }, [workerInsights, professionalInsightsByDomain, communicationGrowthAreas]);
+
   // Helper to check if a domain has content
   const hasDomainContent = (key: keyof AggregatedWorkerInsights): boolean => {
     const domain = workerInsights?.[key];
@@ -322,6 +440,8 @@ export function TabbedReportContainer({
                 translatedGrowthAreasData={translatedAgentInsights?.thinkingQuality?.growthAreasData}
                 utteranceLookup={utteranceLookupMap}
                 domainScore={workerInsights.thinkingQuality.domainScore}
+                insightAllocation={insightAllocation}
+                domainKey="thinkingQuality"
               />
               {/* Premium Value Summary */}
               <PremiumValueSummary
@@ -342,6 +462,8 @@ export function TabbedReportContainer({
                 translatedGrowthAreasData={translatedAgentInsights?.communicationPatterns?.growthAreasData}
                 utteranceLookup={utteranceLookupMap}
                 domainScore={workerInsights?.communicationPatterns?.domainScore}
+                insightAllocation={insightAllocation}
+                domainKey="communicationPatterns"
               />
               {/* Premium Value Summary */}
               <PremiumValueSummary
@@ -362,6 +484,8 @@ export function TabbedReportContainer({
                 translatedGrowthAreasData={translatedAgentInsights?.learningBehavior?.growthAreasData}
                 utteranceLookup={utteranceLookupMap}
                 domainScore={workerInsights.learningBehavior.domainScore}
+                insightAllocation={insightAllocation}
+                domainKey="learningBehavior"
               />
               {/* Premium Value Summary */}
               <PremiumValueSummary
@@ -382,6 +506,8 @@ export function TabbedReportContainer({
                 translatedGrowthAreasData={translatedAgentInsights?.contextEfficiency?.growthAreasData}
                 utteranceLookup={utteranceLookupMap}
                 domainScore={workerInsights.contextEfficiency.domainScore}
+                insightAllocation={insightAllocation}
+                domainKey="contextEfficiency"
               />
               {/* Premium Value Summary */}
               <PremiumValueSummary

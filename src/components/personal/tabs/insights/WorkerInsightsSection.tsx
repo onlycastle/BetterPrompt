@@ -22,8 +22,7 @@
  */
 
 import { useMemo, useState, useCallback } from 'react';
-import type { AggregatedWorkerInsights, WorkerStrength, WorkerGrowth, EvidenceItem } from '../../../../lib/models/worker-insights';
-import type { ReferencedInsight } from '../../../../lib/models/thinking-quality-data';
+import type { AggregatedWorkerInsights, WorkerStrength, WorkerGrowth, EvidenceItem, ReferencedInsight } from '../../../../lib/models/worker-insights';
 import React from 'react';
 import {
   WORKER_DOMAIN_CONFIGS,
@@ -31,6 +30,7 @@ import {
   applyTranslatedStrengths,
   applyTranslatedGrowthAreas,
 } from '../../../../lib/models/worker-insights';
+import { createGrowthKey, type InsightAllocation } from '../../../../lib/utils/insight-deduplication';
 import type { TranslatedAgentInsights, UtteranceLookupEntry } from '../../../../lib/models/verbose-evaluation';
 import type { CommunicationStrength, CommunicationGrowth } from '../../../../lib/transformers/prompt-pattern-transformer';
 import { ExpandableEvidence } from './ExpandableEvidence';
@@ -321,22 +321,14 @@ function GrowthCard({
           {/* Severity-based urgency label */}
           {renderUrgencyLabel(growth.severity)}
 
-          {/* Action Steps Preview - visual checklist */}
-          <div className={styles.actionStepsPreview}>
-            <span className={styles.recommendationLabel}>Your personalized action plan:</span>
-            <div className={styles.stepsChecklist}>
-              <span className={styles.stepBox}>☐ Step 1</span>
-              <span className={styles.stepBox}>☐ Step 2</span>
-              <span className={styles.stepBox}>☐ Step 3</span>
-              <span className={styles.stepBox}>☐ Step 4</span>
-              <span className={styles.stepBox}>☐ Step 5</span>
-            </div>
-            <span className={styles.stepsLocked}>(5 steps locked)</span>
+          {/* Coaching Preview */}
+          <div className={styles.coachingPreview}>
+            <span className={styles.recommendationLabel}>Personalized coaching:</span>
           </div>
 
           <button className={styles.unlockCta} type="button">
             <span className={styles.lockIcon}>🔓</span>
-            Unlock Your Action Plan
+            Unlock Coaching Tips
           </button>
         </div>
       )}
@@ -357,10 +349,14 @@ export interface WorkerDomainSectionProps {
   translatedGrowthAreasData?: string;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
   domainScore?: number;
-  /** Referenced insights from this domain for sidebar display */
+  /** Referenced insights from this domain for sidebar display (legacy - prefer insightAllocation) */
   referencedInsights?: ReferencedInsight[];
   /** Callback when insight indicator is clicked */
   onInsightClick?: (insight: ReferencedInsight) => void;
+  /** Deduplicated insight allocation from TabbedReportContainer */
+  insightAllocation?: InsightAllocation;
+  /** Domain key for looking up allocated insights (e.g., 'thinkingQuality') */
+  domainKey?: string;
 }
 
 /**
@@ -382,7 +378,31 @@ export function WorkerDomainSection({
   domainScore,
   referencedInsights,
   onInsightClick,
+  insightAllocation,
+  domainKey,
 }: WorkerDomainSectionProps) {
+  // Professional Insight Sidebar state (for this domain)
+  const [selectedInsight, setSelectedInsight] = useState<ReferencedInsight | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Handle insight indicator click - open sidebar with selected insight
+  const handleInsightClick = useCallback((insight: ReferencedInsight) => {
+    // Use provided callback or default to local sidebar
+    if (onInsightClick) {
+      onInsightClick(insight);
+    } else {
+      setSelectedInsight(insight);
+      setIsSidebarOpen(true);
+    }
+  }, [onInsightClick]);
+
+  // Handle sidebar close
+  const handleCloseSidebar = useCallback(() => {
+    setIsSidebarOpen(false);
+    // Clear selected insight after animation
+    setTimeout(() => setSelectedInsight(null), 300);
+  }, []);
+
   // Apply translations if available
   const displayStrengths = useMemo(
     () => applyTranslatedStrengths(strengths, translatedStrengthsData),
@@ -399,6 +419,26 @@ export function WorkerDomainSection({
   if (!hasContent) {
     return null;
   }
+
+  /**
+   * Get insight for a specific growth area from the deduplication allocation.
+   * Falls back to referencedInsights prop for backward compatibility.
+   */
+  const getInsightForGrowth = (growth: WorkerGrowth): ReferencedInsight | undefined => {
+    // Prefer deduplicated allocation
+    if (insightAllocation && domainKey) {
+      const key = createGrowthKey(domainKey, growth.title);
+      const allocated = insightAllocation.get(key);
+      if (allocated) {
+        return allocated;
+      }
+    }
+    // Fallback to legacy referencedInsights (first one)
+    if (referencedInsights && referencedInsights.length > 0) {
+      return referencedInsights[0];
+    }
+    return undefined;
+  };
 
   return (
     <section className={styles.domainSection}>
@@ -437,19 +477,31 @@ export function WorkerDomainSection({
           <div className={styles.insightsColumn}>
             <h4 className={styles.columnTitle}>Growth Areas</h4>
             <div className={styles.cardsContainer}>
-              {displayGrowthAreas.map((growth, idx) => (
-                <GrowthCard
-                  key={idx}
-                  growth={growth}
-                  utteranceLookup={utteranceLookup}
-                  referencedInsights={referencedInsights}
-                  onInsightClick={onInsightClick}
-                />
-              ))}
+              {displayGrowthAreas.map((growth, idx) => {
+                const insight = getInsightForGrowth(growth);
+                return (
+                  <GrowthCard
+                    key={idx}
+                    growth={growth}
+                    utteranceLookup={utteranceLookup}
+                    referencedInsights={insight ? [insight] : undefined}
+                    onInsightClick={handleInsightClick}
+                  />
+                );
+              })}
             </div>
           </div>
         )}
       </div>
+
+      {/* Professional Insight Sidebar - only rendered if no external onInsightClick */}
+      {!onInsightClick && (
+        <ProfessionalInsightSidebar
+          insight={selectedInsight}
+          isOpen={isSidebarOpen}
+          onClose={handleCloseSidebar}
+        />
+      )}
     </section>
   );
 }
