@@ -15,7 +15,7 @@ NoMoreAISlop analyzes developer-AI collaboration sessions (JSONL/SQLite) through
 | `src/lib/analyzer/` | LLM analysis pipeline | Application |
 | `src/lib/analyzer/orchestrator/` | 4-phase orchestration | Application |
 | `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (4) + Phase 2.5 TypeClassifier | Application |
-| `src/lib/analyzer/stages/` | Phase 1.5 SessionSummarizer + Phase 2.8 EvidenceVerifier + Phase 3 ContentWriter + Phase 4 Translator | Application |
+| `src/lib/analyzer/stages/` | Phase 1.5 SessionSummarizer + Phase 2 ProjectSummarizer + Phase 2.8 EvidenceVerifier + Phase 3 ContentWriter + Phase 4 Translator | Application |
 | `src/lib/analyzer/calculators/` | Deterministic calculators (temporal, phrase patterns) | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/domain/` | Domain models (business rules, errors) | Domain |
@@ -34,6 +34,7 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 | 1 | DataExtractor | 0 | Sessions + Metrics | `Phase1Output` | `src/lib/analyzer/workers/data-extractor-worker.ts` |
 | 1.5 | SessionSummarizer | 1 | Phase1Output sessions | `SessionSummaryBatchLLM` | `src/lib/analyzer/stages/session-summarizer.ts` |
 | 2 | 4 Insight Workers (parallel) | 4 | Phase1Output | `AgentOutputs` | `src/lib/analyzer/workers/` |
+| 2 | ProjectSummarizer (parallel) | 1 | activitySessions | `ProjectSummary[]` | `src/lib/analyzer/stages/project-summarizer.ts` |
 | 2.5 | TypeClassifier | 1 | Phase1Output + AgentOutputs | `TypeClassifierOutput` | `src/lib/analyzer/workers/type-classifier-worker.ts` |
 | 2.75 | KnowledgeResourceMatcher | 0 | AgentOutputs | `KnowledgeResource[]` | deterministic resource matching |
 | 2.8 | EvidenceVerifier | 1 | AgentOutputs evidence | `EvidenceVerifierResult` | `src/lib/analyzer/stages/evidence-verifier.ts` |
@@ -41,7 +42,7 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 | 4 | Translator (conditional) | 0-1 | NarrativeLLMResponse + AgentOutputs | `TranslatorOutput` | `src/lib/analyzer/stages/translator.ts` |
 | Assembly | EvaluationAssembler | 0 | AgentOutputs + NarrativeLLMResponse + TranslatorData | `VerboseEvaluation` | `src/lib/analyzer/stages/evaluation-assembler.ts` |
 
-**Total**: 8 LLM calls (English), 9 LLM calls (non-English). Model: `gemini-3-flash-preview`, Temperature: 1.0, Max tokens: 65536.
+**Total**: 9 LLM calls (English), 10 LLM calls (non-English). Model: `gemini-3-flash-preview`, Temperature: 1.0, Max tokens: 65536.
 
 ## Phase Details
 
@@ -63,7 +64,7 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 - Summaries flow to ContentWriter (Phase 3) and Translator (Phase 4)
 - Separate from CLI Activity Scanner (deterministic summaries for ALL sessions)
 
-### Phase 2: Insight Generation (4 parallel workers)
+### Phase 2: Insight Generation (4 parallel workers + ProjectSummarizer)
 
 | Worker | Analysis Focus | Output Schema | Prompt File |
 |--------|---------------|---------------|-------------|
@@ -76,12 +77,19 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 - Workers receive ONLY Phase1Output (context isolation from raw sessions)
 - Dynamic knowledge injection via `getInsightsForWorker()` in `workers/prompts/knowledge-mapping.ts`
 
+**ProjectSummarizer** (1 LLM call, runs in parallel with insight workers):
+- Groups activitySessions by project name and generates 2-3 line LLM summaries per project
+- Projects with ≤3 sessions skip LLM: session summaries used directly (passthrough optimization)
+- Independent of Phase 1 output — only requires `activitySessions` from CLI
+- Output: `ProjectSummary[]` in `src/lib/models/verbose-evaluation.ts`
+- Consumed by Activity tab UI and translated in Phase 4
+
 ### Phase 2.5: TypeClassifier (1 LLM call)
 
 - 5 coding styles x 3 control levels = 15 matrix combinations
 - Styles: architect, analyst, conductor, speedrunner, trendsetter
 - Control levels: explorer, navigator, cartographer
-- Generates personalized `reasoning` narrative (1500-2000 chars) used as `personalitySummary`
+- Generates personalized `reasoning` narrative (1500-2500 chars, 3-4 paragraphs) used as `personalitySummary`
 - Uses Phase 2 evidence utterances for developer quotes in reasoning
 - Output: `TypeClassifierOutput` in `src/lib/models/agent-outputs.ts`
 
@@ -134,7 +142,7 @@ Assembly in `assembleEvaluation()` in `src/lib/analyzer/stages/evaluation-assemb
 |-----|------------|--------|--------|
 | Fixed Header: Type Result | Phase 2.5 TypeClassifier | TypeClassifierWorker | FREE |
 | Fixed Header: Personality Summary | Phase 3 ContentWriter | ContentWriterStage | FREE |
-| Activity | CLI Activity Scanner (no LLM) | N/A | FREE |
+| Activity | CLI Activity Scanner + Phase 2 ProjectSummarizer | ProjectSummarizerStage | FREE |
 | Thinking Quality | Phase 2 | ThinkingQualityWorker | FREE (recommendation: PAID) |
 | Communication | Phase 2 | CommunicationPatternsWorker | FREE (recommendation: PAID) |
 | Learning Behavior | Phase 2 | LearningBehaviorWorker | FREE (recommendation: PAID) |
@@ -238,6 +246,7 @@ Type: `SessionSourceType = 'claude-code' | 'cursor' | 'cursor-composer'`
 | Content gateway | `src/lib/analyzer/content-gateway.ts` |
 | Evaluation assembler | `src/lib/analyzer/stages/evaluation-assembler.ts` |
 | Session summarizer | `src/lib/analyzer/stages/session-summarizer.ts` |
+| Project summarizer | `src/lib/analyzer/stages/project-summarizer.ts` |
 | Evidence verifier | `src/lib/analyzer/stages/evidence-verifier.ts` |
 | Phase 3 summarizer | `src/lib/analyzer/stages/phase3-summarizer.ts` |
 | Knowledge mapping | `src/lib/analyzer/workers/prompts/knowledge-mapping.ts` |
@@ -252,7 +261,7 @@ Type: `SessionSourceType = 'claude-code' | 'cursor' | 'cursor-composer'`
 
 ## Cost
 
-- 8-9 LLM calls per analysis using Gemini 3 Flash
+- 9-10 LLM calls per analysis using Gemini 3 Flash
 - ~$0.04-0.05 per analysis
-- Phase 2 runs 4 workers in parallel for speed
+- Phase 2 runs 4 workers + ProjectSummarizer in parallel for speed
 - No Fallback Policy: worker failures propagate as errors (Promise.all)
