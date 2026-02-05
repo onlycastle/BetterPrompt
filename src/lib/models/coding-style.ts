@@ -7,13 +7,20 @@ import { z } from 'zod';
 /**
  * The 5 AI Coding Style Types
  * All types are positive - each has strengths and growth points
+ *
+ * v2 Taxonomy (2026-02):
+ * - architect: Planning intensity (kept)
+ * - analyst: Thoroughness (merges scientist + craftsman)
+ * - conductor: Tool mastery & AI orchestration (replaces collaborator)
+ * - speedrunner: Efficiency (kept)
+ * - trendsetter: Novelty-seeking (new)
  */
 export const CodingStyleTypeSchema = z.enum([
   'architect',
-  'scientist',
-  'collaborator',
+  'analyst',
+  'conductor',
   'speedrunner',
-  'craftsman',
+  'trendsetter',
 ]);
 export type CodingStyleType = z.infer<typeof CodingStyleTypeSchema>;
 
@@ -47,36 +54,36 @@ export const TYPE_METADATA: Record<
       'Over-planning may delay execution',
     ],
   },
-  scientist: {
+  analyst: {
     emoji: '🔬',
-    name: 'Scientist',
-    tagline: 'Truth-seeker who always verifies AI output',
+    name: 'Analyst',
+    tagline: 'Deep investigator who verifies and questions everything',
     description:
-      "You maintain healthy skepticism toward AI output. Your verification habits catch bugs early and ensure high code quality while keeping your skills sharp.",
+      'You combine systematic verification with critical thinking. Your thorough approach catches bugs early, questions assumptions, and ensures high code quality through investigation.',
     strengths: [
-      'Catches bugs early',
-      'High code quality',
-      'Low AI dependency, maintains skills',
+      'Catches bugs early through systematic verification',
+      'Questions assumptions and explores alternatives',
+      'Low repeated mistakes through deep understanding',
     ],
     growthPoints: [
-      'Verifying everything can slow velocity',
-      'More AI trust could improve efficiency',
+      'Thoroughness can slow velocity on simpler tasks',
+      'Balancing depth with pragmatism',
     ],
   },
-  collaborator: {
-    emoji: '🤝',
-    name: 'Collaborator',
-    tagline: 'Partnership master who finds answers through dialogue',
+  conductor: {
+    emoji: '🎼',
+    name: 'Conductor',
+    tagline: 'Orchestration master who commands AI tools like an ensemble',
     description:
-      'You excel at iterative refinement through conversation. Your collaborative approach maximizes AI synergy and leads to quality improvement through iteration.',
+      'You excel at orchestrating AI tools and workflows. Your mastery of slash commands, subagents, role assignments, and multi-tool workflows maximizes AI synergy and productivity.',
     strengths: [
-      'Maximizes AI synergy',
-      'Quality improvement through iteration',
-      'Flexible problem solving',
+      'High tool diversity and mastery',
+      'Effective multi-agent orchestration',
+      'Creative workflow composition',
     ],
     growthPoints: [
-      'Clearer initial requirements could reduce turns',
-      'Sometimes one clear request is more efficient',
+      'Complex orchestration can add overhead for simple tasks',
+      'Direct approaches may be faster for focused work',
     ],
   },
   speedrunner: {
@@ -95,20 +102,20 @@ export const TYPE_METADATA: Record<
       'Sometimes slower design is more efficient',
     ],
   },
-  craftsman: {
-    emoji: '🔧',
-    name: 'Craftsman',
-    tagline: 'Artisan who prioritizes code quality above all',
+  trendsetter: {
+    emoji: '🚀',
+    name: 'Trendsetter',
+    tagline: 'Innovation seeker who explores cutting-edge approaches',
     description:
-      'You care deeply about code quality and consistency. Your attention to detail produces maintainable code and minimizes long-term technical debt.',
+      'You actively seek the latest tools, frameworks, and best practices. Your curiosity drives you to explore emerging technologies and modern approaches, keeping your stack ahead of the curve.',
     strengths: [
-      'Produces maintainable code',
-      'Maintains team codebase consistency',
-      'Minimizes long-term technical debt',
+      'Early adoption of effective new tools',
+      'Awareness of industry best practices',
+      'Continuous learning mindset',
     ],
     growthPoints: [
-      'Perfectionism may delay deployment',
-      'Speed matters too at MVP stage',
+      'Novelty bias may lead to premature adoption',
+      'Proven solutions sometimes outperform trendy ones',
     ],
   },
 };
@@ -174,10 +181,10 @@ export interface SessionMetrics {
  */
 export interface TypeScores {
   architect: number;
-  scientist: number;
-  collaborator: number;
+  analyst: number;
+  conductor: number;
   speedrunner: number;
-  craftsman: number;
+  trendsetter: number;
 }
 
 /**
@@ -185,10 +192,10 @@ export interface TypeScores {
  */
 export interface TypeDistribution {
   architect: number;
-  scientist: number;
-  collaborator: number;
+  analyst: number;
+  conductor: number;
   speedrunner: number;
-  craftsman: number;
+  trendsetter: number;
 }
 
 // ============================================================================
@@ -216,10 +223,10 @@ export const TypeResultSchema = z.object({
   primaryType: CodingStyleTypeSchema,
   distribution: z.object({
     architect: z.number().min(0).max(100),
-    scientist: z.number().min(0).max(100),
-    collaborator: z.number().min(0).max(100),
+    analyst: z.number().min(0).max(100),
+    conductor: z.number().min(0).max(100),
     speedrunner: z.number().min(0).max(100),
-    craftsman: z.number().min(0).max(100),
+    trendsetter: z.number().min(0).max(100),
   }),
   metrics: z.object({
     avgPromptLength: z.number(),
@@ -247,10 +254,10 @@ export type TypeResult = z.infer<typeof TypeResultSchema>;
 // ============================================================================
 
 export const PATTERN_KEYWORDS = {
-  // Questions (Scientist signals)
+  // Questions (Analyst signals)
   questions: ['why', 'how', 'what', 'explain', 'clarify', 'understand'],
 
-  // Modification requests (Scientist/Collaborator signals)
+  // Modification requests (Analyst signals)
   modifications: [
     'change',
     'fix',
@@ -291,7 +298,7 @@ export const PATTERN_KEYWORDS = {
     'ok',
   ],
 
-  // Quality patterns (Craftsman signals)
+  // Quality patterns (Analyst signals)
   quality: [
     'refactor',
     'clean',
@@ -303,10 +310,35 @@ export const PATTERN_KEYWORDS = {
     'consistent',
   ],
 
-  // Quality terms (Craftsman signals)
+  // Quality terms (Analyst signals)
   qualityTerms: ['test', 'type', 'doc', 'lint', 'format', 'prettier', 'eslint'],
 
-  // Positive feedback (Collaborator signals)
+  // Orchestration patterns (Conductor signals)
+  orchestration: [
+    'slash command',
+    'subagent',
+    'agent',
+    'task tool',
+    'parallel',
+    'delegate',
+    'workflow',
+    'role',
+    'orchestrat',
+  ],
+
+  // Trend patterns (Trendsetter signals)
+  trends: [
+    'latest',
+    'newest',
+    'trending',
+    'modern',
+    'up-to-date',
+    'best practice',
+    'current version',
+    'recently released',
+  ],
+
+  // Positive feedback
   positiveFeedback: [
     'thanks',
     'thank you',
@@ -319,7 +351,7 @@ export const PATTERN_KEYWORDS = {
     'love it',
   ],
 
-  // Iteration patterns (Collaborator signals)
+  // Iteration patterns
   iteration: [
     'but',
     'however',
@@ -368,25 +400,25 @@ export const MATRIX_NAMES: Record<CodingStyleType, Record<AIControlLevel, string
     navigator: 'Strategist',
     cartographer: 'Systems Architect',
   },
-  scientist: {
+  analyst: {
     explorer: 'Questioner',
-    navigator: 'Analyst',
-    cartographer: 'Research Lead',
+    navigator: 'Research Lead',
+    cartographer: 'Quality Sentinel',
   },
-  collaborator: {
-    explorer: 'Conversationalist',
-    navigator: 'Team Player',
-    cartographer: 'Facilitator',
+  conductor: {
+    explorer: 'Improviser',
+    navigator: 'Arranger',
+    cartographer: 'Maestro',
   },
   speedrunner: {
     explorer: 'Experimenter',
     navigator: 'Rapid Prototyper',
     cartographer: 'Velocity Expert',
   },
-  craftsman: {
-    explorer: 'Detail Lover',
-    navigator: 'Quality Crafter',
-    cartographer: 'Master Artisan',
+  trendsetter: {
+    explorer: 'Early Adopter',
+    navigator: 'Tech Radar',
+    cartographer: 'Innovation Lead',
   },
 };
 
@@ -425,44 +457,44 @@ export const MATRIX_METADATA: Record<
       growthPath: 'Share your planning techniques with others',
     },
   },
-  scientist: {
+  analyst: {
     explorer: {
       emoji: '🔎',
       description: 'You explore through curious questioning and open inquiry.',
       keyStrength: 'Curious mind and questioning attitude',
-      growthPath: 'Try challenging AI responses more often',
+      growthPath: 'Try challenging AI responses more systematically',
     },
     navigator: {
       emoji: '🧪',
-      description: 'You navigate through hypothesis and verification.',
-      keyStrength: 'Growing verification skills',
+      description: 'You navigate through hypothesis-driven investigation and verification.',
+      keyStrength: 'Balanced depth with practical verification',
       growthPath: 'Add systematic testing to your workflow',
     },
     cartographer: {
       emoji: '🔬',
-      description: 'You map every hypothesis systematically before proceeding.',
+      description: 'You leave no stone unturned — rigorous verification meets deep analysis.',
       keyStrength: 'Rigorous verification and error detection',
       growthPath: 'Help others develop critical thinking habits',
     },
   },
-  collaborator: {
+  conductor: {
     explorer: {
-      emoji: '👥',
-      description: 'You explore solutions through rich dialogue and conversation.',
-      keyStrength: 'Open communication style',
-      growthPath: 'Try directing conversations more actively',
+      emoji: '🎵',
+      description: 'You experiment with AI tools freely, discovering creative workflows.',
+      keyStrength: 'Creative tool exploration and improvisation',
+      growthPath: 'Build repeatable workflows from your discoveries',
     },
     navigator: {
-      emoji: '🤝',
-      description: 'You navigate through balanced, productive dialogue.',
-      keyStrength: 'Effective back-and-forth refinement',
-      growthPath: 'Focus on asking more probing questions',
+      emoji: '🎼',
+      description: 'You arrange AI tools into effective, coordinated workflows.',
+      keyStrength: 'Effective multi-tool coordination',
+      growthPath: 'Document your workflow patterns for team sharing',
     },
     cartographer: {
-      emoji: '🎭',
-      description: 'You facilitate and direct collaborative sessions masterfully.',
-      keyStrength: 'Masterful iterative refinement',
-      growthPath: 'Document your collaboration patterns for others',
+      emoji: '🎹',
+      description: 'You orchestrate AI tools with masterful precision and control.',
+      keyStrength: 'Masterful AI tool orchestration',
+      growthPath: 'Mentor others in advanced AI workflow techniques',
     },
   },
   speedrunner: {
@@ -485,24 +517,24 @@ export const MATRIX_METADATA: Record<
       growthPath: 'Teach efficient verification techniques to others',
     },
   },
-  craftsman: {
+  trendsetter: {
     explorer: {
-      emoji: '🎨',
-      description: 'You explore quality through attention to detail and aesthetics.',
-      keyStrength: 'High standards and attention to detail',
-      growthPath: 'Practice writing quality code without AI assistance',
+      emoji: '🌱',
+      description: 'You eagerly try new tools and approaches, staying curious about what is emerging.',
+      keyStrength: 'Early adoption and experimentation with new tech',
+      growthPath: 'Evaluate new tools more critically before adopting',
     },
     navigator: {
-      emoji: '🔧',
-      description: 'You navigate toward quality through active refinement.',
-      keyStrength: 'Active quality improvement process',
-      growthPath: 'Keep developing your manual coding skills',
+      emoji: '📡',
+      description: 'You track industry trends and selectively adopt what adds value.',
+      keyStrength: 'Informed technology radar with selective adoption',
+      growthPath: 'Share your technology insights with your team',
     },
     cartographer: {
-      emoji: '💎',
-      description: 'You craft with precision, using AI as an expert tool.',
-      keyStrength: 'Masterful quality control with AI assistance',
-      growthPath: 'Set quality benchmarks for your team',
+      emoji: '🚀',
+      description: 'You strategically lead innovation, charting paths through emerging technology.',
+      keyStrength: 'Strategic innovation leadership',
+      growthPath: 'Balance cutting-edge adoption with team readiness',
     },
   },
 };
@@ -564,10 +596,10 @@ export type MatrixKey = `${CodingStyleType}_${AIControlLevel}`;
  */
 export const ALL_MATRIX_KEYS: MatrixKey[] = [
   'architect_explorer', 'architect_navigator', 'architect_cartographer',
-  'scientist_explorer', 'scientist_navigator', 'scientist_cartographer',
-  'collaborator_explorer', 'collaborator_navigator', 'collaborator_cartographer',
+  'analyst_explorer', 'analyst_navigator', 'analyst_cartographer',
+  'conductor_explorer', 'conductor_navigator', 'conductor_cartographer',
   'speedrunner_explorer', 'speedrunner_navigator', 'speedrunner_cartographer',
-  'craftsman_explorer', 'craftsman_navigator', 'craftsman_cartographer',
+  'trendsetter_explorer', 'trendsetter_navigator', 'trendsetter_cartographer',
 ];
 
 /**
@@ -578,18 +610,18 @@ export interface MatrixDistribution {
   architect_explorer: number;
   architect_navigator: number;
   architect_cartographer: number;
-  scientist_explorer: number;
-  scientist_navigator: number;
-  scientist_cartographer: number;
-  collaborator_explorer: number;
-  collaborator_navigator: number;
-  collaborator_cartographer: number;
+  analyst_explorer: number;
+  analyst_navigator: number;
+  analyst_cartographer: number;
+  conductor_explorer: number;
+  conductor_navigator: number;
+  conductor_cartographer: number;
   speedrunner_explorer: number;
   speedrunner_navigator: number;
   speedrunner_cartographer: number;
-  craftsman_explorer: number;
-  craftsman_navigator: number;
-  craftsman_cartographer: number;
+  trendsetter_explorer: number;
+  trendsetter_navigator: number;
+  trendsetter_cartographer: number;
 }
 
 /**
@@ -599,18 +631,18 @@ export const MatrixDistributionSchema = z.object({
   architect_explorer: z.number().min(0).max(100),
   architect_navigator: z.number().min(0).max(100),
   architect_cartographer: z.number().min(0).max(100),
-  scientist_explorer: z.number().min(0).max(100),
-  scientist_navigator: z.number().min(0).max(100),
-  scientist_cartographer: z.number().min(0).max(100),
-  collaborator_explorer: z.number().min(0).max(100),
-  collaborator_navigator: z.number().min(0).max(100),
-  collaborator_cartographer: z.number().min(0).max(100),
+  analyst_explorer: z.number().min(0).max(100),
+  analyst_navigator: z.number().min(0).max(100),
+  analyst_cartographer: z.number().min(0).max(100),
+  conductor_explorer: z.number().min(0).max(100),
+  conductor_navigator: z.number().min(0).max(100),
+  conductor_cartographer: z.number().min(0).max(100),
   speedrunner_explorer: z.number().min(0).max(100),
   speedrunner_navigator: z.number().min(0).max(100),
   speedrunner_cartographer: z.number().min(0).max(100),
-  craftsman_explorer: z.number().min(0).max(100),
-  craftsman_navigator: z.number().min(0).max(100),
-  craftsman_cartographer: z.number().min(0).max(100),
+  trendsetter_explorer: z.number().min(0).max(100),
+  trendsetter_navigator: z.number().min(0).max(100),
+  trendsetter_cartographer: z.number().min(0).max(100),
 });
 
 /**
@@ -679,18 +711,18 @@ export function deriveMatrixDistribution(
     architect_explorer: calcPct(typeDistribution.architect || 0, explorerWeight),
     architect_navigator: calcPct(typeDistribution.architect || 0, navigatorWeight),
     architect_cartographer: calcPct(typeDistribution.architect || 0, cartographerWeight),
-    scientist_explorer: calcPct(typeDistribution.scientist || 0, explorerWeight),
-    scientist_navigator: calcPct(typeDistribution.scientist || 0, navigatorWeight),
-    scientist_cartographer: calcPct(typeDistribution.scientist || 0, cartographerWeight),
-    collaborator_explorer: calcPct(typeDistribution.collaborator || 0, explorerWeight),
-    collaborator_navigator: calcPct(typeDistribution.collaborator || 0, navigatorWeight),
-    collaborator_cartographer: calcPct(typeDistribution.collaborator || 0, cartographerWeight),
+    analyst_explorer: calcPct(typeDistribution.analyst || 0, explorerWeight),
+    analyst_navigator: calcPct(typeDistribution.analyst || 0, navigatorWeight),
+    analyst_cartographer: calcPct(typeDistribution.analyst || 0, cartographerWeight),
+    conductor_explorer: calcPct(typeDistribution.conductor || 0, explorerWeight),
+    conductor_navigator: calcPct(typeDistribution.conductor || 0, navigatorWeight),
+    conductor_cartographer: calcPct(typeDistribution.conductor || 0, cartographerWeight),
     speedrunner_explorer: calcPct(typeDistribution.speedrunner || 0, explorerWeight),
     speedrunner_navigator: calcPct(typeDistribution.speedrunner || 0, navigatorWeight),
     speedrunner_cartographer: calcPct(typeDistribution.speedrunner || 0, cartographerWeight),
-    craftsman_explorer: calcPct(typeDistribution.craftsman || 0, explorerWeight),
-    craftsman_navigator: calcPct(typeDistribution.craftsman || 0, navigatorWeight),
-    craftsman_cartographer: calcPct(typeDistribution.craftsman || 0, cartographerWeight),
+    trendsetter_explorer: calcPct(typeDistribution.trendsetter || 0, explorerWeight),
+    trendsetter_navigator: calcPct(typeDistribution.trendsetter || 0, navigatorWeight),
+    trendsetter_cartographer: calcPct(typeDistribution.trendsetter || 0, cartographerWeight),
   };
 }
 

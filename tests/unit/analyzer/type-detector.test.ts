@@ -254,10 +254,10 @@ describe('Type Detector', () => {
 
       // At minimum, all scores should be defined
       expect(scores.architect).toBeDefined();
-      expect(scores.scientist).toBeDefined();
-      expect(scores.collaborator).toBeDefined();
+      expect(scores.analyst).toBeDefined();
+      expect(scores.conductor).toBeDefined();
       expect(scores.speedrunner).toBeDefined();
-      expect(scores.craftsman).toBeDefined();
+      expect(scores.trendsetter).toBeDefined();
     });
 
     it('should score architect higher for long initial prompts', () => {
@@ -283,7 +283,7 @@ describe('Type Detector', () => {
       expect(longScores.architect).toBeGreaterThan(shortScores.architect);
     });
 
-    it('should score scientist higher for high question frequency', () => {
+    it('should score analyst higher for high question frequency', () => {
       const questionSession = createMockSession({
         messages: [
           createMockMessage('user', 'Why? How? What?'),
@@ -303,7 +303,7 @@ describe('Type Detector', () => {
       const questionScores = calculateTypeScores(questionMetrics);
       const statementScores = calculateTypeScores(statementMetrics);
 
-      expect(questionScores.scientist).toBeGreaterThan(statementScores.scientist);
+      expect(questionScores.analyst).toBeGreaterThan(statementScores.analyst);
     });
 
     it('should score speedrunner higher for short prompts', () => {
@@ -329,7 +329,7 @@ describe('Type Detector', () => {
       expect(shortScores.speedrunner).toBeGreaterThan(longScores.speedrunner);
     });
 
-    it('should score craftsman higher for quality keywords', () => {
+    it('should score trendsetter higher for quality keywords', () => {
       const qualitySession = createMockSession({
         messages: [
           createMockMessage('user', 'refactor this and add tests, improve the style'),
@@ -349,10 +349,10 @@ describe('Type Detector', () => {
       const qualityScores = calculateTypeScores(qualityMetrics);
       const basicScores = calculateTypeScores(basicMetrics);
 
-      expect(qualityScores.craftsman).toBeGreaterThan(basicScores.craftsman);
+      expect(qualityScores.trendsetter).toBeGreaterThan(basicScores.trendsetter);
     });
 
-    it('should score collaborator higher for high turn count', () => {
+    it('should score conductor higher for high turn count', () => {
       const highTurnSession = createMockSession({
         messages: [
           ...Array(10).fill(null).flatMap((_, i) => [
@@ -374,7 +374,7 @@ describe('Type Detector', () => {
       const highTurnScores = calculateTypeScores(highTurnMetrics);
       const lowTurnScores = calculateTypeScores(lowTurnMetrics);
 
-      expect(highTurnScores.collaborator).toBeGreaterThan(lowTurnScores.collaborator);
+      expect(highTurnScores.conductor).toBeGreaterThan(lowTurnScores.conductor);
     });
 
     it('should score architect higher for planning keywords', () => {
@@ -440,10 +440,10 @@ describe('Type Detector', () => {
     it('should dampen architect score when close to second highest', () => {
       const scores = {
         architect: 5,
-        scientist: 4, // Only 1 point behind
-        collaborator: 2,
+        analyst: 4, // Only 1 point behind
+        conductor: 2,
         speedrunner: 1,
-        craftsman: 1,
+        trendsetter: 1,
       };
 
       const dampened = applyArchitectDampening(scores);
@@ -452,16 +452,16 @@ describe('Type Detector', () => {
       // 5 * 0.6 = 3
       expect(dampened.architect).toBe(3);
       // Other scores unchanged
-      expect(dampened.scientist).toBe(4);
+      expect(dampened.analyst).toBe(4);
     });
 
     it('should apply moderate dampening for 2-3 point advantage', () => {
       const scores = {
         architect: 6,
-        scientist: 3, // 3 points behind
-        collaborator: 2,
+        analyst: 3, // 3 points behind
+        conductor: 2,
         speedrunner: 1,
-        craftsman: 1,
+        trendsetter: 1,
       };
 
       const dampened = applyArchitectDampening(scores);
@@ -474,10 +474,10 @@ describe('Type Detector', () => {
     it('should not dampen when architect has clear advantage', () => {
       const scores = {
         architect: 10,
-        scientist: 3, // 7 points behind (> 3)
-        collaborator: 2,
+        analyst: 3, // 7 points behind (> 3)
+        conductor: 2,
         speedrunner: 1,
-        craftsman: 1,
+        trendsetter: 1,
       };
 
       const dampened = applyArchitectDampening(scores);
@@ -489,10 +489,10 @@ describe('Type Detector', () => {
     it('should not dampen when other scores are zero', () => {
       const scores = {
         architect: 5,
-        scientist: 0,
-        collaborator: 0,
+        analyst: 0,
+        conductor: 0,
         speedrunner: 0,
-        craftsman: 0,
+        trendsetter: 0,
       };
 
       const dampened = applyArchitectDampening(scores);
@@ -505,38 +505,38 @@ describe('Type Detector', () => {
     it('should return equal distribution for zero scores', () => {
       const scores = {
         architect: 0,
-        scientist: 0,
-        collaborator: 0,
+        analyst: 0,
+        conductor: 0,
         speedrunner: 0,
-        craftsman: 0,
+        trendsetter: 0,
       };
 
       const distribution = scoresToDistribution(scores);
 
       expect(distribution.architect).toBe(20);
-      expect(distribution.scientist).toBe(20);
-      expect(distribution.collaborator).toBe(20);
+      expect(distribution.analyst).toBe(20);
+      expect(distribution.conductor).toBe(20);
       expect(distribution.speedrunner).toBe(20);
-      expect(distribution.craftsman).toBe(20);
+      expect(distribution.trendsetter).toBe(20);
     });
 
     it('should sum to exactly 100', () => {
       const scores = {
         architect: 5,
-        scientist: 3,
-        collaborator: 7,
+        analyst: 3,
+        conductor: 7,
         speedrunner: 2,
-        craftsman: 1,
+        trendsetter: 1,
       };
 
       const distribution = scoresToDistribution(scores);
 
       const sum =
         distribution.architect +
-        distribution.scientist +
-        distribution.collaborator +
+        distribution.analyst +
+        distribution.conductor +
         distribution.speedrunner +
-        distribution.craftsman;
+        distribution.trendsetter;
 
       expect(sum).toBe(100);
     });
@@ -544,32 +544,32 @@ describe('Type Detector', () => {
     it('should calculate percentages correctly', () => {
       const scores = {
         architect: 10,
-        scientist: 0,
-        collaborator: 0,
+        analyst: 0,
+        conductor: 0,
         speedrunner: 0,
-        craftsman: 0,
+        trendsetter: 0,
       };
 
       const distribution = scoresToDistribution(scores);
 
       expect(distribution.architect).toBe(100);
-      expect(distribution.scientist).toBe(0);
+      expect(distribution.analyst).toBe(0);
     });
 
     it('should handle uneven distributions', () => {
       const scores = {
         architect: 1,
-        scientist: 1,
-        collaborator: 1,
+        analyst: 1,
+        conductor: 1,
         speedrunner: 1,
-        craftsman: 1,
+        trendsetter: 1,
       };
 
       const distribution = scoresToDistribution(scores);
 
       // Each should be 20%
       expect(distribution.architect).toBe(20);
-      expect(distribution.scientist).toBe(20);
+      expect(distribution.analyst).toBe(20);
     });
   });
 
@@ -577,10 +577,10 @@ describe('Type Detector', () => {
     it('should return the highest scoring type', () => {
       const distribution = {
         architect: 40,
-        scientist: 20,
-        collaborator: 15,
+        analyst: 20,
+        conductor: 15,
         speedrunner: 15,
-        craftsman: 10,
+        trendsetter: 10,
       };
 
       expect(getPrimaryType(distribution)).toBe('architect');
@@ -589,30 +589,30 @@ describe('Type Detector', () => {
     it('should handle tie by returning first occurrence', () => {
       const distribution = {
         architect: 25,
-        scientist: 25,
-        collaborator: 20,
+        analyst: 25,
+        conductor: 20,
         speedrunner: 15,
-        craftsman: 15,
+        trendsetter: 15,
       };
 
       // architect comes first when iterating, so it should be returned
       const primary = getPrimaryType(distribution);
-      expect(['architect', 'scientist']).toContain(primary);
+      expect(['architect', 'analyst']).toContain(primary);
     });
 
     it('should work with equal distribution', () => {
       const distribution = {
         architect: 20,
-        scientist: 20,
-        collaborator: 20,
+        analyst: 20,
+        conductor: 20,
         speedrunner: 20,
-        craftsman: 20,
+        trendsetter: 20,
       };
 
       const primary = getPrimaryType(distribution);
 
       // Should return one of the types
-      expect(['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman']).toContain(
+      expect(['architect', 'analyst', 'conductor', 'speedrunner', 'trendsetter']).toContain(
         primary
       );
     });

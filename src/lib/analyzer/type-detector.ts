@@ -2,7 +2,7 @@
  * Type Detector - Analyzes session logs to determine AI Coding Style
  *
  * Uses behavioral patterns from conversation data to score
- * each of the 5 types: Architect, Scientist, Collaborator, Speedrunner, Craftsman
+ * each of the 5 types: Architect, Analyst, Conductor, Speedrunner, Trendsetter
  */
 
 import {
@@ -185,10 +185,10 @@ export function aggregateMetrics(sessions: ParsedSession[]): SessionMetrics {
 export function calculateTypeScores(metrics: SessionMetrics): TypeScores {
   const scores: TypeScores = {
     architect: 0,
-    scientist: 0,
-    collaborator: 0,
+    analyst: 0,
+    conductor: 0,
     speedrunner: 0,
-    craftsman: 0,
+    trendsetter: 0,
   };
 
   // ========== ARCHITECT SIGNALS ==========
@@ -229,51 +229,51 @@ export function calculateTypeScores(metrics: SessionMetrics): TypeScores {
   if (stepRatio > 0.5) scores.architect += 2;
   else if (stepRatio > 0.2) scores.architect += 1;
 
-  // ========== SCIENTIST SIGNALS ==========
-  // High question frequency
-  if (metrics.questionFrequency > 1.5) scores.scientist += 3;
-  else if (metrics.questionFrequency > 0.8) scores.scientist += 2;
-  else if (metrics.questionFrequency > 0.4) scores.scientist += 1;
+  // ========== ANALYST SIGNALS ==========
+  // High question frequency (deep investigation)
+  if (metrics.questionFrequency > 1.5) scores.analyst += 3;
+  else if (metrics.questionFrequency > 0.8) scores.analyst += 2;
+  else if (metrics.questionFrequency > 0.4) scores.analyst += 1;
 
-  // High why/how/what usage
+  // High why/how/what usage (assumption questioning)
   const whyHowRatio =
     metrics.totalTurns > 0 ? metrics.whyHowWhatCount / metrics.totalTurns : 0;
-  if (whyHowRatio > 2) scores.scientist += 3;
-  else if (whyHowRatio > 1) scores.scientist += 2;
-  else if (whyHowRatio > 0.5) scores.scientist += 1;
+  if (whyHowRatio > 2) scores.analyst += 3;
+  else if (whyHowRatio > 1) scores.analyst += 2;
+  else if (whyHowRatio > 0.5) scores.analyst += 1;
 
-  // High Read/Grep usage (checking existing code)
+  // High Read/Grep usage (systematic verification)
   const readGrepRatio =
     metrics.toolUsage.total > 0
       ? (metrics.toolUsage.read + metrics.toolUsage.grep + metrics.toolUsage.glob) /
         metrics.toolUsage.total
       : 0;
-  if (readGrepRatio > 0.4) scores.scientist += 2;
-  else if (readGrepRatio > 0.2) scores.scientist += 1;
+  if (readGrepRatio > 0.4) scores.analyst += 2;
+  else if (readGrepRatio > 0.2) scores.analyst += 1;
 
-  // High modification rate (corrects AI)
-  if (metrics.modificationRate > 0.4) scores.scientist += 3;
-  else if (metrics.modificationRate > 0.25) scores.scientist += 2;
-  else if (metrics.modificationRate > 0.15) scores.scientist += 1;
+  // High modification rate (corrects AI output)
+  if (metrics.modificationRate > 0.4) scores.analyst += 3;
+  else if (metrics.modificationRate > 0.25) scores.analyst += 2;
+  else if (metrics.modificationRate > 0.15) scores.analyst += 1;
 
-  // ========== COLLABORATOR SIGNALS ==========
-  // High turn count (lots of back-and-forth)
-  if (metrics.avgTurnsPerSession > 8) scores.collaborator += 3;
-  else if (metrics.avgTurnsPerSession > 5) scores.collaborator += 2;
-  else if (metrics.avgTurnsPerSession > 3) scores.collaborator += 1;
+  // ========== CONDUCTOR SIGNALS ==========
+  // High turn count (lots of orchestration)
+  if (metrics.avgTurnsPerSession > 8) scores.conductor += 3;
+  else if (metrics.avgTurnsPerSession > 5) scores.conductor += 2;
+  else if (metrics.avgTurnsPerSession > 3) scores.conductor += 1;
 
   // Iterative modification patterns
-  if (metrics.modificationRate > 0.3) scores.collaborator += 2;
-  else if (metrics.modificationRate > 0.2) scores.collaborator += 1;
+  if (metrics.modificationRate > 0.3) scores.conductor += 2;
+  else if (metrics.modificationRate > 0.2) scores.conductor += 1;
 
-  // Positive feedback frequency
+  // Positive feedback frequency (guiding AI)
   const feedbackRatio =
     metrics.totalTurns > 0
       ? metrics.positiveFeedbackCount / metrics.totalTurns
       : 0;
-  if (feedbackRatio > 0.3) scores.collaborator += 3;
-  else if (feedbackRatio > 0.15) scores.collaborator += 2;
-  else if (feedbackRatio > 0.05) scores.collaborator += 1;
+  if (feedbackRatio > 0.3) scores.conductor += 3;
+  else if (feedbackRatio > 0.15) scores.conductor += 2;
+  else if (feedbackRatio > 0.05) scores.conductor += 1;
 
   // ========== SPEEDRUNNER SIGNALS ==========
   // Short prompts
@@ -298,34 +298,34 @@ export function calculateTypeScores(metrics: SessionMetrics): TypeScores {
   if (metrics.questionFrequency < 0.2) scores.speedrunner += 2;
   else if (metrics.questionFrequency < 0.4) scores.speedrunner += 1;
 
-  // ========== CRAFTSMAN SIGNALS ==========
-  // High refactor/quality keyword usage
+  // ========== TRENDSETTER SIGNALS ==========
+  // High refactor/quality keyword usage (seeking best practices)
   const qualityKeywordRatio =
     metrics.totalTurns > 0
       ? (metrics.refactorKeywordCount + metrics.styleKeywordCount) /
         metrics.totalTurns
       : 0;
-  if (qualityKeywordRatio > 0.3) scores.craftsman += 3;
-  else if (qualityKeywordRatio > 0.15) scores.craftsman += 2;
-  else if (qualityKeywordRatio > 0.05) scores.craftsman += 1;
+  if (qualityKeywordRatio > 0.3) scores.trendsetter += 3;
+  else if (qualityKeywordRatio > 0.15) scores.trendsetter += 2;
+  else if (qualityKeywordRatio > 0.05) scores.trendsetter += 1;
 
   // Quality terms (test, type, doc)
   const qualityTermRatio =
     metrics.totalTurns > 0 ? metrics.qualityTermCount / metrics.totalTurns : 0;
-  if (qualityTermRatio > 0.5) scores.craftsman += 3;
-  else if (qualityTermRatio > 0.25) scores.craftsman += 2;
-  else if (qualityTermRatio > 0.1) scores.craftsman += 1;
+  if (qualityTermRatio > 0.5) scores.trendsetter += 3;
+  else if (qualityTermRatio > 0.25) scores.trendsetter += 2;
+  else if (qualityTermRatio > 0.1) scores.trendsetter += 1;
 
   // High Edit tool usage (refinement)
   const editRatio =
     metrics.toolUsage.total > 0
       ? metrics.toolUsage.edit / metrics.toolUsage.total
       : 0;
-  if (editRatio > 0.3) scores.craftsman += 2;
-  else if (editRatio > 0.15) scores.craftsman += 1;
+  if (editRatio > 0.3) scores.trendsetter += 2;
+  else if (editRatio > 0.15) scores.trendsetter += 1;
 
   // Read usage (understanding before changing)
-  if (readGrepRatio > 0.3) scores.craftsman += 1;
+  if (readGrepRatio > 0.3) scores.trendsetter += 1;
 
   return scores;
 }
@@ -338,7 +338,7 @@ export function calculateTypeScores(metrics: SessionMetrics): TypeScores {
 export function applyArchitectDampening(scores: TypeScores): TypeScores {
   const dampened = { ...scores };
 
-  const otherTypes = ['scientist', 'collaborator', 'speedrunner', 'craftsman'] as const;
+  const otherTypes = ['analyst', 'conductor', 'speedrunner', 'trendsetter'] as const;
   const secondHighest = Math.max(...otherTypes.map((t) => scores[t]));
 
   if (scores.architect > 0 && secondHighest > 0) {
@@ -364,37 +364,37 @@ export function scoresToDistribution(scores: TypeScores): TypeDistribution {
 
   const total =
     dampened.architect +
-    dampened.scientist +
-    dampened.collaborator +
+    dampened.analyst +
+    dampened.conductor +
     dampened.speedrunner +
-    dampened.craftsman;
+    dampened.trendsetter;
 
   if (total === 0) {
     // Equal distribution if no signals
     return {
       architect: 20,
-      scientist: 20,
-      collaborator: 20,
+      analyst: 20,
+      conductor: 20,
       speedrunner: 20,
-      craftsman: 20,
+      trendsetter: 20,
     };
   }
 
   const distribution: TypeDistribution = {
     architect: Math.round((dampened.architect / total) * 100),
-    scientist: Math.round((dampened.scientist / total) * 100),
-    collaborator: Math.round((dampened.collaborator / total) * 100),
+    analyst: Math.round((dampened.analyst / total) * 100),
+    conductor: Math.round((dampened.conductor / total) * 100),
     speedrunner: Math.round((dampened.speedrunner / total) * 100),
-    craftsman: Math.round((dampened.craftsman / total) * 100),
+    trendsetter: Math.round((dampened.trendsetter / total) * 100),
   };
 
   // Ensure sum is exactly 100 (adjust highest value for rounding errors)
   const sum =
     distribution.architect +
-    distribution.scientist +
-    distribution.collaborator +
+    distribution.analyst +
+    distribution.conductor +
     distribution.speedrunner +
-    distribution.craftsman;
+    distribution.trendsetter;
 
   if (sum !== 100) {
     const diff = 100 - sum;
@@ -458,13 +458,11 @@ export function getToolUsageHighlight(metrics: SessionMetrics): string {
 // ============================================================================
 
 function countKeywordMatches(text: string, keywords: readonly string[]): number {
-  let count = 0;
-  for (const keyword of keywords) {
+  return keywords.reduce((count, keyword) => {
     const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
     const matches = text.match(regex);
-    count += matches ? matches.length : 0;
-  }
-  return count;
+    return count + (matches?.length ?? 0);
+  }, 0);
 }
 
 function countToolUsage(
@@ -556,8 +554,7 @@ function createEmptyMetrics(): SessionMetrics {
 }
 
 function avg(numbers: number[]): number {
-  if (numbers.length === 0) return 0;
-  return numbers.reduce((a, b) => a + b, 0) / numbers.length;
+  return numbers.length === 0 ? 0 : sum(numbers) / numbers.length;
 }
 
 function sum(numbers: number[]): number {
