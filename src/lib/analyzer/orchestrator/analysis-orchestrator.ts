@@ -239,7 +239,7 @@ export class AnalysisOrchestrator {
     metrics: SessionMetrics,
     tier: Tier,
     onProgress?: ProgressCallback,
-    options?: { activitySessions?: Array<{ sessionId: string; projectName: string; startTime: string; durationMinutes: number; messageCount: number; summary: string }> }
+    options?: { activitySessions?: Array<{ sessionId: string; projectName: string; startTime: string; durationMinutes: number; messageCount: number; summary: string }>; noTranslate?: boolean }
   ): Promise<AnalysisResult> {
     const startTime = Date.now();
     const stageUsages: StageTokenUsage[] = [];
@@ -593,7 +593,13 @@ export class AnalysisOrchestrator {
     // Hoist translator data to merge AFTER assembleEvaluation (fixes translation overwrite bug)
     let translatorData: TranslatorOutput | null = null;
 
-    if (languageResult.primary !== 'en') {
+    if (options?.noTranslate) {
+      // --no-translate flag: skip Phase 4 regardless of detected language
+      completedLLMStages++;
+      reportProgress('phase4_skipped', 'Translation skipped (--no-translate)');
+      this.log('Phase 4: Skipped (--no-translate flag)');
+      console.log(`[PHASE:LANG] Phase 4 skipped by --no-translate flag (detected=${languageResult.primary})`);
+    } else if (languageResult.primary !== 'en') {
       this.log(`Phase 4: Translation to ${languageResult.primary}...`);
       const phase4Start = Date.now();
       const translatorResult = await this.translator.translate(

@@ -663,7 +663,8 @@ async function runAnalysis(
   userGeminiApiKey: string,
   write: (event: SSEEvent) => void,
   userId?: string,
-  debug?: boolean
+  debug?: boolean,
+  noTranslate?: boolean
 ): Promise<void> {
   // Parse sessions based on version
   const parsedSessions: ParsedSession[] = [];
@@ -800,6 +801,7 @@ async function runAnalysis(
       tier: "enterprise",
       onProgress,
       activitySessions,
+      noTranslate,
     });
     evaluation = analysisResult.evaluation;
     phase1Output = analysisResult.phase1Output;
@@ -999,7 +1001,7 @@ async function handleAnalyzeFromStorage(
     }
 
     // Parse request body
-    let requestBody: { s3Key: string };
+    let requestBody: { s3Key: string; noTranslate?: boolean };
     try {
       if (event.isBase64Encoded) {
         requestBody = JSON.parse(Buffer.from(event.body, "base64").toString("utf-8"));
@@ -1100,7 +1102,7 @@ async function handleAnalyzeFromStorage(
     }
 
     // Run the shared analysis logic (userId from auth validation above)
-    await runAnalysis(body, geminiApiKey, write, userId, debug);
+    await runAnalysis(body, geminiApiKey, write, userId, debug, requestBody.noTranslate);
 
     // Clean up: delete the uploaded file from S3
     try {
