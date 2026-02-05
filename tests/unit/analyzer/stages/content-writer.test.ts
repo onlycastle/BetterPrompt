@@ -87,7 +87,7 @@ function createMockAgentOutputs(): AgentOutputs {
     },
     typeClassifier: {
       primaryType: 'architect',
-      distribution: { architect: 50, scientist: 20, collaborator: 15, speedrunner: 10, craftsman: 5 },
+      distribution: { architect: 50, analyst: 20, conductor: 15, speedrunner: 10, trendsetter: 5 },
       controlLevel: 'navigator',
       controlScore: 70,
       matrixName: 'Systems Architect',
@@ -99,10 +99,6 @@ function createMockAgentOutputs(): AgentOutputs {
 
 function createMockNarrativeResponse() {
   return {
-    personalitySummary: [
-      'You are a thoughtful developer who maintains strong oversight of AI-generated code.',
-      'Your verification habits demonstrate a mature engineering mindset.',
-    ],
     promptPatterns: [
       { patternName: 'Verification Before Progress', description: 'You pause to verify results before moving forward', frequency: 'often', examplesData: 'session-1_2|Strong verification mindset shown', effectiveness: 'very_effective', tip: 'Continue this pattern - it prevents compounding errors' },
       { patternName: 'Clear Task Specification', description: 'You provide detailed context when requesting changes', frequency: 'sometimes', examplesData: 'session-1_0|Clear OAuth implementation request', effectiveness: 'effective', tip: 'Consider including expected behavior in requests' },
@@ -165,7 +161,6 @@ describe('ContentWriterStage', () => {
       );
 
       expect(result.data).toBeDefined();
-      expect(result.data.personalitySummary).toBeDefined();
       expect(result.data.promptPatterns).toBeDefined();
       expect(result.usage).toEqual({
         promptTokens: 1000,
@@ -207,7 +202,6 @@ describe('ContentWriterStage', () => {
       );
 
       expect(result.data).toBeDefined();
-      expect(result.data.personalitySummary).toBeDefined();
     });
 
     it('should include knowledge resources when provided', async () => {
@@ -334,7 +328,7 @@ describe('ContentWriterStage', () => {
           confidenceScore: 0.9,
         },
         learningBehavior: { knowledgeGaps: [], learningProgress: [], recommendedResources: [], repeatedMistakePatterns: [], topInsights: [], overallLearningScore: 70, confidenceScore: 0.8 },
-        typeClassifier: { primaryType: 'architect', distribution: { architect: 50, scientist: 20, collaborator: 15, speedrunner: 10, craftsman: 5 }, controlLevel: 'navigator', controlScore: 70, matrixName: 'Systems Architect', matrixEmoji: '🏗️', confidenceScore: 0.88 },
+        typeClassifier: { primaryType: 'architect', distribution: { architect: 50, analyst: 20, conductor: 15, speedrunner: 10, trendsetter: 5 }, controlLevel: 'navigator', controlScore: 70, matrixName: 'Systems Architect', matrixEmoji: '🏗️', confidenceScore: 0.88 },
       };
 
       mockGenerateStructured.mockResolvedValue({
@@ -346,8 +340,10 @@ describe('ContentWriterStage', () => {
 
       expect(mockGenerateStructured).toHaveBeenCalled();
       const userPrompt = mockGenerateStructured.mock.calls[0][0].userPrompt as string;
+      // Evidence utterance IDs appear in the phase3-summarizer output (e.g., anti-pattern evidence)
+      // Note: Developer utterances table is no longer included in ContentWriter prompt
+      // (utterances are now passed to TypeClassifier instead)
       expect(userPrompt).toContain('evidence-utterance-1');
-      expect(userPrompt).toContain('evidence-utterance-2');
     });
 
     it('should throw error when no Phase 2 evidence (No Fallback Policy)', async () => {
@@ -363,7 +359,7 @@ describe('ContentWriterStage', () => {
           confidenceScore: 0.9,
         },
         learningBehavior: { knowledgeGaps: [], learningProgress: [], recommendedResources: [], repeatedMistakePatterns: [], topInsights: [], overallLearningScore: 70, confidenceScore: 0.8 },
-        typeClassifier: { primaryType: 'architect', distribution: { architect: 50, scientist: 20, collaborator: 15, speedrunner: 10, craftsman: 5 }, controlLevel: 'navigator', controlScore: 70, matrixName: 'Systems Architect', matrixEmoji: '🏗️', confidenceScore: 0.88 },
+        typeClassifier: { primaryType: 'architect', distribution: { architect: 50, analyst: 20, conductor: 15, speedrunner: 10, trendsetter: 5 }, controlLevel: 'navigator', controlScore: 70, matrixName: 'Systems Architect', matrixEmoji: '🏗️', confidenceScore: 0.88 },
       };
 
       await expect(stage.transformV3(5, agentOutputs, createMockPhase1Output()))

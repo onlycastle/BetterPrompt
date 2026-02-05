@@ -54,12 +54,13 @@ function createMockPhase1Output(): Phase1Output {
 function createMockTypeClassifier(): TypeClassifierOutput {
   return {
     primaryType: 'architect',
-    distribution: { architect: 45, scientist: 20, collaborator: 15, speedrunner: 10, craftsman: 10 },
+    distribution: { architect: 45, analyst: 20, conductor: 15, speedrunner: 10, trendsetter: 10 },
     controlLevel: 'navigator',
     controlScore: 70,
     matrixName: 'Systems Architect',
     matrixEmoji: '🏗️',
     confidenceScore: 0.85,
+    reasoning: 'Your **methodical approach** to development reveals a deeply structured thinker. When you said 「Let me verify this works before we continue」, it showed a natural instinct for **quality validation** that sets you apart.\nThis verification-first mindset, combined with your clear task decomposition habits, places you firmly in the architect category.',
   };
 }
 
@@ -85,10 +86,6 @@ function createMockAgentOutputs(): AgentOutputs {
 
 function createMockNarrativeResponse(): NarrativeLLMResponse {
   return {
-    personalitySummary: [
-      'You are a thoughtful developer who maintains oversight of AI-generated code.',
-      'Your approach to verification shows engineering maturity.',
-    ],
     promptPatterns: [
       { patternName: 'Verification First', description: 'You verify before proceeding', frequency: 'often', examplesData: 'session-1_2|Good verification habit', examples: [], effectiveness: 'very_effective', tip: 'Continue this pattern' },
       { patternName: 'Clear Requests', description: 'You provide detailed context', frequency: 'sometimes', examplesData: 'session-1_0|Clear feature request', examples: [], effectiveness: 'effective', tip: 'Add expected behavior' },
@@ -109,7 +106,7 @@ describe('assembleEvaluation', () => {
   describe('narrative assembly', () => {
     it('should include personalitySummary from narrative', () => {
       const result = assembleWithDefaults();
-      expect(result.personalitySummary).toContain('thoughtful developer');
+      expect(result.personalitySummary).toContain('methodical approach');
     });
 
     it('should include promptPatterns from narrative', () => {
@@ -222,6 +219,7 @@ describe('assembleEvaluation', () => {
       );
       expect(result.primaryType).toBeUndefined();
       expect(result.controlLevel).toBeUndefined();
+      expect(result.personalitySummary).toBe('');
     });
 
     it('should handle missing thinkingQuality', () => {

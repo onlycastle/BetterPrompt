@@ -30,6 +30,9 @@ import type {
   VerboseEvaluation,
   PerDimensionInsight,
   DimensionResourceMatch,
+  MatchedKnowledgeItem,
+  MatchedProfessionalInsight,
+  TopFocusAreas,
 } from '../models/verbose-evaluation';
 import type { AgentOutputs } from '../models/agent-outputs';
 import type { WorkerGrowth } from '../models/worker-insights';
@@ -89,6 +92,12 @@ export const TIER_POLICY = {
     freeAgentIds: FREE_AGENT_IDS,
     /** Premium agent teaser limits */
     teaserInsightsLimit: 2,
+  },
+
+  /** Top focus areas filtering */
+  topFocusAreas: {
+    /** Number of fully visible areas for free tier */
+    freeFullCount: 1,
   },
 } as const;
 
@@ -301,7 +310,7 @@ export class ContentGateway {
 
       // Module C outputs (locked for free)
       productivityAnalysis: undefined,
-      topFocusAreas: undefined,
+      topFocusAreas: this.createFocusAreaTeaser(evaluation.topFocusAreas),
 
       // Phase 2 Wow Agents outputs - TEASERS for free users
       // Free agents (patternDetective, metacognition) show full data
@@ -319,19 +328,56 @@ export class ContentGateway {
   /**
    * Filter knowledge resources for free tier.
    *
-   * Free users get top 1 knowledge item + top 1 professional insight per dimension.
-   * Items are pre-sorted by matchScore descending, so .slice(0, 1) picks the best.
+   * Free users get top 1 knowledge item + top 1 professional insight unlocked per dimension.
+   * Remaining items are sent with locked content (title visible, details empty).
+   * Items are pre-sorted by matchScore descending, so index 0 is the best match.
    */
   private filterKnowledgeResourcesFree(
     resources: DimensionResourceMatch[] | undefined
   ): DimensionResourceMatch[] | undefined {
-    if (!resources || resources.length === 0) return undefined;
-    const filtered = resources.map(match => ({
-      ...match,
-      knowledgeItems: match.knowledgeItems.slice(0, 1),
-      professionalInsights: match.professionalInsights.slice(0, 1),
-    })).filter(m => m.knowledgeItems.length > 0 || m.professionalInsights.length > 0);
+    if (!resources?.length) return undefined;
+
+    const { freeLimit } = TIER_POLICY.resources;
+    const filtered = resources
+      .map(match => ({
+        ...match,
+        knowledgeItems: match.knowledgeItems.map((item, i) =>
+          i < freeLimit ? item : this.lockKnowledgeItem(item)
+        ),
+        professionalInsights: match.professionalInsights.map((insight, i) =>
+          i < freeLimit ? insight : this.lockProfessionalInsight(insight)
+        ),
+      }))
+      .filter(m => m.knowledgeItems.length > 0 || m.professionalInsights.length > 0);
+
     return filtered.length > 0 ? filtered : undefined;
+  }
+
+  /**
+   * Lock a knowledge item for free tier (keep title, clear content).
+   * Frontend detects locked state via empty summary field.
+   */
+  private lockKnowledgeItem(item: MatchedKnowledgeItem): MatchedKnowledgeItem {
+    return {
+      ...item,
+      summary: '',
+      sourceUrl: '',
+      sourceAuthor: '',
+      tags: [],
+    };
+  }
+
+  /**
+   * Lock a professional insight for free tier (keep title/category, clear content).
+   * Frontend detects locked state via empty keyTakeaway field.
+   */
+  private lockProfessionalInsight(insight: MatchedProfessionalInsight): MatchedProfessionalInsight {
+    return {
+      ...insight,
+      keyTakeaway: '',
+      actionableAdvice: [],
+      sourceUrl: '',
+    };
   }
 
   /**
@@ -399,6 +445,31 @@ export class ContentGateway {
     return {
       ...growth,
       recommendation: '', // Empty = locked (frontend shows lock UI)
+    };
+  }
+
+  // ==========================================================================
+  // Top Focus Areas Filtering
+  // ==========================================================================
+
+  /**
+   * Create teaser version of top focus areas for free tier.
+   * First area is fully visible, remaining are locked (narrative='').
+   */
+  private createFocusAreaTeaser(
+    topFocusAreas: TopFocusAreas | undefined
+  ): TopFocusAreas | undefined {
+    if (!topFocusAreas?.areas?.length) return undefined;
+
+    const { freeFullCount } = TIER_POLICY.topFocusAreas;
+
+    return {
+      summary: topFocusAreas.summary,
+      areas: topFocusAreas.areas.map((area, index) =>
+        index < freeFullCount
+          ? area
+          : { ...area, narrative: '', expectedImpact: '', actions: undefined }
+      ),
     };
   }
 
