@@ -5,9 +5,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { summarizeAgentOutputsForPhase3 } from '../../../../src/lib/analyzer/stages/phase3-summarizer.js';
+import { summarizeAgentOutputsForPhase3, buildCrossWorkerInsightMap } from '../../../../src/lib/analyzer/stages/phase3-summarizer.js';
 import type { AgentOutputs, TypeClassifierOutput, KnowledgeGapOutput, ContextEfficiencyOutput } from '../../../../src/lib/models/agent-outputs.js';
 import type { ThinkingQualityOutput } from '../../../../src/lib/models/thinking-quality-data.js';
+import type { CommunicationPatternsOutput } from '../../../../src/lib/models/communication-patterns-data.js';
 import type { LearningBehaviorOutput } from '../../../../src/lib/models/learning-behavior-data.js';
 
 function makeTypeClassifier(overrides?: Partial<TypeClassifierOutput>): TypeClassifierOutput {
@@ -213,5 +214,214 @@ describe('summarizeAgentOutputsForPhase3', () => {
     expect(result).toContain('avgFill: 84%');
     expect(result).toContain('### ProductivitySummary');
     expect(result).toContain('Moderate productivity');
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Strengths/GrowthAreas in Worker Summaries
+  // ─────────────────────────────────────────────────────────────────────────
+
+  describe('worker strengths/growthAreas titles', () => {
+    const strengthEvidence = [{ utteranceId: 'sess1_0', quote: 'test', context: 'test' }];
+
+    it('should include ThinkingQuality strengths and growth areas with domain prefix', () => {
+      const outputs: AgentOutputs = {
+        thinkingQuality: makeThinkingQuality({
+          strengths: [{ title: 'Systematic Output Verification', description: 'desc', evidence: strengthEvidence }],
+          growthAreas: [{ title: 'Blind Acceptance Pattern', description: 'desc', evidence: strengthEvidence, recommendation: 'rec', severity: 'high' }],
+        }),
+      };
+
+      const result = summarizeAgentOutputsForPhase3(outputs);
+
+      expect(result).toContain('[ThinkingQuality] Systematic Output Verification');
+      expect(result).toContain('[ThinkingQuality] Blind Acceptance Pattern [high]');
+    });
+
+    it('should include CommunicationPatterns strengths and growth areas with domain prefix', () => {
+      const outputs: AgentOutputs = {
+        communicationPatterns: {
+          communicationPatterns: [],
+          signatureQuotes: [],
+          overallCommunicationScore: 80,
+          confidenceScore: 0.9,
+          strengths: [{ title: 'Clear Problem Framing', description: 'desc', evidence: strengthEvidence }],
+          growthAreas: [{ title: 'Unfiltered Error Data Dumps', description: 'desc', evidence: strengthEvidence, recommendation: 'rec', severity: 'medium' }],
+        } as CommunicationPatternsOutput,
+      };
+
+      const result = summarizeAgentOutputsForPhase3(outputs);
+
+      expect(result).toContain('[CommunicationPatterns] Clear Problem Framing');
+      expect(result).toContain('[CommunicationPatterns] Unfiltered Error Data Dumps [medium]');
+    });
+
+    it('should include LearningBehavior strengths and growth areas with domain prefix', () => {
+      const outputs: AgentOutputs = {
+        learningBehavior: makeLearningBehavior({
+          strengths: [{ title: 'Active Knowledge Seeking', description: 'desc', evidence: strengthEvidence }],
+          growthAreas: [{ title: 'Repeated Syntax Errors', description: 'desc', evidence: strengthEvidence, recommendation: 'rec', severity: 'low' }],
+        }),
+      };
+
+      const result = summarizeAgentOutputsForPhase3(outputs);
+
+      expect(result).toContain('[LearningBehavior] Active Knowledge Seeking');
+      expect(result).toContain('[LearningBehavior] Repeated Syntax Errors [low]');
+    });
+
+    it('should include Efficiency strengths and growth areas with domain prefix', () => {
+      const outputs: AgentOutputs = {
+        efficiency: {
+          ...makeContextEfficiency(),
+          strengths: [{ title: 'Proactive Context Hygiene', description: 'desc', evidence: strengthEvidence }],
+          growthAreas: [{ title: 'Context Density Management', description: 'desc', evidence: strengthEvidence, recommendation: 'rec', severity: 'critical' }],
+        },
+      };
+
+      const result = summarizeAgentOutputsForPhase3(outputs);
+
+      expect(result).toContain('[Efficiency] Proactive Context Hygiene');
+      expect(result).toContain('[Efficiency] Context Density Management [critical]');
+    });
+
+    it('should use default severity "medium" when severity is undefined', () => {
+      const outputs: AgentOutputs = {
+        thinkingQuality: makeThinkingQuality({
+          growthAreas: [{ title: 'Some Growth Area', description: 'desc', evidence: strengthEvidence, recommendation: 'rec' }],
+        }),
+      };
+
+      const result = summarizeAgentOutputsForPhase3(outputs);
+
+      expect(result).toContain('[ThinkingQuality] Some Growth Area [medium]');
+    });
+
+    it('should include all 4 workers strengths/growthAreas when all workers present', () => {
+      const outputs: AgentOutputs = {
+        thinkingQuality: makeThinkingQuality({
+          strengths: [{ title: 'TQ Strength', description: 'd', evidence: strengthEvidence }],
+          growthAreas: [{ title: 'TQ Growth', description: 'd', evidence: strengthEvidence, recommendation: 'r', severity: 'high' }],
+        }),
+        communicationPatterns: {
+          communicationPatterns: [],
+          signatureQuotes: [],
+          overallCommunicationScore: 80,
+          confidenceScore: 0.9,
+          strengths: [{ title: 'CP Strength', description: 'd', evidence: strengthEvidence }],
+          growthAreas: [{ title: 'CP Growth', description: 'd', evidence: strengthEvidence, recommendation: 'r', severity: 'medium' }],
+        } as CommunicationPatternsOutput,
+        learningBehavior: makeLearningBehavior({
+          strengths: [{ title: 'LB Strength', description: 'd', evidence: strengthEvidence }],
+          growthAreas: [{ title: 'LB Growth', description: 'd', evidence: strengthEvidence, recommendation: 'r', severity: 'low' }],
+        }),
+        efficiency: {
+          ...makeContextEfficiency(),
+          strengths: [{ title: 'EF Strength', description: 'd', evidence: strengthEvidence }],
+          growthAreas: [{ title: 'EF Growth', description: 'd', evidence: strengthEvidence, recommendation: 'r', severity: 'critical' }],
+        },
+      };
+
+      const result = summarizeAgentOutputsForPhase3(outputs);
+
+      expect(result).toContain('[ThinkingQuality] TQ Strength');
+      expect(result).toContain('[ThinkingQuality] TQ Growth [high]');
+      expect(result).toContain('[CommunicationPatterns] CP Strength');
+      expect(result).toContain('[CommunicationPatterns] CP Growth [medium]');
+      expect(result).toContain('[LearningBehavior] LB Strength');
+      expect(result).toContain('[LearningBehavior] LB Growth [low]');
+      expect(result).toContain('[Efficiency] EF Strength');
+      expect(result).toContain('[Efficiency] EF Growth [critical]');
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Cross-Worker Insight Map
+  // ─────────────────────────────────────────────────────────────────────────
+
+  describe('Cross-Worker Insight Map', () => {
+    const strengthEvidence = [{ utteranceId: 'sess1_0', quote: 'test', context: 'test' }];
+
+    it('should appear in full summary output', () => {
+      const outputs: AgentOutputs = {
+        thinkingQuality: makeThinkingQuality({
+          strengths: [{ title: 'Systematic Verification', description: 'd', evidence: strengthEvidence }],
+          growthAreas: [{ title: 'Passive Acceptance', description: 'd', evidence: strengthEvidence, recommendation: 'r', severity: 'high' }],
+        }),
+        efficiency: {
+          ...makeContextEfficiency(),
+          strengths: [{ title: 'Proactive Context Hygiene', description: 'd', evidence: strengthEvidence }],
+          growthAreas: [{ title: 'Context Density Management', description: 'd', evidence: strengthEvidence, recommendation: 'r', severity: 'medium' }],
+        },
+      };
+
+      const result = summarizeAgentOutputsForPhase3(outputs);
+
+      expect(result).toContain('## Cross-Worker Insight Map');
+      expect(result).toContain('### All Strengths:');
+      expect(result).toContain('### All Growth Areas:');
+    });
+
+    it('should generate correct domain prefixes', () => {
+      const map = buildCrossWorkerInsightMap({
+        thinkingQuality: makeThinkingQuality({
+          strengths: [{ title: 'TQ S1', description: 'd', evidence: strengthEvidence }],
+          growthAreas: [{ title: 'TQ G1', description: 'd', evidence: strengthEvidence, recommendation: 'r', severity: 'high' }],
+        }),
+        communicationPatterns: {
+          communicationPatterns: [],
+          signatureQuotes: [],
+          overallCommunicationScore: 80,
+          confidenceScore: 0.9,
+          strengths: [{ title: 'CP S1', description: 'd', evidence: strengthEvidence }],
+          growthAreas: [{ title: 'CP G1', description: 'd', evidence: strengthEvidence, recommendation: 'r', severity: 'medium' }],
+        } as CommunicationPatternsOutput,
+        learningBehavior: makeLearningBehavior({
+          strengths: [{ title: 'LB S1', description: 'd', evidence: strengthEvidence }],
+          growthAreas: [{ title: 'LB G1', description: 'd', evidence: strengthEvidence, recommendation: 'r', severity: 'low' }],
+        }),
+        efficiency: {
+          ...makeContextEfficiency(),
+          strengths: [{ title: 'EF S1', description: 'd', evidence: strengthEvidence }],
+          growthAreas: [{ title: 'EF G1', description: 'd', evidence: strengthEvidence, recommendation: 'r', severity: 'critical' }],
+        },
+      });
+
+      expect(map).not.toBeNull();
+      expect(map).toContain('[ThinkingQuality] "TQ S1"');
+      expect(map).toContain('[CommunicationPatterns] "CP S1"');
+      expect(map).toContain('[LearningBehavior] "LB S1"');
+      expect(map).toContain('[Efficiency] "EF S1"');
+      expect(map).toContain('[ThinkingQuality] "TQ G1" [high]');
+      expect(map).toContain('[CommunicationPatterns] "CP G1" [medium]');
+      expect(map).toContain('[LearningBehavior] "LB G1" [low]');
+      expect(map).toContain('[Efficiency] "EF G1" [critical]');
+    });
+
+    it('should return null when no workers have strengths or growth areas', () => {
+      const map = buildCrossWorkerInsightMap({
+        thinkingQuality: makeThinkingQuality(),
+        learningBehavior: makeLearningBehavior(),
+      });
+
+      expect(map).toBeNull();
+    });
+
+    it('should handle missing workers gracefully', () => {
+      const map = buildCrossWorkerInsightMap({});
+      expect(map).toBeNull();
+    });
+
+    it('should handle partial workers (only some have insights)', () => {
+      const map = buildCrossWorkerInsightMap({
+        thinkingQuality: makeThinkingQuality({
+          strengths: [{ title: 'Only Strength', description: 'd', evidence: strengthEvidence }],
+        }),
+        learningBehavior: makeLearningBehavior(), // no strengths/growthAreas
+      });
+
+      expect(map).not.toBeNull();
+      expect(map).toContain('[ThinkingQuality] "Only Strength"');
+      expect(map).not.toContain('[LearningBehavior]');
+    });
   });
 });

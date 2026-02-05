@@ -85,7 +85,10 @@ function createMockAgentOutputs(): AgentOutputs {
 
 function createMockNarrativeResponse(): NarrativeLLMResponse {
   return {
-    personalitySummary: 'You are a thoughtful developer who maintains oversight of AI-generated code.',
+    personalitySummary: [
+      'You are a thoughtful developer who maintains oversight of AI-generated code.',
+      'Your approach to verification shows engineering maturity.',
+    ],
     promptPatterns: [
       { patternName: 'Verification First', description: 'You verify before proceeding', frequency: 'often', examplesData: 'session-1_2|Good verification habit', examples: [], effectiveness: 'very_effective', tip: 'Continue this pattern' },
       { patternName: 'Clear Requests', description: 'You provide detailed context', frequency: 'sometimes', examplesData: 'session-1_0|Clear feature request', examples: [], effectiveness: 'effective', tip: 'Add expected behavior' },

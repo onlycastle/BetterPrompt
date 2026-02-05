@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { CodingStyleTypeSchema, AIControlLevelSchema } from './coding-style';
 import { ProductivityAnalysisDataSchema } from './productivity-data';
 import { AgentOutputsSchema } from './agent-outputs';
+import { SessionSummaryItemSchema } from './session-summary-data';
 // Import and re-export dimension schema from the isolated file
 import { DimensionNameEnumSchema, DIMENSION_NAMES, type DimensionNameEnum, type DimensionName } from './dimension-schema';
 export { DimensionNameEnumSchema, DIMENSION_NAMES, type DimensionNameEnum, type DimensionName };
@@ -1207,6 +1208,23 @@ export const VerboseEvaluationSchema = z.object({
   analyzedSessions: z.array(AnalyzedSessionInfoSchema).optional()
     .describe('List of session files that were analyzed'),
 
+  // Activity sessions (deterministic CLI-side scan of ALL recent sessions)
+  activitySessions: z.array(z.object({
+    sessionId: z.string(),
+    projectName: z.string(),
+    startTime: z.string(),
+    durationMinutes: z.number(),
+    messageCount: z.number(),
+    summary: z.string(),
+    totalInputTokens: z.number().optional(),
+    totalOutputTokens: z.number().optional(),
+  })).optional()
+    .describe('Deterministic activity metadata for all recent sessions (from CLI scanner)'),
+
+  // Session summaries (Phase 1.5 - LLM-generated 1-line summaries for analyzed sessions)
+  sessionSummaries: z.array(SessionSummaryItemSchema).optional()
+    .describe('LLM-generated 1-line summaries for analyzed sessions (Phase 1.5)'),
+
   // Type result (same as before)
   primaryType: CodingStyleTypeSchema,
   controlLevel: AIControlLevelSchema,
@@ -1466,10 +1484,11 @@ export type VerboseLLMResponse = z.infer<typeof VerboseLLMResponseSchema>;
  */
 export const NarrativeLLMResponseSchema = z.object({
   // Narrative content (Phase 2 doesn't produce these)
-  // Note: No .max() - LLM may exceed target; truncation handled in evaluation-assembler
+  // Note: Array format enforces paragraph separation in Gemini structured JSON output.
+  // Converted to \n\n-joined string in evaluation-assembler before DB storage.
   personalitySummary: z
-    .string()
-    .describe('Hyper-personalized summary of their AI coding personality (target: 2500-3000 chars, will be truncated if exceeded)'),
+    .array(z.string())
+    .describe('Personality summary as paragraphs. Each element = one thematic paragraph. Target: 4-6 paragraphs, 2500-3000 chars total.'),
 
   // Prompt patterns with WHAT-WHY-HOW analysis
   // NOTE: This is FALLBACK only - Phase 2 CommunicationPatterns is preferred

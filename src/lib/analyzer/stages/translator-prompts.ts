@@ -52,6 +52,7 @@ Translate the provided English developer analysis report into the target languag
 
 ## Formatting Rules
 - Preserve **bold markers** around key phrases (translate the text inside, keep the **)
+- Preserve 「...」 corner bracket quote markers exactly as-is (translate the text INSIDE the brackets, but keep the 「 and 」 markers unchanged)
 - Preserve pipe (|) and semicolon (;) delimiters in data fields exactly as-is
 - Preserve the structure of flattened data strings (clusterId|title|description format)
 - In data strings: translate title/description fields, keep clusterId and numeric fields as-is
@@ -99,7 +100,7 @@ Return a TranslatorOutput JSON object containing ONLY the translated text fields
 
 ### Field-by-Field Instructions:
 
-1. **personalitySummary**: Translate to ${langName}. Keep **bold markers** and technical terms in English.
+1. **personalitySummary**: Translate to ${langName}. Keep **bold markers** and technical terms in English. IMPORTANT: Preserve ALL line breaks — both paragraph breaks (\\n\\n) and soft breaks (single \\n). Do NOT merge or remove any newline characters. Preserve 「...」 quote markers (translate the text inside, keep the 「」 brackets).
 
 2. **dimensionInsights**: SKIP this field. v3 architecture does not use dimensionInsights.
    Return an empty array or omit entirely: \`"dimensionInsights": []\`

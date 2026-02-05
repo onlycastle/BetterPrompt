@@ -19,7 +19,7 @@ import { TranslatorOutputSchema, type TranslatorOutput } from '../../models/tran
 import type { AgentOutputs } from '../../models/agent-outputs';
 import type { SupportedLanguage } from './content-writer-prompts';
 import { TRANSLATOR_SYSTEM_PROMPT, buildTranslatorUserPrompt } from './translator-prompts';
-import type { WorkerStrength, WorkerGrowth } from '../../models/worker-insights';
+import type { WorkerStrength, WorkerGrowth, EvidenceItem } from '../../models/worker-insights';
 
 /**
  * Configuration for the Translator stage
@@ -224,13 +224,22 @@ export class TranslatorStage {
   }
 
   /**
+   * Serialize a single evidence item to string.
+   * Handles both legacy string evidence and structured InsightEvidence objects.
+   */
+  private serializeEvidenceItem(item: EvidenceItem): string {
+    if (typeof item === 'string') return item;
+    return item.quote;
+  }
+
+  /**
    * Flatten generic WorkerStrength array to pipe-delimited string.
    * Used as fallback when strengthsData string is empty but strengths[] exists.
    * Format: "title|description|quote1,quote2;..."
    */
   private flattenWorkerStrengths(strengths: WorkerStrength[]): string {
     return strengths.map(s => {
-      const quotes = (s.evidence ?? []).join(',');
+      const quotes = (s.evidence ?? []).map(e => this.serializeEvidenceItem(e)).join(',');
       return `${s.title}|${s.description}|${quotes}`;
     }).join(';');
   }
@@ -242,7 +251,7 @@ export class TranslatorStage {
    */
   private flattenWorkerGrowthAreas(growthAreas: WorkerGrowth[]): string {
     return growthAreas.map(g => {
-      const quotes = (g.evidence ?? []).join(',');
+      const quotes = (g.evidence ?? []).map(e => this.serializeEvidenceItem(e)).join(',');
       return `${g.title}|${g.description}|${quotes}|${g.recommendation}|${g.severity ?? ''}`;
     }).join(';');
   }

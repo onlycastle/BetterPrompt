@@ -178,5 +178,132 @@ describe('TranslatorStage', () => {
 
       expect(result.data.personalitySummary).toBeDefined();
     });
+
+    it('should serialize InsightEvidence objects without [object Object]', async () => {
+      setupMockResponse();
+
+      const agentOutputs: AgentOutputs = {
+        thinkingQuality: {
+          verificationAntiPatterns: [],
+          planningHabits: [],
+          criticalThinkingMoments: [],
+          communicationPatterns: [],
+          confidenceScore: 0.9,
+          strengths: [
+            {
+              title: 'Systematic Verification',
+              description: 'You consistently verify AI output before accepting it.',
+              evidence: [
+                { utteranceId: 'session1_5', quote: 'Let me check the output carefully before continuing' },
+                { utteranceId: 'session1_8', quote: 'I want to verify this matches the expected behavior' },
+              ],
+            },
+          ],
+          growthAreas: [
+            {
+              title: 'Error Loop Pattern',
+              description: 'You sometimes retry the same approach without adjusting.',
+              evidence: [
+                { utteranceId: 'session2_3', quote: 'Try again with the same approach as before' },
+              ],
+              recommendation: 'Pause and reconsider your strategy when encountering repeated failures.',
+              severity: 'high',
+            },
+          ],
+        },
+      };
+
+      await stage.translate(createMockEnglishResponse(), 'ko', agentOutputs);
+
+      const calledArgs = mockGenerateStructured.mock.calls[0][0];
+      const userPrompt: string = calledArgs.userPrompt;
+
+      expect(userPrompt).not.toContain('[object Object]');
+      expect(userPrompt).toContain('Let me check the output carefully before continuing');
+      expect(userPrompt).toContain('I want to verify this matches the expected behavior');
+      expect(userPrompt).toContain('Try again with the same approach as before');
+    });
+
+    it('should handle legacy string evidence correctly', async () => {
+      setupMockResponse();
+
+      const agentOutputs: AgentOutputs = {
+        contextEfficiency: {
+          contextUsagePatternData: '',
+          inefficiencyPatternsData: '',
+          promptLengthTrendData: '',
+          redundantInfoData: '',
+          topInsights: [],
+          overallEfficiencyScore: 75,
+          avgContextFillPercent: 80,
+          confidenceScore: 0.8,
+          strengthsData: '',
+          growthAreasData: '',
+          strengths: [
+            {
+              title: 'Efficient Token Usage',
+              description: 'You use context efficiently.',
+              evidence: ['good context reuse', 'minimal redundancy observed'],
+            },
+          ],
+          growthAreas: [],
+        },
+      };
+
+      await stage.translate(createMockEnglishResponse(), 'ko', agentOutputs);
+
+      const calledArgs = mockGenerateStructured.mock.calls[0][0];
+      const userPrompt: string = calledArgs.userPrompt;
+
+      expect(userPrompt).not.toContain('[object Object]');
+      expect(userPrompt).toContain('good context reuse');
+      expect(userPrompt).toContain('minimal redundancy observed');
+    });
+
+    it('should handle mixed string and InsightEvidence evidence types', async () => {
+      setupMockResponse();
+
+      const agentOutputs: AgentOutputs = {
+        learningBehavior: {
+          repeatedMistakePatterns: [],
+          knowledgeGaps: [],
+          learningProgressIndicators: [],
+          confidenceScore: 0.8,
+          strengths: [
+            {
+              title: 'Quick Learner',
+              description: 'You rapidly integrate new concepts.',
+              evidence: [
+                'applied the pattern correctly on second attempt',
+                { utteranceId: 'session3_12', quote: 'Now I understand how this works, let me apply it' },
+              ],
+            },
+          ],
+          growthAreas: [
+            {
+              title: 'Incomplete Error Handling',
+              description: 'Error handling is sometimes overlooked.',
+              evidence: [
+                { utteranceId: 'session4_2', quote: 'Just ignore the error for now and move on' },
+                'skipped error handling in multiple files',
+              ],
+              recommendation: 'Always consider error cases when implementing new features.',
+              severity: 'medium',
+            },
+          ],
+        },
+      };
+
+      await stage.translate(createMockEnglishResponse(), 'ko', agentOutputs);
+
+      const calledArgs = mockGenerateStructured.mock.calls[0][0];
+      const userPrompt: string = calledArgs.userPrompt;
+
+      expect(userPrompt).not.toContain('[object Object]');
+      expect(userPrompt).toContain('applied the pattern correctly on second attempt');
+      expect(userPrompt).toContain('Now I understand how this works, let me apply it');
+      expect(userPrompt).toContain('Just ignore the error for now and move on');
+      expect(userPrompt).toContain('skipped error handling in multiple files');
+    });
   });
 });

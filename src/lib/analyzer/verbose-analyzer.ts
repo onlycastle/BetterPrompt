@@ -195,7 +195,7 @@ export class VerboseAnalyzer {
   async analyzeVerbose(
     sessions: ParsedSession[],
     metrics: SessionMetrics,
-    options: { tier?: Tier; onProgress?: ProgressCallback } = {}
+    options: { tier?: Tier; onProgress?: ProgressCallback; activitySessions?: Array<{ sessionId: string; projectName: string; startTime: string; durationMinutes: number; messageCount: number; summary: string }> } = {}
   ): Promise<AnalysisResult> {
     if (sessions.length === 0) {
       throw new VerboseAnalysisError(
@@ -207,7 +207,9 @@ export class VerboseAnalyzer {
     const tier = options.tier ?? this.config.tier;
 
     // Delegate to orchestrator - it handles everything
-    return await this.orchestrator.analyze(sessions, metrics, tier, options.onProgress);
+    return await this.orchestrator.analyze(sessions, metrics, tier, options.onProgress, {
+      activitySessions: options.activitySessions,
+    });
   }
 }
 

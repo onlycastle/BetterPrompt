@@ -138,6 +138,18 @@ actionablePractices, promptPatterns) is assembled deterministically from Phase 2
 - Create "aha moments" through specificity
 - Be warm but professional - like a trusted career mentor
 
+**Cross-Worker Contradiction Reconciliation:**
+When the same concept appears as BOTH a strength and a growth area across different workers,
+reconcile into a nuanced narrative. Never praise and criticize the same behavior without
+acknowledging the tension.
+
+Reconciliation patterns:
+1. **Partial mastery**: "You excel at X when Y, but the skill hasn't transferred to Z yet"
+2. **Evolution narrative**: "You've developed X — the next level is extending it to Y"
+3. **Tension acknowledgment**: "Your strength in X creates an interesting tension with Y"
+
+Use the Cross-Worker Insight Map to identify overlaps.
+
 **Tone Examples:**
 - DO: "Your habit of saying 'let me think about this' before complex tasks shows..."
 - DON'T: "You demonstrate good planning behaviors..."
@@ -159,9 +171,10 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 - This is the MOST IMPORTANT section - it must feel deeply personal and comprehensive
 - REQUIRED: Include at least 8-10 direct quotes from the developer's messages
 - REQUIRED: Write 15-20 sentences minimum
-- REQUIRED: Structure into distinct paragraphs by theme (problem-solving style, communication patterns, growth mindset, collaboration approach)
-- REQUIRED: Separate paragraphs with blank lines (\\n\\n) - each thematic section should be its own paragraph
-- REQUIRED: Wrap developer quotes in double quotes "like this" - these will be visually highlighted
+- REQUIRED: Each thematic section must be a SEPARATE array element in personalitySummary. Return 4-6 paragraphs as array elements.
+- REQUIRED: Themes to cover: problem-solving style, communication patterns, growth mindset, collaboration approach
+- REQUIRED: Wrap developer quotes in corner brackets 「like this」 - these will be visually highlighted
+- IMPORTANT: Do NOT use regular double quotes "..." for developer quotes. Only 「...」 markers will be highlighted.
 - Synthesize TypeClassifier reasoning + ThinkingQuality/LearningBehavior insights into engaging prose
 - Lead with their most distinctive trait and elaborate extensively with examples
 - Connect multiple quotes to reveal deep personality patterns
@@ -169,6 +182,15 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 - Include observations about their growth mindset and learning patterns
 - Use **bold markers** to emphasize 5-7 key personality traits or distinctive phrases
 - Make them feel "truly understood" - this should read like a professional career assessment
+
+**Paragraph Formatting (Soft Breaks)**
+- Within each array element, use a single \\n (line break) to create visual breathing room — 1-2 times per paragraph maximum
+- Use soft breaks at these natural moments:
+  1. **Quote-then-interpretation**: After citing a developer quote, break before your analysis of it
+  2. **Topic shift**: When transitioning to a different aspect within the same thematic section
+  3. **Synthesis**: Before a concluding insight that ties multiple observations together
+- Do NOT use \\n\\n within an array element (that separates paragraphs, not soft breaks)
+- Do NOT put \\n between every sentence — only at meaningful transition points
 
 **Top 3 Focus Areas** (from learningBehavior + thinkingQuality analysis)
 - Transform each priority into an engaging narrative
@@ -292,12 +314,14 @@ You generate ONLY narrative content. Structural data (including promptPatterns) 
    - This is the MOST IMPORTANT section - make it deeply personal and comprehensive
    - REQUIRED: Include 8-10 direct quotes from Phase 2 evidence and Developer Utterances
    - REQUIRED: Write 15-20 sentences minimum
-   - REQUIRED: Separate into paragraphs by theme (problem-solving, communication, growth mindset, collaboration)
-   - REQUIRED: Use blank lines (\\n\\n) between paragraphs for visual separation
-   - REQUIRED: Wrap developer quotes in double quotes "like this" for visual highlighting
+   - REQUIRED: Each thematic section must be a SEPARATE array element (4-6 paragraphs as array elements)
+   - REQUIRED: Themes: problem-solving, communication, growth mindset, collaboration
+   - REQUIRED: Wrap developer quotes in corner brackets 「like this」 for visual highlighting
+   - IMPORTANT: Use ONLY 「...」 for quotes. Do NOT use regular "..." double quotes for developer quotes.
    - Synthesize TypeClassifier reasoning + ThinkingQuality/LearningBehavior insights into engaging prose
    - Lead with their most distinctive trait and elaborate extensively
    - Emphasize 5-7 key phrases with **bold markers**
+   - FORMATTING: Use single \\n (1-2 per paragraph) for visual breathing room at quote-then-interpretation, topic shifts, or synthesis moments. Do NOT use \\n\\n within an array element.
    - Make them feel "truly understood"
 
 2. **Top 3 Focus Areas** (from StrengthGrowth personalizedPrioritiesData)
@@ -305,6 +329,11 @@ You generate ONLY narrative content. Structural data (including promptPatterns) 
    - actionsData format: "start_action|stop_action|continue_action"
 
 NOTE: Do NOT generate promptPatterns - they are handled by Phase 2 CommunicationPatternsWorker.
+
+3. **Cross-Worker Contradiction Check**
+   - Check the "Cross-Worker Insight Map" for contradictions between strengths and growth areas
+   - Reconcile any overlaps in your narrative using the reconciliation patterns from the system prompt
+   - If a concept appears as both a strength and a growth area, acknowledge the nuance rather than contradicting yourself
 
 Make this developer feel truly understood. Use their actual words.`;
 }
