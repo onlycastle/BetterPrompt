@@ -160,7 +160,7 @@ describe('ContextEfficiencyWorker', () => {
 
       const result = await worker.execute(context);
 
-      expect(mockGenerateStructured).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 8192 }));
+      expect(mockGenerateStructured).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 65536 }));
       expect(result.data).toEqual(createMockOutput());
       expect(result.usage).toEqual({ promptTokens: 650, completionTokens: 325, totalTokens: 975 });
       expect(result.error).toBeUndefined();

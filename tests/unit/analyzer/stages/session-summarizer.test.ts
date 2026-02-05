@@ -255,7 +255,7 @@ describe('SessionSummarizerStage', () => {
     expect(callArgs.systemPrompt).toBeDefined();
     expect(callArgs.userPrompt).toContain('s1');
     expect(callArgs.responseSchema).toBeDefined();
-    expect(callArgs.maxOutputTokens).toBe(4096);
+    expect(callArgs.maxOutputTokens).toBe(65536);
   });
 });
 

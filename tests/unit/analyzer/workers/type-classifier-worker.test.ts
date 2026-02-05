@@ -142,7 +142,7 @@ describe('TypeClassifierWorker', () => {
 
       const result = await worker.execute(context);
 
-      expect(mockGenerateStructured).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 16384 }));
+      expect(mockGenerateStructured).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 65536 }));
       expect(result.data.primaryType).toBe('architect');
       expect(result.data.controlLevel).toBe('navigator');
       expect(result.usage).toEqual({ promptTokens: 800, completionTokens: 400, totalTokens: 1200 });
