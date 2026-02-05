@@ -169,6 +169,8 @@ export function TabbedReportContainer({
   const [insightYOffset, setInsightYOffset] = useState<number>(0);
   // Ref to sidebar for calculating relative positions
   const sidebarRef = useRef<HTMLElement>(null);
+  // When true, useLayoutEffect will calculate Y offset from the first InsightIndicator in DOM
+  const autoShowPending = useRef(false);
 
   // Get matched resources from Knowledge Base (Phase 2.75 deterministic matching)
   // These are validated URLs from our curated database, NOT LLM-generated URLs
@@ -412,8 +414,7 @@ export function TabbedReportContainer({
 
     if (defaultInsightForTab) {
       setSelectedInsight(defaultInsightForTab);
-      setInsightYOffset(0);
-      setClickedViewportY(null);
+      autoShowPending.current = true; // Let useLayoutEffect calculate Y from DOM
     } else {
       setSelectedInsight(null);
       setInsightYOffset(0);
@@ -463,13 +464,24 @@ export function TabbedReportContainer({
     context: getLockedCount(workerInsights?.contextEfficiency),
   }), [workerInsights]);
 
-  // Memoize defaultTab based on availableTabs
+  // Memoize defaultTab based on availableTabs — prefer first worker tab (has insight content)
   const defaultTab = useMemo(() => {
-    return availableTabs[0]?.id || 'thinking';
+    const firstWorkerTab = availableTabs.find(t => t.id !== 'activity');
+    return firstWorkerTab?.id || availableTabs[0]?.id || 'thinking';
   }, [availableTabs]);
 
-  // Sync activeTab with available tabs when current tab becomes unavailable
+  // Sync activeTab with available tabs:
+  // - On initial mount, switch from 'activity' to first worker tab (for insight sidebar auto-show)
+  // - When current tab becomes unavailable, fall back to defaultTab
+  const hasInitializedTab = useRef(false);
   useEffect(() => {
+    if (!hasInitializedTab.current) {
+      hasInitializedTab.current = true;
+      if (activeTab === 'activity' && defaultTab !== 'activity') {
+        setActiveTab(defaultTab);
+        return;
+      }
+    }
     const isActiveTabAvailable = availableTabs.some(t => t.id === activeTab);
     if (!isActiveTabAvailable) {
       setActiveTab(defaultTab);
@@ -511,6 +523,7 @@ export function TabbedReportContainer({
 
   // Calculate offset after sidebar renders (useLayoutEffect runs synchronously after DOM mutations)
   useLayoutEffect(() => {
+    // Manual click path: use captured viewport Y from click event
     if (clickedViewportY !== null && sidebarRef.current) {
       const sidebarTop = sidebarRef.current.getBoundingClientRect().top;
       const relativeOffset = Math.max(0, clickedViewportY - sidebarTop);
@@ -518,7 +531,25 @@ export function TabbedReportContainer({
       // Clear viewportY after calculation to avoid re-running
       setClickedViewportY(null);
       if (process.env.NODE_ENV === 'development') {
-        console.log('[useLayoutEffect] Calculated offset:', { clickedViewportY, sidebarTop, relativeOffset });
+        console.log('[useLayoutEffect] Manual click offset:', { clickedViewportY, sidebarTop, relativeOffset });
+      }
+      return;
+    }
+
+    // Auto-show path: position at first InsightIndicator in current tab content
+    if (autoShowPending.current && selectedInsight && sidebarRef.current && contentRef.current) {
+      autoShowPending.current = false;
+      const indicator = contentRef.current.querySelector('[data-insight-indicator]');
+      if (indicator) {
+        const indicatorTop = indicator.getBoundingClientRect().top;
+        const sidebarTop = sidebarRef.current.getBoundingClientRect().top;
+        const relativeOffset = Math.max(0, indicatorTop - sidebarTop);
+        setInsightYOffset(relativeOffset);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[useLayoutEffect] Auto-show offset:', { indicatorTop, sidebarTop, relativeOffset });
+        }
+      } else {
+        setInsightYOffset(0); // Fallback if indicator not yet in DOM
       }
     }
   }, [clickedViewportY, selectedInsight]);
@@ -613,6 +644,7 @@ export function TabbedReportContainer({
                 activitySessions={analysis.activitySessions}
                 analyzedSessions={analysis.analyzedSessions ?? []}
                 sessionSummaries={analysis.sessionSummaries}
+                projectSummaries={analysis.projectSummaries}
                 analysisDateRange={analysisMetadata?.analysisDateRange}
               />
             </div>
