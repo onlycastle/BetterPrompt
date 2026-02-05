@@ -28,10 +28,10 @@ interface MatrixDistributionDisplayProps {
 
 const STYLE_TYPES: CodingStyleType[] = [
   'architect',
-  'scientist',
-  'collaborator',
+  'analyst',
+  'conductor',
   'speedrunner',
-  'craftsman',
+  'trendsetter',
 ];
 
 const CONTROL_LEVELS: AIControlLevel[] = [

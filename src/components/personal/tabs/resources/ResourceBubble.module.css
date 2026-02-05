@@ -126,6 +126,24 @@
   margin-left: 22px;
 }
 
+/* Locked item variant (free tier, content hidden) */
+.lockedItem {
+  opacity: 0.6;
+}
+
+.lockedLink {
+  cursor: default;
+  color: var(--ink-muted);
+}
+
+.lockedLink:hover {
+  color: var(--ink-muted);
+}
+
+.lockedLink:hover .resourceTopic {
+  text-decoration: none;
+}
+
 .lockedTeaser {
   display: flex;
   align-items: center;

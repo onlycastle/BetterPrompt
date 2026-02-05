@@ -41,9 +41,13 @@ function getCategoryConfig(category: string): { label: string; className: string
 
 export function InsightPreviewCard({ insight, onClose }: InsightPreviewCardProps) {
   const categoryConfig = getCategoryConfig(insight.category);
+  const isLocked = !insight.keyTakeaway;
 
   return (
-    <article className={styles.card} aria-label="Professional Insight Preview">
+    <article
+      className={`${styles.card} ${isLocked ? styles.lockedCard : ''}`}
+      aria-label="Professional Insight Preview"
+    >
       {/* Header with close button */}
       <header className={styles.header}>
         <span className={styles.headerLabel}>Professional Insight</span>
@@ -67,25 +71,36 @@ export function InsightPreviewCard({ insight, onClose }: InsightPreviewCardProps
         {/* Title */}
         <h3 className={styles.title}>{insight.title}</h3>
 
-        {/* Key Takeaway */}
-        <blockquote className={styles.keyTakeaway}>
-          {insight.keyTakeaway}
-        </blockquote>
+        {isLocked ? (
+          /* Locked: show CTA instead of content */
+          <div className={styles.lockedContent}>
+            <span className={styles.unlockCta}>
+              &#x1f513; Unlock Full Insight
+            </span>
+          </div>
+        ) : (
+          <>
+            {/* Key Takeaway */}
+            <blockquote className={styles.keyTakeaway}>
+              {insight.keyTakeaway}
+            </blockquote>
 
-        {/* Actionable Advice (first 2 items only for preview) */}
-        {insight.actionableAdvice.length > 0 && (
-          <ul className={styles.adviceList}>
-            {insight.actionableAdvice.slice(0, 2).map((advice, index) => (
-              <li key={index} className={styles.adviceItem}>
-                {advice}
-              </li>
-            ))}
-            {insight.actionableAdvice.length > 2 && (
-              <li className={styles.moreAdvice}>
-                +{insight.actionableAdvice.length - 2} more tips
-              </li>
+            {/* Actionable Advice (first 2 items only for preview) */}
+            {insight.actionableAdvice.length > 0 && (
+              <ul className={styles.adviceList}>
+                {insight.actionableAdvice.slice(0, 2).map((advice, index) => (
+                  <li key={index} className={styles.adviceItem}>
+                    {advice}
+                  </li>
+                ))}
+                {insight.actionableAdvice.length > 2 && (
+                  <li className={styles.moreAdvice}>
+                    +{insight.actionableAdvice.length - 2} more tips
+                  </li>
+                )}
+              </ul>
             )}
-          </ul>
+          </>
         )}
       </div>
 
@@ -95,7 +110,7 @@ export function InsightPreviewCard({ insight, onClose }: InsightPreviewCardProps
           <span className={styles.sourceLabel}>Source</span>
           <span className={styles.sourceAuthor}>{insight.sourceAuthor}</span>
         </div>
-        {insight.url && (
+        {!isLocked && insight.url && (
           <a
             href={insight.url}
             target="_blank"

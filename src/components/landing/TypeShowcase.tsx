@@ -9,20 +9,20 @@ import styles from './TypeShowcase.module.css';
 
 const typeOrder: CodingStyleType[] = [
   'architect',
-  'scientist',
-  'collaborator',
+  'analyst',
+  'conductor',
   'speedrunner',
-  'craftsman',
+  'trendsetter',
 ];
 
 const levelOrder: AIControlLevel[] = ['explorer', 'navigator', 'cartographer'];
 
 const shortTaglines: Record<CodingStyleType, string> = {
   architect: 'Plans before coding',
-  scientist: 'Verifies everything',
-  collaborator: 'Iterates through dialogue',
+  analyst: 'Verifies everything',
+  conductor: 'Orchestrates AI tools',
   speedrunner: 'Ships fast, fixes later',
-  craftsman: 'Quality over speed',
+  trendsetter: 'Explores cutting-edge',
 };
 
 const levelTaglines: Record<AIControlLevel, string> = {
