@@ -90,6 +90,7 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
     // Activity data - diagnostic metadata, not premium content
     activitySessions: evaluation.activitySessions,
     sessionSummaries: evaluation.sessionSummaries,
+    projectSummaries: evaluation.projectSummaries,
 
     // PREMIUM fields - preview only (3 full + 4th truncated)
     promptPatterns: previewPatterns,

@@ -14,7 +14,7 @@
  */
 
 import { useMemo, useState, useCallback, useRef } from 'react';
-import type { AnalyzedSessionInfo, ActivitySessionInfo } from '../../../../types/verbose';
+import type { AnalyzedSessionInfo, ActivitySessionInfo, ProjectSummary } from '../../../../types/verbose';
 import styles from './ActivitySection.module.css';
 
 // ============================================================================
@@ -33,6 +33,8 @@ interface ActivitySectionProps {
   analyzedSessions: AnalyzedSessionInfo[];
   /** Legacy LLM-generated summaries (fallback for cached data) */
   sessionSummaries?: SessionSummaryItem[];
+  /** LLM-generated 2-3 line summaries per project (from ProjectSummarizer) */
+  projectSummaries?: ProjectSummary[];
   analysisDateRange?: { earliest: string; latest: string };
 }
 
@@ -138,6 +140,49 @@ function addDays(date: Date, days: number): Date {
   return d;
 }
 
+/** Max session summaries to show per project in fallback mode */
+const MAX_SHOWN_SUMMARIES = 3;
+
+/**
+ * Render project summary lines for the detail panel.
+ * Prefers LLM-generated project summaries; falls back to top session summaries.
+ */
+function renderProjectSummaries(
+  projectName: string,
+  sessionSummaries: string[],
+  projectSummaryMap: Map<string, ProjectSummary>
+): React.ReactNode {
+  const projectSummary = projectSummaryMap.get(projectName);
+  if (projectSummary && projectSummary.summaryLines.length > 0) {
+    return (
+      <ul className={styles.summaryList}>
+        {projectSummary.summaryLines.map((line, i) => (
+          <li key={i} className={styles.summaryItem}>{line}</li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (sessionSummaries.length === 0) {
+    return null;
+  }
+
+  const shown = sessionSummaries.slice(0, MAX_SHOWN_SUMMARIES);
+  const remaining = sessionSummaries.length - MAX_SHOWN_SUMMARIES;
+  return (
+    <ul className={styles.summaryList}>
+      {shown.map((s, i) => (
+        <li key={i} className={styles.summaryItem}>{s}</li>
+      ))}
+      {remaining > 0 && (
+        <li className={styles.summaryItem} style={{ opacity: 0.6 }}>
+          +{remaining} more session{remaining !== 1 ? 's' : ''}
+        </li>
+      )}
+    </ul>
+  );
+}
+
 /** Format date for tooltip display */
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
@@ -157,6 +202,7 @@ export function ActivitySection({
   activitySessions,
   analyzedSessions,
   sessionSummaries,
+  projectSummaries,
   analysisDateRange,
 }: ActivitySectionProps) {
   const graphContainerRef = useRef<HTMLDivElement>(null);
@@ -201,6 +247,17 @@ export function ActivitySection({
       totalTokens: 0,
     }));
   }, [activitySessions, analyzedSessions, sessionSummaries]);
+
+  // Build project summary lookup map by project name
+  const projectSummaryMap = useMemo(() => {
+    const map = new Map<string, ProjectSummary>();
+    if (projectSummaries) {
+      for (const ps of projectSummaries) {
+        map.set(ps.projectName, ps);
+      }
+    }
+    return map;
+  }, [projectSummaries]);
 
   // Build summary lookup map from unified sessions
   const summaryMap = useMemo(() => {
@@ -409,7 +466,7 @@ export function ActivitySection({
     <div className={styles.activitySection}>
       {/* Header */}
       <div className={styles.sectionHeader}>
-        <h3 className={styles.sectionTitle}>Your Coding Activity</h3>
+        <h3 className={styles.sectionTitle}>Vibe Activity</h3>
         <p className={styles.sectionDescription}>
           {stats.totalSessions} sessions across {stats.activeDays} active days
           {stats.dateRange && ` from ${stats.dateRange}`}
@@ -552,13 +609,7 @@ export function ActivitySection({
                         )}
                       </span>
                     </div>
-                    {project.summaries.length > 0 && (
-                      <ul className={styles.summaryList}>
-                        {project.summaries.map((s, i) => (
-                          <li key={i} className={styles.summaryItem}>{s}</li>
-                        ))}
-                      </ul>
-                    )}
+                    {renderProjectSummaries(project.projectName, project.summaries, projectSummaryMap)}
                   </div>
                 ))}
               </div>
