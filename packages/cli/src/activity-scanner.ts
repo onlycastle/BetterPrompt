@@ -183,8 +183,11 @@ function extractSessionMetadata(content: string): {
 
       // Extract token usage from assistant messages
       if (parsed.type === 'assistant' && parsed.message?.usage) {
-        result.totalInputTokens += parsed.message.usage.input_tokens || 0;
-        result.totalOutputTokens += parsed.message.usage.output_tokens || 0;
+        const usage = parsed.message.usage;
+        result.totalInputTokens += (usage.input_tokens || 0)
+          + (usage.cache_creation_input_tokens || 0)
+          + (usage.cache_read_input_tokens || 0);
+        result.totalOutputTokens += usage.output_tokens || 0;
       }
     } catch {
       // Skip unparseable lines
