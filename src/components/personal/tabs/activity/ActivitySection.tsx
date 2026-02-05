@@ -14,7 +14,8 @@
  */
 
 import { useMemo, useState, useCallback, useRef } from 'react';
-import type { AnalyzedSessionInfo, ActivitySessionInfo, ProjectSummary } from '../../../../types/verbose';
+import type { AnalyzedSessionInfo, ActivitySessionInfo, ProjectSummary, WeeklyInsights } from '../../../../types/verbose';
+import { WeeklyInsightsCard } from './WeeklyInsightsCard';
 import styles from './ActivitySection.module.css';
 
 // ============================================================================
@@ -36,6 +37,8 @@ interface ActivitySectionProps {
   /** LLM-generated 2-3 line summaries per project (from ProjectSummarizer) */
   projectSummaries?: ProjectSummary[];
   analysisDateRange?: { earliest: string; latest: string };
+  /** Weekly insights: stats, comparison, narrative, highlights (from WeeklyInsightGenerator) */
+  weeklyInsights?: WeeklyInsights;
 }
 
 /** Unified session data for the contribution graph */
@@ -204,6 +207,7 @@ export function ActivitySection({
   sessionSummaries,
   projectSummaries,
   analysisDateRange,
+  weeklyInsights,
 }: ActivitySectionProps) {
   const graphContainerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<TooltipState>({
@@ -464,6 +468,9 @@ export function ActivitySection({
 
   return (
     <div className={styles.activitySection}>
+      {/* Weekly Insights Dashboard */}
+      <WeeklyInsightsCard weeklyInsights={weeklyInsights} />
+
       {/* Header */}
       <div className={styles.sectionHeader}>
         <h3 className={styles.sectionTitle}>Vibe Activity</h3>

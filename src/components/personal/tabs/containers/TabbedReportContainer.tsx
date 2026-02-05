@@ -646,6 +646,7 @@ export function TabbedReportContainer({
                 sessionSummaries={analysis.sessionSummaries}
                 projectSummaries={analysis.projectSummaries}
                 analysisDateRange={analysisMetadata?.analysisDateRange}
+                weeklyInsights={analysis.weeklyInsights}
               />
             </div>
           )}
