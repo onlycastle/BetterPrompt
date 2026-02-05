@@ -23,6 +23,7 @@ import {
   type Phase1Output,
   type DeveloperUtterance,
   type Phase1SessionMetrics,
+  type AIInsightBlock,
 } from '../../models/phase1-output';
 import type { ParsedSession, ParsedMessage } from '../../models/session';
 import type { OrchestratorConfig } from '../orchestrator/types';
@@ -48,6 +49,18 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
 
   // Truncation/sampling limits to control downstream token usage
   private static readonly MAX_TEXT_LENGTH = 2000;
+
+  /** Max content length for extracted insight blocks */
+  private static readonly MAX_INSIGHT_CONTENT_LENGTH = 500;
+
+  /** Max insight blocks to include in Phase 1 output (token budget control) */
+  private static readonly MAX_INSIGHT_BLOCKS = 50;
+
+  /**
+   * Regex pattern for ★ Insight educational blocks in assistant messages.
+   * Matches content between `★ Insight ─+` and `─+` delimiters.
+   */
+  private static readonly INSIGHT_BLOCK_PATTERN = /`★\s*Insight\s*─+`\n([\s\S]*?)\n`─+`/g;
 
   /**
    * Sanitize displayText from LLM to fix formatting issues.
@@ -139,6 +152,15 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     const extractElapsed = Date.now() - extractStartTime;
     this.log(`[Timing] Session extraction: ${extractElapsed}ms (${allDeveloperUtterances.length} utterances)`);
 
+    // Extract AI insight blocks from assistant messages (deterministic, no LLM)
+    const insightStartTime = Date.now();
+    const allInsightBlocks = this.extractAllInsightBlocks(context.sessions);
+    const sampledInsightBlocks = this.sampleInsightBlocks(allInsightBlocks, DataExtractorWorker.MAX_INSIGHT_BLOCKS);
+    const insightElapsed = Date.now() - insightStartTime;
+    if (allInsightBlocks.length > 0) {
+      this.log(`[Timing] Insight extraction: ${insightElapsed}ms (${allInsightBlocks.length} found, ${sampledInsightBlocks.length} sampled)`);
+    }
+
     // NEW: Apply LLM-based filtering to remove system metadata
     const filterStartTime = Date.now();
     const filteredUtterances = await this.filterSystemMetadataWithLLM(allDeveloperUtterances);
@@ -150,6 +172,10 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     // Compute metrics from filtered data (accurate representation of developer input)
     const metricsStartTime = Date.now();
     const sessionMetrics = this.computeSessionMetrics(context.sessions, filteredUtterances);
+    // Add insight block count to metrics (only if any found)
+    if (allInsightBlocks.length > 0) {
+      sessionMetrics.aiInsightBlockCount = allInsightBlocks.length;
+    }
     const metricsElapsed = Date.now() - metricsStartTime;
     this.log(`[Timing] Metrics computation: ${metricsElapsed}ms`);
 
@@ -159,6 +185,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     const output: Phase1Output = {
       developerUtterances: sampledUtterances,
       sessionMetrics,
+      ...(sampledInsightBlocks.length > 0 ? { aiInsightBlocks: sampledInsightBlocks } : {}),
     };
 
     const totalElapsed = Date.now() - totalStartTime;
@@ -522,6 +549,109 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       mediumSessions,
       longSessions,
     };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // AI Insight Block Extraction (Deterministic)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Extract all AI insight blocks from assistant messages across all sessions.
+   *
+   * Scans assistant messages for ★ Insight educational blocks and extracts
+   * the content between delimiters. Links each insight to the preceding
+   * user utterance via triggeringUtteranceId.
+   *
+   * @param sessions - All parsed sessions
+   * @returns Array of extracted insight blocks
+   */
+  private extractAllInsightBlocks(sessions: ParsedSession[]): AIInsightBlock[] {
+    const blocks: AIInsightBlock[] = [];
+
+    for (const session of sessions) {
+      let lastUserTurnIndex: number | null = null;
+
+      for (let i = 0; i < session.messages.length; i++) {
+        const message = session.messages[i];
+
+        if (message.role === 'user') {
+          lastUserTurnIndex = i;
+        } else if (message.role === 'assistant') {
+          // Reset regex state for each message
+          DataExtractorWorker.INSIGHT_BLOCK_PATTERN.lastIndex = 0;
+
+          let match;
+          while ((match = DataExtractorWorker.INSIGHT_BLOCK_PATTERN.exec(message.content)) !== null) {
+            const rawContent = match[1].trim();
+            if (!rawContent) continue;
+
+            const content = rawContent.length > DataExtractorWorker.MAX_INSIGHT_CONTENT_LENGTH
+              ? rawContent.slice(0, DataExtractorWorker.MAX_INSIGHT_CONTENT_LENGTH) + '...'
+              : rawContent;
+
+            const block: AIInsightBlock = {
+              sessionId: session.sessionId,
+              turnIndex: i,
+              content,
+            };
+
+            // Link to preceding user utterance if available
+            if (lastUserTurnIndex !== null) {
+              block.triggeringUtteranceId = `${session.sessionId}_${lastUserTurnIndex}`;
+            }
+
+            blocks.push(block);
+          }
+        }
+      }
+    }
+
+    return blocks;
+  }
+
+  /**
+   * Sample insight blocks to fit within token budget.
+   *
+   * Uses bookend strategy per session: keep first + last insight per session,
+   * fill remaining slots with evenly-spaced middle insights.
+   *
+   * @param blocks - All extracted insight blocks
+   * @param maxCount - Maximum number of blocks to include
+   * @returns Sampled insight blocks preserving session distribution
+   */
+  private sampleInsightBlocks(blocks: AIInsightBlock[], maxCount: number): AIInsightBlock[] {
+    if (blocks.length <= maxCount) return blocks;
+
+    // Group by session
+    const bySession = new Map<string, AIInsightBlock[]>();
+    for (const block of blocks) {
+      const group = bySession.get(block.sessionId) ?? [];
+      group.push(block);
+      bySession.set(block.sessionId, group);
+    }
+
+    const sampled = new Set<AIInsightBlock>();
+
+    // Keep first + last per session (bookends)
+    for (const group of bySession.values()) {
+      sampled.add(group[0]);
+      if (group.length > 1) {
+        sampled.add(group[group.length - 1]);
+      }
+    }
+
+    // Fill remaining slots with evenly-spaced middle blocks
+    const remaining = maxCount - sampled.size;
+    if (remaining > 0) {
+      const unsampled = blocks.filter(b => !sampled.has(b));
+      const step = Math.max(1, Math.floor(unsampled.length / remaining));
+      for (let i = 0; i < unsampled.length && sampled.size < maxCount; i += step) {
+        sampled.add(unsampled[i]);
+      }
+    }
+
+    // Return in original order
+    return blocks.filter(b => sampled.has(b));
   }
 
   // ─────────────────────────────────────────────────────────────────────────

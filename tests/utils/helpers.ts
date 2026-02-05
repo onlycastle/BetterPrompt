@@ -108,10 +108,10 @@ export function createMockTypeResult(overrides: Partial<TypeResult> = {}): TypeR
     primaryType: 'architect' as CodingStyleType,
     distribution: {
       architect: 45,
-      scientist: 25,
-      collaborator: 15,
+      analyst: 25,
+      conductor: 15,
       speedrunner: 10,
-      craftsman: 5,
+      trendsetter: 5,
     },
     metrics: {
       avgPromptLength: 150,
@@ -298,10 +298,10 @@ export function createMockVerboseEvaluation(
     controlLevel: 'cartographer',
     distribution: {
       architect: 40,
-      scientist: 25,
-      collaborator: 20,
+      analyst: 25,
+      conductor: 20,
       speedrunner: 10,
-      craftsman: 5,
+      trendsetter: 5,
     },
     personalitySummary: 'You are a strategic architect who plans thoroughly before implementation.',
     strengths: [

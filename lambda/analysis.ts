@@ -9,7 +9,7 @@
  * Routes:
  * - POST /upload-url: Generate S3 presigned upload URL
  * - POST /analyze: Analyze from S3
- * - POST / (default): Direct upload (legacy, <6MB only)
+ * - POST / (default): Direct upload (legacy fallback)
  *
  * Architecture (S3 flow):
  * 1. Client calls /upload-url → gets S3 presigned PUT URL

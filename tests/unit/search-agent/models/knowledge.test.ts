@@ -342,7 +342,7 @@ describe('Knowledge Models', () => {
           url: 'https://example.com/blog',
           author: 'Blog Author',
         },
-        applicableStyles: ['architect', 'collaborator'],
+        applicableStyles: ['architect', 'conductor'],
         applicableControlLevels: ['navigator', 'cartographer'],
         applicableDimensions: ['aiControl'],
         minScore: 30,

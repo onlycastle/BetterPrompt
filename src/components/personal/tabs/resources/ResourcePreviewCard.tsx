@@ -57,7 +57,28 @@ function formatDate(dateString: string): string {
 }
 
 export function ResourcePreviewCard({ resource }: ResourcePreviewCardProps) {
+  const isLocked = !resource.url;
   const { data: metadata, isLoading } = useOGMetadata(resource.url);
+
+  // Locked variant: title-only card with lock badge (not clickable)
+  if (isLocked) {
+    return (
+      <div className={`${styles.card} ${styles.lockedCard}`}>
+        <div className={`${styles.thumbnail} ${styles.lockedThumbnail}`}>
+          <div className={styles.fallbackIcon}>{getTypeIcon(resource.type)}</div>
+          <span className={styles.lockBadge}>&#x1f512;</span>
+        </div>
+        <div className={styles.content}>
+          <h4 className={styles.title}>{resource.topic}</h4>
+          <div className={styles.meta}>
+            <span className={styles.siteName}>
+              {getTypeIcon(resource.type)} {resource.type}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <a

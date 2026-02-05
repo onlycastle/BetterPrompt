@@ -6,7 +6,7 @@
  * Uses gzip compression to reduce payload size
  *
  * Sends pre-parsed session data to avoid redundant parsing on server.
- * For large payloads (>5MB), automatically uses S3 Storage.
+ * Always uploads via S3 presigned URL to bypass Lambda Function URL payload limits.
  */
 
 import { gzipSync } from 'node:zlib';
@@ -52,11 +52,6 @@ const LAMBDA_API_URL = process.env.NOSLOP_API_URL || DEFAULT_LAMBDA_URL;
  * Web app base URL for report links
  */
 const REPORT_BASE_URL = 'https://www.nomoreaislop.xyz';
-
-/**
- * Threshold for using S3 Storage upload
- */
-const USE_STORAGE_THRESHOLD = 5 * 1024 * 1024;
 
 /**
  * Maximum payload size
@@ -265,20 +260,15 @@ export interface AnalysisResult {
   matrixEmoji: string;
   distribution: {
     architect: number;
-    scientist: number;
-    collaborator: number;
+    analyst: number;
+    conductor: number;
     speedrunner: number;
-    craftsman: number;
+    trendsetter: number;
   };
   personalitySummary: string;
   reportUrl: string;
   /** Actual token usage from LLM pipeline (available when DEBUG is set) */
   tokenUsage?: PipelineTokenUsage;
-}
-
-export interface UploadError {
-  code: string;
-  message: string;
 }
 
 /**
@@ -451,61 +441,28 @@ export async function uploadForAnalysis(
 
   const sizeInfo = `${formatSize(originalSizeBytes)} (gzip: ${formatSize(compressedSizeBytes)})`;
 
-  // Route based on payload size
-  if (compressedSizeBytes > USE_STORAGE_THRESHOLD) {
-    onProgress?.('preparing', 0, `${sizeInfo} | Using secure storage for large payload`);
-
-    const { s3Key } = await uploadViaStorage(compressedBody, accessToken, onProgress);
-
-    debugLog('Calling /analyze with s3Key:', s3Key);
-    const response = await fetch(`${LAMBDA_API_URL}/analyze`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-        ...(DEBUG && { 'X-Debug': '1' }),
-      },
-      body: JSON.stringify({ s3Key }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
-      throw new Error(`Analysis request failed: ${response.status} ${errorText}`);
-    }
-
-    return handleStreamingResponse(response, onProgress);
-  }
-
-  // Small payload: Direct upload
   if (truncated) {
     onProgress?.('preparing', 0, `${sizeInfo} | Excluded ${droppedCount} session(s) to fit limit`);
   } else {
-    onProgress?.('preparing', 0, sizeInfo);
+    onProgress?.('preparing', 0, `${sizeInfo} | Using secure storage`);
   }
 
-  const response = await fetch(LAMBDA_API_URL, {
+  const { s3Key } = await uploadViaStorage(compressedBody, accessToken, onProgress);
+
+  debugLog('Calling /analyze with s3Key:', s3Key);
+  const response = await fetch(`${LAMBDA_API_URL}/analyze`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/octet-stream',
-      'Content-Encoding': 'gzip',
+      'Content-Type': 'application/json',
       'Authorization': `Bearer ${accessToken}`,
       ...(DEBUG && { 'X-Debug': '1' }),
     },
-    body: new Uint8Array(compressedBody),
+    body: JSON.stringify({ s3Key }),
   });
 
   if (!response.ok) {
-    const responseText = await response.text().catch(() => '');
-    let errorMessage = `Server error: ${response.status} (payload: ${formatSize(compressedSizeBytes)})`;
-    try {
-      const error = JSON.parse(responseText) as UploadError;
-      errorMessage = error.message || errorMessage;
-    } catch {
-      if (responseText) {
-        errorMessage = `${errorMessage} - ${responseText.slice(0, 200)}`;
-      }
-    }
-    throw new Error(errorMessage);
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Analysis request failed: ${response.status} ${errorText}`);
   }
 
   return handleStreamingResponse(response, onProgress);

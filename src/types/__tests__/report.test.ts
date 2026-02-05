@@ -23,10 +23,10 @@ describe('Report Types', () => {
     it('should have metadata for all types', () => {
       const types: CodingStyleType[] = [
         'architect',
-        'scientist',
-        'collaborator',
+        'analyst',
+        'conductor',
         'speedrunner',
-        'craftsman',
+        'trendsetter',
       ];
 
       types.forEach((type) => {
@@ -45,17 +45,17 @@ describe('Report Types', () => {
     it('should accept valid distribution', () => {
       const distribution: TypeDistribution = {
         architect: 25,
-        scientist: 20,
-        collaborator: 15,
+        analyst: 20,
+        conductor: 15,
         speedrunner: 30,
-        craftsman: 10,
+        trendsetter: 10,
       };
 
       expect(distribution.architect).toBe(25);
-      expect(distribution.scientist).toBe(20);
-      expect(distribution.collaborator).toBe(15);
+      expect(distribution.analyst).toBe(20);
+      expect(distribution.conductor).toBe(15);
       expect(distribution.speedrunner).toBe(30);
-      expect(distribution.craftsman).toBe(10);
+      expect(distribution.trendsetter).toBe(10);
     });
   });
 
@@ -65,10 +65,10 @@ describe('Report Types', () => {
         primaryType: 'architect',
         distribution: {
           architect: 40,
-          scientist: 25,
-          collaborator: 15,
+          analyst: 25,
+          conductor: 15,
           speedrunner: 10,
-          craftsman: 10,
+          trendsetter: 10,
         },
         sessionCount: 5,
         analyzedAt: '2025-01-13T00:00:00Z',
@@ -162,13 +162,13 @@ describe('Report Types', () => {
       const reportData: ReportData = {
         reportId: 'abc123',
         typeResult: {
-          primaryType: 'scientist',
+          primaryType: 'analyst',
           distribution: {
             architect: 10,
-            scientist: 50,
-            collaborator: 20,
+            analyst: 50,
+            conductor: 20,
             speedrunner: 10,
-            craftsman: 10,
+            trendsetter: 10,
           },
           sessionCount: 3,
           analyzedAt: '2025-01-13T00:00:00Z',
@@ -196,7 +196,7 @@ describe('Report Types', () => {
       };
 
       expect(reportData.reportId).toBe('abc123');
-      expect(reportData.typeResult.primaryType).toBe('scientist');
+      expect(reportData.typeResult.primaryType).toBe('analyst');
       expect(reportData.dimensions).toBeUndefined();
     });
 
@@ -207,10 +207,10 @@ describe('Report Types', () => {
           primaryType: 'architect',
           distribution: {
             architect: 45,
-            scientist: 20,
-            collaborator: 15,
+            analyst: 20,
+            conductor: 15,
             speedrunner: 10,
-            craftsman: 10,
+            trendsetter: 10,
           },
           sessionCount: 10,
           analyzedAt: '2025-01-13T00:00:00Z',

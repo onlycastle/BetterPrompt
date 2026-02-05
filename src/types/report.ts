@@ -5,50 +5,17 @@
  * These types align with the API response from /api/reports/:reportId
  */
 
-// Import shared types from enterprise (single source of truth)
-import type { CodingStyleType, AIControlLevel as BaseAIControlLevel } from './enterprise';
+// Import shared types from canonical source
+import type {
+  CodingStyleType,
+  AIControlLevel as BaseAIControlLevel,
+  TypeDistribution,
+  MatrixKey,
+  MatrixDistribution,
+} from '../lib/models/coding-style';
 
 // Re-export for convenience
-export type { CodingStyleType };
-
-// ============================================================================
-// Type Distribution and Metrics
-// ============================================================================
-
-export interface TypeDistribution {
-  architect: number;
-  scientist: number;
-  collaborator: number;
-  speedrunner: number;
-  craftsman: number;
-}
-
-/**
- * Key format for the 5×3 matrix: type_controlLevel
- */
-export type MatrixKey = `${CodingStyleType}_${AIControlLevel}`;
-
-/**
- * Distribution across all 15 matrix combinations
- * Each value is 0-100, representing percentage
- */
-export interface MatrixDistribution {
-  architect_explorer: number;
-  architect_navigator: number;
-  architect_cartographer: number;
-  scientist_explorer: number;
-  scientist_navigator: number;
-  scientist_cartographer: number;
-  collaborator_explorer: number;
-  collaborator_navigator: number;
-  collaborator_cartographer: number;
-  speedrunner_explorer: number;
-  speedrunner_navigator: number;
-  speedrunner_cartographer: number;
-  craftsman_explorer: number;
-  craftsman_navigator: number;
-  craftsman_cartographer: number;
-}
+export type { CodingStyleType, TypeDistribution, MatrixKey, MatrixDistribution };
 
 export interface TypeMetrics {
   avgPromptLength: number;
@@ -106,36 +73,36 @@ export const REPORT_TYPE_METADATA: Record<CodingStyleType, TypeMetadata> = {
       'Over-planning may delay execution',
     ],
   },
-  scientist: {
+  analyst: {
     emoji: '🔬',
-    name: 'Scientist',
-    tagline: 'Truth-seeker who always verifies AI output',
+    name: 'Analyst',
+    tagline: 'Deep investigator who verifies and questions everything',
     description:
-      "You maintain healthy skepticism toward AI output. Your verification habits catch bugs early and ensure high code quality while keeping your skills sharp.",
+      'You combine systematic verification with critical thinking. Your thorough approach catches bugs early, questions assumptions, and ensures high code quality through investigation.',
     strengths: [
-      'Catches bugs early',
-      'High code quality',
-      'Low AI dependency, maintains skills',
+      'Catches bugs early through systematic verification',
+      'Questions assumptions and explores alternatives',
+      'Low repeated mistakes through deep understanding',
     ],
     growthPoints: [
-      'Verifying everything can slow velocity',
-      'More AI trust could improve efficiency',
+      'Thoroughness can slow velocity on simpler tasks',
+      'Balancing depth with pragmatism',
     ],
   },
-  collaborator: {
-    emoji: '🤝',
-    name: 'Collaborator',
-    tagline: 'Partnership master who finds answers through dialogue',
+  conductor: {
+    emoji: '🎼',
+    name: 'Conductor',
+    tagline: 'Orchestration master who commands AI tools like an ensemble',
     description:
-      'You excel at iterative refinement through conversation. Your collaborative approach maximizes AI synergy and leads to quality improvement through iteration.',
+      'You excel at orchestrating AI tools and workflows. Your mastery of slash commands, subagents, role assignments, and multi-tool workflows maximizes AI synergy and productivity.',
     strengths: [
-      'Maximizes AI synergy',
-      'Quality improvement through iteration',
-      'Flexible problem solving',
+      'High tool diversity and mastery',
+      'Effective multi-agent orchestration',
+      'Creative workflow composition',
     ],
     growthPoints: [
-      'Clearer initial requirements could reduce turns',
-      'Sometimes one clear request is more efficient',
+      'Complex orchestration can add overhead for simple tasks',
+      'Direct approaches may be faster for focused work',
     ],
   },
   speedrunner: {
@@ -154,20 +121,20 @@ export const REPORT_TYPE_METADATA: Record<CodingStyleType, TypeMetadata> = {
       'Sometimes slower design is more efficient',
     ],
   },
-  craftsman: {
-    emoji: '🔧',
-    name: 'Craftsman',
-    tagline: 'Artisan who prioritizes code quality above all',
+  trendsetter: {
+    emoji: '🚀',
+    name: 'Trendsetter',
+    tagline: 'Innovation seeker who explores cutting-edge approaches',
     description:
-      'You care deeply about code quality and consistency. Your attention to detail produces maintainable code and minimizes long-term technical debt.',
+      'You actively seek the latest tools, frameworks, and best practices. Your curiosity drives you to explore emerging technologies and modern approaches, keeping your stack ahead of the curve.',
     strengths: [
-      'Produces maintainable code',
-      'Maintains team codebase consistency',
-      'Minimizes long-term technical debt',
+      'Early adoption of effective new tools',
+      'Awareness of industry best practices',
+      'Continuous learning mindset',
     ],
     growthPoints: [
-      'Perfectionism may delay deployment',
-      'Speed matters too at MVP stage',
+      'Novelty bias may lead to premature adoption',
+      'Proven solutions sometimes outperform trendy ones',
     ],
   },
 };
@@ -419,7 +386,11 @@ export const REPORT_DIMENSION_METADATA: Record<keyof FullAnalysisResult, ReportD
 // Report Data (API Response)
 // ============================================================================
 
-export interface SessionMetadata {
+/**
+ * Session metadata in API response format (nullable fields, durationMinutes).
+ * Different from domain SessionMetadata which uses Date types and durationSeconds.
+ */
+export interface ReportSessionMetadata {
   sessionId: string | null;
   durationMinutes: number | null;
   messageCount: number | null;
@@ -435,7 +406,7 @@ export interface ReportData {
   reportId: string;
   typeResult: TypeResult;
   dimensions?: FullAnalysisResult;
-  sessionMetadata: SessionMetadata;
+  sessionMetadata: ReportSessionMetadata;
   stats: ReportStats;
   createdAt: string;
 }

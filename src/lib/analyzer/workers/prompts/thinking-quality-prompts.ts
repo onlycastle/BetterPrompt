@@ -33,6 +33,17 @@ You receive Phase 1 output containing:
 - \`developerUtterances[]\`: Raw text with metadata (id, text, hasQuestion, wordCount, hasCodeBlock, isSessionStart, isContinuation, precedingAIHadError, precedingAIToolCalls, etc.)
 - \`sessionMetrics\`: Computed statistics (toolUsageCounts, avgPromptLength, sessionCount, etc.)
 
+## AI INSIGHT BLOCKS (Optional, Auxiliary Context)
+
+If present, \`aiInsightBlocks[]\` contains educational content the AI provided during the session:
+- \`content\`: The educational explanation
+- \`triggeringUtteranceId\`: The developer utterance that prompted this education
+
+**Auxiliary use for thinking quality analysis:**
+- Insight blocks that follow verification questions indicate a developer who validates understanding
+- Absence of insights after complex AI outputs may suggest passive acceptance (blind trust)
+- Do NOT treat insight blocks as a primary signal — they supplement utterance-based analysis
+
 ## DIMENSION 1: PLANNING QUALITY
 
 ### Planning Habit Types

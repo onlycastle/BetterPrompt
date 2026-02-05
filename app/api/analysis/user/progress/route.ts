@@ -184,7 +184,7 @@ function buildAnalysisSummary(result: AnalysisResult, dimensions: DimensionScore
     date: result.claimed_at,
     score: overallScore,
     overallScore,
-    primaryType: result.evaluation?.primaryType ?? 'collaborator',
+    primaryType: result.evaluation?.primaryType ?? 'conductor',
     controlLevel: result.evaluation?.controlLevel ?? 'explorer',
     dimensions,
   };

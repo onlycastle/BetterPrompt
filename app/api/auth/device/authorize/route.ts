@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { sendSlackNotification, formatKoreanTime } from '@/lib/slack';
 
 /**
  * Create a Supabase server client with cookie access
@@ -164,6 +165,20 @@ export async function POST(request: NextRequest) {
         { error: 'server_error', message: 'Failed to authorize device' },
         { status: 500 }
       );
+    }
+
+    // Send Slack notification for new signups via CLI (fire and forget)
+    if (userData.user.created_at) {
+      const createdAt = new Date(userData.user.created_at).getTime();
+      const now = Date.now();
+      const ONE_MINUTE = 60 * 1000;
+
+      if (now - createdAt < ONE_MINUTE) {
+        const provider = userData.user.app_metadata?.provider || 'email';
+        sendSlackNotification({
+          text: `👤 새 회원가입! (CLI)\n• 이메일: ${userData.user.email}\n• Provider: ${provider}\n• 시간: ${formatKoreanTime()}`,
+        });
+      }
     }
 
     return NextResponse.json({

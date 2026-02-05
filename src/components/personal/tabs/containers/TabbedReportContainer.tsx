@@ -21,6 +21,7 @@ import { ReportAnchorNav } from '../shared/ReportAnchorNav';
 import { ResourceSidebar } from '../resources/ResourceSidebar';
 import { DataQualityBadge } from '../shared/DataQualityBadge';
 import { InsightPreviewCard } from '../insights/InsightPreviewCard';
+import { TopFocusAreasSection } from '../focus/TopFocusAreasSection';
 
 import type { VerboseAnalysisData, AnalysisMetadata, DimensionResourceMatch } from '../../../../types/verbose';
 import type { AgentOutputs, ParsedResource } from '../../../../lib/models/agent-outputs';
@@ -571,6 +572,11 @@ export function TabbedReportContainer({
               <h3 className={styles.sectionTitle}>Your AI Coding Personality</h3>
               <PersonalitySummaryClean summary={analysis.personalitySummary} />
             </section>
+          )}
+
+          {/* Top Focus Areas (between personality summary and tabs) */}
+          {analysis.topFocusAreas && analysis.topFocusAreas.areas?.length > 0 && (
+            <TopFocusAreasSection focusAreas={analysis.topFocusAreas} />
           )}
         </div>
 

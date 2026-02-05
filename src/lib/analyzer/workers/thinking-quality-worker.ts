@@ -166,7 +166,7 @@ export class ThinkingQualityWorker extends BaseWorker<ThinkingQualityOutput> {
     // thinking patterns from their utterances only. AI responses are not needed for
     // planning and critical thinking analysis.
     // This optimization saves ~15,000-20,000 tokens per analysis.
-    return {
+    const result: Record<string, unknown> = {
       developerUtterances: phase1.developerUtterances.map((u) => ({
         id: u.id,
         // Use displayText (sanitized) if available, fallback to raw text
@@ -185,6 +185,16 @@ export class ThinkingQualityWorker extends BaseWorker<ThinkingQualityOutput> {
       })),
       sessionMetrics: phase1.sessionMetrics,
     };
+
+    // Include AI insight blocks as auxiliary context (lighter than LearningBehavior)
+    if (phase1.aiInsightBlocks?.length) {
+      result.aiInsightBlocks = phase1.aiInsightBlocks.slice(0, 20).map((ib) => ({
+        content: ib.content.slice(0, 200),
+        triggeringUtteranceId: ib.triggeringUtteranceId,
+      }));
+    }
+
+    return result;
   }
 }
 

@@ -64,21 +64,32 @@ export function ResourceBubble({ resources, inline = false }: ResourceBubbleProp
         </div>
 
         <ul className={styles.resourceList}>
-          {resources.map((resource, idx) => (
-            <li key={idx} className={styles.resourceItem}>
-              <a
-                href={resource.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.resourceLink}
-              >
-                <span className={styles.resourceIcon}>{getResourceTypeIcon(resource.type)}</span>
-                <span className={styles.resourceTopic}>{resource.topic}</span>
-                <span className={styles.externalIcon}>↗</span>
-              </a>
-              <span className={styles.resourceType}>{resource.type}</span>
-            </li>
-          ))}
+          {resources.map((resource, idx) => {
+            const isLocked = !resource.url;
+            return (
+              <li key={idx} className={`${styles.resourceItem} ${isLocked ? styles.lockedItem : ''}`}>
+                {isLocked ? (
+                  <span className={`${styles.resourceLink} ${styles.lockedLink}`}>
+                    <span className={styles.resourceIcon}>{getResourceTypeIcon(resource.type)}</span>
+                    <span className={styles.resourceTopic}>{resource.topic}</span>
+                    <span className={styles.lockIcon}>&#x1f512;</span>
+                  </span>
+                ) : (
+                  <a
+                    href={resource.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.resourceLink}
+                  >
+                    <span className={styles.resourceIcon}>{getResourceTypeIcon(resource.type)}</span>
+                    <span className={styles.resourceTopic}>{resource.topic}</span>
+                    <span className={styles.externalIcon}>↗</span>
+                  </a>
+                )}
+                <span className={styles.resourceType}>{resource.type}</span>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>

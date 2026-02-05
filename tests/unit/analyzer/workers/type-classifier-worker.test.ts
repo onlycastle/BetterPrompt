@@ -76,14 +76,14 @@ function createMockContext(
 function createMockLLMOutput(): TypeClassifierOutput {
   return {
     primaryType: 'architect',
-    distribution: { architect: 45, scientist: 20, collaborator: 15, speedrunner: 10, craftsman: 10 },
+    distribution: { architect: 45, analyst: 20, conductor: 15, speedrunner: 10, trendsetter: 10 },
     controlLevel: 'navigator',
     controlScore: 65,
     matrixName: 'Systems Architect',
     matrixEmoji: '🏗️',
     collaborationMaturity: { level: 'ai_assisted_engineer', description: 'Uses AI as a capable tool while maintaining control', indicators: ['verifies_output', 'guides_direction', 'maintains_ownership'] },
     confidenceScore: 0.85,
-    reasoning: 'Based on planning habits and verification patterns',
+    reasoning: 'Your **methodical approach** to development reveals a deeply structured thinker who naturally gravitates toward systematic problem-solving. When you said 「Let me verify this works before we continue」, it showed a natural instinct for **quality validation** that sets you apart from developers who accept AI output uncritically.\nThis verification-first mindset, combined with your consistent habit of breaking tasks into smaller components before diving into implementation, places you firmly in the architect category. You don\'t just plan — you create structured frameworks that guide both your own thinking and the AI\'s output.\nYour **navigator-level control** means you maintain a balanced relationship with AI tools. You guide the direction while remaining open to suggestions, creating a productive collaboration dynamic that maximizes both human insight and AI capability.',
   };
 }
 
@@ -142,21 +142,31 @@ describe('TypeClassifierWorker', () => {
 
       const result = await worker.execute(context);
 
-      expect(mockGenerateStructured).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 8192 }));
+      expect(mockGenerateStructured).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 16384 }));
       expect(result.data.primaryType).toBe('architect');
       expect(result.data.controlLevel).toBe('navigator');
       expect(result.usage).toEqual({ promptTokens: 800, completionTokens: 400, totalTokens: 1200 });
       expect(result.error).toBeUndefined();
     });
 
+    it('should include personalized reasoning in result', async () => {
+      setupMockResponse();
+
+      const result = await worker.execute(context);
+
+      expect(result.data.reasoning).toBeDefined();
+      expect(typeof result.data.reasoning).toBe('string');
+      expect(result.data.reasoning.length).toBeGreaterThan(100);
+    });
+
     it('should normalize distribution to sum to 100', async () => {
-      const mockOutput = { ...createMockLLMOutput(), distribution: { architect: 40, scientist: 20, collaborator: 15, speedrunner: 10, craftsman: 10 } };
+      const mockOutput = { ...createMockLLMOutput(), distribution: { architect: 40, analyst: 20, conductor: 15, speedrunner: 10, trendsetter: 10 } };
       setupMockResponse(mockOutput, { promptTokens: 100, completionTokens: 50, totalTokens: 150 });
 
       const result = await worker.execute(context);
 
       const dist = result.data.distribution;
-      const sum = dist.architect + dist.scientist + dist.collaborator + dist.speedrunner + dist.craftsman;
+      const sum = dist.architect + dist.analyst + dist.conductor + dist.speedrunner + dist.trendsetter;
       expect(Math.abs(sum - 100)).toBeLessThanOrEqual(1);
     });
 

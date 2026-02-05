@@ -4,7 +4,7 @@
 
 | Feature | Vercel Pro | AWS Lambda (SST) |
 |---------|------------|-------------------|
-| Payload limit | 4.5MB (hard) | 10MB |
+| Payload limit | 4.5MB (hard) | 6MB (bypassed via S3 presigned URL) |
 | Timeout | 5 minutes | 15 minutes |
 | Streaming | SSE via Edge | Lambda Response Streaming |
 | Deploy | Push to `main` | GitHub Actions (changes in `lambda/`, `infra/`, `sst.config.ts`) |

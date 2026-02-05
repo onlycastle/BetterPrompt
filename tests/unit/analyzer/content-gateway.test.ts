@@ -27,10 +27,10 @@ describe('ContentGateway', () => {
       controlLevel: 'cartographer',
       distribution: {
         architect: 40,
-        scientist: 25,
-        collaborator: 20,
+        analyst: 25,
+        conductor: 20,
         speedrunner: 10,
-        craftsman: 5,
+        trendsetter: 5,
       },
 
       // Personality summary
@@ -850,6 +850,120 @@ describe('ContentGateway', () => {
       expect(proTier.productivityAnalysis?.collaborationEffectiveness.narrative).toBe(
         'You collaborate effectively with AI'
       );
+    });
+  });
+
+  describe('topFocusAreas teaser (free tier)', () => {
+    const mockTopFocusAreas = {
+      summary: 'Your top 3 priorities for improvement',
+      areas: [
+        {
+          rank: 1,
+          dimension: 'aiCollaboration' as const,
+          title: 'Master Context Engineering',
+          narrative: 'You should focus on providing clearer context to AI tools.',
+          expectedImpact: 'Reduce iteration cycles by 30%',
+          priorityScore: 92,
+          actions: { start: 'Add CLAUDE.md files', stop: 'Skipping context setup', continue: 'Using structured prompts' },
+        },
+        {
+          rank: 2,
+          dimension: 'toolMastery' as const,
+          title: 'Expand Tool Usage',
+          narrative: 'Your tool repertoire is limited to basic Read/Write.',
+          expectedImpact: 'Increase productivity by 25%',
+          priorityScore: 78,
+          actions: { start: 'Use Task tool', stop: 'Manual file searching', continue: 'Using Glob' },
+        },
+        {
+          rank: 3,
+          dimension: 'skillResilience' as const,
+          title: 'Deepen Core Understanding',
+          narrative: 'Build stronger fundamentals to reduce AI dependency.',
+          expectedImpact: 'Better code review quality',
+          priorityScore: 65,
+          actions: { start: 'Review generated code', stop: 'Blind acceptance', continue: 'Asking questions' },
+        },
+      ],
+    };
+
+    it('should return teaser with first area fully visible for free tier', () => {
+      const evalWithFocus = { ...fullEvaluation, topFocusAreas: mockTopFocusAreas };
+      const filtered = gateway.filter(evalWithFocus, 'free');
+
+      expect(filtered.topFocusAreas).toBeDefined();
+      expect(filtered.topFocusAreas!.summary).toBe(mockTopFocusAreas.summary);
+
+      // First area: fully visible
+      const first = filtered.topFocusAreas!.areas[0];
+      expect(first.rank).toBe(1);
+      expect(first.title).toBe('Master Context Engineering');
+      expect(first.narrative).toBe('You should focus on providing clearer context to AI tools.');
+      expect(first.expectedImpact).toBe('Reduce iteration cycles by 30%');
+      expect(first.actions).toBeDefined();
+      expect(first.actions!.start).toBe('Add CLAUDE.md files');
+    });
+
+    it('should lock second and third areas for free tier (empty narrative)', () => {
+      const evalWithFocus = { ...fullEvaluation, topFocusAreas: mockTopFocusAreas };
+      const filtered = gateway.filter(evalWithFocus, 'free');
+
+      // Second area: locked
+      const second = filtered.topFocusAreas!.areas[1];
+      expect(second.rank).toBe(2);
+      expect(second.title).toBe('Expand Tool Usage');
+      expect(second.dimension).toBe('toolMastery');
+      expect(second.narrative).toBe(''); // Locked signal
+      expect(second.expectedImpact).toBe('');
+      expect(second.actions).toBeUndefined();
+
+      // Third area: locked
+      const third = filtered.topFocusAreas!.areas[2];
+      expect(third.rank).toBe(3);
+      expect(third.title).toBe('Deepen Core Understanding');
+      expect(third.dimension).toBe('skillResilience');
+      expect(third.narrative).toBe(''); // Locked signal
+      expect(third.expectedImpact).toBe('');
+      expect(third.actions).toBeUndefined();
+    });
+
+    it('should return undefined when topFocusAreas is undefined', () => {
+      const evalNoFocus = { ...fullEvaluation, topFocusAreas: undefined };
+      const filtered = gateway.filter(evalNoFocus, 'free');
+
+      expect(filtered.topFocusAreas).toBeUndefined();
+    });
+
+    it('should return undefined when topFocusAreas has empty areas', () => {
+      const evalEmptyFocus = {
+        ...fullEvaluation,
+        topFocusAreas: { summary: 'Empty', areas: [] },
+      };
+      const filtered = gateway.filter(evalEmptyFocus, 'free');
+
+      expect(filtered.topFocusAreas).toBeUndefined();
+    });
+
+    it('should return full topFocusAreas for pro tier', () => {
+      const evalWithFocus = { ...fullEvaluation, topFocusAreas: mockTopFocusAreas };
+      const filtered = gateway.filter(evalWithFocus, 'pro');
+
+      expect(filtered.topFocusAreas).toEqual(mockTopFocusAreas);
+    });
+
+    it('should preserve locked areas priorityScore and dimension', () => {
+      const evalWithFocus = { ...fullEvaluation, topFocusAreas: mockTopFocusAreas };
+      const filtered = gateway.filter(evalWithFocus, 'free');
+
+      // Locked areas keep metadata for display
+      expect(filtered.topFocusAreas!.areas[1].priorityScore).toBe(78);
+      expect(filtered.topFocusAreas!.areas[2].priorityScore).toBe(65);
+    });
+  });
+
+  describe('TIER_POLICY topFocusAreas', () => {
+    it('should define topFocusAreas policy correctly', () => {
+      expect(TIER_POLICY.topFocusAreas.freeFullCount).toBe(1);
     });
   });
 });

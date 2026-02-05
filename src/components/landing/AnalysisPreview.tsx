@@ -15,22 +15,22 @@ export function AnalysisPreview() {
         {/* Hero: Personality Type Card */}
         <div className={styles.typeCard}>
           <div className={styles.typeHeader}>
-            <span className={styles.typeEmoji}>🔧</span>
+            <span className={styles.typeEmoji}>🔬</span>
             <div className={styles.typeInfo}>
-              <h3 className={styles.typeName}>The Craftsman</h3>
-              <p className={styles.typeTagline}>Artisan who prioritizes code quality above all</p>
+              <h3 className={styles.typeName}>The Analyst</h3>
+              <p className={styles.typeTagline}>Deep investigator who verifies and questions everything</p>
             </div>
           </div>
 
           <p className={styles.typeDescription}>
-            You care deeply about code quality and consistency. Your attention to detail
-            produces maintainable code and minimizes long-term technical debt.
+            You combine systematic verification with critical thinking to ensure nothing
+            slips through the cracks. Your investigative approach catches issues early.
           </p>
 
           <div className={styles.traitBadges}>
-            <span className={styles.traitBadge}>Code quality</span>
-            <span className={styles.traitBadge}>Attention to detail</span>
-            <span className={styles.traitBadge}>Maintainability</span>
+            <span className={styles.traitBadge}>Systematic verification</span>
+            <span className={styles.traitBadge}>Critical thinking</span>
+            <span className={styles.traitBadge}>Deep investigation</span>
           </div>
 
           <div className={styles.separator} />
@@ -46,20 +46,20 @@ export function AnalysisPreview() {
             </div>
 
             <div className={styles.matrix}>
-              <StyleMatrixRow emoji="🏗️" name="The Architect" percent={30} />
-              <StyleMatrixRow emoji="🔬" name="The Scientist" percent={15} />
-              <StyleMatrixRow emoji="🤝" name="The Collaborator" percent={10} />
-              <StyleMatrixRow emoji="⚡" name="The Speedrunner" percent={5} />
+              <StyleMatrixRow emoji="🏗️" name="The Architect" percent={25} />
+              <StyleMatrixRow emoji="🎼" name="The Conductor" percent={10} />
+              <StyleMatrixRow emoji="⚡" name="The Speedrunner" percent={15} />
+              <StyleMatrixRow emoji="🚀" name="The Trendsetter" percent={15} />
               <StyleMatrixRow
-                emoji="🔧"
-                name="The Craftsman"
-                percent={40}
+                emoji="🔬"
+                name="The Analyst"
+                percent={35}
                 isPrimary
                 expanded
                 subLevels={[
-                  { name: 'Master Artisan', percent: 4.8 },
-                  { name: 'Quality Crafter', percent: 32.0, isHighlighted: true },
-                  { name: 'Detail Lover', percent: 3.2 },
+                  { name: 'Questioner', percent: 3.5 },
+                  { name: 'Research Lead', percent: 28.0, isHighlighted: true },
+                  { name: 'Quality Sentinel', percent: 3.5 },
                 ]}
               />
             </div>
@@ -118,7 +118,7 @@ export function AnalysisPreview() {
                   data-driven insight.
                 </li>
                 <li className={styles.insightItem}>
-                  You design brand &apos;Vibe&apos; beyond simple feature implementation. The &apos;craftsman
+                  You design brand &apos;Vibe&apos; beyond simple feature implementation. The &apos;trendsetter
                   spirit&apos; stands out in meticulously refining even ASCII character pin positions.
                 </li>
               </ul>

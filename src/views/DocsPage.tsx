@@ -233,20 +233,20 @@ export function DocsPage() {
                   <td>Plans extensively before coding</td>
                 </tr>
                 <tr>
-                  <td className={styles.tableEmoji}>Scientist</td>
-                  <td>Experiments and iterates</td>
+                  <td className={styles.tableEmoji}>Analyst</td>
+                  <td>Verifies and investigates thoroughly</td>
                 </tr>
                 <tr>
-                  <td className={styles.tableEmoji}>Collaborator</td>
-                  <td>Treats AI as pair programmer</td>
+                  <td className={styles.tableEmoji}>Conductor</td>
+                  <td>Orchestrates AI tools and workflows</td>
                 </tr>
                 <tr>
                   <td className={styles.tableEmoji}>Speedrunner</td>
                   <td>Optimizes for velocity</td>
                 </tr>
                 <tr>
-                  <td className={styles.tableEmoji}>Craftsman</td>
-                  <td>Focuses on code quality</td>
+                  <td className={styles.tableEmoji}>Trendsetter</td>
+                  <td>Explores cutting-edge approaches</td>
                 </tr>
               </tbody>
             </table>

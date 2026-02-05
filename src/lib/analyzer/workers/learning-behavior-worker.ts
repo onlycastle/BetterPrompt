@@ -161,7 +161,7 @@ export class LearningBehaviorWorker extends BaseWorker<LearningBehaviorOutput> {
     // from developer utterances only. The key signal `precedingAIHadError` is already included
     // in developerUtterances, making aiResponses redundant for this analysis.
     // This optimization saves ~15,000-20,000 tokens per analysis.
-    return {
+    const result: Record<string, unknown> = {
       developerUtterances: phase1.developerUtterances.map((u) => ({
         id: u.id,
         // Use displayText (sanitized) if available, fallback to raw text
@@ -179,6 +179,17 @@ export class LearningBehaviorWorker extends BaseWorker<LearningBehaviorOutput> {
       })),
       sessionMetrics: phase1.sessionMetrics,
     };
+
+    // Include AI insight blocks as primary learning signal
+    if (phase1.aiInsightBlocks?.length) {
+      result.aiInsightBlocks = phase1.aiInsightBlocks.map((ib) => ({
+        content: ib.content.slice(0, 300),
+        sessionId: ib.sessionId,
+        triggeringUtteranceId: ib.triggeringUtteranceId,
+      }));
+    }
+
+    return result;
   }
 }
 

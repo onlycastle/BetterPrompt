@@ -16,6 +16,39 @@
 import { z } from 'zod';
 
 // ============================================================================
+// AI Insight Block Schema (Extracted from Assistant Messages)
+// ============================================================================
+
+/**
+ * A structured educational insight block extracted from AI assistant messages.
+ *
+ * These blocks are delimited by `★ Insight ─────` and `─────` markers in
+ * assistant responses (used when Claude Code is in "explanatory" output mode).
+ *
+ * Extracted deterministically via regex in Phase 1 (no LLM required).
+ * Used by Phase 2 workers:
+ * - LearningBehavior (primary): knowledge gap signals, learning progress tracking
+ * - ThinkingQuality (secondary): auxiliary context for thinking patterns
+ */
+export const AIInsightBlockSchema = z.object({
+  /** Session UUID this insight belongs to */
+  sessionId: z.string(),
+
+  /** Turn index of the assistant message containing this insight (0-based) */
+  turnIndex: z.number().int().min(0),
+
+  /** Educational content between delimiters (max 500 chars) */
+  content: z.string(),
+
+  /**
+   * ID of the preceding user utterance that triggered this insight.
+   * Format: "{sessionId}_{turnIndex}" matching DeveloperUtterance.id
+   */
+  triggeringUtteranceId: z.string().optional(),
+});
+export type AIInsightBlock = z.infer<typeof AIInsightBlockSchema>;
+
+// ============================================================================
 // Developer Utterance Schema (Raw Text + Structural Metadata)
 // ============================================================================
 
@@ -293,6 +326,16 @@ export const Phase1SessionMetricsSchema = z.object({
     /** Count of long sessions (11+ user messages) */
     longSessions: z.number().int().min(0),
   }).optional(),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // AI Insight Block Metrics
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Total number of AI insight blocks (★ Insight) found across all sessions.
+   * Only present when explanatory output mode was active.
+   */
+  aiInsightBlockCount: z.number().int().min(0).optional(),
 });
 export type Phase1SessionMetrics = z.infer<typeof Phase1SessionMetricsSchema>;
 
@@ -317,5 +360,14 @@ export const Phase1OutputSchema = z.object({
 
   /** Computed session metrics */
   sessionMetrics: Phase1SessionMetricsSchema,
+
+  /**
+   * AI insight blocks extracted from assistant messages.
+   *
+   * Present only when sessions contain ★ Insight educational blocks
+   * (generated when Claude Code is in "explanatory" output mode).
+   * Sampled to max 50 blocks for token budget management.
+   */
+  aiInsightBlocks: z.array(AIInsightBlockSchema).optional(),
 });
 export type Phase1Output = z.infer<typeof Phase1OutputSchema>;

@@ -6,7 +6,7 @@ This guide covers deploying the heavy analysis API to AWS Lambda using SST.
 
 | Feature | Vercel Pro | AWS Lambda |
 |---------|------------|------------|
-| Payload Limit | 4.5MB (hard limit) | 10MB |
+| Payload Limit | 4.5MB (hard limit) | 6MB (bypassed via S3 presigned URL) |
 | Timeout | 5 minutes | 15 minutes |
 | Streaming | SSE via Edge | Lambda Response Streaming |
 

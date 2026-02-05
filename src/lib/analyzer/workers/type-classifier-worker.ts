@@ -3,9 +3,9 @@
  *
  * Phase 2.5 worker that classifies developers into the AI Collaboration Matrix
  * using ALL Phase 2 worker outputs for informed classification:
- * - 5 Coding Styles: architect, scientist, collaborator, speedrunner, craftsman
+ * - 5 Coding Styles: architect, analyst, conductor, speedrunner, trendsetter
  * - 3 Control Levels: explorer, navigator, cartographer
- * - 15 Matrix Combinations (e.g., "Systems Architect", "Mad Scientist")
+ * - 15 Matrix Combinations (e.g., "Systems Architect", "Maestro")
  *
  * Also assesses Collaboration Maturity (Vibe Coder spectrum).
  * Merges functionality from the deprecated TypeSynthesisWorker.
@@ -20,34 +20,38 @@ import {
   type TypeClassifierOutput,
   type AgentOutputs,
 } from '../../models/agent-outputs';
+import type { Phase1Output } from '../../models/phase1-output';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
   TYPE_CLASSIFIER_SYSTEM_PROMPT,
   buildTypeClassifierUserPrompt,
 } from './prompts/type-classifier-prompts';
+import { extractEvidenceUtteranceIds } from '../shared/evidence-utils';
 import { z } from 'zod';
+import { CodingStyleTypeSchema, AIControlLevelSchema } from '../../models/coding-style';
 
 /** Extended WorkerContext for TypeClassifier (Phase 2.5) */
 interface TypeClassifierContext extends WorkerContext {
   agentOutputs?: AgentOutputs;
+  phase1Output?: Phase1Output;
 }
 
 /** Distribution type keys */
-type DistributionKey = 'architect' | 'scientist' | 'collaborator' | 'speedrunner' | 'craftsman';
+type DistributionKey = 'architect' | 'analyst' | 'conductor' | 'speedrunner' | 'trendsetter';
 
-const DISTRIBUTION_KEYS: DistributionKey[] = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'];
+const DISTRIBUTION_KEYS: DistributionKey[] = ['architect', 'analyst', 'conductor', 'speedrunner', 'trendsetter'];
 
 /** LLM output schema for TypeClassifier */
 const TypeClassifierLLMSchema = z.object({
-  primaryType: z.enum(['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman']),
+  primaryType: CodingStyleTypeSchema,
   distribution: z.object({
     architect: z.number().min(0).max(100),
-    scientist: z.number().min(0).max(100),
-    collaborator: z.number().min(0).max(100),
+    analyst: z.number().min(0).max(100),
+    conductor: z.number().min(0).max(100),
     speedrunner: z.number().min(0).max(100),
-    craftsman: z.number().min(0).max(100),
+    trendsetter: z.number().min(0).max(100),
   }),
-  controlLevel: z.enum(['explorer', 'navigator', 'cartographer']),
+  controlLevel: AIControlLevelSchema,
   controlScore: z.number().min(0).max(100),
   matrixName: z.string().max(50),
   matrixEmoji: z.string().max(10),
@@ -57,7 +61,7 @@ const TypeClassifierLLMSchema = z.object({
     indicators: z.array(z.string().max(200)),
   }).optional(),
   confidenceScore: z.number().min(0).max(1),
-  reasoning: z.string().max(500).optional(),
+  reasoning: z.string().max(2500),
   adjustmentReasons: z.array(z.string().max(3000)).max(5).optional(),
   confidenceBoost: z.number().min(0).max(1).optional(),
   synthesisEvidence: z.string().max(1000).optional(),
@@ -95,18 +99,21 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   }
 
   async execute(context: WorkerContext): Promise<WorkerResult<TypeClassifierOutput>> {
-    const { agentOutputs = {} } = context as TypeClassifierContext;
+    const { agentOutputs = {}, phase1Output } = context as TypeClassifierContext;
 
     this.log('Classifying developer into AI Collaboration Matrix (Phase 2.5)...');
 
-    const phase2Summary = this.buildPhase2Summary(agentOutputs);
-    const userPrompt = buildTypeClassifierUserPrompt(phase2Summary || undefined);
+    // Extract evidence-based utterances for personalized reasoning narrative
+    const topUtterances = this.extractTopUtterances(agentOutputs, phase1Output);
+
+    const phase2Summary = this.buildPhase2Summary(agentOutputs, phase1Output);
+    const userPrompt = buildTypeClassifierUserPrompt(phase2Summary || undefined, topUtterances);
 
     const result = await this.client!.generateStructured({
       systemPrompt: TYPE_CLASSIFIER_SYSTEM_PROMPT,
       userPrompt,
       responseSchema: TypeClassifierLLMSchema,
-      maxOutputTokens: 8192,
+      maxOutputTokens: 16384,
     });
 
     const dist = result.data.distribution;
@@ -128,27 +135,59 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   }
 
   /**
+   * Extract top utterances from Phase 1 based on Phase 2 evidence IDs.
+   * Returns undefined if phase1Output is not available (graceful degradation).
+   */
+  private extractTopUtterances(
+    agentOutputs: AgentOutputs,
+    phase1Output?: Phase1Output
+  ): { id: string; text: string; wordCount: number }[] | undefined {
+    if (!phase1Output) return undefined;
+
+    const evidenceIds = extractEvidenceUtteranceIds(agentOutputs);
+    if (evidenceIds.size === 0) {
+      this.log('No Phase 2 evidence utteranceIds found for reasoning narrative');
+      return undefined;
+    }
+
+    const topUtterances = phase1Output.developerUtterances
+      .filter(u => evidenceIds.has(u.id))
+      .map(u => ({
+        id: u.id,
+        text: (u.displayText || u.text).slice(0, 1500),
+        wordCount: u.wordCount,
+      }));
+
+    this.log(`Using ${topUtterances.length} evidence-based utterances for reasoning (from ${evidenceIds.size} Phase 2 evidence IDs)`);
+    return topUtterances.length > 0 ? topUtterances : undefined;
+  }
+
+  /**
    * Build a comprehensive Phase 2 summary from unified worker outputs
    *
    * Uses v3 unified workers (capability-based):
-   * - ThinkingQuality: Planning + Critical Thinking + Communication
+   * - ThinkingQuality: Planning + Critical Thinking
    * - CommunicationPatterns: Communication Patterns + Signature Quotes
    * - LearningBehavior: Knowledge Gaps + Repeated Mistakes
    * - Efficiency (ContextEfficiency)
+   *
+   * Also enriches with Phase 1 data:
+   * - Tool Usage (for Conductor detection)
+   * - Trend Keyword Frequency (for Trendsetter detection)
    */
-  private buildPhase2Summary(agentOutputs: AgentOutputs): string | null {
+  private buildPhase2Summary(agentOutputs: AgentOutputs, phase1Output?: Phase1Output): string | null {
     const sections: string[] = [];
 
-    // ThinkingQuality: Planning + Critical Thinking (v3.1 - Communication is separate worker)
-    if (agentOutputs.thinkingQuality) {
-      const tq = agentOutputs.thinkingQuality;
-      const antiPatternTypes = tq.verificationAntiPatterns?.map(ap => ap.type).join(', ') || 'none';
-      sections.push(`### Thinking Quality
-- Plan quality score: ${tq.planQualityScore}/100
-- Verification level: ${tq.verificationBehavior?.level ?? 'unknown'}
-- Verification anti-patterns: ${tq.verificationAntiPatterns?.length ?? 0} (types: ${antiPatternTypes})
-- Overall thinking quality: ${tq.overallThinkingQualityScore}/100
-- Confidence: ${tq.confidenceScore}`);
+    // Order: Efficiency → Communication → Learning → ThinkingQuality → Tool Usage → Trend Sensitivity
+    // Rationale: Place planQualityScore in middle, add new quantitative sections at end.
+
+    // Efficiency: Context usage and token management
+    if (agentOutputs.efficiency) {
+      const ef = agentOutputs.efficiency;
+      sections.push(`### Efficiency
+- Efficiency score: ${ef.overallEfficiencyScore}/100
+- Avg context fill: ${ef.avgContextFillPercent}%
+- Confidence: ${ef.confidenceScore}`);
     }
 
     // CommunicationPatterns: Communication Patterns + Signature Quotes (v3.1 - separate worker)
@@ -177,13 +216,67 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 - Confidence: ${lb.confidenceScore}`);
     }
 
-    // Efficiency: Context usage and token management
-    if (agentOutputs.efficiency) {
-      const ef = agentOutputs.efficiency;
-      sections.push(`### Efficiency
-- Efficiency score: ${ef.overallEfficiencyScore}/100
-- Avg context fill: ${ef.avgContextFillPercent}%
-- Confidence: ${ef.confidenceScore}`);
+    // ThinkingQuality: Planning + Critical Thinking (v3.1 - Communication is separate worker)
+    // Placed in middle to reduce anchoring on planQualityScore
+    if (agentOutputs.thinkingQuality) {
+      const tq = agentOutputs.thinkingQuality;
+      const antiPatternTypes = tq.verificationAntiPatterns?.map(ap => ap.type).join(', ') || 'none';
+      sections.push(`### Thinking Quality
+- Overall thinking quality: ${tq.overallThinkingQualityScore}/100
+- Verification level: ${tq.verificationBehavior?.level ?? 'unknown'}
+- Verification anti-patterns: ${tq.verificationAntiPatterns?.length ?? 0} (types: ${antiPatternTypes})
+- Plan quality score: ${tq.planQualityScore}/100
+- Confidence: ${tq.confidenceScore}`);
+    }
+
+    // Tool Usage Section (from Phase 1) — for Conductor detection
+    if (phase1Output?.sessionMetrics?.toolUsageCounts) {
+      const tools = phase1Output.sessionMetrics.toolUsageCounts;
+      const uniqueTools = Object.keys(tools).length;
+      const totalCalls = Object.values(tools).reduce((sum, count) => sum + count, 0);
+      const enterPlanMode = tools['EnterPlanMode'] || tools['enterplanmode'] || 0;
+      const todoWrite = tools['TodoWrite'] || tools['todowrite'] || 0;
+      const taskTool = tools['Task'] || tools['task'] || 0;
+      sections.push(`### Tool Usage (from Phase 1)
+- Unique tools: ${uniqueTools} types (${Object.keys(tools).slice(0, 8).join(', ')}${uniqueTools > 8 ? '...' : ''})
+- EnterPlanMode: ${enterPlanMode}, TodoWrite: ${todoWrite}, Task: ${taskTool}
+- Total tool calls: ${totalCalls}`);
+    }
+
+    // Trend Sensitivity Section (from Phase 1 utterances) — for Trendsetter detection
+    if (phase1Output?.developerUtterances) {
+      const TREND_KEYWORDS_KO = ['최신', '트렌드', '유행', '새로운', '업데이트된', '요즘'];
+      const TREND_KEYWORDS_EN = ['latest', 'newest', 'trending', 'modern', 'up-to-date', 'best practice', 'current version', 'recently released'];
+      const allKeywords = [...TREND_KEYWORDS_KO, ...TREND_KEYWORDS_EN];
+
+      const keywordCounts: Record<string, number> = {};
+      let totalMatches = 0;
+
+      for (const utterance of phase1Output.developerUtterances) {
+        const text = (utterance.displayText || utterance.text).toLowerCase();
+        for (const keyword of allKeywords) {
+          const regex = new RegExp(keyword.toLowerCase(), 'g');
+          const matches = text.match(regex);
+          if (matches) {
+            keywordCounts[keyword] = (keywordCounts[keyword] || 0) + matches.length;
+            totalMatches += matches.length;
+          }
+        }
+      }
+
+      const totalUtterances = phase1Output.developerUtterances.length;
+      const density = totalUtterances > 0 ? ((totalMatches / totalUtterances) * 100).toFixed(1) : '0.0';
+
+      const topKeywords = Object.entries(keywordCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([kw, count]) => `"${kw}" (${count})`)
+        .join(', ');
+
+      sections.push(`### Trend Sensitivity (from Phase 1 utterances)
+- Trend keyword count: ${totalMatches} (across ${totalUtterances} utterances)
+- Trend keyword density: ${density}%
+- Example keywords found: ${topKeywords || 'none'}`);
     }
 
     if (sections.length === 0) return null;
@@ -193,6 +286,7 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 
   /**
    * Normalize distribution percentages to sum exactly to 100
+   * Default is 20% each (5 types)
    */
   private normalizeDistribution(
     dist: Record<DistributionKey, number>,
@@ -203,16 +297,16 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
       return;
     }
 
+    // Scale all values proportionally
     const factor = 100 / sum;
     DISTRIBUTION_KEYS.forEach(key => {
       dist[key] = Math.round(dist[key] * factor);
     });
 
+    // Adjust largest value to ensure exact sum of 100
     const newSum = DISTRIBUTION_KEYS.reduce((s, k) => s + dist[k], 0);
-    if (newSum !== 100) {
-      const maxKey = DISTRIBUTION_KEYS.reduce((a, b) => (dist[a] >= dist[b] ? a : b));
-      dist[maxKey] += 100 - newSum;
-    }
+    const maxKey = DISTRIBUTION_KEYS.reduce((a, b) => (dist[a] >= dist[b] ? a : b));
+    dist[maxKey] += 100 - newSum;
   }
 }
 

@@ -83,7 +83,7 @@ function summarizeTypeClassifier(tc: TypeClassifierOutput): string {
   ];
 
   const d = tc.distribution;
-  lines.push(`distribution: architect=${d.architect}, scientist=${d.scientist}, collaborator=${d.collaborator}, speedrunner=${d.speedrunner}, craftsman=${d.craftsman}`);
+  lines.push(`distribution: architect=${d.architect}, analyst=${d.analyst}, conductor=${d.conductor}, speedrunner=${d.speedrunner}, trendsetter=${d.trendsetter}`);
 
   if (tc.reasoning) {
     lines.push(`reasoning: ${tc.reasoning}`);

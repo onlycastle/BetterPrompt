@@ -18,7 +18,7 @@ function makeTypeClassifier(overrides?: Partial<TypeClassifierOutput>): TypeClas
     controlScore: 72,
     matrixName: 'Systems Architect',
     matrixEmoji: '🏗️',
-    distribution: { architect: 40, scientist: 25, collaborator: 20, speedrunner: 10, craftsman: 5 },
+    distribution: { architect: 40, analyst: 25, conductor: 20, speedrunner: 10, trendsetter: 5 },
     confidenceScore: 0.85,
     reasoning: 'Developer shows systematic approach with structured planning.',
     collaborationMaturity: { level: 'ai_assisted_engineer', description: 'Consistently verifies AI output before accepting.', indicators: ['Asks follow-up questions', 'Runs tests after changes'] },

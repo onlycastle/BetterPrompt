@@ -98,7 +98,7 @@ function createMockAgentOutputs(overrides: Partial<AgentOutputs> = {}): AgentOut
     },
     typeClassifier: {
       primaryType: 'architect',
-      distribution: { architect: 40, scientist: 20, collaborator: 15, speedrunner: 15, craftsman: 10 },
+      distribution: { architect: 40, analyst: 20, conductor: 15, speedrunner: 15, trendsetter: 10 },
       controlLevel: 'navigator',
       controlScore: 65,
       matrixName: 'Systems Architect',

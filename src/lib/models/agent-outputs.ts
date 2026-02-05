@@ -17,6 +17,7 @@
  */
 
 import { z } from 'zod';
+import { CodingStyleTypeSchema, AIControlLevelSchema } from './coding-style';
 import {
   WorkerStrengthSchema,
   type WorkerStrength,
@@ -638,19 +639,19 @@ export {
  */
 export const TypeClassifierOutputSchema = z.object({
   /** Primary coding style type */
-  primaryType: z.enum(['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman']),
+  primaryType: CodingStyleTypeSchema,
 
   /** Type distribution percentages (sum to 100) */
   distribution: z.object({
     architect: z.number().min(0).max(100),
-    scientist: z.number().min(0).max(100),
-    collaborator: z.number().min(0).max(100),
+    analyst: z.number().min(0).max(100),
+    conductor: z.number().min(0).max(100),
     speedrunner: z.number().min(0).max(100),
-    craftsman: z.number().min(0).max(100),
+    trendsetter: z.number().min(0).max(100),
   }),
 
   /** AI control level */
-  controlLevel: z.enum(['explorer', 'navigator', 'cartographer']),
+  controlLevel: AIControlLevelSchema,
 
   /** Raw control score (0-100) */
   controlScore: z.number().min(0).max(100),
@@ -674,8 +675,8 @@ export const TypeClassifierOutputSchema = z.object({
   /** Confidence score (0-1) */
   confidenceScore: z.number().min(0).max(1),
 
-  /** Reasoning for the classification */
-  reasoning: z.string().optional(),
+  /** Personalized personality narrative explaining the classification (1500-2000 chars) */
+  reasoning: z.string(),
 
   // ─────────────────────────────────────────────────────────────────────────
   // Synthesis Fields (merged from TypeSynthesis)

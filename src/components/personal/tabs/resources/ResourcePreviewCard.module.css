@@ -132,3 +132,43 @@
   font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
+
+/* ============================================================================
+   Locked Card Variant (free tier, content hidden)
+   ============================================================================ */
+
+.lockedCard {
+  border: 2px dashed var(--sketch-cyan);
+  box-shadow: none;
+  opacity: 0.7;
+  cursor: default;
+}
+
+.lockedCard:hover {
+  transform: none;
+  box-shadow: none;
+  opacity: 0.85;
+}
+
+.lockedCard .title {
+  color: var(--ink-secondary);
+}
+
+.lockedCard:hover .title {
+  color: var(--ink-secondary);
+}
+
+.lockedThumbnail {
+  position: relative;
+}
+
+.lockBadge {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  font-size: 16px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  line-height: 1;
+}

@@ -23,7 +23,7 @@ const LOADING_FACTS = [
   // Personality-specific insights
   { icon: '🏗️', label: 'Architect insight', text: 'Providing clear specs upfront leads to 2x faster AI responses' },
   { icon: '⚡', label: 'Speedrunner fact', text: 'Rapid prototyping is 3x faster but may accumulate technical debt' },
-  { icon: '🤝', label: 'Collaborator tip', text: 'Iterative refinement typically needs 3-5 rounds for optimal results' },
+  { icon: '🎼', label: 'Conductor tip', text: 'Orchestrating multiple AI tools effectively doubles output quality' },
 
   // Dimension education
   { icon: '💪', label: 'Skill Resilience', text: 'Developers who explain code to AI retain concepts 40% longer' },
@@ -34,10 +34,10 @@ const LOADING_FACTS = [
 // 5 AI Coding Styles
 const CODING_STYLES = [
   { type: 'Architect', emoji: '🏗️', tagline: 'Plans before coding' },
-  { type: 'Scientist', emoji: '🔬', tagline: 'Verifies everything' },
-  { type: 'Collaborator', emoji: '🤝', tagline: 'Iterates through dialogue' },
+  { type: 'Analyst', emoji: '🔬', tagline: 'Verifies and investigates' },
+  { type: 'Conductor', emoji: '🎼', tagline: 'Orchestrates AI tools' },
   { type: 'Speedrunner', emoji: '⚡', tagline: 'Ships fast, fixes later' },
-  { type: 'Craftsman', emoji: '🔧', tagline: 'Quality over speed' },
+  { type: 'Trendsetter', emoji: '🚀', tagline: 'Explores cutting-edge' },
 ];
 
 // 6 Dimensions of AI Mastery

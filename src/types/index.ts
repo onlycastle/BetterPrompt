@@ -151,7 +151,7 @@ export type {
   SkillResilienceLevel,
   FullAnalysisResult,
   ReportDimensionMetadata,
-  SessionMetadata,
+  ReportSessionMetadata,
   ReportStats,
   ReportData,
   ShareReportRequest,

@@ -46,6 +46,18 @@ You receive Phase 1 output containing:
 
 Note: AI response error information is available via \`precedingAIHadError\` field in each utterance.
 
+## AI INSIGHT BLOCKS (Optional)
+
+If present, \`aiInsightBlocks[]\` contains educational content that the AI provided during the session. Each block has:
+- \`content\`: The educational explanation the AI gave
+- \`sessionId\`: Which session it occurred in
+- \`triggeringUtteranceId\`: The developer utterance that prompted this education (links to \`developerUtterances[].id\`)
+
+**How to use insight blocks for analysis:**
+1. **Knowledge Gap Signal**: Topics covered in insight blocks indicate areas where the developer needed education. Cross-reference with \`triggeringUtteranceId\` to see what the developer asked that led to the insight.
+2. **Learning Progress Signal**: If the same topic appears in early insights but not in later ones, the developer may have learned it. If insights on the same topic recur across sessions, the developer hasn't fully absorbed it.
+3. **Learning Engagement**: How the developer responds after receiving an insight (asks follow-up questions vs. moves on) indicates learning depth.
+
 ## MULTI-LANGUAGE INPUT SUPPORT
 
 The developer's session data may contain non-English text (Korean, Japanese, Chinese, or other languages).
@@ -279,12 +291,17 @@ ${insightsSection}
    - Look for blind retry patterns (precedingAIHadError without analysis)
    - Calculate occurrence counts and session percentages
 
-3. Calculate overall learning score considering:
+3. **AI Insight Blocks** (if present in data):
+   - Cross-reference insight topics with knowledge gaps
+   - Track whether the same educational topics recur (incomplete learning)
+   - Use \`triggeringUtteranceId\` to connect insights to developer questions
+
+4. Calculate overall learning score considering:
    - Knowledge gap depth (fewer deep gaps = better)
    - Learning progress rate (more progress = better)
    - Mistake repetition rate (lower = better)
 
-4. Output strengths (1-6) and growth areas (1-6) combining:
+5. Output strengths (1-6) and growth areas (1-6) combining:
    - Knowledge strengths and gaps
    - Positive and negative learning patterns
 

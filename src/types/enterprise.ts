@@ -3,16 +3,11 @@
  * Types for B2B team analytics and member analysis tracking
  */
 
-// Coding style personality types (matches src/models/coding-style.ts)
-export type CodingStyleType =
-  | 'architect'
-  | 'scientist'
-  | 'collaborator'
-  | 'speedrunner'
-  | 'craftsman';
+// Import shared types from canonical source
+import type { CodingStyleType, AIControlLevel } from '../lib/models/coding-style';
 
-// AI Control levels (exploration metaphor)
-export type AIControlLevel = 'explorer' | 'navigator' | 'cartographer';
+// Re-export for consumers
+export type { CodingStyleType, AIControlLevel };
 
 // Dimension scores (0-100 scale)
 export interface DimensionScores {
@@ -98,10 +93,10 @@ export interface OrganizationAnalytics {
 // Type metadata for display
 export const TYPE_METADATA: Record<CodingStyleType, { emoji: string; label: string; color: string }> = {
   architect: { emoji: '🏗️', label: 'Architect', color: '#3B82F6' },      // Blue
-  scientist: { emoji: '🔬', label: 'Scientist', color: '#8B5CF6' },      // Purple
-  collaborator: { emoji: '🤝', label: 'Collaborator', color: '#10B981' }, // Green
-  speedrunner: { emoji: '⚡', label: 'Speedrunner', color: '#F59E0B' },   // Amber
-  craftsman: { emoji: '🎨', label: 'Craftsman', color: '#EC4899' },       // Pink
+  analyst: { emoji: '🔬', label: 'Analyst', color: '#8B5CF6' },          // Purple
+  conductor: { emoji: '🎼', label: 'Conductor', color: '#F59E0B' },      // Amber
+  speedrunner: { emoji: '⚡', label: 'Speedrunner', color: '#EF4444' },   // Red
+  trendsetter: { emoji: '🚀', label: 'Trendsetter', color: '#06B6D4' },  // Cyan
 };
 
 // Dimension metadata for display

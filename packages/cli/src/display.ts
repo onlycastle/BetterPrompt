@@ -13,18 +13,18 @@ import { generateCelebrationBanner } from './animations/index.js';
 
 const TYPE_COLORS: Record<string, (s: string) => string> = {
   architect: pc.blue,
-  scientist: pc.green,
-  collaborator: pc.yellow,
+  analyst: pc.magenta,
+  conductor: pc.yellow,
   speedrunner: pc.red,
-  craftsman: pc.magenta,
+  trendsetter: pc.cyan,
 };
 
 const TYPE_EMOJIS: Record<string, string> = {
   architect: '🏛️',
-  scientist: '🔬',
-  collaborator: '🤝',
+  analyst: '🔬',
+  conductor: '🎼',
   speedrunner: '⚡',
-  craftsman: '🔧',
+  trendsetter: '🚀',
 };
 
 const LEVEL_COLORS: Record<string, (s: string) => string> = {
@@ -43,25 +43,25 @@ const MATRIX_NAMES: Record<string, Record<string, string>> = {
     navigator: 'Strategist',
     cartographer: 'Systems Architect',
   },
-  scientist: {
+  analyst: {
     explorer: 'Questioner',
-    navigator: 'Analyst',
-    cartographer: 'Research Lead',
+    navigator: 'Research Lead',
+    cartographer: 'Quality Sentinel',
   },
-  collaborator: {
-    explorer: 'Conversationalist',
-    navigator: 'Team Player',
-    cartographer: 'Facilitator',
+  conductor: {
+    explorer: 'Improviser',
+    navigator: 'Arranger',
+    cartographer: 'Maestro',
   },
   speedrunner: {
     explorer: 'Experimenter',
     navigator: 'Rapid Prototyper',
     cartographer: 'Velocity Expert',
   },
-  craftsman: {
-    explorer: 'Detail Lover',
-    navigator: 'Quality Crafter',
-    cartographer: 'Master Artisan',
+  trendsetter: {
+    explorer: 'Early Adopter',
+    navigator: 'Tech Radar',
+    cartographer: 'Innovation Lead',
   },
 };
 
@@ -156,7 +156,7 @@ export function displayResults(result: AnalysisResult): void {
   lines.push('');
 
   // Distribution bars with matrix sub-types under ALL types (5×3 matrix)
-  const types = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'] as const;
+  const types = ['architect', 'analyst', 'conductor', 'speedrunner', 'trendsetter'] as const;
   const levels = ['explorer', 'navigator', 'cartographer'] as const;
   const userType = result.primaryType.toLowerCase();
   const userLevel = result.controlLevel.toLowerCase();

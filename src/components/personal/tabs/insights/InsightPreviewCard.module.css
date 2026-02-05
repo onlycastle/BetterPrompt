@@ -291,3 +291,44 @@
 .sourceLink:hover .externalIcon {
   transform: translateX(2px);
 }
+
+/* ============================================================================
+   Locked Card Variant (free tier, content hidden)
+   ============================================================================ */
+
+.lockedCard {
+  border-style: dashed;
+  border-color: var(--sketch-cyan);
+  opacity: 0.85;
+}
+
+.lockedContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg) var(--space-md);
+  background: var(--surface-2);
+  border: 2px dashed var(--sketch-cyan);
+  border-radius: var(--radius-sm);
+}
+
+.unlockCta {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-cyan-text);
+  background: var(--sketch-cyan-soft);
+  padding: var(--space-xs) var(--space-md);
+  border: 1.5px solid var(--sketch-cyan);
+  border-radius: var(--radius-sm);
+  animation: shimmerCta 3s ease-in-out infinite;
+}
+
+@keyframes shimmerCta {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
