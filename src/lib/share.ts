@@ -156,6 +156,28 @@ export function generateWebShareData(
 }
 
 /**
+ * Generate Instagram-ready caption for clipboard copy
+ */
+export function generateInstagramCaption(
+  typeResult: TypeResult,
+  reportId: string
+): string {
+  const meta = TYPE_METADATA[typeResult.primaryType];
+  const shareUrl = `${BASE_URL}/r/${reportId}`;
+  const topStrength = meta.strengths[0];
+
+  return `${meta.emoji} I'm a ${meta.name} developer!
+
+"${meta.tagline}"
+
+💪 Top Strength: ${topStrength}
+
+🔗 See my full analysis: ${shareUrl}
+
+#NoMoreAISlop #AICodingStyle #DeveloperType #${meta.name} #AICollaboration #DevTools`;
+}
+
+/**
  * Generate embed code for blogs/websites
  */
 export function generateEmbedCode(
