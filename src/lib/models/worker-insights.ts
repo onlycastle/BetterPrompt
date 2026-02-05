@@ -242,19 +242,6 @@ export const StructuredGrowthLLMSchema = z.object({
 export type StructuredGrowthLLM = z.infer<typeof StructuredGrowthLLMSchema>;
 
 // ============================================================================
-// Flattened String Formats for Gemini API (LEGACY - kept for backward compatibility)
-// ============================================================================
-
-/**
- * @deprecated Use StructuredStrengthLLMSchema and StructuredGrowthLLMSchema instead.
- */
-export const WorkerInsightsLLMOutputSchema = z.object({
-  strengthsData: z.string(),
-  growthAreasData: z.string(),
-});
-export type WorkerInsightsLLMOutput = z.infer<typeof WorkerInsightsLLMOutputSchema>;
-
-// ============================================================================
 // Parsing Functions
 // ============================================================================
 
@@ -426,32 +413,9 @@ export function parseWorkerGrowthAreasData(data: string | undefined): WorkerGrow
     .filter((g) => g.title && g.description && g.evidence.length > 0);
 }
 
-/**
- * @deprecated Use parseStructuredStrengths and parseStructuredGrowthAreas instead.
- */
-export function parseWorkerInsightsLLMOutput(
-  llmOutput: WorkerInsightsLLMOutput,
-  domainScore?: number
-): WorkerInsightsContainer {
-  return {
-    strengths: parseWorkerStrengthsData(llmOutput.strengthsData),
-    growthAreas: parseWorkerGrowthAreasData(llmOutput.growthAreasData),
-    domainScore,
-  };
-}
-
 // ============================================================================
-// NEW Structured Parsing Functions (for StructuredStrengthLLM/StructuredGrowthLLM)
+// Structured Parsing Functions (for StructuredStrengthLLM/StructuredGrowthLLM)
 // ============================================================================
-
-/**
- * @deprecated Use parseStructuredEvidence() for new structured evidence format.
- */
-export function parseEvidenceStrings(evidenceStrings: string[]): InsightEvidence[] {
-  return evidenceStrings
-    .map((str) => parseEvidenceItem(str))
-    .filter((e): e is InsightEvidence => e !== null && e.quote.length >= 15);
-}
 
 /**
  * Parse structured evidence objects from LLM output.

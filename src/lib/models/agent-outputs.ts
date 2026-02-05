@@ -602,10 +602,7 @@ export function parseContextEfficiencyLLMOutput(llmOutput: ContextEfficiencyLLMO
 // ============================================================================
 
 // Import from dedicated schema file
-// Legacy schema kept for backward compatibility with stored data
 import {
-  TemporalAnalysisOutputSchema,
-  type TemporalAnalysisOutput,
   TemporalAnalysisResultSchema,
   type TemporalAnalysisResult,
   TemporalInsightsOutputSchema,
@@ -613,10 +610,6 @@ import {
 } from './temporal-data';
 import { TemporalMetricsSchema, type TemporalMetrics } from './temporal-metrics';
 export {
-  // Legacy (deprecated, kept for stored data)
-  TemporalAnalysisOutputSchema,
-  type TemporalAnalysisOutput,
-  // New (recommended)
   TemporalAnalysisResultSchema,
   type TemporalAnalysisResult,
   TemporalInsightsOutputSchema,
