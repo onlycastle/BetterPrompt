@@ -275,10 +275,10 @@ export function generateOGMetadata(
 ): OGMetadata {
   const typeNames: Record<string, string> = {
     architect: 'Architect',
-    scientist: 'Scientist',
-    collaborator: 'Collaborator',
+    analyst: 'Analyst',
+    conductor: 'Conductor',
     speedrunner: 'Speedrunner',
-    craftsman: 'Craftsman',
+    trendsetter: 'Trendsetter',
   };
 
   const typeName = typeNames[typeResult.primaryType] || typeResult.primaryType;

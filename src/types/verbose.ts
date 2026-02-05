@@ -5,44 +5,12 @@
  * Mirrors backend VerboseEvaluation schema from src/models/verbose-evaluation.ts
  */
 
-import type { CodingStyleType, AIControlLevel } from './enterprise';
-import type { TypeDistribution } from './report';
+import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixKey, MatrixDistribution } from '../lib/models/coding-style';
 import type { AggregatedWorkerInsights } from '../lib/models/worker-insights';
-import type { DimensionResourceMatch, UtteranceLookupEntry } from '../lib/models/verbose-evaluation';
+import type { DimensionResourceMatch, UtteranceLookupEntry, TopFocusAreas, TopFocusArea, FocusAreaActions } from '../lib/models/verbose-evaluation';
 
 // Re-export for convenience
-export type { CodingStyleType, AIControlLevel, TypeDistribution, AggregatedWorkerInsights, DimensionResourceMatch, UtteranceLookupEntry };
-
-// ============================================================================
-// Matrix Distribution (5 types × 3 levels = 15 combinations)
-// ============================================================================
-
-/**
- * Key format for the 5×3 matrix: type_controlLevel
- */
-export type MatrixKey = `${CodingStyleType}_${AIControlLevel}`;
-
-/**
- * Distribution across all 15 matrix combinations
- * Each value is 0-100, representing percentage
- */
-export interface MatrixDistribution {
-  architect_explorer: number;
-  architect_navigator: number;
-  architect_cartographer: number;
-  scientist_explorer: number;
-  scientist_navigator: number;
-  scientist_cartographer: number;
-  collaborator_explorer: number;
-  collaborator_navigator: number;
-  collaborator_cartographer: number;
-  speedrunner_explorer: number;
-  speedrunner_navigator: number;
-  speedrunner_cartographer: number;
-  craftsman_explorer: number;
-  craftsman_navigator: number;
-  craftsman_cartographer: number;
-}
+export type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixKey, MatrixDistribution, AggregatedWorkerInsights, DimensionResourceMatch, UtteranceLookupEntry, TopFocusAreas, TopFocusArea, FocusAreaActions };
 
 // ============================================================================
 // Activity Session Info - Lightweight metadata for ALL recent sessions
@@ -200,6 +168,8 @@ export interface VerboseAnalysisData {
   // Utterance Lookup for evidence linking (only includes referenced utterances)
   // Enables frontend to display full original text when user expands an evidence item
   utteranceLookup?: UtteranceLookupEntry[];
+  // Top Focus Areas (Phase 3 Content Writer - partial free, full paid)
+  topFocusAreas?: TopFocusAreas;
   // Premium fields (optional)
   toolUsageDeepDive?: unknown[];
   tokenEfficiency?: unknown;
@@ -274,21 +244,21 @@ export const VERBOSE_TYPE_METADATA: Record<CodingStyleType, VerboseTypeMetadata>
       'You approach AI collaboration with a clear vision. Your structured prompts and systematic planning maximize AI implementation speed while maintaining consistency.',
     strengths: ['Strategic planning', 'Systematic approach', 'Clear communication'],
   },
-  scientist: {
+  analyst: {
     emoji: '🔬',
-    name: 'The Scientist',
-    tagline: 'Truth-seeker who always verifies AI output',
+    name: 'The Analyst',
+    tagline: 'Deep investigator who verifies and questions everything',
     description:
-      "You maintain healthy skepticism toward AI output. Your verification habits catch bugs early and ensure high code quality while keeping your skills sharp.",
-    strengths: ['Verification habits', 'Critical thinking', 'Quality assurance'],
+      'You combine systematic verification with critical thinking. Your thorough approach catches bugs early, questions assumptions, and ensures high code quality through investigation.',
+    strengths: ['Systematic verification', 'Critical thinking', 'Quality assurance'],
   },
-  collaborator: {
-    emoji: '🤝',
-    name: 'The Collaborator',
-    tagline: 'Partnership master who finds answers through dialogue',
+  conductor: {
+    emoji: '🎼',
+    name: 'The Conductor',
+    tagline: 'Orchestration master who commands AI tools like an ensemble',
     description:
-      'You excel at iterative refinement through conversation. Your collaborative approach maximizes AI synergy and leads to quality improvement through iteration.',
-    strengths: ['Iterative refinement', 'Communication skills', 'AI synergy'],
+      'You excel at orchestrating AI tools and workflows. Your mastery of slash commands, subagents, role assignments, and multi-tool workflows maximizes AI synergy and productivity.',
+    strengths: ['Tool orchestration', 'Multi-agent mastery', 'Workflow composition'],
   },
   speedrunner: {
     emoji: '⚡',
@@ -298,12 +268,12 @@ export const VERBOSE_TYPE_METADATA: Record<CodingStyleType, VerboseTypeMetadata>
       'You move fast and iterate quickly. Your rapid prototyping approach leads to new discoveries through experimentation and high output per time.',
     strengths: ['Rapid prototyping', 'High output', 'Experimentation'],
   },
-  craftsman: {
-    emoji: '🔧',
-    name: 'The Craftsman',
-    tagline: 'Artisan who prioritizes code quality above all',
+  trendsetter: {
+    emoji: '🚀',
+    name: 'The Trendsetter',
+    tagline: 'Innovation seeker who explores cutting-edge approaches',
     description:
-      'You care deeply about code quality and consistency. Your attention to detail produces maintainable code and minimizes long-term technical debt.',
-    strengths: ['Code quality', 'Attention to detail', 'Maintainability'],
+      'You actively seek the latest tools, frameworks, and best practices. Your curiosity drives you to explore emerging technologies and modern approaches, keeping your stack ahead of the curve.',
+    strengths: ['Early adoption', 'Best practice awareness', 'Continuous learning'],
   },
 };

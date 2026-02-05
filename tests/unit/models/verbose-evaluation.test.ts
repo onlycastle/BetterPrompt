@@ -57,10 +57,10 @@ describe('VerboseLLMResponseSchema', () => {
     controlLevel: 'cartographer' as const,
     distribution: {
       architect: 40,
-      scientist: 25,
-      collaborator: 20,
+      analyst: 25,
+      conductor: 20,
       speedrunner: 10,
-      craftsman: 5,
+      trendsetter: 5,
     },
     personalitySummary:
       'You are a strategic thinker who approaches problems methodically. Your sessions reveal a strong preference for planning and understanding context before diving into implementation. You leverage AI as a collaborative partner, consistently providing clear constraints and verifying outputs before accepting them.',
@@ -233,10 +233,10 @@ describe('VerboseLLMResponseSchema', () => {
         ...createValidResponse(),
         distribution: {
           architect: 40,
-          scientist: 25,
-          collaborator: 20,
+          analyst: 25,
+          conductor: 20,
           speedrunner: 10,
-          // missing craftsman
+          // missing trendsetter
         },
       };
 

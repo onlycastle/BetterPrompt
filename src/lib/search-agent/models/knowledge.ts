@@ -206,7 +206,7 @@ export const TOPIC_DISPLAY_NAMES: Record<TopicCategory, string> = {
 /**
  * Professional Insight category
  *
- * Note: applicableStyles uses CodingStyleType values ('architect', 'scientist', etc.)
+ * Note: applicableStyles uses CodingStyleType values ('architect', 'analyst', etc.)
  * Note: applicableControlLevels uses AIControlLevel values ('explorer', 'navigator', 'cartographer')
  */
 export const InsightCategorySchema = z.enum([

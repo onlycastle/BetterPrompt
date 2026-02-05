@@ -1232,10 +1232,10 @@ export const VerboseEvaluationSchema = z.object({
     .describe('Raw control score (0-100) for level distribution calculation'),
   distribution: z.object({
     architect: z.number().min(0).max(100),
-    scientist: z.number().min(0).max(100),
-    collaborator: z.number().min(0).max(100),
+    analyst: z.number().min(0).max(100),
+    conductor: z.number().min(0).max(100),
     speedrunner: z.number().min(0).max(100),
-    craftsman: z.number().min(0).max(100),
+    trendsetter: z.number().min(0).max(100),
   }),
 
   // FREE TIER - Verbose content
@@ -1417,10 +1417,10 @@ export const VerboseLLMResponseSchema = z.object({
     .describe('Raw control score (0-100) for level distribution calculation'),
   distribution: z.object({
     architect: z.number().min(0).max(100),
-    scientist: z.number().min(0).max(100),
-    collaborator: z.number().min(0).max(100),
+    analyst: z.number().min(0).max(100),
+    conductor: z.number().min(0).max(100),
     speedrunner: z.number().min(0).max(100),
-    craftsman: z.number().min(0).max(100),
+    trendsetter: z.number().min(0).max(100),
   }),
 
   // Content
@@ -1483,12 +1483,9 @@ export type VerboseLLMResponse = z.infer<typeof VerboseLLMResponseSchema>;
  * from Phase 2 outputs by the evaluation-assembler module.
  */
 export const NarrativeLLMResponseSchema = z.object({
-  // Narrative content (Phase 2 doesn't produce these)
-  // Note: Array format enforces paragraph separation in Gemini structured JSON output.
-  // Converted to \n\n-joined string in evaluation-assembler before DB storage.
-  personalitySummary: z
-    .array(z.string())
-    .describe('Personality summary as paragraphs. Each element = one thematic paragraph. Target: 4-6 paragraphs, 2500-3000 chars total.'),
+  // NOTE: personalitySummary REMOVED from Phase 3.
+  // personalitySummary is now sourced from TypeClassifier.reasoning (Phase 2.5).
+  // This eliminates ~500 output tokens and provides more personalized content.
 
   // Prompt patterns with WHAT-WHY-HOW analysis
   // NOTE: This is FALLBACK only - Phase 2 CommunicationPatterns is preferred
