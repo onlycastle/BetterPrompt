@@ -35,12 +35,12 @@
 │   ║  └─────────────────────────────────────────────────────────────────────────┘ ║   │
 │   ║                              │                                                ║   │
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
-│   ║  │ PHASE 2: Insight Generation (parallel, 3 workers, 3 LLM calls)        │   ║   │
+│   ║  │ PHASE 2: Insight Generation (parallel, 4 workers, 4 LLM calls)        │   ║   │
 │   ║  │                                                                         │   ║   │
-│   ║  │ ┌────────────────┐ ┌────────────────┐ ┌──────────────────┐            │   ║   │
-│   ║  │ │    Thinking    │ │    Learning    │ │     Context      │            │   ║   │
-│   ║  │ │    Quality     │ │    Behavior    │ │    Efficiency    │            │   ║   │
-│   ║  │ └────────────────┘ └────────────────┘ └──────────────────┘            │   ║   │
+│   ║  │ ┌────────────────┐ ┌────────────────┐ ┌────────────────┐ ┌──────────┐│   ║   │
+│   ║  │ │    Thinking    │ │ Communication  │ │    Learning    │ │ Context  ││   ║   │
+│   ║  │ │    Quality     │ │   Patterns     │ │    Behavior    │ │Efficiency││   ║   │
+│   ║  │ └────────────────┘ └────────────────┘ └────────────────┘ └──────────┘│   ║   │
 │   ║  │                                                                         │   ║   │
 │   ║  │                                   │                                     │   ║   │
 │   ║  │                                   ▼                                     │   ║   │
@@ -125,6 +125,12 @@ Source 2: Cursor (SQLite)
 └── workspace2/
     └── chat3.db
 
+Source 3: Cursor Composer (SQLite KV)
+~/Library/Application Support/Cursor/User/globalStorage/
+└── state.vscdb
+    ├── composerData:{composerId}    ◀── Session metadata
+    └── bubbleId:{composerId}:{msgId} ◀── Individual messages
+
          │
          │  multiSourceScanner.collectAllFileMetadata()
          │  → SourceRegistry dispatches to available sources
@@ -135,7 +141,8 @@ Source 2: Cursor (SQLite)
 ├─────────────────────────────────────────────────┤
 │  sessionId: "abc123"                            │
 │  projectPath: "/Users/dev/projectA"             │
-│  source: "claude-code" | "cursor"               │ ◀── New: source type
+│  source: "claude-code" | "cursor"                │ ◀── Source type
+│        | "cursor-composer"                      │
 │  messages: [                                     │
 │    { role: "user", content: "Fix the bug..." } │
 │    { role: "assistant", toolCalls: [...] }      │
@@ -227,7 +234,7 @@ Phase1Output
 
 **Purpose**: Generate deep insights based on Phase 1 results (capability-based approach)
 
-> 3 workers run in parallel. Each outputs capability-specific strengths/growthAreas directly.
+> 4 workers run in parallel. Each outputs capability-specific strengths/growthAreas directly.
 
 **IMPORTANT: Context Isolation**
 All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
@@ -235,7 +242,7 @@ All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
 - Phase 2 = Semantic Analysis (on extracted data only)
 
 **Worker Input Filtering**
-All 3 workers apply identical quality filters on utterances:
+All 4 workers apply identical quality filters on utterances:
 ```typescript
 // Filter applied before LLM analysis
 utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
@@ -245,7 +252,7 @@ utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    PHASE 2: 3 WORKERS (PARALLEL)                        │
+│                    PHASE 2: 4 WORKERS (PARALLEL)                        │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌──────────────────────────────┐                                       │
@@ -255,11 +262,11 @@ utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
 │               │                                                          │
 │  ┌────────────┴───────────────────────────────────────────────────┐    │
 │  │                                                                  │    │
-│  │  3 Parallel Workers (LLM-based, capability-focused)            │    │
-│  │  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐     │    │
-│  │  │    Thinking    │ │    Learning    │ │    Context     │     │    │
-│  │  │    Quality     │ │    Behavior    │ │   Efficiency   │     │    │
-│  │  └────────────────┘ └────────────────┘ └────────────────┘     │    │
+│  │  4 Parallel Workers (LLM-based, capability-focused)            │    │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌────────┐│    │
+│  │  │   Thinking   │ │Communication │ │   Learning   │ │Context ││    │
+│  │  │   Quality    │ │  Patterns    │ │   Behavior   │ │Efficien││    │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘ └────────┘│    │
 │  │                                                                  │    │
 │  └──────────────────────────────────┬──────────────────────────────┘    │
 │                                      │                                   │
@@ -276,7 +283,8 @@ utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
 
 | Worker | Question | Output Schema |
 |--------|----------|---------------|
-| **ThinkingQuality** | How intentionally, critically, and clearly does this developer work? | `ThinkingQualityOutput` |
+| **ThinkingQuality** | How intentionally and critically does this developer work? | `ThinkingQualityOutput` |
+| **CommunicationPatterns** | How does this developer communicate with AI? What are their signature patterns? | `CommunicationPatternsOutput` |
 | **LearningBehavior** | How much does this developer try to learn? Do they repeat the same mistakes? | `LearningBehaviorOutput` |
 | **ContextEfficiency** | How effectively does this developer manage tokens and context? | `ContextEfficiencyOutput` |
 
@@ -285,7 +293,8 @@ utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
 ```
 AgentOutputs
 │
-├── thinkingQuality: ThinkingQualityOutput | null  (planning, critical thinking, communication)
+├── thinkingQuality: ThinkingQualityOutput | null  (planning, critical thinking)
+├── communicationPatterns: CommunicationPatternsOutput | null  (communication patterns, signature quotes)
 ├── learningBehavior: LearningBehaviorOutput | null  (knowledge gaps, repeated mistakes)
 ├── contextEfficiency: ContextEfficiencyOutput | null  (token usage, context management)
 └── typeClassifier: TypeClassifierOutput | null  (added at Phase 2.5)
@@ -375,6 +384,9 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 │  │  NARRATIVE SCOPE (Phase 3 generates ONLY these)                  │    │
 │  │                                                                   │    │
 │  │  personalitySummary ─────▶ Hyper-personalized summary (≤3000ch) │    │
+│  │  │                           Uses \n\n for paragraph breaks,    │    │
+│  │  │                           single \n for soft breaks          │    │
+│  │  │                           (1-2 per paragraph)                │    │
 │  │  topFocusAreas ──────────▶ Top 3 personalized priorities         │    │
 │  │                                                                   │    │
 │  │  NOTE: promptPatterns moved to Phase 2 ThinkingQuality worker   │    │
@@ -538,6 +550,11 @@ from being overwritten by English defaults.
 │  │  NOTE: Translator receives AgentOutputs to produce                │   │
 │  │  translatedAgentInsights (Phase 2 worker summaries in target     │   │
 │  │  language). NarrativeLLMResponse text fields are also translated. │   │
+│  │                                                                   │   │
+│  │  Formatting Preservation: Translator preserves both \n\n          │   │
+│  │  (paragraph breaks) and single \n (soft breaks) exactly as they  │   │
+│  │  appear in the English personalitySummary. Corner bracket quote   │   │
+│  │  markers (「...」) are also preserved.                              │   │
 │  └──────────────────────────────────────────────────────────────────┘   │
 │                                 │                                        │
 │                                 ▼                                        │
@@ -814,9 +831,9 @@ Now, translations are applied AFTER assembly:
 
 ---
 
-## 3-Tab UI Data Flow
+## 5-Tab UI Data Flow
 
-The report UI organizes insights into 3 tabs, each powered by a Phase 2 Worker:
+The report UI organizes insights into 5 tabs — 4 powered by Phase 2 Workers + 1 Activity tab (deterministic, no LLM):
 
 ### Tab Architecture
 
@@ -829,25 +846,62 @@ The report UI organizes insights into 3 tabs, each powered by a Phase 2 Worker:
 │  DataQualityBadge           ← Phase 1 DataExtractor              ✅ FREE       │
 └─────────────────────────────────────────────────────────────────────────────────┘
 
+#### PersonalitySummary Rendering
+
+```
+personalitySummary (string)
+    │
+    ├── Split by \n\n → paragraphs (<p> tags)
+    │   └── Legacy fallback: single paragraph >800ch → splitIntoBalancedParagraphs()
+    │
+    └── Within each paragraph:
+        ├── Split by \n → soft break segments (<br /> + spacer)
+        ├── Parse 「...」 quotes → <span className="quote">
+        └── Parse **bold** → <strong className="emphasis">
+
+Key files:
+- src/utils/textFormatting.tsx (FormattedPersonalityText, renderParagraphWithSoftBreaks)
+- src/components/personal/tabs/type-result/PersonalitySummaryClean.tsx
+```
+
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│  [Tab 1: Thinking Quality]  [Tab 2: Learning Behavior]  [Tab 3: Context Eff.]  │
+│  [Activity] [Thinking Quality] [Communication] [Learning Behavior] [Context]   │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
-│  TAB 1: Thinking Quality                                                        │
+│  TAB 1: Activity (Contribution Graph)                  ✅ FREE                  │
+│  ├── Data source: ActivitySessionInfo (CLI scanner, NOT LLM pipeline)          │
+│  │   ├── totalInputTokens (from assistant message usage in JSONL)             │
+│  │   └── totalOutputTokens (from assistant message usage in JSONL)            │
+│  ├── Contribution graph (GitHub-style heatmap, 7 rows × N columns)            │
+│  │   └── Color intensity: percentile-based daily token usage (p25/p50/p75)    │
+│  │       Fallback: session-count thresholds for legacy data without tokens    │
+│  ├── Stats row: total sessions, active days, total tokens                     │
+│  ├── Tooltip: session count + token count per day                             │
+│  └── Detail panel: per-project sessions, duration, token usage                │
+│                                                                                │
+│  NOTE: Activity tab data does NOT flow through the LLM pipeline.              │
+│  It uses the CLI Activity Scanner (deterministic metadata extraction).        │
+│                                                                                 │
+│  TAB 2: Thinking Quality                                                        │
 │  ├── ThinkingQualityWorker.strengths[]         ← Phase 2      ✅ FREE          │
-│  ├── ThinkingQualityWorker.growthAreas[]       ← Phase 2                        │
+│  └── ThinkingQualityWorker.growthAreas[]       ← Phase 2                        │
+│      ├── title, description, evidence, severity               ✅ FREE          │
+│      └── recommendation                                        🔒 PAID          │
+│                                                                                 │
+│  TAB 3: Communication                                                           │
+│  ├── CommunicationPatternsWorker.strengths[]   ← Phase 2      ✅ FREE          │
+│  ├── CommunicationPatternsWorker.growthAreas[] ← Phase 2                        │
 │  │   ├── title, description, evidence, severity               ✅ FREE          │
 │  │   └── recommendation                                        🔒 PAID          │
-│  └── ThinkingQualityWorker.communicationPatterns[]                              │
-│      → transformed via promptPatterns → Strengths/GrowthAreas  ✅ FREE*        │
+│  └── Signature quotes + communication pattern tips             ✅ FREE*        │
 │                                                                                 │
-│  TAB 2: Learning Behavior                                                       │
+│  TAB 4: Learning Behavior                                                       │
 │  ├── LearningBehaviorWorker.strengths[]        ← Phase 2      ✅ FREE          │
 │  └── LearningBehaviorWorker.growthAreas[]      ← Phase 2                        │
 │      ├── title, description, evidence, severity               ✅ FREE          │
 │      └── recommendation                                        🔒 PAID          │
 │                                                                                 │
-│  TAB 3: Context Efficiency                                                      │
+│  TAB 5: Context Efficiency                                                      │
 │  ├── ContextEfficiencyWorker.strengths[]       ← Phase 2      ✅ FREE          │
 │  └── ContextEfficiencyWorker.growthAreas[]     ← Phase 2                        │
 │      ├── title, description, evidence, severity               ✅ FREE          │
@@ -1039,13 +1093,14 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
                        │ [3] Pass Phase1Output to Phase 2 (Premium+ only)
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║         PHASE 2: INSIGHT GENERATION (3 workers, 3 LLM calls)      ║
+  ║         PHASE 2: INSIGHT GENERATION (4 workers, 4 LLM calls)      ║
   ║                                                                    ║
-  ║   [3 parallel workers]                                             ║
+  ║   [4 parallel workers]                                             ║
   ║                                                                    ║
   ║   INPUT:  Phase1Output (ONLY - no raw sessions)                   ║
   ║   OUTPUT: AgentOutputs (merged)                                    ║
   ║           - ThinkingQualityWorker → planning, critical thinking   ║
+  ║           - CommunicationPatternsWorker → patterns, quotes        ║
   ║           - LearningBehaviorWorker → knowledge gaps, mistakes     ║
   ║           - ContextEfficiencyWorker → token usage                 ║
   ║                                                                    ║
@@ -1177,10 +1232,10 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 │  ┌──────────────────────────────────────────────────────────┐           │
 │  │  PHASE 1: DataExtractor (deterministic, no LLM cost)     │           │
 │  │                                                           │           │
-│  │  PHASE 2 (Parallel): 3 Workers                            │           │
-│  │  ~4K tokens per worker, ~12K total (all workers)         │           │
-│  │  All workers run: ThinkingQuality, LearningBehavior,     │           │
-│  │  ContextEfficiency (3 LLM calls)                         │           │
+│  │  PHASE 2 (Parallel): 4 Workers                            │           │
+│  │  ~4K tokens per worker, ~16K total (all workers)         │           │
+│  │  All workers run: ThinkingQuality, CommunicationPatterns,│           │
+│  │  LearningBehavior, ContextEfficiency (4 LLM calls)      │           │
 │  │                                                           │           │
 │  │  PHASE 2.5: TypeClassifier (1 LLM call)                  │           │
 │  │  Input: ~4K tokens    Output: ~1K tokens                 │           │
@@ -1195,8 +1250,8 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 │  │  Input: ~8K tokens    Output: ~6K tokens                 │           │
 │  │                                                           │           │
 │  │  Total LLM Calls:                                         │           │
-│  │  - English:     5 calls (3+1+1+0)                        │           │
-│  │  - Non-English: 6 calls (3+1+1+1)                        │           │
+│  │  - English:     6 calls (4+1+1+0)                        │           │
+│  │  - Non-English: 7 calls (4+1+1+1)                        │           │
 │  │                                                           │           │
 │  │  Total Cost: ~$0.04-0.05 per analysis                    │           │
 │  └──────────────────────────────────────────────────────────┘           │
@@ -1221,7 +1276,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 |-----------|------|-------------|
 | Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | Pipeline coordination (Phase 1→2→2.5→3→4→Assembly→TranslationOverlay), Worker registration/execution, `mergeTranslatedFields()` |
 | Orchestrator Types | `src/lib/analyzer/orchestrator/types.ts` | WorkerResult, WorkerContext, Phase types |
-| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, registers all workers (1 Phase 1, 3 Phase 2, 1 Phase 2.5) |
+| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, registers all workers (1 Phase 1, 4 Phase 2, 1 Phase 2.5) |
 | Content Gateway | `src/lib/analyzer/content-gateway.ts` | Tier-based content filtering (free/premium) |
 
 ### Phase 1: Data Extraction Worker (1 worker, deterministic)
@@ -1232,18 +1287,21 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Data Extractor Worker | `src/lib/analyzer/workers/data-extractor-worker.ts` | Phase 1 - deterministic extraction (no LLM) |
 | Phase 1 Output Schema | `src/lib/models/phase1-output.ts` | Phase1Output Zod schema |
 
-### Phase 2: Insight Generation Workers (3 workers, 3 LLM calls)
+### Phase 2: Insight Generation Workers (4 workers, 4 LLM calls)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Thinking Quality | `src/lib/analyzer/workers/thinking-quality-worker.ts` | Planning, critical thinking, communication |
+| Thinking Quality | `src/lib/analyzer/workers/thinking-quality-worker.ts` | Planning, critical thinking |
+| Communication Patterns | `src/lib/analyzer/workers/communication-patterns-worker.ts` | Communication patterns, signature quotes |
 | Learning Behavior | `src/lib/analyzer/workers/learning-behavior-worker.ts` | Knowledge gaps & repeated mistakes |
 | Context Efficiency | `src/lib/analyzer/workers/context-efficiency-worker.ts` | Token inefficiency |
 | Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | AgentOutputs Zod schemas |
 | Thinking Quality Schema | `src/lib/models/thinking-quality-data.ts` | ThinkingQualityOutput |
+| Communication Patterns Schema | `src/lib/models/communication-patterns-data.ts` | CommunicationPatternsOutput |
 | Learning Behavior Schema | `src/lib/models/learning-behavior-data.ts` | LearningBehaviorOutput |
 | Context Efficiency Schema | (reuses existing) | ContextEfficiencyOutput |
 | Thinking Quality Prompts | `src/lib/analyzer/workers/prompts/thinking-quality-prompts.ts` | PTCF prompts for thinking analysis |
+| Communication Patterns Prompts | `src/lib/analyzer/workers/prompts/communication-patterns-prompts.ts` | PTCF prompts for communication analysis |
 | Learning Behavior Prompts | `src/lib/analyzer/workers/prompts/learning-behavior-prompts.ts` | PTCF prompts for learning analysis |
 | Context Efficiency Prompts | `src/lib/analyzer/workers/prompts/context-efficiency-prompts.ts` | PTCF prompts for context analysis |
 | Knowledge Mapping | `src/lib/analyzer/workers/prompts/knowledge-mapping.ts` | Dynamic prompt injection (dimension→insight mapping) |
@@ -1298,15 +1356,29 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Multi-Source Scanner | `src/lib/scanner/index.ts` | Unified scanner for all sources (Claude Code + Cursor) |
-| Claude Code Source | `src/lib/scanner/sources/claude-code.ts` | JSONL session source (~/.claude/projects/) |
-| Cursor Source | `src/lib/scanner/sources/cursor.ts` | SQLite session source (~/.cursor/chats/) |
-| Tool Mapping | `src/lib/scanner/tool-mapping.ts` | Cross-source tool name normalization |
+| Multi-Source Scanner | `packages/cli/src/lib/scanner/index.ts` | Unified scanner for all sources (Claude Code + Cursor + Cursor Composer) |
+| Claude Code Source | `packages/cli/src/lib/scanner/sources/claude-code.ts` | JSONL session source (~/.claude/projects/) |
+| Cursor Source | `packages/cli/src/lib/scanner/sources/cursor.ts` | SQLite session source (~/.cursor/chats/) |
+| Cursor Composer Source | `packages/cli/src/lib/scanner/sources/cursor-composer.ts` | SQLite KV source (globalStorage/state.vscdb) |
+| Cursor Paths | `packages/cli/src/lib/scanner/sources/cursor-paths.ts` | Cross-platform Cursor directory resolution |
+| SQLite Loader | `packages/cli/src/lib/scanner/sources/sqlite-loader.ts` | Shared better-sqlite3 dynamic import |
+| Tool Mapping | `packages/cli/src/lib/scanner/tool-mapping.ts` | Cross-source tool name normalization |
 | JSONL Reader | `src/lib/parser/jsonl-reader.ts` | JSONL parsing, path encoding/decoding |
 | Session Selector | `src/lib/parser/session-selector.ts` | Duration-based optimal session selection (max 10) |
 | Session Formatter | `src/lib/analyzer/shared/session-formatter.ts` | Session data formatting (shared by Workers) |
 | Session Types | `src/lib/models/session.ts` | JSONLLine, SessionMetadata types, SessionSourceType |
 | Domain Types | `src/lib/domain/models/analysis.ts` | ParsedSession, SessionMetrics types |
+
+### Activity Scanner & Contribution Graph (deterministic, no LLM)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Activity Scanner | `packages/cli/src/activity-scanner.ts` | Metadata extraction for ALL recent sessions (30 days) — tokens, duration, messages |
+| Activity Scanner Helpers | `packages/cli/src/activity-scanner.ts` | `stripSystemReminders()`, `truncateAtWordBoundary()` |
+| Activity Section | `src/components/personal/tabs/activity/ActivitySection.tsx` | Contribution graph with token-based percentile coloring |
+| Session Summary Schema | `src/lib/models/session-summary-data.ts` | Zod schemas for Phase 1.5 LLM session summaries |
+| Frontend Type | `src/types/verbose.ts` | `ActivitySessionInfo` TypeScript interface |
+| Zod Schema | `src/lib/models/verbose-evaluation.ts` | `activitySessions` field in VerboseEvaluation |
 
 ### Knowledge Context
 
@@ -1356,8 +1428,9 @@ Worker Registration (src/lib/analyzer/verbose-analyzer.ts):
 ├── Phase 1 (1 worker):
 │   └── DataExtractorWorker (deterministic, no LLM)
 │
-├── Phase 2 (3 workers, parallel):
-│   ├── ThinkingQualityWorker (planning, critical thinking, communication)
+├── Phase 2 (4 workers, parallel):
+│   ├── ThinkingQualityWorker (planning, critical thinking)
+│   ├── CommunicationPatternsWorker (communication patterns, signature quotes)
 │   ├── LearningBehaviorWorker (knowledge gaps, repeated mistakes)
 │   └── ContextEfficiencyWorker (token inefficiency)
 │

@@ -73,11 +73,12 @@ Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation
 | `src/lib/infrastructure/` | Supabase & local storage adapters | Infrastructure |
 | `src/lib/analyzer/` | LLM analysis (prompts, dimensions, insights) | Application |
 | `src/lib/analyzer/orchestrator/` | 4-phase analysis orchestration | Application |
-| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (3 workers: ThinkingQuality, LearningBehavior, ContextEfficiency) + Phase 2.5 TypeClassifier | Application |
+| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (4 workers: ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency) + Phase 2.5 TypeClassifier | Application |
 | `src/lib/analyzer/stages/` | Content Writer stage (Phase 3 narrative generation) | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/parser/` | JSONL session parsing | Infrastructure |
-| `src/lib/scanner/` | Multi-source session discovery (Claude Code + Cursor) | Infrastructure |
+| `packages/cli/src/lib/scanner/` | Multi-source session discovery (Claude Code + Cursor + Cursor Composer) | Infrastructure |
+| `packages/cli/src/activity-scanner.ts` | CLI activity metadata scanner (tokens, duration, messages) for all recent sessions | Infrastructure |
 | `src/lib/search-agent/` | Knowledge curation system | Application |
 
 ### Next.js 15 App Router Architecture
@@ -162,12 +163,13 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 - Output: `Phase1Output` (DeveloperUtterances[], AIResponses[], SessionMetrics)
 - 0 LLM calls
 
-**Phase 2: Insight Generation (Parallel, 3 workers)**
-- **ThinkingQualityWorker** - Planning, critical thinking, communication patterns
+**Phase 2: Insight Generation (Parallel, 4 workers)**
+- **ThinkingQualityWorker** - Planning, critical thinking
+- **CommunicationPatternsWorker** - Communication patterns, signature quotes
 - **LearningBehaviorWorker** - Knowledge gaps and repeated mistakes
 - **ContextEfficiencyWorker** - Token inefficiency patterns
 - Output: `AgentOutputs` (merged results)
-- 3 LLM calls (parallel)
+- 4 LLM calls (parallel)
 
 **Phase 2.5: Classification (1 worker)**
 - **TypeClassifierWorker** (free) - Type classification using Phase 2 outputs
@@ -192,7 +194,7 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 - Output: `TranslatorOutput` (text fields only, merged with English response)
 - 0-1 LLM call (conditional)
 
-**Total: 5-6 LLM calls (0 + 3 + 1 + 1 + 0-1)**
+**Total: 6-7 LLM calls (0 + 4 + 1 + 1 + 0-1)**
 
 **Prompt Engineering:**
 - Worker prompts in domain-specific files:
@@ -225,12 +227,15 @@ Session discovery supports multiple AI coding assistant sources:
 │                                                                          │
 │  Supported Sources:                                                      │
 │  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │  claude-code  │  ~/.claude/projects/**/*.jsonl                   │   │
-│  │               │  Standard JSONL parsing                          │   │
-│  ├───────────────┼──────────────────────────────────────────────────┤   │
-│  │  cursor       │  ~/.cursor/chats/**/*.db                         │   │
-│  │               │  SQLite parsing (better-sqlite3)                 │   │
-│  └───────────────┴──────────────────────────────────────────────────┘   │
+│  │  claude-code      │  ~/.claude/projects/**/*.jsonl                │   │
+│  │                   │  Standard JSONL parsing                       │   │
+│  ├───────────────────┼──────────────────────────────────────────────┤   │
+│  │  cursor           │  ~/.cursor/chats/**/*.db                      │   │
+│  │                   │  SQLite parsing (better-sqlite3)              │   │
+│  ├───────────────────┼──────────────────────────────────────────────┤   │
+│  │  cursor-composer  │  globalStorage/state.vscdb (SQLite KV)        │   │
+│  │                   │  Composer sessions (better-sqlite3, readonly) │   │
+│  └───────────────────┴──────────────────────────────────────────────┘   │
 │                                                                          │
 │  Architecture:                                                           │
 │  - SessionSource interface (abstract contract)                          │
@@ -238,14 +243,54 @@ Session discovery supports multiple AI coding assistant sources:
 │  - MultiSourceScanner (coordinates cross-source scanning)              │
 │                                                                          │
 │  Key Files:                                                              │
-│  - src/lib/scanner/index.ts                                             │
-│  - src/lib/scanner/sources/claude-code.ts                               │
-│  - src/lib/scanner/sources/cursor.ts                                    │
+│  - packages/cli/src/lib/scanner/index.ts                                │
+│  - packages/cli/src/lib/scanner/sources/claude-code.ts                  │
+│  - packages/cli/src/lib/scanner/sources/cursor.ts                       │
+│  - packages/cli/src/lib/scanner/sources/cursor-composer.ts              │
+│  - packages/cli/src/lib/scanner/sources/cursor-paths.ts                 │
+│  - packages/cli/src/lib/scanner/sources/sqlite-loader.ts                │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Type:** `SessionSourceType = 'claude-code' | 'cursor'`
+**Type:** `SessionSourceType = 'claude-code' | 'cursor' | 'cursor-composer'`
+
+### Activity Scanner (CLI Metadata Collection)
+
+Separate from the Multi-Source Session Scanner (used for LLM analysis), the Activity Scanner deterministically extracts lightweight metadata from ALL recent sessions (30-day window) for the contribution graph.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       ACTIVITY SCANNER                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Purpose: Extract deterministic metadata for ALL recent sessions         │
+│  (not just the top 10 selected for LLM analysis)                        │
+│                                                                          │
+│  Data Flow:                                                              │
+│  CLI (activity-scanner.ts) → Lambda upload → DB → Frontend Activity Tab │
+│                                                                          │
+│  ActivitySessionInfo per session:                                        │
+│  ├── sessionId, projectName, startTime                                  │
+│  ├── durationMinutes, messageCount                                      │
+│  ├── summary (truncated first user message)                             │
+│  ├── totalInputTokens? (summed from assistant message usage)            │
+│  └── totalOutputTokens? (summed from assistant message usage)           │
+│                                                                          │
+│  Token Extraction:                                                       │
+│  - Claude Code: parsed from JSONL assistant entries (message.usage)     │
+│  - Cursor: parsed from msg.tokenUsage on assistant messages             │
+│  - Token fields are optional for backward compatibility                 │
+│                                                                          │
+│  Key Files:                                                              │
+│  - packages/cli/src/activity-scanner.ts                                  │
+│  - src/types/verbose.ts (ActivitySessionInfo type)                       │
+│  - src/components/personal/tabs/activity/ActivitySection.tsx             │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**vs Multi-Source Scanner**: The Multi-Source Scanner (`packages/cli/src/lib/scanner/`) selects up to 10 optimal sessions for LLM analysis. The Activity Scanner collects lightweight metadata from ALL sessions in the 30-day window — no session selection, no LLM involvement.
 
 ## Port Interfaces
 
@@ -406,5 +451,7 @@ The system uses Zod schemas for type safety. Key schemas are in `src/lib/models/
 | **ParsedSession** | `session.ts` | Normalized session data from JSONL |
 | **TypeResult** | `coding-style.ts` | AI coding style (5 types + distribution) |
 | **StoredAnalysis** | `storage.ts` | Persisted analysis with metadata |
+| **ActivitySessionInfo** | `packages/cli/src/activity-scanner.ts` + `src/types/verbose.ts` | Per-session activity metadata (tokens, duration, messages) |
+| **SessionSummaryData** | `src/lib/models/session-summary-data.ts` | LLM-generated 1-line session summaries (Phase 1.5) |
 
 All schemas are self-documenting via `.describe()` calls. See the source files for details.

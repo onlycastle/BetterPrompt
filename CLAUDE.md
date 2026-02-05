@@ -134,6 +134,17 @@ return await analyze(); // Error surfaces to user, root cause can be identified
 
 > ⚠️ **NEVER use local SST deployment** (`npx sst deploy`). Local SST has critical bugs causing routing failures and inconsistent deployments. Always use GitHub Actions for Lambda deployment.
 
-## Architecture
+## Documentation
 
-See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for system design, pipelines, and components.
+> ⚠️ **Context Loading**: Before exploring the codebase for architecture, pipeline, file locations, or debugging context, **read `docs/agent/` first**. These docs are optimized for fast lookups (concise, table-based) and cover most questions about system structure, key files, test workflows, and known issues. Only dive into source files when `docs/agent/` doesn't have the specific detail you need.
+
+| Document | When to Read |
+|----------|--------------|
+| [docs/agent/ARCHITECTURE.md](./docs/agent/ARCHITECTURE.md) | Understanding system structure, pipeline phases, finding key files, API routes, data models |
+| [docs/agent/TESTING.md](./docs/agent/TESTING.md) | Running tests, test script options, cache workflows |
+| [docs/agent/DEPLOYMENT.md](./docs/agent/DEPLOYMENT.md) | Lambda/Vercel deployment, environment variables, infrastructure |
+| [docs/agent/TROUBLESHOOTING.md](./docs/agent/TROUBLESHOOTING.md) | Debugging issues, known pitfalls, prevention checklists |
+
+Detailed human-readable docs: [docs/human/](./docs/human/)
+
+> ⚠️ **Keep Agent Docs Updated**: When you add new files, change directory structure, modify the pipeline, add/remove API routes, or update test scripts, **update the relevant `docs/agent/` doc** in the same change. These docs are the primary reference for future sessions — stale docs lead to wrong assumptions and wasted context.
