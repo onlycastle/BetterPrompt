@@ -15,7 +15,7 @@ NoMoreAISlop analyzes developer-AI collaboration sessions (JSONL/SQLite) through
 | `src/lib/analyzer/` | LLM analysis pipeline | Application |
 | `src/lib/analyzer/orchestrator/` | 4-phase orchestration | Application |
 | `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (4) + Phase 2.5 TypeClassifier | Application |
-| `src/lib/analyzer/stages/` | Phase 3 ContentWriter + Phase 4 Translator | Application |
+| `src/lib/analyzer/stages/` | Phase 1.5 SessionSummarizer + Phase 2.8 EvidenceVerifier + Phase 3 ContentWriter + Phase 4 Translator | Application |
 | `src/lib/analyzer/calculators/` | Deterministic calculators (temporal, phrase patterns) | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/domain/` | Domain models (business rules, errors) | Domain |
@@ -32,14 +32,16 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 |-------|-----------|-----------|-------|--------|----------|
 | 0 | Multi-Source Scanner | 0 | JSONL/SQLite files | `SourcedParsedSession[]` | `packages/cli/src/lib/scanner/index.ts` |
 | 1 | DataExtractor | 0 | Sessions + Metrics | `Phase1Output` | `src/lib/analyzer/workers/data-extractor-worker.ts` |
+| 1.5 | SessionSummarizer | 1 | Phase1Output sessions | `SessionSummaryBatchLLM` | `src/lib/analyzer/stages/session-summarizer.ts` |
 | 2 | 4 Insight Workers (parallel) | 4 | Phase1Output | `AgentOutputs` | `src/lib/analyzer/workers/` |
 | 2.5 | TypeClassifier | 1 | Phase1Output + AgentOutputs | `TypeClassifierOutput` | `src/lib/analyzer/workers/type-classifier-worker.ts` |
 | 2.75 | KnowledgeResourceMatcher | 0 | AgentOutputs | `KnowledgeResource[]` | deterministic resource matching |
+| 2.8 | EvidenceVerifier | 1 | AgentOutputs evidence | `EvidenceVerifierResult` | `src/lib/analyzer/stages/evidence-verifier.ts` |
 | 3 | ContentWriter | 1 | AgentOutputs summary + top utterances | `NarrativeLLMResponse` | `src/lib/analyzer/stages/content-writer.ts` |
 | 4 | Translator (conditional) | 0-1 | NarrativeLLMResponse + AgentOutputs | `TranslatorOutput` | `src/lib/analyzer/stages/translator.ts` |
 | Assembly | EvaluationAssembler | 0 | AgentOutputs + NarrativeLLMResponse + TranslatorData | `VerboseEvaluation` | `src/lib/analyzer/stages/evaluation-assembler.ts` |
 
-**Total**: 6 LLM calls (English), 7 LLM calls (non-English). Model: `gemini-3-flash-preview`, Temperature: 1.0, Max tokens: 65536.
+**Total**: 8 LLM calls (English), 9 LLM calls (non-English). Model: `gemini-3-flash-preview`, Temperature: 1.0, Max tokens: 65536.
 
 ## Phase Details
 
@@ -49,6 +51,15 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 - No LLM call — pure data transformation
 - Output schema: `Phase1Output` in `src/lib/models/phase1-output.ts`
 - Includes `displayText`, `naturalLanguageSegments`, `machineContentRatio`
+
+### Phase 1.5: Session Summarizer (1 LLM call)
+
+- Generates concise 1-line summaries for each analyzed session via LLM
+- Single batch LLM call for all sessions (token-efficient)
+- Runs after DataExtractor, before Phase 2 workers
+- Output schema: `SessionSummaryBatchLLM` in `src/lib/models/session-summary-data.ts`
+- Summaries flow to ContentWriter (Phase 3) and Translator (Phase 4)
+- Separate from CLI Activity Scanner (deterministic summaries for ALL sessions)
 
 ### Phase 2: Insight Generation (4 parallel workers)
 
@@ -69,6 +80,12 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 - Styles: architect, scientist, collaborator, speedrunner, craftsman
 - Control levels: explorer, navigator, cartographer
 - Output: `TypeClassifierOutput` in `src/lib/models/coding-style.ts`
+
+### Phase 2.8: EvidenceVerifier (1 LLM call)
+
+- LLM-based verification of worker evidence quality
+- Runs after Phase 2.75 KnowledgeResourceMatcher
+- Output schema: `EvidenceVerifierResult` in `src/lib/analyzer/stages/evidence-verifier.ts`
 
 ### Phase 3: ContentWriter — Narrative Only (1 LLM call)
 
@@ -199,6 +216,7 @@ Type: `SessionSourceType = 'claude-code' | 'cursor' | 'cursor-composer'`
 | Pipeline coordinator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` |
 | Content gateway | `src/lib/analyzer/content-gateway.ts` |
 | Evaluation assembler | `src/lib/analyzer/stages/evaluation-assembler.ts` |
+| Session summarizer | `src/lib/analyzer/stages/session-summarizer.ts` |
 | Evidence verifier | `src/lib/analyzer/stages/evidence-verifier.ts` |
 | Phase 3 summarizer | `src/lib/analyzer/stages/phase3-summarizer.ts` |
 | Knowledge mapping | `src/lib/analyzer/workers/prompts/knowledge-mapping.ts` |
@@ -213,7 +231,7 @@ Type: `SessionSourceType = 'claude-code' | 'cursor' | 'cursor-composer'`
 
 ## Cost
 
-- 6-7 LLM calls per analysis using Gemini 3 Flash
+- 8-9 LLM calls per analysis using Gemini 3 Flash
 - ~$0.04-0.05 per analysis
 - Phase 2 runs 4 workers in parallel for speed
 - No Fallback Policy: worker failures propagate as errors (Promise.all)

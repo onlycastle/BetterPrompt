@@ -466,7 +466,7 @@ async function main() {
 
     console.log(`Phase 1 completed in ${phase1Elapsed}ms`);
     console.log(`Extracted ${phase1Output.developerUtterances.length} utterances`);
-    console.log(`Extracted ${phase1Output.aiResponses.length} AI responses`);
+    console.log(`Extracted ${phase1Output.sessionMetrics.totalAIResponses} AI responses`);
     printTokenUsage(phase1Usage, 'Phase 1');
     console.log('');
   }
