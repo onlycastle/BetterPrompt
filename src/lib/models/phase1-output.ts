@@ -228,6 +228,71 @@ export const Phase1SessionMetricsSchema = z.object({
    * High count indicates frequent near-limit usage, potential efficiency issue.
    */
   contextFillExceeded90Count: z.number().int().min(0).optional(),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Friction Signals (Deterministic Detection)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Deterministic friction signals detected from session data.
+   *
+   * These are hints for Phase 2 SessionOutcomeWorker to use:
+   * - Not semantic analysis (that's Phase 2's job)
+   * - Just counting patterns that can be detected without LLM
+   *
+   * Inspired by Claude Code's /insights friction tracking.
+   */
+  frictionSignals: z.object({
+    /**
+     * Count of tool execution failures (tool_result with is_error=true).
+     * High count may indicate environment issues or incorrect tool usage.
+     */
+    toolFailureCount: z.number().int().min(0),
+
+    /**
+     * Count of user messages matching rejection patterns.
+     * Patterns: "no", "wrong", "incorrect", "try again", "that's not right"
+     * High count may indicate miscommunication or wrong approaches.
+     */
+    userRejectionSignals: z.number().int().min(0),
+
+    /**
+     * Count of sessions with excessive iterations (10+ user messages).
+     * May indicate blocked states or iterative refinement.
+     */
+    excessiveIterationSessions: z.number().int().min(0),
+
+    /**
+     * Count of sessions where context fill exceeded 90%.
+     * Indicates potential context overflow issues.
+     */
+    contextOverflowSessions: z.number().int().min(0),
+  }).optional(),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Session Hints (Deterministic Classification Hints)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Session structure hints for Phase 2 workers.
+   *
+   * These help SessionOutcomeWorker classify session types:
+   * - Short sessions likely = quick_question
+   * - Long sessions likely = multi_task or iterative_refinement
+   */
+  sessionHints: z.object({
+    /** Average number of user turns per session */
+    avgTurnsPerSession: z.number().min(0),
+
+    /** Count of short sessions (1-3 user messages) */
+    shortSessions: z.number().int().min(0),
+
+    /** Count of medium sessions (4-10 user messages) */
+    mediumSessions: z.number().int().min(0),
+
+    /** Count of long sessions (11+ user messages) */
+    longSessions: z.number().int().min(0),
+  }).optional(),
 });
 export type Phase1SessionMetrics = z.infer<typeof Phase1SessionMetricsSchema>;
 

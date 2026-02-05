@@ -580,6 +580,9 @@ export interface AggregatedWorkerInsights {
   /** Context Efficiency domain insights */
   contextEfficiency?: WorkerInsightsContainer;
 
+  /** Session Outcome domain insights (goals, friction, success rates) */
+  sessionOutcome?: WorkerInsightsContainer;
+
   // =========================================================================
   // Legacy workers (kept for cached data compatibility)
   // =========================================================================
@@ -634,6 +637,13 @@ export const WORKER_DOMAIN_CONFIGS: WorkerDomainConfig[] = [
     subtitle: 'How efficiently do you use tokens?',
     scoreLabel: 'Efficiency Score',
   },
+  {
+    key: 'sessionOutcome',
+    icon: '🎯',
+    title: 'Session Success',
+    subtitle: 'How successful are your AI collaboration sessions?',
+    scoreLabel: 'Success Rate',
+  },
 ];
 
 // ============================================================================
@@ -662,6 +672,7 @@ export const WORKER_TO_DIMENSIONS: Record<keyof AggregatedWorkerInsights, string
   communicationPatterns: ['CommunicationPatterns'],
   learningBehavior: ['KnowledgeGap'],
   contextEfficiency: ['ContextEfficiency'],
+  sessionOutcome: ['SessionOutcome'],  // NEW - maps to SessionOutcome insights
   // Legacy worker (kept for backward compatibility)
   knowledgeGap: ['KnowledgeGap'],
 };

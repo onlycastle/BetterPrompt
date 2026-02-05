@@ -763,6 +763,17 @@ export const AgentOutputsSchema = z.object({
    * - Inefficiency Patterns: What wastes tokens?
    */
   efficiency: ContextEfficiencyOutputSchema.optional(),
+
+  /**
+   * Session Outcome analysis (NEW - inspired by Claude /insights)
+   *
+   * Answers: "How successful are this developer's sessions?"
+   * - Goal Categories: What do they work on?
+   * - Session Types: How are sessions structured?
+   * - Outcomes: Do they achieve their goals?
+   * - Friction: What obstacles do they encounter?
+   */
+  sessionOutcome: SessionOutcomeOutputSchema.optional(),
 });
 
 export type AgentOutputs = z.infer<typeof AgentOutputsSchema>;
@@ -788,6 +799,7 @@ export function hasAnyAgentOutput(outputs: AgentOutputs): boolean {
     outputs.communicationPatterns ||
     outputs.learningBehavior ||
     outputs.efficiency ||
+    outputs.sessionOutcome ||
     // Type classifier
     outputs.typeClassifier ||
     // Legacy agents (kept for cached data compatibility)
@@ -1271,6 +1283,13 @@ import {
   type CommunicationPatternsLLMOutput,
 } from './communication-patterns-data';
 
+import {
+  SessionOutcomeOutputSchema,
+  type SessionOutcomeOutput,
+  SessionOutcomeLLMOutputSchema,
+  type SessionOutcomeLLMOutput,
+} from './session-outcome-data';
+
 // Re-export v3 unified workers
 export {
   ThinkingQualityOutputSchema,
@@ -1285,6 +1304,10 @@ export {
   type LearningBehaviorOutput,
   LearningBehaviorLLMOutputSchema,
   type LearningBehaviorLLMOutput,
+  SessionOutcomeOutputSchema,
+  type SessionOutcomeOutput,
+  SessionOutcomeLLMOutputSchema,
+  type SessionOutcomeLLMOutput,
 };
 
 
@@ -1377,6 +1400,22 @@ export function aggregateWorkerInsights(outputs: AgentOutputs): AggregatedWorker
         growthAreas,
         domainScore: ef.overallEfficiencyScore,
         referencedInsights: ef.referencedInsights,
+      };
+    }
+  }
+
+  // SessionOutcome domain (NEW - inspired by Claude /insights)
+  if (outputs.sessionOutcome) {
+    const so = outputs.sessionOutcome;
+    const strengths = so.strengths ?? [];
+    const growthAreas = so.growthAreas ?? [];
+
+    if (strengths.length > 0 || growthAreas.length > 0) {
+      result.sessionOutcome = {
+        strengths,
+        growthAreas,
+        domainScore: so.overallOutcomeScore,
+        referencedInsights: so.referencedInsights,
       };
     }
   }
