@@ -67,7 +67,7 @@ export function TypeResultSection({ typeResult, typeMetadata }: TypeResultSectio
   const matrixDescription = MATRIX_METADATA[primaryType][controlLevel].description;
   const controlMeta = CONTROL_LEVEL_METADATA[controlLevel];
 
-  const types: CodingStyleType[] = ['architect', 'scientist', 'collaborator', 'speedrunner', 'craftsman'];
+  const types: CodingStyleType[] = ['architect', 'analyst', 'conductor', 'speedrunner', 'trendsetter'];
 
   return (
     <div className={styles.resultBox}>

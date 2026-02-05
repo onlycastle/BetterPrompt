@@ -5,12 +5,8 @@
  * Supports SSE streaming for real-time progress updates.
  * Uses gzip compression to reduce payload size.
  *
- * Upload strategies:
- * - Small payloads (≤5MB): Direct POST to Lambda
- * - Large payloads (>5MB): S3 presigned URL upload
- *   1. Get presigned PUT URL from Lambda
- *   2. Upload directly to S3 (bypasses Lambda limits)
- *   3. Call /analyze with s3Key for Lambda to process
+ * Always uploads via S3 presigned URL to bypass Lambda Function URL payload limits.
+ * Flow: GET /upload-url → PUT S3 → POST /analyze {s3Key}
  *
  * Based on CLI package implementation, adapted for Electron (CJS).
  */
@@ -30,11 +26,6 @@ const DEFAULT_LAMBDA_URL =
  * Web app base URL for report links
  */
 const REPORT_BASE_URL = 'https://www.nomoreaislop.xyz';
-
-/**
- * Threshold for using Supabase Storage upload (5MB)
- */
-const USE_STORAGE_THRESHOLD = 5 * 1024 * 1024;
 
 /**
  * Maximum payload size (100MB)
@@ -109,10 +100,10 @@ interface AnalysisResultData {
   controlLevel: string;
   distribution: {
     architect: number;
-    scientist: number;
-    collaborator: number;
+    analyst: number;
+    conductor: number;
     speedrunner: number;
-    craftsman: number;
+    trendsetter: number;
   };
   personalitySummary?: string;
 }
@@ -466,77 +457,41 @@ export async function uploadForAnalysis(
   console.log('[Uploader] Payload size:', {
     original: formatSize(originalSizeBytes),
     compressed: formatSize(compressedSizeBytes),
-    threshold: formatSize(USE_STORAGE_THRESHOLD),
-    useStorage: compressedSizeBytes > USE_STORAGE_THRESHOLD,
   });
 
-  // Route based on payload size
-  if (compressedSizeBytes > USE_STORAGE_THRESHOLD) {
-    console.log('[Uploader] Using S3 upload path (payload > 5MB)');
-    sendProgress(mainWindow, 'preparing', 0, `${sizeInfo} | Using S3 for large payload`);
-
-    const { s3Key } = await uploadViaS3(compressed, lambdaUrl, mainWindow);
-    console.log('[Uploader] S3 upload complete, s3Key:', s3Key);
-
-    const analyzeUrl = `${lambdaUrl}/analyze`;
-    console.log('[Uploader] Starting analysis with s3Key:', analyzeUrl);
-
-    const response = await fetch(analyzeUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
-      },
-      body: JSON.stringify({ s3Key }),
-    });
-
-    console.log('[Uploader] /analyze response:', {
-      status: response.status,
-      contentType: response.headers.get('content-type'),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
-      console.error('[Uploader] /analyze failed:', {
-        status: response.status,
-        body: errorText.slice(0, 500),
-      });
-      throw new Error(`Analysis request failed: ${response.status} ${errorText}`);
-    }
-
-    return handleStreamingResponse(response, mainWindow);
-  }
-
-  // Small payload: Direct upload
-  console.log('[Uploader] Using DIRECT upload path (payload <= 5MB)');
   if (truncated) {
     sendProgress(mainWindow, 'preparing', 0, `${sizeInfo} | Excluded ${droppedCount} session(s) to fit limit`);
   } else {
-    sendProgress(mainWindow, 'preparing', 0, sizeInfo);
+    sendProgress(mainWindow, 'preparing', 0, `${sizeInfo} | Using secure storage`);
   }
 
-  const response = await fetch(lambdaUrl, {
+  const { s3Key } = await uploadViaS3(compressed, lambdaUrl, mainWindow);
+  console.log('[Uploader] S3 upload complete, s3Key:', s3Key);
+
+  const analyzeUrl = `${lambdaUrl}/analyze`;
+  console.log('[Uploader] Starting analysis with s3Key:', analyzeUrl);
+
+  const response = await fetch(analyzeUrl, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/octet-stream',
-      'Content-Encoding': 'gzip',
+      'Content-Type': 'application/json',
       ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
     },
-    body: new Uint8Array(compressed),
+    body: JSON.stringify({ s3Key }),
+  });
+
+  console.log('[Uploader] /analyze response:', {
+    status: response.status,
+    contentType: response.headers.get('content-type'),
   });
 
   if (!response.ok) {
-    const responseText = await response.text().catch(() => '');
-    let errorMessage = `Server error: ${response.status} (payload: ${formatSize(compressedSizeBytes)})`;
-    try {
-      const error = JSON.parse(responseText) as { message?: string };
-      errorMessage = error.message || errorMessage;
-    } catch {
-      if (responseText) {
-        errorMessage = `${errorMessage} - ${responseText.slice(0, 200)}`;
-      }
-    }
-    throw new Error(errorMessage);
+    const errorText = await response.text().catch(() => '');
+    console.error('[Uploader] /analyze failed:', {
+      status: response.status,
+      body: errorText.slice(0, 500),
+    });
+    throw new Error(`Analysis request failed: ${response.status} ${errorText}`);
   }
 
   return handleStreamingResponse(response, mainWindow);

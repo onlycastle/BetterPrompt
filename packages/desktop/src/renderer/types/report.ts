@@ -10,19 +10,19 @@
 
 export type CodingStyleType =
   | 'architect'
-  | 'scientist'
-  | 'collaborator'
+  | 'analyst'
+  | 'conductor'
   | 'speedrunner'
-  | 'craftsman';
+  | 'trendsetter';
 
 export type AIControlLevel = 'explorer' | 'navigator' | 'cartographer';
 
 export interface TypeDistribution {
   architect: number;
-  scientist: number;
-  collaborator: number;
+  analyst: number;
+  conductor: number;
   speedrunner: number;
-  craftsman: number;
+  trendsetter: number;
 }
 
 // ============================================================================
@@ -55,36 +55,36 @@ export const REPORT_TYPE_METADATA: Record<CodingStyleType, TypeMetadata> = {
       'Over-planning may delay execution',
     ],
   },
-  scientist: {
+  analyst: {
     emoji: '🔬',
-    name: 'Scientist',
-    tagline: 'Truth-seeker who always verifies AI output',
+    name: 'Analyst',
+    tagline: 'Deep investigator who verifies and questions everything',
     description:
-      "You maintain healthy skepticism toward AI output. Your verification habits catch bugs early and ensure high code quality while keeping your skills sharp.",
+      'You combine systematic verification with critical thinking. Your thorough approach catches bugs early, questions assumptions, and ensures high code quality through investigation.',
     strengths: [
-      'Catches bugs early',
-      'High code quality',
-      'Low AI dependency, maintains skills',
+      'Catches bugs early through systematic verification',
+      'Questions assumptions and explores alternatives',
+      'Low repeated mistakes through deep understanding',
     ],
     growthPoints: [
-      'Verifying everything can slow velocity',
-      'More AI trust could improve efficiency',
+      'Thoroughness can slow velocity on simpler tasks',
+      'Balancing depth with pragmatism',
     ],
   },
-  collaborator: {
-    emoji: '🤝',
-    name: 'Collaborator',
-    tagline: 'Partnership master who finds answers through dialogue',
+  conductor: {
+    emoji: '🎼',
+    name: 'Conductor',
+    tagline: 'Orchestration master who commands AI tools like an ensemble',
     description:
-      'You excel at iterative refinement through conversation. Your collaborative approach maximizes AI synergy and leads to quality improvement through iteration.',
+      'You excel at orchestrating AI tools and workflows. Your mastery of slash commands, subagents, role assignments, and multi-tool workflows maximizes AI synergy and productivity.',
     strengths: [
-      'Maximizes AI synergy',
-      'Quality improvement through iteration',
-      'Flexible problem solving',
+      'High tool diversity and mastery',
+      'Effective multi-agent orchestration',
+      'Creative workflow composition',
     ],
     growthPoints: [
-      'Clearer initial requirements could reduce turns',
-      'Sometimes one clear request is more efficient',
+      'Complex orchestration can add overhead for simple tasks',
+      'Direct approaches may be faster for focused work',
     ],
   },
   speedrunner: {
@@ -103,20 +103,20 @@ export const REPORT_TYPE_METADATA: Record<CodingStyleType, TypeMetadata> = {
       'Sometimes slower design is more efficient',
     ],
   },
-  craftsman: {
-    emoji: '🔧',
-    name: 'Craftsman',
-    tagline: 'Artisan who prioritizes code quality above all',
+  trendsetter: {
+    emoji: '🚀',
+    name: 'Trendsetter',
+    tagline: 'Innovation seeker who explores cutting-edge approaches',
     description:
-      'You care deeply about code quality and consistency. Your attention to detail produces maintainable code and minimizes long-term technical debt.',
+      'You actively seek the latest tools, frameworks, and best practices. Your curiosity drives you to explore emerging technologies and modern approaches, keeping your stack ahead of the curve.',
     strengths: [
-      'Produces maintainable code',
-      'Maintains team codebase consistency',
-      'Minimizes long-term technical debt',
+      'Early adoption of effective new tools',
+      'Awareness of industry best practices',
+      'Continuous learning mindset',
     ],
     growthPoints: [
-      'Perfectionism may delay deployment',
-      'Speed matters too at MVP stage',
+      'Novelty bias may lead to premature adoption',
+      'Proven solutions sometimes outperform trendy ones',
     ],
   },
 };
@@ -135,25 +135,25 @@ export const MATRIX_NAMES: Record<CodingStyleType, Record<AIControlLevel, string
     navigator: 'Strategist',
     cartographer: 'Systems Architect',
   },
-  scientist: {
+  analyst: {
     explorer: 'Questioner',
-    navigator: 'Analyst',
-    cartographer: 'Research Lead',
+    navigator: 'Research Lead',
+    cartographer: 'Quality Sentinel',
   },
-  collaborator: {
-    explorer: 'Conversationalist',
-    navigator: 'Team Player',
-    cartographer: 'Facilitator',
+  conductor: {
+    explorer: 'Improviser',
+    navigator: 'Arranger',
+    cartographer: 'Maestro',
   },
   speedrunner: {
     explorer: 'Experimenter',
     navigator: 'Rapid Prototyper',
     cartographer: 'Velocity Expert',
   },
-  craftsman: {
-    explorer: 'Detail Lover',
-    navigator: 'Quality Crafter',
-    cartographer: 'Master Artisan',
+  trendsetter: {
+    explorer: 'Early Adopter',
+    navigator: 'Tech Radar',
+    cartographer: 'Innovation Lead',
   },
 };
 
@@ -192,44 +192,44 @@ export const MATRIX_METADATA: Record<
       growthPath: 'Share your planning techniques with others',
     },
   },
-  scientist: {
+  analyst: {
     explorer: {
       emoji: '🔎',
       description: 'You explore through curious questioning and open inquiry.',
       keyStrength: 'Curious mind and questioning attitude',
-      growthPath: 'Try challenging AI responses more often',
+      growthPath: 'Try challenging AI responses more systematically',
     },
     navigator: {
       emoji: '🧪',
-      description: 'You navigate through hypothesis and verification.',
-      keyStrength: 'Growing verification skills',
+      description: 'You navigate through hypothesis-driven investigation and verification.',
+      keyStrength: 'Balanced depth with practical verification',
       growthPath: 'Add systematic testing to your workflow',
     },
     cartographer: {
       emoji: '🔬',
-      description: 'You map every hypothesis systematically before proceeding.',
+      description: 'You leave no stone unturned — rigorous verification meets deep analysis.',
       keyStrength: 'Rigorous verification and error detection',
       growthPath: 'Help others develop critical thinking habits',
     },
   },
-  collaborator: {
+  conductor: {
     explorer: {
-      emoji: '👥',
-      description: 'You explore solutions through rich dialogue and conversation.',
-      keyStrength: 'Open communication style',
-      growthPath: 'Try directing conversations more actively',
+      emoji: '🎵',
+      description: 'You experiment with AI tools freely, discovering creative workflows.',
+      keyStrength: 'Creative tool exploration and improvisation',
+      growthPath: 'Build repeatable workflows from your discoveries',
     },
     navigator: {
-      emoji: '🤝',
-      description: 'You navigate through balanced, productive dialogue.',
-      keyStrength: 'Effective back-and-forth refinement',
-      growthPath: 'Focus on asking more probing questions',
+      emoji: '🎼',
+      description: 'You arrange AI tools into effective, coordinated workflows.',
+      keyStrength: 'Effective multi-tool coordination',
+      growthPath: 'Document your workflow patterns for team sharing',
     },
     cartographer: {
-      emoji: '🎭',
-      description: 'You facilitate and direct collaborative sessions masterfully.',
-      keyStrength: 'Masterful iterative refinement',
-      growthPath: 'Document your collaboration patterns for others',
+      emoji: '🎹',
+      description: 'You orchestrate AI tools with masterful precision and control.',
+      keyStrength: 'Masterful AI tool orchestration',
+      growthPath: 'Mentor others in advanced AI workflow techniques',
     },
   },
   speedrunner: {
@@ -252,24 +252,24 @@ export const MATRIX_METADATA: Record<
       growthPath: 'Teach efficient verification techniques to others',
     },
   },
-  craftsman: {
+  trendsetter: {
     explorer: {
-      emoji: '🎨',
-      description: 'You explore quality through attention to detail and aesthetics.',
-      keyStrength: 'High standards and attention to detail',
-      growthPath: 'Practice writing quality code without AI assistance',
+      emoji: '🌱',
+      description: 'You eagerly try new tools and approaches, staying curious about what is emerging.',
+      keyStrength: 'Early adoption and experimentation with new tech',
+      growthPath: 'Evaluate new tools more critically before adopting',
     },
     navigator: {
-      emoji: '🔧',
-      description: 'You navigate toward quality through active refinement.',
-      keyStrength: 'Active quality improvement process',
-      growthPath: 'Keep developing your manual coding skills',
+      emoji: '📡',
+      description: 'You track industry trends and selectively adopt what adds value.',
+      keyStrength: 'Informed technology radar with selective adoption',
+      growthPath: 'Share your technology insights with your team',
     },
     cartographer: {
-      emoji: '💎',
-      description: 'You craft with precision, using AI as an expert tool.',
-      keyStrength: 'Masterful quality control with AI assistance',
-      growthPath: 'Set quality benchmarks for your team',
+      emoji: '🚀',
+      description: 'You strategically lead innovation, charting paths through emerging technology.',
+      keyStrength: 'Strategic innovation leadership',
+      growthPath: 'Balance cutting-edge adoption with team readiness',
     },
   },
 };
