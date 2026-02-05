@@ -2,13 +2,9 @@
  * React Query hooks for Knowledge API
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   listKnowledge,
-  getKnowledge,
-  deleteKnowledge,
-  getKnowledgeStats,
-  getQualityMetrics,
   type KnowledgeListParams,
 } from '../api/client';
 
@@ -29,35 +25,3 @@ export function useKnowledgeList(params: KnowledgeListParams = {}) {
   });
 }
 
-export function useKnowledgeDetail(id: string) {
-  return useQuery({
-    queryKey: knowledgeKeys.detail(id),
-    queryFn: () => getKnowledge(id),
-    enabled: !!id,
-  });
-}
-
-export function useKnowledgeStats() {
-  return useQuery({
-    queryKey: knowledgeKeys.stats(),
-    queryFn: getKnowledgeStats,
-  });
-}
-
-export function useQualityMetrics() {
-  return useQuery({
-    queryKey: knowledgeKeys.metrics(),
-    queryFn: getQualityMetrics,
-  });
-}
-
-export function useDeleteKnowledge() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: deleteKnowledge,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: knowledgeKeys.all });
-    },
-  });
-}
