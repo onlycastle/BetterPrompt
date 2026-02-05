@@ -47,7 +47,7 @@ export interface SessionStats {
 /**
  * Supported session source types
  */
-export type SessionSourceType = 'claude-code' | 'cursor';
+export type SessionSourceType = 'claude-code' | 'cursor' | 'cursor-composer';
 
 /**
  * Parsed session ready for analysis
