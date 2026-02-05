@@ -495,7 +495,7 @@ export class CursorSource extends BaseSessionSource {
       const messages: CursorMessage[] = [];
       let metadata: CursorConversation['metadata'] | undefined;
 
-      for (const row of rows) {
+      for (const row of rows as Array<{ id: string; data: Buffer }>) {
         try {
           // Parse blob data
           const data = this.parseBlob(row.data) as ParsedBlobData | null;
