@@ -119,10 +119,12 @@ function computeWeekStats(sessions: ActivitySessionInput[]): WeekStats {
 }
 
 /**
- * Compute percentage delta, handling division by zero
+ * Compute percentage delta, handling division by zero.
+ * When previous is 0 but current is nonzero, returns a capped +999 to signal "new activity".
+ * When both are 0, returns 0 (no change).
  */
 function percentageDelta(current: number, previous: number): number {
-  if (previous === 0) return 0;
+  if (previous === 0) return current > 0 ? 999 : 0;
   return Math.round(((current - previous) / previous) * 100 * 10) / 10;
 }
 
@@ -335,16 +337,30 @@ export class WeeklyInsightGeneratorStage {
       }
     }
 
-    return Array.from(map.entries())
-      .map(([projectName, data]) => ({
-        projectName,
-        sessionCount: data.sessionCount,
-        totalMinutes: data.totalMinutes,
-        percentage: totalMinutes > 0
-          ? Math.round((data.totalMinutes / totalMinutes) * 100)
-          : 0,
-      }))
+    // Largest Remainder Method: ensures percentages sum to exactly 100%
+    const entries = Array.from(map.entries())
+      .map(([projectName, data]) => {
+        const exact = totalMinutes > 0 ? (data.totalMinutes / totalMinutes) * 100 : 0;
+        return { projectName, sessionCount: data.sessionCount, totalMinutes: data.totalMinutes, exact, floored: Math.floor(exact) };
+      })
       .sort((a, b) => b.sessionCount - a.sessionCount);
+
+    if (totalMinutes > 0) {
+      const flooredSum = entries.reduce((sum, e) => sum + e.floored, 0);
+      let remainder = 100 - flooredSum;
+
+      // Distribute remaining points to entries with largest fractional parts
+      const byRemainder = [...entries].sort((a, b) => (b.exact - b.floored) - (a.exact - a.floored));
+      for (const entry of byRemainder) {
+        if (remainder <= 0) break;
+        entry.floored += 1;
+        remainder--;
+      }
+    }
+
+    return entries.map(({ projectName, sessionCount, totalMinutes: mins, floored }) => ({
+      projectName, sessionCount, totalMinutes: mins, percentage: floored,
+    }));
   }
 
   private log(message: string): void {

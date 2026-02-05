@@ -432,60 +432,65 @@ export class AnalysisOrchestrator {
         })()
       : null;
 
-    if (this.phase2Workers.length > 0) {
-      this.log('Phase 2: Insight Generation...');
+    // Run Phase 2 workers, ProjectSummarizer, and WeeklyInsightGenerator
+    // all in a single Promise.all to prevent unhandled rejections.
+    // If any promise rejects, all are awaited and the error propagates cleanly.
+    const phase2WorkerPromise = this.phase2Workers.length > 0
+      ? (async () => {
+          this.log('Phase 2: Insight Generation...');
 
-      // All Phase 2 workers receive Phase1Output (context isolation)
-      const phase2Context: WorkerContext & { phase1Output?: Phase1Output } = {
-        ...baseContext,
-        phase1Output: phase1Results.dataExtractor.data,
-        // outputLanguage intentionally NOT passed - Phase 2 workers always use English
-      };
+          // All Phase 2 workers receive Phase1Output (context isolation)
+          const phase2Context: WorkerContext & { phase1Output?: Phase1Output } = {
+            ...baseContext,
+            phase1Output: phase1Results.dataExtractor.data,
+            // outputLanguage intentionally NOT passed - Phase 2 workers always use English
+          };
 
-      this.log(`Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasPhase1Output: ${!!phase2Context.phase1Output}`);
+          this.log(`Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasPhase1Output: ${!!phase2Context.phase1Output}`);
 
-      const phase2Start = Date.now();
-      const phase2WorkerCount = this.phase2Workers.length;
-      const phase2Results = await this.runPhase2(phase2Context, (workerName, workerIndex) => {
-        completedLLMStages++;
-        const isLast = workerIndex === phase2WorkerCount;
-        const message = isLast
-          ? `Insight generation complete (${workerIndex}/${phase2WorkerCount})`
-          : `Analyzing ${workerName}... (${workerIndex}/${phase2WorkerCount})`;
-        reportProgress('phase2', message);
-      });
-      this.log(`Phase 2 results keys: ${Object.keys(phase2Results).join(', ')}`);
+          const phase2Start = Date.now();
+          const phase2WorkerCount = this.phase2Workers.length;
+          const phase2Results = await this.runPhase2(phase2Context, (workerName, workerIndex) => {
+            completedLLMStages++;
+            const isLast = workerIndex === phase2WorkerCount;
+            const message = isLast
+              ? `Insight generation complete (${workerIndex}/${phase2WorkerCount})`
+              : `Analyzing ${workerName}... (${workerIndex}/${phase2WorkerCount})`;
+            reportProgress('phase2', message);
+          });
+          this.log(`Phase 2 results keys: ${Object.keys(phase2Results).join(', ')}`);
 
-      // Collect debug output and token usage in a single pass
-      for (const [workerName, result] of Object.entries(phase2Results)) {
-        if (result) {
-          this.collectDebugOutput(
-            `phase2_${workerName}`, workerName, phase2Start,
-            result.data, result.usage
-          );
-          if (result.usage) {
-            stageUsages.push({
-              stage: `${workerName} (Agent)`,
-              ...result.usage,
-            });
+          // Collect debug output and token usage in a single pass
+          for (const [workerName, result] of Object.entries(phase2Results)) {
+            if (result) {
+              this.collectDebugOutput(
+                `phase2_${workerName}`, workerName, phase2Start,
+                result.data, result.usage
+              );
+              if (result.usage) {
+                stageUsages.push({
+                  stage: `${workerName} (Agent)`,
+                  ...result.usage,
+                });
+              }
+            }
           }
-        }
-      }
 
-      agentOutputs = this.mergeAgentOutputs(phase2Results);
-      this.log(`Merged agentOutputs keys: ${Object.keys(agentOutputs).join(', ')}`);
-    } else {
-      this.log('Phase 2: Skipped (no workers registered)');
-    }
+          agentOutputs = this.mergeAgentOutputs(phase2Results);
+          this.log(`Merged agentOutputs keys: ${Object.keys(agentOutputs).join(', ')}`);
+        })()
+      : (async () => {
+          this.log('Phase 2: Skipped (no workers registered)');
+        })();
 
-    // Await ProjectSummarizer and WeeklyInsightGenerator results
-    // (may have already completed during Phase 2)
-    if (projectSummarizerPromise) {
-      projectSummarizerResult = await projectSummarizerPromise;
-    }
-    if (weeklyInsightPromise) {
-      weeklyInsightResult = await weeklyInsightPromise;
-    }
+    // Await all Phase 2 parallel tasks together to prevent unhandled rejections
+    const allPhase2Promises: Promise<unknown>[] = [phase2WorkerPromise];
+    if (projectSummarizerPromise) allPhase2Promises.push(projectSummarizerPromise);
+    if (weeklyInsightPromise) allPhase2Promises.push(weeklyInsightPromise);
+
+    const [, psResult, wiResult] = await Promise.all(allPhase2Promises);
+    projectSummarizerResult = (psResult as ProjectSummarizerResult | undefined) ?? null;
+    weeklyInsightResult = (wiResult as WeeklyInsightGeneratorResult | undefined) ?? null;
 
     // ─────────────────────────────────────────────────────────────────────
     // Phase 2.5: TypeClassifier only (StrengthGrowth REMOVED)

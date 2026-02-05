@@ -70,6 +70,7 @@ function formatDelta(value: number, isAbsolute = false): { text: string; classNa
     if (value < 0) return { text: `${value}`, className: styles.deltaDown };
     return { text: '0', className: styles.deltaFlat };
   }
+  if (value >= 999) return { text: 'New', className: styles.deltaUp };
   if (value > 0) return { text: `\u2191 ${value}%`, className: styles.deltaUp };
   if (value < 0) return { text: `\u2193 ${Math.abs(value)}%`, className: styles.deltaDown };
   return { text: '\u2014', className: styles.deltaFlat };
@@ -135,16 +136,17 @@ function ProjectBar({
 // ============================================================================
 
 export function WeeklyInsightsCard({ weeklyInsights }: WeeklyInsightsCardProps) {
+  // useMemo must be called unconditionally (Rules of Hooks)
+  const weekRangeLabel = useMemo(
+    () => weeklyInsights ? formatWeekRange(weeklyInsights.weekRange.start, weeklyInsights.weekRange.end) : '',
+    [weeklyInsights?.weekRange.start, weeklyInsights?.weekRange.end]
+  );
+
   // Hide entirely when no data
   if (!weeklyInsights) return null;
 
-  const { weekRange, stats, comparison, projects, narrative, highlights } = weeklyInsights;
+  const { stats, comparison, projects, narrative, highlights } = weeklyInsights;
   const hasComparison = comparison !== undefined;
-
-  const weekRangeLabel = useMemo(
-    () => formatWeekRange(weekRange.start, weekRange.end),
-    [weekRange.start, weekRange.end]
-  );
 
   return (
     <div className={styles.weeklyCard}>
