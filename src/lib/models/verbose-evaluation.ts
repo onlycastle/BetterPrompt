@@ -14,6 +14,7 @@ import { CodingStyleTypeSchema, AIControlLevelSchema } from './coding-style';
 import { ProductivityAnalysisDataSchema } from './productivity-data';
 import { AgentOutputsSchema } from './agent-outputs';
 import { SessionSummaryItemSchema } from './session-summary-data';
+import { WeeklyInsightsSchema } from './weekly-insights';
 // Import and re-export dimension schema from the isolated file
 import { DimensionNameEnumSchema, DIMENSION_NAMES, type DimensionNameEnum, type DimensionName } from './dimension-schema';
 export { DimensionNameEnumSchema, DIMENSION_NAMES, type DimensionNameEnum, type DimensionName };
@@ -1244,6 +1245,10 @@ export const VerboseEvaluationSchema = z.object({
   // Project summaries (LLM-generated 2-3 line summaries per project, from ProjectSummarizer)
   projectSummaries: z.array(ProjectSummarySchema).optional()
     .describe('LLM-generated 2-3 line summaries per project (from ProjectSummarizer stage)'),
+
+  // Weekly insights (deterministic stats + LLM narrative, from WeeklyInsightGenerator)
+  weeklyInsights: WeeklyInsightsSchema.optional()
+    .describe('This Week insights dashboard: stats, comparison, projects, narrative, highlights'),
 
   // Type result (same as before)
   primaryType: CodingStyleTypeSchema,
