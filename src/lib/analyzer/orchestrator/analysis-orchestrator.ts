@@ -1,12 +1,13 @@
 /**
  * Analysis Orchestrator - Main orchestrator for the analysis pipeline
  *
- * Coordinates 6 phases of analysis (8-9 LLM calls total):
+ * Coordinates 6 phases of analysis (9-10 LLM calls total):
  * - Phase 1: DataExtractor (deterministic, no LLM)
  * - Phase 1.5: SessionSummarizer (1 LLM call — 1-line summaries for analyzed sessions)
  * - Phase 2: 4 insight workers in parallel (4 LLM calls)
  *            ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency
  *            Each worker outputs domain-specific strengths/growthAreas
+ *            + ProjectSummarizer in parallel (1 LLM call — 2-3 line project summaries)
  * - Phase 2.5: TypeClassifier only (1 LLM call)
  * - Phase 2.8: EvidenceVerifier (1 LLM call)
  * - Phase 3: ContentWriter (1 LLM call, always English)
@@ -40,6 +41,7 @@ import type { DimensionResourceMatch } from '../../models/verbose-evaluation';
 import { matchKnowledgeResources } from '../stages/knowledge-resource-matcher';
 import { EvidenceVerifierStage, type EvidenceVerifierResult } from '../stages/evidence-verifier';
 import { SessionSummarizerStage, type SessionSummarizerResult } from '../stages/session-summarizer';
+import { ProjectSummarizerStage, type ProjectSummarizerResult } from '../stages/project-summarizer';
 import type {
   WorkerResult,
   WorkerContext,
@@ -119,6 +121,7 @@ export class AnalysisOrchestrator {
   private contentWriter: ContentWriterStage;
   private translator: TranslatorStage;
   private sessionSummarizer: SessionSummarizerStage;
+  private projectSummarizer: ProjectSummarizerStage;
   private evidenceVerifier: EvidenceVerifierStage;
   private contentGateway: ContentGateway;
   private debugOutputs: DebugPhaseOutput[] = [];
@@ -155,6 +158,15 @@ export class AnalysisOrchestrator {
       model: this.config.model,
       temperature: this.config.temperature,
       maxRetries: this.config.maxRetries,
+    });
+
+    // Initialize project summarizer (runs parallel with Phase 2 — project-level summaries)
+    this.projectSummarizer = new ProjectSummarizerStage({
+      apiKey: this.config.geminiApiKey,
+      model: this.config.model,
+      temperature: this.config.temperature,
+      maxRetries: this.config.maxRetries,
+      verbose: this.config.verbose,
     });
 
     // Initialize evidence verifier (Phase 2.8 - evidence quality verification)
@@ -227,18 +239,19 @@ export class AnalysisOrchestrator {
     metrics: SessionMetrics,
     tier: Tier,
     onProgress?: ProgressCallback,
-    options?: { activitySessions?: Array<{ sessionId: string; projectName: string; startTime: string; durationMinutes: number; messageCount: number; summary: string }> }
+    options?: { activitySessions?: Array<{ sessionId: string; projectName: string; startTime: string; durationMinutes: number; messageCount: number; summary: string }>; noTranslate?: boolean }
   ): Promise<AnalysisResult> {
     const startTime = Date.now();
     const stageUsages: StageTokenUsage[] = [];
     this.debugOutputs = [];
 
-    // Progress tracking: 9 LLM stages total (1 Phase1.5 + 4 Phase2 + 1 Phase2.5 + 1 Phase2.8 + 1 Phase3 + 1 Phase4)
+    // Progress tracking: 10 LLM stages total (1 Phase1.5 + 4 Phase2 + 1 ProjectSummarizer + 1 Phase2.5 + 1 Phase2.8 + 1 Phase3 + 1 Phase4)
     // Phase 1.5: SessionSummarizer generates 1-line summaries
     // Phase 2: ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency (4 workers)
+    //          + ProjectSummarizer (runs in parallel with Phase 2)
     // Phase 2.8: Evidence Verifier validates evidence relevance
     // Phase 4: Translator is conditional (only for non-English users)
-    const TOTAL_LLM_STAGES = 9;
+    const TOTAL_LLM_STAGES = 10;
     const PROGRESS_START = 40;
     const PROGRESS_RANGE = 49; // 40% → 89%
     const STEP = Math.floor(PROGRESS_RANGE / TOTAL_LLM_STAGES); // 6 points per stage
@@ -326,11 +339,47 @@ export class AnalysisOrchestrator {
     // All workers run for all users. Tier-based filtering happens at ContentGateway.
     // NOTE: All Phase 2 workers operate in ENGLISH. Language translation
     // happens only in Phase 3 (Content Writer) based on user's quotes.
+    //
+    // ProjectSummarizer runs IN PARALLEL with Phase 2 workers.
+    // It only needs activitySessions (independent of Phase 1 output).
     // ─────────────────────────────────────────────────────────────────────
     let agentOutputs: AgentOutputs = createEmptyAgentOutputs();
+    let projectSummarizerResult: ProjectSummarizerResult | null = null;
 
     this.log(`Phase 2 workers registered: ${this.phase2Workers.length}`);
     this.log(`Worker names: ${this.phase2Workers.map(w => w.name).join(', ')}`);
+
+    // Start ProjectSummarizer in parallel with Phase 2 workers
+    const projectSummarizerPromise = options?.activitySessions && options.activitySessions.length > 0
+      ? (async () => {
+          this.log('ProjectSummarizer: Starting (parallel with Phase 2)...');
+          const psStart = Date.now();
+          const psResult = await this.projectSummarizer.summarize(
+            options.activitySessions!.map(s => ({
+              sessionId: s.sessionId,
+              projectName: s.projectName,
+              summary: s.summary,
+            }))
+          );
+
+          this.collectDebugOutput(
+            'phase2_ProjectSummarizer', 'ProjectSummarizer', psStart,
+            psResult.data, psResult.usage
+          );
+
+          if (psResult.usage.totalTokens > 0) {
+            stageUsages.push({
+              stage: 'ProjectSummarizer (Phase 2)',
+              ...psResult.usage,
+            });
+          }
+
+          completedLLMStages++;
+          reportProgress('phase2_projectSummarizer', 'Project summaries generated');
+          this.log(`ProjectSummarizer: Generated ${psResult.data.length} project summaries`);
+          return psResult;
+        })()
+      : null;
 
     if (this.phase2Workers.length > 0) {
       this.log('Phase 2: Insight Generation...');
@@ -376,6 +425,11 @@ export class AnalysisOrchestrator {
       this.log(`Merged agentOutputs keys: ${Object.keys(agentOutputs).join(', ')}`);
     } else {
       this.log('Phase 2: Skipped (no workers registered)');
+    }
+
+    // Await ProjectSummarizer result (may have already completed during Phase 2)
+    if (projectSummarizerPromise) {
+      projectSummarizerResult = await projectSummarizerPromise;
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -539,7 +593,13 @@ export class AnalysisOrchestrator {
     // Hoist translator data to merge AFTER assembleEvaluation (fixes translation overwrite bug)
     let translatorData: TranslatorOutput | null = null;
 
-    if (languageResult.primary !== 'en') {
+    if (options?.noTranslate) {
+      // --no-translate flag: skip Phase 4 regardless of detected language
+      completedLLMStages++;
+      reportProgress('phase4_skipped', 'Translation skipped (--no-translate)');
+      this.log('Phase 4: Skipped (--no-translate flag)');
+      console.log(`[PHASE:LANG] Phase 4 skipped by --no-translate flag (detected=${languageResult.primary})`);
+    } else if (languageResult.primary !== 'en') {
       this.log(`Phase 4: Translation to ${languageResult.primary}...`);
       const phase4Start = Date.now();
       const translatorResult = await this.translator.translate(
@@ -624,6 +684,7 @@ export class AnalysisOrchestrator {
       analyzedSessions,
       sessionSummaries: summaryResult.data.summaries,
       activitySessions: options?.activitySessions,
+      projectSummaries: projectSummarizerResult?.data,
       ...assembledData,
       agentOutputs: agentOutputs,
       // Propagate translated agent insights for frontend hybrid fallback pattern

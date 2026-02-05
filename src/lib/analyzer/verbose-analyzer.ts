@@ -195,7 +195,7 @@ export class VerboseAnalyzer {
   async analyzeVerbose(
     sessions: ParsedSession[],
     metrics: SessionMetrics,
-    options: { tier?: Tier; onProgress?: ProgressCallback; activitySessions?: Array<{ sessionId: string; projectName: string; startTime: string; durationMinutes: number; messageCount: number; summary: string }> } = {}
+    options: { tier?: Tier; onProgress?: ProgressCallback; activitySessions?: Array<{ sessionId: string; projectName: string; startTime: string; durationMinutes: number; messageCount: number; summary: string }>; noTranslate?: boolean } = {}
   ): Promise<AnalysisResult> {
     if (sessions.length === 0) {
       throw new VerboseAnalysisError(
@@ -209,6 +209,7 @@ export class VerboseAnalyzer {
     // Delegate to orchestrator - it handles everything
     return await this.orchestrator.analyze(sessions, metrics, tier, options.onProgress, {
       activitySessions: options.activitySessions,
+      noTranslate: options.noTranslate,
     });
   }
 }

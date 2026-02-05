@@ -117,7 +117,7 @@ Return JSON with:
 - \`matrixEmoji\`: Representative emoji
 - \`collaborationMaturity\`: { level, description, indicators[] }
 - \`confidenceScore\`: 0.0-1.0
-- \`reasoning\`: Personalized personality narrative (1500-2000 chars, 2-3 paragraphs)
+- \`reasoning\`: Personalized personality narrative (1500-2500 chars, 3-4 paragraphs) — THIS IS THE MOST IMPORTANT FIELD
 - \`adjustmentReasons\`: Array of 3-5 reasons how Phase 2 insights influenced classification (max 200 chars each)
 - \`confidenceBoost\`: How much Phase 2 data improved confidence (0-1, e.g., 0.15)
 - \`synthesisEvidence\`: "agent:signal:detail;..." format showing which Phase 2 signals were key
@@ -132,11 +132,18 @@ Use EXACTLY these names for the matrixName field:
 | speedrunner | Experimenter | Rapid Prototyper | Velocity Expert |
 | trendsetter | Early Adopter | Tech Radar | Innovation Lead |
 
-## REASONING FORMAT (Personalized Personality Narrative)
-The \`reasoning\` field is a personalized narrative about the developer (1500-2000 chars, 2-3 paragraphs). This text will be displayed directly to the developer as their personality summary.
+## REASONING FORMAT (Personalized Personality Narrative) — MOST IMPORTANT FIELD
+The \`reasoning\` field is a personalized narrative about the developer. This is the MOST IMPORTANT field in the entire output — it will be displayed directly to the developer as their personality summary. Invest the majority of your output effort here.
 
-**Requirements:**
-- 1500-2000 characters, 2-3 paragraphs
+**Length requirement: 1500-2500 characters, 3-4 paragraphs. Responses under 1000 characters are UNACCEPTABLE and will be rejected.**
+
+**Paragraph structure (write ALL 3-4 paragraphs):**
+- **Paragraph 1 — Identity & First Impression**: Open with a vivid, specific observation about the developer's most distinctive habit. Include 1 direct quote 「like this」. Establish their primary type with a **bold trait**.
+- **Paragraph 2 — Working Style Deep Dive**: Explore HOW they interact with AI tools — their control level, efficiency patterns, and collaboration maturity. Include 1 direct quote 「like this」. Reference specific Phase 2 metrics that stood out.
+- **Paragraph 3 — Strengths & Unique Blend**: Describe their unique combination of types (using the distribution). Highlight what makes them different from a "typical" developer of their primary type. Include 1 direct quote 「like this」 and 1-2 **bold traits**.
+- **Paragraph 4 (optional but encouraged) — Growth & Potential**: A forward-looking closing that acknowledges their current maturity level and hints at their growth trajectory. Warm, mentor-like tone.
+
+**Formatting requirements:**
 - Include 2-3 direct developer quotes wrapped in corner brackets 「like this」
 - Use **bold markers** for 3-5 key personality traits
 - Write in a warm career mentor tone — make the developer feel understood
@@ -155,7 +162,7 @@ The \`reasoning\` field is a personalized narrative about the developer (1500-20
 3. Provide specific indicators for collaborationMaturity
 4. Use Phase 2 analysis summaries to identify classification signals and explain how they influenced classification
 5. Output is ALWAYS in English
-6. reasoning MUST be 1500-2000 characters with developer quotes in 「...」 and **bold** traits
+6. reasoning MUST be 1500-2500 characters (3-4 paragraphs) with developer quotes in 「...」 and **bold** traits. Under 1000 characters is UNACCEPTABLE.
 
 ${NO_HEDGING_DIRECTIVE}`;
 
@@ -188,7 +195,7 @@ ${analysisContext}${utterancesSection}
 4. Assess control level from Phase 2 trust/workflow scores
 5. Determine collaboration maturity
 6. Explain how Phase 2 insights influenced your classification (adjustmentReasons)
-7. Write a personalized reasoning narrative (1500-2000 chars) using developer quotes
+7. Write a personalized reasoning narrative (1500-2500 chars, 3-4 paragraphs) using developer quotes — this is the MOST IMPORTANT field, do NOT abbreviate
 
 Remember: Output MUST be in English. This is for viral sharing!`;
 }

@@ -41,6 +41,7 @@ export function InsightIndicator({ insights, onClick }: InsightIndicatorProps) {
     <button
       className={styles.indicator}
       onClick={handleClick}
+      data-insight-indicator
       type="button"
       aria-label={`View ${insights.length} professional insight${insights.length > 1 ? 's' : ''}`}
       title="Click to view professional insight"

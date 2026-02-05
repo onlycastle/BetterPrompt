@@ -162,6 +162,12 @@ export const TranslatorOutputSchema = z.object({
     multitasking: TranslatedAgentInsightEntrySchema.optional(),
   }).optional().describe('Translated Phase 2 worker insights — v3.1 uses thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency'),
 
+  /** Translated project summaries (Phase 2 ProjectSummarizer output) */
+  projectSummaries: z.array(z.object({
+    projectName: z.string().describe('Keep project name in English'),
+    summaryLines: z.array(z.string()).describe('Translated summary lines'),
+  })).optional().describe('Translated project summaries — keep project names in English'),
+
   /** Translated premium section text fields */
   toolUsageDeepDive: z.string().optional()
     .describe('Translated tool usage deep dive narrative'),

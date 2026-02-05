@@ -330,9 +330,16 @@ async function performDeviceFlowAuth(): Promise<string> {
 }
 
 /**
+ * Options for the analysis flow
+ */
+interface RunAnalysisOptions {
+  noTranslate?: boolean;
+}
+
+/**
  * Main analysis flow - Simplified 3-step UX
  */
-async function runAnalysis(): Promise<void> {
+async function runAnalysis(options: RunAnalysisOptions = {}): Promise<void> {
   // Step 1: Welcome banner with Chippy mascot
   console.log(generateWelcomeBanner());
 
@@ -476,7 +483,7 @@ async function runAnalysis(): Promise<void> {
   try {
     const result = await uploadForAnalysis(filteredResult, accessToken, (stage, progress, message) => {
       progressDisplay.update(stage, progress, message);
-    });
+    }, { noTranslate: options.noTranslate });
     progressDisplay.succeed('Analysis complete!');
 
     // Step 5: Results with celebration
@@ -530,11 +537,16 @@ async function main(): Promise<void> {
       console.log('  status       Check your login status');
       console.log('  help         Show this help message');
       console.log('');
+      console.log(pc.bold('Options:'));
+      console.log('  --no-translate   Skip translation (Phase 4), keep results in English');
+      console.log('');
       break;
 
-    default:
-      await runAnalysis();
+    default: {
+      const noTranslate = process.argv.includes('--no-translate');
+      await runAnalysis({ noTranslate });
       break;
+    }
   }
 }
 

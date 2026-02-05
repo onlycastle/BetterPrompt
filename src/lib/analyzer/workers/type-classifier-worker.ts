@@ -61,7 +61,7 @@ const TypeClassifierLLMSchema = z.object({
     indicators: z.array(z.string().max(200)),
   }).optional(),
   confidenceScore: z.number().min(0).max(1),
-  reasoning: z.string().max(2500),
+  reasoning: z.string().min(800).max(3000),
   adjustmentReasons: z.array(z.string().max(3000)).max(5).optional(),
   confidenceBoost: z.number().min(0).max(1).optional(),
   synthesisEvidence: z.string().max(1000).optional(),

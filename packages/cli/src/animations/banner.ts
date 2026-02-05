@@ -42,7 +42,7 @@ export function generateWelcomeBanner(): string {
     lines.push('');
 
     // Tagline
-    lines.push(pc.dim('    Discover your AI collaboration personality'));
+    lines.push(pc.dim('    Review your patterns. Ship better.'));
     lines.push('');
   } catch {
     // Fallback for environments where figlet fails
@@ -51,7 +51,7 @@ export function generateWelcomeBanner(): string {
     lines.push(pc.bold(pc.cyan('  ║        ') + pc.magenta('NO-AI-SLOP') + pc.cyan('                  ║')));
     lines.push(pc.bold(pc.cyan('  ╚═══════════════════════════════════════╝')));
     lines.push('');
-    lines.push(pc.dim('  Discover your AI collaboration personality'));
+    lines.push(pc.dim('  Review your patterns. Ship better.'));
     lines.push('');
   }
 
@@ -62,7 +62,7 @@ export function generateWelcomeBanner(): string {
  * Generate a compact header (for non-welcome screens)
  */
 export function generateCompactHeader(): string {
-  return pc.bold(pc.cyan('🚀 no-ai-slop')) + pc.dim(' - AI Collaboration Style Analyzer');
+  return pc.bold(pc.cyan('🚀 no-ai-slop')) + pc.dim(' - Review your patterns. Ship better.');
 }
 
 /**

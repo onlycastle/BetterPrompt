@@ -4,7 +4,9 @@
  * Shows engaging, detailed progress messages during analysis
  * to convey the depth and thoroughness of the analysis process.
  *
- * Makes users feel like something substantial is happening behind the scenes.
+ * Uses client-side animation smoothing to decouple server-sent
+ * target progress from the displayed progress, preventing jumps
+ * and backward regressions.
  */
 
 import pc from 'picocolors';
@@ -15,6 +17,11 @@ import {
   getAnimationFrame,
   type ChippyExpression,
 } from './animations/index.js';
+
+/** Animation smoothing constants */
+const ANIMATION_INTERVAL = 200; // ms per tick
+const NORMAL_STEP = 1; // % per tick when gap <= 20
+const FAST_STEP = 2; // % per tick when gap > 20
 
 /**
  * Analysis stages with their display configurations
@@ -56,12 +63,21 @@ const STAGE_CONFIGS: Record<string, StageConfig> = {
 
 /**
  * ProgressDisplay class for rich progress visualization
- * Displays server-sent progress messages without client-side manipulation
+ *
+ * Decouples targetProgress (from SSE events) from displayedProgress
+ * (rendered to terminal). An animation timer smoothly advances the
+ * display toward the target, preventing jumps and backward regression.
  */
 export class ProgressDisplay {
   private spinner: Ora;
   private startTime: number;
   private tick: number;
+
+  private targetProgress: number;
+  private displayedProgress: number;
+  private currentStage: string;
+  private currentMessage: string;
+  private animationTimer: ReturnType<typeof setInterval> | null;
 
   constructor() {
     this.spinner = ora({
@@ -70,6 +86,12 @@ export class ProgressDisplay {
     });
     this.startTime = Date.now();
     this.tick = 0;
+
+    this.targetProgress = 0;
+    this.displayedProgress = 0;
+    this.currentStage = 'preparing';
+    this.currentMessage = 'Initializing analysis...';
+    this.animationTimer = null;
   }
 
   /**
@@ -78,27 +100,68 @@ export class ProgressDisplay {
   start(): void {
     this.startTime = Date.now();
     this.spinner.start();
+
+    this.animationTimer = setInterval(() => {
+      this.animationTick();
+    }, ANIMATION_INTERVAL);
+    this.animationTimer.unref();
   }
 
   /**
-   * Update progress with server-sent stage/message
+   * Update target progress from server-sent stage/message.
+   * The animation timer handles actual rendering.
    */
   update(stage: string, progress: number, message: string): void {
+    // Monotonic: never allow target to go backward
+    this.targetProgress = Math.max(this.targetProgress, progress);
+    this.currentStage = stage;
+    this.currentMessage = message;
+
+    // Snap to 100% immediately when complete
+    if (progress >= 100) {
+      this.displayedProgress = 100;
+      this.render();
+    }
+  }
+
+  /**
+   * Animation tick called every ANIMATION_INTERVAL ms.
+   * Advances displayedProgress toward targetProgress and re-renders.
+   */
+  private animationTick(): void {
     this.tick++;
-    const config = STAGE_CONFIGS[stage] || STAGE_CONFIGS.analyzing;
+
+    const gap = this.targetProgress - this.displayedProgress;
+    if (gap > 0) {
+      const step = gap > 20 ? FAST_STEP : NORMAL_STEP;
+      this.displayedProgress = Math.min(
+        this.displayedProgress + step,
+        this.targetProgress,
+      );
+    }
+
+    this.render();
+  }
+
+  /**
+   * Render the current state to the terminal.
+   * Uses displayedProgress, currentStage, and currentMessage.
+   */
+  private render(): void {
+    const config = STAGE_CONFIGS[this.currentStage] || STAGE_CONFIGS.analyzing;
     const elapsed = this.formatElapsed();
-    const progressBar = this.renderProgressBar(progress);
+    const progressBar = this.renderProgressBar(this.displayedProgress);
 
     // Get Chippy expression based on stage
     const expression: ChippyExpression =
-      stage === 'complete' ? 'excited' : getAnimationFrame(THINKING_FRAMES, this.tick);
+      this.currentStage === 'complete' ? 'excited' : getAnimationFrame(THINKING_FRAMES, this.tick);
 
     // Get 3-line chip character with pixel dust animation
     const chipLines = getChipCharacter(expression, this.tick);
 
     // Main status line with server message (icon only if present)
     const iconPart = config.icon ? `${config.icon} ` : '';
-    const mainLine = `${iconPart}${config.color(message)}`;
+    const mainLine = `${iconPart}${config.color(this.currentMessage)}`;
 
     // Progress bar line with elapsed time
     const progressLine = `${progressBar} ${pc.dim(elapsed)}`;
@@ -137,9 +200,20 @@ export class ProgressDisplay {
   }
 
   /**
+   * Clear the animation timer
+   */
+  private clearAnimationTimer(): void {
+    if (this.animationTimer !== null) {
+      clearInterval(this.animationTimer);
+      this.animationTimer = null;
+    }
+  }
+
+  /**
    * Mark as succeeded
    */
   succeed(message: string = 'Analysis complete!'): void {
+    this.clearAnimationTimer();
     const elapsed = this.formatElapsed();
     this.spinner.succeed(`${pc.green(message)} ${pc.dim(`(${elapsed})`)}`);
   }
@@ -148,6 +222,7 @@ export class ProgressDisplay {
    * Mark as failed
    */
   fail(message: string = 'Analysis failed'): void {
+    this.clearAnimationTimer();
     this.spinner.fail(pc.red(message));
   }
 
@@ -155,6 +230,7 @@ export class ProgressDisplay {
    * Stop the spinner without success/fail
    */
   stop(): void {
+    this.clearAnimationTimer();
     this.spinner.stop();
   }
 }

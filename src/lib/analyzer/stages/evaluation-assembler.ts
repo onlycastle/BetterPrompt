@@ -842,6 +842,9 @@ export function mergeTranslatedFields(
     englishResponse.translatedAgentInsights = translated.translatedAgentInsights;
   }
 
+  // Project summaries
+  mergeProjectSummaries(englishResponse, translated);
+
   // Dimension insights
   mergeDimensionInsights(englishResponse, translated);
 
@@ -1067,6 +1070,29 @@ function mergeActionablePractices(
         (o: any) => o.patternId === to.patternId
       );
       if (eo && to.tip) eo.tip = to.tip;
+    }
+  }
+}
+
+function mergeProjectSummaries(
+  englishResponse: Record<string, unknown>,
+  translated: TranslatorOutput
+): void {
+  if (!translated.projectSummaries || !Array.isArray(englishResponse.projectSummaries)) return;
+
+  const englishProjects = englishResponse.projectSummaries as Array<{
+    projectName: string;
+    summaryLines: string[];
+    sessionCount: number;
+  }>;
+
+  for (const tp of translated.projectSummaries) {
+    const ep = englishProjects.find(p => p.projectName === tp.projectName);
+    if (!ep) continue;
+
+    // Overlay translated summaryLines, keeping sessionCount from English
+    if (tp.summaryLines && tp.summaryLines.length > 0) {
+      ep.summaryLines = tp.summaryLines;
     }
   }
 }

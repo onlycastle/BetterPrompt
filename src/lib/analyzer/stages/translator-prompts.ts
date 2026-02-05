@@ -126,7 +126,10 @@ Return a TranslatorOutput JSON object containing ONLY the translated text fields
 
 9. **actionablePractices** (if present): Translate feedback, tip, summary. Keep patternId in English.
 
-10. **Premium section narratives** (if present): Translate toolUsageDeepDive, tokenEfficiency, growthRoadmap, comparativeInsights, sessionTrends text.
+10. **projectSummaries** (if present): Translate each project's summaryLines to ${langName}.
+    Keep project names and technical terms in English.
+
+11. **Premium section narratives** (if present): Translate toolUsageDeepDive, tokenEfficiency, growthRoadmap, comparativeInsights, sessionTrends text.
 
 ## Critical Reminders
 - Evidence quotes are the developer's actual words — NEVER translate them
