@@ -67,7 +67,7 @@ function trackShare(baseUrl: string, reportId: string | undefined, platform: str
 export function ShareSection({
   typeMeta,
   reportId,
-  baseUrl = 'https://www.nomoreaislop.xyz',
+  baseUrl = 'https://www.nomoreaislop.app',
 }: ShareSectionProps) {
   const [copied, setCopied] = useState(false);
   const shareUrl = reportId ? `${baseUrl}/r/${reportId}` : '';

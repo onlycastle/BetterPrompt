@@ -73,7 +73,7 @@ function generateOGImageSVG(typeResult: TypeResult): string {
   <!-- CTA -->
   <text x="600" y="550" text-anchor="middle"
         font-family="monospace" font-size="24" fill="#00d4ff">
-    www.nomoreaislop.xyz
+    www.nomoreaislop.app
   </text>
 
   <!-- Scanlines effect -->

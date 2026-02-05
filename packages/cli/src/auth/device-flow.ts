@@ -5,7 +5,7 @@
  * for CLI applications.
  */
 
-const API_BASE = 'https://www.nomoreaislop.xyz';
+const API_BASE = 'https://www.nomoreaislop.app';
 
 export interface DeviceFlowResponse {
   deviceCode: string;

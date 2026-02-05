@@ -95,7 +95,7 @@ export async function POST() {
     });
 
     // Return RFC 8628 compliant response
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.nomoreaislop.xyz';
+    const baseUrl = process.env.NOSLOP_BASE_URL || 'https://www.nomoreaislop.app';
     const verificationUri = `${baseUrl}/auth/device`;
     const verificationUriComplete = `${verificationUri}?code=${userCode}`;
 

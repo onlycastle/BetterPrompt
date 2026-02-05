@@ -17,8 +17,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173', // Vite dev server
-  'https://www.nomoreaislop.xyz',
-  'https://nomoreaislop.xyz',
+  'https://www.nomoreaislop.app',
+  'https://nomoreaislop.app',
   'app://-', // Electron app protocol
 ];
 

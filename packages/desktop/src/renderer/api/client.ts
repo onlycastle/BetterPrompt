@@ -19,7 +19,7 @@ import type {
 } from './types';
 
 // Use environment variable or fallback to production URL
-const API_BASE = import.meta.env.VITE_APP_URL || 'https://www.nomoreaislop.xyz';
+const API_BASE = import.meta.env.VITE_APP_URL || 'https://www.nomoreaislop.app';
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   console.log('[API Client] Fetching:', url);
