@@ -113,7 +113,7 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
       systemPrompt: TYPE_CLASSIFIER_SYSTEM_PROMPT,
       userPrompt,
       responseSchema: TypeClassifierLLMSchema,
-      maxOutputTokens: 16384,
+      maxOutputTokens: 65536,
     });
 
     const dist = result.data.distribution;

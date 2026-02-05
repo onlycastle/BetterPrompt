@@ -88,7 +88,7 @@ export class SessionOutcomeWorker extends BaseWorker<SessionOutcomeOutput> {
       systemPrompt: SESSION_OUTCOME_SYSTEM_PROMPT,
       userPrompt,
       responseSchema: SessionOutcomeLLMOutputSchema,
-      maxOutputTokens: 32768,
+      maxOutputTokens: 65536,
     });
 
     const parsedOutput = parseSessionOutcomeLLMOutput(result.data);

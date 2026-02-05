@@ -77,7 +77,7 @@ export class ThinkingQualityWorker extends BaseWorker<ThinkingQualityOutput> {
       systemPrompt: THINKING_QUALITY_SYSTEM_PROMPT,
       userPrompt,
       responseSchema: ThinkingQualityLLMOutputSchema,
-      maxOutputTokens: 32768,
+      maxOutputTokens: 65536,
     });
 
     const parsedOutput = parseThinkingQualityLLMOutput(result.data);

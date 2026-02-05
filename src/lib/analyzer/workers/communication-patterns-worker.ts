@@ -73,7 +73,7 @@ export class CommunicationPatternsWorker extends BaseWorker<CommunicationPattern
       systemPrompt: COMMUNICATION_PATTERNS_SYSTEM_PROMPT,
       userPrompt,
       responseSchema: CommunicationPatternsLLMOutputSchema,
-      maxOutputTokens: 16384,
+      maxOutputTokens: 65536,
     });
 
     const parsedOutput = parseCommunicationPatternsLLMOutput(result.data);

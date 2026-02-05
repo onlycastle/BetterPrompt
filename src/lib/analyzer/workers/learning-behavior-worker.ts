@@ -74,7 +74,7 @@ export class LearningBehaviorWorker extends BaseWorker<LearningBehaviorOutput> {
       systemPrompt: LEARNING_BEHAVIOR_SYSTEM_PROMPT,
       userPrompt,
       responseSchema: LearningBehaviorLLMOutputSchema,
-      maxOutputTokens: 16384,
+      maxOutputTokens: 65536,
     });
 
     const parsedOutput = parseLearningBehaviorLLMOutput(result.data);

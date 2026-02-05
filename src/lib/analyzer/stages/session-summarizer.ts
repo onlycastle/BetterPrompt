@@ -59,7 +59,7 @@ const DEFAULT_CONFIG: Required<Omit<SessionSummarizerConfig, 'apiKey'>> = {
   model: 'gemini-3-flash-preview',
   temperature: 1.0,
   maxRetries: 2,
-  maxOutputTokens: 4096,
+  maxOutputTokens: 65536,
 };
 
 // ============================================================================

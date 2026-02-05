@@ -81,7 +81,7 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
       systemPrompt,
       userPrompt,
       responseSchema: ContextEfficiencyLLMOutputSchema,
-      maxOutputTokens: 8192,
+      maxOutputTokens: 65536,
     });
 
     const parsedOutput = parseContextEfficiencyLLMOutput(result.data);

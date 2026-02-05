@@ -285,7 +285,7 @@ export class EvidenceVerifierStage {
       systemPrompt: EVIDENCE_VERIFIER_SYSTEM_PROMPT,
       userPrompt: buildEvidenceVerifierUserPrompt(pairs),
       responseSchema: EvidenceVerificationResponseSchema,
-      maxOutputTokens: 8192,
+      maxOutputTokens: 65536,
     });
 
     const results = this.convertToVerificationResults(response.data.results);
