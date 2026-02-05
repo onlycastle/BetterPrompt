@@ -109,12 +109,9 @@ export {
 } from './coding-style';
 
 // ============================================================================
-// Temporal Analysis Types (REDESIGNED)
+// Temporal Analysis Types
 // ============================================================================
 export {
-  // Legacy schemas (deprecated, kept for backward compatibility)
-  TemporalAnalysisOutputSchema,
-  type TemporalAnalysisOutput,
   type HourlyPattern,
   type PeakHoursInfo,
   type CautionHoursInfo,
@@ -123,14 +120,6 @@ export {
   type QualitativeInsightType,
   type QualitativeInsight,
   type TemporalAnalysis,
-  parseHourlyPatternsData,
-  parsePeakHoursData,
-  parseCautionHoursData,
-  parseFatiguePatternsData,
-  parseQualitativeInsightsData,
-  parseTemporalAnalysisOutput,
-  createDefaultTemporalAnalysisOutput,
-  // New schemas (recommended)
   TemporalAnalysisResultSchema,
   type TemporalAnalysisResult,
   TemporalInsightsOutputSchema,

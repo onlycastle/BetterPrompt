@@ -1,0 +1,272 @@
+/**
+ * WeeklyInsightsCard Styles
+ *
+ * "This Week" insights dashboard component for the Activity tab.
+ * Follows the Notebook Sketch design system with monospace typography
+ * and graph-paper aesthetic.
+ *
+ * Layout:
+ * - Header with week date range
+ * - 4 stat cards with delta badges
+ * - LLM-generated narrative block
+ * - Project focus horizontal bars
+ * - Highlights bullet list
+ */
+
+/* ============================================================================
+   Card Container
+   ============================================================================ */
+
+.weeklyCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-lg);
+  position: relative;
+}
+
+/* ============================================================================
+   Header
+   ============================================================================ */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.title {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  margin: 0;
+  letter-spacing: var(--tracking-tight);
+}
+
+.dateRange {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+}
+
+.firstWeekBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-cyan);
+  background: color-mix(in srgb, var(--sketch-cyan) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sketch-cyan) 30%, transparent);
+  border-radius: var(--radius-full);
+  letter-spacing: 0.04em;
+}
+
+/* ============================================================================
+   Stats Bar (4 metric cards)
+   ============================================================================ */
+
+.statsBar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  background: var(--surface-2);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.statCard:hover {
+  border-color: var(--sketch-cyan);
+  box-shadow: var(--shadow-sm);
+}
+
+.statValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  line-height: 1;
+}
+
+.statLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Delta badges */
+.delta {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+}
+
+.deltaUp {
+  composes: delta;
+  color: var(--sketch-green);
+}
+
+.deltaDown {
+  composes: delta;
+  color: var(--sketch-red, #ef4444);
+}
+
+.deltaFlat {
+  composes: delta;
+  color: var(--ink-muted);
+}
+
+/* ============================================================================
+   Narrative Block
+   ============================================================================ */
+
+.narrative {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--ink-secondary);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--surface-2);
+  border-left: 3px solid var(--sketch-cyan);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+/* ============================================================================
+   Project Focus Chart (horizontal bars)
+   ============================================================================ */
+
+.projectsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.projectRow {
+  display: grid;
+  grid-template-columns: 140px 1fr auto;
+  gap: var(--space-md);
+  align-items: center;
+}
+
+.projectName {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.barContainer {
+  height: 12px;
+  background: var(--surface-3, #f3f4f6);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--sketch-cyan), var(--sketch-green));
+  border-radius: var(--radius-sm);
+  transition: width var(--transition-normal);
+}
+
+.projectMeta {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+/* ============================================================================
+   Highlights List
+   ============================================================================ */
+
+.highlightsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.highlightsTitle {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  margin: 0;
+}
+
+.highlightList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.highlightItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  line-height: var(--leading-normal);
+}
+
+.highlightBullet {
+  color: var(--sketch-green);
+  font-weight: var(--weight-bold);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ============================================================================
+   Responsive
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .statsBar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .projectRow {
+    grid-template-columns: 100px 1fr auto;
+  }
+
+  .weeklyCard {
+    padding: var(--space-lg);
+  }
+}
+
+@media (max-width: 480px) {
+  .statsBar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

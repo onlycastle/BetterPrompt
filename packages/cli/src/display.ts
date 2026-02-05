@@ -245,12 +245,17 @@ export function displayError(message: string): void {
 /**
  * Display no sessions found message
  */
-export function displayNoSessions(): void {
+export function displayNoSessions(toolName?: string): void {
+  const label = toolName || 'Claude Code';
+  const showClaudePath = !toolName || toolName === 'Claude Code' || toolName.includes('+');
+  const showCursorPath = toolName === 'Cursor' || (toolName !== undefined && toolName.includes('+'));
+
   console.log('');
-  console.log(pc.yellow('⚠️  No Claude Code sessions found.'));
+  console.log(pc.yellow(`⚠️  No ${label} sessions found.`));
   console.log('');
-  console.log(pc.dim('   Make sure you have used Claude Code and have sessions in:'));
-  console.log(pc.dim('   ~/.claude/projects/'));
+  console.log(pc.dim(`   Make sure you have used ${label} and have sessions in:`));
+  if (showClaudePath) console.log(pc.dim('   ~/.claude/projects/'));
+  if (showCursorPath) console.log(pc.dim('   ~/.cursor/chats/'));
   console.log('');
 }
 

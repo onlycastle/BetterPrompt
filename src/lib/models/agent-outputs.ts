@@ -602,10 +602,7 @@ export function parseContextEfficiencyLLMOutput(llmOutput: ContextEfficiencyLLMO
 // ============================================================================
 
 // Import from dedicated schema file
-// Legacy schema kept for backward compatibility with stored data
 import {
-  TemporalAnalysisOutputSchema,
-  type TemporalAnalysisOutput,
   TemporalAnalysisResultSchema,
   type TemporalAnalysisResult,
   TemporalInsightsOutputSchema,
@@ -613,10 +610,6 @@ import {
 } from './temporal-data';
 import { TemporalMetricsSchema, type TemporalMetrics } from './temporal-metrics';
 export {
-  // Legacy (deprecated, kept for stored data)
-  TemporalAnalysisOutputSchema,
-  type TemporalAnalysisOutput,
-  // New (recommended)
   TemporalAnalysisResultSchema,
   type TemporalAnalysisResult,
   TemporalInsightsOutputSchema,
@@ -675,8 +668,8 @@ export const TypeClassifierOutputSchema = z.object({
   /** Confidence score (0-1) */
   confidenceScore: z.number().min(0).max(1),
 
-  /** Personalized personality narrative explaining the classification (1500-2000 chars) */
-  reasoning: z.string(),
+  /** Personalized personality narrative explaining the classification (array of 3-4 paragraphs, each 300-600 chars) */
+  reasoning: z.union([z.array(z.string()), z.string()]),
 
   // ─────────────────────────────────────────────────────────────────────────
   // Synthesis Fields (merged from TypeSynthesis)
@@ -692,6 +685,21 @@ export const TypeClassifierOutputSchema = z.object({
   synthesisEvidence: z.string().optional(),
 });
 export type TypeClassifierOutput = z.infer<typeof TypeClassifierOutputSchema>;
+
+/**
+ * Normalize TypeClassifier reasoning (string | string[]) to a single string.
+ *
+ * New data produces string[] (array of paragraphs). Legacy cached data may
+ * still contain a plain string. This helper unifies both formats.
+ *
+ * @param reasoning - reasoning field from TypeClassifierOutput
+ * @returns Paragraphs joined by double newlines, or empty string if absent
+ */
+export function normalizeReasoning(reasoning: string | string[] | undefined): string {
+  if (reasoning === undefined) return '';
+  if (Array.isArray(reasoning)) return reasoning.join('\n\n');
+  return reasoning;
+}
 
 // ============================================================================
 // Combined Agent Outputs

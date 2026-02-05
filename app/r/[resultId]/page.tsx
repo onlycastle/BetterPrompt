@@ -14,12 +14,12 @@
 
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import { VERBOSE_TYPE_METADATA } from '@/types/verbose';
-import type { CodingStyleType } from '@/types/verbose';
 import styles from './page.module.css';
 
 // Client component for data fetching
 import { RemoteReportContent } from './RemoteReportContent';
+
+const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://www.nomoreaislop.app';
 
 interface PageProps {
   params: Promise<{ resultId: string }>;
@@ -43,11 +43,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title,
       description,
       type: 'website',
-      url: `https://www.nomoreaislop.xyz/r/${resultId}`,
+      url: `${BASE_URL}/r/${resultId}`,
       siteName: 'NoMoreAISlop',
       images: [
         {
-          url: 'https://www.nomoreaislop.xyz/og-image.png',
+          url: `${BASE_URL}/og-image.png`,
           width: 1200,
           height: 630,
           alt: 'NoMoreAISlop - AI Coding Style Analysis',
@@ -58,7 +58,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: 'summary_large_image',
       title,
       description,
-      images: ['https://www.nomoreaislop.xyz/og-image.png'],
+      images: [`${BASE_URL}/og-image.png`],
     },
   };
 }

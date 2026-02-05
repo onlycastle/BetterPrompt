@@ -51,7 +51,7 @@ const LAMBDA_API_URL = process.env.NOSLOP_API_URL || DEFAULT_LAMBDA_URL;
 /**
  * Web app base URL for report links
  */
-const REPORT_BASE_URL = 'https://www.nomoreaislop.xyz';
+const REPORT_BASE_URL = 'https://www.nomoreaislop.app';
 
 /**
  * Maximum payload size
@@ -389,7 +389,7 @@ async function uploadViaStorage(
   accessToken: string,
   onProgress?: ProgressCallback
 ): Promise<{ s3Key: string }> {
-  onProgress?.('preparing', 10, 'Getting upload URL...');
+  onProgress?.('preparing', 3, 'Getting upload URL...');
 
   const urlResponse = await fetch(`${LAMBDA_API_URL}/upload-url`, {
     method: 'POST',
@@ -408,7 +408,7 @@ async function uploadViaStorage(
     throw new Error(urlData.error || 'Invalid upload URL response');
   }
 
-  onProgress?.('preparing', 30, `Uploading ${formatSize(compressedBody.length)} to secure storage...`);
+  onProgress?.('preparing', 5, `Uploading ${formatSize(compressedBody.length)} to secure storage...`);
 
   const uploadResponse = await fetch(urlData.signedUrl, {
     method: 'PUT',
@@ -418,7 +418,7 @@ async function uploadViaStorage(
 
   await ensureResponseOk(uploadResponse, 'Storage upload failed');
 
-  onProgress?.('preparing', 50, 'Upload complete, starting analysis...');
+  onProgress?.('preparing', 8, 'Upload complete, starting analysis...');
 
   return { s3Key: urlData.s3Key };
 }
@@ -500,6 +500,29 @@ async function handleStreamingResponse(
   let isFirstChunk = true;
   const debugOutputs: DebugPhaseOutput[] = [];
 
+  /** Process a single SSE event, updating result/debugOutputs or throwing on error */
+  function handleEvent(event: SSEEvent): void {
+    switch (event.type) {
+      case 'progress':
+        onProgress?.(event.stage, event.progress, event.message);
+        break;
+
+      case 'result':
+        result = {
+          ...event.data,
+          reportUrl: `${REPORT_BASE_URL}/r/${event.data.resultId}`,
+        };
+        break;
+
+      case 'debug_phase':
+        debugOutputs.push(event.data);
+        break;
+
+      case 'error':
+        throw new Error(event.message || 'Analysis failed');
+    }
+  }
+
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -526,42 +549,14 @@ async function handleStreamingResponse(
         if (!trimmed) continue;
 
         const event = parseSSELine(trimmed);
-        if (!event) continue;
-
-        switch (event.type) {
-          case 'progress':
-            onProgress?.(event.stage, event.progress, event.message);
-            break;
-
-          case 'result':
-            result = {
-              ...event.data,
-              reportUrl: `${REPORT_BASE_URL}/r/${event.data.resultId}`,
-            };
-            break;
-
-          case 'debug_phase':
-            debugOutputs.push(event.data);
-            break;
-
-          case 'error':
-            throw new Error(event.message || 'Analysis failed');
-        }
+        if (event) handleEvent(event);
       }
     }
 
+    // Process any remaining data in the buffer
     if (buffer.trim()) {
       const event = parseSSELine(buffer.trim());
-      if (event?.type === 'result') {
-        result = {
-          ...event.data,
-          reportUrl: `${REPORT_BASE_URL}/r/${event.data.resultId}`,
-        };
-      } else if (event?.type === 'debug_phase') {
-        debugOutputs.push(event.data);
-      } else if (event?.type === 'error') {
-        throw new Error(event.message || 'Analysis failed');
-      }
+      if (event) handleEvent(event);
     }
 
     // Save debug outputs to disk if any were received

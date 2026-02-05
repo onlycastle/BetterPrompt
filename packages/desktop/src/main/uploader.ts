@@ -25,7 +25,7 @@ const DEFAULT_LAMBDA_URL =
 /**
  * Web app base URL for report links
  */
-const REPORT_BASE_URL = 'https://www.nomoreaislop.xyz';
+const REPORT_BASE_URL = 'https://www.nomoreaislop.app';
 
 /**
  * Maximum payload size (100MB)

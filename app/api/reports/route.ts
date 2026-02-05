@@ -9,7 +9,7 @@ import { getSupabase } from '@/lib/supabase';
 import type { TypeResult } from '@/lib/models/coding-style';
 import type { FullAnalysisResult } from '@/lib/analyzer/dimensions/index';
 
-const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://www.nomoreaislop.xyz';
+const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://www.nomoreaislop.app';
 
 /**
  * Generate a short, URL-friendly report ID (8 alphanumeric characters)

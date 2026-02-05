@@ -12,7 +12,7 @@ interface UnlockSectionProps {
  */
 export function UnlockSection({
   isUnlocked,
-  dashboardBaseUrl = 'https://www.nomoreaislop.xyz',
+  dashboardBaseUrl = 'https://www.nomoreaislop.app',
 }: UnlockSectionProps) {
   const personalUrl = `${dashboardBaseUrl}/personal`;
   const enterpriseUrl = `${dashboardBaseUrl}/enterprise`;

@@ -51,12 +51,6 @@ import type { VerboseEvaluation } from "../src/lib/models/verbose-evaluation";
 import { createSupabaseKnowledgeRepository } from "../src/lib/infrastructure/storage/supabase/knowledge-repo";
 import { createSupabaseProfessionalInsightRepository } from "../src/lib/infrastructure/storage/supabase/professional-insight-repo";
 import {
-  JSONLLineSchema,
-  type JSONLLine,
-  type UserMessage,
-  type AssistantMessage,
-} from "../src/lib/domain/models/analysis";
-import {
   MATRIX_NAMES,
   MATRIX_METADATA,
   type CodingStyleType,
@@ -74,18 +68,7 @@ const UPLOAD_BUCKET = process.env.UPLOAD_BUCKET_NAME || "";
 const PRESIGNED_URL_EXPIRY = 15 * 60;
 
 /**
- * Session data from CLI (legacy v1 format - raw JSONL)
- */
-interface RemoteSessionDataV1 {
-  sessionId: string;
-  projectName: string;
-  messageCount: number;
-  durationMinutes: number;
-  content: string; // Raw JSONL content
-}
-
-/**
- * Pre-parsed message from CLI (v2 format)
+ * Pre-parsed message from CLI
  */
 interface SerializedMessage {
   uuid: string;
@@ -106,7 +89,7 @@ interface SerializedMessage {
 }
 
 /**
- * Pre-parsed session from CLI (v2 format)
+ * Pre-parsed session from CLI
  */
 interface SerializedSession {
   sessionId: string;
@@ -128,16 +111,6 @@ interface SerializedSession {
 }
 
 /**
- * Analysis request from CLI (v1 - legacy raw JSONL)
- */
-interface AnalysisRequestV1 {
-  sessions: RemoteSessionDataV1[];
-  totalMessages: number;
-  totalDurationMinutes: number;
-  version?: undefined | 1;
-}
-
-/**
  * Activity session metadata (deterministic, from CLI scanner)
  */
 interface ActivitySessionInfo {
@@ -150,18 +123,16 @@ interface ActivitySessionInfo {
 }
 
 /**
- * Analysis request from CLI (v2 - pre-parsed)
+ * Analysis request from CLI (pre-parsed sessions)
  */
-interface AnalysisRequestV2 {
+interface AnalysisRequest {
   sessions: SerializedSession[];
   activitySessions?: ActivitySessionInfo[];
   totalMessages: number;
   totalDurationMinutes: number;
-  version: 2;
+  version?: number;
   userId?: string; // DEPRECATED: userId from body is ignored for security. Use Authorization header instead.
 }
-
-type AnalysisRequest = AnalysisRequestV1 | AnalysisRequestV2;
 
 /**
  * Token usage for a single stage
@@ -250,239 +221,9 @@ function generateResultId(): string {
 }
 
 /**
- * Parse JSONL content into structured lines
+ * Convert pre-parsed session to ParsedSession by deserializing ISO date strings
  */
-function parseJSONLContent(content: string): JSONLLine[] {
-  const lines: JSONLLine[] = [];
-
-  for (const line of content.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    try {
-      const parsed = JSON.parse(trimmed);
-      const result = JSONLLineSchema.safeParse(parsed);
-      if (result.success) {
-        lines.push(result.data);
-      }
-    } catch {
-      // Skip invalid lines
-    }
-  }
-
-  return lines;
-}
-
-/**
- * Check if a JSONL line is a conversation message
- */
-function isConversationMessage(
-  line: JSONLLine
-): line is UserMessage | AssistantMessage {
-  return line.type === "user" || line.type === "assistant";
-}
-
-/**
- * Extract text content from content blocks
- */
-function extractTextContent(
-  content: string | Array<{ type: string; text?: string }>
-): string {
-  if (typeof content === "string") return content;
-
-  const textParts: string[] = [];
-  for (const block of content) {
-    if (block.type === "text" && block.text) {
-      textParts.push(block.text);
-    }
-  }
-  return textParts.join("\n");
-}
-
-/**
- * Extract tool calls from content blocks
- */
-function extractToolCalls(
-  content: Array<{
-    type: string;
-    id?: string;
-    name?: string;
-    input?: Record<string, unknown>;
-  }>,
-  toolResultsMap: Map<string, { content: string; isError: boolean }>
-): Array<{
-  id: string;
-  name: string;
-  input: Record<string, unknown>;
-  result?: string;
-  isError?: boolean;
-}> {
-  const toolCalls: Array<{
-    id: string;
-    name: string;
-    input: Record<string, unknown>;
-    result?: string;
-    isError?: boolean;
-  }> = [];
-
-  for (const block of content) {
-    if (block.type === "tool_use" && block.id && block.name) {
-      const result = toolResultsMap.get(block.id);
-      toolCalls.push({
-        id: block.id,
-        name: block.name,
-        input: block.input || {},
-        result: result?.content,
-        isError: result?.isError,
-      });
-    }
-  }
-
-  return toolCalls;
-}
-
-/**
- * Compute session statistics from parsed messages
- */
-function computeMessageStats(
-  messages: ParsedSession["messages"]
-): ParsedSession["stats"] {
-  let userMessageCount = 0;
-  let assistantMessageCount = 0;
-  let toolCallCount = 0;
-  let totalInputTokens = 0;
-  let totalOutputTokens = 0;
-  const toolsUsed = new Set<string>();
-
-  for (const msg of messages) {
-    if (msg.role === "user") {
-      userMessageCount++;
-      continue;
-    }
-
-    assistantMessageCount++;
-
-    if (msg.toolCalls) {
-      toolCallCount += msg.toolCalls.length;
-      for (const tool of msg.toolCalls) {
-        toolsUsed.add(tool.name);
-      }
-    }
-
-    if (msg.tokenUsage) {
-      totalInputTokens += msg.tokenUsage.input;
-      totalOutputTokens += msg.tokenUsage.output;
-    }
-  }
-
-  return {
-    userMessageCount,
-    assistantMessageCount,
-    toolCallCount,
-    uniqueToolsUsed: Array.from(toolsUsed).sort(),
-    totalInputTokens,
-    totalOutputTokens,
-  };
-}
-
-/**
- * Parse remote session data into ParsedSession format
- */
-function parseRemoteSessionV1(data: RemoteSessionDataV1): ParsedSession | null {
-  const lines = parseJSONLContent(data.content);
-  const messages = lines.filter(isConversationMessage);
-
-  if (messages.length === 0) return null;
-
-  // Parse timestamps
-  const timestamps = messages.map((m) => new Date(m.timestamp));
-  const startTime = new Date(Math.min(...timestamps.map((t) => t.getTime())));
-  const endTime = new Date(Math.max(...timestamps.map((t) => t.getTime())));
-  const durationSeconds = Math.floor(
-    (endTime.getTime() - startTime.getTime()) / 1000
-  );
-
-  // Get version from first message
-  const firstMessage = messages[0];
-  const claudeCodeVersion = firstMessage.version || "unknown";
-
-  // Collect tool results
-  const toolResultsMap = new Map<string, { content: string; isError: boolean }>();
-
-  for (const msg of messages) {
-    if (msg.type === "user") {
-      const content = msg.message.content;
-      if (Array.isArray(content)) {
-        for (const block of content) {
-          if (block.type === "tool_result") {
-            const resultContent =
-              typeof block.content === "string"
-                ? block.content
-                : JSON.stringify(block.content);
-            toolResultsMap.set(block.tool_use_id, {
-              content: resultContent,
-              isError: block.is_error ?? false,
-            });
-          }
-        }
-      }
-    }
-  }
-
-  // Parse messages
-  const parsedMessages: ParsedSession["messages"] = [];
-
-  for (const msg of messages) {
-    if (msg.type === "user") {
-      const content = extractTextContent(msg.message.content);
-      if (!content.trim()) continue;
-
-      parsedMessages.push({
-        uuid: msg.uuid,
-        role: "user",
-        timestamp: new Date(msg.timestamp),
-        content,
-      });
-    } else {
-      const content = extractTextContent(msg.message.content);
-      const toolCalls = extractToolCalls(msg.message.content, toolResultsMap);
-
-      parsedMessages.push({
-        uuid: msg.uuid,
-        role: "assistant",
-        timestamp: new Date(msg.timestamp),
-        content,
-        toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-        tokenUsage: msg.message.usage
-          ? {
-              input: msg.message.usage.input_tokens,
-              output: msg.message.usage.output_tokens,
-            }
-          : undefined,
-      });
-    }
-  }
-
-  // Compute stats from parsed messages
-  const stats = computeMessageStats(parsedMessages);
-
-  return {
-    sessionId: data.sessionId,
-    projectPath: `/remote/${data.projectName}`,
-    startTime,
-    endTime,
-    durationSeconds,
-    claudeCodeVersion,
-    messages: parsedMessages,
-    stats,
-  };
-}
-
-/**
- * Convert pre-parsed session (v2) to ParsedSession
- * No parsing needed - just deserialize dates
- */
-function deserializeSessionV2(data: SerializedSession): ParsedSession {
+function deserializeSession(data: SerializedSession): ParsedSession {
   return {
     sessionId: data.sessionId,
     projectPath: data.projectPath,
@@ -500,13 +241,6 @@ function deserializeSessionV2(data: SerializedSession): ParsedSession {
     })),
     stats: data.stats,
   };
-}
-
-/**
- * Check if request is v2 format (pre-parsed)
- */
-function isV2Request(body: AnalysisRequest): body is AnalysisRequestV2 {
-  return body.version === 2;
 }
 
 /**
@@ -666,55 +400,23 @@ async function runAnalysis(
   debug?: boolean,
   noTranslate?: boolean
 ): Promise<void> {
-  // Parse sessions based on version
-  const parsedSessions: ParsedSession[] = [];
+  write({
+    type: "progress",
+    stage: "parsing",
+    progress: 10,
+    message: `Loading ${body.sessions.length} pre-parsed session(s)...`,
+  });
 
-  if (isV2Request(body)) {
-    // V2: Pre-parsed sessions - just deserialize dates
-    write({
-      type: "progress",
-      stage: "parsing",
-      progress: 10,
-      message: `Loading ${body.sessions.length} pre-parsed session(s)...`,
-    });
+  const parsedSessions = body.sessions.map(deserializeSession);
 
-    for (const session of body.sessions) {
-      parsedSessions.push(deserializeSessionV2(session));
-    }
+  write({
+    type: "progress",
+    stage: "parsing",
+    progress: 30,
+    message: `Loaded ${parsedSessions.length} sessions`,
+  });
 
-    write({
-      type: "progress",
-      stage: "parsing",
-      progress: 30,
-      message: `Loaded ${parsedSessions.length} sessions`,
-    });
-  } else {
-    // V1: Legacy raw JSONL - parse each session
-    write({
-      type: "progress",
-      stage: "parsing",
-      progress: 10,
-      message: `Parsing ${body.sessions.length} session(s)...`,
-    });
-
-    for (let i = 0; i < body.sessions.length; i++) {
-      const parsed = parseRemoteSessionV1(body.sessions[i]);
-      if (parsed) {
-        parsedSessions.push(parsed);
-      }
-
-      if (i % 3 === 0) {
-        write({
-          type: "progress",
-          stage: "parsing",
-          progress: 10 + Math.floor((i / body.sessions.length) * 20),
-          message: `Parsed ${i + 1}/${body.sessions.length} sessions`,
-        });
-      }
-    }
-  }
-
-  console.log(`[PHASE:PARSE] Sessions received: ${body.sessions.length}, valid: ${parsedSessions.length}`);
+  console.log(`[PHASE:PARSE] Sessions loaded: ${parsedSessions.length}`);
 
   if (parsedSessions.length === 0) {
     write({
@@ -793,8 +495,7 @@ async function runAnalysis(
       professionalInsightRepo: createSupabaseProfessionalInsightRepository(),
     });
 
-    // Extract activitySessions from request body (v2 only)
-    const activitySessions = isV2Request(body) ? body.activitySessions : undefined;
+    const activitySessions = body.activitySessions;
 
     console.log("[PHASE:ANALYZE] Starting analyzeVerbose...");
     const analysisResult = await analyzer.analyzeVerbose(parsedSessions, metrics, {
@@ -1080,7 +781,7 @@ async function handleAnalyzeFromStorage(
     try {
       body = JSON.parse(bodyText) as AnalysisRequest;
       console.log(`[lambda] Parsed ${body.sessions?.length || 0} sessions from S3`);
-    } catch (parseError) {
+    } catch {
       write({
         type: "error",
         code: "INVALID_JSON",

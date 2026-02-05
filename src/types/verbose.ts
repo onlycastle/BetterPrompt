@@ -8,9 +8,10 @@
 import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixKey, MatrixDistribution } from '../lib/models/coding-style';
 import type { AggregatedWorkerInsights } from '../lib/models/worker-insights';
 import type { DimensionResourceMatch, UtteranceLookupEntry, TopFocusAreas, TopFocusArea, FocusAreaActions, ProjectSummary } from '../lib/models/verbose-evaluation';
+import type { WeeklyInsights } from '../lib/models/weekly-insights';
 
 // Re-export for convenience
-export type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixKey, MatrixDistribution, AggregatedWorkerInsights, DimensionResourceMatch, UtteranceLookupEntry, TopFocusAreas, TopFocusArea, FocusAreaActions, ProjectSummary };
+export type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixKey, MatrixDistribution, AggregatedWorkerInsights, DimensionResourceMatch, UtteranceLookupEntry, TopFocusAreas, TopFocusArea, FocusAreaActions, ProjectSummary, WeeklyInsights };
 
 // ============================================================================
 // Activity Session Info - Lightweight metadata for ALL recent sessions
@@ -147,6 +148,8 @@ export interface VerboseAnalysisData {
   sessionSummaries?: { sessionId: string; summary: string }[];
   // Project summaries (LLM-generated 2-3 line summaries per project, from ProjectSummarizer)
   projectSummaries?: ProjectSummary[];
+  // Weekly insights (deterministic stats + LLM narrative, from WeeklyInsightGenerator)
+  weeklyInsights?: WeeklyInsights;
   primaryType: CodingStyleType;
   controlLevel: AIControlLevel;
   /** Raw control score (0-100) for matrix distribution calculation */

@@ -1,13 +1,14 @@
 /**
  * Analysis Orchestrator - Main orchestrator for the analysis pipeline
  *
- * Coordinates 6 phases of analysis (9-10 LLM calls total):
+ * Coordinates 6 phases of analysis (10-11 LLM calls total):
  * - Phase 1: DataExtractor (deterministic, no LLM)
  * - Phase 1.5: SessionSummarizer (1 LLM call — 1-line summaries for analyzed sessions)
  * - Phase 2: 4 insight workers in parallel (4 LLM calls)
  *            ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency
  *            Each worker outputs domain-specific strengths/growthAreas
  *            + ProjectSummarizer in parallel (1 LLM call — 2-3 line project summaries)
+ *            + WeeklyInsightGenerator in parallel (1 LLM call — weekly narrative + highlights)
  * - Phase 2.5: TypeClassifier only (1 LLM call)
  * - Phase 2.8: EvidenceVerifier (1 LLM call)
  * - Phase 3: ContentWriter (1 LLM call, always English)
@@ -42,6 +43,7 @@ import { matchKnowledgeResources } from '../stages/knowledge-resource-matcher';
 import { EvidenceVerifierStage, type EvidenceVerifierResult } from '../stages/evidence-verifier';
 import { SessionSummarizerStage, type SessionSummarizerResult } from '../stages/session-summarizer';
 import { ProjectSummarizerStage, type ProjectSummarizerResult } from '../stages/project-summarizer';
+import { WeeklyInsightGeneratorStage, type WeeklyInsightGeneratorResult } from '../stages/weekly-insight-generator';
 import type {
   WorkerResult,
   WorkerContext,
@@ -123,6 +125,7 @@ export class AnalysisOrchestrator {
   private sessionSummarizer: SessionSummarizerStage;
   private projectSummarizer: ProjectSummarizerStage;
   private evidenceVerifier: EvidenceVerifierStage;
+  private weeklyInsightGenerator: WeeklyInsightGeneratorStage;
   private contentGateway: ContentGateway;
   private debugOutputs: DebugPhaseOutput[] = [];
 
@@ -162,6 +165,15 @@ export class AnalysisOrchestrator {
 
     // Initialize project summarizer (runs parallel with Phase 2 — project-level summaries)
     this.projectSummarizer = new ProjectSummarizerStage({
+      apiKey: this.config.geminiApiKey,
+      model: this.config.model,
+      temperature: this.config.temperature,
+      maxRetries: this.config.maxRetries,
+      verbose: this.config.verbose,
+    });
+
+    // Initialize weekly insight generator (runs parallel with Phase 2 — weekly insights)
+    this.weeklyInsightGenerator = new WeeklyInsightGeneratorStage({
       apiKey: this.config.geminiApiKey,
       model: this.config.model,
       temperature: this.config.temperature,
@@ -239,19 +251,20 @@ export class AnalysisOrchestrator {
     metrics: SessionMetrics,
     tier: Tier,
     onProgress?: ProgressCallback,
-    options?: { activitySessions?: Array<{ sessionId: string; projectName: string; startTime: string; durationMinutes: number; messageCount: number; summary: string }>; noTranslate?: boolean }
+    options?: { activitySessions?: Array<{ sessionId: string; projectName: string; startTime: string; durationMinutes: number; messageCount: number; summary: string; totalInputTokens?: number; totalOutputTokens?: number }>; noTranslate?: boolean }
   ): Promise<AnalysisResult> {
     const startTime = Date.now();
     const stageUsages: StageTokenUsage[] = [];
     this.debugOutputs = [];
 
-    // Progress tracking: 10 LLM stages total (1 Phase1.5 + 4 Phase2 + 1 ProjectSummarizer + 1 Phase2.5 + 1 Phase2.8 + 1 Phase3 + 1 Phase4)
+    // Progress tracking: 11 LLM stages total (1 Phase1.5 + 4 Phase2 + 1 ProjectSummarizer + 1 WeeklyInsightGenerator + 1 Phase2.5 + 1 Phase2.8 + 1 Phase3 + 1 Phase4)
     // Phase 1.5: SessionSummarizer generates 1-line summaries
     // Phase 2: ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency (4 workers)
     //          + ProjectSummarizer (runs in parallel with Phase 2)
+    //          + WeeklyInsightGenerator (runs in parallel with Phase 2)
     // Phase 2.8: Evidence Verifier validates evidence relevance
     // Phase 4: Translator is conditional (only for non-English users)
-    const TOTAL_LLM_STAGES = 10;
+    const TOTAL_LLM_STAGES = 11;
     const PROGRESS_START = 40;
     const PROGRESS_RANGE = 49; // 40% → 89%
     const STEP = Math.floor(PROGRESS_RANGE / TOTAL_LLM_STAGES); // 6 points per stage
@@ -345,6 +358,7 @@ export class AnalysisOrchestrator {
     // ─────────────────────────────────────────────────────────────────────
     let agentOutputs: AgentOutputs = createEmptyAgentOutputs();
     let projectSummarizerResult: ProjectSummarizerResult | null = null;
+    let weeklyInsightResult: WeeklyInsightGeneratorResult | null = null;
 
     this.log(`Phase 2 workers registered: ${this.phase2Workers.length}`);
     this.log(`Worker names: ${this.phase2Workers.map(w => w.name).join(', ')}`);
@@ -381,56 +395,102 @@ export class AnalysisOrchestrator {
         })()
       : null;
 
-    if (this.phase2Workers.length > 0) {
-      this.log('Phase 2: Insight Generation...');
-
-      // All Phase 2 workers receive Phase1Output (context isolation)
-      const phase2Context: WorkerContext & { phase1Output?: Phase1Output } = {
-        ...baseContext,
-        phase1Output: phase1Results.dataExtractor.data,
-        // outputLanguage intentionally NOT passed - Phase 2 workers always use English
-      };
-
-      this.log(`Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasPhase1Output: ${!!phase2Context.phase1Output}`);
-
-      const phase2Start = Date.now();
-      const phase2WorkerCount = this.phase2Workers.length;
-      const phase2Results = await this.runPhase2(phase2Context, (workerName, workerIndex) => {
-        completedLLMStages++;
-        const isLast = workerIndex === phase2WorkerCount;
-        const message = isLast
-          ? `Insight generation complete (${workerIndex}/${phase2WorkerCount})`
-          : `Analyzing ${workerName}... (${workerIndex}/${phase2WorkerCount})`;
-        reportProgress('phase2', message);
-      });
-      this.log(`Phase 2 results keys: ${Object.keys(phase2Results).join(', ')}`);
-
-      // Collect debug output and token usage in a single pass
-      for (const [workerName, result] of Object.entries(phase2Results)) {
-        if (result) {
-          this.collectDebugOutput(
-            `phase2_${workerName}`, workerName, phase2Start,
-            result.data, result.usage
+    // Start WeeklyInsightGenerator in parallel with Phase 2 workers
+    const weeklyInsightPromise = options?.activitySessions && options.activitySessions.length > 0
+      ? (async () => {
+          this.log('WeeklyInsightGenerator: Starting (parallel with Phase 2)...');
+          const wiStart = Date.now();
+          const wiResult = await this.weeklyInsightGenerator.generate(
+            options.activitySessions!.map(s => ({
+              sessionId: s.sessionId,
+              projectName: s.projectName,
+              startTime: s.startTime,
+              durationMinutes: s.durationMinutes,
+              messageCount: s.messageCount,
+              summary: s.summary,
+              totalInputTokens: s.totalInputTokens,
+              totalOutputTokens: s.totalOutputTokens,
+            }))
           );
-          if (result.usage) {
+
+          this.collectDebugOutput(
+            'phase2_WeeklyInsightGenerator', 'WeeklyInsightGenerator', wiStart,
+            wiResult.data, wiResult.usage
+          );
+
+          if (wiResult.usage.totalTokens > 0) {
             stageUsages.push({
-              stage: `${workerName} (Agent)`,
-              ...result.usage,
+              stage: 'WeeklyInsightGenerator (Phase 2)',
+              ...wiResult.usage,
             });
           }
-        }
-      }
 
-      agentOutputs = this.mergeAgentOutputs(phase2Results);
-      this.log(`Merged agentOutputs keys: ${Object.keys(agentOutputs).join(', ')}`);
-    } else {
-      this.log('Phase 2: Skipped (no workers registered)');
-    }
+          completedLLMStages++;
+          reportProgress('phase2_weeklyInsight', 'Weekly insights generated');
+          this.log(`WeeklyInsightGenerator: Generated insights (${wiResult.data.stats.totalSessions} sessions this week)`);
+          return wiResult;
+        })()
+      : null;
 
-    // Await ProjectSummarizer result (may have already completed during Phase 2)
-    if (projectSummarizerPromise) {
-      projectSummarizerResult = await projectSummarizerPromise;
-    }
+    // Run Phase 2 workers, ProjectSummarizer, and WeeklyInsightGenerator
+    // all in a single Promise.all to prevent unhandled rejections.
+    // If any promise rejects, all are awaited and the error propagates cleanly.
+    const phase2WorkerPromise = this.phase2Workers.length > 0
+      ? (async () => {
+          this.log('Phase 2: Insight Generation...');
+
+          // All Phase 2 workers receive Phase1Output (context isolation)
+          const phase2Context: WorkerContext & { phase1Output?: Phase1Output } = {
+            ...baseContext,
+            phase1Output: phase1Results.dataExtractor.data,
+            // outputLanguage intentionally NOT passed - Phase 2 workers always use English
+          };
+
+          this.log(`Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasPhase1Output: ${!!phase2Context.phase1Output}`);
+
+          const phase2Start = Date.now();
+          const phase2WorkerCount = this.phase2Workers.length;
+          const phase2Results = await this.runPhase2(phase2Context, (workerName, workerIndex) => {
+            completedLLMStages++;
+            const isLast = workerIndex === phase2WorkerCount;
+            const message = isLast
+              ? `Insight generation complete (${workerIndex}/${phase2WorkerCount})`
+              : `Analyzing ${workerName}... (${workerIndex}/${phase2WorkerCount})`;
+            reportProgress('phase2', message);
+          });
+          this.log(`Phase 2 results keys: ${Object.keys(phase2Results).join(', ')}`);
+
+          // Collect debug output and token usage in a single pass
+          for (const [workerName, result] of Object.entries(phase2Results)) {
+            if (result) {
+              this.collectDebugOutput(
+                `phase2_${workerName}`, workerName, phase2Start,
+                result.data, result.usage
+              );
+              if (result.usage) {
+                stageUsages.push({
+                  stage: `${workerName} (Agent)`,
+                  ...result.usage,
+                });
+              }
+            }
+          }
+
+          agentOutputs = this.mergeAgentOutputs(phase2Results);
+          this.log(`Merged agentOutputs keys: ${Object.keys(agentOutputs).join(', ')}`);
+        })()
+      : (async () => {
+          this.log('Phase 2: Skipped (no workers registered)');
+        })();
+
+    // Await all Phase 2 parallel tasks together to prevent unhandled rejections
+    const allPhase2Promises: Promise<unknown>[] = [phase2WorkerPromise];
+    if (projectSummarizerPromise) allPhase2Promises.push(projectSummarizerPromise);
+    if (weeklyInsightPromise) allPhase2Promises.push(weeklyInsightPromise);
+
+    const [, psResult, wiResult] = await Promise.all(allPhase2Promises);
+    projectSummarizerResult = (psResult as ProjectSummarizerResult | undefined) ?? null;
+    weeklyInsightResult = (wiResult as WeeklyInsightGeneratorResult | undefined) ?? null;
 
     // ─────────────────────────────────────────────────────────────────────
     // Phase 2.5: TypeClassifier only (StrengthGrowth REMOVED)
@@ -685,6 +745,7 @@ export class AnalysisOrchestrator {
       sessionSummaries: summaryResult.data.summaries,
       activitySessions: options?.activitySessions,
       projectSummaries: projectSummarizerResult?.data,
+      weeklyInsights: weeklyInsightResult?.data,
       ...assembledData,
       agentOutputs: agentOutputs,
       // Propagate translated agent insights for frontend hybrid fallback pattern

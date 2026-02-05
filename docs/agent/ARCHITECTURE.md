@@ -15,7 +15,7 @@ NoMoreAISlop analyzes developer-AI collaboration sessions (JSONL/SQLite) through
 | `src/lib/analyzer/` | LLM analysis pipeline | Application |
 | `src/lib/analyzer/orchestrator/` | 4-phase orchestration | Application |
 | `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (4) + Phase 2.5 TypeClassifier | Application |
-| `src/lib/analyzer/stages/` | Phase 1.5 SessionSummarizer + Phase 2 ProjectSummarizer + Phase 2.8 EvidenceVerifier + Phase 3 ContentWriter + Phase 4 Translator | Application |
+| `src/lib/analyzer/stages/` | Phase 1.5 SessionSummarizer + Phase 2 ProjectSummarizer + Phase 2 WeeklyInsightGenerator + Phase 2.8 EvidenceVerifier + Phase 3 ContentWriter + Phase 4 Translator | Application |
 | `src/lib/analyzer/calculators/` | Deterministic calculators (temporal, phrase patterns) | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/domain/` | Domain models (business rules, errors) | Domain |
@@ -35,6 +35,7 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 | 1.5 | SessionSummarizer | 1 | Phase1Output sessions | `SessionSummaryBatchLLM` | `src/lib/analyzer/stages/session-summarizer.ts` |
 | 2 | 4 Insight Workers (parallel) | 4 | Phase1Output | `AgentOutputs` | `src/lib/analyzer/workers/` |
 | 2 | ProjectSummarizer (parallel) | 1 | activitySessions | `ProjectSummary[]` | `src/lib/analyzer/stages/project-summarizer.ts` |
+| 2 | WeeklyInsightGenerator (parallel) | 1 | activitySessions | `WeeklyInsights` | `src/lib/analyzer/stages/weekly-insight-generator.ts` |
 | 2.5 | TypeClassifier | 1 | Phase1Output + AgentOutputs | `TypeClassifierOutput` | `src/lib/analyzer/workers/type-classifier-worker.ts` |
 | 2.75 | KnowledgeResourceMatcher | 0 | AgentOutputs | `KnowledgeResource[]` | deterministic resource matching |
 | 2.8 | EvidenceVerifier | 1 | AgentOutputs evidence | `EvidenceVerifierResult` | `src/lib/analyzer/stages/evidence-verifier.ts` |
@@ -42,7 +43,7 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 | 4 | Translator (conditional) | 0-1 | NarrativeLLMResponse + AgentOutputs | `TranslatorOutput` | `src/lib/analyzer/stages/translator.ts` |
 | Assembly | EvaluationAssembler | 0 | AgentOutputs + NarrativeLLMResponse + TranslatorData | `VerboseEvaluation` | `src/lib/analyzer/stages/evaluation-assembler.ts` |
 
-**Total**: 9 LLM calls (English), 10 LLM calls (non-English). Model: `gemini-3-flash-preview`, Temperature: 1.0, Max tokens: 65536.
+**Total**: 10 LLM calls (English), 11 LLM calls (non-English). Model: `gemini-3-flash-preview`, Temperature: 1.0, Max tokens: 65536.
 
 ## Phase Details
 
@@ -64,7 +65,7 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 - Summaries flow to ContentWriter (Phase 3) and Translator (Phase 4)
 - Separate from CLI Activity Scanner (deterministic summaries for ALL sessions)
 
-### Phase 2: Insight Generation (4 parallel workers + ProjectSummarizer)
+### Phase 2: Insight Generation (4 parallel workers + ProjectSummarizer + WeeklyInsightGenerator)
 
 | Worker | Analysis Focus | Output Schema | Prompt File |
 |--------|---------------|---------------|-------------|

@@ -12,7 +12,7 @@
 
 import pc from 'picocolors';
 import ora from 'ora';
-import { scanSessions, scanActivitySessions, hasClaudeProjects } from './scanner.js';
+import { scanSessions, scanActivitySessions, hasClaudeProjects, getSourceStatus } from './scanner.js';
 import { uploadForAnalysis } from './uploader.js';
 import {
   displayError,
@@ -43,7 +43,25 @@ import {
 /**
  * Web app base URL for dashboard links
  */
-const WEB_APP_URL = 'https://www.nomoreaislop.xyz';
+const WEB_APP_URL = 'https://www.nomoreaislop.app';
+
+// ============================================================================
+// Tool Selection Types
+// ============================================================================
+
+type ToolChoice = 'claude-code' | 'cursor' | 'both';
+
+interface ToolSelectionResult {
+  choice: ToolChoice;
+  includeSources: string[];
+  displayLabel: string;
+}
+
+const TOOL_CHOICES: Record<ToolChoice, ToolSelectionResult> = {
+  'claude-code': { choice: 'claude-code', includeSources: ['claude-code'], displayLabel: 'Claude Code' },
+  'cursor':      { choice: 'cursor', includeSources: ['cursor', 'cursor-composer'], displayLabel: 'Cursor' },
+  'both':        { choice: 'both', includeSources: ['claude-code', 'cursor', 'cursor-composer'], displayLabel: 'Claude Code + Cursor' },
+};
 
 interface UserAnalysis {
   id: string;
@@ -180,6 +198,58 @@ async function promptExistingAnalysis(analyses: UserAnalysis[]): Promise<'new' |
       } else {
         resolve('new');
       }
+    });
+  });
+}
+
+/**
+ * Prompt user to select their AI coding tool.
+ * Auto-selects if only one source is available.
+ */
+async function promptToolSelection(): Promise<ToolSelectionResult> {
+  const sourceStatus = await getSourceStatus();
+
+  const hasClaudeCode = sourceStatus.get('claude-code') ?? false;
+  const hasCursor = (sourceStatus.get('cursor') ?? false)
+    || (sourceStatus.get('cursor-composer') ?? false);
+
+  // Auto-select when only one source (or none) is available
+  if (!hasClaudeCode || !hasCursor) {
+    if (hasClaudeCode) {
+      console.log(pc.dim('  Detected: Claude Code'));
+      return TOOL_CHOICES['claude-code'];
+    }
+    if (hasCursor) {
+      console.log(pc.dim('  Detected: Cursor'));
+      return TOOL_CHOICES['cursor'];
+    }
+    // No sources detected — default to both, let later checks handle the error
+    return TOOL_CHOICES['both'];
+  }
+
+  // Both available — prompt user
+  const { createInterface } = await import('node:readline');
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  console.log('');
+  console.log(pc.bold(pc.cyan('  🛠️  Which AI coding tool do you use?')));
+  console.log('');
+  console.log('  ' + pc.bold('1)') + ' Claude Code');
+  console.log('  ' + pc.bold('2)') + ' Cursor');
+  console.log('  ' + pc.bold('3)') + ' Both');
+  console.log('');
+
+  const CHOICE_MAP: Record<string, ToolChoice> = { '1': 'claude-code', '2': 'cursor' };
+
+  return new Promise((resolve) => {
+    rl.question(pc.cyan('  Select (1, 2, or 3): '), (answer) => {
+      rl.close();
+      const mapped = CHOICE_MAP[answer.trim()];
+      // Default to 'both' for "3", empty input, or any other input
+      resolve(TOOL_CHOICES[mapped ?? 'both']);
     });
   });
 }
@@ -372,19 +442,23 @@ async function runAnalysis(options: RunAnalysisOptions = {}): Promise<void> {
     accessToken = await performDeviceFlowAuth();
   }
 
-  // Check if Claude projects directory exists
+  // Tool selection: detect installed tools or prompt user
+  const toolSelection = await promptToolSelection();
+  console.log('');
+
+  // Check if any session sources are available
   const hasProjects = await hasClaudeProjects();
   if (!hasProjects) {
-    displayNoSessions();
+    displayNoSessions(toolSelection.displayLabel);
     process.exit(1);
   }
 
   // Step 3: Auto-scan sessions and show summary
-  const scanSpinner = ora('Scanning Claude Code sessions...').start();
+  const scanSpinner = ora(`Scanning ${toolSelection.displayLabel} sessions...`).start();
 
   let scanResult;
   try {
-    scanResult = await scanSessions(50);
+    scanResult = await scanSessions(50, toolSelection.includeSources);
   } catch (error) {
     scanSpinner.fail('Failed to scan sessions');
     displayError(error instanceof Error ? error.message : 'Unknown error');
@@ -393,14 +467,14 @@ async function runAnalysis(options: RunAnalysisOptions = {}): Promise<void> {
 
   if (scanResult.sessions.length === 0) {
     scanSpinner.stop();
-    displayNoSessions();
+    displayNoSessions(toolSelection.displayLabel);
     process.exit(1);
   }
 
   // Scan activity sessions (all recent sessions, lightweight metadata)
   let activitySessions;
   try {
-    activitySessions = await scanActivitySessions(30);
+    activitySessions = await scanActivitySessions(30, toolSelection.includeSources);
   } catch {
     // Activity scanning is non-critical — continue without it
     activitySessions = undefined;

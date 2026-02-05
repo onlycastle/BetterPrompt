@@ -546,11 +546,12 @@ function selectOptimalSessions(
  *
  * Supports multiple sources (Claude Code, Cursor) via multiSourceScanner.
  */
-export async function scanSessions(maxSessions: number = 50): Promise<ScanResult> {
+export async function scanSessions(maxSessions: number = 50, includeSources?: string[]): Promise<ScanResult> {
   // Phase 1: Collect file metadata from all sources (memory efficient)
   const { files: sourceFiles, sourceStats } = await multiSourceScanner.collectAllFileMetadata({
     minFileSize: PREFILTER_CONFIG.MIN_FILE_SIZE,
     maxFileSize: PREFILTER_CONFIG.MAX_FILE_SIZE,
+    includeSources,
   });
 
   // Convert to local FileMetadata format

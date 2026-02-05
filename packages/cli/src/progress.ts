@@ -22,6 +22,8 @@ import {
 const ANIMATION_INTERVAL = 200; // ms per tick
 const NORMAL_STEP = 1; // % per tick when gap <= 20
 const FAST_STEP = 2; // % per tick when gap > 20
+const SLOW_THRESHOLD = 40; // below this %, advance at reduced speed
+const SLOW_TICK_DIVISOR = 3; // only advance every Nth tick below threshold
 
 /**
  * Analysis stages with their display configurations
@@ -59,7 +61,6 @@ const STAGE_CONFIGS: Record<string, StageConfig> = {
     baseMessage: 'Analysis complete',
   },
 };
-
 
 /**
  * ProgressDisplay class for rich progress visualization
@@ -133,11 +134,16 @@ export class ProgressDisplay {
 
     const gap = this.targetProgress - this.displayedProgress;
     if (gap > 0) {
-      const step = gap > 20 ? FAST_STEP : NORMAL_STEP;
-      this.displayedProgress = Math.min(
-        this.displayedProgress + step,
-        this.targetProgress,
-      );
+      // Below SLOW_THRESHOLD, only advance every SLOW_TICK_DIVISOR ticks
+      // to prevent the bar from racing through the early range
+      const isSlow = this.displayedProgress < SLOW_THRESHOLD;
+      if (!isSlow || this.tick % SLOW_TICK_DIVISOR === 0) {
+        const step = gap > 20 ? FAST_STEP : NORMAL_STEP;
+        this.displayedProgress = Math.min(
+          this.displayedProgress + step,
+          this.targetProgress,
+        );
+      }
     }
 
     this.render();
@@ -163,8 +169,9 @@ export class ProgressDisplay {
     const iconPart = config.icon ? `${config.icon} ` : '';
     const mainLine = `${iconPart}${config.color(this.currentMessage)}`;
 
-    // Progress bar line with elapsed time
-    const progressLine = `${progressBar} ${pc.dim(elapsed)}`;
+    // Progress bar line with elapsed time and optional time hint
+    const timeHint = this.shouldShowTimeHint() ? pc.dim(' | Usually takes 5-10 min') : '';
+    const progressLine = `${progressBar} ${pc.dim(elapsed)}${timeHint}`;
 
     // Build multiline output: status on first line (with spinner), chip below
     // This prevents the spinner from colliding with Unicode box-drawing characters
@@ -176,6 +183,17 @@ export class ProgressDisplay {
       `  ${chipLines[2]}`,
       `  ${progressLine}`,
     ].join('\n');
+  }
+
+  /** Stages where analysis is done and time hint should be hidden */
+  private static readonly POST_ANALYSIS_STAGES = new Set(['storing', 'complete']);
+
+  /**
+   * Whether to show the estimated time hint.
+   * Hidden during storing and complete stages (analysis is done).
+   */
+  private shouldShowTimeHint(): boolean {
+    return !ProgressDisplay.POST_ANALYSIS_STAGES.has(this.currentStage);
   }
 
   /**
