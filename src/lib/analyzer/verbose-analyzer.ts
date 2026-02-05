@@ -26,6 +26,7 @@ import {
   createCommunicationPatternsWorker,
   createLearningBehaviorWorker,
   createContextEfficiencyWorker,
+  createSessionOutcomeWorker,
   // Phase 2.5: TypeClassifier only
   createTypeClassifierWorker,
 } from './workers';
@@ -151,19 +152,21 @@ export class VerboseAnalyzer {
     this.orchestrator.registerPhase1Worker(createDataExtractorWorker(orchestratorConfig));
 
     // =========================================================================
-    // PHASE 2: Insight Generation (4 workers, parallel LLM calls)
+    // PHASE 2: Insight Generation (5 workers, parallel LLM calls)
     //
     // Unified Workers (capability-based):
     //   - ThinkingQuality: Planning + Critical Thinking
     //   - CommunicationPatterns: Communication patterns + Signature quotes
     //   - LearningBehavior: Knowledge Gaps + Repeated Mistakes
     //   - ContextEfficiency: Token usage and context management
-    //   Total: 4 workers (~90K tokens)
+    //   - SessionOutcome: Goals, friction, success rates (inspired by Claude /insights)
+    //   Total: 5 workers (~110K tokens)
     // =========================================================================
     this.orchestrator.registerPhase2Worker(createThinkingQualityWorker(orchestratorConfig));
     this.orchestrator.registerPhase2Worker(createCommunicationPatternsWorker(orchestratorConfig));
     this.orchestrator.registerPhase2Worker(createLearningBehaviorWorker(orchestratorConfig));
     this.orchestrator.registerPhase2Worker(createContextEfficiencyWorker(orchestratorConfig));
+    this.orchestrator.registerPhase2Worker(createSessionOutcomeWorker(orchestratorConfig));
 
     // =========================================================================
     // PHASE 2.5: TypeClassifier only (1 LLM call)

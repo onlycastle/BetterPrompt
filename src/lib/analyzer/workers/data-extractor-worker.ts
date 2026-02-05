@@ -368,6 +368,12 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     // Calculate context fill metrics (deterministic, from token data)
     const contextFillMetrics = this.computeContextFillMetrics(sessions);
 
+    // Calculate friction signals (deterministic detection)
+    const frictionSignals = this.computeFrictionSignals(sessions, utterances);
+
+    // Calculate session hints (deterministic classification hints)
+    const sessionHints = this.computeSessionHints(sessions);
+
     return {
       totalSessions: sessions.length,
       totalMessages,
@@ -384,6 +390,137 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       toolUsageCounts,
       // Context fill metrics (deterministic calculation)
       ...contextFillMetrics,
+      // Friction signals for SessionOutcomeWorker
+      frictionSignals,
+      // Session hints for SessionOutcomeWorker
+      sessionHints,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Friction Signal Detection (Deterministic)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * User rejection patterns - phrases indicating developer rejected AI's suggestion.
+   * These are checked case-insensitively at word boundaries.
+   */
+  private static readonly REJECTION_PATTERNS = [
+    /\b(no|nope|wrong|incorrect|that'?s not right)\b/i,
+    /\b(try again|redo|fix this|doesn'?t work|didn'?t work)\b/i,
+    /\b(not what I (asked|wanted|meant))\b/i,
+    /\b(you misunderstood|that'?s not what)\b/i,
+  ];
+
+  /**
+   * Compute friction signals from sessions (deterministic detection).
+   *
+   * These signals help SessionOutcomeWorker identify friction points:
+   * - Tool failures (from tool_result.is_error)
+   * - User rejections (from rejection pattern matching)
+   * - Excessive iterations (sessions with 10+ user messages)
+   * - Context overflow (sessions hitting 90%+ context)
+   */
+  private computeFrictionSignals(
+    sessions: ParsedSession[],
+    utterances: DeveloperUtterance[]
+  ): Phase1SessionMetrics['frictionSignals'] {
+    let toolFailureCount = 0;
+    let userRejectionSignals = 0;
+    let excessiveIterationSessions = 0;
+    let contextOverflowSessions = 0;
+
+    for (const session of sessions) {
+      let sessionUserMessages = 0;
+      let sessionHadContextOverflow = false;
+
+      for (const message of session.messages) {
+        if (message.role === 'user') {
+          sessionUserMessages++;
+
+          // Check for rejection patterns in user messages
+          const text = message.content;
+          for (const pattern of DataExtractorWorker.REJECTION_PATTERNS) {
+            if (pattern.test(text)) {
+              userRejectionSignals++;
+              break; // Count max once per message
+            }
+          }
+        }
+
+        if (message.role === 'assistant') {
+          // Count tool failures
+          if (message.toolCalls) {
+            for (const toolCall of message.toolCalls) {
+              if (toolCall.isError) {
+                toolFailureCount++;
+              }
+            }
+          }
+
+          // Check for context overflow
+          if (message.tokenUsage?.input) {
+            const fillPercent = (message.tokenUsage.input / DataExtractorWorker.CONTEXT_WINDOW_SIZE) * 100;
+            if (fillPercent >= 90) {
+              sessionHadContextOverflow = true;
+            }
+          }
+        }
+      }
+
+      // Count excessive iteration sessions (10+ user messages)
+      if (sessionUserMessages >= 10) {
+        excessiveIterationSessions++;
+      }
+
+      // Count context overflow sessions
+      if (sessionHadContextOverflow) {
+        contextOverflowSessions++;
+      }
+    }
+
+    return {
+      toolFailureCount,
+      userRejectionSignals,
+      excessiveIterationSessions,
+      contextOverflowSessions,
+    };
+  }
+
+  /**
+   * Compute session hints for SessionOutcomeWorker.
+   *
+   * Helps classify session types:
+   * - Short sessions (1-3 user messages) → likely quick_question
+   * - Medium sessions (4-10 user messages) → likely single_task
+   * - Long sessions (11+ user messages) → likely multi_task or iterative_refinement
+   */
+  private computeSessionHints(
+    sessions: ParsedSession[]
+  ): Phase1SessionMetrics['sessionHints'] {
+    let totalUserTurns = 0;
+    let shortSessions = 0;
+    let mediumSessions = 0;
+    let longSessions = 0;
+
+    for (const session of sessions) {
+      const userMessageCount = session.messages.filter(m => m.role === 'user').length;
+      totalUserTurns += userMessageCount;
+
+      if (userMessageCount <= 3) {
+        shortSessions++;
+      } else if (userMessageCount <= 10) {
+        mediumSessions++;
+      } else {
+        longSessions++;
+      }
+    }
+
+    return {
+      avgTurnsPerSession: sessions.length > 0 ? totalUserTurns / sessions.length : 0,
+      shortSessions,
+      mediumSessions,
+      longSessions,
     };
   }
 
