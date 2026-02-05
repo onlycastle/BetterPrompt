@@ -10,16 +10,18 @@
  * Communication tab displays patterns from CommunicationPatternsWorker.
  */
 
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect, useLayoutEffect } from 'react';
 import { TypeResultMinimal } from '../type-result/TypeResultMinimal';
 import { PersonalitySummaryClean } from '../type-result/PersonalitySummaryClean';
 import { WorkerDomainSection } from '../insights/WorkerInsightsSection';
+import { ActivitySection } from '../activity/ActivitySection';
 import { NextTabButton } from '../shared/NextTabButton';
 import { PremiumValueSummary } from '../shared/PremiumValueSummary';
+import { ReportAnchorNav } from '../shared/ReportAnchorNav';
 import { ResourceSidebar } from '../resources/ResourceSidebar';
 import { DataQualityBadge } from '../shared/DataQualityBadge';
 import { InsightPreviewCard } from '../insights/InsightPreviewCard';
-import { ProfessionalInsightSidebar } from '../insights/ProfessionalInsightSidebar';
+
 import type { VerboseAnalysisData, AnalysisMetadata, DimensionResourceMatch } from '../../../../types/verbose';
 import type { AgentOutputs, ParsedResource } from '../../../../lib/models/agent-outputs';
 import { aggregateWorkerInsights } from '../../../../lib/models/agent-outputs';
@@ -78,7 +80,16 @@ function convertKnowledgeResourcesToFlat(resources: DimensionResourceMatch[]): P
   return result;
 }
 
-export type ReportTabId = 'thinking' | 'communication' | 'learning' | 'context';
+export type ReportTabId = 'activity' | 'thinking' | 'communication' | 'learning' | 'context';
+
+/** Maps tab IDs to their corresponding worker domain keys for insight lookup */
+const TAB_TO_DOMAIN: Record<ReportTabId, keyof AggregatedWorkerInsights | null> = {
+  activity: null,
+  thinking: 'thinkingQuality',
+  communication: 'communicationPatterns',
+  learning: 'learningBehavior',
+  context: 'contextEfficiency',
+};
 
 interface TabConfig {
   id: ReportTabId;
@@ -93,6 +104,7 @@ interface TabConfig {
  * - Context Efficiency: ContextEfficiencyWorker (Token Efficiency)
  */
 const REPORT_TABS: TabConfig[] = [
+  { id: 'activity', label: 'Activity' },
   { id: 'thinking', label: 'Thinking Quality' },
   { id: 'communication', label: 'Communication' },
   { id: 'learning', label: 'Learning Behavior' },
@@ -127,21 +139,35 @@ export function TabbedReportContainer({
   agentOutputs,
   analysisMetadata,
 }: TabbedReportContainerProps) {
-  const [activeTab, setActiveTab] = useState<ReportTabId>('thinking');
+  const [activeTab, setActiveTab] = useState<ReportTabId>('activity');
   const contentRef = useRef<HTMLDivElement>(null);
+  const headerSectionRef = useRef<HTMLDivElement>(null);
+
+  // Anchor nav visibility: show when header scrolls out of view
+  const [navVisible, setNavVisible] = useState(false);
+
+  useEffect(() => {
+    const headerEl = headerSectionRef.current;
+    if (!headerEl) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setNavVisible(!entry.isIntersecting),
+      { threshold: 0 },
+    );
+    observer.observe(headerEl);
+    return () => observer.disconnect();
+  }, []);
 
   // Professional Insight state (lifted from WorkerDomainSection for inline sidebar display)
   const [selectedInsight, setSelectedInsight] = useState<ReferencedInsight | null>(null);
-
-  // Detect mobile breakpoint for fallback to full-screen overlay
-  // Initialize as null to avoid SSR hydration mismatch (server renders null, client updates after mount)
-  const [isMobile, setIsMobile] = useState<boolean | null>(null);
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 900);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  // Track whether user explicitly dismissed the auto-shown insight (reset on tab change)
+  const [userDismissedInsight, setUserDismissedInsight] = useState(false);
+  // Store raw viewport Y from click (before sidebar renders)
+  const [clickedViewportY, setClickedViewportY] = useState<number | null>(null);
+  // Track Y position offset for inline positioning (relative to sidebar top)
+  const [insightYOffset, setInsightYOffset] = useState<number>(0);
+  // Ref to sidebar for calculating relative positions
+  const sidebarRef = useRef<HTMLElement>(null);
 
   // Get matched resources from Knowledge Base (Phase 2.75 deterministic matching)
   // These are validated URLs from our curated database, NOT LLM-generated URLs
@@ -205,6 +231,20 @@ export function TabbedReportContainer({
     if (contentRef.current) {
       contentRef.current.scrollTop = 0;
     }
+  }, []);
+
+  // Handle anchor nav tab click: switch tab + scroll to tab content area
+  const handleNavTabClick = useCallback((tabId: ReportTabId) => {
+    setActiveTab(tabId);
+    // Wait for React to render the new tab content before scrolling
+    requestAnimationFrame(() => {
+      contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
+
+  // Handle anchor nav "Profile" click: scroll to header
+  const handleProfileClick = useCallback(() => {
+    headerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
   // Build utterance lookup map for O(1) access (used for evidence linking)
@@ -347,6 +387,38 @@ export function TabbedReportContainer({
     }
   }, [analysis.knowledgeResources, workerInsights, allResources.length, insightAllocation, professionalInsightsByDomain]);
 
+  // Find the first available insight for the current tab's domain (auto-show in sidebar)
+  const defaultInsightForTab = useMemo((): ReferencedInsight | null => {
+    const domainKey = TAB_TO_DOMAIN[activeTab];
+    if (!domainKey) return null;
+    const prefix = `${domainKey}:`;
+    for (const [key, insight] of insightAllocation) {
+      if (key.startsWith(prefix) && insight !== null) {
+        return insight;
+      }
+    }
+    return null;
+  }, [activeTab, insightAllocation]);
+
+  // Reset dismissal when switching tabs (re-enable auto-show for new tab)
+  useEffect(() => {
+    setUserDismissedInsight(false);
+  }, [activeTab]);
+
+  // Auto-show the first insight for current tab's domain
+  useEffect(() => {
+    if (userDismissedInsight) return;
+
+    if (defaultInsightForTab) {
+      setSelectedInsight(defaultInsightForTab);
+      setInsightYOffset(0);
+      setClickedViewportY(null);
+    } else {
+      setSelectedInsight(null);
+      setInsightYOffset(0);
+    }
+  }, [activeTab, defaultInsightForTab, userDismissedInsight]);
+
   // Helper to check if a domain has content
   const hasDomainContent = (key: keyof AggregatedWorkerInsights): boolean => {
     const domain = workerInsights?.[key];
@@ -365,6 +437,8 @@ export function TabbedReportContainer({
   const availableTabs = useMemo(() => {
     return REPORT_TABS.filter(tab => {
       switch (tab.id) {
+        case 'activity':
+          return true; // Always available - shows session calendar
         case 'thinking':
           return hasThinking;
         case 'communication':
@@ -381,6 +455,7 @@ export function TabbedReportContainer({
 
   // Calculate locked recommendation counts for each tab (for premium badge)
   const lockedCounts = useMemo(() => ({
+    activity: 0,
     thinking: getLockedCount(workerInsights?.thinkingQuality),
     communication: getLockedCount(workerInsights?.communicationPatterns),
     learning: getLockedCount(workerInsights?.learningBehavior),
@@ -412,22 +487,70 @@ export function TabbedReportContainer({
     }
   }, [nextAvailableTab, handleTabChange]);
 
-  // Handle insight click - open insight in sidebar (or overlay on mobile)
-  const handleInsightClick = useCallback((insight: ReferencedInsight) => {
+  // Handle insight click - open insight in sidebar
+  // Store viewportY immediately; offset calculation happens in useLayoutEffect after sidebar renders
+  const handleInsightClick = useCallback((insight: ReferencedInsight, viewportY?: number) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[handleInsightClick] Setting selectedInsight:', insight, 'viewportY:', viewportY);
+    }
     setSelectedInsight(insight);
+    // Store viewport Y for offset calculation after sidebar renders
+    if (viewportY !== undefined) {
+      setClickedViewportY(viewportY);
+    }
   }, []);
 
   // Handle close insight
   const handleCloseInsight = useCallback(() => {
     setSelectedInsight(null);
+    setClickedViewportY(null);
+    setInsightYOffset(0);
+    setUserDismissedInsight(true);
   }, []);
+
+  // Calculate offset after sidebar renders (useLayoutEffect runs synchronously after DOM mutations)
+  useLayoutEffect(() => {
+    if (clickedViewportY !== null && sidebarRef.current) {
+      const sidebarTop = sidebarRef.current.getBoundingClientRect().top;
+      const relativeOffset = Math.max(0, clickedViewportY - sidebarTop);
+      setInsightYOffset(relativeOffset);
+      // Clear viewportY after calculation to avoid re-running
+      setClickedViewportY(null);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[useLayoutEffect] Calculated offset:', { clickedViewportY, sidebarTop, relativeOffset });
+      }
+    }
+  }, [clickedViewportY, selectedInsight]);
+
+  // Debug: Log sidebar render conditions
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Sidebar Render Conditions]', {
+        selectedInsight: !!selectedInsight,
+        allResourcesLength: allResources.length,
+        shouldShowSidebar: allResources.length > 0 || !!selectedInsight,
+        shouldShowInlineCard: !!selectedInsight,
+      });
+    }
+  }, [selectedInsight, allResources.length]);
 
   return (
     <div className={styles.pageLayout}>
-      {/* Main Content Column */}
+      {/* 1. Nav Column — vertical sidebar navigation */}
+      <div className={styles.navColumn}>
+        <ReportAnchorNav
+          activeTab={activeTab}
+          availableTabs={availableTabs}
+          onTabClick={handleNavTabClick}
+          onProfileClick={handleProfileClick}
+          visible={navVisible}
+        />
+      </div>
+
+      {/* 2. Main Content Column */}
       <div className={styles.mainContent}>
         {/* Fixed Header Section - Always Visible */}
-        <div className={styles.headerSection}>
+        <div ref={headerSectionRef} className={styles.headerSection}>
           {/* Analysis Quality Badge - Transparency for trust */}
           {analysisMetadata && (
             <DataQualityBadge metadata={analysisMetadata} />
@@ -477,6 +600,18 @@ export function TabbedReportContainer({
 
         {/* Tab Content - Scrollable */}
         <div ref={contentRef} className={styles.tabContent}>
+          {/* Activity Tab - GitHub-style contribution graph */}
+          {activeTab === 'activity' && (
+            <div className={styles.tabPanel}>
+              <ActivitySection
+                activitySessions={analysis.activitySessions}
+                analyzedSessions={analysis.analyzedSessions ?? []}
+                sessionSummaries={analysis.sessionSummaries}
+                analysisDateRange={analysisMetadata?.analysisDateRange}
+              />
+            </div>
+          )}
+
           {/* Thinking Quality Tab - ThinkingQualityWorker (Planning + Critical Thinking) */}
           {activeTab === 'thinking' && hasThinking && workerInsights?.thinkingQuality && (
             <div className={styles.tabPanel}>
@@ -580,31 +715,26 @@ export function TabbedReportContainer({
         </div>
       </div>
 
-      {/* Context Sidebar - Right column (insight preview + resources) */}
-      {(allResources.length > 0 || selectedInsight) && (
-        <aside className={styles.sidebar}>
-          {/* Inline Insight Preview Card (desktop only, also SSR fallback when isMobile is null) */}
-          {selectedInsight && isMobile !== true && (
+      {/* 3. Context Sidebar — always render container for grid stability */}
+      <aside ref={sidebarRef} className={styles.sidebar}>
+        {/* Inline Insight Preview Card — positioned at same Y level as clicked Growth Area */}
+        {selectedInsight && (
+          <div
+            className={styles.insightCardWrapper}
+            style={{ top: `${insightYOffset}px` }}
+          >
             <InsightPreviewCard
               insight={selectedInsight}
               onClose={handleCloseInsight}
             />
-          )}
-          {/* Resource Sidebar (resources pre-filtered by backend) */}
-          {allResources.length > 0 && (
-            <ResourceSidebar resources={allResources} />
-          )}
-        </aside>
-      )}
+          </div>
+        )}
+        {/* Resource Sidebar (resources pre-filtered by backend) */}
+        {allResources.length > 0 && (
+          <ResourceSidebar resources={allResources} />
+        )}
+      </aside>
 
-      {/* Full-screen overlay for mobile (only when explicitly detected as mobile) */}
-      {isMobile === true && (
-        <ProfessionalInsightSidebar
-          insight={selectedInsight}
-          isOpen={!!selectedInsight}
-          onClose={handleCloseInsight}
-        />
-      )}
     </div>
   );
 }

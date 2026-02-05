@@ -12,6 +12,8 @@ scripts/
 ├── test-phase2.ts              # Phase 2 (Insight Workers) testing
 ├── test-phase3.ts              # Phase 3 (ContentWriter) testing
 ├── test-phase4.ts              # Phase 4 (Translator) testing
+├── test-cursor-scanner.ts      # Cursor Source (legacy .cursor/chats/) testing
+├── test-cursor-composer.ts     # Cursor Composer Source (state.vscdb) testing
 ├── generate-phase1-cache.ts    # Phase 1 cache generator
 ├── generate-phase2-cache.ts    # Phase 2 cache generator
 ├── utils/
@@ -469,6 +471,78 @@ npx tsx scripts/test-phase2.ts /path/to/problematic-session.jsonl --worker=Think
 npx tsx scripts/test-phase3.ts /path/to/problematic-session.jsonl
 npx tsx scripts/test-phase4.ts /path/to/problematic-session.jsonl --lang=ko
 ```
+
+## Scanner Test Scripts
+
+These scripts test the multi-source session scanner, which discovers sessions from AI coding assistants beyond Claude Code.
+
+### test-cursor-composer.ts
+
+Tests the **CursorComposerSource** which reads Cursor Composer sessions from `globalStorage/state.vscdb` (SQLite key-value store).
+
+#### Usage
+
+```bash
+# List all composer sessions (default: top 10)
+npx tsx scripts/test-cursor-composer.ts
+
+# Show top N sessions
+npx tsx scripts/test-cursor-composer.ts -n=5
+
+# Parse a specific composer session
+npx tsx scripts/test-cursor-composer.ts --composer=7985e2a5-fd77-47a0-a4b9-1b50c0ba8392
+
+# Show raw bubble data for debugging
+npx tsx scripts/test-cursor-composer.ts --debug
+
+# Show help
+npx tsx scripts/test-cursor-composer.ts --help
+```
+
+#### CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `-n=<count>` | Show top N sessions (default: 10) |
+| `--composer=<id>` | Parse and display a specific composer session by ID |
+| `--debug` | Show raw bubble data from state.vscdb for debugging |
+| `--help` | Show help message |
+
+#### What It Validates
+
+- **Schema validation** (82+ checks): sessionId, source type, timestamps, message format, tool calls
+- **Bubble parsing**: Converts `bubbleId:` KV entries into `ParsedMessage[]`
+- **Tool ID resolution**: Maps Cursor Composer numeric tool IDs to normalized tool names via `CURSOR_COMPOSER_TOOL_IDS`
+
+#### Requirements
+
+- Cursor IDE installed with Composer session data
+- `better-sqlite3` package installed (`npm install better-sqlite3`)
+
+### test-cursor-scanner.ts
+
+Tests the **CursorSource** which reads legacy Cursor chat sessions from `~/.cursor/chats/**/*.db` (SQLite blob storage).
+
+#### Usage
+
+```bash
+# Scan latest 3 sessions (default)
+npx tsx scripts/test-cursor-scanner.ts
+
+# Scan latest N sessions
+npx tsx scripts/test-cursor-scanner.ts -n=5
+
+# Compare output format with Claude Code
+npx tsx scripts/test-cursor-scanner.ts --compare
+
+# Show blob parsing debug info
+npx tsx scripts/test-cursor-scanner.ts --debug
+
+# Test specific store.db file
+npx tsx scripts/test-cursor-scanner.ts /path/to/store.db
+```
+
+---
 
 ## Troubleshooting
 

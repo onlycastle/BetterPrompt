@@ -8,7 +8,7 @@
 /**
  * Supported session source identifiers
  */
-export type SessionSourceType = 'claude-code' | 'cursor';
+export type SessionSourceType = 'claude-code' | 'cursor' | 'cursor-composer';
 
 /**
  * Tool call representation

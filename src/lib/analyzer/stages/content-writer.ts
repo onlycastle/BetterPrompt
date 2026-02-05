@@ -393,15 +393,30 @@ export class ContentWriterStage {
   /**
    * Sanitize narrative-only LLM response
    *
-   * Deep clones to avoid mutation. Prompt pattern example verification
-   * is handled by evaluation-assembler.sanitizePromptPatterns().
+   * Deep clones to avoid mutation. Ensures personalitySummary is a string[]
+   * (defensive handling if Gemini returns a single string despite array schema).
+   * Prompt pattern example verification is handled by
+   * evaluation-assembler.sanitizePromptPatterns().
    */
   private sanitizeNarrativeResponse(
     input: NarrativeLLMResponse,
     _phase1Output?: Phase1Output
   ): NarrativeLLMResponse {
     // Deep clone to avoid mutation
-    return JSON.parse(JSON.stringify(input)) as NarrativeLLMResponse;
+    const cloned = JSON.parse(JSON.stringify(input)) as NarrativeLLMResponse;
+
+    // Defensive: if Gemini returned a string instead of array, split into paragraphs
+    if (typeof cloned.personalitySummary === 'string') {
+      cloned.personalitySummary = (cloned.personalitySummary as unknown as string)
+        .split(/\n\n+/)
+        .map(p => p.trim())
+        .filter(p => p.length > 0);
+    }
+
+    // Filter out empty paragraphs
+    cloned.personalitySummary = cloned.personalitySummary.filter(p => p.trim().length > 0);
+
+    return cloned;
   }
 
   // ─────────────────────────────────────────────────────────────────────────

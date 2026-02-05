@@ -107,10 +107,23 @@ interface SerializedSession {
 }
 
 /**
+ * Activity session metadata (deterministic, from CLI scanner)
+ */
+interface ActivitySessionInfo {
+  sessionId: string;
+  projectName: string;
+  startTime: string;
+  durationMinutes: number;
+  messageCount: number;
+  summary: string;
+}
+
+/**
  * API request payload
  */
 interface AnalysisPayload {
   sessions: SerializedSession[];
+  activitySessions?: ActivitySessionInfo[];
   totalMessages: number;
   totalDurationMinutes: number;
   version: 2;
@@ -166,6 +179,7 @@ function preparePayload(scanResult: ScanResult): PreparePayloadResult {
 
   const payload: AnalysisPayload = {
     sessions: serializedSessions,
+    activitySessions: scanResult.activitySessions,
     totalMessages: scanResult.totalMessages,
     totalDurationMinutes: scanResult.totalDurationMinutes,
     version: 2,
@@ -194,6 +208,7 @@ function preparePayload(scanResult: ScanResult): PreparePayloadResult {
 
     const reducedPayload: AnalysisPayload = {
       sessions: serializedSessions,
+      activitySessions: scanResult.activitySessions,
       totalMessages: serializedSessions.reduce((sum, s) => sum + s.stats.userMessageCount + s.stats.assistantMessageCount, 0),
       totalDurationMinutes: Math.round(serializedSessions.reduce((sum, s) => sum + s.durationSeconds, 0) / 60),
       version: 2,

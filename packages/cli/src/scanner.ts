@@ -51,7 +51,7 @@ const PREFILTER_CONFIG = {
   IDEAL_SIZE_MAX: 5 * 1024 * 1024,
   // Project diversity in pre-filter
   MIN_PROJECTS_IN_PREFILTER: 5, // Ensure at least 5 projects in candidates
-  MAX_PER_PROJECT_IN_PREFILTER: 30, // Cap per project to ensure diversity (lowered from 50)
+  MAX_PER_PROJECT_IN_PREFILTER: 40, // Cap per project to ensure diversity
 };
 
 /**
@@ -124,6 +124,8 @@ export interface ScanResult {
   totalDurationMinutes: number;
   /** Source statistics: number of sessions from each source */
   sourceStats?: Map<string, number>;
+  /** Activity metadata for ALL recent sessions (deterministic, from CLI scanner) */
+  activitySessions?: import('./activity-scanner.js').ActivitySessionInfo[];
 }
 
 /**
@@ -280,21 +282,25 @@ async function scoreCandidates(
   for (const file of candidates) {
     try {
       // Handle different source types
-      if (file.source === 'cursor') {
-        // Cursor: parse directly from SQLite file
+      if (file.source === 'cursor' || file.source === 'cursor-composer') {
+        // SQLite-based sources: parse directly from file
+        const sourceType = file.source;
+        const sessionId = sourceType === 'cursor-composer'
+          ? file.filePath.substring(file.filePath.indexOf('#') + 1)
+          : basename(file.filePath, '.db');
+
         const parsed = await multiSourceScanner.parseSession({
-          sessionId: basename(file.filePath, '.db'),
+          sessionId,
           projectPath: decodeProjectPath(file.projectDirName),
           projectName: getProjectName(decodeProjectPath(file.projectDirName)),
           timestamp: file.mtime,
-          messageCount: 0, // Will be updated after parsing
-          durationSeconds: 0, // Will be updated after parsing
+          messageCount: 0,
+          durationSeconds: 0,
           filePath: file.filePath,
-          source: 'cursor',
+          source: sourceType,
         } as SourcedSessionMetadata);
 
         if (parsed && parsed.messages.length >= SELECTION_CONFIG.MIN_MESSAGE_COUNT) {
-          // Calculate quality score based on parsed content
           const qualityMetrics = extractQualityMetricsFromParsed(parsed);
           const qualityScore = calculateQualityScore(qualityMetrics);
 
@@ -308,9 +314,9 @@ async function scoreCandidates(
               durationSeconds: parsed.durationSeconds,
               filePath: file.filePath,
               qualityScore,
-              source: 'cursor',
+              source: sourceType,
             },
-            content: '', // Empty for SQLite sources
+            content: '',
             parsedSession: parsed,
           });
         }
@@ -540,7 +546,7 @@ function selectOptimalSessions(
  *
  * Supports multiple sources (Claude Code, Cursor) via multiSourceScanner.
  */
-export async function scanSessions(maxSessions: number = 30): Promise<ScanResult> {
+export async function scanSessions(maxSessions: number = 50): Promise<ScanResult> {
   // Phase 1: Collect file metadata from all sources (memory efficient)
   const { files: sourceFiles, sourceStats } = await multiSourceScanner.collectAllFileMetadata({
     minFileSize: PREFILTER_CONFIG.MIN_FILE_SIZE,
@@ -682,6 +688,9 @@ export async function getAvailableSources(): Promise<{ name: string; displayName
 export async function getSourceStatus(): Promise<Map<string, boolean>> {
   return multiSourceScanner.getSourceStatus();
 }
+
+// Re-export activity scanner
+export { scanActivitySessions, type ActivitySessionInfo } from './activity-scanner.js';
 
 // Re-export for backwards compatibility
 export { CLAUDE_PROJECTS_DIR as PROJECTS_DIR };

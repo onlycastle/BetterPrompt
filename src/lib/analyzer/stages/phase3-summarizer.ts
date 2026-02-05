@@ -59,6 +59,12 @@ export function summarizeAgentOutputsForPhase3(agentOutputs: AgentOutputs): stri
     sections.push(summarizeContextEfficiency(agentOutputs.contextEfficiency));
   }
 
+  // Cross-Worker Insight Map — flat consolidated view for contradiction detection
+  const insightMap = buildCrossWorkerInsightMap(agentOutputs);
+  if (insightMap) {
+    sections.push(insightMap);
+  }
+
   return sections.join('\n\n');
 }
 
@@ -175,6 +181,22 @@ function summarizeThinkingQuality(tq: ThinkingQualityOutput): string {
     if (mt.recommendation) lines.push(`recommendation: "${mt.recommendation}"`);
   }
 
+  // Strengths summary
+  if (tq.strengths && tq.strengths.length > 0) {
+    lines.push(`### Strengths (${tq.strengths.length})`);
+    for (const s of tq.strengths) {
+      lines.push(`- [ThinkingQuality] ${s.title}`);
+    }
+  }
+
+  // Growth Areas summary
+  if (tq.growthAreas && tq.growthAreas.length > 0) {
+    lines.push(`### Growth Areas (${tq.growthAreas.length})`);
+    for (const g of tq.growthAreas) {
+      lines.push(`- [ThinkingQuality] ${g.title} [${g.severity ?? 'medium'}]`);
+    }
+  }
+
   return lines.join('\n');
 }
 
@@ -212,7 +234,7 @@ function summarizeCommunicationPatterns(cp: CommunicationPatternsOutput): string
   if (cp.strengths && cp.strengths.length > 0) {
     lines.push(`### Strengths (${cp.strengths.length})`);
     for (const s of cp.strengths) {
-      lines.push(`- ${s.title}`);
+      lines.push(`- [CommunicationPatterns] ${s.title}`);
     }
   }
 
@@ -220,7 +242,7 @@ function summarizeCommunicationPatterns(cp: CommunicationPatternsOutput): string
   if (cp.growthAreas && cp.growthAreas.length > 0) {
     lines.push(`### Growth Areas (${cp.growthAreas.length})`);
     for (const g of cp.growthAreas) {
-      lines.push(`- ${g.title} [${g.severity ?? 'medium'}]`);
+      lines.push(`- [CommunicationPatterns] ${g.title} [${g.severity ?? 'medium'}]`);
     }
   }
 
@@ -270,6 +292,22 @@ function summarizeLearningBehavior(lb: LearningBehaviorOutput): string {
     }
   }
 
+  // Strengths summary
+  if (lb.strengths && lb.strengths.length > 0) {
+    lines.push(`### Strengths (${lb.strengths.length})`);
+    for (const s of lb.strengths) {
+      lines.push(`- [LearningBehavior] ${s.title}`);
+    }
+  }
+
+  // Growth Areas summary
+  if (lb.growthAreas && lb.growthAreas.length > 0) {
+    lines.push(`### Growth Areas (${lb.growthAreas.length})`);
+    for (const g of lb.growthAreas) {
+      lines.push(`- [LearningBehavior] ${g.title} [${g.severity ?? 'medium'}]`);
+    }
+  }
+
   return lines.join('\n');
 }
 
@@ -283,6 +321,22 @@ function summarizeEfficiency(ce: ContextEfficiencyOutput): string {
 
   addTopInsights(lines, ce.topInsights);
   addOptionalSection(lines, 'ProductivitySummary', ce.productivitySummary);
+
+  // Strengths summary
+  if (ce.strengths && ce.strengths.length > 0) {
+    lines.push(`### Strengths (${ce.strengths.length})`);
+    for (const s of ce.strengths) {
+      lines.push(`- [Efficiency] ${s.title}`);
+    }
+  }
+
+  // Growth Areas summary
+  if (ce.growthAreas && ce.growthAreas.length > 0) {
+    lines.push(`### Growth Areas (${ce.growthAreas.length})`);
+    for (const g of ce.growthAreas) {
+      lines.push(`- [Efficiency] ${g.title} [${g.severity ?? 'medium'}]`);
+    }
+  }
 
   return lines.join('\n');
 }
@@ -306,6 +360,83 @@ function summarizeContextEfficiency(ce: ContextEfficiencyOutput): string {
 
   addTopInsights(lines, ce.topInsights);
   addOptionalSection(lines, 'ProductivitySummary', ce.productivitySummary);
+
+  return lines.join('\n');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cross-Worker Insight Map
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface WorkerInsightEntry {
+  domain: string;
+  strengths: Array<{ title: string }>;
+  growthAreas: Array<{ title: string; severity?: string }>;
+}
+
+/**
+ * Build a flat consolidated view of ALL strengths and growth areas across ALL workers.
+ *
+ * This gives ContentWriter a single view to spot overlaps and contradictions
+ * between different workers' assessments of the same behavior.
+ */
+export function buildCrossWorkerInsightMap(agentOutputs: AgentOutputs): string | null {
+  const workers: WorkerInsightEntry[] = [];
+
+  if (agentOutputs.thinkingQuality) {
+    workers.push({
+      domain: 'ThinkingQuality',
+      strengths: agentOutputs.thinkingQuality.strengths ?? [],
+      growthAreas: agentOutputs.thinkingQuality.growthAreas ?? [],
+    });
+  }
+
+  if (agentOutputs.communicationPatterns) {
+    workers.push({
+      domain: 'CommunicationPatterns',
+      strengths: agentOutputs.communicationPatterns.strengths ?? [],
+      growthAreas: agentOutputs.communicationPatterns.growthAreas ?? [],
+    });
+  }
+
+  if (agentOutputs.learningBehavior) {
+    workers.push({
+      domain: 'LearningBehavior',
+      strengths: agentOutputs.learningBehavior.strengths ?? [],
+      growthAreas: agentOutputs.learningBehavior.growthAreas ?? [],
+    });
+  }
+
+  if (agentOutputs.efficiency) {
+    workers.push({
+      domain: 'Efficiency',
+      strengths: agentOutputs.efficiency.strengths ?? [],
+      growthAreas: agentOutputs.efficiency.growthAreas ?? [],
+    });
+  }
+
+  const allStrengths = workers.flatMap(w =>
+    w.strengths.map(s => `- [${w.domain}] "${s.title}"`)
+  );
+  const allGrowthAreas = workers.flatMap(w =>
+    w.growthAreas.map(g => `- [${w.domain}] "${g.title}" [${g.severity ?? 'medium'}]`)
+  );
+
+  if (allStrengths.length === 0 && allGrowthAreas.length === 0) {
+    return null;
+  }
+
+  const lines: string[] = ['## Cross-Worker Insight Map'];
+
+  if (allStrengths.length > 0) {
+    lines.push('### All Strengths:');
+    lines.push(...allStrengths);
+  }
+
+  if (allGrowthAreas.length > 0) {
+    lines.push('### All Growth Areas:');
+    lines.push(...allGrowthAreas);
+  }
 
   return lines.join('\n');
 }

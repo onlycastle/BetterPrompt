@@ -99,7 +99,10 @@ function createMockAgentOutputs(): AgentOutputs {
 
 function createMockNarrativeResponse() {
   return {
-    personalitySummary: 'You are a thoughtful developer who maintains strong oversight of AI-generated code.',
+    personalitySummary: [
+      'You are a thoughtful developer who maintains strong oversight of AI-generated code.',
+      'Your verification habits demonstrate a mature engineering mindset.',
+    ],
     promptPatterns: [
       { patternName: 'Verification Before Progress', description: 'You pause to verify results before moving forward', frequency: 'often', examplesData: 'session-1_2|Strong verification mindset shown', effectiveness: 'very_effective', tip: 'Continue this pattern - it prevents compounding errors' },
       { patternName: 'Clear Task Specification', description: 'You provide detailed context when requesting changes', frequency: 'sometimes', examplesData: 'session-1_0|Clear OAuth implementation request', effectiveness: 'effective', tip: 'Consider including expected behavior in requests' },

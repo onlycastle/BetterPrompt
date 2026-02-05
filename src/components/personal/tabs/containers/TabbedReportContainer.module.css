@@ -1,18 +1,25 @@
 /**
  * TabbedReportContainer Styles
  * Notebook sketch style with tab navigation
- * 2-column layout: main content + resource sidebar
+ * 3-column layout: nav sidebar + main content + resource sidebar
  */
 
-/* 2-column grid layout: main content + resource sidebar */
+/* 3-column grid layout: nav + main content + resource sidebar */
 .pageLayout {
-  max-width: 1100px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 0 var(--space-lg);
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 80px 1fr 280px;
   gap: var(--space-xl);
   align-items: start;
+}
+
+/* Left navigation column */
+.navColumn {
+  position: sticky;
+  top: var(--space-lg);
+  align-self: start;
 }
 
 /* Main content column */
@@ -29,6 +36,16 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  /* sticky elements automatically become containing blocks for absolute children */
+}
+
+/* Insight preview card wrapper - positioned absolutely to align with clicked element */
+.insightCardWrapper {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* top value is set dynamically via inline style */
+  z-index: 10; /* Above resources but below modals */
 }
 
 /* Fixed Header Section */
@@ -146,12 +163,16 @@
   }
 }
 
-/* Responsive - Tablet: Stack to single column */
+/* Responsive - Tablet: Stack to single column, hide nav */
 @media (max-width: 900px) {
   .pageLayout {
     grid-template-columns: 1fr;
     max-width: 800px;
     padding: 0 var(--space-md);
+  }
+
+  .navColumn {
+    display: none;
   }
 
   .sidebar {

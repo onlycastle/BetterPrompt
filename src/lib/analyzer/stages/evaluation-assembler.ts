@@ -128,7 +128,11 @@ export function assembleEvaluation(
   const result: Record<string, unknown> = {};
 
   // ── Phase 3 Narrative (LLM-generated) ──────────────────────────────────
-  result.personalitySummary = narrativeResult.personalitySummary;
+  // NarrativeLLMResponse.personalitySummary is string[] (array of paragraphs).
+  // Join into \n\n-separated string for DB storage and downstream compatibility.
+  result.personalitySummary = Array.isArray(narrativeResult.personalitySummary)
+    ? narrativeResult.personalitySummary.join('\n\n')
+    : narrativeResult.personalitySummary;
 
   // ── Prompt Patterns: From CommunicationPatterns worker or Phase 3 fallback ──
   // v3.1 CommunicationPatterns is a separate worker (previously part of ThinkingQuality)

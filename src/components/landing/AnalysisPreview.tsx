@@ -3,7 +3,7 @@ import styles from './AnalysisPreview.module.css';
 
 export function AnalysisPreview() {
   return (
-    <section className={styles.section}>
+    <section id="preview" className={styles.section}>
       <SamplePreviewFrame>
         <div className={styles.header}>
           <h2 className={styles.headline}>Sample Report Preview</h2>

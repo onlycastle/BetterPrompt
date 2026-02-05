@@ -37,13 +37,15 @@ npm test               # Run all tests
 | Phase | Component | LLM Calls | Description |
 |-------|-----------|-----------|-------------|
 | 1 | DataExtractor | 0 | Deterministic extraction (no LLM) |
+| 1.5 | SessionSummarizer | 1 | LLM-generated 1-line session summaries (batch) |
 | 2 | 4 Insight Workers | 4 | Parallel analysis (ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency) |
 | 2.5 | TypeClassifier | 1 | Developer type classification (5x3 matrix) |
 | 2.75 | KnowledgeResourceMatcher | 0 | Deterministic resource matching from curated database |
+| 2.8 | EvidenceVerifier | 1 | LLM-based evidence verification |
 | 3 | ContentWriter | 1 | Personalized narrative generation |
 | 4 | Translator | 0-1 | Conditional translation (non-English only) |
 
-- **Total**: 6 LLM calls (English), 7 LLM calls (non-English)
+- **Total**: 8 LLM calls (English), 9 LLM calls (non-English)
 - Prompts use PTCF framework (Persona · Task · Context · Format)
 - Temperature: 1.0 (Gemini's recommended default)
 
@@ -134,6 +136,17 @@ return await analyze(); // Error surfaces to user, root cause can be identified
 
 > ⚠️ **NEVER use local SST deployment** (`npx sst deploy`). Local SST has critical bugs causing routing failures and inconsistent deployments. Always use GitHub Actions for Lambda deployment.
 
-## Architecture
+## Documentation
 
-See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for system design, pipelines, and components.
+> ⚠️ **Context Loading**: Before exploring the codebase for architecture, pipeline, file locations, or debugging context, **read `docs/agent/` first**. These docs are optimized for fast lookups (concise, table-based) and cover most questions about system structure, key files, test workflows, and known issues. Only dive into source files when `docs/agent/` doesn't have the specific detail you need.
+
+| Document | When to Read |
+|----------|--------------|
+| [docs/agent/ARCHITECTURE.md](./docs/agent/ARCHITECTURE.md) | Understanding system structure, pipeline phases, finding key files, API routes, data models |
+| [docs/agent/TESTING.md](./docs/agent/TESTING.md) | Running tests, test script options, cache workflows |
+| [docs/agent/DEPLOYMENT.md](./docs/agent/DEPLOYMENT.md) | Lambda/Vercel deployment, environment variables, infrastructure |
+| [docs/agent/TROUBLESHOOTING.md](./docs/agent/TROUBLESHOOTING.md) | Debugging issues, known pitfalls, prevention checklists |
+
+Detailed human-readable docs: [docs/human/](./docs/human/)
+
+> ⚠️ **Keep Agent Docs Updated**: When you add new files, change directory structure, modify the pipeline, add/remove API routes, or update test scripts, **update the relevant `docs/agent/` doc** in the same change. These docs are the primary reference for future sessions — stale docs lead to wrong assumptions and wasted context.

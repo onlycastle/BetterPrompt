@@ -4,7 +4,7 @@ import styles from './PhilosophySection.module.css';
 
 export function PhilosophySection() {
   return (
-    <section className={styles.section}>
+    <section id="philosophy" className={styles.section}>
       <div className={styles.content}>
         <blockquote className={styles.oneliner}>
           <span className={styles.onelinerLine1}>AI is a multiplier.</span>

@@ -24,7 +24,7 @@ const evidence = [
 
 export function KnowledgeSection() {
   return (
-    <section className={styles.section}>
+    <section id="knowledge" className={styles.section}>
       <h2 className={styles.headline}>
         Built on research, not vibes
       </h2>

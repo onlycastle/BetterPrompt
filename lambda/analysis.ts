@@ -138,10 +138,23 @@ interface AnalysisRequestV1 {
 }
 
 /**
+ * Activity session metadata (deterministic, from CLI scanner)
+ */
+interface ActivitySessionInfo {
+  sessionId: string;
+  projectName: string;
+  startTime: string;
+  durationMinutes: number;
+  messageCount: number;
+  summary: string;
+}
+
+/**
  * Analysis request from CLI (v2 - pre-parsed)
  */
 interface AnalysisRequestV2 {
   sessions: SerializedSession[];
+  activitySessions?: ActivitySessionInfo[];
   totalMessages: number;
   totalDurationMinutes: number;
   version: 2;
@@ -765,7 +778,7 @@ async function runAnalysis(
     } catch {
       clearInterval(livenessInterval);
     }
-  }, 3000);
+  }, 1000);
 
   // Run analysis - returns AnalysisResult with evaluation + phase1Output
   let evaluation: VerboseEvaluation;
@@ -779,10 +792,14 @@ async function runAnalysis(
       professionalInsightRepo: createSupabaseProfessionalInsightRepository(),
     });
 
+    // Extract activitySessions from request body (v2 only)
+    const activitySessions = isV2Request(body) ? body.activitySessions : undefined;
+
     console.log("[PHASE:ANALYZE] Starting analyzeVerbose...");
     const analysisResult = await analyzer.analyzeVerbose(parsedSessions, metrics, {
       tier: "enterprise",
       onProgress,
+      activitySessions,
     });
     evaluation = analysisResult.evaluation;
     phase1Output = analysisResult.phase1Output;

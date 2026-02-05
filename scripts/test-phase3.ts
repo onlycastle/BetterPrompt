@@ -259,7 +259,7 @@ async function main() {
 
     console.log(`Phase 1 completed in ${phase1Time}ms`);
     console.log(`  Utterances: ${phase1Output.developerUtterances.length}`);
-    console.log(`  AI responses: ${phase1Output.aiResponses.length}`);
+    console.log(`  AI responses: ${phase1Output.sessionMetrics.totalAIResponses}`);
     console.log('');
 
     timings.push({ label: 'Phase 1', ms: phase1Time });

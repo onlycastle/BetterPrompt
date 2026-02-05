@@ -14,7 +14,6 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { VerboseEvaluation, PromptPattern, PerDimensionInsight } from '@/lib/models/verbose-evaluation';
 import type { AgentOutputs } from '@/lib/models/agent-outputs';
-import { createAgentTeasers } from '@/lib/models/agent-teasers';
 import { aggregateWorkerInsights } from '@/lib/models/agent-outputs';
 import { createContentGateway } from '@/lib/analyzer/content-gateway';
 
@@ -88,6 +87,10 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
     distribution: evaluation.distribution,
     personalitySummary: evaluation.personalitySummary,
 
+    // Activity data - diagnostic metadata, not premium content
+    activitySessions: evaluation.activitySessions,
+    sessionSummaries: evaluation.sessionSummaries,
+
     // PREMIUM fields - preview only (3 full + 4th truncated)
     promptPatterns: previewPatterns,
     dimensionInsights: previewDimensionInsights,
@@ -102,7 +105,7 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
     // Agent outputs - teasers for free users
     // FREE agents (patternDetective, metacognition) show full data
     // PREMIUM agents show 1 insight + scores only
-    agentOutputs: createAgentTeasers(evaluation.agentOutputs),
+    agentOutputs: createContentGateway().filterAgentOutputs(evaluation.agentOutputs, 'free'),
 
     // Analysis metadata - always show (transparency builds trust)
     analysisMetadata: evaluation.analysisMetadata,

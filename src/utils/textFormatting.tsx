@@ -2,7 +2,7 @@
  * Text Formatting Utilities
  *
  * Parses markdown-style bold markers (**text**) into styled React elements.
- * Also supports paragraph separation (\n\n) and quote detection ("...").
+ * Also supports paragraph separation (\n\n) and quote detection (「...」 or legacy "...").
  * Lightweight alternative to react-markdown for simple formatting.
  *
  * @module utils/textFormatting
@@ -89,9 +89,12 @@ function parseQuoteSegments(text: string): Array<{ text: string; isQuote: boolea
     return [];
   }
 
-  const segments: Array<{ text: string; isQuote: boolean }> = [];
-  const quoteRegex = /"([^"]{20,})"/g;
+  // Primary: 「...」 corner bracket markers (new, unambiguous)
+  const hasCornerBrackets = text.includes('「');
+  // Use 「」 if present, else fall back to legacy "..." for old DB data
+  const quoteRegex = hasCornerBrackets ? /「([^」]+)」/g : /"([^"]{20,})"/g;
 
+  const segments: Array<{ text: string; isQuote: boolean }> = [];
   let lastIndex = 0;
   let match;
 
@@ -104,7 +107,9 @@ function parseQuoteSegments(text: string): Array<{ text: string; isQuote: boolea
     }
 
     segments.push({
-      text: match[0],
+      // Corner brackets: inner text only (markers stripped)
+      // Legacy quotes: full match including "..." (preserve reading flow)
+      text: hasCornerBrackets ? match[1] : match[0],
       isQuote: true,
     });
 
@@ -157,6 +162,55 @@ function parseQuotesAndEmphasis(
 }
 
 /**
+ * Render paragraph text with soft break (\n) support
+ *
+ * Splits paragraph text by single \n and inserts visual spacers between segments.
+ * If text has no \n, falls back to standard parseQuotesAndEmphasis (backward compatible).
+ *
+ * @param text - Paragraph text that may contain single \n for soft breaks
+ * @param boldClassName - CSS class for bold elements
+ * @param quoteClassName - CSS class for quote elements
+ * @param softBreakClassName - CSS class for the soft break spacer element
+ * @returns Array of React nodes with soft breaks rendered
+ */
+function renderParagraphWithSoftBreaks(
+  text: string,
+  boldClassName?: string,
+  quoteClassName?: string,
+  softBreakClassName?: string
+): ReactNode[] {
+  const segments = text.split('\n');
+
+  // Single segment (no \n) — backward compatible path
+  if (segments.length === 1) {
+    return parseQuotesAndEmphasis(text, boldClassName, quoteClassName);
+  }
+
+  // Multiple segments — insert soft break spacers between them
+  const result: ReactNode[] = [];
+  segments.forEach((segment, index) => {
+    const trimmed = segment.trim();
+    if (trimmed) {
+      result.push(
+        <Fragment key={`soft-seg-${index}`}>
+          {parseQuotesAndEmphasis(trimmed, boldClassName, quoteClassName)}
+        </Fragment>
+      );
+    }
+    if (index < segments.length - 1) {
+      result.push(<br key={`soft-br-${index}`} />);
+      if (softBreakClassName) {
+        result.push(
+          <span key={`soft-spacer-${index}`} className={softBreakClassName} />
+        );
+      }
+    }
+  });
+
+  return result;
+}
+
+/**
  * Props for the FormattedPersonalityText component
  */
 interface FormattedPersonalityTextProps {
@@ -168,6 +222,8 @@ interface FormattedPersonalityTextProps {
   quoteClassName?: string;
   /** CSS class for paragraph wrapper */
   paragraphClassName?: string;
+  /** CSS class for the soft break spacer within paragraphs */
+  softBreakClassName?: string;
   /** CSS class for the container element */
   className?: string;
 }
@@ -193,20 +249,57 @@ export function FormattedPersonalityText({
   boldClassName,
   quoteClassName,
   paragraphClassName,
+  softBreakClassName,
   className,
 }: FormattedPersonalityTextProps) {
   if (!text) return null;
 
   // Split into paragraphs by \n\n (or multiple newlines)
-  const paragraphs = text.split(/\n\n+/).filter((p) => p.trim());
+  let paragraphs = text.split(/\n\n+/).filter((p) => p.trim());
+
+  // Fallback for legacy data: if only 1 paragraph and text is long,
+  // split by sentence boundaries into balanced paragraphs
+  if (paragraphs.length === 1 && text.length > 800) {
+    paragraphs = splitIntoBalancedParagraphs(text);
+  }
 
   return (
     <div className={className}>
       {paragraphs.map((para, index) => (
         <p key={index} className={paragraphClassName}>
-          {parseQuotesAndEmphasis(para.trim(), boldClassName, quoteClassName)}
+          {renderParagraphWithSoftBreaks(para.trim(), boldClassName, quoteClassName, softBreakClassName)}
         </p>
       ))}
     </div>
   );
+}
+
+/**
+ * Split a long text into balanced paragraphs using sentence boundaries.
+ * Used as fallback for legacy data that lacks \n\n paragraph separators.
+ *
+ * @param text - Long text string without paragraph breaks
+ * @param targetParagraphs - Target number of paragraphs (default: 4-5)
+ * @returns Array of paragraph strings
+ */
+function splitIntoBalancedParagraphs(text: string, targetParagraphs = 5): string[] {
+  // Split by sentence boundaries while preserving the delimiter
+  const sentences = text.split(/(?<=[.!?])\s+/).filter((s) => s.trim());
+
+  if (sentences.length <= targetParagraphs) {
+    // Not enough sentences to split meaningfully
+    return sentences.length > 1 ? sentences : [text];
+  }
+
+  const sentencesPerParagraph = Math.ceil(sentences.length / targetParagraphs);
+  const paragraphs: string[] = [];
+
+  for (let i = 0; i < sentences.length; i += sentencesPerParagraph) {
+    const chunk = sentences.slice(i, i + sentencesPerParagraph).join(' ');
+    if (chunk.trim()) {
+      paragraphs.push(chunk.trim());
+    }
+  }
+
+  return paragraphs;
 }

@@ -33,6 +33,7 @@ export const TOOL_MAPPING: Record<SessionSourceType, Record<string, string>> = {
     'edit_file': 'Edit',
     'list_dir': 'Bash', // ls equivalent
     'list_directory': 'Bash',
+    'LS': 'Bash', // Cursor's PascalCase variant
 
     // Search operations
     'grep_search': 'Grep',
@@ -55,6 +56,66 @@ export const TOOL_MAPPING: Record<SessionSourceType, Record<string, string>> = {
     'apply_diff': 'Edit',
     'insert_code': 'Edit',
     'replace_code': 'Edit',
+    'ApplyPatch': 'Edit', // Cursor's PascalCase variant
+
+    // Shell operations (Cursor uses 'Shell' directly)
+    'Shell': 'Bash',
+
+    // Notebook operations
+    'notebook_edit': 'NotebookEdit',
+    'jupyter': 'NotebookEdit',
+
+    // MCP/Plugin operations
+    'mcp_call': 'Skill',
+    'plugin': 'Skill',
+
+    // Task/Agent operations
+    'spawn_agent': 'Task',
+    'delegate': 'Task',
+
+    // Misc
+    'ask_user': 'AskUserQuestion',
+    'user_input': 'AskUserQuestion',
+  },
+
+  /**
+   * Cursor Composer uses the same snake_case tool names as Cursor
+   * Reuses the same mapping for consistency
+   */
+  'cursor-composer': {
+    // File operations
+    'read_file': 'Read',
+    'write_file': 'Write',
+    'edit_file': 'Edit',
+    'list_dir': 'Bash',
+    'list_directory': 'Bash',
+    'LS': 'Bash',
+
+    // Search operations
+    'grep_search': 'Grep',
+    'file_search': 'Glob',
+    'codebase_search': 'Grep',
+    'search': 'Grep',
+
+    // Terminal operations
+    'run_terminal_cmd': 'Bash',
+    'run_command': 'Bash',
+    'terminal': 'Bash',
+
+    // Web operations
+    'web_search': 'WebSearch',
+    'fetch_url': 'WebFetch',
+    'browser': 'WebFetch',
+
+    // Code operations
+    'code_edit': 'Edit',
+    'apply_diff': 'Edit',
+    'insert_code': 'Edit',
+    'replace_code': 'Edit',
+    'ApplyPatch': 'Edit',
+
+    // Shell operations
+    'Shell': 'Bash',
 
     // Notebook operations
     'notebook_edit': 'NotebookEdit',
@@ -150,4 +211,33 @@ export function getToolCategory(
     }
   }
   return 'OTHER';
+}
+
+/**
+ * Cursor Composer numeric tool ID → tool name mapping
+ *
+ * Cursor Composer stores tool calls with numeric capabilityType IDs
+ * in the toolFormerData.tool field. This maps known IDs to tool names
+ * which can then be normalized via TOOL_MAPPING['cursor-composer'].
+ *
+ * Known IDs verified from real state.vscdb data (2026-02-05).
+ * Unknown IDs will fall through as 'tool_{id}'.
+ */
+export const CURSOR_COMPOSER_TOOL_IDS: Record<number, string> = {
+  15: 'run_terminal_cmd',
+  38: 'edit_file',
+  39: 'list_dir',
+  40: 'write_file',
+};
+
+/**
+ * Resolve a Cursor Composer numeric tool ID to a canonical tool name
+ */
+export function resolveComposerToolId(numericId: number): string {
+  const toolName = CURSOR_COMPOSER_TOOL_IDS[numericId];
+  if (toolName) {
+    return normalizeToolName(toolName, 'cursor-composer');
+  }
+  // Unknown ID: return a descriptive fallback
+  return `tool_${numericId}`;
 }

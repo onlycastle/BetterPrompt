@@ -5,12 +5,14 @@ import styles from './HeroSection.module.css';
 
 export function HeroSection() {
   return (
-    <section className={styles.hero}>
+    <section id="hero" className={styles.hero}>
       <div className={styles.content}>
         <div className={styles.badge}>No More AI Slop</div>
         <h1 className={styles.headline}>
-          Good vibe coders know what they <span className={styles.accent}>shipped</span>.
-          <br className={styles.breakDesktop} />
+          Good vibe coders know
+          <br />
+          <span className={styles.accent}>what they shipped</span>.
+          <br />
           Do you?
         </h1>
 

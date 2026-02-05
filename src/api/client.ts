@@ -15,7 +15,6 @@ import type {
   TopicCategory,
   KnowledgeStatus,
 } from '../types';
-import type { TeamAnalytics, TeamMemberAnalysis, HistoryEntry } from '../types/enterprise';
 
 const API_BASE = '/api';
 
@@ -162,15 +161,3 @@ export async function deleteInfluencer(id: string): Promise<{ success: boolean }
   });
 }
 
-// Enterprise API
-export async function getTeamAnalytics(): Promise<TeamAnalytics> {
-  return fetchJson<TeamAnalytics>(`${API_BASE}/enterprise/team/demo`);
-}
-
-export async function getTeamMembers(): Promise<{ members: TeamMemberAnalysis[] }> {
-  return fetchJson<{ members: TeamMemberAnalysis[] }>(`${API_BASE}/enterprise/team/demo/members`);
-}
-
-export async function getTeamTrends(period: '7d' | '30d' | '90d' = '30d'): Promise<{ trends: HistoryEntry[] }> {
-  return fetchJson<{ trends: HistoryEntry[] }>(`${API_BASE}/enterprise/team/demo/trends?period=${period}`);
-}

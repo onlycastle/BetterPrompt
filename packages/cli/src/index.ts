@@ -12,7 +12,7 @@
 
 import pc from 'picocolors';
 import ora from 'ora';
-import { scanSessions, hasClaudeProjects } from './scanner.js';
+import { scanSessions, scanActivitySessions, hasClaudeProjects } from './scanner.js';
 import { uploadForAnalysis } from './uploader.js';
 import {
   displayError,
@@ -377,7 +377,7 @@ async function runAnalysis(): Promise<void> {
 
   let scanResult;
   try {
-    scanResult = await scanSessions(30);
+    scanResult = await scanSessions(50);
   } catch (error) {
     scanSpinner.fail('Failed to scan sessions');
     displayError(error instanceof Error ? error.message : 'Unknown error');
@@ -388,6 +388,15 @@ async function runAnalysis(): Promise<void> {
     scanSpinner.stop();
     displayNoSessions();
     process.exit(1);
+  }
+
+  // Scan activity sessions (all recent sessions, lightweight metadata)
+  let activitySessions;
+  try {
+    activitySessions = await scanActivitySessions(30);
+  } catch {
+    // Activity scanning is non-critical — continue without it
+    activitySessions = undefined;
   }
 
   scanSpinner.succeed('Sessions loaded');
@@ -448,6 +457,7 @@ async function runAnalysis(): Promise<void> {
       (sum, s) => sum + Math.round(s.metadata.durationSeconds / 60),
       0
     ),
+    activitySessions,
   };
 
   // Single confirmation with inline privacy notice

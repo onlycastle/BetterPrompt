@@ -230,7 +230,7 @@ function GrowthCard({
   growth: WorkerGrowth;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
   referencedInsights?: ReferencedInsight[];
-  onInsightClick?: (insight: ReferencedInsight) => void;
+  onInsightClick?: (insight: ReferencedInsight, yOffset?: number) => void;
 }) {
   const severityClass = growth.severity
     ? styles[`severity${growth.severity[0].toUpperCase()}${growth.severity.slice(1)}`]
@@ -351,8 +351,8 @@ export interface WorkerDomainSectionProps {
   domainScore?: number;
   /** Referenced insights from this domain for sidebar display (legacy - prefer insightAllocation) */
   referencedInsights?: ReferencedInsight[];
-  /** Callback when insight indicator is clicked */
-  onInsightClick?: (insight: ReferencedInsight) => void;
+  /** Callback when insight indicator is clicked (includes Y offset for inline positioning) */
+  onInsightClick?: (insight: ReferencedInsight, yOffset?: number) => void;
   /** Deduplicated insight allocation from TabbedReportContainer */
   insightAllocation?: InsightAllocation;
   /** Domain key for looking up allocated insights (e.g., 'thinkingQuality') */
@@ -386,10 +386,10 @@ export function WorkerDomainSection({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Handle insight indicator click - open sidebar with selected insight
-  const handleInsightClick = useCallback((insight: ReferencedInsight) => {
+  const handleInsightClick = useCallback((insight: ReferencedInsight, yOffset?: number) => {
     // Use provided callback or default to local sidebar
     if (onInsightClick) {
-      onInsightClick(insight);
+      onInsightClick(insight, yOffset);
     } else {
       setSelectedInsight(insight);
       setIsSidebarOpen(true);
@@ -482,7 +482,10 @@ export function WorkerDomainSection({
             <h4 className={styles.columnTitle}>Growth Areas</h4>
             <div className={styles.cardsContainer}>
               {displayGrowthAreas.map((growth, idx) => {
-                const insight = getInsightForGrowth(growth);
+                // Use original (English) growthAreas for insight lookup key matching
+                // displayGrowthAreas has translated titles which don't match insightAllocation keys
+                const originalGrowth = growthAreas[idx];
+                const insight = originalGrowth ? getInsightForGrowth(originalGrowth) : undefined;
                 return (
                   <GrowthCard
                     key={idx}

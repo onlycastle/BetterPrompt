@@ -45,6 +45,21 @@ export interface MatrixDistribution {
 }
 
 // ============================================================================
+// Activity Session Info - Lightweight metadata for ALL recent sessions
+// ============================================================================
+
+export interface ActivitySessionInfo {
+  sessionId: string;
+  projectName: string;
+  startTime: string;       // ISO 8601
+  durationMinutes: number;
+  messageCount: number;
+  summary: string;         // first user message, truncated to 80 chars
+  totalInputTokens?: number;   // Sum of input_tokens from assistant messages
+  totalOutputTokens?: number;  // Sum of output_tokens from assistant messages
+}
+
+// ============================================================================
 // Analyzed Session Info - Metadata about sessions included in analysis
 // ============================================================================
 
@@ -158,6 +173,10 @@ export interface VerboseAnalysisData {
   avgTurnsPerSession?: number;
   // Analyzed session files (metadata for display)
   analyzedSessions?: AnalyzedSessionInfo[];
+  // Activity sessions (deterministic CLI-side scan of ALL recent sessions)
+  activitySessions?: ActivitySessionInfo[];
+  // Session summaries (legacy Phase 1.5 - LLM-generated 1-line summaries, kept for cached data)
+  sessionSummaries?: { sessionId: string; summary: string }[];
   primaryType: CodingStyleType;
   controlLevel: AIControlLevel;
   /** Raw control score (0-100) for matrix distribution calculation */

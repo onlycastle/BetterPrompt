@@ -44,6 +44,25 @@ vi.mock('../../../../src/lib/analyzer/stages/content-writer.js', () => ({
   },
 }));
 
+vi.mock('../../../../src/lib/analyzer/stages/session-summarizer.js', () => ({
+  SessionSummarizerStage: class MockSessionSummarizerStage {
+    async summarize() {
+      return {
+        data: {
+          summaries: [
+            { sessionId: 'session-1', summary: 'Implement authentication flow' },
+          ],
+        },
+        usage: {
+          promptTokens: 500,
+          completionTokens: 200,
+          totalTokens: 700,
+        },
+      };
+    }
+  },
+}));
+
 vi.mock('../../../../src/lib/analyzer/content-gateway.js', () => ({
   ContentGateway: class MockContentGateway {
     filter(evaluation: any, tier: any) {
@@ -524,6 +543,15 @@ describe('AnalysisOrchestrator', () => {
       expect(result.evaluation.analyzedSessions).toHaveLength(1);
       expect(result.evaluation.analyzedSessions[0].sessionId).toBe('session-1');
       expect(result.evaluation.analyzedSessions[0].projectName).toBe('project');
+    });
+
+    it('should include sessionSummaries from Phase 1.5', async () => {
+      const result = await orchestrator.analyze(mockSessions, mockMetrics, 'free');
+
+      expect(result.evaluation.sessionSummaries).toBeDefined();
+      expect(result.evaluation.sessionSummaries).toHaveLength(1);
+      expect(result.evaluation.sessionSummaries![0].sessionId).toBe('session-1');
+      expect(result.evaluation.sessionSummaries![0].summary).toBe('Implement authentication flow');
     });
 
     it('should include agent outputs (empty for free tier)', async () => {

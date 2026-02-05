@@ -1,8 +1,9 @@
 /**
  * Analysis Orchestrator - Main orchestrator for the analysis pipeline
  *
- * Coordinates 4 phases of analysis (7-8 LLM calls total):
+ * Coordinates 6 phases of analysis (8-9 LLM calls total):
  * - Phase 1: DataExtractor (deterministic, no LLM)
+ * - Phase 1.5: SessionSummarizer (1 LLM call — 1-line summaries for analyzed sessions)
  * - Phase 2: 4 insight workers in parallel (4 LLM calls)
  *            ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency
  *            Each worker outputs domain-specific strengths/growthAreas
@@ -10,6 +11,10 @@
  * - Phase 2.8: EvidenceVerifier (1 LLM call)
  * - Phase 3: ContentWriter (1 LLM call, always English)
  * - Phase 4: Translator (0-1 LLM call, conditional — only for non-English users)
+ *
+ * Two data paths for session information:
+ * 1. sessionSummaries: LLM-generated 1-line summaries for top-50 analyzed sessions (Phase 1.5)
+ * 2. activitySessions: Deterministic metadata for ALL recent sessions (CLI Activity Scanner)
  *
  * v3 Architecture (2026-02):
  * - ThinkingQuality: Planning + Critical Thinking (consolidated)
@@ -34,6 +39,7 @@ import { BaseWorker } from '../workers/base-worker';
 import type { DimensionResourceMatch } from '../../models/verbose-evaluation';
 import { matchKnowledgeResources } from '../stages/knowledge-resource-matcher';
 import { EvidenceVerifierStage, type EvidenceVerifierResult } from '../stages/evidence-verifier';
+import { SessionSummarizerStage, type SessionSummarizerResult } from '../stages/session-summarizer';
 import type {
   WorkerResult,
   WorkerContext,
@@ -112,6 +118,7 @@ export class AnalysisOrchestrator {
   private phase2Point5Workers: BaseWorker<unknown>[] = []; // Type Synthesis workers
   private contentWriter: ContentWriterStage;
   private translator: TranslatorStage;
+  private sessionSummarizer: SessionSummarizerStage;
   private evidenceVerifier: EvidenceVerifierStage;
   private contentGateway: ContentGateway;
   private debugOutputs: DebugPhaseOutput[] = [];
@@ -139,6 +146,14 @@ export class AnalysisOrchestrator {
       model: this.config.model,
       temperature: this.config.temperature,
       maxOutputTokens: this.config.maxOutputTokens,
+      maxRetries: this.config.maxRetries,
+    });
+
+    // Initialize session summarizer (Phase 1.5 — LLM session summaries)
+    this.sessionSummarizer = new SessionSummarizerStage({
+      apiKey: this.config.geminiApiKey,
+      model: this.config.model,
+      temperature: this.config.temperature,
       maxRetries: this.config.maxRetries,
     });
 
@@ -211,17 +226,19 @@ export class AnalysisOrchestrator {
     sessions: ParsedSession[],
     metrics: SessionMetrics,
     tier: Tier,
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
+    options?: { activitySessions?: Array<{ sessionId: string; projectName: string; startTime: string; durationMinutes: number; messageCount: number; summary: string }> }
   ): Promise<AnalysisResult> {
     const startTime = Date.now();
     const stageUsages: StageTokenUsage[] = [];
     this.debugOutputs = [];
 
-    // Progress tracking: 8 LLM stages total (4 Phase2 + 1 Phase2.5 + 1 Phase2.8 + 1 Phase3 + 1 Phase4)
+    // Progress tracking: 9 LLM stages total (1 Phase1.5 + 4 Phase2 + 1 Phase2.5 + 1 Phase2.8 + 1 Phase3 + 1 Phase4)
+    // Phase 1.5: SessionSummarizer generates 1-line summaries
     // Phase 2: ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency (4 workers)
     // Phase 2.8: Evidence Verifier validates evidence relevance
     // Phase 4: Translator is conditional (only for non-English users)
-    const TOTAL_LLM_STAGES = 8;
+    const TOTAL_LLM_STAGES = 9;
     const PROGRESS_START = 40;
     const PROGRESS_RANGE = 49; // 40% → 89%
     const STEP = Math.floor(PROGRESS_RANGE / TOTAL_LLM_STAGES); // 6 points per stage
@@ -267,6 +284,42 @@ export class AnalysisOrchestrator {
         ...phase1Results.dataExtractor.usage,
       });
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Phase 1.5: Session Summarization (LLM — 1 call)
+    // Generates 1-line summaries for each analyzed session.
+    // These are stored in evaluation.sessionSummaries.
+    // Separate from activitySessions (deterministic CLI scanner for ALL sessions).
+    // ─────────────────────────────────────────────────────────────────────
+    this.log('Phase 1.5: Session Summarization...');
+    const phase15Start = Date.now();
+    const sessionInputs = sessions.map(s => ({
+      sessionId: s.sessionId,
+      projectName: s.projectPath.split('/').pop() ?? 'unknown',
+      messages: s.messages.slice(0, 10).map(m => ({
+        role: m.role,
+        content: typeof m.content === 'string'
+          ? m.content.slice(0, 500)
+          : JSON.stringify(m.content).slice(0, 500),
+      })),
+    }));
+
+    const summaryResult = await this.sessionSummarizer.summarize(sessionInputs);
+
+    this.collectDebugOutput(
+      'phase1_5', 'SessionSummarizer', phase15Start,
+      summaryResult.data, summaryResult.usage
+    );
+
+    if (summaryResult.usage.totalTokens > 0) {
+      stageUsages.push({
+        stage: 'SessionSummarizer (Phase 1.5)',
+        ...summaryResult.usage,
+      });
+    }
+
+    completedLLMStages++;
+    reportProgress('phase1_5', 'Session summaries generated');
 
     // ─────────────────────────────────────────────────────────────────────
     // Phase 2: Insight Generation (parallel)
@@ -569,6 +622,8 @@ export class AnalysisOrchestrator {
       avgPromptLength: Math.round(metrics.avgPromptLength),
       avgTurnsPerSession: Math.round(metrics.avgTurnsPerSession * 10) / 10,
       analyzedSessions,
+      sessionSummaries: summaryResult.data.summaries,
+      activitySessions: options?.activitySessions,
       ...assembledData,
       agentOutputs: agentOutputs,
       // Propagate translated agent insights for frontend hybrid fallback pattern

@@ -11,6 +11,7 @@ import { useSearchParams } from 'next/navigation';
 import { useRemoteResult } from '@/hooks/useRemoteResult';
 import { TabbedReportContainer } from '@/components/personal/tabs';
 import { UnlockSection } from '@/components/report/UnlockSection';
+import { ReportShareBar } from '@/components/report/ReportShareBar';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 import styles from './page.module.css';
 
@@ -142,6 +143,13 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
           analysisMetadata={data.analysisMetadata}
         />
       </div>
+
+      {/* Share buttons */}
+      {data.primaryType && (
+        <div className={styles.shareWrapper}>
+          <ReportShareBar primaryType={data.primaryType} reportId={resultId} />
+        </div>
+      )}
 
       {/* Unlock Section */}
       <div className={styles.unlockWrapper}>

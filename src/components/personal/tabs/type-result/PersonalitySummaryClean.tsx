@@ -21,6 +21,7 @@ export function PersonalitySummaryClean({ summary }: PersonalitySummaryCleanProp
         paragraphClassName={styles.paragraph}
         quoteClassName={styles.quote}
         boldClassName={styles.emphasis}
+        softBreakClassName={styles.softBreak}
       />
     </Card>
   );

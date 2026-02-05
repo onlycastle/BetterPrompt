@@ -34,15 +34,21 @@
   font-weight: var(--weight-semibold);
 }
 
+/* Soft break spacer within paragraphs */
+.softBreak {
+  display: block;
+  height: var(--space-sm);
+}
+
 /* Quote style - Editorial highlighter effect */
 .quote {
   font-style: italic;
   background: linear-gradient(
-    transparent 60%,
-    var(--sketch-cyan-soft, rgba(6, 182, 212, 0.15)) 60%,
-    var(--sketch-cyan-soft, rgba(6, 182, 212, 0.15)) 90%,
-    transparent 90%
+    transparent 50%,
+    rgba(0, 188, 212, 0.18) 50%,
+    rgba(0, 188, 212, 0.18) 92%,
+    transparent 92%
   );
-  padding: 0 2px;
+  padding: 0 3px;
   border-radius: 2px;
 }
