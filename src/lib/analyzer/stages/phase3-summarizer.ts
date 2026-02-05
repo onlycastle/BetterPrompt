@@ -14,9 +14,13 @@
  * @module analyzer/stages/phase3-summarizer
  */
 
-import type { AgentOutputs } from '../../models/agent-outputs';
-import type { TypeClassifierOutput } from '../../models/agent-outputs';
-import type { KnowledgeGapOutput, ContextEfficiencyOutput } from '../../models/agent-outputs';
+import {
+  normalizeReasoning,
+  type AgentOutputs,
+  type TypeClassifierOutput,
+  type KnowledgeGapOutput,
+  type ContextEfficiencyOutput,
+} from '../../models/agent-outputs';
 import type { ThinkingQualityOutput } from '../../models/thinking-quality-data';
 import type { CommunicationPatternsOutput } from '../../models/communication-patterns-data';
 import type { LearningBehaviorOutput } from '../../models/learning-behavior-data';
@@ -85,8 +89,9 @@ function summarizeTypeClassifier(tc: TypeClassifierOutput): string {
   const d = tc.distribution;
   lines.push(`distribution: architect=${d.architect}, analyst=${d.analyst}, conductor=${d.conductor}, speedrunner=${d.speedrunner}, trendsetter=${d.trendsetter}`);
 
-  if (tc.reasoning) {
-    lines.push(`reasoning: ${tc.reasoning}`);
+  const reasoningText = normalizeReasoning(tc.reasoning);
+  if (reasoningText) {
+    lines.push(`reasoning: ${reasoningText}`);
   }
 
   if (tc.collaborationMaturity) {
