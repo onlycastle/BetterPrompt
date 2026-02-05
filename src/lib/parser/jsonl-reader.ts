@@ -32,6 +32,33 @@ export function parseJSONLLine(line: string): JSONLLine | null {
 }
 
 /**
+ * Deduplicate assistant entries by message.id, keeping the LAST occurrence.
+ *
+ * Claude Code writes a new JSONL line for each tool call within the same
+ * assistant turn (same message.id), with identical usage but progressively
+ * more complete content. Keeping the last entry gives us the most complete version.
+ */
+function deduplicateAssistantEntries(entries: JSONLLine[]): JSONLLine[] {
+  const lastSeenIndex = new Map<string, number>();
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const entry = entries[i];
+    if (entry.type === 'assistant') {
+      const msgId = entry.message?.id;
+      if (msgId && !lastSeenIndex.has(msgId)) {
+        lastSeenIndex.set(msgId, i);
+      }
+    }
+  }
+
+  return entries.filter((entry, i) => {
+    if (entry.type !== 'assistant') return true;
+    const msgId = entry.message?.id;
+    if (!msgId) return true;
+    return lastSeenIndex.get(msgId) === i;
+  });
+}
+
+/**
  * Read and parse a JSONL file
  */
 export async function readJSONLFile(filePath: string): Promise<JSONLLine[]> {
@@ -46,7 +73,7 @@ export async function readJSONLFile(filePath: string): Promise<JSONLLine[]> {
     }
   }
 
-  return parsed;
+  return deduplicateAssistantEntries(parsed);
 }
 
 /**
@@ -149,10 +176,21 @@ export async function getSessionMetadata(
     let firstTimestamp: Date | null = null;
     let lastTimestamp: Date | null = null;
     const inputTokenCounts: number[] = [];
+    const seenMessageIds = new Set<string>();
 
     for (const line of lines) {
       const parsed = parseJSONLLine(line);
       if (parsed && (parsed.type === 'user' || parsed.type === 'assistant')) {
+        // Deduplicate by message.id — Claude Code writes multiple JSONL lines
+        // per assistant turn with identical usage, inflating token counts.
+        if (parsed.type === 'assistant') {
+          const msgId = parsed.message?.id;
+          if (msgId) {
+            if (seenMessageIds.has(msgId)) continue;
+            seenMessageIds.add(msgId);
+          }
+        }
+
         messageCount++;
         const ts = new Date(parsed.timestamp);
 

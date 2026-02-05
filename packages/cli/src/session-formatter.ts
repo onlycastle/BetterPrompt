@@ -106,6 +106,7 @@ interface JSONLLine {
   version?: string;
   message: {
     role?: string;
+    id?: string;
     content: string | ContentBlock[];
     usage?: {
       input_tokens: number;
@@ -231,6 +232,33 @@ function computeMessageStats(messages: ParsedMessage[]): SessionStats {
 }
 
 /**
+ * Deduplicate assistant JSONL lines by message.id, keeping the LAST occurrence.
+ *
+ * Claude Code writes a new JSONL line for each tool call within the same
+ * assistant turn (same message.id), with identical usage but progressively
+ * more complete content. Keeping the last entry gives us the most complete version.
+ */
+function deduplicateAssistantLines(lines: JSONLLine[]): JSONLLine[] {
+  const lastSeenIndex = new Map<string, number>();
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (line.type === 'assistant') {
+      const msgId = line.message?.id;
+      if (msgId && !lastSeenIndex.has(msgId)) {
+        lastSeenIndex.set(msgId, i);
+      }
+    }
+  }
+
+  return lines.filter((line, i) => {
+    if (line.type !== 'assistant') return true;
+    const msgId = line.message?.id;
+    if (!msgId) return true;
+    return lastSeenIndex.get(msgId) === i;
+  });
+}
+
+/**
  * Parse raw JSONL session content into ParsedSession
  */
 export function parseSessionContent(
@@ -239,9 +267,14 @@ export function parseSessionContent(
   projectName: string,
   content: string
 ): ParsedSession | null {
-  const lines = parseJSONLContent(content);
+  const allLines = parseJSONLContent(content);
 
-  if (lines.length === 0) return null;
+  if (allLines.length === 0) return null;
+
+  // Deduplicate assistant entries by message.id, keeping the LAST (most complete) occurrence.
+  // Claude Code writes a new JSONL line per tool call with the same message.id,
+  // causing ~1.85x token overcounting without dedup.
+  const lines = deduplicateAssistantLines(allLines);
 
   // Parse timestamps
   const timestamps = lines.map((m) => new Date(m.timestamp));

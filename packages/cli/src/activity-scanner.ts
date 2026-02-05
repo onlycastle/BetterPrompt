@@ -160,6 +160,7 @@ function extractSessionMetadata(content: string): {
   };
 
   const lines = content.split('\n');
+  const seenMessageIds = new Set<string>();
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -168,6 +169,15 @@ function extractSessionMetadata(content: string): {
     try {
       const parsed = JSON.parse(trimmed);
       if (parsed.type !== 'user' && parsed.type !== 'assistant') continue;
+
+      // Deduplicate by message.id — Claude Code writes multiple JSONL lines
+      // for the same assistant turn (one per tool call), each with identical usage.
+      // Skip already-seen message IDs to avoid inflating token counts.
+      const msgId = parsed.message?.id;
+      if (msgId) {
+        if (seenMessageIds.has(msgId)) continue;
+        seenMessageIds.add(msgId);
+      }
 
       result.messageCount++;
 
@@ -211,12 +221,14 @@ function extractSessionMetadata(content: string): {
  * @returns ActivitySessionInfo[] sorted by startTime descending (newest first)
  */
 export async function scanActivitySessions(
-  recencyDays: number = DEFAULT_RECENCY_DAYS
+  recencyDays: number = DEFAULT_RECENCY_DAYS,
+  includeSources?: string[],
 ): Promise<ActivitySessionInfo[]> {
   // Phase 1: Collect all file metadata (same as main scanner)
   const { files } = await multiSourceScanner.collectAllFileMetadata({
     minFileSize: 1024,        // 1KB minimum (more lenient than main scanner)
     maxFileSize: 50 * 1024 * 1024, // 50MB max
+    includeSources,
   });
   debugLog(`Phase 1: collected ${files.length} total session files`);
 
