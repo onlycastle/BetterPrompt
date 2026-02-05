@@ -14,10 +14,10 @@ import type { TypeResult } from '@/lib/models/coding-style';
 function generateOGImageSVG(typeResult: TypeResult): string {
   const TYPE_INFO: Record<string, { emoji: string; name: string; color: string }> = {
     architect: { emoji: '🏗️', name: 'Architect', color: '#00d4ff' },
-    scientist: { emoji: '🔬', name: 'Scientist', color: '#00ff88' },
-    collaborator: { emoji: '🤝', name: 'Collaborator', color: '#ff00ff' },
+    analyst: { emoji: '🔬', name: 'Analyst', color: '#8B5CF6' },
+    conductor: { emoji: '🎼', name: 'Conductor', color: '#F59E0B' },
     speedrunner: { emoji: '⚡', name: 'Speedrunner', color: '#ffff00' },
-    craftsman: { emoji: '🔧', name: 'Craftsman', color: '#ff6b00' },
+    trendsetter: { emoji: '🚀', name: 'Trendsetter', color: '#06B6D4' },
   };
 
   const typeInfo = TYPE_INFO[typeResult.primaryType] || TYPE_INFO.architect;

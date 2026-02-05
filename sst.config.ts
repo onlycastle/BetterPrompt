@@ -4,7 +4,7 @@
  * SST Configuration
  *
  * Deploys heavy analysis API to AWS Lambda with:
- * - 10MB payload limit (vs Vercel's 4.5MB)
+ * - 6MB Function URL limit (bypassed via S3 presigned URL)
  * - 15 minute timeout (vs Vercel's 5 minutes)
  * - Lambda Response Streaming for SSE
  */
