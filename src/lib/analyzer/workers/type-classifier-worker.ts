@@ -53,18 +53,18 @@ const TypeClassifierLLMSchema = z.object({
   }),
   controlLevel: AIControlLevelSchema,
   controlScore: z.number().min(0).max(100),
-  matrixName: z.string().max(50),
-  matrixEmoji: z.string().max(10),
+  matrixName: z.string(),
+  matrixEmoji: z.string(),
   collaborationMaturity: z.object({
     level: z.enum(['vibe_coder', 'supervised_coder', 'ai_assisted_engineer', 'reluctant_user']),
-    description: z.string().max(300),
-    indicators: z.array(z.string().max(200)),
+    description: z.string(),
+    indicators: z.array(z.string()),
   }).optional(),
   confidenceScore: z.number().min(0).max(1),
-  reasoning: z.string().min(800).max(3000),
-  adjustmentReasons: z.array(z.string().max(3000)).max(5).optional(),
+  reasoning: z.string().min(800),
+  adjustmentReasons: z.array(z.string()).max(5).optional(),
   confidenceBoost: z.number().min(0).max(1).optional(),
-  synthesisEvidence: z.string().max(1000).optional(),
+  synthesisEvidence: z.string().optional(),
 });
 
 /**
