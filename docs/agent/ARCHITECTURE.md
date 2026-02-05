@@ -48,9 +48,11 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 ### Phase 1: Data Extraction (deterministic)
 
 - Extracts `DeveloperUtterances[]`, `AIResponses[]`, `SessionMetrics` from raw sessions
+- Extracts `AIInsightBlocks[]` from assistant messages via regex (★ Insight educational blocks)
 - No LLM call — pure data transformation
 - Output schema: `Phase1Output` in `src/lib/models/phase1-output.ts`
 - Includes `displayText`, `naturalLanguageSegments`, `machineContentRatio`
+- AI insight blocks sampled to max 50 (bookend strategy per session)
 
 ### Phase 1.5: Session Summarizer (1 LLM call)
 
@@ -77,9 +79,11 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 ### Phase 2.5: TypeClassifier (1 LLM call)
 
 - 5 coding styles x 3 control levels = 15 matrix combinations
-- Styles: architect, scientist, collaborator, speedrunner, craftsman
+- Styles: architect, analyst, conductor, speedrunner, trendsetter
 - Control levels: explorer, navigator, cartographer
-- Output: `TypeClassifierOutput` in `src/lib/models/coding-style.ts`
+- Generates personalized `reasoning` narrative (1500-2000 chars) used as `personalitySummary`
+- Uses Phase 2 evidence utterances for developer quotes in reasoning
+- Output: `TypeClassifierOutput` in `src/lib/models/agent-outputs.ts`
 
 ### Phase 2.8: EvidenceVerifier (1 LLM call)
 
@@ -89,7 +93,8 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 
 ### Phase 3: ContentWriter — Narrative Only (1 LLM call)
 
-- Generates ONLY `personalitySummary` (<=3000 chars) and `topFocusAreas`
+- Generates `topFocusAreas` (+ `promptPatterns` fallback)
+- `personalitySummary` is sourced from TypeClassifier `reasoning` (Phase 2.5), NOT generated here
 - Structural data assembled deterministically by EvaluationAssembler from Phase 2
 - Input summarized via `phase3-summarizer.ts` (~15-20K chars vs 50-100K raw JSON)
 - Always generates in English; translation is Phase 4
@@ -177,13 +182,29 @@ Philosophy: "Diagnosis Free, Prescription Paid"
 | `Phase1Output` | `src/lib/models/phase1-output.ts` | DataExtractor output |
 | `NarrativeLLMResponse` | `src/lib/models/verbose-evaluation.ts` | Phase 3 narrative-only output |
 | `TranslatorOutput` | `src/lib/models/translator-output.ts` | Phase 4 translation output |
-| `TypeClassifierOutput` | `src/lib/models/coding-style.ts` | Type classification (5x3 matrix) |
+| `TypeClassifierOutput` | `src/lib/models/agent-outputs.ts` | Type classification (5x3 matrix) |
 | `ParsedSession` | `src/lib/models/session.ts` | Normalized session data |
 | `StoredAnalysis` | `src/lib/models/storage.ts` | Persisted analysis with metadata |
 | `ActivitySessionInfo` | `src/types/verbose.ts` | Per-session activity metadata |
 | `SessionSummaryData` | `src/lib/models/session-summary-data.ts` | LLM-generated session summaries |
 
 All schemas use Zod with `.describe()` for self-documentation. Gemini structured output via `zod-to-json-schema`.
+
+### Canonical Type Sources
+
+When adding or modifying types, import from the canonical source — never duplicate definitions.
+
+| Domain | Canonical Source | Key Types |
+|--------|-----------------|-----------|
+| JSONL Parsing | `src/lib/models/session.ts` | `TextBlock`, `ContentBlock`, `UserMessage`, `AssistantMessage`, `JSONLLine`, `ParsedSession`, `SessionMetadata`, type guards |
+| Coding Style | `src/lib/models/coding-style.ts` | `CodingStyleType`, `AIControlLevel`, `TypeDistribution`, `MatrixDistribution`, `SessionMetrics`, `TYPE_METADATA`, `MATRIX_NAMES` |
+| Analysis-specific | `src/lib/domain/models/analysis.ts` | `Rating`, `Clue`, `Evaluation`, `StoredAnalysis`, `DimensionsSchema` (re-exports session + coding-style types) |
+| Frontend Report | `src/types/report.ts` | `FullAnalysisResult`, `ReportData`, dimension results (imports shared types from `coding-style.ts`) |
+| Enterprise | `src/types/enterprise.ts` | `DimensionScores`, `TeamAnalytics` (imports `CodingStyleType`/`AIControlLevel` from `coding-style.ts`) |
+| Knowledge | `src/lib/domain/models/knowledge.ts` | `KnowledgeItem`, `ProfessionalInsight` (strict schema, `applicableDimensions` required) |
+| Knowledge (legacy) | `src/lib/search-agent/models/knowledge.ts` | Same types but `applicableDimensions` optional (used by API routes) |
+
+`analysis.ts` re-exports all types from `session.ts` and `coding-style.ts` for backward compatibility — consumers importing from `analysis.ts` or `domain/models/index.ts` will get the canonical definitions.
 
 ## Port Interfaces
 
