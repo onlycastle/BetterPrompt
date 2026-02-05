@@ -33,7 +33,7 @@ const levelTaglines: Record<AIControlLevel, string> = {
 
 export function TypeShowcase() {
   return (
-    <section className={styles.section}>
+    <section id="types" className={styles.section}>
       <h2 className={styles.headline}>
         15 Developer Personalities
       </h2>

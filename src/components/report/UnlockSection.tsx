@@ -256,8 +256,8 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: 
           {/* Discord Community CTA */}
           <div className={styles.discord}>
             <blockquote className={styles.discordQuote}>
-              <span className={styles.discordLine1}>If this resonates, join our Discord.</span>
-              <span className={styles.discordLine2}>Let's share knowledge for better AI collaboration.</span>
+              <span className={styles.discordLine1}>Want to share and discuss how to use AI wisely with others?</span>
+              <span className={styles.discordLine2}>Join our Discord community.</span>
             </blockquote>
             <a
               href="https://discord.gg/xS3eDseCFH"

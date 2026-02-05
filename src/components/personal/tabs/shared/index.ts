@@ -6,3 +6,4 @@
 export { DataQualityBadge } from './DataQualityBadge';
 export { EmptyStatePrompt } from './EmptyStatePrompt';
 export { NextTabButton } from './NextTabButton';
+export { ReportAnchorNav } from './ReportAnchorNav';

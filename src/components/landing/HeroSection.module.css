@@ -34,9 +34,6 @@
   color: var(--sketch-cyan);
 }
 
-.breakDesktop {
-  display: none;
-}
 
 .subheadline {
   font-size: var(--text-lg);
@@ -73,9 +70,6 @@
     font-size: var(--text-5xl);
   }
 
-  .breakDesktop {
-    display: block;
-  }
 }
 
 @media (max-width: 480px) {

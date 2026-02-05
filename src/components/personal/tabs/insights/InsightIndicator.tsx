@@ -17,8 +17,8 @@ import styles from './InsightIndicator.module.css';
 interface InsightIndicatorProps {
   /** Referenced insights array */
   insights: ReferencedInsight[];
-  /** Callback when indicator is clicked */
-  onClick: (insight: ReferencedInsight) => void;
+  /** Callback when indicator is clicked (includes Y offset for inline positioning) */
+  onClick: (insight: ReferencedInsight, yOffset?: number) => void;
 }
 
 export function InsightIndicator({ insights, onClick }: InsightIndicatorProps) {
@@ -28,9 +28,13 @@ export function InsightIndicator({ insights, onClick }: InsightIndicatorProps) {
   }
 
   // Show first insight on click (sidebar will show full details)
+  // Calculate Y offset relative to viewport for inline sidebar positioning
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click event
-    onClick(insights[0]);
+    const element = e.currentTarget as HTMLElement;
+    // Get element's position relative to viewport (not document)
+    const rect = element.getBoundingClientRect();
+    onClick(insights[0], rect.top);
   };
 
   return (

@@ -1,0 +1,110 @@
+/**
+ * ReportShareBar - Notebook Sketch Style
+ * Social share buttons between report content and unlock section
+ */
+
+.container {
+  border: 2px dashed var(--ink-light);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  text-align: center;
+}
+
+.heading {
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  margin: 0 0 var(--space-md) 0;
+}
+
+.buttons {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Base button style - matches Notebook Sketch page button patterns */
+.shareButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 2px 2px 0 var(--ink-muted);
+  text-decoration: none;
+}
+
+.shareButton:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink-muted);
+}
+
+.shareButton:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink-muted);
+}
+
+/* Platform icon tints */
+.twitter .icon {
+  color: var(--platform-twitter);
+}
+
+.linkedin .icon {
+  color: var(--platform-linkedin);
+}
+
+.instagramIcon {
+  color: #e1306c;
+}
+
+/* Toast notification */
+.toast {
+  position: fixed;
+  bottom: var(--space-xl);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--ink-primary);
+  color: var(--bg-paper);
+  border-radius: var(--radius-md);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  z-index: 1000;
+  animation: toastIn 0.3s ease-out;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Responsive: stack vertically on mobile */
+@media (max-width: 640px) {
+  .buttons {
+    flex-direction: column;
+  }
+
+  .shareButton {
+    width: 100%;
+    justify-content: center;
+  }
+}

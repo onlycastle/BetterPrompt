@@ -24,7 +24,7 @@ const values = [
 
 export function ValueStory() {
   return (
-    <section className={styles.section}>
+    <section id="value" className={styles.section}>
       <h2 className={styles.headline}>
         We don&apos;t guess. We show you.
       </h2>

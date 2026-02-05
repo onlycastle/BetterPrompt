@@ -123,7 +123,28 @@
   letter-spacing: 0.05em;
 }
 
-/* Sub-Level Rows (Always visible) */
+/* Clickable type headers (non-primary types) */
+.typeHeader.clickable {
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.typeHeader.clickable:hover {
+  background: var(--surface-2);
+}
+
+.chevron {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.typeHeader.clickable:hover .chevron {
+  color: var(--sketch-cyan);
+}
+
+/* Sub-Level Rows */
 .subLevels {
   padding: 0 var(--space-md) var(--space-sm) var(--space-md);
   margin-left: var(--space-md);

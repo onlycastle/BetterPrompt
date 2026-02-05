@@ -5,7 +5,7 @@
  * Always shows all type groups expanded with matrix names.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { VERBOSE_TYPE_METADATA } from '../../../../types/verbose';
 import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixDistribution } from '../../../../types/verbose';
 import { MATRIX_NAMES, deriveMatrixDistribution } from '../../../../lib/models/coding-style';
@@ -82,6 +82,19 @@ export function MatrixDistributionDisplay({
     return maxLevel;
   }, [matrix, primaryType, controlLevel]);
 
+  // Expand/collapse state: primary type always expanded, others collapsed by default
+  const [expandedTypes, setExpandedTypes] = useState<Set<CodingStyleType>>(
+    () => new Set([primaryType])
+  );
+  const toggleType = useCallback((type: CodingStyleType) => {
+    if (type === primaryType) return;
+    setExpandedTypes(prev => {
+      const next = new Set(prev);
+      next.has(type) ? next.delete(type) : next.add(type);
+      return next;
+    });
+  }, [primaryType]);
+
   return (
     <div className={`${styles.container} ${compact ? styles.compact : ''}`}>
       <div className={styles.header}>
@@ -93,14 +106,26 @@ export function MatrixDistributionDisplay({
           const typeMeta = VERBOSE_TYPE_METADATA[type];
           const typePct = distribution[type] || 0;
           const isPrimaryType = type === primaryType;
+          const isExpanded = expandedTypes.has(type);
 
           return (
             <div
               key={type}
               className={`${styles.typeGroup} ${isPrimaryType ? styles.primaryGroup : ''}`}
             >
-              {/* Type header row (non-interactive, always expanded) */}
-              <div className={styles.typeHeader}>
+              {/* Type header row */}
+              <div
+                className={`${styles.typeHeader} ${!isPrimaryType ? styles.clickable : ''}`}
+                {...(!isPrimaryType ? {
+                  onClick: () => toggleType(type),
+                  role: 'button',
+                  tabIndex: 0,
+                  onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter') toggleType(type); },
+                } : {})}
+              >
+                {!isPrimaryType && (
+                  <span className={styles.chevron}>{isExpanded ? '▼' : '▶'}</span>
+                )}
                 <span className={styles.typeEmoji}>{typeMeta.emoji}</span>
                 <span className={styles.typeName}>{typeMeta.name}</span>
                 <div className={styles.typeBarContainer}>
@@ -113,35 +138,37 @@ export function MatrixDistributionDisplay({
                 {isPrimaryType && <span className={styles.primaryMarker}>PRIMARY</span>}
               </div>
 
-              {/* Sub-levels (always visible) */}
-              <div className={styles.subLevels}>
-                {CONTROL_LEVELS.map((level) => {
-                  const matrixKey = `${type}_${level}` as keyof MatrixDistribution;
-                  const levelPct = matrix[matrixKey] || 0;
-                  const matrixName = MATRIX_NAMES[type][level];
-                  const isUserPosition = isPrimaryType && level === dominantControlLevel;
+              {/* Sub-levels (collapsible for non-primary types) */}
+              {isExpanded && (
+                <div className={styles.subLevels}>
+                  {CONTROL_LEVELS.map((level) => {
+                    const matrixKey = `${type}_${level}` as keyof MatrixDistribution;
+                    const levelPct = matrix[matrixKey] || 0;
+                    const matrixName = MATRIX_NAMES[type][level];
+                    const isUserPosition = isPrimaryType && level === dominantControlLevel;
 
-                  return (
-                    <div
-                      key={level}
-                      className={`${styles.subLevelRow} ${isUserPosition ? styles.selectedCombo : ''}`}
-                    >
-                      <span className={styles.subLevelIndent}>└</span>
-                      <span className={styles.subLevelName} title={CONTROL_LEVEL_LABELS[level]}>
-                        {matrixName}
-                      </span>
-                      <div className={styles.subLevelBarContainer}>
-                        <div
-                          className={styles.subLevelBar}
-                          style={{ width: `${Math.min(levelPct * 2, 100)}%` }}
-                        />
+                    return (
+                      <div
+                        key={level}
+                        className={`${styles.subLevelRow} ${isUserPosition ? styles.selectedCombo : ''}`}
+                      >
+                        <span className={styles.subLevelIndent}>└</span>
+                        <span className={styles.subLevelName} title={CONTROL_LEVEL_LABELS[level]}>
+                          {matrixName}
+                        </span>
+                        <div className={styles.subLevelBarContainer}>
+                          <div
+                            className={styles.subLevelBar}
+                            style={{ width: `${Math.min(levelPct * 2, 100)}%` }}
+                          />
+                        </div>
+                        <span className={styles.subLevelPct}>{levelPct.toFixed(1)}%</span>
+                        {isUserPosition && <span className={styles.youAreHereMarker}>YOU ARE HERE</span>}
                       </div>
-                      <span className={styles.subLevelPct}>{levelPct.toFixed(1)}%</span>
-                      {isUserPosition && <span className={styles.youAreHereMarker}>YOU ARE HERE</span>}
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
