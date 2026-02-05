@@ -424,12 +424,20 @@ async function uploadViaStorage(
 }
 
 /**
+ * Options for upload and analysis
+ */
+export interface UploadOptions {
+  noTranslate?: boolean;
+}
+
+/**
  * Upload session data for analysis with streaming progress
  */
 export async function uploadForAnalysis(
   scanResult: ScanResult,
   accessToken: string,
-  onProgress?: ProgressCallback
+  onProgress?: ProgressCallback,
+  options?: UploadOptions
 ): Promise<AnalysisResult> {
   const {
     compressed: compressedBody,
@@ -457,7 +465,7 @@ export async function uploadForAnalysis(
       'Authorization': `Bearer ${accessToken}`,
       ...(DEBUG && { 'X-Debug': '1' }),
     },
-    body: JSON.stringify({ s3Key }),
+    body: JSON.stringify({ s3Key, ...(options?.noTranslate && { noTranslate: true }) }),
   });
 
   if (!response.ok) {
