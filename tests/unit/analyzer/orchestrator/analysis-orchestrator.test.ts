@@ -20,10 +20,11 @@ import { BaseWorker } from '../../../../src/lib/analyzer/workers/base-worker.js'
 vi.mock('../../../../src/lib/analyzer/stages/content-writer.js', () => ({
   ContentWriterStage: class MockContentWriterStage {
     // v3 method: returns narrative-only fields (Phase 3 purification)
+    // NOTE: personalitySummary is now sourced from TypeClassifier.reasoning (Phase 2.5),
+    // not from ContentWriter. ContentWriter only generates topFocusAreas + promptPatterns fallback.
     async transformV3() {
       return {
         data: {
-          personalitySummary: 'Test personality summary',
           promptPatterns: [
             { patternName: 'Test Pattern', description: 'desc', frequency: 'often', examples: [], effectiveness: 'effective', tip: 'tip' },
             { patternName: 'Pattern 2', description: 'desc2', frequency: 'sometimes', examples: [], effectiveness: 'moderate', tip: 'tip2' },
@@ -271,7 +272,9 @@ describe('AnalysisOrchestrator', () => {
         const result = await orchestrator.analyze(mockSessions, mockMetrics, 'pro');
 
         expect(result).toBeDefined();
-        expect(result.evaluation.personalitySummary).toBe('Test personality summary');
+        // personalitySummary comes from TypeClassifier.reasoning (Phase 2.5)
+        // No TypeClassifier registered in this test, so personalitySummary is empty
+        expect(result.evaluation.personalitySummary).toBe('');
       });
 
       // NO FALLBACK POLICY: Workers must be registered
@@ -389,8 +392,9 @@ describe('AnalysisOrchestrator', () => {
         const result = await orchestrator.analyze(mockSessions, mockMetrics, 'pro');
 
         expect(result).toBeDefined();
-        // Content writer produces narrative from Phase 1 + Phase 2 data
-        expect(result.evaluation.personalitySummary).toBe('Test personality summary');
+        // personalitySummary comes from TypeClassifier.reasoning (Phase 2.5)
+        // No TypeClassifier registered in this test, so personalitySummary is empty
+        expect(result.evaluation.personalitySummary).toBe('');
       });
     });
   });
@@ -588,8 +592,9 @@ describe('AnalysisOrchestrator', () => {
 
       expect(result).toBeDefined();
       // ContentGateway.filter is mocked to pass through
-      // personalitySummary comes from narrative (Phase 3)
-      expect(result.evaluation.personalitySummary).toBe('Test personality summary');
+      // personalitySummary comes from TypeClassifier.reasoning (Phase 2.5)
+      // No TypeClassifier registered in this test, so personalitySummary is empty
+      expect(result.evaluation.personalitySummary).toBe('');
     });
 
     it('should pass correct tier to content gateway', async () => {
@@ -662,7 +667,7 @@ describe('AnalysisOrchestrator', () => {
           return {
             data: {
               primaryType: 'architect',
-              distribution: { architect: 40, scientist: 20, collaborator: 20, speedrunner: 10, craftsman: 10 },
+              distribution: { architect: 40, analyst: 20, conductor: 20, speedrunner: 10, trendsetter: 10 },
               controlLevel: 'navigator',
               controlScore: 50,
               matrixName: 'Systems Architect',
@@ -715,7 +720,7 @@ describe('AnalysisOrchestrator', () => {
           return {
             data: {
               primaryType: 'architect',
-              distribution: { architect: 40, scientist: 20, collaborator: 20, speedrunner: 10, craftsman: 10 },
+              distribution: { architect: 40, analyst: 20, conductor: 20, speedrunner: 10, trendsetter: 10 },
               controlLevel: 'navigator',
               controlScore: 50,
               matrixName: 'Systems Architect',
@@ -757,7 +762,7 @@ describe('AnalysisOrchestrator', () => {
           return {
             data: {
               primaryType: 'architect',
-              distribution: { architect: 40, scientist: 20, collaborator: 20, speedrunner: 10, craftsman: 10 },
+              distribution: { architect: 40, analyst: 20, conductor: 20, speedrunner: 10, trendsetter: 10 },
               controlLevel: 'navigator',
               controlScore: 50,
               matrixName: 'Systems Architect',
