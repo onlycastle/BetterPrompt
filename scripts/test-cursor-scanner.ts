@@ -26,10 +26,10 @@ const Database = require('better-sqlite3');
 import {
   CursorSource,
   CURSOR_CHATS_DIR,
-} from '../src/lib/scanner/sources/cursor';
-import { TOOL_MAPPING } from '../src/lib/scanner/tool-mapping';
-import type { SourcedParsedSession } from '../src/lib/scanner/sources/base';
-import type { ParsedMessage } from '../src/lib/models/session';
+} from '../packages/cli/src/lib/scanner/sources/cursor';
+import { TOOL_MAPPING } from '../packages/cli/src/lib/scanner/tool-mapping';
+import type { SourcedParsedSession } from '../packages/cli/src/lib/scanner/sources/base';
+import type { ParsedMessage } from '../packages/cli/src/lib/scanner/session-types';
 
 // ============================================================================
 // Configuration

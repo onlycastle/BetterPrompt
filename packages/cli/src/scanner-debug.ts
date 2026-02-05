@@ -12,10 +12,10 @@ async function main() {
   console.log('         SCANNER PIPELINE DIAGNOSTIC');
   console.log('🔬'.repeat(35) + '\n');
 
-  console.log('Running scanSessions(30)...\n');
+  console.log('Running scanSessions(50)...\n');
 
   const startTime = Date.now();
-  const result = await scanSessions(30);
+  const result = await scanSessions(50);
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
   console.log('=' .repeat(70));
@@ -85,10 +85,10 @@ async function main() {
 
   // Check if we reached target
   console.log('\n' + '='.repeat(70));
-  if (result.sessions.length >= 30) {
-    console.log('✅ TARGET ACHIEVED: 30 sessions successfully selected!');
+  if (result.sessions.length >= 50) {
+    console.log('✅ TARGET ACHIEVED: 50 sessions successfully selected!');
   } else {
-    console.log(`⚠️  Only ${result.sessions.length}/30 sessions found`);
+    console.log(`⚠️  Only ${result.sessions.length}/50 sessions found`);
   }
   console.log('='.repeat(70) + '\n');
 }

@@ -25,7 +25,7 @@ import { SessionParser } from '../src/lib/parser';
 import { DataExtractorWorker } from '../src/lib/analyzer/workers/data-extractor-worker';
 import type { WorkerContext, OrchestratorConfig } from '../src/lib/analyzer/orchestrator/types';
 import type { SessionMetrics } from '../src/lib/domain/models/analysis';
-import type { Phase1Output, DeveloperUtterance, AIResponse } from '../src/lib/models/phase1-output';
+import type { Phase1Output, DeveloperUtterance } from '../src/lib/models/phase1-output';
 import type { ParsedSession } from '../src/lib/models/session';
 import { calculateActualCost, GEMINI_PRICING } from '../src/lib/analyzer/cost-estimator';
 
@@ -141,24 +141,6 @@ function printUtterance(index: number, utterance: DeveloperUtterance): void {
   // Show machine content ratio if significant
   if (utterance.machineContentRatio !== undefined && utterance.machineContentRatio > 0.1) {
     console.log(`      | machineContentRatio: ${(utterance.machineContentRatio * 100).toFixed(1)}%`);
-  }
-}
-
-function printAIResponse(index: number, response: AIResponse): void {
-  const toolCount = response.toolsUsed.length;
-  const hasError = formatBoolean(response.hadError);
-  const wasSuccessful = formatBoolean(response.wasSuccessful);
-
-  console.log(
-    `#${String(index + 1).padStart(3)} | ` +
-    `type: ${response.responseType.padEnd(15)} | ` +
-    `tools: ${String(toolCount).padStart(2)} | ` +
-    `error: ${hasError} | ` +
-    `success: ${wasSuccessful}`
-  );
-
-  if (toolCount > 0) {
-    console.log(`      | tools: [${response.toolsUsed.join(', ')}]`);
   }
 }
 
@@ -335,14 +317,6 @@ async function main() {
   console.log('');
 
   if (!utterancesOnly) {
-    // AI Responses
-    console.log(`AI Responses (${output.aiResponses.length} extracted):`);
-    console.log('');
-    for (let i = 0; i < output.aiResponses.length; i++) {
-      printAIResponse(i, output.aiResponses[i]!);
-    }
-    console.log('');
-
     // Session Metrics
     console.log('Session Metrics:');
     printSessionMetrics(output.sessionMetrics);

@@ -25,12 +25,15 @@ export { BaseSessionSource } from './sources/base.js';
 // Export source implementations
 export { ClaudeCodeSource, claudeCodeSource, CLAUDE_PROJECTS_DIR } from './sources/claude-code.js';
 export { CursorSource, cursorSource, CURSOR_CHATS_DIR } from './sources/cursor.js';
+export { CursorComposerSource, cursorComposerSource } from './sources/cursor-composer.js';
 
 // Export tool mapping utilities
 export {
   TOOL_MAPPING,
   TOOL_CATEGORIES,
+  CURSOR_COMPOSER_TOOL_IDS,
   normalizeToolName,
+  resolveComposerToolId,
   getKnownTools,
   needsNormalization,
   getToolCategory,
@@ -43,6 +46,7 @@ export {
 import type { SessionSource, FileMetadata, SourcedSessionMetadata, SourcedParsedSession } from './sources/base.js';
 import { ClaudeCodeSource } from './sources/claude-code.js';
 import { CursorSource } from './sources/cursor.js';
+import { CursorComposerSource } from './sources/cursor-composer.js';
 
 /**
  * Registry of all available session sources
@@ -54,6 +58,7 @@ export class SourceRegistry {
     // Register default sources
     this.register(new ClaudeCodeSource());
     this.register(new CursorSource());
+    this.register(new CursorComposerSource());
   }
 
   /**
@@ -183,10 +188,15 @@ export class MultiSourceScanner {
     if (!source) return null;
 
     try {
-      // Handle Cursor's special case (SQLite requires parseFromFile)
+      // Handle SQLite-based sources (requires parseFromFile)
       if (metadata.source === 'cursor') {
         const cursorSource = source as CursorSource;
         return cursorSource.parseFromFile(metadata.filePath);
+      }
+
+      if (metadata.source === 'cursor-composer') {
+        const composerSource = source as CursorComposerSource;
+        return composerSource.parseFromFile(metadata.filePath);
       }
 
       // Standard path: read content and parse

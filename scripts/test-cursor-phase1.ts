@@ -3,7 +3,7 @@
  *
  * Tests the DataExtractorWorker (Phase 1) with Cursor session data.
  * Verifies that Cursor sessions produce the same Phase 1 output format
- * as Claude Code sessions (developerUtterances, aiResponses).
+ * as Claude Code sessions (developerUtterances, sessionMetrics).
  *
  * Usage:
  *   npx tsx scripts/test-cursor-phase1.ts                    # Default: latest 3 sessions
@@ -22,13 +22,13 @@ import * as path from 'path';
 import {
   CursorSource,
   CURSOR_CHATS_DIR,
-} from '../src/lib/scanner/sources/cursor';
+} from '../packages/cli/src/lib/scanner/sources/cursor';
 import { DataExtractorWorker } from '../src/lib/analyzer/workers/data-extractor-worker';
 import type { WorkerContext, OrchestratorConfig } from '../src/lib/analyzer/orchestrator/types';
 import type { SessionMetrics } from '../src/lib/domain/models/analysis';
-import type { Phase1Output, DeveloperUtterance, AIResponse } from '../src/lib/models/phase1-output';
+import type { Phase1Output, DeveloperUtterance } from '../src/lib/models/phase1-output';
 import type { ParsedSession } from '../src/lib/models/session';
-import type { SourcedParsedSession } from '../src/lib/scanner/sources/base';
+import type { SourcedParsedSession } from '../packages/cli/src/lib/scanner/sources/base';
 
 // ============================================================================
 // Configuration
@@ -173,24 +173,6 @@ function printUtterance(index: number, utterance: DeveloperUtterance): void {
   }
 }
 
-function printAIResponse(index: number, response: AIResponse): void {
-  const toolCount = response.toolsUsed.length;
-  const hasError = formatBoolean(response.hadError);
-  const wasSuccessful = formatBoolean(response.wasSuccessful);
-
-  console.log(
-    `#${String(index + 1).padStart(3)} | ` +
-    `type: ${response.responseType.padEnd(15)} | ` +
-    `tools: ${String(toolCount).padStart(2)} | ` +
-    `error: ${hasError} | ` +
-    `success: ${wasSuccessful}`
-  );
-
-  if (toolCount > 0) {
-    console.log(`      | tools: [${response.toolsUsed.join(', ')}]`);
-  }
-}
-
 function printSessionMetrics(metrics: Phase1Output['sessionMetrics']): void {
   console.log(`- totalSessions: ${metrics.totalSessions}`);
   console.log(`- totalMessages: ${metrics.totalMessages}`);
@@ -201,6 +183,16 @@ function printSessionMetrics(metrics: Phase1Output['sessionMetrics']): void {
   console.log(`- questionRatio: ${(metrics.questionRatio * 100).toFixed(1)}%`);
   console.log(`- codeBlockRatio: ${(metrics.codeBlockRatio * 100).toFixed(1)}%`);
   console.log(`- dateRange: ${metrics.dateRange.earliest} ~ ${metrics.dateRange.latest}`);
+
+  // Context Fill Metrics (deterministic, calculated from token data)
+  console.log('- contextFillMetrics:');
+  if (metrics.avgContextFillPercent !== undefined) {
+    console.log(`    avgContextFillPercent: ${metrics.avgContextFillPercent}%`);
+    console.log(`    maxContextFillPercent: ${metrics.maxContextFillPercent}%`);
+    console.log(`    contextFillExceeded90Count: ${metrics.contextFillExceeded90Count}`);
+  } else {
+    console.log('    (no token data available)');
+  }
 
   if (metrics.toolUsageCounts && Object.keys(metrics.toolUsageCounts).length > 0) {
     console.log('- toolUsageCounts:');
@@ -422,14 +414,6 @@ Options:
   console.log('');
 
   if (!utterancesOnly) {
-    // AI Responses
-    console.log(`AI Responses (${output.aiResponses.length} extracted):`);
-    console.log('');
-    for (let i = 0; i < output.aiResponses.length; i++) {
-      printAIResponse(i, output.aiResponses[i]!);
-    }
-    console.log('');
-
     // Session Metrics
     console.log('Session Metrics:');
     printSessionMetrics(output.sessionMetrics);
