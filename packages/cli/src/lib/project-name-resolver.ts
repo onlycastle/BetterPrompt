@@ -16,8 +16,9 @@
  * @module project-name-resolver
  */
 
-import { statSync } from 'node:fs';
+import { readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { levenshteinDistance } from './levenshtein.js';
 
 // ============================================================================
 // Constants
@@ -51,34 +52,54 @@ function dirExists(path: string): boolean {
 }
 
 /**
+ * Find the closest directory name in `parentPath` to `targetName` using
+ * Levenshtein distance. Only returns a match if distance is exactly 1.
+ */
+function findClosestDirectory(parentPath: string, targetName: string): string | null {
+  try {
+    const entries = readdirSync(parentPath, { withFileTypes: true });
+    let bestMatch: string | null = null;
+    let bestDistance = Infinity;
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const dist = levenshteinDistance(entry.name.toLowerCase(), targetName.toLowerCase());
+      if (dist > 0 && dist <= 1 && dist < bestDistance) {
+        bestDistance = dist;
+        bestMatch = entry.name;
+      }
+    }
+
+    return bestMatch;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Resolve segments starting from `basePath` using greedy matching.
- *
- * At each step, we try joining as many remaining segments as possible
- * into a single directory name (with hyphens), then check if that
- * directory exists. If it does, we recurse into it with the remaining
- * segments. If not, we try one fewer segment, and so on.
- *
- * @returns Array of resolved directory names (the actual dir names found)
+ * Tries joining progressively fewer segments until a match is found.
  */
 function resolveSegments(basePath: string, segments: string[]): string[] {
   if (segments.length === 0) return [];
 
-  // Try longest match first (greedy): join all remaining segments
-  // then progressively try fewer segments
   for (let len = segments.length; len >= 1; len--) {
     const candidate = segments.slice(0, len).join('-');
     const candidatePath = `${basePath}/${candidate}`;
 
     if (dirExists(candidatePath)) {
-      // Found a match — recurse with remaining segments
       const rest = resolveSegments(candidatePath, segments.slice(len));
       return [candidate, ...rest];
     }
   }
 
-  // No filesystem match found — treat all remaining segments as one name
-  // This handles cases where directories have been deleted
-  return [segments.join('-')];
+  const fallbackName = segments.join('-');
+  if (basePath && fallbackName.length >= 4) {
+    const fuzzyMatch = findClosestDirectory(basePath, fallbackName);
+    if (fuzzyMatch) return [fuzzyMatch];
+  }
+
+  return [fallbackName];
 }
 
 /**
@@ -97,16 +118,11 @@ export function resolveProjectName(encodedDirName: string): string {
   return result;
 }
 
-/**
- * Internal uncached resolution logic.
- */
 function resolveProjectNameUncached(encodedDirName: string): string {
-  // Non-encoded names: return as-is
   if (!encodedDirName.startsWith('-')) {
     return encodedDirName || 'unknown';
   }
 
-  // Detect temp directories
   const lower = encodedDirName.toLowerCase();
   for (const prefix of TEMP_PREFIXES) {
     if (lower.startsWith(prefix)) {
@@ -114,18 +130,14 @@ function resolveProjectNameUncached(encodedDirName: string): string {
     }
   }
 
-  // Split into segments (skip leading empty string from leading '-')
   const segments = encodedDirName.slice(1).split('-').filter(Boolean);
   if (segments.length === 0) return 'unknown';
 
-  // Try to detect and skip the home directory prefix
-  // Common pattern: Users-{username} or home-{username}
-  const home = homedir(); // e.g. "/Users/sungmancho"
-  const homeParts = home.split('/').filter(Boolean); // ["Users", "sungmancho"]
+  const home = homedir();
+  const homeParts = home.split('/').filter(Boolean);
 
   let startSegments = segments;
 
-  // Check if the segments start with the home directory parts
   if (homeParts.length > 0 && segments.length > homeParts.length) {
     let matchesHome = true;
     for (let i = 0; i < homeParts.length; i++) {
@@ -136,36 +148,27 @@ function resolveProjectNameUncached(encodedDirName: string): string {
     }
 
     if (matchesHome) {
-      // Strip home prefix and resolve from home directory
       startSegments = segments.slice(homeParts.length);
 
       if (startSegments.length === 0) return 'unknown';
 
       const resolved = resolveSegments(home, startSegments);
-
-      // Strip container directories from the front
       return stripContainerDirs(resolved);
     }
   }
 
-  // Fallback: try resolving from root /
   const resolved = resolveSegments('', segments);
   if (resolved.length === 0) return 'unknown';
 
-  // Strip container directories from the front
   return stripContainerDirs(resolved);
 }
 
 /**
  * Strip well-known container directories from the front of resolved path parts.
- *
- * e.g. ["projects", "youtube-enlgish-mobile"] → "youtube-enlgish-mobile"
- * e.g. ["projects", "my-app", "packages", "cli"] → "my-app/packages/cli"
  */
 function stripContainerDirs(parts: string[]): string {
   if (parts.length === 0) return 'unknown';
 
-  // Strip leading container dirs
   let start = 0;
   while (start < parts.length - 1 && CONTAINER_DIRS.has(parts[start].toLowerCase())) {
     start++;
