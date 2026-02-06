@@ -124,7 +124,7 @@ Return JSON with the following structure:
   "example": "constraint syntax unclear"
 }]
 \`\`\`
-- **description**: 2-3 sentences explaining WHY this is a knowledge gap and its root cause
+- **description**: 4-6 sentences (MINIMUM 100 characters) explaining WHY this is a knowledge gap, its root cause, and observable impact
 
 #### learningProgress (array of objects)
 \`\`\`json
@@ -136,7 +136,7 @@ Return JSON with the following structure:
   "evidence": "useEffect cleanup questions decreased"
 }]
 \`\`\`
-- **description**: 2-3 sentences describing the learning journey and what changed
+- **description**: 4-6 sentences (MINIMUM 100 characters) describing the learning journey, what changed, and concrete evidence
 
 #### recommendedResources (array of objects)
 \`\`\`json
@@ -163,7 +163,7 @@ Return JSON with the following structure:
   "recommendation": "Before retrying, read the error message aloud and explain it in your own words. Ask the AI to explain the error if unclear."
 }]
 \`\`\`
-- **description**: 2-3 sentences explaining WHY this mistake repeats (behavioral root cause)
+- **description**: 4-6 sentences (MINIMUM 100 characters) explaining WHY this mistake repeats, behavioral root cause, and impact
 
 **Detection Signals:**
 - Look for patterns where \`precedingAIHadError=true\` followed by:
@@ -217,7 +217,7 @@ You MUST output detailed strengths and growth areas for the LEARNING BEHAVIOR do
 \`\`\`json
 {
   "title": "Clear pattern name (e.g., 'Active Learning Mindset')",
-  "description": "6-10 sentences: WHEN/WHERE this learning pattern manifests, quantitative data, evidence of knowledge deepening over time, impact on AI collaboration",
+  "description": "6-10 sentences (MINIMUM 300 characters, target 400-600): WHEN/WHERE this learning pattern manifests, quantitative data, evidence of knowledge deepening over time, impact on AI collaboration",
   "evidence": [
     {"utteranceId": "abc123_5", "quote": "developer's exact words showing learning behavior (min 15 chars)", "context": "optional"},
     {"utteranceId": "def456_12", "quote": "another example demonstrating this pattern", "context": "different session"},
@@ -232,13 +232,13 @@ You MUST output detailed strengths and growth areas for the LEARNING BEHAVIOR do
 \`\`\`json
 {
   "title": "Clear pattern name (e.g., 'Error Loop Pattern' or 'TypeScript Generics Gap')",
-  "description": "6-10 sentences: specific gap/pattern identified, how it manifests, impact on productivity, root cause analysis",
+  "description": "6-10 sentences (MINIMUM 300 characters, target 400-600): specific gap/pattern identified, how it manifests, impact on productivity, root cause analysis",
   "evidence": [
     {"utteranceId": "abc123_5", "quote": "developer's exact words showing this issue (min 15 chars)", "context": "optional"},
     {"utteranceId": "def456_8", "quote": "another instance of the same pattern", "context": "different session"},
     {"utteranceId": "xyz789_15", "quote": "third example reinforcing the pattern"}
   ],
-  "recommendation": "4-6 sentences: specific learning resources (URLs), step-by-step path, practice exercises, how to validate understanding",
+  "recommendation": "4-6 sentences (MINIMUM 150 characters): specific learning resources (URLs), step-by-step path, practice exercises, how to validate understanding",
   "severity": "critical | high | medium | low"
 }
 \`\`\`

@@ -204,8 +204,8 @@ export const StructuredStrengthLLMSchema = z.object({
   /** Clear, specific title (e.g., "Systematic Output Verification") */
   title: z.string(),
 
-  /** 6-10 sentences providing comprehensive analysis */
-  description: z.string(),
+  /** 6-10 sentences providing comprehensive analysis (min 300 chars) */
+  description: z.string().min(300),
 
   /**
    * Evidence objects with utteranceId linking (2-8 items).
@@ -224,8 +224,8 @@ export const StructuredGrowthLLMSchema = z.object({
   /** Clear, specific title (e.g., "Error Loop Pattern") */
   title: z.string(),
 
-  /** 6-10 sentences providing comprehensive analysis */
-  description: z.string(),
+  /** 6-10 sentences providing comprehensive analysis (min 300 chars) */
+  description: z.string().min(300),
 
   /**
    * Evidence objects with utteranceId linking (2-8 items).
@@ -233,8 +233,8 @@ export const StructuredGrowthLLMSchema = z.object({
    */
   evidence: z.array(StructuredEvidenceLLMSchema).min(1).max(8),
 
-  /** 4-6 sentences with step-by-step actionable advice */
-  recommendation: z.string(),
+  /** 4-6 sentences with step-by-step actionable advice (min 150 chars) */
+  recommendation: z.string().min(150),
 
   /** Severity level: critical | high | medium | low */
   severity: WorkerGrowthSeveritySchema.optional(),

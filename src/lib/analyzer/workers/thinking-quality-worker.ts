@@ -16,12 +16,14 @@
  * @module analyzer/workers/thinking-quality-worker
  */
 
-import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker';
+import { BaseWorker, type WorkerResult, type WorkerContext, type DescriptionQualityResult } from './base-worker';
 import {
   ThinkingQualityLLMOutputSchema,
   type ThinkingQualityOutput,
+  type ThinkingQualityLLMOutput,
   parseThinkingQualityLLMOutput,
 } from '../../models/thinking-quality-data';
+import type { GeminiStructuredResult } from '../clients/gemini-client';
 import type { Phase1Output } from '../../models/phase1-output';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
@@ -73,14 +75,39 @@ export class ThinkingQualityWorker extends BaseWorker<ThinkingQualityOutput> {
     const userPrompt = buildThinkingQualityUserPrompt(phase1ForPrompt, insightContext.insights);
     this.log(`Injected ${insightContext.insights.length} professional insights`);
 
-    const result = await this.client!.generateStructured({
-      systemPrompt: THINKING_QUALITY_SYSTEM_PROMPT,
-      userPrompt,
-      responseSchema: ThinkingQualityLLMOutputSchema,
-      maxOutputTokens: 65536,
-    });
+    // 3-Layer Defense: Layer 3 — retry loop for description quality
+    const MAX_ATTEMPTS = 2;
+    let bestResult: GeminiStructuredResult<ThinkingQualityLLMOutput> | null = null;
+    let bestQuality: DescriptionQualityResult | null = null;
 
-    const parsedOutput = parseThinkingQualityLLMOutput(result.data);
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const promptToUse = attempt === 0
+        ? userPrompt
+        : this.buildDescriptionQualityFeedback(userPrompt, bestQuality!);
+
+      const result = await this.client!.generateStructured({
+        systemPrompt: THINKING_QUALITY_SYSTEM_PROMPT,
+        userPrompt: promptToUse,
+        responseSchema: ThinkingQualityLLMOutputSchema,
+        maxOutputTokens: 65536,
+      });
+
+      const quality = this.validateDescriptionQuality(
+        result.data.strengths,
+        result.data.growthAreas,
+      );
+
+      this.log(`Attempt ${attempt + 1}/${MAX_ATTEMPTS}: ${quality.details}`);
+
+      if (!bestResult || quality.totalDescriptionChars > bestQuality!.totalDescriptionChars) {
+        bestResult = result;
+        bestQuality = quality;
+      }
+
+      if (quality.passed) break;
+    }
+
+    const parsedOutput = parseThinkingQualityLLMOutput(bestResult!.data);
     const processedOutput = this.resolveAllReferences(parsedOutput, insightContext);
 
     this.log(`Planning score: ${processedOutput.planQualityScore}`);
@@ -90,7 +117,7 @@ export class ThinkingQualityWorker extends BaseWorker<ThinkingQualityOutput> {
       this.log(`Referenced ${processedOutput.referencedInsights.length} professional insights`);
     }
 
-    return this.createSuccessResult(processedOutput, result.usage);
+    return this.createSuccessResult(processedOutput, bestResult!.usage);
   }
 
   /**

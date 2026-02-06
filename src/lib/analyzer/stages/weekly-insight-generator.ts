@@ -79,6 +79,9 @@ const ZERO_USAGE: TokenUsage = { promptTokens: 0, completionTokens: 0, totalToke
 /** Milliseconds in one day */
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/** Project names excluded from the per-project breakdown chart */
+const EXCLUDED_PROJECT_NAMES = ['(temp)', 'unknown'];
+
 // ============================================================================
 // Internal helpers
 // ============================================================================
@@ -271,7 +274,7 @@ export class WeeklyInsightGeneratorStage {
       : undefined;
 
     // Per-project breakdown from this week
-    const projects = this.computeProjectBreakdown(thisWeekSessions, thisWeekStats.totalMinutes);
+    const projects = this.computeProjectBreakdown(thisWeekSessions);
 
     // Top 3 sessions from the #1 project (by duration descending)
     const topProjectSessions = this.computeTopProjectSessions(thisWeekSessions, projects);
@@ -328,7 +331,6 @@ export class WeeklyInsightGeneratorStage {
    */
   private computeProjectBreakdown(
     sessions: ActivitySessionInput[],
-    totalMinutes: number
   ): WeeklyInsights['projects'] {
     const map = new Map<string, { sessionCount: number; totalMinutes: number }>();
 
@@ -345,15 +347,23 @@ export class WeeklyInsightGeneratorStage {
       }
     }
 
+    // Filter out noise projects (temp dirs, unknown) before percentage calculation
+    for (const name of EXCLUDED_PROJECT_NAMES) {
+      map.delete(name);
+    }
+
+    // Recalculate totalMinutes from remaining projects so percentages sum to 100%
+    const filteredTotalMinutes = Array.from(map.values()).reduce((sum, d) => sum + d.totalMinutes, 0);
+
     // Largest Remainder Method: ensures percentages sum to exactly 100%
     const entries = Array.from(map.entries())
       .map(([projectName, data]) => {
-        const exact = totalMinutes > 0 ? (data.totalMinutes / totalMinutes) * 100 : 0;
+        const exact = filteredTotalMinutes > 0 ? (data.totalMinutes / filteredTotalMinutes) * 100 : 0;
         return { projectName, sessionCount: data.sessionCount, totalMinutes: data.totalMinutes, exact, floored: Math.floor(exact) };
       })
       .sort((a, b) => b.sessionCount - a.sessionCount);
 
-    if (totalMinutes > 0) {
+    if (filteredTotalMinutes > 0) {
       const flooredSum = entries.reduce((sum, e) => sum + e.floored, 0);
       let remainder = 100 - flooredSum;
 

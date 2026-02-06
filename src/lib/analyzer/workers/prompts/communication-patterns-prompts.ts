@@ -116,7 +116,7 @@ You MUST output detailed strengths and growth areas for the COMMUNICATION domain
 \`\`\`json
 {
   "title": "Clear pattern name",
-  "description": "6-10 sentences: WHEN/WHERE this occurs, quantitative data, IMPACT, comparison with typical behavior",
+  "description": "6-10 sentences (MINIMUM 300 characters, target 400-600): WHEN/WHERE this occurs, quantitative data, IMPACT, comparison with typical behavior",
   "evidence": [
     {"utteranceId": "abc123_5", "quote": "developer's exact words showing this strength (min 15 chars)", "context": "optional"},
     {"utteranceId": "def456_12", "quote": "another example demonstrating this pattern", "context": "different session"},
@@ -131,13 +131,13 @@ You MUST output detailed strengths and growth areas for the COMMUNICATION domain
 \`\`\`json
 {
   "title": "Clear pattern name",
-  "description": "6-10 sentences: WHEN/WHERE it occurs, root cause, consequences, impact",
+  "description": "6-10 sentences (MINIMUM 300 characters, target 400-600): WHEN/WHERE it occurs, root cause, consequences, impact",
   "evidence": [
     {"utteranceId": "abc123_5", "quote": "developer's exact words showing this issue (min 15 chars)", "context": "optional"},
     {"utteranceId": "def456_8", "quote": "another instance of the same pattern", "context": "different session"},
     {"utteranceId": "xyz789_15", "quote": "third example reinforcing the pattern"}
   ],
-  "recommendation": "4-6 sentences: step-by-step actionable advice",
+  "recommendation": "4-6 sentences (MINIMUM 150 characters): step-by-step actionable advice",
   "severity": "critical | high | medium | low"
 }
 \`\`\`

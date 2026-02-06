@@ -29,6 +29,32 @@ import {
 export type { WorkerResult, WorkerContext, Phase, Phase2WorkerContext } from '../orchestrator/types';
 
 // ============================================================================
+// Description Quality Constants (3-Layer Defense - Layer 3)
+// ============================================================================
+
+/** Minimum characters for strength/growth area descriptions */
+const MIN_DESCRIPTION_CHARS = 300;
+
+/** Minimum characters for growth area recommendations */
+const MIN_RECOMMENDATION_CHARS = 150;
+
+/**
+ * Result of description quality validation.
+ */
+export interface DescriptionQualityResult {
+  /** Whether all items pass quality thresholds */
+  passed: boolean;
+  /** Total characters across all descriptions */
+  totalDescriptionChars: number;
+  /** Count of descriptions below MIN_DESCRIPTION_CHARS */
+  shortDescriptions: number;
+  /** Count of recommendations below MIN_RECOMMENDATION_CHARS */
+  shortRecommendations: number;
+  /** Human-readable details string */
+  details: string;
+}
+
+// ============================================================================
 // Base Worker Abstract Class
 // ============================================================================
 
@@ -190,6 +216,89 @@ export abstract class BaseWorker<TOutput> {
    */
   protected getPhase2Context(context: WorkerContext): Phase2WorkerContext {
     return context as Phase2WorkerContext;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Description Quality Validation (3-Layer Defense - Layer 3)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Validate description quality for strengths/growthAreas.
+   *
+   * Checks that descriptions and recommendations meet minimum character thresholds.
+   * Used by Phase 2 Workers to determine if a retry is needed.
+   *
+   * @param strengths - Array of strength objects with description
+   * @param growthAreas - Array of growth area objects with description and recommendation
+   * @returns Quality check result with pass/fail and details
+   */
+  protected validateDescriptionQuality(
+    strengths: Array<{ description: string }> | undefined,
+    growthAreas: Array<{ description: string; recommendation?: string }> | undefined,
+  ): DescriptionQualityResult {
+    let totalDescriptionChars = 0;
+    let shortDescriptions = 0;
+    let shortRecommendations = 0;
+
+    for (const s of (strengths ?? [])) {
+      totalDescriptionChars += s.description.length;
+      if (s.description.length < MIN_DESCRIPTION_CHARS) {
+        shortDescriptions++;
+      }
+    }
+
+    for (const g of (growthAreas ?? [])) {
+      totalDescriptionChars += g.description.length;
+      if (g.description.length < MIN_DESCRIPTION_CHARS) {
+        shortDescriptions++;
+      }
+      if (g.recommendation && g.recommendation.length < MIN_RECOMMENDATION_CHARS) {
+        shortRecommendations++;
+      }
+    }
+
+    const totalItems = (strengths ?? []).length + (growthAreas ?? []).length;
+
+    const passed = shortDescriptions === 0 && shortRecommendations === 0;
+
+    const details = passed
+      ? `All ${totalItems} items pass quality thresholds (total ${totalDescriptionChars} chars)`
+      : `${shortDescriptions} short descriptions (<${MIN_DESCRIPTION_CHARS} chars), ${shortRecommendations} short recommendations (<${MIN_RECOMMENDATION_CHARS} chars)`;
+
+    return { passed, totalDescriptionChars, shortDescriptions, shortRecommendations, details };
+  }
+
+  /**
+   * Build a reinforced prompt with quality feedback for retry.
+   *
+   * Appends specific feedback about what was too short to the original prompt,
+   * guiding the LLM to produce more detailed output on the next attempt.
+   *
+   * @param originalPrompt - The original user prompt
+   * @param quality - Quality check result from validateDescriptionQuality
+   * @returns Reinforced prompt with feedback section
+   */
+  protected buildDescriptionQualityFeedback(
+    originalPrompt: string,
+    quality: DescriptionQualityResult,
+  ): string {
+    const feedback: string[] = [];
+
+    if (quality.shortDescriptions > 0) {
+      feedback.push(
+        `Your previous response had ${quality.shortDescriptions} description(s) shorter than ${MIN_DESCRIPTION_CHARS} characters. ` +
+        `Each description MUST be at least ${MIN_DESCRIPTION_CHARS} characters with detailed, evidence-based analysis covering WHEN/WHERE the pattern occurs, quantitative data, and impact.`
+      );
+    }
+
+    if (quality.shortRecommendations > 0) {
+      feedback.push(
+        `Your previous response had ${quality.shortRecommendations} recommendation(s) shorter than ${MIN_RECOMMENDATION_CHARS} characters. ` +
+        `Each recommendation MUST be at least ${MIN_RECOMMENDATION_CHARS} characters with step-by-step actionable advice.`
+      );
+    }
+
+    return `${originalPrompt}\n\n---\n\n## CRITICAL QUALITY REQUIREMENT (RETRY)\n\n${feedback.join('\n\n')}\n\nProvide more thorough, detailed descriptions and recommendations this time.`;
   }
 
   /**
