@@ -338,7 +338,7 @@ export const InefficiencyLLMSchema = z.object({
   frequency: z.number().int().min(1),
   /** Impact level */
   impact: z.enum(['high', 'medium', 'low']),
-  /** Description/example */
+  /** 2-3 sentences explaining the inefficiency pattern, when/where it occurs, and its impact */
   description: z.string(),
 });
 export type InefficiencyLLM = z.infer<typeof InefficiencyLLMSchema>;

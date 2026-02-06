@@ -40,7 +40,7 @@ import {
 export const KnowledgeGapItemLLMSchema = z.object({
   /** Topic name (e.g., "TypeScript generics", "async/await") */
   topic: z.string(),
-  /** 2-3 sentences explaining WHY this is a knowledge gap and its root cause */
+  /** 4-6 sentences explaining WHY this is a knowledge gap, its root cause, and observable impact */
   description: z.string(),
   /** Number of times this topic was questioned */
   questionCount: z.number().int().min(1),
@@ -58,7 +58,7 @@ export type KnowledgeGapItemLLM = z.infer<typeof KnowledgeGapItemLLMSchema>;
 export const LearningProgressLLMSchema = z.object({
   /** Topic name */
   topic: z.string(),
-  /** 2-3 sentences describing the learning journey and what changed */
+  /** 4-6 sentences describing the learning journey, what changed, and concrete evidence */
   description: z.string(),
   /** Starting level: novice | shallow | moderate | deep | expert */
   startLevel: z.enum(['novice', 'shallow', 'moderate', 'deep', 'expert']),
@@ -133,7 +133,7 @@ export const RepeatedMistakeLLMSchema = z.object({
   category: z.string(),
   /** Specific type of mistake */
   mistakeType: z.string(),
-  /** 2-3 sentences explaining WHY this mistake repeats (behavioral root cause) */
+  /** 4-6 sentences explaining WHY this mistake repeats, behavioral root cause, and impact */
   description: z.string(),
   /** Occurrence count */
   occurrenceCount: z.number().int().min(2),
