@@ -126,6 +126,10 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     if (totalReasoningLength < MIN_TOTAL_REASONING_CHARS) {
       this.log(`Reasoning too short (${totalReasoningLength} chars, min ${MIN_TOTAL_REASONING_CHARS}). Retrying...`);
       result = await this.client!.generateStructured(generateParams);
+      const retryLength = result.data.reasoning.reduce(
+        (sum, paragraph) => sum + paragraph.length, 0
+      );
+      this.log(`Retry reasoning length: ${retryLength} chars (${result.data.reasoning.length} elements)`);
     }
 
     const dist = result.data.distribution;

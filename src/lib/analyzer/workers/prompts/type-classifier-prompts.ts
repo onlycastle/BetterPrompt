@@ -133,7 +133,7 @@ Use EXACTLY these names for the matrixName field:
 | trendsetter | Early Adopter | Tech Radar | Innovation Lead |
 
 ## REASONING FORMAT (Personalized Personality Narrative) — MOST IMPORTANT FIELD
-The \`reasoning\` field is a JSON ARRAY of 3-4 paragraph strings. This is the MOST IMPORTANT field in the entire output — it will be displayed directly to the developer as their personality summary. Invest the majority of your output effort here.
+The \`reasoning\` field is a JSON ARRAY of exactly 4 paragraph strings. This is the MOST IMPORTANT field in the entire output — it will be displayed directly to the developer as their personality summary. Invest the majority of your output effort here.
 
 **CRITICAL: \`reasoning\` is an ARRAY, not a string. Each element is one complete thematic paragraph.**
 
