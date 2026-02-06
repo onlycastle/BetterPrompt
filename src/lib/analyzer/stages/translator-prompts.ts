@@ -149,3 +149,38 @@ Return a TranslatorOutput JSON object containing ONLY the translated text fields
 - Preserve all pipe (|) and semicolon (;) delimiters exactly
 - Write fluent, natural ${langName} — not awkward literal translations`;
 }
+
+/**
+ * Build a retry user prompt for the Translator stage.
+ * Wraps the base prompt with a notice about previously failed fields.
+ *
+ * @param englishDataJson - JSON string of the English VerboseLLMResponse (sanitized)
+ * @param agentOutputsJson - JSON string of AgentOutputs
+ * @param targetLanguage - Target language for translation
+ * @param failedFields - List of field paths that failed CJK verification
+ * @returns User prompt string with retry instructions prepended
+ */
+export function buildRetryTranslatorUserPrompt(
+  englishDataJson: string,
+  agentOutputsJson: string,
+  targetLanguage: SupportedLanguage,
+  failedFields: string[]
+): string {
+  const langName = LANGUAGE_DISPLAY_NAMES[targetLanguage];
+  const basePrompt = buildTranslatorUserPrompt(englishDataJson, agentOutputsJson, targetLanguage);
+  const fieldList = failedFields.map(f => `- ${f}`).join('\n');
+
+  return `# ⚠️ RETRY — Previous Translation Was Incomplete
+
+The previous translation attempt left the following fields untranslated or with insufficient ${langName} text.
+These fields MUST contain substantial ${langName} text in this attempt:
+
+${fieldList}
+
+Pay special attention to these fields. They must be fully translated to natural, fluent ${langName}.
+Do NOT leave them in English or partially translated.
+
+---
+
+${basePrompt}`;
+}

@@ -30,7 +30,7 @@
 import type { ParsedSession, SessionMetrics } from '../../domain/models/analysis';
 import type { VerboseEvaluation } from '../../models/verbose-evaluation';
 import type { AgentOutputs } from '../../models/agent-outputs';
-import { createEmptyAgentOutputs } from '../../models/agent-outputs';
+import { createEmptyAgentOutputs, normalizeReasoning } from '../../models/agent-outputs';
 import { ContentWriterStage } from '../stages/content-writer';
 import { TranslatorStage } from '../stages/translator';
 import { detectPrimaryLanguage, LANGUAGE_DISPLAY_NAMES, type LanguageDetectionResult } from '../stages/content-writer-prompts';
@@ -348,15 +348,6 @@ export class AnalysisOrchestrator {
     completedLLMStages++;
     reportProgress('phase1_5', 'Session summaries generated');
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Phase 2: Insight Generation (parallel)
-    // All workers run for all users. Tier-based filtering happens at ContentGateway.
-    // NOTE: All Phase 2 workers operate in ENGLISH. Language translation
-    // happens only in Phase 3 (Content Writer) based on user's quotes.
-    //
-    // ProjectSummarizer runs IN PARALLEL with Phase 2 workers.
-    // It only needs activitySessions (independent of Phase 1 output).
-    // ─────────────────────────────────────────────────────────────────────
     let agentOutputs: AgentOutputs = createEmptyAgentOutputs();
     let projectSummarizerResult: ProjectSummarizerResult | null = null;
     let weeklyInsightResult: WeeklyInsightGeneratorResult | null = null;
@@ -364,7 +355,6 @@ export class AnalysisOrchestrator {
     this.log(`Phase 2 workers registered: ${this.phase2Workers.length}`);
     this.log(`Worker names: ${this.phase2Workers.map(w => w.name).join(', ')}`);
 
-    // Start ProjectSummarizer in parallel with Phase 2 workers
     const projectSummarizerPromise = options?.activitySessions && options.activitySessions.length > 0
       ? (async () => {
           this.log('ProjectSummarizer: Starting (parallel with Phase 2)...');
@@ -396,7 +386,6 @@ export class AnalysisOrchestrator {
         })()
       : null;
 
-    // Start WeeklyInsightGenerator in parallel with Phase 2 workers
     const weeklyInsightPromise = options?.activitySessions && options.activitySessions.length > 0
       ? (async () => {
           this.log('WeeklyInsightGenerator: Starting (parallel with Phase 2)...');
@@ -433,18 +422,13 @@ export class AnalysisOrchestrator {
         })()
       : null;
 
-    // Run Phase 2 workers, ProjectSummarizer, and WeeklyInsightGenerator
-    // all in a single Promise.all to prevent unhandled rejections.
-    // If any promise rejects, all are awaited and the error propagates cleanly.
     const phase2WorkerPromise = this.phase2Workers.length > 0
       ? (async () => {
           this.log('Phase 2: Insight Generation...');
 
-          // All Phase 2 workers receive Phase1Output (context isolation)
           const phase2Context: WorkerContext & { phase1Output?: Phase1Output } = {
             ...baseContext,
             phase1Output: phase1Results.dataExtractor.data,
-            // outputLanguage intentionally NOT passed - Phase 2 workers always use English
           };
 
           this.log(`Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasPhase1Output: ${!!phase2Context.phase1Output}`);
@@ -461,7 +445,6 @@ export class AnalysisOrchestrator {
           });
           this.log(`Phase 2 results keys: ${Object.keys(phase2Results).join(', ')}`);
 
-          // Collect debug output and token usage in a single pass
           for (const [workerName, result] of Object.entries(phase2Results)) {
             if (result) {
               this.collectDebugOutput(
@@ -484,7 +467,6 @@ export class AnalysisOrchestrator {
           this.log('Phase 2: Skipped (no workers registered)');
         })();
 
-    // Await all Phase 2 parallel tasks together to prevent unhandled rejections
     const allPhase2Promises: Promise<unknown>[] = [phase2WorkerPromise];
     if (projectSummarizerPromise) allPhase2Promises.push(projectSummarizerPromise);
     if (weeklyInsightPromise) allPhase2Promises.push(weeklyInsightPromise);
@@ -493,22 +475,12 @@ export class AnalysisOrchestrator {
     projectSummarizerResult = (psResult as ProjectSummarizerResult | undefined) ?? null;
     weeklyInsightResult = (wiResult as WeeklyInsightGeneratorResult | undefined) ?? null;
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Phase 2.5: TypeClassifier only (StrengthGrowth REMOVED)
-    //
-    // Each Phase 2 worker now outputs domain-specific strengths/growthAreas
-    // directly, eliminating the need for a centralized StrengthGrowthSynthesizer.
-    // TypeClassifier uses all Phase 2 data including worker-provided insights.
-    //
-    // NOTE: Phase 2.5 also operates in ENGLISH.
-    // ─────────────────────────────────────────────────────────────────────
     this.log(`Phase 2.5 workers registered: ${this.phase2Point5Workers.length}`);
     if (this.phase2Point5Workers.length > 0) {
       this.log('Phase 2.5: TypeClassifier (sequential)...');
       const phase2Point5Start = Date.now();
       const phase2Point5Context: WorkerContext = {
         ...baseContext,
-        // outputLanguage intentionally NOT passed - Phase 2.5 always uses English
       };
 
       const phase2Point5Results = await this.runPhase2Point5(
@@ -517,15 +489,12 @@ export class AnalysisOrchestrator {
         phase1Results.dataExtractor.data
       );
 
-      // TypeClassifier is REQUIRED for 15-type matrix classification
-      // Fail the entire analysis if TypeClassifier fails
       const typeClassifierResult = phase2Point5Results['TypeClassifier'];
       if (!typeClassifierResult?.data) {
         const errorMessage = typeClassifierResult?.error?.message || 'Unknown error';
         throw new Error(`TypeClassifier failed: ${errorMessage}. Analysis cannot proceed without type classification.`);
       }
 
-      // Collect debug output for each Phase 2.5 worker
       for (const [workerName, result] of Object.entries(phase2Point5Results)) {
         if (result) {
           this.collectDebugOutput(
@@ -533,17 +502,13 @@ export class AnalysisOrchestrator {
             result.data, result.usage
           );
 
-          // Report progress per worker
           completedLLMStages++;
-          const progressMessage = 'Classifying developer type...';
-          reportProgress(`phase2.5_${workerName}`, progressMessage);
+          reportProgress(`phase2.5_${workerName}`, 'Classifying developer type...');
         }
       }
 
-      // Merge all Phase 2.5 results into agentOutputs
       agentOutputs = this.mergePhase2Point5Outputs(agentOutputs, phase2Point5Results);
 
-      // Track Phase 2.5 token usage
       for (const [workerName, result] of Object.entries(phase2Point5Results)) {
         if (result?.usage) {
           stageUsages.push({
@@ -554,12 +519,6 @@ export class AnalysisOrchestrator {
       }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Phase 2.8: Evidence Verification (LLM-based relevance check)
-    //
-    // Verifies that worker-selected evidence quotes actually support
-    // their associated insights. Filters out low-relevance evidence.
-    // ─────────────────────────────────────────────────────────────────────
     this.log('Phase 2.8: Evidence Verification...');
     const phase2Point8Start = Date.now();
 
@@ -573,12 +532,10 @@ export class AnalysisOrchestrator {
       { stats: verificationResult.stats }, verificationResult.usage
     );
 
-    // Apply verified insights back to agentOutputs
     this.applyVerifiedInsights(agentOutputs, verificationResult.verifiedInsights);
 
     this.log(`Phase 2.8: Evidence verification complete - kept=${verificationResult.stats.kept}/${verificationResult.stats.total} (filtered=${verificationResult.stats.filtered})`);
 
-    // Track Phase 2.8 token usage
     if (verificationResult.usage.totalTokens > 0) {
       stageUsages.push({
         stage: 'Evidence Verifier (Phase 2.8)',
@@ -588,10 +545,6 @@ export class AnalysisOrchestrator {
       reportProgress('phase2.8', 'Verifying evidence quality...');
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Phase 2.75: Knowledge Resource Matching (deterministic, no LLM)
-    // Two-level matching: dimension filter → keyword/style ranking
-    // ─────────────────────────────────────────────────────────────────────
     let knowledgeResources: DimensionResourceMatch[] = [];
     if (this.config.knowledgeRepo && this.config.professionalInsightRepo) {
       this.log('Phase 2.75: Knowledge Resource Matching...');
@@ -604,19 +557,14 @@ export class AnalysisOrchestrator {
       this.log('Phase 2.75: Skipped (no knowledge repos configured)');
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Phase 3: Content Generation (Phase1Output + AgentOutputs → narrative)
-    // ─────────────────────────────────────────────────────────────────────
     this.log('Phase 3: Content Generation...');
     const phase3Start = Date.now();
     const sessionCount = phase1Results.dataExtractor.data.sessionMetrics.totalSessions;
 
-    // Phase 2 evidence verification (must run BEFORE assembly)
     if (phase1Results.dataExtractor.data) {
       this.contentWriter.verifyPhase2WorkerExamples(agentOutputs, phase1Results.dataExtractor.data);
     }
 
-    // Phase 3: LLM generates narrative only (personalitySummary, promptPatterns, topFocusAreas)
     const contentResult = await this.contentWriter.transformV3(
       sessionCount,
       agentOutputs,
@@ -624,13 +572,11 @@ export class AnalysisOrchestrator {
       knowledgeResources
     );
 
-    // Capture Phase 3 output BEFORE translation (pre-translation English)
     this.collectDebugOutput(
       'phase3', 'ContentWriter', phase3Start,
       contentResult.data, contentResult.usage
     );
 
-    // Report Phase 3 completion
     completedLLMStages++;
     reportProgress('phase3', 'Generating personalized narrative...');
 
@@ -639,23 +585,15 @@ export class AnalysisOrchestrator {
       ...contentResult.usage,
     });
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Phase 4: Translation (conditional — only for non-English users)
-    // Detects language from developer utterances.
-    // If non-English, runs a dedicated translation LLM call.
-    // ─────────────────────────────────────────────────────────────────────
     const utteranceTexts = phase1Results.dataExtractor.data.developerUtterances.map(u => u.text);
     const languageResult = detectPrimaryLanguage(utteranceTexts);
     this.logLanguageDetection(languageResult);
 
-    // Always log language detection result for production debugging (not gated by verbose)
     console.log(`[PHASE:LANG] detected=${languageResult.primary}, confidence=${languageResult.confidence.toFixed(2)}, korean=${languageResult.charCounts.korean}/${languageResult.charCounts.total}, threshold=0.05, willTranslate=${languageResult.primary !== 'en'}`);
 
-    // Hoist translator data to merge AFTER assembleEvaluation (fixes translation overwrite bug)
     let translatorData: TranslatorOutput | null = null;
 
     if (options?.noTranslate) {
-      // --no-translate flag: skip Phase 4 regardless of detected language
       completedLLMStages++;
       reportProgress('phase4_skipped', 'Translation skipped (--no-translate)');
       this.log('Phase 4: Skipped (--no-translate flag)');
@@ -663,9 +601,9 @@ export class AnalysisOrchestrator {
     } else if (languageResult.primary !== 'en') {
       this.log(`Phase 4: Translation to ${languageResult.primary}...`);
       const phase4Start = Date.now();
-      // Include weeklyInsights text for translation
       const translatorInput = {
         ...contentResult.data,
+        personalitySummary: normalizeReasoning(agentOutputs.typeClassifier?.reasoning) || '',
         ...(weeklyInsightResult?.data ? {
           weeklyInsightsText: {
             narrative: weeklyInsightResult.data.narrative,
@@ -673,11 +611,13 @@ export class AnalysisOrchestrator {
           },
         } : {}),
       };
-      const translatorResult = await this.translator.translate(
+      const translatorResult = await this.translator.translateWithVerification(
         translatorInput,
         languageResult.primary,
         agentOutputs
       );
+
+      console.log(`[PHASE:TRANSLATION_VERIFY] ${translatorResult.verification.summary}`);
 
       this.collectDebugOutput(
         'phase4', 'Translator', phase4Start,
@@ -689,14 +629,11 @@ export class AnalysisOrchestrator {
         ...translatorResult.usage,
       });
 
-      // Report Phase 4 completion
       completedLLMStages++;
       reportProgress('phase4', `Translating to ${LANGUAGE_DISPLAY_NAMES[languageResult.primary] || languageResult.primary}...`);
 
-      // Store translation data — DO NOT merge here, must merge AFTER assembleEvaluation
       translatorData = translatorResult.data;
 
-      // Debug logging: Translator data flow tracking (dev only)
       if (process.env.NODE_ENV === 'development') {
         console.log(`[Orchestrator] translatorData.translatedAgentInsights present: ${!!translatorData?.translatedAgentInsights}`);
         if (translatorData?.translatedAgentInsights) {
@@ -707,31 +644,23 @@ export class AnalysisOrchestrator {
 
       this.log('Phase 4: Translation complete');
     } else {
-      // Translation skipped — jump to 89% to match expected end of analysis range
       completedLLMStages++;
       reportProgress('phase4_skipped', 'Analysis complete');
       this.log('Phase 4: Skipped (English detected)');
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Build Final Evaluation
-    // ─────────────────────────────────────────────────────────────────────
     const analyzedSessions = this.extractAnalyzedSessions(sessions);
 
-    // Aggregate token usage for the pipeline
     const pipelineTokenUsage = aggregateTokenUsage(stageUsages, this.config.model);
 
-    // Aggregate confidence scores from all agents
     const confidenceMetadata = aggregateConfidenceScores(
       agentOutputs as Record<string, unknown>,
       sessions,
       DEFAULT_CONFIDENCE_THRESHOLD
     );
 
-    // Calculate date range
     const analysisDateRange = this.calculateDateRange(sessions);
 
-    // Deterministic assembly: Phase 2 structural data + Phase 3 narrative → VerboseEvaluation
     const assembledData = assembleEvaluation(
       agentOutputs,
       contentResult.data,
@@ -740,8 +669,6 @@ export class AnalysisOrchestrator {
       knowledgeResources.length > 0 ? knowledgeResources : undefined
     );
 
-    // Apply translations AFTER assembly so they overlay English defaults
-    // (fixes bug where assembleEvaluation rebuilt fields from English agentOutputs)
     if (translatorData) {
       mergeTranslatedFields(assembledData, translatorData);
     }
@@ -759,7 +686,6 @@ export class AnalysisOrchestrator {
       weeklyInsights: weeklyInsightResult?.data,
       ...assembledData,
       agentOutputs: agentOutputs,
-      // Propagate translated agent insights for frontend hybrid fallback pattern
       ...(translatorData?.translatedAgentInsights
         ? { translatedAgentInsights: translatorData.translatedAgentInsights }
         : {}),
@@ -776,9 +702,6 @@ export class AnalysisOrchestrator {
       },
     } as VerboseEvaluation;
 
-    // Apply weeklyInsights translation AFTER evaluation construction
-    // (weeklyInsights is spread directly into evaluation, not via assembledData,
-    // so mergeTranslatedFields cannot reach it — must merge separately here)
     if (translatorData?.weeklyInsights && evaluation.weeklyInsights) {
       if (translatorData.weeklyInsights.narrative) {
         evaluation.weeklyInsights.narrative = translatorData.weeklyInsights.narrative;
@@ -788,7 +711,6 @@ export class AnalysisOrchestrator {
       }
     }
 
-    // Debug logging: Final evaluation data flow tracking (dev only)
     if (process.env.NODE_ENV === 'development') {
       console.log(`[Orchestrator] Final evaluation.translatedAgentInsights present: ${!!evaluation.translatedAgentInsights}`);
       if (evaluation.translatedAgentInsights) {
@@ -801,11 +723,9 @@ export class AnalysisOrchestrator {
     this.log(`Final agentOutputs keys: ${evaluation.agentOutputs ? Object.keys(evaluation.agentOutputs).join(', ') : 'none'}`);
     this.log(`Final typeClassifier: ${evaluation.agentOutputs?.typeClassifier ? 'present' : 'null'}`);
 
-    // Log pipeline summary
     const totalTime = Date.now() - startTime;
     this.logPipelineSummary(stageUsages, totalTime);
 
-    // Apply tier-based filtering and return with Phase1Output
     const result: AnalysisResult = {
       evaluation: this.contentGateway.filter(evaluation, tier),
       phase1Output: phase1Results.dataExtractor.data,
