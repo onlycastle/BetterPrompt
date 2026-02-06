@@ -65,9 +65,11 @@ Translate the provided English developer analysis report into the target languag
 
 ## Length Preservation
 When translating narrative text (personalitySummary, topFocusAreas), preserve approximate TEXT LENGTH:
-- Target 85-100% of the original English character count
+- Target 85-100% of the original English character count (MINIMUM 85%)
 - Expand explanations naturally rather than condensing
-- NEVER compress or summarize — translate with equivalent depth`;
+- Do NOT condense, summarize, or shorten the content
+- NEVER compress or summarize — translate with equivalent depth
+- If the target language is more compact (e.g., CJK languages), add natural elaboration to maintain length`;
 
 /**
  * Build the user prompt for the Translator stage
@@ -106,7 +108,7 @@ Return a TranslatorOutput JSON object containing ONLY the translated text fields
 
 ### Field-by-Field Instructions:
 
-1. **personalitySummary**: Translate to ${langName}. Keep **bold markers** and technical terms in English. IMPORTANT: Preserve ALL line breaks — both paragraph breaks (\\n\\n) and soft breaks (single \\n). Do NOT merge or remove any newline characters. Preserve 「...」 quote markers (translate the text inside, keep the 「」 brackets). LENGTH PRESERVATION: The translated personalitySummary MUST be at least 80% of the original English character count. Do NOT condense or summarize.
+1. **personalitySummary**: Translate to ${langName}. Keep **bold markers** and technical terms in English. IMPORTANT: Preserve ALL line breaks — both paragraph breaks (\\n\\n) and soft breaks (single \\n). Do NOT merge or remove any newline characters. Preserve 「...」 quote markers (translate the text inside, keep the 「」 brackets). LENGTH PRESERVATION: The translated personalitySummary MUST be at least 85% of the original English character count. Do NOT condense, summarize, or shorten. If the target language is naturally more compact, add natural elaboration to maintain equivalent depth.
 
 2. **dimensionInsights**: SKIP this field. v3 architecture does not use dimensionInsights.
    Return an empty array or omit entirely: \`"dimensionInsights": []\`
@@ -136,6 +138,10 @@ Return a TranslatorOutput JSON object containing ONLY the translated text fields
     Keep project names and technical terms in English.
 
 11. **Premium section narratives** (if present): Translate toolUsageDeepDive, tokenEfficiency, growthRoadmap, comparativeInsights, sessionTrends text.
+
+12. **weeklyInsights** (if weeklyInsightsText is present in the English Content above):
+    - narrative: Translate the weekly summary to ${langName}. Keep project names and technical terms in English.
+    - highlights: Translate each highlight bullet point to ${langName}. Keep project names and technical terms in English.
 
 ## Critical Reminders
 - Evidence quotes are the developer's actual words — NEVER translate them

@@ -37,6 +37,7 @@ import { detectPrimaryLanguage, LANGUAGE_DISPLAY_NAMES, type LanguageDetectionRe
 import { assembleEvaluation, mergeTranslatedFields } from '../stages/evaluation-assembler';
 import type { TranslatorOutput } from '../../models/translator-output';
 import { ContentGateway, type Tier } from '../content-gateway';
+import { getProjectName } from '../../parser/jsonl-reader';
 import { BaseWorker } from '../workers/base-worker';
 import type { DimensionResourceMatch } from '../../models/verbose-evaluation';
 import { matchKnowledgeResources } from '../stages/knowledge-resource-matcher';
@@ -321,7 +322,7 @@ export class AnalysisOrchestrator {
     const phase15Start = Date.now();
     const sessionInputs = sessions.map(s => ({
       sessionId: s.sessionId,
-      projectName: s.projectPath.split('/').pop() ?? 'unknown',
+      projectName: getProjectName(s.projectPath),
       messages: s.messages.slice(0, 10).map(m => ({
         role: m.role,
         content: typeof m.content === 'string'
@@ -662,8 +663,18 @@ export class AnalysisOrchestrator {
     } else if (languageResult.primary !== 'en') {
       this.log(`Phase 4: Translation to ${languageResult.primary}...`);
       const phase4Start = Date.now();
+      // Include weeklyInsights text for translation
+      const translatorInput = {
+        ...contentResult.data,
+        ...(weeklyInsightResult?.data ? {
+          weeklyInsightsText: {
+            narrative: weeklyInsightResult.data.narrative,
+            highlights: weeklyInsightResult.data.highlights,
+          },
+        } : {}),
+      };
       const translatorResult = await this.translator.translate(
-        contentResult.data,
+        translatorInput,
         languageResult.primary,
         agentOutputs
       );
@@ -764,6 +775,18 @@ export class AnalysisOrchestrator {
         insightsFiltered: confidenceMetadata.insightsFiltered,
       },
     } as VerboseEvaluation;
+
+    // Apply weeklyInsights translation AFTER evaluation construction
+    // (weeklyInsights is spread directly into evaluation, not via assembledData,
+    // so mergeTranslatedFields cannot reach it — must merge separately here)
+    if (translatorData?.weeklyInsights && evaluation.weeklyInsights) {
+      if (translatorData.weeklyInsights.narrative) {
+        evaluation.weeklyInsights.narrative = translatorData.weeklyInsights.narrative;
+      }
+      if (translatorData.weeklyInsights.highlights?.length) {
+        evaluation.weeklyInsights.highlights = translatorData.weeklyInsights.highlights;
+      }
+    }
 
     // Debug logging: Final evaluation data flow tracking (dev only)
     if (process.env.NODE_ENV === 'development') {
@@ -999,7 +1022,7 @@ export class AnalysisOrchestrator {
     return sessions.map((session) => ({
       sessionId: session.sessionId,
       fileName: `${session.sessionId.slice(0, 8)}.jsonl`,
-      projectName: session.projectPath.split('/').pop() ?? 'unknown',
+      projectName: getProjectName(session.projectPath),
       startTime: session.startTime.toISOString(),
       messageCount: session.messages.length,
       durationMinutes: Math.round(session.durationSeconds / 60),

@@ -168,6 +168,12 @@ export const TranslatorOutputSchema = z.object({
     summaryLines: z.array(z.string()).describe('Translated summary lines'),
   })).optional().describe('Translated project summaries — keep project names in English'),
 
+  /** Translated weekly insights text fields (narrative + highlights) */
+  weeklyInsights: z.object({
+    narrative: z.string().describe('Translated 2-3 sentence weekly summary'),
+    highlights: z.array(z.string()).describe('Translated highlight bullet points'),
+  }).optional().describe('Translated weekly insights — keep project names and technical terms in English'),
+
   /** Translated premium section text fields */
   toolUsageDeepDive: z.string().optional()
     .describe('Translated tool usage deep dive narrative'),
