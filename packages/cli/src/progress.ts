@@ -7,10 +7,14 @@
  * Uses client-side animation smoothing to decouple server-sent
  * target progress from the displayed progress, preventing jumps
  * and backward regressions.
+ *
+ * Renders via log-update (single atomic write per frame) instead
+ * of ora (per-line clear/rewrite) to eliminate multiline flickering.
  */
 
 import pc from 'picocolors';
-import ora, { type Ora } from 'ora';
+import { createLogUpdate } from 'log-update';
+import cliCursor from 'cli-cursor';
 import {
   getChipCharacter,
   THINKING_FRAMES,
@@ -24,6 +28,9 @@ const NORMAL_STEP = 1; // % per tick when gap <= 20
 const FAST_STEP = 2; // % per tick when gap > 20
 const SLOW_THRESHOLD = 40; // below this %, advance at reduced speed
 const SLOW_TICK_DIVISOR = 3; // only advance every Nth tick below threshold
+
+/** Braille spinner frames (same cadence as ora's dots) */
+const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
 /**
  * Analysis stages with their display configurations
@@ -68,9 +75,13 @@ const STAGE_CONFIGS: Record<string, StageConfig> = {
  * Decouples targetProgress (from SSE events) from displayedProgress
  * (rendered to terminal). An animation timer smoothly advances the
  * display toward the target, preventing jumps and backward regression.
+ *
+ * Uses log-update for flicker-free multiline rendering: each render()
+ * call atomically overwrites the previous output in a single write.
  */
 export class ProgressDisplay {
-  private spinner: Ora;
+  private logUpdate: ReturnType<typeof createLogUpdate>;
+  private spinnerFrameIndex: number;
   private startTime: number;
   private tick: number;
 
@@ -81,10 +92,8 @@ export class ProgressDisplay {
   private animationTimer: ReturnType<typeof setInterval> | null;
 
   constructor() {
-    this.spinner = ora({
-      text: 'Initializing analysis...',
-      spinner: 'dots12',
-    });
+    this.logUpdate = createLogUpdate(process.stderr);
+    this.spinnerFrameIndex = 0;
     this.startTime = Date.now();
     this.tick = 0;
 
@@ -100,8 +109,8 @@ export class ProgressDisplay {
    */
   start(): void {
     this.startTime = Date.now();
-    this.spinner.start();
-
+    cliCursor.hide(process.stderr);
+    this.render();
     this.animationTimer = setInterval(() => {
       this.animationTick();
     }, ANIMATION_INTERVAL);
@@ -127,10 +136,13 @@ export class ProgressDisplay {
 
   /**
    * Animation tick called every ANIMATION_INTERVAL ms.
-   * Advances displayedProgress toward targetProgress and re-renders.
+   * Advances displayedProgress toward targetProgress, rotates
+   * spinner frame, and re-renders.
    */
   private animationTick(): void {
     this.tick++;
+    this.spinnerFrameIndex =
+      (this.spinnerFrameIndex + 1) % SPINNER_FRAMES.length;
 
     const gap = this.targetProgress - this.displayedProgress;
     if (gap > 0) {
@@ -152,6 +164,9 @@ export class ProgressDisplay {
   /**
    * Render the current state to the terminal.
    * Uses displayedProgress, currentStage, and currentMessage.
+   *
+   * log-update overwrites the previous output atomically,
+   * so there is no visible clear→rewrite gap.
    */
   private render(): void {
     const config = STAGE_CONFIGS[this.currentStage] || STAGE_CONFIGS.analyzing;
@@ -160,33 +175,37 @@ export class ProgressDisplay {
 
     // Get Chippy expression based on stage
     const expression: ChippyExpression =
-      this.currentStage === 'complete' ? 'excited' : getAnimationFrame(THINKING_FRAMES, this.tick);
+      this.currentStage === 'complete'
+        ? 'excited'
+        : getAnimationFrame(THINKING_FRAMES, this.tick);
 
     // Get 3-line chip character with pixel dust animation
     const chipLines = getChipCharacter(expression, this.tick);
 
+    // Spinner character (manually rotated)
+    const spinnerChar = pc.cyan(SPINNER_FRAMES[this.spinnerFrameIndex]);
+
     // Main status line with server message (icon only if present)
     const iconPart = config.icon ? `${config.icon} ` : '';
-    const mainLine = `${iconPart}${config.color(this.currentMessage)}`;
+    const mainLine = `${spinnerChar} ${iconPart}${config.color(this.currentMessage)}`;
 
     // Progress bar line with elapsed time and optional time hint
-    const timeHint = this.shouldShowTimeHint() ? pc.dim(' | Usually takes 5-10 min') : '';
+    const timeHint = this.shouldShowTimeHint()
+      ? pc.dim(' | Usually takes 5-10 min')
+      : '';
     const progressLine = `${progressBar} ${pc.dim(elapsed)}${timeHint}`;
 
-    // Build multiline output: status on first line (with spinner), chip below
-    // This prevents the spinner from colliding with Unicode box-drawing characters
-    // Progress bar on its own line to avoid Unicode width alignment issues
-    this.spinner.text = [
-      `${mainLine}`,
-      `  ${chipLines[0]}`,
-      `  ${chipLines[1]}`,
-      `  ${chipLines[2]}`,
-      `  ${progressLine}`,
-    ].join('\n');
+    // Atomic multiline write — no flicker
+    this.logUpdate(
+      `${mainLine}\n  ${chipLines[0]}\n  ${chipLines[1]}\n  ${chipLines[2]}\n  ${progressLine}`,
+    );
   }
 
   /** Stages where analysis is done and time hint should be hidden */
-  private static readonly POST_ANALYSIS_STAGES = new Set(['storing', 'complete']);
+  private static readonly POST_ANALYSIS_STAGES = new Set([
+    'storing',
+    'complete',
+  ]);
 
   /**
    * Whether to show the estimated time hint.
@@ -233,7 +252,11 @@ export class ProgressDisplay {
   succeed(message: string = 'Analysis complete!'): void {
     this.clearAnimationTimer();
     const elapsed = this.formatElapsed();
-    this.spinner.succeed(`${pc.green(message)} ${pc.dim(`(${elapsed})`)}`);
+    this.logUpdate(
+      `${pc.green('✔')} ${pc.green(message)} ${pc.dim(`(${elapsed})`)}`,
+    );
+    this.logUpdate.done();
+    cliCursor.show(process.stderr);
   }
 
   /**
@@ -241,7 +264,9 @@ export class ProgressDisplay {
    */
   fail(message: string = 'Analysis failed'): void {
     this.clearAnimationTimer();
-    this.spinner.fail(pc.red(message));
+    this.logUpdate(`${pc.red('✖')} ${pc.red(message)}`);
+    this.logUpdate.done();
+    cliCursor.show(process.stderr);
   }
 
   /**
@@ -249,7 +274,8 @@ export class ProgressDisplay {
    */
   stop(): void {
     this.clearAnimationTimer();
-    this.spinner.stop();
+    this.logUpdate.clear();
+    cliCursor.show(process.stderr);
   }
 }
 

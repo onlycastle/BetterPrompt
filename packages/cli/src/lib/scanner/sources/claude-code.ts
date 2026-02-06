@@ -169,7 +169,7 @@ export class ClaudeCodeSource extends BaseSessionSource {
     return {
       sessionId: fileName,
       projectPath,
-      projectName: this.getProjectName(projectPath),
+      projectName: this.resolveProjectName(projectDirName),
       timestamp: firstTimestamp,
       messageCount,
       durationSeconds,

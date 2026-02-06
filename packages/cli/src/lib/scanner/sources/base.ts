@@ -10,6 +10,7 @@
  */
 
 import type { ParsedSession, ParsedMessage, SessionStats, SessionSourceType } from '../session-types.js';
+import { resolveProjectName } from '../../project-name-resolver.js';
 
 // Re-export SessionSourceType for convenience
 export type { SessionSourceType };
@@ -154,7 +155,15 @@ export abstract class BaseSessionSource implements SessionSource {
   }
 
   /**
+   * Resolve project name from encoded directory name using filesystem probing
+   */
+  protected resolveProjectName(encodedDirName: string): string {
+    return resolveProjectName(encodedDirName);
+  }
+
+  /**
    * Get project name from path (last segment)
+   * @deprecated Use resolveProjectName() for accurate names
    */
   protected getProjectName(projectPath: string): string {
     const parts = projectPath.split('/').filter(Boolean);

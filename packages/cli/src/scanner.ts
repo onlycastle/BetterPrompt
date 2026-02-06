@@ -19,6 +19,7 @@ import { basename, join } from 'node:path';
 import { homedir } from 'node:os';
 import { parseSessionContent, type ParsedSession } from './session-formatter.js';
 import { extractQualityMetrics, extractQualityMetricsFromParsed, calculateQualityScore } from './session-scoring.js';
+import { resolveProjectName } from './lib/project-name-resolver.js';
 
 // Import multi-source scanner infrastructure
 import {
@@ -126,25 +127,6 @@ export interface ScanResult {
   sourceStats?: Map<string, number>;
   /** Activity metadata for ALL recent sessions (deterministic, from CLI scanner) */
   activitySessions?: import('./activity-scanner.js').ActivitySessionInfo[];
-}
-
-/**
- * Decode project path from Claude's encoding
- * Claude encodes paths by replacing '/' with '-'
- */
-function decodeProjectPath(encoded: string): string {
-  if (encoded.startsWith('-')) {
-    return encoded.replace(/-/g, '/');
-  }
-  return encoded;
-}
-
-/**
- * Get project name from path
- */
-function getProjectName(projectPath: string): string {
-  const parts = projectPath.split('/').filter(Boolean);
-  return parts[parts.length - 1] || 'unknown';
 }
 
 /**
@@ -291,8 +273,8 @@ async function scoreCandidates(
 
         const parsed = await multiSourceScanner.parseSession({
           sessionId,
-          projectPath: decodeProjectPath(file.projectDirName),
-          projectName: getProjectName(decodeProjectPath(file.projectDirName)),
+          projectPath: file.projectDirName,
+          projectName: resolveProjectName(file.projectDirName),
           timestamp: file.mtime,
           messageCount: 0,
           durationSeconds: 0,
@@ -308,7 +290,7 @@ async function scoreCandidates(
             metadata: {
               sessionId: parsed.sessionId,
               projectPath: parsed.projectPath,
-              projectName: getProjectName(parsed.projectPath),
+              projectName: resolveProjectName(file.projectDirName),
               timestamp: parsed.startTime,
               messageCount: parsed.messages.length,
               durationSeconds: parsed.durationSeconds,
@@ -652,15 +634,14 @@ function extractMetadataFromContent(
   if (!timestamps.first || !timestamps.last) return null;
 
   const projectDirName = basename(join(filePath, '..'));
-  const projectPath = decodeProjectPath(projectDirName);
   const durationSeconds = Math.floor(
     (timestamps.last.getTime() - timestamps.first.getTime()) / 1000
   );
 
   return {
     sessionId: fileName,
-    projectPath,
-    projectName: getProjectName(projectPath),
+    projectPath: projectDirName,
+    projectName: resolveProjectName(projectDirName),
     timestamp: timestamps.first,
     messageCount,
     durationSeconds,

@@ -1,11 +1,12 @@
 #!/usr/bin/env npx tsx
 /**
- * Scanner Trace - 각 Phase에서 어떤 프로젝트가 남는지 추적
+ * Scanner Trace - Track which projects remain after each phase
  */
 
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
+import { resolveProjectName } from './lib/project-name-resolver.js';
 
 const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
@@ -28,21 +29,8 @@ interface FileMetadata {
   projectDirName: string;
 }
 
-function decodeProjectPath(encoded: string): string {
-  if (encoded.startsWith('-')) {
-    return encoded.replace(/-/g, '/');
-  }
-  return encoded;
-}
-
-function getProjectName(projectPath: string): string {
-  const parts = projectPath.split('/').filter(Boolean);
-  return parts[parts.length - 1] || 'unknown';
-}
-
 function getShortProjectName(dirName: string): string {
-  const path = decodeProjectPath(dirName);
-  return getProjectName(path);
+  return resolveProjectName(dirName);
 }
 
 async function collectAllFiles(): Promise<FileMetadata[]> {
