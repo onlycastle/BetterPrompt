@@ -14,12 +14,18 @@
  * @module analyzer/stages/translator
  */
 
+import { z } from 'zod';
 import { GeminiClient, type GeminiClientConfig, type TokenUsage } from '../clients/gemini-client';
 import { TranslatorOutputSchema, type TranslatorOutput } from '../../models/translator-output';
 import type { AgentOutputs } from '../../models/agent-outputs';
-import type { SupportedLanguage } from './content-writer-prompts';
-import { TRANSLATOR_SYSTEM_PROMPT, buildTranslatorUserPrompt } from './translator-prompts';
+import { LANGUAGE_DISPLAY_NAMES, type SupportedLanguage } from './content-writer-prompts';
+import { TRANSLATOR_SYSTEM_PROMPT, buildTranslatorUserPrompt, buildRetryTranslatorUserPrompt } from './translator-prompts';
 import type { WorkerStrength, WorkerGrowth, EvidenceItem } from '../../models/worker-insights';
+import {
+  verifyTranslation,
+  calculateCJKRatio,
+  type TranslationVerificationResult,
+} from './translation-verifier';
 
 /**
  * Configuration for the Translator stage
@@ -38,6 +44,13 @@ export interface TranslatorConfig {
 export interface TranslatorResult {
   data: TranslatorOutput;
   usage: TokenUsage;
+}
+
+/**
+ * Result of translator stage with verification metadata
+ */
+export interface VerifiedTranslatorResult extends TranslatorResult {
+  verification: TranslationVerificationResult;
 }
 
 /**
@@ -89,11 +102,6 @@ export class TranslatorStage {
 
   /**
    * Translate English ContentWriter output into the target language
-   *
-   * @param englishResponse - Sanitized English VerboseLLMResponse from ContentWriter
-   * @param targetLanguage - Target language for translation (must not be 'en')
-   * @param agentOutputs - Phase 2 agent outputs (for translatedAgentInsights)
-   * @returns TranslatorResult with translated text fields and token usage
    */
   async translate(
     englishResponse: any,
@@ -126,21 +134,229 @@ export class TranslatorStage {
   }
 
   /**
+   * Translate with post-translation CJK verification and retry.
+   */
+  async translateWithVerification(
+    englishResponse: any,
+    targetLanguage: SupportedLanguage,
+    agentOutputs: AgentOutputs
+  ): Promise<VerifiedTranslatorResult> {
+    if (targetLanguage === 'en') {
+      throw new Error('translateWithVerification should not be called for English');
+    }
+    const nonEnLang = targetLanguage as Exclude<SupportedLanguage, 'en'>;
+
+    const initialResult = await this.translate(englishResponse, targetLanguage, agentOutputs);
+    const initialVerification = verifyTranslation(initialResult.data, nonEnLang);
+
+    console.log(`[PHASE:TRANSLATION_VERIFY] Initial: ${initialVerification.summary}`);
+
+    if (!initialVerification.shouldRetry) {
+      return {
+        ...initialResult,
+        verification: initialVerification,
+      };
+    }
+
+    console.log('[PHASE:TRANSLATION_VERIFY] Retrying translation with field emphasis...');
+
+    const allFailures = [
+      ...initialVerification.criticalFailures,
+      ...initialVerification.nonCriticalFailures,
+    ];
+    const failedFieldPaths = allFailures.map(f => f.fieldPath);
+
+    const englishDataJson = JSON.stringify(englishResponse, null, 2);
+    const preparedOutputs = this.prepareAgentOutputsForTranslator(agentOutputs);
+    const agentOutputsJson = JSON.stringify(preparedOutputs, null, 2);
+
+    const retryPrompt = buildRetryTranslatorUserPrompt(
+      englishDataJson,
+      agentOutputsJson,
+      targetLanguage,
+      failedFieldPaths
+    );
+
+    const retryResult = await this.client.generateStructured({
+      systemPrompt: TRANSLATOR_SYSTEM_PROMPT,
+      userPrompt: retryPrompt,
+      responseSchema: TranslatorOutputSchema,
+      maxOutputTokens: this.config.maxOutputTokens,
+    });
+
+    const merged = this.cherryPickMerge(initialResult.data, retryResult.data, nonEnLang);
+
+    const combinedUsage: TokenUsage = {
+      promptTokens: initialResult.usage.promptTokens + retryResult.usage.promptTokens,
+      completionTokens: initialResult.usage.completionTokens + retryResult.usage.completionTokens,
+      totalTokens: initialResult.usage.totalTokens + retryResult.usage.totalTokens,
+    };
+
+    const mergedVerification = verifyTranslation(merged, nonEnLang);
+    console.log(`[PHASE:TRANSLATION_VERIFY] After retry+merge: ${mergedVerification.summary}`);
+
+    if (mergedVerification.criticalFailures.length > 0) {
+      console.log(`[PHASE:TRANSLATION_VERIFY] Falling back to individual field translation for ${mergedVerification.criticalFailures.length} critical fields`);
+
+      let fallbackUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+
+      // Only attempt individual fallback for fields that can be applied back.
+      // Array fields (promptPatterns, topFocusAreas) rely on cherry-pick merge.
+      const SINGLE_FIELD_APPLICABLE = new Set(['personalitySummary', 'weeklyInsights.narrative']);
+
+      for (const failure of mergedVerification.criticalFailures) {
+        if (!SINGLE_FIELD_APPLICABLE.has(failure.fieldPath)) {
+          console.log(`[PHASE:TRANSLATION_VERIFY] Skipping field fallback (array field): ${failure.fieldPath}`);
+          continue;
+        }
+
+        const originalText = this.extractFieldText(merged, failure.fieldPath);
+        if (!originalText || originalText.length < 10) continue;
+
+        const englishText = this.extractFieldText(
+          { ...englishResponse, personalitySummary: englishResponse.personalitySummary } as TranslatorOutput,
+          failure.fieldPath
+        );
+        const textToTranslate = englishText || originalText;
+
+        const singleResult = await this.translateSingleField(textToTranslate, targetLanguage);
+        this.applyFieldTranslation(merged, failure.fieldPath, singleResult.translatedText);
+        fallbackUsage = {
+          promptTokens: fallbackUsage.promptTokens + singleResult.usage.promptTokens,
+          completionTokens: fallbackUsage.completionTokens + singleResult.usage.completionTokens,
+          totalTokens: fallbackUsage.totalTokens + singleResult.usage.totalTokens,
+        };
+        console.log(`[PHASE:TRANSLATION_VERIFY] Field fallback success: ${failure.fieldPath}`);
+      }
+
+      combinedUsage.promptTokens += fallbackUsage.promptTokens;
+      combinedUsage.completionTokens += fallbackUsage.completionTokens;
+      combinedUsage.totalTokens += fallbackUsage.totalTokens;
+    }
+
+    const finalVerification = verifyTranslation(merged, nonEnLang);
+    console.log(`[PHASE:TRANSLATION_VERIFY] Final: ${finalVerification.summary}`);
+
+    return {
+      data: merged,
+      usage: combinedUsage,
+      verification: finalVerification,
+    };
+  }
+
+  /**
+   * Translate a single text field as last-resort fallback.
+   */
+  private async translateSingleField(
+    text: string,
+    targetLanguage: SupportedLanguage
+  ): Promise<{ translatedText: string; usage: TokenUsage }> {
+    const langName = LANGUAGE_DISPLAY_NAMES[targetLanguage];
+    const schema = z.object({
+      translatedText: z.string().describe(`Text translated to ${langName}`),
+    });
+
+    const result = await this.client.generateStructured({
+      systemPrompt: TRANSLATOR_SYSTEM_PROMPT,
+      userPrompt: `Translate this developer analysis text to ${langName}. Keep technical terms (AI, Git, TypeScript, etc.) in English. Keep **bold markers** and 「」 quote markers. Keep evidence quotes in their original language.\n\nText to translate:\n${text}`,
+      responseSchema: schema,
+      maxOutputTokens: 8192,
+    });
+
+    return { translatedText: result.data.translatedText, usage: result.usage };
+  }
+
+  /**
+   * Cherry-pick merge: pick the version with higher CJK ratio for each field.
+   */
+  private cherryPickMerge(
+    initial: TranslatorOutput,
+    retry: TranslatorOutput,
+    targetLanguage: Exclude<SupportedLanguage, 'en'>
+  ): TranslatorOutput {
+    const merged = { ...initial };
+
+    const textFields = ['personalitySummary'] as const;
+    for (const field of textFields) {
+      const initialText = initial[field] ?? '';
+      const retryText = retry[field] ?? '';
+      const initialRatio = calculateCJKRatio(initialText, targetLanguage).cjkRatio;
+      const retryRatio = calculateCJKRatio(retryText, targetLanguage).cjkRatio;
+      if (retryRatio > initialRatio && retryText.length > 0) {
+        (merged as any)[field] = retryText;
+      }
+    }
+
+    const sectionFields = [
+      'promptPatterns', 'topFocusAreas', 'antiPatternsAnalysis',
+      'criticalThinkingAnalysis', 'planningAnalysis', 'translatedAgentInsights',
+      'projectSummaries', 'weeklyInsights', 'actionablePractices',
+    ] as const;
+
+    for (const field of sectionFields) {
+      const initialVal = initial[field];
+      const retryVal = retry[field];
+      if (!retryVal) continue;
+      if (!initialVal) {
+        (merged as any)[field] = retryVal;
+        continue;
+      }
+
+      const initialText = JSON.stringify(initialVal);
+      const retryText = JSON.stringify(retryVal);
+      const initialRatio = calculateCJKRatio(initialText, targetLanguage).cjkRatio;
+      const retryRatio = calculateCJKRatio(retryText, targetLanguage).cjkRatio;
+      if (retryRatio > initialRatio) {
+        (merged as any)[field] = retryVal;
+      }
+    }
+
+    return merged;
+  }
+
+  /**
+   * Extract a text string from TranslatorOutput by field path.
+   */
+  private extractFieldText(output: TranslatorOutput, fieldPath: string): string | undefined {
+    switch (fieldPath) {
+      case 'personalitySummary':
+        return output.personalitySummary;
+      case 'promptPatterns[].description':
+        return output.promptPatterns?.map(p => p.description).join(' ');
+      case 'topFocusAreas.areas[].narrative':
+        return output.topFocusAreas?.areas?.map(a => a.narrative).join(' ');
+      case 'weeklyInsights.narrative':
+        return output.weeklyInsights?.narrative;
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * Apply a translated text back to the appropriate field in TranslatorOutput.
+   */
+  private applyFieldTranslation(output: TranslatorOutput, fieldPath: string, translatedText: string): void {
+    switch (fieldPath) {
+      case 'personalitySummary':
+        output.personalitySummary = translatedText;
+        break;
+      case 'weeklyInsights.narrative':
+        if (output.weeklyInsights) {
+          output.weeklyInsights.narrative = translatedText;
+        }
+        break;
+      // Array fields (promptPatterns[].description, topFocusAreas.areas[].narrative)
+      // cannot be applied back from concatenated text — handled by cherry-pick merge only.
+    }
+  }
+
+  /**
    * Prepare agentOutputs for translator by normalizing all workers to
-   * flat pipe-delimited string format matching what the translator prompt expects.
-   *
-   * The translator prompt expects each worker to have `strengthsData` and `growthAreasData`
-   * as pipe-delimited strings (e.g., "title|description|evidence;...").
-   *
-   * v3 Architecture:
-   * - thinkingQuality, learningBehavior: consolidated workers with structured arrays
-   * - contextEfficiency, knowledgeGap: may have string or array format
-   * - efficiency: alias for contextEfficiency in v3
+   * flat pipe-delimited string format.
    */
   private prepareAgentOutputsForTranslator(agentOutputs: AgentOutputs): Record<string, unknown> {
     const prepared: Record<string, unknown> = {};
 
-    // Process v3 workers (thinkingQuality, communicationPatterns, learningBehavior)
     const v3WorkerKeys = ['thinkingQuality', 'communicationPatterns', 'learningBehavior'] as const;
     for (const key of v3WorkerKeys) {
       const worker = agentOutputs[key];
@@ -149,12 +365,6 @@ export class TranslatorStage {
       }
     }
 
-    // Extract communicationPatterns array from CommunicationPatterns worker for translation.
-    // Use separate key 'communicationPatternsArray' to avoid overwriting the
-    // strengthsData/growthAreasData set by processWorker() above.
-    // The translator prompt expects promptPatterns (= communicationPatterns) to be translated:
-    // patternName, description, tip → translate to target language
-    // examples → keep quotes in original language, translate analysis
     if (agentOutputs.communicationPatterns?.communicationPatterns) {
       const patterns = agentOutputs.communicationPatterns.communicationPatterns;
       if (patterns.length > 0) {
@@ -167,13 +377,11 @@ export class TranslatorStage {
       }
     }
 
-    // Process contextEfficiency (may be in agentOutputs.contextEfficiency or agentOutputs.efficiency)
     const contextEfficiency = agentOutputs.contextEfficiency ?? agentOutputs.efficiency;
     if (contextEfficiency) {
       this.processWorker(prepared, 'contextEfficiency', contextEfficiency);
     }
 
-    // Process knowledgeGap (legacy but still in AgentOutputs type)
     if (agentOutputs.knowledgeGap) {
       this.processWorker(prepared, 'knowledgeGap', agentOutputs.knowledgeGap);
     }
@@ -183,7 +391,6 @@ export class TranslatorStage {
 
   /**
    * Process a single worker output, normalizing to pipe-delimited string format.
-   * Handles both string and array formats for strengths/growthAreas.
    */
   private processWorker(
     prepared: Record<string, unknown>,
@@ -225,7 +432,6 @@ export class TranslatorStage {
 
   /**
    * Serialize a single evidence item to string.
-   * Handles both legacy string evidence and structured InsightEvidence objects.
    */
   private serializeEvidenceItem(item: EvidenceItem): string {
     if (typeof item === 'string') return item;
@@ -234,8 +440,6 @@ export class TranslatorStage {
 
   /**
    * Flatten generic WorkerStrength array to pipe-delimited string.
-   * Used as fallback when strengthsData string is empty but strengths[] exists.
-   * Format: "title|description|quote1,quote2;..."
    */
   private flattenWorkerStrengths(strengths: WorkerStrength[]): string {
     return strengths.map(s => {
@@ -246,8 +450,6 @@ export class TranslatorStage {
 
   /**
    * Flatten generic WorkerGrowth array to pipe-delimited string.
-   * Used as fallback when growthAreasData string is empty but growthAreas[] exists.
-   * Format: "title|description|evidence|recommendation|severity;..."
    */
   private flattenWorkerGrowthAreas(growthAreas: WorkerGrowth[]): string {
     return growthAreas.map(g => {
@@ -256,18 +458,12 @@ export class TranslatorStage {
     }).join(';');
   }
 
-  /**
-   * Log debug message in development mode
-   */
   private logDebug(label: string, data: unknown): void {
     if (process.env.NODE_ENV !== 'development') return;
     const formattedData = Array.isArray(data) ? data.join(', ') : data;
     console.log(`[Translator] ${label}: ${formattedData}`);
   }
 
-  /**
-   * Log translated insights debug info
-   */
   private logTranslatedInsightsDebug(transInsights: any): void {
     if (process.env.NODE_ENV !== 'development' || !transInsights) {
       console.log(`[Translator] Output translatedAgentInsights present: ${Boolean(transInsights)}`);

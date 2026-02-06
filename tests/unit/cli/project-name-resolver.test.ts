@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock node:fs before importing the module
 vi.mock('node:fs', () => ({
   statSync: vi.fn(),
+  readdirSync: vi.fn(),
 }));
 
 // Mock node:os to control homedir
@@ -10,7 +11,7 @@ vi.mock('node:os', () => ({
   homedir: vi.fn(() => '/Users/sungmancho'),
 }));
 
-import { statSync } from 'node:fs';
+import { statSync, readdirSync } from 'node:fs';
 import {
   resolveProjectName,
   resolveProjectNames,
@@ -18,16 +19,38 @@ import {
 } from '../../../packages/cli/src/lib/project-name-resolver.js';
 
 const mockStatSync = vi.mocked(statSync);
+const mockReaddirSync = vi.mocked(readdirSync);
 
 /**
  * Helper: configure which directories "exist" on the mock filesystem.
  * All other paths will throw ENOENT.
+ * Optionally provide a map of parent → child directory names for readdirSync.
  */
-function setExistingDirs(dirs: string[]) {
+function setExistingDirs(dirs: string[], dirContents?: Record<string, string[]>) {
   const dirSet = new Set(dirs);
   mockStatSync.mockImplementation((path: unknown) => {
     if (dirSet.has(String(path))) {
       return { isDirectory: () => true } as ReturnType<typeof statSync>;
+    }
+    throw new Error('ENOENT');
+  });
+
+  mockReaddirSync.mockImplementation((path: unknown) => {
+    const p = String(path);
+    const children = dirContents?.[p];
+    if (children) {
+      return children.map(name => ({
+        name,
+        isDirectory: () => true,
+        isFile: () => false,
+        isBlockDevice: () => false,
+        isCharacterDevice: () => false,
+        isFIFO: () => false,
+        isSocket: () => false,
+        isSymbolicLink: () => false,
+        parentPath: p,
+        path: p,
+      })) as unknown as ReturnType<typeof readdirSync>;
     }
     throw new Error('ENOENT');
   });
@@ -229,6 +252,88 @@ describe('resolveProjectName', () => {
       resolveProjectName('-Users-sungmancho-projects-app-v1');
 
       expect(mockStatSync.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+    });
+  });
+
+  describe('fuzzy matching (renamed directories)', () => {
+    it('should fuzzy match a renamed directory with 1-char typo', () => {
+      // "alfreadworks" (old, encoded) → "alfredworks" (current on disk)
+      // Levenshtein distance = 1 (extra 'a')
+      setExistingDirs(
+        [
+          '/Users/sungmancho/projects',
+          // Note: /Users/sungmancho/projects/alfreadworks does NOT exist (renamed)
+          '/Users/sungmancho/projects/alfredworks',
+        ],
+        {
+          '/Users/sungmancho/projects': ['alfredworks', 'other-project'],
+        },
+      );
+
+      const result = resolveProjectName('-Users-sungmancho-projects-alfreadworks');
+      expect(result).toBe('alfredworks');
+    });
+
+    it('should NOT fuzzy match when distance > 1', () => {
+      // "hr-platform" vs "alfredworks" — totally different names
+      setExistingDirs(
+        [
+          '/Users/sungmancho/projects',
+          '/Users/sungmancho/projects/alfredworks',
+        ],
+        {
+          '/Users/sungmancho/projects': ['alfredworks'],
+        },
+      );
+
+      const result = resolveProjectName('-Users-sungmancho-projects-hr-platform');
+      // Falls back to joining segments with hyphens
+      expect(result).toBe('hr-platform');
+    });
+
+    it('should NOT fuzzy match short names (< 4 chars)', () => {
+      // Short names are too prone to false positives
+      setExistingDirs(
+        [
+          '/Users/sungmancho/projects',
+          '/Users/sungmancho/projects/app',
+        ],
+        {
+          '/Users/sungmancho/projects': ['app'],
+        },
+      );
+
+      const result = resolveProjectName('-Users-sungmancho-projects-apx');
+      // "apx" is 3 chars — too short for fuzzy matching
+      expect(result).toBe('apx');
+    });
+
+    it('should prefer exact match over fuzzy match', () => {
+      setExistingDirs(
+        [
+          '/Users/sungmancho/projects',
+          '/Users/sungmancho/projects/my-app',
+        ],
+        {
+          '/Users/sungmancho/projects': ['my-app', 'my-app'],
+        },
+      );
+
+      // Exact match should win — fuzzy matching only triggers on exact match failure
+      const result = resolveProjectName('-Users-sungmancho-projects-my-app');
+      expect(result).toBe('my-app');
+    });
+
+    it('should handle parent directory read failure gracefully', () => {
+      // readdirSync throws for unreadable directories
+      setExistingDirs([
+        '/Users/sungmancho/projects',
+      ]);
+      // No dirContents provided — readdirSync throws ENOENT
+
+      const result = resolveProjectName('-Users-sungmancho-projects-nonexistent-dir');
+      // Falls back to joining all remaining segments
+      expect(result).toBe('nonexistent-dir');
     });
   });
 

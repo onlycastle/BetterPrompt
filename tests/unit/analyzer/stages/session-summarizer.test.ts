@@ -4,7 +4,7 @@
  * Tests for:
  * - SessionSummarizerStage class (Phase 1.5 LLM stage)
  * - SessionSummaryItemSchema (Zod schema validation)
- * - Activity scanner helpers (stripSystemReminders, truncateAtWordBoundary)
+ * - Activity scanner helpers (stripSystemTags via stripSystemReminders alias, truncateAtWordBoundary)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -18,6 +18,9 @@ import {
   stripSystemReminders,
   truncateAtWordBoundary,
 } from '../../../../packages/cli/src/activity-scanner';
+
+// Import stripSystemTags directly for testing new tag patterns
+import { stripSystemTags } from '../../../../packages/cli/src/lib/strip-system-tags';
 
 // ---------------------------------------------------------------------------
 // Schema Tests
@@ -84,10 +87,10 @@ describe('SessionSummarySchemas', () => {
 // Activity Scanner Helper Tests
 // ---------------------------------------------------------------------------
 
-describe('stripSystemReminders', () => {
+describe('stripSystemReminders (backward-compat alias)', () => {
   it('should remove system-reminder tags', () => {
     const input = 'Hello <system-reminder>secret stuff</system-reminder> world';
-    expect(stripSystemReminders(input)).toBe('Hello  world');
+    expect(stripSystemReminders(input)).toBe('Hello world');
   });
 
   it('should remove multiple system-reminder tags', () => {
@@ -112,6 +115,48 @@ describe('stripSystemReminders', () => {
   it('should handle text that is only system-reminder tags', () => {
     const input = '<system-reminder>all tags</system-reminder>';
     expect(stripSystemReminders(input)).toBe('');
+  });
+});
+
+describe('stripSystemTags (extended tag patterns)', () => {
+  it('should remove command-name tags', () => {
+    const input = 'Hello <command-name>commit</command-name> world';
+    expect(stripSystemTags(input)).toBe('Hello world');
+  });
+
+  it('should remove local-command-caveat tags', () => {
+    const input = '<local-command-caveat>This command is local only</local-command-caveat>Fix the bug';
+    expect(stripSystemTags(input)).toBe('Fix the bug');
+  });
+
+  it('should remove command-args tags', () => {
+    const input = 'Run <command-args>--verbose --dry-run</command-args> this test';
+    expect(stripSystemTags(input)).toBe('Run this test');
+  });
+
+  it('should remove task-notification tags', () => {
+    const input = '<task-notification>Task 5 completed</task-notification>Continue with implementation';
+    expect(stripSystemTags(input)).toBe('Continue with implementation');
+  });
+
+  it('should remove multiple different tag types', () => {
+    const input = '<system-reminder>reminder</system-reminder>Hello<command-name>cmd</command-name> <local-command-caveat>caveat</local-command-caveat>world';
+    expect(stripSystemTags(input)).toBe('Hello world');
+  });
+
+  it('should remove noise text patterns', () => {
+    const input = 'Hello [Request interrupted by user for tool use] world';
+    expect(stripSystemTags(input)).toBe('Hello world');
+  });
+
+  it('should remove [Request interrupted by user] pattern', () => {
+    const input = 'Start [Request interrupted by user] end';
+    expect(stripSystemTags(input)).toBe('Start end');
+  });
+
+  it('should handle text that is entirely system tags', () => {
+    const input = '<system-reminder>only tags</system-reminder><command-name>nothing</command-name>';
+    expect(stripSystemTags(input)).toBe('');
   });
 });
 
