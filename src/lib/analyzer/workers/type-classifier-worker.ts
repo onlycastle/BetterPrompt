@@ -61,7 +61,7 @@ const TypeClassifierLLMSchema = z.object({
     indicators: z.array(z.string()),
   }).optional(),
   confidenceScore: z.number().min(0).max(1),
-  reasoning: z.array(z.string().min(300)).min(3).max(4),
+  reasoning: z.array(z.string().min(500)).min(3).max(4),
   adjustmentReasons: z.array(z.string()).max(5).optional(),
   confidenceBoost: z.number().min(0).max(1).optional(),
   synthesisEvidence: z.string().optional(),
@@ -109,12 +109,24 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     const phase2Summary = this.buildPhase2Summary(agentOutputs, phase1Output);
     const userPrompt = buildTypeClassifierUserPrompt(phase2Summary || undefined, topUtterances);
 
-    const result = await this.client!.generateStructured({
+    const MIN_TOTAL_REASONING_CHARS = 1800;
+    const generateParams = {
       systemPrompt: TYPE_CLASSIFIER_SYSTEM_PROMPT,
       userPrompt,
       responseSchema: TypeClassifierLLMSchema,
       maxOutputTokens: 65536,
-    });
+    } as const;
+
+    let result = await this.client!.generateStructured(generateParams);
+
+    const totalReasoningLength = result.data.reasoning.reduce(
+      (sum, paragraph) => sum + paragraph.length, 0
+    );
+
+    if (totalReasoningLength < MIN_TOTAL_REASONING_CHARS) {
+      this.log(`Reasoning too short (${totalReasoningLength} chars, min ${MIN_TOTAL_REASONING_CHARS}). Retrying...`);
+      result = await this.client!.generateStructured(generateParams);
+    }
 
     const dist = result.data.distribution;
     const sum = DISTRIBUTION_KEYS.reduce((acc, key) => acc + dist[key], 0);
