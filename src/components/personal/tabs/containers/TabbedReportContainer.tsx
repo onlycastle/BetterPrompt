@@ -143,6 +143,7 @@ export function TabbedReportContainer({
   const [activeTab, setActiveTab] = useState<ReportTabId>('activity');
   const contentRef = useRef<HTMLDivElement>(null);
   const headerSectionRef = useRef<HTMLDivElement>(null);
+  const tabNavRef = useRef<HTMLDivElement>(null);
 
   // Anchor nav visibility: show when header scrolls out of view
   const [navVisible, setNavVisible] = useState(false);
@@ -227,13 +228,20 @@ export function TabbedReportContainer({
     return communicationInsights.growthAreas;
   }, [workerInsights?.communicationPatterns?.growthAreas, communicationInsights.growthAreas]);
 
-  // Handle tab change with scroll-to-top
+  // Handle tab change with scroll-to-top + scroll active tab into view
   const handleTabChange = useCallback((tabId: ReportTabId) => {
     setActiveTab(tabId);
     // Scroll content to top when changing tabs
     if (contentRef.current) {
       contentRef.current.scrollTop = 0;
     }
+    // Scroll the active tab button into view (for narrow screens with horizontal overflow)
+    requestAnimationFrame(() => {
+      const tabButton = tabNavRef.current?.querySelector(`[data-tab-id="${tabId}"]`);
+      if (tabButton instanceof HTMLElement) {
+        tabButton.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+      }
+    });
   }, []);
 
   // Handle anchor nav tab click: switch tab + scroll to tab content area
@@ -464,14 +472,13 @@ export function TabbedReportContainer({
     context: getLockedCount(workerInsights?.contextEfficiency),
   }), [workerInsights]);
 
-  // Memoize defaultTab based on availableTabs — prefer first worker tab (has insight content)
+  // Memoize defaultTab based on availableTabs — prefer first worker tab for insight auto-show
   const defaultTab = useMemo(() => {
     const firstWorkerTab = availableTabs.find(t => t.id !== 'activity');
     return firstWorkerTab?.id || availableTabs[0]?.id || 'thinking';
   }, [availableTabs]);
 
   // Sync activeTab with available tabs:
-  // - On initial mount, switch from 'activity' to first worker tab (for insight sidebar auto-show)
   // - When current tab becomes unavailable, fall back to defaultTab
   const hasInitializedTab = useRef(false);
   useEffect(() => {
@@ -613,12 +620,13 @@ export function TabbedReportContainer({
 
         {/* Tab Navigation */}
         {availableTabs.length > 1 && (
-          <div className={styles.tabNav}>
+          <div ref={tabNavRef} className={styles.tabNav}>
             {availableTabs.map((tab) => {
               const lockedCount = lockedCounts[tab.id];
               return (
                 <button
                   key={tab.id}
+                  data-tab-id={tab.id}
                   className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
                   onClick={() => handleTabChange(tab.id)}
                   type="button"

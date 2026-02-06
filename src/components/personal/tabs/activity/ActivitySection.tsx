@@ -468,12 +468,9 @@ export function ActivitySection({
 
   return (
     <div className={styles.activitySection}>
-      {/* Weekly Insights Dashboard */}
-      <WeeklyInsightsCard weeklyInsights={weeklyInsights} />
-
       {/* Header */}
       <div className={styles.sectionHeader}>
-        <h3 className={styles.sectionTitle}>Vibe Activity</h3>
+        <h3 className={styles.sectionTitle}>Monthly Vibe</h3>
         <p className={styles.sectionDescription}>
           {stats.totalSessions} sessions across {stats.activeDays} active days
           {stats.dateRange && ` from ${stats.dateRange}`}
@@ -664,6 +661,9 @@ export function ActivitySection({
           </p>
         </div>
       )}
+
+      {/* Weekly Insights Dashboard */}
+      <WeeklyInsightsCard weeklyInsights={weeklyInsights} />
     </div>
   );
 }
