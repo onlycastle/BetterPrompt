@@ -74,7 +74,7 @@ Return a JSON object with structured arrays (not semicolon-separated strings):
   "pattern": "late_compact",  // MUST be one of the 6 enum values above
   "frequency": 15,  // occurrence count
   "impact": "high",  // high | medium | low
-  "description": "always compacts at 90%+"
+  "description": "2-3 sentences (MINIMUM 50 characters) explaining the inefficiency pattern, when/where it occurs, and its impact"
 }]
 \`\`\`
 Do NOT invent new pattern names. Only use the 6 predefined patterns above.
@@ -134,7 +134,7 @@ Each strength object:
 \`\`\`json
 {
   "title": "Clear pattern name (e.g., 'Proactive Context Management')",
-  "description": "6-10 sentences: WHEN/WHERE efficient patterns appear, quantitative data (context usage, compaction frequency), impact on productivity and AI response quality, comparison with typical patterns, specific contributing behaviors",
+  "description": "6-10 sentences (MINIMUM 300 characters, target 400-600): WHEN/WHERE efficient patterns appear, quantitative data (context usage, compaction frequency), impact on productivity and AI response quality, comparison with typical patterns, specific contributing behaviors",
   "evidence": [
     {"utteranceId": "abc123_5", "quote": "developer's exact words showing this strength (min 15 chars)", "context": "optional context"},
     {"utteranceId": "def456_12", "quote": "another example demonstrating this efficient pattern", "context": "different session"},
@@ -150,13 +150,13 @@ Each growth area object:
 \`\`\`json
 {
   "title": "Clear pattern name (e.g., 'Context Bloat Pattern')",
-  "description": "6-10 sentences: specific inefficiency pattern, token/context cost, impact on AI quality and productivity, root cause (habit, lack of awareness, workflow issue)",
+  "description": "6-10 sentences (MINIMUM 300 characters, target 400-600): specific inefficiency pattern, token/context cost, impact on AI quality and productivity, root cause (habit, lack of awareness, workflow issue)",
   "evidence": [
     {"utteranceId": "abc123_5", "quote": "developer's exact words showing this issue (min 15 chars)", "context": "optional context"},
     {"utteranceId": "def456_8", "quote": "another instance of the same pattern", "context": "different session"},
     {"utteranceId": "xyz789_15", "quote": "third example reinforcing the pattern"}
   ],
-  "recommendation": "4-6 sentences: specific commands (/clear, /compact, CLAUDE.md), when to use each, expected token savings, how to build the habit",
+  "recommendation": "4-6 sentences (MINIMUM 150 characters): specific commands (/clear, /compact, CLAUDE.md), when to use each, expected token savings, how to build the habit",
   "severity": "high"
 }
 \`\`\`
