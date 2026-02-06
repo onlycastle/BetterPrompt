@@ -15,12 +15,14 @@
  * @module analyzer/workers/learning-behavior-worker
  */
 
-import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker';
+import { BaseWorker, type WorkerResult, type WorkerContext, type DescriptionQualityResult } from './base-worker';
 import {
   LearningBehaviorLLMOutputSchema,
   type LearningBehaviorOutput,
+  type LearningBehaviorLLMOutput,
   parseLearningBehaviorLLMOutput,
 } from '../../models/learning-behavior-data';
+import type { GeminiStructuredResult } from '../clients/gemini-client';
 import type { Phase1Output } from '../../models/phase1-output';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
@@ -70,14 +72,39 @@ export class LearningBehaviorWorker extends BaseWorker<LearningBehaviorOutput> {
     const userPrompt = buildLearningBehaviorUserPrompt(phase1ForPrompt, insightContext.insights);
     this.log(`Injected ${insightContext.insights.length} professional insights`);
 
-    const result = await this.client!.generateStructured({
-      systemPrompt: LEARNING_BEHAVIOR_SYSTEM_PROMPT,
-      userPrompt,
-      responseSchema: LearningBehaviorLLMOutputSchema,
-      maxOutputTokens: 65536,
-    });
+    // 3-Layer Defense: Layer 3 — retry loop for description quality
+    const MAX_ATTEMPTS = 2;
+    let bestResult: GeminiStructuredResult<LearningBehaviorLLMOutput> | null = null;
+    let bestQuality: DescriptionQualityResult | null = null;
 
-    const parsedOutput = parseLearningBehaviorLLMOutput(result.data);
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const promptToUse = attempt === 0
+        ? userPrompt
+        : this.buildDescriptionQualityFeedback(userPrompt, bestQuality!);
+
+      const result = await this.client!.generateStructured({
+        systemPrompt: LEARNING_BEHAVIOR_SYSTEM_PROMPT,
+        userPrompt: promptToUse,
+        responseSchema: LearningBehaviorLLMOutputSchema,
+        maxOutputTokens: 65536,
+      });
+
+      const quality = this.validateDescriptionQuality(
+        result.data.strengths,
+        result.data.growthAreas,
+      );
+
+      this.log(`Attempt ${attempt + 1}/${MAX_ATTEMPTS}: ${quality.details}`);
+
+      if (!bestResult || quality.totalDescriptionChars > bestQuality!.totalDescriptionChars) {
+        bestResult = result;
+        bestQuality = quality;
+      }
+
+      if (quality.passed) break;
+    }
+
+    const parsedOutput = parseLearningBehaviorLLMOutput(bestResult!.data);
     const processedOutput = this.resolveAllReferences(parsedOutput, insightContext);
 
     this.log(`Knowledge gaps: ${processedOutput.knowledgeGaps.length}`);
@@ -88,7 +115,7 @@ export class LearningBehaviorWorker extends BaseWorker<LearningBehaviorOutput> {
       this.log(`Referenced ${processedOutput.referencedInsights.length} professional insights`);
     }
 
-    return this.createSuccessResult(processedOutput, result.usage);
+    return this.createSuccessResult(processedOutput, bestResult!.usage);
   }
 
   /**

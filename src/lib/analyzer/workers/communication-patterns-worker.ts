@@ -14,12 +14,14 @@
  * @module analyzer/workers/communication-patterns-worker
  */
 
-import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker';
+import { BaseWorker, type WorkerResult, type WorkerContext, type DescriptionQualityResult } from './base-worker';
 import {
   CommunicationPatternsLLMOutputSchema,
   type CommunicationPatternsOutput,
+  type CommunicationPatternsLLMOutput,
   parseCommunicationPatternsLLMOutput,
 } from '../../models/communication-patterns-data';
+import type { GeminiStructuredResult } from '../clients/gemini-client';
 import type { Phase1Output } from '../../models/phase1-output';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
@@ -69,14 +71,39 @@ export class CommunicationPatternsWorker extends BaseWorker<CommunicationPattern
     const userPrompt = buildCommunicationPatternsUserPrompt(phase1ForPrompt, insightContext.insights);
     this.log(`Injected ${insightContext.insights.length} professional insights`);
 
-    const result = await this.client!.generateStructured({
-      systemPrompt: COMMUNICATION_PATTERNS_SYSTEM_PROMPT,
-      userPrompt,
-      responseSchema: CommunicationPatternsLLMOutputSchema,
-      maxOutputTokens: 65536,
-    });
+    // 3-Layer Defense: Layer 3 — retry loop for description quality
+    const MAX_ATTEMPTS = 2;
+    let bestResult: GeminiStructuredResult<CommunicationPatternsLLMOutput> | null = null;
+    let bestQuality: DescriptionQualityResult | null = null;
 
-    const parsedOutput = parseCommunicationPatternsLLMOutput(result.data);
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const promptToUse = attempt === 0
+        ? userPrompt
+        : this.buildDescriptionQualityFeedback(userPrompt, bestQuality!);
+
+      const result = await this.client!.generateStructured({
+        systemPrompt: COMMUNICATION_PATTERNS_SYSTEM_PROMPT,
+        userPrompt: promptToUse,
+        responseSchema: CommunicationPatternsLLMOutputSchema,
+        maxOutputTokens: 65536,
+      });
+
+      const quality = this.validateDescriptionQuality(
+        result.data.strengths,
+        result.data.growthAreas,
+      );
+
+      this.log(`Attempt ${attempt + 1}/${MAX_ATTEMPTS}: ${quality.details}`);
+
+      if (!bestResult || quality.totalDescriptionChars > bestQuality!.totalDescriptionChars) {
+        bestResult = result;
+        bestQuality = quality;
+      }
+
+      if (quality.passed) break;
+    }
+
+    const parsedOutput = parseCommunicationPatternsLLMOutput(bestResult!.data);
     const processedOutput = this.resolveAllReferences(parsedOutput, insightContext);
 
     this.log(`Communication patterns: ${processedOutput.communicationPatterns.length}`);
@@ -86,7 +113,7 @@ export class CommunicationPatternsWorker extends BaseWorker<CommunicationPattern
       this.log(`Referenced ${processedOutput.referencedInsights.length} professional insights`);
     }
 
-    return this.createSuccessResult(processedOutput, result.usage);
+    return this.createSuccessResult(processedOutput, bestResult!.usage);
   }
 
   /**
