@@ -65,7 +65,6 @@ import {
 import {
   type StageTokenUsage,
   type PipelineTokenUsage,
-  formatActualUsage,
   aggregateTokenUsage,
 } from '../cost-estimator';
 

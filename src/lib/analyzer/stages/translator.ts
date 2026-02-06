@@ -200,7 +200,16 @@ export class TranslatorStage {
 
       let fallbackUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
+      // Only attempt individual fallback for fields that can be applied back.
+      // Array fields (promptPatterns, topFocusAreas) rely on cherry-pick merge.
+      const SINGLE_FIELD_APPLICABLE = new Set(['personalitySummary', 'weeklyInsights.narrative']);
+
       for (const failure of mergedVerification.criticalFailures) {
+        if (!SINGLE_FIELD_APPLICABLE.has(failure.fieldPath)) {
+          console.log(`[PHASE:TRANSLATION_VERIFY] Skipping field fallback (array field): ${failure.fieldPath}`);
+          continue;
+        }
+
         const originalText = this.extractFieldText(merged, failure.fieldPath);
         if (!originalText || originalText.length < 10) continue;
 
@@ -210,18 +219,14 @@ export class TranslatorStage {
         );
         const textToTranslate = englishText || originalText;
 
-        try {
-          const singleResult = await this.translateSingleField(textToTranslate, targetLanguage);
-          this.applyFieldTranslation(merged, failure.fieldPath, singleResult.translatedText);
-          fallbackUsage = {
-            promptTokens: fallbackUsage.promptTokens + singleResult.usage.promptTokens,
-            completionTokens: fallbackUsage.completionTokens + singleResult.usage.completionTokens,
-            totalTokens: fallbackUsage.totalTokens + singleResult.usage.totalTokens,
-          };
-          console.log(`[PHASE:TRANSLATION_VERIFY] Field fallback success: ${failure.fieldPath}`);
-        } catch (error) {
-          console.log(`[PHASE:TRANSLATION_VERIFY] Field fallback failed: ${failure.fieldPath}: ${error}`);
-        }
+        const singleResult = await this.translateSingleField(textToTranslate, targetLanguage);
+        this.applyFieldTranslation(merged, failure.fieldPath, singleResult.translatedText);
+        fallbackUsage = {
+          promptTokens: fallbackUsage.promptTokens + singleResult.usage.promptTokens,
+          completionTokens: fallbackUsage.completionTokens + singleResult.usage.completionTokens,
+          totalTokens: fallbackUsage.totalTokens + singleResult.usage.totalTokens,
+        };
+        console.log(`[PHASE:TRANSLATION_VERIFY] Field fallback success: ${failure.fieldPath}`);
       }
 
       combinedUsage.promptTokens += fallbackUsage.promptTokens;
@@ -335,13 +340,13 @@ export class TranslatorStage {
       case 'personalitySummary':
         output.personalitySummary = translatedText;
         break;
-      case 'promptPatterns[].description':
-      case 'topFocusAreas.areas[].narrative':
       case 'weeklyInsights.narrative':
-        if (fieldPath === 'weeklyInsights.narrative' && output.weeklyInsights) {
+        if (output.weeklyInsights) {
           output.weeklyInsights.narrative = translatedText;
         }
         break;
+      // Array fields (promptPatterns[].description, topFocusAreas.areas[].narrative)
+      // cannot be applied back from concatenated text — handled by cherry-pick merge only.
     }
   }
 
