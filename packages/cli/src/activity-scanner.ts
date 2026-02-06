@@ -19,6 +19,7 @@ import { readFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { multiSourceScanner, type FileMetadata } from './lib/scanner/index.js';
 import { resolveProjectName } from './lib/project-name-resolver.js';
+import { stripSystemTags } from './lib/strip-system-tags.js';
 
 // ============================================================================
 // Types
@@ -46,33 +47,29 @@ function debugLog(...args: unknown[]) {
 
 const DEFAULT_RECENCY_DAYS = 30;
 const MAX_SUMMARY_LENGTH = 80;
-const SYSTEM_REMINDER_REGEX = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
+const MIN_MEANINGFUL_LENGTH = 5;
+const MAX_USER_MESSAGES_TO_TRY = 5;
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
 /**
- * Strip system-reminder tags from text
+ * Backward-compatible alias for stripSystemTags.
+ * @deprecated Use stripSystemTags from './lib/strip-system-tags.js' directly.
  */
-export function stripSystemReminders(text: string): string {
-  return text.replace(SYSTEM_REMINDER_REGEX, '').trim();
-}
+export const stripSystemReminders = stripSystemTags;
 
 /**
  * Truncate text to maxLength at word boundary.
- * If the text is shorter than maxLength, returns it as-is.
- * Otherwise, finds the last space before maxLength and truncates there with "..."
  */
 export function truncateAtWordBoundary(text: string, maxLength: number = MAX_SUMMARY_LENGTH): string {
-  // Normalize whitespace first
   const normalized = text.replace(/\s+/g, ' ').trim();
 
   if (normalized.length <= maxLength) {
     return normalized;
   }
 
-  // Find last space before maxLength (leave room for "...")
   const cutoff = maxLength - 3;
   const lastSpace = normalized.lastIndexOf(' ', cutoff);
 
@@ -80,16 +77,18 @@ export function truncateAtWordBoundary(text: string, maxLength: number = MAX_SUM
     return normalized.slice(0, lastSpace) + '...';
   }
 
-  // No space found — hard truncate
   return normalized.slice(0, cutoff) + '...';
 }
 
 /**
- * Extract the first user message text from JSONL content.
- * Parses line by line to find the first "type": "user" entry.
+ * Extract the first meaningful user message text from JSONL content.
+ *
+ * Parses line by line, strips system tags from each user message,
+ * and returns the first one with meaningful content (≥ MIN_MEANINGFUL_LENGTH chars).
  */
 function extractFirstUserMessage(content: string): string | null {
   const lines = content.split('\n');
+  let userMessagesSeen = 0;
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -99,24 +98,34 @@ function extractFirstUserMessage(content: string): string | null {
       const parsed = JSON.parse(trimmed);
       if (parsed.type !== 'user') continue;
 
-      // Extract text from message content
       const message = parsed.message;
       if (!message) continue;
 
-      if (typeof message.content === 'string') {
-        return message.content;
-      }
+      let rawText: string | null = null;
 
-      // Content blocks array
-      if (Array.isArray(message.content)) {
+      if (typeof message.content === 'string') {
+        rawText = message.content;
+      } else if (Array.isArray(message.content)) {
         for (const block of message.content) {
           if (block.type === 'text' && block.text) {
-            return block.text;
+            rawText = block.text;
+            break;
           }
         }
       }
+
+      if (!rawText) continue;
+
+      userMessagesSeen++;
+
+      const cleaned = stripSystemTags(rawText);
+      if (cleaned.length >= MIN_MEANINGFUL_LENGTH) {
+        return cleaned;
+      }
+
+      if (userMessagesSeen >= MAX_USER_MESSAGES_TO_TRY) break;
     } catch {
-      // Skip unparseable lines
+      continue;
     }
   }
 
@@ -153,9 +162,6 @@ function extractSessionMetadata(content: string): {
       const parsed = JSON.parse(trimmed);
       if (parsed.type !== 'user' && parsed.type !== 'assistant') continue;
 
-      // Deduplicate by message.id — Claude Code writes multiple JSONL lines
-      // for the same assistant turn (one per tool call), each with identical usage.
-      // Skip already-seen message IDs to avoid inflating token counts.
       const msgId = parsed.message?.id;
       if (msgId) {
         if (seenMessageIds.has(msgId)) continue;
@@ -174,7 +180,6 @@ function extractSessionMetadata(content: string): {
         }
       }
 
-      // Extract token usage from assistant messages
       if (parsed.type === 'assistant' && parsed.message?.usage) {
         const usage = parsed.message.usage;
         result.totalInputTokens += (usage.input_tokens || 0)
@@ -183,7 +188,7 @@ function extractSessionMetadata(content: string): {
         result.totalOutputTokens += usage.output_tokens || 0;
       }
     } catch {
-      // Skip unparseable lines
+      continue;
     }
   }
 
@@ -207,22 +212,19 @@ export async function scanActivitySessions(
   recencyDays: number = DEFAULT_RECENCY_DAYS,
   includeSources?: string[],
 ): Promise<ActivitySessionInfo[]> {
-  // Phase 1: Collect all file metadata (same as main scanner)
   const { files } = await multiSourceScanner.collectAllFileMetadata({
-    minFileSize: 1024,        // 1KB minimum (more lenient than main scanner)
-    maxFileSize: 50 * 1024 * 1024, // 50MB max
+    minFileSize: 1024,
+    maxFileSize: 50 * 1024 * 1024,
     includeSources,
   });
   debugLog(`Phase 1: collected ${files.length} total session files`);
 
-  // Phase 2: Filter by recency
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - recencyDays);
 
   const recentFiles = files.filter(f => f.mtime >= cutoffDate);
   debugLog(`Phase 2: ${recentFiles.length} files within ${recencyDays}-day recency window (cutoff: ${cutoffDate.toISOString()})`);
 
-  // Phase 3: Read each file and extract activity metadata
   const results: ActivitySessionInfo[] = [];
   let nullCount = 0;
 
@@ -240,7 +242,6 @@ export async function scanActivitySessions(
   }
   debugLog(`Phase 3: parsed ${results.length} sessions successfully, ${nullCount} skipped (null or error)`);
 
-  // Sort by startTime descending (newest first)
   results.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 
   const oldest = results.length > 0 ? results[results.length - 1].startTime : 'N/A';
@@ -269,21 +270,14 @@ async function extractActivityInfo(file: FileMetadata): Promise<ActivitySessionI
 async function extractClaudeCodeActivityInfo(file: FileMetadata): Promise<ActivitySessionInfo | null> {
   const content = await readFile(file.filePath, 'utf-8');
 
-  // Extract metadata
   const meta = extractSessionMetadata(content);
   if (!meta.firstTimestamp || meta.messageCount < 1) {
     return null;
   }
 
-  // Extract first user message for summary
-  const firstUserMessage = extractFirstUserMessage(content);
-  let summary = '';
-  if (firstUserMessage) {
-    const cleaned = stripSystemReminders(firstUserMessage);
-    summary = truncateAtWordBoundary(cleaned);
-  }
+  const cleanedMessage = extractFirstUserMessage(content);
+  const summary = cleanedMessage ? truncateAtWordBoundary(cleanedMessage) : '';
 
-  // Compute fields
   const sessionId = basename(file.filePath, '.jsonl');
   const projectDirName = basename(join(file.filePath, '..'));
   const projectName = resolveProjectName(projectDirName);
@@ -324,7 +318,6 @@ async function extractCursorActivityInfo(file: FileMetadata): Promise<ActivitySe
       return null;
     }
 
-    // Sum token usage from assistant messages
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
     for (const msg of parsed.messages) {
@@ -334,7 +327,6 @@ async function extractCursorActivityInfo(file: FileMetadata): Promise<ActivitySe
       }
     }
 
-    // Find first user message
     let summary = '';
     const firstUserMsg = parsed.messages.find(m => m.role === 'user');
     if (firstUserMsg) {
@@ -345,7 +337,7 @@ async function extractCursorActivityInfo(file: FileMetadata): Promise<ActivitySe
             .map(b => b.text!)
             .join(' ');
 
-      const cleaned = stripSystemReminders(text);
+      const cleaned = stripSystemTags(text);
       summary = truncateAtWordBoundary(cleaned);
     }
 
