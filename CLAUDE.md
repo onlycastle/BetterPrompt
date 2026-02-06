@@ -89,6 +89,16 @@ npm test               # Run all tests
 >
 > **Bug History (2026-02-04)**: `CommunicationPatterns` worker was missing from `aggregateWorkerInsights()`, causing Communication tab to not display despite data being generated.
 
+> ⚠️ **Insight Sidebar Auto-Show Invariant**: The report page MUST default to the first worker tab (not Activity) on initial load so the InsightPreviewCard auto-shows in the sidebar.
+>
+> **How it works** (in `TabbedReportContainer.tsx`):
+> 1. `defaultTab` prefers the first worker tab (Thinking > Communication > Learning > Context)
+> 2. On mount, `useEffect` switches `activeTab` from `'activity'` to `defaultTab`
+> 3. `defaultInsightForTab` finds the first insight for the active worker tab's domain
+> 4. Auto-show `useEffect` sets `selectedInsight`, triggering InsightPreviewCard render
+>
+> **DO NOT** change `defaultTab` to prefer `'activity'` or remove the initial tab switch — this breaks the auto-show flow because `TAB_TO_DOMAIN['activity']` is `null`.
+
 ## No Fallback Policy
 
 > ⚠️ **CRITICAL**: This codebase follows a strict "No Fallback" policy.
