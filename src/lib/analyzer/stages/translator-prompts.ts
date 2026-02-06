@@ -61,7 +61,13 @@ Translate the provided English developer analysis report into the target languag
 - Use natural, fluent target language — not word-for-word translation
 - Match the developer's natural communication style in the target language
 - Maintain the same level of enthusiasm and encouragement as the English version
-- Technical metaphors should be adapted to feel natural in the target language`;
+- Technical metaphors should be adapted to feel natural in the target language
+
+## Length Preservation
+When translating narrative text (personalitySummary, topFocusAreas), preserve approximate TEXT LENGTH:
+- Target 85-100% of the original English character count
+- Expand explanations naturally rather than condensing
+- NEVER compress or summarize — translate with equivalent depth`;
 
 /**
  * Build the user prompt for the Translator stage
@@ -100,7 +106,7 @@ Return a TranslatorOutput JSON object containing ONLY the translated text fields
 
 ### Field-by-Field Instructions:
 
-1. **personalitySummary**: Translate to ${langName}. Keep **bold markers** and technical terms in English. IMPORTANT: Preserve ALL line breaks — both paragraph breaks (\\n\\n) and soft breaks (single \\n). Do NOT merge or remove any newline characters. Preserve 「...」 quote markers (translate the text inside, keep the 「」 brackets).
+1. **personalitySummary**: Translate to ${langName}. Keep **bold markers** and technical terms in English. IMPORTANT: Preserve ALL line breaks — both paragraph breaks (\\n\\n) and soft breaks (single \\n). Do NOT merge or remove any newline characters. Preserve 「...」 quote markers (translate the text inside, keep the 「」 brackets). LENGTH PRESERVATION: The translated personalitySummary MUST be at least 80% of the original English character count. Do NOT condense or summarize.
 
 2. **dimensionInsights**: SKIP this field. v3 architecture does not use dimensionInsights.
    Return an empty array or omit entirely: \`"dimensionInsights": []\`

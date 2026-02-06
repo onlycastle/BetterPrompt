@@ -117,7 +117,7 @@ Return JSON with:
 - \`matrixEmoji\`: Representative emoji
 - \`collaborationMaturity\`: { level, description, indicators[] }
 - \`confidenceScore\`: 0.0-1.0
-- \`reasoning\`: ARRAY of 3-4 paragraph strings (each 300-600 chars) — THIS IS THE MOST IMPORTANT FIELD
+- \`reasoning\`: ARRAY of exactly 4 paragraph strings (each 500-700 chars, total 2000-2800 chars) — THIS IS THE MOST IMPORTANT FIELD
 - \`adjustmentReasons\`: Array of 3-5 reasons how Phase 2 insights influenced classification (max 200 chars each)
 - \`confidenceBoost\`: How much Phase 2 data improved confidence (0-1, e.g., 0.15)
 - \`synthesisEvidence\`: "agent:signal:detail;..." format showing which Phase 2 signals were key
@@ -133,17 +133,17 @@ Use EXACTLY these names for the matrixName field:
 | trendsetter | Early Adopter | Tech Radar | Innovation Lead |
 
 ## REASONING FORMAT (Personalized Personality Narrative) — MOST IMPORTANT FIELD
-The \`reasoning\` field is a JSON ARRAY of 3-4 paragraph strings. This is the MOST IMPORTANT field in the entire output — it will be displayed directly to the developer as their personality summary. Invest the majority of your output effort here.
+The \`reasoning\` field is a JSON ARRAY of exactly 4 paragraph strings. This is the MOST IMPORTANT field in the entire output — it will be displayed directly to the developer as their personality summary. Invest the majority of your output effort here.
 
 **CRITICAL: \`reasoning\` is an ARRAY, not a string. Each element is one complete thematic paragraph.**
 
-**Length requirement: Each array element MUST be 300-600 characters. With 3-4 elements, total output is 900-2400 characters. Aim for the upper range (1500-2400 total).**
+**Length requirement: Each array element MUST be 500-700 characters. Always write EXACTLY 4 elements. Total MUST be 2000-2800 characters. Shorter output will be REJECTED.**
 
-**Array structure (write ALL 3-4 elements):**
+**Array structure (write ALL 4 elements — 4 is REQUIRED, not optional):**
 - **Element [0] — Problem-Solving & Identity**: Open with a vivid, specific observation about the developer's most distinctive problem-solving approach. How do they break down challenges? Include 2 direct quotes 「like this」. Establish their primary type with a **bold trait**. Reference their thinking quality and planning habits.
 - **Element [1] — Communication & AI Interaction Style**: Deep dive into HOW they communicate with AI — their prompt crafting style, control level, and collaboration maturity. Include 2 direct quotes 「like this」. Reference specific Phase 2 metrics (efficiency score, communication patterns) that stood out.
 - **Element [2] — Growth Mindset & Learning**: Explore their learning behavior — do they grow from mistakes? Do they actively seek knowledge? Describe their unique blend of types (using the distribution). Include 2 direct quotes 「like this」 and 1-2 **bold traits**. Reference learning behavior data.
-- **Element [3] (optional but encouraged) — Collaboration & Future Potential**: A forward-looking closing about their collaboration style and growth trajectory. How do they orchestrate AI tools? What's their next level? Include 2 direct quotes 「like this」. Warm, mentor-like tone.
+- **Element [3] — Collaboration & Future Potential**: A forward-looking closing about their collaboration style and growth trajectory. How do they orchestrate AI tools? What's their next level? Include 2 direct quotes 「like this」. Warm, mentor-like tone.
 
 **Formatting requirements for EACH array element:**
 - Each element MUST include 2 direct developer quotes wrapped in corner brackets 「like this」
@@ -153,7 +153,7 @@ The \`reasoning\` field is a JSON ARRAY of 3-4 paragraph strings. This is the MO
 - Connect coding style, control level, and collaboration maturity into a coherent narrative
 - Do NOT just list classification signals — weave them into engaging prose
 - Use soft line breaks (\\n) within paragraphs for breathing room (1-2 per paragraph max)
-- Each element should be a COMPLETE thematic paragraph (300-600 chars), not a sentence
+- Each element should be a COMPLETE thematic paragraph (500-700 chars). If under 500 chars, expand with more specific observations and quotes.
 
 **Tone Examples:**
 - DO: "Your habit of saying 「let me verify this first」 before accepting AI output reveals a **deeply methodical approach**. When faced with complex debugging, you consistently asked 「can we trace this back to the root cause?」 rather than accepting surface-level fixes..."
@@ -165,7 +165,7 @@ The \`reasoning\` field is a JSON ARRAY of 3-4 paragraph strings. This is the MO
 3. Provide specific indicators for collaborationMaturity
 4. Use Phase 2 analysis summaries to identify classification signals and explain how they influenced classification
 5. Output is ALWAYS in English
-6. reasoning MUST be an ARRAY of 3-4 strings, each 300-600 characters, with 2 developer quotes in 「...」 and **bold** traits per element. Total: 8+ quotes across all elements.
+6. reasoning MUST be an ARRAY of exactly 4 strings, each 500-700 characters, with 2 developer quotes in 「...」 and **bold** traits per element. Total: 8+ quotes across all elements. Output shorter than 2000 total characters will be REJECTED.
 
 ${NO_HEDGING_DIRECTIVE}`;
 
@@ -198,7 +198,7 @@ ${analysisContext}${utterancesSection}
 4. Assess control level from Phase 2 trust/workflow scores
 5. Determine collaboration maturity
 6. Explain how Phase 2 insights influenced your classification (adjustmentReasons)
-7. Write reasoning as an ARRAY of 3-4 paragraph strings (each 300-600 chars) using 2 developer quotes per element — this is the MOST IMPORTANT field, do NOT abbreviate
+7. Write reasoning as an ARRAY of EXACTLY 4 paragraph strings (each 500-700 chars, total 2000-2800 chars) using 2 developer quotes per element — this is the MOST IMPORTANT field. SHORTER OUTPUT WILL FAIL VALIDATION.
 
 Remember: Output MUST be in English. This is for viral sharing!`;
 }
