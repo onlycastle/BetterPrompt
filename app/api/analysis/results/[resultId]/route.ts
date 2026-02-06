@@ -91,6 +91,7 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
     activitySessions: evaluation.activitySessions,
     sessionSummaries: evaluation.sessionSummaries,
     projectSummaries: evaluation.projectSummaries,
+    weeklyInsights: evaluation.weeklyInsights,
 
     // PREMIUM fields - preview only (3 full + 4th truncated)
     promptPatterns: previewPatterns,
