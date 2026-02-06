@@ -11,6 +11,12 @@ import { GoogleGenAI } from '@google/genai';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { ZodSchema } from 'zod';
 
+/** Options for cleanSchemaForGemini */
+interface CleanSchemaOptions {
+  /** When true, preserve minItems/maxItems array constraints instead of stripping them */
+  preserveArrayConstraints?: boolean;
+}
+
 /**
  * Recursively clean JSON schema for Gemini API compatibility
  *
@@ -19,24 +25,28 @@ import type { ZodSchema } from 'zod';
  * 2. minItems/maxItems - Gemini has undocumented limits on array size constraints
  *    in complex schemas (fails when schema exceeds ~8000 chars with these fields)
  *
+ * When `preserveArrayConstraints` is true, minItems/maxItems are kept. This is safe
+ * for smaller schemas (< ~8000 chars) like TypeClassifier where array size enforcement
+ * is critical for output quality.
+ *
  * @see https://github.com/googleapis/python-genai/issues/1815
  */
-function cleanSchemaForGemini(obj: unknown): unknown {
+function cleanSchemaForGemini(obj: unknown, options: CleanSchemaOptions = {}): unknown {
   if (obj === null || typeof obj !== 'object') {
     return obj;
   }
 
   if (Array.isArray(obj)) {
-    return obj.map(cleanSchemaForGemini);
+    return obj.map(item => cleanSchemaForGemini(item, options));
   }
 
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     // Skip problematic fields
     if (key === 'additionalProperties') continue;
-    if (key === 'minItems') continue;
-    if (key === 'maxItems') continue;
-    result[key] = cleanSchemaForGemini(value);
+    if (!options.preserveArrayConstraints && key === 'minItems') continue;
+    if (!options.preserveArrayConstraints && key === 'maxItems') continue;
+    result[key] = cleanSchemaForGemini(value, options);
   }
   return result;
 }
@@ -59,6 +69,8 @@ export interface GeminiStructuredRequest<T> {
   userPrompt: string;
   responseSchema: ZodSchema<T>;
   maxOutputTokens?: number;
+  /** Preserve minItems/maxItems in schema (safe for small schemas < ~8000 chars) */
+  preserveArrayConstraints?: boolean;
 }
 
 /**
@@ -126,7 +138,9 @@ export class GeminiClient {
     // Remove $schema and clean problematic fields
     // Gemini SDK rejects additionalProperties, and minItems/maxItems cause issues in large schemas
     const { $schema: _$schema, ...schemaWithoutMeta } = jsonSchema as Record<string, unknown>;
-    const responseSchema = cleanSchemaForGemini(schemaWithoutMeta);
+    const responseSchema = cleanSchemaForGemini(schemaWithoutMeta, {
+      preserveArrayConstraints: request.preserveArrayConstraints,
+    });
 
     let lastError: Error | null = null;
 
