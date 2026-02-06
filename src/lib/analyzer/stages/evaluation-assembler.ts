@@ -861,8 +861,21 @@ export function mergeTranslatedFields(
   translated: TranslatorOutput
 ): void {
   // Direct field assignments (truncate translated text — may exceed original length)
+  // Translation length guard: reject translations that compress too aggressively (< 65% of English)
   if (translated.personalitySummary) {
-    englishResponse.personalitySummary = truncatePersonalitySummary(translated.personalitySummary);
+    const englishLength = typeof englishResponse.personalitySummary === 'string'
+      ? englishResponse.personalitySummary.length
+      : 0;
+    const translatedLength = translated.personalitySummary.length;
+    const ratio = englishLength > 0 ? translatedLength / englishLength : 1;
+
+    if (ratio < 0.65 && englishLength > 0) {
+      console.warn(
+        `[EvalAssembler] Translation too short: ${translatedLength} chars (${(ratio * 100).toFixed(0)}% of English ${englishLength} chars). Keeping English original.`
+      );
+    } else {
+      englishResponse.personalitySummary = truncatePersonalitySummary(translated.personalitySummary);
+    }
   }
   if (translated.translatedAgentInsights) {
     englishResponse.translatedAgentInsights = translated.translatedAgentInsights;
@@ -870,6 +883,9 @@ export function mergeTranslatedFields(
 
   // Project summaries
   mergeProjectSummaries(englishResponse, translated);
+
+  // Weekly insights
+  mergeWeeklyInsights(englishResponse, translated);
 
   // Dimension insights
   mergeDimensionInsights(englishResponse, translated);
@@ -1120,6 +1136,23 @@ function mergeProjectSummaries(
     if (tp.summaryLines && tp.summaryLines.length > 0) {
       ep.summaryLines = tp.summaryLines;
     }
+  }
+}
+
+function mergeWeeklyInsights(
+  englishResponse: Record<string, unknown>,
+  translated: TranslatorOutput
+): void {
+  if (!translated.weeklyInsights || !englishResponse.weeklyInsights) return;
+
+  const weeklyInsights = englishResponse.weeklyInsights as Record<string, unknown>;
+
+  if (translated.weeklyInsights.narrative) {
+    weeklyInsights.narrative = translated.weeklyInsights.narrative;
+  }
+
+  if (translated.weeklyInsights.highlights?.length) {
+    weeklyInsights.highlights = translated.weeklyInsights.highlights;
   }
 }
 

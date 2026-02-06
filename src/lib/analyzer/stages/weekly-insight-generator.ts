@@ -227,9 +227,12 @@ export class WeeklyInsightGeneratorStage {
   async generate(sessions: ActivitySessionInput[]): Promise<WeeklyInsightGeneratorResult> {
     const now = new Date();
 
-    // Week boundaries
-    const thisWeekStart = new Date(now.getTime() - 7 * MS_PER_DAY);
-    const prevWeekStart = new Date(now.getTime() - 14 * MS_PER_DAY);
+    // Week boundaries — aligned to calendar day boundaries so activeDays <= 7
+    // "This week" = 7 calendar days ending today (today-6 midnight through now)
+    const todayMidnight = new Date(now);
+    todayMidnight.setHours(0, 0, 0, 0);
+    const thisWeekStart = new Date(todayMidnight.getTime() - 6 * MS_PER_DAY);
+    const prevWeekStart = new Date(thisWeekStart.getTime() - 7 * MS_PER_DAY);
 
     // Filter sessions into week buckets
     const thisWeekSessions = sessions.filter((s) => {
@@ -270,6 +273,9 @@ export class WeeklyInsightGeneratorStage {
     // Per-project breakdown from this week
     const projects = this.computeProjectBreakdown(thisWeekSessions, thisWeekStats.totalMinutes);
 
+    // Top 3 sessions from the #1 project (by duration descending)
+    const topProjectSessions = this.computeTopProjectSessions(thisWeekSessions, projects);
+
     // Edge case: no sessions this week -> skip LLM call
     if (thisWeekSessions.length === 0) {
       this.log('No sessions this week, skipping LLM call');
@@ -280,6 +286,7 @@ export class WeeklyInsightGeneratorStage {
           stats: thisWeekStats,
           comparison,
           projects,
+          topProjectSessions,
           narrative: 'No AI collaboration activity this week.',
           highlights: [],
         },
@@ -307,6 +314,7 @@ export class WeeklyInsightGeneratorStage {
         stats: thisWeekStats,
         comparison,
         projects,
+        topProjectSessions,
         narrative: result.data.narrative,
         highlights: result.data.highlights,
       },
@@ -361,6 +369,27 @@ export class WeeklyInsightGeneratorStage {
     return entries.map(({ projectName, sessionCount, totalMinutes: mins, floored }) => ({
       projectName, sessionCount, totalMinutes: mins, percentage: floored,
     }));
+  }
+
+  /**
+   * Get the top 3 sessions (by duration) from the #1 project
+   */
+  private computeTopProjectSessions(
+    sessions: ActivitySessionInput[],
+    projects: WeeklyInsights['projects']
+  ): WeeklyInsights['topProjectSessions'] {
+    if (projects.length === 0) return undefined;
+
+    const topProject = projects[0].projectName;
+    return sessions
+      .filter((s) => s.projectName === topProject)
+      .sort((a, b) => b.durationMinutes - a.durationMinutes)
+      .slice(0, 3)
+      .map((s) => ({
+        summary: s.summary,
+        durationMinutes: s.durationMinutes,
+        date: formatShortDate(new Date(s.startTime)),
+      }));
   }
 
   private log(message: string): void {

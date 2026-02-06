@@ -145,8 +145,10 @@ export function WeeklyInsightsCard({ weeklyInsights }: WeeklyInsightsCardProps) 
   // Hide entirely when no data
   if (!weeklyInsights) return null;
 
-  const { stats, comparison, projects, narrative, highlights } = weeklyInsights;
+  const { stats, comparison, projects, topProjectSessions, narrative, highlights } = weeklyInsights;
   const hasComparison = comparison !== undefined;
+  const topProjects = projects.slice(0, 3);
+  const otherCount = projects.length - 3;
 
   return (
     <div className={styles.weeklyCard}>
@@ -189,10 +191,10 @@ export function WeeklyInsightsCard({ weeklyInsights }: WeeklyInsightsCardProps) 
         <p className={styles.narrative}>{narrative}</p>
       )}
 
-      {/* Project Focus Chart */}
-      {projects.length > 0 && (
+      {/* Top 3 Projects */}
+      {topProjects.length > 0 && (
         <div className={styles.projectsSection}>
-          {projects.map((project) => (
+          {topProjects.map((project) => (
             <ProjectBar
               key={project.projectName}
               projectName={project.projectName}
@@ -200,6 +202,31 @@ export function WeeklyInsightsCard({ weeklyInsights }: WeeklyInsightsCardProps) 
               sessionCount={project.sessionCount}
             />
           ))}
+          {otherCount > 0 && (
+            <span className={styles.otherProjects}>
+              +{otherCount} other {otherCount === 1 ? 'project' : 'projects'}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Top Sessions from #1 Project */}
+      {topProjectSessions && topProjectSessions.length > 0 && topProjects.length > 0 && (
+        <div className={styles.topSessionsSection}>
+          <h4 className={styles.topSessionsTitle}>
+            Top sessions in {topProjects[0].projectName}
+          </h4>
+          <div className={styles.topSessionsList}>
+            {topProjectSessions.map((session, index) => (
+              <div key={index} className={styles.topSessionItem}>
+                <div className={styles.topSessionMeta}>
+                  <span className={styles.topSessionDate}>{session.date}</span>
+                  <span className={styles.topSessionDuration}>{formatDuration(session.durationMinutes)}</span>
+                </div>
+                <p className={styles.topSessionSummary}>{session.summary}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

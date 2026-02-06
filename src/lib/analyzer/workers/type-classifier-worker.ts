@@ -20,6 +20,7 @@ import {
   type TypeClassifierOutput,
   type AgentOutputs,
 } from '../../models/agent-outputs';
+import type { GeminiStructuredResult } from '../clients/gemini-client';
 import type { Phase1Output } from '../../models/phase1-output';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import {
@@ -41,8 +42,11 @@ type DistributionKey = 'architect' | 'analyst' | 'conductor' | 'speedrunner' | '
 
 const DISTRIBUTION_KEYS: DistributionKey[] = ['architect', 'analyst', 'conductor', 'speedrunner', 'trendsetter'];
 
-/** LLM output schema for TypeClassifier */
-const TypeClassifierLLMSchema = z.object({
+/**
+ * Strict LLM output schema for TypeClassifier (documentation/reference only).
+ * Defines the ideal constraints: 4 reasoning paragraphs, each 500+ chars.
+ */
+const TypeClassifierStrictSchema = z.object({
   primaryType: CodingStyleTypeSchema,
   distribution: z.object({
     architect: z.number().min(0).max(100),
@@ -66,6 +70,44 @@ const TypeClassifierLLMSchema = z.object({
   confidenceBoost: z.number().min(0).max(1).optional(),
   synthesisEvidence: z.string().optional(),
 });
+
+/**
+ * Relaxed LLM schema for Gemini API calls.
+ *
+ * Removes .min(500) from reasoning strings and .min(3) from reasoning array
+ * to prevent Zod validation failures from becoming non-retryable errors.
+ * The worker's retry loop handles quality validation instead.
+ *
+ * Array bounds (.min(3).max(4)) are still enforced via preserveArrayConstraints
+ * at the Gemini schema level.
+ */
+const TypeClassifierLLMSchema = z.object({
+  primaryType: CodingStyleTypeSchema,
+  distribution: z.object({
+    architect: z.number().min(0).max(100),
+    analyst: z.number().min(0).max(100),
+    conductor: z.number().min(0).max(100),
+    speedrunner: z.number().min(0).max(100),
+    trendsetter: z.number().min(0).max(100),
+  }),
+  controlLevel: AIControlLevelSchema,
+  controlScore: z.number().min(0).max(100),
+  matrixName: z.string(),
+  matrixEmoji: z.string(),
+  collaborationMaturity: z.object({
+    level: z.enum(['vibe_coder', 'supervised_coder', 'ai_assisted_engineer', 'reluctant_user']),
+    description: z.string(),
+    indicators: z.array(z.string()),
+  }).optional(),
+  confidenceScore: z.number().min(0).max(1),
+  reasoning: z.array(z.string()).min(3).max(4),
+  adjustmentReasons: z.array(z.string()).max(5).optional(),
+  confidenceBoost: z.number().min(0).max(1).optional(),
+  synthesisEvidence: z.string().optional(),
+});
+
+/** Inferred type from the relaxed LLM schema */
+type TypeClassifierLLMOutput = z.infer<typeof TypeClassifierLLMSchema>;
 
 /**
  * TypeClassifierWorker - Classifies developers into the AI Collaboration Matrix
@@ -109,28 +151,7 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     const phase2Summary = this.buildPhase2Summary(agentOutputs, phase1Output);
     const userPrompt = buildTypeClassifierUserPrompt(phase2Summary || undefined, topUtterances);
 
-    const MIN_TOTAL_REASONING_CHARS = 1800;
-    const generateParams = {
-      systemPrompt: TYPE_CLASSIFIER_SYSTEM_PROMPT,
-      userPrompt,
-      responseSchema: TypeClassifierLLMSchema,
-      maxOutputTokens: 65536,
-    } as const;
-
-    let result = await this.client!.generateStructured(generateParams);
-
-    const totalReasoningLength = result.data.reasoning.reduce(
-      (sum, paragraph) => sum + paragraph.length, 0
-    );
-
-    if (totalReasoningLength < MIN_TOTAL_REASONING_CHARS) {
-      this.log(`Reasoning too short (${totalReasoningLength} chars, min ${MIN_TOTAL_REASONING_CHARS}). Retrying...`);
-      result = await this.client!.generateStructured(generateParams);
-      const retryLength = result.data.reasoning.reduce(
-        (sum, paragraph) => sum + paragraph.length, 0
-      );
-      this.log(`Retry reasoning length: ${retryLength} chars (${result.data.reasoning.length} elements)`);
-    }
+    const result = await this.generateWithRetry(userPrompt);
 
     const dist = result.data.distribution;
     const sum = DISTRIBUTION_KEYS.reduce((acc, key) => acc + dist[key], 0);
@@ -148,6 +169,93 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     }
 
     return this.createSuccessResult(result.data as TypeClassifierOutput, result.usage);
+  }
+
+  /**
+   * Generate TypeClassifier output with validation retry loop.
+   *
+   * Attempts up to MAX_ATTEMPTS calls, checking both:
+   * 1. Element count: reasoning array should have TARGET_REASONING_ELEMENTS (4) elements
+   * 2. Total length: combined reasoning length should be >= MIN_TOTAL_REASONING_CHARS (1800)
+   *
+   * On retry, sends a reinforced prompt informing the LLM of the specific shortcoming.
+   * If all attempts fail quality checks, uses the best result (longest total reasoning).
+   */
+  private async generateWithRetry(
+    userPrompt: string
+  ): Promise<GeminiStructuredResult<TypeClassifierLLMOutput>> {
+    const MAX_ATTEMPTS = 3;
+    const MIN_TOTAL_REASONING_CHARS = 1800;
+    const TARGET_REASONING_ELEMENTS = 4;
+
+    let bestResult: GeminiStructuredResult<TypeClassifierLLMOutput> | null = null;
+    let bestLength = 0;
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const promptToUse: string = attempt === 0
+        ? userPrompt
+        : this.buildReinforcedPrompt(userPrompt, bestResult!.data, TARGET_REASONING_ELEMENTS, MIN_TOTAL_REASONING_CHARS);
+
+      const result: GeminiStructuredResult<TypeClassifierLLMOutput> = await this.client!.generateStructured({
+        systemPrompt: TYPE_CLASSIFIER_SYSTEM_PROMPT,
+        userPrompt: promptToUse,
+        responseSchema: TypeClassifierLLMSchema,
+        maxOutputTokens: 65536,
+        preserveArrayConstraints: true,
+      });
+
+      const elementCount = result.data.reasoning.length;
+      const totalLength = result.data.reasoning.reduce((sum: number, p: string) => sum + p.length, 0);
+
+      this.log(`Attempt ${attempt + 1}/${MAX_ATTEMPTS}: ${elementCount} elements, ${totalLength} chars`);
+
+      // Track best result by total reasoning length
+      if (totalLength > bestLength) {
+        bestResult = result;
+        bestLength = totalLength;
+      }
+
+      // Accept if both quality criteria are met
+      if (elementCount >= TARGET_REASONING_ELEMENTS && totalLength >= MIN_TOTAL_REASONING_CHARS) {
+        this.log(`Quality check passed on attempt ${attempt + 1}`);
+        return result;
+      }
+
+      // Log the specific shortcoming for debugging
+      if (elementCount < TARGET_REASONING_ELEMENTS) {
+        this.log(`Insufficient elements: ${elementCount}/${TARGET_REASONING_ELEMENTS}`);
+      }
+      if (totalLength < MIN_TOTAL_REASONING_CHARS) {
+        this.log(`Insufficient length: ${totalLength}/${MIN_TOTAL_REASONING_CHARS} chars`);
+      }
+    }
+
+    // All attempts failed quality checks — use best result
+    this.log(`All ${MAX_ATTEMPTS} attempts failed quality checks. Using best result (${bestLength} chars)`);
+    return bestResult!;
+  }
+
+  /**
+   * Build a reinforced prompt that includes feedback about the previous attempt's shortcomings.
+   */
+  private buildReinforcedPrompt(
+    originalPrompt: string,
+    previousData: TypeClassifierLLMOutput,
+    targetElements: number,
+    minTotalChars: number
+  ): string {
+    const prevCount = previousData.reasoning.length;
+    const prevLength = previousData.reasoning.reduce((sum, p) => sum + p.length, 0);
+
+    const feedback: string[] = [];
+    if (prevCount < targetElements) {
+      feedback.push(`Your previous response had only ${prevCount} reasoning paragraphs. You MUST provide exactly ${targetElements} paragraphs.`);
+    }
+    if (prevLength < minTotalChars) {
+      feedback.push(`Your previous response had only ${prevLength} total characters across reasoning paragraphs. The minimum is ${minTotalChars} characters. Each paragraph should be 500+ characters with detailed, evidence-based analysis.`);
+    }
+
+    return `${originalPrompt}\n\n---\n\n## CRITICAL QUALITY REQUIREMENT (RETRY)\n\n${feedback.join('\n\n')}\n\nPlease provide a more thorough, detailed response this time. Each reasoning paragraph must be a substantial, evidence-rich analysis (500+ characters each).`;
   }
 
   /**

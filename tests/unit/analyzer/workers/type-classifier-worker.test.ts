@@ -73,6 +73,20 @@ function createMockContext(
   };
 }
 
+/** Helper to create a long paragraph string of specified minimum length */
+function makeParagraph(base: string, minLength: number): string {
+  let result = base;
+  while (result.length < minLength) {
+    result += ' ' + base;
+  }
+  return result;
+}
+
+const LONG_PARAGRAPH_1 = makeParagraph('Your **methodical approach** to development reveals a deeply structured thinker who naturally gravitates toward systematic problem-solving. When you said 「Let me verify this works before we continue」, it showed a natural instinct for **quality validation** that sets you apart from developers who accept AI output uncritically.', 500);
+const LONG_PARAGRAPH_2 = makeParagraph('This verification-first mindset, combined with your consistent habit of breaking tasks into smaller components before diving into implementation, places you firmly in the architect category. You don\'t just plan — you create structured frameworks that guide both your own thinking and the AI\'s output.', 500);
+const LONG_PARAGRAPH_3 = makeParagraph('Your **navigator-level control** means you maintain a balanced relationship with AI tools. You guide the direction while remaining open to suggestions, creating a productive collaboration dynamic that maximizes both human insight and AI capability.', 500);
+const LONG_PARAGRAPH_4 = makeParagraph('Your growth trajectory shows a developer who continuously refines their collaboration patterns with AI. The evidence of deliberate practice in your workflow suggests you will continue to evolve as AI tools become more sophisticated.', 500);
+
 function createMockLLMOutput(): TypeClassifierOutput {
   return {
     primaryType: 'architect',
@@ -83,7 +97,7 @@ function createMockLLMOutput(): TypeClassifierOutput {
     matrixEmoji: '🏗️',
     collaborationMaturity: { level: 'ai_assisted_engineer', description: 'Uses AI as a capable tool while maintaining control', indicators: ['verifies_output', 'guides_direction', 'maintains_ownership'] },
     confidenceScore: 0.85,
-    reasoning: 'Your **methodical approach** to development reveals a deeply structured thinker who naturally gravitates toward systematic problem-solving. When you said 「Let me verify this works before we continue」, it showed a natural instinct for **quality validation** that sets you apart from developers who accept AI output uncritically.\nThis verification-first mindset, combined with your consistent habit of breaking tasks into smaller components before diving into implementation, places you firmly in the architect category. You don\'t just plan — you create structured frameworks that guide both your own thinking and the AI\'s output.\nYour **navigator-level control** means you maintain a balanced relationship with AI tools. You guide the direction while remaining open to suggestions, creating a productive collaboration dynamic that maximizes both human insight and AI capability.',
+    reasoning: [LONG_PARAGRAPH_1, LONG_PARAGRAPH_2, LONG_PARAGRAPH_3, LONG_PARAGRAPH_4],
   };
 }
 
@@ -155,8 +169,8 @@ describe('TypeClassifierWorker', () => {
       const result = await worker.execute(context);
 
       expect(result.data.reasoning).toBeDefined();
-      expect(typeof result.data.reasoning).toBe('string');
-      expect(result.data.reasoning.length).toBeGreaterThan(100);
+      expect(Array.isArray(result.data.reasoning)).toBe(true);
+      expect((result.data.reasoning as string[]).length).toBe(4);
     });
 
     it('should normalize distribution to sum to 100', async () => {
@@ -205,6 +219,62 @@ describe('TypeClassifierWorker', () => {
       const result = await worker.execute({ ...context, agentOutputs: { thinkingQuality: createMockAgentOutputs().thinkingQuality } });
 
       expect(result.data.primaryType).toBe('architect');
+    });
+
+    it('should retry when first attempt returns too few reasoning elements', async () => {
+      const shortOutput = {
+        ...createMockLLMOutput(),
+        reasoning: ['Short paragraph one.', 'Short paragraph two.'],
+      };
+      const goodOutput = createMockLLMOutput();
+
+      mockGenerateStructured
+        .mockResolvedValueOnce({ data: shortOutput, usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 } })
+        .mockResolvedValueOnce({ data: goodOutput, usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 } });
+
+      const result = await worker.execute(context);
+
+      // Should have retried (2 calls total)
+      expect(mockGenerateStructured).toHaveBeenCalledTimes(2);
+      // Should use the good result with 4 elements
+      expect((result.data.reasoning as string[]).length).toBe(4);
+    });
+
+    it('should use best result when all retries fail quality checks', async () => {
+      const shortOutput = {
+        ...createMockLLMOutput(),
+        reasoning: ['A'.repeat(300), 'B'.repeat(300)],
+      };
+      const slightlyBetterOutput = {
+        ...createMockLLMOutput(),
+        reasoning: ['C'.repeat(400), 'D'.repeat(400), 'E'.repeat(400)],
+      };
+      const worstOutput = {
+        ...createMockLLMOutput(),
+        reasoning: ['F'.repeat(100)],
+      };
+
+      mockGenerateStructured
+        .mockResolvedValueOnce({ data: shortOutput, usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 } })
+        .mockResolvedValueOnce({ data: slightlyBetterOutput, usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 } })
+        .mockResolvedValueOnce({ data: worstOutput, usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 } });
+
+      const result = await worker.execute(context);
+
+      // Should have attempted all 3 times
+      expect(mockGenerateStructured).toHaveBeenCalledTimes(3);
+      // Should pick the longest result (slightlyBetterOutput = 1200 chars)
+      expect((result.data.reasoning as string[]).length).toBe(3);
+    });
+
+    it('should pass preserveArrayConstraints: true to generateStructured', async () => {
+      setupMockResponse();
+
+      await worker.execute(context);
+
+      expect(mockGenerateStructured).toHaveBeenCalledWith(
+        expect.objectContaining({ preserveArrayConstraints: true })
+      );
     });
   });
 

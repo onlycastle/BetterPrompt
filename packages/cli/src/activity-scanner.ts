@@ -18,6 +18,7 @@
 import { readFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { multiSourceScanner, type FileMetadata } from './lib/scanner/index.js';
+import { resolveProjectName } from './lib/project-name-resolver.js';
 
 // ============================================================================
 // Types
@@ -50,24 +51,6 @@ const SYSTEM_REMINDER_REGEX = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-/**
- * Decode project path from Claude's encoding (replaces '-' with '/')
- */
-function decodeProjectPath(encoded: string): string {
-  if (encoded.startsWith('-')) {
-    return encoded.replace(/-/g, '/');
-  }
-  return encoded;
-}
-
-/**
- * Get project name from decoded path (last segment)
- */
-function getProjectName(projectPath: string): string {
-  const parts = projectPath.split('/').filter(Boolean);
-  return parts[parts.length - 1] || 'unknown';
-}
 
 /**
  * Strip system-reminder tags from text
@@ -303,8 +286,7 @@ async function extractClaudeCodeActivityInfo(file: FileMetadata): Promise<Activi
   // Compute fields
   const sessionId = basename(file.filePath, '.jsonl');
   const projectDirName = basename(join(file.filePath, '..'));
-  const projectPath = decodeProjectPath(projectDirName);
-  const projectName = getProjectName(projectPath);
+  const projectName = resolveProjectName(projectDirName);
 
   const durationMs = meta.lastTimestamp
     ? meta.lastTimestamp.getTime() - meta.firstTimestamp.getTime()
@@ -329,8 +311,8 @@ async function extractCursorActivityInfo(file: FileMetadata): Promise<ActivitySe
   try {
     const parsed = await multiSourceScanner.parseSession({
       sessionId: basename(file.filePath, '.db'),
-      projectPath: decodeProjectPath(file.projectDirName),
-      projectName: getProjectName(decodeProjectPath(file.projectDirName)),
+      projectPath: file.projectDirName,
+      projectName: resolveProjectName(file.projectDirName),
       timestamp: file.mtime,
       messageCount: 0,
       durationSeconds: 0,
@@ -369,7 +351,7 @@ async function extractCursorActivityInfo(file: FileMetadata): Promise<ActivitySe
 
     return {
       sessionId: parsed.sessionId,
-      projectName: getProjectName(parsed.projectPath),
+      projectName: resolveProjectName(file.projectDirName),
       startTime: parsed.startTime.toISOString(),
       durationMinutes: Math.round(parsed.durationSeconds / 60),
       messageCount: parsed.messages.length,

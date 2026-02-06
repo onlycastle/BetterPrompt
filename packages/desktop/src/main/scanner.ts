@@ -88,6 +88,10 @@ function getProjectName(projectPath: string): string {
 /**
  * Extract project info from a session file path
  * Returns decoded project path and project name
+ *
+ * Note: Desktop app uses simple decode+split for now.
+ * The CLI's resolveProjectName() provides more accurate names
+ * via filesystem probing but requires sync fs access.
  */
 function getProjectInfoFromPath(filePath: string): { projectPath: string; projectName: string } {
   const projectDirName = basename(join(filePath, '..'));

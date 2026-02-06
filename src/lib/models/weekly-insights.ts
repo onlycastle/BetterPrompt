@@ -75,6 +75,13 @@ export const WeeklyInsightsSchema = z.object({
     percentage: z.number().min(0).max(100),
   })),
 
+  /** Top sessions from the #1 project (by duration, up to 3) */
+  topProjectSessions: z.array(z.object({
+    summary: z.string(),
+    durationMinutes: z.number().min(0),
+    date: z.string().describe('Short date label (e.g., "Feb 5")'),
+  })).optional().describe('Top 3 sessions from the most active project'),
+
   /** LLM-generated 2-3 sentence narrative */
   narrative: z.string(),
 
