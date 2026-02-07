@@ -27,7 +27,7 @@ const ANIMATION_INTERVAL = 200; // ms per tick
 const NORMAL_STEP = 1; // % per tick when gap <= 20
 const FAST_STEP = 2; // % per tick when gap > 20
 const SLOW_THRESHOLD = 40; // below this %, advance at reduced speed
-const SLOW_TICK_DIVISOR = 3; // only advance every Nth tick below threshold
+const SLOW_TICK_DIVISOR = 9; // only advance every Nth tick below threshold
 
 /** Braille spinner frames (same cadence as ora's dots) */
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -150,7 +150,8 @@ export class ProgressDisplay {
       // to prevent the bar from racing through the early range
       const isSlow = this.displayedProgress < SLOW_THRESHOLD;
       if (!isSlow || this.tick % SLOW_TICK_DIVISOR === 0) {
-        const step = gap > 20 ? FAST_STEP : NORMAL_STEP;
+        // In slow zone, always use NORMAL_STEP to prevent racing ahead
+        const step = isSlow ? NORMAL_STEP : gap > 20 ? FAST_STEP : NORMAL_STEP;
         this.displayedProgress = Math.min(
           this.displayedProgress + step,
           this.targetProgress,

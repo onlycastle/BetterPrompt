@@ -125,7 +125,7 @@ Return a TranslatorOutput JSON object containing ONLY the translated text fields
 
 7. **translatedAgentInsights** (REQUIRED when Agent Outputs are provided):
    This is the MOST IMPORTANT translation field for user-facing worker insights.
-   For EACH v3 WORKER present in the Agent Outputs (thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency):
+   For EACH v3 WORKER present in the Agent Outputs (thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency, sessionOutcome):
    - You MUST provide both \`strengths\` and \`growthAreas\` arrays
    - strengths: Array of {title, description} — translate BOTH title and description to ${langName}
    - growthAreas: Array of {title, description, recommendation} — translate ALL THREE fields to ${langName}

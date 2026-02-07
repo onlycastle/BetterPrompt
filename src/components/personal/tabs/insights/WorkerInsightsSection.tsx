@@ -540,6 +540,7 @@ const DOMAIN_TO_TRANSLATION_KEY: Partial<Record<keyof AggregatedWorkerInsights, 
   communicationPatterns: 'communicationPatterns',
   learningBehavior: 'learningBehavior',
   contextEfficiency: 'contextEfficiency',
+  sessionOutcome: 'sessionOutcome',
   // Legacy workers (kept for cached data)
   knowledgeGap: 'knowledgeGap',
 };

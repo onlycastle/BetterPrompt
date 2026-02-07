@@ -159,11 +159,12 @@ export const TranslatorOutputSchema = z.object({
 
   /** Translated agent insights (Phase 2 worker outputs) */
   translatedAgentInsights: z.object({
-    // v3.1 Workers (primary - 4 workers)
+    // v3.1 Workers (primary - 5 workers)
     thinkingQuality: TranslatedAgentInsightEntrySchema.optional(),
     communicationPatterns: TranslatedAgentInsightEntrySchema.optional(),
     learningBehavior: TranslatedAgentInsightEntrySchema.optional(),
     contextEfficiency: TranslatedAgentInsightEntrySchema.optional(),
+    sessionOutcome: TranslatedAgentInsightEntrySchema.optional(),
     // v2 Legacy Workers (backward compatibility)
     patternDetective: TranslatedAgentInsightEntrySchema.optional(),
     metacognition: TranslatedAgentInsightEntrySchema.optional(),
@@ -171,7 +172,7 @@ export const TranslatorOutputSchema = z.object({
     knowledgeGap: TranslatedAgentInsightEntrySchema.optional(),
     temporalAnalysis: TranslatedAgentInsightEntrySchema.optional(),
     multitasking: TranslatedAgentInsightEntrySchema.optional(),
-  }).optional().describe('Translated Phase 2 worker insights — v3.1 uses thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency'),
+  }).optional().describe('Translated Phase 2 worker insights — v3.1 uses thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency, sessionOutcome'),
 
   /** Translated project summaries (Phase 2 ProjectSummarizer output) */
   projectSummaries: z.array(z.object({
@@ -259,7 +260,7 @@ export const TranslatorLLMOutputSchema = z.object({
 
   /** Flattened agent insights — each worker's strengths/growthAreas as top-level arrays */
   translatedAgentInsights: z.object({
-    // v3.1 Workers (primary - 4 workers) — flattened
+    // v3.1 Workers (primary - 5 workers) — flattened
     thinkingQualityStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
     thinkingQualityGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
     communicationPatternsStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
@@ -268,6 +269,8 @@ export const TranslatorLLMOutputSchema = z.object({
     learningBehaviorGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
     contextEfficiencyStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
     contextEfficiencyGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
+    sessionOutcomeStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
+    sessionOutcomeGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
     // v2 Legacy Workers — flattened
     patternDetectiveStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
     patternDetectiveGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
@@ -281,7 +284,7 @@ export const TranslatorLLMOutputSchema = z.object({
     temporalAnalysisGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
     multitaskingStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
     multitaskingGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
-  }).optional().describe('Flattened Phase 2 worker insights — keys are workerNameStrengths/workerNameGrowthAreas'),
+  }).optional().describe('Flattened Phase 2 worker insights — keys are workerNameStrengths/workerNameGrowthAreas. v3.1 workers: thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency, sessionOutcome'),
 
   projectSummaries: z.array(z.object({
     projectName: z.string().describe('Keep project name in English'),
@@ -327,7 +330,7 @@ export type TranslatorLLMOutput = z.infer<typeof TranslatorLLMOutputSchema>;
 
 /** Worker keys used in translatedAgentInsights */
 const WORKER_KEYS = [
-  'thinkingQuality', 'communicationPatterns', 'learningBehavior', 'contextEfficiency',
+  'thinkingQuality', 'communicationPatterns', 'learningBehavior', 'contextEfficiency', 'sessionOutcome',
   'patternDetective', 'metacognition', 'antiPatternSpotter', 'knowledgeGap',
   'temporalAnalysis', 'multitasking',
 ] as const;

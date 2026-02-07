@@ -120,6 +120,12 @@ const VERIFIED_FIELDS: FieldDef[] = [
     extract: (o) => o.translatedAgentInsights?.contextEfficiency?.strengths
       ?.map(s => `${s.title} ${s.description}`).join(' '),
   },
+  {
+    path: 'translatedAgentInsights.sessionOutcome.strengths',
+    priority: 'non-critical',
+    extract: (o) => o.translatedAgentInsights?.sessionOutcome?.strengths
+      ?.map(s => `${s.title} ${s.description}`).join(' '),
+  },
 ];
 
 /**

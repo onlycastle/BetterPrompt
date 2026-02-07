@@ -98,6 +98,20 @@ npm test               # Run all tests
 >
 > **Bug History (2026-02-04)**: `CommunicationPatterns` worker was missing from `aggregateWorkerInsights()`, causing Communication tab to not display despite data being generated.
 
+> ⚠️ **Translation Registration Checklist**: When adding a new Phase 2 Worker, ALL of these translation pipeline points must be updated:
+>
+> **Required Updates**:
+> 1. `TranslatorOutputSchema.translatedAgentInsights` in `translator-output.ts` (nested version)
+> 2. `TranslatorLLMOutputSchema.translatedAgentInsights` in `translator-output.ts` (flat version for Gemini)
+> 3. `WORKER_KEYS` array in `translator-output.ts` (for reshape function)
+> 4. `prepareAgentOutputsForTranslator()` in `translator.ts` (extract worker data for translation)
+> 5. `VERIFIED_FIELDS` in `translation-verifier.ts` (CJK verification)
+> 6. Translator prompt field instructions in `translator-prompts.ts` (worker list in prompt)
+> 7. `DOMAIN_TO_TRANSLATION_KEY` in `WorkerInsightsSection.tsx` (frontend translation lookup)
+> 8. `TranslatedAgentInsightsSchema` in `verbose-evaluation.ts` (DB/frontend type)
+>
+> **Bug History**: `communicationPatterns` missing from #7 (commit `adf12db`), `sessionOutcome` missing from ALL (fixed 2026-02-07).
+
 > ⚠️ **Insight Sidebar Auto-Show Invariant**: The report page MUST default to the first worker tab (not Activity) on initial load so the InsightPreviewCard auto-shows in the sidebar.
 >
 > **How it works** (in `TabbedReportContainer.tsx`):

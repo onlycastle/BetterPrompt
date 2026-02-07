@@ -477,7 +477,7 @@ async function main() {
     console.log('Applying Translation Overlay...');
     const mergeStartTime = Date.now();
 
-    mergeTranslatedFields(assembledEvaluation, phase4Result.data);
+    mergeTranslatedFields(assembledEvaluation, phase4Result.data, targetLanguage);
 
     const mergeTime = Date.now() - mergeStartTime;
     timings.push({ label: 'Translation Overlay', ms: mergeTime });

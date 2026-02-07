@@ -1036,6 +1036,7 @@ export const TranslatedAgentInsightsSchema = z.object({
   communicationPatterns: TranslatedAgentInsightSchema.optional(),
   learningBehavior: TranslatedAgentInsightSchema.optional(),
   contextEfficiency: TranslatedAgentInsightSchema.optional(),
+  sessionOutcome: TranslatedAgentInsightSchema.optional(),
   // Legacy agents (kept for cached data compatibility)
   knowledgeGap: TranslatedAgentInsightSchema.optional(),
   temporalAnalysis: TranslatedAgentInsightSchema.optional(),
