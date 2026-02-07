@@ -71,6 +71,8 @@ export interface GeminiStructuredRequest<T> {
   maxOutputTokens?: number;
   /** Preserve minItems/maxItems in schema (safe for small schemas < ~8000 chars) */
   preserveArrayConstraints?: boolean;
+  /** Schema name for error context logging (e.g., 'TranslatorLLMOutput') */
+  schemaName?: string;
 }
 
 /**
@@ -131,6 +133,7 @@ export class GeminiClient {
    * Returns both the parsed data and token usage metadata
    */
   async generateStructured<T>(request: GeminiStructuredRequest<T>): Promise<GeminiStructuredResult<T>> {
+    const schemaName = request.schemaName ?? 'unknown';
     const jsonSchema = zodToJsonSchema(request.responseSchema, {
       $refStrategy: 'none',
     });
@@ -163,6 +166,7 @@ export class GeminiClient {
         return { data, usage };
       } catch (error) {
         lastError = error as Error;
+        console.error(`[GeminiClient] Schema "${schemaName}" failed (attempt ${attempt + 1}): ${lastError.message}`);
 
         if (!this.isRetryable(error) || attempt === this.maxRetries) {
           throw error;

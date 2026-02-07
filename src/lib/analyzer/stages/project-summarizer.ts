@@ -61,7 +61,7 @@ export interface ProjectSummarizerInput {
  * LLM response schema for project summaries batch
  * Gemini nesting: root{} -> projects[] -> item{} = 2 levels (well within 4-level limit)
  */
-const ProjectSummaryBatchLLMSchema = z.object({
+export const ProjectSummaryBatchLLMSchema = z.object({
   projects: z.array(z.object({
     projectName: z.string(),
     summaryLines: z.array(z.string()),

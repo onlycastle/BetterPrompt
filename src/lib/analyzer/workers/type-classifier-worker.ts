@@ -81,7 +81,7 @@ const TypeClassifierStrictSchema = z.object({
  * Array bounds (.min(3).max(4)) are still enforced via preserveArrayConstraints
  * at the Gemini schema level.
  */
-const TypeClassifierLLMSchema = z.object({
+export const TypeClassifierLLMSchema = z.object({
   primaryType: CodingStyleTypeSchema,
   distribution: z.object({
     architect: z.number().min(0).max(100),

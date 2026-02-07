@@ -13,14 +13,15 @@
  * Key Design Decision (v4):
  * - topUtterances are now selected from Phase 2 evidence, not arbitrary first 20
  * - This ensures LLM only sees utterances that workers already identified as significant
- * - Prevents pattern-quote mismatch (e.g., "아키텍처 청사진 설계" with "다했어" example)
+ * - Prevents pattern-quote mismatch (e.g., architectural pattern name paired with casual chat utterance)
  *
  * @module analyzer/stages/content-writer
  */
 
 import { GeminiClient, type GeminiClientConfig, type TokenUsage } from '../clients/gemini-client';
 import {
-  NarrativeLLMResponseSchema,
+  FlatNarrativeLLMResponseSchema,
+  reshapeNarrativeLLMResponse,
   type NarrativeLLMResponse,
 } from '../../models/verbose-evaluation';
 import type { AgentOutputs } from '../../models/agent-outputs';
@@ -142,12 +143,16 @@ export class ContentWriterStage {
       topUtterances
     );
 
-    const result = await this.client.generateStructured({
+    const flatResult = await this.client.generateStructured({
       systemPrompt: CONTENT_WRITER_SYSTEM_PROMPT_V3,
       userPrompt,
-      responseSchema: NarrativeLLMResponseSchema,
+      responseSchema: FlatNarrativeLLMResponseSchema,
+      schemaName: 'FlatNarrativeLLMResponse',
       maxOutputTokens: this.config.maxOutputTokens,
     });
+
+    // Reshape flat LLM output to nested NarrativeLLMResponse
+    const result = { data: reshapeNarrativeLLMResponse(flatResult.data), usage: flatResult.usage };
 
     // Sanitize narrative-only response
     const sanitized = this.sanitizeNarrativeResponse(result.data, phase1Output);

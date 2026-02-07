@@ -2,25 +2,44 @@
  * Schema Nesting Depth Tests
  *
  * Ensures all Zod schemas used with Gemini API don't exceed the maximum nesting depth.
- * Gemini API has a limit of ~4 levels for responseJsonSchema (NOT 5 as documentation suggests).
+ * Gemini API has a limit of ~4 levels for responseJsonSchema.
+ * We enforce a stricter limit of 3 to maintain headroom.
  *
  * @see https://ai.google.dev/api/generate-content
  */
 
 import { describe, it, expect } from 'vitest';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { VerboseLLMResponseSchema, NarrativeLLMResponseSchema } from '../../../src/lib/models/verbose-evaluation';
-import { TranslatorOutputSchema } from '../../../src/lib/models/translator-output';
+
+// Phase 1
+import { BatchClassificationResultSchema } from '../../../src/lib/models/content-classification';
+// Phase 1.5
+import { SessionSummaryBatchLLMSchema } from '../../../src/lib/models/session-summary-data';
+// Phase 2 Workers
+import { ThinkingQualityLLMOutputSchema } from '../../../src/lib/models/thinking-quality-data';
+import { CommunicationPatternsLLMOutputSchema } from '../../../src/lib/models/communication-patterns-data';
+import { LearningBehaviorLLMOutputSchema } from '../../../src/lib/models/learning-behavior-data';
+import { ContextEfficiencyLLMOutputSchema } from '../../../src/lib/models/agent-outputs';
+import { SessionOutcomeLLMOutputSchema } from '../../../src/lib/models/session-outcome-data';
+// Phase 2 Summarizers
+import { ProjectSummaryBatchLLMSchema } from '../../../src/lib/analyzer/stages/project-summarizer';
+import { WeeklyInsightsLLMSchema } from '../../../src/lib/models/weekly-insights';
+// Phase 2.5
+import { TypeClassifierLLMSchema } from '../../../src/lib/analyzer/workers/type-classifier-worker';
+// Phase 2.8
+import { EvidenceVerificationResponseSchema } from '../../../src/lib/models/evidence-verification-data';
+// Phase 3
+import { FlatNarrativeLLMResponseSchema } from '../../../src/lib/models/verbose-evaluation';
+// Phase 4
+import { TranslatorLLMOutputSchema } from '../../../src/lib/models/translator-output';
 
 /**
- * Maximum allowed nesting depth for Gemini API schemas
- * Gemini returns error: "A schema in GenerationConfig in the request exceeds the maximum allowed nesting depth"
- * when this limit is exceeded.
+ * Maximum allowed nesting depth for Gemini API schemas.
  *
- * NOTE: Despite documentation suggesting ~5 levels, practical testing shows the limit is ~4 levels.
- * All schemas should stay at or below 4 levels of nesting.
+ * Gemini's hard limit is 4 levels, but we enforce 3 to maintain headroom.
+ * This prevents regressions where a small schema change could push us over the limit.
  */
-const GEMINI_MAX_NESTING_DEPTH = 4;
+const GEMINI_MAX_NESTING_DEPTH = 3;
 
 /**
  * Recursively calculate the maximum nesting depth of a JSON Schema
@@ -124,46 +143,82 @@ function findDeepestPath(schema: unknown, currentPath = 'root', currentDepth = 0
   return deepest;
 }
 
+/** Helper to create a nesting depth test for a given schema */
+function testSchemaDepth(schemaName: string, schema: unknown) {
+  it(`should not exceed ${GEMINI_MAX_NESTING_DEPTH} levels of nesting`, () => {
+    const jsonSchema = zodToJsonSchema(schema as Parameters<typeof zodToJsonSchema>[0]);
+    const maxDepth = calculateMaxNestingDepth(jsonSchema);
+    const deepestPath = findDeepestPath(jsonSchema);
+
+    expect(
+      maxDepth,
+      `${schemaName} exceeds Gemini's max nesting depth.\nDeepest path: ${deepestPath.path}\nDepth: ${deepestPath.depth}\nMax allowed: ${GEMINI_MAX_NESTING_DEPTH}`
+    ).toBeLessThanOrEqual(GEMINI_MAX_NESTING_DEPTH);
+  });
+}
+
 describe('Gemini Schema Nesting Depth', () => {
-  describe('VerboseLLMResponseSchema (Stage 2)', () => {
-    it(`should not exceed ${GEMINI_MAX_NESTING_DEPTH} levels of nesting`, () => {
-      const jsonSchema = zodToJsonSchema(VerboseLLMResponseSchema);
-      const maxDepth = calculateMaxNestingDepth(jsonSchema);
-      const deepestPath = findDeepestPath(jsonSchema);
-
-      expect(
-        maxDepth,
-        `Schema exceeds Gemini's max nesting depth.\nDeepest path: ${deepestPath.path}\nDepth: ${deepestPath.depth}\nMax allowed: ${GEMINI_MAX_NESTING_DEPTH}`
-      ).toBeLessThanOrEqual(GEMINI_MAX_NESTING_DEPTH);
-    });
+  // ─── Phase 1 ───────────────────────────────────────
+  describe('BatchClassificationResultSchema (Phase 1)', () => {
+    testSchemaDepth('BatchClassificationResultSchema', BatchClassificationResultSchema);
   });
 
-  describe('NarrativeLLMResponseSchema (Phase 3)', () => {
-    it(`should not exceed ${GEMINI_MAX_NESTING_DEPTH} levels of nesting`, () => {
-      const jsonSchema = zodToJsonSchema(NarrativeLLMResponseSchema);
-      const maxDepth = calculateMaxNestingDepth(jsonSchema);
-      const deepestPath = findDeepestPath(jsonSchema);
-
-      expect(
-        maxDepth,
-        `Schema exceeds Gemini's max nesting depth.\nDeepest path: ${deepestPath.path}\nDepth: ${deepestPath.depth}\nMax allowed: ${GEMINI_MAX_NESTING_DEPTH}`
-      ).toBeLessThanOrEqual(GEMINI_MAX_NESTING_DEPTH);
-    });
+  // ─── Phase 1.5 ─────────────────────────────────────
+  describe('SessionSummaryBatchLLMSchema (Phase 1.5)', () => {
+    testSchemaDepth('SessionSummaryBatchLLMSchema', SessionSummaryBatchLLMSchema);
   });
 
-  describe('TranslatorOutputSchema (Phase 4)', () => {
-    it(`should not exceed ${GEMINI_MAX_NESTING_DEPTH} levels of nesting`, () => {
-      const jsonSchema = zodToJsonSchema(TranslatorOutputSchema);
-      const maxDepth = calculateMaxNestingDepth(jsonSchema);
-      const deepestPath = findDeepestPath(jsonSchema);
-
-      expect(
-        maxDepth,
-        `Schema exceeds Gemini's max nesting depth.\nDeepest path: ${deepestPath.path}\nDepth: ${deepestPath.depth}\nMax allowed: ${GEMINI_MAX_NESTING_DEPTH}`
-      ).toBeLessThanOrEqual(GEMINI_MAX_NESTING_DEPTH);
-    });
+  // ─── Phase 2 Workers ───────────────────────────────
+  describe('ThinkingQualityLLMOutputSchema (Phase 2)', () => {
+    testSchemaDepth('ThinkingQualityLLMOutputSchema', ThinkingQualityLLMOutputSchema);
   });
 
+  describe('CommunicationPatternsLLMOutputSchema (Phase 2)', () => {
+    testSchemaDepth('CommunicationPatternsLLMOutputSchema', CommunicationPatternsLLMOutputSchema);
+  });
+
+  describe('LearningBehaviorLLMOutputSchema (Phase 2)', () => {
+    testSchemaDepth('LearningBehaviorLLMOutputSchema', LearningBehaviorLLMOutputSchema);
+  });
+
+  describe('ContextEfficiencyLLMOutputSchema (Phase 2)', () => {
+    testSchemaDepth('ContextEfficiencyLLMOutputSchema', ContextEfficiencyLLMOutputSchema);
+  });
+
+  describe('SessionOutcomeLLMOutputSchema (Phase 2)', () => {
+    testSchemaDepth('SessionOutcomeLLMOutputSchema', SessionOutcomeLLMOutputSchema);
+  });
+
+  // ─── Phase 2 Summarizers ───────────────────────────
+  describe('ProjectSummaryBatchLLMSchema (Phase 2)', () => {
+    testSchemaDepth('ProjectSummaryBatchLLMSchema', ProjectSummaryBatchLLMSchema);
+  });
+
+  describe('WeeklyInsightsLLMSchema (Phase 2)', () => {
+    testSchemaDepth('WeeklyInsightsLLMSchema', WeeklyInsightsLLMSchema);
+  });
+
+  // ─── Phase 2.5 ─────────────────────────────────────
+  describe('TypeClassifierLLMSchema (Phase 2.5)', () => {
+    testSchemaDepth('TypeClassifierLLMSchema', TypeClassifierLLMSchema);
+  });
+
+  // ─── Phase 2.8 ─────────────────────────────────────
+  describe('EvidenceVerificationResponseSchema (Phase 2.8)', () => {
+    testSchemaDepth('EvidenceVerificationResponseSchema', EvidenceVerificationResponseSchema);
+  });
+
+  // ─── Phase 3 ───────────────────────────────────────
+  describe('FlatNarrativeLLMResponseSchema (Phase 3)', () => {
+    testSchemaDepth('FlatNarrativeLLMResponseSchema', FlatNarrativeLLMResponseSchema);
+  });
+
+  // ─── Phase 4 ───────────────────────────────────────
+  describe('TranslatorLLMOutputSchema (Phase 4)', () => {
+    testSchemaDepth('TranslatorLLMOutputSchema', TranslatorLLMOutputSchema);
+  });
+
+  // ─── Utility function tests ────────────────────────
   describe('calculateMaxNestingDepth utility', () => {
     it('should correctly calculate depth for flat object', () => {
       const flatSchema = {
