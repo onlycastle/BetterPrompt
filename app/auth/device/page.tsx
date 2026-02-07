@@ -12,7 +12,7 @@
 
 'use client';
 
-import { useEffect, useState, Suspense, useRef } from 'react';
+import { useEffect, useState, Suspense, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { Github, Mail, CheckCircle, XCircle, Terminal, FlaskConical } from 'lucide-react';
@@ -33,11 +33,56 @@ function DeviceAuthContent() {
 
   // Ref to prevent duplicate authorization calls (race condition fix)
   const authorizingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
+
+  const authorizeDevice = useCallback(async (code: string) => {
+    // Prevent duplicate authorization calls (race condition between test login and onAuthStateChange)
+    if (authorizingRef.current) {
+      return;
+    }
+    authorizingRef.current = true;
+
+    setStatus('authorizing');
+    setErrorMessage(null);
+
+    // Abort any previous in-flight request
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    try {
+      const response = await fetch('/api/auth/device/authorize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_code: code }),
+        signal: controller.signal,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setStatus('success');
+      } else {
+        setStatus('error');
+        setErrorMessage(data.message || 'Failed to authorize device');
+        authorizingRef.current = false; // Reset so user can retry
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return; // Silently ignore aborted requests
+      }
+      setStatus('error');
+      setErrorMessage('Network error. Please try again.');
+      authorizingRef.current = false; // Reset so user can retry
+    }
+  }, []);
 
   // Check auth status on mount and after OAuth redirect
   useEffect(() => {
@@ -64,43 +109,11 @@ function DeviceAuthContent() {
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, [searchParams]);
-
-  const authorizeDevice = async (code: string) => {
-    // Prevent duplicate authorization calls (race condition between test login and onAuthStateChange)
-    if (authorizingRef.current) {
-      return;
-    }
-    authorizingRef.current = true;
-
-    setStatus('authorizing');
-    setErrorMessage(null);
-
-    try {
-      const response = await fetch('/api/auth/device/authorize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_code: code }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setStatus('success');
-      } else {
-        setStatus('error');
-        setErrorMessage(data.message || 'Failed to authorize device');
-        authorizingRef.current = false; // Reset so user can retry
-      }
-    } catch (error) {
-      setStatus('error');
-      setErrorMessage('Network error. Please try again.');
-      authorizingRef.current = false; // Reset so user can retry
-    }
-  };
+    return () => {
+      subscription.unsubscribe();
+      abortControllerRef.current?.abort();
+    };
+  }, [searchParams, authorizeDevice]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
