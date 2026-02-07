@@ -69,14 +69,20 @@ function createMockAgentOutputs(): AgentOutputs {
 function createMockTranslatorOutput(): TranslatorOutput {
   return {
     personalitySummary: '당신은 AI 생성 코드에 대한 강력한 감독을 유지하는 사려 깊은 개발자입니다.',
-    promptPatterns: [{ patternName: '진행 전 검증', description: '앞으로 나아가기 전에 결과를 확인하기 위해 멈춥니다', examples: [{ quote: '먼저 확인해 보겠습니다', analysis: '좋은 검증 습관' }], tip: '이 패턴을 계속하세요' }],
+    promptPatterns: [{ patternName: '진행 전 검증', description: '앞으로 나아가기 전에 결과를 확인하기 위해 멈춥니다', examples: [{ quote: 'Let me verify this first', analysis: '좋은 검증 습관' }], tip: '이 패턴을 계속하세요' }],
     topFocusAreas: {
-      areas: [{ title: '테스트 커버리지 확장', narrative: '당신의 검증 습관은 강합니다', expectedImpact: '더 많은 엣지 케이스 포착' }],
+      areas: [{ rank: 1, title: '테스트 커버리지 확장', narrative: '당신의 검증 습관은 강합니다', expectedImpact: '더 많은 엣지 케이스 포착', actions: { start: '테스트 작성', stop: '테스트 건너뛰기', continue: '검증 습관' } }],
       summary: '검증 접근 방식을 체계화하는 데 집중하세요',
     },
     translatedAgentInsights: {
-      knowledgeGap: { strengthsData: 'React hooks|좋은 이해도|useEffect 학습 완료', growthAreasData: 'TypeScript 제네릭|개선 필요|불명확한 구문|제네릭 문서 학습|가끔|보통|70' },
-      contextEfficiency: { strengthsData: '효율적인 컨텍스트 사용|좋은 컨텍스트 관리|반복이 거의 없음', growthAreasData: '' },
+      knowledgeGap: {
+        strengths: [{ title: 'React hooks', description: '좋은 이해도' }],
+        growthAreas: [{ title: 'TypeScript 제네릭', description: '개선 필요', recommendation: '제네릭 문서 학습' }],
+      },
+      contextEfficiency: {
+        strengths: [{ title: '효율적인 컨텍스트 사용', description: '좋은 컨텍스트 관리' }],
+        growthAreas: [],
+      },
     },
   };
 }
@@ -179,7 +185,7 @@ describe('TranslatorStage', () => {
       expect(result.data.personalitySummary).toBeDefined();
     });
 
-    it('should serialize InsightEvidence objects without [object Object]', async () => {
+    it('should pass structured title/description to LLM without evidence', async () => {
       setupMockResponse();
 
       const agentOutputs: AgentOutputs = {
@@ -219,12 +225,14 @@ describe('TranslatorStage', () => {
       const userPrompt: string = calledArgs.userPrompt;
 
       expect(userPrompt).not.toContain('[object Object]');
-      expect(userPrompt).toContain('Let me check the output carefully before continuing');
-      expect(userPrompt).toContain('I want to verify this matches the expected behavior');
-      expect(userPrompt).toContain('Try again with the same approach as before');
+      // New format: structured arrays with title/description only (no evidence)
+      expect(userPrompt).toContain('Systematic Verification');
+      expect(userPrompt).toContain('You consistently verify AI output');
+      expect(userPrompt).toContain('Error Loop Pattern');
+      expect(userPrompt).toContain('Pause and reconsider your strategy');
     });
 
-    it('should handle legacy string evidence correctly', async () => {
+    it('should extract structured data from contextEfficiency worker', async () => {
       setupMockResponse();
 
       const agentOutputs: AgentOutputs = {
@@ -256,11 +264,12 @@ describe('TranslatorStage', () => {
       const userPrompt: string = calledArgs.userPrompt;
 
       expect(userPrompt).not.toContain('[object Object]');
-      expect(userPrompt).toContain('good context reuse');
-      expect(userPrompt).toContain('minimal redundancy observed');
+      // Structured format passes title/description, not evidence
+      expect(userPrompt).toContain('Efficient Token Usage');
+      expect(userPrompt).toContain('You use context efficiently');
     });
 
-    it('should handle mixed string and InsightEvidence evidence types', async () => {
+    it('should extract structured data from learningBehavior worker', async () => {
       setupMockResponse();
 
       const agentOutputs: AgentOutputs = {
@@ -300,10 +309,11 @@ describe('TranslatorStage', () => {
       const userPrompt: string = calledArgs.userPrompt;
 
       expect(userPrompt).not.toContain('[object Object]');
-      expect(userPrompt).toContain('applied the pattern correctly on second attempt');
-      expect(userPrompt).toContain('Now I understand how this works, let me apply it');
-      expect(userPrompt).toContain('Just ignore the error for now and move on');
-      expect(userPrompt).toContain('skipped error handling in multiple files');
+      // Structured format: title/description/recommendation (no evidence)
+      expect(userPrompt).toContain('Quick Learner');
+      expect(userPrompt).toContain('You rapidly integrate new concepts');
+      expect(userPrompt).toContain('Incomplete Error Handling');
+      expect(userPrompt).toContain('Always consider error cases');
     });
   });
 });
