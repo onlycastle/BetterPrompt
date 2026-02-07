@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { AgentOutputs } from '../../../../src/lib/models/agent-outputs.js';
-import type { TranslatorOutput } from '../../../../src/lib/models/translator-output.js';
+import type { TranslatorOutput, TranslatorLLMOutput } from '../../../../src/lib/models/translator-output.js';
 
 vi.mock('../../../../src/lib/analyzer/clients/gemini-client.js', () => ({
   GeminiClient: vi.fn().mockImplementation(() => ({
@@ -66,23 +66,22 @@ function createMockAgentOutputs(): AgentOutputs {
   };
 }
 
-function createMockTranslatorOutput(): TranslatorOutput {
+/**
+ * Create mock translator LLM output in FLAT format (what Gemini returns).
+ * The translator stage reshapes this to nested TranslatorOutput.
+ */
+function createMockTranslatorLLMOutput(): TranslatorLLMOutput {
   return {
     personalitySummary: '당신은 AI 생성 코드에 대한 강력한 감독을 유지하는 사려 깊은 개발자입니다.',
     promptPatterns: [{ patternName: '진행 전 검증', description: '앞으로 나아가기 전에 결과를 확인하기 위해 멈춥니다', examples: [{ quote: 'Let me verify this first', analysis: '좋은 검증 습관' }], tip: '이 패턴을 계속하세요' }],
     topFocusAreas: {
-      areas: [{ rank: 1, title: '테스트 커버리지 확장', narrative: '당신의 검증 습관은 강합니다', expectedImpact: '더 많은 엣지 케이스 포착', actions: { start: '테스트 작성', stop: '테스트 건너뛰기', continue: '검증 습관' } }],
+      areas: [{ rank: 1, title: '테스트 커버리지 확장', narrative: '당신의 검증 습관은 강합니다', expectedImpact: '더 많은 엣지 케이스 포착', actionStart: '테스트 작성', actionStop: '테스트 건너뛰기', actionContinue: '검증 습관' }],
       summary: '검증 접근 방식을 체계화하는 데 집중하세요',
     },
     translatedAgentInsights: {
-      knowledgeGap: {
-        strengths: [{ title: 'React hooks', description: '좋은 이해도' }],
-        growthAreas: [{ title: 'TypeScript 제네릭', description: '개선 필요', recommendation: '제네릭 문서 학습' }],
-      },
-      contextEfficiency: {
-        strengths: [{ title: '효율적인 컨텍스트 사용', description: '좋은 컨텍스트 관리' }],
-        growthAreas: [],
-      },
+      knowledgeGapStrengths: [{ title: 'React hooks', description: '좋은 이해도' }],
+      knowledgeGapGrowthAreas: [{ title: 'TypeScript 제네릭', description: '개선 필요', recommendation: '제네릭 문서 학습' }],
+      contextEfficiencyStrengths: [{ title: '효율적인 컨텍스트 사용', description: '좋은 컨텍스트 관리' }],
     },
   };
 }
@@ -118,7 +117,7 @@ describe('TranslatorStage', () => {
   });
 
   describe('translate()', () => {
-    function setupMockResponse(output: TranslatorOutput = createMockTranslatorOutput(), usage = { promptTokens: 100, completionTokens: 50, totalTokens: 150 }) {
+    function setupMockResponse(output: TranslatorLLMOutput = createMockTranslatorLLMOutput(), usage = { promptTokens: 100, completionTokens: 50, totalTokens: 150 }) {
       mockGenerateStructured.mockResolvedValue({ data: output, usage });
     }
 
@@ -127,7 +126,7 @@ describe('TranslatorStage', () => {
     }
 
     it('should translate English response to Korean', async () => {
-      setupMockResponse(createMockTranslatorOutput(), { promptTokens: 1200, completionTokens: 600, totalTokens: 1800 });
+      setupMockResponse(createMockTranslatorLLMOutput(), { promptTokens: 1200, completionTokens: 600, totalTokens: 1800 });
 
       const result = await translateToKorean();
 
@@ -177,7 +176,7 @@ describe('TranslatorStage', () => {
     });
 
     it('should handle empty agentOutputs', async () => {
-      const emptyOutput: TranslatorOutput = { personalitySummary: '당신은 사려 깊은 개발자입니다.', promptPatterns: [], topFocusAreas: { areas: [], summary: '' } };
+      const emptyOutput: TranslatorLLMOutput = { personalitySummary: '당신은 사려 깊은 개발자입니다.', promptPatterns: [], topFocusAreas: { areas: [], summary: '' } };
       setupMockResponse(emptyOutput);
 
       const result = await stage.translate(createMockEnglishResponse(), 'ko', {});
