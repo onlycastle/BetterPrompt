@@ -97,7 +97,7 @@ export async function POST() {
     // Return RFC 8628 compliant response
     const baseUrl = process.env.NOSLOP_BASE_URL || 'https://www.nomoreaislop.app';
     const verificationUri = `${baseUrl}/auth/device`;
-    const verificationUriComplete = `${verificationUri}?code=${userCode}`;
+    const verificationUriComplete = `${verificationUri}?user_code=${userCode}`;
 
     return NextResponse.json({
       device_code: deviceCode,
