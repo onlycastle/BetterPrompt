@@ -1,11 +1,11 @@
 /**
  * Analysis Orchestrator - Main orchestrator for the analysis pipeline
  *
- * Coordinates 6 phases of analysis (10-11 LLM calls total):
+ * Coordinates 6 phases of analysis (11-12 LLM calls total):
  * - Phase 1: DataExtractor (deterministic, no LLM)
  * - Phase 1.5: SessionSummarizer (1 LLM call — 1-line summaries for analyzed sessions)
- * - Phase 2: 4 insight workers in parallel (4 LLM calls)
- *            ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency
+ * - Phase 2: 5 insight workers in parallel (5 LLM calls)
+ *            ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency, SessionOutcome
  *            Each worker outputs domain-specific strengths/growthAreas
  *            + ProjectSummarizer in parallel (1 LLM call — 2-3 line project summaries)
  *            + WeeklyInsightGenerator in parallel (1 LLM call — weekly narrative + highlights)
@@ -257,14 +257,14 @@ export class AnalysisOrchestrator {
     const stageUsages: StageTokenUsage[] = [];
     this.debugOutputs = [];
 
-    // Progress tracking: 11 LLM stages total (1 Phase1.5 + 4 Phase2 + 1 ProjectSummarizer + 1 WeeklyInsightGenerator + 1 Phase2.5 + 1 Phase2.8 + 1 Phase3 + 1 Phase4)
+    // Progress tracking: 12 LLM stages total (1 Phase1.5 + 5 Phase2 + 1 ProjectSummarizer + 1 WeeklyInsightGenerator + 1 Phase2.5 + 1 Phase2.8 + 1 Phase3 + 1 Phase4)
     // Phase 1.5: SessionSummarizer generates 1-line summaries
-    // Phase 2: ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency (4 workers)
+    // Phase 2: ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency, SessionOutcome (5 workers)
     //          + ProjectSummarizer (runs in parallel with Phase 2)
     //          + WeeklyInsightGenerator (runs in parallel with Phase 2)
     // Phase 2.8: Evidence Verifier validates evidence relevance
     // Phase 4: Translator is conditional (only for non-English users)
-    const TOTAL_LLM_STAGES = 11;
+    const TOTAL_LLM_STAGES = 12;
     const PROGRESS_START = 40;
     const PROGRESS_RANGE = 49; // 40% → 89%
     const STEP = Math.floor(PROGRESS_RANGE / TOTAL_LLM_STAGES); // 6 points per stage
@@ -607,6 +607,7 @@ export class AnalysisOrchestrator {
           weeklyInsightsText: {
             narrative: weeklyInsightResult.data.narrative,
             highlights: weeklyInsightResult.data.highlights,
+            topSessionSummaries: weeklyInsightResult.data.topProjectSessions?.map(s => s.summary),
           },
         } : {}),
       };
@@ -707,6 +708,13 @@ export class AnalysisOrchestrator {
       }
       if (translatorData.weeklyInsights.highlights?.length) {
         evaluation.weeklyInsights.highlights = translatorData.weeklyInsights.highlights;
+      }
+      if (translatorData.weeklyInsights.topSessionSummaries?.length && evaluation.weeklyInsights.topProjectSessions) {
+        translatorData.weeklyInsights.topSessionSummaries.forEach((translated, i) => {
+          if (evaluation.weeklyInsights!.topProjectSessions![i]) {
+            evaluation.weeklyInsights!.topProjectSessions![i].summary = translated;
+          }
+        });
       }
     }
 

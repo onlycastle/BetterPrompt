@@ -11,32 +11,6 @@
  */
 
 import { z } from 'zod';
-import { DimensionNameEnumSchema } from './dimension-schema';
-
-// ============================================================================
-// Translated Dimension Insight (text fields only)
-// ============================================================================
-
-/**
- * Translated dimension insight — text fields only
- *
- * Uses the same flattened pipe/semicolon format as the ContentWriter output,
- * but with translated text. ClusterIds are preserved as-is (not translated).
- *
- * Format:
- * - strengthsData: "clusterId|translatedTitle|translatedDescription;..."
- * - growthAreasData: "clusterId|translatedTitle|translatedDesc|translatedRec|frequency|severity|priorityScore;..."
- */
-const TranslatedDimensionInsightSchema = z.object({
-  dimension: DimensionNameEnumSchema,
-  dimensionDisplayName: z.string().describe('Translated human-readable dimension name'),
-  /** Translated strengths: "clusterId|title|description;..." */
-  strengthsData: z.string().optional()
-    .describe('Translated strengths as "clusterId|title|description;..." — keep clusterId in English'),
-  /** Translated growth areas: "clusterId|title|desc|rec|freq|severity|priority;..." */
-  growthAreasData: z.string().optional()
-    .describe('Translated growth areas — keep clusterId, freq, severity, priority in English'),
-});
 
 // ============================================================================
 // Translated Prompt Pattern (text fields only)
@@ -45,9 +19,11 @@ const TranslatedDimensionInsightSchema = z.object({
 const TranslatedPromptPatternSchema = z.object({
   patternName: z.string().describe('Translated pattern name'),
   description: z.string().describe('Translated pattern description'),
-  /** Translated examples: "quote|translatedAnalysis;..." — quotes stay in original language */
-  examplesData: z.string().optional()
-    .describe('Examples as "originalQuote|translatedAnalysis;..." — do NOT translate quotes'),
+  /** Translated examples — keep quotes in original language, translate only analysis */
+  examples: z.array(z.object({
+    quote: z.string().describe('Original quote — do NOT translate, keep in original language'),
+    analysis: z.string().describe('Translated analysis text'),
+  })).optional().describe('Translated examples — keep quotes in original language, translate only analysis'),
   tip: z.string().optional().describe('Translated coaching tip'),
 });
 
@@ -60,9 +36,12 @@ const TranslatedTopFocusAreaSchema = z.object({
   title: z.string().describe('Translated focus area title'),
   narrative: z.string().describe('Translated narrative'),
   expectedImpact: z.string().describe('Translated expected impact'),
-  /** Translated actions: "translatedStart|translatedStop|translatedContinue" */
-  actionsData: z.string().optional()
-    .describe('Translated actions as "start|stop|continue" format'),
+  /** Translated action steps as structured object */
+  actions: z.object({
+    start: z.string().describe('Translated START action'),
+    stop: z.string().describe('Translated STOP action'),
+    continue: z.string().describe('Translated CONTINUE action'),
+  }).optional().describe('Translated action steps'),
 });
 
 // ============================================================================
@@ -89,13 +68,36 @@ const TranslatedAnalysisSectionSchema = z.object({
 // Translated Agent Insight (for Phase 2 agent outputs)
 // ============================================================================
 
+/**
+ * Translated worker strength — structured JSON (replaces pipe-delimited string)
+ *
+ * Gemini Nesting Depth (4-level limit, arrays don't count):
+ * TranslatorOutput{L1} → translatedAgentInsights{L2} → thinkingQuality{L3} → strengths[] → {title, description}{L4}
+ */
+const TranslatedWorkerStrengthSchema = z.object({
+  title: z.string().describe('Translated strength title'),
+  description: z.string().describe('Translated strength description'),
+});
+
+/**
+ * Translated worker growth area — structured JSON (replaces pipe-delimited string)
+ */
+const TranslatedWorkerGrowthSchema = z.object({
+  title: z.string().describe('Translated growth area title'),
+  description: z.string().describe('Translated growth area description'),
+  recommendation: z.string().describe('Translated recommendation'),
+});
+
+export type TranslatedWorkerStrength = z.infer<typeof TranslatedWorkerStrengthSchema>;
+export type TranslatedWorkerGrowth = z.infer<typeof TranslatedWorkerGrowthSchema>;
+
 const TranslatedAgentInsightEntrySchema = z.object({
-  /** Strengths as "translatedTitle|translatedDescription|originalQuotes;..." */
-  strengthsData: z.string().optional()
-    .describe('Translated strengths — keep evidence quotes in original language'),
-  /** Growth areas as "translatedTitle|translatedDesc|originalEvidence|translatedRec|freq|severity|priority;..." */
-  growthAreasData: z.string().optional()
-    .describe('Translated growth areas — keep evidence in original language'),
+  /** Translated strengths — same order and count as input */
+  strengths: z.array(TranslatedWorkerStrengthSchema)
+    .describe('Translated strengths — same order as input, same count'),
+  /** Translated growth areas — same order and count as input */
+  growthAreas: z.array(TranslatedWorkerGrowthSchema)
+    .describe('Translated growth areas — same order as input, same count'),
 });
 
 // ============================================================================
@@ -112,11 +114,6 @@ export const TranslatorOutputSchema = z.object({
   /** Translated personality summary (no max - may exceed 3000 when translated) */
   personalitySummary: z.string()
     .describe('Translated personality summary — keep **bold markers** and technical terms in English'),
-
-  /** Translated dimension insights (DEPRECATED in v3 - kept for backward compatibility) */
-  dimensionInsights: z.array(TranslatedDimensionInsightSchema)
-    .optional()
-    .describe('DEPRECATED: v3 architecture uses translatedAgentInsights instead. Optional for backward compatibility.'),
 
   /** Translated prompt patterns */
   promptPatterns: z.array(TranslatedPromptPatternSchema)
@@ -168,10 +165,12 @@ export const TranslatorOutputSchema = z.object({
     summaryLines: z.array(z.string()).describe('Translated summary lines'),
   })).optional().describe('Translated project summaries — keep project names in English'),
 
-  /** Translated weekly insights text fields (narrative + highlights) */
+  /** Translated weekly insights text fields (narrative + highlights + top session summaries) */
   weeklyInsights: z.object({
     narrative: z.string().describe('Translated 2-3 sentence weekly summary'),
     highlights: z.array(z.string()).describe('Translated highlight bullet points'),
+    topSessionSummaries: z.array(z.string()).optional()
+      .describe('Translated 1-line session summaries'),
   }).optional().describe('Translated weekly insights — keep project names and technical terms in English'),
 
   /** Translated premium section text fields */

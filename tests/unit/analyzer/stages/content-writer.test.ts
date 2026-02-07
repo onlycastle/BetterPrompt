@@ -100,12 +100,12 @@ function createMockAgentOutputs(): AgentOutputs {
 function createMockNarrativeResponse() {
   return {
     promptPatterns: [
-      { patternName: 'Verification Before Progress', description: 'You pause to verify results before moving forward', frequency: 'often', examplesData: 'session-1_2|Strong verification mindset shown', effectiveness: 'very_effective', tip: 'Continue this pattern - it prevents compounding errors' },
-      { patternName: 'Clear Task Specification', description: 'You provide detailed context when requesting changes', frequency: 'sometimes', examplesData: 'session-1_0|Clear OAuth implementation request', effectiveness: 'effective', tip: 'Consider including expected behavior in requests' },
-      { patternName: 'Iterative Refinement', description: 'You refine requests based on AI output', frequency: 'often', examplesData: '', effectiveness: 'effective', tip: 'This iterative approach helps converge on quality solutions' },
+      { patternName: 'Verification Before Progress', description: 'You pause to verify results before moving forward', frequency: 'often', examples: [{ utteranceId: 'session-1_2', analysis: 'Strong verification mindset shown' }], effectiveness: 'very_effective', tip: 'Continue this pattern - it prevents compounding errors' },
+      { patternName: 'Clear Task Specification', description: 'You provide detailed context when requesting changes', frequency: 'sometimes', examples: [{ utteranceId: 'session-1_0', analysis: 'Clear OAuth implementation request' }], effectiveness: 'effective', tip: 'Consider including expected behavior in requests' },
+      { patternName: 'Iterative Refinement', description: 'You refine requests based on AI output', frequency: 'often', examples: [], effectiveness: 'effective', tip: 'This iterative approach helps converge on quality solutions' },
     ],
     topFocusAreas: {
-      areas: [{ rank: 1, dimension: 'aiCollaboration', title: 'Expand Test Coverage', narrative: 'Your verification habits are strong - extend them to automated testing', expectedImpact: 'Catch more edge cases automatically', priorityScore: 85, actionsData: 'Add unit tests for OAuth flow|Implement integration tests' }],
+      areas: [{ rank: 1, dimension: 'aiCollaboration', title: 'Expand Test Coverage', narrative: 'Your verification habits are strong - extend them to automated testing', expectedImpact: 'Catch more edge cases automatically', priorityScore: 85, actions: { start: 'Add unit tests for OAuth flow', stop: '', continue: 'Implement integration tests' } }],
       summary: 'Focus on systematizing your verification approach',
     },
   };

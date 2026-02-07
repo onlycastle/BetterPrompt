@@ -29,6 +29,15 @@ describe('VerboseLLMResponseSchema', () => {
     effectiveness: 'highly_effective' as const,
   };
 
+  /** LLM version uses utteranceId instead of quote */
+  const validLLMPromptPattern = {
+    patternName: 'Context First',
+    description: 'Provides context before making requests',
+    frequency: 'frequent' as const,
+    examples: [{ utteranceId: 'session-1_2', analysis: 'Good context' }],
+    effectiveness: 'highly_effective' as const,
+  };
+
   // Evidence is now just a string (quote), not an object
   const validEvidence = 'Let me plan this out first before we dive in';
 
@@ -73,9 +82,9 @@ describe('VerboseLLMResponseSchema', () => {
       { ...validDimensionInsight, dimension: 'skillResilience' as const, dimensionDisplayName: 'Skill Resilience' },
     ],
     promptPatterns: [
-      validPromptPattern,
-      { ...validPromptPattern, patternName: 'Iterative Refinement' },
-      { ...validPromptPattern, patternName: 'Clear Constraints' },
+      validLLMPromptPattern,
+      { ...validLLMPromptPattern, patternName: 'Iterative Refinement' },
+      { ...validLLMPromptPattern, patternName: 'Clear Constraints' },
     ],
   });
 
@@ -90,9 +99,9 @@ describe('VerboseLLMResponseSchema', () => {
     it('should accept response with 3 promptPatterns', () => {
       const response = createValidResponse();
       response.promptPatterns = [
-        validPromptPattern,
-        { ...validPromptPattern, patternName: 'Pattern 2' },
-        { ...validPromptPattern, patternName: 'Pattern 3' },
+        validLLMPromptPattern,
+        { ...validLLMPromptPattern, patternName: 'Pattern 2' },
+        { ...validLLMPromptPattern, patternName: 'Pattern 3' },
       ];
 
       const result = VerboseLLMResponseSchema.safeParse(response);
@@ -102,7 +111,7 @@ describe('VerboseLLMResponseSchema', () => {
     it('should accept response with more than 6 promptPatterns (no max constraint)', () => {
       const response = createValidResponse();
       response.promptPatterns = Array.from({ length: 10 }, (_, i) => ({
-        ...validPromptPattern,
+        ...validLLMPromptPattern,
         patternName: `Pattern ${i + 1}`,
       }));
 

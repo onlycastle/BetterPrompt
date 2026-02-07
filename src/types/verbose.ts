@@ -7,11 +7,11 @@
 
 import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixKey, MatrixDistribution } from '../lib/models/coding-style';
 import type { AggregatedWorkerInsights } from '../lib/models/worker-insights';
-import type { DimensionResourceMatch, UtteranceLookupEntry, TopFocusAreas, TopFocusArea, FocusAreaActions, ProjectSummary } from '../lib/models/verbose-evaluation';
+import type { DimensionResourceMatch, UtteranceLookupEntry, TransformationAuditEntry, TopFocusAreas, TopFocusArea, FocusAreaActions, ProjectSummary } from '../lib/models/verbose-evaluation';
 import type { WeeklyInsights } from '../lib/models/weekly-insights';
 
 // Re-export for convenience
-export type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixKey, MatrixDistribution, AggregatedWorkerInsights, DimensionResourceMatch, UtteranceLookupEntry, TopFocusAreas, TopFocusArea, FocusAreaActions, ProjectSummary, WeeklyInsights };
+export type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixKey, MatrixDistribution, AggregatedWorkerInsights, DimensionResourceMatch, UtteranceLookupEntry, TransformationAuditEntry, TopFocusAreas, TopFocusArea, FocusAreaActions, ProjectSummary, WeeklyInsights };
 
 // ============================================================================
 // Activity Session Info - Lightweight metadata for ALL recent sessions
@@ -173,6 +173,9 @@ export interface VerboseAnalysisData {
   // Utterance Lookup for evidence linking (only includes referenced utterances)
   // Enables frontend to display full original text when user expands an evidence item
   utteranceLookup?: UtteranceLookupEntry[];
+  // Transformation Audit for data integrity (only includes transformed utterances)
+  // Enables Source Context sidebar to show raw original text
+  transformationAudit?: TransformationAuditEntry[];
   // Top Focus Areas (Phase 3 Content Writer - partial free, full paid)
   topFocusAreas?: TopFocusAreas;
   // Premium fields (optional)

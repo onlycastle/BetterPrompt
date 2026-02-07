@@ -358,12 +358,12 @@ function sanitizePromptPatterns(patterns: any[], phase1Output: Phase1Output | un
   const usedUtteranceIds = new Set<string>();
 
   const result = patterns.map((pattern: any, patternIndex: number) => {
-    const parsedExamples = pattern.examplesData
-      ? parseExamplesData(pattern.examplesData)
-      : [];
+    // Support both new structured format (examples array) and legacy pipe-delimited (examplesData)
+    const parsedExamples = pattern.examples            // new format (structured array from LLM)
+      ?? (pattern.examplesData ? parseExamplesData(pattern.examplesData) : []);  // legacy fallback
 
     debugLog(`Pattern ${patternIndex + 1}: ${pattern.patternName}`);
-    debugLog(`  examplesData: ${pattern.examplesData?.slice(0, 80) || 'EMPTY'}...`);
+    debugLog(`  examples: ${parsedExamples.length} items (format: ${pattern.examples ? 'structured' : 'legacy'})`);
 
     const resolvedExamples = resolveExamples(
       parsedExamples,
@@ -400,9 +400,8 @@ function sanitizeTopFocusAreas(topFocusAreas: any): any {
       narrative: area.narrative,
       expectedImpact: area.expectedImpact,
       priorityScore: area.priorityScore,
-      actions: area.actionsData
-        ? parseActionsData(area.actionsData)
-        : area.actions,
+      actions: area.actions               // new structured format
+        ?? (area.actionsData ? parseActionsData(area.actionsData) : undefined),  // legacy fallback
     })),
     summary: topFocusAreas.summary,
   };
@@ -578,8 +577,7 @@ function assemblePlanningFromThinkingQuality(tq: ThinkingQualityOutput): any | n
  * VerboseEvaluation: significant | moderate | mild
  */
 function mapAntiPatternSeverity(severity: string | undefined): 'mild' | 'moderate' | 'significant' {
-  if (severity === 'critical') return 'significant';
-  if (severity === 'significant') return 'significant';
+  if (severity === 'critical' || severity === 'significant') return 'significant';
   if (severity === 'mild') return 'mild';
   return 'moderate';
 }
@@ -593,15 +591,6 @@ function formatDisplayName(type: string): string {
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
-}
-
-/**
- * Extract sessionId from utteranceId format: "{sessionId}_{turnIndex}"
- */
-function extractSessionId(utteranceId: string): string | undefined {
-  const lastUnderscore = utteranceId.lastIndexOf('_');
-  if (lastUnderscore <= 0) return undefined;
-  return utteranceId.slice(0, lastUnderscore);
 }
 
 /**
@@ -785,9 +774,6 @@ function buildTransformationAudit(phase1Output: Phase1Output): TransformationAud
     }
 
     const compressionRatio = displayText.length / originalText.length;
-    const isVerbatim = false; // By definition, if we're here, it's not verbatim
-
-    // Detect transformation type based on displayText content
     const transformationType = detectTransformationType(originalText, displayText);
 
     audit.push({
@@ -795,7 +781,7 @@ function buildTransformationAudit(phase1Output: Phase1Output): TransformationAud
       originalText: originalText.slice(0, 500), // Truncate for storage
       displayText: displayText.slice(0, 500),
       transformationType,
-      isVerbatim,
+      isVerbatim: false,
       compressionRatio: Math.round(compressionRatio * 100) / 100,
       transformedAt: new Date().toISOString(),
       validationPassed: compressionRatio >= getMinCompressionRatio(originalText.length),
@@ -887,9 +873,6 @@ export function mergeTranslatedFields(
   // Weekly insights
   mergeWeeklyInsights(englishResponse, translated);
 
-  // Dimension insights
-  mergeDimensionInsights(englishResponse, translated);
-
   // Prompt patterns
   mergePromptPatterns(englishResponse, translated);
 
@@ -910,61 +893,6 @@ export function mergeTranslatedFields(
 // ============================================================================
 // Translation Merge Helpers
 // ============================================================================
-
-function mergeDimensionInsights(
-  englishResponse: Record<string, unknown>,
-  translated: TranslatorOutput
-): void {
-  if (
-    !Array.isArray(translated.dimensionInsights) ||
-    !Array.isArray(englishResponse.dimensionInsights)
-  )
-    return;
-
-  for (const translatedDim of translated.dimensionInsights) {
-    const englishDim = (englishResponse.dimensionInsights as any[]).find(
-      (d: any) => d.dimension === translatedDim.dimension
-    );
-    if (!englishDim) continue;
-
-    englishDim.dimensionDisplayName = translatedDim.dimensionDisplayName;
-    parseFlattenedStrengths(translatedDim.strengthsData, englishDim.strengths);
-    parseFlattenedGrowthAreas(translatedDim.growthAreasData, englishDim.growthAreas);
-  }
-}
-
-function parseFlattenedStrengths(
-  flattenedData: string | undefined,
-  targetArray: any[] | undefined
-): void {
-  if (!flattenedData || !Array.isArray(targetArray)) return;
-
-  const items = flattenedData.split(';').filter(Boolean);
-  for (let i = 0; i < Math.min(items.length, targetArray.length); i++) {
-    const parts = items[i].split('|');
-    if (parts.length >= 3) {
-      targetArray[i].title = parts[1];
-      targetArray[i].description = parts.slice(2).join('|');
-    }
-  }
-}
-
-function parseFlattenedGrowthAreas(
-  flattenedData: string | undefined,
-  targetArray: any[] | undefined
-): void {
-  if (!flattenedData || !Array.isArray(targetArray)) return;
-
-  const items = flattenedData.split(';').filter(Boolean);
-  for (let i = 0; i < Math.min(items.length, targetArray.length); i++) {
-    const parts = items[i].split('|');
-    if (parts.length >= 4) {
-      targetArray[i].title = parts[1];
-      targetArray[i].description = parts[2];
-      targetArray[i].recommendation = parts[3];
-    }
-  }
-}
 
 function mergePromptPatterns(
   englishResponse: Record<string, unknown>,
@@ -988,8 +916,16 @@ function mergePromptPatterns(
     if (tp.description) ep.description = tp.description;
     if (tp.tip) ep.tip = tp.tip;
 
-    if (tp.examplesData && Array.isArray(ep.examples)) {
-      const translatedExamples = tp.examplesData.split(';').filter(Boolean);
+    if (tp.examples && Array.isArray(ep.examples)) {
+      // New structured format
+      for (let j = 0; j < Math.min(tp.examples.length, ep.examples.length); j++) {
+        if (tp.examples[j]?.analysis) {
+          ep.examples[j].analysis = tp.examples[j].analysis;
+        }
+      }
+    } else if ((tp as any).examplesData && Array.isArray(ep.examples)) {
+      // Legacy pipe-delimited fallback
+      const translatedExamples = (tp as any).examplesData.split(';').filter(Boolean);
       for (let j = 0; j < Math.min(translatedExamples.length, ep.examples.length); j++) {
         const parts = translatedExamples[j].split('|');
         if (parts.length >= 2) {
@@ -1025,8 +961,12 @@ function mergeTopFocusAreas(
     if (ta.title) ea.title = ta.title;
     if (ta.narrative) ea.narrative = ta.narrative;
     if (ta.expectedImpact) ea.expectedImpact = ta.expectedImpact;
-    if (ta.actionsData && ea.actions) {
-      const [start, stop, cont] = ta.actionsData.split('|');
+    if (ta.actions && ea.actions) {
+      // New structured format
+      ea.actions = { start: ta.actions.start || '', stop: ta.actions.stop || '', continue: ta.actions.continue || '' };
+    } else if ((ta as any).actionsData && ea.actions) {
+      // Legacy pipe-delimited fallback
+      const [start, stop, cont] = (ta as any).actionsData.split('|');
       ea.actions = { start: start || '', stop: stop || '', continue: cont || '' };
     }
   }

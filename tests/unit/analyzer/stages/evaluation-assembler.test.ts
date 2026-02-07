@@ -87,12 +87,12 @@ function createMockAgentOutputs(): AgentOutputs {
 function createMockNarrativeResponse(): NarrativeLLMResponse {
   return {
     promptPatterns: [
-      { patternName: 'Verification First', description: 'You verify before proceeding', frequency: 'often', examplesData: 'session-1_2|Good verification habit', examples: [], effectiveness: 'very_effective', tip: 'Continue this pattern' },
-      { patternName: 'Clear Requests', description: 'You provide detailed context', frequency: 'sometimes', examplesData: 'session-1_0|Clear feature request', examples: [], effectiveness: 'effective', tip: 'Add expected behavior' },
-      { patternName: 'Iterative Refinement', description: 'You refine based on output', frequency: 'often', examplesData: '', examples: [], effectiveness: 'effective', tip: 'Good approach' },
+      { patternName: 'Verification First', description: 'You verify before proceeding', frequency: 'often', examples: [{ utteranceId: 'session-1_2', analysis: 'Good verification habit' }], effectiveness: 'very_effective', tip: 'Continue this pattern' },
+      { patternName: 'Clear Requests', description: 'You provide detailed context', frequency: 'sometimes', examples: [{ utteranceId: 'session-1_0', analysis: 'Clear feature request' }], effectiveness: 'effective', tip: 'Add expected behavior' },
+      { patternName: 'Iterative Refinement', description: 'You refine based on output', frequency: 'often', examples: [], effectiveness: 'effective', tip: 'Good approach' },
     ],
     topFocusAreas: {
-      areas: [{ rank: 1, dimension: 'aiCollaboration', title: 'Expand Testing', narrative: 'Build on verification habits', expectedImpact: 'Catch more issues', priorityScore: 85, actionsData: 'Add unit tests|Write integration tests' }],
+      areas: [{ rank: 1, dimension: 'aiCollaboration', title: 'Expand Testing', narrative: 'Build on verification habits', expectedImpact: 'Catch more issues', priorityScore: 85, actions: { start: 'Add unit tests', stop: '', continue: 'Write integration tests' } }],
       summary: 'Focus on systematizing verification',
     },
   };

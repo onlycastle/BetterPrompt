@@ -150,13 +150,15 @@ Guidelines:
 - Generate 3-5 highlights as concise bullet points
 - Mention specific projects and key accomplishments
 - Identify notable patterns (focus shifts, productivity spikes, new projects)
+- For each flagged top session, write a concise 1-line summary of what was accomplished. Ignore system tags, caveats, or noise in the raw text.
 - Write in English
 - Be specific and data-driven, not generic`;
 
 function buildUserPrompt(
   sessions: ActivitySessionInput[],
   weekRangeLabel: string,
-  stats: WeekStats
+  stats: WeekStats,
+  topSessions?: { summary: string; durationMinutes: number; date: string }[]
 ): string {
   const sessionList = sessions
     .map((s, i) => {
@@ -165,13 +167,22 @@ function buildUserPrompt(
     })
     .join('\n');
 
+  let topSessionsSection = '';
+  if (topSessions && topSessions.length > 0) {
+    const topList = topSessions
+      .map((s, i) => `${i + 1}. [${s.date}] ${s.durationMinutes} min: ${s.summary}`)
+      .join('\n');
+    topSessionsSection = `\n\nTop sessions to summarize (write a concise 1-line summary for each, describing what was accomplished):
+${topList}`;
+  }
+
   return `Week: ${weekRangeLabel}
 Total sessions: ${stats.totalSessions} | Total time: ${stats.totalMinutes} min | Active days: ${stats.activeDays}/7 | Avg session: ${stats.avgSessionMinutes} min
 
 Sessions this week:
 ${sessionList}
 
-Provide a narrative summary and key highlights for this week's AI collaboration activity.`;
+Provide a narrative summary and key highlights for this week's AI collaboration activity.${topSessionsSection}`;
 }
 
 // ============================================================================
@@ -300,7 +311,7 @@ export class WeeklyInsightGeneratorStage {
     // LLM call for narrative + highlights
     this.log(`Generating narrative for ${thisWeekSessions.length} sessions via LLM`);
 
-    const userPrompt = buildUserPrompt(thisWeekSessions, weekRangeLabel, thisWeekStats);
+    const userPrompt = buildUserPrompt(thisWeekSessions, weekRangeLabel, thisWeekStats, topProjectSessions);
 
     const result = await this.client.generateStructured({
       systemPrompt: SYSTEM_PROMPT,
@@ -310,6 +321,15 @@ export class WeeklyInsightGeneratorStage {
     });
 
     this.log(`LLM generated narrative (${result.data.narrative.length} chars) and ${result.data.highlights.length} highlights`);
+
+    // Replace CLI summaries with LLM-generated clean summaries
+    if (topProjectSessions && result.data.topSessionSummaries) {
+      for (let i = 0; i < topProjectSessions.length; i++) {
+        if (result.data.topSessionSummaries[i]) {
+          topProjectSessions[i].summary = result.data.topSessionSummaries[i];
+        }
+      }
+    }
 
     return {
       data: {

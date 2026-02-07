@@ -9,7 +9,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { VerboseLLMResponseSchema } from '../../../src/lib/models/verbose-evaluation';
+import { VerboseLLMResponseSchema, NarrativeLLMResponseSchema } from '../../../src/lib/models/verbose-evaluation';
+import { TranslatorOutputSchema } from '../../../src/lib/models/translator-output';
 
 /**
  * Maximum allowed nesting depth for Gemini API schemas
@@ -24,9 +25,14 @@ const GEMINI_MAX_NESTING_DEPTH = 4;
 /**
  * Recursively calculate the maximum nesting depth of a JSON Schema
  *
+ * Per Gemini API rules, only `object` types count toward nesting depth.
+ * `array` types do NOT count — they are transparent wrappers.
+ *
+ * See CLAUDE.md: "Only `object` (`{}`) counts toward nesting depth. `array` (`[]`) does NOT count."
+ *
  * Counts depth through:
- * - object properties
- * - array items
+ * - object properties (increments depth)
+ * - array items (does NOT increment depth — array is transparent)
  * - allOf/anyOf/oneOf combinations
  * - $ref (though we don't use recursive refs)
  */
@@ -38,7 +44,7 @@ function calculateMaxNestingDepth(schema: unknown, currentDepth = 0): number {
   const obj = schema as Record<string, unknown>;
   let maxDepth = currentDepth;
 
-  // Handle object type with properties
+  // Handle object type with properties — COUNTS toward depth
   if (obj.type === 'object' && obj.properties) {
     const props = obj.properties as Record<string, unknown>;
     for (const propSchema of Object.values(props)) {
@@ -47,9 +53,9 @@ function calculateMaxNestingDepth(schema: unknown, currentDepth = 0): number {
     }
   }
 
-  // Handle array type with items
+  // Handle array type with items — does NOT count toward depth (Gemini rule)
   if (obj.type === 'array' && obj.items) {
-    const itemsDepth = calculateMaxNestingDepth(obj.items, currentDepth + 1);
+    const itemsDepth = calculateMaxNestingDepth(obj.items, currentDepth);
     maxDepth = Math.max(maxDepth, itemsDepth);
   }
 
@@ -94,9 +100,9 @@ function findDeepestPath(schema: unknown, currentPath = 'root', currentDepth = 0
     }
   }
 
-  // Handle array type with items
+  // Handle array type with items — does NOT count toward depth (Gemini rule)
   if (obj.type === 'array' && obj.items) {
-    const result = findDeepestPath(obj.items, `${currentPath}[]`, currentDepth + 1);
+    const result = findDeepestPath(obj.items, `${currentPath}[]`, currentDepth);
     if (result.depth > deepest.depth) {
       deepest = result;
     }
@@ -122,6 +128,32 @@ describe('Gemini Schema Nesting Depth', () => {
   describe('VerboseLLMResponseSchema (Stage 2)', () => {
     it(`should not exceed ${GEMINI_MAX_NESTING_DEPTH} levels of nesting`, () => {
       const jsonSchema = zodToJsonSchema(VerboseLLMResponseSchema);
+      const maxDepth = calculateMaxNestingDepth(jsonSchema);
+      const deepestPath = findDeepestPath(jsonSchema);
+
+      expect(
+        maxDepth,
+        `Schema exceeds Gemini's max nesting depth.\nDeepest path: ${deepestPath.path}\nDepth: ${deepestPath.depth}\nMax allowed: ${GEMINI_MAX_NESTING_DEPTH}`
+      ).toBeLessThanOrEqual(GEMINI_MAX_NESTING_DEPTH);
+    });
+  });
+
+  describe('NarrativeLLMResponseSchema (Phase 3)', () => {
+    it(`should not exceed ${GEMINI_MAX_NESTING_DEPTH} levels of nesting`, () => {
+      const jsonSchema = zodToJsonSchema(NarrativeLLMResponseSchema);
+      const maxDepth = calculateMaxNestingDepth(jsonSchema);
+      const deepestPath = findDeepestPath(jsonSchema);
+
+      expect(
+        maxDepth,
+        `Schema exceeds Gemini's max nesting depth.\nDeepest path: ${deepestPath.path}\nDepth: ${deepestPath.depth}\nMax allowed: ${GEMINI_MAX_NESTING_DEPTH}`
+      ).toBeLessThanOrEqual(GEMINI_MAX_NESTING_DEPTH);
+    });
+  });
+
+  describe('TranslatorOutputSchema (Phase 4)', () => {
+    it(`should not exceed ${GEMINI_MAX_NESTING_DEPTH} levels of nesting`, () => {
+      const jsonSchema = zodToJsonSchema(TranslatorOutputSchema);
       const maxDepth = calculateMaxNestingDepth(jsonSchema);
       const deepestPath = findDeepestPath(jsonSchema);
 
@@ -164,7 +196,7 @@ describe('Gemini Schema Nesting Depth', () => {
       expect(calculateMaxNestingDepth(nestedSchema)).toBe(3);
     });
 
-    it('should correctly calculate depth for array of objects', () => {
+    it('should correctly calculate depth for array of objects (arrays dont count)', () => {
       const arraySchema = {
         type: 'object',
         properties: {
@@ -179,7 +211,8 @@ describe('Gemini Schema Nesting Depth', () => {
           },
         },
       };
-      expect(calculateMaxNestingDepth(arraySchema)).toBe(3);
+      // root{L1} → users[] (no count) → user{L2} → name = 2 levels
+      expect(calculateMaxNestingDepth(arraySchema)).toBe(2);
     });
 
     it('should correctly calculate depth for deeply nested array of objects', () => {
@@ -211,8 +244,8 @@ describe('Gemini Schema Nesting Depth', () => {
           },
         },
       };
-      // root -> level1 -> item -> level2 -> item -> level3 -> value = 6 levels
-      expect(calculateMaxNestingDepth(deepSchema)).toBe(6);
+      // root{L1} → level1[] (no count) → item{L2} → level2[] (no count) → item{L3} → level3{L4} = 4 levels
+      expect(calculateMaxNestingDepth(deepSchema)).toBe(4);
     });
   });
 });

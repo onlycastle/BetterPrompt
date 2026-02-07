@@ -14,7 +14,7 @@ NoMoreAISlop analyzes developer-AI collaboration sessions (JSONL/SQLite) through
 | `src/lib/application/` | Application services and ports | Application |
 | `src/lib/analyzer/` | LLM analysis pipeline | Application |
 | `src/lib/analyzer/orchestrator/` | 4-phase orchestration | Application |
-| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (4) + Phase 2.5 TypeClassifier | Application |
+| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (5) + Phase 2.5 TypeClassifier | Application |
 | `src/lib/analyzer/stages/` | Phase 1.5 SessionSummarizer + Phase 2 ProjectSummarizer + Phase 2 WeeklyInsightGenerator + Phase 2.8 EvidenceVerifier + Phase 3 ContentWriter + Phase 4 Translator | Application |
 | `src/lib/analyzer/calculators/` | Deterministic calculators (temporal, phrase patterns) | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
@@ -33,7 +33,7 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 | 0 | Multi-Source Scanner | 0 | JSONL/SQLite files | `SourcedParsedSession[]` | `packages/cli/src/lib/scanner/index.ts` |
 | 1 | DataExtractor | 0 | Sessions + Metrics | `Phase1Output` | `src/lib/analyzer/workers/data-extractor-worker.ts` |
 | 1.5 | SessionSummarizer | 1 | Phase1Output sessions | `SessionSummaryBatchLLM` | `src/lib/analyzer/stages/session-summarizer.ts` |
-| 2 | 4 Insight Workers (parallel) | 4 | Phase1Output | `AgentOutputs` | `src/lib/analyzer/workers/` |
+| 2 | 5 Insight Workers (parallel) | 5 | Phase1Output | `AgentOutputs` | `src/lib/analyzer/workers/` |
 | 2 | ProjectSummarizer (parallel) | 1 | activitySessions | `ProjectSummary[]` | `src/lib/analyzer/stages/project-summarizer.ts` |
 | 2 | WeeklyInsightGenerator (parallel) | 1 | activitySessions | `WeeklyInsights` | `src/lib/analyzer/stages/weekly-insight-generator.ts` |
 | 2.5 | TypeClassifier | 1 | Phase1Output + AgentOutputs | `TypeClassifierOutput` | `src/lib/analyzer/workers/type-classifier-worker.ts` |
@@ -43,7 +43,7 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 | 4 | Translator (conditional) | 0-1 | NarrativeLLMResponse + AgentOutputs | `TranslatorOutput` | `src/lib/analyzer/stages/translator.ts` |
 | Assembly | EvaluationAssembler | 0 | AgentOutputs + NarrativeLLMResponse + TranslatorData | `VerboseEvaluation` | `src/lib/analyzer/stages/evaluation-assembler.ts` |
 
-**Total**: 10 LLM calls (English), 11 LLM calls (non-English). Model: `gemini-3-flash-preview`, Temperature: 1.0, Max tokens: 65536.
+**Total**: 11 LLM calls (English), 12 LLM calls (non-English). Model: `gemini-3-flash-preview`, Temperature: 1.0, Max tokens: 65536.
 
 ## Phase Details
 
@@ -65,7 +65,7 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 - Summaries flow to ContentWriter (Phase 3) and Translator (Phase 4)
 - Separate from CLI Activity Scanner (deterministic summaries for ALL sessions)
 
-### Phase 2: Insight Generation (4 parallel workers + ProjectSummarizer + WeeklyInsightGenerator)
+### Phase 2: Insight Generation (5 parallel workers + ProjectSummarizer + WeeklyInsightGenerator)
 
 | Worker | Analysis Focus | Output Schema | Prompt File |
 |--------|---------------|---------------|-------------|
@@ -73,6 +73,7 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 | CommunicationPatterns | Communication patterns, signature quotes | `CommunicationPatternsOutput` | `workers/prompts/communication-patterns-prompts.ts` |
 | LearningBehavior | Knowledge gaps, repeated mistakes | `LearningBehaviorOutput` | `workers/prompts/learning-behavior-prompts.ts` |
 | ContextEfficiency | Token inefficiency patterns | `ContextEfficiencyOutput` | `workers/prompts/context-efficiency-prompts.ts` |
+| SessionOutcome | Goals, friction, success rates | `SessionOutcomeOutput` | `workers/prompts/session-outcome-prompts.ts` |
 
 - All workers filter utterances: `isNoteworthy !== false && wordCount >= 8`
 - Workers receive ONLY Phase1Output (context isolation from raw sessions)
@@ -113,6 +114,7 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 - Runs only when non-English detected (5% non-ASCII character threshold)
 - Supported languages: Korean (ko), Japanese (ja), Chinese (zh)
 - Translates text fields while preserving structure, IDs, technical terms
+- All translated fields use structured JSON (e.g., `examples: [{quote, analysis}]`, `actions: {start, stop, continue}`)
 
 > WARNING: Translation merge timing is critical. `translatorData` is stored (hoisted), NOT merged immediately. Merge happens AFTER `assembleEvaluation()` via `mergeTranslatedFields()` to prevent English defaults from overwriting translations. See `analysis-orchestrator.ts`.
 
@@ -121,6 +123,7 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 Two paths merge into `VerboseEvaluation`:
 - PATH 1: Phase 2 AgentOutputs → structural fields (deterministic, no LLM)
 - PATH 2: Phase 3 NarrativeLLMResponse → narrative fields (direct copy)
+- Both paths use structured JSON schemas; legacy pipe-delimited fallbacks in `evaluation-assembler.ts`
 
 Assembly in `assembleEvaluation()` in `src/lib/analyzer/stages/evaluation-assembler.ts`.
 
@@ -135,7 +138,7 @@ Assembly in `assembleEvaluation()` in `src/lib/analyzer/stages/evaluation-assemb
 | `learningBehavior.knowledgeGaps[]` | `dimensionInsights[]` | Group by topic, map to dimension buckets |
 | `typeClassifier` | `primaryType`, `controlLevel`, `distribution` | Direct field copy |
 | `personalitySummary` (Phase 3) | `personalitySummary` | Truncate to <=3000 chars |
-| `topFocusAreas` (Phase 3) | `topFocusAreas` | Parse actionsData |
+| `topFocusAreas` (Phase 3) | `topFocusAreas` | Structured `actions` object (legacy `actionsData` fallback) |
 
 ## UI Tab → Worker → Access Mapping
 
@@ -148,6 +151,7 @@ Assembly in `assembleEvaluation()` in `src/lib/analyzer/stages/evaluation-assemb
 | Communication | Phase 2 | CommunicationPatternsWorker | FREE (recommendation: PAID) |
 | Learning Behavior | Phase 2 | LearningBehaviorWorker | FREE (recommendation: PAID) |
 | Context Efficiency | Phase 2 | ContextEfficiencyWorker | FREE (recommendation: PAID) |
+| Session Success | Phase 2 | SessionOutcomeWorker | FREE (recommendation: PAID) |
 | Sidebar: Resources | Phase 2.75 KnowledgeResourceMatcher | N/A | 1/dim FREE, all PAID |
 
 Key UI files: `TabbedReportContainer.tsx`, `WorkerInsightsSection.tsx`, `content-gateway.ts` (TIER_POLICY).
@@ -262,7 +266,7 @@ Type: `SessionSourceType = 'claude-code' | 'cursor' | 'cursor-composer'`
 
 ## Cost
 
-- 9-10 LLM calls per analysis using Gemini 3 Flash
+- 11-12 LLM calls per analysis using Gemini 3 Flash
 - ~$0.04-0.05 per analysis
-- Phase 2 runs 4 workers + ProjectSummarizer in parallel for speed
+- Phase 2 runs 5 workers + ProjectSummarizer + WeeklyInsightGenerator in parallel for speed
 - No Fallback Policy: worker failures propagate as errors (Promise.all)

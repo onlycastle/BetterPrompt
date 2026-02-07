@@ -14,9 +14,11 @@ Local test scripts for the 4-Phase Orchestrator Pipeline. All scripts are in `sc
 | `scripts/test-cursor-composer.ts` | Cursor Composer Source (state.vscdb) testing |
 | `scripts/generate-phase1-cache.ts` | Phase 1 cache generator |
 | `scripts/generate-phase2-cache.ts` | Phase 2 cache generator |
+| `scripts/generate-phase3-cache.ts` | Phase 3 cache generator |
 | `scripts/utils/test-utils.ts` | Shared utilities |
 | `scripts/fixtures/phase1-cache/phase1-cache.json` | Cached Phase 1 output (gitignored) |
 | `scripts/fixtures/phase2-cache/phase2-cache.json` | Cached Phase 2 output (gitignored) |
+| `scripts/fixtures/phase3-cache/phase3-cache.json` | Cached Phase 3 output (gitignored) |
 
 ## Prerequisites
 
@@ -54,6 +56,7 @@ npx tsx scripts/test-phase2.ts --worker=TypeClassifier
 | `CommunicationPatterns` | 2 | Communication patterns, signature quotes |
 | `LearningBehavior` | 2 | Learning progress, knowledge gaps |
 | `ContextEfficiency` | 2 | Context usage, inefficiency patterns |
+| `SessionOutcome` | 2 | Goals, friction, success rates |
 | `TypeClassifier` | 2.5 | Developer type classification (5x3) |
 
 ### test-phase3.ts (ContentWriter)
@@ -90,6 +93,8 @@ npx tsx scripts/generate-phase1-cache.ts --max-sessions=20   # Custom session co
 npx tsx scripts/generate-phase1-cache.ts --force             # Overwrite existing
 npx tsx scripts/generate-phase2-cache.ts                     # Generate Phase 2 cache (requires Phase 1)
 npx tsx scripts/generate-phase2-cache.ts --force             # Overwrite existing
+npx tsx scripts/generate-phase3-cache.ts                     # Generate Phase 3 cache (requires Phase 2)
+npx tsx scripts/generate-phase3-cache.ts --force             # Overwrite existing
 ```
 
 ### Scanner Test Scripts

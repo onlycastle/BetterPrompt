@@ -192,7 +192,7 @@ export function isPhase2V2Context(context: unknown): context is Phase2V2WorkerCo
  * Analysis pipeline phases
  *
  * - Phase 1: DataExtractor (deterministic)
- * - Phase 2: 4 Insight workers (parallel)
+ * - Phase 2: 5 Insight workers (parallel)
  * - Phase 2.5: StrengthGrowthSynthesizer → TypeClassifier (sequential)
  * - Phase 3: ContentWriter
  */

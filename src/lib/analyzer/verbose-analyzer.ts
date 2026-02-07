@@ -3,11 +3,12 @@
  *
  * Multi-phase pipeline using Gemini 3 Flash (requires GOOGLE_GEMINI_API_KEY):
  * - Phase 1: DataExtractor (deterministic, no LLM)
- * - Phase 2: Unified Workers (4 workers, ~90K tokens)
+ * - Phase 2: Unified Workers (5 workers, ~110K tokens)
  *   - ThinkingQuality: Planning + Critical Thinking
  *   - CommunicationPatterns: Communication patterns + Signature quotes
  *   - LearningBehavior: Knowledge Gaps + Repeated Mistakes
  *   - ContextEfficiency: Token usage and context management
+ *   - SessionOutcome: Goals, friction, success rates
  * - Phase 2.5: TypeClassifier only (1 LLM call)
  * - Phase 3: ContentWriter (1 LLM call)
  */
@@ -180,7 +181,7 @@ export class VerboseAnalyzer {
    *
    * Multi-phase pipeline:
    * - Phase 1: DataExtractor (deterministic)
-   * - Phase 2: 4 workers in parallel (each outputs strengths/growthAreas)
+   * - Phase 2: 5 workers in parallel (each outputs strengths/growthAreas)
    * - Phase 2.5: TypeClassifier only
    * - Phase 3: ContentWriter
    *

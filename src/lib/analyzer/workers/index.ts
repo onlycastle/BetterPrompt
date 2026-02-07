@@ -20,7 +20,7 @@ export * from './base-worker';
 export { DataExtractorWorker, createDataExtractorWorker } from './data-extractor-worker';
 
 // ============================================================================
-// Phase 2: Unified Workers (Capability-based, 4 workers)
+// Phase 2: Unified Workers (Capability-based, 5 workers)
 // ============================================================================
 
 /** ThinkingQuality: Planning + Critical Thinking */

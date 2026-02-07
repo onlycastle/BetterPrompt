@@ -163,19 +163,20 @@ export const PromptPatternSchema = z.object({
 export type PromptPattern = z.infer<typeof PromptPatternSchema>;
 
 /**
- * LLM Prompt pattern - FLATTENED for Gemini API compatibility
- * Uses semicolon-separated string for examples instead of nested array
+ * LLM Prompt pattern — structured examples for Gemini API
  *
- * v3 format: examplesData contains utteranceIds, not quotes.
+ * v3 format: examples contain utteranceIds, not quotes.
  * The actual quote text is looked up from Phase1Output in evaluation-assembler.
  */
 export const LLMPromptPatternSchema = z.object({
   patternName: z.string().describe('Distinctive name for this pattern'),
   description: z.string().describe('Detailed description of what this pattern is and why it matters'),
   frequency: z.enum(['frequent', 'occasional', 'rare']),
-  /** Examples as "utteranceId|analysis;utteranceId|analysis;..." format */
-  examplesData: z.string().optional()
-    .describe('Examples as "utteranceId|analysis;..." format - utteranceId references Developer Utterances'),
+  /** Examples referencing developer utterances by ID with analysis */
+  examples: z.array(z.object({
+    utteranceId: z.string().describe('Utterance ID from Developer Utterances (format: sessionId_turnIndex)'),
+    analysis: z.string().describe('Analysis of what this utterance demonstrates'),
+  })).optional().describe('Examples referencing actual utterances by ID with analysis'),
   effectiveness: z.enum(['highly_effective', 'effective', 'could_improve']),
   tip: z.string().optional().describe('Educational tip with expert insights (600-1000 chars) from knowledge base'),
 });
@@ -790,9 +791,25 @@ export const LLMPlanningAnalysisSchema = z.object({
   slashPlanStats: SlashPlanStatsSchema.optional(),
 });
 
+// ============================================================================
+// TOP FOCUS AREAS SCHEMA (Personalized Priorities from Stage 1)
+// ============================================================================
+
 /**
- * LLM Top Focus Area - NO nested actions object for flatter structure
- * Actions are added in post-processing
+ * Action steps for a focus area (START/STOP/CONTINUE framework)
+ */
+export const FocusAreaActionsSchema = z.object({
+  /** What to START doing */
+  start: z.string(),
+  /** What to STOP doing */
+  stop: z.string(),
+  /** What to CONTINUE doing */
+  continue: z.string(),
+});
+export type FocusAreaActions = z.infer<typeof FocusAreaActionsSchema>;
+
+/**
+ * LLM Top Focus Area — uses structured actions object
  */
 export const LLMTopFocusAreaSchema = z.object({
   rank: z.number().min(1).max(3),
@@ -801,13 +818,13 @@ export const LLMTopFocusAreaSchema = z.object({
   narrative: z.string(),
   expectedImpact: z.string(),
   priorityScore: z.number().min(0).max(100),
-  /** Flattened actions: "start|stop|continue" format */
-  actionsData: z.string().optional()
-    .describe('Actions as "start|stop|continue" format'),
+  /** Structured action steps (START/STOP/CONTINUE) */
+  actions: FocusAreaActionsSchema.optional()
+    .describe('Specific action steps: { start, stop, continue }'),
 });
 
 /**
- * LLM Top Focus Areas - Uses flattened schema
+ * LLM Top Focus Areas
  */
 export const LLMTopFocusAreasSchema = z.object({
   areas: z.array(LLMTopFocusAreaSchema).max(3),
@@ -826,23 +843,6 @@ export function parseActionsData(data: string | undefined): { start: string; sto
     continue: cont || '',
   };
 }
-
-// ============================================================================
-// TOP FOCUS AREAS SCHEMA (Personalized Priorities from Stage 1)
-// ============================================================================
-
-/**
- * Action steps for a focus area (START/STOP/CONTINUE framework)
- */
-export const FocusAreaActionsSchema = z.object({
-  /** What to START doing */
-  start: z.string(),
-  /** What to STOP doing */
-  stop: z.string(),
-  /** What to CONTINUE doing */
-  continue: z.string(),
-});
-export type FocusAreaActions = z.infer<typeof FocusAreaActionsSchema>;
 
 /**
  * Single top focus area with personalized narrative
@@ -979,19 +979,24 @@ export type SessionTrend = z.infer<typeof SessionTrendSchema>;
  * Translated Agent Insight Schema
  *
  * Contains translated strengths and growth areas for a single agent.
- * Uses flattened semicolon-separated strings to comply with Gemini's nesting limit.
- *
- * Format:
- * - strengthsData: "title|description|quote1,quote2;title2|description2|quotes;..."
- * - growthAreasData: "title|description|evidence|recommendation|frequency|severity|priorityScore;..."
+ * Supports two formats:
+ * - New: Structured JSON arrays (strengths[], growthAreas[])
+ * - Legacy: Pipe-delimited strings (strengthsData, growthAreasData) for backward compat
  */
 export const TranslatedAgentInsightSchema = z.object({
-  /** Strengths as "title|description|quote1,quote2;..." format */
-  strengthsData: z.string().optional()
-    .describe('Translated strengths as "title|description|quote1,quote2;..." format'),
-  /** Growth areas as "title|desc|evidence|rec|freq|severity|priority;..." format */
-  growthAreasData: z.string().optional()
-    .describe('Translated growth areas as "title|desc|evidence|rec|freq|severity|priority;..." format'),
+  // New structured format (preferred)
+  strengths: z.array(z.object({
+    title: z.string(),
+    description: z.string(),
+  })).optional(),
+  growthAreas: z.array(z.object({
+    title: z.string(),
+    description: z.string(),
+    recommendation: z.string(),
+  })).optional(),
+  // Legacy pipe-delimited format (backward compat for cached data)
+  strengthsData: z.string().optional(),
+  growthAreasData: z.string().optional(),
 });
 export type TranslatedAgentInsight = z.infer<typeof TranslatedAgentInsightSchema>;
 
