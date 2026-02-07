@@ -362,7 +362,7 @@ export class TranslatorStage {
   private prepareAgentOutputsForTranslator(agentOutputs: AgentOutputs): Record<string, unknown> {
     const prepared: Record<string, unknown> = {};
 
-    const v3WorkerKeys = ['thinkingQuality', 'communicationPatterns', 'learningBehavior'] as const;
+    const v3WorkerKeys = ['thinkingQuality', 'communicationPatterns', 'learningBehavior', 'sessionOutcome'] as const;
     for (const key of v3WorkerKeys) {
       const worker = agentOutputs[key];
       if (worker) {
