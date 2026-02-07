@@ -6,6 +6,7 @@
  * - CommunicationPatterns: Communication patterns + Signature quotes
  * - LearningBehavior: Knowledge Gaps + Repeated Mistakes (redesigned)
  * - ContextEfficiency: Token efficiency patterns (retained)
+ * - SessionOutcome: Goals, friction, success rates
  *
  * Each worker outputs domain-specific strengths and growth areas using shared types.
  * This decentralized approach allows workers to directly identify positive/negative
@@ -676,90 +677,126 @@ export function matchedInsightToReferenced(matched: {
 // ============================================================================
 
 /**
- * Parse translated strengths data and apply to WorkerStrength array.
+ * Apply translated strengths data to WorkerStrength array.
  *
- * The translatedData format mirrors the strengthsData format from LLM output:
- * "translatedTitle|translatedDescription|originalQuotes|frequency;..."
+ * Supports two input formats:
+ * - New: Array of {title, description} objects (from structured JSON translation)
+ * - Legacy: Pipe-delimited string "title|description|quotes;..." (from cached data)
  *
- * This function overlays translated title/description while preserving
- * original evidence quotes (which should remain in the source language).
+ * Overlays translated title/description while preserving original evidence quotes.
  *
  * @param strengths - Original WorkerStrength array (English)
- * @param translatedData - Translated data string from TranslatedAgentInsights
+ * @param translatedData - Translated data (array or legacy string) from TranslatedAgentInsights
  * @returns WorkerStrength array with translated title/description
  */
 export function applyTranslatedStrengths(
   strengths: WorkerStrength[],
-  translatedData: string | undefined
+  translatedData: Array<{ title: string; description: string }> | string | undefined
 ): WorkerStrength[] {
-  if (!translatedData || translatedData.trim() === '') return strengths;
+  if (!translatedData) return strengths;
 
-  const translations = translatedData.split(';').filter(Boolean);
+  // New format: structured array
+  if (Array.isArray(translatedData)) {
+    return strengths.map((strength, i) => {
+      const t = translatedData[i];
+      if (!t) return strength;
+      return {
+        ...strength,
+        title: t.title || strength.title,
+        description: t.description || strength.description,
+      };
+    });
+  }
 
-  return strengths.map((strength, index) => {
-    const translationEntry = translations[index];
-    if (!translationEntry) return strength;
+  // Legacy format: pipe-delimited string (backward compat for cached data)
+  if (typeof translatedData === 'string' && translatedData.trim()) {
+    const translations = translatedData.split(';').filter(Boolean);
+    return strengths.map((strength, index) => {
+      const translationEntry = translations[index];
+      if (!translationEntry) return strength;
 
-    const parts = translationEntry.split('|');
-    if (parts.length < 2) return strength;
+      const parts = translationEntry.split('|');
+      if (parts.length < 2) return strength;
 
-    const translatedTitle = parts[0]?.trim();
-    const translatedDescription = parts[1]?.trim();
+      const translatedTitle = parts[0]?.trim();
+      const translatedDescription = parts[1]?.trim();
 
-    return {
-      ...strength,
-      title: translatedTitle || strength.title,
-      description: translatedDescription || strength.description,
-      // evidence stays as original (parts[2] contains original quotes)
-    };
-  });
+      return {
+        ...strength,
+        title: translatedTitle || strength.title,
+        description: translatedDescription || strength.description,
+      };
+    });
+  }
+
+  return strengths;
 }
 
 /**
- * Parse translated growth areas data and apply to WorkerGrowth array.
+ * Apply translated growth areas data to WorkerGrowth array.
  *
- * The translatedData format mirrors the growthAreasData format from LLM output:
- * "translatedTitle|translatedDesc|originalEvidence|translatedRec|freq|severity|priority;..."
+ * Supports two input formats:
+ * - New: Array of {title, description, recommendation} objects
+ * - Legacy: Pipe-delimited string "title|desc|evidence|rec|freq|severity|priority;..."
  *
- * This function overlays translated title/description/recommendation while
- * preserving original evidence quotes and numeric fields.
+ * Overlays translated title/description/recommendation while preserving
+ * original evidence quotes and numeric fields.
+ *
+ * CRITICAL: Preserves locked state — if original recommendation is empty (''),
+ * it stays empty even if translation exists, preventing premium content leakage.
  *
  * @param growthAreas - Original WorkerGrowth array (English)
- * @param translatedData - Translated data string from TranslatedAgentInsights
+ * @param translatedData - Translated data (array or legacy string) from TranslatedAgentInsights
  * @returns WorkerGrowth array with translated title/description/recommendation
  */
 export function applyTranslatedGrowthAreas(
   growthAreas: WorkerGrowth[],
-  translatedData: string | undefined
+  translatedData: Array<{ title: string; description: string; recommendation: string }> | string | undefined
 ): WorkerGrowth[] {
-  if (!translatedData || translatedData.trim() === '') return growthAreas;
+  if (!translatedData) return growthAreas;
 
-  const translations = translatedData.split(';').filter(Boolean);
+  // New format: structured array
+  if (Array.isArray(translatedData)) {
+    return growthAreas.map((growth, i) => {
+      const t = translatedData[i];
+      if (!t) return growth;
+      return {
+        ...growth,
+        title: t.title || growth.title,
+        description: t.description || growth.description,
+        // Preserve locked state for free tier
+        recommendation: growth.recommendation
+          ? (t.recommendation || growth.recommendation)
+          : growth.recommendation,
+      };
+    });
+  }
 
-  return growthAreas.map((growth, index) => {
-    const translationEntry = translations[index];
-    if (!translationEntry) return growth;
+  // Legacy format: pipe-delimited string (backward compat for cached data)
+  if (typeof translatedData === 'string' && translatedData.trim()) {
+    const translations = translatedData.split(';').filter(Boolean);
+    return growthAreas.map((growth, index) => {
+      const translationEntry = translations[index];
+      if (!translationEntry) return growth;
 
-    const parts = translationEntry.split('|');
-    if (parts.length < 4) return growth;
+      const parts = translationEntry.split('|');
+      if (parts.length < 4) return growth;
 
-    const translatedTitle = parts[0]?.trim();
-    const translatedDescription = parts[1]?.trim();
-    // parts[2] is evidence (keep original)
-    const translatedRecommendation = parts[3]?.trim();
-    // parts[4], [5], [6] are frequency, severity, priority (keep original)
+      const translatedTitle = parts[0]?.trim();
+      const translatedDescription = parts[1]?.trim();
+      // parts[2] is evidence (keep original)
+      const translatedRecommendation = parts[3]?.trim();
 
-    return {
-      ...growth,
-      title: translatedTitle || growth.title,
-      description: translatedDescription || growth.description,
-      // CRITICAL: Preserve locked state (empty recommendation) for free tier
-      // If original recommendation is empty (''), keep it empty even if translation exists
-      // This prevents premium content from leaking through the translation overlay
-      recommendation: growth.recommendation
-        ? (translatedRecommendation || growth.recommendation)
-        : growth.recommendation,
-      // evidence, severity, frequency stay as original
-    };
-  });
+      return {
+        ...growth,
+        title: translatedTitle || growth.title,
+        description: translatedDescription || growth.description,
+        recommendation: growth.recommendation
+          ? (translatedRecommendation || growth.recommendation)
+          : growth.recommendation,
+      };
+    });
+  }
+
+  return growthAreas;
 }

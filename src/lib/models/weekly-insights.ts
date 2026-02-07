@@ -35,6 +35,8 @@ export const WeeklyInsightsLLMSchema = z.object({
     .describe('2-3 sentence summary of the week\'s AI collaboration activity. Mention specific projects, key accomplishments, and activity shifts.'),
   highlights: z.array(z.string())
     .describe('3-5 key highlights from the week. Each should be a concise bullet point about a notable accomplishment or pattern.'),
+  topSessionSummaries: z.array(z.string())
+    .describe('Concise 1-line summary for each top session (in order). Describe what was accomplished, not the raw message. Ignore system tags or noise.'),
 });
 
 export type WeeklyInsightsLLMOutput = z.infer<typeof WeeklyInsightsLLMSchema>;
