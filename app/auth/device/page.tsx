@@ -4,7 +4,7 @@
  * Users visit this page from CLI to authorize their device.
  *
  * Flow:
- * 1. User arrives with ?code=XXXX-1234 (from CLI) or enters code manually
+ * 1. User arrives with ?user_code=XXXX-1234 (from CLI) or enters code manually
  * 2. If not logged in, user authenticates via OAuth
  * 3. After login, code is automatically submitted to authorize the device
  * 4. CLI receives tokens via polling
@@ -22,7 +22,7 @@ function DeviceAuthContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'input' | 'authorizing' | 'success' | 'error'>('input');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [userCode, setUserCode] = useState(searchParams.get('code') || '');
+  const [userCode, setUserCode] = useState(searchParams.get('user_code') || '');
   const [user, setUser] = useState<{ email: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [testEmail, setTestEmail] = useState('');
@@ -56,7 +56,7 @@ function DeviceAuthContent() {
       if (event === 'SIGNED_IN' && session?.user) {
         setUser({ email: session.user.email || 'Unknown' });
         // Auto-authorize if we have a code from URL
-        const codeFromUrl = searchParams.get('code');
+        const codeFromUrl = searchParams.get('user_code');
         if (codeFromUrl) {
           setUserCode(codeFromUrl);
           await authorizeDevice(codeFromUrl);
@@ -112,7 +112,7 @@ function DeviceAuthContent() {
   };
 
   const handleOAuth = async (provider: 'github' | 'google') => {
-    const redirectUrl = `${window.location.origin}/auth/device${userCode ? `?code=${encodeURIComponent(userCode)}` : ''}`;
+    const redirectUrl = `${window.location.origin}/auth/device${userCode ? `?user_code=${encodeURIComponent(userCode)}` : ''}`;
 
     await supabase.auth.signInWithOAuth({
       provider,
