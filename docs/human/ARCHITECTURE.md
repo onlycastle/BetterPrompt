@@ -73,8 +73,8 @@ Session JSONL → Parser → SessionSelector → CostEstimator → [Confirmation
 | `src/lib/infrastructure/` | Supabase & local storage adapters | Infrastructure |
 | `src/lib/analyzer/` | LLM analysis (prompts, dimensions, insights) | Application |
 | `src/lib/analyzer/orchestrator/` | 4-phase analysis orchestration | Application |
-| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (4 workers: ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency) + Phase 2.5 TypeClassifier | Application |
-| `src/lib/analyzer/stages/` | Content Writer stage (Phase 3 narrative generation) | Application |
+| `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (5 workers: ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency, SessionOutcome) + Phase 2.5 TypeClassifier | Application |
+| `src/lib/analyzer/stages/` | SessionSummarizer (Phase 1.5) + ProjectSummarizer (Phase 2) + WeeklyInsightGenerator (Phase 2) + EvidenceVerifier (Phase 2.8) + ContentWriter (Phase 3) + Translator (Phase 4) | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/parser/` | JSONL session parsing | Infrastructure |
 | `packages/cli/src/lib/scanner/` | Multi-source session discovery (Claude Code + Cursor + Cursor Composer) | Infrastructure |
@@ -163,18 +163,19 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 - Output: `Phase1Output` (DeveloperUtterances[], AIResponses[], SessionMetrics)
 - 0 LLM calls
 
-**Phase 2: Insight Generation (Parallel, 4 workers)**
+**Phase 2: Insight Generation (Parallel, 5 workers)**
 - **ThinkingQualityWorker** - Planning, critical thinking
 - **CommunicationPatternsWorker** - Communication patterns, signature quotes
 - **LearningBehaviorWorker** - Knowledge gaps and repeated mistakes
 - **ContextEfficiencyWorker** - Token inefficiency patterns
+- **SessionOutcomeWorker** - Goals, friction, success rates
 - Output: `AgentOutputs` (merged results)
-- 4 LLM calls (parallel)
+- 5 LLM calls (parallel)
 
 **Phase 2.5: Classification (1 worker)**
 - **TypeClassifierWorker** (free) - Type classification using Phase 2 outputs
   - Uses semantic analysis from Phase 2 agents to determine:
-    - 5 coding styles: architect, scientist, collaborator, speedrunner, craftsman
+    - 5 coding styles: architect, analyst, conductor, speedrunner, trendsetter
     - 3 control levels: explorer, navigator, cartographer
     - 15 combination matrix (5×3 = unique personalities)
   - Output: `TypeClassifierOutput` with classification and evidence
@@ -194,7 +195,7 @@ The analyzer uses a 4-phase Orchestrator + Workers pattern with Gemini. See [LLM
 - Output: `TranslatorOutput` (text fields only, merged with English response)
 - 0-1 LLM call (conditional)
 
-**Total: 6-7 LLM calls (0 + 4 + 1 + 1 + 0-1)**
+**Total: 11-12 LLM calls (0 + 1 + 5 + 1 + 1 + 1 + 1 + 1 + 0-1)**
 
 **Prompt Engineering:**
 - Worker prompts in domain-specific files:

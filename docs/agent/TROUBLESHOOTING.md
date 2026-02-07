@@ -21,7 +21,7 @@
 ## Key Concepts
 
 - **utteranceId**: `{sessionId}_{turnIndex}` (e.g., `7fdbb780_5`) — required in Phase 2 evidence
-- **examplesData**: `"utteranceId|analysis;utteranceId|analysis;..."` — semicolon-separated format
+- **examples**: Structured `[{utteranceId, analysis}]` array in LLM schemas (legacy `examplesData` pipe-delimited fallback in assembler)
 - **displayText**: LLM-sanitized text for UI display
 - **naturalLanguageSegments**: `[{start, end, text}]` marking immutable developer natural language
 - **transformationAudit**: Audit trail for original → displayText transformations
@@ -54,7 +54,7 @@
 |-------|----------|-------|
 | 1. LLM Prompt | `data-extractor-worker.ts` | Explicit prohibition against summarizing developer's natural language |
 | 2. Compression Validation | `data-extractor-worker.ts` | Tiered thresholds via `validateDisplayTextCompression()`: short<50=80%, medium<200=50%, long=30% |
-| 3a. Worker Filter | All 4 Phase 2 workers | `isNoteworthy !== false && wordCount >= 8` in `preparePhase1ForPrompt()` |
+| 3a. Worker Filter | All 5 Phase 2 workers | `isNoteworthy !== false && wordCount >= 8` in `preparePhase1ForPrompt()` |
 | 3b. Quote Length | `worker-insights.ts` | `quote.length >= 15` |
 | 3c. Assembly Gate | `evaluation-assembler.ts` | `wordCount < 8 or isNoteworthy === false` → skip |
 
@@ -107,4 +107,5 @@ Error symptom: `"A schema in GenerationConfig in the request exceeds the maximum
 Guidelines:
 - `z.array(z.object({...}))` is safe — arrays don't add nesting
 - Avoid deep `z.object({ nested: z.object({...}) })` chains beyond 4 levels
-- Prefer structured arrays over semicolon-separated strings
+- All LLM schemas use structured JSON — no pipe/semicolon-delimited fields remain
+- Nesting depth tested for `NarrativeLLMResponseSchema` and `TranslatorOutputSchema`

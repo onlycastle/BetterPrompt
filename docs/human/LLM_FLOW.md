@@ -35,12 +35,16 @@
 │   ║  └─────────────────────────────────────────────────────────────────────────┘ ║   │
 │   ║                              │                                                ║   │
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
-│   ║  │ PHASE 2: Insight Generation (parallel, 4 workers, 4 LLM calls)        │   ║   │
+│   ║  │ PHASE 2: Insight Generation (parallel, 5 workers, 5 LLM calls)        │   ║   │
 │   ║  │                                                                         │   ║   │
 │   ║  │ ┌────────────────┐ ┌────────────────┐ ┌────────────────┐ ┌──────────┐│   ║   │
 │   ║  │ │    Thinking    │ │ Communication  │ │    Learning    │ │ Context  ││   ║   │
 │   ║  │ │    Quality     │ │   Patterns     │ │    Behavior    │ │Efficiency││   ║   │
 │   ║  │ └────────────────┘ └────────────────┘ └────────────────┘ └──────────┘│   ║   │
+│   ║  │ ┌────────────────┐                                                    │   ║   │
+│   ║  │ │    Session     │                                                    │   ║   │
+│   ║  │ │    Outcome     │                                                    │   ║   │
+│   ║  │ └────────────────┘                                                    │   ║   │
 │   ║  │                                                                         │   ║   │
 │   ║  │                                   │                                     │   ║   │
 │   ║  │                                   ▼                                     │   ║   │
@@ -234,7 +238,7 @@ Phase1Output
 
 **Purpose**: Generate deep insights based on Phase 1 results (capability-based approach)
 
-> 4 workers run in parallel. Each outputs capability-specific strengths/growthAreas directly.
+> 5 workers run in parallel. Each outputs capability-specific strengths/growthAreas directly.
 
 **IMPORTANT: Context Isolation**
 All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
@@ -242,7 +246,7 @@ All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
 - Phase 2 = Semantic Analysis (on extracted data only)
 
 **Worker Input Filtering**
-All 4 workers apply identical quality filters on utterances:
+All 5 workers apply identical quality filters on utterances:
 ```typescript
 // Filter applied before LLM analysis
 utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
@@ -252,7 +256,7 @@ utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    PHASE 2: 4 WORKERS (PARALLEL)                        │
+│                    PHASE 2: 5 WORKERS (PARALLEL)                        │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌──────────────────────────────┐                                       │
@@ -262,11 +266,15 @@ utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
 │               │                                                          │
 │  ┌────────────┴───────────────────────────────────────────────────┐    │
 │  │                                                                  │    │
-│  │  4 Parallel Workers (LLM-based, capability-focused)            │    │
+│  │  5 Parallel Workers (LLM-based, capability-focused)            │    │
 │  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌────────┐│    │
 │  │  │   Thinking   │ │Communication │ │   Learning   │ │Context ││    │
 │  │  │   Quality    │ │  Patterns    │ │   Behavior   │ │Efficien││    │
 │  │  └──────────────┘ └──────────────┘ └──────────────┘ └────────┘│    │
+│  │  ┌──────────────┐                                              │    │
+│  │  │   Session    │                                              │    │
+│  │  │   Outcome    │                                              │    │
+│  │  └──────────────┘                                              │    │
 │  │                                                                  │    │
 │  └──────────────────────────────────┬──────────────────────────────┘    │
 │                                      │                                   │
@@ -287,6 +295,7 @@ utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
 | **CommunicationPatterns** | How does this developer communicate with AI? What are their signature patterns? | `CommunicationPatternsOutput` |
 | **LearningBehavior** | How much does this developer try to learn? Do they repeat the same mistakes? | `LearningBehaviorOutput` |
 | **ContextEfficiency** | How effectively does this developer manage tokens and context? | `ContextEfficiencyOutput` |
+| **SessionOutcome** | How successful are this developer's AI collaboration sessions? | `SessionOutcomeOutput` |
 
 #### Agent Output Schema (AgentOutputs)
 
@@ -297,6 +306,7 @@ AgentOutputs
 ├── communicationPatterns: CommunicationPatternsOutput | null  (communication patterns, signature quotes)
 ├── learningBehavior: LearningBehaviorOutput | null  (knowledge gaps, repeated mistakes)
 ├── contextEfficiency: ContextEfficiencyOutput | null  (token usage, context management)
+├── sessionOutcome: SessionOutcomeOutput | null  (goals, friction, success rates)
 └── typeClassifier: TypeClassifierOutput | null  (added at Phase 2.5)
 ```
 
@@ -418,8 +428,8 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 │  │  POST-PROCESSING (narrative-specific)                             │    │
 │  │  1. Verify prompt pattern examples are developer utterances      │    │
 │  │  2. Truncate personalitySummary to max 3000 chars                │    │
-│  │  3. Sanitize prompt patterns (parse examplesData, enforce min 3) │    │
-│  │  4. Parse topFocusAreas (actionsData → nested format)            │    │
+│  │  3. Sanitize prompt patterns (structured examples, enforce min 3) │    │
+│  │  4. Validate topFocusAreas (structured actions object)            │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │               │                                                          │
 │               ▼                                                          │
@@ -657,7 +667,7 @@ Now, translations are applied AFTER assembly:
 │  │  FROM NarrativeLLMResponse (direct copy):                        │    │
 │  │  personalitySummary → personalitySummary (truncate ≤3000)        │    │
 │  │  promptPatterns[]   → promptPatterns[] (parse, enforce min 3)    │    │
-│  │  topFocusAreas      → topFocusAreas (parse actionsData)          │    │
+│  │  topFocusAreas      → topFocusAreas (structured actions)          │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                               │                                          │
 │                               ▼                                          │
@@ -683,9 +693,6 @@ Now, translations are applied AFTER assembly:
 │  │  ┌────────────────────────────────────────────────────────────┐  │    │
 │  │  │  TranslatorOutput (Korean/Japanese/Chinese)                 │  │    │
 │  │  │  - personalitySummary: 한글 summary                          │  │    │
-│  │  │  - dimensionInsights[].dimensionDisplayName: 한글             │  │    │
-│  │  │  - dimensionInsights[].strengthsData: 한글 titles/descs      │  │    │
-│  │  │  - dimensionInsights[].growthAreasData: 한글 titles/descs    │  │    │
 │  │  │  - antiPatternsAnalysis.detected[]: 한글 displayName/desc    │  │    │
 │  │  │  - criticalThinkingAnalysis: 한글 highlights                  │  │    │
 │  │  │  - planningAnalysis: 한글 strengths                           │  │    │
@@ -731,9 +738,6 @@ Now, translations are applied AFTER assembly:
 | Source (TranslatorOutput) | Target (assembledData) | Merge Strategy |
 |---------------------------|------------------------|----------------|
 | `personalitySummary` | `personalitySummary` | Direct overlay |
-| `dimensionInsights[].dimensionDisplayName` | `dimensionInsights[].dimensionDisplayName` | Match by `dimension` key |
-| `dimensionInsights[].strengthsData` | `dimensionInsights[].strengths[].title/description` | Parse semicolon-separated, match by index |
-| `dimensionInsights[].growthAreasData` | `dimensionInsights[].growthAreas[].title/description/recommendation` | Parse semicolon-separated, match by index |
 | `antiPatternsAnalysis.detected[]` | `antiPatternsAnalysis.detected[]` | Match by `antiPatternType` |
 | `criticalThinkingAnalysis.strengths[]` | `criticalThinkingAnalysis.strengths[]` | Match by index |
 | `planningAnalysis.strengths[]` | `planningAnalysis.strengths[]` | Match by index |
@@ -757,7 +761,7 @@ Now, translations are applied AFTER assembly:
 | Source (Phase 3 Narrative) | Target (VerboseEvaluation) | Transformation |
 |---------------------------|---------------------------|----------------|
 | `personalitySummary` | `personalitySummary` | Truncate to ≤3000 chars |
-| `topFocusAreas` | `topFocusAreas` | Parse `actionsData` → nested `{start, stop, continue}` |
+| `topFocusAreas` | `topFocusAreas` | Structured `actions: {start, stop, continue}` (legacy `actionsData` fallback) |
 | `promptPatterns[]` | `promptPatterns[]` | **FALLBACK ONLY** - Phase 2 `communicationPatterns` preferred |
 
 ---
@@ -1093,9 +1097,9 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
                        │ [3] Pass Phase1Output to Phase 2 (Premium+ only)
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║         PHASE 2: INSIGHT GENERATION (4 workers, 4 LLM calls)      ║
+  ║         PHASE 2: INSIGHT GENERATION (5 workers, 5 LLM calls)      ║
   ║                                                                    ║
-  ║   [4 parallel workers]                                             ║
+  ║   [5 parallel workers]                                             ║
   ║                                                                    ║
   ║   INPUT:  Phase1Output (ONLY - no raw sessions)                   ║
   ║   OUTPUT: AgentOutputs (merged)                                    ║
@@ -1103,6 +1107,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
   ║           - CommunicationPatternsWorker → patterns, quotes        ║
   ║           - LearningBehaviorWorker → knowledge gaps, mistakes     ║
   ║           - ContextEfficiencyWorker → token usage                 ║
+  ║           - SessionOutcomeWorker → goals, friction, success rates ║
   ║                                                                    ║
   ║   NO FALLBACK POLICY: Worker failures propagate as errors         ║
   ╚═══════════════════════════════════════════════════════════════════╝
@@ -1232,10 +1237,11 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 │  ┌──────────────────────────────────────────────────────────┐           │
 │  │  PHASE 1: DataExtractor (deterministic, no LLM cost)     │           │
 │  │                                                           │           │
-│  │  PHASE 2 (Parallel): 4 Workers                            │           │
-│  │  ~4K tokens per worker, ~16K total (all workers)         │           │
+│  │  PHASE 2 (Parallel): 5 Workers                            │           │
+│  │  ~4K tokens per worker, ~20K total (all workers)         │           │
 │  │  All workers run: ThinkingQuality, CommunicationPatterns,│           │
-│  │  LearningBehavior, ContextEfficiency (4 LLM calls)      │           │
+│  │  LearningBehavior, ContextEfficiency, SessionOutcome     │           │
+│  │  (5 LLM calls)                                          │           │
 │  │                                                           │           │
 │  │  PHASE 2.5: TypeClassifier (1 LLM call)                  │           │
 │  │  Input: ~4K tokens    Output: ~1K tokens                 │           │
@@ -1250,8 +1256,8 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 │  │  Input: ~8K tokens    Output: ~6K tokens                 │           │
 │  │                                                           │           │
 │  │  Total LLM Calls:                                         │           │
-│  │  - English:     6 calls (4+1+1+0)                        │           │
-│  │  - Non-English: 7 calls (4+1+1+1)                        │           │
+│  │  - English:     11 calls (1+5+1+1+1+1+1+0)               │           │
+│  │  - Non-English: 12 calls (1+5+1+1+1+1+1+1)              │           │
 │  │                                                           │           │
 │  │  Total Cost: ~$0.04-0.05 per analysis                    │           │
 │  └──────────────────────────────────────────────────────────┘           │
@@ -1287,7 +1293,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Data Extractor Worker | `src/lib/analyzer/workers/data-extractor-worker.ts` | Phase 1 - deterministic extraction (no LLM) |
 | Phase 1 Output Schema | `src/lib/models/phase1-output.ts` | Phase1Output Zod schema |
 
-### Phase 2: Insight Generation Workers (4 workers, 4 LLM calls)
+### Phase 2: Insight Generation Workers (5 workers, 5 LLM calls)
 
 | Component | File | Description |
 |-----------|------|-------------|
@@ -1428,11 +1434,12 @@ Worker Registration (src/lib/analyzer/verbose-analyzer.ts):
 ├── Phase 1 (1 worker):
 │   └── DataExtractorWorker (deterministic, no LLM)
 │
-├── Phase 2 (4 workers, parallel):
+├── Phase 2 (5 workers, parallel):
 │   ├── ThinkingQualityWorker (planning, critical thinking)
 │   ├── CommunicationPatternsWorker (communication patterns, signature quotes)
 │   ├── LearningBehaviorWorker (knowledge gaps, repeated mistakes)
-│   └── ContextEfficiencyWorker (token inefficiency)
+│   ├── ContextEfficiencyWorker (token inefficiency)
+│   └── SessionOutcomeWorker (goals, friction, success rates)
 │
 └── Phase 2.5 (1 worker):
     └── TypeClassifierWorker (free)

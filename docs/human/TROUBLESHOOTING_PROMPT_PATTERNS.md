@@ -45,7 +45,7 @@ Phase 3 ContentWriter (Verification)
 | `phase1-output.ts` | Phase 1 - Schema definitions (NaturalLanguageSegment) |
 | `worker-insights.ts` | Phase 2 - Evidence parsing (utteranceId required) |
 | `content-writer.ts` | Phase 3 - utteranceId-based verification |
-| `content-writer-prompts.ts` | Phase 3 - LLM prompt for examplesData |
+| `content-writer-prompts.ts` | Phase 3 - LLM prompt for structured examples |
 | `evaluation-assembler.ts` | sanitizePromptPatterns + utteranceLookup + transformationAudit |
 | `verbose-evaluation.ts` | TransformationAuditEntry schema |
 | `ExpandableEvidence.tsx` | UI - Integrity badges display |
@@ -53,7 +53,7 @@ Phase 3 ContentWriter (Verification)
 ### Key Concepts
 
 - **utteranceId**: `{sessionId}_{turnIndex}` (e.g., "7fdbb780_5") - **Required in Phase 2 evidence**
-- **examplesData**: `"utteranceId|analysis;utteranceId|analysis;..."`
+- **examples**: Structured `[{utteranceId, analysis}]` array (legacy `examplesData` pipe-delimited fallback in assembler)
 - **displayText**: LLM-sanitized text for UI display
 - **text**: Original raw text (may contain errors, stack traces)
 - **naturalLanguageSegments**: Array of `{start, end, text}` marking developer natural language (immutable)
@@ -76,7 +76,7 @@ Phase 3 ContentWriter (Verification)
 | 2026-02-01 | **Assembly quality gate** (P3) | Added quality filter to utteranceLookup building in resolvePatternQuotes() | `evaluation-assembler.ts` |
 | 2026-01-31 | **Phase 2 evidence-based topUtterances** | Extract utteranceIds from Phase 2 evidence via `extractEvidenceUtteranceIds()`, use for topUtterances filtering | `content-writer.ts` |
 | 2026-01-31 | **utteranceId enforcement** | utteranceId required in Phase 2 evidence, ID-based verification only | `worker-insights.ts`, `content-writer.ts`, 4 worker prompts |
-| 2026-01-31 | Empty Communication Patterns examples | LLM prompt table format + explicit examplesData rules | `content-writer-prompts.ts` |
+| 2026-01-31 | Empty Communication Patterns examples | LLM prompt table format + explicit examples rules | `content-writer-prompts.ts` |
 | 2026-01-31 | topUtterances length bias | Removed `characterCount > 200` filter, use `displayText` | `content-writer.ts` |
 | 2026-02-01 | **Removed regex pre-filtering** | Deleted `isKnownSystemMetadata()`, rely solely on LLM classification with enhanced CLI patterns | `data-extractor-worker.ts` |
 | ~~2026-01-31~~ | ~~Single-char utterances (".", "ㅇ")~~ | ~~Added `length <= 1` check in `isKnownSystemMetadata()`~~ | ~~Removed~~ |

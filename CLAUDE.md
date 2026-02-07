@@ -38,7 +38,7 @@ npm test               # Run all tests
 |-------|-----------|-----------|-------------|
 | 1 | DataExtractor | 0 | Deterministic extraction (no LLM) |
 | 1.5 | SessionSummarizer | 1 | LLM-generated 1-line session summaries (batch) |
-| 2 | 4 Insight Workers | 4 | Parallel analysis (ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency) |
+| 2 | 5 Insight Workers | 5 | Parallel analysis (ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency, SessionOutcome) |
 | 2 | ProjectSummarizer | 1 | Project-level summaries from activitySessions (parallel with workers) |
 | 2 | WeeklyInsightGenerator | 1 | Weekly narrative + highlights from activitySessions (parallel with workers) |
 | 2.5 | TypeClassifier | 1 | Developer type classification (5x3 matrix) + personalized reasoning narrative (→ personalitySummary) |
@@ -47,7 +47,7 @@ npm test               # Run all tests
 | 3 | ContentWriter | 1 | topFocusAreas narrative (personalitySummary moved to Phase 2.5) |
 | 4 | Translator | 0-1 | Conditional translation (non-English only) |
 
-- **Total**: 10 LLM calls (English), 11 LLM calls (non-English)
+- **Total**: 11 LLM calls (English), 12 LLM calls (non-English)
 - Prompts use PTCF framework (Persona · Task · Context · Format)
 - Temperature: 1.0 (Gemini's recommended default)
 
@@ -70,9 +70,18 @@ npm test               # Run all tests
 > **Guidelines**:
 > - `z.array(z.object({...}))` is safe - arrays don't add nesting
 > - Avoid `z.object({ nested: z.object({ deep: z.object({...}) }) })` chains
-> - Structured arrays preferred over semicolon-separated strings for type safety
+> - All LLM schemas use structured JSON — no pipe/semicolon-delimited fields remain
+> - Nesting depth enforced by unit tests (`schema-nesting-depth.test.ts`)
 >
 > Error symptom: `"A schema in GenerationConfig in the request exceeds the maximum allowed nesting depth"`
+
+> ⚠️ **Structured JSON Convention**: All Phase 3/4 LLM schemas (`NarrativeLLMResponseSchema`, `TranslatorOutputSchema`) use structured JSON objects/arrays for all data fields.
+>
+> **DO NOT** introduce pipe-delimited (`"a|b|c"`) or semicolon-delimited (`"x;y;z"`) string fields in LLM schemas. Use structured types instead:
+> - Actions: `actions: { start, stop, continue }` (not `actionsData: "start|stop|continue"`)
+> - Examples: `examples: [{ utteranceId, analysis }]` (not `examplesData: "id|text;id|text"`)
+>
+> Legacy pipe-delimited formats have backward-compatible fallback paths in `evaluation-assembler.ts`.
 
 **JSONL Parsing**: Session logs contain `user`, `assistant`, `queue-operation`, `file-history-snapshot` types. Only `user` and `assistant` are analyzed. Content blocks: `text`, `tool_use`, `tool_result`.
 

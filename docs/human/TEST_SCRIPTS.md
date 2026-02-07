@@ -16,14 +16,17 @@ scripts/
 ├── test-cursor-composer.ts     # Cursor Composer Source (state.vscdb) testing
 ├── generate-phase1-cache.ts    # Phase 1 cache generator
 ├── generate-phase2-cache.ts    # Phase 2 cache generator
+├── generate-phase3-cache.ts    # Phase 3 cache generator
 ├── utils/
 │   └── test-utils.ts           # Shared utilities (cache loaders, helpers)
 └── fixtures/
     ├── phase1-cache/
     │   ├── phase1-cache.json   # Cached Phase 1 output (gitignored)
     │   └── README.md           # Cache usage documentation
-    └── phase2-cache/
-        └── phase2-cache.json   # Cached Phase 2 output (gitignored)
+    ├── phase2-cache/
+    │   └── phase2-cache.json   # Cached Phase 2 output (gitignored)
+    └── phase3-cache/
+        └── phase3-cache.json   # Cached Phase 3 output (gitignored)
 ```
 
 ## Prerequisites
@@ -123,8 +126,10 @@ npx tsx scripts/test-phase2.ts --use-cache --worker=ThinkingQuality
 | Worker | Description | Phase |
 |--------|-------------|-------|
 | ThinkingQuality | Critical thinking, verification behavior, trust patterns | 2 |
+| CommunicationPatterns | Communication patterns, signature quotes | 2 |
 | LearningBehavior | Learning progress, knowledge gaps, skill development | 2 |
 | ContextEfficiency | Context usage, inefficiency patterns, productivity | 2 |
+| SessionOutcome | Goals, friction, success rates | 2 |
 | TypeClassifier | Developer type classification (5x3 matrix) | 2.5 |
 
 ### Cache Mode vs Fresh Mode
@@ -141,7 +146,7 @@ npx tsx scripts/test-phase2.ts --use-cache --worker=ThinkingQuality
 Phase 2 Test - Insight Workers
 ================================================================================
 Mode: CACHE (using cached Phase 1 output)
-Selected Worker: TrustVerification
+Selected Worker: ThinkingQuality
 
 Step 1: Loading cached Phase 1 output...
 Cache loaded in 1ms
@@ -154,10 +159,10 @@ AI responses: 350
 Step 3: Running Phase 2 Workers...
 --------------------------------------------------------------------------------
 
-[1/5] TrustVerification Worker...
+[1/5] ThinkingQuality Worker...
 
 ────────────────────────────────────────────────────────────
-TrustVerification Worker Output
+ThinkingQuality Worker Output
 ────────────────────────────────────────────────────────────
 Trust Health Score: 62/100
 Confidence: 95.0%
@@ -171,12 +176,12 @@ Phase 2 Summary
 
 Execution Times:
   Phase 1 (DataExtractor): 1ms
-  TrustVerification: 31350ms
+  ThinkingQuality: 31350ms
   TOTAL: 31351ms
 
 Token Usage:
   Phase 1: 240328 tokens (121043 prompt, 14465 completion)
-  TrustVerification: 98595 tokens (94145 prompt, 1789 completion)
+  ThinkingQuality: 98595 tokens (94145 prompt, 1789 completion)
   TOTAL: 339923 tokens
 ```
 
