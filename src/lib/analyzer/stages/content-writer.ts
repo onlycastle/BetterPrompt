@@ -20,7 +20,8 @@
 
 import { GeminiClient, type GeminiClientConfig, type TokenUsage } from '../clients/gemini-client';
 import {
-  NarrativeLLMResponseSchema,
+  FlatNarrativeLLMResponseSchema,
+  reshapeNarrativeLLMResponse,
   type NarrativeLLMResponse,
 } from '../../models/verbose-evaluation';
 import type { AgentOutputs } from '../../models/agent-outputs';
@@ -142,12 +143,16 @@ export class ContentWriterStage {
       topUtterances
     );
 
-    const result = await this.client.generateStructured({
+    const flatResult = await this.client.generateStructured({
       systemPrompt: CONTENT_WRITER_SYSTEM_PROMPT_V3,
       userPrompt,
-      responseSchema: NarrativeLLMResponseSchema,
+      responseSchema: FlatNarrativeLLMResponseSchema,
+      schemaName: 'FlatNarrativeLLMResponse',
       maxOutputTokens: this.config.maxOutputTokens,
     });
+
+    // Reshape flat LLM output to nested NarrativeLLMResponse
+    const result = { data: reshapeNarrativeLLMResponse(flatResult.data), usage: flatResult.usage };
 
     // Sanitize narrative-only response
     const sanitized = this.sanitizeNarrativeResponse(result.data, phase1Output);

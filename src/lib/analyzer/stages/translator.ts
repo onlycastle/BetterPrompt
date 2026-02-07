@@ -16,7 +16,7 @@
 
 import { z } from 'zod';
 import { GeminiClient, type GeminiClientConfig, type TokenUsage } from '../clients/gemini-client';
-import { TranslatorOutputSchema, type TranslatorOutput } from '../../models/translator-output';
+import { TranslatorLLMOutputSchema, reshapeTranslatorLLMOutput, type TranslatorOutput } from '../../models/translator-output';
 import type { AgentOutputs } from '../../models/agent-outputs';
 import { LANGUAGE_DISPLAY_NAMES, type SupportedLanguage } from './content-writer-prompts';
 import { TRANSLATOR_SYSTEM_PROMPT, buildTranslatorUserPrompt, buildRetryTranslatorUserPrompt } from './translator-prompts';
@@ -121,12 +121,15 @@ export class TranslatorStage {
       targetLanguage
     );
 
-    const result = await this.client.generateStructured({
+    const llmResult = await this.client.generateStructured({
       systemPrompt: TRANSLATOR_SYSTEM_PROMPT,
       userPrompt,
-      responseSchema: TranslatorOutputSchema,
+      responseSchema: TranslatorLLMOutputSchema,
+      schemaName: 'TranslatorLLMOutput',
       maxOutputTokens: this.config.maxOutputTokens,
     });
+
+    const result = { data: reshapeTranslatorLLMOutput(llmResult.data), usage: llmResult.usage };
 
     this.logTranslatedInsightsDebug(result.data.translatedAgentInsights);
 
@@ -177,12 +180,14 @@ export class TranslatorStage {
       failedFieldPaths
     );
 
-    const retryResult = await this.client.generateStructured({
+    const retryLLMResult = await this.client.generateStructured({
       systemPrompt: TRANSLATOR_SYSTEM_PROMPT,
       userPrompt: retryPrompt,
-      responseSchema: TranslatorOutputSchema,
+      responseSchema: TranslatorLLMOutputSchema,
+      schemaName: 'TranslatorLLMOutput-retry',
       maxOutputTokens: this.config.maxOutputTokens,
     });
+    const retryResult = { data: reshapeTranslatorLLMOutput(retryLLMResult.data), usage: retryLLMResult.usage };
 
     const merged = this.cherryPickMerge(initialResult.data, retryResult.data, nonEnLang);
 
