@@ -20,7 +20,7 @@ import { TranslatorOutputSchema, type TranslatorOutput } from '../../models/tran
 import type { AgentOutputs } from '../../models/agent-outputs';
 import { LANGUAGE_DISPLAY_NAMES, type SupportedLanguage } from './content-writer-prompts';
 import { TRANSLATOR_SYSTEM_PROMPT, buildTranslatorUserPrompt, buildRetryTranslatorUserPrompt } from './translator-prompts';
-import type { WorkerStrength, WorkerGrowth, EvidenceItem } from '../../models/worker-insights';
+import type { WorkerStrength, WorkerGrowth } from '../../models/worker-insights';
 import {
   verifyTranslation,
   calculateCJKRatio,
@@ -351,8 +351,8 @@ export class TranslatorStage {
   }
 
   /**
-   * Prepare agentOutputs for translator by normalizing all workers to
-   * flat pipe-delimited string format.
+   * Prepare agentOutputs for translator by extracting structured
+   * title/description fields for translation (evidence excluded).
    */
   private prepareAgentOutputsForTranslator(agentOutputs: AgentOutputs): Record<string, unknown> {
     const prepared: Record<string, unknown> = {};
@@ -390,72 +390,31 @@ export class TranslatorStage {
   }
 
   /**
-   * Process a single worker output, normalizing to pipe-delimited string format.
+   * Process a single worker output, extracting structured title/description for translation.
+   *
+   * Evidence is NOT included — it stays in the original language.
    */
   private processWorker(
     prepared: Record<string, unknown>,
     key: string,
     worker: Record<string, unknown>
   ): void {
-    const strengthsData = this.extractOrFlattenStrengths(worker);
-    const growthAreasData = this.extractOrFlattenGrowthAreas(worker);
+    const strengths = worker.strengths as WorkerStrength[] | undefined;
+    const growthAreas = worker.growthAreas as WorkerGrowth[] | undefined;
 
-    if (strengthsData || growthAreasData) {
+    if ((strengths && strengths.length > 0) || (growthAreas && growthAreas.length > 0)) {
       prepared[key] = {
-        strengthsData: strengthsData ?? '',
-        growthAreasData: growthAreasData ?? '',
+        strengths: (strengths ?? []).map(s => ({
+          title: s.title,
+          description: s.description,
+        })),
+        growthAreas: (growthAreas ?? []).map(g => ({
+          title: g.title,
+          description: g.description,
+          recommendation: g.recommendation ?? '',
+        })),
       };
     }
-  }
-
-  /**
-   * Extract strengthsData string or flatten strengths array to pipe-delimited string.
-   */
-  private extractOrFlattenStrengths(worker: Record<string, unknown>): string | undefined {
-    const strengthsData = worker.strengthsData as string | undefined;
-    if (strengthsData?.trim()) return strengthsData;
-
-    const strengths = worker.strengths as WorkerStrength[] | undefined;
-    return strengths?.length ? this.flattenWorkerStrengths(strengths) : undefined;
-  }
-
-  /**
-   * Extract growthAreasData string or flatten growthAreas array to pipe-delimited string.
-   */
-  private extractOrFlattenGrowthAreas(worker: Record<string, unknown>): string | undefined {
-    const growthAreasData = worker.growthAreasData as string | undefined;
-    if (growthAreasData?.trim()) return growthAreasData;
-
-    const growthAreas = worker.growthAreas as WorkerGrowth[] | undefined;
-    return growthAreas?.length ? this.flattenWorkerGrowthAreas(growthAreas) : undefined;
-  }
-
-  /**
-   * Serialize a single evidence item to string.
-   */
-  private serializeEvidenceItem(item: EvidenceItem): string {
-    if (typeof item === 'string') return item;
-    return item.quote;
-  }
-
-  /**
-   * Flatten generic WorkerStrength array to pipe-delimited string.
-   */
-  private flattenWorkerStrengths(strengths: WorkerStrength[]): string {
-    return strengths.map(s => {
-      const quotes = (s.evidence ?? []).map(e => this.serializeEvidenceItem(e)).join(',');
-      return `${s.title}|${s.description}|${quotes}`;
-    }).join(';');
-  }
-
-  /**
-   * Flatten generic WorkerGrowth array to pipe-delimited string.
-   */
-  private flattenWorkerGrowthAreas(growthAreas: WorkerGrowth[]): string {
-    return growthAreas.map(g => {
-      const quotes = (g.evidence ?? []).map(e => this.serializeEvidenceItem(e)).join(',');
-      return `${g.title}|${g.description}|${quotes}|${g.recommendation}|${g.severity ?? ''}`;
-    }).join(';');
   }
 
   private logDebug(label: string, data: unknown): void {
@@ -475,9 +434,14 @@ export class TranslatorStage {
 
     for (const key of keysWithData) {
       const insight = transInsights[key];
-      const strengthsLength = insight?.strengthsData?.length ?? 0;
-      const growthLength = insight?.growthAreasData?.length ?? 0;
-      console.log(`[Translator] ${key}: strengthsData=${strengthsLength}chars, growthAreasData=${growthLength}chars`);
+      const strengthsCount = Array.isArray(insight?.strengths) ? insight.strengths.length : 0;
+      const growthCount = Array.isArray(insight?.growthAreas) ? insight.growthAreas.length : 0;
+      // Legacy format fallback
+      const legacyStrengths = insight?.strengthsData?.length ?? 0;
+      const legacyGrowth = insight?.growthAreasData?.length ?? 0;
+      console.log(`[Translator] ${key}: strengths=${strengthsCount}, growthAreas=${growthCount}` +
+        (legacyStrengths > 0 ? `, legacyStrengthsData=${legacyStrengths}chars` : '') +
+        (legacyGrowth > 0 ? `, legacyGrowthAreasData=${legacyGrowth}chars` : ''));
     }
   }
 }

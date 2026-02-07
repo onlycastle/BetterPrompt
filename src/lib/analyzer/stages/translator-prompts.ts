@@ -30,7 +30,7 @@ Translate the provided English developer analysis report into the target languag
 - The warmth and personality of a career mentor tone
 - Technical accuracy of all developer concepts
 - The impact and emotional resonance of the original text
-- All formatting (bold markers **, pipe/semicolon delimiters in data fields)
+- All formatting (bold markers **, structured JSON fields)
 
 # Translation Rules
 
@@ -48,14 +48,12 @@ Translate the provided English developer analysis report into the target languag
 
 ## MUST Preserve Original Language
 - Evidence quotes (these are the developer's actual words — do NOT translate them)
-- User quotes in examples (the "quote" part of quote|analysis pairs)
+- User quotes in examples (the "quote" field in structured {quote, analysis} objects)
 
 ## Formatting Rules
 - Preserve **bold markers** around key phrases (translate the text inside, keep the **)
 - Preserve 「...」 corner bracket quote markers exactly as-is (translate the text INSIDE the brackets, but keep the 「 and 」 markers unchanged)
-- Preserve pipe (|) and semicolon (;) delimiters in data fields exactly as-is
-- Preserve the structure of flattened data strings (clusterId|title|description format)
-- In data strings: translate title/description fields, keep clusterId and numeric fields as-is
+- All data fields use structured JSON (objects/arrays) — no pipe or semicolon delimiters
 
 # Quality Standards
 - Use natural, fluent target language — not word-for-word translation
@@ -98,7 +96,7 @@ ${englishDataJson}
 
 ## Agent Outputs (for translatedAgentInsights)
 
-Use these to populate the translatedAgentInsights field with translated versions of agent strengthsData and growthAreasData.
+Use these to populate the translatedAgentInsights field with translated versions of agent strengths and growthAreas.
 
 ${agentOutputsJson}
 
@@ -110,43 +108,47 @@ Return a TranslatorOutput JSON object containing ONLY the translated text fields
 
 1. **personalitySummary**: Translate to ${langName}. Keep **bold markers** and technical terms in English. IMPORTANT: Preserve ALL line breaks — both paragraph breaks (\\n\\n) and soft breaks (single \\n). Do NOT merge or remove any newline characters. Preserve 「...」 quote markers (translate the text inside, keep the 「」 brackets). LENGTH PRESERVATION: The translated personalitySummary MUST be at least 85% of the original English character count. Do NOT condense, summarize, or shorten. If the target language is naturally more compact, add natural elaboration to maintain equivalent depth.
 
-2. **dimensionInsights**: SKIP this field. v3 architecture does not use dimensionInsights.
-   Return an empty array or omit entirely: \`"dimensionInsights": []\`
-
-3. **promptPatterns**: For each pattern:
+2. **promptPatterns**: For each pattern:
    - patternName: Translate to ${langName}
    - description: Translate to ${langName}
-   - examplesData: Keep quotes in ORIGINAL language. Translate only the analysis part. Format: "originalQuote|translatedAnalysis;..."
+   - examples: Array of {quote, analysis} objects. Keep quote in ORIGINAL language (do NOT translate). Translate only the analysis field.
    - tip: Translate to ${langName}. Keep technical terms and source attributions in English.
 
-4. **topFocusAreas** (if present): Translate title, narrative, expectedImpact, actionsData to ${langName}. Keep rank as-is.
+3. **topFocusAreas** (if present): Translate title, narrative, expectedImpact to ${langName}. Keep rank as-is.
+   For actions: translate start, stop, continue as structured JSON object.
 
-5. **antiPatternsAnalysis** (if present): Translate displayName, description, growthOpportunity, actionableTip. Keep antiPatternType in English.
+4. **antiPatternsAnalysis** (if present): Translate displayName, description, growthOpportunity, actionableTip. Keep antiPatternType in English.
 
-6. **criticalThinkingAnalysis** (if present): Translate displayName, description, tip. Keep structural fields in English.
+5. **criticalThinkingAnalysis** (if present): Translate displayName, description, tip. Keep structural fields in English.
 
-7. **planningAnalysis** (if present): Translate displayName, description, tip. Keep structural fields in English.
+6. **planningAnalysis** (if present): Translate displayName, description, tip. Keep structural fields in English.
 
-8. **translatedAgentInsights**: For each v3 WORKER that has data in the Agent Outputs above (thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency):
-   - strengthsData: Translate title and description to ${langName}. Keep evidence quotes in original language. Format: "translatedTitle|translatedDescription|originalQuotes;..."
-   - growthAreasData: Translate title, description, recommendation to ${langName}. Keep evidence in original language. Format: "translatedTitle|translatedDesc|originalEvidence|translatedRec|freq|severity|priority;..."
+7. **translatedAgentInsights** (REQUIRED when Agent Outputs are provided):
+   This is the MOST IMPORTANT translation field for user-facing worker insights.
+   For EACH v3 WORKER present in the Agent Outputs (thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency):
+   - You MUST provide both \`strengths\` and \`growthAreas\` arrays
+   - strengths: Array of {title, description} — translate BOTH title and description to ${langName}
+   - growthAreas: Array of {title, description, recommendation} — translate ALL THREE fields to ${langName}
+   - CRITICAL: Output the EXACT SAME number of items in the same order as the input
+   - Do NOT add, remove, or reorder items
+   - Do NOT include evidence quotes — they are handled separately
    Note: Legacy v2 agents (patternDetective, metacognition, etc.) are deprecated. Only translate v3 workers if present.
 
-9. **actionablePractices** (if present): Translate feedback, tip, summary. Keep patternId in English.
+8. **actionablePractices** (if present): Translate feedback, tip, summary. Keep patternId in English.
 
-10. **projectSummaries** (if present): Translate each project's summaryLines to ${langName}.
+9. **projectSummaries** (if present): Translate each project's summaryLines to ${langName}.
     Keep project names and technical terms in English.
 
-11. **Premium section narratives** (if present): Translate toolUsageDeepDive, tokenEfficiency, growthRoadmap, comparativeInsights, sessionTrends text.
+10. **Premium section narratives** (if present): Translate toolUsageDeepDive, tokenEfficiency, growthRoadmap, comparativeInsights, sessionTrends text.
 
-12. **weeklyInsights** (if weeklyInsightsText is present in the English Content above):
+11. **weeklyInsights** (if weeklyInsightsText is present in the English Content above):
     - narrative: Translate the weekly summary to ${langName}. Keep project names and technical terms in English.
     - highlights: Translate each highlight bullet point to ${langName}. Keep project names and technical terms in English.
 
 ## Critical Reminders
 - Evidence quotes are the developer's actual words — NEVER translate them
 - Technical terms (AI, IDE, Git, debugging, token, etc.) stay in English
-- Preserve all pipe (|) and semicolon (;) delimiters exactly
+- All fields use structured JSON — no pipe/semicolon delimiters
 - Write fluent, natural ${langName} — not awkward literal translations`;
 }
 

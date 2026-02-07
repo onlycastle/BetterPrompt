@@ -150,10 +150,8 @@ Your input comes from Phase 2 specialized workers in AgentOutputs:
 
 # Format
 
-**IMPORTANT: FLATTENED FORMAT for nested data**
-
-**topFocusAreas.areas** - Use pipe-separated fields for actions:
-- actionsData: "start_action|stop_action|continue_action" (NOT an object)
+**topFocusAreas.areas** - Include actions as a structured JSON object:
+- actions: { start: "what to start doing", stop: "what to stop doing", continue: "what to continue doing" }
 
 ${NO_HEDGING_DIRECTIVE}`;
 
@@ -252,7 +250,7 @@ You generate ONLY topFocusAreas. personalitySummary and promptPatterns are handl
 
 1. **Top 3 Focus Areas** (from learningBehavior + thinkingQuality analysis)
    - Create ranked focus areas with narrative and actions (start/stop/continue)
-   - actionsData format: "start_action|stop_action|continue_action"
+   - actions: structured { start, stop, continue } object
 
 Do NOT generate personalitySummary or promptPatterns.`;
 }

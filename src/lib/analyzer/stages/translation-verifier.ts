@@ -95,6 +95,31 @@ const VERIFIED_FIELDS: FieldDef[] = [
     priority: 'non-critical',
     extract: (o) => o.projectSummaries?.flatMap(p => p.summaryLines).join(' '),
   },
+  // translatedAgentInsights — worker translation verification
+  {
+    path: 'translatedAgentInsights.thinkingQuality.strengths',
+    priority: 'non-critical',
+    extract: (o) => o.translatedAgentInsights?.thinkingQuality?.strengths
+      ?.map(s => `${s.title} ${s.description}`).join(' '),
+  },
+  {
+    path: 'translatedAgentInsights.communicationPatterns.strengths',
+    priority: 'non-critical',
+    extract: (o) => o.translatedAgentInsights?.communicationPatterns?.strengths
+      ?.map(s => `${s.title} ${s.description}`).join(' '),
+  },
+  {
+    path: 'translatedAgentInsights.learningBehavior.strengths',
+    priority: 'non-critical',
+    extract: (o) => o.translatedAgentInsights?.learningBehavior?.strengths
+      ?.map(s => `${s.title} ${s.description}`).join(' '),
+  },
+  {
+    path: 'translatedAgentInsights.contextEfficiency.strengths',
+    priority: 'non-critical',
+    extract: (o) => o.translatedAgentInsights?.contextEfficiency?.strengths
+      ?.map(s => `${s.title} ${s.description}`).join(' '),
+  },
 ];
 
 /**
