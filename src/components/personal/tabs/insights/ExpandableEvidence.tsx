@@ -76,6 +76,8 @@ interface ExpandableEvidenceProps {
   transformationAudit?: Map<string, TransformationAuditEntry>;
   /** Maximum number of evidence items to show initially */
   maxItems?: number;
+  /** Callback to open the Source Context sidebar for a specific utterance */
+  onViewContext?: (utteranceId: string) => void;
 }
 
 /**
@@ -123,10 +125,12 @@ function EvidenceItemRow({
   item,
   utteranceLookup,
   transformationAudit,
+  onViewContext,
 }: {
   item: EvidenceItem;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
   transformationAudit?: Map<string, TransformationAuditEntry>;
+  onViewContext?: (utteranceId: string) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -183,6 +187,13 @@ function EvidenceItemRow({
           If hasExpandableContent is true, utterance is defined. */}
       {isExpanded && hasExpandableContent && (
         <div className={styles.expandedContent}>
+          {/* Preceding AI snippet preview */}
+          {utterance.precedingAISnippet && (
+            <div className={styles.aiSnippet}>
+              <span className={styles.aiLabel}>AI said:</span>
+              <span className={styles.aiText}>{utterance.precedingAISnippet}</span>
+            </div>
+          )}
           <div className={styles.originalUtterance}>
             <span className={styles.utteranceLabel}>
               Original Message
@@ -208,6 +219,19 @@ function EvidenceItemRow({
               <span className={styles.metaIcon}>🕐</span>
               {formatTimestamp(utterance.timestamp)}
             </span>
+            {/* View Context button - opens Source Context sidebar */}
+            {onViewContext && utteranceId && (
+              <button
+                className={styles.viewContextButton}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewContext(utteranceId);
+                }}
+                type="button"
+              >
+                View Context &rarr;
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -226,6 +250,7 @@ export function ExpandableEvidence({
   utteranceLookup,
   transformationAudit,
   maxItems = 3,
+  onViewContext,
 }: ExpandableEvidenceProps) {
   const [showAll, setShowAll] = useState(false);
 
@@ -246,6 +271,7 @@ export function ExpandableEvidence({
             item={item}
             utteranceLookup={utteranceLookup}
             transformationAudit={transformationAudit}
+            onViewContext={onViewContext}
           />
         ))}
       </ul>
@@ -261,5 +287,3 @@ export function ExpandableEvidence({
     </div>
   );
 }
-
-export default ExpandableEvidence;

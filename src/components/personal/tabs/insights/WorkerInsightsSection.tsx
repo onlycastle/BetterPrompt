@@ -120,9 +120,11 @@ function ScoreGauge({ score, label }: { score: number; label: string }) {
 function StrengthCard({
   strength,
   utteranceLookup,
+  onViewContext,
 }: {
   strength: WorkerStrength;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
+  onViewContext?: (utteranceId: string) => void;
 }) {
   const isCommunication = isCommunicationStrength(strength);
 
@@ -148,6 +150,7 @@ function StrengthCard({
           evidence={strength.evidence}
           utteranceLookup={utteranceLookup}
           maxItems={4}
+          onViewContext={onViewContext}
         />
       )}
     </div>
@@ -226,11 +229,13 @@ function GrowthCard({
   utteranceLookup,
   referencedInsights,
   onInsightClick,
+  onViewContext,
 }: {
   growth: WorkerGrowth;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
   referencedInsights?: ReferencedInsight[];
   onInsightClick?: (insight: ReferencedInsight, yOffset?: number) => void;
+  onViewContext?: (utteranceId: string) => void;
 }) {
   const severityClass = growth.severity
     ? styles[`severity${growth.severity[0].toUpperCase()}${growth.severity.slice(1)}`]
@@ -309,6 +314,7 @@ function GrowthCard({
           evidence={growth.evidence}
           utteranceLookup={utteranceLookup}
           maxItems={4}
+          onViewContext={onViewContext}
         />
       )}
       {hasRecommendation ? (
@@ -345,8 +351,8 @@ export interface WorkerDomainSectionProps {
   config: WorkerDomainConfig;
   strengths: WorkerStrength[];
   growthAreas: WorkerGrowth[];
-  translatedStrengthsData?: string;
-  translatedGrowthAreasData?: string;
+  translatedStrengthsData?: Array<{ title: string; description: string }> | string;
+  translatedGrowthAreasData?: Array<{ title: string; description: string; recommendation: string }> | string;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
   domainScore?: number;
   /** Referenced insights from this domain for sidebar display (legacy - prefer insightAllocation) */
@@ -357,6 +363,8 @@ export interface WorkerDomainSectionProps {
   insightAllocation?: InsightAllocation;
   /** Domain key for looking up allocated insights (e.g., 'thinkingQuality') */
   domainKey?: string;
+  /** Callback to open the Source Context sidebar for a specific utterance */
+  onViewContext?: (utteranceId: string) => void;
 }
 
 /**
@@ -380,6 +388,7 @@ export function WorkerDomainSection({
   onInsightClick,
   insightAllocation,
   domainKey,
+  onViewContext,
 }: WorkerDomainSectionProps) {
   // Professional Insight Sidebar state (for this domain)
   const [selectedInsight, setSelectedInsight] = useState<ReferencedInsight | null>(null);
@@ -470,6 +479,7 @@ export function WorkerDomainSection({
                   key={idx}
                   strength={strength}
                   utteranceLookup={utteranceLookup}
+                  onViewContext={onViewContext}
                 />
               ))}
             </div>
@@ -493,6 +503,7 @@ export function WorkerDomainSection({
                     utteranceLookup={utteranceLookup}
                     referencedInsights={insight ? [insight] : undefined}
                     onInsightClick={handleInsightClick}
+                    onViewContext={onViewContext}
                   />
                 );
               })}
@@ -635,8 +646,8 @@ export function WorkerInsightsSection({
               config={config}
               strengths={domain.strengths}
               growthAreas={domain.growthAreas}
-              translatedStrengthsData={translatedInsight?.strengthsData}
-              translatedGrowthAreasData={translatedInsight?.growthAreasData}
+              translatedStrengthsData={translatedInsight?.strengths ?? translatedInsight?.strengthsData}
+              translatedGrowthAreasData={translatedInsight?.growthAreas ?? translatedInsight?.growthAreasData}
               utteranceLookup={utteranceLookupMap}
               domainScore={domain.domainScore}
               referencedInsights={domain.referencedInsights}
@@ -655,5 +666,3 @@ export function WorkerInsightsSection({
     </div>
   );
 }
-
-export default WorkerInsightsSection;

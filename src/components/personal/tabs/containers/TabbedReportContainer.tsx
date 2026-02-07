@@ -45,7 +45,8 @@ import {
   type GrowthWithCandidates,
   type InsightCandidate,
 } from '../../../../lib/utils/insight-deduplication';
-import type { UtteranceLookupEntry } from '../../../../lib/models/verbose-evaluation';
+import type { UtteranceLookupEntry, TransformationAuditEntry } from '../../../../lib/models/verbose-evaluation';
+import { SourceContextSidebar } from '../insights/SourceContextSidebar';
 import { transformCommunicationPatterns } from '../../../../lib/transformers/prompt-pattern-transformer';
 import styles from './TabbedReportContainer.module.css';
 
@@ -268,6 +269,31 @@ export function TabbedReportContainer({
     }
     return map;
   }, [analysis.utteranceLookup]);
+
+  // Build transformation audit map for O(1) access (used for Source Context sidebar)
+  const transformationAuditMap = useMemo(() => {
+    const audit = analysis.transformationAudit;
+    if (!audit || audit.length === 0) return undefined;
+    const map = new Map<string, TransformationAuditEntry>();
+    for (const entry of audit) {
+      map.set(entry.utteranceId, entry);
+    }
+    return map;
+  }, [analysis.transformationAudit]);
+
+  // Source Context sidebar state
+  const [sourceContext, setSourceContext] = useState<{
+    utterance: UtteranceLookupEntry;
+    audit?: TransformationAuditEntry;
+  } | null>(null);
+
+  // Handle View Context click from ExpandableEvidence
+  const handleViewContext = useCallback((utteranceId: string) => {
+    const utterance = utteranceLookupMap?.get(utteranceId);
+    if (!utterance) return;
+    const audit = transformationAuditMap?.get(utteranceId);
+    setSourceContext({ utterance, audit });
+  }, [utteranceLookupMap, transformationAuditMap]);
 
   // ============================================================================
   // Professional Insights Fallback Logic (Phase 2.75)
@@ -666,13 +692,14 @@ export function TabbedReportContainer({
                 config={WORKER_DOMAIN_CONFIGS[0]}
                 strengths={workerInsights.thinkingQuality.strengths}
                 growthAreas={workerInsights.thinkingQuality.growthAreas}
-                translatedStrengthsData={translatedAgentInsights?.thinkingQuality?.strengthsData}
-                translatedGrowthAreasData={translatedAgentInsights?.thinkingQuality?.growthAreasData}
+                translatedStrengthsData={translatedAgentInsights?.thinkingQuality?.strengths ?? translatedAgentInsights?.thinkingQuality?.strengthsData}
+                translatedGrowthAreasData={translatedAgentInsights?.thinkingQuality?.growthAreas ?? translatedAgentInsights?.thinkingQuality?.growthAreasData}
                 utteranceLookup={utteranceLookupMap}
                 domainScore={workerInsights.thinkingQuality.domainScore}
                 insightAllocation={insightAllocation}
                 domainKey="thinkingQuality"
                 onInsightClick={handleInsightClick}
+                onViewContext={handleViewContext}
               />
               {/* Premium Value Summary */}
               <PremiumValueSummary
@@ -689,13 +716,14 @@ export function TabbedReportContainer({
                 config={WORKER_DOMAIN_CONFIGS[1]}
                 strengths={communicationStrengths}
                 growthAreas={communicationGrowthAreas}
-                translatedStrengthsData={translatedAgentInsights?.communicationPatterns?.strengthsData}
-                translatedGrowthAreasData={translatedAgentInsights?.communicationPatterns?.growthAreasData}
+                translatedStrengthsData={translatedAgentInsights?.communicationPatterns?.strengths ?? translatedAgentInsights?.communicationPatterns?.strengthsData}
+                translatedGrowthAreasData={translatedAgentInsights?.communicationPatterns?.growthAreas ?? translatedAgentInsights?.communicationPatterns?.growthAreasData}
                 utteranceLookup={utteranceLookupMap}
                 domainScore={workerInsights?.communicationPatterns?.domainScore}
                 insightAllocation={insightAllocation}
                 domainKey="communicationPatterns"
                 onInsightClick={handleInsightClick}
+                onViewContext={handleViewContext}
               />
               {/* Premium Value Summary */}
               <PremiumValueSummary
@@ -712,13 +740,14 @@ export function TabbedReportContainer({
                 config={WORKER_DOMAIN_CONFIGS[2]}
                 strengths={workerInsights.learningBehavior.strengths}
                 growthAreas={workerInsights.learningBehavior.growthAreas}
-                translatedStrengthsData={translatedAgentInsights?.learningBehavior?.strengthsData}
-                translatedGrowthAreasData={translatedAgentInsights?.learningBehavior?.growthAreasData}
+                translatedStrengthsData={translatedAgentInsights?.learningBehavior?.strengths ?? translatedAgentInsights?.learningBehavior?.strengthsData}
+                translatedGrowthAreasData={translatedAgentInsights?.learningBehavior?.growthAreas ?? translatedAgentInsights?.learningBehavior?.growthAreasData}
                 utteranceLookup={utteranceLookupMap}
                 domainScore={workerInsights.learningBehavior.domainScore}
                 insightAllocation={insightAllocation}
                 domainKey="learningBehavior"
                 onInsightClick={handleInsightClick}
+                onViewContext={handleViewContext}
               />
               {/* Premium Value Summary */}
               <PremiumValueSummary
@@ -735,13 +764,14 @@ export function TabbedReportContainer({
                 config={WORKER_DOMAIN_CONFIGS[3]}
                 strengths={workerInsights.contextEfficiency.strengths}
                 growthAreas={workerInsights.contextEfficiency.growthAreas}
-                translatedStrengthsData={translatedAgentInsights?.contextEfficiency?.strengthsData}
-                translatedGrowthAreasData={translatedAgentInsights?.contextEfficiency?.growthAreasData}
+                translatedStrengthsData={translatedAgentInsights?.contextEfficiency?.strengths ?? translatedAgentInsights?.contextEfficiency?.strengthsData}
+                translatedGrowthAreasData={translatedAgentInsights?.contextEfficiency?.growthAreas ?? translatedAgentInsights?.contextEfficiency?.growthAreasData}
                 utteranceLookup={utteranceLookupMap}
                 domainScore={workerInsights.contextEfficiency.domainScore}
                 insightAllocation={insightAllocation}
                 domainKey="contextEfficiency"
                 onInsightClick={handleInsightClick}
+                onViewContext={handleViewContext}
               />
               {/* Premium Value Summary */}
               <PremiumValueSummary
@@ -782,6 +812,13 @@ export function TabbedReportContainer({
         )}
       </aside>
 
+      {/* Source Context Sidebar — shows conversation thread for evidence items */}
+      <SourceContextSidebar
+        utterance={sourceContext?.utterance ?? null}
+        audit={sourceContext?.audit}
+        isOpen={sourceContext !== null}
+        onClose={() => setSourceContext(null)}
+      />
     </div>
   );
 }
