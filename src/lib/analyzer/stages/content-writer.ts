@@ -13,7 +13,7 @@
  * Key Design Decision (v4):
  * - topUtterances are now selected from Phase 2 evidence, not arbitrary first 20
  * - This ensures LLM only sees utterances that workers already identified as significant
- * - Prevents pattern-quote mismatch (e.g., "아키텍처 청사진 설계" with "다했어" example)
+ * - Prevents pattern-quote mismatch (e.g., architectural pattern name paired with casual chat utterance)
  *
  * @module analyzer/stages/content-writer
  */

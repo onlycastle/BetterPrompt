@@ -335,8 +335,11 @@ const WORKER_KEYS = [
 /**
  * Reshape flat LLM output back to nested TranslatorOutput structure.
  *
- * Converts: `{ thinkingQualityStrengths: [...], thinkingQualityGrowthAreas: [...] }`
- * Into:     `{ thinkingQuality: { strengths: [...], growthAreas: [...] } }`
+ * Performs two transformations:
+ * 1. Agent insights: `{ thinkingQualityStrengths, thinkingQualityGrowthAreas }`
+ *    → `{ thinkingQuality: { strengths, growthAreas } }`
+ * 2. Focus area actions: `{ actionStart, actionStop, actionContinue }`
+ *    → `{ actions: { start, stop, continue } }`
  */
 export function reshapeTranslatorLLMOutput(llm: TranslatorLLMOutput): TranslatorOutput {
   const flatInsights = llm.translatedAgentInsights;
