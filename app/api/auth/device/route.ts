@@ -45,14 +45,15 @@ function generateSecureCode(length: number): string {
 function generateUserCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // No I or O to avoid confusion
   const nums = '23456789'; // No 0 or 1 to avoid confusion
+  const bytes = randomBytes(8);
 
   let code = '';
   for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+    code += chars.charAt(bytes[i] % chars.length);
   }
   code += '-';
   for (let i = 0; i < 4; i++) {
-    code += nums.charAt(Math.floor(Math.random() * nums.length));
+    code += nums.charAt(bytes[i + 4] % nums.length);
   }
   return code;
 }
