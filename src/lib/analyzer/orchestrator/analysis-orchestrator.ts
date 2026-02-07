@@ -670,7 +670,7 @@ export class AnalysisOrchestrator {
     );
 
     if (translatorData) {
-      mergeTranslatedFields(assembledData, translatorData);
+      mergeTranslatedFields(assembledData, translatorData, languageResult.primary);
     }
 
     const evaluation = {

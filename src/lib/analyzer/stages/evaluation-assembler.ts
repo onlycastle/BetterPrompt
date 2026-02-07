@@ -48,6 +48,7 @@ import type {
   TransformationType,
 } from '../../models/verbose-evaluation';
 import type { TranslatorOutput } from '../../models/translator-output';
+import type { SupportedLanguage } from './content-writer-prompts';
 
 // ============================================================================
 // Debug Logging
@@ -844,10 +845,17 @@ function getMinCompressionRatio(originalLength: number): number {
  */
 export function mergeTranslatedFields(
   englishResponse: Record<string, unknown>,
-  translated: TranslatorOutput
+  translated: TranslatorOutput,
+  targetLanguage?: SupportedLanguage
 ): void {
   // Direct field assignments (truncate translated text — may exceed original length)
-  // Translation length guard: reject translations that compress too aggressively (< 65% of English)
+  // Translation length guard: reject translations that compress too aggressively
+  // CJK languages (ko, ja, zh) naturally produce shorter text (~45-65% of English length)
+  // so we use a lower threshold (0.45) to avoid rejecting valid translations.
+  const CJK_LANGUAGES = new Set(['ko', 'ja', 'zh']);
+  const isCJK = targetLanguage ? CJK_LANGUAGES.has(targetLanguage) : false;
+  const minLengthRatio = isCJK ? 0.45 : 0.65;
+
   if (translated.personalitySummary) {
     const englishLength = typeof englishResponse.personalitySummary === 'string'
       ? englishResponse.personalitySummary.length
@@ -855,9 +863,9 @@ export function mergeTranslatedFields(
     const translatedLength = translated.personalitySummary.length;
     const ratio = englishLength > 0 ? translatedLength / englishLength : 1;
 
-    if (ratio < 0.65 && englishLength > 0) {
+    if (ratio < minLengthRatio && englishLength > 0) {
       console.warn(
-        `[EvalAssembler] Translation too short: ${translatedLength} chars (${(ratio * 100).toFixed(0)}% of English ${englishLength} chars). Keeping English original.`
+        `[EvalAssembler] Translation too short: ${translatedLength} chars (${(ratio * 100).toFixed(0)}% of English ${englishLength} chars, threshold=${(minLengthRatio * 100).toFixed(0)}%). Keeping English original.`
       );
     } else {
       englishResponse.personalitySummary = truncatePersonalitySummary(translated.personalitySummary);
