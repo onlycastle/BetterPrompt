@@ -832,6 +832,29 @@ export const LLMTopFocusAreasSchema = z.object({
 });
 
 /**
+ * Flat LLM Top Focus Area — actions inlined as strings to reduce nesting depth
+ *
+ * Nesting before: root{L1} → topFocusAreas{L2} → areas[] → area{L3} → actions{L4} = 4 levels
+ * Nesting after:  root{L1} → topFocusAreas{L2} → areas[] → area{L3} → actionStart = 3 levels
+ */
+const FlatLLMTopFocusAreaSchema = z.object({
+  rank: z.number().min(1).max(3),
+  dimension: DimensionNameEnumSchema,
+  title: z.string(),
+  narrative: z.string(),
+  expectedImpact: z.string(),
+  priorityScore: z.number().min(0).max(100),
+  actionStart: z.string().optional().describe('START action step'),
+  actionStop: z.string().optional().describe('STOP action step'),
+  actionContinue: z.string().optional().describe('CONTINUE action step'),
+});
+
+const FlatLLMTopFocusAreasSchema = z.object({
+  areas: z.array(FlatLLMTopFocusAreaSchema).max(3),
+  summary: z.string(),
+});
+
+/**
  * Helper to parse actionsData string into FocusAreaActions
  */
 export function parseActionsData(data: string | undefined): { start: string; stop: string; continue: string } | undefined {
@@ -1528,3 +1551,48 @@ export const NarrativeLLMResponseSchema = z.object({
     .describe('Top 3 personalized priorities with narrative enrichment'),
 });
 export type NarrativeLLMResponse = z.infer<typeof NarrativeLLMResponseSchema>;
+
+/**
+ * Flat Narrative LLM Response Schema for Gemini API (max 3 levels)
+ *
+ * Identical to NarrativeLLMResponseSchema but uses FlatLLMTopFocusAreasSchema
+ * which inlines actions as strings instead of nested object.
+ * Use reshapeNarrativeLLMResponse() to convert back to NarrativeLLMResponse.
+ */
+export const FlatNarrativeLLMResponseSchema = z.object({
+  promptPatterns: z.array(LLMPromptPatternSchema).optional()
+    .describe('FALLBACK: Prompt patterns (prefer Phase 2 CommunicationPatterns when available)'),
+  topFocusAreas: FlatLLMTopFocusAreasSchema.optional()
+    .describe('Top 3 personalized priorities with narrative enrichment'),
+});
+export type FlatNarrativeLLMResponse = z.infer<typeof FlatNarrativeLLMResponseSchema>;
+
+/**
+ * Reshape flat Phase 3 LLM response back to nested NarrativeLLMResponse.
+ *
+ * Converts: `{ actionStart, actionStop, actionContinue }` per area
+ * Into:     `{ actions: { start, stop, continue } }` per area
+ */
+export function reshapeNarrativeLLMResponse(flat: FlatNarrativeLLMResponse): NarrativeLLMResponse {
+  if (!flat.topFocusAreas) {
+    return flat as NarrativeLLMResponse;
+  }
+
+  return {
+    ...flat,
+    topFocusAreas: {
+      summary: flat.topFocusAreas.summary,
+      areas: flat.topFocusAreas.areas.map(area => ({
+        rank: area.rank,
+        dimension: area.dimension,
+        title: area.title,
+        narrative: area.narrative,
+        expectedImpact: area.expectedImpact,
+        priorityScore: area.priorityScore,
+        actions: (area.actionStart || area.actionStop || area.actionContinue)
+          ? { start: area.actionStart ?? '', stop: area.actionStop ?? '', continue: area.actionContinue ?? '' }
+          : undefined,
+      })),
+    },
+  };
+}

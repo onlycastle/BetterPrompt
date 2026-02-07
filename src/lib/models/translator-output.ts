@@ -44,6 +44,20 @@ const TranslatedTopFocusAreaSchema = z.object({
   }).optional().describe('Translated action steps'),
 });
 
+/**
+ * Flat version of TranslatedTopFocusAreaSchema for LLM schema
+ * Inlines actions as strings to reduce nesting from 4 → 3 levels
+ */
+const FlatTranslatedTopFocusAreaSchema = z.object({
+  rank: z.number().min(1).max(3),
+  title: z.string().describe('Translated focus area title'),
+  narrative: z.string().describe('Translated narrative'),
+  expectedImpact: z.string().describe('Translated expected impact'),
+  actionStart: z.string().optional().describe('Translated START action'),
+  actionStop: z.string().optional().describe('Translated STOP action'),
+  actionContinue: z.string().optional().describe('Translated CONTINUE action'),
+});
+
 // ============================================================================
 // Translated Highlight Item (shared by criticalThinking + planning)
 // ============================================================================
@@ -200,3 +214,172 @@ export const TranslatorOutputSchema = z.object({
 });
 
 export type TranslatorOutput = z.infer<typeof TranslatorOutputSchema>;
+
+// ============================================================================
+// Flat LLM Schema for Gemini API (max 3 levels of nesting)
+// ============================================================================
+
+/**
+ * TranslatorLLMOutputSchema — flattened version of TranslatorOutputSchema for Gemini API
+ *
+ * The nested `translatedAgentInsights.thinkingQuality.strengths[]` path creates 4 levels
+ * of object nesting which exceeds Gemini's limit. This schema flattens worker insights
+ * to camelCase keys (e.g., `thinkingQualityStrengths`) reducing depth to 3 levels.
+ *
+ * Max depth: root{L1} → translatedAgentInsights{L2} → thinkingQualityStrengths[] → {title, desc}{L3} = 3 levels
+ *
+ * After Gemini returns this flat structure, use reshapeTranslatorLLMOutput() to convert
+ * back to the nested TranslatorOutput expected by downstream code.
+ */
+export const TranslatorLLMOutputSchema = z.object({
+  personalitySummary: z.string()
+    .describe('Translated personality summary — keep **bold markers** and technical terms in English'),
+
+  promptPatterns: z.array(TranslatedPromptPatternSchema)
+    .describe('Translated prompt patterns — keep quotes in original language'),
+
+  topFocusAreas: z.object({
+    areas: z.array(FlatTranslatedTopFocusAreaSchema).max(3),
+    summary: z.string().describe('Translated summary'),
+  }).optional(),
+
+  antiPatternsAnalysis: z.object({
+    detected: z.array(z.object({
+      antiPatternType: z.string().describe('Keep in English'),
+      displayName: z.string().describe('Translated display name'),
+      description: z.string().describe('Translated description'),
+      growthOpportunity: z.string().describe('Translated growth opportunity'),
+      actionableTip: z.string().describe('Translated tip'),
+    })),
+    summary: z.string().describe('Translated summary'),
+  }).optional(),
+
+  criticalThinkingAnalysis: TranslatedAnalysisSectionSchema.optional(),
+  planningAnalysis: TranslatedAnalysisSectionSchema.optional(),
+
+  /** Flattened agent insights — each worker's strengths/growthAreas as top-level arrays */
+  translatedAgentInsights: z.object({
+    // v3.1 Workers (primary - 4 workers) — flattened
+    thinkingQualityStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
+    thinkingQualityGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
+    communicationPatternsStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
+    communicationPatternsGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
+    learningBehaviorStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
+    learningBehaviorGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
+    contextEfficiencyStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
+    contextEfficiencyGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
+    // v2 Legacy Workers — flattened
+    patternDetectiveStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
+    patternDetectiveGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
+    metacognitionStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
+    metacognitionGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
+    antiPatternSpotterStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
+    antiPatternSpotterGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
+    knowledgeGapStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
+    knowledgeGapGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
+    temporalAnalysisStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
+    temporalAnalysisGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
+    multitaskingStrengths: z.array(TranslatedWorkerStrengthSchema).optional(),
+    multitaskingGrowthAreas: z.array(TranslatedWorkerGrowthSchema).optional(),
+  }).optional().describe('Flattened Phase 2 worker insights — keys are workerNameStrengths/workerNameGrowthAreas'),
+
+  projectSummaries: z.array(z.object({
+    projectName: z.string().describe('Keep project name in English'),
+    summaryLines: z.array(z.string()).describe('Translated summary lines'),
+  })).optional().describe('Translated project summaries — keep project names in English'),
+
+  weeklyInsights: z.object({
+    narrative: z.string().describe('Translated 2-3 sentence weekly summary'),
+    highlights: z.array(z.string()).describe('Translated highlight bullet points'),
+    topSessionSummaries: z.array(z.string()).optional()
+      .describe('Translated 1-line session summaries'),
+  }).optional().describe('Translated weekly insights — keep project names and technical terms in English'),
+
+  toolUsageDeepDive: z.string().optional()
+    .describe('Translated tool usage deep dive narrative'),
+  tokenEfficiency: z.string().optional()
+    .describe('Translated token efficiency narrative'),
+  growthRoadmap: z.string().optional()
+    .describe('Translated growth roadmap narrative'),
+  comparativeInsights: z.string().optional()
+    .describe('Translated comparative insights narrative'),
+  sessionTrends: z.string().optional()
+    .describe('Translated session trends narrative'),
+
+  actionablePractices: z.object({
+    practiced: z.array(z.object({
+      patternId: z.string().describe('Keep in English'),
+      feedback: z.string().describe('Translated feedback'),
+    })),
+    opportunities: z.array(z.object({
+      patternId: z.string().describe('Keep in English'),
+      tip: z.string().describe('Translated tip'),
+    })),
+    summary: z.string().describe('Translated summary'),
+  }).optional(),
+});
+
+export type TranslatorLLMOutput = z.infer<typeof TranslatorLLMOutputSchema>;
+
+// ============================================================================
+// Reshape: Flat LLM output → Nested TranslatorOutput
+// ============================================================================
+
+/** Worker keys used in translatedAgentInsights */
+const WORKER_KEYS = [
+  'thinkingQuality', 'communicationPatterns', 'learningBehavior', 'contextEfficiency',
+  'patternDetective', 'metacognition', 'antiPatternSpotter', 'knowledgeGap',
+  'temporalAnalysis', 'multitasking',
+] as const;
+
+/**
+ * Reshape flat LLM output back to nested TranslatorOutput structure.
+ *
+ * Converts: `{ thinkingQualityStrengths: [...], thinkingQualityGrowthAreas: [...] }`
+ * Into:     `{ thinkingQuality: { strengths: [...], growthAreas: [...] } }`
+ */
+export function reshapeTranslatorLLMOutput(llm: TranslatorLLMOutput): TranslatorOutput {
+  const flatInsights = llm.translatedAgentInsights;
+
+  let nestedInsights: TranslatorOutput['translatedAgentInsights'];
+  if (flatInsights) {
+    const result: Record<string, { strengths: TranslatedWorkerStrength[]; growthAreas: TranslatedWorkerGrowth[] }> = {};
+
+    for (const key of WORKER_KEYS) {
+      const strengths = (flatInsights as Record<string, unknown>)[`${key}Strengths`] as TranslatedWorkerStrength[] | undefined;
+      const growthAreas = (flatInsights as Record<string, unknown>)[`${key}GrowthAreas`] as TranslatedWorkerGrowth[] | undefined;
+
+      if (strengths || growthAreas) {
+        result[key] = {
+          strengths: strengths ?? [],
+          growthAreas: growthAreas ?? [],
+        };
+      }
+    }
+
+    nestedInsights = Object.keys(result).length > 0 ? result as TranslatorOutput['translatedAgentInsights'] : undefined;
+  }
+
+  // Reshape flat topFocusAreas actions (actionStart/Stop/Continue → actions object)
+  let nestedTopFocusAreas: TranslatorOutput['topFocusAreas'];
+  if (llm.topFocusAreas) {
+    nestedTopFocusAreas = {
+      summary: llm.topFocusAreas.summary,
+      areas: llm.topFocusAreas.areas.map(area => ({
+        rank: area.rank,
+        title: area.title,
+        narrative: area.narrative,
+        expectedImpact: area.expectedImpact,
+        actions: (area.actionStart || area.actionStop || area.actionContinue)
+          ? { start: area.actionStart ?? '', stop: area.actionStop ?? '', continue: area.actionContinue ?? '' }
+          : undefined,
+      })),
+    };
+  }
+
+  return {
+    ...llm,
+    translatedAgentInsights: nestedInsights,
+    topFocusAreas: nestedTopFocusAreas,
+  };
+}
