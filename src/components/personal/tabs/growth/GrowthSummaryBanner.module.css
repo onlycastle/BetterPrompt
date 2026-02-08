@@ -1,0 +1,137 @@
+/**
+ * GrowthSummaryBanner Styles
+ * Notebook-sketch aesthetic matching the design system
+ */
+
+.banner {
+  padding: var(--space-md) var(--space-lg);
+  border: 1.5px dashed var(--ink-light);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  margin-top: var(--space-lg);
+}
+
+.banner.returning {
+  border-color: var(--sketch-cyan);
+  border-style: solid;
+  background: var(--sketch-cyan-soft);
+}
+
+/* First-time user */
+.firstTimeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 2px var(--space-sm);
+  background: var(--sketch-green-soft);
+  border-radius: var(--radius-full);
+  font-family: var(--font-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-green-text);
+}
+
+.badgeIcon {
+  font-size: var(--text-sm);
+}
+
+.badgeText {
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.firstTimeMessage {
+  margin: var(--space-sm) 0 0;
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  line-height: var(--leading-normal);
+}
+
+/* Returning user */
+.summaryRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+}
+
+.improvementChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-full);
+  font-family: var(--font-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+
+.improvementChip.positive {
+  background: var(--sketch-green-light);
+  color: var(--sketch-green-text);
+}
+
+.improvementChip.negative {
+  background: var(--sketch-red-light);
+  color: var(--sketch-red);
+}
+
+.improvementChip.neutral {
+  background: var(--surface-3);
+  color: var(--ink-muted);
+}
+
+/* Dimension change chips */
+.changesRow {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-top: var(--space-sm);
+}
+
+.changeChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-md);
+  font-family: var(--font-primary);
+  font-size: var(--text-xs);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+}
+
+.changeChip.chipUp {
+  border-color: var(--sketch-green-light);
+}
+
+.changeChip.chipDown {
+  border-color: var(--sketch-red-light);
+}
+
+.changeLabel {
+  color: var(--ink-secondary);
+}
+
+.changeDelta {
+  font-weight: var(--weight-semibold);
+}
+
+.chipUp .changeDelta {
+  color: var(--sketch-green-text);
+}
+
+.chipDown .changeDelta {
+  color: var(--sketch-red);
+}

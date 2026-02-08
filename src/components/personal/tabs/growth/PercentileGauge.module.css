@@ -1,0 +1,48 @@
+/**
+ * PercentileGauge Styles
+ */
+
+.gauge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 140px;
+}
+
+.barTrack {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: var(--radius-full);
+  min-width: 60px;
+}
+
+.barFill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--transition-smooth);
+  opacity: 0.6;
+}
+
+.marker {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid;
+  background: var(--surface-0);
+  transform: translate(-50%, -50%);
+  transition: left var(--transition-smooth);
+}
+
+.label {
+  font-family: var(--font-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
