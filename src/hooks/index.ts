@@ -8,3 +8,4 @@ export * from './usePersonalAnalytics';
 export * from './useRemoteResult';
 export * from './useLatestAnalysis';
 export * from './useOGMetadata';
+export * from './useScrollSpy';
