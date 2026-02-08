@@ -16,7 +16,6 @@ NoMoreAISlop analyzes developer-AI collaboration sessions (JSONL/SQLite) through
 | `src/lib/analyzer/orchestrator/` | 4-phase orchestration | Application |
 | `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (5) + Phase 2.5 TypeClassifier | Application |
 | `src/lib/analyzer/stages/` | Phase 1.5 SessionSummarizer + Phase 2 ProjectSummarizer + Phase 2 WeeklyInsightGenerator + Phase 2.8 EvidenceVerifier + Phase 3 ContentWriter + Phase 4 Translator | Application |
-| `src/lib/analyzer/calculators/` | Deterministic calculators (temporal, phrase patterns) | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/domain/` | Domain models (business rules, errors) | Domain |
 | `src/lib/parser/` | JSONL session parsing | Infrastructure |
@@ -148,15 +147,17 @@ The report page uses a **continuous scroll layout** (no tabs). All sections rend
 |---------|------------|--------|--------|
 | Fixed Header: Type Result | Phase 2.5 TypeClassifier | TypeClassifierWorker | FREE |
 | Fixed Header: Personality Summary | Phase 3 ContentWriter | ContentWriterStage | FREE |
+| Growth / Progress | Phase 2 worker data + `/api/benchmarks/personal` | All workers (aggregated) | FREE |
 | Activity | CLI Activity Scanner + Phase 2 ProjectSummarizer | ProjectSummarizerStage | FREE |
 | Thinking Quality | Phase 2 | ThinkingQualityWorker | FREE (recommendation: PAID) |
 | Communication | Phase 2 | CommunicationPatternsWorker | FREE (recommendation: PAID) |
 | Learning Behavior | Phase 2 | LearningBehaviorWorker | FREE (recommendation: PAID) |
 | Context Efficiency | Phase 2 | ContextEfficiencyWorker | FREE (recommendation: PAID) |
-| Session Success | Phase 2 | SessionOutcomeWorker | FREE (recommendation: PAID) |
 | Sidebar: Resources | Phase 2.75 KnowledgeResourceMatcher | N/A | 1/dim FREE, all PAID |
 
-Key UI files: `TabbedReportContainer.tsx`, `WorkerInsightsSection.tsx`, `FloatingProgressDots.tsx`, `useScrollSpy.ts`, `content-gateway.ts` (TIER_POLICY).
+Section order matches `REPORT_SECTIONS` array: Growth → Activity → Thinking → Communication → Learning → Context.
+
+Key UI files: `TabbedReportContainer.tsx`, `WorkerInsightsSection.tsx`, `FloatingProgressDots.tsx`, `useScrollSpy.ts`, `useGrowthData.ts`, `content-gateway.ts` (TIER_POLICY).
 
 ## Content Gateway Tier Matrix
 
@@ -181,7 +182,8 @@ Philosophy: "Diagnosis Free, Prescription Paid"
 | `/api/credits` | Credit management | Required | `app/api/credits/` |
 | `/api/payments` | Payment processing | Required | `app/api/payments/` |
 | `/api/webhooks/polar` | Polar webhook handler | Public | `app/api/webhooks/polar/` |
-| `/api/reports` | Report sharing + OG images | Public | `app/api/reports/` |
+| `/api/reports` | Report sharing, OG images, comparison | Public | `app/api/reports/` |
+| `/api/benchmarks` | Benchmark percentiles (personal + global) | Public+Auth | `app/api/benchmarks/` |
 | `/api/knowledge` | Knowledge base operations | PREMIUM | `app/api/knowledge/` |
 | `/api/learn` | YouTube/URL learning | PREMIUM | `app/api/learn/` |
 | `/api/health` | Health check | Public | `app/api/health/` |
@@ -261,6 +263,11 @@ Type: `SessionSourceType = 'claude-code' | 'cursor' | 'cursor-composer'`
 | Scroll spy hook | `src/hooks/useScrollSpy.ts` |
 | Floating nav dots | `src/components/personal/tabs/shared/FloatingProgressDots.tsx` |
 | Worker insights UI | `src/components/personal/tabs/insights/WorkerInsightsSection.tsx` |
+| Growth data hook | `src/hooks/useGrowthData.ts` |
+| Growth components | `src/components/personal/tabs/growth/` (`GrowthSummaryBanner`, `ProgressSection`, `PercentileGauge`) |
+| OG image (home) | `app/opengraph-image.tsx` |
+| OG image (report) | `app/r/[resultId]/opengraph-image.tsx` |
+| Translation verifier | `src/lib/analyzer/stages/translation-verifier.ts` |
 | Gemini client | `src/lib/analyzer/clients/gemini-client.ts` |
 | JSONL reader | `src/lib/parser/jsonl-reader.ts` |
 | Session selector | `src/lib/parser/session-selector.ts` |

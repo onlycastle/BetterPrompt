@@ -9,7 +9,7 @@ Communication Patterns section displays incorrect content (AI responses, system 
 ## Architecture Quick Reference
 
 ```
-JSONL → Phase 1 (DataExtractor) → Phase 2 (Workers) → Phase 3 (ContentWriter) → UI
+JSONL → Phase 1 (DataExtractor) → Phase 1.5 (SessionSummarizer) → Phase 2 (Workers + ProjectSummarizer + WeeklyInsightGenerator) → Phase 2.5 (TypeClassifier) → Phase 2.75 (KnowledgeResourceMatcher) → Phase 2.8 (EvidenceVerifier) → Phase 3 (ContentWriter) → Phase 4 (Translator) → Assembly → ContentGateway → UI
               ↓                          ↓                    ↓
         developerUtterances        agentOutputs         promptPatterns
         (id, text, displayText)    (Your Insights)      (Comm. Patterns)
@@ -181,11 +181,11 @@ Previously, only CommunicationPatterns had the isNoteworthy filter. Now all 5 wo
 
 | Worker | isNoteworthy Filter | Status |
 |--------|---------------------|--------|
-| TrustVerification | `isNoteworthy !== false && wordCount >= 8` | ✅ Added |
-| WorkflowHabit | `isNoteworthy !== false && wordCount >= 8` | ✅ Added |
-| KnowledgeGap | `isNoteworthy !== false && wordCount >= 8` | ✅ Added |
-| ContextEfficiency | `isNoteworthy !== false && wordCount >= 8` | ✅ Added |
+| ThinkingQuality | `isNoteworthy !== false && wordCount >= 8` | ✅ Added |
 | CommunicationPatterns | `isNoteworthy !== false && wordCount >= 8` | ✅ Already had |
+| LearningBehavior | `isNoteworthy !== false && wordCount >= 8` | ✅ Added |
+| ContextEfficiency | `isNoteworthy !== false && wordCount >= 8` | ✅ Added |
+| SessionOutcome | `isNoteworthy !== false && wordCount >= 8` | ✅ Added |
 
 ---
 
@@ -333,12 +333,11 @@ const topUtterances = phase1Output.developerUtterances
 
 | Worker | Evidence Location |
 |--------|-------------------|
-| TrustVerification | `antiPatterns[].examples[].utteranceId` |
-| WorkflowHabit | `criticalThinkingMoments[].utteranceId`, `planningHabits[].examples[].utteranceId` |
-| StrengthGrowth | `strengths[].evidence[].utteranceId`, `growthAreas[].evidence[].utteranceId` |
-| KnowledgeGap | `strengths[].evidence[].utteranceId`, `growthAreas[].evidence[].utteranceId` |
-| ContextEfficiency | `strengths[].evidence[].utteranceId`, `growthAreas[].evidence[].utteranceId` |
+| ThinkingQuality | `verificationAntiPatterns[].examples[].utteranceId`, `criticalThinkingMoments[].utteranceId`, `planningHabits[].examples[].utteranceId` |
 | CommunicationPatterns | `patterns[].examples[].utteranceId`, `strengths[].evidence[].utteranceId`, `growthAreas[].evidence[].utteranceId` |
+| LearningBehavior | `strengths[].evidence[].utteranceId`, `growthAreas[].evidence[].utteranceId` |
+| ContextEfficiency | `strengths[].evidence[].utteranceId`, `growthAreas[].evidence[].utteranceId` |
+| SessionOutcome | `sessionGoals[].evidence[].utteranceId` |
 
 ### Implementation Notes
 

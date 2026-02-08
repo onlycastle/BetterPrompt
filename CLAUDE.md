@@ -115,12 +115,13 @@ npm test               # Run all tests
 > ⚠️ **Continuous Scroll Layout**: The report page renders ALL worker sections sequentially (no tabs). `useScrollSpy` hook drives the active section indicator in the `FloatingProgressDots` component. `InsightPreviewCard` is replaced by inline insight rendering within `GrowthCard`.
 >
 > **How it works** (in `TabbedReportContainer.tsx`):
-> 1. All sections (Activity, Thinking, Communication, Learning, Context) render simultaneously
+> 1. All sections (Growth, Activity, Thinking, Communication, Learning, Context) render simultaneously
 > 2. `useScrollSpy` with IntersectionObserver detects which section is in viewport
 > 3. `FloatingProgressDots` (fixed right side) highlights the active section
 > 4. Professional insights render inline within `GrowthCard` (no sidebar, no click needed)
+> 5. Growth section shows percentile benchmarks via `useGrowthData` hook + `/api/benchmarks/personal`
 >
-> **Key files**: `useScrollSpy.ts`, `FloatingProgressDots.tsx`, `WorkerInsightsSection.tsx` (inline insights in GrowthCard)
+> **Key files**: `useScrollSpy.ts`, `FloatingProgressDots.tsx`, `WorkerInsightsSection.tsx` (inline insights in GrowthCard), `useGrowthData.ts`, `GrowthSummaryBanner.tsx`, `ProgressSection.tsx`, `PercentileGauge.tsx`
 
 ## No Fallback Policy
 

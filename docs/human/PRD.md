@@ -92,7 +92,7 @@ NoMoreAISlop is the world's first data-driven AI coding capability assessment pl
 **Pipeline:** Session Discovery → Parsing → Data Extraction → Insight Generation → Type Classification → Content Writing → Translation
 
 ### 5.2 15-Type Personality Classification
-**5 Styles:** Architect, Scientist, Collaborator, Speedrunner, Craftsman
+**5 Styles:** Architect, Analyst, Conductor, Speedrunner, Trendsetter
 **3 Control Levels:** Explorer (0-34), Navigator (35-64), Cartographer (65-100)
 
 ### 5.3 6-Dimension Deep Analysis

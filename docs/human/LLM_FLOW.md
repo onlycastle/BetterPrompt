@@ -1,7 +1,7 @@
 # Orchestrator + Workers Analysis Pipeline
 
 > Pipeline that analyzes developer-AI collaboration sessions and generates personalized reports
-> Version: 2.3.0 | Last Updated: 2026-02-04
+> Version: 2.4.0 | Last Updated: 2026-02-08
 
 ## Overview
 
@@ -393,13 +393,13 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 │  ┌─────────────────────────────────────────────────────────────────┐    │
 │  │  NARRATIVE SCOPE (Phase 3 generates ONLY these)                  │    │
 │  │                                                                   │    │
-│  │  personalitySummary ─────▶ Hyper-personalized summary (≤3000ch) │    │
-│  │  │                           Uses \n\n for paragraph breaks,    │    │
-│  │  │                           single \n for soft breaks          │    │
-│  │  │                           (1-2 per paragraph)                │    │
+│  │  personalitySummary ─────▶ From Phase 2.5 TypeClassifier        │    │
+│  │  │                           reasoning (≤3000ch, NOT generated  │    │
+│  │  │                           here — Phase 3 only truncates)     │    │
 │  │  topFocusAreas ──────────▶ Top 3 personalized priorities         │    │
 │  │                                                                   │    │
-│  │  NOTE: promptPatterns moved to Phase 2 ThinkingQuality worker   │    │
+│  │  NOTE: personalitySummary sourced from Phase 2.5 TypeClassifier │    │
+│  │  reasoning. promptPatterns from Phase 2 ThinkingQuality worker │    │
 │  │  (communicationPatterns field) — Phase 3 only used as fallback  │    │
 │  │                                                                   │    │
 │  │  MOVED TO EvaluationAssembler (deterministic, no LLM):           │    │
@@ -485,9 +485,9 @@ PATH 2: Phase 3 NarrativeLLMResponse → Direct Copy → Narrative Fields
 NarrativeLLMResponse                                VerboseEvaluation (narrative)
 ─────────────────────                               ─────────────────────────────
 
-┌────────────────────────┐     direct copy          personalitySummary
-│ personalitySummary     │─────────────────────────▶(≤3000 chars, personalized)
-│                        │
+┌────────────────────────┐     truncate/copy        personalitySummary
+│ personalitySummary     │─────────────────────────▶(from Phase 2.5 TypeClassifier
+│ (from TypeClassifier)  │                          reasoning, truncated ≤3000ch)
 │ topFocusAreas          │─────────────────────────▶topFocusAreas
 │   (top 3 priorities)  │                          (with parsed actions)
 │                        │
@@ -835,11 +835,11 @@ Now, translations are applied AFTER assembly:
 
 ---
 
-## 5-Tab UI Data Flow
+## Report UI Data Flow (Continuous Scroll)
 
-The report UI organizes insights into 5 tabs — 4 powered by Phase 2 Workers + 1 Activity tab (deterministic, no LLM):
+The report UI renders all sections in a continuous scroll layout with `FloatingProgressDots` navigation (no tabs). Sections: Growth → Activity → Thinking → Communication → Learning → Context.
 
-### Tab Architecture
+### Section Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -869,10 +869,17 @@ Key files:
 ```
 
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│  [Activity] [Thinking Quality] [Communication] [Learning Behavior] [Context]   │
+│  Continuous Scroll: [Growth] [Activity] [Thinking] [Communication]             │
+│                     [Learning] [Context]   + FloatingProgressDots nav          │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
-│  TAB 1: Activity (Contribution Graph)                  ✅ FREE                  │
+│  SECTION: Growth (Progress & Benchmarks)                   ✅ FREE             │
+│  ├── Data source: Phase 2 worker data (aggregated) + /api/benchmarks/personal │
+│  ├── useGrowthData hook for percentile benchmarks                              │
+│  ├── Components: GrowthSummaryBanner, ProgressSection, PercentileGauge        │
+│  └── Professional insights render inline within GrowthCard                     │
+│                                                                                 │
+│  SECTION: Activity (Contribution Graph)                    ✅ FREE             │
 │  ├── Data source: ActivitySessionInfo (CLI scanner, NOT LLM pipeline)          │
 │  │   ├── totalInputTokens (from assistant message usage in JSONL)             │
 │  │   └── totalOutputTokens (from assistant message usage in JSONL)            │
@@ -883,29 +890,29 @@ Key files:
 │  ├── Tooltip: session count + token count per day                             │
 │  └── Detail panel: per-project sessions, duration, token usage                │
 │                                                                                │
-│  NOTE: Activity tab data does NOT flow through the LLM pipeline.              │
+│  NOTE: Activity section data does NOT flow through the LLM pipeline.          │
 │  It uses the CLI Activity Scanner (deterministic metadata extraction).        │
 │                                                                                 │
-│  TAB 2: Thinking Quality                                                        │
+│  SECTION: Thinking Quality                                                     │
 │  ├── ThinkingQualityWorker.strengths[]         ← Phase 2      ✅ FREE          │
 │  └── ThinkingQualityWorker.growthAreas[]       ← Phase 2                        │
 │      ├── title, description, evidence, severity               ✅ FREE          │
 │      └── recommendation                                        🔒 PAID          │
 │                                                                                 │
-│  TAB 3: Communication                                                           │
+│  SECTION: Communication                                                        │
 │  ├── CommunicationPatternsWorker.strengths[]   ← Phase 2      ✅ FREE          │
 │  ├── CommunicationPatternsWorker.growthAreas[] ← Phase 2                        │
 │  │   ├── title, description, evidence, severity               ✅ FREE          │
 │  │   └── recommendation                                        🔒 PAID          │
 │  └── Signature quotes + communication pattern tips             ✅ FREE*        │
 │                                                                                 │
-│  TAB 4: Learning Behavior                                                       │
+│  SECTION: Learning Behavior                                                    │
 │  ├── LearningBehaviorWorker.strengths[]        ← Phase 2      ✅ FREE          │
 │  └── LearningBehaviorWorker.growthAreas[]      ← Phase 2                        │
 │      ├── title, description, evidence, severity               ✅ FREE          │
 │      └── recommendation                                        🔒 PAID          │
 │                                                                                 │
-│  TAB 5: Context Efficiency                                                      │
+│  SECTION: Context Efficiency                                                   │
 │  ├── ContextEfficiencyWorker.strengths[]       ← Phase 2      ✅ FREE          │
 │  └── ContextEfficiencyWorker.growthAreas[]     ← Phase 2                        │
 │      ├── title, description, evidence, severity               ✅ FREE          │
@@ -1133,15 +1140,17 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
   ╔═══════════════════════════════════════════════════════════════════╗
   ║         PHASE 3: CONTENT WRITER — NARRATIVE ONLY (1 LLM call)    ║
   ║                                                                    ║
-  ║   Model: gemini-3-flash      Temp: 1.0    Tokens: 65536           ║
+  ║   Model: gemini-3-flash-preview  Temp: 1.0  Tokens: 65536         ║
   ║                                                                    ║
   ║   INPUT:  AgentOutputs summary (via phase3-summarizer)            ║
   ║           + sessionCount + top 20 utterances                      ║
   ║           + knowledgeResources (optional)                         ║
   ║   OUTPUT: NarrativeLLMResponse (narrative only)                   ║
-  ║           - personalitySummary (≤3000 chars)                      ║
+  ║           - personalitySummary (from Phase 2.5 TypeClassifier     ║
+  ║             reasoning — Phase 3 only truncates to ≤3000 chars)   ║
   ║           - topFocusAreas (top 3 priorities, optional)            ║
-  ║   NOTE: promptPatterns from Phase 2 ThinkingQuality.              ║
+  ║   NOTE: personalitySummary sourced from Phase 2.5 TypeClassifier ║
+  ║         reasoning. promptPatterns from Phase 2 ThinkingQuality   ║
   ║         communicationPatterns (Phase 3 is fallback only)          ║
   ║                                                                    ║
   ║   LANGUAGE: Always generates in English                           ║
@@ -1282,7 +1291,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 |-----------|------|-------------|
 | Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | Pipeline coordination (Phase 1→2→2.5→3→4→Assembly→TranslationOverlay), Worker registration/execution, `mergeTranslatedFields()` |
 | Orchestrator Types | `src/lib/analyzer/orchestrator/types.ts` | WorkerResult, WorkerContext, Phase types |
-| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, registers all workers (1 Phase 1, 4 Phase 2, 1 Phase 2.5) |
+| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, registers all workers (1 Phase 1, 5 Phase 2, 1 Phase 2.5) |
 | Content Gateway | `src/lib/analyzer/content-gateway.ts` | Tier-based content filtering (free/premium) |
 
 ### Phase 1: Data Extraction Worker (1 worker, deterministic)
@@ -1301,15 +1310,18 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Communication Patterns | `src/lib/analyzer/workers/communication-patterns-worker.ts` | Communication patterns, signature quotes |
 | Learning Behavior | `src/lib/analyzer/workers/learning-behavior-worker.ts` | Knowledge gaps & repeated mistakes |
 | Context Efficiency | `src/lib/analyzer/workers/context-efficiency-worker.ts` | Token inefficiency |
+| Session Outcome | `src/lib/analyzer/workers/session-outcome-worker.ts` | Goals, friction, success rates |
 | Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | AgentOutputs Zod schemas |
 | Thinking Quality Schema | `src/lib/models/thinking-quality-data.ts` | ThinkingQualityOutput |
 | Communication Patterns Schema | `src/lib/models/communication-patterns-data.ts` | CommunicationPatternsOutput |
 | Learning Behavior Schema | `src/lib/models/learning-behavior-data.ts` | LearningBehaviorOutput |
 | Context Efficiency Schema | (reuses existing) | ContextEfficiencyOutput |
+| Session Outcome Schema | `src/lib/models/session-outcome-data.ts` | SessionOutcomeOutput |
 | Thinking Quality Prompts | `src/lib/analyzer/workers/prompts/thinking-quality-prompts.ts` | PTCF prompts for thinking analysis |
 | Communication Patterns Prompts | `src/lib/analyzer/workers/prompts/communication-patterns-prompts.ts` | PTCF prompts for communication analysis |
 | Learning Behavior Prompts | `src/lib/analyzer/workers/prompts/learning-behavior-prompts.ts` | PTCF prompts for learning analysis |
 | Context Efficiency Prompts | `src/lib/analyzer/workers/prompts/context-efficiency-prompts.ts` | PTCF prompts for context analysis |
+| Session Outcome Prompts | `src/lib/analyzer/workers/prompts/session-outcome-prompts.ts` | PTCF prompts for session outcome analysis |
 | Knowledge Mapping | `src/lib/analyzer/workers/prompts/knowledge-mapping.ts` | Dynamic prompt injection (dimension→insight mapping) |
 
 ### Phase 2.5: Classification (1 worker, 1 LLM call)
