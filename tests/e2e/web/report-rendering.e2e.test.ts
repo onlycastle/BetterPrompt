@@ -29,12 +29,12 @@ test.describe('Report Rendering', () => {
       }
     });
 
-    test('applies JetBrains Mono font family', async ({ page }) => {
+    test('applies Fira Code font family', async ({ page }) => {
       const fontFamily = await page.evaluate(() => {
         return getComputedStyle(document.body).fontFamily;
       });
 
-      expect(fontFamily.toLowerCase()).toContain('jetbrains');
+      expect(fontFamily.toLowerCase()).toContain('fira code');
     });
 
     test('renders neon color scheme', async ({ page }) => {
