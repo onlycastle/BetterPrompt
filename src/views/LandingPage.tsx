@@ -1,7 +1,6 @@
 import { HeroSection } from '@/components/landing/HeroSection';
 import { ValueStory } from '@/components/landing/ValueStory';
-import { AnalysisPreview } from '@/components/landing/AnalysisPreview';
-import { TypeShowcase } from '@/components/landing/TypeShowcase';
+import { AnalysisShowcase } from '@/components/landing/AnalysisShowcase';
 import { KnowledgeSection } from '@/components/landing/KnowledgeSection';
 import { DownloadSection } from '@/components/landing/DownloadSection';
 import { LandingFooter } from '@/components/landing/LandingFooter';
@@ -14,8 +13,7 @@ export function LandingPage() {
       <SectionNav />
       <main className={styles.main}>
         <HeroSection />
-        <AnalysisPreview />
-        <TypeShowcase />
+        <AnalysisShowcase />
         <ValueStory />
         <KnowledgeSection />
         <DownloadSection />

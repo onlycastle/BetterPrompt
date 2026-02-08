@@ -6,7 +6,6 @@ import styles from './SectionNav.module.css';
 
 const SECTIONS = [
   { id: 'preview', label: 'Preview' },
-  { id: 'types', label: 'Types' },
   { id: 'value', label: 'Why' },
   { id: 'knowledge', label: 'Research' },
   { id: 'download', label: 'Start' },
