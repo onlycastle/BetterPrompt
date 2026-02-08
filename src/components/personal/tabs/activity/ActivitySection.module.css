@@ -379,6 +379,23 @@
   padding-right: var(--space-xs);
 }
 
+/* Click hint in legend row */
+.clickHint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+  color: var(--sketch-cyan-text);
+  font-style: italic;
+  margin-right: auto;
+  animation: hintFadeIn 0.4s ease-out 2s both;
+  white-space: nowrap;
+}
+
+@keyframes hintFadeIn {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
 .legendLabel {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -538,6 +555,10 @@
   .legendCell {
     width: 10px;
     height: 10px;
+  }
+
+  .clickHint {
+    display: none;
   }
 
   .legend {
