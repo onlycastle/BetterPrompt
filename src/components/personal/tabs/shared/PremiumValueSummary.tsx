@@ -41,7 +41,7 @@ export function PremiumValueSummary({ lockedCount, domainName }: PremiumValueSum
       {/* Terminal-style header */}
       <div className={styles.header}>
         <span className={styles.headerIcon}>🔒</span>
-        <span className={styles.headerTitle}>LOCKED IN THIS TAB</span>
+        <span className={styles.headerTitle}>LOCKED IN THIS SECTION</span>
       </div>
 
       {/* Value items */}

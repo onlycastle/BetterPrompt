@@ -112,15 +112,16 @@ npm test               # Run all tests
 >
 > **Bug History**: `communicationPatterns` missing from #7 (commit `adf12db`), `sessionOutcome` missing from ALL (fixed 2026-02-07).
 
-> ⚠️ **Insight Sidebar Auto-Show Invariant**: The report page MUST default to the first worker tab (not Activity) on initial load so the InsightPreviewCard auto-shows in the sidebar.
+> ⚠️ **Continuous Scroll Layout**: The report page renders ALL worker sections sequentially (no tabs). `useScrollSpy` hook drives the active section indicator in the `FloatingProgressDots` component. `InsightPreviewCard` is replaced by inline insight rendering within `GrowthCard`.
 >
 > **How it works** (in `TabbedReportContainer.tsx`):
-> 1. `defaultTab` prefers the first worker tab (Thinking > Communication > Learning > Context)
-> 2. On mount, `useEffect` switches `activeTab` from `'activity'` to `defaultTab`
-> 3. `defaultInsightForTab` finds the first insight for the active worker tab's domain
-> 4. Auto-show `useEffect` sets `selectedInsight`, triggering InsightPreviewCard render
+> 1. All sections (Growth, Activity, Thinking, Communication, Learning, Context) render simultaneously
+> 2. `useScrollSpy` with IntersectionObserver detects which section is in viewport
+> 3. `FloatingProgressDots` (fixed right side) highlights the active section
+> 4. Professional insights render inline within `GrowthCard` (no sidebar, no click needed)
+> 5. Growth section shows percentile benchmarks via `useGrowthData` hook + `/api/benchmarks/personal`
 >
-> **DO NOT** change `defaultTab` to prefer `'activity'` or remove the initial tab switch — this breaks the auto-show flow because `TAB_TO_DOMAIN['activity']` is `null`.
+> **Key files**: `useScrollSpy.ts`, `FloatingProgressDots.tsx`, `WorkerInsightsSection.tsx` (inline insights in GrowthCard), `useGrowthData.ts`, `GrowthSummaryBanner.tsx`, `ProgressSection.tsx`, `PercentileGauge.tsx`
 
 ## No Fallback Policy
 

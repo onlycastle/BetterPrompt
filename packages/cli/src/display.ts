@@ -11,6 +11,8 @@ import type { SessionWithParsed } from './scanner.js';
 import type { CostEstimate } from './cost-estimator.js';
 import { generateCelebrationBanner } from './animations/index.js';
 
+const REPORT_BASE_URL = 'https://www.nomoreaislop.app';
+
 const TYPE_COLORS: Record<string, (s: string) => string> = {
   architect: pc.blue,
   analyst: pc.magenta,
@@ -210,8 +212,12 @@ export function displayResults(result: AnalysisResult): void {
   lines.push(pc.dim('─'.repeat(45)));
   lines.push('');
 
-  // Report link
-  lines.push(`📊 ${pc.bold('Detailed Report:')} ${pc.cyan(pc.underline(result.reportUrl))}`);
+  // Report link - inverted background CTA banner
+  lines.push(pc.bgCyan(pc.black(pc.bold('  ➜  VIEW YOUR FULL REPORT                        '))));
+  lines.push('');
+  lines.push(`  ${pc.cyan(pc.bold(pc.underline(result.reportUrl)))}`);
+  lines.push('');
+  lines.push(pc.dim(`  Share link: ${REPORT_BASE_URL}/r/${result.resultId}`));
 
   const box = boxen(lines.join('\n'), {
     padding: 1,

@@ -104,6 +104,45 @@ export function getChipCharacter(expression: ChippyExpression, tick: number): st
 }
 
 /**
+ * Fixed width for the bubble area (prevents terminal jitter).
+ * Bubble text is truncated/padded to this width.
+ */
+const BUBBLE_WIDTH = 42;
+
+/**
+ * Get the chip character with a speech bubble on the first line.
+ * Returns 3-line array with fixed-width bubble area to prevent jitter.
+ *
+ * Layout:
+ *   ┬─┬─┬ . *    💭 "message text here"
+ *   ├◉ ◉├  :
+ *   ┴~~~┴ +
+ */
+export function getChipCharacterWithBubble(
+  expression: ChippyExpression,
+  tick: number,
+  bubbleText: string,
+): string[] {
+  const frame = CHIP_FRAMES[expression];
+  const dust = generateDust(tick);
+
+  // Truncate bubble text if needed, then pad to fixed width
+  const maxTextLen = BUBBLE_WIDTH - 6; // account for '💭 "' + '"'
+  const truncated =
+    bubbleText.length > maxTextLen
+      ? bubbleText.slice(0, maxTextLen - 1) + '\u2026'
+      : bubbleText;
+  const bubble = `\uD83D\uDCAD "${truncated}"`;
+  const paddedBubble = bubble.padEnd(BUBBLE_WIDTH);
+
+  return [
+    frame[0] + dust[0] + paddedBubble,
+    frame[1] + dust[1] + ' '.repeat(BUBBLE_WIDTH),
+    frame[2] + dust[2] + ' '.repeat(BUBBLE_WIDTH),
+  ];
+}
+
+/**
  * Get a single-line Chippy face for inline display
  */
 export function getChippyInline(expression: ChippyExpression = 'neutral'): string {

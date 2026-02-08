@@ -25,6 +25,7 @@ import { createProgressDisplay } from './progress.js';
 import {
   storeTokens,
   getStoredAccessToken,
+  getStoredRefreshToken,
   getStoredUserEmail,
   clearTokens,
   hasStoredTokens,
@@ -33,6 +34,7 @@ import {
   startDeviceFlow,
   pollForToken,
   getUserInfo,
+  refreshAccessToken,
 } from './auth/device-flow.js';
 import {
   generateWelcomeBanner,
@@ -340,6 +342,38 @@ async function handleStatus(): Promise<void> {
 }
 
 /**
+ * Get a valid access token, refreshing if expired.
+ * Returns null if no stored token or refresh fails (caller should re-authenticate).
+ */
+async function getValidAccessToken(): Promise<string | null> {
+  const accessToken = await getStoredAccessToken();
+  if (!accessToken) return null;
+
+  // Verify token is still valid
+  try {
+    await getUserInfo(accessToken);
+    return accessToken;
+  } catch {
+    // Token expired — try refreshing
+  }
+
+  const refreshToken = await getStoredRefreshToken();
+  if (!refreshToken) return null;
+
+  try {
+    const newTokens = await refreshAccessToken(refreshToken);
+    await storeTokens({
+      accessToken: newTokens.accessToken,
+      refreshToken: newTokens.refreshToken,
+    });
+    return newTokens.accessToken;
+  } catch {
+    // Refresh failed — caller should re-authenticate
+    return null;
+  }
+}
+
+/**
  * Perform device flow authentication
  */
 async function performDeviceFlowAuth(): Promise<string> {
@@ -413,8 +447,8 @@ async function runAnalysis(options: RunAnalysisOptions = {}): Promise<void> {
   // Step 1: Welcome banner with Chippy mascot
   console.log(generateWelcomeBanner());
 
-  // Step 2: Auth check
-  let accessToken = await getStoredAccessToken();
+  // Step 2: Auth check (validates token, refreshes if expired)
+  let accessToken = await getValidAccessToken();
 
   if (accessToken) {
     const email = await getStoredUserEmail();
@@ -551,7 +585,7 @@ async function runAnalysis(options: RunAnalysisOptions = {}): Promise<void> {
   console.log('');
 
   // Step 4: Analysis with Chippy progress animation
-  const progressDisplay = createProgressDisplay();
+  const progressDisplay = createProgressDisplay({ sessions: selectedSessions });
   progressDisplay.start();
 
   try {

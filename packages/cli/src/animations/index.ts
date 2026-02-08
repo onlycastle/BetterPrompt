@@ -11,6 +11,7 @@ export {
   getChippyWithIndicator,
   getChippyLarge,
   getChipCharacter,
+  getChipCharacterWithBubble,
   THINKING_FRAMES,
   CELEBRATION_FRAMES,
   getAnimationFrame,
@@ -23,3 +24,13 @@ export {
   WAITING_MESSAGES,
   getWaitingMessage,
 } from './banner.js';
+
+export {
+  type SessionInsights,
+  type AnalysisMessage,
+  type MilestoneConfig,
+  computeSessionInsights,
+  generatePersonalizedMessages,
+  getAnalyzingStatusMessage,
+  MILESTONES,
+} from './analysis-messages.js';

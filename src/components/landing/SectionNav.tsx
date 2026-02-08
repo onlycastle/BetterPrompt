@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { track } from '@vercel/analytics';
 import styles from './SectionNav.module.css';
 
 const SECTIONS = [
-  { id: 'philosophy', label: 'Why' },
-  { id: 'value', label: 'How' },
   { id: 'preview', label: 'Preview' },
   { id: 'types', label: 'Types' },
+  { id: 'value', label: 'Why' },
   { id: 'knowledge', label: 'Research' },
   { id: 'download', label: 'Start' },
 ] as const;
@@ -15,6 +15,7 @@ const SECTIONS = [
 export function SectionNav() {
   const [visible, setVisible] = useState(false);
   const [activeId, setActiveId] = useState<string>('');
+  const trackedSections = useRef(new Set<string>());
 
   useEffect(() => {
     const heroEl = document.getElementById('hero');
@@ -38,6 +39,11 @@ export function SectionNav() {
         for (const entry of entries) {
           if (entry.isIntersecting) {
             setActiveId(entry.target.id);
+            // Track scroll depth — each section only once
+            if (!trackedSections.current.has(entry.target.id)) {
+              trackedSections.current.add(entry.target.id);
+              track('scroll_depth', { section: entry.target.id });
+            }
           }
         }
       },

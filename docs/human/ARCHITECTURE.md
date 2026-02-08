@@ -130,7 +130,9 @@ src/components/
 ```
 src/hooks/
 ├── useAnalysisReport.ts        # Report data fetching
-├── useScrollNavigation.ts      # Section navigation (j/k, 1-8 keys)
+├── useScrollSpy.ts             # Scroll spy for section detection (IntersectionObserver)
+├── useGrowthData.ts            # Growth benchmark data fetching
+├── useScrollNavigation.ts      # (Legacy) Replaced by useScrollSpy for continuous scroll layout
 ├── useKnowledge.ts             # Knowledge base operations
 ├── useLearn.ts                 # Learning/content addition
 ├── useReport.ts                # Report management
@@ -144,7 +146,7 @@ src/hooks/
 
 **Key Features:**
 - Terminal-aesthetic design (macOS window chrome, neon colors)
-- Snap-scroll section navigation with keyboard shortcuts
+- Continuous scroll layout with FloatingProgressDots navigation
 - Premium content blur/unlock logic
 - Server Components for optimal performance
 - React hooks for client-side state management
@@ -376,6 +378,7 @@ Separate from the Multi-Source Session Scanner (used for LLM analysis), the Acti
 | `/api/reports` | Report sharing and OG images | Public | `app/api/reports/` |
 | `/api/knowledge` | Knowledge base operations | PREMIUM | `app/api/knowledge/` |
 | `/api/learn` | YouTube/URL learning | PREMIUM | `app/api/learn/` |
+| `/api/benchmarks` | Benchmark percentiles (personal + global) | Public+Auth | `app/api/benchmarks/` |
 | `/api/health` | Health check | Public | `app/api/health/` |
 
 **Key Endpoints:**

@@ -50,6 +50,14 @@ npm run sst:remove    # Remove deployment (cleanup)
 - ~1,000 analyses/month at 30s each: **less than $1/month**
 - AWS Free Tier: 1M requests + 400K GB-seconds/month free (12 months)
 
+## CI/CD Workflows
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `deploy-lambda.yml` | Push to `main` (changes in `lambda/`, `infra/`, `sst.config.ts`) | Auto-deploy Lambda via SST |
+| `build-desktop.yml` | Manual / push | Desktop app build |
+| `publish-cli.yml` | Manual / push | CLI package publish to npm |
+
 ## Key Files
 
 | File | Purpose |
@@ -57,3 +65,6 @@ npm run sst:remove    # Remove deployment (cleanup)
 | `lambda/analysis.ts` | Lambda handler for analysis endpoint |
 | `infra/api.ts` | SST API infrastructure config |
 | `sst.config.ts` | SST project configuration |
+| `.github/workflows/deploy-lambda.yml` | Lambda CI/CD pipeline |
+| `.github/workflows/build-desktop.yml` | Desktop build pipeline |
+| `.github/workflows/publish-cli.yml` | CLI publish pipeline |

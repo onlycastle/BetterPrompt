@@ -347,8 +347,10 @@ This file is **gitignored** because it contains user-specific analysis data.
 The Phase 2 cache contains:
 - Phase 1 output (from Phase 1 cache)
 - ThinkingQuality worker output
+- CommunicationPatterns worker output
 - LearningBehavior worker output
 - ContextEfficiency worker output
+- SessionOutcome worker output
 - TypeClassifier output (Phase 2.5)
 
 ### When to Regenerate

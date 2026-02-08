@@ -6,18 +6,35 @@
 
 .main {
   flex: 1;
-  max-width: var(--content-max-width);
-  margin: 0 auto;
-  padding: 0 var(--space-lg);
   width: 100%;
 }
 
-.main section {
+/* Constrain inner content but allow full-bleed sections (e.g. DownloadSection dark bg) */
+.main > section {
   scroll-margin-top: 48px;
 }
 
+/* Regular sections get max-width + padding; full-bleed sections handle their own */
+.main > section:not(#download):not(#preview) {
+  max-width: var(--content-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-lg);
+  padding-right: var(--space-lg);
+}
+
+/* Full-bleed sections (download, preview) contain their own max-width */
+.main > section#preview {
+  max-width: var(--content-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-lg);
+  padding-right: var(--space-lg);
+}
+
 @media (max-width: 768px) {
-  .main {
-    padding: 0 var(--space-md);
+  .main > section:not(#download) {
+    padding-left: var(--space-md);
+    padding-right: var(--space-md);
   }
 }

@@ -1,4 +1,7 @@
 /**
+ * @deprecated Superseded by app/r/[resultId]/opengraph-image.tsx which generates PNG via ImageResponse.
+ * Twitter/X ignores SVG og:image tags. Kept temporarily for external cache references.
+ *
  * GET /api/reports/:reportId/og-image
  * Generate Open Graph image for social sharing
  * Returns an SVG image (1200x630px)
@@ -8,9 +11,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import type { TypeResult } from '@/lib/models/coding-style';
 
-/**
- * Generate OG image as SVG
- */
 function generateOGImageSVG(typeResult: TypeResult): string {
   const TYPE_INFO: Record<string, { emoji: string; name: string; color: string }> = {
     architect: { emoji: '🏗️', name: 'Architect', color: '#00d4ff' },

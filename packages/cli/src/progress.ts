@@ -10,6 +10,9 @@
  *
  * Renders via log-update (single atomic write per frame) instead
  * of ora (per-line clear/rewrite) to eliminate multiline flickering.
+ *
+ * During the analyzing phase (~4 min), shows personalized messages
+ * derived from the user's own session data ("Spotify Wrapped" effect).
  */
 
 import pc from 'picocolors';
@@ -17,10 +20,18 @@ import { createLogUpdate } from 'log-update';
 import cliCursor from 'cli-cursor';
 import {
   getChipCharacter,
+  getChipCharacterWithBubble,
   THINKING_FRAMES,
   getAnimationFrame,
   type ChippyExpression,
+  type AnalysisMessage,
+  type MilestoneConfig,
+  computeSessionInsights,
+  generatePersonalizedMessages,
+  getAnalyzingStatusMessage,
+  MILESTONES,
 } from './animations/index.js';
+import type { SessionWithParsed } from './scanner.js';
 
 /** Animation smoothing constants */
 const ANIMATION_INTERVAL = 200; // ms per tick
@@ -28,6 +39,11 @@ const NORMAL_STEP = 1; // % per tick when gap <= 20
 const FAST_STEP = 2; // % per tick when gap > 20
 const SLOW_THRESHOLD = 40; // below this %, advance at reduced speed
 const SLOW_TICK_DIVISOR = 9; // only advance every Nth tick below threshold
+
+/** Rotation intervals (in ticks) */
+const BUBBLE_ROTATION_TICKS = 50; // ~10 seconds
+const TIP_ROTATION_TICKS = 90; // ~18 seconds
+const MILESTONE_DISPLAY_TICKS = 25; // ~5 seconds
 
 /** Braille spinner frames (same cadence as ora's dots) */
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -70,6 +86,13 @@ const STAGE_CONFIGS: Record<string, StageConfig> = {
 };
 
 /**
+ * Options for creating a ProgressDisplay
+ */
+export interface ProgressDisplayOptions {
+  sessions?: SessionWithParsed[];
+}
+
+/**
  * ProgressDisplay class for rich progress visualization
  *
  * Decouples targetProgress (from SSE events) from displayedProgress
@@ -91,7 +114,14 @@ export class ProgressDisplay {
   private currentMessage: string;
   private animationTimer: ReturnType<typeof setInterval> | null;
 
-  constructor() {
+  // Personalized message state
+  private bubbleMessages: string[];
+  private tipMessages: AnalysisMessage[];
+  private lastMilestoneHit: number;
+  private milestoneTicksRemaining: number;
+  private activeMilestone: MilestoneConfig | null;
+
+  constructor(options: ProgressDisplayOptions = {}) {
     this.logUpdate = createLogUpdate(process.stderr);
     this.spinnerFrameIndex = 0;
     this.startTime = Date.now();
@@ -102,6 +132,21 @@ export class ProgressDisplay {
     this.currentStage = 'preparing';
     this.currentMessage = 'Initializing analysis...';
     this.animationTimer = null;
+
+    // Compute personalized messages from session data
+    if (options.sessions && options.sessions.length > 0) {
+      const insights = computeSessionInsights(options.sessions);
+      const messages = generatePersonalizedMessages(insights);
+      this.bubbleMessages = messages.bubbles;
+      this.tipMessages = messages.tips;
+    } else {
+      this.bubbleMessages = [];
+      this.tipMessages = [];
+    }
+
+    this.lastMilestoneHit = -1;
+    this.milestoneTicksRemaining = 0;
+    this.activeMilestone = null;
   }
 
   /**
@@ -137,7 +182,7 @@ export class ProgressDisplay {
   /**
    * Animation tick called every ANIMATION_INTERVAL ms.
    * Advances displayedProgress toward targetProgress, rotates
-   * spinner frame, and re-renders.
+   * spinner frame, checks milestones, and re-renders.
    */
   private animationTick(): void {
     this.tick++;
@@ -159,12 +204,43 @@ export class ProgressDisplay {
       }
     }
 
+    // Check milestones during analyzing phase
+    if (this.currentStage === 'analyzing') {
+      this.checkMilestones();
+    }
+
+    // Decrement milestone display timer
+    if (this.milestoneTicksRemaining > 0) {
+      this.milestoneTicksRemaining--;
+      if (this.milestoneTicksRemaining === 0) {
+        this.activeMilestone = null;
+      }
+    }
+
     this.render();
   }
 
   /**
+   * Check if any milestone threshold has been crossed.
+   */
+  private checkMilestones(): void {
+    for (const milestone of MILESTONES) {
+      if (
+        this.displayedProgress >= milestone.percent &&
+        this.lastMilestoneHit < milestone.percent
+      ) {
+        this.lastMilestoneHit = milestone.percent;
+        this.activeMilestone = milestone;
+        this.milestoneTicksRemaining = MILESTONE_DISPLAY_TICKS;
+      }
+    }
+  }
+
+  /**
    * Render the current state to the terminal.
-   * Uses displayedProgress, currentStage, and currentMessage.
+   *
+   * During the analyzing phase, renders 6 lines (with bubble + tip).
+   * During other phases, renders 5 lines (original layout).
    *
    * log-update overwrites the previous output atomically,
    * so there is no visible clear→rewrite gap.
@@ -174,21 +250,47 @@ export class ProgressDisplay {
     const elapsed = this.formatElapsed();
     const progressBar = this.renderProgressBar(this.displayedProgress);
 
-    // Get Chippy expression based on stage
-    const expression: ChippyExpression =
-      this.currentStage === 'complete'
-        ? 'excited'
-        : getAnimationFrame(THINKING_FRAMES, this.tick);
+    const isAnalyzing = this.currentStage === 'analyzing';
+    const hasBubbles = this.bubbleMessages.length > 0;
 
-    // Get 3-line chip character with pixel dust animation
-    const chipLines = getChipCharacter(expression, this.tick);
+    // Get Chippy expression based on stage and milestones
+    let expression: ChippyExpression;
+    if (this.currentStage === 'complete') {
+      expression = 'excited';
+    } else if (this.activeMilestone) {
+      expression = this.activeMilestone.expression;
+    } else {
+      expression = getAnimationFrame(THINKING_FRAMES, this.tick);
+    }
+
+    // Get chip character lines (with or without bubble)
+    let chipLines: string[];
+    if (isAnalyzing && hasBubbles) {
+      // Determine current bubble text
+      let bubbleText: string;
+      if (this.activeMilestone) {
+        bubbleText = this.activeMilestone.bubble;
+      } else {
+        const bubbleIdx = Math.floor(this.tick / BUBBLE_ROTATION_TICKS) % this.bubbleMessages.length;
+        bubbleText = this.bubbleMessages[bubbleIdx];
+      }
+      chipLines = getChipCharacterWithBubble(expression, this.tick, bubbleText);
+    } else {
+      chipLines = getChipCharacter(expression, this.tick);
+    }
 
     // Spinner character (manually rotated)
     const spinnerChar = pc.cyan(SPINNER_FRAMES[this.spinnerFrameIndex]);
 
-    // Main status line with server message (icon only if present)
-    const iconPart = config.icon ? `${config.icon} ` : '';
-    const mainLine = `${spinnerChar} ${iconPart}${config.color(this.currentMessage)}`;
+    // Main status line — use rotating status messages during analyzing
+    let mainLine: string;
+    if (isAnalyzing) {
+      const statusMsg = getAnalyzingStatusMessage(this.tick);
+      mainLine = `${spinnerChar} ${config.color(statusMsg)}`;
+    } else {
+      const iconPart = config.icon ? `${config.icon} ` : '';
+      mainLine = `${spinnerChar} ${iconPart}${config.color(this.currentMessage)}`;
+    }
 
     // Progress bar line with elapsed time and optional time hint
     const timeHint = this.shouldShowTimeHint()
@@ -196,10 +298,18 @@ export class ProgressDisplay {
       : '';
     const progressLine = `${progressBar} ${pc.dim(elapsed)}${timeHint}`;
 
+    // Build output
+    let output = `${mainLine}\n  ${chipLines[0]}\n  ${chipLines[1]}\n  ${chipLines[2]}\n  ${progressLine}`;
+
+    // Add tip line during analyzing phase
+    if (isAnalyzing && this.tipMessages.length > 0) {
+      const tipIdx = Math.floor(this.tick / TIP_ROTATION_TICKS) % this.tipMessages.length;
+      const tip = this.tipMessages[tipIdx];
+      output += `\n  ${tip.icon} ${pc.dim(tip.text)}`;
+    }
+
     // Atomic multiline write — no flicker
-    this.logUpdate(
-      `${mainLine}\n  ${chipLines[0]}\n  ${chipLines[1]}\n  ${chipLines[2]}\n  ${progressLine}`,
-    );
+    this.logUpdate(output);
   }
 
   /** Stages where analysis is done and time hint should be hidden */
@@ -283,6 +393,6 @@ export class ProgressDisplay {
 /**
  * Create a new progress display instance
  */
-export function createProgressDisplay(): ProgressDisplay {
-  return new ProgressDisplay();
+export function createProgressDisplay(options: ProgressDisplayOptions = {}): ProgressDisplay {
+  return new ProgressDisplay(options);
 }

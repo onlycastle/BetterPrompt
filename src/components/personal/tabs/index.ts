@@ -7,7 +7,7 @@
  * - insights/: Domain-specific insights (WorkerInsightsSection, GrowthAreasSection)
  * - type-result/: Type classification display (TypeResultMinimal, MatrixDistributionDisplay)
  * - resources/: Learning resources sidebar (ResourceSidebar, ResourceBubble)
- * - shared/: Reusable UI elements (DataQualityBadge, EmptyStatePrompt, NextTabButton)
+ * - shared/: Reusable UI elements (DataQualityBadge, EmptyStatePrompt, FloatingProgressDots)
  *
  * Note: Communication Patterns are now integrated into WorkerInsightsSection
  * via the prompt-pattern-transformer utility, not as a separate component.
@@ -37,4 +37,4 @@ export { ResourceBubble } from './resources';
 // Shared components
 export { DataQualityBadge } from './shared';
 export { EmptyStatePrompt } from './shared';
-export { NextTabButton } from './shared';
+export { FloatingProgressDots } from './shared';

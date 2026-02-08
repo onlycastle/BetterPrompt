@@ -1,101 +1,53 @@
-/**
- * RemoteReportContent - Client Component
- *
- * Handles data fetching and rendering of the remote report.
- * Must be a client component because it uses React Query hooks.
- */
-
 'use client';
 
 import Link from 'next/link';
 import { useRemoteResult } from '@/hooks/useRemoteResult';
+import { useGrowthData } from '@/hooks/useGrowthData';
 import { TabbedReportContainer } from '@/components/personal/tabs';
 import { UnlockSection } from '@/components/report/UnlockSection';
 import { ReportShareBar } from '@/components/report/ReportShareBar';
-import { VERBOSE_TYPE_METADATA } from '@/types/verbose';
+import { ReportErrorCard } from '@/components/report/ReportErrorCard';
+import { ReportLoadingSpinner } from '@/components/report/ReportLoadingSpinner';
+import { ReportPreviewBanner } from '@/components/report/ReportPreviewBanner';
 import styles from './page.module.css';
+
+interface ErrorCardConfig {
+  title: string;
+  message: string;
+  icon: string;
+  showRetry: boolean;
+}
+
+function getErrorCardConfig(errorStatus: number | null | undefined, errorMessage?: string): ErrorCardConfig {
+  switch (errorStatus) {
+    case 404:
+      return {
+        title: 'Report Not Found',
+        message: "This analysis report doesn't exist or the link may be incorrect. Please check the URL and try again.",
+        icon: '&#128269;',
+        showRetry: false,
+      };
+    case 410:
+      return {
+        title: 'Report Expired',
+        message: 'This analysis report has expired. Run a new analysis with the CLI to generate a fresh report.',
+        icon: '&#8987;',
+        showRetry: false,
+      };
+    default:
+      return {
+        title: 'Something Went Wrong',
+        message: errorMessage || 'Failed to load the analysis. Please try again.',
+        icon: '&#9888;&#65039;',
+        showRetry: true,
+      };
+  }
+}
 
 interface RemoteReportContentProps {
   resultId: string;
 }
 
-/**
- * Error display component for 404/410/etc states
- */
-function ErrorState({
-  title,
-  message,
-  icon,
-  showHomeButton = true,
-  showRetryButton = false,
-  onRetry,
-}: {
-  title: string;
-  message: string;
-  icon: string;
-  showHomeButton?: boolean;
-  showRetryButton?: boolean;
-  onRetry?: () => void;
-}) {
-  return (
-    <div className={styles.page}>
-      <div className={styles.errorContainer}>
-        <div className={styles.errorCard}>
-          <div className={styles.errorIcon}>{icon}</div>
-          <h1 className={styles.errorTitle}>{title}</h1>
-          <p className={styles.errorMessage}>{message}</p>
-          <div className={styles.errorActions}>
-            {showRetryButton && onRetry && (
-              <button onClick={onRetry} className={styles.primaryButton}>
-                Try Again
-              </button>
-            )}
-            {showHomeButton && (
-              <Link href="/" className={showRetryButton ? styles.secondaryButton : styles.primaryButton}>
-                Go to Homepage
-              </Link>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Loading state component
- */
-function LoadingState() {
-  return (
-    <div className={styles.page}>
-      <div className={styles.loadingContainer}>
-        <div className={styles.spinner} />
-        <p className={styles.loadingText}>Loading your analysis...</p>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Preview banner for free users
- */
-function PreviewBanner() {
-  return (
-    <div className={styles.previewBanner}>
-      <span className={styles.previewIcon}>&#128274;</span>
-      <div className={styles.previewContent}>
-        <p className={styles.previewTitle}>Premium Content Locked</p>
-        <p className={styles.previewText}>
-          Unlock to access: <strong>personalized recommendations</strong>, <strong>4 more dimensions</strong>, <strong>growth roadmap</strong>, and <strong>premium agent insights</strong>
-        </p>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Page header with branding
- */
 function PageHeader() {
   return (
     <header className={styles.header}>
@@ -112,70 +64,66 @@ function PageHeader() {
   );
 }
 
-/**
- * Main client component for remote report
- */
 export function RemoteReportContent({ resultId }: RemoteReportContentProps) {
   const { data, isPaid, preview, isLoading, error, errorStatus, refetch } = useRemoteResult(resultId);
+  const { progressAnalytics, benchmarkPercentiles } = useGrowthData();
 
   // Loading state
   if (isLoading) {
-    return <LoadingState />;
+    return (
+      <div className={styles.page}>
+        <div className={styles.loadingContainer}>
+          <ReportLoadingSpinner />
+        </div>
+      </div>
+    );
   }
 
   // Error states
   if (error) {
-    if (errorStatus === 404) {
-      return (
-        <ErrorState
-          title="Report Not Found"
-          message="This analysis report doesn't exist or the link may be incorrect. Please check the URL and try again."
-          icon="&#128269;"
-          showHomeButton={true}
-        />
-      );
-    }
-
-    if (errorStatus === 410) {
-      return (
-        <ErrorState
-          title="Report Expired"
-          message="This analysis report has expired. Run a new analysis with the CLI to generate a fresh report."
-          icon="&#8987;"
-          showHomeButton={true}
-        />
-      );
-    }
-
-    // Generic error
+    const errorConfig = getErrorCardConfig(errorStatus, error.message);
     return (
-      <ErrorState
-        title="Something Went Wrong"
-        message={error.message || 'Failed to load the analysis. Please try again.'}
-        icon="&#9888;&#65039;"
-        showHomeButton={true}
-        showRetryButton={true}
-        onRetry={refetch}
-      />
+      <div className={styles.page}>
+        <div className={styles.errorContainer}>
+          <ReportErrorCard
+            title={errorConfig.title}
+            message={errorConfig.message}
+            icon={errorConfig.icon}
+          >
+            {errorConfig.showRetry && (
+              <button onClick={refetch} className={styles.primaryButton}>
+                Try Again
+              </button>
+            )}
+            <Link href="/" className={errorConfig.showRetry ? styles.secondaryButton : styles.primaryButton}>
+              Go to Homepage
+            </Link>
+          </ReportErrorCard>
+        </div>
+      </div>
     );
   }
 
-  // No data (shouldn't happen if no error, but safety check)
   if (!data) {
     return (
-      <ErrorState
-        title="No Data Available"
-        message="Unable to load the analysis data. Please try again."
-        icon="&#128203;"
-        showHomeButton={true}
-        showRetryButton={true}
-        onRetry={refetch}
-      />
+      <div className={styles.page}>
+        <div className={styles.errorContainer}>
+          <ReportErrorCard
+            title="No Data Available"
+            message="Unable to load the analysis data. Please try again."
+            icon="&#128203;"
+          >
+            <button onClick={refetch} className={styles.primaryButton}>
+              Try Again
+            </button>
+            <Link href="/" className={styles.secondaryButton}>
+              Go to Homepage
+            </Link>
+          </ReportErrorCard>
+        </div>
+      </div>
     );
   }
-
-  // Success state - render the report
-  const typeMetadata = data.primaryType ? VERBOSE_TYPE_METADATA[data.primaryType] : null;
 
   return (
     <div className={styles.page}>
@@ -183,7 +131,11 @@ export function RemoteReportContent({ resultId }: RemoteReportContentProps) {
         <PageHeader />
 
         {/* Preview banner for free users */}
-        {!isPaid && <PreviewBanner />}
+        {!isPaid && (
+          <ReportPreviewBanner title="Premium Content Locked">
+            Unlock to access: <strong>personalized recommendations</strong>, <strong>4 more dimensions</strong>, <strong>growth roadmap</strong>, and <strong>premium agent insights</strong>
+          </ReportPreviewBanner>
+        )}
 
         {/* Main report content - data is pre-filtered by backend based on tier */}
         <div className={styles.reportWrapper}>
@@ -191,6 +143,8 @@ export function RemoteReportContent({ resultId }: RemoteReportContentProps) {
             analysis={data}
             agentOutputs={data.agentOutputs}
             analysisMetadata={data.analysisMetadata}
+            progressAnalytics={progressAnalytics}
+            benchmarkPercentiles={benchmarkPercentiles}
           />
         </div>
 

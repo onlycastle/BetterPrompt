@@ -1,5 +1,18 @@
 .section {
   padding: var(--space-3xl) 0;
+  background: var(--bg-paper-warm);
+}
+
+.philosophyQuote {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  font-style: italic;
+  color: var(--ink-secondary);
+  margin: 0 0 var(--space-xl) 0;
+  padding: 0;
+  border: none;
 }
 
 .headline {
@@ -35,10 +48,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--sketch-cyan-soft);
   border-radius: var(--radius-md);
-  color: var(--sketch-cyan-text);
   margin-bottom: var(--space-md);
+}
+
+.card:nth-child(1) .iconWrapper {
+  background: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan-text);
+}
+
+.card:nth-child(2) .iconWrapper {
+  background: var(--sketch-green-soft);
+  color: var(--sketch-green-text);
+}
+
+.card:nth-child(3) .iconWrapper {
+  background: var(--sketch-pink-soft);
+  color: var(--sketch-pink);
 }
 
 .title {
@@ -67,5 +93,9 @@
 
   .card {
     padding: var(--space-md);
+  }
+
+  .philosophyQuote {
+    font-size: var(--text-lg);
   }
 }

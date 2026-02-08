@@ -1,0 +1,71 @@
+/**
+ * ReportErrorCard - Shared error card styles
+ * Used by both /r/[resultId] and /dashboard/personal/r/[resultId]
+ */
+
+.errorCard {
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2xl);
+  box-shadow: 4px 4px 0 var(--ink-muted);
+  text-align: center;
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.errorIcon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--space-lg);
+  background: var(--sketch-red-light);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-2xl);
+}
+
+.errorTitle {
+  font-family: var(--font-primary);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  margin: 0 0 var(--space-sm) 0;
+}
+
+.errorMessage {
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-xl) 0;
+  line-height: var(--leading-relaxed);
+}
+
+.errorActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .errorCard {
+    padding: var(--space-xl);
+  }
+}
+
+@media (max-width: 400px) {
+  .errorCard {
+    padding: var(--space-lg);
+  }
+
+  .errorTitle {
+    font-size: var(--text-lg);
+  }
+
+  .errorMessage {
+    font-size: var(--text-sm);
+  }
+}

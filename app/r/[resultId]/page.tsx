@@ -25,9 +25,6 @@ interface PageProps {
   params: Promise<{ resultId: string }>;
 }
 
-/**
- * Generate metadata for SEO and social sharing
- */
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { resultId } = await params;
 
@@ -45,27 +42,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       type: 'website',
       url: `${BASE_URL}/r/${resultId}`,
       siteName: 'NoMoreAISlop',
-      images: [
-        {
-          url: `${BASE_URL}/og-image.png`,
-          width: 1200,
-          height: 630,
-          alt: 'NoMoreAISlop - AI Coding Style Analysis',
-        },
-      ],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: [`${BASE_URL}/og-image.png`],
     },
   };
 }
 
-/**
- * Loading fallback component
- */
 function LoadingFallback() {
   return (
     <div className={styles.page}>
@@ -77,9 +62,6 @@ function LoadingFallback() {
   );
 }
 
-/**
- * Remote Report Page - Server Component
- */
 export default async function RemoteReportPage({ params }: PageProps) {
   const { resultId } = await params;
 

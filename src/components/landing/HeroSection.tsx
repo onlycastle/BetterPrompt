@@ -1,5 +1,6 @@
 'use client';
 
+import { ChevronDown } from 'lucide-react';
 import { TerminalCommand } from './TerminalCommand';
 import styles from './HeroSection.module.css';
 
@@ -9,19 +10,22 @@ export function HeroSection() {
       <div className={styles.content}>
         <div className={styles.badge}>No More AI Slop</div>
         <h1 className={styles.headline}>
-          Good vibe coders know
+          AI isn&apos;t the problem.
           <br />
-          <span className={styles.accent}>what they shipped</span>.
-          <br />
-          Do you?
+          <span className={styles.accent}>Unconscious dependency</span> is.
         </h1>
 
         <p className={styles.subheadline}>
-          Review your patterns. Ship better.
+          Analyze your Claude Code sessions. Discover your AI collaboration patterns.
         </p>
 
         <div className={styles.cta}>
-          <TerminalCommand command="npx no-ai-slop" />
+          <TerminalCommand command="npx no-ai-slop" location="hero" />
+        </div>
+
+        <div className={styles.scrollCue}>
+          <span className={styles.scrollText}>See how it works</span>
+          <ChevronDown size={20} className={styles.scrollIcon} />
         </div>
       </div>
     </section>
