@@ -37,33 +37,6 @@
   gap: var(--space-lg);
 }
 
-.spinner {
-  width: 64px;
-  height: 64px;
-  border: 4px solid var(--border-default);
-  border-top-color: var(--sketch-cyan);
-  border-radius: var(--radius-full);
-  animation: spin 1s linear infinite;
-}
-
-.smallSpinner {
-  width: 32px;
-  height: 32px;
-  border-width: 2px;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.loadingText {
-  font-family: var(--font-primary);
-  font-size: var(--text-md);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
 /* ============================================
    Error States
    ============================================ */
@@ -74,51 +47,6 @@
   justify-content: center;
   min-height: 60vh;
   padding: var(--space-xl);
-}
-
-.errorCard {
-  background: var(--surface-1);
-  border: 2px solid var(--ink-primary);
-  border-radius: var(--radius-lg);
-  padding: var(--space-2xl);
-  box-shadow: 4px 4px 0 var(--ink-muted);
-  text-align: center;
-  max-width: 450px;
-  width: 100%;
-}
-
-.errorIcon {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto var(--space-lg);
-  background: var(--sketch-red-light);
-  border-radius: var(--radius-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--text-2xl);
-}
-
-.errorTitle {
-  font-family: var(--font-primary);
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
-  color: var(--ink-primary);
-  margin: 0 0 var(--space-sm) 0;
-}
-
-.errorMessage {
-  font-family: var(--font-primary);
-  font-size: var(--text-md);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-xl) 0;
-  line-height: var(--leading-relaxed);
-}
-
-.errorActions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
 }
 
 .primaryButton {
@@ -256,53 +184,11 @@
 }
 
 /* ============================================
-   Preview Banner
-   ============================================ */
-.previewBanner {
-  background: var(--sketch-yellow-light);
-  border: 2px solid var(--sketch-yellow);
-  border-radius: var(--radius-md);
-  padding: var(--space-md) var(--space-lg);
-  margin-bottom: var(--space-lg);
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-}
-
-.previewIcon {
-  font-size: var(--text-xl);
-  flex-shrink: 0;
-}
-
-.previewContent {
-  flex: 1;
-}
-
-.previewTitle {
-  font-family: var(--font-primary);
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  color: var(--ink-primary);
-  margin: 0 0 var(--space-xs) 0;
-}
-
-.previewText {
-  font-family: var(--font-primary);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-/* ============================================
    Responsive Adjustments
    ============================================ */
 @media (max-width: 640px) {
   .page {
     padding: var(--space-md);
-  }
-
-  .errorCard {
-    padding: var(--space-xl);
   }
 
   .header {
@@ -315,11 +201,6 @@
     width: 100%;
     justify-content: center;
   }
-
-  .previewBanner {
-    flex-direction: column;
-    text-align: center;
-  }
 }
 
 @media (max-width: 400px) {
@@ -329,17 +210,5 @@
 
   .reportWrapper {
     border-radius: var(--radius-md);
-  }
-
-  .errorCard {
-    padding: var(--space-lg);
-  }
-
-  .errorTitle {
-    font-size: var(--text-lg);
-  }
-
-  .errorMessage {
-    font-size: var(--text-sm);
   }
 }

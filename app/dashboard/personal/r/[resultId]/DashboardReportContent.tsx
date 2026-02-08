@@ -12,8 +12,44 @@ import { useRemoteResult } from '@/hooks/useRemoteResult';
 import { TabbedReportContainer } from '@/components/personal/tabs';
 import { UnlockSection } from '@/components/report/UnlockSection';
 import { ReportShareBar } from '@/components/report/ReportShareBar';
+import { ReportErrorCard } from '@/components/report/ReportErrorCard';
+import { ReportLoadingSpinner } from '@/components/report/ReportLoadingSpinner';
+import { ReportPreviewBanner } from '@/components/report/ReportPreviewBanner';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 import styles from './page.module.css';
+
+interface ErrorCardConfig {
+  title: string;
+  message: string;
+  icon: string;
+  showRetry: boolean;
+}
+
+function getErrorCardConfig(errorStatus: number | null | undefined, errorMessage?: string): ErrorCardConfig {
+  switch (errorStatus) {
+    case 404:
+      return {
+        title: 'Report Not Found',
+        message: "This analysis report doesn't exist or the link may be incorrect.",
+        icon: '🔍',
+        showRetry: false,
+      };
+    case 410:
+      return {
+        title: 'Report Expired',
+        message: 'This analysis report has expired. Run a new analysis to generate a fresh report.',
+        icon: '⏳',
+        showRetry: false,
+      };
+    default:
+      return {
+        title: 'Something Went Wrong',
+        message: errorMessage || 'Failed to load the analysis. Please try again.',
+        icon: '⚠️',
+        showRetry: true,
+      };
+  }
+}
 
 interface DashboardReportContentProps {
   resultId: string;
@@ -39,8 +75,7 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
     return (
       <div className={styles.container}>
         <div className={styles.loading}>
-          <div className={styles.spinner} />
-          <p>Loading your analysis...</p>
+          <ReportLoadingSpinner />
         </div>
       </div>
     );
@@ -48,37 +83,23 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
 
   // Error states
   if (error) {
+    const errorConfig = getErrorCardConfig(errorStatus, error.message);
     return (
       <div className={styles.container}>
-        <div className={styles.errorCard}>
-          <div className={styles.errorIcon}>
-            {errorStatus === 404 ? '🔍' : errorStatus === 410 ? '⏳' : '⚠️'}
-          </div>
-          <h1 className={styles.errorTitle}>
-            {errorStatus === 404
-              ? 'Report Not Found'
-              : errorStatus === 410
-              ? 'Report Expired'
-              : 'Something Went Wrong'}
-          </h1>
-          <p className={styles.errorMessage}>
-            {errorStatus === 404
-              ? "This analysis report doesn't exist or the link may be incorrect."
-              : errorStatus === 410
-              ? 'This analysis report has expired. Run a new analysis to generate a fresh report.'
-              : error.message || 'Failed to load the analysis. Please try again.'}
-          </p>
-          <div className={styles.errorActions}>
-            {errorStatus !== 404 && errorStatus !== 410 && (
-              <button onClick={refetch} className={styles.primaryButton}>
-                Try Again
-              </button>
-            )}
-            <Link href="/dashboard/personal" className={styles.secondaryButton}>
-              Back to Profile
-            </Link>
-          </div>
-        </div>
+        <ReportErrorCard
+          title={errorConfig.title}
+          message={errorConfig.message}
+          icon={errorConfig.icon}
+        >
+          {errorConfig.showRetry && (
+            <button onClick={refetch} className={styles.primaryButton}>
+              Try Again
+            </button>
+          )}
+          <Link href="/dashboard/personal" className={styles.secondaryButton}>
+            Back to Profile
+          </Link>
+        </ReportErrorCard>
       </div>
     );
   }
@@ -87,19 +108,18 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
   if (!data) {
     return (
       <div className={styles.container}>
-        <div className={styles.errorCard}>
-          <div className={styles.errorIcon}>📋</div>
-          <h1 className={styles.errorTitle}>No Data Available</h1>
-          <p className={styles.errorMessage}>Unable to load the analysis data.</p>
-          <div className={styles.errorActions}>
-            <button onClick={refetch} className={styles.primaryButton}>
-              Try Again
-            </button>
-            <Link href="/dashboard/personal" className={styles.secondaryButton}>
-              Back to Profile
-            </Link>
-          </div>
-        </div>
+        <ReportErrorCard
+          title="No Data Available"
+          message="Unable to load the analysis data."
+          icon="📋"
+        >
+          <button onClick={refetch} className={styles.primaryButton}>
+            Try Again
+          </button>
+          <Link href="/dashboard/personal" className={styles.secondaryButton}>
+            Back to Profile
+          </Link>
+        </ReportErrorCard>
       </div>
     );
   }
@@ -123,16 +143,10 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
 
       {/* Preview Banner */}
       {!isPaid && preview && (
-        <div className={styles.previewBanner}>
-          <span className={styles.previewIcon}>&#128274;</span>
-          <div className={styles.previewContent}>
-            <p className={styles.previewTitle}>Preview Mode</p>
-            <p className={styles.previewText}>
-              You&apos;re viewing a preview. Unlock to see all {preview.totalPromptPatterns} patterns
-              and {preview.totalGrowthAreas} growth areas.
-            </p>
-          </div>
-        </div>
+        <ReportPreviewBanner title="Preview Mode">
+          You&apos;re viewing a preview. Unlock to see all {preview.totalPromptPatterns} patterns
+          and {preview.totalGrowthAreas} growth areas.
+        </ReportPreviewBanner>
       )}
 
       {/* Main Report - data is pre-filtered by backend based on tier */}

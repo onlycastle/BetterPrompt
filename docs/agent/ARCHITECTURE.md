@@ -140,10 +140,12 @@ Assembly in `assembleEvaluation()` in `src/lib/analyzer/stages/evaluation-assemb
 | `personalitySummary` (Phase 3) | `personalitySummary` | Truncate to <=3000 chars |
 | `topFocusAreas` (Phase 3) | `topFocusAreas` | Structured `actions` object (legacy `actionsData` fallback) |
 
-## UI Tab → Worker → Access Mapping
+## UI Section → Worker → Access Mapping
 
-| Tab | Data Source | Worker | Access |
-|-----|------------|--------|--------|
+The report page uses a **continuous scroll layout** (no tabs). All sections render sequentially with `FloatingProgressDots` for navigation.
+
+| Section | Data Source | Worker | Access |
+|---------|------------|--------|--------|
 | Fixed Header: Type Result | Phase 2.5 TypeClassifier | TypeClassifierWorker | FREE |
 | Fixed Header: Personality Summary | Phase 3 ContentWriter | ContentWriterStage | FREE |
 | Activity | CLI Activity Scanner + Phase 2 ProjectSummarizer | ProjectSummarizerStage | FREE |
@@ -154,7 +156,7 @@ Assembly in `assembleEvaluation()` in `src/lib/analyzer/stages/evaluation-assemb
 | Session Success | Phase 2 | SessionOutcomeWorker | FREE (recommendation: PAID) |
 | Sidebar: Resources | Phase 2.75 KnowledgeResourceMatcher | N/A | 1/dim FREE, all PAID |
 
-Key UI files: `TabbedReportContainer.tsx`, `WorkerInsightsSection.tsx`, `content-gateway.ts` (TIER_POLICY).
+Key UI files: `TabbedReportContainer.tsx`, `WorkerInsightsSection.tsx`, `FloatingProgressDots.tsx`, `useScrollSpy.ts`, `content-gateway.ts` (TIER_POLICY).
 
 ## Content Gateway Tier Matrix
 
@@ -255,7 +257,9 @@ Type: `SessionSourceType = 'claude-code' | 'cursor' | 'cursor-composer'`
 | Evidence verifier | `src/lib/analyzer/stages/evidence-verifier.ts` |
 | Phase 3 summarizer | `src/lib/analyzer/stages/phase3-summarizer.ts` |
 | Knowledge mapping | `src/lib/analyzer/workers/prompts/knowledge-mapping.ts` |
-| Tab container | `src/components/personal/tabs/containers/TabbedReportContainer.tsx` |
+| Report container | `src/components/personal/tabs/containers/TabbedReportContainer.tsx` |
+| Scroll spy hook | `src/hooks/useScrollSpy.ts` |
+| Floating nav dots | `src/components/personal/tabs/shared/FloatingProgressDots.tsx` |
 | Worker insights UI | `src/components/personal/tabs/insights/WorkerInsightsSection.tsx` |
 | Gemini client | `src/lib/analyzer/clients/gemini-client.ts` |
 | JSONL reader | `src/lib/parser/jsonl-reader.ts` |
