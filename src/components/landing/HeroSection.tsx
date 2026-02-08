@@ -16,7 +16,7 @@ export function HeroSection() {
         </h1>
 
         <p className={styles.subheadline}>
-          Analyze your Claude Code sessions. Discover your AI collaboration patterns.
+          Spot bad habits. Fix anti-patterns. Become a better AI-native engineer.
         </p>
 
         <div className={styles.cta}>
