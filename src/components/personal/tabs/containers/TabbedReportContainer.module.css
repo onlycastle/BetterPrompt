@@ -1,25 +1,18 @@
 /**
  * TabbedReportContainer Styles
- * Notebook sketch style with tab navigation
- * 3-column layout: nav sidebar + main content + resource sidebar
+ * Continuous scroll layout with floating navigation dots
+ * 2-column layout: main content + resource sidebar
  */
 
-/* 3-column grid layout: nav + main content + resource sidebar */
+/* 2-column grid layout: main content + resource sidebar */
 .pageLayout {
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 var(--space-lg);
   display: grid;
-  grid-template-columns: 80px 1fr 280px;
+  grid-template-columns: 1fr 280px;
   gap: var(--space-xl);
   align-items: start;
-}
-
-/* Left navigation column */
-.navColumn {
-  position: sticky;
-  top: var(--space-lg);
-  align-self: start;
 }
 
 /* Main content column */
@@ -36,16 +29,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  /* sticky elements automatically become containing blocks for absolute children */
-}
-
-/* Insight preview card wrapper - positioned absolutely to align with clicked element */
-.insightCardWrapper {
-  position: absolute;
-  left: 0;
-  right: 0;
-  /* top value is set dynamically via inline style */
-  z-index: 10; /* Above resources but below modals */
 }
 
 /* Fixed Header Section */
@@ -73,104 +56,25 @@
   line-height: 1.5;
 }
 
-/* Tab Navigation */
-.tabNav {
+/* Continuous Scroll Content */
+.scrollContent {
   display: flex;
-  gap: var(--space-xs);
-  padding: var(--space-xs);
-  background: var(--surface-2);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--space-lg);
-  border: 1px solid var(--ink-muted);
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
+  flex-direction: column;
 }
 
-.tabNav::-webkit-scrollbar {
-  display: none;
+/* Individual scroll section */
+.scrollSection {
+  scroll-margin-top: 16px;
+  padding-top: var(--space-xl);
 }
 
-.tab {
-  flex: 1 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-primary);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
+/* Section separator */
+.scrollSection + .scrollSection {
+  border-top: 2px dashed var(--ink-light);
+  margin-top: var(--space-lg);
 }
 
-.tab:hover {
-  background: var(--surface-1);
-  color: var(--text-primary);
-}
-
-.tabActive {
-  background: var(--surface-1);
-  color: var(--sketch-cyan-dark);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid var(--sketch-cyan);
-}
-
-/* Locked recommendation badge on tabs */
-.lockedBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  margin-left: var(--space-xs);
-  padding: 2px 6px;
-  background: var(--sketch-yellow-soft);
-  color: var(--sketch-yellow-dark);
-  font-size: 10px;
-  font-weight: var(--weight-semibold);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  letter-spacing: 0.02em;
-}
-
-.tabActive .lockedBadge {
-  background: var(--sketch-yellow);
-  color: var(--ink-primary);
-}
-
-
-/* Tab Content Area */
-.tabContent {
-  min-height: 400px;
-  position: relative;
-}
-
-.tabPanel {
-  animation: fadeIn 0.2s ease-out;
-}
-
-/* Section within tab panel (for multi-section tabs like Thinking Quality) */
-.tabSection {
-  margin-bottom: var(--space-xl);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Responsive - Tablet: Stack to single column, hide nav */
+/* Responsive - Tablet: Stack to single column */
 @media (max-width: 900px) {
   .pageLayout {
     grid-template-columns: 1fr;
@@ -178,32 +82,8 @@
     padding: 0 var(--space-md);
   }
 
-  .navColumn {
-    display: none;
-  }
-
   .sidebar {
     position: static;
     order: -1; /* Show sidebar above main content on mobile */
-  }
-}
-
-/* Responsive - Mobile */
-@media (max-width: 640px) {
-  .tab {
-    padding: var(--space-xs) var(--space-sm);
-    font-size: var(--text-xs);
-  }
-}
-
-/* Extra small screens */
-@media (max-width: 400px) {
-  .tabNav {
-    padding: 2px;
-    gap: 2px;
-  }
-
-  .tab {
-    padding: var(--space-xs);
   }
 }

@@ -1,27 +1,26 @@
 /**
- * TabbedReportContainer Component
+ * TabbedReportContainer Component (Continuous Scroll Layout)
  *
- * Organizes the report into 4 tabs based on Phase 2 Workers:
+ * Renders all analysis sections sequentially in a continuous scroll layout:
  * - Fixed header: TypeResultMinimal + PersonalitySummary (always visible)
- * - Tabs: Thinking Quality | Communication | Learning Behavior | Context Efficiency
- * - Smart "Next Tab" navigation at bottom
+ * - Sections: Activity | Thinking Quality | Communication | Learning Behavior | Context Efficiency
+ * - FloatingProgressDots: right-side navigation dots indicating active section
  *
- * Each tab displays the corresponding Worker's strengths/growthAreas.
- * Communication tab displays patterns from CommunicationPatternsWorker.
+ * Each section displays the corresponding Worker's strengths/growthAreas.
+ * Professional insights are rendered inline within GrowthCard components.
  */
 
-import { useState, useRef, useCallback, useMemo, useEffect, useLayoutEffect } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { TypeResultMinimal } from '../type-result/TypeResultMinimal';
 import { PersonalitySummaryClean } from '../type-result/PersonalitySummaryClean';
 import { WorkerDomainSection } from '../insights/WorkerInsightsSection';
 import { ActivitySection } from '../activity/ActivitySection';
-import { NextTabButton } from '../shared/NextTabButton';
 import { PremiumValueSummary } from '../shared/PremiumValueSummary';
-import { ReportAnchorNav } from '../shared/ReportAnchorNav';
+import { FloatingProgressDots } from '../shared/FloatingProgressDots';
 import { ResourceSidebar } from '../resources/ResourceSidebar';
 import { DataQualityBadge } from '../shared/DataQualityBadge';
-import { InsightPreviewCard } from '../insights/InsightPreviewCard';
 import { TopFocusAreasSection } from '../focus/TopFocusAreasSection';
+import { useScrollSpy } from '../../../../hooks/useScrollSpy';
 
 import type { VerboseAnalysisData, AnalysisMetadata, DimensionResourceMatch } from '../../../../types/verbose';
 import type { AgentOutputs, ParsedResource } from '../../../../lib/models/agent-outputs';
@@ -84,28 +83,29 @@ function convertKnowledgeResourcesToFlat(resources: DimensionResourceMatch[]): P
 
 export type ReportTabId = 'activity' | 'thinking' | 'communication' | 'learning' | 'context';
 
-/** Maps tab IDs to their corresponding worker domain keys for insight lookup */
-const TAB_TO_DOMAIN: Record<ReportTabId, keyof AggregatedWorkerInsights | null> = {
-  activity: null,
-  thinking: 'thinkingQuality',
-  communication: 'communicationPatterns',
-  learning: 'learningBehavior',
-  context: 'contextEfficiency',
+/** Section icons used by FloatingProgressDots */
+const SECTION_ICONS: Record<ReportTabId, string> = {
+  activity: '📊',
+  thinking: '🧠',
+  communication: '💬',
+  learning: '📚',
+  context: '⚡',
 };
 
-interface TabConfig {
+interface SectionConfig {
   id: ReportTabId;
   label: string;
 }
 
 /**
- * 4-tab structure based on Phase 2 Workers (v3.1):
+ * Section structure based on Phase 2 Workers:
+ * - Activity: Session calendar + weekly insights
  * - Thinking Quality: ThinkingQualityWorker (Planning + Critical Thinking)
  * - Communication: CommunicationPatternsWorker (Communication Patterns + Signature Quotes)
  * - Learning Behavior: LearningBehaviorWorker (Knowledge Gaps + Repeated Mistakes)
  * - Context Efficiency: ContextEfficiencyWorker (Token Efficiency)
  */
-const REPORT_TABS: TabConfig[] = [
+const REPORT_SECTIONS: SectionConfig[] = [
   { id: 'activity', label: 'Activity' },
   { id: 'thinking', label: 'Thinking Quality' },
   { id: 'communication', label: 'Communication' },
@@ -141,12 +141,29 @@ export function TabbedReportContainer({
   agentOutputs,
   analysisMetadata,
 }: TabbedReportContainerProps) {
-  const [activeTab, setActiveTab] = useState<ReportTabId>('activity');
   const contentRef = useRef<HTMLDivElement>(null);
   const headerSectionRef = useRef<HTMLDivElement>(null);
-  const tabNavRef = useRef<HTMLDivElement>(null);
 
-  // Anchor nav visibility: show when header scrolls out of view
+  // Section refs for scroll spy
+  const activityRef = useRef<HTMLDivElement>(null);
+  const thinkingRef = useRef<HTMLDivElement>(null);
+  const communicationRef = useRef<HTMLDivElement>(null);
+  const learningRef = useRef<HTMLDivElement>(null);
+  const contextRef = useRef<HTMLDivElement>(null);
+
+  const sectionRefs = useMemo(() => new Map<string, React.RefObject<HTMLDivElement | null>>([
+    ['activity', activityRef],
+    ['thinking', thinkingRef],
+    ['communication', communicationRef],
+    ['learning', learningRef],
+    ['context', contextRef],
+  ]), []);
+
+  // Scroll spy: detect active section from scroll position
+  const activeSection = useScrollSpy({ sectionRefs });
+  const activeTab = (activeSection as ReportTabId) || 'activity';
+
+  // FloatingProgressDots visibility: show when header scrolls out of view
   const [navVisible, setNavVisible] = useState(false);
 
   useEffect(() => {
@@ -160,19 +177,6 @@ export function TabbedReportContainer({
     observer.observe(headerEl);
     return () => observer.disconnect();
   }, []);
-
-  // Professional Insight state (lifted from WorkerDomainSection for inline sidebar display)
-  const [selectedInsight, setSelectedInsight] = useState<ReferencedInsight | null>(null);
-  // Track whether user explicitly dismissed the auto-shown insight (reset on tab change)
-  const [userDismissedInsight, setUserDismissedInsight] = useState(false);
-  // Store raw viewport Y from click (before sidebar renders)
-  const [clickedViewportY, setClickedViewportY] = useState<number | null>(null);
-  // Track Y position offset for inline positioning (relative to sidebar top)
-  const [insightYOffset, setInsightYOffset] = useState<number>(0);
-  // Ref to sidebar for calculating relative positions
-  const sidebarRef = useRef<HTMLElement>(null);
-  // When true, useLayoutEffect will calculate Y offset from the first InsightIndicator in DOM
-  const autoShowPending = useRef(false);
 
   // Get matched resources from Knowledge Base (Phase 2.75 deterministic matching)
   // These are validated URLs from our curated database, NOT LLM-generated URLs
@@ -229,35 +233,10 @@ export function TabbedReportContainer({
     return communicationInsights.growthAreas;
   }, [workerInsights?.communicationPatterns?.growthAreas, communicationInsights.growthAreas]);
 
-  // Handle tab change with scroll-to-top + scroll active tab into view
-  const handleTabChange = useCallback((tabId: ReportTabId) => {
-    setActiveTab(tabId);
-    // Scroll content to top when changing tabs
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-    // Scroll the active tab button into view (for narrow screens with horizontal overflow)
-    requestAnimationFrame(() => {
-      const tabButton = tabNavRef.current?.querySelector(`[data-tab-id="${tabId}"]`);
-      if (tabButton instanceof HTMLElement) {
-        tabButton.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
-      }
-    });
-  }, []);
-
-  // Handle anchor nav tab click: switch tab + scroll to tab content area
-  const handleNavTabClick = useCallback((tabId: ReportTabId) => {
-    setActiveTab(tabId);
-    // Wait for React to render the new tab content before scrolling
-    requestAnimationFrame(() => {
-      contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }, []);
-
-  // Handle anchor nav "Profile" click: scroll to header
-  const handleProfileClick = useCallback(() => {
-    headerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
+  // Scroll to section handler (used by FloatingProgressDots)
+  const handleSectionClick = useCallback((sectionId: string) => {
+    sectionRefs.get(sectionId)?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [sectionRefs]);
 
   // Build utterance lookup map for O(1) access (used for evidence linking)
   const utteranceLookupMap = useMemo(() => {
@@ -424,44 +403,13 @@ export function TabbedReportContainer({
     }
   }, [analysis.knowledgeResources, workerInsights, allResources.length, insightAllocation, professionalInsightsByDomain]);
 
-  // Find the first available insight for the current tab's domain (auto-show in sidebar)
-  const defaultInsightForTab = useMemo((): ReferencedInsight | null => {
-    const domainKey = TAB_TO_DOMAIN[activeTab];
-    if (!domainKey) return null;
-    const prefix = `${domainKey}:`;
-    for (const [key, insight] of insightAllocation) {
-      if (key.startsWith(prefix) && insight !== null) {
-        return insight;
-      }
-    }
-    return null;
-  }, [activeTab, insightAllocation]);
-
-  // Reset dismissal when switching tabs (re-enable auto-show for new tab)
-  useEffect(() => {
-    setUserDismissedInsight(false);
-  }, [activeTab]);
-
-  // Auto-show the first insight for current tab's domain
-  useEffect(() => {
-    if (userDismissedInsight) return;
-
-    if (defaultInsightForTab) {
-      setSelectedInsight(defaultInsightForTab);
-      autoShowPending.current = true; // Let useLayoutEffect calculate Y from DOM
-    } else {
-      setSelectedInsight(null);
-      setInsightYOffset(0);
-    }
-  }, [activeTab, defaultInsightForTab, userDismissedInsight]);
-
   // Helper to check if a domain has content
   const hasDomainContent = (key: keyof AggregatedWorkerInsights): boolean => {
     const domain = workerInsights?.[key];
     return Boolean(domain && (domain.strengths?.length > 0 || domain.growthAreas?.length > 0));
   };
 
-  // Check if we have content for each tab
+  // Check if we have content for each section
   const hasThinking = hasDomainContent('thinkingQuality');
   const hasCommunication =
     communicationStrengths.length > 0 ||
@@ -469,27 +417,26 @@ export function TabbedReportContainer({
   const hasLearning = hasDomainContent('learningBehavior');
   const hasContext = hasDomainContent('contextEfficiency');
 
-  // Memoize availableTabs to prevent unnecessary recalculations and useEffect triggers
-  const availableTabs = useMemo(() => {
-    return REPORT_TABS.filter(tab => {
-      switch (tab.id) {
-        case 'activity':
-          return true; // Always available - shows session calendar
-        case 'thinking':
-          return hasThinking;
-        case 'communication':
-          return hasCommunication;
-        case 'learning':
-          return hasLearning;
-        case 'context':
-          return hasContext;
-        default:
-          return false;
-      }
-    });
+  // Build available sections for FloatingProgressDots
+  const availableSections = useMemo(() => {
+    const sectionVisibility: Record<ReportTabId, boolean> = {
+      activity: true,
+      thinking: hasThinking,
+      communication: hasCommunication,
+      learning: hasLearning,
+      context: hasContext,
+    };
+
+    return REPORT_SECTIONS
+      .filter(section => sectionVisibility[section.id])
+      .map(section => ({
+        id: section.id,
+        label: section.label,
+        icon: SECTION_ICONS[section.id],
+      }));
   }, [hasThinking, hasCommunication, hasLearning, hasContext]);
 
-  // Calculate locked recommendation counts for each tab (for premium badge)
+  // Calculate locked recommendation counts for each section (for premium badge)
   const lockedCounts = useMemo(() => ({
     activity: 0,
     thinking: getLockedCount(workerInsights?.thinkingQuality),
@@ -498,121 +445,17 @@ export function TabbedReportContainer({
     context: getLockedCount(workerInsights?.contextEfficiency),
   }), [workerInsights]);
 
-  // Memoize defaultTab based on availableTabs — prefer first worker tab for insight auto-show
-  const defaultTab = useMemo(() => {
-    const firstWorkerTab = availableTabs.find(t => t.id !== 'activity');
-    return firstWorkerTab?.id || availableTabs[0]?.id || 'thinking';
-  }, [availableTabs]);
-
-  // Sync activeTab with available tabs:
-  // - When current tab becomes unavailable, fall back to defaultTab
-  const hasInitializedTab = useRef(false);
-  useEffect(() => {
-    if (!hasInitializedTab.current) {
-      hasInitializedTab.current = true;
-      if (activeTab === 'activity' && defaultTab !== 'activity') {
-        setActiveTab(defaultTab);
-        return;
-      }
-    }
-    const isActiveTabAvailable = availableTabs.some(t => t.id === activeTab);
-    if (!isActiveTabAvailable) {
-      setActiveTab(defaultTab);
-    }
-  }, [activeTab, availableTabs, defaultTab]);
-
-  // Calculate next available tab
-  const currentAvailableIndex = availableTabs.findIndex(t => t.id === activeTab);
-  const hasNextTab = currentAvailableIndex >= 0 && currentAvailableIndex < availableTabs.length - 1;
-  const nextAvailableTab = hasNextTab ? availableTabs[currentAvailableIndex + 1] : null;
-
-  // Handle next tab button click
-  const handleNextTab = useCallback(() => {
-    if (nextAvailableTab) {
-      handleTabChange(nextAvailableTab.id);
-    }
-  }, [nextAvailableTab, handleTabChange]);
-
-  // Handle insight click - open insight in sidebar
-  // Store viewportY immediately; offset calculation happens in useLayoutEffect after sidebar renders
-  const handleInsightClick = useCallback((insight: ReferencedInsight, viewportY?: number) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[handleInsightClick] Setting selectedInsight:', insight, 'viewportY:', viewportY);
-    }
-    setSelectedInsight(insight);
-    // Store viewport Y for offset calculation after sidebar renders
-    if (viewportY !== undefined) {
-      setClickedViewportY(viewportY);
-    }
-  }, []);
-
-  // Handle close insight
-  const handleCloseInsight = useCallback(() => {
-    setSelectedInsight(null);
-    setClickedViewportY(null);
-    setInsightYOffset(0);
-    setUserDismissedInsight(true);
-  }, []);
-
-  // Calculate offset after sidebar renders (useLayoutEffect runs synchronously after DOM mutations)
-  useLayoutEffect(() => {
-    // Manual click path: use captured viewport Y from click event
-    if (clickedViewportY !== null && sidebarRef.current) {
-      const sidebarTop = sidebarRef.current.getBoundingClientRect().top;
-      const relativeOffset = Math.max(0, clickedViewportY - sidebarTop);
-      setInsightYOffset(relativeOffset);
-      // Clear viewportY after calculation to avoid re-running
-      setClickedViewportY(null);
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[useLayoutEffect] Manual click offset:', { clickedViewportY, sidebarTop, relativeOffset });
-      }
-      return;
-    }
-
-    // Auto-show path: position at first InsightIndicator in current tab content
-    if (autoShowPending.current && selectedInsight && sidebarRef.current && contentRef.current) {
-      autoShowPending.current = false;
-      const indicator = contentRef.current.querySelector('[data-insight-indicator]');
-      if (indicator) {
-        const indicatorTop = indicator.getBoundingClientRect().top;
-        const sidebarTop = sidebarRef.current.getBoundingClientRect().top;
-        const relativeOffset = Math.max(0, indicatorTop - sidebarTop);
-        setInsightYOffset(relativeOffset);
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[useLayoutEffect] Auto-show offset:', { indicatorTop, sidebarTop, relativeOffset });
-        }
-      } else {
-        setInsightYOffset(0); // Fallback if indicator not yet in DOM
-      }
-    }
-  }, [clickedViewportY, selectedInsight]);
-
-  // Debug: Log sidebar render conditions
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Sidebar Render Conditions]', {
-        selectedInsight: !!selectedInsight,
-        allResourcesLength: allResources.length,
-        shouldShowSidebar: allResources.length > 0 || !!selectedInsight,
-        shouldShowInlineCard: !!selectedInsight,
-      });
-    }
-  }, [selectedInsight, allResources.length]);
-
   return (
     <div className={styles.pageLayout}>
-      {/* 1. Nav Column — vertical sidebar navigation */}
-      <div className={styles.navColumn}>
-        <ReportAnchorNav
-          activeTab={activeTab}
-          availableTabs={availableTabs}
-          onTabClick={handleNavTabClick}
-          onProfileClick={handleProfileClick}
-          visible={navVisible}
-        />
-      </div>
+      {/* Floating Progress Dots — section navigation */}
+      <FloatingProgressDots
+        sections={availableSections}
+        activeSection={activeTab}
+        onSectionClick={handleSectionClick}
+        visible={navVisible}
+      />
 
-      {/* 2. Main Content Column */}
+      {/* Main Content Column */}
       <div className={styles.mainContent}>
         {/* Fixed Header Section - Always Visible */}
         <div ref={headerSectionRef} className={styles.headerSection}>
@@ -638,56 +481,29 @@ export function TabbedReportContainer({
             </section>
           )}
 
-          {/* Top Focus Areas (between personality summary and tabs) */}
+          {/* Top Focus Areas (between personality summary and sections) */}
           {analysis.topFocusAreas && analysis.topFocusAreas.areas?.length > 0 && (
             <TopFocusAreasSection focusAreas={analysis.topFocusAreas} />
           )}
         </div>
 
-        {/* Tab Navigation */}
-        {availableTabs.length > 1 && (
-          <div ref={tabNavRef} className={styles.tabNav}>
-            {availableTabs.map((tab) => {
-              const lockedCount = lockedCounts[tab.id];
-              return (
-                <button
-                  key={tab.id}
-                  data-tab-id={tab.id}
-                  className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-                  onClick={() => handleTabChange(tab.id)}
-                  type="button"
-                >
-                  {tab.label}
-                  {lockedCount > 0 && (
-                    <span className={styles.lockedBadge}>
-                      🔒{lockedCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+        {/* Continuous Scroll Content */}
+        <div ref={contentRef} className={styles.scrollContent}>
+          {/* Activity Section - GitHub-style contribution graph */}
+          <div ref={activityRef} data-section-id="activity" className={styles.scrollSection}>
+            <ActivitySection
+              activitySessions={analysis.activitySessions}
+              analyzedSessions={analysis.analyzedSessions ?? []}
+              sessionSummaries={analysis.sessionSummaries}
+              projectSummaries={analysis.projectSummaries}
+              analysisDateRange={analysisMetadata?.analysisDateRange}
+              weeklyInsights={analysis.weeklyInsights}
+            />
           </div>
-        )}
 
-        {/* Tab Content - Scrollable */}
-        <div ref={contentRef} className={styles.tabContent}>
-          {/* Activity Tab - GitHub-style contribution graph */}
-          {activeTab === 'activity' && (
-            <div className={styles.tabPanel}>
-              <ActivitySection
-                activitySessions={analysis.activitySessions}
-                analyzedSessions={analysis.analyzedSessions ?? []}
-                sessionSummaries={analysis.sessionSummaries}
-                projectSummaries={analysis.projectSummaries}
-                analysisDateRange={analysisMetadata?.analysisDateRange}
-                weeklyInsights={analysis.weeklyInsights}
-              />
-            </div>
-          )}
-
-          {/* Thinking Quality Tab - ThinkingQualityWorker (Planning + Critical Thinking) */}
-          {activeTab === 'thinking' && hasThinking && workerInsights?.thinkingQuality && (
-            <div className={styles.tabPanel}>
+          {/* Thinking Quality Section - ThinkingQualityWorker (Planning + Critical Thinking) */}
+          {hasThinking && workerInsights?.thinkingQuality && (
+            <div ref={thinkingRef} data-section-id="thinking" className={styles.scrollSection}>
               <WorkerDomainSection
                 config={WORKER_DOMAIN_CONFIGS[0]}
                 strengths={workerInsights.thinkingQuality.strengths}
@@ -698,10 +514,8 @@ export function TabbedReportContainer({
                 domainScore={workerInsights.thinkingQuality.domainScore}
                 insightAllocation={insightAllocation}
                 domainKey="thinkingQuality"
-                onInsightClick={handleInsightClick}
                 onViewContext={handleViewContext}
               />
-              {/* Premium Value Summary */}
               <PremiumValueSummary
                 lockedCount={lockedCounts.thinking}
                 domainName="Thinking Quality"
@@ -709,9 +523,9 @@ export function TabbedReportContainer({
             </div>
           )}
 
-          {/* Communication Tab - CommunicationPatternsWorker (Patterns + Signature Quotes) */}
-          {activeTab === 'communication' && hasCommunication && (
-            <div className={styles.tabPanel}>
+          {/* Communication Section - CommunicationPatternsWorker (Patterns + Signature Quotes) */}
+          {hasCommunication && (
+            <div ref={communicationRef} data-section-id="communication" className={styles.scrollSection}>
               <WorkerDomainSection
                 config={WORKER_DOMAIN_CONFIGS[1]}
                 strengths={communicationStrengths}
@@ -722,10 +536,8 @@ export function TabbedReportContainer({
                 domainScore={workerInsights?.communicationPatterns?.domainScore}
                 insightAllocation={insightAllocation}
                 domainKey="communicationPatterns"
-                onInsightClick={handleInsightClick}
                 onViewContext={handleViewContext}
               />
-              {/* Premium Value Summary */}
               <PremiumValueSummary
                 lockedCount={lockedCounts.communication}
                 domainName="Communication"
@@ -733,9 +545,9 @@ export function TabbedReportContainer({
             </div>
           )}
 
-          {/* Learning Behavior Tab - LearningBehaviorWorker */}
-          {activeTab === 'learning' && hasLearning && workerInsights?.learningBehavior && (
-            <div className={styles.tabPanel}>
+          {/* Learning Behavior Section - LearningBehaviorWorker */}
+          {hasLearning && workerInsights?.learningBehavior && (
+            <div ref={learningRef} data-section-id="learning" className={styles.scrollSection}>
               <WorkerDomainSection
                 config={WORKER_DOMAIN_CONFIGS[2]}
                 strengths={workerInsights.learningBehavior.strengths}
@@ -746,10 +558,8 @@ export function TabbedReportContainer({
                 domainScore={workerInsights.learningBehavior.domainScore}
                 insightAllocation={insightAllocation}
                 domainKey="learningBehavior"
-                onInsightClick={handleInsightClick}
                 onViewContext={handleViewContext}
               />
-              {/* Premium Value Summary */}
               <PremiumValueSummary
                 lockedCount={lockedCounts.learning}
                 domainName="Learning Behavior"
@@ -757,9 +567,9 @@ export function TabbedReportContainer({
             </div>
           )}
 
-          {/* Context Efficiency Tab - ContextEfficiencyWorker */}
-          {activeTab === 'context' && hasContext && workerInsights?.contextEfficiency && (
-            <div className={styles.tabPanel}>
+          {/* Context Efficiency Section - ContextEfficiencyWorker */}
+          {hasContext && workerInsights?.contextEfficiency && (
+            <div ref={contextRef} data-section-id="context" className={styles.scrollSection}>
               <WorkerDomainSection
                 config={WORKER_DOMAIN_CONFIGS[3]}
                 strengths={workerInsights.contextEfficiency.strengths}
@@ -770,43 +580,19 @@ export function TabbedReportContainer({
                 domainScore={workerInsights.contextEfficiency.domainScore}
                 insightAllocation={insightAllocation}
                 domainKey="contextEfficiency"
-                onInsightClick={handleInsightClick}
                 onViewContext={handleViewContext}
               />
-              {/* Premium Value Summary */}
               <PremiumValueSummary
                 lockedCount={lockedCounts.context}
                 domainName="Context Efficiency"
               />
             </div>
           )}
-
-          {/* Smart Navigation - Next Tab Button */}
-          {nextAvailableTab && (
-            <NextTabButton
-              contentRef={contentRef}
-              nextTabLabel={nextAvailableTab.label}
-              onNextTab={handleNextTab}
-            />
-          )}
         </div>
       </div>
 
-      {/* 3. Context Sidebar — always render container for grid stability */}
-      <aside ref={sidebarRef} className={styles.sidebar}>
-        {/* Inline Insight Preview Card — positioned at same Y level as clicked Growth Area */}
-        {selectedInsight && (
-          <div
-            className={styles.insightCardWrapper}
-            style={{ top: `${insightYOffset}px` }}
-          >
-            <InsightPreviewCard
-              insight={selectedInsight}
-              onClose={handleCloseInsight}
-            />
-          </div>
-        )}
-        {/* Resource Sidebar (resources pre-filtered by backend) */}
+      {/* Resource Sidebar */}
+      <aside className={styles.sidebar}>
         {allResources.length > 0 && (
           <ResourceSidebar resources={allResources} />
         )}

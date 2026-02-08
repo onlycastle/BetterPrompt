@@ -21,9 +21,8 @@
  * - Context Efficiency (ContextEfficiencyWorker): Token efficiency patterns
  */
 
-import { useMemo, useState, useCallback } from 'react';
-import type { AggregatedWorkerInsights, WorkerStrength, WorkerGrowth, EvidenceItem, ReferencedInsight } from '../../../../lib/models/worker-insights';
-import React from 'react';
+import { useMemo, type ReactNode } from 'react';
+import type { AggregatedWorkerInsights, WorkerStrength, WorkerGrowth, ReferencedInsight } from '../../../../lib/models/worker-insights';
 import {
   WORKER_DOMAIN_CONFIGS,
   type WorkerDomainConfig,
@@ -34,8 +33,6 @@ import { createGrowthKey, type InsightAllocation } from '../../../../lib/utils/i
 import type { TranslatedAgentInsights, UtteranceLookupEntry } from '../../../../lib/models/verbose-evaluation';
 import type { CommunicationStrength, CommunicationGrowth } from '../../../../lib/transformers/prompt-pattern-transformer';
 import { ExpandableEvidence } from './ExpandableEvidence';
-import { ProfessionalInsightSidebar } from './ProfessionalInsightSidebar';
-import { InsightIndicator } from './InsightIndicator';
 import styles from './WorkerInsightsSection.module.css';
 
 // Type guards to check if a strength/growth has communication pattern metadata
@@ -186,7 +183,7 @@ function getLockedRecommendationClass(severity: string | undefined): string {
 /**
  * Render urgency label based on severity
  */
-function renderUrgencyLabel(severity: string | undefined): React.ReactNode {
+function renderUrgencyLabel(severity: string | undefined): ReactNode {
   if (severity === 'critical') {
     return (
       <div className={styles.urgencyLabel} data-severity="critical">
@@ -221,20 +218,17 @@ function renderUrgencyLabel(severity: string | undefined): React.ReactNode {
  * frequency/effectiveness badges when present.
  *
  * Professional Insights:
- * - Shows InsightIndicator when referencedInsights are present
- * - Clicking opens ProfessionalInsightSidebar
+ * - Shows inline insight content when referencedInsights are present
  */
 function GrowthCard({
   growth,
   utteranceLookup,
   referencedInsights,
-  onInsightClick,
   onViewContext,
 }: {
   growth: WorkerGrowth;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
   referencedInsights?: ReferencedInsight[];
-  onInsightClick?: (insight: ReferencedInsight, yOffset?: number) => void;
   onViewContext?: (utteranceId: string) => void;
 }) {
   const severityClass = growth.severity
@@ -298,13 +292,6 @@ function GrowthCard({
               Severity: {getSeverityLabel(growth.severity)}
             </span>
           )}
-          {/* Professional Insight indicator */}
-          {referencedInsights && referencedInsights.length > 0 && onInsightClick && (
-            <InsightIndicator
-              insights={referencedInsights}
-              onClick={onInsightClick}
-            />
-          )}
         </div>
       )}
 
@@ -338,6 +325,36 @@ function GrowthCard({
           </button>
         </div>
       )}
+
+      {/* Inline Professional Insight */}
+      {referencedInsights && referencedInsights.length > 0 && (
+        <div className={styles.inlineInsight}>
+          <span className={styles.insightBadge}>{referencedInsights[0].category}</span>
+          <h5 className={styles.insightTitle}>{referencedInsights[0].title}</h5>
+          {referencedInsights[0].keyTakeaway ? (
+            <>
+              <blockquote className={styles.insightTakeaway}>
+                {referencedInsights[0].keyTakeaway}
+              </blockquote>
+              {referencedInsights[0].actionableAdvice?.slice(0, 2).map((advice, i) => (
+                <p key={i} className={styles.insightAdvice}>{advice}</p>
+              ))}
+              {referencedInsights[0].url && (
+                <a
+                  href={referencedInsights[0].url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.insightSource}
+                >
+                  Source &rarr;
+                </a>
+              )}
+            </>
+          ) : (
+            <span className={styles.insightLocked}>&#x1f513; Unlock Full Insight</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -357,8 +374,6 @@ export interface WorkerDomainSectionProps {
   domainScore?: number;
   /** Referenced insights from this domain for sidebar display (legacy - prefer insightAllocation) */
   referencedInsights?: ReferencedInsight[];
-  /** Callback when insight indicator is clicked (includes Y offset for inline positioning) */
-  onInsightClick?: (insight: ReferencedInsight, yOffset?: number) => void;
   /** Deduplicated insight allocation from TabbedReportContainer */
   insightAllocation?: InsightAllocation;
   /** Domain key for looking up allocated insights (e.g., 'thinkingQuality') */
@@ -385,32 +400,10 @@ export function WorkerDomainSection({
   utteranceLookup,
   domainScore,
   referencedInsights,
-  onInsightClick,
   insightAllocation,
   domainKey,
   onViewContext,
 }: WorkerDomainSectionProps) {
-  // Professional Insight Sidebar state (for this domain)
-  const [selectedInsight, setSelectedInsight] = useState<ReferencedInsight | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  // Handle insight indicator click - open sidebar with selected insight
-  const handleInsightClick = useCallback((insight: ReferencedInsight, yOffset?: number) => {
-    // Use provided callback or default to local sidebar
-    if (onInsightClick) {
-      onInsightClick(insight, yOffset);
-    } else {
-      setSelectedInsight(insight);
-      setIsSidebarOpen(true);
-    }
-  }, [onInsightClick]);
-
-  // Handle sidebar close
-  const handleCloseSidebar = useCallback(() => {
-    setIsSidebarOpen(false);
-    // Clear selected insight after animation
-    setTimeout(() => setSelectedInsight(null), 300);
-  }, []);
 
   // Apply translations if available
   const displayStrengths = useMemo(
@@ -502,7 +495,6 @@ export function WorkerDomainSection({
                     growth={growth}
                     utteranceLookup={utteranceLookup}
                     referencedInsights={insight ? [insight] : undefined}
-                    onInsightClick={handleInsightClick}
                     onViewContext={onViewContext}
                   />
                 );
@@ -512,14 +504,6 @@ export function WorkerDomainSection({
         )}
       </div>
 
-      {/* Professional Insight Sidebar - only rendered if no external onInsightClick */}
-      {!onInsightClick && (
-        <ProfessionalInsightSidebar
-          insight={selectedInsight}
-          isOpen={isSidebarOpen}
-          onClose={handleCloseSidebar}
-        />
-      )}
     </section>
   );
 }
@@ -556,7 +540,7 @@ const DOMAIN_TO_TRANSLATION_KEY: Partial<Record<keyof AggregatedWorkerInsights, 
  * - utteranceLookup presence enables "View original" feature
  *
  * Professional Insights Sidebar:
- * - Displays full insight details when InsightIndicator is clicked
+ * - Displays insights inline within growth cards
  * - Managed at section level to avoid multiple sidebar instances
  */
 export function WorkerInsightsSection({
@@ -571,23 +555,6 @@ export function WorkerInsightsSection({
       translatedAgentInsights ? Object.keys(translatedAgentInsights) : 'undefined');
     console.log('[WorkerInsightsSection] utteranceLookup count:', utteranceLookup?.length ?? 0);
   }
-
-  // Professional Insight Sidebar state
-  const [selectedInsight, setSelectedInsight] = useState<ReferencedInsight | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  // Handle insight indicator click - open sidebar with selected insight
-  const handleInsightClick = useCallback((insight: ReferencedInsight) => {
-    setSelectedInsight(insight);
-    setIsSidebarOpen(true);
-  }, []);
-
-  // Handle sidebar close
-  const handleCloseSidebar = useCallback(() => {
-    setIsSidebarOpen(false);
-    // Clear selected insight after animation
-    setTimeout(() => setSelectedInsight(null), 300);
-  }, []);
 
   // Build utterance lookup map for O(1) access
   const utteranceLookupMap = useMemo(() => {
@@ -652,18 +619,10 @@ export function WorkerInsightsSection({
               utteranceLookup={utteranceLookupMap}
               domainScore={domain.domainScore}
               referencedInsights={domain.referencedInsights}
-              onInsightClick={handleInsightClick}
             />
           );
         })}
       </div>
-
-      {/* Professional Insight Sidebar - rendered at section level */}
-      <ProfessionalInsightSidebar
-        insight={selectedInsight}
-        isOpen={isSidebarOpen}
-        onClose={handleCloseSidebar}
-      />
     </div>
   );
 }
