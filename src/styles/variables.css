@@ -9,12 +9,12 @@
   color-scheme: light only;
 
   /* ============================================
-     Typography - FiraCode Monospace
+     Typography - Hybrid (Jakarta Sans + Monospace)
      ============================================ */
-  --font-primary: 'Fira Code', 'SF Mono', 'Monaco', 'Consolas', monospace;
-  --font-display: 'Fira Code', monospace;
-  --font-body: 'Fira Code', monospace;
-  --font-mono: 'Fira Code', monospace;
+  --font-primary: var(--font-jakarta), 'Plus Jakarta Sans', sans-serif;
+  --font-display: var(--font-jakarta), 'Plus Jakarta Sans', sans-serif;
+  --font-body: var(--font-jakarta), 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'Fira Code', 'SF Mono', 'Monaco', 'Consolas', monospace;
 
   /* Typography Scale (adjusted for monospace) */
   --text-xs: 11px;

@@ -1,21 +1,14 @@
-/**
- * RemoteReportContent - Client Component
- *
- * Handles data fetching and rendering of the remote report.
- * Must be a client component because it uses React Query hooks.
- */
-
 'use client';
 
 import Link from 'next/link';
 import { useRemoteResult } from '@/hooks/useRemoteResult';
+import { useGrowthData } from '@/hooks/useGrowthData';
 import { TabbedReportContainer } from '@/components/personal/tabs';
 import { UnlockSection } from '@/components/report/UnlockSection';
 import { ReportShareBar } from '@/components/report/ReportShareBar';
 import { ReportErrorCard } from '@/components/report/ReportErrorCard';
 import { ReportLoadingSpinner } from '@/components/report/ReportLoadingSpinner';
 import { ReportPreviewBanner } from '@/components/report/ReportPreviewBanner';
-import { VERBOSE_TYPE_METADATA } from '@/types/verbose';
 import styles from './page.module.css';
 
 interface ErrorCardConfig {
@@ -55,9 +48,6 @@ interface RemoteReportContentProps {
   resultId: string;
 }
 
-/**
- * Page header with branding
- */
 function PageHeader() {
   return (
     <header className={styles.header}>
@@ -74,11 +64,9 @@ function PageHeader() {
   );
 }
 
-/**
- * Main client component for remote report
- */
 export function RemoteReportContent({ resultId }: RemoteReportContentProps) {
   const { data, isPaid, preview, isLoading, error, errorStatus, refetch } = useRemoteResult(resultId);
+  const { progressAnalytics, benchmarkPercentiles } = useGrowthData();
 
   // Loading state
   if (isLoading) {
@@ -116,7 +104,6 @@ export function RemoteReportContent({ resultId }: RemoteReportContentProps) {
     );
   }
 
-  // No data (shouldn't happen if no error, but safety check)
   if (!data) {
     return (
       <div className={styles.page}>
@@ -138,9 +125,6 @@ export function RemoteReportContent({ resultId }: RemoteReportContentProps) {
     );
   }
 
-  // Success state - render the report
-  const typeMetadata = data.primaryType ? VERBOSE_TYPE_METADATA[data.primaryType] : null;
-
   return (
     <div className={styles.page}>
       <div className={styles.container}>
@@ -159,6 +143,8 @@ export function RemoteReportContent({ resultId }: RemoteReportContentProps) {
             analysis={data}
             agentOutputs={data.agentOutputs}
             analysisMetadata={data.analysisMetadata}
+            progressAnalytics={progressAnalytics}
+            benchmarkPercentiles={benchmarkPercentiles}
           />
         </div>
 

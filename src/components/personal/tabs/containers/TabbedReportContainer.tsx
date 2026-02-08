@@ -21,8 +21,13 @@ import { ResourceSidebar } from '../resources/ResourceSidebar';
 import { DataQualityBadge } from '../shared/DataQualityBadge';
 import { TopFocusAreasSection } from '../focus/TopFocusAreasSection';
 import { useScrollSpy } from '../../../../hooks/useScrollSpy';
+import { GrowthSummaryBanner } from '../growth/GrowthSummaryBanner';
+import { ProgressSection } from '../growth/ProgressSection';
+import { PercentileGauge } from '../growth/PercentileGauge';
 
 import type { VerboseAnalysisData, AnalysisMetadata, DimensionResourceMatch } from '../../../../types/verbose';
+import type { PersonalAnalytics } from '../../../../types/personal';
+import type { BenchmarkPercentiles } from '../../../../types/benchmarks';
 import type { AgentOutputs, ParsedResource } from '../../../../lib/models/agent-outputs';
 import { aggregateWorkerInsights } from '../../../../lib/models/agent-outputs';
 import {
@@ -81,10 +86,11 @@ function convertKnowledgeResourcesToFlat(resources: DimensionResourceMatch[]): P
   return result;
 }
 
-export type ReportTabId = 'activity' | 'thinking' | 'communication' | 'learning' | 'context';
+export type ReportTabId = 'progress' | 'activity' | 'thinking' | 'communication' | 'learning' | 'context';
 
 /** Section icons used by FloatingProgressDots */
 const SECTION_ICONS: Record<ReportTabId, string> = {
+  progress: '📈',
   activity: '📊',
   thinking: '🧠',
   communication: '💬',
@@ -106,6 +112,7 @@ interface SectionConfig {
  * - Context Efficiency: ContextEfficiencyWorker (Token Efficiency)
  */
 const REPORT_SECTIONS: SectionConfig[] = [
+  { id: 'progress', label: 'Growth' },
   { id: 'activity', label: 'Activity' },
   { id: 'thinking', label: 'Thinking Quality' },
   { id: 'communication', label: 'Communication' },
@@ -122,29 +129,32 @@ function getLockedCount(domain: WorkerInsightsContainer | undefined): number {
   return domain.growthAreas.filter(g => !g.recommendation).length;
 }
 
+// Re-export for backward compatibility (canonical type in src/types/benchmarks.ts)
+export type { BenchmarkPercentiles } from '../../../../types/benchmarks';
+
 interface TabbedReportContainerProps {
   analysis: VerboseAnalysisData;
   agentOutputs?: AgentOutputs;
   /** Analysis metadata for confidence display */
   analysisMetadata?: AnalysisMetadata;
+  /** Growth tracking data (optional, only for authenticated users) */
+  progressAnalytics?: PersonalAnalytics | null;
+  /** User's percentile ranks per domain (optional, only for authenticated users) */
+  benchmarkPercentiles?: BenchmarkPercentiles | null;
 }
 
-/**
- * Data-driven UI: No isPaid prop needed.
- * Backend pre-filters data based on tier before sending to client.
- * - workerInsights.growthAreas.recommendation: empty = locked
- * - knowledgeResources: pre-filtered to tier limit
- * - utteranceLookup: undefined = locked "View original" feature
- */
 export function TabbedReportContainer({
   analysis,
   agentOutputs,
   analysisMetadata,
+  progressAnalytics,
+  benchmarkPercentiles,
 }: TabbedReportContainerProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const headerSectionRef = useRef<HTMLDivElement>(null);
 
   // Section refs for scroll spy
+  const progressRef = useRef<HTMLDivElement>(null);
   const activityRef = useRef<HTMLDivElement>(null);
   const thinkingRef = useRef<HTMLDivElement>(null);
   const communicationRef = useRef<HTMLDivElement>(null);
@@ -152,6 +162,7 @@ export function TabbedReportContainer({
   const contextRef = useRef<HTMLDivElement>(null);
 
   const sectionRefs = useMemo(() => new Map<string, React.RefObject<HTMLDivElement | null>>([
+    ['progress', progressRef],
     ['activity', activityRef],
     ['thinking', thinkingRef],
     ['communication', communicationRef],
@@ -178,14 +189,11 @@ export function TabbedReportContainer({
     return () => observer.disconnect();
   }, []);
 
-  // Get matched resources from Knowledge Base (Phase 2.75 deterministic matching)
-  // These are validated URLs from our curated database, NOT LLM-generated URLs
-  const allResources = useMemo(() => {
-    if (!analysis.knowledgeResources || analysis.knowledgeResources.length === 0) {
-      return [];
-    }
-    return convertKnowledgeResourcesToFlat(analysis.knowledgeResources);
-  }, [analysis.knowledgeResources]);
+  // Flatten dimension-grouped knowledge resources to a flat list for ResourceSidebar
+  const allResources = useMemo(
+    () => convertKnowledgeResourcesToFlat(analysis.knowledgeResources ?? []),
+    [analysis.knowledgeResources],
+  );
 
   // Aggregate worker insights from Phase 2 workers
   // This replaces the centralized StrengthGrowthSynthesizer approach
@@ -420,6 +428,7 @@ export function TabbedReportContainer({
   // Build available sections for FloatingProgressDots
   const availableSections = useMemo(() => {
     const sectionVisibility: Record<ReportTabId, boolean> = {
+      progress: true, // always available (shows placeholder for first-time users)
       activity: true,
       thinking: hasThinking,
       communication: hasCommunication,
@@ -438,6 +447,7 @@ export function TabbedReportContainer({
 
   // Calculate locked recommendation counts for each section (for premium badge)
   const lockedCounts = useMemo(() => ({
+    progress: 0,
     activity: 0,
     thinking: getLockedCount(workerInsights?.thinkingQuality),
     communication: getLockedCount(workerInsights?.communicationPatterns),
@@ -485,10 +495,18 @@ export function TabbedReportContainer({
           {analysis.topFocusAreas && analysis.topFocusAreas.areas?.length > 0 && (
             <TopFocusAreasSection focusAreas={analysis.topFocusAreas} />
           )}
+
+          {/* Growth Summary Banner — shows analysis count + improvement delta */}
+          <GrowthSummaryBanner analytics={progressAnalytics ?? null} />
         </div>
 
         {/* Continuous Scroll Content */}
         <div ref={contentRef} className={styles.scrollContent}>
+          {/* Growth Tracking Section — score trends and dimension changes */}
+          <div ref={progressRef} data-section-id="progress" className={styles.scrollSection}>
+            <ProgressSection analytics={progressAnalytics ?? null} />
+          </div>
+
           {/* Activity Section - GitHub-style contribution graph */}
           <div ref={activityRef} data-section-id="activity" className={styles.scrollSection}>
             <ActivitySection
@@ -516,6 +534,11 @@ export function TabbedReportContainer({
                 domainKey="thinkingQuality"
                 onViewContext={handleViewContext}
               />
+              {benchmarkPercentiles?.thinkingQuality != null && (
+                <div className={styles.percentileRow}>
+                  <PercentileGauge percentile={benchmarkPercentiles.thinkingQuality} />
+                </div>
+              )}
               <PremiumValueSummary
                 lockedCount={lockedCounts.thinking}
                 domainName="Thinking Quality"
@@ -538,6 +561,11 @@ export function TabbedReportContainer({
                 domainKey="communicationPatterns"
                 onViewContext={handleViewContext}
               />
+              {benchmarkPercentiles?.communicationPatterns != null && (
+                <div className={styles.percentileRow}>
+                  <PercentileGauge percentile={benchmarkPercentiles.communicationPatterns} />
+                </div>
+              )}
               <PremiumValueSummary
                 lockedCount={lockedCounts.communication}
                 domainName="Communication"
@@ -560,6 +588,11 @@ export function TabbedReportContainer({
                 domainKey="learningBehavior"
                 onViewContext={handleViewContext}
               />
+              {benchmarkPercentiles?.learningBehavior != null && (
+                <div className={styles.percentileRow}>
+                  <PercentileGauge percentile={benchmarkPercentiles.learningBehavior} />
+                </div>
+              )}
               <PremiumValueSummary
                 lockedCount={lockedCounts.learning}
                 domainName="Learning Behavior"
@@ -582,6 +615,11 @@ export function TabbedReportContainer({
                 domainKey="contextEfficiency"
                 onViewContext={handleViewContext}
               />
+              {benchmarkPercentiles?.contextEfficiency != null && (
+                <div className={styles.percentileRow}>
+                  <PercentileGauge percentile={benchmarkPercentiles.contextEfficiency} />
+                </div>
+              )}
               <PremiumValueSummary
                 lockedCount={lockedCounts.context}
                 domainName="Context Efficiency"
