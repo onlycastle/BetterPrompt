@@ -44,7 +44,7 @@ test.describe('Web Server', () => {
   });
 
   test.describe('fonts and styles', () => {
-    test('loads JetBrains Mono font', async ({ page }) => {
+    test('loads Fira Code font', async ({ page }) => {
       await page.goto('/');
 
       // Check that the stylesheet link exists

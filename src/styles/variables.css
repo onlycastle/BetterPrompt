@@ -9,12 +9,12 @@
   color-scheme: light only;
 
   /* ============================================
-     Typography - Hybrid (Jakarta Sans + Monospace)
+     Typography - Notebook Sketch (FiraCode Monospace)
      ============================================ */
-  --font-primary: var(--font-jakarta), 'Plus Jakarta Sans', sans-serif;
-  --font-display: var(--font-jakarta), 'Plus Jakarta Sans', sans-serif;
-  --font-body: var(--font-jakarta), 'Plus Jakarta Sans', sans-serif;
-  --font-mono: 'Fira Code', 'SF Mono', 'Monaco', 'Consolas', monospace;
+  --font-primary: var(--font-fira), 'Fira Code', 'SF Mono', 'Monaco', 'Consolas', monospace;
+  --font-display: var(--font-fira), 'Fira Code', monospace;
+  --font-body: var(--font-fira), 'Fira Code', monospace;
+  --font-mono: var(--font-fira), 'Fira Code', monospace;
 
   /* Typography Scale (adjusted for monospace) */
   --text-xs: 11px;

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
+import { Fira_Code } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
 import { Providers } from '@/components/providers';
 import '@/styles/global.css';
@@ -7,16 +7,10 @@ import '@/styles/variables.css';
 import '@/styles/terminal-theme.css';
 import '@/styles/terminal-variables.css';
 
-const plusJakarta = Plus_Jakarta_Sans({
+const firaCode = Fira_Code({
   subsets: ['latin'],
-  variable: '--font-jakarta',
-  weight: ['400', '500', '600', '700'],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-jetbrains',
-  weight: ['400', '500'],
+  variable: '--font-fira',
+  weight: ['300', '400', '500', '600', '700'],
 });
 
 export const metadata: Metadata = {
@@ -41,7 +35,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${plusJakarta.variable} ${jetbrainsMono.variable}`}>
+      <body className={firaCode.variable}>
         <Providers>{children}</Providers>
         <Analytics />
       </body>
