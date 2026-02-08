@@ -118,6 +118,8 @@
   --sketch-green-dark: #166534;
   --sketch-yellow-text: #946800;
   --sketch-yellow-dark: #7A5600;
+  --sketch-red-text: #C0392B;
+  --sketch-blue-text: #2563EB;
 
   /* Accent aliases (for backward compatibility) */
   --accent-primary: var(--sketch-cyan);

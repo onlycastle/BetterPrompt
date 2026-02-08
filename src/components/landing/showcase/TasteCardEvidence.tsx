@@ -1,5 +1,3 @@
-'use client';
-
 import { EVIDENCE_QUOTES } from './showcase-data';
 import styles from './TasteCards.module.css';
 

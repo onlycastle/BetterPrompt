@@ -171,15 +171,15 @@
 }
 
 .actionBadgeStop {
-  color: var(--sketch-red-text, #c0392b);
-  border-color: var(--sketch-red, #e74c3c);
-  background: var(--sketch-red-soft, rgba(231, 76, 60, 0.08));
+  color: var(--sketch-red-text);
+  border-color: var(--sketch-red);
+  background: var(--sketch-red-soft);
 }
 
 .actionBadgeContinue {
-  color: var(--sketch-blue-text, #2980b9);
-  border-color: var(--sketch-blue, #3498db);
-  background: var(--sketch-blue-soft, rgba(52, 152, 219, 0.08));
+  color: var(--sketch-blue-text);
+  border-color: var(--sketch-blue);
+  background: var(--sketch-blue-soft);
 }
 
 .actionText {
@@ -219,19 +219,19 @@
 }
 
 .cell1 {
-  background: rgba(40, 167, 69, 0.25);
+  background: #9be9a8;
 }
 
 .cell2 {
-  background: rgba(40, 167, 69, 0.50);
+  background: #40c463;
 }
 
 .cell3 {
-  background: rgba(40, 167, 69, 0.75);
+  background: #30a14e;
 }
 
 .cell4 {
-  background: rgba(40, 167, 69, 1);
+  background: #216e39;
 }
 
 .activityStats {
