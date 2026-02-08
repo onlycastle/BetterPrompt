@@ -25,6 +25,10 @@ const values = [
 export function ValueStory() {
   return (
     <section id="value" className={styles.section}>
+      <blockquote className={styles.philosophyQuote}>
+        AI isn&apos;t the problem. Unconscious dependency is.
+      </blockquote>
+
       <h2 className={styles.headline}>
         We don&apos;t guess. We show you.
       </h2>

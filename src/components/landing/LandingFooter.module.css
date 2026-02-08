@@ -43,6 +43,10 @@
   color: var(--ink-primary);
 }
 
+.discordIcon {
+  flex-shrink: 0;
+}
+
 .separator {
   color: var(--ink-light);
 }

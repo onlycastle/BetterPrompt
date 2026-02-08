@@ -1,5 +1,4 @@
 import { HeroSection } from '@/components/landing/HeroSection';
-import { PhilosophySection } from '@/components/landing/PhilosophySection';
 import { ValueStory } from '@/components/landing/ValueStory';
 import { AnalysisPreview } from '@/components/landing/AnalysisPreview';
 import { TypeShowcase } from '@/components/landing/TypeShowcase';
@@ -15,10 +14,9 @@ export function LandingPage() {
       <SectionNav />
       <main className={styles.main}>
         <HeroSection />
-        <PhilosophySection />
-        <ValueStory />
         <AnalysisPreview />
         <TypeShowcase />
+        <ValueStory />
         <KnowledgeSection />
         <DownloadSection />
       </main>

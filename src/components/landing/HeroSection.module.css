@@ -9,8 +9,8 @@
 }
 
 .headline {
+  font-family: var(--font-display);
   font-size: var(--text-4xl);
-  font-weight: var(--weight-bold);
   font-weight: var(--weight-bold);
   color: var(--ink-primary);
   line-height: var(--leading-tight);
@@ -31,9 +31,8 @@
 }
 
 .accent {
-  color: var(--sketch-cyan);
+  color: var(--sketch-cyan-text);
 }
-
 
 .subheadline {
   font-size: var(--text-lg);
@@ -51,25 +50,34 @@
   margin: 0 auto;
 }
 
-.githubLink {
-  display: inline-flex;
+.scrollCue {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: var(--space-xs);
-  color: var(--ink-secondary);
-  font-size: var(--text-sm);
-  text-decoration: none;
-  transition: color var(--transition-fast);
+  margin-top: var(--space-2xl);
+  color: var(--ink-muted);
+  cursor: pointer;
 }
 
-.githubLink:hover {
-  color: var(--ink-primary);
+.scrollText {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.scrollIcon {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
 }
 
 @media (min-width: 768px) {
   .headline {
     font-size: var(--text-5xl);
   }
-
 }
 
 @media (max-width: 480px) {
