@@ -217,6 +217,7 @@ export function ActivitySection({
     data: null,
   });
   const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   // Unify data sources: prefer activitySessions, fall back to analyzedSessions + sessionSummaries
   const unifiedSessions = useMemo((): UnifiedSession[] => {
@@ -432,6 +433,7 @@ export function ActivitySection({
   // Click handler: toggle detail panel
   const handleCellClick = useCallback((day: DayData) => {
     if (day.count === 0) return;
+    setHasInteracted(true);
     setSelectedDay(prev => prev?.date === day.date ? null : day);
   }, []);
 
@@ -565,6 +567,11 @@ export function ActivitySection({
 
           {/* Legend */}
           <div className={styles.legend}>
+            {!hasInteracted && (
+              <span className={styles.clickHint}>
+                click a day for details
+              </span>
+            )}
             <span className={styles.legendLabel}>Less</span>
             <div className={styles.legendCells}>
               {[0, 1, 2, 3, 4].map((level) => (

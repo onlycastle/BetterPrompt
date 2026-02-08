@@ -1,0 +1,83 @@
+.section {
+  padding: var(--space-3xl) var(--space-md);
+}
+
+.wrapper {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* ============================================
+   Header
+   ============================================ */
+.header {
+  text-align: center;
+  margin-bottom: var(--space-2xl);
+}
+
+.headline {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.subheadline {
+  font-size: var(--text-md);
+  color: var(--ink-secondary);
+}
+
+/* ============================================
+   2×2 Card Grid
+   ============================================ */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-2xl);
+}
+
+/* ============================================
+   Staggered Entrance Animation
+   ============================================ */
+.cardSlot {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+.cardSlot.cardVisible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================================
+   Footer
+   ============================================ */
+.footer {
+  text-align: center;
+}
+
+.disclaimer {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  margin-bottom: var(--space-md);
+}
+
+.cta {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* ============================================
+   Mobile: 1 column under 560px
+   ============================================ */
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .headline {
+    font-size: var(--text-xl);
+  }
+}
