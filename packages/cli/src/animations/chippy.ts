@@ -195,7 +195,7 @@ export function getChippyLarge(expression: ChippyExpression = 'happy'): string[]
 export const BEAR_LINE_WIDTH = 22;
 
 /** Fixed visual width of the bubble area beside the bear */
-export const LARGE_BUBBLE_WIDTH = 30;
+export const LARGE_BUBBLE_WIDTH = 44;
 
 /** Gap between bear and bubble */
 const GAP_WIDTH = 2;
@@ -222,13 +222,13 @@ const EAR_WIGGLE_INTERVAL = 30;
 function buildBearLines(expression: ChippyExpression, tick: number): string[] {
   const face = LARGE_FACES[expression];
   const wiggle = Math.floor(tick / EAR_WIGGLE_INTERVAL) % 2 === 1;
-  const earConnect = wiggle ? '│  ╰─ ─ ─ ─╯  │' : '│  ╰───────╯  │';
+  const earConnect = wiggle ? '│  ╰── ── ──╯  │' : '│  ╰────────╯  │';
 
   const lines = [
-    '  ╭──╮       ╭──╮',     // 0: ears
+    '  ╭──╮        ╭──╮',    // 0: ears
     `  ${earConnect}`,        // 1: ear connection (animated)
     '  │              │',     // 2: padding
-    `  │   ${face.leftEye}     ${face.rightEye}   │`,  // 3: eyes
+    `  │   ${face.leftEye}      ${face.rightEye}   │`,  // 3: eyes
     '  │              │',     // 4: padding
     `  │      ${face.mouth}      │`,  // 5: mouth
     '  │              │',     // 6: padding
