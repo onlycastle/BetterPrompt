@@ -47,9 +47,9 @@ export interface MilestoneConfig {
 // ============================================================================
 
 export const MILESTONES: MilestoneConfig[] = [
-  { percent: 50, expression: 'happy', bubble: 'Halfway there!' },
-  { percent: 75, expression: 'wink', bubble: 'Almost done \u2014 preparing your results' },
-  { percent: 90, expression: 'excited', bubble: 'Finalizing your developer profile!' },
+  { percent: 50, expression: 'happy', bubble: 'Halfway there! Patterns are emerging from your sessions' },
+  { percent: 75, expression: 'wink', bubble: 'Almost done \u2014 your developer profile is taking shape' },
+  { percent: 90, expression: 'excited', bubble: 'Finalizing your results \u2014 this is going to be interesting!' },
 ];
 
 // ============================================================================
@@ -202,34 +202,48 @@ export function generatePersonalizedMessages(insights: SessionInsights): {
 
   // --- Bubble messages (personal data, shown next to Chippy) ---
 
-  bubbles.push(`${formatNumber(insights.totalMessages)} messages \u2014 you two talk a lot`);
+  bubbles.push(
+    `${formatNumber(insights.totalMessages)} messages exchanged \u2014 that's more conversation than most people have with their coworkers in a week`,
+  );
 
   if (insights.longestSession.durationMin > 0) {
     bubbles.push(
-      `Your longest chat was ${formatDuration(insights.longestSession.durationMin)} on ${insights.longestSession.project}`,
+      `Your longest chat was ${formatDuration(insights.longestSession.durationMin)} on ${insights.longestSession.project} \u2014 that's some serious deep work`,
     );
   }
 
   if (insights.projectCount > 1) {
-    bubbles.push(`${insights.projectCount} projects... you keep AI busy`);
+    bubbles.push(
+      `${insights.projectCount} projects across your workflow \u2014 you really keep AI busy on all fronts`,
+    );
   }
 
   if (insights.totalToolCalls > 0) {
-    bubbles.push(`That's ${formatNumber(insights.totalToolCalls)} tool calls in total`);
+    bubbles.push(
+      `That's ${formatNumber(insights.totalToolCalls)} tool calls \u2014 Read, Edit, Bash all working behind the scenes`,
+    );
   }
 
   if (insights.topTools.length > 0) {
-    bubbles.push(`${insights.topTools[0]} is your most-used tool by far`);
+    bubbles.push(
+      `${insights.topTools[0]} is your most-used tool \u2014 it shows up in almost every session`,
+    );
   }
 
-  bubbles.push(`Checking your ${insights.busiestDay.day} productivity spike...`);
+  bubbles.push(
+    `Your ${insights.busiestDay.day} productivity spike is real \u2014 let's see what that pattern reveals`,
+  );
 
   if (insights.avgSessionMinutes > 0) {
-    bubbles.push(`${insights.avgSessionMinutes} min average session \u2014 not bad`);
+    bubbles.push(
+      `${insights.avgSessionMinutes} min average session \u2014 you know how to stay focused`,
+    );
   }
 
   if (insights.totalOutputTokens > 0) {
-    bubbles.push(`AI wrote ${formatNumber(insights.totalOutputTokens)} tokens for you. You're welcome`);
+    bubbles.push(
+      `AI generated ${formatNumber(insights.totalOutputTokens)} tokens for you \u2014 that's roughly a ${Math.round(insights.totalOutputTokens / 1300)}-page book of code and text`,
+    );
   }
 
   // --- Tip messages (personalized first, then generic) ---

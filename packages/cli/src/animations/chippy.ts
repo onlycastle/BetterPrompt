@@ -197,7 +197,7 @@ export function getChippyLarge(expression: ChippyExpression = 'happy'): string[]
 export const BEAR_LINE_WIDTH = 22;
 
 /** Fixed visual width of the bubble area beside the bear */
-export const LARGE_BUBBLE_WIDTH = 44;
+export const LARGE_BUBBLE_WIDTH = 52;
 
 /** Gap between bear and bubble */
 const GAP_WIDTH = 2;
@@ -254,13 +254,10 @@ export function getLargeChipCharacter(expression: ChippyExpression, tick: number
  */
 function buildBubbleLines(bubbleText: string): string[] {
   const innerWidth = LARGE_BUBBLE_WIDTH - 4; // borders + padding
-  const maxTextLen = innerWidth - 2;
-  const truncated = bubbleText.length > maxTextLen
-    ? bubbleText.slice(0, maxTextLen - 1) + '\u2026'
-    : bubbleText;
+  const MAX_CONTENT_LINES = 3;
 
-  // Word-wrap into lines that fit innerWidth
-  const words = truncated.split(' ');
+  // Word-wrap FIRST, then limit lines (not the other way around)
+  const words = bubbleText.split(' ');
   const textLines: string[] = [];
   let current = '';
   for (const word of words) {
@@ -272,6 +269,14 @@ function buildBubbleLines(bubbleText: string): string[] {
     }
   }
   if (current) textLines.push(current);
+
+  // Truncate excess lines, adding … to the last visible line
+  if (textLines.length > MAX_CONTENT_LINES) {
+    textLines.length = MAX_CONTENT_LINES;
+    const last = textLines[MAX_CONTENT_LINES - 1];
+    textLines[MAX_CONTENT_LINES - 1] =
+      last.length >= innerWidth ? last.slice(0, innerWidth - 1) + '\u2026' : last + '\u2026';
+  }
 
   // Build bubble box (content lines + top/bottom border)
   const top    = `╭${'─'.repeat(innerWidth + 2)}╮`;
