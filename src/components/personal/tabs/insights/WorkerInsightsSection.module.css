@@ -63,13 +63,28 @@
   border-radius: var(--radius-md);
   box-shadow: 4px 4px 0 var(--ink-muted);
   overflow: hidden;
-  animation: insightSlideIn 0.4s ease-out both;
+  /* Scroll-triggered reveal: hidden until IntersectionObserver fires */
+  opacity: 0;
+  transform: translateY(24px);
 }
 
-.domainSection:nth-child(1) { animation-delay: 0s; }
-.domainSection:nth-child(2) { animation-delay: 0.1s; }
-.domainSection:nth-child(3) { animation-delay: 0.2s; }
-.domainSection:nth-child(4) { animation-delay: 0.3s; }
+.domainSection[data-revealed] {
+  animation: sectionReveal 0.5s ease-out forwards;
+}
+
+/* Staggered card cascade within revealed sections */
+.domainSection[data-revealed] .insightCard:nth-child(1) { animation-delay: 0.1s; }
+.domainSection[data-revealed] .insightCard:nth-child(2) { animation-delay: 0.2s; }
+.domainSection[data-revealed] .insightCard:nth-child(3) { animation-delay: 0.3s; }
+.domainSection[data-revealed] .insightCard:nth-child(4) { animation-delay: 0.4s; }
+
+/* Reduced motion: show immediately, no animation */
+@media (prefers-reduced-motion: reduce) {
+  .domainSection {
+    opacity: 1;
+    transform: none;
+  }
+}
 
 /* ============================================================================
    Domain Header - Dark Title Bar
@@ -219,19 +234,78 @@
 }
 
 .columnTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: var(--ink-muted);
+  letter-spacing: 0.12em;
+  color: var(--ink-secondary);
   padding-bottom: var(--space-xs);
-  border-bottom: 1px dashed var(--ink-light);
+  border-bottom: 2px solid var(--ink-light);
   margin: 0;
 }
 
+/* Strength column accent */
+.columnTitleStrength {
+  border-bottom-color: var(--sketch-green);
+}
+
+/* Growth column accent */
+.columnTitleGrowth {
+  border-bottom-color: var(--sketch-yellow);
+}
+
+/* Color-coded prefix icon (+/!) */
 .columnIcon {
-  display: none; /* Hidden - CSS handles icons now */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-md);
+  line-height: 1;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.columnIcon[data-type="strength"] {
+  color: var(--sketch-green-text);
+  background: var(--sketch-green-soft);
+}
+
+.columnIcon[data-type="growth"] {
+  color: var(--sketch-yellow-text);
+  background: var(--sketch-yellow-soft);
+}
+
+/* Item count pill badge */
+.columnCount {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  min-width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  margin-left: auto;
+}
+
+.columnCountStrength {
+  background: var(--sketch-green-soft);
+  color: var(--sketch-green-text);
+  border: 1px solid var(--sketch-green);
+}
+
+.columnCountGrowth {
+  background: var(--sketch-yellow-soft);
+  color: var(--sketch-yellow-text);
+  border: 1px solid var(--sketch-yellow);
 }
 
 .cardsContainer {

@@ -21,7 +21,7 @@
  * - Context Efficiency (ContextEfficiencyWorker): Token efficiency patterns
  */
 
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useRef, useState, useEffect, type ReactNode } from 'react';
 import type { AggregatedWorkerInsights, WorkerStrength, WorkerGrowth, ReferencedInsight } from '../../../../lib/models/worker-insights';
 import {
   WORKER_DOMAIN_CONFIGS,
@@ -77,12 +77,8 @@ interface WorkerInsightsSectionProps {
 const CIRCUMFERENCE = 2 * Math.PI * 25; // SVG circle circumference (radius = 25)
 
 function getScoreClass(score: number): string {
-  if (score >= 70) {
-    return styles.scoreHigh;
-  }
-  if (score >= 40) {
-    return styles.scoreMedium;
-  }
+  if (score >= 70) return styles.scoreHigh;
+  if (score >= 40) return styles.scoreMedium;
   return styles.scoreLow;
 }
 
@@ -191,6 +187,7 @@ function renderUrgencyLabel(severity: string | undefined): ReactNode {
       </div>
     );
   }
+
   if (severity === 'high') {
     return (
       <div className={styles.urgencyLabel} data-severity="high">
@@ -198,6 +195,7 @@ function renderUrgencyLabel(severity: string | undefined): ReactNode {
       </div>
     );
   }
+
   return null;
 }
 
@@ -405,6 +403,34 @@ export function WorkerDomainSection({
   onViewContext,
 }: WorkerDomainSectionProps) {
 
+  // Scroll-triggered reveal: IntersectionObserver fires once when section enters viewport
+  const sectionRef = useRef<HTMLElement>(null);
+  const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+
+    // Respect prefers-reduced-motion — show immediately
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      setRevealed(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setRevealed(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Apply translations if available
   const displayStrengths = useMemo(
     () => applyTranslatedStrengths(strengths, translatedStrengthsData),
@@ -447,7 +473,11 @@ export function WorkerDomainSection({
   };
 
   return (
-    <section className={styles.domainSection}>
+    <section
+      ref={sectionRef}
+      className={styles.domainSection}
+      data-revealed={revealed || undefined}
+    >
       <div className={styles.domainHeader}>
         <div className={styles.domainTitleRow}>
           <span className={styles.domainIcon}>{config.icon}</span>
@@ -465,7 +495,13 @@ export function WorkerDomainSection({
         {/* Strengths Column */}
         {displayStrengths.length > 0 && (
           <div className={styles.insightsColumn}>
-            <h4 className={styles.columnTitle}>Strengths</h4>
+            <h4 className={`${styles.columnTitle} ${styles.columnTitleStrength}`}>
+              <span className={styles.columnIcon} data-type="strength">+</span>
+              <span>Strengths</span>
+              <span className={`${styles.columnCount} ${styles.columnCountStrength}`}>
+                {displayStrengths.length}
+              </span>
+            </h4>
             <div className={styles.cardsContainer}>
               {displayStrengths.map((strength, idx) => (
                 <StrengthCard
@@ -482,7 +518,13 @@ export function WorkerDomainSection({
         {/* Growth Areas Column */}
         {displayGrowthAreas.length > 0 && (
           <div className={styles.insightsColumn}>
-            <h4 className={styles.columnTitle}>Growth Areas</h4>
+            <h4 className={`${styles.columnTitle} ${styles.columnTitleGrowth}`}>
+              <span className={styles.columnIcon} data-type="growth">!</span>
+              <span>Growth Areas</span>
+              <span className={`${styles.columnCount} ${styles.columnCountGrowth}`}>
+                {displayGrowthAreas.length}
+              </span>
+            </h4>
             <div className={styles.cardsContainer}>
               {displayGrowthAreas.map((growth, idx) => {
                 // Use original (English) growthAreas for insight lookup key matching

@@ -293,3 +293,35 @@
     stroke-dashoffset: 157;
   }
 }
+
+/* Scroll-triggered section reveal */
+@keyframes sectionReveal {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* "More below" nudge bounce for FloatingProgressDots */
+@keyframes nudgeBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+/* Subtle pulse for next-up dot */
+@keyframes dotPulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
