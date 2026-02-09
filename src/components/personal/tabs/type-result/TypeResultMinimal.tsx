@@ -7,7 +7,8 @@ import { useMemo } from 'react';
 import { VERBOSE_TYPE_METADATA } from '../../../../types/verbose';
 import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixDistribution } from '../../../../types/verbose';
 import { MATRIX_NAMES, MATRIX_METADATA, deriveMatrixDistribution } from '../../../../lib/models/coding-style';
-import { MatrixDistributionDisplay } from './MatrixDistributionDisplay';
+import { DualRadarCharts } from './DualRadarCharts';
+import type { AggregatedWorkerInsights } from '../../../../lib/models/worker-insights';
 import styles from './TypeResultMinimal.module.css';
 
 interface TypeResultMinimalProps {
@@ -20,6 +21,8 @@ interface TypeResultMinimalProps {
   controlScore?: number;
   /** Pre-computed matrix distribution (optional, will derive if not provided) */
   matrixDistribution?: MatrixDistribution;
+  /** Aggregated worker insights for skill scores radar (optional) */
+  workerInsights?: AggregatedWorkerInsights;
 }
 
 export function TypeResultMinimal({
@@ -29,6 +32,7 @@ export function TypeResultMinimal({
   controlLevel = 'navigator',
   controlScore = 50,
   matrixDistribution,
+  workerInsights,
 }: TypeResultMinimalProps) {
   const meta = VERBOSE_TYPE_METADATA[primaryType];
 
@@ -73,13 +77,12 @@ export function TypeResultMinimal({
         ))}
       </div>
 
-      {/* Matrix Distribution (5×3) */}
-      <MatrixDistributionDisplay
+      {/* Dual Radar Charts: Style DNA + Skill Scores */}
+      <DualRadarCharts
         distribution={distribution}
         primaryType={primaryType}
-        controlLevel={controlLevel}
         controlScore={controlScore}
-        matrixDistribution={matrixDistribution}
+        workerInsights={workerInsights}
       />
 
       {/* Sessions analyzed */}

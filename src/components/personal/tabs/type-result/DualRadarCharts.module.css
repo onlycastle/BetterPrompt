@@ -1,0 +1,80 @@
+/**
+ * DualRadarCharts - Side-by-side radar chart layout
+ */
+
+.container {
+  padding-top: var(--space-lg);
+  border-top: 2px dashed var(--ink-muted);
+}
+
+/* Two-column grid, stacks on mobile */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+}
+
+/* When only one chart, center it */
+.chartsGrid.singleChart {
+  grid-template-columns: 1fr;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+/* Terminal-style card */
+.chartCard {
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  box-shadow: 4px 4px 0 var(--ink-muted);
+  padding: var(--space-md);
+}
+
+.chartHeader {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--ink-light);
+}
+
+.chartTitle {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.chartSubtitle {
+  font-family: var(--font-primary);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* Responsive: stack vertically on mobile */
+@media (max-width: 768px) {
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .chartCard {
+    max-width: 360px;
+    margin: 0 auto;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding-top: var(--space-md);
+  }
+
+  .chartCard {
+    padding: var(--space-sm);
+    box-shadow: 3px 3px 0 var(--ink-muted);
+  }
+}

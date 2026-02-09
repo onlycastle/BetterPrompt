@@ -5,7 +5,7 @@
  * Organized into domain subfolders:
  * - containers/: Entry point containers (TabbedReportContainer, ReportTab, etc.)
  * - insights/: Domain-specific insights (WorkerInsightsSection, GrowthAreasSection)
- * - type-result/: Type classification display (TypeResultMinimal, MatrixDistributionDisplay)
+ * - type-result/: Type classification display (TypeResultMinimal, DualRadarCharts)
  * - resources/: Learning resources sidebar (ResourceSidebar, ResourceBubble)
  * - shared/: Reusable UI elements (DataQualityBadge, EmptyStatePrompt, FloatingProgressDots)
  *
@@ -14,27 +14,16 @@
  */
 
 // Container components
-export { TabbedReportContainer, type ReportTabId } from './containers';
-export { ReportTab } from './containers';
-export { ProgressTab } from './containers';
-export { InsightsTab } from './containers';
+export { TabbedReportContainer, type ReportTabId, ReportTab, ProgressTab, InsightsTab } from './containers';
 
 // Type result components
-export { TypeResultMinimal } from './type-result';
-export { MatrixDistributionDisplay } from './type-result';
-export { PersonalitySummaryClean } from './type-result';
+export { TypeResultMinimal, DualRadarCharts, RadarChart, PersonalitySummaryClean } from './type-result';
 
 // Insights components
-export { WorkerInsightsSection } from './insights';
-export { GrowthAreasSection } from './insights';
-export { ExpandableEvidence } from './insights';
+export { WorkerInsightsSection, GrowthAreasSection, ExpandableEvidence } from './insights';
 
 // Resources components
-export { ResourceSidebar } from './resources';
-export { ResourcePreviewCard } from './resources';
-export { ResourceBubble } from './resources';
+export { ResourceSidebar, ResourcePreviewCard, ResourceBubble } from './resources';
 
 // Shared components
-export { DataQualityBadge } from './shared';
-export { EmptyStatePrompt } from './shared';
-export { FloatingProgressDots } from './shared';
+export { DataQualityBadge, EmptyStatePrompt, FloatingProgressDots } from './shared';

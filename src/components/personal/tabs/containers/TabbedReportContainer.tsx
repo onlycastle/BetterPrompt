@@ -505,6 +505,7 @@ export function TabbedReportContainer({
             sessionsAnalyzed={analysis.sessionsAnalyzed}
             controlLevel={analysis.controlLevel}
             controlScore={analysis.controlScore}
+            workerInsights={workerInsights}
           />
 
           {/* Personality Summary */}

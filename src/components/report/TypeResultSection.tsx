@@ -1,6 +1,6 @@
 import styles from './TypeResultSection.module.css';
-import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixDistribution } from '../../types/report';
-import { MatrixDistributionDisplay } from '../personal/tabs';
+import type { CodingStyleType, TypeDistribution } from '../../types/report';
+import { DualRadarCharts } from '../personal/tabs/type-result/DualRadarCharts';
 
 interface TypeResult {
   primaryType: CodingStyleType;
@@ -27,12 +27,8 @@ interface TypeMetadata {
 interface TypeResultSectionProps {
   typeResult: TypeResult;
   typeMetadata: Record<CodingStyleType, TypeMetadata>;
-  /** User's control level (optional, defaults to 'developing') */
-  controlLevel?: AIControlLevel;
   /** Control score 0-100 (optional, defaults to 50) */
   controlScore?: number;
-  /** Pre-computed matrix distribution (optional) */
-  matrixDistribution?: MatrixDistribution;
 }
 
 /**
@@ -42,9 +38,7 @@ interface TypeResultSectionProps {
 export function TypeResultSection({
   typeResult,
   typeMetadata,
-  controlLevel = 'navigator',
   controlScore = 50,
-  matrixDistribution,
 }: TypeResultSectionProps) {
   const meta = typeMetadata[typeResult.primaryType];
 
@@ -55,16 +49,12 @@ export function TypeResultSection({
       <div className={styles.resultTitle}>YOU ARE {meta.name.toUpperCase()}</div>
       <div className={styles.resultTagline}>"{meta.tagline}"</div>
 
-      {/* Matrix Distribution (5×3) */}
+      {/* Style DNA Radar */}
       <div className={styles.distribution}>
-        <div className={styles.subsectionTitle}>📊 Style Matrix</div>
-        <MatrixDistributionDisplay
+        <DualRadarCharts
           distribution={typeResult.distribution}
           primaryType={typeResult.primaryType}
-          controlLevel={controlLevel}
           controlScore={controlScore}
-          matrixDistribution={matrixDistribution}
-          compact
         />
       </div>
 
