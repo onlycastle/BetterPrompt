@@ -104,7 +104,7 @@
 
 .ctaButton:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 188, 212, 0.4);
+  box-shadow: 0 4px 16px var(--sketch-cyan-glow-strong);
 }
 
 .ctaButton:active {

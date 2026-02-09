@@ -340,6 +340,7 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 
     // Trend Sensitivity Section (from Phase 1 utterances) — for Trendsetter detection
     if (phase1Output?.developerUtterances) {
+      // Korean trend keywords: latest, trend, fad, new, updated, nowadays
       const TREND_KEYWORDS_KO = ['최신', '트렌드', '유행', '새로운', '업데이트된', '요즘'];
       const TREND_KEYWORDS_EN = ['latest', 'newest', 'trending', 'modern', 'up-to-date', 'best practice', 'current version', 'recently released'];
       const allKeywords = [...TREND_KEYWORDS_KO, ...TREND_KEYWORDS_EN];
