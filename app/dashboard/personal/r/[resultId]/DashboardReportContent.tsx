@@ -57,7 +57,7 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
   const paymentSuccess = searchParams.get('payment') === 'success';
 
   const { data, isPaid, preview, credits, isLoading, error, errorStatus, refetch } = useRemoteResult(resultId);
-  const { progressAnalytics, benchmarkPercentiles } = useGrowthData();
+  const { benchmarkPercentiles } = useGrowthData();
   const [showSuccessToast, setShowSuccessToast] = useState(paymentSuccess);
 
   useEffect(() => {
@@ -166,8 +166,8 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
           analysis={data}
           agentOutputs={data.agentOutputs}
           analysisMetadata={data.analysisMetadata}
-          progressAnalytics={progressAnalytics}
           benchmarkPercentiles={benchmarkPercentiles}
+          reportId={resultId}
         />
       </div>
 

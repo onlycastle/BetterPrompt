@@ -60,6 +60,7 @@
 .scrollContent {
   display: flex;
   flex-direction: column;
+  padding-bottom: var(--space-xl);
 }
 
 /* Individual scroll section */
@@ -68,10 +69,9 @@
   padding-top: var(--space-xl);
 }
 
-/* Section separator */
+/* Section spacing — cards provide visual separation via border + shadow */
 .scrollSection + .scrollSection {
-  border-top: 2px dashed var(--ink-light);
-  margin-top: var(--space-lg);
+  margin-top: var(--space-xl);
 }
 
 /* Percentile gauge row within worker sections */

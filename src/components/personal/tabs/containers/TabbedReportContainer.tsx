@@ -3,7 +3,7 @@
  *
  * Renders all analysis sections sequentially in a continuous scroll layout:
  * - Fixed header: TypeResultMinimal + PersonalitySummary (always visible)
- * - Sections: Activity | Thinking Quality | Communication | Learning Behavior | Context Efficiency
+ * - Sections: Activity | Thinking Quality | Communication | Learning Behavior | Context Efficiency | Session Success
  * - FloatingProgressDots: right-side navigation dots indicating active section
  *
  * Each section displays the corresponding Worker's strengths/growthAreas.
@@ -11,22 +11,16 @@
  */
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { TypeResultMinimal } from '../type-result/TypeResultMinimal';
-import { PersonalitySummaryClean } from '../type-result/PersonalitySummaryClean';
 import { WorkerDomainSection } from '../insights/WorkerInsightsSection';
 import { ActivitySection } from '../activity/ActivitySection';
-import { PremiumValueSummary } from '../shared/PremiumValueSummary';
 import { FloatingProgressDots } from '../shared/FloatingProgressDots';
 import { ResourceSidebar } from '../resources/ResourceSidebar';
-import { DataQualityBadge } from '../shared/DataQualityBadge';
+import { ReportSummarySection } from '../shared/ReportSummarySection';
 import { TopFocusAreasSection } from '../focus/TopFocusAreasSection';
 import { useScrollSpy } from '../../../../hooks/useScrollSpy';
-import { GrowthSummaryBanner } from '../growth/GrowthSummaryBanner';
-import { ProgressSection } from '../growth/ProgressSection';
 import { PercentileGauge } from '../growth/PercentileGauge';
 
 import type { VerboseAnalysisData, AnalysisMetadata, DimensionResourceMatch } from '../../../../types/verbose';
-import type { PersonalAnalytics } from '../../../../types/personal';
 import type { BenchmarkPercentiles } from '../../../../types/benchmarks';
 import type { AgentOutputs, ParsedResource } from '../../../../lib/models/agent-outputs';
 import { aggregateWorkerInsights } from '../../../../lib/models/agent-outputs';
@@ -86,16 +80,16 @@ function convertKnowledgeResourcesToFlat(resources: DimensionResourceMatch[]): P
   return result;
 }
 
-export type ReportTabId = 'progress' | 'activity' | 'thinking' | 'communication' | 'learning' | 'context';
+export type ReportTabId = 'activity' | 'thinking' | 'communication' | 'learning' | 'context' | 'session';
 
 /** Section icons used by FloatingProgressDots */
 const SECTION_ICONS: Record<ReportTabId, string> = {
-  progress: '📈',
   activity: '📊',
   thinking: '🧠',
   communication: '💬',
   learning: '📚',
   context: '⚡',
+  session: '🎯',
 };
 
 interface SectionConfig {
@@ -112,12 +106,12 @@ interface SectionConfig {
  * - Context Efficiency: ContextEfficiencyWorker (Token Efficiency)
  */
 const REPORT_SECTIONS: SectionConfig[] = [
-  { id: 'progress', label: 'Growth' },
   { id: 'activity', label: 'Activity' },
   { id: 'thinking', label: 'Thinking Quality' },
   { id: 'communication', label: 'Communication' },
   { id: 'learning', label: 'Learning Behavior' },
   { id: 'context', label: 'Context Efficiency' },
+  { id: 'session', label: 'Session Success' },
 ];
 
 /**
@@ -137,40 +131,40 @@ interface TabbedReportContainerProps {
   agentOutputs?: AgentOutputs;
   /** Analysis metadata for confidence display */
   analysisMetadata?: AnalysisMetadata;
-  /** Growth tracking data (optional, only for authenticated users) */
-  progressAnalytics?: PersonalAnalytics | null;
   /** User's percentile ranks per domain (optional, only for authenticated users) */
   benchmarkPercentiles?: BenchmarkPercentiles | null;
   /** Whether the user has paid (hides conversion nudges) */
   isPaid?: boolean;
+  /** Report ID for share URL generation (omit to hide share buttons) */
+  reportId?: string;
 }
 
 export function TabbedReportContainer({
   analysis,
   agentOutputs,
   analysisMetadata,
-  progressAnalytics,
   benchmarkPercentiles,
   isPaid = false,
+  reportId,
 }: TabbedReportContainerProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const headerSectionRef = useRef<HTMLDivElement>(null);
 
   // Section refs for scroll spy
-  const progressRef = useRef<HTMLDivElement>(null);
   const activityRef = useRef<HTMLDivElement>(null);
   const thinkingRef = useRef<HTMLDivElement>(null);
   const communicationRef = useRef<HTMLDivElement>(null);
   const learningRef = useRef<HTMLDivElement>(null);
   const contextRef = useRef<HTMLDivElement>(null);
+  const sessionRef = useRef<HTMLDivElement>(null);
 
   const sectionRefs = useMemo(() => new Map<string, React.RefObject<HTMLDivElement | null>>([
-    ['progress', progressRef],
     ['activity', activityRef],
     ['thinking', thinkingRef],
     ['communication', communicationRef],
     ['learning', learningRef],
     ['context', contextRef],
+    ['session', sessionRef],
   ]), []);
 
   // Scroll spy: detect active section from scroll position
@@ -393,6 +387,13 @@ export function TabbedReportContainer({
         workerInsights.contextEfficiency.referencedInsights
       );
     }
+    if (workerInsights?.sessionOutcome) {
+      processDomain(
+        'sessionOutcome',
+        workerInsights.sessionOutcome.growthAreas,
+        workerInsights.sessionOutcome.referencedInsights
+      );
+    }
 
     // Deduplicate across all growth areas
     return deduplicateInsights(allGrowthWithCandidates);
@@ -409,6 +410,7 @@ export function TabbedReportContainer({
         communicationPatternsRefs: workerInsights?.communicationPatterns?.referencedInsights?.length ?? 0,
         learningBehaviorRefs: workerInsights?.learningBehavior?.referencedInsights?.length ?? 0,
         contextEfficiencyRefs: workerInsights?.contextEfficiency?.referencedInsights?.length ?? 0,
+        sessionOutcomeRefs: workerInsights?.sessionOutcome?.referencedInsights?.length ?? 0,
         allResourcesLength: allResources.length,
         insightAllocationSize: insightAllocation.size,
         professionalInsightsByDomainKeys: Array.from(professionalInsightsByDomain.keys()),
@@ -430,16 +432,17 @@ export function TabbedReportContainer({
   const hasCommunication = communicationStrengths.length > 0 || communicationGrowthAreas.length > 0;
   const hasLearning = hasDomainContent('learningBehavior');
   const hasContext = hasDomainContent('contextEfficiency');
+  const hasSession = hasDomainContent('sessionOutcome');
 
   // Build available sections for FloatingProgressDots
   const availableSections = useMemo(() => {
     const sectionVisibility: Record<ReportTabId, boolean> = {
-      progress: true, // always available (shows placeholder for first-time users)
       activity: true,
       thinking: hasThinking,
       communication: hasCommunication,
       learning: hasLearning,
       context: hasContext,
+      session: hasSession,
     };
 
     return REPORT_SECTIONS
@@ -449,27 +452,28 @@ export function TabbedReportContainer({
         label: section.label,
         icon: SECTION_ICONS[section.id],
       }));
-  }, [hasThinking, hasCommunication, hasLearning, hasContext]);
+  }, [hasThinking, hasCommunication, hasLearning, hasContext, hasSession]);
 
   // Calculate locked recommendation counts for each section (for premium badge)
   const lockedCounts = useMemo(() => ({
-    progress: 0,
     activity: 0,
     thinking: getLockedCount(workerInsights?.thinkingQuality),
     communication: getLockedCount(workerInsights?.communicationPatterns),
     learning: getLockedCount(workerInsights?.learningBehavior),
     context: getLockedCount(workerInsights?.contextEfficiency),
+    session: getLockedCount(workerInsights?.sessionOutcome),
   }), [workerInsights]);
 
   // Unlock percentage for ProgressiveMeter (free users only)
   const { totalLocked, unlockPercentage } = useMemo(() => {
     const locked = lockedCounts.thinking + lockedCounts.communication
-      + lockedCounts.learning + lockedCounts.context;
+      + lockedCounts.learning + lockedCounts.context + lockedCounts.session;
     const totalGrowthAreas =
       (workerInsights?.thinkingQuality?.growthAreas?.length ?? 0)
       + (workerInsights?.communicationPatterns?.growthAreas?.length ?? 0)
       + (workerInsights?.learningBehavior?.growthAreas?.length ?? 0)
-      + (workerInsights?.contextEfficiency?.growthAreas?.length ?? 0);
+      + (workerInsights?.contextEfficiency?.growthAreas?.length ?? 0)
+      + (workerInsights?.sessionOutcome?.growthAreas?.length ?? 0);
     const pct = totalGrowthAreas > 0
       ? Math.round(((totalGrowthAreas - locked) / totalGrowthAreas) * 100)
       : 100;
@@ -493,45 +497,20 @@ export function TabbedReportContainer({
       <div className={styles.mainContent}>
         {/* Fixed Header Section - Always Visible */}
         <div ref={headerSectionRef} className={styles.headerSection}>
-          {/* Analysis Quality Badge - Transparency for trust */}
-          {analysisMetadata && (
-            <DataQualityBadge metadata={analysisMetadata} />
-          )}
-
-          {/* Type Result */}
-          <TypeResultMinimal
-            primaryType={analysis.primaryType}
-            distribution={analysis.distribution}
-            sessionsAnalyzed={analysis.sessionsAnalyzed}
-            controlLevel={analysis.controlLevel}
-            controlScore={analysis.controlScore}
+          <ReportSummarySection
+            analysis={analysis}
             workerInsights={workerInsights}
+            reportId={reportId}
           />
-
-          {/* Personality Summary */}
-          {analysis.personalitySummary && (
-            <section className={styles.personalitySection}>
-              <h3 className={styles.sectionTitle}>Your AI Coding Personality</h3>
-              <PersonalitySummaryClean summary={analysis.personalitySummary} />
-            </section>
-          )}
 
           {/* Top Focus Areas (between personality summary and sections) */}
           {analysis.topFocusAreas && analysis.topFocusAreas.areas?.length > 0 && (
             <TopFocusAreasSection focusAreas={analysis.topFocusAreas} />
           )}
-
-          {/* Growth Summary Banner — shows analysis count + improvement delta */}
-          <GrowthSummaryBanner analytics={progressAnalytics ?? null} />
         </div>
 
         {/* Continuous Scroll Content */}
         <div ref={contentRef} className={styles.scrollContent}>
-          {/* Growth Tracking Section — score trends and dimension changes */}
-          <div ref={progressRef} data-section-id="progress" className={styles.scrollSection}>
-            <ProgressSection analytics={progressAnalytics ?? null} />
-          </div>
-
           {/* Activity Section - GitHub-style contribution graph */}
           <div ref={activityRef} data-section-id="activity" className={styles.scrollSection}>
             <ActivitySection
@@ -564,10 +543,6 @@ export function TabbedReportContainer({
                   <PercentileGauge percentile={benchmarkPercentiles.thinkingQuality} />
                 </div>
               )}
-              <PremiumValueSummary
-                lockedCount={lockedCounts.thinking}
-                domainName="Thinking Quality"
-              />
             </div>
           )}
 
@@ -591,10 +566,6 @@ export function TabbedReportContainer({
                   <PercentileGauge percentile={benchmarkPercentiles.communicationPatterns} />
                 </div>
               )}
-              <PremiumValueSummary
-                lockedCount={lockedCounts.communication}
-                domainName="Communication"
-              />
             </div>
           )}
 
@@ -618,10 +589,6 @@ export function TabbedReportContainer({
                   <PercentileGauge percentile={benchmarkPercentiles.learningBehavior} />
                 </div>
               )}
-              <PremiumValueSummary
-                lockedCount={lockedCounts.learning}
-                domainName="Learning Behavior"
-              />
             </div>
           )}
 
@@ -645,10 +612,29 @@ export function TabbedReportContainer({
                   <PercentileGauge percentile={benchmarkPercentiles.contextEfficiency} />
                 </div>
               )}
-              <PremiumValueSummary
-                lockedCount={lockedCounts.context}
-                domainName="Context Efficiency"
+            </div>
+          )}
+
+          {/* Session Success Section - SessionOutcomeWorker */}
+          {hasSession && workerInsights?.sessionOutcome && (
+            <div ref={sessionRef} data-section-id="session" className={styles.scrollSection}>
+              <WorkerDomainSection
+                config={WORKER_DOMAIN_CONFIGS[4]}
+                strengths={workerInsights.sessionOutcome.strengths}
+                growthAreas={workerInsights.sessionOutcome.growthAreas}
+                translatedStrengthsData={translatedAgentInsights?.sessionOutcome?.strengths ?? translatedAgentInsights?.sessionOutcome?.strengthsData}
+                translatedGrowthAreasData={translatedAgentInsights?.sessionOutcome?.growthAreas ?? translatedAgentInsights?.sessionOutcome?.growthAreasData}
+                utteranceLookup={utteranceLookupMap}
+                domainScore={workerInsights.sessionOutcome.domainScore}
+                insightAllocation={insightAllocation}
+                domainKey="sessionOutcome"
+                onViewContext={handleViewContext}
               />
+              {benchmarkPercentiles?.sessionOutcome != null && (
+                <div className={styles.percentileRow}>
+                  <PercentileGauge percentile={benchmarkPercentiles.sessionOutcome} />
+                </div>
+              )}
             </div>
           )}
         </div>

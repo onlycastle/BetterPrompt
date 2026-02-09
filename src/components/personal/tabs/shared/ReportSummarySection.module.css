@@ -1,0 +1,9 @@
+/**
+ * ReportSummarySection Styles
+ * Minimal container — child components own their own styles.
+ */
+
+.summarySection {
+  display: flex;
+  flex-direction: column;
+}

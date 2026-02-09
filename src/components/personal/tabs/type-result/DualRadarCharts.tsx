@@ -46,6 +46,14 @@ export function DualRadarCharts({
     [distribution],
   );
 
+  // Dynamic maxValue so the style DNA polygon fills the chart area.
+  // Style values sum to ~100%, so individual values are small (10-45).
+  // Using the actual max with 20% headroom makes the polygon visually spread out.
+  const styleMaxValue = useMemo(() => {
+    const maxVal = Math.max(...styleData);
+    return Math.max(Math.ceil((maxVal * 1.2) / 5) * 5, 25);
+  }, [styleData]);
+
   // Transform worker insights to skill scores array
   const skillData = useMemo(() => {
     if (!workerInsights) return null;
@@ -85,8 +93,11 @@ export function DualRadarCharts({
           <RadarChart
             data={styleData}
             labels={STYLE_LABELS}
-            color="var(--sketch-cyan)"
+            maxValue={styleMaxValue}
+            color="var(--sketch-blue)"
             ariaLabel={`Style DNA radar chart. Primary type: ${primaryType}`}
+            showValues
+            valueFormatter={(v) => `${Math.round(v)}%`}
           />
         </div>
 
@@ -102,6 +113,8 @@ export function DualRadarCharts({
               labels={SKILL_LABELS}
               color="var(--sketch-green)"
               ariaLabel="Skill Scores radar chart showing thinking, communication, learning, context, and control scores"
+              showValues
+              valueFormatter={(v) => String(Math.round(v))}
             />
           </div>
         )}
