@@ -22,9 +22,16 @@ export const metadata: Metadata = {
     description: 'Discover your AI collaboration style',
     type: 'website',
     siteName: 'NoMoreAISlop',
+    images: [{
+      url: '/og-image.png',
+      width: 1200,
+      height: 630,
+      alt: 'NoMoreAISlop - AI Coding Style Analysis',
+    }],
   },
   twitter: {
     card: 'summary_large_image',
+    images: ['/og-image.png'],
   },
 };
 
