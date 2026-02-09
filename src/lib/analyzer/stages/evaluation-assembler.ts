@@ -22,7 +22,6 @@
 import {
   normalizeReasoning,
   aggregateWorkerInsights as doAggregateWorkerInsights,
-  WORKER_DOMAIN_CONFIGS,
   type AgentOutputs,
   type TypeClassifierOutput,
   type AggregatedWorkerInsights,
@@ -110,10 +109,10 @@ function smartTruncate(text: string, maxLen: number): string {
   return text.slice(0, maxLen - 3) + '...';
 }
 
-const MAX_PERSONALITY_SUMMARY_LENGTH = 3000;
+const MAX_PERSONALITY_SUMMARY_LENGTH = 1500;
 
 /**
- * Truncate personalitySummary to 3000 chars using smart boundaries.
+ * Truncate personalitySummary to 1500 chars using smart boundaries.
  * Cleans up dangling markdown bold markers (`**`) left by truncation.
  */
 function truncatePersonalitySummary(summary: string): string {
