@@ -7,7 +7,9 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
 import { resolveProjectName } from './lib/project-name-resolver.js';
+import { discoverClaudeDataDirs } from './lib/scanner/sources/claude-discovery.js';
 
+/** @deprecated Kept for reference; actual discovery uses discoverClaudeDataDirs() */
 const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
 const PREFILTER_CONFIG = {
@@ -35,31 +37,34 @@ function getShortProjectName(dirName: string): string {
 
 async function collectAllFiles(): Promise<FileMetadata[]> {
   const allFiles: FileMetadata[] = [];
+  const projectsDirs = await discoverClaudeDataDirs();
 
-  const entries = await readdir(CLAUDE_PROJECTS_DIR);
-  for (const entry of entries) {
-    const fullPath = join(CLAUDE_PROJECTS_DIR, entry);
-    try {
-      const stats = await stat(fullPath);
-      if (!stats.isDirectory()) continue;
+  for (const projectsDir of projectsDirs) {
+    const entries = await readdir(projectsDir);
+    for (const entry of entries) {
+      const fullPath = join(projectsDir, entry);
+      try {
+        const stats = await stat(fullPath);
+        if (!stats.isDirectory()) continue;
 
-      const files = await readdir(fullPath);
-      for (const file of files) {
-        if (!file.endsWith('.jsonl')) continue;
-        const filePath = join(fullPath, file);
-        try {
-          const fstat = await stat(filePath);
-          if (fstat.isFile()) {
-            allFiles.push({
-              filePath,
-              fileSize: fstat.size,
-              mtime: fstat.mtime,
-              projectDirName: entry,
-            });
-          }
-        } catch {}
-      }
-    } catch {}
+        const files = await readdir(fullPath);
+        for (const file of files) {
+          if (!file.endsWith('.jsonl')) continue;
+          const filePath = join(fullPath, file);
+          try {
+            const fstat = await stat(filePath);
+            if (fstat.isFile()) {
+              allFiles.push({
+                filePath,
+                fileSize: fstat.size,
+                mtime: fstat.mtime,
+                projectDirName: entry,
+              });
+            }
+          } catch {}
+        }
+      } catch {}
+    }
   }
 
   return allFiles;

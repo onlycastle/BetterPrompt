@@ -32,6 +32,7 @@ import {
   type SessionSourceType,
 } from './lib/scanner/index.js';
 
+/** @deprecated Use discoverClaudeDataDirs() for robust path resolution */
 export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
 /**
