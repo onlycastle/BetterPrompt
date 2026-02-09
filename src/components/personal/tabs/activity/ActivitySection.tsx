@@ -1,26 +1,7 @@
-/**
- * ActivitySection Component
- *
- * GitHub-style contribution graph showing developer-AI session activity.
- * Displays a calendar heatmap with session counts per day, plus tooltips
- * showing project names and LLM-generated session summaries on hover.
- *
- * Features:
- * - GitHub contribution graph calendar view (7 rows x N weeks)
- * - 5-level green intensity scale
- * - Hover tooltips with session details + AI-generated summaries
- * - Summary stats: total sessions, date range, most active project
- * - Graceful fallback when sessionSummaries not available (cached data)
- */
-
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect, type KeyboardEvent } from 'react';
 import type { AnalyzedSessionInfo, ActivitySessionInfo, ProjectSummary, WeeklyInsights } from '../../../../types/verbose';
 import { WeeklyInsightsCard } from './WeeklyInsightsCard';
 import styles from './ActivitySection.module.css';
-
-// ============================================================================
-// Types
-// ============================================================================
 
 interface SessionSummaryItem {
   sessionId: string;
@@ -28,20 +9,14 @@ interface SessionSummaryItem {
 }
 
 interface ActivitySectionProps {
-  /** NEW: All recent sessions with deterministic summaries (primary data source) */
   activitySessions?: ActivitySessionInfo[];
-  /** Fallback for cached data without activitySessions */
   analyzedSessions: AnalyzedSessionInfo[];
-  /** Legacy LLM-generated summaries (fallback for cached data) */
   sessionSummaries?: SessionSummaryItem[];
-  /** LLM-generated 2-3 line summaries per project (from ProjectSummarizer) */
   projectSummaries?: ProjectSummary[];
   analysisDateRange?: { earliest: string; latest: string };
-  /** Weekly insights: stats, comparison, narrative, highlights (from WeeklyInsightGenerator) */
   weeklyInsights?: WeeklyInsights;
 }
 
-/** Unified session data for the contribution graph */
 interface UnifiedSession {
   sessionId: string;
   projectName: string;
@@ -67,36 +42,20 @@ interface TooltipState {
   data: DayData | null;
 }
 
-// ============================================================================
-// Constants
-// ============================================================================
-
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/** Get ISO date string (YYYY-MM-DD) from a Date or ISO string */
 function toDateKey(dateStr: string): string {
   return dateStr.slice(0, 10);
 }
 
-/** Get intensity level (0-4) from session count (fallback for legacy data) */
 function getIntensityByCount(count: number): number {
   if (count === 0) return 0;
-  if (count === 1) return 1;
-  if (count === 2) return 2;
+  if (count <= 2) return count;
   if (count <= 4) return 3;
   return 4;
 }
 
-/**
- * Compute percentile-based intensity thresholds from daily token data.
- * Returns a function that maps a day's token count to intensity 0-4.
- * Uses the user's own data distribution (quartiles) for personalized coloring.
- */
 function computeTokenIntensityFn(
   grid: DayData[]
 ): (tokens: number) => number {
@@ -122,34 +81,27 @@ function computeTokenIntensityFn(
   };
 }
 
-/** Format token count for display (e.g., 1234 -> "1.2K", 1234567 -> "1.2M") */
 function formatTokenCount(tokens: number): string {
+  if (tokens >= 1_000_000_000) return `${(tokens / 1_000_000_000).toFixed(1)}B`;
   if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
   if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}K`;
   return String(tokens);
 }
 
-/** Get the Sunday at or before a given date */
 function getWeekStart(date: Date): Date {
   const d = new Date(date);
   d.setDate(d.getDate() - d.getDay());
   return d;
 }
 
-/** Add N days to a date */
 function addDays(date: Date, days: number): Date {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
   return d;
 }
 
-/** Max session summaries to show per project in fallback mode */
 const MAX_SHOWN_SUMMARIES = 3;
 
-/**
- * Render project summary lines for the detail panel.
- * Prefers LLM-generated project summaries; falls back to top session summaries.
- */
 function renderProjectSummaries(
   projectName: string,
   sessionSummaries: string[],
@@ -186,7 +138,6 @@ function renderProjectSummaries(
   );
 }
 
-/** Format date for tooltip display */
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-US', {
@@ -197,10 +148,6 @@ function formatDate(dateStr: string): string {
   });
 }
 
-// ============================================================================
-// Component
-// ============================================================================
-
 export function ActivitySection({
   activitySessions,
   analyzedSessions,
@@ -209,6 +156,15 @@ export function ActivitySection({
   analysisDateRange,
   weeklyInsights,
 }: ActivitySectionProps) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const toggleExpanded = useCallback(() => setIsExpanded(prev => !prev), []);
+  const handleHeaderKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleExpanded();
+    }
+  }, [toggleExpanded]);
+
   const graphContainerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<TooltipState>({
     visible: false,
@@ -219,10 +175,8 @@ export function ActivitySection({
   const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
 
-  // Unify data sources: prefer activitySessions, fall back to analyzedSessions + sessionSummaries
   const unifiedSessions = useMemo((): UnifiedSession[] => {
     if (activitySessions && activitySessions.length > 0) {
-      // Primary: activitySessions already have summaries embedded
       return activitySessions.map(s => ({
         sessionId: s.sessionId,
         projectName: s.projectName,
@@ -234,7 +188,6 @@ export function ActivitySection({
       }));
     }
 
-    // Fallback: analyzedSessions + optional sessionSummaries
     const summaryMap = new Map<string, string>();
     if (sessionSummaries) {
       for (const s of sessionSummaries) {
@@ -464,39 +417,76 @@ export function ActivitySection({
 
   // Total weeks for month label positioning
   const totalWeeks = Math.ceil(grid.length / 7);
-  // Cell size + gap for positioning
-  const cellSize = 14;
   const gap = 3;
+  const dayLabelsWidth = 36; // dayLabels (32px) + gap (~4px)
+
+  // Dynamic cell size: fills available heatmap width, capped at 28px
+  const heatmapColumnRef = useRef<HTMLDivElement>(null);
+  const [cellSize, setCellSize] = useState(18);
+
+  useEffect(() => {
+    const el = heatmapColumnRef.current;
+    if (!el || totalWeeks === 0) return;
+
+    const compute = () => {
+      const width = el.clientWidth;
+      const available = width - dayLabelsWidth;
+      const size = Math.floor((available - (totalWeeks - 1) * gap) / totalWeeks);
+      setCellSize(Math.min(28, Math.max(14, size)));
+    };
+
+    compute();
+    const observer = new ResizeObserver(compute);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [totalWeeks]);
 
   return (
     <div className={styles.activitySection}>
-      {/* Header */}
-      <div className={styles.sectionHeader}>
-        <h3 className={styles.sectionTitle}>Monthly Vibe</h3>
-        <p className={styles.sectionDescription}>
-          {stats.totalSessions} sessions across {stats.activeDays} active days
-          {stats.dateRange && ` from ${stats.dateRange}`}
-        </p>
+      {/* Dark Terminal Header — Accordion */}
+      <div
+        className={styles.domainHeader}
+        onClick={toggleExpanded}
+        onKeyDown={handleHeaderKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+      >
+        <div className={styles.domainTitleRow}>
+          <span className={styles.domainIcon}>{'📊'}</span>
+          <div className={styles.domainTitleGroup}>
+            <h3 className={styles.domainTitle}>Monthly Vibe</h3>
+            <p className={styles.domainSubtitle}>
+              {stats.totalSessions} sessions {'·'} {stats.activeDays} active days
+            </p>
+          </div>
+        </div>
+        <span className={styles.expandPill} aria-hidden="true">
+          {isExpanded ? '\u25B4 Hide' : '\u25BE View'}
+        </span>
       </div>
+
+      <div className={styles.contentWrapper} data-expanded={isExpanded || undefined}>
+      <div className={styles.contentInner}>
 
       {/* Summary Stats */}
       <div className={styles.statsRow}>
-        <div className={styles.statItem}>
+        <div className={`${styles.statItem} ${styles.statSessions}`}>
           <span className={styles.statValue}>{stats.totalSessions}</span>
           <span className={styles.statLabel}>Sessions</span>
         </div>
-        <div className={styles.statItem}>
+        <div className={`${styles.statItem} ${styles.statDays}`}>
           <span className={styles.statValue}>{stats.activeDays}</span>
           <span className={styles.statLabel}>Active Days</span>
         </div>
         {stats.totalTokensAll > 0 && (
-          <div className={styles.statItem}>
+          <div className={`${styles.statItem} ${styles.statTokens}`}>
             <span className={styles.statValue}>{formatTokenCount(stats.totalTokensAll)}</span>
             <span className={styles.statLabel}>Total Tokens</span>
           </div>
         )}
         {stats.mostActiveProject && (
-          <div className={styles.statItem}>
+          <div className={`${styles.statItem} ${styles.statProject}`}>
             <span className={styles.statValue}>{stats.mostActiveProject}</span>
             <span className={styles.statLabel}>Top Project</span>
           </div>
@@ -506,126 +496,154 @@ export function ActivitySection({
       {/* Contribution Graph */}
       {grid.length > 0 && (
         <div ref={graphContainerRef} className={styles.graphContainer}>
-          {/* Month Labels */}
-          <div className={styles.monthLabels}>
-            {monthLabels.map((m, i) => (
-              <span
-                key={`${m.text}-${i}`}
-                className={styles.monthLabel}
-                style={{ left: `${36 + m.column * (cellSize + gap)}px` }}
-              >
-                {m.text}
-              </span>
-            ))}
-          </div>
-
-          {/* Graph: Day Labels + Grid */}
-          <div className={styles.graphWrapper}>
-            {/* Day Labels (Sun-Sat, only show Mon/Wed/Fri) */}
-            <div className={styles.dayLabels}>
-              {DAY_LABELS.map((label, i) => (
-                <span
-                  key={label}
-                  className={`${styles.dayLabel} ${i % 2 === 0 ? styles.dayLabelHidden : ''}`}
-                >
-                  {label}
-                </span>
-              ))}
-            </div>
-
-            {/* Grid */}
+          <div className={styles.mainLayout}>
+            {/* Left: Heatmap Column */}
             <div
-              className={styles.graphGrid}
-              style={{ gridTemplateColumns: `repeat(${totalWeeks}, ${cellSize}px)` }}
+              ref={heatmapColumnRef}
+              className={styles.heatmapColumn}
+              style={{ '--cell-size': `${cellSize}px` } as React.CSSProperties}
             >
-              {grid.map((day) => {
-                const intensity = hasTokenData
-                  ? getTokenIntensity(day.totalTokens)
-                  : getIntensityByCount(day.count);
-                const levelClass = styles[`level${intensity}` as keyof typeof styles];
-                const isSelected = selectedDay?.date === day.date;
-                return (
-                  <div
-                    key={day.date}
-                    className={`${styles.cell} ${levelClass} ${isSelected ? styles.cellSelected : ''}`}
-                    onMouseEnter={(e) => handleCellHover(e, day)}
-                    onMouseLeave={handleCellLeave}
-                    onClick={() => handleCellClick(day)}
-                    tabIndex={day.count > 0 ? 0 : -1}
-                    role="gridcell"
-                    aria-label={`${formatDate(day.date)}: ${
-                      day.totalTokens > 0
-                        ? `${formatTokenCount(day.totalTokens)} tokens across ${day.count} session${day.count !== 1 ? 's' : ''}`
-                        : `${day.count} session${day.count !== 1 ? 's' : ''}`
-                    }`}
-                    aria-expanded={isSelected}
-                  />
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Legend */}
-          <div className={styles.legend}>
-            {!hasInteracted && (
-              <span className={styles.clickHint}>
-                click a day for details
-              </span>
-            )}
-            <span className={styles.legendLabel}>Less</span>
-            <div className={styles.legendCells}>
-              {[0, 1, 2, 3, 4].map((level) => (
-                <div
-                  key={level}
-                  className={`${styles.legendCell} ${styles[`level${level}` as keyof typeof styles]}`}
-                />
-              ))}
-            </div>
-            <span className={styles.legendLabel}>More</span>
-          </div>
-
-          {/* Detail Panel (expanded on cell click) */}
-          {selectedDay && selectedDayProjects.length > 0 && (
-            <div className={styles.detailPanel}>
-              <div className={styles.panelHeader}>
-                <h4 className={styles.panelDate}>{formatDate(selectedDay.date)}</h4>
-                <span className={styles.panelCount}>
-                  {selectedDay.count} session{selectedDay.count !== 1 ? 's' : ''}
-                </span>
-                <button
-                  className={styles.panelClose}
-                  onClick={() => setSelectedDay(null)}
-                  type="button"
-                  aria-label="Close detail panel"
-                >
-                  &times;
-                </button>
-              </div>
-
-              <div className={styles.projectList}>
-                {selectedDayProjects.map((project) => (
-                  <div key={project.projectName} className={styles.projectGroup}>
-                    <div className={styles.projectHeader}>
-                      <span className={styles.projectName}>{project.projectName}</span>
-                      <span className={styles.projectMeta}>
-                        {project.sessionCount} session{project.sessionCount !== 1 ? 's' : ''}
-                        {project.totalTokens > 0 && (
-                          <> &middot; {formatTokenCount(project.totalTokens)} tokens</>
-                        )}
-                        {project.totalMinutes > 0 && (
-                          <> &middot; {project.totalMinutes < 60
-                            ? `${project.totalMinutes}m`
-                            : `${Math.floor(project.totalMinutes / 60)}h ${project.totalMinutes % 60}m`
-                          }</>
-                        )}
-                      </span>
-                    </div>
-                    {renderProjectSummaries(project.projectName, project.summaries, projectSummaryMap)}
-                  </div>
+              {/* Month Labels */}
+              <div className={styles.monthLabels}>
+                {monthLabels.map((m, i) => (
+                  <span
+                    key={`${m.text}-${i}`}
+                    className={styles.monthLabel}
+                    style={{ left: `${36 + m.column * (cellSize + gap)}px` }}
+                  >
+                    {m.text}
+                  </span>
                 ))}
               </div>
+
+              {/* Graph: Day Labels + Grid */}
+              <div className={styles.graphWrapper}>
+                {/* Day Labels (Sun-Sat, only show Mon/Wed/Fri) */}
+                <div className={styles.dayLabels}>
+                  {DAY_LABELS.map((label, i) => (
+                    <span
+                      key={label}
+                      className={`${styles.dayLabel} ${i % 2 === 0 ? styles.dayLabelHidden : ''}`}
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Grid */}
+                <div
+                  className={styles.graphGrid}
+                  style={{ gridTemplateColumns: `repeat(${totalWeeks}, ${cellSize}px)` }}
+                >
+                  {grid.map((day) => {
+                    const intensity = hasTokenData
+                      ? getTokenIntensity(day.totalTokens)
+                      : getIntensityByCount(day.count);
+                    const levelClass = styles[`level${intensity}` as keyof typeof styles];
+                    const isSelected = selectedDay?.date === day.date;
+                    return (
+                      <div
+                        key={day.date}
+                        className={`${styles.cell} ${levelClass} ${isSelected ? styles.cellSelected : ''}`}
+                        onMouseEnter={(e) => handleCellHover(e, day)}
+                        onMouseLeave={handleCellLeave}
+                        onClick={() => handleCellClick(day)}
+                        tabIndex={day.count > 0 ? 0 : -1}
+                        role="gridcell"
+                        aria-label={`${formatDate(day.date)}: ${
+                          day.totalTokens > 0
+                            ? `${formatTokenCount(day.totalTokens)} tokens across ${day.count} session${day.count !== 1 ? 's' : ''}`
+                            : `${day.count} session${day.count !== 1 ? 's' : ''}`
+                        }`}
+                        aria-expanded={isSelected}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div className={styles.legend}>
+                <span className={styles.legendLabel}>Less</span>
+                <div className={styles.legendCells}>
+                  {[0, 1, 2, 3, 4].map((level) => (
+                    <div
+                      key={level}
+                      className={`${styles.legendCell} ${styles[`level${level}` as keyof typeof styles]}`}
+                    />
+                  ))}
+                </div>
+                <span className={styles.legendLabel}>More</span>
+              </div>
             </div>
-          )}
+
+            {/* Right: Side Panel Column */}
+            <div className={styles.sidePanelColumn}>
+              {/* CTA: before any interaction */}
+              {!hasInteracted && !selectedDay && (
+                <div className={styles.ctaBox}>
+                  <div className={styles.ctaTextRow}>
+                    <span className={styles.ctaArrow}>&larr;</span>
+                    <span className={styles.ctaText}>Click a day to see session details</span>
+                  </div>
+                  <span className={styles.ctaHint}>Color intensity = token volume</span>
+                </div>
+              )}
+
+              {/* Detail Panel (on cell click) */}
+              {selectedDay && selectedDayProjects.length > 0 && (
+                <div className={styles.detailPanel}>
+                  <div className={styles.panelHeader}>
+                    <h4 className={styles.panelDate}>{formatDate(selectedDay.date)}</h4>
+                    <span className={styles.panelCount}>
+                      {selectedDay.count} session{selectedDay.count !== 1 ? 's' : ''}
+                    </span>
+                    <button
+                      className={styles.panelClose}
+                      onClick={() => setSelectedDay(null)}
+                      type="button"
+                      aria-label="Close detail panel"
+                    >
+                      &times;
+                    </button>
+                  </div>
+
+                  <div className={styles.projectList}>
+                    {selectedDayProjects.map((project) => (
+                      <div key={project.projectName} className={styles.projectGroup}>
+                        <div className={styles.projectHeader}>
+                          <span className={styles.projectName}>{project.projectName}</span>
+                          <span className={styles.projectMeta}>
+                            {project.sessionCount} session{project.sessionCount !== 1 ? 's' : ''}
+                            {project.totalTokens > 0 && (
+                              <> &middot; {formatTokenCount(project.totalTokens)} tokens</>
+                            )}
+                            {project.totalMinutes > 0 && (
+                              <> &middot; {project.totalMinutes < 60
+                                ? `${project.totalMinutes}m`
+                                : `${Math.floor(project.totalMinutes / 60)}h ${project.totalMinutes % 60}m`
+                              }</>
+                            )}
+                          </span>
+                        </div>
+                        {renderProjectSummaries(project.projectName, project.summaries, projectSummaryMap)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Dimmed CTA: after closing a detail panel */}
+              {hasInteracted && !selectedDay && (
+                <div className={`${styles.ctaBox} ${styles.ctaDimmed}`}>
+                  <div className={styles.ctaTextRow}>
+                    <span className={styles.ctaArrow}>&larr;</span>
+                    <span className={styles.ctaText}>Select another day</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Tooltip */}
           {tooltip.visible && tooltip.data && (
@@ -671,6 +689,9 @@ export function ActivitySection({
 
       {/* Weekly Insights Dashboard */}
       <WeeklyInsightsCard weeklyInsights={weeklyInsights} />
+
+      </div>
+      </div>
     </div>
   );
 }

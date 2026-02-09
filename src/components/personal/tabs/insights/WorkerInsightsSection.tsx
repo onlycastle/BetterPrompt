@@ -299,7 +299,7 @@ function GrowthCard({
       )}
       {hasRecommendation ? (
         <div className={styles.recommendationSection}>
-          <span className={styles.recommendationLabel}>Recommendation</span>
+          <span className={styles.recommendationLabel}>{'💡'} The Fix</span>
           <p className={styles.recommendationText}>{growth.recommendation}</p>
         </div>
       ) : (
@@ -309,19 +309,20 @@ function GrowthCard({
 
           {/* Coaching Preview */}
           <div className={styles.coachingPreview}>
-            <span className={styles.recommendationLabel}>Personalized coaching:</span>
+            <span className={styles.recommendationLabel}>{'💡'} The Fix</span>
           </div>
 
           <button className={styles.unlockCta} type="button">
-            <span className={styles.lockIcon}>🔓</span>
-            Unlock Coaching Tips
+            <span className={styles.lockIcon}>{'🔓'}</span>
+            Unlock the Fix
           </button>
         </div>
       )}
 
-      {/* Inline Professional Insight */}
+      {/* Inline Expert Knowledge (Professional Insight) */}
       {referencedInsights && referencedInsights.length > 0 && (
         <div className={styles.inlineInsight}>
+          <div className={styles.expertKnowledgeHeader}>{'📖'} Expert Knowledge</div>
           <span className={styles.insightBadge}>{referencedInsights[0].category}</span>
           <h5 className={styles.insightTitle}>{referencedInsights[0].title}</h5>
           {referencedInsights[0].keyTakeaway ? (
@@ -373,6 +374,8 @@ export interface WorkerDomainSectionProps {
   domainKey?: string;
   /** Callback to open the Source Context sidebar for a specific utterance */
   onViewContext?: (utteranceId: string) => void;
+  /** Whether this section starts expanded (default: false — collapsed) */
+  initialExpanded?: boolean;
 }
 
 /**
@@ -396,10 +399,11 @@ export function WorkerDomainSection({
   insightAllocation,
   domainKey,
   onViewContext,
+  initialExpanded,
 }: WorkerDomainSectionProps) {
 
-  // Accordion toggle state (expanded by default)
-  const [isExpanded, setIsExpanded] = useState(true);
+  // Accordion toggle state (collapsed by default)
+  const [isExpanded, setIsExpanded] = useState(initialExpanded ?? false);
   const toggleExpanded = useCallback(() => setIsExpanded(prev => !prev), []);
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -496,25 +500,58 @@ export function WorkerDomainSection({
           <div className={styles.domainTitleGroup}>
             <h3 className={styles.domainTitle}>{config.title}</h3>
             <p className={styles.domainSubtitle}>{config.subtitle}</p>
+            {!isExpanded && (displayStrengths.length > 0 || displayGrowthAreas.length > 0) && (
+              <p className={styles.insightPreview}>
+                {displayStrengths.length > 0 && `${displayStrengths.length} strength${displayStrengths.length !== 1 ? 's' : ''}`}
+                {displayStrengths.length > 0 && displayGrowthAreas.length > 0 && ' \u00B7 '}
+                {displayGrowthAreas.length > 0 && `${displayGrowthAreas.length} growth area${displayGrowthAreas.length !== 1 ? 's' : ''}`}
+              </p>
+            )}
           </div>
         </div>
         <div className={styles.domainHeaderRight}>
           {domainScore !== undefined && (
             <ScoreGauge score={domainScore} label={config.scoreLabel} />
           )}
-          <span className={styles.chevronIndicator} aria-hidden="true">&#x25B6;</span>
+          <span className={styles.expandPill} aria-hidden="true">
+            {isExpanded ? '\u25B4 Hide' : '\u25BE View'}
+          </span>
         </div>
       </div>
 
       <div className={styles.contentWrapper} data-expanded={isExpanded || undefined}>
       <div className={styles.contentInner}>
+
+      {/* Section Context Block — explains what this section analyzed */}
+      <div className={styles.sectionContext}>
+        <span className={styles.sectionContextIcon}>{'📋'}</span>
+        <span>{config.contextDescription}</span>
+      </div>
+
       <div className={styles.insightsGrid}>
+        {/* Summary Count Banner */}
+        <div className={styles.summaryBanner}>
+          {displayStrengths.length > 0 && (
+            <span className={styles.summaryStrengths}>
+              {'●'} {displayStrengths.length} strength{displayStrengths.length !== 1 ? 's' : ''}
+            </span>
+          )}
+          {displayStrengths.length > 0 && displayGrowthAreas.length > 0 && (
+            <span className={styles.summaryDivider}>{'·'}</span>
+          )}
+          {displayGrowthAreas.length > 0 && (
+            <span className={styles.summaryGrowth}>
+              {'▲'} {displayGrowthAreas.length} growth area{displayGrowthAreas.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+
         {/* Strengths Column */}
         {displayStrengths.length > 0 && (
           <div className={styles.insightsColumn}>
             <h4 className={`${styles.columnTitle} ${styles.columnTitleStrength}`}>
-              <span className={styles.columnIcon} data-type="strength">+</span>
-              <span>Strengths</span>
+              <span className={styles.columnIcon} data-type="strength">{'✓'}</span>
+              <span>What You Do Well</span>
               <span className={`${styles.columnCount} ${styles.columnCountStrength}`}>
                 {displayStrengths.length}
               </span>
@@ -536,8 +573,8 @@ export function WorkerDomainSection({
         {displayGrowthAreas.length > 0 && (
           <div className={styles.insightsColumn}>
             <h4 className={`${styles.columnTitle} ${styles.columnTitleGrowth}`}>
-              <span className={styles.columnIcon} data-type="growth">!</span>
-              <span>Growth Areas</span>
+              <span className={styles.columnIcon} data-type="growth">{'↑'}</span>
+              <span>Where to Improve</span>
               <span className={`${styles.columnCount} ${styles.columnCountGrowth}`}>
                 {displayGrowthAreas.length}
               </span>
@@ -562,6 +599,7 @@ export function WorkerDomainSection({
           </div>
         )}
       </div>
+
       </div>
       </div>
 

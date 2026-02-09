@@ -19,11 +19,19 @@
   color: var(--ink-primary);
   margin: 0;
   padding-bottom: var(--space-sm);
-  border-bottom: 2px solid var(--ink-primary);
+  border-bottom: 2px solid var(--sketch-purple);
 }
 
 .title::before {
-  content: '📚';
+  content: '📖';
+}
+
+.subtitle {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--sketch-purple-text);
+  margin: 0 0 var(--space-sm) 0;
+  font-style: italic;
 }
 
 .cards {
@@ -42,9 +50,9 @@
   background: linear-gradient(
     135deg,
     var(--surface-2) 0%,
-    var(--sketch-cyan-soft) 100%
+    var(--sketch-blue-soft) 100%
   );
-  border: 2px dashed var(--sketch-cyan);
+  border: 2px dashed var(--sketch-blue);
   border-radius: var(--radius-md);
 }
 
@@ -56,7 +64,7 @@
   font-family: var(--font-primary);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  color: var(--sketch-cyan-text);
+  color: var(--sketch-blue-text);
 }
 
 /* Responsive: Full width on mobile when sidebar stacks */

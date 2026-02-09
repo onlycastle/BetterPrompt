@@ -29,7 +29,8 @@ export function ResourceSidebar({ resources }: ResourceSidebarProps) {
 
   return (
     <div className={styles.container}>
-      <h3 className={styles.title}>Learning Resources</h3>
+      <h3 className={styles.title}>Recommended Reading</h3>
+      <p className={styles.subtitle}>Curated for your specific growth areas</p>
 
       <div className={styles.cards}>
         {resources.map((resource, idx) => (

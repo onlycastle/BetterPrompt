@@ -70,7 +70,7 @@
 }
 
 .evidenceRow.expanded {
-  background: var(--sketch-cyan-soft);
+  background: var(--sketch-blue-soft);
 }
 
 /* ============================================================================
@@ -80,7 +80,7 @@
 .chevron {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--sketch-cyan);
+  color: var(--sketch-blue-text);
   font-weight: var(--weight-bold);
   flex-shrink: 0;
   width: 12px;
@@ -181,7 +181,7 @@
   margin-left: calc(12px + var(--space-sm)); /* Align with quote text */
   padding: var(--space-md);
   background: var(--surface-1);
-  border: 1px solid var(--sketch-cyan);
+  border: 1px solid var(--sketch-blue);
   border-radius: var(--radius-md);
   animation: expandSlideIn 0.2s ease-out;
 }
@@ -211,7 +211,7 @@
   font-weight: var(--weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--sketch-cyan-text);
+  color: var(--sketch-blue-text);
   display: block;
   margin-bottom: var(--space-xs);
 }
@@ -225,7 +225,7 @@
   padding: var(--space-sm);
   background: var(--surface-2);
   border-radius: var(--radius-sm);
-  border-left: 3px solid var(--sketch-cyan);
+  border-left: 3px solid var(--sketch-blue);
   max-height: 200px;
   overflow-y: auto;
   white-space: pre-wrap;
@@ -299,9 +299,9 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
-  color: var(--sketch-cyan-text);
+  color: var(--sketch-blue-text);
   background: transparent;
-  border: 1px solid var(--sketch-cyan);
+  border: 1px solid var(--sketch-blue);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -309,12 +309,12 @@
 }
 
 .viewContextButton:hover {
-  background: var(--sketch-cyan-soft);
-  color: var(--sketch-cyan-text);
+  background: var(--sketch-blue-soft);
+  color: var(--sketch-blue-text);
 }
 
 .viewContextButton:focus-visible {
-  outline: 2px solid var(--sketch-cyan);
+  outline: 2px solid var(--sketch-blue);
   outline-offset: 2px;
 }
 
@@ -331,12 +331,12 @@
   background: linear-gradient(
     90deg,
     var(--surface-2) 0%,
-    var(--sketch-cyan-soft) 50%,
+    var(--sketch-blue-soft) 50%,
     var(--surface-2) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 3s ease-in-out infinite;
-  border: 2px dashed var(--sketch-cyan);
+  border: 2px dashed var(--sketch-blue);
   border-radius: var(--radius-md);
   cursor: pointer;
 }
@@ -353,7 +353,7 @@
 .lockText {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  color: var(--sketch-cyan-text);
+  color: var(--sketch-blue-text);
   font-weight: var(--weight-medium);
 }
 
@@ -366,16 +366,16 @@
   padding: var(--space-xs) var(--space-sm);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--sketch-cyan-text);
+  color: var(--sketch-blue-text);
   background: transparent;
-  border: 1px dashed var(--sketch-cyan);
+  border: 1px dashed var(--sketch-blue);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .showMoreButton:hover {
-  background: var(--sketch-cyan-soft);
+  background: var(--sketch-blue-soft);
   border-style: solid;
 }
 
