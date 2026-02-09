@@ -565,6 +565,7 @@ export interface WorkerDomainConfig {
   title: string;
   subtitle: string;
   scoreLabel: string;
+  contextDescription: string;
 }
 
 /**
@@ -580,6 +581,7 @@ export const WORKER_DOMAIN_CONFIGS: WorkerDomainConfig[] = [
     title: 'Thinking Quality',
     subtitle: 'How intentionally and critically do you work?',
     scoreLabel: 'Thinking Score',
+    contextDescription: 'Analyzed: planning before coding, verifying AI outputs, questioning assumptions, catching errors early.',
   },
   {
     key: 'communicationPatterns',
@@ -587,6 +589,7 @@ export const WORKER_DOMAIN_CONFIGS: WorkerDomainConfig[] = [
     title: 'Communication',
     subtitle: 'How clearly do you express your needs?',
     scoreLabel: 'Communication Score',
+    contextDescription: 'Analyzed: how you phrase requests, context you provide, specificity of instructions, prompt patterns.',
   },
   {
     key: 'learningBehavior',
@@ -594,6 +597,7 @@ export const WORKER_DOMAIN_CONFIGS: WorkerDomainConfig[] = [
     title: 'Learning Behavior',
     subtitle: 'How much do you learn from AI?',
     scoreLabel: 'Learning Score',
+    contextDescription: 'Analyzed: knowledge gaps encountered, whether mistakes repeat, how you build on past sessions.',
   },
   {
     key: 'contextEfficiency',
@@ -601,6 +605,7 @@ export const WORKER_DOMAIN_CONFIGS: WorkerDomainConfig[] = [
     title: 'Context Efficiency',
     subtitle: 'How efficiently do you use tokens?',
     scoreLabel: 'Efficiency Score',
+    contextDescription: 'Analyzed: token usage patterns, unnecessary repetition, context window management, session efficiency.',
   },
   {
     key: 'sessionOutcome',
@@ -608,6 +613,7 @@ export const WORKER_DOMAIN_CONFIGS: WorkerDomainConfig[] = [
     title: 'Session Success',
     subtitle: 'How successful are your AI collaboration sessions?',
     scoreLabel: 'Success Rate',
+    contextDescription: 'Analyzed: goal completion, session friction points, recovery from blockers, overall success rates.',
   },
 ];
 

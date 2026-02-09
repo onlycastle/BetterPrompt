@@ -32,7 +32,7 @@ Analyze Phase 1 extracted data to identify communication patterns and signature 
 ## INPUT DATA STRUCTURE
 You receive Phase 1 output containing:
 - \`developerUtterances[]\`: Raw text with metadata (id, text, hasQuestion, wordCount, hasCodeBlock, isSessionStart, isContinuation, precedingAIHadError, etc.)
-- \`sessionMetrics\`: Computed statistics (toolUsageCounts, avgPromptLength, sessionCount, etc.)
+- \`sessionMetrics\`: Computed statistics (toolUsageCounts, slashCommandCounts, avgPromptLength, sessionCount, etc.)
 
 ## COMMUNICATION PATTERN TYPES
 

@@ -205,8 +205,10 @@ export class EvidenceVerifierStage {
 
     // Process v3 worker domains
     addFromDomain('thinkingQuality', insights.thinkingQuality);
+    addFromDomain('communicationPatterns', insights.communicationPatterns);
     addFromDomain('learningBehavior', insights.learningBehavior);
     addFromDomain('contextEfficiency', insights.contextEfficiency);
+    addFromDomain('sessionOutcome', insights.sessionOutcome);
 
     // Legacy (kept for cached data)
     addFromDomain('knowledgeGap', insights.knowledgeGap);
@@ -398,8 +400,10 @@ export class EvidenceVerifierStage {
 
     // Apply filtering to v3 worker domains
     filterContainer('thinkingQuality', verified.thinkingQuality);
+    filterContainer('communicationPatterns', verified.communicationPatterns);
     filterContainer('learningBehavior', verified.learningBehavior);
     filterContainer('contextEfficiency', verified.contextEfficiency);
+    filterContainer('sessionOutcome', verified.sessionOutcome);
 
     // Legacy (kept for cached data)
     filterContainer('knowledgeGap', verified.knowledgeGap);

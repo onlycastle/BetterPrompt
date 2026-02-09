@@ -246,6 +246,7 @@ export class SessionOutcomeWorker extends BaseWorker<SessionOutcomeOutput> {
         questionRatio: phase1.sessionMetrics.questionRatio,
         codeBlockRatio: phase1.sessionMetrics.codeBlockRatio,
         toolUsageCounts: phase1.sessionMetrics.toolUsageCounts,
+        slashCommandCounts: phase1.sessionMetrics.slashCommandCounts,
         dateRange: phase1.sessionMetrics.dateRange,
         // Friction signals (deterministic hints from Phase 1)
         frictionSignals: phase1.sessionMetrics.frictionSignals,

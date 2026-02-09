@@ -425,17 +425,29 @@ export const MATRIX_NAMES: Record<CodingStyleType, Record<AIControlLevel, string
 /**
  * Detailed metadata for each Matrix combination
  */
+/**
+ * Type profile seed fields for personality narrative generation.
+ * These seeds give the LLM a psychological skeleton per matrix type,
+ * enabling consistent yet personalized MBTI-style narratives.
+ */
+interface MatrixTypeProfile {
+  emoji: string;
+  description: string;
+  keyStrength: string;
+  growthPath: string;
+  /** Core motivation — why this type codes the way they do */
+  innerDrive: string;
+  /** The most type-defining behavioral moment */
+  signatureScenario: string;
+  /** The endearing flip side of their greatest strength */
+  shadowStrength: string;
+  /** What other developers do differently — for contrast framing */
+  contrastWith: string;
+}
+
 export const MATRIX_METADATA: Record<
   CodingStyleType,
-  Record<
-    AIControlLevel,
-    {
-      emoji: string;
-      description: string;
-      keyStrength: string;
-      growthPath: string;
-    }
-  >
+  Record<AIControlLevel, MatrixTypeProfile>
 > = {
   architect: {
     explorer: {
@@ -443,18 +455,30 @@ export const MATRIX_METADATA: Record<
       description: 'You explore solutions through open-ended planning and vision.',
       keyStrength: 'Clear vision and creative planning',
       growthPath: 'Try validating AI output against your plans more actively',
+      innerDrive: 'Turning ambiguity into a clear blueprint before the first line is written',
+      signatureScenario: 'sketches a system diagram in comments before writing any implementation code',
+      shadowStrength: 'spending an entire session designing an architecture for a feature that could have shipped in 20 minutes',
+      contrastWith: 'jump straight into code and figure out the structure as they go',
     },
     navigator: {
       emoji: '📐',
       description: 'You balance strategic planning with hands-on verification.',
       keyStrength: 'Structured approach with balanced control',
       growthPath: 'Keep building verification habits',
+      innerDrive: 'Building reliable systems where every component earns its place through deliberate design',
+      signatureScenario: 'writes a numbered plan in the first prompt, then checks off each step as the session progresses',
+      shadowStrength: 'reworking a perfectly functional implementation because the internal structure does not match the original plan',
+      contrastWith: 'treat plans as suggestions and adapt freely as requirements shift',
     },
     cartographer: {
       emoji: '🏛️',
       description: 'You map out the territory completely before advancing.',
       keyStrength: 'Strategic AI orchestration with full control',
       growthPath: 'Share your planning techniques with others',
+      innerDrive: 'Achieving total clarity — no unknowns, no surprises, every edge case mapped before execution',
+      signatureScenario: 'creates a multi-phase implementation plan with dependencies, risks, and rollback strategies before a single file is touched',
+      shadowStrength: 'producing a plan so thorough that the planning itself takes longer than the implementation would have',
+      contrastWith: 'start building and let the architecture emerge from working code',
     },
   },
   analyst: {
@@ -463,18 +487,30 @@ export const MATRIX_METADATA: Record<
       description: 'You explore through curious questioning and open inquiry.',
       keyStrength: 'Curious mind and questioning attitude',
       growthPath: 'Try challenging AI responses more systematically',
+      innerDrive: 'Understanding the why behind every line — code without comprehension feels incomplete',
+      signatureScenario: 'asks AI to explain a working solution three different ways before accepting it',
+      shadowStrength: 'going down a fascinating rabbit hole investigating how a library works internally when the task only needed a simple API call',
+      contrastWith: 'accept working code at face value and move on to the next task',
     },
     navigator: {
       emoji: '🧪',
       description: 'You navigate through hypothesis-driven investigation and verification.',
       keyStrength: 'Balanced depth with practical verification',
       growthPath: 'Add systematic testing to your workflow',
+      innerDrive: 'Treating every coding session like a research experiment — hypothesis, test, conclude',
+      signatureScenario: 'asks AI to generate two alternative approaches, then systematically compares them before choosing',
+      shadowStrength: 'running one more test case just to be sure, even when the evidence is already conclusive',
+      contrastWith: 'go with the first working solution without exploring alternatives',
     },
     cartographer: {
       emoji: '🔬',
       description: 'You leave no stone unturned — rigorous verification meets deep analysis.',
       keyStrength: 'Rigorous verification and error detection',
       growthPath: 'Help others develop critical thinking habits',
+      innerDrive: 'Achieving certainty — no assumption goes unverified, no edge case goes untested',
+      signatureScenario: 'catches a subtle AI hallucination that would have passed most code reviews, then traces its root cause',
+      shadowStrength: 'writing exhaustive error handling for a scenario that has a one-in-a-million chance of occurring',
+      contrastWith: 'trust AI output and ship with confidence in the happy path',
     },
   },
   conductor: {
@@ -483,18 +519,30 @@ export const MATRIX_METADATA: Record<
       description: 'You experiment with AI tools freely, discovering creative workflows.',
       keyStrength: 'Creative tool exploration and improvisation',
       growthPath: 'Build repeatable workflows from your discoveries',
+      innerDrive: 'Discovering unexpected tool combinations that unlock creative solutions',
+      signatureScenario: 'experiments with a new slash command just to see what happens, then builds an entire workflow around it',
+      shadowStrength: 'over-tooling a simple task because the orchestration itself is exciting',
+      contrastWith: 'rely on a single trusted approach and stick with it',
     },
     navigator: {
       emoji: '🎼',
       description: 'You arrange AI tools into effective, coordinated workflows.',
       keyStrength: 'Effective multi-tool coordination',
       growthPath: 'Document your workflow patterns for team sharing',
+      innerDrive: 'Unlocking synergies that no single tool can achieve alone',
+      signatureScenario: 'switches between six tools mid-session like a DJ mixing tracks, each transition precisely timed',
+      shadowStrength: 'spending ten minutes configuring a workflow for a task that would take five minutes manually',
+      contrastWith: 'pick one tool and master it deeply rather than orchestrating many',
     },
     cartographer: {
       emoji: '🎹',
       description: 'You orchestrate AI tools with masterful precision and control.',
       keyStrength: 'Masterful AI tool orchestration',
       growthPath: 'Mentor others in advanced AI workflow techniques',
+      innerDrive: 'Achieving perfect orchestration where every tool plays its precise role at the right moment',
+      signatureScenario: 'has a custom workflow template for every type of task, with subagents delegated to specialized roles',
+      shadowStrength: 'refusing to use a simple approach when an orchestrated multi-tool pipeline exists',
+      contrastWith: 'let AI tools work independently without coordination',
     },
   },
   speedrunner: {
@@ -503,18 +551,30 @@ export const MATRIX_METADATA: Record<
       description: 'You explore through rapid experimentation and iteration.',
       keyStrength: 'High velocity and experimentation',
       growthPath: 'Add quick sanity checks to your workflow',
+      innerDrive: 'Finding the shortest path to a working solution through rapid trial and error',
+      signatureScenario: 'writes a three-word prompt and gets a working component back, then iterates twice to ship',
+      shadowStrength: 'shipping so fast that the commit message is longer than the prompt that generated the code',
+      contrastWith: 'plan extensively before writing the first line of code',
     },
     navigator: {
       emoji: '🏃',
       description: 'You navigate quickly while building verification habits.',
       keyStrength: 'Fast iteration with increasing quality awareness',
       growthPath: 'Build quick-check routines into your speed',
+      innerDrive: 'Maximizing output per unit of effort — every keystroke should move the project forward',
+      signatureScenario: 'completes a feature in a single focused session with minimal back-and-forth, prompts so concise they read like commands',
+      shadowStrength: 'moving to the next task before fully verifying the current one because momentum feels too good to break',
+      contrastWith: 'spend time reviewing and polishing before moving forward',
     },
     cartographer: {
       emoji: '⚡',
       description: 'You achieve maximum velocity through strategic optimization.',
       keyStrength: 'Efficient expertise - fast AND accurate',
       growthPath: 'Teach efficient verification techniques to others',
+      innerDrive: 'Proving that speed and quality are not trade-offs — they are multiplied by expertise',
+      signatureScenario: 'has a session success rate that makes it look effortless because each prompt is surgically precise',
+      shadowStrength: 'optimizing a workflow that is already fast enough, because shaving off 10 more seconds is irresistible',
+      contrastWith: 'accept a slower but more cautious approach to reduce risk',
     },
   },
   trendsetter: {
@@ -523,18 +583,30 @@ export const MATRIX_METADATA: Record<
       description: 'You eagerly try new tools and approaches, staying curious about what is emerging.',
       keyStrength: 'Early adoption and experimentation with new tech',
       growthPath: 'Evaluate new tools more critically before adopting',
+      innerDrive: 'Being first to discover what is next — the thrill of using something no one else has tried yet',
+      signatureScenario: 'asks AI about a framework released last week, then builds a prototype with it in the same session',
+      shadowStrength: 'adopting a shiny new library for a problem that the standard library solves perfectly',
+      contrastWith: 'wait for community consensus before adopting new technology',
     },
     navigator: {
       emoji: '📡',
       description: 'You track industry trends and selectively adopt what adds value.',
       keyStrength: 'Informed technology radar with selective adoption',
       growthPath: 'Share your technology insights with your team',
+      innerDrive: 'Curating the best of what is new — filtering signal from noise in the technology landscape',
+      signatureScenario: 'keeps a mental radar of emerging tools and knows exactly when a new approach is mature enough to adopt',
+      shadowStrength: 'spending time evaluating a trending tool that the project does not actually need yet',
+      contrastWith: 'stick with proven technologies and avoid the adoption treadmill',
     },
     cartographer: {
       emoji: '🚀',
       description: 'You strategically lead innovation, charting paths through emerging technology.',
       keyStrength: 'Strategic innovation leadership',
       growthPath: 'Balance cutting-edge adoption with team readiness',
+      innerDrive: 'Charting the future technology landscape — not just using what is new, but knowing why it matters',
+      signatureScenario: 'evaluates a new technology against five criteria before recommending it, then writes the migration guide',
+      shadowStrength: 'creating a comprehensive adoption plan for a technology the team is not ready to learn yet',
+      contrastWith: 'let others pioneer new tools and adopt them after they are battle-tested',
     },
   },
 };
