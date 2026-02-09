@@ -151,15 +151,16 @@ export function getChippyInline(expression: ChippyExpression = 'neutral'): strin
 }
 
 /**
- * Get the full Chippy ASCII art
+ * Get the full Chippy ASCII art (compact bear face for inline display)
  */
 export function getChippyFull(expression: ChippyExpression = 'neutral'): string[] {
   const face = CHIPPY_FACES[expression];
   return [
-    '    ╭─────────╮',
-    `    │ ${face.leftEye}    ${face.rightEye} │`,
-    `    │   ${face.mouth}   │`,
-    '    ╰─┬───┬──╯',
+    '    ╭──╮    ╭──╮',
+    '    │  ╰────╯  │',
+    `    │  ${face.leftEye}    ${face.rightEye}  │`,
+    `    │    ${face.mouth}    │`,
+    '    ╰──────────╯',
   ];
 }
 
@@ -175,15 +176,16 @@ export function getChippyWithIndicator(
 }
 
 /**
- * Get larger centered Chippy for welcome screen
+ * Get larger centered Chippy for welcome screen (compact bear face, extra indent)
  */
 export function getChippyLarge(expression: ChippyExpression = 'happy'): string[] {
   const face = CHIPPY_FACES[expression];
   return [
-    '      ╭─────────╮',
-    `      │ ${face.leftEye}    ${face.rightEye} │`,
-    `      │   ${face.mouth}   │`,
-    '      ╰─┬───┬──╯',
+    '      ╭──╮    ╭──╮',
+    '      │  ╰────╯  │',
+    `      │  ${face.leftEye}    ${face.rightEye}  │`,
+    `      │    ${face.mouth}    │`,
+    '      ╰──────────╯',
   ];
 }
 
