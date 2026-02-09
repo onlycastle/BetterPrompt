@@ -14,7 +14,7 @@ const firaCode = Fira_Code({
 });
 
 const notoSansKR = Noto_Sans_KR({
-  subsets: ['latin'],
+  preload: false,
   variable: '--font-noto-kr',
   weight: ['400', '500', '600', '700'],
 });
@@ -47,8 +47,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${firaCode.variable} ${notoSansKR.variable}`}>
+    <html lang="en" className={`${firaCode.variable} ${notoSansKR.variable}`}>
+      <body>
         <Providers>{children}</Providers>
         <Analytics />
       </body>
