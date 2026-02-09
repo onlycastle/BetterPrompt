@@ -32,7 +32,8 @@ export function ProgressiveMeter({ percentage, lockedCount }: ProgressiveMeterPr
   return (
     <div className={styles.meter}>
       <div className={styles.gauge}>
-        <svg className={styles.gaugeSvg} viewBox="0 0 40 40">
+        <svg className={styles.gaugeSvg} viewBox="0 0 40 40" aria-label={`${clampedPct}% content unlocked`} role="img">
+          <title>{`${clampedPct}% of content unlocked, ${lockedCount} items locked`}</title>
           {/* Background track */}
           <circle
             className={styles.trackCircle}

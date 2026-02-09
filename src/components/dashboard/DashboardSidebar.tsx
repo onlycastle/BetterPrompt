@@ -29,6 +29,7 @@ export function DashboardSidebar() {
 
   const handleSignOut = async () => {
     await signOut();
+    window.location.href = '/';
   };
 
   // Get user display name

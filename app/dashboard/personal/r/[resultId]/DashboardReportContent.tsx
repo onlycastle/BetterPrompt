@@ -68,12 +68,18 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
   }, [showSuccessToast]);
 
   // Auto-retry when payment succeeded but report still shows locked
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
+
   useEffect(() => {
-    if (paymentSuccess && !isPaid && !isLoading) {
-      const timer = setTimeout(() => refetch(), 2000);
+    if (paymentSuccess && !isPaid && !isLoading && retryCount < MAX_RETRIES) {
+      const timer = setTimeout(() => {
+        setRetryCount(c => c + 1);
+        refetch();
+      }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [paymentSuccess, isPaid, isLoading, refetch]);
+  }, [paymentSuccess, isPaid, isLoading, retryCount, refetch]);
 
   // Loading state
   if (isLoading) {
