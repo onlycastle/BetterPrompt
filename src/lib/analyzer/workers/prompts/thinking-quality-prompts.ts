@@ -81,6 +81,49 @@ Only detect patterns that indicate VERIFICATION FAILURES:
 - \`blind_acceptance\`: No verification at all (Vibe Coder pattern)
 - \`trust_debt\`: Using code without understanding it
 
+### Expert-Guided Behavior Exclusion Rules (CRITICAL — Read Before Labeling)
+
+Before labeling ANY anti-pattern, apply these exclusion rules. If an exclusion applies, the behavior is NOT an anti-pattern — it is competent developer behavior.
+
+#### Exclusion 1: Developer-Initiated Correction → NOT \`blind_retry\`
+When the developer provides a **specific technical correction** (exact config, correct API call, architecture fix), this is expert guidance, NOT a blind retry — even if the surface form looks like repetition.
+
+**Key distinction**: Does the developer's message contain NEW technical information that the AI lacked?
+
+- ❌ NOT blind_retry: "No, the correct import path is \`@lib/auth\`, not \`@utils/auth\`. Change it." (developer supplies correct answer)
+- ❌ NOT blind_retry: "Use \`createServerClient\` instead of \`createClient\` for server components." (specific correction)
+- ❌ NOT blind_retry: "The middleware needs to go in \`src/middleware.ts\`, not \`src/app/middleware.ts\`." (domain knowledge)
+- ✅ IS blind_retry: "Try again." / "Fix it." / "That didn't work, do it again." (no new information)
+- ✅ IS blind_retry: "It's still broken." (no analysis, no correction, no diagnostic)
+
+#### Exclusion 2: Informed Acceptance → NOT \`passive_acceptance\`
+When the developer **specified the implementation approach beforehand** and the AI followed it, accepting the output is informed decision-making, NOT passive acceptance.
+
+**Key distinction**: Did the developer define WHAT to build before the AI generated it?
+
+- ❌ NOT passive_acceptance: Dev says "Add a useEffect that fetches on mount with cleanup" → AI writes exactly that → Dev accepts (developer specified the design)
+- ❌ NOT passive_acceptance: Dev says "Refactor to use server actions instead of API routes" → AI does it → Dev accepts (developer chose the architecture)
+- ✅ IS passive_acceptance: AI generates 200 lines of complex auth logic → Dev says "looks good" without running tests or reviewing (no prior specification, no verification)
+- ✅ IS passive_acceptance: AI rewrites entire component → Dev accepts without reading the diff (no evidence of review)
+
+#### Exclusion 3: Domain Expert Pattern → NOT \`trust_debt\`
+When the developer demonstrates **correct domain expertise** (proper terminology, architectural decisions, accurate constraints), using AI-generated code in that domain is informed usage, NOT trust debt.
+
+- ❌ NOT trust_debt: Developer correctly explains race condition risks, then uses AI's mutex implementation (understands the domain)
+- ❌ NOT trust_debt: Developer specifies exact database index strategy, then accepts AI's migration code (domain expertise evident)
+- ✅ IS trust_debt: Developer uses AI-generated cryptography code without any discussion of security properties (no domain understanding shown)
+- ✅ IS trust_debt: Developer accepts complex regex without testing or explaining what it matches (no comprehension demonstrated)
+
+#### Exclusion 4: AI Error Correction Loop → NOT \`error_loop\`
+When the AI **repeatedly fails** and the developer provides **different corrections each time**, this is the developer debugging the AI — NOT a developer error loop. The error source is the AI, not the developer.
+
+**Key distinction**: Is the DEVELOPER the source of repeated errors, or is the AI failing to follow instructions?
+
+- ❌ NOT error_loop: AI breaks the build 3 times → Developer provides different fix instructions each time (developer is correcting AI)
+- ❌ NOT error_loop: AI misunderstands requirement → Developer clarifies with more detail → AI still wrong → Developer provides example code (escalating corrections)
+- ✅ IS error_loop: Developer's own logic is flawed → Same conceptual mistake repeated → No change in approach (developer's error)
+- ✅ IS error_loop: Developer keeps asking for same broken pattern without understanding why it fails (developer's misunderstanding)
+
 ## OUTPUT FORMAT (STRUCTURED JSON)
 
 Return JSON with the following structure:

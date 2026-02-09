@@ -93,8 +93,27 @@ The developer's session data may contain non-English text (Korean, Japanese, Chi
 ### Detection Criteria
 A mistake is "repeated" if:
 - Same category of error appears 2+ times across different sessions
-- Same approach is tried again without modification after failure
+- Same approach is tried again without modification after failure **AND the DEVELOPER is the source of the error** (not the AI failing to follow correct instructions)
 - Similar confusion expressed about the same topic
+
+#### Error Attribution — Who Caused the Failure?
+
+Before classifying a retry as \`blind_retry\` or a repeated mistake, determine the ERROR DIRECTION:
+
+| Scenario | Developer's Response | Classification |
+|----------|---------------------|----------------|
+| \`precedingAIHadError=true\` + Developer provides specific technical correction | "Use \`fs.promises\` not \`fs.readFileSync\` in async context" | **NOT a mistake** — developer is teaching the AI |
+| \`precedingAIHadError=true\` + Developer provides architectural guidance | "No, put the middleware before the route handler" | **NOT a mistake** — developer has domain expertise |
+| \`precedingAIHadError=true\` + Developer just says "try again" / "fix it" | "Try again" / "That's still wrong" | **Potential blind_retry** — no analysis provided |
+| \`precedingAIHadError=true\` + Developer repeats same wrong approach | Developer insists on incorrect pattern despite AI warnings | **Repeated mistake** — developer's error |
+
+#### 3-Step Check Before Labeling \`blind_retry\`
+
+Apply these checks IN ORDER. If any check passes (YES), it is NOT a blind_retry:
+
+1. **Specific correction?** Does the developer's message contain a concrete technical fix, correct value, or precise instruction? → YES = Not blind_retry (developer-initiated correction)
+2. **Technical reasoning?** Does the developer explain WHY the previous approach was wrong or provide diagnostic analysis? → YES = Not blind_retry (analytical behavior)
+3. **Bare retry?** Is the response limited to "fix it", "try again", "still broken" with no new technical information? → YES = IS blind_retry (no analysis, no correction)
 
 Look for patterns where \`precedingAIHadError=true\` and the developer's response doesn't include analysis or diagnostic questions.
 

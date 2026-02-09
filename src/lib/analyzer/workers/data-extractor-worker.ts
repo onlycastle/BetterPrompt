@@ -28,7 +28,7 @@ import {
 import type { ParsedSession, ParsedMessage } from '../../models/session';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import { strategicSampleUtterances } from '../shared/sampling-utils';
-import { PHASE1_MAX_UTTERANCES } from '../shared/constants';
+import { PHASE1_MAX_UTTERANCES, CLEAR_COMMAND_PATTERNS } from '../shared/constants';
 import { GeminiClient, type TokenUsage } from '../clients/gemini-client';
 import {
   BatchClassificationResultSchema,
@@ -425,6 +425,46 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Segment-Aware Session Splitting (/clear boundary detection)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Check if a message is a /clear command.
+   * Checks raw content (before stripSystemTags) so XML-tagged variants are detected.
+   */
+  private static isClearCommand(message: ParsedMessage): boolean {
+    if (message.role !== 'user') return false;
+    return CLEAR_COMMAND_PATTERNS.some(pattern => pattern.test(message.content));
+  }
+
+  /**
+   * Split a session's messages into logical segments at /clear boundaries.
+   * The /clear message itself is excluded from all segments.
+   * Returns at least one segment (the original messages if no /clear found).
+   */
+  private static splitSessionByClears(messages: ParsedMessage[]): ParsedMessage[][] {
+    const segments: ParsedMessage[][] = [];
+    let current: ParsedMessage[] = [];
+
+    for (const message of messages) {
+      if (DataExtractorWorker.isClearCommand(message)) {
+        if (current.length > 0) {
+          segments.push(current);
+        }
+        current = [];
+      } else {
+        current.push(message);
+      }
+    }
+
+    if (current.length > 0) {
+      segments.push(current);
+    }
+
+    return segments.length > 0 ? segments : [[]];
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Friction Signal Detection (Deterministic)
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -458,51 +498,56 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     let contextOverflowSessions = 0;
 
     for (const session of sessions) {
-      let sessionUserMessages = 0;
-      let sessionHadContextOverflow = false;
+      // Split session into logical segments at /clear boundaries
+      const segments = DataExtractorWorker.splitSessionByClears(session.messages);
 
-      for (const message of session.messages) {
-        if (message.role === 'user') {
-          sessionUserMessages++;
+      for (const segment of segments) {
+        let segmentUserMessages = 0;
+        let segmentHadContextOverflow = false;
 
-          // Check for rejection patterns in user messages
-          const text = message.content;
-          for (const pattern of DataExtractorWorker.REJECTION_PATTERNS) {
-            if (pattern.test(text)) {
-              userRejectionSignals++;
-              break; // Count max once per message
-            }
-          }
-        }
+        for (const message of segment) {
+          if (message.role === 'user') {
+            segmentUserMessages++;
 
-        if (message.role === 'assistant') {
-          // Count tool failures
-          if (message.toolCalls) {
-            for (const toolCall of message.toolCalls) {
-              if (toolCall.isError) {
-                toolFailureCount++;
+            // Check for rejection patterns in user messages
+            const text = message.content;
+            for (const pattern of DataExtractorWorker.REJECTION_PATTERNS) {
+              if (pattern.test(text)) {
+                userRejectionSignals++;
+                break; // Count max once per message
               }
             }
           }
 
-          // Check for context overflow
-          if (message.tokenUsage?.input) {
-            const fillPercent = (message.tokenUsage.input / DataExtractorWorker.CONTEXT_WINDOW_SIZE) * 100;
-            if (fillPercent >= 90) {
-              sessionHadContextOverflow = true;
+          if (message.role === 'assistant') {
+            // Count tool failures
+            if (message.toolCalls) {
+              for (const toolCall of message.toolCalls) {
+                if (toolCall.isError) {
+                  toolFailureCount++;
+                }
+              }
+            }
+
+            // Check for context overflow
+            if (message.tokenUsage?.input) {
+              const fillPercent = (message.tokenUsage.input / DataExtractorWorker.CONTEXT_WINDOW_SIZE) * 100;
+              if (fillPercent >= 90) {
+                segmentHadContextOverflow = true;
+              }
             }
           }
         }
-      }
 
-      // Count excessive iteration sessions (10+ user messages)
-      if (sessionUserMessages >= 10) {
-        excessiveIterationSessions++;
-      }
+        // Count excessive iteration segments (10+ user messages)
+        if (segmentUserMessages >= 10) {
+          excessiveIterationSessions++;
+        }
 
-      // Count context overflow sessions
-      if (sessionHadContextOverflow) {
-        contextOverflowSessions++;
+        // Count context overflow segments
+        if (segmentHadContextOverflow) {
+          contextOverflowSessions++;
+        }
       }
     }
 
@@ -526,25 +571,32 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     sessions: ParsedSession[]
   ): Phase1SessionMetrics['sessionHints'] {
     let totalUserTurns = 0;
+    let totalSegments = 0;
     let shortSessions = 0;
     let mediumSessions = 0;
     let longSessions = 0;
 
     for (const session of sessions) {
-      const userMessageCount = session.messages.filter(m => m.role === 'user').length;
-      totalUserTurns += userMessageCount;
+      // Split session into logical segments at /clear boundaries
+      const segments = DataExtractorWorker.splitSessionByClears(session.messages);
 
-      if (userMessageCount <= 3) {
-        shortSessions++;
-      } else if (userMessageCount <= 10) {
-        mediumSessions++;
-      } else {
-        longSessions++;
+      for (const segment of segments) {
+        const userMessageCount = segment.filter(m => m.role === 'user').length;
+        totalUserTurns += userMessageCount;
+        totalSegments++;
+
+        if (userMessageCount <= 3) {
+          shortSessions++;
+        } else if (userMessageCount <= 10) {
+          mediumSessions++;
+        } else {
+          longSessions++;
+        }
       }
     }
 
     return {
-      avgTurnsPerSession: sessions.length > 0 ? totalUserTurns / sessions.length : 0,
+      avgTurnsPerSession: totalSegments > 0 ? totalUserTurns / totalSegments : 0,
       shortSessions,
       mediumSessions,
       longSessions,
