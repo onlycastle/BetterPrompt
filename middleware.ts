@@ -26,18 +26,17 @@ const allowedOrigins = [
  * Add CORS headers to response
  */
 function addCorsHeaders(response: NextResponse, origin: string | null): NextResponse {
-  // Allow requests from Electron apps (they send 'null' or no origin)
-  // and from allowed origins
-  const isAllowed = !origin || origin === 'null' || allowedOrigins.some(allowed =>
-    origin.startsWith(allowed) || allowed === 'app://-' && origin.startsWith('app://')
+  const isElectronApp = !origin || origin === 'null';
+  const isAllowedOrigin = origin && allowedOrigins.some(allowed =>
+    origin.startsWith(allowed) || (allowed === 'app://-' && origin.startsWith('app://'))
   );
 
-  if (isAllowed) {
+  if (isElectronApp || isAllowedOrigin) {
     response.headers.set('Access-Control-Allow-Origin', origin || '*');
     response.headers.set('Access-Control-Allow-Credentials', 'true');
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    response.headers.set('Access-Control-Max-Age', '86400'); // 24 hours
+    response.headers.set('Access-Control-Max-Age', '86400');
   }
 
   return response;
@@ -119,6 +118,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - Static assets (svg, png, jpg, jpeg, gif, webp)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|opengraph-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

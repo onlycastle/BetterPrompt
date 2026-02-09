@@ -187,6 +187,140 @@ export function getChippyLarge(expression: ChippyExpression = 'happy'): string[]
   ];
 }
 
+// ============================================================================
+// Large Bear-Robot Character (8-line art for progress display)
+// ============================================================================
+
+/** Fixed visual width of the bear character area (padded) */
+export const BEAR_LINE_WIDTH = 22;
+
+/** Fixed visual width of the bubble area beside the bear */
+export const LARGE_BUBBLE_WIDTH = 30;
+
+/** Gap between bear and bubble */
+const GAP_WIDTH = 2;
+
+/**
+ * Large bear-robot face parts — only eyes and mouth change per expression
+ */
+const LARGE_FACES: Record<ChippyExpression, { leftEye: string; rightEye: string; mouth: string }> = {
+  neutral:  { leftEye: '●', rightEye: '●', mouth: '──' },
+  blink:    { leftEye: '─', rightEye: '─', mouth: '──' },
+  happy:    { leftEye: '●', rightEye: '●', mouth: 'w ' },
+  thinking: { leftEye: '●', rightEye: '●', mouth: '~~' },
+  excited:  { leftEye: '★', rightEye: '★', mouth: 'w ' },
+  wink:     { leftEye: '●', rightEye: '─', mouth: 'w ' },
+};
+
+/** Ear wiggle interval (in ticks) */
+const EAR_WIGGLE_INTERVAL = 30;
+
+/**
+ * Build 8-line bear-robot art for the given expression and tick.
+ * Ears wiggle on slow intervals. Lines are padded to BEAR_LINE_WIDTH.
+ */
+function buildBearLines(expression: ChippyExpression, tick: number): string[] {
+  const face = LARGE_FACES[expression];
+  const wiggle = Math.floor(tick / EAR_WIGGLE_INTERVAL) % 2 === 1;
+  const earConnect = wiggle ? '│  ╰─ ─ ─ ─╯  │' : '│  ╰───────╯  │';
+
+  const lines = [
+    '  ╭──╮       ╭──╮',     // 0: ears
+    `  ${earConnect}`,        // 1: ear connection (animated)
+    '  │              │',     // 2: padding
+    `  │   ${face.leftEye}     ${face.rightEye}   │`,  // 3: eyes
+    '  │              │',     // 4: padding
+    `  │      ${face.mouth}      │`,  // 5: mouth
+    '  │              │',     // 6: padding
+    '  ╰──────────────╯',     // 7: bottom
+  ];
+
+  return lines.map(l => l.padEnd(BEAR_LINE_WIDTH));
+}
+
+/**
+ * Get the large bear-robot character (8-line array).
+ * Each line is padded to BEAR_LINE_WIDTH for stable layout.
+ */
+export function getLargeChipCharacter(expression: ChippyExpression, tick: number): string[] {
+  return buildBearLines(expression, tick);
+}
+
+/**
+ * Build speech bubble lines (8 lines to match bear height).
+ * The bubble appears on lines 1-5 (vertically centered).
+ */
+function buildBubbleLines(bubbleText: string): string[] {
+  const innerWidth = LARGE_BUBBLE_WIDTH - 4; // borders + padding
+  const maxTextLen = innerWidth - 2;
+  const truncated = bubbleText.length > maxTextLen
+    ? bubbleText.slice(0, maxTextLen - 1) + '\u2026'
+    : bubbleText;
+
+  // Word-wrap into lines that fit innerWidth
+  const words = truncated.split(' ');
+  const textLines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    if (current.length + (current ? 1 : 0) + word.length > innerWidth) {
+      if (current) textLines.push(current);
+      current = word;
+    } else {
+      current = current ? `${current} ${word}` : word;
+    }
+  }
+  if (current) textLines.push(current);
+
+  // Build bubble box (content lines + top/bottom border)
+  const top    = `╭${'─'.repeat(innerWidth + 2)}╮`;
+  const bottom = `╰${'─'.repeat(innerWidth + 2)}╯`;
+  const contentLines = textLines.map(t => `│ ${t.padEnd(innerWidth)} │`);
+
+  // Assemble 8-line array with bubble vertically centered
+  const empty = ' '.repeat(LARGE_BUBBLE_WIDTH);
+  const result: string[] = new Array(8).fill(empty);
+
+  // Place bubble starting at line 1
+  const bubbleLines = [top, ...contentLines, bottom];
+  const startRow = 1;
+  for (let i = 0; i < bubbleLines.length && startRow + i < 8; i++) {
+    result[startRow + i] = bubbleLines[i].padEnd(LARGE_BUBBLE_WIDTH);
+  }
+
+  return result;
+}
+
+/**
+ * Compose bear character and bubble side-by-side.
+ * Returns 8-line array with consistent total width.
+ */
+function composeSideBySide(bearLines: string[], bubbleLines: string[]): string[] {
+  const gap = ' '.repeat(GAP_WIDTH);
+  return bearLines.map((bl, i) => bl + gap + bubbleLines[i]);
+}
+
+/**
+ * Get the large bear-robot character with a speech bubble composed side-by-side.
+ * Returns 8-line array. If no bubbleText, right side is blank-padded.
+ */
+export function getLargeChipCharacterWithBubble(
+  expression: ChippyExpression,
+  tick: number,
+  bubbleText: string | null,
+): string[] {
+  const bearLines = buildBearLines(expression, tick);
+  if (bubbleText) {
+    const bubble = buildBubbleLines(bubbleText);
+    return composeSideBySide(bearLines, bubble);
+  }
+  const emptyBubble = new Array(8).fill(' '.repeat(LARGE_BUBBLE_WIDTH));
+  return composeSideBySide(bearLines, emptyBubble);
+}
+
+// ============================================================================
+// Animation Frames
+// ============================================================================
+
 /**
  * Thinking animation frames
  */

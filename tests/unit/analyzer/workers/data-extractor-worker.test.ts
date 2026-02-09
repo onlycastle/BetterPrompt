@@ -358,6 +358,168 @@ with various content
     });
   });
 
+  describe('segment-aware metrics (/clear splitting)', () => {
+    /**
+     * Helper to create a ParsedSession with user and assistant messages.
+     * Generates alternating user/assistant pairs for realistic structure.
+     */
+    function createChatSession(
+      userContents: string[],
+      sessionId = 'test-session'
+    ): ParsedSession {
+      const messages: ParsedMessage[] = [];
+      for (const content of userContents) {
+        messages.push({
+          role: 'user' as const,
+          content,
+          timestamp: new Date(),
+          toolCalls: [],
+        });
+        messages.push({
+          role: 'assistant' as const,
+          content: 'OK, done.',
+          timestamp: new Date(),
+          toolCalls: [],
+        });
+      }
+      return {
+        sessionId,
+        projectPath: '/test/project',
+        messages,
+        messageCount: messages.length,
+        durationSeconds: 120,
+      };
+    }
+
+    it('should split 30-message session with 2 /clear into 3 medium segments', async () => {
+      // 10 user messages + /clear + 10 user messages + /clear + 10 user messages
+      const userContents: string[] = [];
+      for (let i = 0; i < 10; i++) userContents.push(`Task A message ${i}`);
+      userContents.push('/clear');
+      for (let i = 0; i < 10; i++) userContents.push(`Task B message ${i}`);
+      userContents.push('<command-name>/clear</command-name>');
+      for (let i = 0; i < 10; i++) userContents.push(`Task C message ${i}`);
+
+      const session = createChatSession(userContents);
+      const context = createContext([session]);
+      const result = await worker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      const hints = result.data.sessionMetrics.sessionHints;
+      // 3 segments of 10 user messages each → all medium (4-10)
+      expect(hints.mediumSessions).toBe(3);
+      expect(hints.longSessions).toBe(0);
+      expect(hints.shortSessions).toBe(0);
+    });
+
+    it('should not count /clear messages in user counts', async () => {
+      // 3 user messages + /clear + 3 user messages
+      const userContents = [
+        'msg1', 'msg2', 'msg3',
+        '/clear',
+        'msg4', 'msg5', 'msg6',
+      ];
+      const session = createChatSession(userContents);
+      const context = createContext([session]);
+      const result = await worker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      const hints = result.data.sessionMetrics.sessionHints;
+      // 2 segments of 3 user messages each → both short (<=3)
+      expect(hints.shortSessions).toBe(2);
+      expect(hints.mediumSessions).toBe(0);
+      expect(hints.longSessions).toBe(0);
+    });
+
+    it('should behave identically for sessions without /clear', async () => {
+      const userContents = ['msg1', 'msg2', 'msg3', 'msg4', 'msg5'];
+      const session = createChatSession(userContents);
+      const context = createContext([session]);
+      const result = await worker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      const hints = result.data.sessionMetrics.sessionHints;
+      // 5 user messages, no /clear → single medium segment
+      expect(hints.mediumSessions).toBe(1);
+      expect(hints.shortSessions).toBe(0);
+      expect(hints.longSessions).toBe(0);
+    });
+
+    it('should detect <command-name>/clear</command-name> tag format', async () => {
+      const userContents = [
+        'msg1', 'msg2',
+        '<command-name>/clear</command-name>',
+        'msg3', 'msg4',
+      ];
+      const session = createChatSession(userContents);
+      const context = createContext([session]);
+      const result = await worker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      const hints = result.data.sessionMetrics.sessionHints;
+      // 2 segments: [msg1, msg2] and [msg3, msg4] → both short
+      expect(hints.shortSessions).toBe(2);
+    });
+
+    it('should apply excessive iteration threshold per segment', async () => {
+      // Segment 1: 12 user messages (excessive), Segment 2: 5 user messages (not excessive)
+      const userContents: string[] = [];
+      for (let i = 0; i < 12; i++) userContents.push(`long task msg ${i}`);
+      userContents.push('/clear');
+      for (let i = 0; i < 5; i++) userContents.push(`short task msg ${i}`);
+
+      const session = createChatSession(userContents);
+      const context = createContext([session]);
+      const result = await worker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      const friction = result.data.sessionMetrics.frictionSignals;
+      // Only segment 1 has 12 user messages (>=10), segment 2 has 5
+      expect(friction.excessiveIterationSessions).toBe(1);
+
+      const hints = result.data.sessionMetrics.sessionHints;
+      expect(hints.longSessions).toBe(1);   // 12 messages → long
+      expect(hints.mediumSessions).toBe(1);  // 5 messages → medium
+    });
+
+    it('should handle consecutive /clear commands', async () => {
+      const userContents = [
+        'msg1', 'msg2',
+        '/clear',
+        '/clear',
+        'msg3',
+      ];
+      const session = createChatSession(userContents);
+      const context = createContext([session]);
+      const result = await worker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      const hints = result.data.sessionMetrics.sessionHints;
+      // 3 segments: [msg1,msg2], [assistant-only from between clears], [msg3]
+      // The middle segment has 0 user messages → short (<=3).
+      // All 3 segments count as short.
+      expect(hints.shortSessions).toBe(3);
+      expect(hints.mediumSessions).toBe(0);
+    });
+
+    it('should compute avgTurnsPerSession using segment count as denominator', async () => {
+      // 1 physical session, but 2 logical segments
+      const userContents = [
+        'msg1', 'msg2', 'msg3', 'msg4',  // 4 user messages
+        '/clear',
+        'msg5', 'msg6',  // 2 user messages
+      ];
+      const session = createChatSession(userContents);
+      const context = createContext([session]);
+      const result = await worker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      const hints = result.data.sessionMetrics.sessionHints;
+      // Total 6 user turns / 2 segments = 3.0
+      expect(hints.avgTurnsPerSession).toBe(3);
+    });
+  });
+
   describe('LLM-based system metadata filtering', () => {
     /**
      * Helper to create a long text that exceeds the LLM filter threshold (100 chars)

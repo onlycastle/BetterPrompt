@@ -4,5 +4,6 @@
  */
 
 export { TypeResultMinimal } from './TypeResultMinimal';
-export { MatrixDistributionDisplay } from './MatrixDistributionDisplay';
+export { DualRadarCharts } from './DualRadarCharts';
+export { RadarChart } from './RadarChart';
 export { PersonalitySummaryClean } from './PersonalitySummaryClean';

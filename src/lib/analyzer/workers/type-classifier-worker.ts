@@ -43,42 +43,13 @@ type DistributionKey = 'architect' | 'analyst' | 'conductor' | 'speedrunner' | '
 const DISTRIBUTION_KEYS: DistributionKey[] = ['architect', 'analyst', 'conductor', 'speedrunner', 'trendsetter'];
 
 /**
- * Strict LLM output schema for TypeClassifier (documentation/reference only).
- * Defines the ideal constraints: 4 reasoning paragraphs, each 500+ chars.
- */
-const TypeClassifierStrictSchema = z.object({
-  primaryType: CodingStyleTypeSchema,
-  distribution: z.object({
-    architect: z.number().min(0).max(100),
-    analyst: z.number().min(0).max(100),
-    conductor: z.number().min(0).max(100),
-    speedrunner: z.number().min(0).max(100),
-    trendsetter: z.number().min(0).max(100),
-  }),
-  controlLevel: AIControlLevelSchema,
-  controlScore: z.number().min(0).max(100),
-  matrixName: z.string(),
-  matrixEmoji: z.string(),
-  collaborationMaturity: z.object({
-    level: z.enum(['vibe_coder', 'supervised_coder', 'ai_assisted_engineer', 'reluctant_user']),
-    description: z.string(),
-    indicators: z.array(z.string()),
-  }).optional(),
-  confidenceScore: z.number().min(0).max(1),
-  reasoning: z.array(z.string().min(500)).min(3).max(4),
-  adjustmentReasons: z.array(z.string()).max(5).optional(),
-  confidenceBoost: z.number().min(0).max(1).optional(),
-  synthesisEvidence: z.string().optional(),
-});
-
-/**
  * Relaxed LLM schema for Gemini API calls.
  *
- * Removes .min(500) from reasoning strings and .min(3) from reasoning array
- * to prevent Zod validation failures from becoming non-retryable errors.
+ * Does not enforce .min() on individual reasoning strings to prevent
+ * Zod validation failures from becoming non-retryable errors.
  * The worker's retry loop handles quality validation instead.
  *
- * Array bounds (.min(3).max(4)) are still enforced via preserveArrayConstraints
+ * Array bounds (.min(3).max(3)) are still enforced via preserveArrayConstraints
  * at the Gemini schema level.
  */
 export const TypeClassifierLLMSchema = z.object({
@@ -100,7 +71,7 @@ export const TypeClassifierLLMSchema = z.object({
     indicators: z.array(z.string()),
   }).optional(),
   confidenceScore: z.number().min(0).max(1),
-  reasoning: z.array(z.string()).min(3).max(4),
+  reasoning: z.array(z.string()).min(3).max(3),
   adjustmentReasons: z.array(z.string()).max(5).optional(),
   confidenceBoost: z.number().min(0).max(1).optional(),
   synthesisEvidence: z.string().optional(),
@@ -175,8 +146,8 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
    * Generate TypeClassifier output with validation retry loop.
    *
    * Attempts up to MAX_ATTEMPTS calls, checking both:
-   * 1. Element count: reasoning array should have TARGET_REASONING_ELEMENTS (4) elements
-   * 2. Total length: combined reasoning length should be >= MIN_TOTAL_REASONING_CHARS (1800)
+   * 1. Element count: reasoning array should have TARGET_REASONING_ELEMENTS (3) elements
+   * 2. Total length: combined reasoning length should be >= MIN_TOTAL_REASONING_CHARS (800)
    *
    * On retry, sends a reinforced prompt informing the LLM of the specific shortcoming.
    * If all attempts fail quality checks, uses the best result (longest total reasoning).
@@ -185,8 +156,8 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     userPrompt: string
   ): Promise<GeminiStructuredResult<TypeClassifierLLMOutput>> {
     const MAX_ATTEMPTS = 3;
-    const MIN_TOTAL_REASONING_CHARS = 1800;
-    const TARGET_REASONING_ELEMENTS = 4;
+    const MIN_TOTAL_REASONING_CHARS = 800;
+    const TARGET_REASONING_ELEMENTS = 3;
 
     let bestResult: GeminiStructuredResult<TypeClassifierLLMOutput> | null = null;
     let bestLength = 0;
@@ -252,10 +223,10 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
       feedback.push(`Your previous response had only ${prevCount} reasoning paragraphs. You MUST provide exactly ${targetElements} paragraphs.`);
     }
     if (prevLength < minTotalChars) {
-      feedback.push(`Your previous response had only ${prevLength} total characters across reasoning paragraphs. The minimum is ${minTotalChars} characters. Each paragraph should be 500+ characters with detailed, evidence-based analysis.`);
+      feedback.push(`Your previous response had only ${prevLength} total characters across reasoning paragraphs. The minimum is ${minTotalChars} characters. Each paragraph should be 300+ characters with vivid, MBTI-style behavioral descriptions.`);
     }
 
-    return `${originalPrompt}\n\n---\n\n## CRITICAL QUALITY REQUIREMENT (RETRY)\n\n${feedback.join('\n\n')}\n\nPlease provide a more thorough, detailed response this time. Each reasoning paragraph must be a substantial, evidence-rich analysis (500+ characters each).`;
+    return `${originalPrompt}\n\n---\n\n## CRITICAL QUALITY REQUIREMENT (RETRY)\n\n${feedback.join('\n\n')}\n\nPlease provide a more thorough response this time. Each reasoning paragraph must be 300+ characters each with bold traits and indirect behavioral patterns (no direct quotes).`;
   }
 
   /**
@@ -369,6 +340,7 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 
     // Trend Sensitivity Section (from Phase 1 utterances) — for Trendsetter detection
     if (phase1Output?.developerUtterances) {
+      // Korean trend keywords: latest, trend, fad, new, updated, nowadays
       const TREND_KEYWORDS_KO = ['최신', '트렌드', '유행', '새로운', '업데이트된', '요즘'];
       const TREND_KEYWORDS_EN = ['latest', 'newest', 'trending', 'modern', 'up-to-date', 'best practice', 'current version', 'recently released'];
       const allKeywords = [...TREND_KEYWORDS_KO, ...TREND_KEYWORDS_EN];

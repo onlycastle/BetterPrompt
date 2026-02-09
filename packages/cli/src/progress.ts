@@ -19,8 +19,7 @@ import pc from 'picocolors';
 import { createLogUpdate } from 'log-update';
 import cliCursor from 'cli-cursor';
 import {
-  getChipCharacter,
-  getChipCharacterWithBubble,
+  getLargeChipCharacterWithBubble,
   THINKING_FRAMES,
   getAnimationFrame,
   type ChippyExpression,
@@ -236,24 +235,28 @@ export class ProgressDisplay {
     }
   }
 
+  /** Total fixed line count for all stages (prevents log-update jitter) */
+  private static readonly TOTAL_LINES = 13;
+
   /**
    * Render the current state to the terminal.
    *
-   * During the analyzing phase, renders 6 lines (with bubble + tip).
-   * During other phases, renders 5 lines (original layout).
+   * Always outputs TOTAL_LINES lines regardless of stage to prevent
+   * log-update jitter. Layout:
    *
-   * log-update overwrites the previous output atomically,
-   * so there is no visible clear→rewrite gap.
+   *   Line  0: (empty)
+   *   Line  1: ⠹  {status message}
+   *   Line  2: (empty)
+   *   Lines 3-10: Large bear-robot (8 lines, bubble during analyzing)
+   *   Line 11: {wide progress bar}  {percent}  {elapsed}
+   *   Line 12: {tip text} (analyzing only, blank otherwise)
    */
   private render(): void {
     const config = STAGE_CONFIGS[this.currentStage] || STAGE_CONFIGS.analyzing;
-    const elapsed = this.formatElapsed();
-    const progressBar = this.renderProgressBar(this.displayedProgress);
-
     const isAnalyzing = this.currentStage === 'analyzing';
     const hasBubbles = this.bubbleMessages.length > 0;
 
-    // Get Chippy expression based on stage and milestones
+    // Expression based on stage and milestones
     let expression: ChippyExpression;
     if (this.currentStage === 'complete') {
       expression = 'excited';
@@ -263,53 +266,60 @@ export class ProgressDisplay {
       expression = getAnimationFrame(THINKING_FRAMES, this.tick);
     }
 
-    // Get chip character lines (with or without bubble)
-    let chipLines: string[];
+    // Determine bubble text (null when not analyzing)
+    let bubbleText: string | null = null;
     if (isAnalyzing && hasBubbles) {
-      // Determine current bubble text
-      let bubbleText: string;
       if (this.activeMilestone) {
         bubbleText = this.activeMilestone.bubble;
       } else {
         const bubbleIdx = Math.floor(this.tick / BUBBLE_ROTATION_TICKS) % this.bubbleMessages.length;
         bubbleText = this.bubbleMessages[bubbleIdx];
       }
-      chipLines = getChipCharacterWithBubble(expression, this.tick, bubbleText);
-    } else {
-      chipLines = getChipCharacter(expression, this.tick);
     }
 
-    // Spinner character (manually rotated)
+    // Large bear-robot (8 lines, with or without bubble)
+    const bearLines = getLargeChipCharacterWithBubble(expression, this.tick, bubbleText);
+
+    // Spinner
     const spinnerChar = pc.cyan(SPINNER_FRAMES[this.spinnerFrameIndex]);
 
-    // Main status line — use rotating status messages during analyzing
-    let mainLine: string;
+    // Status line
+    let statusLine: string;
     if (isAnalyzing) {
       const statusMsg = getAnalyzingStatusMessage(this.tick);
-      mainLine = `${spinnerChar} ${config.color(statusMsg)}`;
+      statusLine = `${spinnerChar}  ${config.color(statusMsg)}`;
     } else {
       const iconPart = config.icon ? `${config.icon} ` : '';
-      mainLine = `${spinnerChar} ${iconPart}${config.color(this.currentMessage)}`;
+      statusLine = `${spinnerChar}  ${iconPart}${config.color(this.currentMessage)}`;
     }
 
-    // Progress bar line with elapsed time and optional time hint
+    // Progress bar
+    const elapsed = this.formatElapsed();
+    const progressBar = this.renderProgressBar(this.displayedProgress);
     const timeHint = this.shouldShowTimeHint()
-      ? pc.dim(' | Usually takes 5-10 min')
+      ? pc.dim('  Usually takes 5-10 min')
       : '';
-    const progressLine = `${progressBar} ${pc.dim(elapsed)}${timeHint}`;
+    const progressLine = `  ${progressBar}  ${pc.dim(`${elapsed} elapsed`)}${timeHint}`;
 
-    // Build output
-    let output = `${mainLine}\n  ${chipLines[0]}\n  ${chipLines[1]}\n  ${chipLines[2]}\n  ${progressLine}`;
-
-    // Add tip line during analyzing phase
+    // Tip line (analyzing only)
+    let tipLine = '';
     if (isAnalyzing && this.tipMessages.length > 0) {
       const tipIdx = Math.floor(this.tick / TIP_ROTATION_TICKS) % this.tipMessages.length;
       const tip = this.tipMessages[tipIdx];
-      output += `\n  ${tip.icon} ${pc.dim(tip.text)}`;
+      tipLine = `  ${tip.icon} ${pc.dim(tip.text)}`;
     }
 
-    // Atomic multiline write — no flicker
-    this.logUpdate(output);
+    // Assemble fixed-line output
+    const lines: string[] = [
+      '',                                         // 0: spacer
+      `  ${statusLine}`,                          // 1: status
+      '',                                         // 2: spacer
+      ...bearLines.map(l => `    ${l}`),           // 3-10: bear (8 lines)
+      progressLine,                               // 11: progress bar
+      tipLine,                                    // 12: tip / blank
+    ];
+
+    this.logUpdate(lines.join('\n'));
   }
 
   /** Stages where analysis is done and time hint should be hidden */
@@ -337,14 +347,25 @@ export class ProgressDisplay {
   }
 
   /**
-   * Render a simple progress bar
+   * Render a wide progress bar with stage-based coloring.
+   * 40 chars wide, no brackets, color shifts as progress increases.
    */
   private renderProgressBar(progress: number): string {
-    const width = 20;
+    const width = 40;
     const filled = Math.floor((progress / 100) * width);
     const empty = width - filled;
-    const bar = '█'.repeat(filled) + '░'.repeat(empty);
-    return `[${bar}] ${progress}%`;
+
+    // Stage-based color: yellow → cyan → blue → green
+    let colorFn: (text: string) => string;
+    if (progress >= 90) colorFn = pc.green;
+    else if (progress >= 75) colorFn = pc.blue;
+    else if (progress >= 50) colorFn = pc.cyan;
+    else colorFn = pc.yellow;
+
+    const filledBar = colorFn('█'.repeat(filled));
+    const emptyBar = pc.dim('░'.repeat(empty));
+    const percentStr = `${progress}%`.padStart(4);
+    return `${filledBar}${emptyBar}  ${percentStr}`;
   }
 
   /**

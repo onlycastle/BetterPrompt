@@ -132,6 +132,20 @@ export async function GET(request: NextRequest) {
       console.error('[PaymentSuccess] No userId in checkout metadata');
     }
 
+    // 4d. Safety net: ensure report is unlocked after confirmed payment
+    // Runs regardless of credit system success — idempotent direct update
+    if (resultId) {
+      const { error: ensureError } = await supabase
+        .from('analysis_results')
+        .update({ is_paid: true, paid_at: new Date().toISOString() })
+        .eq('result_id', resultId)
+        .eq('is_paid', false);
+
+      if (ensureError) {
+        console.error('[PaymentSuccess] Safety net failed:', ensureError);
+      }
+    }
+
     // 5. Redirect based on client type
     if (isDesktopApp) {
       // Deep link to desktop app with resultId

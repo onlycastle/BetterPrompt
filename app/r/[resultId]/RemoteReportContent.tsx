@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRemoteResult } from '@/hooks/useRemoteResult';
 import { useGrowthData } from '@/hooks/useGrowthData';
@@ -9,6 +10,7 @@ import { ReportShareBar } from '@/components/report/ReportShareBar';
 import { ReportErrorCard } from '@/components/report/ReportErrorCard';
 import { ReportLoadingSpinner } from '@/components/report/ReportLoadingSpinner';
 import { ReportPreviewBanner } from '@/components/report/ReportPreviewBanner';
+import { StickyUnlockBar } from '@/components/report/StickyUnlockBar';
 import styles from './page.module.css';
 
 interface ErrorCardConfig {
@@ -19,29 +21,30 @@ interface ErrorCardConfig {
 }
 
 function getErrorCardConfig(errorStatus: number | null | undefined, errorMessage?: string): ErrorCardConfig {
-  switch (errorStatus) {
-    case 404:
-      return {
-        title: 'Report Not Found',
-        message: "This analysis report doesn't exist or the link may be incorrect. Please check the URL and try again.",
-        icon: '&#128269;',
-        showRetry: false,
-      };
-    case 410:
-      return {
-        title: 'Report Expired',
-        message: 'This analysis report has expired. Run a new analysis with the CLI to generate a fresh report.',
-        icon: '&#8987;',
-        showRetry: false,
-      };
-    default:
-      return {
-        title: 'Something Went Wrong',
-        message: errorMessage || 'Failed to load the analysis. Please try again.',
-        icon: '&#9888;&#65039;',
-        showRetry: true,
-      };
+  if (errorStatus === 404) {
+    return {
+      title: 'Report Not Found',
+      message: "This analysis report doesn't exist or the link may be incorrect. Please check the URL and try again.",
+      icon: '&#128269;',
+      showRetry: false,
+    };
   }
+
+  if (errorStatus === 410) {
+    return {
+      title: 'Report Expired',
+      message: 'This analysis report has expired. Run a new analysis with the CLI to generate a fresh report.',
+      icon: '&#8987;',
+      showRetry: false,
+    };
+  }
+
+  return {
+    title: 'Something Went Wrong',
+    message: errorMessage || 'Failed to load the analysis. Please try again.',
+    icon: '&#9888;&#65039;',
+    showRetry: true,
+  };
 }
 
 interface RemoteReportContentProps {
@@ -65,8 +68,64 @@ function PageHeader() {
 }
 
 export function RemoteReportContent({ resultId }: RemoteReportContentProps) {
-  const { data, isPaid, preview, isLoading, error, errorStatus, refetch } = useRemoteResult(resultId);
+  const { data, isPaid, preview, credits, isLoading, error, errorStatus, refetch } = useRemoteResult(resultId);
   const { progressAnalytics, benchmarkPercentiles } = useGrowthData();
+
+  // StickyUnlockBar visibility
+  const reportWrapperRef = useRef<HTMLDivElement>(null);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+
+  useEffect(() => {
+    if (isPaid) {
+      setShowStickyBar(false);
+      return;
+    }
+
+    const reportEl = reportWrapperRef.current;
+    const unlockEl = document.getElementById('unlock-section');
+    if (!reportEl) return;
+
+    let passedReport = false;
+    let unlockVisible = false;
+
+    const update = () => setShowStickyBar(passedReport && !unlockVisible);
+
+    const reportObserver = new IntersectionObserver(
+      ([entry]) => {
+        passedReport = !entry.isIntersecting;
+        update();
+      },
+      { threshold: 0 },
+    );
+    reportObserver.observe(reportEl);
+
+    let unlockObserver: IntersectionObserver | undefined;
+    if (unlockEl) {
+      unlockObserver = new IntersectionObserver(
+        ([entry]) => {
+          unlockVisible = entry.isIntersecting;
+          update();
+        },
+        { threshold: 0 },
+      );
+      unlockObserver.observe(unlockEl);
+    }
+
+    return () => {
+      reportObserver.disconnect();
+      unlockObserver?.disconnect();
+    };
+  }, [isPaid]);
+
+  // Total locked recommendations across all worker domains
+  const totalLockedCount = useMemo(() => {
+    const wi = data?.workerInsights;
+    if (!wi) return 0;
+    const count = (domain: { growthAreas?: { recommendation?: string }[] } | undefined) =>
+      domain?.growthAreas?.filter(g => !g.recommendation).length ?? 0;
+    return count(wi.thinkingQuality) + count(wi.communicationPatterns)
+      + count(wi.learningBehavior) + count(wi.contextEfficiency);
+  }, [data?.workerInsights]);
 
   // Loading state
   if (isLoading) {
@@ -138,13 +197,14 @@ export function RemoteReportContent({ resultId }: RemoteReportContentProps) {
         )}
 
         {/* Main report content - data is pre-filtered by backend based on tier */}
-        <div className={styles.reportWrapper}>
+        <div ref={reportWrapperRef} className={styles.reportWrapper}>
           <TabbedReportContainer
             analysis={data}
             agentOutputs={data.agentOutputs}
             analysisMetadata={data.analysisMetadata}
             progressAnalytics={progressAnalytics}
             benchmarkPercentiles={benchmarkPercentiles}
+            isPaid={isPaid}
           />
         </div>
 
@@ -157,8 +217,16 @@ export function RemoteReportContent({ resultId }: RemoteReportContentProps) {
 
         {/* Unlock section for free users */}
         <div className={styles.unlockWrapper}>
-          <UnlockSection isUnlocked={isPaid} resultId={resultId} />
+          <UnlockSection
+            isUnlocked={isPaid}
+            resultId={resultId}
+            credits={credits}
+            onCreditsUsed={refetch}
+          />
         </div>
+
+        {/* Sticky bottom CTA bar for free users */}
+        <StickyUnlockBar lockedCount={totalLockedCount} visible={showStickyBar} />
       </div>
     </div>
   );

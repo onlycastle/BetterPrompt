@@ -52,7 +52,6 @@ Translate the provided English developer analysis report into the target languag
 
 ## Formatting Rules
 - Preserve **bold markers** around key phrases (translate the text inside, keep the **)
-- Preserve 「...」 corner bracket quote markers exactly as-is (translate the text INSIDE the brackets, but keep the 「 and 」 markers unchanged)
 - All data fields use structured JSON (objects/arrays) — no pipe or semicolon delimiters
 
 # Quality Standards
@@ -106,7 +105,7 @@ Return a TranslatorOutput JSON object containing ONLY the translated text fields
 
 ### Field-by-Field Instructions:
 
-1. **personalitySummary**: Translate to ${langName}. Keep **bold markers** and technical terms in English. IMPORTANT: Preserve ALL line breaks — both paragraph breaks (\\n\\n) and soft breaks (single \\n). Do NOT merge or remove any newline characters. Preserve 「...」 quote markers (translate the text inside, keep the 「」 brackets). LENGTH PRESERVATION: The translated personalitySummary MUST be at least 85% of the original English character count. Do NOT condense, summarize, or shorten. If the target language is naturally more compact, add natural elaboration to maintain equivalent depth.
+1. **personalitySummary**: Translate to ${langName}. Keep **bold markers** and technical terms in English. IMPORTANT: Preserve ALL line breaks — both paragraph breaks (\\n\\n) and soft breaks (single \\n). Do NOT merge or remove any newline characters. LENGTH PRESERVATION: The translated personalitySummary MUST be at least 85% of the original English character count. Do NOT condense, summarize, or shorten. If the target language is naturally more compact, add natural elaboration to maintain equivalent depth.
 
 2. **promptPatterns**: For each pattern:
    - patternName: Translate to ${langName}

@@ -141,6 +141,8 @@ interface TabbedReportContainerProps {
   progressAnalytics?: PersonalAnalytics | null;
   /** User's percentile ranks per domain (optional, only for authenticated users) */
   benchmarkPercentiles?: BenchmarkPercentiles | null;
+  /** Whether the user has paid (hides conversion nudges) */
+  isPaid?: boolean;
 }
 
 export function TabbedReportContainer({
@@ -149,6 +151,7 @@ export function TabbedReportContainer({
   analysisMetadata,
   progressAnalytics,
   benchmarkPercentiles,
+  isPaid = false,
 }: TabbedReportContainerProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const headerSectionRef = useRef<HTMLDivElement>(null);
@@ -173,6 +176,20 @@ export function TabbedReportContainer({
   // Scroll spy: detect active section from scroll position
   const activeSection = useScrollSpy({ sectionRefs });
   const activeTab = (activeSection as ReportTabId) || 'activity';
+
+  // Track visited sections for FloatingProgressDots state rendering
+  const [visitedSections, setVisitedSections] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (activeTab) {
+      setVisitedSections(prev => {
+        if (prev.has(activeTab)) return prev;
+        const next = new Set(prev);
+        next.add(activeTab);
+        return next;
+      });
+    }
+  }, [activeTab]);
 
   // FloatingProgressDots visibility: show when header scrolls out of view
   const [navVisible, setNavVisible] = useState(false);
@@ -222,23 +239,16 @@ export function TabbedReportContainer({
     [analysis.promptPatterns]
   );
 
-  // Get CommunicationPatterns worker insights, with fallback to transformed promptPatterns
   const communicationStrengths = useMemo((): WorkerStrength[] => {
-    // Prefer CommunicationPatterns worker output (v3.1+)
-    if (workerInsights?.communicationPatterns?.strengths?.length) {
-      return workerInsights.communicationPatterns.strengths;
-    }
-    // Fallback to transformed promptPatterns for backward compatibility
-    return communicationInsights.strengths;
+    return workerInsights?.communicationPatterns?.strengths?.length
+      ? workerInsights.communicationPatterns.strengths
+      : communicationInsights.strengths;
   }, [workerInsights?.communicationPatterns?.strengths, communicationInsights.strengths]);
 
   const communicationGrowthAreas = useMemo((): WorkerGrowth[] => {
-    // Prefer CommunicationPatterns worker output (v3.1+)
-    if (workerInsights?.communicationPatterns?.growthAreas?.length) {
-      return workerInsights.communicationPatterns.growthAreas;
-    }
-    // Fallback to transformed promptPatterns for backward compatibility
-    return communicationInsights.growthAreas;
+    return workerInsights?.communicationPatterns?.growthAreas?.length
+      ? workerInsights.communicationPatterns.growthAreas
+      : communicationInsights.growthAreas;
   }, [workerInsights?.communicationPatterns?.growthAreas, communicationInsights.growthAreas]);
 
   // Scroll to section handler (used by FloatingProgressDots)
@@ -411,17 +421,13 @@ export function TabbedReportContainer({
     }
   }, [analysis.knowledgeResources, workerInsights, allResources.length, insightAllocation, professionalInsightsByDomain]);
 
-  // Helper to check if a domain has content
   const hasDomainContent = (key: keyof AggregatedWorkerInsights): boolean => {
     const domain = workerInsights?.[key];
     return Boolean(domain && (domain.strengths?.length > 0 || domain.growthAreas?.length > 0));
   };
 
-  // Check if we have content for each section
   const hasThinking = hasDomainContent('thinkingQuality');
-  const hasCommunication =
-    communicationStrengths.length > 0 ||
-    communicationGrowthAreas.length > 0;
+  const hasCommunication = communicationStrengths.length > 0 || communicationGrowthAreas.length > 0;
   const hasLearning = hasDomainContent('learningBehavior');
   const hasContext = hasDomainContent('contextEfficiency');
 
@@ -455,6 +461,21 @@ export function TabbedReportContainer({
     context: getLockedCount(workerInsights?.contextEfficiency),
   }), [workerInsights]);
 
+  // Unlock percentage for ProgressiveMeter (free users only)
+  const { totalLocked, unlockPercentage } = useMemo(() => {
+    const locked = lockedCounts.thinking + lockedCounts.communication
+      + lockedCounts.learning + lockedCounts.context;
+    const totalGrowthAreas =
+      (workerInsights?.thinkingQuality?.growthAreas?.length ?? 0)
+      + (workerInsights?.communicationPatterns?.growthAreas?.length ?? 0)
+      + (workerInsights?.learningBehavior?.growthAreas?.length ?? 0)
+      + (workerInsights?.contextEfficiency?.growthAreas?.length ?? 0);
+    const pct = totalGrowthAreas > 0
+      ? Math.round(((totalGrowthAreas - locked) / totalGrowthAreas) * 100)
+      : 100;
+    return { totalLocked: locked, unlockPercentage: pct };
+  }, [lockedCounts, workerInsights]);
+
   return (
     <div className={styles.pageLayout}>
       {/* Floating Progress Dots — section navigation */}
@@ -463,6 +484,9 @@ export function TabbedReportContainer({
         activeSection={activeTab}
         onSectionClick={handleSectionClick}
         visible={navVisible}
+        visitedSections={visitedSections}
+        unlockPercentage={!isPaid ? unlockPercentage : undefined}
+        lockedCount={!isPaid ? totalLocked : undefined}
       />
 
       {/* Main Content Column */}
@@ -481,6 +505,7 @@ export function TabbedReportContainer({
             sessionsAnalyzed={analysis.sessionsAnalyzed}
             controlLevel={analysis.controlLevel}
             controlScore={analysis.controlScore}
+            workerInsights={workerInsights}
           />
 
           {/* Personality Summary */}

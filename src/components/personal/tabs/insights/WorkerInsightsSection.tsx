@@ -21,7 +21,7 @@
  * - Context Efficiency (ContextEfficiencyWorker): Token efficiency patterns
  */
 
-import { useMemo, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, useEffect, type ReactNode } from 'react';
 import type { AggregatedWorkerInsights, WorkerStrength, WorkerGrowth, ReferencedInsight } from '../../../../lib/models/worker-insights';
 import {
   WORKER_DOMAIN_CONFIGS,
@@ -35,16 +35,11 @@ import type { CommunicationStrength, CommunicationGrowth } from '../../../../lib
 import { ExpandableEvidence } from './ExpandableEvidence';
 import styles from './WorkerInsightsSection.module.css';
 
-// Type guards to check if a strength/growth has communication pattern metadata
-function isCommunicationStrength(
-  item: WorkerStrength
-): item is CommunicationStrength {
+function isCommunicationStrength(item: WorkerStrength): item is CommunicationStrength {
   return '_meta' in item && (item as CommunicationStrength)._meta?.source === 'communication_pattern';
 }
 
-function isCommunicationGrowth(
-  item: WorkerGrowth
-): item is CommunicationGrowth {
+function isCommunicationGrowth(item: WorkerGrowth): item is CommunicationGrowth {
   return '_meta' in item && (item as CommunicationGrowth)._meta?.source === 'communication_pattern';
 }
 
@@ -77,12 +72,8 @@ interface WorkerInsightsSectionProps {
 const CIRCUMFERENCE = 2 * Math.PI * 25; // SVG circle circumference (radius = 25)
 
 function getScoreClass(score: number): string {
-  if (score >= 70) {
-    return styles.scoreHigh;
-  }
-  if (score >= 40) {
-    return styles.scoreMedium;
-  }
+  if (score >= 70) return styles.scoreHigh;
+  if (score >= 40) return styles.scoreMedium;
   return styles.scoreLow;
 }
 
@@ -191,6 +182,7 @@ function renderUrgencyLabel(severity: string | undefined): ReactNode {
       </div>
     );
   }
+
   if (severity === 'high') {
     return (
       <div className={styles.urgencyLabel} data-severity="high">
@@ -198,6 +190,7 @@ function renderUrgencyLabel(severity: string | undefined): ReactNode {
       </div>
     );
   }
+
   return null;
 }
 
@@ -405,6 +398,44 @@ export function WorkerDomainSection({
   onViewContext,
 }: WorkerDomainSectionProps) {
 
+  // Accordion toggle state (expanded by default)
+  const [isExpanded, setIsExpanded] = useState(true);
+  const toggleExpanded = useCallback(() => setIsExpanded(prev => !prev), []);
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleExpanded();
+    }
+  }, [toggleExpanded]);
+
+  // Scroll-triggered reveal: IntersectionObserver fires once when section enters viewport
+  const sectionRef = useRef<HTMLElement>(null);
+  const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+
+    // Respect prefers-reduced-motion — show immediately
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      setRevealed(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setRevealed(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Apply translations if available
   const displayStrengths = useMemo(
     () => applyTranslatedStrengths(strengths, translatedStrengthsData),
@@ -447,8 +478,19 @@ export function WorkerDomainSection({
   };
 
   return (
-    <section className={styles.domainSection}>
-      <div className={styles.domainHeader}>
+    <section
+      ref={sectionRef}
+      className={styles.domainSection}
+      data-revealed={revealed || undefined}
+    >
+      <div
+        className={styles.domainHeader}
+        onClick={toggleExpanded}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+      >
         <div className={styles.domainTitleRow}>
           <span className={styles.domainIcon}>{config.icon}</span>
           <div className={styles.domainTitleGroup}>
@@ -456,16 +498,27 @@ export function WorkerDomainSection({
             <p className={styles.domainSubtitle}>{config.subtitle}</p>
           </div>
         </div>
-        {domainScore !== undefined && (
-          <ScoreGauge score={domainScore} label={config.scoreLabel} />
-        )}
+        <div className={styles.domainHeaderRight}>
+          {domainScore !== undefined && (
+            <ScoreGauge score={domainScore} label={config.scoreLabel} />
+          )}
+          <span className={styles.chevronIndicator} aria-hidden="true">&#x25B6;</span>
+        </div>
       </div>
 
+      <div className={styles.contentWrapper} data-expanded={isExpanded || undefined}>
+      <div className={styles.contentInner}>
       <div className={styles.insightsGrid}>
         {/* Strengths Column */}
         {displayStrengths.length > 0 && (
           <div className={styles.insightsColumn}>
-            <h4 className={styles.columnTitle}>Strengths</h4>
+            <h4 className={`${styles.columnTitle} ${styles.columnTitleStrength}`}>
+              <span className={styles.columnIcon} data-type="strength">+</span>
+              <span>Strengths</span>
+              <span className={`${styles.columnCount} ${styles.columnCountStrength}`}>
+                {displayStrengths.length}
+              </span>
+            </h4>
             <div className={styles.cardsContainer}>
               {displayStrengths.map((strength, idx) => (
                 <StrengthCard
@@ -482,7 +535,13 @@ export function WorkerDomainSection({
         {/* Growth Areas Column */}
         {displayGrowthAreas.length > 0 && (
           <div className={styles.insightsColumn}>
-            <h4 className={styles.columnTitle}>Growth Areas</h4>
+            <h4 className={`${styles.columnTitle} ${styles.columnTitleGrowth}`}>
+              <span className={styles.columnIcon} data-type="growth">!</span>
+              <span>Growth Areas</span>
+              <span className={`${styles.columnCount} ${styles.columnCountGrowth}`}>
+                {displayGrowthAreas.length}
+              </span>
+            </h4>
             <div className={styles.cardsContainer}>
               {displayGrowthAreas.map((growth, idx) => {
                 // Use original (English) growthAreas for insight lookup key matching
@@ -502,6 +561,8 @@ export function WorkerDomainSection({
             </div>
           </div>
         )}
+      </div>
+      </div>
       </div>
 
     </section>

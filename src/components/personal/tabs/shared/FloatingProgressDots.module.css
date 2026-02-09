@@ -3,6 +3,11 @@
  *
  * Fixed vertical navigation dots on the right side of viewport.
  * Appears when scrolling past the header section.
+ *
+ * Three-state dot system:
+ * - visited: green — scrolled past
+ * - active: cyan + glow — currently in viewport
+ * - upcoming: muted — not yet reached (next-up gets subtle pulse)
  */
 
 /* Container — fixed right side */
@@ -75,11 +80,71 @@
   background: var(--ink-secondary);
 }
 
-/* Active dot */
+/* ============================================================================
+   Three-state dot styles via data-status attribute
+   ============================================================================ */
+
+/* Visited: green dot — section scrolled past */
+.dotInner[data-status="visited"] {
+  background: var(--sketch-green);
+}
+
+/* Active: cyan dot + glow — currently in viewport */
+.dotInner[data-status="active"] {
+  background: var(--sketch-cyan);
+  transform: scale(1.3);
+  box-shadow: 0 0 8px var(--sketch-cyan-glow-strong);
+}
+
+/* Upcoming: muted (default styling) */
+.dotInner[data-status="upcoming"] {
+  background: var(--ink-light);
+}
+
+/* Next-up dot: subtle pulse to draw eye downward */
+.dotNextUp .dotInner[data-status="upcoming"] {
+  animation: dotPulse 2s ease-in-out infinite;
+}
+
+/* Active dot (keep for backward compat with .dotActive class) */
 .dotActive .dotInner {
   background: var(--sketch-cyan);
   transform: scale(1.3);
-  box-shadow: 0 0 8px rgba(0, 188, 212, 0.4);
+  box-shadow: 0 0 8px var(--sketch-cyan-glow-strong);
+}
+
+/* ============================================================================
+   "More below" nudge indicator
+   ============================================================================ */
+
+.moreBelow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: var(--space-xs);
+}
+
+.moreBelowArrow {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  line-height: 1;
+  animation: nudgeBounce 2s ease-in-out infinite;
+}
+
+/* ============================================================================
+   Reduced motion: disable all animations
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .dotNextUp .dotInner[data-status="upcoming"] {
+    animation: none;
+  }
+
+  .moreBelowArrow {
+    animation: none;
+  }
 }
 
 /* Tooltip */

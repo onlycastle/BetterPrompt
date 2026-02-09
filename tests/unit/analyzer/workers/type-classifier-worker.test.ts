@@ -82,10 +82,9 @@ function makeParagraph(base: string, minLength: number): string {
   return result;
 }
 
-const LONG_PARAGRAPH_1 = makeParagraph('Your **methodical approach** to development reveals a deeply structured thinker who naturally gravitates toward systematic problem-solving. When you said 「Let me verify this works before we continue」, it showed a natural instinct for **quality validation** that sets you apart from developers who accept AI output uncritically.', 500);
-const LONG_PARAGRAPH_2 = makeParagraph('This verification-first mindset, combined with your consistent habit of breaking tasks into smaller components before diving into implementation, places you firmly in the architect category. You don\'t just plan — you create structured frameworks that guide both your own thinking and the AI\'s output.', 500);
-const LONG_PARAGRAPH_3 = makeParagraph('Your **navigator-level control** means you maintain a balanced relationship with AI tools. You guide the direction while remaining open to suggestions, creating a productive collaboration dynamic that maximizes both human insight and AI capability.', 500);
-const LONG_PARAGRAPH_4 = makeParagraph('Your growth trajectory shows a developer who continuously refines their collaboration patterns with AI. The evidence of deliberate practice in your workflow suggests you will continue to evolve as AI tools become more sophisticated.', 500);
+const LONG_PARAGRAPH_1 = makeParagraph('**Systems Architects** are the master planners of the developer world. They approach AI collaboration as a **hypothesis-testing partnership** — always probing, always structuring, always verifying before committing.', 300);
+const LONG_PARAGRAPH_2 = makeParagraph('Your sessions reveal a distinctive pattern: you consistently verify AI suggestions against your own mental model before committing. Your **repeated mistake rate is remarkably low**, a hallmark of the architect mindset.', 300);
+const LONG_PARAGRAPH_3 = makeParagraph('Your next evolution is **systematic test-driven workflows**. Your investigative instincts are already strong — channeling them into structured verification routines will compound your quality advantage.', 300);
 
 function createMockLLMOutput(): TypeClassifierOutput {
   return {
@@ -97,7 +96,7 @@ function createMockLLMOutput(): TypeClassifierOutput {
     matrixEmoji: '🏗️',
     collaborationMaturity: { level: 'ai_assisted_engineer', description: 'Uses AI as a capable tool while maintaining control', indicators: ['verifies_output', 'guides_direction', 'maintains_ownership'] },
     confidenceScore: 0.85,
-    reasoning: [LONG_PARAGRAPH_1, LONG_PARAGRAPH_2, LONG_PARAGRAPH_3, LONG_PARAGRAPH_4],
+    reasoning: [LONG_PARAGRAPH_1, LONG_PARAGRAPH_2, LONG_PARAGRAPH_3],
   };
 }
 
@@ -170,7 +169,7 @@ describe('TypeClassifierWorker', () => {
 
       expect(result.data.reasoning).toBeDefined();
       expect(Array.isArray(result.data.reasoning)).toBe(true);
-      expect((result.data.reasoning as string[]).length).toBe(4);
+      expect((result.data.reasoning as string[]).length).toBe(3);
     });
 
     it('should normalize distribution to sum to 100', async () => {
@@ -236,18 +235,18 @@ describe('TypeClassifierWorker', () => {
 
       // Should have retried (2 calls total)
       expect(mockGenerateStructured).toHaveBeenCalledTimes(2);
-      // Should use the good result with 4 elements
-      expect((result.data.reasoning as string[]).length).toBe(4);
+      // Should use the good result with 3 elements
+      expect((result.data.reasoning as string[]).length).toBe(3);
     });
 
     it('should use best result when all retries fail quality checks', async () => {
       const shortOutput = {
         ...createMockLLMOutput(),
-        reasoning: ['A'.repeat(300), 'B'.repeat(300)],
+        reasoning: ['A'.repeat(200), 'B'.repeat(200)],
       };
       const slightlyBetterOutput = {
         ...createMockLLMOutput(),
-        reasoning: ['C'.repeat(400), 'D'.repeat(400), 'E'.repeat(400)],
+        reasoning: ['C'.repeat(250), 'D'.repeat(250), 'E'.repeat(250)],
       };
       const worstOutput = {
         ...createMockLLMOutput(),
@@ -263,7 +262,7 @@ describe('TypeClassifierWorker', () => {
 
       // Should have attempted all 3 times
       expect(mockGenerateStructured).toHaveBeenCalledTimes(3);
-      // Should pick the longest result (slightlyBetterOutput = 1200 chars)
+      // Should pick the longest result (slightlyBetterOutput = 750 chars, still under 800 minimum)
       expect((result.data.reasoning as string[]).length).toBe(3);
     });
 

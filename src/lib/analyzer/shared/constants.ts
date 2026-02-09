@@ -59,6 +59,18 @@ Constructive growth areas help developers continue improving, not criticize thei
 - Actionable recommendations
 `;
 
+/**
+ * Patterns that identify a `/clear` command in Claude Code sessions.
+ * Used to split a single JSONL session into logical segments.
+ *
+ * Must match against raw message.content (before stripSystemTags)
+ * so that the XML-tagged variant is detected.
+ */
+export const CLEAR_COMMAND_PATTERNS: RegExp[] = [
+  /^\/clear\s*$/m,
+  /<command-name>\/clear<\/command-name>/,
+];
+
 export const NO_HEDGING_DIRECTIVE = `
 <language_requirements>
 ## CRITICAL: Direct, Confident Language

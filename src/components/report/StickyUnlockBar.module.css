@@ -1,0 +1,135 @@
+/**
+ * StickyUnlockBar Styles
+ *
+ * Terminal-style status bar fixed at viewport bottom.
+ * Appears when user scrolls past report header, hides when #unlock-section enters viewport.
+ * Matches notebook-sketch design system: monospace font, dashed border, cyan accent.
+ */
+
+/* Container — fixed bottom bar */
+.bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 150;
+  background: var(--surface-1);
+  border-top: 2px dashed var(--ink-light);
+  box-shadow: 0 -2px 12px rgba(26, 26, 46, 0.08);
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+
+.bar.visible {
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Inner layout */
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-md) var(--space-lg);
+}
+
+/* Left: terminal-style status text */
+.statusText {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.prompt {
+  color: var(--sketch-cyan);
+  font-weight: var(--weight-semibold);
+}
+
+.lockIcon {
+  font-size: var(--text-md);
+}
+
+.count {
+  color: var(--sketch-cyan);
+  font-weight: var(--weight-bold);
+}
+
+.separator {
+  color: var(--ink-light);
+}
+
+.price {
+  color: var(--ink-muted);
+}
+
+/* Right: CTA button */
+.cta {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--sketch-cyan);
+  color: var(--bg-paper);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-sm);
+  box-shadow: 2px 2px 0 var(--ink-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.cta:hover {
+  background: var(--accent-primary-hover);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink-primary);
+}
+
+.cta:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink-primary);
+}
+
+/* ============================================
+   Responsive — Mobile
+   ============================================ */
+@media (max-width: 640px) {
+  .inner {
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .statusText {
+    font-size: var(--text-xs);
+    white-space: normal;
+    text-align: center;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .cta {
+    width: 100%;
+    justify-content: center;
+    padding: var(--space-sm) var(--space-lg);
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    transition: none;
+  }
+}

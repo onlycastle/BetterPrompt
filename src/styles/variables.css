@@ -81,6 +81,8 @@
   --sketch-cyan: #00BCD4;
   --sketch-cyan-light: rgba(0, 188, 212, 0.15);
   --sketch-cyan-soft: rgba(0, 188, 212, 0.08);
+  --sketch-cyan-glow: rgba(0, 188, 212, 0.3);
+  --sketch-cyan-glow-strong: rgba(0, 188, 212, 0.4);
 
   --sketch-yellow: #FFD93D;
   --sketch-yellow-light: rgba(255, 217, 61, 0.25);
@@ -291,5 +293,37 @@
 @keyframes scoreRingFill {
   from {
     stroke-dashoffset: 157;
+  }
+}
+
+/* Scroll-triggered section reveal */
+@keyframes sectionReveal {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* "More below" nudge bounce for FloatingProgressDots */
+@keyframes nudgeBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+/* Subtle pulse for next-up dot */
+@keyframes dotPulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
   }
 }

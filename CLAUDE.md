@@ -41,7 +41,7 @@ npm test               # Run all tests
 | 2 | 5 Insight Workers | 5 | Parallel analysis (ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency, SessionOutcome) |
 | 2 | ProjectSummarizer | 1 | Project-level summaries from activitySessions (parallel with workers) |
 | 2 | WeeklyInsightGenerator | 1 | Weekly narrative + highlights from activitySessions (parallel with workers) |
-| 2.5 | TypeClassifier | 1 | Developer type classification (5x3 matrix) + personalized reasoning narrative (→ personalitySummary) |
+| 2.5 | TypeClassifier | 1 | Developer type classification (5x3 matrix) + MBTI-style personality narrative (3 paragraphs, 900-1300 chars, indirect behavioral patterns → personalitySummary) |
 | 2.75 | KnowledgeResourceMatcher | 0 | Deterministic resource matching from curated database |
 | 2.8 | EvidenceVerifier | 1 | LLM-based evidence verification |
 | 3 | ContentWriter | 1 | topFocusAreas narrative (personalitySummary moved to Phase 2.5) |
