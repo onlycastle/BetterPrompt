@@ -84,6 +84,14 @@
     opacity: 1;
     transform: none;
   }
+
+  .contentWrapper {
+    transition: none;
+  }
+
+  .chevronIndicator {
+    transition: none;
+  }
 }
 
 /* ============================================================================
@@ -98,6 +106,61 @@
   background: var(--ink-primary);
   color: var(--bg-paper);
   gap: var(--space-md);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-fast);
+}
+
+.domainHeader:hover {
+  background: var(--ink-secondary);
+}
+
+.domainHeader:focus-visible {
+  outline: 2px solid var(--sketch-cyan);
+  outline-offset: -2px;
+}
+
+.domainHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   Chevron Indicator — rotates when expanded
+   ============================================================================ */
+
+.chevronIndicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  color: var(--sketch-cyan);
+  transition: transform 0.3s ease;
+  transform: rotate(0deg);
+}
+
+.domainHeader[aria-expanded="true"] .chevronIndicator {
+  transform: rotate(90deg);
+}
+
+/* ============================================================================
+   Content Wrapper — CSS Grid accordion animation
+   ============================================================================ */
+
+.contentWrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.contentWrapper[data-expanded] {
+  grid-template-rows: 1fr;
+}
+
+.contentInner {
+  overflow: hidden;
 }
 
 .domainTitleRow {
@@ -826,6 +889,10 @@
     flex-wrap: wrap;
     gap: var(--space-sm);
     padding: var(--space-sm) var(--space-md);
+  }
+
+  .chevronIndicator {
+    font-size: var(--text-xs);
   }
 
   .domainTitleRow {

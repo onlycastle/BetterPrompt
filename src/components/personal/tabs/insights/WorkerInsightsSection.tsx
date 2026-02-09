@@ -21,7 +21,7 @@
  * - Context Efficiency (ContextEfficiencyWorker): Token efficiency patterns
  */
 
-import { useMemo, useRef, useState, useEffect, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, useEffect, type ReactNode } from 'react';
 import type { AggregatedWorkerInsights, WorkerStrength, WorkerGrowth, ReferencedInsight } from '../../../../lib/models/worker-insights';
 import {
   WORKER_DOMAIN_CONFIGS,
@@ -35,16 +35,11 @@ import type { CommunicationStrength, CommunicationGrowth } from '../../../../lib
 import { ExpandableEvidence } from './ExpandableEvidence';
 import styles from './WorkerInsightsSection.module.css';
 
-// Type guards to check if a strength/growth has communication pattern metadata
-function isCommunicationStrength(
-  item: WorkerStrength
-): item is CommunicationStrength {
+function isCommunicationStrength(item: WorkerStrength): item is CommunicationStrength {
   return '_meta' in item && (item as CommunicationStrength)._meta?.source === 'communication_pattern';
 }
 
-function isCommunicationGrowth(
-  item: WorkerGrowth
-): item is CommunicationGrowth {
+function isCommunicationGrowth(item: WorkerGrowth): item is CommunicationGrowth {
   return '_meta' in item && (item as CommunicationGrowth)._meta?.source === 'communication_pattern';
 }
 
@@ -403,6 +398,16 @@ export function WorkerDomainSection({
   onViewContext,
 }: WorkerDomainSectionProps) {
 
+  // Accordion toggle state (expanded by default)
+  const [isExpanded, setIsExpanded] = useState(true);
+  const toggleExpanded = useCallback(() => setIsExpanded(prev => !prev), []);
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleExpanded();
+    }
+  }, [toggleExpanded]);
+
   // Scroll-triggered reveal: IntersectionObserver fires once when section enters viewport
   const sectionRef = useRef<HTMLElement>(null);
   const [revealed, setRevealed] = useState(false);
@@ -478,7 +483,14 @@ export function WorkerDomainSection({
       className={styles.domainSection}
       data-revealed={revealed || undefined}
     >
-      <div className={styles.domainHeader}>
+      <div
+        className={styles.domainHeader}
+        onClick={toggleExpanded}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+      >
         <div className={styles.domainTitleRow}>
           <span className={styles.domainIcon}>{config.icon}</span>
           <div className={styles.domainTitleGroup}>
@@ -486,11 +498,16 @@ export function WorkerDomainSection({
             <p className={styles.domainSubtitle}>{config.subtitle}</p>
           </div>
         </div>
-        {domainScore !== undefined && (
-          <ScoreGauge score={domainScore} label={config.scoreLabel} />
-        )}
+        <div className={styles.domainHeaderRight}>
+          {domainScore !== undefined && (
+            <ScoreGauge score={domainScore} label={config.scoreLabel} />
+          )}
+          <span className={styles.chevronIndicator} aria-hidden="true">&#x25B6;</span>
+        </div>
       </div>
 
+      <div className={styles.contentWrapper} data-expanded={isExpanded || undefined}>
+      <div className={styles.contentInner}>
       <div className={styles.insightsGrid}>
         {/* Strengths Column */}
         {displayStrengths.length > 0 && (
@@ -544,6 +561,8 @@ export function WorkerDomainSection({
             </div>
           </div>
         )}
+      </div>
+      </div>
       </div>
 
     </section>
