@@ -83,6 +83,14 @@ npm test               # Run all tests
 >
 > Legacy pipe-delimited formats have backward-compatible fallback paths in `evaluation-assembler.ts`.
 
+> ⚠️ **Prompt–Schema Constraint Sync**: Gemini does NOT enforce `minLength`/`maxLength` from `responseJsonSchema` during generation. Schema constraints only validate output after the fact; the LLM relies solely on **prompt instructions** to meet length requirements.
+>
+> **Rule**: Every Zod constraint that affects content length (e.g., `.min(150)` on `recommendation`) MUST have a matching natural-language instruction in the worker's prompt example block (e.g., `"MINIMUM 150 characters"`).
+>
+> **Worker prompt files**: `src/lib/analyzer/workers/prompts/*-prompts.ts`
+>
+> **Bug History (2026-02-09)**: `SessionOutcomeWorker` prompt lacked `"MINIMUM 150 characters"` guide for `recommendation`, causing Zod validation failure (`worker-insights.ts:238`) while the other 4 workers had it.
+
 **JSONL Parsing**: Session logs contain `user`, `assistant`, `queue-operation`, `file-history-snapshot` types. Only `user` and `assistant` are analyzed. Content blocks: `text`, `tool_use`, `tool_result`.
 
 **Path Encoding**: Claude Code encodes paths by replacing `/` with `-`. See `encodeProjectPath`/`decodeProjectPath` in `src/lib/parser/jsonl-reader.ts`.
