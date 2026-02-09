@@ -22,29 +22,30 @@ interface ErrorCardConfig {
 }
 
 function getErrorCardConfig(errorStatus: number | null | undefined, errorMessage?: string): ErrorCardConfig {
-  switch (errorStatus) {
-    case 404:
-      return {
-        title: 'Report Not Found',
-        message: "This analysis report doesn't exist or the link may be incorrect.",
-        icon: '🔍',
-        showRetry: false,
-      };
-    case 410:
-      return {
-        title: 'Report Expired',
-        message: 'This analysis report has expired. Run a new analysis to generate a fresh report.',
-        icon: '⏳',
-        showRetry: false,
-      };
-    default:
-      return {
-        title: 'Something Went Wrong',
-        message: errorMessage || 'Failed to load the analysis. Please try again.',
-        icon: '⚠️',
-        showRetry: true,
-      };
+  if (errorStatus === 404) {
+    return {
+      title: 'Report Not Found',
+      message: "This analysis report doesn't exist or the link may be incorrect.",
+      icon: '🔍',
+      showRetry: false,
+    };
   }
+
+  if (errorStatus === 410) {
+    return {
+      title: 'Report Expired',
+      message: 'This analysis report has expired. Run a new analysis to generate a fresh report.',
+      icon: '⏳',
+      showRetry: false,
+    };
+  }
+
+  return {
+    title: 'Something Went Wrong',
+    message: errorMessage || 'Failed to load the analysis. Please try again.',
+    icon: '⚠️',
+    showRetry: true,
+  };
 }
 
 interface DashboardReportContentProps {
@@ -65,6 +66,14 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
       return () => clearTimeout(timer);
     }
   }, [showSuccessToast]);
+
+  // Auto-retry when payment succeeded but report still shows locked
+  useEffect(() => {
+    if (paymentSuccess && !isPaid && !isLoading) {
+      const timer = setTimeout(() => refetch(), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [paymentSuccess, isPaid, isLoading, refetch]);
 
   // Loading state
   if (isLoading) {

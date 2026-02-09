@@ -29,7 +29,6 @@ export function DashboardSidebar() {
 
   const handleSignOut = async () => {
     await signOut();
-    window.location.href = '/';
   };
 
   // Get user display name
@@ -38,10 +37,8 @@ export function DashboardSidebar() {
     || user?.email?.split('@')[0]
     || 'User';
 
-  // Check if current path matches nav item (including subroutes)
   const isActive = (itemPath: string) => {
     if (itemPath === '/dashboard/personal') {
-      // Personal tab includes /dashboard/personal and /dashboard/personal/r/*
       return pathname === itemPath || pathname.startsWith('/dashboard/personal/');
     }
     return pathname === itemPath;

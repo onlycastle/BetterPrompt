@@ -143,6 +143,17 @@ async function processSuccessfulCheckout(
     } else {
       console.log('[Webhook] Report auto-unlocked:', unlocked);
     }
+
+    // Safety net: ensure report is unlocked regardless of credit system outcome
+    const { error: ensureError } = await supabase
+      .from('analysis_results')
+      .update({ is_paid: true, paid_at: new Date().toISOString() })
+      .eq('result_id', resultId)
+      .eq('is_paid', false);
+
+    if (ensureError) {
+      console.error('[Webhook] Safety net failed:', ensureError);
+    }
   }
 
   return { success: true };
