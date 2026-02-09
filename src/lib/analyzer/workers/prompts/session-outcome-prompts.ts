@@ -219,7 +219,7 @@ Each growth area must have:
   "evidence": [
     { "utteranceId": "session2_5", "quote": "That didn't work...", "context": "After file write failure" }
   ],
-  "recommendation": "Verify file paths and permissions before operations",
+  "recommendation": "4-6 sentences (MINIMUM 150 characters): step-by-step actionable advice for improving session outcomes",
   "severity": "high | medium | low"
 }
 \`\`\`
