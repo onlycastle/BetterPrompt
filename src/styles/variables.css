@@ -11,10 +11,10 @@
   /* ============================================
      Typography - Notebook Sketch (FiraCode Monospace)
      ============================================ */
-  --font-primary: var(--font-fira), 'Fira Code', 'SF Mono', 'Monaco', 'Consolas', monospace;
-  --font-display: var(--font-fira), 'Fira Code', monospace;
-  --font-body: var(--font-fira), 'Fira Code', monospace;
-  --font-mono: var(--font-fira), 'Fira Code', monospace;
+  --font-primary: var(--font-fira), 'Fira Code', var(--font-noto-kr), 'Noto Sans KR', 'SF Mono', 'Monaco', 'Consolas', monospace;
+  --font-display: var(--font-fira), 'Fira Code', var(--font-noto-kr), 'Noto Sans KR', monospace;
+  --font-body: var(--font-fira), 'Fira Code', var(--font-noto-kr), 'Noto Sans KR', monospace;
+  --font-mono: var(--font-fira), 'Fira Code', var(--font-noto-kr), 'Noto Sans KR', monospace;
 
   /* Typography Scale (adjusted for monospace) */
   --text-xs: 11px;
