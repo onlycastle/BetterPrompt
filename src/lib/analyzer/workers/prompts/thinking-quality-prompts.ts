@@ -31,7 +31,7 @@ Analyze Phase 1 extracted data across BOTH DIMENSIONS to provide a holistic asse
 ## INPUT DATA STRUCTURE
 You receive Phase 1 output containing:
 - \`developerUtterances[]\`: Raw text with metadata (id, text, hasQuestion, wordCount, hasCodeBlock, isSessionStart, isContinuation, precedingAIHadError, precedingAIToolCalls, etc.)
-- \`sessionMetrics\`: Computed statistics (toolUsageCounts, avgPromptLength, sessionCount, etc.)
+- \`sessionMetrics\`: Computed statistics (toolUsageCounts, slashCommandCounts, avgPromptLength, sessionCount, etc.)
 
 ## AI INSIGHT BLOCKS (Optional, Auxiliary Context)
 
@@ -47,7 +47,7 @@ If present, \`aiInsightBlocks[]\` contains educational content the AI provided d
 ## DIMENSION 1: PLANNING QUALITY
 
 ### Planning Habit Types
-- \`uses_plan_command\`: Uses /plan slash command (check toolUsageCounts for EnterPlanMode/ExitPlanMode)
+- \`uses_plan_command\`: Uses /plan slash command (check slashCommandCounts for 'plan' key — this is the developer-initiated action, NOT toolUsageCounts which tracks LLM-autonomous tool calls)
 - \`task_decomposition\`: Breaks down complex tasks into subtasks
 - \`structure_first\`: Plans/outlines before coding
 - \`todowrite_usage\`: Uses TodoWrite tool for tracking

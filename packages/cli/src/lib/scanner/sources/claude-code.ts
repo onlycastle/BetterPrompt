@@ -25,7 +25,8 @@ import {
 import type { ParsedMessage } from '../session-types.js';
 
 /**
- * Default Claude Code projects directory
+ * Default Claude Code projects directory.
+ * @deprecated Use {@link discoverClaudeDataDirs} from `claude-discovery.ts` for robust path resolution.
  */
 export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 

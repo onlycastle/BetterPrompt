@@ -324,18 +324,83 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 - Confidence: ${tq.confidenceScore}`);
     }
 
-    // Tool Usage Section (from Phase 1) — for Conductor detection
+    // User Slash Commands (PRIMARY signal for Conductor detection)
+    if (phase1Output?.sessionMetrics?.slashCommandCounts) {
+      const cmds = phase1Output.sessionMetrics.slashCommandCounts;
+      const uniqueCommands = Object.keys(cmds).length;
+      const totalCommands = Object.values(cmds).reduce((sum, count) => sum + count, 0);
+      const planCommands = cmds['plan'] || 0;
+      const commitCommands = cmds['commit'] || 0;
+      const reviewCommands = cmds['review'] || 0;
+      const orchestrationCommands = (cmds['sisyphus'] || 0) + (cmds['orchestrator'] || 0) + (cmds['ultrawork'] || 0) + (cmds['ralph-loop'] || 0);
+      sections.push(`### User Slash Commands (developer-initiated actions — PRIMARY signal)
+- Unique commands: ${uniqueCommands} types (${Object.keys(cmds).slice(0, 8).join(', ')}${uniqueCommands > 8 ? '...' : ''})
+- Planning: /plan (${planCommands}), /review (${reviewCommands}), /commit (${commitCommands})
+- Orchestration: sisyphus/orchestrator/ultrawork/ralph-loop (${orchestrationCommands} total)
+- Total slash commands: ${totalCommands}`);
+    }
+
+    // LLM Tool Usage (SECONDARY context — NOT developer actions)
     if (phase1Output?.sessionMetrics?.toolUsageCounts) {
       const tools = phase1Output.sessionMetrics.toolUsageCounts;
       const uniqueTools = Object.keys(tools).length;
       const totalCalls = Object.values(tools).reduce((sum, count) => sum + count, 0);
-      const enterPlanMode = tools['EnterPlanMode'] || tools['enterplanmode'] || 0;
-      const todoWrite = tools['TodoWrite'] || tools['todowrite'] || 0;
-      const taskTool = tools['Task'] || tools['task'] || 0;
-      sections.push(`### Tool Usage (from Phase 1)
+      sections.push(`### LLM Tool Usage (AI-autonomous actions — secondary context, NOT developer actions)
 - Unique tools: ${uniqueTools} types (${Object.keys(tools).slice(0, 8).join(', ')}${uniqueTools > 8 ? '...' : ''})
-- EnterPlanMode: ${enterPlanMode}, TodoWrite: ${todoWrite}, Task: ${taskTool}
-- Total tool calls: ${totalCalls}`);
+- Total LLM tool calls: ${totalCalls}
+- NOTE: These are tools the LLM invoked autonomously. They do NOT reflect developer's tool orchestration ability.`);
+    }
+
+    // Session Outcomes (from Phase 2 SessionOutcome worker) — for behavioral scenario generation
+    if (agentOutputs.sessionOutcome) {
+      const so = agentOutputs.sessionOutcome;
+
+      // Goal distribution: top goals with success rates
+      const topGoals = so.goalDistribution
+        ?.sort((a, b) => b.count - a.count)
+        .slice(0, 5)
+        .map(g => `${g.goal} (${g.count} sessions, ${g.successRate}% success)`)
+        .join(', ') || 'none';
+
+      // Friction summary: top frictions with impact
+      const topFrictions = so.frictionSummary
+        ?.sort((a, b) => b.count - a.count)
+        .slice(0, 5)
+        .map(f => `${f.type} (${f.count}, ${f.impactLevel} impact)`)
+        .join(', ') || 'none';
+
+      // Success patterns
+      const successPats = so.successPatterns
+        ?.slice(0, 3)
+        .map(p => `"${p.pattern}" (${p.frequency}%)`)
+        .join(', ') || 'none';
+
+      // Session type distribution
+      const sessionTypes = so.sessionTypeDistribution
+        ?.sort((a, b) => b.count - a.count)
+        .map(t => `${t.type} (${t.count})`)
+        .join(', ') || 'none';
+
+      // Satisfaction from individual session analyses
+      const satisfactionCounts: Record<string, number> = {};
+      if (so.sessionAnalyses) {
+        for (const sa of so.sessionAnalyses) {
+          satisfactionCounts[sa.satisfaction] = (satisfactionCounts[sa.satisfaction] || 0) + 1;
+        }
+      }
+      const satisfactionSummary = Object.entries(satisfactionCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([level, count]) => `${level} (${count})`)
+        .join(', ') || 'none';
+
+      sections.push(`### Session Outcomes
+- Overall success rate: ${so.overallSuccessRate}/100
+- Overall outcome score: ${so.overallOutcomeScore}/100
+- Top goals: ${topGoals}
+- Top friction: ${topFrictions}
+- Success patterns: ${successPats}
+- Session types: ${sessionTypes}
+- Satisfaction: ${satisfactionSummary}`);
     }
 
     // Trend Sensitivity Section (from Phase 1 utterances) — for Trendsetter detection

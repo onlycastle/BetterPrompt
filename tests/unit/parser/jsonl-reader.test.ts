@@ -164,6 +164,36 @@ describe('JSONL Reader', () => {
     it('should handle paths with trailing slash', () => {
       expect(getProjectName('/Users/dev/myapp/')).toBe('myapp');
     });
+
+    it('should handle deeply nested paths (10+ levels)', () => {
+      expect(getProjectName('/a/b/c/d/e/f/g/h/i/j/project')).toBe('project');
+    });
+
+    it('should handle paths with spaces', () => {
+      expect(getProjectName('/Users/dev/My Projects/my app')).toBe('my app');
+    });
+
+    it('should handle unicode paths', () => {
+      expect(getProjectName('/Users/사용자/프로젝트/앱')).toBe('앱');
+    });
+
+    it('should handle dot-separated names', () => {
+      expect(getProjectName('/Users/dev/org.company/repo.name')).toBe(
+        'repo.name'
+      );
+    });
+
+    it('should handle consecutive slashes', () => {
+      expect(getProjectName('///Users///dev///myapp')).toBe('myapp');
+    });
+
+    it('should handle relative paths', () => {
+      expect(getProjectName('projects/myapp')).toBe('myapp');
+    });
+
+    it('should return unknown for whitespace-only string', () => {
+      expect(getProjectName('   ')).toBe('unknown');
+    });
   });
 });
 

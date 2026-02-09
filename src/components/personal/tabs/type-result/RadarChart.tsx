@@ -20,6 +20,10 @@ interface RadarChartProps {
   fillOpacity?: number;
   /** Accessible label for screen readers */
   ariaLabel: string;
+  /** Show numerical values at each data point */
+  showValues?: boolean;
+  /** Custom formatter for values (e.g., v => `${v}%`) */
+  valueFormatter?: (value: number) => string;
 }
 
 /** Number of concentric grid levels */
@@ -30,6 +34,10 @@ const SIZE = 200;
 const CENTER = SIZE / 2;
 const RADIUS = 72;
 const LABEL_OFFSET = 18;
+
+/** Extra viewBox padding so labels (e.g. "Communication") don't clip */
+const PADDING_H = 30;
+const PADDING_V = 5;
 
 /**
  * Convert polar coordinates to cartesian, starting from 12 o'clock going clockwise.
@@ -79,6 +87,8 @@ export function RadarChart({
   color,
   fillOpacity = 0.25,
   ariaLabel,
+  showValues = false,
+  valueFormatter,
 }: RadarChartProps) {
   const total = labels.length;
   const safeMax = maxValue || 100;
@@ -92,7 +102,7 @@ export function RadarChart({
 
   return (
     <div className={styles.container} role="img" aria-label={ariaLabel}>
-      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className={styles.svg}>
+      <svg viewBox={`-${PADDING_H} -${PADDING_V} ${SIZE + 2 * PADDING_H} ${SIZE + 2 * PADDING_V}`} className={styles.svg}>
         {/* Concentric pentagon grids */}
         {Array.from({ length: GRID_LEVELS }, (_, level) => {
           const r = RADIUS * ((level + 1) / GRID_LEVELS);
@@ -156,6 +166,24 @@ export function RadarChart({
               className={styles.label}
             >
               {label}
+            </text>
+          );
+        })}
+
+        {/* Numerical values near each data point */}
+        {showValues && dataPoints.map(([x, y], i) => {
+          const angle = (i / total) * 2 * Math.PI - Math.PI / 2;
+          const nudge = 10;
+          return (
+            <text
+              key={`value-${i}`}
+              x={x + nudge * Math.cos(angle)}
+              y={y + nudge * Math.sin(angle)}
+              textAnchor="middle"
+              dominantBaseline="central"
+              className={styles.valueLabel}
+            >
+              {valueFormatter ? valueFormatter(data[i]) : String(Math.round(data[i]))}
             </text>
           );
         })}

@@ -858,6 +858,7 @@ export class AnalysisOrchestrator {
       communicationPatterns: results['CommunicationPatterns']?.data as AgentOutputs['communicationPatterns'],
       learningBehavior: results['LearningBehavior']?.data as AgentOutputs['learningBehavior'],
       efficiency: results['ContextEfficiency']?.data as AgentOutputs['efficiency'],
+      sessionOutcome: results['SessionOutcome']?.data as AgentOutputs['sessionOutcome'],
       // Legacy workers (kept for cached data)
       knowledgeGap: results['KnowledgeGap']?.data as AgentOutputs['knowledgeGap'],
       contextEfficiency: results['ContextEfficiency']?.data as AgentOutputs['contextEfficiency'],
@@ -904,6 +905,17 @@ export class AnalysisOrchestrator {
     if (agentOutputs.learningBehavior && verifiedInsights.learningBehavior) {
       agentOutputs.learningBehavior.strengths = verifiedInsights.learningBehavior.strengths;
       agentOutputs.learningBehavior.growthAreas = verifiedInsights.learningBehavior.growthAreas;
+    }
+
+    // v3 efficiency domain
+    if (agentOutputs.efficiency && verifiedInsights.contextEfficiency) {
+      agentOutputs.efficiency.strengths = verifiedInsights.contextEfficiency.strengths;
+      agentOutputs.efficiency.growthAreas = verifiedInsights.contextEfficiency.growthAreas;
+    }
+
+    if (agentOutputs.sessionOutcome && verifiedInsights.sessionOutcome) {
+      agentOutputs.sessionOutcome.strengths = verifiedInsights.sessionOutcome.strengths;
+      agentOutputs.sessionOutcome.growthAreas = verifiedInsights.sessionOutcome.growthAreas;
     }
 
     // ContextEfficiency domain (legacy, kept for cached data)

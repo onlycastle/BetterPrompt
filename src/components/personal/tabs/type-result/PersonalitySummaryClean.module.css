@@ -1,10 +1,52 @@
 /**
- * PersonalitySummaryClean - Notebook Sketch Style
+ * PersonalitySummaryClean - Shareable Personality Card
+ * Notebook Sketch design system
  */
 
 .container {
   margin-bottom: var(--space-xl);
+  border-left: 4px solid var(--accent-primary);
 }
+
+/* ── Hero Badge ─────────────────────────────── */
+
+.heroBadge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px dashed var(--ink-light);
+}
+
+.heroEmoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.heroText {
+  flex: 1;
+  min-width: 0;
+}
+
+.heroName {
+  font-family: var(--font-primary);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.heroStrength {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  margin: var(--space-xs) 0 0 0;
+  line-height: 1.4;
+}
+
+/* ── Personality Text ───────────────────────── */
 
 .textContainer {
   font-family: var(--font-primary);
@@ -34,7 +76,6 @@
   font-weight: var(--weight-semibold);
 }
 
-/* Soft break spacer within paragraphs */
 .softBreak {
   display: block;
   height: var(--space-sm);
@@ -51,4 +92,128 @@
   );
   padding: 0 3px;
   border-radius: 2px;
+}
+
+/* ── Share Footer ───────────────────────────── */
+
+.shareFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px dashed var(--ink-light);
+}
+
+.shareButtons {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.shareButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+  background: var(--surface-1);
+  border: 1.5px solid var(--ink-muted);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.shareButton:hover {
+  border-color: var(--ink-primary);
+  color: var(--ink-primary);
+  box-shadow: 1px 1px 0 var(--ink-muted);
+}
+
+.shareButton:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+.xIcon {
+  font-size: 12px;
+}
+
+.twitter:hover {
+  border-color: var(--platform-twitter, var(--ink-primary));
+  color: var(--platform-twitter, var(--ink-primary));
+}
+
+.linkedin:hover {
+  border-color: var(--platform-linkedin, #0a66c2);
+  color: var(--platform-linkedin, #0a66c2);
+}
+
+.copyLink:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+/* Watermark */
+.watermark {
+  font-family: var(--font-primary);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+/* Toast notification */
+.toast {
+  position: fixed;
+  bottom: var(--space-xl);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--ink-primary);
+  color: var(--bg-paper);
+  border-radius: var(--radius-md);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  z-index: 1000;
+  animation: toastIn 0.3s ease-out;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ── Mobile Responsive ──────────────────────── */
+
+@media (max-width: 640px) {
+  .shareFooter {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .shareButtons {
+    flex-direction: column;
+  }
+
+  .shareButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .watermark {
+    text-align: right;
+  }
 }

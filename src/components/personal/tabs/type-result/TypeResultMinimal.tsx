@@ -85,12 +85,6 @@ export function TypeResultMinimal({
         workerInsights={workerInsights}
       />
 
-      {/* Sessions analyzed */}
-      <div className={styles.footer}>
-        <span className={styles.sessionsLabel}>
-          Based on {sessionsAnalyzed} session{sessionsAnalyzed !== 1 ? 's' : ''} analyzed
-        </span>
-      </div>
     </div>
   );
 }

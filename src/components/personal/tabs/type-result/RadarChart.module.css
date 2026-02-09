@@ -53,6 +53,15 @@
   fill: var(--text-secondary);
 }
 
+/* Numerical value labels near data points */
+.valueLabel {
+  font-family: var(--font-primary);
+  font-size: 7.5px;
+  font-weight: var(--weight-semibold);
+  fill: var(--text-secondary);
+  pointer-events: none;
+}
+
 /* Mount animation */
 @media (prefers-reduced-motion: no-preference) {
   .container {

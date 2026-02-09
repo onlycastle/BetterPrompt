@@ -28,7 +28,7 @@ import {
 import type { ParsedSession, ParsedMessage } from '../../models/session';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import { strategicSampleUtterances } from '../shared/sampling-utils';
-import { PHASE1_MAX_UTTERANCES, CLEAR_COMMAND_PATTERNS } from '../shared/constants';
+import { PHASE1_MAX_UTTERANCES, CLEAR_COMMAND_PATTERNS, KNOWN_SLASH_COMMANDS } from '../shared/constants';
 import { GeminiClient, type TokenUsage } from '../clients/gemini-client';
 import {
   BatchClassificationResultSchema,
@@ -142,10 +142,19 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     this.filterTokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
     const allDeveloperUtterances: DeveloperUtterance[] = [];
+    const allSlashCommands: string[] = [];
 
     // Process each session — extract ALL utterances first
     const extractStartTime = Date.now();
     for (const session of context.sessions) {
+      // Extract slash commands from raw user messages BEFORE stripSystemTags
+      for (const message of session.messages) {
+        if (message.role === 'user') {
+          const commands = DataExtractorWorker.extractSlashCommands(message.content);
+          allSlashCommands.push(...commands);
+        }
+      }
+
       const utterances = this.extractFromSession(session);
       allDeveloperUtterances.push(...utterances);
     }
@@ -171,7 +180,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
 
     // Compute metrics from filtered data (accurate representation of developer input)
     const metricsStartTime = Date.now();
-    const sessionMetrics = this.computeSessionMetrics(context.sessions, filteredUtterances);
+    const sessionMetrics = this.computeSessionMetrics(context.sessions, filteredUtterances, allSlashCommands);
     // Add insight block count to metrics (only if any found)
     if (allInsightBlocks.length > 0) {
       sessionMetrics.aiInsightBlockCount = allInsightBlocks.length;
@@ -361,7 +370,8 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    */
   private computeSessionMetrics(
     sessions: ParsedSession[],
-    utterances: DeveloperUtterance[]
+    utterances: DeveloperUtterance[],
+    allSlashCommands: string[] = []
   ): Phase1SessionMetrics {
     const totalMessages = sessions.reduce((sum, s) => sum + s.messages.length, 0);
     const totalDevUtterances = utterances.length;
@@ -384,6 +394,12 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
           }
         }
       }
+    }
+
+    // Calculate slash command counts (developer-initiated actions)
+    const slashCommandCounts: Record<string, number> = {};
+    for (const cmd of allSlashCommands) {
+      slashCommandCounts[cmd] = (slashCommandCounts[cmd] || 0) + 1;
     }
 
     // Calculate date range
@@ -415,6 +431,8 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
         latest: timestamps[timestamps.length - 1] ?? new Date().toISOString(),
       },
       toolUsageCounts,
+      // Slash command counts (developer-initiated actions)
+      ...(Object.keys(slashCommandCounts).length > 0 ? { slashCommandCounts } : {}),
       // Context fill metrics (deterministic calculation)
       ...contextFillMetrics,
       // Friction signals for SessionOutcomeWorker
@@ -422,6 +440,47 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       // Session hints for SessionOutcomeWorker
       sessionHints,
     };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Slash Command Extraction (Developer-Initiated Actions)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Extract slash commands from raw user message content.
+   *
+   * MUST be called on raw content BEFORE stripSystemTags(), because
+   * XML-tagged commands (`<command-name>/xxx</command-name>`) are stripped
+   * by that method.
+   *
+   * Two extraction strategies:
+   * 1. XML-tagged: `<command-name>/xxx</command-name>` — always trusted
+   * 2. Plain-text: `/xxx` at line start — only if in KNOWN_SLASH_COMMANDS whitelist
+   *    (prevents false positives from file paths like `/Users/foo/bar`)
+   *
+   * @param rawContent - Raw message content before system tag stripping
+   * @returns Array of slash command names (without leading `/`)
+   */
+  private static extractSlashCommands(rawContent: string): string[] {
+    const commands: string[] = [];
+
+    // Strategy 1: XML-tagged commands (always trusted)
+    const xmlPattern = /<command-name>\/([\w-]+)<\/command-name>/g;
+    let match;
+    while ((match = xmlPattern.exec(rawContent)) !== null) {
+      commands.push(match[1]!);
+    }
+
+    // Strategy 2: Plain-text `/xxx` at line start (whitelist-matched only)
+    const plainPattern = /^\/(\w[\w-]*)/gm;
+    while ((match = plainPattern.exec(rawContent)) !== null) {
+      const cmd = match[1]!;
+      if (KNOWN_SLASH_COMMANDS.has(cmd)) {
+        commands.push(cmd);
+      }
+    }
+
+    return commands;
   }
 
   // ─────────────────────────────────────────────────────────────────────────

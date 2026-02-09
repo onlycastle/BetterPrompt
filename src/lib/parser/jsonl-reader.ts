@@ -101,7 +101,8 @@ export function encodeProjectPath(path: string): string {
  * Get project name from path
  */
 export function getProjectName(projectPath: string): string {
-  const parts = projectPath.split('/').filter(Boolean);
+  const trimmed = projectPath.trim();
+  const parts = trimmed.split('/').filter(Boolean);
   return parts[parts.length - 1] || 'unknown';
 }
 

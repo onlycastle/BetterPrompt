@@ -71,6 +71,28 @@ export const CLEAR_COMMAND_PATTERNS: RegExp[] = [
   /<command-name>\/clear<\/command-name>/,
 ];
 
+/**
+ * Known Claude Code slash commands for developer intent detection.
+ *
+ * These are commands that developers INTENTIONALLY invoke (e.g., /plan, /commit).
+ * Used to distinguish developer-initiated actions from LLM-autonomous tool calls.
+ *
+ * XML-tagged commands (`<command-name>/xxx</command-name>`) are always trusted.
+ * Plain-text `/xxx` is only counted if the command name is in this whitelist,
+ * to prevent false positives from file paths like `/Users/foo/bar`.
+ */
+export const KNOWN_SLASH_COMMANDS = new Set([
+  // Claude Code built-in commands
+  'plan', 'commit', 'clear', 'compact', 'help', 'review',
+  'fast', 'bug', 'init', 'memory', 'config',
+  'model', 'permissions', 'cost', 'login', 'logout',
+  'doctor', 'listen', 'status', 'resume', 'terminal-setup',
+  // Sisyphus / custom skill commands
+  'investigate', 'sisyphus', 'ultrawork', 'deepsearch', 'analyze',
+  'prometheus', 'orchestrator', 'ralph-loop', 'cancel-ralph',
+  'update',
+]);
+
 export const NO_HEDGING_DIRECTIVE = `
 <language_requirements>
 ## CRITICAL: Direct, Confident Language

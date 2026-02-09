@@ -26,6 +26,7 @@ export { BaseSessionSource } from './sources/base.js';
 export { ClaudeCodeSource, claudeCodeSource, CLAUDE_PROJECTS_DIR } from './sources/claude-code.js';
 export { CursorSource, cursorSource, CURSOR_CHATS_DIR } from './sources/cursor.js';
 export { CursorComposerSource, cursorComposerSource } from './sources/cursor-composer.js';
+export { discoverClaudeDataDirs, validateClaudeDataDir } from './sources/claude-discovery.js';
 
 // Export tool mapping utilities
 export {
@@ -47,16 +48,21 @@ import type { SessionSource, FileMetadata, SourcedSessionMetadata, SourcedParsed
 import { ClaudeCodeSource } from './sources/claude-code.js';
 import { CursorSource } from './sources/cursor.js';
 import { CursorComposerSource } from './sources/cursor-composer.js';
+import { discoverClaudeDataDirs } from './sources/claude-discovery.js';
 
 /**
  * Registry of all available session sources
+ *
+ * Claude Code sources are lazily discovered on first getAvailable() call
+ * using waterfall discovery (env var → default path → prefix glob).
+ * Cursor sources are registered synchronously in the constructor.
  */
 export class SourceRegistry {
   private sources: SessionSource[] = [];
+  private claudeInitialized = false;
 
   constructor() {
-    // Register default sources
-    this.register(new ClaudeCodeSource());
+    // Claude Code sources are registered lazily via initClaudeSources()
     this.register(new CursorSource());
     this.register(new CursorComposerSource());
   }
@@ -76,9 +82,15 @@ export class SourceRegistry {
   }
 
   /**
-   * Get available sources (directory exists, dependencies met)
+   * Get available sources (directory exists, dependencies met).
+   * Lazily initializes Claude Code sources on first call.
    */
   async getAvailable(): Promise<SessionSource[]> {
+    if (!this.claudeInitialized) {
+      await this.initClaudeSources();
+      this.claudeInitialized = true;
+    }
+
     const available: SessionSource[] = [];
 
     for (const source of this.sources) {
@@ -95,6 +107,16 @@ export class SourceRegistry {
    */
   get(name: string): SessionSource | undefined {
     return this.sources.find((s) => s.name === name);
+  }
+
+  /**
+   * Discover and register Claude Code sources from available data directories.
+   */
+  private async initClaudeSources(): Promise<void> {
+    const dirs = await discoverClaudeDataDirs();
+    for (const dir of dirs) {
+      this.register(new ClaudeCodeSource(dir));
+    }
   }
 }
 
@@ -221,13 +243,16 @@ export class MultiSourceScanner {
   }
 
   /**
-   * Check source availability status
+   * Check source availability status.
+   * Triggers lazy Claude source init if not yet done.
    */
   async getSourceStatus(): Promise<Map<string, boolean>> {
+    // Ensure Claude sources are discovered before checking status
+    const available = await this.registry.getAvailable();
     const status = new Map<string, boolean>();
 
     for (const source of this.registry.getAll()) {
-      status.set(source.name, await source.isAvailable());
+      status.set(source.name, available.some((s) => s === source));
     }
 
     return status;

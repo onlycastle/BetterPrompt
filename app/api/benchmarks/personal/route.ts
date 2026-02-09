@@ -105,6 +105,15 @@ export async function GET() {
         );
       }
 
+      // PGRST202: RPC function not found (migration 029 not applied)
+      if (error.code === 'PGRST202') {
+        console.warn('[benchmarks/personal] RPC function not found — migration 029 may not be applied');
+        return NextResponse.json(
+          { percentiles: null, message: 'Benchmarks not available yet.' },
+          { status: 200 }
+        );
+      }
+
       console.error('[benchmarks/personal] RPC error:', error);
       throw new Error(`Failed to compute user percentiles: ${error.message}`);
     }
