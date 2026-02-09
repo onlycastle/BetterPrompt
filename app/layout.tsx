@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Fira_Code } from 'next/font/google';
+import { Fira_Code, Noto_Sans_KR } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
 import { Providers } from '@/components/providers';
 import '@/styles/global.css';
@@ -11,6 +11,12 @@ const firaCode = Fira_Code({
   subsets: ['latin'],
   variable: '--font-fira',
   weight: ['300', '400', '500', '600', '700'],
+});
+
+const notoSansKR = Noto_Sans_KR({
+  subsets: ['latin'],
+  variable: '--font-noto-kr',
+  weight: ['400', '500', '600', '700'],
 });
 
 export const metadata: Metadata = {
@@ -42,7 +48,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={firaCode.variable}>
+      <body className={`${firaCode.variable} ${notoSansKR.variable}`}>
         <Providers>{children}</Providers>
         <Analytics />
       </body>
