@@ -33,7 +33,13 @@ import {
   getAnalyzingStatusMessage,
   MILESTONES,
 } from './animations/index.js';
-import { formatChatMessage, isTypeClassification } from './chat-message.js';
+import {
+  formatChatMessage,
+  isTypeClassification,
+  getChatMessageParts,
+  renderPartialBoxMessage,
+  type ChatMessageParts,
+} from './chat-message.js';
 import type { PreviewSnippet } from './uploader.js';
 import type { SessionWithParsed } from './scanner.js';
 
@@ -99,6 +105,7 @@ interface StreamingState {
   snippets: PreviewSnippet[];
   fullLines: string[];
   fullText: string;
+  parts: ChatMessageParts;  // decomposed parts for instant-frame rendering
   revealedChars: number;
   pauseUntil: number;   // timestamp to pause until (for punctuation)
   startedAt: number;
@@ -329,13 +336,15 @@ export class ChatDisplay {
       // Typing indicator completed — start streaming
       this.awaitingStreamStart = false;
       const next = this.messageQueue.shift()!;
-      const fullLines = formatChatMessage(next.phase, next.snippets, this.formatElapsed());
-      const fullText = fullLines.join('\n');
+      const elapsedStr = this.formatElapsed();
+      const parts = getChatMessageParts(next.phase, next.snippets, elapsedStr);
+      const fullLines = formatChatMessage(next.phase, next.snippets, elapsedStr);
       this.streaming = {
         phase: next.phase,
         snippets: next.snippets,
         fullLines,
-        fullText,
+        fullText: parts.contentText,  // content chars only (no box frame)
+        parts,
         revealedChars: 0,
         pauseUntil: 0,
         startedAt: now,
@@ -502,12 +511,16 @@ export class ChatDisplay {
       allLines.push('');  // spacer between messages
     }
 
-    // Currently streaming message (partially revealed)
-    if (this.streaming && this.streaming.revealedChars > 0) {
-      const partialText = this.streaming.fullText.slice(0, this.streaming.revealedChars);
+    // Currently streaming message (instant box frame + partial content)
+    if (this.streaming) {
       const isComplete = this.streaming.revealedChars >= this.streaming.fullText.length;
-      const displayText = isComplete ? partialText : partialText + pc.cyan(CURSOR_CHAR);
-      allLines.push(...displayText.split('\n'));
+      const cursorStr = isComplete ? null : pc.cyan(CURSOR_CHAR);
+      const partialLines = renderPartialBoxMessage(
+        this.streaming.parts,
+        this.streaming.revealedChars,
+        cursorStr
+      );
+      allLines.push(...partialLines);
       allLines.push('');
     } else if (Date.now() < this.typingIndicatorUntil && this.messageQueue.length > 0) {
       // Typing indicator
