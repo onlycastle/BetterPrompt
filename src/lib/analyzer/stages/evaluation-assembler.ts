@@ -48,6 +48,81 @@ import type {
 } from '../../models/verbose-evaluation';
 import type { TranslatorOutput } from '../../models/translator-output';
 import type { SupportedLanguage } from './content-writer-prompts';
+import type { ParsedSession } from '../../models/session';
+
+// ============================================================================
+// Conversation Context (AI response snippets for evidence display)
+// ============================================================================
+
+/**
+ * AI response context surrounding a developer message.
+ * Built directly from raw sessions, bypassing Phase1Output to avoid
+ * inflating token costs for LLM workers.
+ */
+interface ConversationContextEntry {
+  /** Last ~200 chars of the preceding assistant message */
+  precedingAISnippet?: string;
+  /** First ~200 chars of the following assistant message */
+  followingAISnippet?: string;
+}
+
+/**
+ * Build a map of conversation context (AI snippets) for each developer utterance.
+ *
+ * Iterates raw ParsedSession[] directly — NOT Phase1Output — so that
+ * AI response text never enters the LLM pipeline (token optimization).
+ *
+ * Uses utteranceId format: "{sessionId}_{turnIndex}" where turnIndex
+ * is the 0-based index of user messages within the session.
+ */
+function buildConversationContextMap(
+  sessions: ParsedSession[]
+): Map<string, ConversationContextEntry> {
+  const SNIPPET_LENGTH = 200;
+  const contextMap = new Map<string, ConversationContextEntry>();
+
+  for (const session of sessions) {
+    for (let i = 0; i < session.messages.length; i++) {
+      const msg = session.messages[i];
+
+      if (msg.role !== 'user') continue;
+
+      // DataExtractor uses array index `i` (not user-only count) as turnIndex
+      const utteranceId = `${session.sessionId}_${i}`;
+      const entry: ConversationContextEntry = {};
+
+      // Look backward for the closest preceding assistant message
+      for (let j = i - 1; j >= 0; j--) {
+        if (session.messages[j].role === 'assistant' && session.messages[j].content) {
+          const text = session.messages[j].content;
+          // Take the LAST 200 chars (conclusion/summary is at the end)
+          entry.precedingAISnippet = text.length > SNIPPET_LENGTH
+            ? '...' + text.slice(-SNIPPET_LENGTH)
+            : text;
+          break;
+        }
+      }
+
+      // Look forward for the closest following assistant message
+      for (let j = i + 1; j < session.messages.length; j++) {
+        if (session.messages[j].role === 'assistant' && session.messages[j].content) {
+          const text = session.messages[j].content;
+          // Take the FIRST 200 chars (beginning of response is most relevant)
+          entry.followingAISnippet = text.length > SNIPPET_LENGTH
+            ? text.slice(0, SNIPPET_LENGTH) + '...'
+            : text;
+          break;
+        }
+      }
+
+      if (entry.precedingAISnippet || entry.followingAISnippet) {
+        contextMap.set(utteranceId, entry);
+      }
+    }
+  }
+
+  return contextMap;
+}
 
 // ============================================================================
 // Debug Logging
@@ -147,7 +222,8 @@ export function assembleEvaluation(
   narrativeResult: NarrativeLLMResponse,
   phase1Output: Phase1Output | undefined,
   sessionCount: number,
-  knowledgeResources?: DimensionResourceMatch[]
+  knowledgeResources?: DimensionResourceMatch[],
+  sessions?: ParsedSession[]
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {};
 
@@ -192,8 +268,10 @@ export function assembleEvaluation(
   // ── Utterance Lookup: Extract referenced utterances for evidence linking ──
   // Only includes utterances that are referenced by structured evidence items
   // in workerInsights. This enables frontend to show original context on expand.
+  // AI response context is built from raw sessions (bypasses Phase1Output for token savings).
   if (phase1Output?.developerUtterances && workerInsights) {
-    result.utteranceLookup = buildUtteranceLookup(workerInsights, phase1Output);
+    const conversationContext = sessions ? buildConversationContextMap(sessions) : undefined;
+    result.utteranceLookup = buildUtteranceLookup(workerInsights, phase1Output, conversationContext, result.promptPatterns as any[] | undefined);
   }
 
   // ── Transformation Audit: Track text transformations for data integrity ──
@@ -259,7 +337,7 @@ function resolveExamples(
   examples: Array<{ utteranceId?: string; analysis: string }>,
   utteranceLookup: Map<string, string>,
   usedUtteranceIds: Set<string>
-): Array<{ quote: string; analysis: string }> {
+): Array<{ quote: string; analysis: string; utteranceId?: string }> {
   return examples
     .map(ex => {
       if (!ex.utteranceId || usedUtteranceIds.has(ex.utteranceId)) {
@@ -274,9 +352,9 @@ function resolveExamples(
       }
 
       usedUtteranceIds.add(ex.utteranceId);
-      return { quote, analysis: ex.analysis };
+      return { quote, analysis: ex.analysis, utteranceId: ex.utteranceId };
     })
-    .filter((ex): ex is { quote: string; analysis: string } => ex !== null);
+    .filter((ex): ex is { quote: string; analysis: string; utteranceId: string } => ex !== null);
 }
 
 /**
@@ -677,7 +755,9 @@ function effectivenessToSophistication(eff: string | undefined): 'basic' | 'inte
  */
 function buildUtteranceLookup(
   workerInsights: AggregatedWorkerInsights,
-  phase1Output: Phase1Output
+  phase1Output: Phase1Output,
+  conversationContext?: Map<string, ConversationContextEntry>,
+  promptPatterns?: Array<{ examples?: Array<{ utteranceId?: string }> }>
 ): UtteranceLookupEntry[] {
   // Collect all unique utteranceIds from workerInsights evidence
   const referencedIds = new Set<string>();
@@ -699,6 +779,17 @@ function buildUtteranceLookup(
       for (const evidence of growth.evidence || []) {
         if (typeof evidence === 'object' && evidence.utteranceId) {
           referencedIds.add(evidence.utteranceId);
+        }
+      }
+    }
+  }
+
+  // Scan promptPatterns examples for utteranceIds (Communication fallback path)
+  if (promptPatterns) {
+    for (const pattern of promptPatterns) {
+      for (const example of pattern.examples || []) {
+        if (example.utteranceId) {
+          referencedIds.add(example.utteranceId);
         }
       }
     }
@@ -726,8 +817,8 @@ function buildUtteranceLookup(
       const sessionId = lastUnderscore > 0 ? id.slice(0, lastUnderscore) : id;
       const turnIndex = lastUnderscore > 0 ? parseInt(id.slice(lastUnderscore + 1), 10) : 0;
 
-      // Note: precedingAISnippet is no longer available as aiResponses was removed from Phase1Output
-      // to reduce token usage. The field remains in UtteranceLookupEntry but is always undefined.
+      // Populate AI snippets from conversation context map (built from raw sessions)
+      const context = conversationContext?.get(id);
 
       lookup.push({
         id,
@@ -736,7 +827,8 @@ function buildUtteranceLookup(
         timestamp: utterance.timestamp,
         sessionId,
         turnIndex: isNaN(turnIndex) ? 0 : turnIndex,
-        precedingAISnippet: undefined,
+        precedingAISnippet: context?.precedingAISnippet,
+        followingAISnippet: context?.followingAISnippet,
       });
     }
   }
