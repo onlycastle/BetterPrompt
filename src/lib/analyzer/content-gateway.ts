@@ -35,7 +35,7 @@ import type {
   TopFocusAreas,
 } from '../models/verbose-evaluation';
 import type { AgentOutputs } from '../models/agent-outputs';
-import type { WorkerGrowth } from '../models/worker-insights';
+import type { WorkerGrowth, WorkerInsightsContainer } from '../models/worker-insights';
 import { FREE_AGENT_IDS } from '../domain/models';
 
 // Extract the workerInsights type from VerboseEvaluation for type safety
@@ -64,6 +64,10 @@ export const TIER_POLICY = {
       diagnosis: 'free',      // title, description, evidence
       prescription: 'paid',   // recommendation
     },
+    /** Max chars for blurred recommendation preview in free tier */
+    recommendationPreviewLength: 100,
+    /** Worker domains shown in full for free tier (rest are locked to teaser) */
+    freeDomains: ['thinkingQuality'] as const,
   },
 
   /** Dimension insights filtering */
@@ -400,15 +404,15 @@ export class ContentGateway {
    * Filter worker insights based on tier.
    *
    * For FREE tier:
-   * - Strengths: Full data (positive feedback builds trust)
-   * - Growth Areas: Diagnosis (title, description, evidence) but NO recommendation
+   * - freeDomains (e.g., thinkingQuality): Full strengths + diagnosis + recommendation preview
+   * - Other domains: Locked teaser (header + score + first strength/growth title only)
    *
    * For PAID tier:
    * - Full data including recommendations
    *
    * @param workerInsights - Full worker insights from analysis
    * @param tier - User tier level
-   * @returns Filtered worker insights with recommendations locked for free tier
+   * @returns Filtered worker insights with domain-level gating for free tier
    */
   filterWorkerInsights(
     workerInsights: WorkerInsightsRecord,
@@ -419,32 +423,62 @@ export class ContentGateway {
     // Paid tiers get full access
     if (tier !== 'free') return workerInsights;
 
-    // Free tier: lock recommendations (prescription) but keep diagnosis
     const filtered: NonNullable<WorkerInsightsRecord> = {};
+    const { freeDomains, recommendationPreviewLength } = TIER_POLICY.workerInsights;
 
     for (const [key, domain] of Object.entries(workerInsights)) {
       if (!domain) continue;
 
-      filtered[key] = {
-        ...domain,
-        // Strengths: full (free)
-        strengths: domain.strengths,
-        // Growth areas: lock recommendation (prescription paid)
-        growthAreas: domain.growthAreas.map((g) => this.lockRecommendation(g as WorkerGrowth)),
-      };
+      if ((freeDomains as readonly string[]).includes(key)) {
+        // FREE domains: full strengths + diagnosis + recommendation preview
+        filtered[key] = {
+          ...domain,
+          growthAreas: domain.growthAreas.map(
+            (g) => this.lockRecommendationWithPreview(g as WorkerGrowth, recommendationPreviewLength)
+          ),
+        };
+      } else {
+        // LOCKED domains: header + score + first strength/growth title only
+        filtered[key] = this.createLockedDomainTeaser(domain as WorkerInsightsContainer);
+      }
     }
 
     return filtered;
   }
 
   /**
-   * Lock recommendation field in a growth area (for free tier).
-   * Keeps all diagnosis fields (title, description, evidence, severity).
+   * Lock recommendation with a blurred preview for free tier.
+   * Keeps diagnosis fields and adds truncated recommendationPreview.
    */
-  private lockRecommendation(growth: WorkerGrowth): WorkerGrowth {
+  private lockRecommendationWithPreview(growth: WorkerGrowth, previewLength: number): WorkerGrowth {
     return {
       ...growth,
       recommendation: '', // Empty = locked (frontend shows lock UI)
+      recommendationPreview: growth.recommendation.length > previewLength
+        ? growth.recommendation.slice(0, previewLength)
+        : growth.recommendation,
+    };
+  }
+
+  /**
+   * Create a locked domain teaser for non-free domains.
+   * Shows score + first strength/growth title only with empty descriptions.
+   * Frontend detects via: strengths[0].description === '' && growthAreas[0].description === ''
+   */
+  private createLockedDomainTeaser(domain: WorkerInsightsContainer): WorkerInsightsContainer {
+    return {
+      strengths: domain.strengths.slice(0, 1).map(s => ({
+        ...s,
+        description: '',
+        evidence: [],
+      })),
+      growthAreas: domain.growthAreas.slice(0, 1).map(g => ({
+        ...g,
+        description: '',
+        evidence: [],
+        recommendation: '',
+      })),
+      domainScore: domain.domainScore,
     };
   }
 

@@ -115,6 +115,9 @@ export const WorkerGrowthSchema = z.object({
 
   /** How critical this growth area is to address */
   severity: WorkerGrowthSeveritySchema.optional(),
+
+  /** Truncated recommendation preview for free tier blur teaser (set by ContentGateway) */
+  recommendationPreview: z.string().optional(),
 });
 export type WorkerGrowth = z.infer<typeof WorkerGrowthSchema>;
 
