@@ -536,7 +536,7 @@ async function main() {
 
   const fieldGroups = {
     'Core': ['personalitySummary', 'primaryType', 'controlLevel', 'controlScore', 'distribution'],
-    'Insights': ['workerInsights', 'dimensionInsights', 'promptPatterns'],
+    'Insights': ['workerInsights', 'promptPatterns'],
     'Focus': ['topFocusAreas'],
     'Premium': ['antiPatternsAnalysis', 'criticalThinkingAnalysis', 'planningAnalysis'],
     'Data': ['utteranceLookup', 'transformationAudit'],

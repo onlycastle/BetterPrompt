@@ -6,11 +6,9 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import type { PersonalAnalyticsExtended, DimensionScores, HistoryEntry, GrowthArea } from '../api/types';
+import type { PersonalAnalyticsExtended, HistoryEntry, GrowthArea } from '../api/types';
 import {
   getStoredAnalysesExtended,
-  extractDimensionScores,
-  calculateOverallScore,
   type StoredAnalysisExtended,
 } from '../utils/analysisStorage';
 
@@ -23,36 +21,11 @@ export const personalKeys = {
  * Convert stored analysis to history entry
  */
 function toHistoryEntry(stored: StoredAnalysisExtended): HistoryEntry {
-  const score = stored.evaluation?.overallScore ||
-    calculateOverallScore(stored.evaluation?.dimensionInsights) ||
-    0;
+  const score = stored.evaluation?.overallScore || 0;
 
   return {
     date: stored.completedAt.split('T')[0],
     overallScore: score,
-    dimensions: extractDimensionScores(stored.evaluation?.dimensionInsights),
-  };
-}
-
-/**
- * Calculate dimension improvements between first and latest
- */
-function calculateDimensionDiff(
-  first: StoredAnalysisExtended,
-  latest: StoredAnalysisExtended
-): DimensionScores | undefined {
-  const firstDims = extractDimensionScores(first.evaluation?.dimensionInsights);
-  const latestDims = extractDimensionScores(latest.evaluation?.dimensionInsights);
-
-  if (!firstDims || !latestDims) return undefined;
-
-  return {
-    aiCollaboration: latestDims.aiCollaboration - firstDims.aiCollaboration,
-    contextEngineering: latestDims.contextEngineering - firstDims.contextEngineering,
-    burnoutRisk: latestDims.burnoutRisk - firstDims.burnoutRisk,
-    toolMastery: latestDims.toolMastery - firstDims.toolMastery,
-    aiControl: latestDims.aiControl - firstDims.aiControl,
-    skillResilience: latestDims.skillResilience - firstDims.skillResilience,
   };
 }
 
@@ -66,8 +39,8 @@ function generateInsights(
 ): Array<{ type: 'strength' | 'growth' | 'trend'; title: string; description: string }> {
   const insights: Array<{ type: 'strength' | 'growth' | 'trend'; title: string; description: string }> = [];
 
-  const firstScore = calculateOverallScore(first.evaluation?.dimensionInsights);
-  const latestScore = calculateOverallScore(latest.evaluation?.dimensionInsights);
+  const firstScore = first.evaluation?.overallScore || 0;
+  const latestScore = latest.evaluation?.overallScore || 0;
   const improvement = latestScore - firstScore;
 
   if (improvement > 0) {
@@ -75,26 +48,6 @@ function generateInsights(
       type: 'strength',
       title: 'Consistent Improvement',
       description: `Your overall score has improved by ${improvement} points since your first analysis.`,
-    });
-  }
-
-  // Find best dimension
-  const latestDims = extractDimensionScores(latest.evaluation?.dimensionInsights);
-  if (latestDims) {
-    const entries = Object.entries(latestDims) as [keyof DimensionScores, number][];
-    const best = entries.reduce((a, b) => (b[1] > a[1] ? b : a));
-    const dimLabels: Record<keyof DimensionScores, string> = {
-      aiCollaboration: 'AI Collaboration',
-      contextEngineering: 'Context Engineering',
-      burnoutRisk: 'Burnout Risk',
-      toolMastery: 'Tool Mastery',
-      aiControl: 'AI Control',
-      skillResilience: 'Skill Resilience',
-    };
-    insights.push({
-      type: 'strength',
-      title: `Strong ${dimLabels[best[0]]}`,
-      description: `Your ${dimLabels[best[0]].toLowerCase()} score of ${best[1]} is your top dimension.`,
     });
   }
 
@@ -120,8 +73,8 @@ function buildAnalyticsFromStored(stored: StoredAnalysisExtended[]): PersonalAna
   const latest = stored[0];
   const first = stored[stored.length - 1];
 
-  const latestScore = calculateOverallScore(latest.evaluation?.dimensionInsights);
-  const firstScore = calculateOverallScore(first.evaluation?.dimensionInsights);
+  const latestScore = latest.evaluation?.overallScore || 0;
+  const firstScore = first.evaluation?.overallScore || 0;
 
   // Build history (oldest to newest for chart)
   const history = stored.map(toHistoryEntry).reverse();
@@ -135,20 +88,15 @@ function buildAnalyticsFromStored(stored: StoredAnalysisExtended[]): PersonalAna
     analysisCount: stored.length,
     totalImprovement: latestScore - firstScore,
 
-    currentDimensions: extractDimensionScores(latest.evaluation?.dimensionInsights),
-    dimensionImprovements: calculateDimensionDiff(first, latest),
-
     firstAnalysis: {
       date: first.completedAt.split('T')[0],
       score: firstScore,
       primaryType: first.evaluation?.primaryType || 'unknown',
-      dimensions: extractDimensionScores(first.evaluation?.dimensionInsights),
     },
     latestAnalysis: {
       date: latest.completedAt.split('T')[0],
       score: latestScore,
       primaryType: latest.evaluation?.primaryType || 'unknown',
-      dimensions: extractDimensionScores(latest.evaluation?.dimensionInsights),
     },
 
     history,

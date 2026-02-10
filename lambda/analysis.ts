@@ -181,6 +181,14 @@ interface AnalysisResponse {
     craftsman: number;
   };
   personalitySummary: string;
+  /** Domain skill scores from worker insights (0-100 each) */
+  skillScores?: {
+    thinking: number;
+    communication: number;
+    learning: number;
+    context: number;
+    control: number;
+  };
   /** Actual token usage from LLM pipeline (for DEBUG mode) */
   tokenUsage?: PipelineTokenUsage;
 }
@@ -573,6 +581,16 @@ async function runAnalysis(
     ?? MATRIX_METADATA[primaryType]?.[controlLevel]?.emoji
     ?? '🎯';
 
+  // Extract skill scores from workerInsights (domainScore per worker domain)
+  const wi = evaluation.workerInsights as Record<string, { domainScore?: number }> | undefined;
+  const skillScores = wi ? {
+    thinking: wi.thinkingQuality?.domainScore ?? 0,
+    communication: wi.communicationPatterns?.domainScore ?? 0,
+    learning: wi.learningBehavior?.domainScore ?? 0,
+    context: wi.contextEfficiency?.domainScore ?? 0,
+    control: controlScore,
+  } : undefined;
+
   // Send final result
   console.log(`[PHASE:RESPONSE] Sending result event with resultId: ${resultId}`);
   const response: AnalysisResponse = {
@@ -584,6 +602,7 @@ async function runAnalysis(
     matrixEmoji,
     distribution: evaluation.distribution,
     personalitySummary: evaluation.personalitySummary,
+    skillScores,
     tokenUsage: evaluation.pipelineTokenUsage,
   };
 

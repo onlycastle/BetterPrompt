@@ -367,25 +367,6 @@ export type DimensionName =
   | 'aiControl'
   | 'skillResilience';
 
-export interface DimensionStrength {
-  title: string;
-  description: string;
-  evidence?: string[];
-}
-
-export interface DimensionGrowthArea {
-  title: string;
-  description: string;
-  evidence?: string[];
-  recommendation: string;
-}
-
-export interface PerDimensionInsight {
-  dimension: DimensionName;
-  dimensionDisplayName: string;
-  strengths: DimensionStrength[];
-  growthAreas: DimensionGrowthArea[];
-}
 
 // ============================================================================
 // Top Focus Areas (Personalized Priorities)
@@ -694,8 +675,6 @@ export interface VerboseEvaluation {
   strengths: PersonalizedStrength[];
   growthAreas: GrowthArea[];
   promptPatterns: PromptPattern[];
-  dimensionInsights?: PerDimensionInsight[];
-
   // Context efficiency metrics
   contextEfficiencyScore?: number;
   contextEfficiencyExplanation?: string;
@@ -720,7 +699,6 @@ export interface AnalysisResultResponse {
   evaluation: VerboseEvaluation;
   preview?: {
     totalPromptPatterns: number;
-    totalGrowthAreas: number;
     previewCount: number;
     hasPartialItem?: boolean;
   };

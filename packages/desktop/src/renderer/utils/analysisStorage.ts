@@ -8,7 +8,7 @@
  * Extended to store full evaluation data for Progress/Insights tabs.
  */
 
-import type { DimensionScores, GrowthArea } from '../api/types';
+import type { GrowthArea } from '../api/types';
 
 /** Basic stored analysis metadata */
 export interface StoredAnalysis {
@@ -18,14 +18,6 @@ export interface StoredAnalysis {
   projectCount: number;
 }
 
-/** Dimension insight from verbose analysis */
-export interface StoredDimensionInsight {
-  dimensionKey: string;
-  score: number;
-  strengths: Array<{ title: string; description: string }>;
-  growthAreas: Array<{ title: string; description: string; recommendation?: string }>;
-}
-
 /** Extended stored analysis with full evaluation data */
 export interface StoredAnalysisExtended extends StoredAnalysis {
   evaluation?: {
@@ -33,7 +25,6 @@ export interface StoredAnalysisExtended extends StoredAnalysis {
     distribution: Record<string, number>;
     sessionsAnalyzed: number;
     overallScore?: number;
-    dimensionInsights?: StoredDimensionInsight[];
     strengths?: Array<{ title: string; description: string }>;
     growthAreas?: GrowthArea[];
   };
@@ -150,34 +141,3 @@ export function getLatestAnalysisExtended(): StoredAnalysisExtended | null {
   return analyses[0] || null;
 }
 
-/**
- * Extract dimension scores from dimension insights
- */
-export function extractDimensionScores(
-  insights?: StoredDimensionInsight[]
-): DimensionScores | undefined {
-  if (!insights || insights.length === 0) return undefined;
-
-  const scores: Partial<DimensionScores> = {};
-  for (const insight of insights) {
-    const key = insight.dimensionKey as keyof DimensionScores;
-    if (key in scores || !['aiCollaboration', 'contextEngineering', 'burnoutRisk', 'toolMastery', 'aiControl', 'skillResilience'].includes(key)) {
-      continue;
-    }
-    scores[key] = insight.score;
-  }
-
-  // Return undefined if we don't have all 6 dimensions
-  if (Object.keys(scores).length < 6) return undefined;
-
-  return scores as DimensionScores;
-}
-
-/**
- * Calculate overall score from dimension insights
- */
-export function calculateOverallScore(insights?: StoredDimensionInsight[]): number {
-  if (!insights || insights.length === 0) return 0;
-  const total = insights.reduce((sum, i) => sum + i.score, 0);
-  return Math.round(total / insights.length);
-}

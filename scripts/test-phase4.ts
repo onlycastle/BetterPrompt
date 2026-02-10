@@ -131,24 +131,6 @@ function printTranslationComparison(
   console.log(`English length: ${englishResponse.personalitySummary.length} chars`);
   console.log(`Translated length: ${translatedOutput.personalitySummary.length} chars`);
 
-  // Dimension Insights comparison
-  if (translatedOutput.dimensionInsights && translatedOutput.dimensionInsights.length > 0) {
-    console.log('\n📊 Dimension Insights (first 2):');
-    console.log('-'.repeat(80));
-
-    for (let i = 0; i < Math.min(2, translatedOutput.dimensionInsights.length); i++) {
-      const translated = translatedOutput.dimensionInsights[i];
-      const english = englishResponse.dimensionInsights?.[i];
-
-      console.log(`\n  ${i + 1}. ${toTitleCase(translated.dimension)}`);
-
-      if (english?.dimensionDisplayName) {
-        console.log(`     [EN] ${english.dimensionDisplayName}`);
-      }
-      console.log(`     [${targetLang.toUpperCase()}] ${translated.dimensionDisplayName}`);
-    }
-  }
-
   // Top Focus Areas comparison
   if (translatedOutput.topFocusAreas && translatedOutput.topFocusAreas.areas.length > 0) {
     console.log('\n🎯 Top Focus Areas:');
