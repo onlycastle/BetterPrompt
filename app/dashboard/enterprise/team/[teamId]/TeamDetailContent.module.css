@@ -1,0 +1,53 @@
+/**
+ * Team Detail Content Styles
+ */
+
+.container {
+  padding: var(--space-lg);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+}
+
+.notFound {
+  text-align: center;
+  padding: var(--space-3xl);
+  font-family: var(--font-primary);
+  font-size: var(--text-lg);
+  color: var(--ink-muted);
+}
+
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.chartsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.chartCard {
+  min-width: 0;
+}
+
+.section {
+  margin-bottom: var(--space-xl);
+}
+
+.sectionTitle {
+  font-family: var(--font-primary);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  margin: 0 0 var(--space-md);
+}
+
+@media (max-width: 768px) {
+  .chartsRow {
+    grid-template-columns: 1fr;
+  }
+}
