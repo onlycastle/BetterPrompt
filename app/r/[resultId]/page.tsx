@@ -29,9 +29,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { resultId } = await params;
 
   // Default metadata - can be enhanced by fetching result server-side
-  const title = 'AI Coding Style Report | NoMoreAISlop';
+  const title = 'See Where You Make AI Slop | NoMoreAISlop';
   const description =
-    'Discover your AI collaboration type and get personalized insights to improve your developer-AI workflow.';
+    'See exactly where your AI workflow breaks down — anti-patterns, blind spots, and how to fix them.';
 
   return {
     title,

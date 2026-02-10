@@ -235,7 +235,7 @@ export function buildShareUrl(reportId: string, baseUrl = 'https://www.nomoreais
  */
 export function generateTwitterShareLink(reportId: string, typeResult: { primaryType: string }): ShareLink {
   const url = buildShareUrl(reportId);
-  const text = `I'm a ${typeResult.primaryType} when coding with AI! What's your AI coding style?`;
+  const text = `I'm a ${typeResult.primaryType} when coding with AI! What are your anti-patterns?`;
   const hashtags = ['NoMoreAISlop', 'AICoding', 'DeveloperProductivity'];
 
   const twitterUrl = new URL('https://twitter.com/intent/tweet');
@@ -285,7 +285,7 @@ export function generateOGMetadata(
 
   return {
     title: `I'm a ${typeName} - NoMoreAISlop`,
-    description: `My AI coding style is ${typeName}. Take the test to discover your AI collaboration personality!`,
+    description: `I found my AI anti-patterns. See yours — stop making slop.`,
     url: buildShareUrl(reportId),
     type: 'website',
     siteName: 'NoMoreAISlop',

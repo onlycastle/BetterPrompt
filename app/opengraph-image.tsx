@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 
 export const runtime = 'nodejs';
 
-export const alt = 'NoMoreAISlop - AI Coding Style Analysis';
+export const alt = 'NoMoreAISlop - See Your Anti-Patterns. Stop Making AI Slop.';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
