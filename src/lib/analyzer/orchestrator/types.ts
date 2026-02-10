@@ -34,6 +34,33 @@ import type { IKnowledgeRepository, IProfessionalInsightRepository } from '../..
 export type ProgressCallback = (stage: string, progress: number, message: string) => void;
 
 // ============================================================================
+// Phase Preview (Live Results for CLI Chat Display)
+// ============================================================================
+
+/**
+ * Preview snippet shown in CLI chat during analysis.
+ *
+ * Each phase completion emits 1-3 snippets summarizing the result,
+ * displayed as streaming chat messages in the terminal.
+ */
+export interface PreviewSnippet {
+  /** Human-readable label, e.g. "Systematic Output Verification" */
+  label: string;
+  /** Description text, e.g. "You verify AI outputs before committing" */
+  text: string;
+  /** Emoji icon, e.g. "💪" or "💡" */
+  icon: string;
+}
+
+/**
+ * Callback invoked when a phase completes with preview data for the CLI.
+ *
+ * @param phase - Phase key (e.g. "session_summaries", "worker_thinkingQuality", "type_classification")
+ * @param snippets - Preview snippets to display
+ */
+export type PhasePreviewCallback = (phase: string, snippets: PreviewSnippet[]) => void;
+
+// ============================================================================
 // Worker Result Types
 // ============================================================================
 

@@ -55,6 +55,8 @@ import type {
   AnalysisResult,
   DebugPhaseOutput,
   ProgressCallback,
+  PhasePreviewCallback,
+  PreviewSnippet,
 } from './types';
 import {
   DEFAULT_ORCHESTRATOR_CONFIG,
@@ -251,7 +253,7 @@ export class AnalysisOrchestrator {
     metrics: SessionMetrics,
     tier: Tier,
     onProgress?: ProgressCallback,
-    options?: { activitySessions?: Array<{ sessionId: string; projectName: string; startTime: string; durationMinutes: number; messageCount: number; summary: string; totalInputTokens?: number; totalOutputTokens?: number }>; noTranslate?: boolean }
+    options?: { activitySessions?: Array<{ sessionId: string; projectName: string; startTime: string; durationMinutes: number; messageCount: number; summary: string; totalInputTokens?: number; totalOutputTokens?: number }>; noTranslate?: boolean; onPhasePreview?: PhasePreviewCallback }
   ): Promise<AnalysisResult> {
     const startTime = Date.now();
     const stageUsages: StageTokenUsage[] = [];
@@ -346,6 +348,19 @@ export class AnalysisOrchestrator {
 
     completedLLMStages++;
     reportProgress('phase1_5', 'Session summaries generated');
+
+    // Extract top 3 session summaries for preview
+    if (options?.onPhasePreview && summaryResult.data?.summaries) {
+      const topSummaries = summaryResult.data.summaries.slice(0, 3);
+      const snippets = topSummaries.map((s: { sessionId: string; summary: string }) => ({
+        label: s.summary.slice(0, 60),
+        text: s.summary,
+        icon: '📝',
+      }));
+      if (snippets.length > 0) {
+        options.onPhasePreview('session_summaries', snippets);
+      }
+    }
 
     let agentOutputs: AgentOutputs = createEmptyAgentOutputs();
     let projectSummarizerResult: ProjectSummarizerResult | null = null;
@@ -461,6 +476,18 @@ export class AnalysisOrchestrator {
 
           agentOutputs = this.mergeAgentOutputs(phase2Results);
           this.log(`Merged agentOutputs keys: ${Object.keys(agentOutputs).join(', ')}`);
+
+          // Emit phase preview for each worker result
+          if (options?.onPhasePreview) {
+            for (const [workerName, result] of Object.entries(phase2Results)) {
+              if (result?.data) {
+                const snippets = extractWorkerPreview(workerName, result.data);
+                if (snippets.length > 0) {
+                  options.onPhasePreview(`worker_${workerName}`, snippets);
+                }
+              }
+            }
+          }
         })()
       : (async () => {
           this.log('Phase 2: Skipped (no workers registered)');
@@ -507,6 +534,18 @@ export class AnalysisOrchestrator {
       }
 
       agentOutputs = this.mergePhase2Point5Outputs(agentOutputs, phase2Point5Results);
+
+      if (options?.onPhasePreview && typeClassifierResult?.data) {
+        const tc = typeClassifierResult.data as any;
+        const snippets: PreviewSnippet[] = [
+          {
+            label: tc.matrixName || `${tc.primaryType}`,
+            text: tc.reasoning ? (typeof tc.reasoning === 'string' ? tc.reasoning.slice(0, 120) : tc.reasoning.summary?.slice(0, 120) || '') : '',
+            icon: tc.matrixEmoji || '⭐',
+          },
+        ];
+        options.onPhasePreview('type_classification', snippets);
+      }
 
       for (const [workerName, result] of Object.entries(phase2Point5Results)) {
         if (result?.usage) {
@@ -578,6 +617,17 @@ export class AnalysisOrchestrator {
 
     completedLLMStages++;
     reportProgress('phase3', 'Generating personalized narrative...');
+
+    if (options?.onPhasePreview && contentResult.data) {
+      const topFocus = (contentResult.data as any).topFocusAreas?.[0];
+      if (topFocus) {
+        options.onPhasePreview('narrative_ready', [{
+          label: topFocus.title || 'Focus Area',
+          text: topFocus.description?.slice(0, 120) || topFocus.title || '',
+          icon: '🎯',
+        }]);
+      }
+    }
 
     stageUsages.push({
       stage: 'Content Writer (Stage 2)',
@@ -1030,6 +1080,44 @@ export class AnalysisOrchestrator {
     }
     console.log('========================\n');
   }
+}
+
+// ============================================================================
+// Helper: Extract Preview Snippets from Worker Output
+// ============================================================================
+
+/**
+ * Extract preview snippets from a Phase 2 worker's output data.
+ * Each worker has different output shapes - this handles all of them.
+ */
+function extractWorkerPreview(workerName: string, data: unknown): PreviewSnippet[] {
+  if (!data || typeof data !== 'object') return [];
+  const d = data as Record<string, unknown>;
+  const snippets: PreviewSnippet[] = [];
+
+  // Try to extract first strength
+  const strengths = d.strengths as Array<{ title?: string; label?: string; description?: string }> | undefined;
+  if (strengths && strengths.length > 0) {
+    const s = strengths[0];
+    snippets.push({
+      label: s.title || s.label || workerName,
+      text: (s.description || '').slice(0, 100),
+      icon: '💪',
+    });
+  }
+
+  // Try to extract first topInsight
+  const topInsights = d.topInsights as Array<{ title?: string; label?: string; insight?: string; text?: string }> | undefined;
+  if (topInsights && topInsights.length > 0) {
+    const t = topInsights[0];
+    snippets.push({
+      label: t.title || t.label || 'Insight',
+      text: (t.insight || t.text || '').slice(0, 100),
+      icon: '💡',
+    });
+  }
+
+  return snippets;
 }
 
 // ============================================================================
