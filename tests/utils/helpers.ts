@@ -208,19 +208,6 @@ export function createMockDimensions(overrides: Partial<FullAnalysisResult> = {}
       tips: ['Try providing line numbers with file references'],
       interpretation: 'Developing context engineering skills. Good file references, room to improve compression.',
     },
-    toolMastery: {
-      overallScore: 82,
-      toolUsage: {
-        Read: { count: 45, percentage: 35, level: 'expert', assessment: 'Excellent exploration patterns' },
-        Edit: { count: 25, percentage: 20, level: 'adept', assessment: 'Good targeted modifications' },
-        Bash: { count: 20, percentage: 15, level: 'adept', assessment: 'Comfortable with shell commands' },
-        Grep: { count: 15, percentage: 12, level: 'basic', assessment: 'Room to improve search patterns' },
-        Task: { count: 10, percentage: 8, level: 'basic', assessment: 'Starting to use delegation' },
-      },
-      topTools: ['Read', 'Edit', 'Bash'],
-      underutilizedTools: ['Task', 'TodoWrite'],
-      tips: ['Try using Task tool for parallel work'],
-    },
     burnoutRisk: {
       score: 35,
       level: 'low',

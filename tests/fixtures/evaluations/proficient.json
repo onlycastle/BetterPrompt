@@ -24,19 +24,6 @@
     "strengths": ["Good file referencing"],
     "growthAreas": ["Token efficiency could improve"]
   },
-  "toolMastery": {
-    "score": 85,
-    "level": "adept",
-    "interpretation": "Expert-level tool usage with sophisticated patterns.",
-    "breakdown": {
-      "read": { "score": 90, "usage": 25, "level": "expert" },
-      "grep": { "score": 85, "usage": 15, "level": "adept" },
-      "task": { "score": 80, "usage": 8, "level": "adept" },
-      "edit": { "score": 85, "usage": 20, "level": "adept" }
-    },
-    "strengths": ["Expert Read tool usage", "Good Grep patterns"],
-    "growthAreas": ["Could explore Task tool more"]
-  },
   "burnoutRisk": {
     "score": 28,
     "level": "low",

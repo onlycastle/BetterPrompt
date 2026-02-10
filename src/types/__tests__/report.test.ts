@@ -13,7 +13,6 @@ import type {
   FullAnalysisResult,
   DimensionLevel,
   AIControlLevel,
-  MasteryLevel,
   SkillResilienceLevel,
 } from '../report';
 import { REPORT_TYPE_METADATA, REPORT_DIMENSION_METADATA } from '../report';
@@ -78,7 +77,6 @@ describe('Report Types', () => {
           avgTurnsPerSession: 8,
           questionFrequency: 0.2,
           modificationRate: 0.15,
-          toolUsageHighlight: 'Heavy use of planning tools',
         },
         evidence: [
           {
@@ -102,7 +100,6 @@ describe('Report Types', () => {
         'aiCollaboration',
         'contextEngineering',
         'burnoutRisk',
-        'toolMastery',
         'aiControl',
         'skillResilience',
       ];
@@ -133,16 +130,6 @@ describe('Report Types', () => {
 
       levels.forEach((level) => {
         expect(['explorer', 'navigator', 'cartographer']).toContain(level);
-      });
-    });
-  });
-
-  describe('MasteryLevel', () => {
-    it('should accept valid levels', () => {
-      const levels: MasteryLevel[] = ['beginner', 'intermediate', 'advanced', 'expert'];
-
-      levels.forEach((level) => {
-        expect(['beginner', 'intermediate', 'advanced', 'expert']).toContain(level);
       });
     });
   });
@@ -178,7 +165,6 @@ describe('Report Types', () => {
             avgTurnsPerSession: 10,
             questionFrequency: 0.3,
             modificationRate: 0.2,
-            toolUsageHighlight: 'Frequent verification',
           },
           evidence: [],
         },
@@ -220,7 +206,6 @@ describe('Report Types', () => {
             avgTurnsPerSession: 7,
             questionFrequency: 0.15,
             modificationRate: 0.1,
-            toolUsageHighlight: 'Strategic tool usage',
           },
           evidence: [],
         },
@@ -312,37 +297,6 @@ describe('Report Types', () => {
             warnings: [],
             recommendations: ['Keep up the healthy balance'],
             interpretation: 'Your work patterns are healthy',
-          },
-          toolMastery: {
-            score: 75,
-            level: 'advanced',
-            breakdown: {
-              basicTools: {
-                score: 90,
-                readWriteEdit: 50,
-                grepGlob: 30,
-              },
-              advancedTools: {
-                score: 75,
-                taskTool: 10,
-                regexUsage: 15,
-                composedWorkflows: 5,
-              },
-              expertTools: {
-                score: 60,
-                backgroundExecution: 3,
-                parallelTasks: 2,
-                customScripts: 1,
-              },
-            },
-            toolUsagePatterns: {
-              read: 30,
-              write: 15,
-              grep: 20,
-            },
-            strengths: ['Strong basic tool usage'],
-            growthAreas: ['Explore expert features'],
-            interpretation: 'You use tools effectively',
           },
           aiControl: {
             score: 70,

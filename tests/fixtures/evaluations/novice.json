@@ -24,19 +24,6 @@
     "strengths": ["Basic queries"],
     "growthAreas": ["File references", "Specificity", "Token efficiency"]
   },
-  "toolMastery": {
-    "score": 40,
-    "level": "novice",
-    "interpretation": "Learning the tool ecosystem. Focus on mastering Read and Grep first.",
-    "breakdown": {
-      "read": { "score": 50, "usage": 5, "level": "basic" },
-      "grep": { "score": 35, "usage": 2, "level": "novice" },
-      "task": { "score": 25, "usage": 0, "level": "novice" },
-      "edit": { "score": 50, "usage": 8, "level": "basic" }
-    },
-    "strengths": ["Basic file operations"],
-    "growthAreas": ["Search patterns", "Task delegation", "Multi-tool workflows"]
-  },
   "burnoutRisk": {
     "score": 65,
     "level": "elevated",

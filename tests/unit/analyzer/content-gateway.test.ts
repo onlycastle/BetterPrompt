@@ -702,7 +702,7 @@ describe('ContentGateway', () => {
         },
         {
           rank: 2,
-          dimension: 'toolMastery' as const,
+          dimension: 'contextEngineering' as const,
           title: 'Expand Tool Usage',
           narrative: 'Your tool repertoire is limited to basic Read/Write.',
           expectedImpact: 'Increase productivity by 25%',
@@ -746,7 +746,7 @@ describe('ContentGateway', () => {
       const second = filtered.topFocusAreas!.areas[1];
       expect(second.rank).toBe(2);
       expect(second.title).toBe('Expand Tool Usage');
-      expect(second.dimension).toBe('toolMastery');
+      expect(second.dimension).toBe('contextEngineering');
       expect(second.narrative).toBe(''); // Locked signal
       expect(second.expectedImpact).toBe('');
       expect(second.actions).toBeUndefined();
