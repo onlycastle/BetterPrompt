@@ -29,6 +29,15 @@ export interface SessionInsights {
   sourceBreakdown: Map<string, number>;
   rhythm: { sprints: number; deepDives: number; marathons: number };
   peakHours: { peakStart: number; peakEnd: number; label: string } | null;
+
+  // Message-level insights
+  firstUserMessage: string;
+  longestUserPrompt: { words: number; preview: string; project: string };
+  longestAIResponse: { words: number; preview: string; project: string };
+  avgUserMessageWords: number;
+  shortUserQuotes: string[];
+  codingStreakDays: number;
+  totalToolCalls: number;
 }
 
 export interface AnalysisMessage {
@@ -77,7 +86,26 @@ export function computeSessionInsights(sessions: SessionWithParsed[]): SessionIn
   let deepDives = 0;
   let marathons = 0;
 
-  for (const session of sessions) {
+  // Message-level tracking
+  let firstUserMessage = '';
+  let longestUserPromptWords = 0;
+  let longestUserPromptPreview = '';
+  let longestUserPromptProject = '';
+  let longestAIResponseWords = 0;
+  let longestAIResponsePreview = '';
+  let longestAIResponseProject = '';
+  let totalUserWords = 0;
+  let totalUserMessageCount = 0;
+  let totalToolCalls = 0;
+  const shortQuoteCandidates: string[] = [];
+  const activeDates = new Set<string>();
+
+  // Sort by timestamp so firstUserMessage captures earliest session
+  const sortedSessions = [...sessions].sort(
+    (a, b) => a.metadata.timestamp.getTime() - b.metadata.timestamp.getTime()
+  );
+
+  for (const session of sortedSessions) {
     const { metadata, parsed } = session;
 
     // Project counts
@@ -115,6 +143,50 @@ export function computeSessionInsights(sessions: SessionWithParsed[]): SessionIn
     // Source breakdown
     const source = metadata.source ?? 'claude-code';
     sourceBreakdown.set(source, (sourceBreakdown.get(source) ?? 0) + 1);
+
+    // Tool calls
+    totalToolCalls += parsed.stats.toolCallCount;
+
+    // Date tracking for streak calculation
+    const dateKey = metadata.timestamp.toISOString().slice(0, 10);
+    activeDates.add(dateKey);
+
+    // Message-level insights
+    for (const msg of parsed.messages) {
+      const wordCount = msg.content.split(/\s+/).filter(Boolean).length;
+
+      if (msg.role === 'user') {
+        totalUserWords += wordCount;
+        totalUserMessageCount++;
+
+        // First user message (from earliest session)
+        if (!firstUserMessage && msg.content.trim().length > 0) {
+          const trimmed = msg.content.trim();
+          firstUserMessage = trimmed.length > 80 ? trimmed.slice(0, 77) + '...' : trimmed;
+        }
+
+        // Longest user prompt
+        if (wordCount > longestUserPromptWords) {
+          longestUserPromptWords = wordCount;
+          const preview = msg.content.trim().slice(0, 60);
+          longestUserPromptPreview = preview.length < msg.content.trim().length ? preview + '...' : preview;
+          longestUserPromptProject = project;
+        }
+
+        // Short quotes (10-25 words)
+        if (wordCount >= 10 && wordCount <= 25) {
+          shortQuoteCandidates.push(msg.content.trim());
+        }
+      } else if (msg.role === 'assistant') {
+        // Longest AI response
+        if (wordCount > longestAIResponseWords) {
+          longestAIResponseWords = wordCount;
+          const preview = msg.content.trim().slice(0, 60);
+          longestAIResponsePreview = preview.length < msg.content.trim().length ? preview + '...' : preview;
+          longestAIResponseProject = project;
+        }
+      }
+    }
   }
 
   // Most active project
@@ -158,6 +230,33 @@ export function computeSessionInsights(sessions: SessionWithParsed[]): SessionIn
     }
   }
 
+  // Coding streak: max consecutive days
+  const sortedDates = [...activeDates].sort();
+  let maxStreak = 0;
+  let currentStreak = 0;
+  for (let i = 0; i < sortedDates.length; i++) {
+    if (i === 0) {
+      currentStreak = 1;
+    } else {
+      const prev = new Date(sortedDates[i - 1]);
+      const curr = new Date(sortedDates[i]);
+      const diffDays = Math.round((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24));
+      currentStreak = diffDays === 1 ? currentStreak + 1 : 1;
+    }
+    maxStreak = Math.max(maxStreak, currentStreak);
+  }
+
+  // Reservoir sampling for short quotes (max 5)
+  const shortUserQuotes: string[] = [];
+  for (let i = 0; i < shortQuoteCandidates.length; i++) {
+    if (shortUserQuotes.length < 5) {
+      shortUserQuotes.push(shortQuoteCandidates[i]);
+    } else {
+      const j = Math.floor(Math.random() * (i + 1));
+      if (j < 5) shortUserQuotes[j] = shortQuoteCandidates[i];
+    }
+  }
+
   return {
     sessionCount: sessions.length,
     projectCount: projectCounts.size,
@@ -180,6 +279,13 @@ export function computeSessionInsights(sessions: SessionWithParsed[]): SessionIn
     sourceBreakdown,
     rhythm: { sprints, deepDives, marathons },
     peakHours,
+    firstUserMessage,
+    longestUserPrompt: { words: longestUserPromptWords, preview: longestUserPromptPreview, project: longestUserPromptProject },
+    longestAIResponse: { words: longestAIResponseWords, preview: longestAIResponsePreview, project: longestAIResponseProject },
+    avgUserMessageWords: totalUserMessageCount > 0 ? Math.round(totalUserWords / totalUserMessageCount) : 0,
+    shortUserQuotes,
+    codingStreakDays: maxStreak,
+    totalToolCalls,
   };
 }
 
