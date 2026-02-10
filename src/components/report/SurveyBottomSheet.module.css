@@ -1,0 +1,264 @@
+/* ========================================
+   SURVEY BOTTOM SHEET
+   Terminal-style slide-up survey panel
+   ======================================== */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 179;
+  pointer-events: none;
+}
+
+.sheet {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(100%);
+  z-index: 180;
+  width: 100%;
+  max-width: 560px;
+  background: var(--bg-paper, #fff);
+  border: 2px solid var(--ink-primary, #1a1a1a);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12), 4px 0 0 var(--ink-muted, rgba(0, 0, 0, 0.15));
+  opacity: 0;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+  will-change: transform, opacity;
+}
+
+.sheetVisible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* ---- Terminal Header ---- */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--ink-primary, #1a1a1a);
+  color: var(--bg-paper, #fff);
+  border-radius: 10px 10px 0 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.headerDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sketch-cyan, #06b6d4);
+  flex-shrink: 0;
+}
+
+.headerLabel {
+  flex: 1;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  color: var(--bg-paper, #fff);
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 2px;
+  font-size: 16px;
+  line-height: 1;
+  transition: opacity 0.15s;
+}
+
+.closeButton:hover {
+  opacity: 1;
+}
+
+/* ---- Body ---- */
+.body {
+  padding: 20px 20px 16px;
+}
+
+.question {
+  font-family: var(--font-mono, monospace);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-primary, #1a1a1a);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+/* ---- Star Rating ---- */
+.stars {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  justify-content: center;
+}
+
+.starButton {
+  background: none;
+  border: 2px solid var(--ink-light, #ccc);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+  color: var(--ink-muted, #999);
+}
+
+.starButton:hover {
+  border-color: var(--sketch-cyan, #06b6d4);
+  transform: scale(1.1);
+}
+
+.starButtonActive {
+  border-color: var(--sketch-cyan, #06b6d4);
+  background: var(--sketch-cyan-soft, rgba(6, 182, 212, 0.1));
+  color: var(--sketch-cyan, #06b6d4);
+}
+
+.starButtonFilled {
+  border-color: var(--sketch-cyan, #06b6d4);
+  background: var(--sketch-cyan, #06b6d4);
+  color: var(--bg-paper, #fff);
+}
+
+/* ---- Comment Input ---- */
+.commentInput {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  color: var(--ink-primary, #1a1a1a);
+  background: var(--surface-1, #fafafa);
+  border: 2px solid var(--ink-light, #ccc);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s;
+  margin-bottom: 16px;
+  box-sizing: border-box;
+}
+
+.commentInput::placeholder {
+  color: var(--ink-muted, #999);
+}
+
+.commentInput:focus {
+  border-color: var(--sketch-cyan, #06b6d4);
+}
+
+/* ---- Actions ---- */
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.laterButton {
+  padding: 8px 16px;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-secondary, #555);
+  background: none;
+  border: 2px solid var(--ink-light, #ccc);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.laterButton:hover {
+  border-color: var(--ink-primary, #1a1a1a);
+  color: var(--ink-primary, #1a1a1a);
+}
+
+.submitButton {
+  padding: 8px 20px;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bg-paper, #fff);
+  background: var(--ink-primary, #1a1a1a);
+  border: 2px solid var(--ink-primary, #1a1a1a);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 2px 2px 0 var(--sketch-cyan, #06b6d4);
+}
+
+.submitButton:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 var(--sketch-cyan, #06b6d4);
+}
+
+.submitButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- Thank You State ---- */
+.thankYou {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.thankYouText {
+  font-family: var(--font-mono, monospace);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sketch-cyan-text, #0891b2);
+  margin: 0;
+}
+
+/* ---- Reduced Motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    transition: none;
+  }
+
+  .starButton {
+    transition: none;
+  }
+
+  .submitButton,
+  .laterButton {
+    transition: none;
+  }
+}
+
+/* ---- Mobile ---- */
+@media (max-width: 600px) {
+  .sheet {
+    max-width: 100%;
+    left: 0;
+    transform: translateX(0) translateY(100%);
+    border-left: none;
+    border-right: none;
+    border-radius: 12px 12px 0 0;
+  }
+
+  .sheetVisible {
+    transform: translateX(0) translateY(0);
+  }
+
+  .body {
+    padding: 16px;
+  }
+
+  .stars {
+    gap: 6px;
+  }
+
+  .starButton {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+}
