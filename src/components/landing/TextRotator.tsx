@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import styles from './TextRotator.module.css';
 
 interface TextRotatorProps {
@@ -9,37 +9,43 @@ interface TextRotatorProps {
 }
 
 export function TextRotator({ words, interval = 3000 }: TextRotatorProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [exitingIndex, setExitingIndex] = useState<number | null>(null);
-
-  const rotate = useCallback(() => {
-    setExitingIndex(currentIndex);
-    setCurrentIndex((prev) => (prev + 1) % words.length);
-
-    // Clear exiting word after animation completes
-    setTimeout(() => setExitingIndex(null), 500);
-  }, [currentIndex, words.length]);
+  const [state, setState] = useState({ current: 0, previous: null as number | null });
 
   useEffect(() => {
-    const timer = setInterval(rotate, interval);
+    const timer = setInterval(() => {
+      setState((prev) => ({
+        current: (prev.current + 1) % words.length,
+        previous: prev.current,
+      }));
+    }, interval);
     return () => clearInterval(timer);
-  }, [rotate, interval]);
+  }, [words.length, interval]);
 
-  // Find longest word for sizing
+  // Clear previous after exit animation completes
+  useEffect(() => {
+    if (state.previous === null) return;
+    const timer = setTimeout(() => {
+      setState((prev) => ({ ...prev, previous: null }));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [state.previous]);
+
   const longest = words.reduce((a, b) => (a.length > b.length ? a : b));
+  const { current, previous } = state;
 
   return (
     <span className={styles.rotator}>
       <span className={styles.sizer} aria-hidden="true">
         {longest}
       </span>
-      {exitingIndex !== null && (
-        <span key={`exit-${exitingIndex}`} className={styles.wordExiting} aria-hidden="true">
-          {words[exitingIndex]}
-        </span>
-      )}
-      <span key={`word-${currentIndex}`} className={styles.word}>
-        {words[currentIndex]}
+      <span
+        className={previous !== null ? styles.wordExiting : styles.wordHidden}
+        aria-hidden="true"
+      >
+        {previous !== null ? words[previous] : ''}
+      </span>
+      <span key={`word-${current}`} className={styles.word}>
+        {words[current]}
       </span>
     </span>
   );
