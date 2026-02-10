@@ -108,7 +108,15 @@ export class CommunicationPatternsWorker extends BaseWorker<CommunicationPattern
 
     this.log(`Communication patterns: ${processedOutput.communicationPatterns.length}`);
     this.log(`Signature quotes: ${processedOutput.signatureQuotes?.length ?? 0}`);
-    this.log(`Overall communication score: ${processedOutput.overallCommunicationScore}`);
+    this.log(`Overall communication score (LLM): ${processedOutput.overallCommunicationScore}`);
+
+    // Override with deterministic score if available (rubric-based consistency)
+    const deterministicScores = (context as { deterministicScores?: { communicationPatterns: number } }).deterministicScores;
+    if (deterministicScores) {
+      processedOutput.overallCommunicationScore = deterministicScores.communicationPatterns;
+      this.log(`Overall communication score (deterministic override): ${deterministicScores.communicationPatterns}`);
+    }
+
     if (processedOutput.referencedInsights?.length) {
       this.log(`Referenced ${processedOutput.referencedInsights.length} professional insights`);
     }

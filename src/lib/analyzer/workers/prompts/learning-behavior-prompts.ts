@@ -89,6 +89,8 @@ The developer's session data may contain non-English text (Korean, Japanese, Chi
 - \`context_management\`: Context window issues, repeated context
 - \`scaffolding_collapse\`: Cannot start without AI - always asks AI first even for simple tasks
 - \`selective_learning\`: Consistently delegates certain topics, creating hidden knowledge gaps
+- \`comprehension_skip\`: Accepts AI-generated code without seeking understanding — never asks
+  "why" or "how does this work", then encounters errors later stemming from misunderstanding
 
 ### Detection Criteria
 A mistake is "repeated" if:
@@ -206,6 +208,24 @@ Look for signs that the developer cannot function without AI support:
 - Questions are asked in some domains but not others
 - "Just do it" pattern for specific categories
 - No follow-up questions about AI-generated code in certain areas
+
+### Comprehension-Seeking Detection
+
+**Positive Signal (report as strength — "Active Comprehension Seeking"):**
+- Developer asks "why?", "how does this work?", "explain this" after receiving AI-generated code
+- Follow-up questions about implementation details, design choices, or trade-offs
+- Requesting explanations before accepting complex code changes
+
+**Negative Signal (comprehension_skip):**
+A "comprehension_skip" is detected if BOTH conditions are met:
+1. Developer never asks explanatory questions about non-trivial AI outputs
+2. Subsequent errors or confusion appear that indicate lack of understanding
+
+Detection signals:
+- Zero "why/how/explain" questions despite receiving complex AI-generated code
+- Pattern: accept large code block → later session shows confusion about that code
+- Contrast with \`blind_retry\`: blind_retry is about retrying without analysis after errors;
+  \`comprehension_skip\` is about never seeking understanding BEFORE errors occur
 
 ### Insights
 

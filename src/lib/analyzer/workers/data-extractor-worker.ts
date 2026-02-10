@@ -539,6 +539,49 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
   ];
 
   /**
+   * Frustration/repetition expression patterns.
+   * Detected in user messages to signal frustration or repeated failures.
+   * Max 1 match per message.
+   */
+  private static readonly FRUSTRATION_PATTERNS = [
+    // Repetition signals
+    /\b(again)\b/i,
+    /\b(keep(s)? happening)\b/i,
+    /\b(keep(s)? failing)\b/i,
+    /\b(same (error|issue|problem|bug))\b/i,
+    /\b(still not working)\b/i,
+    /\b(over and over)\b/i,
+    /\b(one more time)\b/i,
+    /\b(happening again)\b/i,
+    /\b(still broken)\b/i,
+    /\b(still failing)\b/i,
+    // Frustration signals
+    /\b(frustrated)\b/i,
+    /\b(annoying)\b/i,
+    /\bwhy isn'?t\b/i,
+    /\bwhy doesn'?t\b/i,
+    /\b(what'?s wrong)\b/i,
+    /\b(give up)\b/i,
+    /\b(this is broken)\b/i,
+    /\b(stuck on)\b/i,
+  ];
+
+  /**
+   * Normalize an error message into a fingerprint for deduplication.
+   * Removes variable parts (file paths, line numbers, timestamps, hex addresses)
+   * so that the same type of error maps to the same key.
+   */
+  private static normalizeErrorFingerprint(errorMessage: string): string {
+    return errorMessage
+      .replace(/\/[\w\-./]+/g, '<PATH>')           // file paths
+      .replace(/:\d+:\d+/g, '<LOC>')               // line:col
+      .replace(/\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}/g, '<TS>')  // timestamps
+      .replace(/0x[0-9a-f]+/gi, '<ADDR>')           // hex addresses
+      .slice(0, 200)
+      .trim();
+  }
+
+  /**
    * Compute friction signals from sessions (deterministic detection).
    *
    * These signals help SessionOutcomeWorker identify friction points:
@@ -555,6 +598,12 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     let userRejectionSignals = 0;
     let excessiveIterationSessions = 0;
     let contextOverflowSessions = 0;
+    let frustrationExpressionCount = 0;
+    let bareRetryAfterErrorCount = 0;
+    let errorChainMaxLength = 0;
+
+    // Track all tool error fingerprints across sessions for repeated pattern detection
+    const errorFingerprints = new Map<string, number>();
 
     for (const session of sessions) {
       // Split session into logical segments at /clear boundaries
@@ -563,27 +612,44 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       for (const segment of segments) {
         let segmentUserMessages = 0;
         let segmentHadContextOverflow = false;
+        let currentErrorChain = 0;
 
         for (const message of segment) {
           if (message.role === 'user') {
             segmentUserMessages++;
+            const text = message.content;
 
             // Check for rejection patterns in user messages
-            const text = message.content;
             for (const pattern of DataExtractorWorker.REJECTION_PATTERNS) {
               if (pattern.test(text)) {
                 userRejectionSignals++;
                 break; // Count max once per message
               }
             }
+
+            // Check for frustration/repetition expressions
+            for (const pattern of DataExtractorWorker.FRUSTRATION_PATTERNS) {
+              if (pattern.test(text)) {
+                frustrationExpressionCount++;
+                break; // Count max once per message
+              }
+            }
           }
 
           if (message.role === 'assistant') {
-            // Count tool failures
+            // Count tool failures and collect error fingerprints
             if (message.toolCalls) {
               for (const toolCall of message.toolCalls) {
                 if (toolCall.isError) {
                   toolFailureCount++;
+
+                  // Fingerprint tool errors for repeated pattern detection
+                  if (toolCall.result) {
+                    const fingerprint = DataExtractorWorker.normalizeErrorFingerprint(toolCall.result);
+                    if (fingerprint) {
+                      errorFingerprints.set(fingerprint, (errorFingerprints.get(fingerprint) ?? 0) + 1);
+                    }
+                  }
                 }
               }
             }
@@ -610,11 +676,55 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       }
     }
 
+    // Compute bare retry count and error chain max from utterances
+    // (utterances have precedingAIHadError, wordCount, machineContentRatio)
+    // Group utterances by session to compute per-session error chains
+    const utterancesBySession = new Map<string, DeveloperUtterance[]>();
+    for (const u of utterances) {
+      const group = utterancesBySession.get(u.sessionId) ?? [];
+      group.push(u);
+      utterancesBySession.set(u.sessionId, group);
+    }
+
+    for (const sessionUtterances of utterancesBySession.values()) {
+      let currentChain = 0;
+
+      for (const u of sessionUtterances) {
+        if (u.precedingAIHadError) {
+          currentChain++;
+
+          // Bare retry: short natural language after an error (no analysis)
+          const ratio = u.machineContentRatio ?? 0;
+          if (u.wordCount < 10 && ratio < 0.5) {
+            bareRetryAfterErrorCount++;
+          }
+        } else {
+          currentChain = 0;
+        }
+
+        if (currentChain > errorChainMaxLength) {
+          errorChainMaxLength = currentChain;
+        }
+      }
+    }
+
+    // Count unique error patterns that appeared 2+ times
+    let repeatedToolErrorPatterns = 0;
+    for (const count of errorFingerprints.values()) {
+      if (count >= 2) {
+        repeatedToolErrorPatterns++;
+      }
+    }
+
     return {
       toolFailureCount,
       userRejectionSignals,
       excessiveIterationSessions,
       contextOverflowSessions,
+      frustrationExpressionCount,
+      repeatedToolErrorPatterns,
+      bareRetryAfterErrorCount,
+      errorChainMaxLength,
     };
   }
 

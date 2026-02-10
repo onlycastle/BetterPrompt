@@ -738,6 +738,180 @@ with various content
       vi.restoreAllMocks();
     });
 
+    it('should detect frustration expressions in user messages', async () => {
+      const session = createSession([
+        'same error again, still not working',
+        'Help me fix the login',
+      ]);
+      const context = createContext([session]);
+      const result = await worker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      const friction = result.data.sessionMetrics.frictionSignals;
+      // "same error" or "again" or "still not working" → at least 1 match
+      expect(friction.frustrationExpressionCount).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should count max 1 frustration expression per message', async () => {
+      // One message with multiple frustration patterns
+      const session = createSession([
+        'frustrated again, same error, still broken, why is this not working',
+      ]);
+      const context = createContext([session]);
+      const result = await worker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      const friction = result.data.sessionMetrics.frictionSignals;
+      // Only 1 message, so max 1 count even though multiple patterns match
+      expect(friction.frustrationExpressionCount).toBe(1);
+    });
+
+    it('should detect bare retry after error', async () => {
+      // This test uses direct worker execution which computes friction from raw sessions + utterances
+      // We need user messages with precedingAIHadError context
+      const messages: ParsedMessage[] = [
+        // First: user asks something
+        { role: 'user', content: 'Fix the build', timestamp: new Date(), toolCalls: [] },
+        // AI responds with an error
+        {
+          role: 'assistant',
+          content: 'Error: build failed',
+          timestamp: new Date(),
+          toolCalls: [{ name: 'Bash', input: 'npm run build', result: 'Error: Cannot find module', isError: true }],
+        },
+        // User gives bare retry (short, no analysis)
+        { role: 'user', content: 'try again', timestamp: new Date(), toolCalls: [] },
+        // AI responds with another error
+        {
+          role: 'assistant',
+          content: 'Error: still failing',
+          timestamp: new Date(),
+          toolCalls: [{ name: 'Bash', input: 'npm run build', result: 'Error: Cannot find module', isError: true }],
+        },
+        // User gives another bare retry
+        { role: 'user', content: 'fix it', timestamp: new Date(), toolCalls: [] },
+      ];
+
+      const session: ParsedSession = {
+        sessionId: 'test-bare-retry',
+        projectPath: '/test/project',
+        messages,
+        messageCount: messages.length,
+        durationSeconds: 60,
+      };
+      const context = createContext([session]);
+      const result = await worker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      const friction = result.data.sessionMetrics.frictionSignals;
+      // "try again" and "fix it" are both bare retries after errors
+      expect(friction.bareRetryAfterErrorCount).toBeGreaterThanOrEqual(2);
+    });
+
+    it('should compute error chain max length from consecutive errors', async () => {
+      const messages: ParsedMessage[] = [
+        { role: 'user', content: 'Build the project', timestamp: new Date(), toolCalls: [] },
+        {
+          role: 'assistant', content: 'Error occurred',
+          timestamp: new Date(),
+          toolCalls: [{ name: 'Bash', input: 'build', result: 'Error: fail 1', isError: true }],
+        },
+        { role: 'user', content: 'try again please', timestamp: new Date(), toolCalls: [] },
+        {
+          role: 'assistant', content: 'Error occurred again',
+          timestamp: new Date(),
+          toolCalls: [{ name: 'Bash', input: 'build', result: 'Error: fail 2', isError: true }],
+        },
+        { role: 'user', content: 'one more time', timestamp: new Date(), toolCalls: [] },
+        {
+          role: 'assistant', content: 'Still failing',
+          timestamp: new Date(),
+          toolCalls: [{ name: 'Bash', input: 'build', result: 'Error: fail 3', isError: true }],
+        },
+        { role: 'user', content: 'ok what about this approach instead?', timestamp: new Date(), toolCalls: [] },
+        // No error this time
+        { role: 'assistant', content: 'Success!', timestamp: new Date(), toolCalls: [] },
+        { role: 'user', content: 'great', timestamp: new Date(), toolCalls: [] },
+      ];
+
+      const session: ParsedSession = {
+        sessionId: 'test-error-chain',
+        projectPath: '/test/project',
+        messages,
+        messageCount: messages.length,
+        durationSeconds: 120,
+      };
+      const context = createContext([session]);
+      const result = await worker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      const friction = result.data.sessionMetrics.frictionSignals;
+      // 3 consecutive error turns: try again, one more time, ok what about...
+      expect(friction.errorChainMaxLength).toBeGreaterThanOrEqual(3);
+    });
+
+    it('should detect repeated tool error patterns', async () => {
+      const messages: ParsedMessage[] = [
+        { role: 'user', content: 'Run the tests', timestamp: new Date(), toolCalls: [] },
+        {
+          role: 'assistant', content: 'Running...',
+          timestamp: new Date(),
+          toolCalls: [
+            { name: 'Bash', input: 'npm test', result: 'Error: Cannot find module at /src/foo.ts:42:10', isError: true },
+          ],
+        },
+        { role: 'user', content: 'Try running again', timestamp: new Date(), toolCalls: [] },
+        {
+          role: 'assistant', content: 'Running...',
+          timestamp: new Date(),
+          toolCalls: [
+            // Same error type, different file path → should be same fingerprint
+            { name: 'Bash', input: 'npm test', result: 'Error: Cannot find module at /src/bar.ts:99:5', isError: true },
+          ],
+        },
+        { role: 'user', content: 'And again', timestamp: new Date(), toolCalls: [] },
+        {
+          role: 'assistant', content: 'Running...',
+          timestamp: new Date(),
+          toolCalls: [
+            // Different error type
+            { name: 'Bash', input: 'npm test', result: 'TypeError: undefined is not a function', isError: true },
+          ],
+        },
+      ];
+
+      const session: ParsedSession = {
+        sessionId: 'test-repeated-errors',
+        projectPath: '/test/project',
+        messages,
+        messageCount: messages.length,
+        durationSeconds: 60,
+      };
+      const context = createContext([session]);
+      const result = await worker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      const friction = result.data.sessionMetrics.frictionSignals;
+      // "Cannot find module" appeared 2x with different paths → 1 repeated pattern
+      expect(friction.repeatedToolErrorPatterns).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should report zero for new friction signals when no patterns present', async () => {
+      const session = createSession([
+        'Help me write a function',
+        'Add error handling please',
+      ]);
+      const context = createContext([session]);
+      const result = await worker.execute(context);
+
+      expect(result.error).toBeUndefined();
+      const friction = result.data.sessionMetrics.frictionSignals;
+      expect(friction.frustrationExpressionCount).toBe(0);
+      expect(friction.repeatedToolErrorPatterns).toBe(0);
+      expect(friction.bareRetryAfterErrorCount).toBe(0);
+      expect(friction.errorChainMaxLength).toBe(0);
+    });
+
     it('should accumulate token usage from LLM filtering', async () => {
       const mockGenerateStructured = vi.fn().mockResolvedValue({
         data: {

@@ -110,7 +110,15 @@ export class LearningBehaviorWorker extends BaseWorker<LearningBehaviorOutput> {
     this.log(`Knowledge gaps: ${processedOutput.knowledgeGaps.length}`);
     this.log(`Learning progress items: ${processedOutput.learningProgress.length}`);
     this.log(`Repeated mistake patterns: ${processedOutput.repeatedMistakePatterns.length}`);
-    this.log(`Overall learning score: ${processedOutput.overallLearningScore}`);
+    this.log(`Overall learning score (LLM): ${processedOutput.overallLearningScore}`);
+
+    // Override with deterministic score if available (rubric-based consistency)
+    const deterministicScores = (context as { deterministicScores?: { learningBehavior: number } }).deterministicScores;
+    if (deterministicScores) {
+      processedOutput.overallLearningScore = deterministicScores.learningBehavior;
+      this.log(`Overall learning score (deterministic override): ${deterministicScores.learningBehavior}`);
+    }
+
     if (processedOutput.referencedInsights?.length) {
       this.log(`Referenced ${processedOutput.referencedInsights.length} professional insights`);
     }

@@ -95,7 +95,15 @@ export class SessionOutcomeWorker extends BaseWorker<SessionOutcomeOutput> {
     const processedOutput = this.resolveAllReferences(parsedOutput, insightContext);
 
     this.log(`Overall success rate: ${processedOutput.overallSuccessRate}%`);
-    this.log(`Overall outcome score: ${processedOutput.overallOutcomeScore}`);
+    this.log(`Overall outcome score (LLM): ${processedOutput.overallOutcomeScore}`);
+
+    // Override with deterministic score if available (rubric-based consistency)
+    const deterministicScores = (context as { deterministicScores?: { sessionOutcome: number } }).deterministicScores;
+    if (deterministicScores) {
+      processedOutput.overallOutcomeScore = deterministicScores.sessionOutcome;
+      this.log(`Overall outcome score (deterministic override): ${deterministicScores.sessionOutcome}`);
+    }
+
     this.log(`Sessions analyzed: ${processedOutput.sessionAnalyses.length}`);
     this.log(`Goals tracked: ${processedOutput.goalDistribution.length}`);
     this.log(`Friction types: ${processedOutput.frictionSummary.length}`);
