@@ -8,241 +8,319 @@
   border-radius: var(--radius-md);
   box-shadow: 4px 4px 0 var(--ink-primary);
   transition: transform var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
 }
 
 .card:hover {
   transform: rotate(-0.5deg);
 }
 
-.label {
-  display: block;
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-  color: var(--sketch-cyan-text);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  margin-bottom: var(--space-md);
+/* ── Accent variants ─────────────────────── */
+.accentYellow {
+  border-left: 5px solid var(--sketch-yellow);
+  background: linear-gradient(135deg, var(--sketch-yellow-soft) 0%, var(--surface-1) 30%);
+}
+
+.accentGreen {
+  border-left: 5px solid var(--sketch-green);
+  background: linear-gradient(135deg, var(--sketch-green-soft) 0%, var(--surface-1) 30%);
 }
 
 /* ============================================
-   Evidence Card
+   Section Header (Card 1 & Card 3)
    ============================================ */
-.evidenceQuotes {
+.sectionHeader {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.quote {
-  margin: 0;
-  padding: var(--space-sm) var(--space-md);
-  border-left: 3px solid var(--sketch-cyan);
-  background: var(--surface-2);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-.quoteText {
-  font-size: var(--text-sm);
-  line-height: var(--leading-relaxed);
-  color: var(--ink-primary);
-  margin: 0 0 var(--space-xs) 0;
-  font-style: italic;
-}
-
-.quoteMeta {
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-  font-style: normal;
-}
-
-/* ============================================
-   Percentile Card
-   ============================================ */
-.percentileContent {
-  display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--space-sm);
 }
 
-.percentileLabel {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--ink-primary);
-}
-
-.percentileBarTrack {
-  position: relative;
-  height: 28px;
-  background: var(--surface-3);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.percentileBarFill {
-  height: 100%;
-  background: var(--sketch-green);
-  border-radius: var(--radius-sm);
-  transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.percentileValue {
-  position: absolute;
-  top: 50%;
-  right: var(--space-sm);
-  transform: translateY(-50%);
-  font-size: var(--text-sm);
+.sectionIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: var(--sketch-yellow);
+  color: #000;
   font-weight: var(--weight-bold);
-  color: var(--ink-primary);
+  font-size: 13px;
+  line-height: 1;
 }
 
-.percentileContext {
+.sectionIconGreen {
+  composes: sectionIcon;
+  background: var(--sketch-green);
+}
+
+.sectionLabel {
   font-size: var(--text-xs);
-  color: var(--ink-muted);
-  text-align: right;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-secondary);
+}
+
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--sketch-yellow-light);
+  color: var(--sketch-yellow-text);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+}
+
+.countBadgeGreen {
+  composes: countBadge;
+  background: var(--sketch-green-light);
+  color: var(--sketch-green-text);
 }
 
 /* ============================================
-   Focus Area Card
+   Title Row
    ============================================ */
-.focusContent {
+.titleRow {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
-.focusHeader {
+.cardTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  margin: 0;
+}
+
+.plusPrefix {
+  color: var(--sketch-green);
+  font-weight: var(--weight-bold);
+}
+
+.severityBadge {
+  padding: 2px var(--space-sm);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.08em;
+  border-radius: var(--radius-sm);
+  background: var(--sketch-red-soft);
+  color: var(--sketch-red-text);
+  border: 1px solid var(--sketch-red);
+}
+
+/* ============================================
+   Meta Tags (Card 1)
+   ============================================ */
+.metaTags {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.metaTagFilled {
+  padding: 3px var(--space-sm);
+  font-size: var(--text-xs);
+  border-radius: var(--radius-full);
+  background: var(--sketch-orange-soft);
+  color: var(--sketch-orange);
+  font-weight: var(--weight-semibold);
+}
+
+.metaTagOutline {
+  padding: 3px var(--space-sm);
+  font-size: var(--text-xs);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--ink-muted);
+  color: var(--ink-muted);
+}
+
+/* ============================================
+   Description
+   ============================================ */
+.description {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--ink-muted);
+  margin: 0;
+  font-family: var(--font-mono, monospace);
+}
+
+/* ============================================
+   Evidence (shared by Card 1 & Card 3)
+   ============================================ */
+.evidenceList {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
 }
 
-.focusTitle {
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  color: var(--ink-primary);
+.evidenceItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
 }
 
-.priorityBar {
-  height: 6px;
+.evidenceExpanded {
   background: var(--surface-3);
-  border-radius: var(--radius-full);
-  overflow: hidden;
 }
 
-.priorityFill {
-  height: 100%;
-  background: var(--sketch-orange);
-  border-radius: var(--radius-full);
+.chevron {
+  flex-shrink: 0;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  user-select: none;
 }
 
-.actionList {
+.evidenceQuote {
+  flex: 1;
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--ink-secondary);
+  font-style: italic;
+}
+
+.evidenceTag {
+  flex-shrink: 0;
+  padding: 2px var(--space-sm);
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+  color: var(--ink-muted);
+  border: 1px solid var(--surface-3);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  align-self: center;
+}
+
+/* ============================================
+   THE FIX (Card 1)
+   ============================================ */
+.fixBlock {
+  padding: var(--space-md);
+  background: var(--ink-primary);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.fixLabel {
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.1em;
+  color: var(--sketch-blue);
+  text-transform: uppercase;
+}
+
+.fixText {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--surface-1);
+  margin: 0;
+}
+
+/* ============================================
+   Expert Knowledge (Card 1)
+   ============================================ */
+.expertBlock {
+  border-left: 4px solid var(--sketch-purple);
+  padding: var(--space-md) var(--space-md) var(--space-md) var(--space-lg);
+  background: var(--sketch-purple-soft);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.expertHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.expertTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--sketch-purple-text);
+}
+
+.expertBadge {
+  padding: 1px var(--space-xs);
+  font-size: 9px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.1em;
+  border-radius: var(--radius-sm);
+  background: var(--sketch-purple-light);
+  color: var(--sketch-purple-text);
+}
+
+.expertActions {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
 }
 
-.actionItem {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-sm);
-}
-
-.actionBadgeStart,
-.actionBadgeStop,
-.actionBadgeContinue {
-  flex-shrink: 0;
-  padding: 1px var(--space-xs);
-  font-size: 10px;
-  font-weight: var(--weight-bold);
-  letter-spacing: 0.05em;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid;
-  min-width: 64px;
-  text-align: center;
-}
-
-.actionBadgeStart {
-  color: var(--sketch-green-text);
-  border-color: var(--sketch-green);
-  background: var(--sketch-green-soft);
-}
-
-.actionBadgeStop {
-  color: var(--sketch-red-text);
-  border-color: var(--sketch-red);
-  background: var(--sketch-red-soft);
-}
-
-.actionBadgeContinue {
-  color: var(--sketch-blue-text);
-  border-color: var(--sketch-blue);
-  background: var(--sketch-blue-soft);
-}
-
-.actionText {
-  font-size: var(--text-sm);
+.expertAction {
+  font-size: var(--text-xs);
   color: var(--ink-secondary);
-  line-height: var(--leading-normal);
+  line-height: var(--leading-relaxed);
+  padding-left: var(--space-md);
+  position: relative;
+}
+
+.expertAction::before {
+  content: '\2192';
+  position: absolute;
+  left: 0;
+  color: var(--sketch-purple);
 }
 
 /* ============================================
-   Activity Card — Heatmap
+   Weekly Card (Card 2)
    ============================================ */
-.activityContent {
+.weeklyHeader {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.weeklyTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  margin: 0;
+}
+
+.weeklyDate {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+/* Stats grid */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-md);
 }
 
-.heatmap {
-  display: flex;
-  gap: 3px;
-}
-
-.heatmapWeek {
+.statCell {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-}
-
-.heatmapCell {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-}
-
-.cell0 {
-  background: var(--surface-3);
-}
-
-.cell1 {
-  background: #9be9a8;
-}
-
-.cell2 {
-  background: #40c463;
-}
-
-.cell3 {
-  background: #30a14e;
-}
-
-.cell4 {
-  background: #216e39;
-}
-
-.activityStats {
-  display: flex;
-  gap: var(--space-lg);
-}
-
-.statItem {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-xs);
+  gap: 2px;
 }
 
 .statValue {
@@ -254,4 +332,218 @@
 .statLabel {
   font-size: var(--text-xs);
   color: var(--ink-muted);
+}
+
+.statDelta {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+
+.deltaUp {
+  color: var(--sketch-green-text);
+}
+
+.deltaDown {
+  color: var(--sketch-red-text);
+}
+
+/* Narrative blockquote */
+.narrative {
+  margin: 0;
+  padding: var(--space-sm) var(--space-md);
+  border-left: 3px solid var(--sketch-cyan);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--ink-secondary);
+  background: var(--sketch-cyan-soft);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* Project bars */
+.projectBars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.projectRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.projectName {
+  width: 120px;
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  font-family: var(--font-mono, monospace);
+  color: var(--ink-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barTrack {
+  flex: 1;
+  height: 8px;
+  background: var(--surface-3);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--sketch-cyan), var(--sketch-cyan-glow));
+  border-radius: var(--radius-full);
+  transition: width 0.4s ease-out;
+}
+
+.projectPct {
+  width: 36px;
+  text-align: right;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-muted);
+}
+
+/* Top sessions */
+.topSessions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.sessionRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.sessionDate {
+  flex-shrink: 0;
+  padding: 2px var(--space-sm);
+  font-size: 11px;
+  font-weight: var(--weight-semibold);
+  background: var(--surface-3);
+  border-radius: var(--radius-sm);
+  color: var(--ink-secondary);
+  white-space: nowrap;
+}
+
+.sessionDuration {
+  flex-shrink: 0;
+  padding: 2px var(--space-sm);
+  font-size: 11px;
+  font-weight: var(--weight-semibold);
+  background: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan-text);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.sessionSummary {
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  line-height: var(--leading-normal);
+}
+
+/* Highlights */
+.highlights {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.highlightItem {
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  line-height: var(--leading-relaxed);
+  padding-left: var(--space-md);
+  position: relative;
+}
+
+.highlightItem::before {
+  content: '\2022';
+  position: absolute;
+  left: 0;
+  color: var(--sketch-cyan);
+  font-weight: var(--weight-bold);
+}
+
+/* ============================================
+   Original Context (Card 3 — expanded evidence)
+   ============================================ */
+.originalContext {
+  margin-left: calc(var(--space-sm) + var(--space-md));
+  padding: var(--space-md);
+  background: var(--surface-2);
+  border-left: 3px solid var(--sketch-green);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.originalMessage {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--ink-secondary);
+  margin: 0 0 var(--space-sm) 0;
+  font-family: var(--font-mono, monospace);
+}
+
+.originalMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.metaText {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  font-family: var(--font-mono, monospace);
+}
+
+.viewContext {
+  font-size: var(--text-xs);
+  color: var(--sketch-cyan-text);
+  font-weight: var(--weight-semibold);
+  cursor: default;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 560px) {
+  .card {
+    padding: var(--space-md);
+  }
+
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .projectName {
+    width: 80px;
+    font-size: 11px;
+  }
+
+  .sessionRow {
+    flex-wrap: wrap;
+  }
+
+  .evidenceItem {
+    flex-wrap: wrap;
+  }
+
+  .evidenceTag {
+    margin-left: auto;
+  }
+
+  .originalMeta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

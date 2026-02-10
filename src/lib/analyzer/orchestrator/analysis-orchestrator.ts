@@ -666,7 +666,8 @@ export class AnalysisOrchestrator {
       contentResult.data,
       phase1Results.dataExtractor.data,
       sessionCount,
-      knowledgeResources.length > 0 ? knowledgeResources : undefined
+      knowledgeResources.length > 0 ? knowledgeResources : undefined,
+      sessions
     );
 
     if (translatorData) {

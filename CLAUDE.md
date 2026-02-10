@@ -127,9 +127,8 @@ npm test               # Run all tests
 > 2. `useScrollSpy` with IntersectionObserver detects which section is in viewport
 > 3. `FloatingProgressDots` (fixed right side) highlights the active section
 > 4. Professional insights render inline within `GrowthCard` (no sidebar, no click needed)
-> 5. Each Worker section shows percentile benchmarks via `useGrowthData` hook + `/api/benchmarks/personal`
 >
-> **Key files**: `useScrollSpy.ts`, `FloatingProgressDots.tsx`, `WorkerInsightsSection.tsx` (inline insights in GrowthCard), `useGrowthData.ts`, `PercentileGauge.tsx`
+> **Key files**: `useScrollSpy.ts`, `FloatingProgressDots.tsx`, `WorkerInsightsSection.tsx` (inline insights in GrowthCard)
 
 ## No Fallback Policy
 

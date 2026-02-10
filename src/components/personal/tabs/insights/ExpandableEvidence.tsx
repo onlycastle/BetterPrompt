@@ -190,7 +190,7 @@ function EvidenceItemRow({
           {/* Preceding AI snippet preview */}
           {utterance.precedingAISnippet && (
             <div className={styles.aiSnippet}>
-              <span className={styles.aiLabel}>AI said:</span>
+              <span className={styles.aiLabel}>AI said before:</span>
               <span className={styles.aiText}>{utterance.precedingAISnippet}</span>
             </div>
           )}
@@ -206,6 +206,13 @@ function EvidenceItemRow({
             </span>
             <p className={styles.utteranceText}>{utterance.text}</p>
           </div>
+          {/* Following AI snippet preview */}
+          {utterance.followingAISnippet && (
+            <div className={styles.aiSnippet}>
+              <span className={styles.aiLabel}>AI responded:</span>
+              <span className={styles.aiText}>{utterance.followingAISnippet}</span>
+            </div>
+          )}
           <div className={styles.metadata}>
             <span className={styles.metaItem}>
               <span className={styles.metaIcon}>📁</span>

@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useRemoteResult } from '@/hooks/useRemoteResult';
-import { useGrowthData } from '@/hooks/useGrowthData';
 import { TabbedReportContainer } from '@/components/personal/tabs';
 import { UnlockSection } from '@/components/report/UnlockSection';
 import { ReportShareBar } from '@/components/report/ReportShareBar';
@@ -57,7 +56,6 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
   const paymentSuccess = searchParams.get('payment') === 'success';
 
   const { data, isPaid, preview, credits, isLoading, error, errorStatus, refetch } = useRemoteResult(resultId);
-  const { benchmarkPercentiles } = useGrowthData();
   const [showSuccessToast, setShowSuccessToast] = useState(paymentSuccess);
 
   useEffect(() => {
@@ -166,7 +164,6 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
           analysis={data}
           agentOutputs={data.agentOutputs}
           analysisMetadata={data.analysisMetadata}
-          benchmarkPercentiles={benchmarkPercentiles}
           reportId={resultId}
         />
       </div>

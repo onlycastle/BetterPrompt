@@ -118,6 +118,7 @@ export type PromptEffectiveness = 'highly_effective' | 'effective' | 'could_impr
 export interface PromptPatternExample {
   quote: string;
   analysis: string;
+  utteranceId?: string;
 }
 
 export interface PromptPattern {

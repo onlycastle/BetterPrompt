@@ -154,6 +154,19 @@ export function SourceContextSidebar({
               </div>
               <p className={styles.messageText}>{utterance.text}</p>
             </div>
+
+            {/* AI Response (if following AI snippet available) */}
+            {utterance.followingAISnippet && (
+              <div className={styles.messageBubble}>
+                <div className={styles.messageHeader}>
+                  <span className={styles.roleLabel}>
+                    <span className={styles.roleIcon}>AI</span>
+                    AI Response
+                  </span>
+                </div>
+                <p className={styles.messageText}>{utterance.followingAISnippet}</p>
+              </div>
+            )}
           </div>
 
           {/* Transformation Info (if content was summarized) */}

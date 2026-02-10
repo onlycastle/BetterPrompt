@@ -352,6 +352,7 @@ export interface PromptPattern {
   examples: Array<{
     quote: string;
     analysis: string;
+    utteranceId?: string;
   }>;
   effectiveness: PromptEffectiveness;
   tip?: string;

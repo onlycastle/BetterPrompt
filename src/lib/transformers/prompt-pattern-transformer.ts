@@ -62,10 +62,20 @@ function frequencyToSeverity(frequency: PromptFrequency): 'high' | 'medium' | 'l
 
 /**
  * Convert PromptPattern examples to EvidenceItem array.
- * Uses quote from examples as evidence string.
+ * Returns InsightEvidence (expandable) when utteranceId is available,
+ * otherwise falls back to plain string quote (non-expandable).
  */
 function examplesToEvidence(examples: PromptPattern['examples']): EvidenceItem[] {
-  return examples.map((ex) => ex.quote);
+  return examples.map((ex) => {
+    if (ex.utteranceId) {
+      return {
+        utteranceId: ex.utteranceId,
+        quote: ex.quote,
+        context: ex.analysis,
+      };
+    }
+    return ex.quote;
+  });
 }
 
 /**

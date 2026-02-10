@@ -1230,6 +1230,14 @@ export const UtteranceLookupEntrySchema = z.object({
    * Truncated to ~150 chars for display purposes.
    */
   precedingAISnippet: z.string().optional(),
+  /**
+   * Snippet of the following AI response for context display.
+   *
+   * Shows what the AI responded after this developer message,
+   * helping understand the conversation flow around the evidence.
+   * Truncated to ~200 chars for display purposes.
+   */
+  followingAISnippet: z.string().optional(),
 });
 export type UtteranceLookupEntry = z.infer<typeof UtteranceLookupEntrySchema>;
 
