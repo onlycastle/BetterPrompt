@@ -216,7 +216,6 @@ export function parseExamplesData(data: string | undefined): Array<{ utteranceId
 export const DIMENSION_DISPLAY_NAMES: Record<DimensionNameEnum, string> = {
   aiCollaboration: 'AI Collaboration Mastery',
   contextEngineering: 'Context Engineering',
-  toolMastery: 'Tool Mastery',
   burnoutRisk: 'Burnout Risk Assessment',
   aiControl: 'AI Control Index',
   skillResilience: 'Skill Resilience',

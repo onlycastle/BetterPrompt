@@ -11,12 +11,11 @@
 import { z } from 'zod';
 
 /**
- * The 6 analysis dimensions
+ * The 5 analysis dimensions
  */
 export const DimensionNameEnumSchema = z.enum([
   'aiCollaboration',
   'contextEngineering',
-  'toolMastery',
   'burnoutRisk',
   'aiControl',
   'skillResilience',

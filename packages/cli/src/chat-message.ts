@@ -29,7 +29,6 @@ const PHASE_DISPLAY: Record<string, { title: string }> = {
   discovery_rhythm: { title: 'Session Rhythm' },
   discovery_hours: { title: 'Peak Hours' },
   discovery_dialogue: { title: 'Dialogue' },
-  discovery_tools: { title: 'Tool Usage' },
   discovery_tokens: { title: 'AI Output' },
   discovery_sources: { title: 'Sources' },
 };
@@ -178,6 +177,105 @@ export function getMessageTextContent(
   return formatChatMessage(phase, snippets, elapsed).join('\n');
 }
 
+// -- Instant-Frame Streaming API -------------------------------------------
+
+/** Decomposed chat message parts for instant-frame streaming */
+export interface ChatMessageParts {
+  /** Word-wrapped content lines (no box frame) */
+  wrappedLines: string[];
+  /** wrappedLines.join('\n') — used for character counting */
+  contentText: string;
+  /** Inner width of the box bubble (BUBBLE_INNER_WIDTH) */
+  innerWidth: number;
+  /** Timestamp string (e.g. "1:23") */
+  elapsed: string;
+}
+
+/**
+ * Extract the content parts of a chat message without rendering the box frame.
+ * Used by the streaming display to count only content characters.
+ */
+export function getChatMessageParts(
+  phase: string,
+  snippets: PreviewSnippet[],
+  elapsed: string
+): ChatMessageParts {
+  const text = buildConversationalText(phase, snippets);
+  const wrappedLines = wrapText(text, BUBBLE_INNER_WIDTH);
+  const contentText = wrappedLines.join('\n');
+  return { wrappedLines, contentText, innerWidth: BUBBLE_INNER_WIDTH, elapsed };
+}
+
+/**
+ * Render a box-framed message with only a portion of the content revealed.
+ * The box frame (top/bottom borders, side borders) always renders in full.
+ * Content inside the box is progressively revealed up to `revealedChars`.
+ *
+ * @param parts - Decomposed message parts from getChatMessageParts()
+ * @param revealedChars - Number of content characters to show (0 = empty box)
+ * @param cursorStr - Cursor string to append at typing position (null = no cursor)
+ * @returns Array of formatted lines (same structure as formatChatMessage)
+ */
+export function renderPartialBoxMessage(
+  parts: ChatMessageParts,
+  revealedChars: number,
+  cursorStr: string | null
+): string[] {
+  const { wrappedLines, contentText, innerWidth, elapsed } = parts;
+  const border = '─'.repeat(innerWidth + 4);
+  const lines: string[] = [];
+
+  // Top border — always full
+  lines.push(`  ${pc.dim('┌' + border + '┐')}`);
+
+  // Walk wrapped lines, tracking how many content chars have been consumed.
+  // The content text is wrappedLines.join('\n'), so between each line there
+  // is one '\n' character that counts toward revealedChars.
+  let charsConsumed = 0;
+
+  for (let i = 0; i < wrappedLines.length; i++) {
+    const lineText = wrappedLines[i];
+    // Account for the '\n' separator before this line (except the first)
+    if (i > 0) charsConsumed++; // the '\n'
+
+    if (charsConsumed >= revealedChars) {
+      // This line is not yet reached — render empty
+      const padded = ' '.repeat(innerWidth);
+      lines.push(`  ${pc.dim('│')}  ${padded}  ${pc.dim('│')}`);
+    } else if (charsConsumed + lineText.length <= revealedChars) {
+      // Fully revealed line
+      const padded = lineText + ' '.repeat(Math.max(0, innerWidth - lineText.length));
+      lines.push(`  ${pc.dim('│')}  ${padded}  ${pc.dim('│')}`);
+      charsConsumed += lineText.length;
+    } else {
+      // Partially revealed line
+      const visibleCount = revealedChars - charsConsumed;
+      const visiblePart = lineText.slice(0, visibleCount);
+      const cursor = cursorStr ?? '';
+      // Padding must account for visible chars only (cursor is ANSI-colored, zero visual width counted separately)
+      const padLen = Math.max(0, innerWidth - visibleCount - (cursorStr ? 1 : 0));
+      const padded = visiblePart + cursor + ' '.repeat(padLen);
+      lines.push(`  ${pc.dim('│')}  ${padded}  ${pc.dim('│')}`);
+      charsConsumed += lineText.length;
+    }
+  }
+
+  // Bottom border — always full
+  lines.push(`  ${pc.dim('└' + border + '┘')}`);
+
+  // Timestamp — only shown when all content is revealed
+  const isFullyRevealed = revealedChars >= contentText.length;
+  const totalBubbleWidth = innerWidth + 6;
+  if (isFullyRevealed) {
+    const timestampPad = Math.max(0, totalBubbleWidth - elapsed.length);
+    lines.push(' '.repeat(timestampPad) + pc.dim(elapsed));
+  } else {
+    lines.push(''); // placeholder line to keep spacing consistent
+  }
+
+  return lines;
+}
+
 /**
  * Check if a phase is the type classification (gets special treatment)
  */
@@ -221,12 +319,6 @@ export function buildScanPreviewMessages(
   if (insights.longestSession.durationMin > 0) {
     highlightParts.push(
       `Longest deep work: ${formatDuration(insights.longestSession.durationMin)} on ${insights.longestSession.project}`
-    );
-  }
-
-  if (insights.topTools.length >= 3) {
-    highlightParts.push(
-      `Top tools: ${insights.topTools.slice(0, 3).join(', ')}`
     );
   }
 
@@ -303,19 +395,7 @@ export function buildProgressiveDiscoveryMessages(
     });
   }
 
-  // 4. Tool usage
-  if (insights.totalToolCalls > 100 && insights.topTools.length >= 3) {
-    const tools = insights.topTools.slice(0, 3);
-    messages.push({
-      phase: 'discovery_tools',
-      snippets: [{
-        label: '', icon: '',
-        text: `${tools[0]}, ${tools[1]}, ${tools[2]} — your top 3 tools across ${formatNumber(insights.totalToolCalls)} total calls.`,
-      }],
-    });
-  }
-
-  // 5. Token volume
+  // 4. Token volume
   if (insights.totalOutputTokens > 10000) {
     const pages = Math.round(insights.totalOutputTokens / 1300);
     messages.push({

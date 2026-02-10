@@ -8,6 +8,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { isEnterpriseAllowed } from '@/lib/enterprise-access';
 import { Search, BookOpen, User, LogOut, BarChart2, LayoutDashboard, Users, Settings } from 'lucide-react';
 import styles from './DashboardSidebar.module.css';
 
@@ -79,20 +80,24 @@ export function DashboardSidebar() {
           </Link>
         ))}
 
-        {/* Enterprise section */}
-        <div className={styles.separator}>
-          <span className={styles.separatorLabel}>Enterprise</span>
-        </div>
-        {ENTERPRISE_NAV_ITEMS.map(({ path, label, icon }) => (
-          <Link
-            key={path}
-            href={path}
-            className={`${styles.navItem} ${isActive(path) ? styles.active : ''}`}
-          >
-            <span className={styles.navIcon}>{icon}</span>
-            <span className={styles.navLabel}>{label}</span>
-          </Link>
-        ))}
+        {/* Enterprise section — visible only to whitelisted emails */}
+        {isEnterpriseAllowed(user?.email ?? undefined) && (
+          <>
+            <div className={styles.separator}>
+              <span className={styles.separatorLabel}>Enterprise</span>
+            </div>
+            {ENTERPRISE_NAV_ITEMS.map(({ path, label, icon }) => (
+              <Link
+                key={path}
+                href={path}
+                className={`${styles.navItem} ${isActive(path) ? styles.active : ''}`}
+              >
+                <span className={styles.navIcon}>{icon}</span>
+                <span className={styles.navLabel}>{label}</span>
+              </Link>
+            ))}
+          </>
+        )}
       </div>
 
       {/* Footer with user info */}

@@ -23,7 +23,6 @@ interface TrackingMetricsRow {
     aiCollaboration?: number;
     promptEngineering?: number;
     burnoutRisk?: number;
-    toolMastery?: number;
     aiControl?: number;
     skillResilience?: number;
   };
@@ -42,7 +41,6 @@ function toTrackingMetrics(row: TrackingMetricsRow): TrackingMetrics {
       aiCollaboration: row.dimension_scores?.aiCollaboration,
       promptEngineering: row.dimension_scores?.promptEngineering,
       burnoutRisk: row.dimension_scores?.burnoutRisk,
-      toolMastery: row.dimension_scores?.toolMastery,
       aiControl: row.dimension_scores?.aiControl,
       skillResilience: row.dimension_scores?.skillResilience,
     },
@@ -182,7 +180,6 @@ export function createSupabaseTrackingRepository(): ITrackingRepository {
           'aiCollaboration',
           'promptEngineering',
           'burnoutRisk',
-          'toolMastery',
           'aiControl',
           'skillResilience',
         ];

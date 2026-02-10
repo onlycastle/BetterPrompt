@@ -362,7 +362,6 @@ export interface PromptPattern {
 export type DimensionName =
   | 'aiCollaboration'
   | 'contextEngineering'
-  | 'toolMastery'
   | 'burnoutRisk'
   | 'aiControl'
   | 'skillResilience';

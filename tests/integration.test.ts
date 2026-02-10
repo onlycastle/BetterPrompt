@@ -151,11 +151,6 @@ describe('SessionParser Integration', { timeout: 60000 }, () => {
     expect(dimensions.burnoutRisk).toHaveProperty('level');
     expect(dimensions.burnoutRisk).toHaveProperty('breakdown');
 
-    // Verify Tool Mastery result
-    expect(dimensions.toolMastery).toHaveProperty('overallScore');
-    expect(dimensions.toolMastery).toHaveProperty('toolUsage');
-    expect(dimensions.toolMastery).toHaveProperty('topTools');
-
     console.log('Dimension analysis:', {
       aiCollaboration: {
         score: dimensions.aiCollaboration.score,
@@ -177,7 +172,6 @@ describe('SessionParser Integration', { timeout: 60000 }, () => {
         },
       },
       burnoutRisk: { score: dimensions.burnoutRisk.score, level: dimensions.burnoutRisk.level },
-      toolMastery: { score: dimensions.toolMastery.overallScore, topTools: dimensions.toolMastery.topTools },
     });
   });
 });

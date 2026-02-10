@@ -20,11 +20,9 @@ export interface SessionInsights {
   totalDurationMinutes: number;
   userMessages: number;
   aiMessages: number;
-  totalToolCalls: number;
   totalOutputTokens: number;
   longestSession: { project: string; durationMin: number };
   mostActiveProject: { name: string; count: number };
-  topTools: string[];
   dateRange: { from: Date; to: Date };
   busiestDay: { day: string; count: number };
   avgSessionMinutes: number;
@@ -62,7 +60,6 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 export function computeSessionInsights(sessions: SessionWithParsed[]): SessionInsights {
   const projectCounts = new Map<string, number>();
-  const toolCounts = new Map<string, number>();
   const dayCounts = new Array<number>(7).fill(0);
   const hourCounts = new Array<number>(24).fill(0);
   const sourceBreakdown = new Map<string, number>();
@@ -71,7 +68,6 @@ export function computeSessionInsights(sessions: SessionWithParsed[]): SessionIn
   let totalDurationSec = 0;
   let userMessages = 0;
   let aiMessages = 0;
-  let totalToolCalls = 0;
   let totalOutputTokens = 0;
   let longestDuration = 0;
   let longestProject = '';
@@ -100,12 +96,6 @@ export function computeSessionInsights(sessions: SessionWithParsed[]): SessionIn
     totalMessages += metadata.messageCount;
     userMessages += parsed.stats.userMessageCount;
     aiMessages += parsed.stats.assistantMessageCount;
-
-    // Tools
-    totalToolCalls += parsed.stats.toolCallCount;
-    for (const tool of parsed.stats.uniqueToolsUsed) {
-      toolCounts.set(tool, (toolCounts.get(tool) ?? 0) + 1);
-    }
 
     // Tokens
     totalOutputTokens += parsed.stats.totalOutputTokens;
@@ -136,12 +126,6 @@ export function computeSessionInsights(sessions: SessionWithParsed[]): SessionIn
       mostActiveName = name;
     }
   }
-
-  // Top tools (by session frequency)
-  const topTools = [...toolCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([name]) => name);
 
   // Busiest day of week
   let busiestIdx = 0;
@@ -181,14 +165,12 @@ export function computeSessionInsights(sessions: SessionWithParsed[]): SessionIn
     totalDurationMinutes,
     userMessages,
     aiMessages,
-    totalToolCalls,
     totalOutputTokens,
     longestSession: {
       project: longestProject,
       durationMin: Math.round(longestDuration / 60),
     },
     mostActiveProject: { name: mostActiveName, count: mostActiveCount },
-    topTools,
     dateRange: {
       from: new Date(minDate === Infinity ? Date.now() : minDate),
       to: new Date(maxDate === -Infinity ? Date.now() : maxDate),
@@ -255,18 +237,6 @@ export function generatePersonalizedMessages(insights: SessionInsights): {
     );
   }
 
-  if (insights.totalToolCalls > 0) {
-    bubbles.push(
-      `That's ${formatNumber(insights.totalToolCalls)} tool calls \u2014 Read, Edit, Bash all working behind the scenes`,
-    );
-  }
-
-  if (insights.topTools.length > 0) {
-    bubbles.push(
-      `${insights.topTools[0]} is your most-used tool \u2014 it shows up in almost every session`,
-    );
-  }
-
   bubbles.push(
     `Your ${insights.busiestDay.day} productivity spike is real \u2014 let's see what that pattern reveals`,
   );
@@ -323,24 +293,10 @@ export function generatePersonalizedMessages(insights: SessionInsights): {
     });
   }
 
-  if (insights.totalToolCalls > 0) {
-    tips.push({
-      icon: '\uD83D\uDD27',
-      text: `${formatNumber(insights.totalToolCalls)} tool calls \u2014 Read, Edit, Bash, and more`,
-    });
-  }
-
   tips.push({
     icon: '\uD83D\uDCAC',
     text: `You sent ${formatNumber(insights.userMessages)} messages, AI responded ${formatNumber(insights.aiMessages)} times`,
   });
-
-  if (insights.topTools.length >= 3) {
-    tips.push({
-      icon: '\uD83D\uDEE0\uFE0F',
-      text: `Top tools: ${insights.topTools.slice(0, 4).join(', ')}`,
-    });
-  }
 
   // Generic tips (filler, placed after personalized)
   tips.push({

@@ -16,8 +16,14 @@ import type {
   MemberProjectActivity,
   MemberStrengthSummary,
   MemberGrowthSnapshot,
+  MemberGrowthArea,
+  MemberKPT,
   WeeklyTokenTrend,
   AntiPatternAggregate,
+  EnhancedAntiPatternAggregate,
+  TeamGrowthAreaAggregate,
+  TeamKPTAggregate,
+  TeamKPTItem,
   InefficiencyPattern,
 } from '../../types/enterprise';
 import { ANTI_PATTERN_LABELS } from '../../types/enterprise';
@@ -165,6 +171,255 @@ function generateStrengths(level: 'strong' | 'average' | 'developing'): MemberSt
   }));
 }
 
+// ---------------------------------------------------------------------------
+// Growth area pools (shared titles ensure overlap for meaningful aggregation)
+// ---------------------------------------------------------------------------
+
+const GROWTH_AREA_POOL: Record<string, { title: string; recommendation: string }[]> = {
+  thinkingQuality: [
+    { title: 'Premature Implementation', recommendation: 'Spend more time understanding requirements before jumping into code. Write a brief plan for sessions longer than 30 minutes.' },
+    { title: 'Insufficient Error Anticipation', recommendation: 'Before implementing, list 3 potential failure modes. Add error handling proactively rather than reactively.' },
+    { title: 'Weak Verification Habits', recommendation: 'After each major code change, explicitly verify the output matches expectations before moving on.' },
+  ],
+  communicationPatterns: [
+    { title: 'Vague Requirement Framing', recommendation: 'Provide concrete examples and acceptance criteria when describing tasks to AI assistants.' },
+    { title: 'Lack of Iterative Refinement', recommendation: 'Break large requests into smaller, verifiable steps rather than asking for everything at once.' },
+    { title: 'Missing Context in Follow-ups', recommendation: 'When continuing a conversation, reference specific prior decisions to maintain coherent context.' },
+  ],
+  learningBehavior: [
+    { title: 'Repeated Mistake Patterns', recommendation: 'Create a personal "lessons learned" doc and review it before starting similar tasks.' },
+    { title: 'No Cross-Session Knowledge Transfer', recommendation: 'Summarize key decisions at session end and reference them in the next session.' },
+    { title: 'Low Adaptation Speed', recommendation: 'When AI suggests a new approach, try it in a small scope before defaulting to familiar patterns.' },
+  ],
+  contextEfficiency: [
+    { title: 'Context Window Overuse', recommendation: 'Use session separation and context compaction techniques to stay under 70% fill.' },
+    { title: 'Redundant Information Passing', recommendation: 'Reference prior context instead of re-pasting large code blocks. Use file paths and line numbers.' },
+    { title: 'Inefficient Prompt Structure', recommendation: 'Structure prompts with clear sections: goal, constraints, examples. Avoid narrative-style requests.' },
+  ],
+  sessionOutcome: [
+    { title: 'Incomplete Task Closure', recommendation: 'Define "done" criteria at session start. Verify all criteria are met before ending.' },
+    { title: 'High Friction Ratio', recommendation: 'Track time spent on rework vs. forward progress. If >30% is rework, pause and reassess approach.' },
+    { title: 'Low Outcome Quality', recommendation: 'Add a final review step: re-read generated code, check edge cases, verify test coverage.' },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// KPT pools (shared text ensures overlap for meaningful aggregation)
+// ---------------------------------------------------------------------------
+
+const KPT_POOL = {
+  keep: [
+    'Systematic planning before implementation',
+    'Consistent use of session separation for distinct tasks',
+    'Thorough verification of AI-generated code',
+    'Effective context engineering with clear constraints',
+    'Regular knowledge persistence through documentation',
+    'Iterative refinement of prompts based on output quality',
+  ],
+  problem: [
+    'Context window frequently exceeds 80% utilization',
+    'Repeated patterns of verbose error pasting',
+    'Lack of session separation for unrelated tasks',
+    'Accepting AI output without sufficient verification',
+    'Starting implementation without understanding requirements',
+    'Not leveraging prior session learnings',
+  ],
+  tryNext: [
+    'Implement structured prompt templates for common tasks',
+    'Create a personal anti-pattern checklist for code review',
+    'Adopt context compaction strategy before 60% fill',
+    'Use AI pair programming for design discussions before coding',
+    'Document session insights in a reusable knowledge base',
+    'Practice deliberate verification after every 3 AI interactions',
+  ],
+};
+
+function generateMemberGrowthAreas(level: 'strong' | 'average' | 'developing'): MemberGrowthArea[] {
+  const count = level === 'developing' ? 4 : level === 'average' ? 2 : 1;
+  const severities: MemberGrowthArea['severity'][] =
+    level === 'developing' ? ['critical', 'high', 'high', 'medium']
+    : level === 'average' ? ['medium', 'low']
+    : ['low'];
+  const domains = Object.keys(GROWTH_AREA_POOL);
+  const areas: MemberGrowthArea[] = [];
+  for (let i = 0; i < count; i++) {
+    const domain = domains[i % domains.length];
+    const pool = GROWTH_AREA_POOL[domain];
+    const item = pool[i % pool.length];
+    areas.push({
+      title: item.title,
+      domain,
+      severity: severities[i] ?? 'medium',
+      recommendation: item.recommendation,
+    });
+  }
+  return areas;
+}
+
+function generateMemberKPT(level: 'strong' | 'average' | 'developing'): MemberKPT {
+  const keepCount = level === 'strong' ? 3 : level === 'average' ? 2 : 1;
+  const problemCount = level === 'developing' ? 3 : level === 'average' ? 2 : 1;
+  const tryCount = level === 'developing' ? 3 : level === 'average' ? 2 : 1;
+  return {
+    keep: KPT_POOL.keep.slice(0, keepCount),
+    problem: KPT_POOL.problem.slice(0, problemCount),
+    tryNext: KPT_POOL.tryNext.slice(0, tryCount),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Anti-pattern detail map
+// ---------------------------------------------------------------------------
+
+export const ANTI_PATTERN_DETAILS: Record<InefficiencyPattern, { description: string; actionableInsight: string }> = {
+  late_compact: {
+    description: 'Context compaction triggered too late in the session, causing degraded AI performance and increased token waste.',
+    actionableInsight: 'Train the team to trigger compaction proactively at 60% context fill, not reactively at 90%+.',
+  },
+  context_bloat: {
+    description: 'Sessions accumulate excessive context through large paste operations and unnecessary file inclusions.',
+    actionableInsight: 'Establish a "minimal context" practice: include only files and snippets directly relevant to the current task.',
+  },
+  redundant_info: {
+    description: 'Same information is re-provided multiple times within a session, wasting context window capacity.',
+    actionableInsight: 'Encourage referencing prior messages instead of re-pasting. Use "as discussed above" patterns.',
+  },
+  prompt_length_inflation: {
+    description: 'Prompts grow increasingly verbose without proportional improvement in output quality.',
+    actionableInsight: 'Workshop concise prompting techniques. Aim for <200 words per prompt with structured formatting.',
+  },
+  no_session_separation: {
+    description: 'Multiple unrelated tasks are handled in a single session, degrading context relevance.',
+    actionableInsight: 'Establish a team norm: new task = new session. Keep sessions focused on one objective.',
+  },
+  verbose_error_pasting: {
+    description: 'Full stack traces and error logs are pasted without summarization, consuming excessive context.',
+    actionableInsight: 'Train developers to extract key error lines and provide summaries rather than raw pastes.',
+  },
+  no_knowledge_persistence: {
+    description: 'Insights and decisions from sessions are not recorded, leading to repeated problem-solving.',
+    actionableInsight: 'Implement session-end summaries stored in project docs for cross-session knowledge transfer.',
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Team-level aggregation functions
+// ---------------------------------------------------------------------------
+
+export function aggregateGrowthAreas(members: TeamMemberAnalysis[]): TeamGrowthAreaAggregate[] {
+  const map = new Map<string, {
+    domain: string;
+    domainLabel: string;
+    members: string[];
+    severities: MemberGrowthArea['severity'][];
+    recommendation: string;
+  }>();
+
+  const domainLabelMap: Record<string, string> = {};
+  for (const { domain, label } of DOMAIN_CONFIGS) {
+    domainLabelMap[domain] = label;
+  }
+
+  for (const m of members) {
+    for (const ga of m.growthAreas) {
+      const entry = map.get(ga.title) ?? {
+        domain: ga.domain,
+        domainLabel: domainLabelMap[ga.domain] ?? ga.domain,
+        members: [],
+        severities: [],
+        recommendation: ga.recommendation,
+      };
+      entry.members.push(m.name);
+      entry.severities.push(ga.severity);
+      map.set(ga.title, entry);
+    }
+  }
+
+  const severityRank = { critical: 4, high: 3, medium: 2, low: 1 } as const;
+
+  return [...map.entries()]
+    .filter(([, data]) => data.members.length >= 2)
+    .map(([title, data]) => {
+      const predominant = data.severities.reduce((best, s) =>
+        severityRank[s] > severityRank[best] ? s : best, data.severities[0]);
+      return {
+        title,
+        domain: data.domain,
+        domainLabel: data.domainLabel,
+        memberCount: data.members.length,
+        affectedMembers: data.members,
+        predominantSeverity: predominant,
+        sampleRecommendation: data.recommendation,
+      };
+    })
+    .sort((a, b) => b.memberCount - a.memberCount || severityRank[b.predominantSeverity] - severityRank[a.predominantSeverity]);
+}
+
+export function aggregateKPT(members: TeamMemberAnalysis[]): TeamKPTAggregate {
+  function aggregateCategory(items: { text: string; memberName: string }[]): TeamKPTItem[] {
+    const map = new Map<string, string[]>();
+    for (const { text, memberName } of items) {
+      const arr = map.get(text) ?? [];
+      arr.push(memberName);
+      map.set(text, arr);
+    }
+    return [...map.entries()]
+      .filter(([, members]) => members.length >= 2)
+      .map(([text, members]) => ({ text, memberCount: members.length, affectedMembers: members }))
+      .sort((a, b) => b.memberCount - a.memberCount);
+  }
+
+  const keepItems = members.flatMap(m => m.kpt.keep.map(text => ({ text, memberName: m.name })));
+  const problemItems = members.flatMap(m => m.kpt.problem.map(text => ({ text, memberName: m.name })));
+  const tryItems = members.flatMap(m => m.kpt.tryNext.map(text => ({ text, memberName: m.name })));
+
+  return {
+    keep: aggregateCategory(keepItems),
+    problem: aggregateCategory(problemItems),
+    tryNext: aggregateCategory(tryItems),
+  };
+}
+
+export function aggregateEnhancedAntiPatterns(members: TeamMemberAnalysis[]): EnhancedAntiPatternAggregate[] {
+  const map = new Map<InefficiencyPattern, {
+    memberNames: string[];
+    memberIds: Set<string>;
+    total: number;
+    impacts: ('high' | 'medium' | 'low')[];
+  }>();
+
+  for (const m of members) {
+    for (const ap of m.antiPatterns) {
+      const entry = map.get(ap.pattern) ?? { memberNames: [], memberIds: new Set(), total: 0, impacts: [] };
+      if (!entry.memberIds.has(m.id)) {
+        entry.memberNames.push(m.name);
+        entry.memberIds.add(m.id);
+      }
+      entry.total += ap.frequency;
+      entry.impacts.push(ap.impact);
+      map.set(ap.pattern, entry);
+    }
+  }
+
+  return [...map.entries()]
+    .map(([pattern, data]) => {
+      const details = ANTI_PATTERN_DETAILS[pattern];
+      return {
+        pattern,
+        label: ANTI_PATTERN_LABELS[pattern],
+        memberCount: data.memberIds.size,
+        totalOccurrences: data.total,
+        predominantImpact: data.impacts.includes('high') ? 'high' as const
+          : data.impacts.includes('medium') ? 'medium' as const
+          : 'low' as const,
+        description: details.description,
+        affectedMembers: data.memberNames,
+        actionableInsight: details.actionableInsight,
+      };
+    })
+    .sort((a, b) => b.totalOccurrences - a.totalOccurrences);
+}
+
 function generateGrowth(history: HistoryEntry[]): MemberGrowthSnapshot {
   const current = history[history.length - 1]?.overallScore ?? 50;
   const prevWeek = history[history.length - 2]?.overallScore ?? current;
@@ -223,6 +478,8 @@ function makeMember(
     projects: generateProjects(profile.projectCount, parseInt(id.replace('m', ''), 10)),
     strengthSummaries: generateStrengths(profile.strengthLevel),
     growth: generateGrowth(history),
+    growthAreas: generateMemberGrowthAreas(profile.strengthLevel),
+    kpt: generateMemberKPT(profile.strengthLevel),
     lastAnalyzedAt: new Date().toISOString(),
     analysisCount,
   };
@@ -236,53 +493,53 @@ export const MOCK_MEMBERS: TeamMemberAnalysis[] = [
   // Platform Team (6 members)
   makeMember('m1', 'Alice Kim', 'alice@acme.dev', 'Senior Engineer', 'Platform',
     'architect', 'cartographer', 82,
-    { aiCollaboration: 85, contextEngineering: 88, burnoutRisk: 25, toolMastery: 80, aiControl: 90, skillResilience: 78 }, 12,
+    { aiCollaboration: 85, contextEngineering: 88, burnoutRisk: 25, aiControl: 90, skillResilience: 78 }, 12,
     { activity: 'high', risk: 'low', projectCount: 4, strengthLevel: 'strong' }),
   makeMember('m2', 'Bob Park', 'bob@acme.dev', 'Engineer', 'Platform',
     'speedrunner', 'navigator', 71,
-    { aiCollaboration: 75, contextEngineering: 65, burnoutRisk: 45, toolMastery: 72, aiControl: 68, skillResilience: 70 }, 8,
+    { aiCollaboration: 75, contextEngineering: 65, burnoutRisk: 45, aiControl: 68, skillResilience: 70 }, 8,
     { activity: 'medium', risk: 'medium', projectCount: 3, strengthLevel: 'average' }),
   makeMember('m3', 'Carol Lee', 'carol@acme.dev', 'Staff Engineer', 'Platform',
     'analyst', 'cartographer', 88,
-    { aiCollaboration: 82, contextEngineering: 90, burnoutRisk: 20, toolMastery: 85, aiControl: 92, skillResilience: 90 }, 15,
+    { aiCollaboration: 82, contextEngineering: 90, burnoutRisk: 20, aiControl: 92, skillResilience: 90 }, 15,
     { activity: 'high', risk: 'low', projectCount: 5, strengthLevel: 'strong' }),
   makeMember('m4', 'David Choi', 'david@acme.dev', 'Engineer', 'Platform',
     'conductor', 'navigator', 74,
-    { aiCollaboration: 78, contextEngineering: 70, burnoutRisk: 35, toolMastery: 82, aiControl: 72, skillResilience: 68 }, 6,
+    { aiCollaboration: 78, contextEngineering: 70, burnoutRisk: 35, aiControl: 72, skillResilience: 68 }, 6,
     { activity: 'medium', risk: 'medium', projectCount: 2, strengthLevel: 'average' }),
   makeMember('m5', 'Eve Jung', 'eve@acme.dev', 'Senior Engineer', 'Platform',
     'trendsetter', 'explorer', 69,
-    { aiCollaboration: 72, contextEngineering: 68, burnoutRisk: 40, toolMastery: 75, aiControl: 60, skillResilience: 65 }, 5,
+    { aiCollaboration: 72, contextEngineering: 68, burnoutRisk: 40, aiControl: 60, skillResilience: 65 }, 5,
     { activity: 'medium', risk: 'medium', projectCount: 3, strengthLevel: 'average' }),
   makeMember('m6', 'Frank Oh', 'frank@acme.dev', 'Junior Engineer', 'Platform',
     'speedrunner', 'explorer', 58,
-    { aiCollaboration: 55, contextEngineering: 50, burnoutRisk: 55, toolMastery: 60, aiControl: 52, skillResilience: 48 }, 3,
+    { aiCollaboration: 55, contextEngineering: 50, burnoutRisk: 55, aiControl: 52, skillResilience: 48 }, 3,
     { activity: 'low', risk: 'high', projectCount: 1, strengthLevel: 'developing' }),
 
   // Product Team (6 members)
   makeMember('m7', 'Grace Han', 'grace@acme.dev', 'Lead Engineer', 'Product',
     'architect', 'navigator', 79,
-    { aiCollaboration: 80, contextEngineering: 82, burnoutRisk: 30, toolMastery: 76, aiControl: 78, skillResilience: 80 }, 10,
+    { aiCollaboration: 80, contextEngineering: 82, burnoutRisk: 30, aiControl: 78, skillResilience: 80 }, 10,
     { activity: 'high', risk: 'low', projectCount: 4, strengthLevel: 'strong' }),
   makeMember('m8', 'Henry Yoon', 'henry@acme.dev', 'Senior Engineer', 'Product',
     'analyst', 'navigator', 76,
-    { aiCollaboration: 78, contextEngineering: 80, burnoutRisk: 28, toolMastery: 72, aiControl: 75, skillResilience: 74 }, 9,
+    { aiCollaboration: 78, contextEngineering: 80, burnoutRisk: 28, aiControl: 75, skillResilience: 74 }, 9,
     { activity: 'medium', risk: 'low', projectCount: 3, strengthLevel: 'average' }),
   makeMember('m9', 'Ivy Shin', 'ivy@acme.dev', 'Engineer', 'Product',
     'conductor', 'cartographer', 81,
-    { aiCollaboration: 84, contextEngineering: 78, burnoutRisk: 22, toolMastery: 88, aiControl: 82, skillResilience: 76 }, 11,
+    { aiCollaboration: 84, contextEngineering: 78, burnoutRisk: 22, aiControl: 82, skillResilience: 76 }, 11,
     { activity: 'high', risk: 'low', projectCount: 3, strengthLevel: 'strong' }),
   makeMember('m10', 'Jake Ryu', 'jake@acme.dev', 'Engineer', 'Product',
     'trendsetter', 'navigator', 67,
-    { aiCollaboration: 70, contextEngineering: 64, burnoutRisk: 42, toolMastery: 68, aiControl: 62, skillResilience: 60 }, 4,
+    { aiCollaboration: 70, contextEngineering: 64, burnoutRisk: 42, aiControl: 62, skillResilience: 60 }, 4,
     { activity: 'low', risk: 'medium', projectCount: 2, strengthLevel: 'developing' }),
   makeMember('m11', 'Kate Lim', 'kate@acme.dev', 'Senior Engineer', 'Product',
     'architect', 'cartographer', 85,
-    { aiCollaboration: 88, contextEngineering: 86, burnoutRisk: 18, toolMastery: 82, aiControl: 88, skillResilience: 84 }, 14,
+    { aiCollaboration: 88, contextEngineering: 86, burnoutRisk: 18, aiControl: 88, skillResilience: 84 }, 14,
     { activity: 'high', risk: 'low', projectCount: 4, strengthLevel: 'strong' }),
   makeMember('m12', 'Leo Baek', 'leo@acme.dev', 'Junior Engineer', 'Product',
     'speedrunner', 'explorer', 55,
-    { aiCollaboration: 52, contextEngineering: 48, burnoutRisk: 58, toolMastery: 55, aiControl: 50, skillResilience: 45 }, 2,
+    { aiCollaboration: 52, contextEngineering: 48, burnoutRisk: 58, aiControl: 50, skillResilience: 45 }, 2,
     { activity: 'low', risk: 'high', projectCount: 1, strengthLevel: 'developing' }),
 ];
 
@@ -290,28 +547,11 @@ export const MOCK_MEMBERS: TeamMemberAnalysis[] = [
 // Team-level aggregates
 // ---------------------------------------------------------------------------
 
+/** Derive simple aggregates from enhanced aggregates (avoids duplicating aggregation logic) */
 function aggregateAntiPatterns(members: TeamMemberAnalysis[]): AntiPatternAggregate[] {
-  const map = new Map<InefficiencyPattern, { members: Set<string>; total: number; impacts: ('high' | 'medium' | 'low')[] }>();
-  for (const m of members) {
-    for (const ap of m.antiPatterns) {
-      const entry = map.get(ap.pattern) ?? { members: new Set(), total: 0, impacts: [] };
-      entry.members.add(m.id);
-      entry.total += ap.frequency;
-      entry.impacts.push(ap.impact);
-      map.set(ap.pattern, entry);
-    }
-  }
-  return [...map.entries()]
-    .map(([pattern, data]) => ({
-      pattern,
-      label: ANTI_PATTERN_LABELS[pattern],
-      memberCount: data.members.size,
-      totalOccurrences: data.total,
-      predominantImpact: data.impacts.includes('high') ? 'high' as const
-        : data.impacts.includes('medium') ? 'medium' as const
-        : 'low' as const,
-    }))
-    .sort((a, b) => b.totalOccurrences - a.totalOccurrences);
+  return aggregateEnhancedAntiPatterns(members).map(({ pattern, label, memberCount, totalOccurrences, predominantImpact }) => ({
+    pattern, label, memberCount, totalOccurrences, predominantImpact,
+  }));
 }
 
 function buildTeamAnalytics(
@@ -324,7 +564,7 @@ function buildTeamAnalytics(
   // Average dimensions
   const avgDim: DimensionScores = {
     aiCollaboration: 0, contextEngineering: 0, burnoutRisk: 0,
-    toolMastery: 0, aiControl: 0, skillResilience: 0,
+    aiControl: 0, skillResilience: 0,
   };
   for (const m of members) {
     for (const key of Object.keys(avgDim) as (keyof DimensionScores)[]) {
@@ -354,7 +594,6 @@ function buildTeamAnalytics(
     aiCollaboration: 'AI Collaboration',
     contextEngineering: 'Context Engineering',
     burnoutRisk: 'Burnout Risk',
-    toolMastery: 'Tool Mastery',
     aiControl: 'AI Control',
     skillResilience: 'Skill Resilience',
   };

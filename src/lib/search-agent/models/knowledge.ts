@@ -16,7 +16,6 @@ import { z } from 'zod';
 export const DimensionNameSchema = z.enum([
   'aiCollaboration',
   'contextEngineering',
-  'toolMastery',
   'burnoutRisk',
   'aiControl',
   'skillResilience',
@@ -47,10 +46,10 @@ export const TOPIC_TO_DIMENSION_MAP: Record<TopicCategory, DimensionName> = {
   'context-engineering': 'contextEngineering',
   'memory-management': 'contextEngineering',
   'prompt-engineering': 'aiCollaboration',
-  'tool-use': 'toolMastery',
-  subagents: 'toolMastery',
-  'claude-code-skills': 'toolMastery',
-  'workflow-automation': 'toolMastery',
+  'tool-use': 'aiCollaboration',
+  subagents: 'aiCollaboration',
+  'claude-code-skills': 'aiCollaboration',
+  'workflow-automation': 'aiCollaboration',
   'best-practices': 'skillResilience',
   other: 'skillResilience',
 };

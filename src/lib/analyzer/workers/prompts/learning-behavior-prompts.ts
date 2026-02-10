@@ -42,7 +42,7 @@ Analyze Phase 1 extracted data to assess the developer's learning behavior acros
 ## INPUT DATA STRUCTURE
 You receive Phase 1 output containing:
 - \`developerUtterances[]\`: Raw text with metadata (id, text, hasQuestion, precedingAIHadError, isSessionStart, etc.)
-- \`sessionMetrics\`: Computed statistics (toolUsageCounts, slashCommandCounts, sessionCount, etc.)
+- \`sessionMetrics\`: Computed statistics (slashCommandCounts, sessionCount, etc.)
 
 Note: AI response error information is available via \`precedingAIHadError\` field in each utterance.
 

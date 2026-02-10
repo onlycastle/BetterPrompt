@@ -194,15 +194,6 @@ function printSessionMetrics(metrics: Phase1Output['sessionMetrics']): void {
     console.log('    (no token data available)');
   }
 
-  if (metrics.toolUsageCounts && Object.keys(metrics.toolUsageCounts).length > 0) {
-    console.log('- toolUsageCounts:');
-    const sorted = Object.entries(metrics.toolUsageCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 10);
-    for (const [tool, count] of sorted) {
-      console.log(`    ${tool}: ${count}`);
-    }
-  }
 }
 
 /**

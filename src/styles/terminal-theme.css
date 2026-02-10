@@ -263,9 +263,6 @@
 .section-burnout-risk {
   --section-accent: #F59E0B;
 }
-.section-tool-mastery {
-  --section-accent: #EC4899;
-}
 .section-ai-control {
   --section-accent: var(--sketch-cyan);
 }

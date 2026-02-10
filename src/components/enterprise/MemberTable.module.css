@@ -125,15 +125,41 @@
   color: var(--ink-muted);
 }
 
-.typeBadge {
-  display: inline-flex;
+/* Token usage cell */
+.tokenCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tokenValue {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-sm);
+  color: var(--ink-primary);
+}
+
+.tokenDeltas {
+  display: flex;
   align-items: center;
   gap: var(--space-xs);
   font-size: var(--text-xs);
-  padding: 2px var(--space-sm);
-  border-radius: var(--radius-full);
-  border: 1.5px solid;
-  background: transparent;
+  font-weight: var(--weight-semibold);
+}
+
+.tokenDeltaSep {
+  color: var(--ink-muted);
+}
+
+.tokenDeltaUp {
+  color: var(--sketch-green-text);
+}
+
+.tokenDeltaDown {
+  color: var(--sketch-red-text);
+}
+
+.tokenDeltaNeutral {
+  color: var(--ink-muted);
 }
 
 .scoreCell {

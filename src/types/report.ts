@@ -23,7 +23,6 @@ export interface TypeMetrics {
   avgTurnsPerSession: number;
   questionFrequency: number;
   modificationRate: number;
-  toolUsageHighlight: string;
 }
 
 export interface ConversationEvidence {
@@ -244,37 +243,6 @@ export interface BurnoutRiskResult {
   interpretation: string;
 }
 
-// Tool Mastery Dimension
-export type MasteryLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
-
-export interface ToolMasteryResult {
-  score: number;
-  level: MasteryLevel;
-  breakdown: {
-    basicTools: {
-      score: number;
-      readWriteEdit: number;
-      grepGlob: number;
-    };
-    advancedTools: {
-      score: number;
-      taskTool: number;
-      regexUsage: number;
-      composedWorkflows: number;
-    };
-    expertTools: {
-      score: number;
-      backgroundExecution: number;
-      parallelTasks: number;
-      customScripts: number;
-    };
-  };
-  toolUsagePatterns: Record<string, number>;
-  strengths: string[];
-  growthAreas: string[];
-  interpretation: string;
-}
-
 // AI Control Dimension (re-export from enterprise)
 export type AIControlLevel = BaseAIControlLevel;
 
@@ -326,7 +294,6 @@ export interface FullAnalysisResult {
   aiCollaboration: AICollaborationResult;
   contextEngineering: ContextEngineeringResult;
   burnoutRisk: BurnoutRiskResult;
-  toolMastery: ToolMasteryResult;
   aiControl: AIControlResult;
   skillResilience: SkillResilienceResult;
 }
@@ -361,12 +328,6 @@ export const REPORT_DIMENSION_METADATA: Record<keyof FullAnalysisResult, ReportD
     icon: '🔥',
     description: 'Work pattern health and work-life balance indicators',
     shortDescription: 'Session intensity, balance, stress signals',
-  },
-  toolMastery: {
-    label: 'Tool Mastery',
-    icon: '🛠️',
-    description: 'How effectively you use available development tools',
-    shortDescription: 'Basic, advanced, expert tool usage',
   },
   aiControl: {
     label: 'AI Control',

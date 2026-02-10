@@ -60,21 +60,6 @@
       "longSessions": { "avgDuration": 30, "qualityIndicator": "deep work sessions" }
     }
   },
-  "toolMastery": {
-    "overallScore": 95,
-    "toolUsage": {
-      "Read": { "count": 120, "percentage": 28, "level": "expert", "assessment": "Master-level file exploration" },
-      "Task": { "count": 85, "percentage": 20, "level": "expert", "assessment": "Expert delegation patterns" },
-      "Edit": { "count": 65, "percentage": 15, "level": "expert", "assessment": "Precise targeted modifications" },
-      "Grep": { "count": 55, "percentage": 13, "level": "adept", "assessment": "Strong pattern searching" },
-      "TodoWrite": { "count": 45, "percentage": 11, "level": "expert", "assessment": "Excellent task tracking" },
-      "Bash": { "count": 35, "percentage": 8, "level": "adept", "assessment": "Effective shell usage" },
-      "WebSearch": { "count": 15, "percentage": 4, "level": "basic", "assessment": "Occasional research" }
-    },
-    "topTools": ["Read", "Task", "Edit", "Grep", "TodoWrite"],
-    "underutilizedTools": [],
-    "tips": ["You've mastered the core toolkit! Consider exploring MCP integrations for even more power."]
-  },
   "aiControl": {
     "score": 90,
     "level": "cartographer",

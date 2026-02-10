@@ -47,7 +47,6 @@ describe('Knowledge Models', () => {
       const validDimensions = [
         'aiCollaboration',
         'contextEngineering',
-        'toolMastery',
         'burnoutRisk',
         'aiControl',
         'skillResilience',

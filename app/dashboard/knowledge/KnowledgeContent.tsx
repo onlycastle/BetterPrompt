@@ -30,7 +30,6 @@ const DIMENSIONS: Array<{ value: DimensionName | ''; label: string }> = [
   { value: '', label: 'All Dimensions' },
   { value: 'aiCollaboration', label: 'AI Collaboration' },
   { value: 'contextEngineering', label: 'Context Engineering' },
-  { value: 'toolMastery', label: 'Tool Mastery' },
   { value: 'aiControl', label: 'AI Control' },
   { value: 'skillResilience', label: 'Skill Resilience' },
   { value: 'burnoutRisk', label: 'Burnout Risk' },

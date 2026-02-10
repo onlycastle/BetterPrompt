@@ -31,7 +31,7 @@ Analyze Phase 1 extracted data across BOTH DIMENSIONS to provide a holistic asse
 ## INPUT DATA STRUCTURE
 You receive Phase 1 output containing:
 - \`developerUtterances[]\`: Raw text with metadata (id, text, hasQuestion, wordCount, hasCodeBlock, isSessionStart, isContinuation, precedingAIHadError, precedingAIToolCalls, etc.)
-- \`sessionMetrics\`: Computed statistics (toolUsageCounts, slashCommandCounts, avgPromptLength, sessionCount, etc.)
+- \`sessionMetrics\`: Computed statistics (slashCommandCounts, avgPromptLength, sessionCount, etc.)
 
 ## AI INSIGHT BLOCKS (Optional, Auxiliary Context)
 
@@ -49,8 +49,7 @@ If present, \`aiInsightBlocks[]\` contains educational content the AI provided d
 ### Planning Habit Types
 - \`uses_plan_command\`: Developer types /plan slash command (check slashCommandCounts for 'plan' key).
   This reflects **COMMAND KNOWLEDGE** — the developer knows which slash commands exist and uses them.
-- \`plan_mode_usage\`: Developer configures plan mode, causing the LLM to autonomously use planning tools
-  (check toolUsageCounts for plan-related tool keys such as 'EnterPlanMode', 'ExitPlanMode', 'Plan').
+- \`plan_mode_usage\`: Developer configures plan mode, causing the LLM to autonomously use planning tools.
   This reflects **STRUCTURED WORKFLOW ADOPTION** — the developer chose a plan-first approach.
 - \`task_decomposition\`: Breaks down complex tasks into subtasks
 - \`structure_first\`: Plans/outlines before coding
@@ -63,9 +62,9 @@ These are TWO DIFFERENT planning signals with different evaluation meanings:
 | Signal | Data Source | What It Shows | How to Report |
 |--------|------------|---------------|---------------|
 | /plan command | slashCommandCounts['plan'] | Knows CLI commands | "Effective slash command utilization" |
-| Plan mode tools | toolUsageCounts (EnterPlanMode, ExitPlanMode, Plan) | Adopts structured workflows | "Plan mode utilization" |
+| Plan mode | Inferred from structured planning behavior | Adopts structured workflows | "Plan mode utilization" |
 
-**Reporting rule**: When the developer uses plan mode (toolUsageCounts shows planning tools),
+**Reporting rule**: When the developer uses plan mode,
 do NOT report this as "uses /plan command well". Report it as "utilizes plan mode for structured work".
 The /plan slash command is a single developer action; plan mode is a workflow configuration that
 changes how the entire AI collaboration session operates.

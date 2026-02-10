@@ -37,13 +37,7 @@ const DIMENSIONS: DimensionConfig[] = [
     emoji: '🔥',
     description: 'Lower is better for sustainability',
   },
-  {
-    key: 'toolMastery',
-    label: 'Tool Mastery',
-    emoji: '🛠️',
-    description: 'Command of AI development tools',
-  },
-  {
+{
     key: 'aiControl',
     label: 'AI Control',
     emoji: '🎛️',

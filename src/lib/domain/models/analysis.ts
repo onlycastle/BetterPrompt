@@ -203,7 +203,6 @@ export const DimensionsSchema = z.object({
   aiCollaboration: DimensionResultSchema,
   promptEngineering: DimensionResultSchema,
   burnoutRisk: DimensionResultSchema,
-  toolMastery: DimensionResultSchema,
   aiControl: DimensionResultSchema,
   skillResilience: DimensionResultSchema,
 });

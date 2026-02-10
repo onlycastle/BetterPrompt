@@ -138,7 +138,6 @@ export interface DimensionScores {
   aiCollaboration: number;
   contextEngineering: number;
   burnoutRisk: number;
-  toolMastery: number;
   aiControl: number;
   skillResilience: number;
 }

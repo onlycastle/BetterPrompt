@@ -16,7 +16,6 @@ const DIMENSION_EMOJIS: Record<keyof DimensionScores, string> = {
   aiCollaboration: '🤝',
   contextEngineering: '🎯',
   burnoutRisk: '🔥',
-  toolMastery: '🛠️',
   aiControl: '🎮',
   skillResilience: '💪',
 };
