@@ -8,7 +8,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { Search, BookOpen, User, LogOut, BarChart2 } from 'lucide-react';
+import { Search, BookOpen, User, LogOut, BarChart2, LayoutDashboard, Users, Settings } from 'lucide-react';
 import styles from './DashboardSidebar.module.css';
 
 interface NavItem {
@@ -21,6 +21,12 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/dashboard/analyze', label: 'Analyze', icon: <Search size={20} /> },
   { path: '/dashboard/knowledge', label: 'Knowledge', icon: <BookOpen size={20} /> },
   { path: '/dashboard/personal', label: 'Personal', icon: <User size={20} /> },
+];
+
+const ENTERPRISE_NAV_ITEMS: NavItem[] = [
+  { path: '/dashboard/enterprise', label: 'Overview', icon: <LayoutDashboard size={20} /> },
+  { path: '/dashboard/enterprise/members', label: 'Members', icon: <Users size={20} /> },
+  { path: '/dashboard/enterprise/settings', label: 'Settings', icon: <Settings size={20} /> },
 ];
 
 export function DashboardSidebar() {
@@ -42,6 +48,13 @@ export function DashboardSidebar() {
     if (itemPath === '/dashboard/personal') {
       return pathname === itemPath || pathname.startsWith('/dashboard/personal/');
     }
+    if (itemPath === '/dashboard/enterprise') {
+      // Exact match only — sub-pages (members, settings) have their own items
+      return pathname === itemPath || pathname.startsWith('/dashboard/enterprise/team/');
+    }
+    if (itemPath.startsWith('/dashboard/enterprise/')) {
+      return pathname.startsWith(itemPath);
+    }
     return pathname === itemPath;
   };
 
@@ -56,6 +69,21 @@ export function DashboardSidebar() {
       {/* Navigation */}
       <div className={styles.nav}>
         {NAV_ITEMS.map(({ path, label, icon }) => (
+          <Link
+            key={path}
+            href={path}
+            className={`${styles.navItem} ${isActive(path) ? styles.active : ''}`}
+          >
+            <span className={styles.navIcon}>{icon}</span>
+            <span className={styles.navLabel}>{label}</span>
+          </Link>
+        ))}
+
+        {/* Enterprise section */}
+        <div className={styles.separator}>
+          <span className={styles.separatorLabel}>Enterprise</span>
+        </div>
+        {ENTERPRISE_NAV_ITEMS.map(({ path, label, icon }) => (
           <Link
             key={path}
             href={path}

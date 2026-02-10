@@ -929,8 +929,8 @@
 
 .lockedTeaser {
   display: flex;
-  align-items: center;
-  gap: var(--space-sm);
+  flex-direction: column;
+  gap: var(--space-xs);
   padding: var(--space-sm) var(--space-md);
   background: var(--sketch-green-soft);
   border-left: 3px solid var(--sketch-green);
@@ -962,6 +962,22 @@
   font-weight: var(--weight-medium);
 }
 
+.teaserBlurredText {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+  line-height: var(--leading-relaxed);
+  margin: var(--space-xs) 0 0 0;
+  filter: blur(4px);
+  user-select: none;
+  pointer-events: none;
+  transition: filter 0.3s;
+}
+
+.lockedTeaser:hover .teaserBlurredText {
+  filter: blur(2px);
+}
+
 .lockedDomainOverlay {
   display: flex;
   flex-direction: column;
@@ -978,6 +994,13 @@
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--ink-secondary);
+}
+
+.lockedDomainCount {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--sketch-blue-text);
+  margin: 0;
 }
 
 .unlockDomainCta {

@@ -5,7 +5,7 @@
  * Shows the AI → Developer message thread, transformation info (if content was
  * summarized), and session metadata.
  *
- * Follows ProfessionalInsightSidebar pattern:
+ * Layout pattern:
  * - 420px panel, slide-in from right
  * - Backdrop overlay with click-to-close
  * - Keyboard accessible (Escape to close)
