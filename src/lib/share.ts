@@ -34,18 +34,18 @@ export function generateTwitterShareUrl(
   // Build tweet text
   let tweetText = `I'm a ${meta.name} ${meta.emoji} developer!
 
-My AI Coding Style:
+My AI anti-patterns:
 "${meta.tagline}"
 
 Top Strength: ${topStrength}
 
-What's YOUR style? Find out:
+What are YOUR anti-patterns?
 ${shareUrl}`;
 
   if (includeHashtags) {
     tweetText += `
 
-#NoMoreAISlop #AICollaboration #DeveloperTools`;
+#NoMoreAISlop #AntiPatterns #StopAISlop`;
   }
 
   // Encode for URL
@@ -78,7 +78,7 @@ export function generateCopyText(
   const percentage = Math.round(typeResult.distribution[typeResult.primaryType] || 0);
   const shareUrl = `${BASE_URL}/r/${reportId}`;
 
-  let text = `🎯 My AI Coding Style: ${meta.name} ${meta.emoji}
+  let text = `🎯 My AI anti-patterns: ${meta.name} ${meta.emoji}
 
 "${meta.tagline}"`;
 
@@ -112,7 +112,7 @@ export function generateOGMetaTags(
   const shareUrl = `${baseUrl}/r/${reportId}`;
   const ogImageUrl = `${baseUrl}/api/reports/${reportId}/og-image`;
 
-  const title = `I'm a ${meta.name} ${meta.emoji} - What's Your AI Coding Style?`;
+  const title = `I'm a ${meta.name} ${meta.emoji} - What Are Your Anti-Patterns?`;
   const description = meta.tagline;
 
   return `
@@ -149,8 +149,8 @@ export function generateWebShareData(
   const shareUrl = `${BASE_URL}/r/${reportId}`;
 
   return {
-    title: `My AI Coding Style: ${meta.name} ${meta.emoji}`,
-    text: `${meta.tagline} - What's YOUR AI coding style?`,
+    title: `My AI Anti-Patterns: ${meta.name} ${meta.emoji}`,
+    text: `${meta.tagline} - What are YOUR anti-patterns?`,
     url: shareUrl,
   };
 }
@@ -174,7 +174,7 @@ export function generateInstagramCaption(
 
 🔗 See my full analysis: ${shareUrl}
 
-#NoMoreAISlop #AICodingStyle #DeveloperType #${meta.name} #AICollaboration #DevTools`;
+#NoMoreAISlop #AntiPatterns #DeveloperType #${meta.name} #StopAISlop #DevTools`;
 }
 
 /**

@@ -42,6 +42,14 @@ import {
 } from './chat-message.js';
 import type { PreviewSnippet } from './uploader.js';
 import type { SessionWithParsed } from './scanner.js';
+import {
+  type PipelineState,
+  createInitialPipelineState,
+  renderPipelineDiagram,
+  renderFlatPipelineDiagram,
+  PHASE2_TOTAL,
+  BOX_DIAGRAM_MIN_WIDTH,
+} from './pipeline-diagram.js';
 
 // -- Animation Constants --------------------------------------------------
 const TICK_INTERVAL = 50;          // ms per animation tick
@@ -151,6 +159,11 @@ export class ChatDisplay {
   // Progressive discovery timer
   private discoveryTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // Pipeline progress
+  private pipelineState: PipelineState = createInitialPipelineState();
+  private phase2Count = 0;
+  private showPipeline = false;
+
   constructor(options: ChatDisplayOptions = {}) {
     this.logUpdate = createLogUpdate(process.stderr);
 
@@ -180,15 +193,63 @@ export class ChatDisplay {
     this.currentStage = stage;
     this.currentMessage = message;
 
+    // Update pipeline state from stage transitions
+    this.updatePipelineFromStage(stage);
+
     if (progress >= 100) {
       this.displayedProgress = 100;
       this.render();
     }
   }
 
+  /** Update pipeline state based on stage transitions */
+  private updatePipelineFromStage(stage: string): void {
+    if (stage === 'preparing' || stage === 'parsing') {
+      this.pipelineState.phases[0] = 'active';
+      this.showPipeline = true;
+    } else if (stage === 'analyzing') {
+      this.pipelineState.phases[0] = 'completed';
+      // Phase 1 may already be set by addPhasePreview
+      if (this.pipelineState.phases[1] === 'pending') {
+        this.pipelineState.phases[1] = 'active';
+      }
+    } else if (stage === 'storing') {
+      // All analysis phases complete
+      this.pipelineState.phases[1] = 'completed';
+      this.pipelineState.phases[2] = 'completed';
+      this.pipelineState.phases[3] = 'completed';
+      this.pipelineState.phases[4] = 'active';
+      this.pipelineState.activeSubProgress = undefined;
+    } else if (stage === 'complete') {
+      for (let i = 0; i < 5; i++) this.pipelineState.phases[i] = 'completed';
+      this.pipelineState.activeSubProgress = undefined;
+    }
+  }
+
   /** Add a phase preview (queued for streaming display) */
   addPhasePreview(phase: string, snippets: PreviewSnippet[]): void {
     this.messageQueue.push({ phase, snippets });
+    this.updatePipelineFromPhase(phase);
+  }
+
+  /** Update pipeline state based on phase preview key */
+  private updatePipelineFromPhase(phase: string): void {
+    if (phase === 'session_summaries') {
+      // Phase 1 complete, Phase 2 starts
+      this.pipelineState.phases[1] = 'completed';
+      this.pipelineState.phases[2] = 'active';
+      this.phase2Count = 0;
+      this.pipelineState.activeSubProgress = `0/${PHASE2_TOTAL}`;
+    } else if (phase.startsWith('worker_') || phase === 'type_classification' || phase === 'project_summaries' || phase === 'weekly_insights') {
+      // Phase 2 sub-task completed
+      this.phase2Count = Math.min(this.phase2Count + 1, PHASE2_TOTAL);
+      this.pipelineState.activeSubProgress = `${this.phase2Count}/${PHASE2_TOTAL}`;
+    } else if (phase === 'narrative_ready') {
+      // Phase 2 complete, Phase 3 starts
+      this.pipelineState.phases[2] = 'completed';
+      this.pipelineState.phases[3] = 'active';
+      this.pipelineState.activeSubProgress = undefined;
+    }
   }
 
   /**
@@ -462,7 +523,11 @@ export class ChatDisplay {
     }
 
     // -- Chat Messages --
-    const chatAreaHeight = Math.max(termRows - FIXED_CHROME_LINES, 3);
+    const termCols = process.stderr.columns || 80;
+    const useBoxDiagram = termCols >= BOX_DIAGRAM_MIN_WIDTH;
+    const pipelineExtraLines = this.showPipeline ? (useBoxDiagram ? 5 : 3) : 0;  // box: 4 lines + 1 spacer, flat: 2 lines + 1 spacer
+    const effectiveChromeLines = FIXED_CHROME_LINES + pipelineExtraLines;
+    const chatAreaHeight = Math.max(termRows - effectiveChromeLines, 3);
     const chatLines = this.buildChatLines(chatAreaHeight);
 
     // -- Assemble --
@@ -472,6 +537,15 @@ export class ChatDisplay {
       '',                                           // 2: spacer
       ...bearLines.map(l => `    ${l}`),             // 3-10: bear (8 lines)
     ];
+
+    // Pipeline diagram (between bear and Live Results)
+    if (this.showPipeline) {
+      lines.push('');  // spacer
+      const diagramLines = useBoxDiagram
+        ? renderPipelineDiagram(this.pipelineState, this.tick)
+        : renderFlatPipelineDiagram(this.pipelineState, this.tick);
+      lines.push(...diagramLines);
+    }
 
     // Only show chat section if we have messages or are streaming
     const hasChat = this.completedMessages.length > 0 || this.streaming || this.messageQueue.length > 0;

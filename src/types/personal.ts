@@ -3,7 +3,23 @@
  * Types for individual developer journey tracking and personalized recommendations
  */
 
-import type { DimensionScores, CodingStyleType, AIControlLevel, HistoryEntry } from './enterprise';
+import type { CodingStyleType, AIControlLevel } from './enterprise';
+
+// Worker domain scores matching pipeline output (workerInsights.*.domainScore)
+export interface WorkerDomainScores {
+  thinkingQuality: number;        // 0-100
+  communicationPatterns: number;   // 0-100
+  learningBehavior: number;        // 0-100
+  contextEfficiency: number;       // 0-100
+  sessionOutcome: number;          // 0-100
+}
+
+// Personal history data point (uses worker domain scores, not enterprise DimensionScores)
+export interface HistoryEntry {
+  date: string;           // ISO date string
+  overallScore: number;
+  domainScores?: WorkerDomainScores;
+}
 
 // Main personal analytics container
 export interface PersonalAnalytics {
@@ -14,8 +30,8 @@ export interface PersonalAnalytics {
   totalImprovement: number;
 
   // Current dimension scores
-  currentDimensions: DimensionScores;
-  dimensionImprovements: DimensionScores;
+  currentDimensions: WorkerDomainScores;
+  dimensionImprovements: WorkerDomainScores;
 
   // Detailed analysis comparisons
   firstAnalysis: AnalysisSummary;
@@ -40,11 +56,8 @@ export interface AnalysisSummary {
   overallScore: number;
   primaryType: CodingStyleType;
   controlLevel: AIControlLevel;
-  dimensions: DimensionScores;
+  domainScores: WorkerDomainScores;
 }
-
-// Re-export HistoryEntry from enterprise (defined there as source of truth)
-export type { HistoryEntry };
 
 // Recommendation types
 export type RecommendationType = 'article' | 'video' | 'exercise' | 'course';
@@ -54,7 +67,7 @@ export type RecommendationPriority = 'high' | 'medium' | 'low';
 export interface Recommendation {
   id: string;
   priority: RecommendationPriority;
-  dimension: keyof DimensionScores;
+  dimension: keyof WorkerDomainScores;
   title: string;
   description: string;
   type: RecommendationType;
@@ -63,4 +76,4 @@ export interface Recommendation {
 }
 
 // Re-export for convenience
-export type { DimensionScores, CodingStyleType, AIControlLevel };
+export type { CodingStyleType, AIControlLevel };

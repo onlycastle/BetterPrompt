@@ -10,6 +10,7 @@ import pc from 'picocolors';
 import type { PreviewSnippet } from './uploader.js';
 import type { SessionInsights } from './animations/index.js';
 import { formatDuration, formatDateShort, formatNumber } from './animations/index.js';
+import { visualWidth, visualPadEnd } from './lib/string-utils.js';
 
 /** Inner width of chat bubble (characters of content per line) */
 const BUBBLE_INNER_WIDTH = 50;
@@ -31,6 +32,12 @@ const PHASE_DISPLAY: Record<string, { title: string }> = {
   discovery_dialogue: { title: 'Dialogue' },
   discovery_tokens: { title: 'AI Output' },
   discovery_sources: { title: 'Sources' },
+  scan_stats: { title: 'Your AI journey' },
+  discovery_firstwords: { title: 'First words' },
+  discovery_longest_prompt: { title: 'Epic prompt' },
+  discovery_ai_highlight: { title: 'AI highlight' },
+  discovery_avg_length: { title: 'Message style' },
+  discovery_quote: { title: 'Found in your sessions' },
 };
 
 /**
@@ -54,7 +61,7 @@ export function wrapText(text: string, maxWidth: number): string[] {
       if (currentLine.length === 0) {
         // First word on line — always take it even if it exceeds maxWidth
         currentLine = word;
-      } else if (currentLine.length + 1 + word.length <= maxWidth) {
+      } else if (visualWidth(currentLine) + 1 + visualWidth(word) <= maxWidth) {
         currentLine += ' ' + word;
       } else {
         result.push(currentLine);
@@ -107,6 +114,11 @@ function buildConversationalText(phase: string, snippets: PreviewSnippet[]): str
     return texts.join('. ') + '.';
   }
 
+  // For scan stats: plain conversational text
+  if (phase === 'scan_stats') {
+    return snippets.map(s => s.text).filter(Boolean).join(' ');
+  }
+
   // Discovery messages: single snippet with conversational text
   if (phase.startsWith('discovery_')) {
     return snippets.map(s => s.text).filter(Boolean).join(' ');
@@ -135,7 +147,7 @@ function renderBoxBubble(wrappedLines: string[], innerWidth: number): string[] {
   lines.push(`  ${pc.dim('┌' + border + '┐')}`);
 
   for (const line of wrappedLines) {
-    const padded = line + ' '.repeat(Math.max(0, innerWidth - line.length));
+    const padded = visualPadEnd(line, innerWidth);
     lines.push(`  ${pc.dim('│')}  ${padded}  ${pc.dim('│')}`);
   }
 
@@ -244,7 +256,7 @@ export function renderPartialBoxMessage(
       lines.push(`  ${pc.dim('│')}  ${padded}  ${pc.dim('│')}`);
     } else if (charsConsumed + lineText.length <= revealedChars) {
       // Fully revealed line
-      const padded = lineText + ' '.repeat(Math.max(0, innerWidth - lineText.length));
+      const padded = visualPadEnd(lineText, innerWidth);
       lines.push(`  ${pc.dim('│')}  ${padded}  ${pc.dim('│')}`);
       charsConsumed += lineText.length;
     } else {
@@ -253,7 +265,7 @@ export function renderPartialBoxMessage(
       const visiblePart = lineText.slice(0, visibleCount);
       const cursor = cursorStr ?? '';
       // Padding must account for visible chars only (cursor is ANSI-colored, zero visual width counted separately)
-      const padLen = Math.max(0, innerWidth - visibleCount - (cursorStr ? 1 : 0));
+      const padLen = Math.max(0, innerWidth - visualWidth(visiblePart) - (cursorStr ? 1 : 0));
       const padded = visiblePart + cursor + ' '.repeat(padLen);
       lines.push(`  ${pc.dim('│')}  ${padded}  ${pc.dim('│')}`);
       charsConsumed += lineText.length;
@@ -326,6 +338,25 @@ export function buildScanPreviewMessages(
     messages.push({
       phase: 'scan_highlights',
       snippets: [{ label: '', icon: '', text: highlightParts.join('. ') }],
+    });
+  }
+
+  // Message 3: scan_stats — total hours, coding streak
+  const totalHours = Math.round(insights.totalDurationMinutes / 60);
+  const daySpan = Math.max(
+    1,
+    Math.ceil(
+      (insights.dateRange.to.getTime() - insights.dateRange.from.getTime()) / (1000 * 60 * 60 * 24)
+    ) + 1
+  );
+  if (totalHours > 0) {
+    let statsText = `${totalHours} hours of AI pair programming across ${daySpan} days.`;
+    if (insights.codingStreakDays > 1) {
+      statsText += ` Your longest coding streak: ${insights.codingStreakDays} consecutive days.`;
+    }
+    messages.push({
+      phase: 'scan_stats',
+      snippets: [{ label: '', icon: '', text: statsText }],
     });
   }
 
@@ -419,6 +450,60 @@ export function buildProgressiveDiscoveryMessages(
         label: '', icon: '',
         text: `${parts.join(' + ')} sessions — multi-tool workflow.`,
       }],
+    });
+  }
+
+  // 7. First words
+  if (insights.firstUserMessage) {
+    messages.push({
+      phase: 'discovery_firstwords',
+      snippets: [{ label: '', icon: '', text: `Your first words to AI: "${insights.firstUserMessage}"` }],
+    });
+  }
+
+  // 8. Longest prompt
+  if (insights.longestUserPrompt.words > 20) {
+    messages.push({
+      phase: 'discovery_longest_prompt',
+      snippets: [{
+        label: '', icon: '',
+        text: `Your longest prompt: ${formatNumber(insights.longestUserPrompt.words)} words on ${insights.longestUserPrompt.project} — that's a detailed spec.`,
+      }],
+    });
+  }
+
+  // 9. AI highlight
+  if (insights.longestAIResponse.words > 100) {
+    messages.push({
+      phase: 'discovery_ai_highlight',
+      snippets: [{
+        label: '', icon: '',
+        text: `AI's longest response: ${formatNumber(insights.longestAIResponse.words)} words building your ${insights.longestAIResponse.project} project.`,
+      }],
+    });
+  }
+
+  // 10. Average message length
+  if (insights.avgUserMessageWords > 0) {
+    let style: string;
+    if (insights.avgUserMessageWords < 15) style = 'You give short, precise commands.';
+    else if (insights.avgUserMessageWords < 40) style = 'You give clear, mid-length instructions.';
+    else style = 'You write detailed, thorough prompts.';
+    messages.push({
+      phase: 'discovery_avg_length',
+      snippets: [{
+        label: '', icon: '',
+        text: `Average message: ${insights.avgUserMessageWords} words. ${style}`,
+      }],
+    });
+  }
+
+  // 11. Random quote
+  if (insights.shortUserQuotes.length > 0) {
+    const quote = insights.shortUserQuotes[Math.floor(Math.random() * insights.shortUserQuotes.length)];
+    messages.push({
+      phase: 'discovery_quote',
+      snippets: [{ label: '', icon: '', text: `Random find from your sessions: "${quote}"` }],
     });
   }
 

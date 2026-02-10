@@ -6,5 +6,6 @@ export { PatternExampleCard } from './PatternExampleCard';
 export { KnowledgeSection } from './KnowledgeSection';
 export { DownloadSection } from './DownloadSection';
 export { LandingFooter } from './LandingFooter';
+export { EnterprisePreview } from './EnterprisePreview';
 export { WaitlistModal, waitlistConfigs } from './WaitlistModal';
 export type { WaitlistConfig, WaitlistType } from './WaitlistModal';

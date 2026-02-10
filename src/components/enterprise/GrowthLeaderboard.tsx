@@ -133,9 +133,9 @@ export function GrowthLeaderboard({ members }: GrowthLeaderboardProps) {
                     <div className={styles.tokenCell}>
                       <span className={styles.tokenMain}>{formatTokens(tokenDelta.current)}</span>
                       <span className={styles.tokenDeltas}>
-                        {renderDelta(tokenDelta.wow, 'w')}
+                        {renderDelta(tokenDelta.wow, 'week/week')}
                         {tokenDelta.wow !== null && tokenDelta.mom !== null && ' '}
-                        {renderDelta(tokenDelta.mom, 'm')}
+                        {renderDelta(tokenDelta.mom, 'month/month')}
                       </span>
                     </div>
                   </td>

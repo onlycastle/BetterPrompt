@@ -5,6 +5,8 @@
  * Based on a friendly robot character to represent AI collaboration.
  */
 
+import { visualWidth, visualPadEnd } from '../lib/string-utils.js';
+
 export type ChippyExpression = 'neutral' | 'blink' | 'happy' | 'thinking' | 'excited' | 'wink';
 
 /**
@@ -261,7 +263,7 @@ function buildBubbleLines(bubbleText: string): string[] {
   const textLines: string[] = [];
   let current = '';
   for (const word of words) {
-    if (current.length + (current ? 1 : 0) + word.length > innerWidth) {
+    if (visualWidth(current) + (current ? 1 : 0) + visualWidth(word) > innerWidth) {
       if (current) textLines.push(current);
       current = word;
     } else {
@@ -281,7 +283,7 @@ function buildBubbleLines(bubbleText: string): string[] {
   // Build bubble box (content lines + top/bottom border)
   const top    = `╭${'─'.repeat(innerWidth + 2)}╮`;
   const bottom = `╰${'─'.repeat(innerWidth + 2)}╯`;
-  const contentLines = textLines.map(t => `│ ${t.padEnd(innerWidth)} │`);
+  const contentLines = textLines.map(t => `│ ${visualPadEnd(t, innerWidth)} │`);
 
   // Assemble 8-line array with bubble vertically centered
   const empty = ' '.repeat(LARGE_BUBBLE_WIDTH);

@@ -10,6 +10,7 @@
 import { useMemo } from 'react';
 import { useOrganization, useMembers, useOrgAntiPatterns, useOrgGrowthAreas, useOrgKpt } from '@/hooks';
 import { StatCard } from '@/components/enterprise/StatCard';
+import { formatTokens, getTokenDelta } from '@/components/enterprise/format-utils';
 import { GrowthLeaderboard } from '@/components/enterprise/GrowthLeaderboard';
 import { TokenUsagePanel } from '@/components/enterprise/TokenUsagePanel';
 import { AntiPatternDeepDive } from '@/components/enterprise/AntiPatternDeepDive';
@@ -32,12 +33,15 @@ export function EnterpriseOverviewContent() {
     [members],
   );
 
-  const avgContextFill = useMemo(
-    () => members.length > 0
-      ? Math.round(members.reduce((s, m) => s + m.tokenUsage.avgContextFillPercent, 0) / members.length)
-      : 0,
-    [members],
-  );
+  const avgTokenBurn = useMemo(() => {
+    if (members.length === 0) return 0;
+    const total = members.reduce((s, m) => {
+      const trend = m.tokenUsage.weeklyTokenTrend;
+      const current = getTokenDelta(trend).current;
+      return s + current;
+    }, 0);
+    return Math.round(total / members.length);
+  }, [members]);
 
   const totalAntiPatterns = useMemo(
     () => antiPatterns.reduce((s, a) => s + a.totalOccurrences, 0),
@@ -68,7 +72,7 @@ export function EnterpriseOverviewContent() {
       <div className={styles.statsRow}>
         <StatCard label="Active Members" value={org.totalMembers} suffix=" members" />
         <StatCard label="Sessions This Week" value={totalSessions} change={wowSessionsChange} />
-        <StatCard label="Avg Context Fill" value={`${avgContextFill}`} suffix="%" />
+        <StatCard label="Avg Token Burn" value={formatTokens(avgTokenBurn)} />
         <StatCard label="Anti-Patterns" value={totalAntiPatterns} suffix=" detected" />
       </div>
 

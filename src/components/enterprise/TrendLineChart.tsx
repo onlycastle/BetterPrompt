@@ -3,11 +3,16 @@
  * Line chart showing trend data over time with gradient fill
  */
 
-import type { HistoryEntry } from '../../types/enterprise';
 import styles from './TrendLineChart.module.css';
 
+// Accept any object with date + overallScore (works for both enterprise and personal HistoryEntry)
+interface TrendDataPoint {
+  date: string;
+  overallScore: number;
+}
+
 export interface TrendLineChartProps {
-  data: HistoryEntry[];
+  data: TrendDataPoint[];
   height?: number;
 }
 

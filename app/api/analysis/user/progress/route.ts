@@ -9,8 +9,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
-import type { PersonalAnalytics, AnalysisSummary, HistoryEntry } from '@/types/personal';
-import type { DimensionScores, CodingStyleType, AIControlLevel } from '@/types/enterprise';
+import type { PersonalAnalytics, AnalysisSummary, HistoryEntry, WorkerDomainScores } from '@/types/personal';
+import type { CodingStyleType, AIControlLevel } from '@/types/enterprise';
+
+const WORKER_DOMAIN_KEYS = [
+  'thinkingQuality',
+  'communicationPatterns',
+  'learningBehavior',
+  'contextEfficiency',
+  'sessionOutcome',
+] as const;
 
 interface AnalysisResult {
   result_id: string;
@@ -18,8 +26,7 @@ interface AnalysisResult {
     primaryType?: CodingStyleType;
     controlLevel?: AIControlLevel;
     overallScore?: number;
-    // Legacy format dimensions
-    dimensions?: DimensionScores;
+    workerInsights?: Record<string, { domainScore?: number }>;
   } | null;
   is_paid: boolean;
   claimed_at: string;
@@ -63,20 +70,40 @@ function getSupabaseAdmin() {
   return createClient(supabaseUrl, serviceKey);
 }
 
-/** Extract dimension scores from evaluation object */
-function extractDimensionScores(evaluation: AnalysisResult['evaluation']): DimensionScores | null {
-  return evaluation?.dimensions ?? null;
+/**
+ * Extract worker domain scores from evaluation.workerInsights
+ * Returns null if fewer than 3 domains have valid scores
+ */
+function extractWorkerDomainScores(evaluation: AnalysisResult['evaluation']): WorkerDomainScores | null {
+  const wi = evaluation?.workerInsights;
+  if (!wi) return null;
+
+  const scores: Partial<WorkerDomainScores> = {};
+
+  for (const key of WORKER_DOMAIN_KEYS) {
+    if (wi[key]?.domainScore != null) {
+      scores[key] = wi[key].domainScore;
+    }
+  }
+
+  // Need at least 3 domains to be valid
+  if (Object.keys(scores).length < 3) return null;
+
+  return {
+    thinkingQuality: scores.thinkingQuality ?? 50,
+    communicationPatterns: scores.communicationPatterns ?? 50,
+    learningBehavior: scores.learningBehavior ?? 50,
+    contextEfficiency: scores.contextEfficiency ?? 50,
+    sessionOutcome: scores.sessionOutcome ?? 50,
+  };
 }
 
 /**
- * Calculate overall score from dimension scores
- * Uses weighted average (burnoutRisk is inverted since lower is better)
+ * Calculate overall score as simple average of all 5 worker domain scores
  */
-function calculateOverallScore(dimensions: DimensionScores): number {
-  const { aiCollaboration, contextEngineering, burnoutRisk, aiControl, skillResilience } = dimensions;
-  // Invert burnout risk (100 - burnoutRisk) so lower burnout = higher contribution
-  const invertedBurnout = 100 - burnoutRisk;
-  const total = aiCollaboration + contextEngineering + invertedBurnout + aiControl + skillResilience;
+function calculateOverallScore(domainScores: WorkerDomainScores): number {
+  const { thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency, sessionOutcome } = domainScores;
+  const total = thinkingQuality + communicationPatterns + learningBehavior + contextEfficiency + sessionOutcome;
   return Math.round(total / 5);
 }
 
@@ -131,33 +158,33 @@ function calculateStreak(dates: Date[]): { current: number; longest: number } {
 }
 
 /**
- * Calculate dimension improvements (latest - first)
+ * Calculate domain score improvements (latest - first)
  */
-function calculateDimensionImprovements(
-  first: DimensionScores,
-  latest: DimensionScores
-): DimensionScores {
+function calculateDomainImprovements(
+  first: WorkerDomainScores,
+  latest: WorkerDomainScores
+): WorkerDomainScores {
   return {
-    aiCollaboration: latest.aiCollaboration - first.aiCollaboration,
-    contextEngineering: latest.contextEngineering - first.contextEngineering,
-    burnoutRisk: latest.burnoutRisk - first.burnoutRisk,
-    aiControl: latest.aiControl - first.aiControl,
-    skillResilience: latest.skillResilience - first.skillResilience,
+    thinkingQuality: latest.thinkingQuality - first.thinkingQuality,
+    communicationPatterns: latest.communicationPatterns - first.communicationPatterns,
+    learningBehavior: latest.learningBehavior - first.learningBehavior,
+    contextEfficiency: latest.contextEfficiency - first.contextEfficiency,
+    sessionOutcome: latest.sessionOutcome - first.sessionOutcome,
   };
 }
 
 /**
  * Build AnalysisSummary from a result
  */
-function buildAnalysisSummary(result: AnalysisResult, dimensions: DimensionScores): AnalysisSummary {
-  const overallScore = result.evaluation?.overallScore ?? calculateOverallScore(dimensions);
+function buildAnalysisSummary(result: AnalysisResult, domainScores: WorkerDomainScores): AnalysisSummary {
+  const overallScore = result.evaluation?.overallScore ?? calculateOverallScore(domainScores);
   return {
     date: result.claimed_at,
     score: overallScore,
     overallScore,
     primaryType: result.evaluation?.primaryType ?? 'conductor',
     controlLevel: result.evaluation?.controlLevel ?? 'explorer',
-    dimensions,
+    domainScores,
   };
 }
 
@@ -193,12 +220,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ analytics: null });
     }
 
-    const validResults: Array<{ result: AnalysisResult; dimensions: DimensionScores }> = [];
+    const validResults: Array<{ result: AnalysisResult; domainScores: WorkerDomainScores }> = [];
 
     for (const result of results as AnalysisResult[]) {
-      const dimensions = extractDimensionScores(result.evaluation);
-      if (dimensions) {
-        validResults.push({ result, dimensions });
+      const domainScores = extractWorkerDomainScores(result.evaluation);
+      if (domainScores) {
+        validResults.push({ result, domainScores });
       }
     }
 
@@ -210,10 +237,10 @@ export async function GET(request: NextRequest) {
     const latestValid = validResults[validResults.length - 1];
 
     // Build history entries
-    const history: HistoryEntry[] = validResults.map(({ result, dimensions }) => ({
+    const history: HistoryEntry[] = validResults.map(({ result, domainScores }) => ({
       date: result.claimed_at.split('T')[0], // Just the date part
-      overallScore: result.evaluation?.overallScore ?? calculateOverallScore(dimensions),
-      dimensions,
+      overallScore: result.evaluation?.overallScore ?? calculateOverallScore(domainScores),
+      domainScores,
     }));
 
     // Calculate streaks
@@ -221,13 +248,13 @@ export async function GET(request: NextRequest) {
     const { current: currentStreak, longest: longestStreak } = calculateStreak(analysisDates);
 
     // Build first and latest analysis summaries
-    const firstAnalysis = buildAnalysisSummary(firstValid.result, firstValid.dimensions);
-    const latestAnalysis = buildAnalysisSummary(latestValid.result, latestValid.dimensions);
+    const firstAnalysis = buildAnalysisSummary(firstValid.result, firstValid.domainScores);
+    const latestAnalysis = buildAnalysisSummary(latestValid.result, latestValid.domainScores);
 
     // Calculate improvements
-    const dimensionImprovements = calculateDimensionImprovements(
-      firstValid.dimensions,
-      latestValid.dimensions
+    const dimensionImprovements = calculateDomainImprovements(
+      firstValid.domainScores,
+      latestValid.domainScores
     );
     const totalImprovement = latestAnalysis.overallScore - firstAnalysis.overallScore;
 
@@ -238,7 +265,7 @@ export async function GET(request: NextRequest) {
       analysisCount: validResults.length,
       totalImprovement,
 
-      currentDimensions: latestValid.dimensions,
+      currentDimensions: latestValid.domainScores,
       dimensionImprovements,
 
       firstAnalysis,

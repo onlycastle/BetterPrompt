@@ -2,6 +2,7 @@
 
 import { ChevronDown } from 'lucide-react';
 import { TerminalCommand } from './TerminalCommand';
+import { TextRotator } from './TextRotator';
 import styles from './HeroSection.module.css';
 
 export function HeroSection() {
@@ -10,13 +11,12 @@ export function HeroSection() {
       <div className={styles.content}>
         <div className={styles.badge}>No More AI Slop</div>
         <h1 className={styles.headline}>
-          AI isn&apos;t the problem.
-          <br />
-          <span className={styles.accent}>Unconscious dependency</span> is.
+          See how <TextRotator words={['you', 'your team']} /> make{' '}
+          <span className={styles.accent}>AI slop</span>.
         </h1>
 
         <p className={styles.subheadline}>
-          Spot bad habits. Fix anti-patterns. Become a better AI-native engineer.
+          Analyze your coding sessions. Spot anti-patterns. Build better AI habits.
         </p>
 
         <div className={styles.cta}>

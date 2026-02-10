@@ -91,7 +91,7 @@ const SUMMARY_LINES = [
   'Built data export feature with CSV/JSON formats',
 ];
 
-function generateTokenUsage(activity: 'high' | 'medium' | 'low'): MemberTokenUsage {
+function generateTokenUsage(activity: 'high' | 'medium' | 'low', memberSeed: number): MemberTokenUsage {
   const base = activity === 'high' ? { sessions: 28, messages: 420, fill: 52, max: 78 }
     : activity === 'medium' ? { sessions: 18, messages: 260, fill: 65, max: 88 }
     : { sessions: 8, messages: 110, fill: 78, max: 96 };
@@ -102,11 +102,12 @@ function generateTokenUsage(activity: 'high' | 'medium' | 'low'): MemberTokenUsa
     const d = new Date(now);
     d.setDate(d.getDate() - i * 7);
     const baseTokens = activity === 'high' ? 450000 : activity === 'medium' ? 280000 : 120000;
-    const noise = Math.round(Math.sin(i * 1.3) * baseTokens * 0.15);
+    const memberOffset = Math.round(Math.cos(memberSeed * 2.1) * baseTokens * 0.1);
+    const noise = Math.round(Math.sin(i * 1.3 + memberSeed * 0.7) * baseTokens * 0.15);
     weeklyTokenTrend.push({
       weekStart: d.toISOString().split('T')[0],
-      totalTokens: baseTokens + noise + Math.round(i * baseTokens * 0.03),
-      sessions: Math.max(1, Math.round(base.sessions / 4 + Math.sin(i) * 2)),
+      totalTokens: baseTokens + memberOffset + noise + Math.round(i * baseTokens * 0.03),
+      sessions: Math.max(1, Math.round(base.sessions / 4 + Math.sin(i + memberSeed * 0.5) * 2)),
     });
   }
 
@@ -473,7 +474,7 @@ function makeMember(
     overallScore,
     dimensions,
     history,
-    tokenUsage: generateTokenUsage(profile.activity),
+    tokenUsage: generateTokenUsage(profile.activity, parseInt(id.replace('m', ''), 10)),
     antiPatterns: generateAntiPatterns(profile.risk),
     projects: generateProjects(profile.projectCount, parseInt(id.replace('m', ''), 10)),
     strengthSummaries: generateStrengths(profile.strengthLevel),

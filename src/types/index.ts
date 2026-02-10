@@ -127,7 +127,16 @@ export interface InfluencerListResponse {
 
 // Re-export enterprise and personal types (base types)
 export * from './enterprise';
-export * from './personal';
+// Personal types — exclude HistoryEntry (conflicts with enterprise's) and
+// CodingStyleType/AIControlLevel (already re-exported from enterprise)
+export type {
+  WorkerDomainScores,
+  PersonalAnalytics,
+  AnalysisSummary,
+  Recommendation,
+  RecommendationType,
+  RecommendationPriority,
+} from './personal';
 
 // Re-export verbose analysis types
 export * from './verbose';
