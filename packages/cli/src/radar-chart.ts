@@ -30,10 +30,10 @@ export interface RadarChartData {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const ASPECT_RATIO = 2.0;  // Terminal char width ≈ half height
-const CHART_WIDTH = 37;
-const CHART_HEIGHT = 17;
-const RADIUS = 5;          // Grid units for the outer pentagon
-const GAP = 6;             // Gap between dual charts
+const CHART_WIDTH = 41;
+const CHART_HEIGHT = 21;
+const RADIUS = 7;          // Grid units for the outer pentagon
+const GAP = 4;             // Gap between dual charts
 
 // Characters for rendering
 const DOT_CHAR = '\u00b7'; // Middle dot for reference ring/axes
@@ -148,7 +148,9 @@ function drawPolygon(grid: string[][], vertices: { x: number; y: number }[], ch:
 }
 
 /**
- * Scanline fill a polygon interior
+ * Scanline fill a polygon interior.
+ * Uses y+0.5 offset to avoid vertex boundary ambiguity in odd-even rule.
+ * Uses ceil/floor instead of round to prevent fill leaking outside polygon.
  */
 function fillPolygon(grid: string[][], vertices: { x: number; y: number }[], ch: string): void {
   if (vertices.length < 3) return;
@@ -164,30 +166,28 @@ function fillPolygon(grid: string[][], vertices: { x: number; y: number }[], ch:
   maxY = Math.min(grid.length - 1, Math.ceil(maxY));
 
   for (let y = minY; y <= maxY; y++) {
-    // Find x-intersections for this scanline
+    // Use y+0.5 offset so scanline never hits exact vertex y-coordinates
+    const scanY = y + 0.5;
     const intersections: number[] = [];
     for (let i = 0; i < vertices.length; i++) {
       const v0 = vertices[i];
       const v1 = vertices[(i + 1) % vertices.length];
 
-      // Check if edge crosses this scanline
-      if ((v0.y <= y && v1.y > y) || (v1.y <= y && v0.y > y)) {
-        const t = (y - v0.y) / (v1.y - v0.y);
-        intersections.push(Math.round(v0.x + t * (v1.x - v0.x)));
+      // Check if edge crosses this scanline (strict inequality avoids double-counting)
+      if ((v0.y < scanY && v1.y >= scanY) || (v1.y < scanY && v0.y >= scanY)) {
+        const t = (scanY - v0.y) / (v1.y - v0.y);
+        intersections.push(v0.x + t * (v1.x - v0.x));
       }
     }
 
     intersections.sort((a, b) => a - b);
 
-    // Fill between pairs of intersections
+    // Fill between pairs of intersections (ceil start, floor end to stay inside polygon)
     for (let i = 0; i < intersections.length - 1; i += 2) {
-      const xStart = Math.max(0, intersections[i]);
-      const xEnd = Math.min(grid[0].length - 1, intersections[i + 1]);
+      const xStart = Math.max(0, Math.ceil(intersections[i]));
+      const xEnd = Math.min(grid[0].length - 1, Math.floor(intersections[i + 1]));
       for (let x = xStart; x <= xEnd; x++) {
-        // Only fill if cell is empty (don't overwrite edges/dots)
-        if (getChar(grid, x, y) === ' ') {
-          setChar(grid, x, y, ch);
-        }
+        setChar(grid, x, y, ch);
       }
     }
   }
@@ -212,27 +212,32 @@ function renderChartToGrid(
   const cx = Math.floor(width / 2);
   const cy = Math.floor(height / 2) + 1; // Shift down slightly for top label
 
-  // 1. Draw reference pentagon (outer ring) with dots
+  // Compute outer reference pentagon vertices
   const outerVertices = Array.from({ length: total }, (_, i) =>
     polarToGrid(i, total, RADIUS, cx, cy)
   );
-  drawPolygon(grid, outerVertices, DOT_CHAR);
 
-  // 2. Draw axis lines from center to each vertex
-  for (let i = 0; i < total; i++) {
-    const v = outerVertices[i];
-    drawLine(grid, cx, cy, v.x, v.y, AXIS_CHAR);
-  }
-
-  // 3. Compute data polygon vertices
+  // Compute data polygon vertices
   const dataVertices = chart.values.map((val, i) => {
     const normalizedRadius = Math.max((val / maxVal) * RADIUS, 0.8); // Min distance from center
     return polarToGrid(i, total, normalizedRadius, cx, cy);
   });
 
-  // 4. Fill data polygon, then draw edges on top
+  // Drawing order: fill first on empty grid, then overlay structural elements
+  // 1. Fill data polygon (on empty grid — no axis dots to block fill)
   fillPolygon(grid, dataVertices, FILL_CHAR);
+
+  // 2. Draw data polygon edges on top of fill
   drawPolygon(grid, dataVertices, EDGE_CHAR);
+
+  // 3. Draw reference pentagon (visible through/over fill area)
+  drawPolygon(grid, outerVertices, DOT_CHAR);
+
+  // 4. Draw axis lines from center to each vertex
+  for (let i = 0; i < total; i++) {
+    const v = outerVertices[i];
+    drawLine(grid, cx, cy, v.x, v.y, AXIS_CHAR);
+  }
 
   // 5. Mark center
   setChar(grid, cx, cy, '+');
@@ -283,23 +288,23 @@ function computeLabels(
 
     switch (i) {
       case 0: // Top center - above chart
-        row = 1;
+        row = 0;
         startCol = cx - Math.floor(text.length / 2);
         break;
       case 1: // Upper right - to the right of vertex
-        row = Math.round(vtx.y);
+        row = Math.round(vtx.y) - 1;
         startCol = Math.round(vtx.x) + 2;
         break;
       case 2: // Lower right - bottom row, right of center
         row = height - 1;
-        startCol = cx + 2;
+        startCol = cx + 4;
         break;
       case 3: // Lower left - bottom row, left of center
         row = height - 1;
-        startCol = cx - text.length - 2;
+        startCol = cx - text.length - 4;
         break;
       case 4: // Upper left - to the left of vertex
-        row = Math.round(vtx.y);
+        row = Math.round(vtx.y) - 1;
         startCol = Math.round(vtx.x) - text.length - 1;
         break;
       default: {
@@ -431,7 +436,7 @@ export function renderDualRadarCharts(
   }
 
   // Narrow terminal: stack vertically
-  if (cols < 85) {
+  if (cols < 90) {
     const leftLines = renderRadarChart(left, CHART_WIDTH, CHART_HEIGHT);
     const rightLines = renderRadarChart(right, CHART_WIDTH, CHART_HEIGHT);
     return [...leftLines, '', ...rightLines];
