@@ -3,7 +3,7 @@
 }
 
 .wrapper {
-  max-width: 800px;
+  max-width: 960px;
   margin: 0 auto;
 }
 
@@ -28,12 +28,12 @@
 }
 
 /* ============================================
-   2×2 Card Grid
+   Card Stack — vertical layout
    ============================================ */
 .grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
   margin-bottom: var(--space-2xl);
 }
 
@@ -70,13 +70,9 @@
 }
 
 /* ============================================
-   Mobile: 1 column under 560px
+   Mobile
    ============================================ */
-@media (max-width: 560px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-
+@media (max-width: 768px) {
   .headline {
     font-size: var(--text-xl);
   }

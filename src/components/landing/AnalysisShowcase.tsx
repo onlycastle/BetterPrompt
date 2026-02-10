@@ -2,13 +2,12 @@
 
 import { useInView } from '@/hooks/useInView';
 import { TerminalCommand } from './TerminalCommand';
-import { TasteCardEvidence } from './showcase/TasteCardEvidence';
-import { TasteCardPercentile } from './showcase/TasteCardPercentile';
-import { TasteCardFocusArea } from './showcase/TasteCardFocusArea';
-import { TasteCardActivity } from './showcase/TasteCardActivity';
+import { ShowcaseAntiPattern } from './showcase/ShowcaseAntiPattern';
+import { ShowcaseWeekly } from './showcase/ShowcaseWeekly';
+import { ShowcaseStrength } from './showcase/ShowcaseStrength';
 import styles from './AnalysisShowcase.module.css';
 
-const CARDS = [TasteCardEvidence, TasteCardPercentile, TasteCardFocusArea, TasteCardActivity];
+const CARDS = [ShowcaseAntiPattern, ShowcaseWeekly, ShowcaseStrength];
 
 export function AnalysisShowcase() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
@@ -26,7 +25,7 @@ export function AnalysisShowcase() {
             <div
               key={i}
               className={`${styles.cardSlot} ${isInView ? styles.cardVisible : ''}`}
-              style={{ transitionDelay: `${i * 100}ms` }}
+              style={{ transitionDelay: `${i * 150}ms` }}
             >
               <Card />
             </div>
