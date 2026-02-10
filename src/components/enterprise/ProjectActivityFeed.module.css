@@ -1,0 +1,90 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.projectCard {
+  min-width: 0;
+}
+
+.projectHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--space-sm);
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.projectName {
+  font-family: var(--font-mono, var(--font-primary));
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+}
+
+.projectMeta {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.contributorList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.contributor {
+  padding-left: var(--space-sm);
+  border-left: 2px solid var(--border-default);
+}
+
+.contributorHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.contributorName {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-primary);
+}
+
+.contributorSessions {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.summaryLine {
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.showMoreBtn {
+  align-self: center;
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-cyan);
+  background: transparent;
+  border: 2px solid var(--sketch-cyan);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.showMoreBtn:hover {
+  background: var(--sketch-cyan-soft);
+}

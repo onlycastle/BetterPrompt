@@ -1,105 +1,111 @@
 /**
  * EnterpriseOverviewContent
- * Assembles the organization-wide overview dashboard
+ * Manager-actionable organization dashboard with 5 sections:
+ * GrowthLeaderboard, TokenUsagePanel, AntiPatternHeatmap,
+ * TeamStrengthsPanel, ProjectActivityFeed
  */
 
 'use client';
 
-import { useOrganization, useTeams, useMembers } from '@/hooks';
+import { useMemo } from 'react';
+import { useOrganization, useMembers, useOrgAntiPatterns } from '@/hooks';
 import { StatCard } from '@/components/enterprise/StatCard';
-import { TypeDistributionChart } from '@/components/enterprise/TypeDistributionChart';
-import { TeamOverviewGrid } from '@/components/enterprise/TeamOverviewGrid';
-import { SkillGapTable } from '@/components/enterprise/SkillGapTable';
-import { TrendLineChart } from '@/components/enterprise/TrendLineChart';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
-import type { CodingStyleType } from '@/types/enterprise';
+import { GrowthLeaderboard } from '@/components/enterprise/GrowthLeaderboard';
+import { TokenUsagePanel } from '@/components/enterprise/TokenUsagePanel';
+import { AntiPatternHeatmap } from '@/components/enterprise/AntiPatternHeatmap';
+import { TeamStrengthsPanel } from '@/components/enterprise/TeamStrengthsPanel';
+import { ProjectActivityFeed } from '@/components/enterprise/ProjectActivityFeed';
+import { Card, CardContent } from '@/components/ui/Card';
 import styles from './EnterpriseOverviewContent.module.css';
 
 export function EnterpriseOverviewContent() {
   const org = useOrganization();
-  const teams = useTeams();
   const members = useMembers();
+  const antiPatterns = useOrgAntiPatterns();
 
-  // Aggregate type distribution across all members
-  const orgTypeDistribution = members.reduce<Record<CodingStyleType, number>>(
-    (acc, m) => { acc[m.primaryType]++; return acc; },
-    { architect: 0, analyst: 0, conductor: 0, speedrunner: 0, trendsetter: 0 },
+  // Aggregate stats
+  const totalSessions = useMemo(
+    () => members.reduce((s, m) => s + m.tokenUsage.totalSessions, 0),
+    [members],
   );
 
-  // Aggregate skill gaps from all teams
-  const allGaps = teams.flatMap(t => t.skillGaps);
-  // Deduplicate by dimension, keeping the worst
-  const gapMap = new Map<string, typeof allGaps[number]>();
-  for (const gap of allGaps) {
-    const existing = gapMap.get(gap.dimension);
-    if (!existing || gap.avgScore < existing.avgScore) {
-      gapMap.set(gap.dimension, gap);
+  const avgContextFill = useMemo(
+    () => members.length > 0
+      ? Math.round(members.reduce((s, m) => s + m.tokenUsage.avgContextFillPercent, 0) / members.length)
+      : 0,
+    [members],
+  );
+
+  const totalAntiPatterns = useMemo(
+    () => antiPatterns.reduce((s, a) => s + a.totalOccurrences, 0),
+    [antiPatterns],
+  );
+
+  // WoW sessions change (rough estimate from token trends)
+  const wowSessionsChange = useMemo(() => {
+    let thisWeek = 0;
+    let lastWeek = 0;
+    for (const m of members) {
+      const trend = m.tokenUsage.weeklyTokenTrend;
+      if (trend.length >= 2) {
+        thisWeek += trend[trend.length - 1].sessions;
+        lastWeek += trend[trend.length - 2].sessions;
+      }
     }
-  }
-  const uniqueGaps = [...gapMap.values()];
-
-  // Aggregate weekly trend (average across teams)
-  const orgTrend = teams.length > 0 && teams[0].weeklyTrend.length > 0
-    ? teams[0].weeklyTrend.map((entry, i) => ({
-        date: entry.date,
-        overallScore: Math.round(
-          teams.reduce((s, t) => s + (t.weeklyTrend[i]?.overallScore ?? 0), 0) / teams.length
-        ),
-      }))
-    : [];
-
-  // WoW change
-  const wowChange = teams.length > 0
-    ? Math.round(teams.reduce((s, t) => s + t.weekOverWeekChange, 0) / teams.length * 10) / 10
-    : 0;
+    if (lastWeek === 0) return 0;
+    return Math.round(((thisWeek - lastWeek) / lastWeek) * 100);
+  }, [members]);
 
   return (
     <div className={styles.container}>
       <h1 className={styles.pageTitle}>{org.organizationName}</h1>
-      <p className={styles.pageSubtitle}>Organization-wide AI development analytics</p>
+      <p className={styles.pageSubtitle}>Manager Dashboard</p>
 
       {/* Stat Cards Row */}
       <div className={styles.statsRow}>
-        <StatCard label="Total Members" value={org.totalMembers} suffix=" members" />
-        <StatCard label="Avg Score" value={org.overallAverageScore} />
-        <StatCard label="WoW Change" value={wowChange > 0 ? `+${wowChange}` : String(wowChange)} suffix="%" change={wowChange} />
-        <StatCard label="Skill Gaps" value={uniqueGaps.length} suffix={uniqueGaps.length === 1 ? ' gap' : ' gaps'} />
+        <StatCard label="Active Members" value={org.totalMembers} suffix=" members" />
+        <StatCard label="Sessions This Week" value={totalSessions} change={wowSessionsChange} />
+        <StatCard label="Avg Context Fill" value={`${avgContextFill}`} suffix="%" />
+        <StatCard label="Anti-Patterns" value={totalAntiPatterns} suffix=" detected" />
       </div>
 
-      {/* Team Overview Grid */}
+      {/* Growth Leaderboard */}
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Teams</h2>
-        <TeamOverviewGrid teams={teams} />
+        <h2 className={styles.sectionTitle}>Growth Leaderboard</h2>
+        <Card>
+          <CardContent>
+            <GrowthLeaderboard members={members} />
+          </CardContent>
+        </Card>
       </section>
 
-      {/* Charts Row */}
-      <div className={styles.chartsRow}>
-        <Card className={styles.chartCard}>
-          <CardHeader>
-            <h2 className={styles.sectionTitle}>Type Distribution</h2>
-          </CardHeader>
+      {/* Token Usage Panel */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Token Usage</h2>
+        <TokenUsagePanel members={members} />
+      </section>
+
+      {/* Anti-Pattern Heatmap */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Anti-Pattern Distribution</h2>
+        <Card>
           <CardContent>
-            <TypeDistributionChart distribution={orgTypeDistribution} total={members.length} />
+            <AntiPatternHeatmap aggregates={antiPatterns} />
           </CardContent>
         </Card>
+      </section>
 
-        <Card className={styles.chartCard}>
-          <CardHeader>
-            <h2 className={styles.sectionTitle}>Score Trend</h2>
-          </CardHeader>
-          <CardContent>
-            <TrendLineChart data={orgTrend} height={220} />
-          </CardContent>
-        </Card>
-      </div>
+      {/* Team Strengths Panel */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Team Strengths</h2>
+        <TeamStrengthsPanel members={members} />
+      </section>
 
-      {/* Skill Gap Table */}
-      {uniqueGaps.length > 0 && (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Skill Gaps</h2>
-          <SkillGapTable gaps={uniqueGaps} />
-        </section>
-      )}
+      {/* Project Activity Feed */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Project Activity</h2>
+        <ProjectActivityFeed members={members} />
+      </section>
     </div>
   );
 }

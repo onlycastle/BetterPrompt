@@ -44,25 +44,19 @@
   margin: 0 0 var(--space-md);
 }
 
-/* Charts Row */
-.chartsRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-md);
-  margin-bottom: var(--space-xl);
-}
-
-.chartCard {
-  min-width: 0;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
-  .chartsRow {
-    grid-template-columns: 1fr;
+  .statsRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: var(--space-md);
   }
 
   .statsRow {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
 }

@@ -158,24 +158,24 @@ export function displayResults(result: AnalysisResult): void {
   lines.push(pc.dim(`(${result.primaryType.charAt(0).toUpperCase() + result.primaryType.slice(1)} × ${formatControlLevel(result.controlLevel)})`));
   lines.push('');
 
-  // Dual radar charts (Style DNA + Skill Scores)
+  // Bar charts (Style DNA + Skill Scores)
   const types = ['architect', 'analyst', 'conductor', 'speedrunner', 'trendsetter'] as const;
   const userType = result.primaryType.toLowerCase();
   const userLevel = result.controlLevel.toLowerCase();
   const cols = process.stdout.columns || 80;
 
-  if (cols >= 50) {
-    // Radar chart mode
+  if (cols >= 45) {
     const styleValues = types.map(t => result.distribution[t]);
     const styleMaxValue = computeStyleMaxValue(styleValues);
 
     const styleChart: RadarChartData = {
       values: styleValues,
-      labels: ['Architect', 'Analyst', 'Conductor', 'Speedrun', 'Trend'],
+      labels: ['Architect', 'Analyst', 'Conductor', 'Speedrunner', 'Trendsetter'],
       maxValue: styleMaxValue,
       title: 'Style DNA',
       colorFn: pc.blue,
       valueFormatter: (v) => `${Math.round(v)}%`,
+      highlightIndex: types.indexOf(userType as typeof types[number]),
     };
 
     const skillChart: RadarChartData | null = result.skillScores ? {
@@ -186,7 +186,7 @@ export function displayResults(result: AnalysisResult): void {
         result.skillScores.context,
         result.skillScores.control,
       ],
-      labels: ['Think', 'Commun.', 'Learn', 'Context', 'Control'],
+      labels: ['Thinking', 'Comms', 'Learning', 'Context', 'Control'],
       title: 'Skill Scores',
       colorFn: pc.green,
       valueFormatter: (v) => String(Math.round(v)),
@@ -196,22 +196,6 @@ export function displayResults(result: AnalysisResult): void {
     lines.push(...chartLines);
     lines.push('');
   }
-
-  // Compact legend
-  const legendParts: string[] = [];
-  for (const type of types) {
-    const value = result.distribution[type];
-    const emoji = TYPE_EMOJIS[type] || '🎯';
-    const label = type.charAt(0).toUpperCase() + type.slice(1);
-    const isPrimary = type === userType;
-    const marker = isPrimary ? pc.magenta(' \u2190 PRIMARY') : '';
-    const colorFn = TYPE_COLORS[type] || pc.white;
-    legendParts.push(`${emoji} ${isPrimary ? colorFn(label) : pc.dim(label)} ${pc.dim(`${value}%`)}${marker}`);
-  }
-
-  // Split legend into 2 rows
-  lines.push(legendParts.slice(0, 3).join('  '));
-  lines.push(legendParts.slice(3).join('  '));
 
   // Matrix name indicator
   const matrixLabel = MATRIX_NAMES[userType]?.[userLevel] ?? result.matrixName;

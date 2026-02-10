@@ -141,6 +141,9 @@ export class ChatDisplay {
   private typingIndicatorUntil = 0;  // timestamp
   private awaitingStreamStart = false; // true after typing indicator set, before streaming begins
 
+  // Progressive discovery timer
+  private discoveryTimer: ReturnType<typeof setTimeout> | null = null;
+
   constructor(options: ChatDisplayOptions = {}) {
     this.logUpdate = createLogUpdate(process.stderr);
 
@@ -181,6 +184,40 @@ export class ChatDisplay {
     this.messageQueue.push({ phase, snippets });
   }
 
+  /**
+   * Schedule progressive discovery messages to appear at intervals.
+   * Messages are drip-fed into the chat queue with jitter to feel natural.
+   */
+  scheduleProgressiveMessages(
+    messages: Array<{ phase: string; snippets: PreviewSnippet[] }>,
+    intervalMs: number
+  ): void {
+    if (messages.length === 0) return;
+
+    const queue = [...messages];
+    let index = 0;
+
+    const scheduleNext = () => {
+      if (index >= queue.length) return;
+
+      const jitter = Math.floor(Math.random() * 2000) - 1000; // ±1000ms
+      const delay = intervalMs + jitter;
+
+      this.discoveryTimer = setTimeout(() => {
+        if (index < queue.length) {
+          const msg = queue[index];
+          this.addPhasePreview(msg.phase, msg.snippets);
+          index++;
+          scheduleNext();
+        }
+      }, delay);
+
+      this.discoveryTimer.unref();
+    };
+
+    scheduleNext();
+  }
+
   /** Mark as succeeded */
   succeed(message = 'Analysis complete!'): void {
     this.clearTimer();
@@ -215,6 +252,10 @@ export class ChatDisplay {
     if (this.animationTimer !== null) {
       clearInterval(this.animationTimer);
       this.animationTimer = null;
+    }
+    if (this.discoveryTimer !== null) {
+      clearTimeout(this.discoveryTimer);
+      this.discoveryTimer = null;
     }
   }
 

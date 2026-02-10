@@ -38,5 +38,6 @@ export {
   getAnalyzingStatusMessage,
   formatDuration,
   formatDateShort,
+  formatNumber,
   MILESTONES,
 } from './analysis-messages.js';

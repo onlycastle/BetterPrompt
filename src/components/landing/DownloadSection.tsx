@@ -30,7 +30,7 @@ const pricingTiers = [
     period: '',
     features: [
       '3 analyses/month',
-      '2 of 6 dimensions',
+      'Thinking Quality insights',
       'Diagnosis only',
     ],
     missing: ['Prescriptions', 'Progress tracking', 'Knowledge Base', 'API access'],
@@ -42,7 +42,7 @@ const pricingTiers = [
     popular: true,
     features: [
       'Unlimited analyses',
-      'All 6 dimensions',
+      'All 5 worker insights',
       'Diagnosis + Prescriptions',
     ],
     missing: ['Progress tracking', 'Knowledge Base', 'API access'],
@@ -53,7 +53,7 @@ const pricingTiers = [
     period: '/mo',
     features: [
       '4 full reports / month',
-      'All 6 dimensions',
+      'All 5 worker insights',
       'Diagnosis + Prescriptions',
       'Progress tracking',
       'Full Knowledge Base',

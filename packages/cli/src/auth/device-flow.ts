@@ -18,7 +18,6 @@ export interface DeviceFlowResponse {
 
 export interface TokenResponse {
   accessToken: string;
-  refreshToken: string;
   expiresIn: number;
 }
 
@@ -100,7 +99,6 @@ export async function pollForToken(deviceCode: string): Promise<PollResult> {
       status: 'success',
       tokens: {
         accessToken: data.access_token,
-        refreshToken: data.refresh_token!,
         expiresIn: data.expires_in!,
       },
     };
@@ -134,29 +132,3 @@ export async function getUserInfo(accessToken: string): Promise<{ id: string; em
   return response.json() as Promise<UserInfoAPIResponse>;
 }
 
-/**
- * Refresh access token
- */
-export async function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
-  const response = await fetch(`${API_BASE}/api/auth/refresh`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to refresh token');
-  }
-
-  const data = await response.json() as TokenPollAPIResponse;
-  return {
-    accessToken: data.access_token!,
-    refreshToken: data.refresh_token!,
-    expiresIn: data.expires_in!,
-  };
-}

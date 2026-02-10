@@ -1,0 +1,314 @@
+/**
+ * Member Detail Content Styles
+ */
+
+.container {
+  padding: var(--space-lg);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+}
+
+/* Back link */
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-muted);
+  text-decoration: none;
+  margin-bottom: var(--space-lg);
+  transition: color var(--transition-fast);
+}
+
+.backLink:hover {
+  color: var(--sketch-cyan);
+}
+
+/* Not found */
+.notFound {
+  text-align: center;
+  padding: var(--space-xl);
+  color: var(--ink-muted);
+}
+
+.notFound h2 {
+  font-family: var(--font-primary);
+  font-size: var(--text-xl);
+  color: var(--ink-primary);
+  margin: 0 0 var(--space-sm);
+}
+
+.notFound p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+/* Stat Cards Row */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-md);
+  margin: var(--space-xl) 0;
+}
+
+/* Section */
+.section {
+  margin-bottom: var(--space-xl);
+}
+
+.sectionTitle {
+  font-family: var(--font-primary);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  margin: 0 0 var(--space-md);
+}
+
+/* Dimension chart wrapper */
+.dimensionChartWrapper {
+  margin-top: var(--space-md);
+}
+
+/* Strengths grid */
+.strengthsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-md);
+}
+
+.strengthCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.strengthHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.strengthIcon {
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+.strengthLabel {
+  font-family: var(--font-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+}
+
+.strengthScore {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.strengthText {
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  margin: 0;
+}
+
+/* Token metrics */
+.tokenMetrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.metricItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.metricLabel {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metricValue {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+}
+
+/* Context fill bar */
+.contextFillBar {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.fillBarTrack {
+  position: relative;
+  height: 12px;
+  background: var(--surface-3);
+  border-radius: 999px;
+  overflow: visible;
+}
+
+.fillBarAvg {
+  height: 100%;
+  background: var(--sketch-cyan);
+  border-radius: 999px;
+  opacity: 0.6;
+  transition: width var(--transition-smooth);
+}
+
+.fillBarMax {
+  position: absolute;
+  top: -2px;
+  width: 3px;
+  height: 16px;
+  background: var(--ink-primary);
+  border-radius: 1px;
+  transform: translateX(-1px);
+}
+
+.fillBarThreshold {
+  position: absolute;
+  top: -2px;
+  left: 90%;
+  width: 1px;
+  height: 16px;
+  background: var(--sketch-red);
+  opacity: 0.6;
+}
+
+/* Projects grid */
+.projectsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-md);
+}
+
+.projectCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.projectHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.projectIcon {
+  color: var(--sketch-cyan);
+  flex-shrink: 0;
+}
+
+.projectName {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+}
+
+.projectMeta {
+  display: flex;
+  gap: var(--space-md);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.projectDate {
+  color: var(--ink-muted);
+}
+
+.projectSummary {
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Growth comparison */
+.growthComparison {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.growthColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.growthLabel {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: var(--weight-medium);
+}
+
+.deltaPositive {
+  color: var(--sketch-green-text);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
+}
+
+.deltaNegative {
+  color: var(--sketch-red-text);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
+}
+
+.deltaNeutral {
+  color: var(--ink-muted);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .statsRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .strengthsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .projectsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .growthComparison {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: var(--space-md);
+  }
+
+  .statsRow {
+    grid-template-columns: 1fr;
+  }
+
+  .strengthsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .tokenMetrics {
+    grid-template-columns: 1fr;
+  }
+}

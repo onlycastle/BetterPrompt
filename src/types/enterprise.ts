@@ -5,9 +5,10 @@
 
 // Import shared types from canonical source
 import type { CodingStyleType, AIControlLevel } from '../lib/models/coding-style';
+import type { InefficiencyPattern } from '../lib/models/agent-outputs';
 
 // Re-export for consumers
-export type { CodingStyleType, AIControlLevel };
+export type { CodingStyleType, AIControlLevel, InefficiencyPattern };
 
 // Dimension scores (0-100 scale)
 export interface DimensionScores {
@@ -37,6 +38,13 @@ export interface TeamMemberAnalysis {
   // Historical tracking
   history: HistoryEntry[];
 
+  // Manager-actionable data
+  tokenUsage: MemberTokenUsage;
+  antiPatterns: MemberAntiPattern[];
+  projects: MemberProjectActivity[];
+  strengthSummaries: MemberStrengthSummary[];
+  growth: MemberGrowthSnapshot;
+
   // Metadata
   lastAnalyzedAt: string;
   analysisCount: number;
@@ -47,6 +55,76 @@ export interface HistoryEntry {
   date: string;           // ISO date string
   overallScore: number;
   dimensions?: DimensionScores;
+}
+
+// Per-member weekly token usage trend point
+export interface WeeklyTokenTrend {
+  weekStart: string;
+  totalTokens: number;
+  sessions: number;
+}
+
+// Per-member token usage metrics
+export interface MemberTokenUsage {
+  totalSessions: number;
+  totalMessages: number;
+  avgContextFillPercent: number;
+  maxContextFillPercent: number;
+  contextFillExceeded90Count: number;
+  weeklyTokenTrend: WeeklyTokenTrend[];
+}
+
+// Per-member anti-pattern occurrence
+export interface MemberAntiPattern {
+  pattern: InefficiencyPattern;
+  frequency: number;
+  impact: 'high' | 'medium' | 'low';
+}
+
+// Per-member project activity
+export interface MemberProjectActivity {
+  projectName: string;
+  sessionCount: number;
+  lastActiveDate: string;
+  summaryLines: string[];
+}
+
+// Per-member strength summary (aggregated from workers)
+export interface MemberStrengthSummary {
+  domain: string;
+  domainLabel: string;
+  topStrength: string;
+  domainScore: number;
+}
+
+// Per-member growth snapshot
+export interface MemberGrowthSnapshot {
+  currentScore: number;
+  previousWeekScore: number;
+  previousMonthScore: number;
+  weekOverWeekDelta: number;
+  monthOverMonthDelta: number;
+  trend: 'improving' | 'stable' | 'declining';
+}
+
+// Anti-pattern human-readable labels
+export const ANTI_PATTERN_LABELS: Record<InefficiencyPattern, string> = {
+  late_compact: 'Late Context Compaction',
+  context_bloat: 'Context Bloat',
+  redundant_info: 'Redundant Information',
+  prompt_length_inflation: 'Prompt Length Inflation',
+  no_session_separation: 'No Session Separation',
+  verbose_error_pasting: 'Verbose Error Pasting',
+  no_knowledge_persistence: 'No Knowledge Persistence',
+};
+
+// Anti-pattern aggregate for team-level view
+export interface AntiPatternAggregate {
+  pattern: InefficiencyPattern;
+  label: string;
+  memberCount: number;
+  totalOccurrences: number;
+  predominantImpact: 'high' | 'medium' | 'low';
 }
 
 // Skill gap identification
@@ -79,6 +157,12 @@ export interface TeamAnalytics {
   weeklyTrend: HistoryEntry[];
   weekOverWeekChange: number;
   monthOverMonthChange: number;
+
+  // Manager-actionable aggregates
+  totalTokensThisWeek: number;
+  antiPatternAggregates: AntiPatternAggregate[];
+  activeProjects: string[];
+  growthDistribution: { improving: number; stable: number; declining: number };
 }
 
 // Organization-level analytics

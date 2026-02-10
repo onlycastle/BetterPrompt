@@ -45,11 +45,7 @@ export function LandingFooter() {
           </a>
         </div>
 
-        <p className={styles.tagline}>
-          Open source. Local analysis. Your data stays yours.
-        </p>
-
-        <p className={styles.copyright}>
+<p className={styles.copyright}>
           &copy; {new Date().getFullYear()} NoMoreAISlop
         </p>
       </div>

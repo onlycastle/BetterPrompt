@@ -1,14 +1,16 @@
 /**
  * MembersContent
- * Full member management page with invite/edit/remove dialogs
+ * Full member management page with invite/edit/remove dialogs, stat cards, and row navigation
  */
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { UserPlus } from 'lucide-react';
 import { useMembers } from '@/hooks';
 import { MemberTable } from '@/components/enterprise/MemberTable';
+import { StatCard } from '@/components/enterprise/StatCard';
 import { MemberInviteDialog } from '@/components/enterprise/MemberInviteDialog';
 import { MemberEditDialog } from '@/components/enterprise/MemberEditDialog';
 import { ConfirmDialog } from '@/components/enterprise/ConfirmDialog';
@@ -17,14 +19,28 @@ import styles from './MembersContent.module.css';
 
 export function MembersContent() {
   const members = useMembers();
+  const router = useRouter();
 
   // Dialog state
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<TeamMemberAnalysis | null>(null);
   const [removeTarget, setRemoveTarget] = useState<TeamMemberAnalysis | null>(null);
 
+  // Aggregate stats
+  const stats = useMemo(() => {
+    const avgScore = members.length > 0
+      ? Math.round(members.reduce((s, m) => s + m.overallScore, 0) / members.length)
+      : 0;
+    const improving = members.filter(m => m.growth.trend === 'improving').length;
+    const totalAntiPatterns = members.reduce((s, m) => s + m.antiPatterns.length, 0);
+    return { avgScore, improving, totalAntiPatterns };
+  }, [members]);
+
+  const handleRowClick = useCallback((member: TeamMemberAnalysis) => {
+    router.push(`/dashboard/enterprise/members/${member.id}`);
+  }, [router]);
+
   const handleInvite = useCallback((email: string, role: string) => {
-    // Mock: log to console, replace with API call later
     console.log('[Mock] Invite member:', { email, role });
     setInviteOpen(false);
   }, []);
@@ -56,9 +72,17 @@ export function MembersContent() {
         </button>
       </div>
 
+      <div className={styles.statsRow}>
+        <StatCard label="Active Members" value={members.length} />
+        <StatCard label="Avg Score" value={stats.avgScore} suffix="%" />
+        <StatCard label="Improving" value={stats.improving} suffix=" members" />
+        <StatCard label="Anti-Patterns Detected" value={stats.totalAntiPatterns} />
+      </div>
+
       <MemberTable
         members={members}
         showDepartment
+        onRowClick={handleRowClick}
         onEdit={setEditTarget}
         onRemove={setRemoveTarget}
       />

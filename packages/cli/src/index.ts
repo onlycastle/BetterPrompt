@@ -22,12 +22,11 @@ import {
 } from './display.js';
 import { estimateAnalysisCost, renderCostEstimate } from './cost-estimator.js';
 import { createChatDisplay } from './chat-display.js';
-import { buildScanPreviewMessages } from './chat-message.js';
+import { buildScanPreviewMessages, buildProgressiveDiscoveryMessages } from './chat-message.js';
 import { computeSessionInsights } from './animations/index.js';
 import {
   storeTokens,
   getStoredAccessToken,
-  getStoredRefreshToken,
   getStoredUserEmail,
   clearTokens,
   hasStoredTokens,
@@ -36,7 +35,6 @@ import {
   startDeviceFlow,
   pollForToken,
   getUserInfo,
-  refreshAccessToken,
 } from './auth/device-flow.js';
 import {
   generateWelcomeBanner,
@@ -344,33 +342,33 @@ async function handleStatus(): Promise<void> {
 }
 
 /**
- * Get a valid access token, refreshing if expired.
- * Returns null if no stored token or refresh fails (caller should re-authenticate).
+ * Get a valid access token.
+ * Returns null if no stored token or token is invalid (caller should re-authenticate).
+ *
+ * CLI tokens (cli_*) are long-lived (30 days) and don't need refreshing.
+ * Legacy Supabase JWTs (eyJ*) are detected and cleared to trigger re-authentication.
  */
 async function getValidAccessToken(): Promise<string | null> {
   const accessToken = await getStoredAccessToken();
   if (!accessToken) return null;
 
-  // Verify token is still valid
+  // Detect legacy Supabase JWT — prompt upgrade to CLI token
+  if (accessToken.startsWith('eyJ')) {
+    console.log('');
+    console.log(pc.yellow('  ⚠ Authentication upgrade required'));
+    console.log(pc.dim('  Your session format has been upgraded for better reliability.'));
+    console.log(pc.dim('  Please sign in again (one-time only).'));
+    console.log('');
+    await clearTokens();
+    return null;
+  }
+
+  // Verify CLI token is still valid
   try {
     await getUserInfo(accessToken);
     return accessToken;
   } catch {
-    // Token expired — try refreshing
-  }
-
-  const refreshToken = await getStoredRefreshToken();
-  if (!refreshToken) return null;
-
-  try {
-    const newTokens = await refreshAccessToken(refreshToken);
-    await storeTokens({
-      accessToken: newTokens.accessToken,
-      refreshToken: newTokens.refreshToken,
-    });
-    return newTokens.accessToken;
-  } catch {
-    // Refresh failed — caller should re-authenticate
+    // Token expired or invalid — caller should re-authenticate
     return null;
   }
 }
@@ -404,11 +402,10 @@ async function performDeviceFlowAuth(): Promise<string> {
       if (result.status === 'success') {
         pollSpinner.succeed('Authorized!');
 
-        // Get user info and store tokens
+        // Get user info and store token
         const userInfo = await getUserInfo(result.tokens.accessToken);
         await storeTokens({
           accessToken: result.tokens.accessToken,
-          refreshToken: result.tokens.refreshToken,
           email: userInfo.email,
         });
 
@@ -596,6 +593,10 @@ async function runAnalysis(options: RunAnalysisOptions = {}): Promise<void> {
   for (const msg of scanMessages) {
     chatDisplay.addPhasePreview(msg.phase, msg.snippets);
   }
+
+  // Schedule progressive discovery messages (~7s apart during wait)
+  const discoveryMsgs = buildProgressiveDiscoveryMessages(scanInsights);
+  chatDisplay.scheduleProgressiveMessages(discoveryMsgs, 7000);
 
   try {
     const result = await uploadForAnalysis(

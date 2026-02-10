@@ -32,3 +32,27 @@ export type { MemberInviteDialogProps } from './MemberInviteDialog';
 
 export { MemberEditDialog } from './MemberEditDialog';
 export type { MemberEditDialogProps } from './MemberEditDialog';
+
+export { GrowthLeaderboard } from './GrowthLeaderboard';
+export type { GrowthLeaderboardProps } from './GrowthLeaderboard';
+
+export { TokenUsagePanel } from './TokenUsagePanel';
+export type { TokenUsagePanelProps } from './TokenUsagePanel';
+
+export { AntiPatternHeatmap } from './AntiPatternHeatmap';
+export type { AntiPatternHeatmapProps } from './AntiPatternHeatmap';
+
+export { TeamStrengthsPanel } from './TeamStrengthsPanel';
+export type { TeamStrengthsPanelProps } from './TeamStrengthsPanel';
+
+export { ProjectActivityFeed } from './ProjectActivityFeed';
+export type { ProjectActivityFeedProps } from './ProjectActivityFeed';
+
+export { MemberProfileHeader } from './MemberProfileHeader';
+export type { MemberProfileHeaderProps } from './MemberProfileHeader';
+
+export { MemberDimensionChart } from './MemberDimensionChart';
+export type { MemberDimensionChartProps } from './MemberDimensionChart';
+
+export { MemberAntiPatternList } from './MemberAntiPatternList';
+export type { MemberAntiPatternListProps } from './MemberAntiPatternList';
