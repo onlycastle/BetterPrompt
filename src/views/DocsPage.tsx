@@ -65,12 +65,14 @@ export function DocsPage() {
           {/* How Analysis Works */}
           <DocsSection id="how-analysis-works" title="How Analysis Works">
             <p className={styles.paragraph}>
-              The analysis pipeline runs in four phases, using Gemini 3 Flash for AI-powered analysis.
+              The analysis pipeline runs across 8 phases (11-12 LLM calls total),
+              using Gemini 3 Flash for all AI-powered stages.
             </p>
 
-            <h3 className={styles.heading3}>Phase 1: Session Scanning (CLI)</h3>
+            <h3 className={styles.heading3}>Phase 1: Data Extraction (CLI)</h3>
             <p className={styles.paragraph}>
-              A memory-efficient 4-phase algorithm identifies your highest-quality sessions:
+              A memory-efficient deterministic algorithm identifies your highest-quality sessions.
+              No LLM calls are made in this phase.
             </p>
             <ol className={styles.orderedList}>
               <li><strong>File Discovery</strong> - Scans <code className={styles.inlineCode}>~/.claude/projects/</code> for session files</li>
@@ -79,91 +81,104 @@ export function DocsPage() {
               <li><strong>Parse Selection</strong> - Parses the top 15 highest-quality sessions</li>
             </ol>
 
-            <h3 className={styles.heading3}>Phase 2: AI Analysis Pipeline</h3>
+            <h3 className={styles.heading3}>Phase 1.5: Session Summarization</h3>
             <p className={styles.paragraph}>
-              Three parallel analyzers extract structured data from your sessions:
+              Generates concise one-line summaries for each session using a single batched LLM call.
+              These summaries provide context for downstream workers and appear in your activity timeline.
             </p>
 
-            <div className={styles.moduleCard}>
-              <h4 className={styles.moduleTitle}>Module A: Data Analyst</h4>
-              <p className={styles.moduleDescription}>
-                Extracts behavioral patterns, coding style indicators, and representative quotes from your sessions.
-              </p>
-            </div>
-
-            <div className={styles.moduleCard}>
-              <h4 className={styles.moduleTitle}>Module C: Productivity Analyst</h4>
-              <p className={styles.moduleDescription}>
-                Analyzes efficiency metrics, work patterns, and productivity indicators.
-              </p>
-            </div>
-
-            <div className={styles.moduleCard}>
-              <h4 className={styles.moduleTitle}>Multitasking Analyzer</h4>
-              <p className={styles.moduleDescription}>
-                Examines cross-session patterns and context-switching behavior.
-              </p>
-            </div>
-
-            <h3 className={styles.heading3}>Phase 2.5: Insight Generation (Premium+)</h3>
+            <h3 className={styles.heading3}>Phase 2: Insight Workers</h3>
             <p className={styles.paragraph}>
-              Six specialist agents run in parallel for deep analysis:
+              Five specialized workers run in parallel, each analyzing a distinct domain
+              of your developer-AI collaboration. Two additional summarizers run alongside them.
             </p>
 
             <div className={styles.agentGrid}>
               <div className={styles.agentCard}>
-                <span className={styles.agentName}>PatternDetective</span>
-                <span className={styles.agentDesc}>Cross-session behavior patterns</span>
+                <span className={styles.agentName}>ThinkingQuality</span>
+                <span className={styles.agentDesc}>Planning + critical thinking patterns</span>
               </div>
               <div className={styles.agentCard}>
-                <span className={styles.agentName}>AntiPatternSpotter</span>
-                <span className={styles.agentDesc}>Inefficiency detection</span>
+                <span className={styles.agentName}>CommunicationPatterns</span>
+                <span className={styles.agentDesc}>Prompt clarity + signature quotes</span>
               </div>
               <div className={styles.agentCard}>
-                <span className={styles.agentName}>KnowledgeGap</span>
-                <span className={styles.agentDesc}>Learning opportunities</span>
+                <span className={styles.agentName}>LearningBehavior</span>
+                <span className={styles.agentDesc}>Knowledge gaps + repeated mistakes</span>
               </div>
               <div className={styles.agentCard}>
                 <span className={styles.agentName}>ContextEfficiency</span>
-                <span className={styles.agentDesc}>Context utilization analysis</span>
+                <span className={styles.agentDesc}>Token usage + context management</span>
               </div>
               <div className={styles.agentCard}>
-                <span className={styles.agentName}>Metacognition</span>
-                <span className={styles.agentDesc}>Self-awareness and blind spots</span>
-              </div>
-              <div className={styles.agentCard}>
-                <span className={styles.agentName}>TemporalAnalyzer</span>
-                <span className={styles.agentDesc}>Time-based quality and fatigue</span>
+                <span className={styles.agentName}>SessionOutcome</span>
+                <span className={styles.agentDesc}>Goals, friction, success rates</span>
               </div>
             </div>
 
-            <h3 className={styles.heading3}>Phase 3: Type Synthesis</h3>
             <p className={styles.paragraph}>
-              Refines your coding style classification using all Phase 2 insights.
-              Combines 5 types with 3 control levels for 15 personality combinations.
+              Running in parallel with the 5 workers: <strong>ProjectSummarizer</strong> generates
+              project-level summaries from activity sessions, and <strong>WeeklyInsightGenerator</strong> produces
+              weekly narrative highlights. Total: 7 parallel LLM calls.
             </p>
 
-            <h3 className={styles.heading3}>Phase 4: Content Writer</h3>
+            <h3 className={styles.heading3}>Phase 2.5: Type Classification</h3>
             <p className={styles.paragraph}>
-              Transforms all outputs into a personalized narrative, connecting evidence quotes
-              to dimension insights and applying tier-based content filtering.
+              A single LLM call classifies your coding style into a 5&times;3 matrix
+              (5 types &times; 3 control levels = 15 combinations) and generates an MBTI-style
+              personality narrative describing your behavioral patterns.
+            </p>
+
+            <h3 className={styles.heading3}>Phase 2.75: Knowledge Matching</h3>
+            <p className={styles.paragraph}>
+              A deterministic resource matcher (no LLM) maps your identified strengths and growth areas
+              to curated professional resources from a knowledge database. Zero LLM calls.
+            </p>
+
+            <h3 className={styles.heading3}>Phase 2.8: Evidence Verification</h3>
+            <p className={styles.paragraph}>
+              An LLM-based verifier cross-checks evidence quotes against original session utterances,
+              ensuring all referenced quotes are accurate and traceable.
+            </p>
+
+            <h3 className={styles.heading3}>Phase 3: Content Writer</h3>
+            <p className={styles.paragraph}>
+              Generates the top focus areas narrative from all prior insights.
+              A single LLM call synthesizes worker outputs into actionable guidance.
+            </p>
+
+            <h3 className={styles.heading3}>Phase 4: Translator</h3>
+            <p className={styles.paragraph}>
+              Conditional translation for non-English users. Skipped entirely for English reports (0 calls),
+              uses 1 LLM call for other languages.
             </p>
 
             <h3 className={styles.heading3}>Pipeline Overview</h3>
             <div className={styles.pipelineDiagram}>
-              <pre className={styles.asciiDiagram}>{`~/.claude/projects/ --> CLI Scanner --> Session Selection
+              <pre className={styles.asciiDiagram}>{`~/.claude/projects/ --> DataExtractor --> Sessions
         |
    Gemini 3 Flash
         |
-  +--------------------------------------------+
-  | Module A (Data) --+                        |
-  | Module C (Prod) --+--> Phase 2.5           |
-  | Multitasking -----+    (6 Agents)          |
-  |                            |               |
-  |                     Type Synthesis         |
-  |                            |               |
-  |                     Content Writer         |
-  +--------------------------------------------+
+  Phase 1.5: SessionSummarizer (1 LLM)
+        |
+  +-----------------------------------------------+
+  |  5 Insight Workers (parallel, 5 LLM)          |
+  |  ThinkingQuality ----+                        |
+  |  CommunicationPatt --+                        |
+  |  LearningBehavior ---+--> Worker Insights     |
+  |  ContextEfficiency --+                        |
+  |  SessionOutcome -----+                        |
+  |                                               |
+  |  ProjectSummarizer (1 LLM) ─┐  (parallel)    |
+  |  WeeklyInsightGen  (1 LLM) ─┘                |
+  +-----------------------------------------------+
+        |
+  Phase 2.5:  TypeClassifier (1 LLM)
+  Phase 2.75: KnowledgeResourceMatcher (0 LLM)
+  Phase 2.8:  EvidenceVerifier (1 LLM)
+        |
+  Phase 3: ContentWriter (1 LLM)
+  Phase 4: Translator (0-1 LLM)
         |
    Supabase --> Web Report`}</pre>
             </div>

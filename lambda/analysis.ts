@@ -202,6 +202,7 @@ interface DebugPhaseOutput {
  */
 type SSEEvent =
   | { type: "progress"; stage: string; progress: number; message: string }
+  | { type: "phase_preview"; phase: string; snippets: Array<{ label: string; text: string; icon: string }> }
   | { type: "result"; data: AnalysisResponse }
   | { type: "debug_phase"; data: DebugPhaseOutput }
   | { type: "error"; code: string; message: string };
@@ -466,6 +467,14 @@ async function runAnalysis(
     });
   };
 
+  const onPhasePreview = (phase: string, snippets: Array<{ label: string; text: string; icon: string }>) => {
+    write({
+      type: "phase_preview",
+      phase,
+      snippets,
+    });
+  };
+
   // Liveness heartbeat: re-sends current progress with dot animation every 3s
   // Shows the system is alive during long single-LLM calls (e.g., Phase 3: 15-30s)
   const livenessInterval = setInterval(() => {
@@ -501,6 +510,7 @@ async function runAnalysis(
     const analysisResult = await analyzer.analyzeVerbose(parsedSessions, metrics, {
       tier: "enterprise",
       onProgress,
+      onPhasePreview,
       activitySessions,
       noTranslate,
     });

@@ -52,7 +52,7 @@ const pricingTiers = [
     price: '$6.99',
     period: '/mo',
     features: [
-      'Unlimited analyses',
+      '4 full reports / month',
       'All 6 dimensions',
       'Diagnosis + Prescriptions',
       'Progress tracking',

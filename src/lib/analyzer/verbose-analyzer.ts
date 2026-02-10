@@ -17,7 +17,7 @@ import { type ParsedSession, type SessionMetrics } from '../domain/models/analys
 import { type VerboseEvaluation } from '../models/verbose-evaluation';
 import type { Tier } from './content-gateway';
 import { AnalysisOrchestrator, createAnalysisOrchestrator } from './orchestrator';
-import type { AnalysisResult, OrchestratorConfig, ProgressCallback } from './orchestrator/types';
+import type { AnalysisResult, OrchestratorConfig, ProgressCallback, PhasePreviewCallback } from './orchestrator/types';
 import type { IKnowledgeRepository, IProfessionalInsightRepository } from '../application/ports/storage';
 import {
   // Phase 1: Pure extraction (produces Phase1Output for Phase 2 workers)
@@ -196,7 +196,7 @@ export class VerboseAnalyzer {
   async analyzeVerbose(
     sessions: ParsedSession[],
     metrics: SessionMetrics,
-    options: { tier?: Tier; onProgress?: ProgressCallback; activitySessions?: Array<{ sessionId: string; projectName: string; startTime: string; durationMinutes: number; messageCount: number; summary: string }>; noTranslate?: boolean } = {}
+    options: { tier?: Tier; onProgress?: ProgressCallback; onPhasePreview?: PhasePreviewCallback; activitySessions?: Array<{ sessionId: string; projectName: string; startTime: string; durationMinutes: number; messageCount: number; summary: string }>; noTranslate?: boolean } = {}
   ): Promise<AnalysisResult> {
     if (sessions.length === 0) {
       throw new VerboseAnalysisError(
@@ -211,6 +211,7 @@ export class VerboseAnalyzer {
     return await this.orchestrator.analyze(sessions, metrics, tier, options.onProgress, {
       activitySessions: options.activitySessions,
       noTranslate: options.noTranslate,
+      onPhasePreview: options.onPhasePreview,
     });
   }
 }
