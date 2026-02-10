@@ -580,7 +580,7 @@ export function ActivitySection({
             {/* Right: Side Panel Column */}
             <div className={styles.sidePanelColumn}>
               {/* CTA: before any interaction */}
-              {!hasInteracted && !selectedDay && (
+              {!selectedDay && !hasInteracted && (
                 <div className={styles.ctaBox}>
                   <div className={styles.ctaTextRow}>
                     <span className={styles.ctaArrow}>&larr;</span>
@@ -590,51 +590,8 @@ export function ActivitySection({
                 </div>
               )}
 
-              {/* Detail Panel (on cell click) */}
-              {selectedDay && selectedDayProjects.length > 0 && (
-                <div className={styles.detailPanel}>
-                  <div className={styles.panelHeader}>
-                    <h4 className={styles.panelDate}>{formatDate(selectedDay.date)}</h4>
-                    <span className={styles.panelCount}>
-                      {selectedDay.count} session{selectedDay.count !== 1 ? 's' : ''}
-                    </span>
-                    <button
-                      className={styles.panelClose}
-                      onClick={() => setSelectedDay(null)}
-                      type="button"
-                      aria-label="Close detail panel"
-                    >
-                      &times;
-                    </button>
-                  </div>
-
-                  <div className={styles.projectList}>
-                    {selectedDayProjects.map((project) => (
-                      <div key={project.projectName} className={styles.projectGroup}>
-                        <div className={styles.projectHeader}>
-                          <span className={styles.projectName}>{project.projectName}</span>
-                          <span className={styles.projectMeta}>
-                            {project.sessionCount} session{project.sessionCount !== 1 ? 's' : ''}
-                            {project.totalTokens > 0 && (
-                              <> &middot; {formatTokenCount(project.totalTokens)} tokens</>
-                            )}
-                            {project.totalMinutes > 0 && (
-                              <> &middot; {project.totalMinutes < 60
-                                ? `${project.totalMinutes}m`
-                                : `${Math.floor(project.totalMinutes / 60)}h ${project.totalMinutes % 60}m`
-                              }</>
-                            )}
-                          </span>
-                        </div>
-                        {renderProjectSummaries(project.projectName, project.summaries, projectSummaryMap)}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Dimmed CTA: after closing a detail panel */}
-              {hasInteracted && !selectedDay && (
+              {!selectedDay && hasInteracted && (
                 <div className={`${styles.ctaBox} ${styles.ctaDimmed}`}>
                   <div className={styles.ctaTextRow}>
                     <span className={styles.ctaArrow}>&larr;</span>
@@ -644,6 +601,49 @@ export function ActivitySection({
               )}
             </div>
           </div>
+
+          {/* Detail Panel (full-width, below heatmap grid) */}
+          {selectedDay && selectedDayProjects.length > 0 && (
+            <div className={styles.detailPanel}>
+              <div className={styles.panelHeader}>
+                <h4 className={styles.panelDate}>{formatDate(selectedDay.date)}</h4>
+                <span className={styles.panelCount}>
+                  {selectedDay.count} session{selectedDay.count !== 1 ? 's' : ''}
+                </span>
+                <button
+                  className={styles.panelClose}
+                  onClick={() => setSelectedDay(null)}
+                  type="button"
+                  aria-label="Close detail panel"
+                >
+                  &times;
+                </button>
+              </div>
+
+              <div className={styles.projectList}>
+                {selectedDayProjects.map((project) => (
+                  <div key={project.projectName} className={styles.projectGroup}>
+                    <div className={styles.projectHeader}>
+                      <span className={styles.projectName}>{project.projectName}</span>
+                      <span className={styles.projectMeta}>
+                        {project.sessionCount} session{project.sessionCount !== 1 ? 's' : ''}
+                        {project.totalTokens > 0 && (
+                          <> &middot; {formatTokenCount(project.totalTokens)} tokens</>
+                        )}
+                        {project.totalMinutes > 0 && (
+                          <> &middot; {project.totalMinutes < 60
+                            ? `${project.totalMinutes}m`
+                            : `${Math.floor(project.totalMinutes / 60)}h ${project.totalMinutes % 60}m`
+                          }</>
+                        )}
+                      </span>
+                    </div>
+                    {renderProjectSummaries(project.projectName, project.summaries, projectSummaryMap)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Tooltip */}
           {tooltip.visible && tooltip.data && (
