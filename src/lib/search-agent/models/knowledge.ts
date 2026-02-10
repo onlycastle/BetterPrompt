@@ -297,4 +297,3 @@ export type ProfessionalInsight = z.infer<typeof ProfessionalInsightSchema>;
  * const result = await repo.findEnabled();
  * ```
  */
-// REMOVED: INITIAL_INSIGHTS constant - now in database

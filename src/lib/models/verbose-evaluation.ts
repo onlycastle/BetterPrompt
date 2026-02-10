@@ -258,110 +258,6 @@ export const EvidenceSchema = z.union([
 export type Evidence = z.infer<typeof EvidenceSchema>;
 
 /**
- * Strength within a specific dimension (full schema with evidence)
- * Used in VerboseEvaluation for storage and display
- *
- * Evidence supports both plain strings and structured EvidenceItems.
- */
-export const DimensionStrengthSchema = z.object({
-  title: z.string().describe('Descriptive title for this strength'),
-  description: z.string().describe('Detailed description of what they do well (qualitative, no scores)'),
-  evidence: z
-    .array(EvidenceSchema)
-    .optional()
-    .describe('Quotes demonstrating this strength (target: 3-6 quotes)'),
-});
-export type DimensionStrength = z.infer<typeof DimensionStrengthSchema>;
-
-/**
- * Growth area within a specific dimension (full schema with evidence)
- * Used in VerboseEvaluation for storage and display
- *
- * Enhanced with quantification fields for definitive assessment.
- */
-export const DimensionGrowthAreaSchema = z.object({
-  title: z.string().describe('Descriptive title for this growth area'),
-  description: z.string().describe('Detailed description of what could improve (qualitative, no scores)'),
-  evidence: z
-    .array(EvidenceSchema)
-    .optional()
-    .describe('Quotes showing this opportunity (target: 2-4 quotes)'),
-  recommendation: z.string().describe('Detailed, specific action to take with examples'),
-  // Quantification fields
-  frequency: z
-    .number()
-    .min(0)
-    .max(100)
-    .optional()
-    .describe('Percentage of sessions where this pattern was observed (0-100)'),
-  severity: SeverityLevelSchema.optional()
-    .describe('How critical this growth area is to address'),
-  priorityScore: z
-    .number()
-    .min(0)
-    .max(100)
-    .optional()
-    .describe('Computed priority based on frequency × impact (0-100)'),
-  trend: TrendDirectionSchema.optional()
-    .describe('Direction of this pattern over time'),
-});
-export type DimensionGrowthArea = z.infer<typeof DimensionGrowthAreaSchema>;
-
-// ============================================================================
-// LLM-SPECIFIC SCHEMAS (FLATTENED for Gemini API max nesting depth ~4)
-// ============================================================================
-
-/**
- * Strength schema for LLM response - NO evidence field
- * Evidence is added in post-processing from Stage 1 data
- */
-export const LLMDimensionStrengthSchema = z.object({
-  title: z.string().describe('Descriptive title for this strength'),
-  description: z.string().describe('Detailed description of what they do well (qualitative, no scores)'),
-});
-
-/**
- * Growth area schema for LLM response - NO evidence field
- * Evidence is added in post-processing from Stage 1 data
- *
- * Enhanced with optional quantification fields.
- */
-export const LLMDimensionGrowthAreaSchema = z.object({
-  title: z.string().describe('Descriptive title for this growth area'),
-  description: z.string().describe('Detailed description of what could improve (qualitative, no scores)'),
-  recommendation: z.string().describe('Detailed, specific action to take with examples'),
-  frequency: z.number().min(0).max(100).optional().describe('Session occurrence percentage (0-100)'),
-  severity: SeverityLevelSchema.optional().describe('critical|high|medium|low'),
-  priorityScore: z.number().min(0).max(100).optional().describe('Computed priority (0-100)'),
-});
-
-/**
- * Per-dimension insight for LLM response - FLATTENED to reduce nesting
- *
- * Uses semicolon-separated strings instead of nested arrays to stay within
- * Gemini API's max nesting depth limit (~4 levels).
- *
- * Format:
- * - strengthsData: "clusterId|title|description;..."
- * - growthAreasData: "clusterId|title|description|recommendation|frequency|severity|priorityScore;..."
- *   - frequency: 0-100 (session occurrence percentage)
- *   - severity: critical|high|medium|low
- *   - priorityScore: 0-100 (computed from frequency × impact)
- */
-export const LLMPerDimensionInsightSchema = z.object({
-  dimension: DimensionNameEnumSchema,
-  dimensionDisplayName: z.string().describe('Human-readable dimension name'),
-
-  /** Strengths with clusterId: "clusterId|title|description;..." (clusterId for evidence matching) */
-  strengthsData: z.string().optional()
-    .describe('0-8 strengths as "clusterId|title|description;..." format - clusterId MUST match Stage 1 cluster'),
-
-  /** Growth areas with quantification: "clusterId|title|description|recommendation|frequency|severity|priorityScore;..." */
-  growthAreasData: z.string().optional()
-    .describe('0-5 growth areas as "clusterId|title|desc|rec|freq|severity|priority;..." - include frequency (0-100), severity (critical/high/medium/low), priorityScore (0-100)'),
-});
-
-/**
  * Helper to parse strengthsData string into array of {clusterId?, title, description}
  * Supports both new format (clusterId|title|description) and legacy format (title|description)
  */
@@ -454,22 +350,6 @@ export function parseGrowthAreasData(data: string | undefined): ParsedGrowthArea
     return { title: s, description: '', recommendation: '' };
   });
 }
-
-/**
- * Per-dimension insight containing strengths and growth areas
- * This replaces the global strengths/growthAreas with dimension-specific ones
- */
-export const PerDimensionInsightSchema = z.object({
-  dimension: DimensionNameEnumSchema,
-  dimensionDisplayName: z.string().describe('Human-readable dimension name'),
-  strengths: z
-    .array(DimensionStrengthSchema)
-    .describe('0-8 strength clusters, each with multiple quotes for credibility'),
-  growthAreas: z
-    .array(DimensionGrowthAreaSchema)
-    .describe('0-5 growth areas with evidence quotes and detailed recommendations'),
-});
-export type PerDimensionInsight = z.infer<typeof PerDimensionInsightSchema>;
 
 // ============================================================================
 // ACTIONABLE PRACTICES SCHEMAS (Knowledge-Driven Feedback)
@@ -1306,13 +1186,7 @@ export const VerboseEvaluationSchema = z.object({
     .string()
     .describe('Hyper-personalized summary of their AI coding personality (target: 1500-2500 chars)'),
 
-  // Per-dimension insights (replaces global strengths/growthAreas)
-  dimensionInsights: z
-    .array(PerDimensionInsightSchema)
-    .length(6)
-    .describe('Insights for each of the 6 analysis dimensions'),
-
-  // DEPRECATED: Keep for backward compatibility, but prefer dimensionInsights
+  // DEPRECATED: Keep for backward compatibility
   strengths: z.array(PersonalizedStrengthSchema).optional(),
   growthAreas: z.array(GrowthAreaSchema).optional(),
 
@@ -1464,7 +1338,6 @@ export type VerboseEvaluation = z.infer<typeof VerboseEvaluationSchema>;
  * LLM Response schema - FLATTENED for Gemini API compatibility
  *
  * Key differences from VerboseEvaluation:
- * - Uses LLMPerDimensionInsightSchema with flattened strengthsData/growthAreasData strings
  * - Uses LLMPromptPatternSchema with flattened examplesData string
  * - Evidence is added in post-processing from Stage 1 data
  *
@@ -1490,12 +1363,6 @@ export const VerboseLLMResponseSchema = z.object({
   personalitySummary: z
     .string()
     .describe('Hyper-personalized summary of their AI coding personality (target: 1500-2500 chars)'),
-
-  // Dimension insights with REDUCED nesting (no evidence field)
-  dimensionInsights: z
-    .array(LLMPerDimensionInsightSchema)
-    .length(6)
-    .describe('Insights for each of the 6 analysis dimensions'),
 
   // Prompt patterns (FLATTENED: uses examplesData string instead of nested array)
   promptPatterns: z.array(LLMPromptPatternSchema),
@@ -1540,9 +1407,9 @@ export type VerboseLLMResponse = z.infer<typeof VerboseLLMResponseSchema>;
  * Phase 3 promptPatterns is kept for backward compatibility but evaluation-assembler
  * will prefer Phase 2 data when available.
  *
- * All structural/quantitative data (dimensionInsights, type classification,
- * premium sections, actionablePractices) are assembled deterministically
- * from Phase 2 outputs by the evaluation-assembler module.
+ * All structural/quantitative data (type classification, premium sections,
+ * actionablePractices) are assembled deterministically from Phase 2 outputs
+ * by the evaluation-assembler module.
  */
 export const NarrativeLLMResponseSchema = z.object({
   // NOTE: personalitySummary REMOVED from Phase 3.

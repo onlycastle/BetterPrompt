@@ -38,7 +38,8 @@ import {
  * Planning behavior types.
  */
 export const PlanningHabitTypeSchema = z.enum([
-  'uses_plan_command',    // Uses /plan slash command
+  'uses_plan_command',    // Uses /plan slash command (command knowledge)
+  'plan_mode_usage',      // Configures plan mode for structured workflows
   'task_decomposition',   // Breaks down complex tasks
   'structure_first',      // Plans before coding
   'todowrite_usage',      // Uses TodoWrite tool
@@ -81,6 +82,7 @@ export const CriticalThinkingTypeSchema = z.enum([
   'alternative_exploration',  // Asking for different approaches
   'edge_case_consideration',  // Considering edge cases
   'security_check',           // Checking for security issues
+  'ai_output_correction',     // Developer identifies and corrects specific AI mistakes
 ]);
 export type CriticalThinkingType = z.infer<typeof CriticalThinkingTypeSchema>;
 

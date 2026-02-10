@@ -48,7 +48,7 @@ export interface AnalyzedSessionInfo {
 }
 
 // ============================================================================
-// Dimension Insights
+// Evidence Types
 // Evidence supports both legacy string format and structured EvidenceItem format.
 // - string: Plain quote (legacy or when Phase1Output not available)
 // - EvidenceItem: Verified quote with utteranceId for source tracking
@@ -69,44 +69,6 @@ export interface EvidenceItem {
 
 /** Evidence can be a plain string quote or a structured EvidenceItem */
 export type Evidence = string | EvidenceItem;
-
-export interface DimensionStrength {
-  title: string;
-  description: string;
-  /** Quotes demonstrating this strength (string[] or EvidenceItem[]) */
-  evidence?: Evidence[];
-}
-
-export interface DimensionGrowthArea {
-  title: string;
-  description: string;
-  /** Quotes showing this growth opportunity (string[] or EvidenceItem[]) */
-  evidence?: Evidence[];
-  recommendation: string;
-  /** Frequency of this growth area observed (0-100) */
-  frequency?: number;
-  /** Severity level of this growth area */
-  severity?: 'critical' | 'high' | 'medium' | 'low';
-  /** Computed priority score (0-100) */
-  priorityScore?: number;
-  /** Trend direction of this growth area */
-  trend?: 'improving' | 'stable' | 'declining';
-}
-
-export type DimensionName =
-  | 'aiCollaboration'
-  | 'contextEngineering'
-  | 'toolMastery'
-  | 'burnoutRisk'
-  | 'aiControl'
-  | 'skillResilience';
-
-export interface PerDimensionInsight {
-  dimension: DimensionName;
-  dimensionDisplayName: string;
-  strengths: DimensionStrength[];
-  growthAreas: DimensionGrowthArea[];
-}
 
 // ============================================================================
 // Prompt Patterns
@@ -157,7 +119,6 @@ export interface VerboseAnalysisData {
   controlScore?: number;
   distribution: TypeDistribution;
   personalitySummary: string;
-  dimensionInsights: PerDimensionInsight[];
   promptPatterns: PromptPattern[];
   // Agent outputs (from Wow Agents - Premium)
   agentOutputs?: import('../lib/models/agent-outputs').AgentOutputs;

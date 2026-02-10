@@ -315,6 +315,34 @@ export const Phase1SessionMetricsSchema = z.object({
      * Indicates potential context overflow issues.
      */
     contextOverflowSessions: z.number().int().min(0),
+
+    /**
+     * Count of user messages expressing frustration or repetition.
+     * Patterns: "again", "still not working", "same error", "frustrated", etc.
+     * Max 1 count per message. Helps SessionOutcome detect frustrated satisfaction.
+     */
+    frustrationExpressionCount: z.number().int().min(0),
+
+    /**
+     * Number of unique tool error patterns that appeared 2+ times.
+     * Error messages are fingerprinted (paths/timestamps removed) before comparison.
+     * Helps ThinkingQuality detect error_loop and LearningBehavior detect repeatedMistakePatterns.
+     */
+    repeatedToolErrorPatterns: z.number().int().min(0),
+
+    /**
+     * Count of developer turns after an error where the natural language input
+     * was very short (<10 words, <50% machine content) — indicating blind retry
+     * without analysis. Helps LearningBehavior/ThinkingQuality detect blind_retry.
+     */
+    bareRetryAfterErrorCount: z.number().int().min(0),
+
+    /**
+     * Maximum consecutive turns where precedingAIHadError was true.
+     * A chain of 3+ indicates an error loop. Helps ThinkingQuality detect
+     * error_loop and SessionOutcome detect blocked_state.
+     */
+    errorChainMaxLength: z.number().int().min(0),
   }).optional(),
 
   // ─────────────────────────────────────────────────────────────────────────
