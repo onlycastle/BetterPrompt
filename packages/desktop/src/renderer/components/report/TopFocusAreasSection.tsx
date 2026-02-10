@@ -21,7 +21,6 @@ interface TopFocusAreasSectionProps {
 const DIMENSION_LABELS: Record<DimensionName, string> = {
   aiCollaboration: 'AI Collaboration',
   contextEngineering: 'Context Engineering',
-  toolMastery: 'Tool Mastery',
   burnoutRisk: 'Burnout Risk',
   aiControl: 'AI Control',
   skillResilience: 'Skill Resilience',
