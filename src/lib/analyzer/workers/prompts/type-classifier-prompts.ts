@@ -37,7 +37,7 @@ Each of the 5 coding styles should appear as primary type in roughly equal propo
 
 - **analyst**: Deep investigation + quality verification + assumption questioning. Merges the best of scientific inquiry with quality craftsmanship. Experiments, asks "why", explores alternatives, and systematically verifies AI outputs. Questions assumptions and catches bugs through thorough investigation.
 
-- **conductor**: Active AI workflow orchestration master. High diversity of slash commands (/plan, /commit, /review, /sisyphus, etc.), effective use of planning + orchestration + workflow commands. Commands AI workflows like a conductor commands an orchestra. NOT just "conversational" — conductor means active SLASH COMMAND usage and workflow composition, measured by slashCommandCounts (developer-initiated), NOT toolUsageCounts (LLM-autonomous).
+- **conductor**: Active AI workflow orchestration master. High diversity of slash commands (/plan, /commit, /review, /sisyphus, etc.), effective use of planning + orchestration + workflow commands. Commands AI workflows like a conductor commands an orchestra. NOT just "conversational" — conductor means active SLASH COMMAND usage and workflow composition, measured by slashCommandCounts (developer-initiated).
 
 - **speedrunner**: Efficiency-focused, concise prompts, high output-to-input ratio. Gets things done with minimal overhead. Values speed and directness. This is a POSITIVE style representing developers who optimize for velocity.
 

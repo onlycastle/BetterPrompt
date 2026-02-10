@@ -253,7 +253,6 @@ export class SessionOutcomeWorker extends BaseWorker<SessionOutcomeOutput> {
         avgMessagesPerSession: phase1.sessionMetrics.avgMessagesPerSession,
         questionRatio: phase1.sessionMetrics.questionRatio,
         codeBlockRatio: phase1.sessionMetrics.codeBlockRatio,
-        toolUsageCounts: phase1.sessionMetrics.toolUsageCounts,
         slashCommandCounts: phase1.sessionMetrics.slashCommandCounts,
         dateRange: phase1.sessionMetrics.dateRange,
         // Friction signals (deterministic hints from Phase 1)

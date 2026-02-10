@@ -360,17 +360,6 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 - Total slash commands: ${totalCommands}`);
     }
 
-    // LLM Tool Usage (SECONDARY context — NOT developer actions)
-    if (phase1Output?.sessionMetrics?.toolUsageCounts) {
-      const tools = phase1Output.sessionMetrics.toolUsageCounts;
-      const uniqueTools = Object.keys(tools).length;
-      const totalCalls = Object.values(tools).reduce((sum, count) => sum + count, 0);
-      sections.push(`### LLM Tool Usage (AI-autonomous actions — secondary context, NOT developer actions)
-- Unique tools: ${uniqueTools} types (${Object.keys(tools).slice(0, 8).join(', ')}${uniqueTools > 8 ? '...' : ''})
-- Total LLM tool calls: ${totalCalls}
-- NOTE: These are tools the LLM invoked autonomously. They do NOT reflect developer's tool orchestration ability.`);
-    }
-
     // Session Outcomes (from Phase 2 SessionOutcome worker) — for behavioral scenario generation
     if (agentOutputs.sessionOutcome) {
       const so = agentOutputs.sessionOutcome;

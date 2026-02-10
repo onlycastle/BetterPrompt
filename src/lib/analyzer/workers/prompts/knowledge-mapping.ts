@@ -67,10 +67,10 @@ export interface WorkerInsightContext {
  */
 export const WORKER_DIMENSION_MAP: Record<string, DimensionName[]> = {
   TrustVerification: ['aiControl', 'skillResilience'],
-  WorkflowHabit: ['aiCollaboration', 'toolMastery'],
+  WorkflowHabit: ['aiCollaboration'],
   KnowledgeGap: ['skillResilience'],
   ContextEfficiency: ['contextEngineering'],
-  CommunicationPatterns: ['aiCollaboration', 'toolMastery'],
+  CommunicationPatterns: ['aiCollaboration'],
 };
 
 /**

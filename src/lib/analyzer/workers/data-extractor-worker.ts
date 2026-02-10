@@ -384,18 +384,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     const questionCount = utterances.filter(u => u.hasQuestion).length;
     const codeBlockCount = utterances.filter(u => u.hasCodeBlock).length;
 
-    // Calculate tool usage counts
-    const toolUsageCounts: Record<string, number> = {};
-    for (const session of sessions) {
-      for (const message of session.messages) {
-        if (message.role === 'assistant' && message.toolCalls) {
-          for (const tool of message.toolCalls) {
-            toolUsageCounts[tool.name] = (toolUsageCounts[tool.name] || 0) + 1;
-          }
-        }
-      }
-    }
-
     // Calculate slash command counts (developer-initiated actions)
     const slashCommandCounts: Record<string, number> = {};
     for (const cmd of allSlashCommands) {
@@ -430,7 +418,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
         earliest: timestamps[0] ?? new Date().toISOString(),
         latest: timestamps[timestamps.length - 1] ?? new Date().toISOString(),
       },
-      toolUsageCounts,
       // Slash command counts (developer-initiated actions)
       ...(Object.keys(slashCommandCounts).length > 0 ? { slashCommandCounts } : {}),
       // Context fill metrics (deterministic calculation)
@@ -1338,14 +1325,6 @@ Return exactly ${inputs.length} classifications in order.`;
     const content = message.content.toLowerCase();
     return content.includes('error:') || content.includes('failed') ||
            content.includes('exception') || content.includes('traceback');
-  }
-
-  private wasSuccessful(message: ParsedMessage): boolean {
-    if (message.toolCalls?.length && !this.hadError(message)) return true;
-
-    const content = message.content.toLowerCase();
-    return content.includes('done') || content.includes('completed') ||
-           content.includes('success') || content.includes('created');
   }
 
   /**
