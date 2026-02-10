@@ -1,6 +1,6 @@
 /**
  * MemberTable Component
- * Sortable, searchable table of team members with type filter and mini ProgressRing
+ * Sortable, searchable table of team members with token usage trends and mini ProgressRing
  */
 
 'use client';
@@ -8,14 +8,14 @@
 import { useState, useMemo } from 'react';
 import { Search, Pencil, Trash2, ChevronRight } from 'lucide-react';
 import { ProgressRing } from '../dashboard/ProgressRing';
-import { TYPE_METADATA } from '../../types/enterprise';
-import type { TeamMemberAnalysis, CodingStyleType } from '../../types/enterprise';
+import { formatTokens, getTokenDelta, getDeltaIndicator } from './format-utils';
+import type { TeamMemberAnalysis } from '../../types/enterprise';
 import styles from './MemberTable.module.css';
 
 const TREND_CONFIG = {
-  improving: { label: 'Improving', arrow: '↑', className: 'trendImproving' },
-  stable: { label: 'Stable', arrow: '→', className: 'trendStable' },
-  declining: { label: 'Declining', arrow: '↓', className: 'trendDeclining' },
+  improving: { label: 'Improving', arrow: '\u2191', className: 'trendImproving' },
+  stable: { label: 'Stable', arrow: '\u2192', className: 'trendStable' },
+  declining: { label: 'Declining', arrow: '\u2193', className: 'trendDeclining' },
 } as const;
 
 export interface MemberTableProps {
@@ -30,16 +30,13 @@ export interface MemberTableProps {
   onRemove?: (member: TeamMemberAnalysis) => void;
 }
 
-type SortKey = 'name' | 'overallScore' | 'primaryType' | 'lastAnalyzedAt';
+type SortKey = 'name' | 'overallScore' | 'tokenUsage' | 'lastAnalyzedAt';
 type SortDir = 'asc' | 'desc';
-
-const ALL_TYPES: CodingStyleType[] = ['architect', 'analyst', 'conductor', 'speedrunner', 'trendsetter'];
 
 export function MemberTable({ members, showDepartment = false, onRowClick, onEdit, onRemove }: MemberTableProps) {
   const hasActions = !!onEdit || !!onRemove;
   const isClickable = !!onRowClick;
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<CodingStyleType | 'all'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('overallScore');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
@@ -70,25 +67,25 @@ export function MemberTable({ members, showDepartment = false, onRowClick, onEdi
       );
     }
 
-    // Type filter
-    if (typeFilter !== 'all') {
-      result = result.filter(m => m.primaryType === typeFilter);
-    }
-
     // Sort
     result.sort((a, b) => {
       let cmp = 0;
       switch (sortKey) {
         case 'name': cmp = a.name.localeCompare(b.name); break;
         case 'overallScore': cmp = a.overallScore - b.overallScore; break;
-        case 'primaryType': cmp = a.primaryType.localeCompare(b.primaryType); break;
+        case 'tokenUsage': {
+          const aTokens = getTokenDelta(a.tokenUsage.weeklyTokenTrend).current;
+          const bTokens = getTokenDelta(b.tokenUsage.weeklyTokenTrend).current;
+          cmp = aTokens - bTokens;
+          break;
+        }
         case 'lastAnalyzedAt': cmp = a.lastAnalyzedAt.localeCompare(b.lastAnalyzedAt); break;
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
 
     return result;
-  }, [members, search, typeFilter, sortKey, sortDir]);
+  }, [members, search, sortKey, sortDir]);
 
   return (
     <div className={styles.container}>
@@ -104,16 +101,6 @@ export function MemberTable({ members, showDepartment = false, onRowClick, onEdi
             className={styles.searchInput}
           />
         </div>
-        <select
-          value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value as CodingStyleType | 'all')}
-          className={styles.select}
-        >
-          <option value="all">All Types</option>
-          {ALL_TYPES.map(t => (
-            <option key={t} value={t}>{TYPE_METADATA[t].emoji} {TYPE_METADATA[t].label}</option>
-          ))}
-        </select>
       </div>
 
       {/* Table */}
@@ -126,8 +113,8 @@ export function MemberTable({ members, showDepartment = false, onRowClick, onEdi
               </th>
               {showDepartment && <th className={styles.th}>Team</th>}
               <th className={styles.th}>Role</th>
-              <th className={styles.th} onClick={() => handleSort('primaryType')}>
-                Type{sortIndicator('primaryType')}
+              <th className={styles.th} onClick={() => handleSort('tokenUsage')}>
+                Token Usage{sortIndicator('tokenUsage')}
               </th>
               <th className={styles.th} onClick={() => handleSort('overallScore')}>
                 Score{sortIndicator('overallScore')}
@@ -141,10 +128,13 @@ export function MemberTable({ members, showDepartment = false, onRowClick, onEdi
           </thead>
           <tbody>
             {filtered.map(member => {
-              const meta = TYPE_METADATA[member.primaryType];
               const tc = TREND_CONFIG[member.growth.trend];
               const issueCount = member.antiPatterns.length;
               const highImpact = member.antiPatterns.some(ap => ap.impact === 'high');
+              const tokenDelta = getTokenDelta(member.tokenUsage.weeklyTokenTrend);
+              const deltaStyles = { positive: styles.tokenDeltaUp, negative: styles.tokenDeltaDown, neutral: styles.tokenDeltaNeutral };
+              const wowDisplay = getDeltaIndicator(tokenDelta.wow, deltaStyles);
+              const momDisplay = getDeltaIndicator(tokenDelta.mom, deltaStyles);
               return (
                 <tr
                   key={member.id}
@@ -167,9 +157,20 @@ export function MemberTable({ members, showDepartment = false, onRowClick, onEdi
                   {showDepartment && <td className={styles.td}>{member.department}</td>}
                   <td className={styles.td}>{member.role}</td>
                   <td className={styles.td}>
-                    <span className={styles.typeBadge} style={{ borderColor: meta.color }}>
-                      {meta.emoji} {meta.label}
-                    </span>
+                    <div className={styles.tokenCell}>
+                      <span className={styles.tokenValue}>{formatTokens(tokenDelta.current)}</span>
+                      <span className={styles.tokenDeltas}>
+                        {wowDisplay && (
+                          <span className={wowDisplay.className}>{wowDisplay.arrow}{Math.abs(tokenDelta.wow!)}% w</span>
+                        )}
+                        {wowDisplay && momDisplay && (
+                          <span className={styles.tokenDeltaSep}>&middot;</span>
+                        )}
+                        {momDisplay && (
+                          <span className={momDisplay.className}>{momDisplay.arrow}{Math.abs(tokenDelta.mom!)}% m</span>
+                        )}
+                      </span>
+                    </div>
                   </td>
                   <td className={styles.td}>
                     <div className={styles.scoreCell}>

@@ -42,8 +42,14 @@ export type { TokenUsagePanelProps } from './TokenUsagePanel';
 export { AntiPatternHeatmap } from './AntiPatternHeatmap';
 export type { AntiPatternHeatmapProps } from './AntiPatternHeatmap';
 
-export { TeamStrengthsPanel } from './TeamStrengthsPanel';
-export type { TeamStrengthsPanelProps } from './TeamStrengthsPanel';
+export { AntiPatternDeepDive } from './AntiPatternDeepDive';
+export type { AntiPatternDeepDiveProps } from './AntiPatternDeepDive';
+
+export { CommonGrowthAreas } from './CommonGrowthAreas';
+export type { CommonGrowthAreasProps } from './CommonGrowthAreas';
+
+export { TeamKPTPanel } from './TeamKPTPanel';
+export type { TeamKPTPanelProps } from './TeamKPTPanel';
 
 export { ProjectActivityFeed } from './ProjectActivityFeed';
 export type { ProjectActivityFeedProps } from './ProjectActivityFeed';

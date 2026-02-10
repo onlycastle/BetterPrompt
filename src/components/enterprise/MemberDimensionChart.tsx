@@ -18,7 +18,6 @@ const DIMENSION_KEYS: (keyof DimensionScores)[] = [
   'aiCollaboration',
   'contextEngineering',
   'burnoutRisk',
-  'toolMastery',
   'aiControl',
   'skillResilience',
 ];

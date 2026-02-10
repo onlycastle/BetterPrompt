@@ -7,15 +7,18 @@ import {
   MOCK_ORGANIZATION,
   MOCK_TEAMS,
   MOCK_MEMBERS,
+  aggregateGrowthAreas,
+  aggregateKPT,
+  aggregateEnhancedAntiPatterns,
 } from '../components/enterprise/mock-data';
 import type {
   OrganizationAnalytics,
   TeamAnalytics,
   TeamMemberAnalysis,
-  AntiPatternAggregate,
-  InefficiencyPattern,
+  EnhancedAntiPatternAggregate,
+  TeamGrowthAreaAggregate,
+  TeamKPTAggregate,
 } from '../types/enterprise';
-import { ANTI_PATTERN_LABELS } from '../types/enterprise';
 
 export function useOrganization(): OrganizationAnalytics {
   return MOCK_ORGANIZATION;
@@ -43,26 +46,14 @@ export function useTeamMembers(teamId: string): TeamMemberAnalysis[] {
   return MOCK_MEMBERS.filter(m => m.department === team.teamName.replace(' Team', ''));
 }
 
-export function useOrgAntiPatterns(): AntiPatternAggregate[] {
-  const map = new Map<InefficiencyPattern, { members: Set<string>; total: number; impacts: ('high' | 'medium' | 'low')[] }>();
-  for (const m of MOCK_MEMBERS) {
-    for (const ap of m.antiPatterns) {
-      const entry = map.get(ap.pattern) ?? { members: new Set(), total: 0, impacts: [] };
-      entry.members.add(m.id);
-      entry.total += ap.frequency;
-      entry.impacts.push(ap.impact);
-      map.set(ap.pattern, entry);
-    }
-  }
-  return [...map.entries()]
-    .map(([pattern, data]) => ({
-      pattern,
-      label: ANTI_PATTERN_LABELS[pattern],
-      memberCount: data.members.size,
-      totalOccurrences: data.total,
-      predominantImpact: data.impacts.includes('high') ? 'high' as const
-        : data.impacts.includes('medium') ? 'medium' as const
-        : 'low' as const,
-    }))
-    .sort((a, b) => b.totalOccurrences - a.totalOccurrences);
+export function useOrgAntiPatterns(): EnhancedAntiPatternAggregate[] {
+  return aggregateEnhancedAntiPatterns(MOCK_MEMBERS);
+}
+
+export function useOrgGrowthAreas(): TeamGrowthAreaAggregate[] {
+  return aggregateGrowthAreas(MOCK_MEMBERS);
+}
+
+export function useOrgKpt(): TeamKPTAggregate {
+  return aggregateKPT(MOCK_MEMBERS);
 }
