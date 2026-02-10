@@ -133,7 +133,7 @@ export const CommunicationPatternsOutputSchema = z.object({
   // ─────────────────────────────────────────────────────────────────────────
 
   /** Strengths identified in communication domain (1-6 items) */
-  strengths: z.array(WorkerStrengthSchema).optional(),
+  strengths: z.array(WorkerStrengthSchema),
 
   /** Growth areas identified in communication domain (1-6 items) */
   growthAreas: z.array(WorkerGrowthSchema).optional(),
@@ -232,7 +232,7 @@ export const CommunicationPatternsLLMOutputSchema = z.object({
    * Strengths identified in communication domain (1-6 items).
    * Evidence format: structured JSON array
    */
-  strengths: z.array(StructuredStrengthLLMSchema).min(1).max(6).optional(),
+  strengths: z.array(StructuredStrengthLLMSchema).min(1).max(6),
 
   /**
    * Growth areas identified in communication domain (1-6 items).
@@ -336,5 +336,6 @@ export function createEmptyCommunicationPatternsOutput(): CommunicationPatternsO
     overallCommunicationScore: 50,
     confidenceScore: 0,
     summary: 'Insufficient data for communication patterns analysis.',
+    strengths: [],
   };
 }
