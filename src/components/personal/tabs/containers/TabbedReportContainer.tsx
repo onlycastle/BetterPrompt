@@ -18,10 +18,7 @@ import { ResourceSidebar } from '../resources/ResourceSidebar';
 import { ReportSummarySection } from '../shared/ReportSummarySection';
 import { TopFocusAreasSection } from '../focus/TopFocusAreasSection';
 import { useScrollSpy } from '../../../../hooks/useScrollSpy';
-import { PercentileGauge } from '../growth/PercentileGauge';
-
 import type { VerboseAnalysisData, AnalysisMetadata, DimensionResourceMatch } from '../../../../types/verbose';
-import type { BenchmarkPercentiles } from '../../../../types/benchmarks';
 import type { AgentOutputs, ParsedResource } from '../../../../lib/models/agent-outputs';
 import { aggregateWorkerInsights } from '../../../../lib/models/agent-outputs';
 import {
@@ -123,16 +120,11 @@ function getLockedCount(domain: WorkerInsightsContainer | undefined): number {
   return domain.growthAreas.filter(g => !g.recommendation).length;
 }
 
-// Re-export for backward compatibility (canonical type in src/types/benchmarks.ts)
-export type { BenchmarkPercentiles } from '../../../../types/benchmarks';
-
 interface TabbedReportContainerProps {
   analysis: VerboseAnalysisData;
   agentOutputs?: AgentOutputs;
   /** Analysis metadata for confidence display */
   analysisMetadata?: AnalysisMetadata;
-  /** User's percentile ranks per domain (optional, only for authenticated users) */
-  benchmarkPercentiles?: BenchmarkPercentiles | null;
   /** Whether the user has paid (hides conversion nudges) */
   isPaid?: boolean;
   /** Report ID for share URL generation (omit to hide share buttons) */
@@ -143,7 +135,6 @@ export function TabbedReportContainer({
   analysis,
   agentOutputs,
   analysisMetadata,
-  benchmarkPercentiles,
   isPaid = false,
   reportId,
 }: TabbedReportContainerProps) {
@@ -538,11 +529,6 @@ export function TabbedReportContainer({
                 domainKey="thinkingQuality"
                 onViewContext={handleViewContext}
               />
-              {benchmarkPercentiles?.thinkingQuality != null && (
-                <div className={styles.percentileRow}>
-                  <PercentileGauge percentile={benchmarkPercentiles.thinkingQuality} />
-                </div>
-              )}
             </div>
           )}
 
@@ -561,11 +547,6 @@ export function TabbedReportContainer({
                 domainKey="communicationPatterns"
                 onViewContext={handleViewContext}
               />
-              {benchmarkPercentiles?.communicationPatterns != null && (
-                <div className={styles.percentileRow}>
-                  <PercentileGauge percentile={benchmarkPercentiles.communicationPatterns} />
-                </div>
-              )}
             </div>
           )}
 
@@ -584,11 +565,6 @@ export function TabbedReportContainer({
                 domainKey="learningBehavior"
                 onViewContext={handleViewContext}
               />
-              {benchmarkPercentiles?.learningBehavior != null && (
-                <div className={styles.percentileRow}>
-                  <PercentileGauge percentile={benchmarkPercentiles.learningBehavior} />
-                </div>
-              )}
             </div>
           )}
 
@@ -607,11 +583,6 @@ export function TabbedReportContainer({
                 domainKey="contextEfficiency"
                 onViewContext={handleViewContext}
               />
-              {benchmarkPercentiles?.contextEfficiency != null && (
-                <div className={styles.percentileRow}>
-                  <PercentileGauge percentile={benchmarkPercentiles.contextEfficiency} />
-                </div>
-              )}
             </div>
           )}
 
@@ -630,11 +601,6 @@ export function TabbedReportContainer({
                 domainKey="sessionOutcome"
                 onViewContext={handleViewContext}
               />
-              {benchmarkPercentiles?.sessionOutcome != null && (
-                <div className={styles.percentileRow}>
-                  <PercentileGauge percentile={benchmarkPercentiles.sessionOutcome} />
-                </div>
-              )}
             </div>
           )}
         </div>

@@ -9,5 +9,5 @@ export * from './useRemoteResult';
 export * from './useLatestAnalysis';
 export * from './useOGMetadata';
 export * from './useScrollSpy';
-export * from './useGrowthData';
+
 export * from './useInView';
