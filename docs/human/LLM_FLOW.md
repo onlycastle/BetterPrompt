@@ -1,7 +1,7 @@
 # Orchestrator + Workers Analysis Pipeline
 
 > Pipeline that analyzes developer-AI collaboration sessions and generates personalized reports
-> Version: 2.4.0 | Last Updated: 2026-02-08
+> Version: 2.5.0 | Last Updated: 2026-02-10
 
 ## Overview
 
@@ -33,6 +33,24 @@
 │   ║  │                       Phase1Output                                       │ ║   │
 │   ║  │                  (DeveloperUtterances + AIResponses + Metrics)           │ ║   │
 │   ║  └─────────────────────────────────────────────────────────────────────────┘ ║   │
+│   ║                              │                                                ║   │
+│   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
+│   ║  │ PHASE 1.1: Deterministic Scoring (NO LLM)                             │   ║   │
+│   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
+│   ║  │ │ DeterministicScorer                                              │   │   ║   │
+│   ║  │ │ Rubric-based scores from Phase1Output metrics                   │   │   ║   │
+│   ║  │ │ → context.deterministicScores (workers override LLM scores)     │   │   ║   │
+│   ║  │ └─────────────────────────────────────────────────────────────────┘   │   ║   │
+│   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
+│   ║                              │                                                ║   │
+│   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
+│   ║  │ PHASE 1.2: Deterministic Type Mapping (NO LLM)                        │   ║   │
+│   ║  │ ┌─────────────────────────────────────────────────────────────────┐   │   ║   │
+│   ║  │ │ DeterministicTypeMapper                                          │   │   ║   │
+│   ║  │ │ Maps scores → primaryType/controlLevel/distribution              │   │   ║   │
+│   ║  │ │ → context.deterministicTypeResult (TypeClassifier overrides)     │   │   ║   │
+│   ║  │ └─────────────────────────────────────────────────────────────────┘   │   ║   │
+│   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
 │   ║                              │                                                ║   │
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
 │   ║  │ PHASE 2: Insight Generation (parallel, 5 workers, 5 LLM calls)        │   ║   │
@@ -371,7 +389,7 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 **Purpose**: Generate narrative-only content (personalitySummary, topFocusAreas) from Phase 2 analysis
 
 > Phase 3 now generates ONLY narrative content. All structural/quantitative data
-> (dimensionInsights, type classification, antiPatterns, criticalThinking, planning,
+> (type classification, antiPatterns, criticalThinking, planning,
 > actionablePractices) is assembled deterministically by the EvaluationAssembler
 > from Phase 2 AgentOutputs — no LLM involvement.
 
@@ -403,7 +421,6 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
 │  │  (communicationPatterns field) — Phase 3 only used as fallback  │    │
 │  │                                                                   │    │
 │  │  MOVED TO EvaluationAssembler (deterministic, no LLM):           │    │
-│  │  ✗ dimensionInsights[] ── from LearningBehavior                  │    │
 │  │  ✗ primaryType/control ── from TypeClassifier                    │    │
 │  │  ✗ antiPatternsAnalysis ─ from ThinkingQuality                   │    │
 │  │  ✗ criticalThinking ───── from ThinkingQuality                   │    │
@@ -460,14 +477,6 @@ thinkingQuality
 │ criticalThinkingMoments│─────────────────────────▶criticalThinkingAnalysis
 │ communicationPatterns[]│───────────────────────▶promptPatterns (assembled)
 └────────────────────────┘
-
-learningBehavior
-┌────────────────────────┐     group by topic       dimensionInsights[]
-│ repeatedMistakePatterns│─────────────────────────▶┌──────────────────────────────┐
-│ knowledgeGaps[]        │                          │ dimension: "aiCollaboration" │
-│ learningProgress[]     │                          │ strengths: [...]             │
-└────────────────────────┘                          │ growthAreas: [...]           │
-                                                    └──────────────────────────────┘
 
 typeClassifier
 ┌────────────────────────┐     direct mapping       primaryType, controlLevel,
@@ -659,8 +668,6 @@ Now, translations are applied AFTER assembly:
 │  │    → criticalThinkingAnalysis (score calculation)                │    │
 │  │  thinkingQuality.communicationPatterns[]                         │    │
 │  │    → promptPatterns (assembled)                                  │    │
-│  │  learningBehavior.knowledgeGaps[]                                │    │
-│  │    → dimensionInsights[] (grouped by topics)                     │    │
 │  │  typeClassifier                                                   │    │
 │  │    → primaryType, controlLevel, distribution, controlScore       │    │
 │  │                                                                   │    │
@@ -673,7 +680,6 @@ Now, translations are applied AFTER assembly:
 │                               ▼                                          │
 │  ┌──────────────────────────────────────────────────────────────────┐   │
 │  │  assembledData (ENGLISH defaults)                                 │   │
-│  │  - dimensionInsights: English titles/descriptions                │   │
 │  │  - antiPatternsAnalysis: English displayName/description         │   │
 │  │  - criticalThinkingAnalysis: English highlights                  │   │
 │  │  - planningAnalysis: English strengths                           │   │
@@ -755,7 +761,6 @@ Now, translations are applied AFTER assembly:
 | `thinkingQuality.planningHabits[]` | `planningAnalysis` | Assess `planningMaturityLevel` (reactive→expert), split by effectiveness |
 | `thinkingQuality.criticalThinkingMoments[]` | `criticalThinkingAnalysis` | Convert to highlights, calculate `overallScore` from type variety |
 | `thinkingQuality.communicationPatterns[]` | `promptPatterns[]` (assembled) | Map to prompt patterns with evidence |
-| `learningBehavior.knowledgeGaps[]` | `dimensionInsights[]` | Group by topic, map to dimension buckets |
 | `typeClassifier` | `primaryType`, `controlLevel`, `distribution`, `controlScore` | Direct field copy |
 
 | Source (Phase 3 Narrative) | Target (VerboseEvaluation) | Transformation |
@@ -1101,6 +1106,31 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
   ║              Phase1Output                                          ║
   ╚═══════════════════════════════════════════════════════════════════╝
                        │
+                       │ [2.1] Deterministic scoring from metrics
+                       ▼
+  ╔═══════════════════════════════════════════════════════════════════╗
+  ║     PHASE 1.1: DETERMINISTIC SCORER (deterministic, no LLM)       ║
+  ╠═══════════════════════════════════════════════════════════════════╣
+  ║                                                                    ║
+  ║  Rubric-based scoring from Phase1Output metrics                   ║
+  ║  OUTPUT: context.deterministicScores                              ║
+  ║  → Phase 2 workers override LLM overallXxxScore with these       ║
+  ║                                                                    ║
+  ╚═══════════════════════════════════════════════════════════════════╝
+                       │
+                       │ [2.2] Map scores to developer type
+                       ▼
+  ╔═══════════════════════════════════════════════════════════════════╗
+  ║     PHASE 1.2: DETERMINISTIC TYPE MAPPER (deterministic, no LLM)  ║
+  ╠═══════════════════════════════════════════════════════════════════╣
+  ║                                                                    ║
+  ║  Maps deterministic scores → primaryType/controlLevel/distribution ║
+  ║  OUTPUT: context.deterministicTypeResult                          ║
+  ║  → Phase 2.5 TypeClassifier overrides structural type fields      ║
+  ║  → LLM still generates reasoning narrative                        ║
+  ║                                                                    ║
+  ╚═══════════════════════════════════════════════════════════════════╝
+                       │
                        │ [3] Pass Phase1Output to Phase 2 (Premium+ only)
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
@@ -1184,7 +1214,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
   │    agentOutputs + narrativeResult + phase1Output                 │
   │    → assembledData (ENGLISH defaults)                            │
   │    Phase 2 AgentOutputs → structural fields:                     │
-  │    - dimensionInsights, type classification, antiPatterns         │
+  │    - type classification, antiPatterns                            │
   │    - criticalThinking, planning, actionablePractices             │
   │    Phase 3 NarrativeLLMResponse → narrative fields:              │
   │    - personalitySummary, promptPatterns, topFocusAreas           │

@@ -32,11 +32,13 @@ npm test               # Run all tests
 
 ## Key Implementation Details
 
-**4-Phase Orchestrator Pipeline**: Uses Gemini 3 Flash (`gemini-3-flash-preview`) for all LLM stages:
+**Multi-Phase Orchestrator Pipeline**: Uses Gemini 3 Flash (`gemini-3-flash-preview`) for all LLM stages:
 
 | Phase | Component | LLM Calls | Description |
 |-------|-----------|-----------|-------------|
 | 1 | DataExtractor | 0 | Deterministic extraction (no LLM) |
+| 1.1 | DeterministicScorer | 0 | Rubric-based scoring from Phase1Output metrics → `context.deterministicScores` |
+| 1.2 | DeterministicTypeMapper | 0 | Map scores → primaryType/controlLevel/distribution → `context.deterministicTypeResult` |
 | 1.5 | SessionSummarizer | 1 | LLM-generated 1-line session summaries (batch) |
 | 2 | 5 Insight Workers | 5 | Parallel analysis (ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency, SessionOutcome) |
 | 2 | ProjectSummarizer | 1 | Project-level summaries from activitySessions (parallel with workers) |
@@ -120,6 +122,19 @@ npm test               # Run all tests
 >
 > **Bug History**: `communicationPatterns` missing from #7 (commit `adf12db`), `sessionOutcome` missing from ALL (fixed 2026-02-07).
 
+> ⚠️ **Dual Data Path Filtering**: `workerInsights` and `translatedAgentInsights` are two independent data paths that converge in the frontend. **Both** must be filtered by ContentGateway for free tier.
+>
+> **Problem**: `applyTranslatedStrengths()` overlays translated descriptions onto locked teaser data (empty descriptions). If `translatedAgentInsights` is unfiltered, non-empty translated descriptions overwrite `''`, causing `isDomainLocked()` to return `false` → locked domains show "View" instead of "Unlock".
+>
+> **3-Layer Defense**:
+> 1. **API layer**: `createPreviewEvaluation()` in `route.ts` calls `ContentGateway.filterTranslatedInsights('free')` to strip translation data for locked domains
+> 2. **Translation overlay**: `applyTranslatedStrengths/GrowthAreas()` in `worker-insights.ts` preserves `description === ''` (locked state) even if translation exists
+> 3. **Frontend**: `isPaid` prop passed to `TabbedReportContainer` for explicit lock UI
+>
+> **Rule**: When adding a new data path that carries content for worker domains (like translations, cached data, etc.), it MUST pass through `ContentGateway` filtering before reaching the frontend. Check `createPreviewEvaluation()` in `app/api/analysis/results/[resultId]/route.ts`.
+>
+> **Bug History (2026-02-10)**: Non-English free tier reports showed all 5 worker domains fully unlocked because `translatedAgentInsights` bypassed `ContentGateway`.
+
 > ⚠️ **Continuous Scroll Layout**: The report page renders ALL worker sections sequentially (no tabs). `useScrollSpy` hook drives the active section indicator in the `FloatingProgressDots` component. `InsightPreviewCard` is replaced by inline insight rendering within `GrowthCard`.
 >
 > **How it works** (in `TabbedReportContainer.tsx`):
@@ -166,7 +181,7 @@ return await analyze(); // Error surfaces to user, root cause can be identified
 
 | Variable | Description |
 |----------|-------------|
-| `GOOGLE_GEMINI_API_KEY` | Required for 4-phase orchestrator pipeline (Gemini 3 Flash) |
+| `GOOGLE_GEMINI_API_KEY` | Required for multi-phase orchestrator pipeline (Gemini 3 Flash) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (client-side) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key (client-side) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
@@ -178,6 +193,14 @@ return await analyze(); // Error surfaces to user, root cause can be identified
 **Lambda (SST)**: Push to `main` with changes in `lambda/`, `infra/`, or `sst.config.ts` → auto-deploys
 
 > ⚠️ **NEVER use local SST deployment** (`npx sst deploy`). Local SST has critical bugs causing routing failures and inconsistent deployments. Always use GitHub Actions for Lambda deployment.
+
+## Git Workflow
+
+> ⚠️ **Post-merge cleanup**: After merging a PR, always switch back to `main` and pull latest:
+> ```bash
+> git checkout main && git pull origin main
+> ```
+> This prevents accidentally continuing work on a stale feature branch.
 
 ## Documentation
 

@@ -1,6 +1,6 @@
 # Architecture (Agent Reference)
 
-NoMoreAISlop analyzes developer-AI collaboration sessions (JSONL/SQLite) through a 4-phase LLM pipeline, generates personalized reports, and serves them via Next.js. Hexagonal architecture: Presentation (Next.js) → Application (services, analyzer) → Domain (Zod models) → Infrastructure (Supabase, LLM adapters).
+NoMoreAISlop analyzes developer-AI collaboration sessions (JSONL/SQLite) through a multi-phase LLM pipeline, generates personalized reports, and serves them via Next.js. Hexagonal architecture: Presentation (Next.js) → Application (services, analyzer) → Domain (Zod models) → Infrastructure (Supabase, LLM adapters).
 
 ## Directory → Purpose → Layer
 
@@ -13,9 +13,9 @@ NoMoreAISlop analyzes developer-AI collaboration sessions (JSONL/SQLite) through
 | `src/hooks/` | React hooks | Presentation |
 | `src/lib/application/` | Application services and ports | Application |
 | `src/lib/analyzer/` | LLM analysis pipeline | Application |
-| `src/lib/analyzer/orchestrator/` | 4-phase orchestration | Application |
+| `src/lib/analyzer/orchestrator/` | Multi-phase orchestration | Application |
 | `src/lib/analyzer/workers/` | Phase 1 DataExtractor + Phase 2 workers (5) + Phase 2.5 TypeClassifier | Application |
-| `src/lib/analyzer/stages/` | Phase 1.5 SessionSummarizer + Phase 2 ProjectSummarizer + Phase 2 WeeklyInsightGenerator + Phase 2.8 EvidenceVerifier + Phase 3 ContentWriter + Phase 4 Translator | Application |
+| `src/lib/analyzer/stages/` | Phase 1.1 DeterministicScorer + Phase 1.2 DeterministicTypeMapper + Phase 1.5 SessionSummarizer + Phase 2 ProjectSummarizer + Phase 2 WeeklyInsightGenerator + Phase 2.8 EvidenceVerifier + Phase 3 ContentWriter + Phase 4 Translator | Application |
 | `src/lib/models/` | Zod schemas (analysis-data, agent-outputs, verbose-evaluation) | Domain |
 | `src/lib/domain/` | Domain models (business rules, errors) | Domain |
 | `src/lib/parser/` | JSONL session parsing | Infrastructure |
@@ -31,6 +31,8 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 |-------|-----------|-----------|-------|--------|----------|
 | 0 | Multi-Source Scanner | 0 | JSONL/SQLite files | `SourcedParsedSession[]` | `packages/cli/src/lib/scanner/index.ts` |
 | 1 | DataExtractor | 0 | Sessions + Metrics | `Phase1Output` | `src/lib/analyzer/workers/data-extractor-worker.ts` |
+| 1.1 | DeterministicScorer | 0 | Phase1Output metrics | `DeterministicScores` | `src/lib/analyzer/stages/deterministic-scorer.ts` |
+| 1.2 | DeterministicTypeMapper | 0 | DeterministicScores + Phase1Output | `DeterministicTypeResult` | `src/lib/analyzer/stages/deterministic-type-mapper.ts` |
 | 1.5 | SessionSummarizer | 1 | Phase1Output sessions | `SessionSummaryBatchLLM` | `src/lib/analyzer/stages/session-summarizer.ts` |
 | 2 | 5 Insight Workers (parallel) | 5 | Phase1Output | `AgentOutputs` | `src/lib/analyzer/workers/` |
 | 2 | ProjectSummarizer (parallel) | 1 | activitySessions | `ProjectSummary[]` | `src/lib/analyzer/stages/project-summarizer.ts` |
@@ -54,6 +56,23 @@ Pipeline: `Sessions → Parser → SessionSelector → CostEstimator → Analysi
 - Output schema: `Phase1Output` in `src/lib/models/phase1-output.ts`
 - Includes `displayText`, `naturalLanguageSegments`, `machineContentRatio`
 - AI insight blocks sampled to max 50 (bookend strategy per session)
+
+### Phase 1.1: DeterministicScorer (deterministic)
+
+- Computes deterministic scores from Phase1Output metrics (token usage, tool calls, session patterns)
+- Rubric-based scoring: weighted combination of quantitative signals → per-domain scores
+- Output stored in `context.deterministicScores` for Phase 2 workers to read
+- Workers use these scores to override LLM-generated `overallXxxScore` values
+- Orchestrator also applies `applyDeterministicScores()` as a safety net after workers complete
+- Key file: `src/lib/analyzer/stages/deterministic-scorer.ts`
+
+### Phase 1.2: DeterministicTypeMapper (deterministic)
+
+- Maps deterministic scores to developer type classification (primaryType, controlLevel, distribution)
+- Output stored in `context.deterministicTypeResult` for TypeClassifier to read
+- TypeClassifier (Phase 2.5) uses this to override LLM-generated type/distribution/controlLevel/matrixName
+- LLM still generates the `reasoning` narrative (personality description), only structural fields are overridden
+- Key file: `src/lib/analyzer/stages/deterministic-type-mapper.ts`
 
 ### Phase 1.5: Session Summarizer (1 LLM call)
 
@@ -134,7 +153,6 @@ Assembly in `assembleEvaluation()` in `src/lib/analyzer/stages/evaluation-assemb
 | `thinkingQuality.planningHabits[]` | `planningAnalysis` | Maturity level assessment |
 | `thinkingQuality.criticalThinkingMoments[]` | `criticalThinkingAnalysis` | Score calculation from type variety |
 | `thinkingQuality.communicationPatterns[]` | `promptPatterns[]` | Map to prompt patterns with evidence |
-| `learningBehavior.knowledgeGaps[]` | `dimensionInsights[]` | Group by topic, map to dimension buckets |
 | `typeClassifier` | `primaryType`, `controlLevel`, `distribution` | Direct field copy |
 | `personalitySummary` (Phase 3) | `personalitySummary` | Truncate to <=3000 chars |
 | `topFocusAreas` (Phase 3) | `topFocusAreas` | Structured `actions` object (legacy `actionsData` fallback) |
@@ -153,11 +171,12 @@ The report page uses a **continuous scroll layout** (no tabs). All sections rend
 | Communication | Phase 2 | CommunicationPatternsWorker | FREE (recommendation: PAID) |
 | Learning Behavior | Phase 2 | LearningBehaviorWorker | FREE (recommendation: PAID) |
 | Context Efficiency | Phase 2 | ContextEfficiencyWorker | FREE (recommendation: PAID) |
+| Session Outcome | Phase 2 | SessionOutcomeWorker | FREE (recommendation: PAID) |
 | Sidebar: Resources | Phase 2.75 KnowledgeResourceMatcher | N/A | 1/dim FREE, all PAID |
 
-Section order matches `REPORT_SECTIONS` array: Growth → Activity → Thinking → Communication → Learning → Context.
+Section order matches `REPORT_SECTIONS` array: Growth → Activity → Thinking → Communication → Learning → Context → Session.
 
-Key UI files: `TabbedReportContainer.tsx`, `WorkerInsightsSection.tsx`, `FloatingProgressDots.tsx`, `useScrollSpy.ts`, `useGrowthData.ts`, `content-gateway.ts` (TIER_POLICY).
+Key UI files: `TabbedReportContainer.tsx`, `WorkerInsightsSection.tsx`, `FloatingProgressDots.tsx`, `useScrollSpy.ts`, `content-gateway.ts` (TIER_POLICY).
 
 ## Content Gateway Tier Matrix
 
@@ -188,6 +207,7 @@ Philosophy: "Diagnosis Free, Prescription Paid"
 | `/api/learn` | YouTube/URL learning | PREMIUM | `app/api/learn/` |
 | `/api/health` | Health check | Public | `app/api/health/` |
 | `/api/og-metadata` | OG metadata generation | Public | `app/api/og-metadata/` |
+| `/api/survey` | Post-analysis survey | Public | `app/api/survey/` |
 | `/api/waitlist` | Waitlist management | Public | `app/api/waitlist/` |
 
 ## Data Models
@@ -263,8 +283,8 @@ Type: `SessionSourceType = 'claude-code' | 'cursor' | 'cursor-composer'`
 | Scroll spy hook | `src/hooks/useScrollSpy.ts` |
 | Floating nav dots | `src/components/personal/tabs/shared/FloatingProgressDots.tsx` |
 | Worker insights UI | `src/components/personal/tabs/insights/WorkerInsightsSection.tsx` |
-| Growth data hook | `src/hooks/useGrowthData.ts` |
-| Growth components | `src/components/personal/tabs/growth/` (`GrowthSummaryBanner`, `ProgressSection`, `PercentileGauge`) |
+| Deterministic scorer | `src/lib/analyzer/stages/deterministic-scorer.ts` |
+| Deterministic type mapper | `src/lib/analyzer/stages/deterministic-type-mapper.ts` |
 | OG image (home) | `app/opengraph-image.tsx` |
 | OG image (report) | `app/r/[resultId]/opengraph-image.tsx` |
 | Translation verifier | `src/lib/analyzer/stages/translation-verifier.ts` |
