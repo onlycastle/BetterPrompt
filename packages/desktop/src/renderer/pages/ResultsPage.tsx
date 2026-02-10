@@ -17,7 +17,6 @@ import {
   TypeResultSection,
   AnalyzedSessions,
   ReportFooter,
-  DimensionInsightsTerminal,
   ProductivitySection,
   TopFocusAreasSection,
   AgentInsightsSection,
@@ -302,7 +301,6 @@ export default function ResultsPage({ resultId, onBack }: ResultsPageProps) {
 
                 <ul className={styles.featureList}>
                   <li>🎯 {result?.preview?.totalPromptPatterns || 0} unique prompt patterns analyzed</li>
-                  <li>🌱 {result?.preview?.totalGrowthAreas || 0} personalized growth areas</li>
                   <li>📊 Full dimension breakdowns with detailed metrics</li>
                   <li>💡 Actionable recommendations for each area</li>
                 </ul>
@@ -419,14 +417,6 @@ export default function ResultsPage({ resultId, onBack }: ResultsPageProps) {
                       </div>
                     ))}
                   </div>
-                )}
-
-                {/* Dimension Insights */}
-                {evaluation.dimensionInsights && evaluation.dimensionInsights.length > 0 && (
-                  <DimensionInsightsTerminal
-                    insights={evaluation.dimensionInsights}
-                    sessionsAnalyzed={evaluation.sessionsAnalyzed}
-                  />
                 )}
 
                 {/* Top Focus Areas */}

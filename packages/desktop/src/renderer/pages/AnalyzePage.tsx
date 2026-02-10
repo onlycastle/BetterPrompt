@@ -16,7 +16,6 @@ import { useAnalysis } from '../contexts/AnalysisContext';
 import {
   TerminalWindow,
   TypeResultSection,
-  DimensionInsightsTerminal,
   TopFocusAreasSection,
   EnhancedPatternCard,
   AgentInsightsSection,
@@ -46,7 +45,7 @@ function DimensionBar({ name, percent }: { name: string; percent: number }) {
 }
 
 interface UnlockSectionProps {
-  preview?: { totalPromptPatterns?: number; totalGrowthAreas?: number };
+  preview?: { totalPromptPatterns?: number };
   credits: number | null;
   isUnlocking: boolean;
   isCheckingOut: boolean;
@@ -74,7 +73,6 @@ function UnlockSection({
 
       <ul className={styles.featureList}>
         <li>{preview?.totalPromptPatterns || 0} unique prompt patterns analyzed</li>
-        <li>{preview?.totalGrowthAreas || 0} personalized growth areas</li>
         <li>Full dimension breakdowns with detailed metrics</li>
         <li>Actionable recommendations for each area</li>
       </ul>
@@ -167,13 +165,6 @@ function FullResultsSection({ evaluation }: FullResultsSectionProps) {
             <EnhancedPatternCard key={i} pattern={pattern} index={i} />
           ))}
         </div>
-      )}
-
-      {evaluation.dimensionInsights && evaluation.dimensionInsights.length > 0 && (
-        <DimensionInsightsTerminal
-          insights={evaluation.dimensionInsights}
-          sessionsAnalyzed={evaluation.sessionsAnalyzed}
-        />
       )}
 
       {evaluation.agentOutputs && (
@@ -279,7 +270,6 @@ export default function AnalyzePage({ initialResultId }: AnalyzePageProps) {
             distribution: data.evaluation.distribution || {},
             sessionsAnalyzed: data.evaluation.sessionsAnalyzed || 0,
             overallScore: data.evaluation.overallScore,
-            dimensionInsights: data.evaluation.dimensionInsights,
             strengths: data.evaluation.strengths,
             growthAreas: data.evaluation.growthAreas,
           },

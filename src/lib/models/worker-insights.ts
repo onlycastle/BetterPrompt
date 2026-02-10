@@ -73,6 +73,9 @@ export const WorkerStrengthSchema = z.object({
    * Can be simple strings (legacy) or structured with utterance linking (new).
    */
   evidence: z.array(EvidenceItemSchema).min(1).max(8),
+
+  /** Truncated description preview for free tier blur teaser (set by ContentGateway) */
+  descriptionPreview: z.string().optional(),
 });
 export type WorkerStrength = z.infer<typeof WorkerStrengthSchema>;
 
@@ -115,6 +118,9 @@ export const WorkerGrowthSchema = z.object({
 
   /** How critical this growth area is to address */
   severity: WorkerGrowthSeveritySchema.optional(),
+
+  /** Truncated description preview for free tier blur teaser (set by ContentGateway) */
+  descriptionPreview: z.string().optional(),
 
   /** Truncated recommendation preview for free tier blur teaser (set by ContentGateway) */
   recommendationPreview: z.string().optional(),
@@ -712,7 +718,8 @@ export function applyTranslatedStrengths(
       return {
         ...strength,
         title: t.title || strength.title,
-        description: t.description || strength.description,
+        // Preserve locked state: empty description means ContentGateway locked this domain
+        description: strength.description === '' ? '' : (t.description || strength.description),
       };
     });
   }
@@ -733,7 +740,8 @@ export function applyTranslatedStrengths(
       return {
         ...strength,
         title: translatedTitle || strength.title,
-        description: translatedDescription || strength.description,
+        // Preserve locked state: empty description means ContentGateway locked this domain
+        description: strength.description === '' ? '' : (translatedDescription || strength.description),
       };
     });
   }
@@ -772,7 +780,8 @@ export function applyTranslatedGrowthAreas(
       return {
         ...growth,
         title: t.title || growth.title,
-        description: t.description || growth.description,
+        // Preserve locked state: empty description means ContentGateway locked this domain
+        description: growth.description === '' ? '' : (t.description || growth.description),
         // Preserve locked state for free tier
         recommendation: growth.recommendation
           ? (t.recommendation || growth.recommendation)
@@ -799,7 +808,8 @@ export function applyTranslatedGrowthAreas(
       return {
         ...growth,
         title: translatedTitle || growth.title,
-        description: translatedDescription || growth.description,
+        // Preserve locked state: empty description means ContentGateway locked this domain
+        description: growth.description === '' ? '' : (translatedDescription || growth.description),
         recommendation: growth.recommendation
           ? (translatedRecommendation || growth.recommendation)
           : growth.recommendation,

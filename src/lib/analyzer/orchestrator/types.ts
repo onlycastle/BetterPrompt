@@ -16,6 +16,8 @@ import type { Tier } from '../content-gateway';
 import type { SupportedLanguage } from '../stages/content-writer-prompts';
 import { getAgentConfig, type AgentId } from '../../domain/models';
 import type { IKnowledgeRepository, IProfessionalInsightRepository } from '../../application/ports/storage';
+import type { DeterministicScores } from '../stages/deterministic-scorer';
+import type { DeterministicTypeResult } from '../stages/deterministic-type-mapper';
 
 // ============================================================================
 // Progress Callback
@@ -144,6 +146,16 @@ export interface WorkerContext {
 
   /** Output language detected from user prompts (defaults to 'en') */
   outputLanguage?: SupportedLanguage;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Deterministic Scoring (rubric-based, consistent across runs)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Pre-computed deterministic scores from Phase 1 metrics (rubric-based) */
+  deterministicScores?: DeterministicScores;
+
+  /** Pre-computed deterministic type classification (rule-based) */
+  deterministicTypeResult?: DeterministicTypeResult;
 }
 
 // ============================================================================

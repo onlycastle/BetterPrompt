@@ -10,6 +10,7 @@ import type { AnalysisResult, PipelineTokenUsage } from './uploader.js';
 import type { SessionWithParsed } from './scanner.js';
 import type { CostEstimate } from './cost-estimator.js';
 import { generateCelebrationBanner } from './animations/index.js';
+import { renderDualRadarCharts, computeStyleMaxValue, type RadarChartData } from './radar-chart.js';
 
 const REPORT_BASE_URL = 'https://www.nomoreaislop.app';
 
@@ -157,47 +158,66 @@ export function displayResults(result: AnalysisResult): void {
   lines.push(pc.dim(`(${result.primaryType.charAt(0).toUpperCase() + result.primaryType.slice(1)} × ${formatControlLevel(result.controlLevel)})`));
   lines.push('');
 
-  // Distribution bars with matrix sub-types under ALL types (5×3 matrix)
+  // Dual radar charts (Style DNA + Skill Scores)
   const types = ['architect', 'analyst', 'conductor', 'speedrunner', 'trendsetter'] as const;
-  const levels = ['explorer', 'navigator', 'cartographer'] as const;
   const userType = result.primaryType.toLowerCase();
   const userLevel = result.controlLevel.toLowerCase();
+  const cols = process.stdout.columns || 80;
 
-  for (const type of types) {
-    const value = result.distribution[type];
-    const label = type.charAt(0).toUpperCase() + type.slice(1);
-    const isPrimaryType = type === userType;
-    const colorFn = TYPE_COLORS[type] || pc.white;
-    const bar = isPrimaryType ? progressBar(value, 10, colorFn) : progressBar(value);
+  if (cols >= 50) {
+    // Radar chart mode
+    const styleValues = types.map(t => result.distribution[t]);
+    const styleMaxValue = computeStyleMaxValue(styleValues);
 
-    // PRIMARY marker for the main type
-    const primaryMarker = isPrimaryType ? pc.magenta(' ← PRIMARY') : '';
-    const typeLabel = isPrimaryType
-      ? colorFn(label.padEnd(12))
-      : pc.dim(label.padEnd(12));
+    const styleChart: RadarChartData = {
+      values: styleValues,
+      labels: ['Architect', 'Analyst', 'Conductor', 'Speedrun', 'Trend'],
+      maxValue: styleMaxValue,
+      title: 'Style DNA',
+      colorFn: pc.blue,
+      valueFormatter: (v) => `${Math.round(v)}%`,
+    };
 
-    lines.push(`${typeLabel} ${bar} ${pc.dim(`${value}%`)}${primaryMarker}`);
+    const skillChart: RadarChartData | null = result.skillScores ? {
+      values: [
+        result.skillScores.thinking,
+        result.skillScores.communication,
+        result.skillScores.learning,
+        result.skillScores.context,
+        result.skillScores.control,
+      ],
+      labels: ['Think', 'Commun.', 'Learn', 'Context', 'Control'],
+      title: 'Skill Scores',
+      colorFn: pc.green,
+      valueFormatter: (v) => String(Math.round(v)),
+    } : null;
 
-    // Add matrix sub-type bars under ALL types
-    const matrixDist = computeMatrixDistribution(value, result.controlScore);
-
-    for (const level of levels) {
-      const levelValue = matrixDist[level];
-      const matrixName = MATRIX_NAMES[type][level];
-      const levelColorFn = LEVEL_COLORS[level];
-      // Scale bar to type's max percentage for better visualization
-      const barScale = value > 0 ? Math.min((levelValue / value) * 100, 100) : 0;
-      const levelBar = progressBar(barScale, 10, levelColorFn);
-
-      // YOU ARE HERE marker for the user's exact position (type + level combination)
-      const isUserPosition = isPrimaryType && level === userLevel;
-      const marker = isUserPosition ? pc.cyan(' ← YOU ARE HERE') : '';
-
-      lines.push(`  └ ${pc.dim(matrixName.padEnd(16))} ${levelBar} ${pc.dim(`${levelValue.toFixed(1)}%`)}${marker}`);
-    }
+    const chartLines = renderDualRadarCharts(styleChart, skillChart);
+    lines.push(...chartLines);
+    lines.push('');
   }
 
-  lines.push(pc.dim('─'.repeat(45)));
+  // Compact legend
+  const legendParts: string[] = [];
+  for (const type of types) {
+    const value = result.distribution[type];
+    const emoji = TYPE_EMOJIS[type] || '🎯';
+    const label = type.charAt(0).toUpperCase() + type.slice(1);
+    const isPrimary = type === userType;
+    const marker = isPrimary ? pc.magenta(' \u2190 PRIMARY') : '';
+    const colorFn = TYPE_COLORS[type] || pc.white;
+    legendParts.push(`${emoji} ${isPrimary ? colorFn(label) : pc.dim(label)} ${pc.dim(`${value}%`)}${marker}`);
+  }
+
+  // Split legend into 2 rows
+  lines.push(legendParts.slice(0, 3).join('  '));
+  lines.push(legendParts.slice(3).join('  '));
+
+  // Matrix name indicator
+  const matrixLabel = MATRIX_NAMES[userType]?.[userLevel] ?? result.matrixName;
+  lines.push(pc.dim(`  \u2514 ${matrixLabel}`) + pc.cyan(' \u2190 YOU ARE HERE'));
+
+  lines.push(pc.dim('\u2500'.repeat(45)));
   lines.push('');
 
   // Summary (truncated for CLI)

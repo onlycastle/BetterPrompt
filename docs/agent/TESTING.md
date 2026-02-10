@@ -1,6 +1,6 @@
 # Testing (Agent Reference)
 
-Local test scripts for the 4-Phase Orchestrator Pipeline. All scripts are in `scripts/`.
+Local test scripts for the multi-phase orchestrator pipeline. All scripts are in `scripts/`.
 
 ## Test Scripts
 
@@ -15,6 +15,7 @@ Local test scripts for the 4-Phase Orchestrator Pipeline. All scripts are in `sc
 | `scripts/generate-phase1-cache.ts` | Phase 1 cache generator |
 | `scripts/generate-phase2-cache.ts` | Phase 2 cache generator |
 | `scripts/generate-phase3-cache.ts` | Phase 3 cache generator |
+| `scripts/test-evaluation-assembly.ts` | Evaluation assembly testing |
 | `scripts/utils/test-utils.ts` | Shared utilities |
 | `scripts/fixtures/phase1-cache/phase1-cache.json` | Cached Phase 1 output (gitignored) |
 | `scripts/fixtures/phase2-cache/phase2-cache.json` | Cached Phase 2 output (gitignored) |
@@ -166,7 +167,25 @@ npx tsx scripts/test-phase4.ts /path/to/session.jsonl --lang=ko
 
 ```bash
 npm test                    # Run all tests
+npm run test:watch          # Watch mode (re-run on changes)
+npm run test:coverage       # Run with coverage report
+npm run test:integration    # Run integration tests only
 npm run typecheck           # Type check without emitting
 ```
 
-Test files in `tests/unit/analyzer/`.
+Test directories:
+
+| Directory | Coverage |
+|-----------|----------|
+| `tests/unit/analyzer/workers/` | Phase 1-2 worker tests |
+| `tests/unit/analyzer/stages/` | Phase 1.5-4 stage tests (session-summarizer, content-writer, translator, evaluation-assembler, evidence-verifier, knowledge-resource-matcher, phase3-summarizer) |
+| `tests/unit/analyzer/orchestrator/` | Orchestrator + types tests |
+| `tests/unit/analyzer/dimensions/` | Dimension calculation tests |
+| `tests/unit/models/` | Zod schema validation tests (verbose-evaluation, agent-outputs, worker-insights, schema-nesting-depth) |
+| `tests/unit/parser/` | JSONL reader tests |
+| `tests/unit/cli/` | CLI-specific tests (segment-detector, session-scoring, project-name-resolver) |
+| `tests/unit/desktop/` | Desktop app tests (scanner, session-formatter) |
+| `tests/unit/config/` | Config manager tests |
+| `tests/unit/search-agent/` | Search agent tests (knowledge, relevance, judge criteria) |
+| `tests/unit/utils/` | Utility tests (insight-deduplication) |
+| `tests/unit/lib/` | Library tests (result) |

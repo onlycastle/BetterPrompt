@@ -38,30 +38,30 @@ export function PremiumValueSummary({ lockedCount, domainName }: PremiumValueSum
 
   return (
     <div className={styles.container}>
-      {/* Terminal-style header */}
+      {/* Terminal-style header — positive framing */}
       <div className={styles.header}>
-        <span className={styles.headerIcon}>🔒</span>
-        <span className={styles.headerTitle}>LOCKED IN THIS SECTION</span>
+        <span className={styles.headerIcon}>{'💡'}</span>
+        <span className={styles.headerTitle}>UNLOCK MORE INSIGHTS</span>
       </div>
 
-      {/* Value items */}
+      {/* Value items — specific, concrete benefits */}
       <div className={styles.content}>
         <div className={styles.valueItem}>
-          <span className={styles.valueIcon}>🔒</span>
+          <span className={styles.valueIcon}>{'🎯'}</span>
           <span className={styles.valueText}>
-            {lockedCount} personalized recommendation{lockedCount !== 1 ? 's' : ''}
+            {lockedCount} personalized fix{lockedCount !== 1 ? 'es' : ''} with step-by-step action plans
           </span>
         </div>
         <div className={styles.valueItem}>
-          <span className={styles.valueIcon}>🔒</span>
+          <span className={styles.valueIcon}>{'📋'}</span>
           <span className={styles.valueText}>
-            {totalSteps} actionable steps (avg 5 per growth area)
+            {totalSteps}+ actionable steps tailored to your {domainName} patterns
           </span>
         </div>
         <div className={styles.valueItem}>
-          <span className={styles.valueIcon}>🔒</span>
+          <span className={styles.valueIcon}>{'📖'}</span>
           <span className={styles.valueText}>
-            Evidence-backed improvement strategies
+            Expert knowledge matched to your specific findings
           </span>
         </div>
       </div>
@@ -72,7 +72,7 @@ export function PremiumValueSummary({ lockedCount, domainName }: PremiumValueSum
         type="button"
         onClick={handleUnlockClick}
       >
-        Unlock All Recommendations - $4.99
+        Unlock Full Analysis
       </button>
     </div>
   );

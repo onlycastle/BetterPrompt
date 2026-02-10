@@ -318,12 +318,13 @@ export type ContextUsageLLM = z.infer<typeof ContextUsageLLMSchema>;
  * - verbose_error_pasting: Pastes full error messages/logs without summarizing
  */
 export const InefficiencyPatternEnum = z.enum([
-  'late_compact',           // Only uses /compact at 90%+ context fill
-  'context_bloat',          // No /clear usage, context keeps accumulating
-  'redundant_info',         // Same information repeated multiple times
-  'prompt_length_inflation',// Prompts get longer as session progresses
-  'no_session_separation',  // Uses same session for different tasks
-  'verbose_error_pasting',  // Pastes entire error messages/stack traces
+  'late_compact',              // Only uses /compact at 90%+ context fill
+  'context_bloat',             // No /clear usage, context keeps accumulating
+  'redundant_info',            // Same information repeated multiple times
+  'prompt_length_inflation',   // Prompts get longer as session progresses
+  'no_session_separation',     // Uses same session for different tasks
+  'verbose_error_pasting',     // Pastes entire error messages/stack traces
+  'no_knowledge_persistence',  // Never externalizes recurring context to files
 ]);
 export type InefficiencyPattern = z.infer<typeof InefficiencyPatternEnum>;
 

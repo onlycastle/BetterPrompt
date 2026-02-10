@@ -1,0 +1,83 @@
+.dialog {
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  max-width: 420px;
+  width: 90vw;
+  background: var(--surface-1);
+  font-family: var(--font-primary);
+}
+
+.dialog::backdrop {
+  background: rgba(26, 26, 46, 0.4);
+}
+
+.content {
+  padding: var(--space-lg);
+}
+
+.title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  margin: 0 0 var(--space-sm);
+}
+
+.message {
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  margin: 0 0 var(--space-lg);
+  line-height: var(--leading-normal);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+.cancelBtn {
+  padding: var(--space-xs) var(--space-md);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.cancelBtn:hover {
+  border-color: var(--ink-muted);
+  color: var(--ink-primary);
+}
+
+.confirmBtn {
+  padding: var(--space-xs) var(--space-md);
+  border: 2px solid var(--sketch-cyan);
+  border-radius: var(--radius-sm);
+  background: var(--sketch-cyan);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: white;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.confirmBtn:hover {
+  background: var(--accent-primary-hover);
+  border-color: var(--accent-primary-hover);
+}
+
+.confirmBtn.danger {
+  background: var(--sketch-red);
+  border-color: var(--sketch-red);
+}
+
+.confirmBtn.danger:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}

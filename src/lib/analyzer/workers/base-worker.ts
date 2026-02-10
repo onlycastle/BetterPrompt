@@ -380,14 +380,3 @@ export interface WorkerRegistryEntry<TOutput = unknown> {
   factory: WorkerFactory<TOutput>;
 }
 
-// ============================================================================
-// Utility Functions - NO FALLBACK POLICY
-// ============================================================================
-//
-// Removed: runWorkerSafely, runWorkersInParallel
-//
-// These functions were designed for fallback behavior, returning default data
-// when workers fail. This hides errors and makes debugging difficult.
-//
-// Workers should throw errors that propagate to the orchestrator.
-// The orchestrator uses Promise.all() to fail fast on any worker error.

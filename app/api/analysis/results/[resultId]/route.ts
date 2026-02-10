@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, type User } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import type { VerboseEvaluation, PromptPattern, PerDimensionInsight } from '@/lib/models/verbose-evaluation';
+import type { VerboseEvaluation, PromptPattern } from '@/lib/models/verbose-evaluation';
 import type { AgentOutputs } from '@/lib/models/agent-outputs';
 import { aggregateWorkerInsights } from '@/lib/models/agent-outputs';
 import { createContentGateway } from '@/lib/analyzer/content-gateway';
@@ -57,23 +57,6 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
     };
   });
 
-  // dimensionInsights: strengths full, growthAreas 3 full + 4th truncated
-  const previewDimensionInsights: PerDimensionInsight[] | undefined = evaluation.dimensionInsights?.map(insight => ({
-    ...insight,
-    strengths: insight.strengths,
-    growthAreas: insight.growthAreas?.slice(0, 4).map((area, idx) => {
-      if (idx < PREVIEW_CONFIG.FULL_ITEMS) {
-        return area;
-      }
-      // 4th item: truncate description and recommendation
-      return {
-        ...area,
-        description: truncateText(area.description),
-        recommendation: truncateText(area.recommendation),
-      };
-    }),
-  }));
-
   return {
     // FREE fields - full data
     sessionId: evaluation.sessionId,
@@ -95,7 +78,6 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
 
     // PREMIUM fields - preview only (3 full + 4th truncated)
     promptPatterns: previewPatterns,
-    dimensionInsights: previewDimensionInsights,
 
     // Other PREMIUM fields - removed
     toolUsageDeepDive: undefined,
@@ -124,8 +106,11 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
     ),
 
     // Translated agent insights - needed for non-English users
-    // Without this, "Your Insights" section shows in English
-    translatedAgentInsights: evaluation.translatedAgentInsights,
+    // Filter to strip translations for locked domains (prevents bypassing ContentGateway)
+    translatedAgentInsights: createContentGateway().filterTranslatedInsights(
+      evaluation.translatedAgentInsights,
+      'free'
+    ),
   };
 }
 
@@ -134,14 +119,9 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
  */
 function getPreviewMetadata(evaluation: VerboseEvaluation) {
   const totalPromptPatterns = evaluation.promptPatterns?.length ?? 0;
-  const totalGrowthAreas = evaluation.dimensionInsights?.reduce(
-    (sum, d) => sum + (d.growthAreas?.length ?? 0),
-    0
-  ) ?? 0;
 
   return {
     totalPromptPatterns,
-    totalGrowthAreas,
     previewCount: PREVIEW_CONFIG.FULL_ITEMS,
     hasPartialItem: PREVIEW_CONFIG.PARTIAL_ITEM,
   };

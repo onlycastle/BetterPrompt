@@ -201,9 +201,9 @@ describe('TypeClassifierWorker', () => {
       await verboseWorker.execute(context);
 
       expect(consoleSpy).toHaveBeenCalledWith('[TypeClassifier] Classifying developer into AI Collaboration Matrix (Phase 2.5)...');
-      expect(consoleSpy).toHaveBeenCalledWith('[TypeClassifier] Type: architect');
-      expect(consoleSpy).toHaveBeenCalledWith('[TypeClassifier] Control: navigator (65)');
-      expect(consoleSpy).toHaveBeenCalledWith('[TypeClassifier] Matrix: Systems Architect 🏗️');
+      expect(consoleSpy).toHaveBeenCalledWith('[TypeClassifier] Type (LLM): architect');
+      expect(consoleSpy).toHaveBeenCalledWith('[TypeClassifier] Control (LLM): navigator (65)');
+      expect(consoleSpy).toHaveBeenCalledWith('[TypeClassifier] Matrix (LLM): Systems Architect 🏗️');
       consoleSpy.mockRestore();
     });
 

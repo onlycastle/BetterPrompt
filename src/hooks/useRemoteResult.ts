@@ -14,7 +14,6 @@ import type { AgentOutputs } from '../lib/models/agent-outputs';
  */
 export interface RemoteResultPreview {
   totalPromptPatterns: number;
-  totalGrowthAreas: number;
   previewCount: number;
   hasPartialItem: boolean;
 }

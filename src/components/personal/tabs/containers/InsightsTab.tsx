@@ -1,16 +1,13 @@
 /**
  * InsightsTab Component
- * Displays personalized recommendations and growth areas
- * Now includes learning resources matched to growth areas
+ * Displays personalized recommendations
  */
 
-import { useMemo } from 'react';
-import { GrowthAreasSection } from '../insights/GrowthAreasSection';
 import { RecommendationsList } from '../../RecommendationsList';
 import { EmptyStatePrompt } from '../shared/EmptyStatePrompt';
-import type { ParsedResource, AgentOutputs } from '../../../../lib/models/agent-outputs';
 import type { PersonalAnalytics } from '../../../../types/personal';
-import type { VerboseAnalysisData, DimensionGrowthArea, DimensionResourceMatch } from '../../../../types/verbose';
+import type { VerboseAnalysisData } from '../../../../types/verbose';
+import type { AgentOutputs } from '../../../../lib/models/agent-outputs';
 import styles from './InsightsTab.module.css';
 
 interface InsightsTabProps {
@@ -19,72 +16,14 @@ interface InsightsTabProps {
   agentOutputs?: AgentOutputs;
 }
 
-// Valid ParsedResource types for validation
-const VALID_RESOURCE_TYPES = new Set(['docs', 'tutorial', 'course', 'article', 'video']);
-
-function isValidResourceType(type: string): type is ParsedResource['type'] {
-  return VALID_RESOURCE_TYPES.has(type);
-}
-
 /**
  * Data-driven UI: No isPaid prop needed.
  * Backend pre-filters data based on tier.
- * - growthAreas.recommendation: empty = locked
- * - knowledgeResources: pre-filtered to tier limit
  */
-export function InsightsTab({ analytics, analysis, agentOutputs }: InsightsTabProps) {
-  // Extract growth areas from dimension insights (memoized to prevent unnecessary recomputation)
-  const growthAreas = useMemo<DimensionGrowthArea[]>(() => {
-    return analysis?.dimensionInsights
-      ?.flatMap((d) => d.growthAreas)
-      ?.slice(0, 5) ?? [];
-  }, [analysis?.dimensionInsights]);
-
-  // Build resources map from Knowledge Base (Phase 2.75 deterministic matching)
-  // Resources are already matched to dimensions, we map them to growth area titles
-  const resourcesMap = useMemo(() => {
-    const map = new Map<string, ParsedResource[]>();
-
-    if (!analysis?.knowledgeResources || analysis.knowledgeResources.length === 0) {
-      return map;
-    }
-
-    // Build dimension -> resources lookup
-    const dimensionResources = new Map<string, ParsedResource[]>();
-    for (const dimMatch of analysis.knowledgeResources) {
-      const resources: ParsedResource[] = dimMatch.knowledgeItems
-        .filter(item => isValidResourceType(item.contentType))
-        .map(item => ({
-          topic: item.title,
-          type: item.contentType as ParsedResource['type'],
-          url: item.sourceUrl,
-        }));
-      dimensionResources.set(dimMatch.dimension, resources);
-    }
-
-    // Match growth areas to dimension resources
-    // Each growth area comes from dimensionInsights which has a dimension field
-    growthAreas.forEach((area) => {
-      // Find the dimension this growth area belongs to
-      const parentDimension = analysis.dimensionInsights?.find(
-        d => d.growthAreas.some(ga => ga.title === area.title)
-      );
-
-      if (parentDimension) {
-        const resources = dimensionResources.get(parentDimension.dimension);
-        if (resources && resources.length > 0) {
-          map.set(area.title, resources.slice(0, 3)); // Limit to 3 per area
-        }
-      }
-    });
-
-    return map;
-  }, [analysis?.knowledgeResources, analysis?.dimensionInsights, growthAreas]);
-
+export function InsightsTab({ analytics }: InsightsTabProps) {
   const hasRecommendations = analytics?.recommendations && analytics.recommendations.length > 0;
-  const hasGrowthAreas = growthAreas.length > 0;
 
-  if (!hasRecommendations && !hasGrowthAreas) {
+  if (!hasRecommendations) {
     return (
       <EmptyStatePrompt
         title="No Insights Yet"
@@ -96,17 +35,6 @@ export function InsightsTab({ analytics, analysis, agentOutputs }: InsightsTabPr
 
   return (
     <div className={styles.container}>
-      {/* Growth Areas from Analysis */}
-      {hasGrowthAreas && (
-        <section className={styles.section}>
-          <h3 className={styles.sectionTitle}>Areas for Growth</h3>
-          <p className={styles.sectionDescription}>
-            Key opportunities to improve your AI collaboration based on your recent sessions.
-          </p>
-          <GrowthAreasSection areas={growthAreas} resourcesMap={resourcesMap} />
-        </section>
-      )}
-
       {/* Personalized Recommendations */}
       {hasRecommendations && (
         <section className={styles.section}>

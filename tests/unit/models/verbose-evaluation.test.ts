@@ -13,9 +13,6 @@ import { describe, it, expect } from 'vitest';
 import {
   VerboseLLMResponseSchema,
   PromptPatternSchema,
-  PerDimensionInsightSchema,
-  DimensionStrengthSchema,
-  DimensionGrowthAreaSchema,
   parseExamplesData,
   parseGrowthAreasData,
 } from '../../../src/lib/models/verbose-evaluation.js';
@@ -38,29 +35,6 @@ describe('VerboseLLMResponseSchema', () => {
     effectiveness: 'highly_effective' as const,
   };
 
-  // Evidence is now just a string (quote), not an object
-  const validEvidence = 'Let me plan this out first before we dive in';
-
-  const validDimensionInsight = {
-    dimension: 'aiCollaboration' as const,
-    dimensionDisplayName: 'AI Collaboration',
-    strengths: [
-      {
-        title: 'Strong Planning',
-        description: 'Uses structured approach to break down complex tasks',
-        evidence: [validEvidence],
-      },
-    ],
-    growthAreas: [
-      {
-        title: 'Tool Usage',
-        description: 'Could leverage more advanced tools for parallel execution',
-        evidence: [validEvidence],
-        recommendation: 'Try using the Task tool for delegating to specialized agents',
-      },
-    ],
-  };
-
   const createValidResponse = () => ({
     primaryType: 'architect' as const,
     controlLevel: 'cartographer' as const,
@@ -73,14 +47,6 @@ describe('VerboseLLMResponseSchema', () => {
     },
     personalitySummary:
       'You are a strategic thinker who approaches problems methodically. Your sessions reveal a strong preference for planning and understanding context before diving into implementation. You leverage AI as a collaborative partner, consistently providing clear constraints and verifying outputs before accepting them.',
-    dimensionInsights: [
-      { ...validDimensionInsight, dimension: 'aiCollaboration' as const, dimensionDisplayName: 'AI Collaboration' },
-      { ...validDimensionInsight, dimension: 'contextEngineering' as const, dimensionDisplayName: 'Context Engineering' },
-      { ...validDimensionInsight, dimension: 'toolMastery' as const, dimensionDisplayName: 'Tool Mastery' },
-      { ...validDimensionInsight, dimension: 'burnoutRisk' as const, dimensionDisplayName: 'Burnout Risk' },
-      { ...validDimensionInsight, dimension: 'aiControl' as const, dimensionDisplayName: 'AI Control' },
-      { ...validDimensionInsight, dimension: 'skillResilience' as const, dimensionDisplayName: 'Skill Resilience' },
-    ],
     promptPatterns: [
       validLLMPromptPattern,
       { ...validLLMPromptPattern, patternName: 'Iterative Refinement' },
@@ -183,41 +149,6 @@ describe('VerboseLLMResponseSchema', () => {
           validPromptPattern,
           validPromptPattern,
         ],
-      };
-
-      const result = VerboseLLMResponseSchema.safeParse(response);
-
-      expect(result.success).toBe(false);
-    });
-  });
-
-  describe('dimensionInsights validation', () => {
-    it('should FAIL when dimensionInsights is undefined', () => {
-      const response = createValidResponse();
-      // @ts-expect-error - Testing runtime behavior
-      delete response.dimensionInsights;
-
-      const result = VerboseLLMResponseSchema.safeParse(response);
-
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when dimensionInsights has wrong number of items (must be exactly 6)', () => {
-      const response = {
-        ...createValidResponse(),
-        dimensionInsights: [validDimensionInsight], // Only 1 instead of 6
-      };
-
-      const result = VerboseLLMResponseSchema.safeParse(response);
-
-      expect(result.success).toBe(false);
-    });
-
-    it('should FAIL when dimensionInsights has invalid dimension name', () => {
-      const response = createValidResponse();
-      response.dimensionInsights[0] = {
-        ...validDimensionInsight,
-        dimension: 'invalidDimension' as any,
       };
 
       const result = VerboseLLMResponseSchema.safeParse(response);
@@ -338,132 +269,6 @@ describe('PromptPatternSchema', () => {
         ],
       };
       const result = PromptPatternSchema.safeParse(pattern);
-      expect(result.success).toBe(true);
-    });
-  });
-});
-
-describe('PerDimensionInsightSchema', () => {
-  it('should accept all valid dimension names', () => {
-    const validDimensions = [
-      'aiCollaboration',
-      'contextEngineering',
-      'toolMastery',
-      'burnoutRisk',
-      'aiControl',
-      'skillResilience',
-    ] as const;
-
-    for (const dimension of validDimensions) {
-      const insight = {
-        dimension,
-        dimensionDisplayName: dimension,
-        strengths: [],
-        growthAreas: [],
-      };
-
-      const result = PerDimensionInsightSchema.safeParse(insight);
-      expect(result.success).toBe(true);
-    }
-  });
-
-  // NOTE: strengths/growthAreas array constraints removed for Gemini API compatibility
-  it('should accept strengths array with many items (no max constraint for Gemini)', () => {
-    const validStrength = { title: 'Test', description: 'Test description', evidence: ['quote'] };
-
-    const insight = {
-      dimension: 'aiCollaboration' as const,
-      dimensionDisplayName: 'AI Collaboration',
-      strengths: Array(10).fill(validStrength),
-      growthAreas: [],
-    };
-
-    const result = PerDimensionInsightSchema.safeParse(insight);
-    expect(result.success).toBe(true);
-  });
-
-  it('should accept growthAreas array with many items (no max constraint for Gemini)', () => {
-    const validGrowthArea = {
-      title: 'Test',
-      description: 'Test description',
-      evidence: ['quote'],
-      recommendation: 'Do this',
-    };
-
-    const insight = {
-      dimension: 'aiCollaboration' as const,
-      dimensionDisplayName: 'AI Collaboration',
-      strengths: [],
-      growthAreas: Array(10).fill(validGrowthArea),
-    };
-
-    const result = PerDimensionInsightSchema.safeParse(insight);
-    expect(result.success).toBe(true);
-  });
-});
-
-describe('DimensionStrengthSchema', () => {
-  // Evidence is now string[] (just quotes), not object[]
-  const validEvidence = 'test quote demonstrating this strength';
-  const validStrength = {
-    title: 'Strong Planning',
-    description: 'Uses structured approach to break down complex tasks',
-    evidence: [validEvidence],
-  };
-
-  it('should accept valid strength with string evidence', () => {
-    const result = DimensionStrengthSchema.safeParse(validStrength);
-    expect(result.success).toBe(true);
-  });
-
-  // NOTE: String length constraints are flexible for LLM output variability
-  describe('evidence array (string[])', () => {
-    it('should accept empty evidence array (no min constraint for Gemini)', () => {
-      const strength = { ...validStrength, evidence: [] };
-      const result = DimensionStrengthSchema.safeParse(strength);
-      expect(result.success).toBe(true);
-    });
-
-    it('should accept multiple evidence strings', () => {
-      const strength = {
-        ...validStrength,
-        evidence: ['quote 1', 'quote 2', 'quote 3', 'quote 4', 'quote 5'],
-      };
-      const result = DimensionStrengthSchema.safeParse(strength);
-      expect(result.success).toBe(true);
-    });
-  });
-});
-
-describe('DimensionGrowthAreaSchema', () => {
-  // Evidence is now string[] (just quotes), not object[]
-  const validEvidence = 'test quote showing this growth opportunity';
-  const validGrowthArea = {
-    title: 'Tool Usage',
-    description: 'Could leverage more advanced tools for parallel execution',
-    evidence: [validEvidence],
-    recommendation: 'Try using the Task tool for delegating',
-  };
-
-  it('should accept valid growth area with string evidence', () => {
-    const result = DimensionGrowthAreaSchema.safeParse(validGrowthArea);
-    expect(result.success).toBe(true);
-  });
-
-  // NOTE: String length constraints are flexible for LLM output variability
-  describe('evidence array (string[])', () => {
-    it('should accept empty evidence array (no min constraint for Gemini)', () => {
-      const area = { ...validGrowthArea, evidence: [] };
-      const result = DimensionGrowthAreaSchema.safeParse(area);
-      expect(result.success).toBe(true);
-    });
-
-    it('should accept multiple evidence strings', () => {
-      const area = {
-        ...validGrowthArea,
-        evidence: ['quote 1', 'quote 2', 'quote 3', 'quote 4'],
-      };
-      const result = DimensionGrowthAreaSchema.safeParse(area);
       expect(result.success).toBe(true);
     });
   });

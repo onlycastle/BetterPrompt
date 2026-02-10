@@ -36,5 +36,7 @@ export {
   computeSessionInsights,
   generatePersonalizedMessages,
   getAnalyzingStatusMessage,
+  formatDuration,
+  formatDateShort,
   MILESTONES,
 } from './analysis-messages.js';

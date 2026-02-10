@@ -542,16 +542,31 @@ export function WorkerDomainSection({
             <div className={styles.lockedTeaser}>
               <span className={styles.teaserStrengthLabel}>Top Strength</span>
               <span className={styles.teaserTitle}>{displayStrengths[0]?.title}</span>
+              {displayStrengths[0]?.descriptionPreview && (
+                <p className={styles.teaserBlurredText}>
+                  {displayStrengths[0].descriptionPreview}...
+                </p>
+              )}
             </div>
           )}
           {displayGrowthAreas.length > 0 && (
             <div className={styles.lockedTeaser} data-type="growth">
               <span className={styles.teaserGrowthLabel}>Top Growth Area</span>
               <span className={styles.teaserTitle}>{displayGrowthAreas[0]?.title}</span>
+              {displayGrowthAreas[0]?.descriptionPreview && (
+                <p className={styles.teaserBlurredText}>
+                  {displayGrowthAreas[0].descriptionPreview}...
+                </p>
+              )}
             </div>
           )}
           <div className={styles.lockedDomainOverlay}>
             <p>Unlock to see full {config.title} analysis</p>
+            {displayGrowthAreas.length > 0 && (
+              <p className={styles.lockedDomainCount}>
+                {displayGrowthAreas.length} growth area{displayGrowthAreas.length !== 1 ? 's' : ''} with detailed action plans
+              </p>
+            )}
             <button
               className={styles.unlockDomainCta}
               type="button"

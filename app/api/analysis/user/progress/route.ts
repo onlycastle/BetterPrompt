@@ -18,10 +18,6 @@ interface AnalysisResult {
     primaryType?: CodingStyleType;
     controlLevel?: AIControlLevel;
     overallScore?: number;
-    dimensionInsights?: Array<{
-      dimension: keyof DimensionScores;
-      score?: number;
-    }>;
     // Legacy format dimensions
     dimensions?: DimensionScores;
   } | null;
@@ -69,28 +65,13 @@ function getSupabaseAdmin() {
 
 /**
  * Extract dimension scores from evaluation object
- * Handles both new format (dimensionInsights array) and legacy format (dimensions object)
+ * Uses legacy dimensions object format
  */
 function extractDimensionScores(evaluation: AnalysisResult['evaluation']): DimensionScores | null {
   if (!evaluation) return null;
 
-  // Try legacy format first (direct dimensions object)
   if (evaluation.dimensions) {
     return evaluation.dimensions;
-  }
-
-  // Try new format (dimensionInsights array)
-  if (evaluation.dimensionInsights && Array.isArray(evaluation.dimensionInsights)) {
-    const scores: Partial<DimensionScores> = {};
-    for (const insight of evaluation.dimensionInsights) {
-      if (insight.dimension && typeof insight.score === 'number') {
-        scores[insight.dimension] = insight.score;
-      }
-    }
-    // Only return if we have all 6 dimensions
-    if (Object.keys(scores).length >= 6) {
-      return scores as DimensionScores;
-    }
   }
 
   return null;

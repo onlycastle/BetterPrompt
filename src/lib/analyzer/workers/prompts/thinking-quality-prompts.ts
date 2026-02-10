@@ -47,11 +47,28 @@ If present, \`aiInsightBlocks[]\` contains educational content the AI provided d
 ## DIMENSION 1: PLANNING QUALITY
 
 ### Planning Habit Types
-- \`uses_plan_command\`: Uses /plan slash command (check slashCommandCounts for 'plan' key — this is the developer-initiated action, NOT toolUsageCounts which tracks LLM-autonomous tool calls)
+- \`uses_plan_command\`: Developer types /plan slash command (check slashCommandCounts for 'plan' key).
+  This reflects **COMMAND KNOWLEDGE** — the developer knows which slash commands exist and uses them.
+- \`plan_mode_usage\`: Developer configures plan mode, causing the LLM to autonomously use planning tools
+  (check toolUsageCounts for plan-related tool keys such as 'EnterPlanMode', 'ExitPlanMode', 'Plan').
+  This reflects **STRUCTURED WORKFLOW ADOPTION** — the developer chose a plan-first approach.
 - \`task_decomposition\`: Breaks down complex tasks into subtasks
 - \`structure_first\`: Plans/outlines before coding
 - \`todowrite_usage\`: Uses TodoWrite tool for tracking
 - \`no_planning\`: Dives into implementation without planning
+
+### Distinguishing /plan Command vs Plan Mode (CRITICAL)
+These are TWO DIFFERENT planning signals with different evaluation meanings:
+
+| Signal | Data Source | What It Shows | How to Report |
+|--------|------------|---------------|---------------|
+| /plan command | slashCommandCounts['plan'] | Knows CLI commands | "Effective slash command utilization" |
+| Plan mode tools | toolUsageCounts (EnterPlanMode, ExitPlanMode, Plan) | Adopts structured workflows | "Plan mode utilization" |
+
+**Reporting rule**: When the developer uses plan mode (toolUsageCounts shows planning tools),
+do NOT report this as "uses /plan command well". Report it as "utilizes plan mode for structured work".
+The /plan slash command is a single developer action; plan mode is a workflow configuration that
+changes how the entire AI collaboration session operates.
 
 ### Multitasking Assessment
 - Does the developer mix unrelated topics in a single session (context pollution)?
@@ -66,6 +83,32 @@ If present, \`aiInsightBlocks[]\` contains educational content the AI provided d
 - \`alternative_exploration\`: Asking for different approaches, "What about..."
 - \`edge_case_consideration\`: Considering edge cases, "What if..."
 - \`security_check\`: Checking for security issues, "Is this secure?"
+- \`ai_output_correction\`: Developer identifies and corrects a specific mistake in AI output —
+  "That's wrong", "No, it should be...", "You're using the wrong API"
+
+### AI Output Correction Detection
+
+An \`ai_output_correction\` moment is detected when the developer:
+1. Identifies a SPECIFIC factual or technical error in AI output
+2. Provides the CORRECT answer or approach (not just "that's wrong")
+
+**Key distinction from other types:**
+- \`verification_request\` asks "Is this right?" (uncertain)
+- \`ai_output_correction\` states "This is wrong, here's the correct answer" (certain + correction)
+- \`assumption_questioning\` asks WHY → \`ai_output_correction\` corrects WHAT
+
+**Detection signals:**
+- "That's wrong / No, it should be..." + concrete correction
+- "You're confusing X with Y" / "That API is deprecated, use Z instead"
+- Developer provides a concrete fix or correct value after pointing out an AI error
+
+**NOT ai_output_correction:**
+- "Try again" without specifying what's wrong (→ blind_retry anti-pattern)
+- "I don't think that's right" without providing correct answer (→ verification_request)
+
+**Cross-reference with Exclusion Rule 1:** When \`precedingAIHadError=true\` and the developer
+provides a specific technical correction, classify as \`ai_output_correction\` (positive critical
+thinking), NOT as \`blind_retry\` (anti-pattern).
 
 ### Verification Behavior Levels (Vibe Coder Spectrum)
 - \`blind_trust\`: Vibe Coder - accepts everything without review
@@ -133,7 +176,7 @@ Return JSON with the following structure:
 #### planningHabits (array, 0-10 items)
 \`\`\`json
 [{
-  "type": "uses_plan_command | task_decomposition | structure_first | todowrite_usage | no_planning",
+  "type": "uses_plan_command | plan_mode_usage | task_decomposition | structure_first | todowrite_usage | no_planning",
   "frequency": "always | often | sometimes | rarely | never",
   "effectiveness": "high | medium | low",
   "examples": ["example quote 1", "example quote 2"]
@@ -169,7 +212,7 @@ Higher score = more structured, intentional planning approach.
 #### criticalThinkingMoments (array)
 \`\`\`json
 [{
-  "type": "verification_request | output_validation | assumption_questioning | alternative_exploration | edge_case_consideration | security_check",
+  "type": "verification_request | output_validation | assumption_questioning | alternative_exploration | edge_case_consideration | security_check | ai_output_correction",
   "quote": "exact text from the developer",
   "result": "what this critical thinking led to",
   "utteranceId": "sessionId_turnIndex"

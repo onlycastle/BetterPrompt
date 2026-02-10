@@ -114,8 +114,16 @@ export class ContextEfficiencyWorker extends BaseWorker<ContextEfficiencyOutput>
     const parsedOutput = parseContextEfficiencyLLMOutput(bestResult!.data);
     const processedOutput = this.resolveAllReferences(parsedOutput, insightContext);
 
-    this.log(`Efficiency score: ${processedOutput.overallEfficiencyScore}`);
+    this.log(`Efficiency score (LLM): ${processedOutput.overallEfficiencyScore}`);
     this.log(`Avg context fill: ${processedOutput.avgContextFillPercent}%`);
+
+    // Override with deterministic score if available (rubric-based consistency)
+    const deterministicScores = (context as { deterministicScores?: { contextEfficiency: number } }).deterministicScores;
+    if (deterministicScores) {
+      processedOutput.overallEfficiencyScore = deterministicScores.contextEfficiency;
+      this.log(`Efficiency score (deterministic override): ${deterministicScores.contextEfficiency}`);
+    }
+
     if (processedOutput.referencedInsights?.length) {
       this.log(`Referenced ${processedOutput.referencedInsights.length} professional insights`);
     }

@@ -68,16 +68,18 @@ Return a JSON object with structured arrays (not semicolon-separated strings):
 - \`prompt_length_inflation\` - Prompts get progressively longer late in session
 - \`no_session_separation\` - Uses same session for unrelated tasks
 - \`verbose_error_pasting\` - Pastes full error messages/logs without summarizing
+- \`no_knowledge_persistence\` - Repeatedly provides same context across sessions without creating
+  external files (CLAUDE.md, docs, configs) to persist that knowledge
 
 \`\`\`json
 [{
-  "pattern": "late_compact",  // MUST be one of the 6 enum values above
+  "pattern": "late_compact",  // MUST be one of the 7 enum values above
   "frequency": 15,  // occurrence count
   "impact": "high",  // high | medium | low
   "description": "2-3 sentences (MINIMUM 50 characters) explaining the inefficiency pattern, when/where it occurs, and its impact"
 }]
 \`\`\`
-Do NOT invent new pattern names. Only use the 6 predefined patterns above.
+Do NOT invent new pattern names. Only use the **7** predefined patterns above.
 
 ### promptLengthTrends (array of objects)
 \`\`\`json
@@ -248,6 +250,22 @@ Without valid utteranceId, the evidence cannot be verified against the original 
 - NEVER use system output or AI responses as evidence — only developer's own words
 - Each growth area's FIRST evidence quote should show the developer's reasoning, not just a command
 
+### Knowledge Persistence Detection
+
+**Good pattern (strength — "Knowledge Externalization"):**
+- Developer creates CLAUDE.md, docs files, or config files to store recurring project context
+- Uses file creation to avoid repeating same explanations across sessions
+
+**Anti-pattern (no_knowledge_persistence):**
+Detected when:
+- Same project context explained 3+ times across different sessions
+- No file creation events (Write tool) for docs/config files observed
+- Long sessions with session-start boilerplate that could be a persistent file
+
+**Key distinction from \`redundant_info\`:**
+- \`redundant_info\`: repeating same info within ONE session
+- \`no_knowledge_persistence\`: never externalizing info that repeats ACROSS sessions
+
 ## Efficiency Evaluation (Outcome-Based)
 
 Context efficiency should be evaluated based on OUTCOMES, not tool usage.
@@ -281,12 +299,6 @@ Avoid labeling verbose prompts as "inefficient" if they produce good results.
 ${OBJECTIVE_ANALYSIS_DIRECTIVE}
 
 ${NO_HEDGING_DIRECTIVE}`;
-
-/**
- * Static system prompt for backward compatibility
- * @deprecated Use buildContextEfficiencySystemPrompt() for knowledge-enhanced prompts
- */
-export const CONTEXT_EFFICIENCY_SYSTEM_PROMPT = CONTEXT_EFFICIENCY_BASE_PROMPT;
 
 /**
  * Build dynamic system prompt with injected Professional Knowledge

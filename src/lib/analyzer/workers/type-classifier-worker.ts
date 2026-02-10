@@ -30,11 +30,13 @@ import {
 import { extractEvidenceUtteranceIds } from '../shared/evidence-utils';
 import { z } from 'zod';
 import { CodingStyleTypeSchema, AIControlLevelSchema } from '../../models/coding-style';
+import type { DeterministicTypeResult } from '../stages/deterministic-type-mapper';
 
 /** Extended WorkerContext for TypeClassifier (Phase 2.5) */
 interface TypeClassifierContext extends WorkerContext {
   agentOutputs?: AgentOutputs;
   phase1Output?: Phase1Output;
+  deterministicTypeResult?: DeterministicTypeResult;
 }
 
 /** Distribution type keys */
@@ -112,7 +114,7 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
   }
 
   async execute(context: WorkerContext): Promise<WorkerResult<TypeClassifierOutput>> {
-    const { agentOutputs = {}, phase1Output } = context as TypeClassifierContext;
+    const { agentOutputs = {}, phase1Output, deterministicTypeResult } = context as TypeClassifierContext;
 
     this.log('Classifying developer into AI Collaboration Matrix (Phase 2.5)...');
 
@@ -122,19 +124,37 @@ export class TypeClassifierWorker extends BaseWorker<TypeClassifierOutput> {
     const phase2Summary = this.buildPhase2Summary(agentOutputs, phase1Output);
     const userPrompt = buildTypeClassifierUserPrompt(phase2Summary || undefined, topUtterances);
 
+    // LLM still generates reasoning narrative even with deterministic scores
     const result = await this.generateWithRetry(userPrompt);
 
-    const dist = result.data.distribution;
-    const sum = DISTRIBUTION_KEYS.reduce((acc, key) => acc + dist[key], 0);
+    // Override classification with deterministic values if available
+    // LLM-generated reasoning, confidence, and synthesis fields are preserved
+    if (deterministicTypeResult) {
+      this.log('Applying deterministic type classification (rubric-based)...');
+      result.data.primaryType = deterministicTypeResult.primaryType;
+      result.data.distribution = deterministicTypeResult.distribution;
+      result.data.controlLevel = deterministicTypeResult.controlLevel;
+      result.data.controlScore = deterministicTypeResult.controlScore;
+      result.data.matrixName = deterministicTypeResult.matrixName;
+      result.data.matrixEmoji = deterministicTypeResult.matrixEmoji;
+      this.log(`Type (deterministic): ${deterministicTypeResult.primaryType}`);
+      this.log(`Control (deterministic): ${deterministicTypeResult.controlLevel} (${deterministicTypeResult.controlScore})`);
+      this.log(`Matrix (deterministic): ${deterministicTypeResult.matrixName} ${deterministicTypeResult.matrixEmoji}`);
+    } else {
+      // Legacy path: use LLM-generated classification
+      const dist = result.data.distribution;
+      const sum = DISTRIBUTION_KEYS.reduce((acc, key) => acc + dist[key], 0);
 
-    if (Math.abs(sum - 100) > 1) {
-      this.log(`Warning: Distribution sums to ${sum}, normalizing...`);
-      this.normalizeDistribution(dist, sum);
+      if (Math.abs(sum - 100) > 1) {
+        this.log(`Warning: Distribution sums to ${sum}, normalizing...`);
+        this.normalizeDistribution(dist, sum);
+      }
+
+      this.log(`Type (LLM): ${result.data.primaryType}`);
+      this.log(`Control (LLM): ${result.data.controlLevel} (${result.data.controlScore})`);
+      this.log(`Matrix (LLM): ${result.data.matrixName} ${result.data.matrixEmoji}`);
     }
 
-    this.log(`Type: ${result.data.primaryType}`);
-    this.log(`Control: ${result.data.controlLevel} (${result.data.controlScore})`);
-    this.log(`Matrix: ${result.data.matrixName} ${result.data.matrixEmoji}`);
     if (result.data.confidenceBoost) {
       this.log(`Confidence boost: +${(result.data.confidenceBoost * 100).toFixed(0)}%`);
     }

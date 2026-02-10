@@ -8,7 +8,6 @@
 export { TerminalWindow } from './TerminalWindow';
 export { TerminalTabs } from './TerminalTabs';
 export { TypeResultSection } from './TypeResultSection';
-export { DimensionSection } from './DimensionSection';
 export { UnlockSection } from './UnlockSection';
 export { ShareSection } from './ShareSection';
 export { AnalyzedSessions } from './AnalyzedSessions';

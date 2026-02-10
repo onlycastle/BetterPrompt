@@ -260,6 +260,14 @@ export interface AnalysisResult {
   };
   personalitySummary: string;
   reportUrl: string;
+  /** Domain skill scores from worker insights (0-100 each) */
+  skillScores?: {
+    thinking: number;
+    communication: number;
+    learning: number;
+    context: number;
+    control: number;
+  };
   /** Actual token usage from LLM pipeline (available when DEBUG is set) */
   tokenUsage?: PipelineTokenUsage;
 }

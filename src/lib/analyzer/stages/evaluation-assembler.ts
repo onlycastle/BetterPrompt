@@ -281,9 +281,6 @@ export function assembleEvaluation(
     result.transformationAudit = buildTransformationAudit(phase1Output);
   }
 
-  // dimensionInsights is empty - v3 uses workerInsights instead
-  result.dimensionInsights = [];
-
   // Anti-patterns from ThinkingQuality verificationAntiPatterns
   if (agentOutputs.thinkingQuality?.verificationAntiPatterns) {
     const antiPatterns = assembleAntiPatternsFromThinkingQuality(agentOutputs.thinkingQuality);

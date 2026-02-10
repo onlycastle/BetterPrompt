@@ -1,0 +1,77 @@
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-primary);
+}
+
+.th {
+  text-align: left;
+  font-weight: 600;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border-bottom: 2px solid var(--ink-primary);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.td {
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.row:hover {
+  background: var(--surface-2);
+}
+
+.dimLabel {
+  font-weight: 500;
+  color: var(--ink-primary);
+}
+
+.score {
+  font-weight: 700;
+  color: var(--sketch-red);
+}
+
+.threshold {
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  margin-left: var(--space-xs);
+}
+
+.memberCount {
+  font-size: var(--text-sm);
+}
+
+.gapBar {
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: var(--radius-full);
+  width: 80px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.gapFill {
+  height: 100%;
+  background: var(--sketch-orange);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+.gapValue {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  margin-left: var(--space-xs);
+}
+
+.empty {
+  padding: var(--space-xl);
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}

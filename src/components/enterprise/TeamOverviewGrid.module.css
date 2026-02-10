@@ -1,0 +1,115 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-md);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
+  cursor: pointer;
+}
+
+.card:hover {
+  border-color: var(--sketch-cyan);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.cardHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--ink-muted);
+}
+
+.teamName {
+  font-family: var(--font-primary);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+  margin: 0;
+}
+
+.memberCount {
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+}
+
+.scoreRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-xs) 0;
+}
+
+.scoreLabel {
+  font-size: 0.875rem;
+  color: var(--ink-secondary);
+}
+
+.scoreValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+}
+
+.changeRow {
+  display: flex;
+  align-items: center;
+}
+
+.change {
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.change.positive {
+  color: var(--sketch-green-text);
+  border: 1px solid var(--sketch-green-text);
+}
+
+.change.negative {
+  color: var(--sketch-red-text);
+  border: 1px solid var(--sketch-red-text);
+}
+
+.dominantType {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--ink-muted);
+}
+
+.dominantLabel {
+  font-size: 0.875rem;
+  color: var(--ink-secondary);
+}
+
+.gapBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--sketch-orange);
+  background: var(--sketch-orange-soft);
+  border-radius: var(--radius-md);
+  align-self: flex-start;
+}

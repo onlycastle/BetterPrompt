@@ -112,7 +112,15 @@ export class ThinkingQualityWorker extends BaseWorker<ThinkingQualityOutput> {
 
     this.log(`Planning score: ${processedOutput.planQualityScore}`);
     this.log(`Verification level: ${processedOutput.verificationBehavior.level}`);
-    this.log(`Overall thinking quality score: ${processedOutput.overallThinkingQualityScore}`);
+    this.log(`Overall thinking quality score (LLM): ${processedOutput.overallThinkingQualityScore}`);
+
+    // Override with deterministic score if available (rubric-based consistency)
+    const deterministicScores = (context as { deterministicScores?: { thinkingQuality: number } }).deterministicScores;
+    if (deterministicScores) {
+      processedOutput.overallThinkingQualityScore = deterministicScores.thinkingQuality;
+      this.log(`Overall thinking quality score (deterministic override): ${deterministicScores.thinkingQuality}`);
+    }
+
     if (processedOutput.referencedInsights?.length) {
       this.log(`Referenced ${processedOutput.referencedInsights.length} professional insights`);
     }

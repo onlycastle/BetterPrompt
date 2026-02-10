@@ -175,7 +175,7 @@ describe('ContextEfficiencyWorker', () => {
 
       expect(consoleSpy).toHaveBeenCalledWith('[ContextEfficiency] Analyzing context efficiency and productivity...');
       expect(consoleSpy).toHaveBeenCalledWith('[ContextEfficiency] Utterances: 2');
-      expect(consoleSpy).toHaveBeenCalledWith('[ContextEfficiency] Efficiency score: 65');
+      expect(consoleSpy).toHaveBeenCalledWith('[ContextEfficiency] Efficiency score (LLM): 65');
       expect(consoleSpy).toHaveBeenCalledWith('[ContextEfficiency] Avg context fill: 84%');
       consoleSpy.mockRestore();
     });

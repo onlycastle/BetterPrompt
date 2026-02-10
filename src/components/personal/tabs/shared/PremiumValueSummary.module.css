@@ -75,49 +75,35 @@
   line-height: 1.4;
 }
 
-/* CTA Button */
+/* CTA Button — Sketch primary style */
 .ctaButton {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
   padding: var(--space-md) var(--space-lg);
-  background: linear-gradient(
-    90deg,
-    var(--sketch-cyan-soft) 0%,
-    var(--sketch-cyan) 50%,
-    var(--sketch-cyan-soft) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmerCta 3s ease-in-out infinite;
-  border: 2px solid var(--sketch-cyan-dark);
+  background: var(--ink-primary);
+  border: 2px solid var(--ink-primary);
   border-radius: var(--radius-md);
   cursor: pointer;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
-  color: var(--sketch-cyan-dark);
+  color: var(--sketch-blue);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  box-shadow: 3px 3px 0 var(--sketch-cyan);
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .ctaButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px var(--sketch-cyan-glow-strong);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--sketch-cyan);
 }
 
 .ctaButton:active {
-  transform: translateY(0);
-}
-
-@keyframes shimmerCta {
-  0%, 100% {
-    background-position: 200% 50%;
-  }
-  50% {
-    background-position: 0% 50%;
-  }
+  transform: translate(0, 0);
+  box-shadow: 2px 2px 0 var(--sketch-cyan);
 }
 
 /* Responsive */

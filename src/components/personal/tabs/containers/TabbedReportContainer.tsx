@@ -19,6 +19,9 @@ import { ResourceSidebar } from '../resources/ResourceSidebar';
 import { ReportSummarySection } from '../shared/ReportSummarySection';
 import { TopFocusAreasSection } from '../focus/TopFocusAreasSection';
 import { useScrollSpy } from '../../../../hooks/useScrollSpy';
+import { useActiveTimer } from '../../../../hooks/useActiveTimer';
+import { useSurveyTrigger } from '../../../../hooks/useSurveyTrigger';
+import { SurveyBottomSheet } from '../../../report/SurveyBottomSheet';
 import type { VerboseAnalysisData, AnalysisMetadata, DimensionResourceMatch } from '../../../../types/verbose';
 import type { AgentOutputs, ParsedResource } from '../../../../lib/models/agent-outputs';
 import { aggregateWorkerInsights } from '../../../../lib/models/agent-outputs';
@@ -182,6 +185,14 @@ export function TabbedReportContainer({
       });
     }
   }, [activeTab]);
+
+  // Survey trigger: active time tracking + composite condition
+  const activeTimeReached = useActiveTimer(120);
+  const { shouldShow: shouldShowSurvey, dismiss: dismissSurvey } = useSurveyTrigger({
+    activeTimeReached,
+    visitedSections,
+    resultId: reportId ?? '',
+  });
 
   // FloatingProgressDots visibility: show when header scrolls out of view
   const [navVisible, setNavVisible] = useState(false);
@@ -678,6 +689,11 @@ export function TabbedReportContainer({
         isOpen={sourceContext !== null}
         onClose={() => setSourceContext(null)}
       />
+
+      {/* Survey Bottom Sheet — triggered after active engagement */}
+      {shouldShowSurvey && reportId && (
+        <SurveyBottomSheet resultId={reportId} onDismiss={dismissSurvey} />
+      )}
     </div>
   );
 }

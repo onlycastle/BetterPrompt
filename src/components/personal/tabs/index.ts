@@ -4,7 +4,7 @@
  *
  * Organized into domain subfolders:
  * - containers/: Entry point containers (TabbedReportContainer, ReportTab, etc.)
- * - insights/: Domain-specific insights (WorkerInsightsSection, GrowthAreasSection)
+ * - insights/: Domain-specific insights (WorkerInsightsSection)
  * - type-result/: Type classification display (TypeResultMinimal, DualRadarCharts)
  * - resources/: Learning resources sidebar (ResourceSidebar, ResourceBubble)
  * - shared/: Reusable UI elements (EmptyStatePrompt, FloatingProgressDots)
@@ -20,7 +20,7 @@ export { TabbedReportContainer, type ReportTabId, ReportTab, ProgressTab, Insigh
 export { TypeResultMinimal, DualRadarCharts, RadarChart, PersonalitySummaryClean } from './type-result';
 
 // Insights components
-export { WorkerInsightsSection, GrowthAreasSection, ExpandableEvidence } from './insights';
+export { WorkerInsightsSection, ExpandableEvidence } from './insights';
 
 // Resources components
 export { ResourceSidebar, ResourcePreviewCard, ResourceBubble } from './resources';

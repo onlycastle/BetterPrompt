@@ -2,7 +2,7 @@
 
 ## Pipeline Quick Reference
 
-`JSONL → Phase 1 (DataExtractor) → Phase 2 (Workers) → Phase 2.5 (TypeClassifier) → Phase 3 (ContentWriter) → Phase 4 (Translator) → Assembly → ContentGateway → UI`
+`JSONL → Phase 1 (DataExtractor) → Phase 1.1 (DeterministicScorer) → Phase 1.2 (DeterministicTypeMapper) → Phase 1.5 (SessionSummarizer) → Phase 2 (Workers) → Phase 2.5 (TypeClassifier) → Phase 2.75 (KnowledgeResourceMatcher) → Phase 2.8 (EvidenceVerifier) → Phase 3 (ContentWriter) → Phase 4 (Translator) → Assembly → ContentGateway → UI`
 
 ## Key Files
 
