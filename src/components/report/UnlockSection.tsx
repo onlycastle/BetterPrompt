@@ -217,7 +217,7 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: 
                 </div>
                 <div className={styles.pricingAmount}>$6.99<span>/month</span></div>
                 <ul className={styles.featureList}>
-                  <li>4 analyses / month</li>
+                  <li>4 full reports / month</li>
                   <li>Personalized insights</li>
                   <li>Progress tracking</li>
                 </ul>
