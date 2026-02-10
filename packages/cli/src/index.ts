@@ -21,7 +21,7 @@ import {
   displayResultsWithCelebration,
 } from './display.js';
 import { estimateAnalysisCost, renderCostEstimate } from './cost-estimator.js';
-import { createProgressDisplay } from './progress.js';
+import { createChatDisplay } from './chat-display.js';
 import {
   storeTokens,
   getStoredAccessToken,
@@ -584,20 +584,28 @@ async function runAnalysis(options: RunAnalysisOptions = {}): Promise<void> {
 
   console.log('');
 
-  // Step 4: Analysis with Chippy progress animation
-  const progressDisplay = createProgressDisplay({ sessions: selectedSessions });
-  progressDisplay.start();
+  // Step 4: Analysis with Chippy chat display (live results)
+  const chatDisplay = createChatDisplay({ sessions: selectedSessions });
+  chatDisplay.start();
 
   try {
-    const result = await uploadForAnalysis(filteredResult, accessToken, (stage, progress, message) => {
-      progressDisplay.update(stage, progress, message);
-    }, { noTranslate: options.noTranslate });
-    progressDisplay.succeed('Analysis complete!');
+    const result = await uploadForAnalysis(
+      filteredResult,
+      accessToken,
+      (stage, progress, message) => {
+        chatDisplay.update(stage, progress, message);
+      },
+      (phase, snippets) => {
+        chatDisplay.addPhasePreview(phase, snippets);
+      },
+      { noTranslate: options.noTranslate }
+    );
+    chatDisplay.succeed('Analysis complete!');
 
     // Step 5: Results with celebration
     displayResultsWithCelebration(result);
   } catch (error) {
-    progressDisplay.fail('Analysis failed');
+    chatDisplay.fail('Analysis failed');
 
     // If auth error, clear tokens and suggest re-login
     if (error instanceof Error && error.message.includes('401')) {

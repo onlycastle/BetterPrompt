@@ -279,8 +279,26 @@ interface DebugPhaseOutput {
 /**
  * SSE Event types from the server
  */
+/**
+ * Preview snippet for CLI chat display
+ */
+export interface PreviewSnippet {
+  label: string;
+  text: string;
+  icon: string;
+}
+
+/**
+ * Callback for phase preview events (CLI chat display)
+ */
+export type PhasePreviewCallback = (phase: string, snippets: PreviewSnippet[]) => void;
+
+/**
+ * SSE Event types from the server
+ */
 type SSEEvent =
   | { type: 'progress'; stage: string; progress: number; message: string }
+  | { type: 'phase_preview'; phase: string; snippets: PreviewSnippet[] }
   | { type: 'result'; data: Omit<AnalysisResult, 'reportUrl'> }
   | { type: 'debug_phase'; data: DebugPhaseOutput }
   | { type: 'error'; code: string; message: string };
@@ -430,6 +448,7 @@ export async function uploadForAnalysis(
   scanResult: ScanResult,
   accessToken: string,
   onProgress?: ProgressCallback,
+  onPhasePreview?: PhasePreviewCallback,
   options?: UploadOptions
 ): Promise<AnalysisResult> {
   const {
@@ -466,7 +485,7 @@ export async function uploadForAnalysis(
     throw new Error(`Analysis request failed: ${response.status} ${errorText}`);
   }
 
-  return handleStreamingResponse(response, onProgress);
+  return handleStreamingResponse(response, onProgress, onPhasePreview);
 }
 
 /**
@@ -474,7 +493,8 @@ export async function uploadForAnalysis(
  */
 async function handleStreamingResponse(
   response: Response,
-  onProgress?: ProgressCallback
+  onProgress?: ProgressCallback,
+  onPhasePreview?: PhasePreviewCallback
 ): Promise<AnalysisResult> {
   debugLog('SSE response:', {
     status: response.status,
@@ -498,6 +518,10 @@ async function handleStreamingResponse(
     switch (event.type) {
       case 'progress':
         onProgress?.(event.stage, event.progress, event.message);
+        break;
+
+      case 'phase_preview':
+        onPhasePreview?.(event.phase, event.snippets);
         break;
 
       case 'result':
