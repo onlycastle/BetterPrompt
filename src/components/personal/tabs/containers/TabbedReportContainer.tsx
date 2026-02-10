@@ -14,6 +14,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { WorkerDomainSection } from '../insights/WorkerInsightsSection';
 import { ActivitySection } from '../activity/ActivitySection';
 import { FloatingProgressDots } from '../shared/FloatingProgressDots';
+import { ReportTableOfContents, type TocSection } from '../shared/ReportTableOfContents';
 import { ResourceSidebar } from '../resources/ResourceSidebar';
 import { ReportSummarySection } from '../shared/ReportSummarySection';
 import { TopFocusAreasSection } from '../focus/TopFocusAreasSection';
@@ -114,9 +115,15 @@ const REPORT_SECTIONS: SectionConfig[] = [
 /**
  * Count locked recommendations in a worker domain.
  * A recommendation is "locked" when it's empty (filtered by backend ContentGateway).
+ * A fully locked domain (description === '') counts all growth areas as locked.
  */
 function getLockedCount(domain: WorkerInsightsContainer | undefined): number {
   if (!domain) return 0;
+  // Fully locked domain: description empty on both strengths and growth areas
+  if (domain.strengths.length > 0 && domain.strengths[0].description === ''
+    && domain.growthAreas.length > 0 && domain.growthAreas[0].description === '') {
+    return domain.growthAreas.length;
+  }
   return domain.growthAreas.filter(g => !g.recommendation).length;
 }
 
@@ -445,6 +452,9 @@ export function TabbedReportContainer({
       }));
   }, [hasThinking, hasCommunication, hasLearning, hasContext, hasSession]);
 
+  // Session count for Activity teaser in ToC
+  const sessionsAnalyzed = analysis.activitySessions?.length ?? 0;
+
   // Calculate locked recommendation counts for each section (for premium badge)
   const lockedCounts = useMemo(() => ({
     activity: 0,
@@ -454,6 +464,47 @@ export function TabbedReportContainer({
     context: getLockedCount(workerInsights?.contextEfficiency),
     session: getLockedCount(workerInsights?.sessionOutcome),
   }), [workerInsights]);
+
+  // Build ToC section data from available sections + worker insights
+  const tocSections = useMemo((): TocSection[] => {
+    // Map ReportTabId to WORKER_DOMAIN_CONFIGS index
+    const domainKeyMap: Record<string, keyof AggregatedWorkerInsights> = {
+      thinking: 'thinkingQuality',
+      communication: 'communicationPatterns',
+      learning: 'learningBehavior',
+      context: 'contextEfficiency',
+      session: 'sessionOutcome',
+    };
+
+    return availableSections.map((section) => {
+      const domainKey = domainKeyMap[section.id];
+      const domain = domainKey ? workerInsights?.[domainKey] : undefined;
+      const config = domainKey
+        ? WORKER_DOMAIN_CONFIGS.find((c) => c.key === domainKey)
+        : undefined;
+
+      // Communication fallback: use legacy strengths/growth if worker data missing
+      const strengthCount = section.id === 'communication' && !domain
+        ? communicationStrengths.length
+        : (domain?.strengths?.length ?? 0);
+      const growthCount = section.id === 'communication' && !domain
+        ? communicationGrowthAreas.length
+        : (domain?.growthAreas?.length ?? 0);
+
+      return {
+        id: section.id,
+        label: section.label,
+        icon: section.icon,
+        subtitle: section.id === 'activity'
+          ? 'Your coding rhythm and session patterns'
+          : (config?.subtitle ?? ''),
+        score: domain?.domainScore,
+        strengthCount,
+        growthCount,
+        lockedCount: lockedCounts[section.id as ReportTabId] ?? 0,
+      };
+    });
+  }, [availableSections, workerInsights, lockedCounts, communicationStrengths.length, communicationGrowthAreas.length]);
 
   // Unlock percentage for ProgressiveMeter (free users only)
   const { totalLocked, unlockPercentage } = useMemo(() => {
@@ -499,6 +550,13 @@ export function TabbedReportContainer({
             <TopFocusAreasSection focusAreas={analysis.topFocusAreas} />
           )}
         </div>
+
+        {/* Table of Contents — magazine-style guide between header and content */}
+        <ReportTableOfContents
+          sections={tocSections}
+          sessionsAnalyzed={sessionsAnalyzed}
+          onSectionClick={handleSectionClick}
+        />
 
         {/* Continuous Scroll Content */}
         <div ref={contentRef} className={styles.scrollContent}>

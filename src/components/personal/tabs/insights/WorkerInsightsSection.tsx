@@ -43,6 +43,15 @@ function isCommunicationGrowth(item: WorkerGrowth): item is CommunicationGrowth 
   return '_meta' in item && (item as CommunicationGrowth)._meta?.source === 'communication_pattern';
 }
 
+/**
+ * Detect if a domain is fully locked by ContentGateway.
+ * Locked domains have description === '' on both strengths and growth areas.
+ */
+function isDomainLocked(strengths: WorkerStrength[], growthAreas: WorkerGrowth[]): boolean {
+  return strengths.length > 0 && strengths[0].description === ''
+    && growthAreas.length > 0 && growthAreas[0].description === '';
+}
+
 // Frequency badge labels
 const FREQUENCY_LABELS: Record<string, string> = {
   frequent: 'Frequent',
@@ -307,47 +316,94 @@ function GrowthCard({
           {/* Severity-based urgency label */}
           {renderUrgencyLabel(growth.severity)}
 
-          {/* Coaching Preview */}
+          {/* Coaching Preview with optional blurred recommendation teaser */}
           <div className={styles.coachingPreview}>
             <span className={styles.recommendationLabel}>{'💡'} The Fix</span>
+            {growth.recommendationPreview && (
+              <div className={styles.blurredPreview}>
+                <p className={styles.blurredText}>
+                  {growth.recommendationPreview}...
+                </p>
+              </div>
+            )}
           </div>
 
-          <button className={styles.unlockCta} type="button">
+          <button
+            className={styles.unlockCta}
+            type="button"
+            onClick={() => {
+              document.getElementById('unlock-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          >
             <span className={styles.lockIcon}>{'🔓'}</span>
             Unlock the Fix
           </button>
         </div>
       )}
 
-      {/* Inline Expert Knowledge (Professional Insight) */}
+      {/* Expert Knowledge — bridge + card redesign */}
       {referencedInsights && referencedInsights.length > 0 && (
-        <div className={styles.inlineInsight}>
-          <div className={styles.expertKnowledgeHeader}>{'📖'} Expert Knowledge</div>
-          <span className={styles.insightBadge}>{referencedInsights[0].category}</span>
-          <h5 className={styles.insightTitle}>{referencedInsights[0].title}</h5>
-          {referencedInsights[0].keyTakeaway ? (
-            <>
-              <blockquote className={styles.insightTakeaway}>
-                {referencedInsights[0].keyTakeaway}
-              </blockquote>
-              {referencedInsights[0].actionableAdvice?.slice(0, 2).map((advice, i) => (
-                <p key={i} className={styles.insightAdvice}>{advice}</p>
-              ))}
-              {referencedInsights[0].url && (
-                <a
-                  href={referencedInsights[0].url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.insightSource}
-                >
-                  Source &rarr;
-                </a>
-              )}
-            </>
-          ) : (
-            <span className={styles.insightLocked}>&#x1f513; Unlock Full Insight</span>
-          )}
-        </div>
+        <>
+          {/* Bridge element: ── MATCHED TO THIS FINDING ── */}
+          <div className={styles.expertBridge}>
+            <span className={styles.bridgeLine} />
+            <span className={styles.bridgeLabel}>{'>'} Matched to this finding</span>
+            <span className={styles.bridgeLine} />
+          </div>
+
+          {/* Expert Knowledge Card */}
+          <div className={styles.expertKnowledgeCard}>
+            {/* Header: 📖 EXPERT KNOWLEDGE | [CATEGORY] */}
+            <div className={styles.expertHeader}>
+              <div className={styles.expertHeaderLeft}>
+                <span>{'📖'}</span>
+                <span className={styles.expertLabel}>Expert Knowledge</span>
+              </div>
+              <span className={styles.expertCategoryBadge}>{referencedInsights[0].category}</span>
+            </div>
+
+            <h5 className={styles.expertTitle}>{referencedInsights[0].title}</h5>
+
+            {referencedInsights[0].keyTakeaway ? (
+              <>
+                <blockquote className={styles.expertTakeaway}>
+                  {referencedInsights[0].keyTakeaway}
+                </blockquote>
+
+                {/* Author attribution (conditional) */}
+                {referencedInsights[0].sourceAuthor && (
+                  <p className={styles.expertAuthorAttribution}>
+                    — {referencedInsights[0].sourceAuthor}
+                  </p>
+                )}
+
+                {/* Actionable advice with > prefix */}
+                {referencedInsights[0].actionableAdvice?.slice(0, 2).map((advice, i) => (
+                  <div key={i} className={styles.expertAdviceItem}>
+                    <span className={styles.expertAdvicePrefix}>{'>'}</span>
+                    <span className={styles.expertAdviceText}>{advice}</span>
+                  </div>
+                ))}
+
+                {/* Source CTA button */}
+                {referencedInsights[0].url && (
+                  <div className={styles.expertSourceFooter}>
+                    <a
+                      href={referencedInsights[0].url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.expertSourceButton}
+                    >
+                      Read Full Article <span className={styles.expertSourceArrow}>&rarr;</span>
+                    </a>
+                  </div>
+                )}
+              </>
+            ) : (
+              <span className={styles.expertLocked}>{'🔓'} Unlock Full Insight</span>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
@@ -455,6 +511,60 @@ export function WorkerDomainSection({
 
   if (!hasContent) {
     return null;
+  }
+
+  // Locked domain: show teaser with header + score + first titles only
+  const domainLocked = isDomainLocked(displayStrengths, displayGrowthAreas);
+
+  if (domainLocked) {
+    return (
+      <section ref={sectionRef} className={styles.domainSection} data-revealed={revealed || undefined}>
+        <div
+          className={styles.domainHeader}
+          role="presentation"
+        >
+          <div className={styles.domainTitleRow}>
+            <span className={styles.domainIcon}>{config.icon}</span>
+            <div className={styles.domainTitleGroup}>
+              <h3 className={styles.domainTitle}>{config.title}</h3>
+              <p className={styles.domainSubtitle}>{config.subtitle}</p>
+            </div>
+          </div>
+          <div className={styles.domainHeaderRight}>
+            {domainScore !== undefined && (
+              <ScoreGauge score={domainScore} label={config.scoreLabel} />
+            )}
+          </div>
+        </div>
+
+        <div className={styles.lockedDomainBody}>
+          {displayStrengths.length > 0 && (
+            <div className={styles.lockedTeaser}>
+              <span className={styles.teaserStrengthLabel}>Top Strength</span>
+              <span className={styles.teaserTitle}>{displayStrengths[0]?.title}</span>
+            </div>
+          )}
+          {displayGrowthAreas.length > 0 && (
+            <div className={styles.lockedTeaser} data-type="growth">
+              <span className={styles.teaserGrowthLabel}>Top Growth Area</span>
+              <span className={styles.teaserTitle}>{displayGrowthAreas[0]?.title}</span>
+            </div>
+          )}
+          <div className={styles.lockedDomainOverlay}>
+            <p>Unlock to see full {config.title} analysis</p>
+            <button
+              className={styles.unlockDomainCta}
+              type="button"
+              onClick={() => {
+                document.getElementById('unlock-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            >
+              Unlock Full Analysis
+            </button>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   /**

@@ -920,6 +920,85 @@
 }
 
 /* ============================================================================
+   Locked Domain Body — teaser for non-free worker domains
+   ============================================================================ */
+
+.lockedDomainBody {
+  padding: var(--space-lg);
+}
+
+.lockedTeaser {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--sketch-green-soft);
+  border-left: 3px solid var(--sketch-green);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin-bottom: var(--space-sm);
+}
+
+.lockedTeaser[data-type="growth"] {
+  background: var(--sketch-orange-soft);
+  border-left-color: var(--sketch-orange);
+}
+
+.teaserStrengthLabel, .teaserGrowthLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.teaserStrengthLabel { color: var(--sketch-green-text); }
+.teaserGrowthLabel { color: var(--sketch-orange); }
+
+.teaserTitle {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink-primary);
+  font-weight: var(--weight-medium);
+}
+
+.lockedDomainOverlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xl) var(--space-lg);
+  border: 2px dashed var(--ink-light);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  margin-top: var(--space-md);
+}
+
+.lockedDomainOverlay p {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+}
+
+.unlockDomainCta {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  padding: var(--space-sm) var(--space-xl);
+  background: var(--ink-primary);
+  color: var(--sketch-blue);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--ink-muted);
+  transition: background var(--transition-fast);
+}
+
+.unlockDomainCta:hover {
+  background: var(--ink-secondary);
+}
+
+/* ============================================================================
    Empty State
    ============================================================================ */
 
@@ -1059,32 +1138,68 @@
 }
 
 /* ============================================================================
-   Inline Professional Insight — rendered inside GrowthCard
+   Expert Knowledge — Bridge + Card redesign
    ============================================================================ */
 
-/* ============================================================================
-   Expert Knowledge Header — labels inline insight section
-   ============================================================================ */
+/* Bridge element: ── MATCHED TO THIS FINDING ── */
+.expertBridge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}
 
-.expertKnowledgeHeader {
+.bridgeLine {
+  flex: 1;
+  height: 1px;
+  background: var(--sketch-purple);
+  opacity: 0.4;
+}
+
+.bridgeLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--sketch-purple-text);
+  white-space: nowrap;
+}
+
+/* Card container */
+.expertKnowledgeCard {
+  margin-top: var(--space-sm);
+  padding: var(--space-lg);
+  background: var(--sketch-purple-soft);
+  border: 1.5px solid var(--sketch-purple);
+  border-radius: var(--radius-lg);
+}
+
+/* Header: icon + label (left) | category badge (right) */
+.expertHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.expertHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.expertLabel {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: var(--weight-bold);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--sketch-purple-text);
-  margin-bottom: var(--space-xs);
 }
 
-.inlineInsight {
-  margin-top: var(--space-md);
-  padding: var(--space-md);
-  background: var(--surface-1);
-  border-left: 3px solid var(--sketch-purple);
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
-}
-
-.insightBadge {
+.expertCategoryBadge {
   display: inline-block;
   font-family: var(--font-mono);
   font-size: 10px;
@@ -1096,67 +1211,146 @@
   background: var(--sketch-purple-soft);
   color: var(--sketch-purple-text);
   border: 1px solid var(--sketch-purple);
-  margin-bottom: var(--space-xs);
 }
 
-.insightTitle {
+/* Title (upgraded from 13px semibold to 15px bold) */
+.expertTitle {
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
   color: var(--ink-primary);
-  margin: var(--space-xs) 0;
+  margin: 0 0 var(--space-sm) 0;
 }
 
-.insightTakeaway {
+/* Key takeaway blockquote */
+.expertTakeaway {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--ink-secondary);
-  margin: var(--space-xs) 0;
-  padding-left: var(--space-md);
-  border-left: 2px solid var(--sketch-purple);
+  margin: 0 0 var(--space-sm) 0;
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(255, 255, 255, 0.6);
+  border-left: 3px solid var(--sketch-purple);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   font-style: italic;
   line-height: var(--leading-relaxed);
 }
 
-.insightAdvice {
+/* Author attribution: "— Author Name" */
+.expertAuthorAttribution {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--ink-secondary);
-  margin: var(--space-xs) 0;
+  color: var(--ink-muted);
+  margin: 0 0 var(--space-sm) 0;
   padding-left: var(--space-md);
+}
+
+/* Actionable advice items with > prefix */
+.expertAdviceItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.expertAdvicePrefix {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--sketch-purple);
+  flex-shrink: 0;
   line-height: var(--leading-relaxed);
 }
 
-.insightAdvice::before {
-  content: '→ ';
-  color: var(--sketch-purple);
-  font-weight: var(--weight-bold);
+.expertAdviceText {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  line-height: var(--leading-relaxed);
 }
 
-.insightSource {
+/* Source footer with CTA button */
+.expertSourceFooter {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px dashed var(--sketch-purple);
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+}
+
+.expertSourceButton {
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
   color: var(--sketch-purple-text);
+  background: rgba(156, 124, 244, 0.12);
+  border: 1.5px solid var(--sketch-purple);
+  border-radius: var(--radius-full);
+  padding: var(--space-sm) var(--space-md);
   text-decoration: none;
-  margin-top: var(--space-xs);
-  transition: color var(--transition-fast);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.insightSource:hover {
-  color: var(--sketch-purple-dark);
-  text-decoration: underline;
+.expertSourceButton:hover {
+  background: var(--sketch-purple);
+  color: white;
+  box-shadow: 3px 3px 0 var(--sketch-purple-dark);
 }
 
-.insightLocked {
+.expertSourceButton:hover .expertSourceArrow {
+  transform: translateX(3px);
+}
+
+.expertSourceArrow {
+  transition: transform var(--transition-fast);
+}
+
+/* Locked state inside expert card */
+.expertLocked {
   display: inline-flex;
   align-items: center;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--ink-muted);
   margin-top: var(--space-xs);
+}
+
+/* ============================================================================
+   Expert Knowledge — Responsive
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .expertKnowledgeCard {
+    padding: var(--space-md);
+  }
+
+  .expertSourceFooter {
+    flex-direction: column;
+  }
+
+  .expertSourceButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .expertHeader {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .expertKnowledgeCard {
+    padding: var(--space-sm);
+  }
+
+  .expertHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 /* ============================================================================
