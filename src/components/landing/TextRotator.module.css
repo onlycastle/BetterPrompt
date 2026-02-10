@@ -30,11 +30,20 @@
   }
 }
 
+.wordHidden,
 .wordExiting {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
+}
+
+.wordHidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wordExiting {
   animation: slideOut 0.5s ease both;
 }
 
