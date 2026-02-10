@@ -569,7 +569,7 @@ export class AnalysisOrchestrator {
         const snippets: PreviewSnippet[] = [
           {
             label: tc.matrixName || `${tc.primaryType}`,
-            text: tc.reasoning ? (typeof tc.reasoning === 'string' ? tc.reasoning.slice(0, 120) : tc.reasoning.summary?.slice(0, 120) || '') : '',
+            text: tc.reasoning ? (typeof tc.reasoning === 'string' ? tc.reasoning.slice(0, 300) : tc.reasoning.summary?.slice(0, 300) || '') : '',
             icon: tc.matrixEmoji || '⭐',
           },
         ];
@@ -652,7 +652,7 @@ export class AnalysisOrchestrator {
       if (topFocus) {
         options.onPhasePreview('narrative_ready', [{
           label: topFocus.title || 'Focus Area',
-          text: topFocus.description?.slice(0, 120) || topFocus.title || '',
+          text: topFocus.description?.slice(0, 300) || topFocus.title || '',
           icon: '🎯',
         }]);
       }
@@ -1154,7 +1154,7 @@ function extractWorkerPreview(workerName: string, data: unknown): PreviewSnippet
     const s = strengths[0];
     snippets.push({
       label: s.title || s.label || workerName,
-      text: (s.description || '').slice(0, 100),
+      text: (s.description || '').slice(0, 300),
       icon: '💪',
     });
   }
@@ -1165,7 +1165,7 @@ function extractWorkerPreview(workerName: string, data: unknown): PreviewSnippet
     const t = topInsights[0];
     snippets.push({
       label: t.title || t.label || 'Insight',
-      text: (t.insight || t.text || '').slice(0, 100),
+      text: (t.insight || t.text || '').slice(0, 300),
       icon: '💡',
     });
   }

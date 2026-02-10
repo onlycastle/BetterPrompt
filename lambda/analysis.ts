@@ -279,8 +279,10 @@ function getSupabaseClient() {
 /**
  * Validate Authorization header and extract user ID
  *
- * Security: userId must come from validated JWT, not from request body.
+ * Security: userId must come from validated token, not from request body.
  * This prevents spoofing where attackers claim another user's identity.
+ *
+ * Supports both CLI tokens (cli_*) and Supabase JWTs.
  *
  * @param authHeader - Authorization header value (Bearer token)
  * @returns userId if valid, null if no auth or invalid
@@ -288,7 +290,7 @@ function getSupabaseClient() {
 async function validateAuthToken(
   authHeader: string | undefined
 ): Promise<{ userId: string } | null> {
-  // No auth header = anonymous request (CLI users)
+  // No auth header = anonymous request
   if (!authHeader?.startsWith("Bearer ")) {
     return null;
   }
@@ -298,6 +300,44 @@ async function validateAuthToken(
     return null;
   }
 
+  // CLI token path: validate against cli_tokens table
+  if (token.startsWith("cli_")) {
+    try {
+      const supabase = getSupabaseClient();
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+      const { data, error } = await supabase
+        .from("cli_tokens")
+        .select("user_id, expires_at, revoked_at")
+        .eq("token_hash", tokenHash)
+        .single();
+
+      if (error || !data) {
+        console.warn("[lambda] CLI token validation failed:", error?.message);
+        return null;
+      }
+
+      if (data.revoked_at || new Date(data.expires_at) < new Date()) {
+        console.warn("[lambda] CLI token expired or revoked");
+        return null;
+      }
+
+      // Update last_used_at (fire and forget)
+      supabase
+        .from("cli_tokens")
+        .update({ last_used_at: new Date().toISOString() })
+        .eq("token_hash", tokenHash)
+        .then(() => {});
+
+      console.log(`[lambda] Authenticated user (CLI token): ${data.user_id}`);
+      return { userId: data.user_id };
+    } catch (error) {
+      console.error("[lambda] CLI token validation error:", error);
+      return null;
+    }
+  }
+
+  // Supabase JWT path
   try {
     const supabase = getSupabaseClient();
     const { data: { user }, error } = await supabase.auth.getUser(token);
