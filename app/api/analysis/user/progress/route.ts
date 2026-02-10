@@ -63,18 +63,9 @@ function getSupabaseAdmin() {
   return createClient(supabaseUrl, serviceKey);
 }
 
-/**
- * Extract dimension scores from evaluation object
- * Uses legacy dimensions object format
- */
+/** Extract dimension scores from evaluation object */
 function extractDimensionScores(evaluation: AnalysisResult['evaluation']): DimensionScores | null {
-  if (!evaluation) return null;
-
-  if (evaluation.dimensions) {
-    return evaluation.dimensions;
-  }
-
-  return null;
+  return evaluation?.dimensions ?? null;
 }
 
 /**
@@ -82,11 +73,11 @@ function extractDimensionScores(evaluation: AnalysisResult['evaluation']): Dimen
  * Uses weighted average (burnoutRisk is inverted since lower is better)
  */
 function calculateOverallScore(dimensions: DimensionScores): number {
-  const { aiCollaboration, contextEngineering, burnoutRisk, toolMastery, aiControl, skillResilience } = dimensions;
+  const { aiCollaboration, contextEngineering, burnoutRisk, aiControl, skillResilience } = dimensions;
   // Invert burnout risk (100 - burnoutRisk) so lower burnout = higher contribution
   const invertedBurnout = 100 - burnoutRisk;
-  const total = aiCollaboration + contextEngineering + invertedBurnout + toolMastery + aiControl + skillResilience;
-  return Math.round(total / 6);
+  const total = aiCollaboration + contextEngineering + invertedBurnout + aiControl + skillResilience;
+  return Math.round(total / 5);
 }
 
 /**
@@ -150,7 +141,6 @@ function calculateDimensionImprovements(
     aiCollaboration: latest.aiCollaboration - first.aiCollaboration,
     contextEngineering: latest.contextEngineering - first.contextEngineering,
     burnoutRisk: latest.burnoutRisk - first.burnoutRisk,
-    toolMastery: latest.toolMastery - first.toolMastery,
     aiControl: latest.aiControl - first.aiControl,
     skillResilience: latest.skillResilience - first.skillResilience,
   };
@@ -173,7 +163,6 @@ function buildAnalysisSummary(result: AnalysisResult, dimensions: DimensionScore
 
 export async function GET(request: NextRequest) {
   try {
-    // 1. Verify user is authenticated
     const supabase = await createSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -184,7 +173,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 2. Fetch user's claimed analyses from analysis_results
     const adminClient = getSupabaseAdmin();
 
     const { data: results, error: fetchError } = await adminClient
@@ -201,12 +189,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 3. Handle no analyses case
     if (!results || results.length === 0) {
       return NextResponse.json({ analytics: null });
     }
 
-    // 4. Process results to build PersonalAnalytics
     const validResults: Array<{ result: AnalysisResult; dimensions: DimensionScores }> = [];
 
     for (const result of results as AnalysisResult[]) {
@@ -216,7 +202,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // If no valid dimension data, return null analytics
     if (validResults.length === 0) {
       return NextResponse.json({ analytics: null });
     }

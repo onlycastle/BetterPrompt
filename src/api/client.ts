@@ -43,7 +43,6 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
 export type DimensionName =
   | 'aiCollaboration'
   | 'contextEngineering'
-  | 'toolMastery'
   | 'burnoutRisk'
   | 'aiControl'
   | 'skillResilience';
