@@ -1,0 +1,191 @@
+/* CommonGrowthAreas - team-level growth areas grouped by domain */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* Domain group */
+.domainGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.domainHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.domainIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  color: #fff;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.domainIconTQ {
+  background-color: var(--accent-blue);
+}
+
+.domainIconCP {
+  background-color: var(--accent-amber);
+}
+
+.domainIconLB {
+  background-color: var(--accent-green);
+}
+
+.domainIconCE {
+  background-color: var(--sketch-red);
+}
+
+.domainIconSO {
+  background-color: var(--ink-muted);
+}
+
+.domainLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  font-family: var(--font-primary);
+}
+
+/* Area list */
+.areaList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding-left: calc(24px + var(--space-sm));
+}
+
+/* Individual area item */
+.areaItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+}
+
+.areaHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.areaTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  font-family: var(--font-primary);
+}
+
+/* Severity badge pill */
+.severityBadge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1px var(--space-xs);
+  border-radius: var(--radius-sm);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.severityCritical {
+  background: var(--sketch-red);
+  color: #fff;
+}
+
+.severityHigh {
+  background: var(--accent-amber);
+  color: #000;
+}
+
+.severityMedium {
+  background: var(--ink-muted);
+  color: #fff;
+}
+
+.severityLow {
+  background: var(--surface-3);
+  color: var(--ink-secondary);
+}
+
+/* Member info line */
+.memberInfo {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.memberCount {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--ink-secondary);
+}
+
+.memberNames {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+/* Recommendation text */
+.recommendation {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Empty state */
+.empty {
+  text-align: center;
+  padding: var(--space-xl);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  margin: 0;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .container {
+    gap: var(--space-md);
+  }
+
+  .areaList {
+    padding-left: var(--space-md);
+  }
+
+  .areaItem {
+    padding: var(--space-xs);
+  }
+
+  .areaTitle {
+    font-size: var(--text-xs);
+  }
+
+  .recommendation {
+    font-size: 11px;
+  }
+
+  .domainLabel {
+    font-size: var(--text-xs);
+  }
+}
