@@ -1,5 +1,3 @@
-'use client';
-
 import { ChevronDown } from 'lucide-react';
 import { TerminalCommand } from './TerminalCommand';
 import { TextRotator } from './TextRotator';
@@ -11,8 +9,9 @@ export function HeroSection() {
       <div className={styles.content}>
         <div className={styles.badge}>No More AI Slop</div>
         <h1 className={styles.headline}>
-          See how <TextRotator words={['you', 'your team']} /> make{' '}
-          <span className={styles.accent}>AI slop</span>.
+          See how <TextRotator words={['you', 'your team']} />
+          <br />
+          make <span className={styles.accent}>AI slop</span>.
         </h1>
 
         <p className={styles.subheadline}>

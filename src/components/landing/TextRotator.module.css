@@ -3,6 +3,7 @@
   position: relative;
   overflow: hidden;
   vertical-align: bottom;
+  text-align: left;
 }
 
 /* Hidden sizer keeps container width = longest word */
