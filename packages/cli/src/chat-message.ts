@@ -7,9 +7,13 @@
 
 import pc from 'picocolors';
 import type { PreviewSnippet } from './uploader.js';
+import type { SessionInsights } from './animations/index.js';
+import { formatDuration, formatDateShort } from './animations/index.js';
 
 /** Phase display configuration */
 const PHASE_DISPLAY: Record<string, { title: string; icon: string }> = {
+  scan_overview: { title: 'Scan Complete', icon: '\u{1F4CA}' },
+  scan_highlights: { title: 'Your AI History', icon: '\u{1F3C6}' },
   session_summaries: { title: 'Session Highlights', icon: '\u{1F4CB}' },
   worker_ThinkingQuality: { title: 'Thinking Quality', icon: '\u{1F9E0}' },
   worker_CommunicationPatterns: { title: 'Communication', icon: '\u{1F4AC}' },
@@ -66,4 +70,62 @@ export function getMessageTextContent(
  */
 export function isTypeClassification(phase: string): boolean {
   return phase === 'type_classification';
+}
+
+/**
+ * Build scan-phase preview messages from local session insights.
+ * Returns two messages: overview (counts/dates) and highlights (top project/session/tools).
+ */
+export function buildScanPreviewMessages(
+  insights: SessionInsights
+): Array<{ phase: string; snippets: PreviewSnippet[] }> {
+  const messages: Array<{ phase: string; snippets: PreviewSnippet[] }> = [];
+
+  // Message 1: scan_overview — session count, project count, date range
+  const overviewSnippets: PreviewSnippet[] = [
+    {
+      label: 'Sessions',
+      icon: '\u{1F50D}',
+      text: `${insights.sessionCount} sessions across ${insights.projectCount} project${insights.projectCount !== 1 ? 's' : ''}`,
+    },
+    {
+      label: 'Period',
+      icon: '\u{1F4C5}',
+      text: `${formatDateShort(insights.dateRange.from)} \u2192 ${formatDateShort(insights.dateRange.to)}`,
+    },
+  ];
+  messages.push({ phase: 'scan_overview', snippets: overviewSnippets });
+
+  // Message 2: scan_highlights — most active project, longest session, top tools
+  const highlightSnippets: PreviewSnippet[] = [];
+
+  if (insights.mostActiveProject.name) {
+    highlightSnippets.push({
+      label: 'Most active',
+      icon: '\u{1F525}',
+      text: `${insights.mostActiveProject.name} \u2014 ${insights.mostActiveProject.count} sessions`,
+    });
+  }
+
+  if (insights.longestSession.durationMin > 0) {
+    highlightSnippets.push({
+      label: 'Longest',
+      icon: '\u{23F1}\uFE0F',
+      text: `Longest: ${formatDuration(insights.longestSession.durationMin)} on ${insights.longestSession.project}`,
+    });
+  }
+
+  if (insights.topTools.length >= 3) {
+    highlightSnippets.push({
+      label: 'Top tools',
+      icon: '\u{1F6E0}\uFE0F',
+      text: `Top: ${insights.topTools.slice(0, 3).join(', ')}`,
+    });
+  }
+
+  if (highlightSnippets.length > 0) {
+    messages.push({ phase: 'scan_highlights', snippets: highlightSnippets });
+  }
+
+  return messages;
 }

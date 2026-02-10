@@ -54,7 +54,7 @@ const CURSOR_CHAR = '\u258C';
 const TYPING_INDICATOR_MS = 500;   // show "..." before streaming starts
 const TYPE_CLASSIFICATION_DELAY_MS = 1500;  // dramatic delay for type reveal
 const INTER_MESSAGE_GAP_MS = 300;  // gap between messages
-const PROGRESS_SMOOTHING_DIVISOR = 9; // slow progress below 40%
+const PROGRESS_SMOOTHING_DIVISOR = 75; // slow progress below 40% (~2m30s to reach 40%)
 
 // Layout
 const FIXED_CHROME_LINES = 16;     // bear(8) + header(3) + progress(3) + divider(1) + spacer(1)
@@ -139,6 +139,7 @@ export class ChatDisplay {
   private messageQueue: QueuedMessage[] = [];
   private streaming: StreamingState | null = null;
   private typingIndicatorUntil = 0;  // timestamp
+  private awaitingStreamStart = false; // true after typing indicator set, before streaming begins
 
   constructor(options: ChatDisplayOptions = {}) {
     this.logUpdate = createLogUpdate(process.stderr);
@@ -271,20 +272,21 @@ export class ChatDisplay {
     // If showing typing indicator, wait
     if (now < this.typingIndicatorUntil) return;
 
-    // If nothing streaming and queue has items, start next
+    // If nothing streaming and queue has items
     if (!this.streaming && this.messageQueue.length > 0) {
-      const next = this.messageQueue.shift()!;
-      const delay = isTypeClassification(next.phase)
-        ? TYPE_CLASSIFICATION_DELAY_MS
-        : TYPING_INDICATOR_MS;
-      this.typingIndicatorUntil = now + delay;
-      // Re-queue at front so next tick picks it up after indicator expires
-      this.messageQueue.unshift(next);
-      return;
-    }
+      if (!this.awaitingStreamStart) {
+        // Show typing indicator first
+        this.awaitingStreamStart = true;
+        const next = this.messageQueue[0]; // peek, don't shift
+        const delay = isTypeClassification(next.phase)
+          ? TYPE_CLASSIFICATION_DELAY_MS
+          : TYPING_INDICATOR_MS;
+        this.typingIndicatorUntil = now + delay;
+        return;
+      }
 
-    // If indicator expired and queue has items but no active stream, START streaming
-    if (!this.streaming && this.messageQueue.length > 0 && now >= this.typingIndicatorUntil) {
+      // Typing indicator completed — start streaming
+      this.awaitingStreamStart = false;
       const next = this.messageQueue.shift()!;
       const fullLines = formatChatMessage(next.phase, next.snippets, this.formatElapsed());
       const fullText = fullLines.join('\n');

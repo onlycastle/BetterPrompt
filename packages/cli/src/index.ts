@@ -22,6 +22,8 @@ import {
 } from './display.js';
 import { estimateAnalysisCost, renderCostEstimate } from './cost-estimator.js';
 import { createChatDisplay } from './chat-display.js';
+import { buildScanPreviewMessages } from './chat-message.js';
+import { computeSessionInsights } from './animations/index.js';
 import {
   storeTokens,
   getStoredAccessToken,
@@ -587,6 +589,13 @@ async function runAnalysis(options: RunAnalysisOptions = {}): Promise<void> {
   // Step 4: Analysis with Chippy chat display (live results)
   const chatDisplay = createChatDisplay({ sessions: selectedSessions });
   chatDisplay.start();
+
+  // Inject scan insights as early chat messages (before server responds)
+  const scanInsights = computeSessionInsights(selectedSessions);
+  const scanMessages = buildScanPreviewMessages(scanInsights);
+  for (const msg of scanMessages) {
+    chatDisplay.addPhasePreview(msg.phase, msg.snippets);
+  }
 
   try {
     const result = await uploadForAnalysis(
