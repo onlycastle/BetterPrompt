@@ -46,10 +46,16 @@ function isCommunicationGrowth(item: WorkerGrowth): item is CommunicationGrowth 
 /**
  * Detect if a domain is fully locked by ContentGateway.
  * Locked domains have description === '' on both strengths and growth areas.
+ * Empty arrays (LLM omitted optional strengths) are treated as locked-compatible,
+ * not as "no data". See: sessionOutcome, learningBehavior, contextEfficiency schemas.
  */
 function isDomainLocked(strengths: WorkerStrength[], growthAreas: WorkerGrowth[]): boolean {
-  return strengths.length > 0 && strengths[0].description === ''
-    && growthAreas.length > 0 && growthAreas[0].description === '';
+  const hasAnyData = strengths.length > 0 || growthAreas.length > 0;
+  if (!hasAnyData) return false;
+
+  const strengthsLocked = strengths.length === 0 || strengths[0].description === '';
+  const growthAreasLocked = growthAreas.length === 0 || growthAreas[0].description === '';
+  return strengthsLocked && growthAreasLocked;
 }
 
 // Frequency badge labels

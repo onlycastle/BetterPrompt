@@ -462,7 +462,9 @@ export class ContentGateway {
   /**
    * Create a locked domain teaser for non-free domains.
    * Shows score + first strength/growth title only with empty descriptions.
-   * Frontend detects via: strengths[0].description === '' && growthAreas[0].description === ''
+   * Frontend detects via isDomainLocked(): empty arrays (from optional LLM fields)
+   * or description === '' both count as locked. If source domain has no strengths
+   * (e.g. LLM omitted optional field), the teaser preserves the empty array.
    */
   private createLockedDomainTeaser(domain: WorkerInsightsContainer): WorkerInsightsContainer {
     const { descriptionPreviewLength } = TIER_POLICY.workerInsights;
