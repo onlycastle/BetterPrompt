@@ -144,8 +144,6 @@ export type {
   AICollaborationResult,
   ContextEngineeringResult,
   BurnoutRiskResult,
-  ToolMasteryResult,
-  MasteryLevel,
   AIControlResult,
   SkillResilienceResult,
   SkillResilienceLevel,

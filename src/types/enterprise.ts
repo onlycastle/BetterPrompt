@@ -15,7 +15,6 @@ export interface DimensionScores {
   aiCollaboration: number;
   contextEngineering: number;
   burnoutRisk: number;      // Lower is better
-  toolMastery: number;
   aiControl: number;
   skillResilience: number;
 }
@@ -44,6 +43,8 @@ export interface TeamMemberAnalysis {
   projects: MemberProjectActivity[];
   strengthSummaries: MemberStrengthSummary[];
   growth: MemberGrowthSnapshot;
+  growthAreas: MemberGrowthArea[];
+  kpt: MemberKPT;
 
   // Metadata
   lastAnalyzedAt: string;
@@ -183,6 +184,52 @@ export const TYPE_METADATA: Record<CodingStyleType, { emoji: string; label: stri
   trendsetter: { emoji: '🚀', label: 'Trendsetter', color: '#06B6D4' },  // Cyan
 };
 
+// Per-member growth area (from worker insights)
+export interface MemberGrowthArea {
+  title: string;
+  domain: string;       // 'thinkingQuality' | 'communicationPatterns' | ...
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  recommendation: string;
+}
+
+// Per-member KPT (Keep / Problem / Try)
+export interface MemberKPT {
+  keep: string[];
+  problem: string[];
+  tryNext: string[];
+}
+
+// Team-level growth area aggregate
+export interface TeamGrowthAreaAggregate {
+  title: string;
+  domain: string;
+  domainLabel: string;
+  memberCount: number;
+  affectedMembers: string[];
+  predominantSeverity: 'critical' | 'high' | 'medium' | 'low';
+  sampleRecommendation: string;
+}
+
+// Team-level KPT aggregate
+export interface TeamKPTItem {
+  text: string;
+  memberCount: number;
+  affectedMembers: string[];
+}
+
+export interface TeamKPTAggregate {
+  keep: TeamKPTItem[];
+  problem: TeamKPTItem[];
+  tryNext: TeamKPTItem[];
+}
+
+// Enhanced anti-pattern with description and actionable insight
+export interface EnhancedAntiPatternAggregate extends AntiPatternAggregate {
+  description: string;
+  affectedMembers: string[];
+  actionableInsight: string;
+}
+
 // Dimension metadata for display
 export const DIMENSION_METADATA: Record<keyof DimensionScores, { label: string; description: string }> = {
   aiCollaboration: {
@@ -196,10 +243,6 @@ export const DIMENSION_METADATA: Record<keyof DimensionScores, { label: string; 
   burnoutRisk: {
     label: 'Burnout Risk',
     description: 'Work pattern sustainability (lower is better)'
-  },
-  toolMastery: {
-    label: 'Tool Mastery',
-    description: 'Proficiency with AI development tools'
   },
   aiControl: {
     label: 'AI Control',

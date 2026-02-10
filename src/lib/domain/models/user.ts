@@ -270,7 +270,6 @@ export const TrackingMetricsSchema = z.object({
     aiCollaboration: z.number().min(0).max(100).optional(),
     promptEngineering: z.number().min(0).max(100).optional(),
     burnoutRisk: z.number().min(0).max(100).optional(),
-    toolMastery: z.number().min(0).max(100).optional(),
     aiControl: z.number().min(0).max(100).optional(),
     skillResilience: z.number().min(0).max(100).optional(),
   }).default({}),

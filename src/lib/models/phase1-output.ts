@@ -231,13 +231,6 @@ export const Phase1SessionMetricsSchema = z.object({
   }),
 
   /**
-   * LLM-autonomous tool usage counts (e.g., Read, Bash, Grep).
-   * These are tools the AI invoked on its own, NOT developer actions.
-   * Useful as secondary context for LLM behavior analysis.
-   */
-  toolUsageCounts: z.record(z.string(), z.number()).optional(),
-
-  /**
    * Developer-initiated slash command counts (e.g., /plan, /commit, /review).
    * These represent INTENTIONAL developer actions extracted from user messages.
    * Primary signal for "Conductor" type classification (active tool orchestration).
