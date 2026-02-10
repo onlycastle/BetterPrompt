@@ -2,7 +2,7 @@
 /**
  * no-ai-slop CLI
  *
- * Analyze your AI collaboration style with Claude Code
+ * See your AI anti-patterns in Claude Code sessions
  *
  * Usage:
  *   npx no-ai-slop          # Analyze sessions (login required)
@@ -658,7 +658,7 @@ async function main(): Promise<void> {
       console.log(pc.bold(pc.cyan('Usage:')) + ' npx no-ai-slop [command]');
       console.log('');
       console.log(pc.bold('Commands:'));
-      console.log('  (default)    Analyze your Claude Code sessions');
+      console.log('  (default)    See anti-patterns in your Claude Code sessions');
       console.log('  logout       Sign out from NoMoreAISlop');
       console.log('  status       Check your login status');
       console.log('  help         Show this help message');

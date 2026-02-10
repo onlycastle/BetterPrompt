@@ -154,7 +154,7 @@ export function displayResults(result: AnalysisResult): void {
 
   // Header - show matrix name (5×3 combination)
   const emoji = result.matrixEmoji || TYPE_EMOJIS[result.primaryType.toLowerCase()] || '🎯';
-  lines.push(pc.bold(`Your AI Collaboration Type: ${emoji} ${pc.cyan(result.matrixName.toUpperCase())}`));
+  lines.push(pc.bold(`Your Anti-Pattern Profile: ${emoji} ${pc.cyan(result.matrixName.toUpperCase())}`));
   lines.push(pc.dim(`(${result.primaryType.charAt(0).toUpperCase() + result.primaryType.slice(1)} × ${formatControlLevel(result.controlLevel)})`));
   lines.push('');
 
@@ -394,7 +394,7 @@ export async function confirmWithPrivacy(): Promise<boolean> {
 
   return new Promise((resolve) => {
     rl.question(
-      pc.cyan('Ready to discover your AI style? ') + pc.dim('(Y/n): '),
+      pc.cyan('Ready to see your anti-patterns? ') + pc.dim('(Y/n): '),
       (answer) => {
         rl.close();
         const normalized = answer.trim().toLowerCase();

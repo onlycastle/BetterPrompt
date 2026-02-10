@@ -56,8 +56,8 @@ export interface MilestoneConfig {
 // ============================================================================
 
 export const MILESTONES: MilestoneConfig[] = [
-  { percent: 50, expression: 'happy', bubble: 'Halfway there! Patterns are emerging from your sessions' },
-  { percent: 75, expression: 'wink', bubble: 'Almost done \u2014 your developer profile is taking shape' },
+  { percent: 50, expression: 'happy', bubble: 'Halfway there! Anti-patterns are surfacing from your sessions' },
+  { percent: 75, expression: 'wink', bubble: 'Almost done \u2014 your anti-pattern profile is taking shape' },
   { percent: 90, expression: 'excited', bubble: 'Finalizing your results \u2014 this is going to be interesting!' },
 ];
 
@@ -412,7 +412,7 @@ export function generatePersonalizedMessages(insights: SessionInsights): {
 
   tips.push({
     icon: '\uD83D\uDCA1',
-    text: '5 coding styles \u00D7 3 control levels = 15 unique developer types',
+    text: '5 developer archetypes \u00D7 3 control levels = 15 anti-pattern profiles',
   });
 
   tips.push({
@@ -434,11 +434,11 @@ export function generatePersonalizedMessages(insights: SessionInsights): {
 
 const ANALYZING_MESSAGES = [
   'Running AI analysis pipeline...',
-  'Studying your communication style with AI...',
+  'Scanning for communication anti-patterns...',
   'Evaluating your thinking patterns...',
-  'Analyzing your coding workflow...',
+  'Detecting workflow anti-patterns...',
   'Mapping your collaboration habits...',
-  'Profiling your AI interaction style...',
+  'Profiling your AI interaction patterns...',
   'Examining your tool usage patterns...',
   'Assessing your session dynamics...',
 ];

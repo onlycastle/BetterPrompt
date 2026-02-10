@@ -1,7 +1,7 @@
 {
   "name": "no-ai-slop",
   "version": "0.9.31",
-  "description": "Analyze your AI collaboration style with Claude Code",
+  "description": "See your AI anti-patterns in Claude Code sessions",
   "type": "module",
   "bin": {
     "no-ai-slop": "./dist/index.js"
