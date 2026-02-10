@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
       if (now - createdAt < ONE_MINUTE) {
         const provider = userData.user.app_metadata?.provider || 'email';
         sendSlackNotification({
-          text: `👤 새 회원가입! (CLI)\n• 이메일: ${userData.user.email}\n• Provider: ${provider}\n• 시간: ${formatKoreanTime()}`,
+          text: `👤 New Signup (CLI)\n• Email: ${userData.user.email}\n• Provider: ${provider}\n• Time: ${formatKoreanTime()}`,
         });
       }
     }

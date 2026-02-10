@@ -99,7 +99,7 @@ export async function pollForToken(deviceCode: string): Promise<PollResult> {
       status: 'success',
       tokens: {
         accessToken: data.access_token,
-        expiresIn: data.expires_in!,
+        expiresIn: data.expires_in ?? 1800,
       },
     };
   }

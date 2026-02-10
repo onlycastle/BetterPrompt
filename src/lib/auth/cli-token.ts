@@ -98,11 +98,12 @@ export async function validateCliToken(token: string): Promise<string | null> {
   }
 
   // Update last_used_at (fire and forget)
-  admin
-    .from('cli_tokens')
-    .update({ last_used_at: new Date().toISOString() })
-    .eq('id', data.id)
-    .then(() => {});
+  Promise.resolve(
+    admin
+      .from('cli_tokens')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('id', data.id)
+  ).catch((err: unknown) => console.error('[CLI Token] Failed to update last_used_at:', err));
 
   return data.user_id;
 }

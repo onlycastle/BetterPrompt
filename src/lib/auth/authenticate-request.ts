@@ -61,7 +61,8 @@ export async function authenticateRequest(
     }
 
     return { userId: user.id, source: 'web' };
-  } catch {
+  } catch (error) {
+    console.error('[Auth] Supabase JWT validation error:', error);
     return null;
   }
 }
