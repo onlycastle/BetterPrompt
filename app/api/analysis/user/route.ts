@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { authenticateRequest } from '@/lib/auth/authenticate-request';
 
 /**
  * Create a Supabase server client with cookie access (for auth)
@@ -50,33 +51,50 @@ function getSupabaseAdmin() {
 
 export async function GET(request: NextRequest) {
   try {
-    // 1. Verify user is authenticated
-    const supabase = await createSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // 1. Verify user is authenticated (CLI token via header, or web session via cookie)
+    const authHeader = request.headers.get('Authorization');
+    let userId: string;
 
-    console.log('[/api/analysis/user] Auth check:', {
-      hasUser: !!user,
-      userId: user?.id,
-      userEmail: user?.email,
-      authError: authError?.message,
-    });
+    if (authHeader) {
+      // CLI path: authenticate via Bearer token (CLI token or JWT)
+      const authResult = await authenticateRequest(authHeader);
+      if (!authResult) {
+        return NextResponse.json(
+          { error: 'Unauthorized', message: 'Invalid or expired token' },
+          { status: 401 }
+        );
+      }
+      userId = authResult.userId;
+      console.log('[/api/analysis/user] Auth via header:', { userId, source: authResult.source });
+    } else {
+      // Web path: authenticate via cookie session
+      const supabase = await createSupabaseServerClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized', message: 'Please sign in to view your analyses' },
-        { status: 401 }
-      );
+      console.log('[/api/analysis/user] Auth via cookie:', {
+        hasUser: !!user,
+        userId: user?.id,
+        authError: authError?.message,
+      });
+
+      if (authError || !user) {
+        return NextResponse.json(
+          { error: 'Unauthorized', message: 'Please sign in to view your analyses' },
+          { status: 401 }
+        );
+      }
+      userId = user.id;
     }
 
     // 2. Fetch user's claimed analyses from analysis_results
     const adminClient = getSupabaseAdmin();
 
-    console.log('[/api/analysis/user] Querying for user_id:', user.id);
+    console.log('[/api/analysis/user] Querying for user_id:', userId);
 
     const { data: results, error: fetchError } = await adminClient
       .from('analysis_results')
       .select('result_id, evaluation, is_paid, claimed_at, expires_at')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('claimed_at', { ascending: false });
 
     console.log('[/api/analysis/user] Query result:', {

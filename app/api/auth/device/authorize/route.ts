@@ -12,6 +12,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { sendSlackNotification, formatKoreanTime } from '@/lib/slack';
+import { createCliTokenForUser } from '@/lib/auth/cli-token';
 
 /**
  * Create a Supabase server client with cookie access
@@ -99,15 +100,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get current session to extract tokens
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) {
-      return NextResponse.json(
-        { error: 'unauthorized', message: 'No active session' },
-        { status: 401 }
-      );
-    }
-
     const admin = getSupabaseAdmin();
 
     // Find the device code by user_code
@@ -147,14 +139,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Link user to device code and store tokens
+    // Create a dedicated CLI token (independent of browser session)
+    const cliToken = await createCliTokenForUser(userData.user.id);
+
+    // Link user to device code and store CLI token
     const { error: updateError } = await admin
       .from('device_codes')
       .update({
         status: 'authorized',
         user_id: userData.user.id,
-        access_token: sessionData.session.access_token,
-        refresh_token: sessionData.session.refresh_token,
+        access_token: cliToken,
+        refresh_token: null,
         authorized_at: new Date().toISOString(),
       })
       .eq('device_code', deviceData.device_code);

@@ -102,8 +102,8 @@ export async function POST(request: NextRequest) {
         );
 
       case 'authorized':
-        // Get tokens from the stored session
-        if (!deviceData.user_id || !deviceData.access_token || !deviceData.refresh_token) {
+        // Get CLI token from stored authorization
+        if (!deviceData.user_id || !deviceData.access_token) {
           return NextResponse.json(
             { error: 'server_error', error_description: 'Authorization incomplete' },
             { status: 500 }
@@ -118,9 +118,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           access_token: deviceData.access_token,
-          refresh_token: deviceData.refresh_token,
           token_type: 'Bearer',
-          expires_in: 3600, // 1 hour
+          expires_in: 30 * 24 * 3600, // 30 days
         });
 
       case 'used':
