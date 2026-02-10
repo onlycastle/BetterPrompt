@@ -29,6 +29,8 @@ export interface SessionInsights {
   busiestDay: { day: string; count: number };
   avgSessionMinutes: number;
   sourceBreakdown: Map<string, number>;
+  rhythm: { sprints: number; deepDives: number; marathons: number };
+  peakHours: { peakStart: number; peakEnd: number; label: string } | null;
 }
 
 export interface AnalysisMessage {
@@ -62,6 +64,7 @@ export function computeSessionInsights(sessions: SessionWithParsed[]): SessionIn
   const projectCounts = new Map<string, number>();
   const toolCounts = new Map<string, number>();
   const dayCounts = new Array<number>(7).fill(0);
+  const hourCounts = new Array<number>(24).fill(0);
   const sourceBreakdown = new Map<string, number>();
 
   let totalMessages = 0;
@@ -74,6 +77,9 @@ export function computeSessionInsights(sessions: SessionWithParsed[]): SessionIn
   let longestProject = '';
   let minDate = Infinity;
   let maxDate = -Infinity;
+  let sprints = 0;
+  let deepDives = 0;
+  let marathons = 0;
 
   for (const session of sessions) {
     const { metadata, parsed } = session;
@@ -109,6 +115,12 @@ export function computeSessionInsights(sessions: SessionWithParsed[]): SessionIn
     if (ts < minDate) minDate = ts;
     if (ts > maxDate) maxDate = ts;
     dayCounts[metadata.timestamp.getDay()]++;
+    hourCounts[metadata.timestamp.getHours()]++;
+
+    // Rhythm classification
+    if (dur < 600) sprints++;
+    else if (dur <= 1800) deepDives++;
+    else marathons++;
 
     // Source breakdown
     const source = metadata.source ?? 'claude-code';
@@ -139,6 +151,29 @@ export function computeSessionInsights(sessions: SessionWithParsed[]): SessionIn
 
   const totalDurationMinutes = Math.round(totalDurationSec / 60);
 
+  // Peak hours: best 3-hour sliding window
+  let peakHours: SessionInsights['peakHours'] = null;
+  if (sessions.length > 3) {
+    let bestSum = 0;
+    let bestStart = 0;
+    for (let h = 0; h < 24; h++) {
+      const sum = hourCounts[h] + hourCounts[(h + 1) % 24] + hourCounts[(h + 2) % 24];
+      if (sum > bestSum) {
+        bestSum = sum;
+        bestStart = h;
+      }
+    }
+    if (bestSum > 0) {
+      const peakEnd = (bestStart + 2) % 24;
+      let label: string;
+      if (bestStart >= 5 && bestStart < 12) label = 'Morning';
+      else if (bestStart >= 12 && bestStart < 17) label = 'Afternoon';
+      else if (bestStart >= 17 && bestStart < 21) label = 'Evening';
+      else label = 'Night';
+      peakHours = { peakStart: bestStart, peakEnd, label };
+    }
+  }
+
   return {
     sessionCount: sessions.length,
     projectCount: projectCounts.size,
@@ -161,6 +196,8 @@ export function computeSessionInsights(sessions: SessionWithParsed[]): SessionIn
     busiestDay: { day: DAY_NAMES[busiestIdx], count: dayCounts[busiestIdx] },
     avgSessionMinutes: sessions.length > 0 ? Math.round(totalDurationMinutes / sessions.length) : 0,
     sourceBreakdown,
+    rhythm: { sprints, deepDives, marathons },
+    peakHours,
   };
 }
 
@@ -168,7 +205,7 @@ export function computeSessionInsights(sessions: SessionWithParsed[]): SessionIn
 // Format Helpers
 // ============================================================================
 
-function formatNumber(n: number): string {
+export function formatNumber(n: number): string {
   return n.toLocaleString('en-US');
 }
 
