@@ -8,38 +8,6 @@
   display: flex;
   gap: var(--space-sm);
   flex-wrap: wrap;
-  align-items: center;
-}
-
-.searchBox {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  border: 2px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  padding: var(--space-xs) var(--space-sm);
-  flex: 1;
-  min-width: 200px;
-  transition: border-color var(--transition-fast);
-}
-
-.searchBox:focus-within {
-  border-color: var(--sketch-cyan);
-}
-
-.searchIcon {
-  color: var(--ink-muted);
-  flex-shrink: 0;
-}
-
-.searchInput {
-  border: none;
-  outline: none;
-  background: transparent;
-  font-family: var(--font-primary);
-  font-size: var(--text-sm);
-  color: var(--ink-primary);
-  width: 100%;
 }
 
 .select {
@@ -95,6 +63,12 @@
   background: var(--surface-2);
 }
 
+.rank {
+  font-weight: var(--weight-bold);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
 .nameCell {
   display: flex;
   align-items: center;
@@ -120,20 +94,9 @@
   color: var(--ink-primary);
 }
 
-.memberEmail {
+.memberRole {
   font-size: var(--text-xs);
   color: var(--ink-muted);
-}
-
-.typeBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  font-size: var(--text-xs);
-  padding: 2px var(--space-sm);
-  border-radius: var(--radius-full);
-  border: 1.5px solid;
-  background: transparent;
 }
 
 .scoreCell {
@@ -147,26 +110,24 @@
   font-size: var(--text-sm);
 }
 
-/* Clickable rows */
-.clickableRow {
-  cursor: pointer;
+.deltaPositive {
+  color: var(--sketch-green-text);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
 }
 
-.clickableRow:hover {
-  background: var(--surface-2);
+.deltaNegative {
+  color: var(--sketch-red-text);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
 }
 
-.rowArrow {
+.deltaNeutral {
   color: var(--ink-muted);
-  transition: transform var(--transition-fast), color var(--transition-fast);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
 }
 
-.clickableRow:hover .rowArrow {
-  color: var(--sketch-cyan);
-  transform: translateX(2px);
-}
-
-/* Trend badge */
 .trendBadge {
   display: inline-block;
   font-size: var(--text-xs);
@@ -174,55 +135,29 @@
   padding: 2px var(--space-sm);
   border-radius: var(--radius-full);
   border: 1.5px solid;
-  white-space: nowrap;
 }
 
 .trendImproving {
   color: var(--sketch-green-text);
   border-color: var(--sketch-green-text);
+  background: transparent;
 }
 
 .trendStable {
   color: var(--ink-muted);
   border-color: var(--border-default);
+  background: transparent;
 }
 
 .trendDeclining {
   color: var(--sketch-red-text);
   border-color: var(--sketch-red-text);
+  background: transparent;
 }
 
-/* Session count */
-.sessionCount {
-  font-weight: var(--weight-semibold);
+.strengthText {
   font-size: var(--text-sm);
-}
-
-/* Issue indicators */
-.issueCell {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-}
-
-.issueDot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-}
-
-.issueDotHigh {
-  background: var(--sketch-red);
-}
-
-.issueDotMedium {
-  background: var(--accent-amber);
-}
-
-.issueCount {
-  font-weight: var(--weight-semibold);
-  font-size: var(--text-sm);
+  color: var(--ink-secondary);
 }
 
 .emptyRow {
@@ -232,34 +167,11 @@
   font-size: var(--text-sm);
 }
 
-/* Action buttons */
-.actions {
-  display: flex;
-  gap: var(--space-xs);
-}
-
-.actionBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1.5px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--ink-muted);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.actionBtn:hover {
-  border-color: var(--sketch-cyan);
-  color: var(--sketch-cyan);
-  background: var(--sketch-cyan-soft);
-}
-
-.dangerBtn:hover {
-  border-color: var(--sketch-red);
-  color: var(--sketch-red);
-  background: var(--sketch-red-soft);
+@media (max-width: 768px) {
+  .th:nth-child(6),
+  .td:nth-child(6),
+  .th:nth-child(7),
+  .td:nth-child(7) {
+    display: none;
+  }
 }

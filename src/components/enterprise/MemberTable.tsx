@@ -6,16 +6,24 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, Pencil, Trash2 } from 'lucide-react';
+import { Search, Pencil, Trash2, ChevronRight } from 'lucide-react';
 import { ProgressRing } from '../dashboard/ProgressRing';
 import { TYPE_METADATA } from '../../types/enterprise';
 import type { TeamMemberAnalysis, CodingStyleType } from '../../types/enterprise';
 import styles from './MemberTable.module.css';
 
+const TREND_CONFIG = {
+  improving: { label: 'Improving', arrow: '↑', className: 'trendImproving' },
+  stable: { label: 'Stable', arrow: '→', className: 'trendStable' },
+  declining: { label: 'Declining', arrow: '↓', className: 'trendDeclining' },
+} as const;
+
 export interface MemberTableProps {
   members: TeamMemberAnalysis[];
   /** Show department column (for org-wide view) */
   showDepartment?: boolean;
+  /** Callback when a row is clicked (enables clickable rows) */
+  onRowClick?: (member: TeamMemberAnalysis) => void;
   /** Callback when edit action is clicked */
   onEdit?: (member: TeamMemberAnalysis) => void;
   /** Callback when remove action is clicked */
@@ -27,8 +35,9 @@ type SortDir = 'asc' | 'desc';
 
 const ALL_TYPES: CodingStyleType[] = ['architect', 'analyst', 'conductor', 'speedrunner', 'trendsetter'];
 
-export function MemberTable({ members, showDepartment = false, onEdit, onRemove }: MemberTableProps) {
+export function MemberTable({ members, showDepartment = false, onRowClick, onEdit, onRemove }: MemberTableProps) {
   const hasActions = !!onEdit || !!onRemove;
+  const isClickable = !!onRowClick;
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<CodingStyleType | 'all'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('overallScore');
@@ -123,15 +132,25 @@ export function MemberTable({ members, showDepartment = false, onEdit, onRemove 
               <th className={styles.th} onClick={() => handleSort('overallScore')}>
                 Score{sortIndicator('overallScore')}
               </th>
-              <th className={styles.th}>Analyses</th>
+              <th className={styles.th}>Growth</th>
+              <th className={styles.th}>Sessions</th>
+              <th className={styles.th}>Issues</th>
               {hasActions && <th className={styles.th}>Actions</th>}
+              {isClickable && <th className={styles.th} aria-label="Navigate" />}
             </tr>
           </thead>
           <tbody>
             {filtered.map(member => {
               const meta = TYPE_METADATA[member.primaryType];
+              const tc = TREND_CONFIG[member.growth.trend];
+              const issueCount = member.antiPatterns.length;
+              const highImpact = member.antiPatterns.some(ap => ap.impact === 'high');
               return (
-                <tr key={member.id} className={styles.row}>
+                <tr
+                  key={member.id}
+                  className={`${styles.row} ${isClickable ? styles.clickableRow : ''}`}
+                  onClick={isClickable ? () => onRowClick(member) : undefined}
+                >
                   <td className={styles.td}>
                     <div className={styles.nameCell}>
                       <div className={styles.avatar}>
@@ -158,21 +177,41 @@ export function MemberTable({ members, showDepartment = false, onEdit, onRemove 
                       <span className={styles.scoreText}>{member.overallScore}</span>
                     </div>
                   </td>
-                  <td className={styles.td}>{member.analysisCount}</td>
+                  <td className={styles.td}>
+                    <span className={`${styles.trendBadge} ${styles[tc.className]}`}>
+                      {tc.arrow} {tc.label}
+                    </span>
+                  </td>
+                  <td className={styles.td}>
+                    <span className={styles.sessionCount}>{member.tokenUsage.totalSessions}</span>
+                  </td>
+                  <td className={styles.td}>
+                    <div className={styles.issueCell}>
+                      {issueCount > 0 && (
+                        <span className={`${styles.issueDot} ${highImpact ? styles.issueDotHigh : styles.issueDotMedium}`} />
+                      )}
+                      <span className={styles.issueCount}>{issueCount}</span>
+                    </div>
+                  </td>
                   {hasActions && (
                     <td className={styles.td}>
                       <div className={styles.actions}>
                         {onEdit && (
-                          <button className={styles.actionBtn} onClick={() => onEdit(member)} title="Edit">
+                          <button className={styles.actionBtn} onClick={e => { e.stopPropagation(); onEdit(member); }} title="Edit">
                             <Pencil size={14} />
                           </button>
                         )}
                         {onRemove && (
-                          <button className={`${styles.actionBtn} ${styles.dangerBtn}`} onClick={() => onRemove(member)} title="Remove">
+                          <button className={`${styles.actionBtn} ${styles.dangerBtn}`} onClick={e => { e.stopPropagation(); onRemove(member); }} title="Remove">
                             <Trash2 size={14} />
                           </button>
                         )}
                       </div>
+                    </td>
+                  )}
+                  {isClickable && (
+                    <td className={styles.td}>
+                      <ChevronRight size={16} className={styles.rowArrow} />
                     </td>
                   )}
                 </tr>
@@ -180,7 +219,7 @@ export function MemberTable({ members, showDepartment = false, onEdit, onRemove 
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={(showDepartment ? 6 : 5) + (hasActions ? 1 : 0)} className={styles.emptyRow}>
+                <td colSpan={(showDepartment ? 8 : 7) + (hasActions ? 1 : 0) + (isClickable ? 1 : 0)} className={styles.emptyRow}>
                   No members found
                 </td>
               </tr>
