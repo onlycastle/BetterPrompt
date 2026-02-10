@@ -381,7 +381,6 @@ describe('AnalysisOrchestrator', () => {
 
         expect(result).toBeDefined();
         expect(result.evaluation.personalitySummary).toBeDefined();
-        expect(result.evaluation.dimensionInsights).toBeDefined();
       });
 
       it('should receive Phase 1 outputs in content writer', async () => {

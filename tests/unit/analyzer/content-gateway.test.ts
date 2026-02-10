@@ -37,133 +37,6 @@ describe('ContentGateway', () => {
       personalitySummary:
         'You are a strategic thinker who approaches problems methodically. Your sessions reveal a strong preference for planning.',
 
-      // Dimension insights (6 dimensions)
-      dimensionInsights: [
-        {
-          dimension: 'aiCollaboration',
-          dimensionDisplayName: 'AI Collaboration',
-          strengths: [
-            {
-              title: 'Strong Planning',
-              description: 'Uses structured approach',
-              evidence: [
-                {
-                  quote: 'Let me plan this out first',
-                  sessionDate: '2024-01-01',
-                  context: 'Starting feature implementation',
-                },
-              ],
-            },
-          ],
-          growthAreas: [
-            {
-              title: 'Tool Usage',
-              description: 'Could leverage more tools',
-              evidence: [
-                {
-                  quote: 'I will do this manually',
-                  sessionDate: '2024-01-02',
-                  context: 'Missed opportunity for automation',
-                },
-              ],
-              recommendation: 'Try using automation tools',
-            },
-          ],
-        },
-        {
-          dimension: 'contextEngineering',
-          dimensionDisplayName: 'Context Engineering',
-          strengths: [
-            {
-              title: 'Context Clarity',
-              description: 'Provides clear context',
-              evidence: [
-                {
-                  quote: 'Here is the background',
-                  sessionDate: '2024-01-01',
-                  context: 'Explaining requirements',
-                },
-              ],
-            },
-          ],
-          growthAreas: [],
-        },
-        {
-          dimension: 'toolMastery',
-          dimensionDisplayName: 'Tool Mastery',
-          strengths: [],
-          growthAreas: [
-            {
-              title: 'Learn Advanced Tools',
-              description: 'Expand tool knowledge',
-              evidence: [
-                {
-                  quote: 'I did not know about that tool',
-                  sessionDate: '2024-01-03',
-                  context: 'Discovering new capabilities',
-                },
-              ],
-              recommendation: 'Explore documentation',
-            },
-          ],
-        },
-        {
-          dimension: 'burnoutRisk',
-          dimensionDisplayName: 'Burnout Risk',
-          strengths: [
-            {
-              title: 'Balanced Approach',
-              description: 'Takes breaks appropriately',
-              evidence: [
-                {
-                  quote: 'Let me take a step back',
-                  sessionDate: '2024-01-04',
-                  context: 'Avoiding overwhelm',
-                },
-              ],
-            },
-          ],
-          growthAreas: [],
-        },
-        {
-          dimension: 'aiControl',
-          dimensionDisplayName: 'AI Control',
-          strengths: [
-            {
-              title: 'Maintains Control',
-              description: 'Always verifies AI output',
-              evidence: [
-                {
-                  quote: 'Let me review that code',
-                  sessionDate: '2024-01-05',
-                  context: 'Code review',
-                },
-              ],
-            },
-          ],
-          growthAreas: [],
-        },
-        {
-          dimension: 'skillResilience',
-          dimensionDisplayName: 'Skill Resilience',
-          strengths: [],
-          growthAreas: [
-            {
-              title: 'Deepen Understanding',
-              description: 'Strengthen core skills',
-              evidence: [
-                {
-                  quote: 'How does this work internally',
-                  sessionDate: '2024-01-06',
-                  context: 'Learning opportunity',
-                },
-              ],
-              recommendation: 'Study fundamentals',
-            },
-          ],
-        },
-      ],
-
       // Prompt patterns
       promptPatterns: [
         {
@@ -400,31 +273,6 @@ describe('ContentGateway', () => {
         expect(filtered.personalitySummary).toBe(fullEvaluation.personalitySummary);
       });
 
-      it('should keep first 2 dimension insights fully detailed', () => {
-        const filtered = gateway.filter(fullEvaluation, 'free');
-
-        // First 2 dimensions should have full details
-        expect(filtered.dimensionInsights[0]).toEqual(fullEvaluation.dimensionInsights[0]);
-        expect(filtered.dimensionInsights[1]).toEqual(fullEvaluation.dimensionInsights[1]);
-      });
-
-      it('should empty strengths/growthAreas for dimensions 3-6', () => {
-        const filtered = gateway.filter(fullEvaluation, 'free');
-
-        // Dimensions 3-6 should have empty arrays
-        for (let i = 2; i < 6; i++) {
-          expect(filtered.dimensionInsights[i].strengths).toEqual([]);
-          expect(filtered.dimensionInsights[i].growthAreas).toEqual([]);
-          // But should keep dimension metadata
-          expect(filtered.dimensionInsights[i].dimension).toBe(
-            fullEvaluation.dimensionInsights[i].dimension
-          );
-          expect(filtered.dimensionInsights[i].dimensionDisplayName).toBe(
-            fullEvaluation.dimensionInsights[i].dimensionDisplayName
-          );
-        }
-      });
-
       it('should have empty prompt patterns', () => {
         const filtered = gateway.filter(fullEvaluation, 'free');
 
@@ -469,12 +317,6 @@ describe('ContentGateway', () => {
     });
 
     describe('pro tier', () => {
-      it('should keep all 6 dimension insights fully detailed', () => {
-        const filtered = gateway.filter(fullEvaluation, 'pro');
-
-        expect(filtered.dimensionInsights).toEqual(fullEvaluation.dimensionInsights);
-      });
-
       it('should keep all prompt patterns', () => {
         const filtered = gateway.filter(fullEvaluation, 'pro');
 
@@ -601,10 +443,6 @@ describe('ContentGateway', () => {
       expect(TIER_POLICY.workerInsights.growthAreas.prescription).toBe('paid');
     });
 
-    it('should define dimensionInsights policy correctly', () => {
-      expect(TIER_POLICY.dimensionInsights.freeCount).toBe(2);
-    });
-
     it('should define resources policy correctly', () => {
       expect(TIER_POLICY.resources.freeLimit).toBe(1);
     });
@@ -685,8 +523,7 @@ describe('ContentGateway', () => {
       const freeTier = gateway.filter(fullEvaluation, 'free');
       const proTier = gateway.filter(fullEvaluation, 'pro');
 
-      // Free tier: 2 full dimensions, no prompt patterns, teaser agentOutputs
-      expect(freeTier.dimensionInsights[2].strengths).toEqual([]);
+      // Free tier: no prompt patterns, teaser agentOutputs
       expect(freeTier.promptPatterns).toEqual([]);
       expect(freeTier.toolUsageDeepDive).toBeUndefined();
       expect(freeTier.productivityAnalysis).toBeUndefined();
@@ -694,8 +531,7 @@ describe('ContentGateway', () => {
       expect(freeTier.agentOutputs).toBeDefined();
       expect(freeTier.agentOutputs?.contextEfficiency?.topInsights).toHaveLength(2);
 
-      // Pro tier: full access (all dimensions, prompt patterns, analytics, agents)
-      expect(proTier.dimensionInsights[2].strengths).toBeTruthy();
+      // Pro tier: full access (prompt patterns, analytics, agents)
       expect(proTier.promptPatterns.length).toBeGreaterThan(0);
       expect(proTier.toolUsageDeepDive).toBeDefined();
       expect(proTier.productivityAnalysis).toBeDefined();
@@ -705,8 +541,7 @@ describe('ContentGateway', () => {
     it('should give one_time tier full access (same as pro)', () => {
       const oneTimeTier = gateway.filter(fullEvaluation, 'one_time');
 
-      // One-time tier: full access (all dimensions, prompt patterns, analytics, agents)
-      expect(oneTimeTier.dimensionInsights[2].strengths).toBeTruthy();
+      // One-time tier: full access (prompt patterns, analytics, agents)
       expect(oneTimeTier.promptPatterns.length).toBeGreaterThan(0);
       expect(oneTimeTier.toolUsageDeepDive).toBeDefined();
       expect(oneTimeTier.productivityAnalysis).toBeDefined();
@@ -716,8 +551,7 @@ describe('ContentGateway', () => {
     it('should give enterprise tier full access (same as pro)', () => {
       const enterpriseTier = gateway.filter(fullEvaluation, 'enterprise');
 
-      // Enterprise tier: full access (all dimensions, prompt patterns, analytics, agents)
-      expect(enterpriseTier.dimensionInsights[2].strengths).toBeTruthy();
+      // Enterprise tier: full access (prompt patterns, analytics, agents)
       expect(enterpriseTier.promptPatterns.length).toBeGreaterThan(0);
       expect(enterpriseTier.toolUsageDeepDive).toBeDefined();
       expect(enterpriseTier.productivityAnalysis).toBeDefined();

@@ -14,11 +14,11 @@
  *
  * // Filter for free tier user
  * const freeVersion = gateway.filter(fullEvaluation, 'free');
- * // Returns: type result, personalitySummary, first 2 dimensions (full), rest empty
+ * // Returns: type result, personalitySummary, free workerInsights domains, rest locked
  *
  * // Filter for pro tier user (full access)
  * const proVersion = gateway.filter(fullEvaluation, 'pro');
- * // Returns: all content including dimensions, prompt patterns, analytics
+ * // Returns: all content including worker insights, prompt patterns, analytics
  *
  * // Create preview for locked content
  * const preview = gateway.createPremiumPreview(fullEvaluation);
@@ -28,14 +28,15 @@
 
 import type {
   VerboseEvaluation,
-  PerDimensionInsight,
   DimensionResourceMatch,
   MatchedKnowledgeItem,
   MatchedProfessionalInsight,
   TopFocusAreas,
+  TranslatedAgentInsights,
 } from '../models/verbose-evaluation';
 import type { AgentOutputs } from '../models/agent-outputs';
 import type { WorkerGrowth, WorkerInsightsContainer } from '../models/worker-insights';
+import { WORKER_DOMAIN_CONFIGS } from '../models/worker-insights';
 import { FREE_AGENT_IDS } from '../domain/models';
 
 // Extract the workerInsights type from VerboseEvaluation for type safety
@@ -66,14 +67,10 @@ export const TIER_POLICY = {
     },
     /** Max chars for blurred recommendation preview in free tier */
     recommendationPreviewLength: 100,
+    /** Max chars for blurred description preview in locked domain teasers */
+    descriptionPreviewLength: 80,
     /** Worker domains shown in full for free tier (rest are locked to teaser) */
     freeDomains: ['thinkingQuality'] as const,
-  },
-
-  /** Dimension insights filtering */
-  dimensionInsights: {
-    /** Number of dimensions shown with full detail for free tier */
-    freeCount: 2,
   },
 
   /** Knowledge resources filtering */
@@ -151,8 +148,8 @@ export interface PremiumPreview {
  * ContentGateway filters verbose evaluation content based on user tier.
  *
  * Tier Access Matrix (4-tier system):
- * - Free: Type result, personalitySummary, first 2 dimensionInsights (full detail), rest get empty arrays
- * - One-time/Pro/Enterprise: Full access - all dimensions, prompt patterns, analytics, agent outputs
+ * - Free: Type result, personalitySummary, free workerInsights domains, locked teasers for rest
+ * - One-time/Pro/Enterprise: Full access - all worker domains, prompt patterns, analytics, agent outputs
  *
  * @example
  * ```typescript
@@ -251,25 +248,14 @@ export class ContentGateway {
    * Free tier gets:
    * - Type result (primaryType, controlLevel, distribution)
    * - Personality summary
-   * - First 2 dimension insights (fully detailed)
-   * - Remaining 4 dimensions get empty strengths/growthAreas arrays (teaser)
+   * - Free workerInsights domains (full strengths + diagnosis + recommendation preview)
+   * - Locked workerInsights domains (header + score + first strength/growth title only)
    * - No prompt patterns
    * - No actionable practices
    * - No anti-patterns/critical thinking/planning analysis
    * - No premium analytics fields
    */
   private filterFree(evaluation: VerboseEvaluation): VerboseEvaluation {
-    // Filter dimension insights - first 2 full, rest empty
-    const filteredInsights = evaluation.dimensionInsights.map((insight, index) => {
-      if (index < 2) {
-        // First 2 dimensions: keep all details
-        return insight;
-      } else {
-        // Remaining dimensions: show structure but empty arrays
-        return this.emptyDimensionInsight(insight);
-      }
-    });
-
     return {
       // Metadata (all tiers)
       sessionId: evaluation.sessionId,
@@ -286,9 +272,6 @@ export class ContentGateway {
 
       // Personality summary (free)
       personalitySummary: evaluation.personalitySummary,
-
-      // Dimension insights (first 2 only)
-      dimensionInsights: filteredInsights,
 
       // Deprecated fields (keep for backward compatibility)
       strengths: evaluation.strengths,
@@ -384,18 +367,6 @@ export class ContentGateway {
     };
   }
 
-  /**
-   * Create an empty dimension insight (keeps structure but removes content)
-   */
-  private emptyDimensionInsight(insight: PerDimensionInsight): PerDimensionInsight {
-    return {
-      dimension: insight.dimension,
-      dimensionDisplayName: insight.dimensionDisplayName,
-      strengths: [], // Empty - locked for free tier
-      growthAreas: [], // Empty - locked for free tier
-    };
-  }
-
   // ==========================================================================
   // Worker Insights Filtering (Phase 2 v3 Workers)
   // ==========================================================================
@@ -447,6 +418,34 @@ export class ContentGateway {
   }
 
   /**
+   * Filter translated agent insights based on tier.
+   *
+   * Removes translation data for locked worker domains so frontend
+   * isDomainLocked() detection works correctly. Without this, translated
+   * descriptions overwrite empty (locked) descriptions via applyTranslatedStrengths().
+   */
+  filterTranslatedInsights(
+    translated: TranslatedAgentInsights | undefined,
+    tier: Tier
+  ): TranslatedAgentInsights | undefined {
+    if (!translated) return undefined;
+    if (tier !== 'free') return translated;
+
+    const { freeDomains } = TIER_POLICY.workerInsights;
+    const workerDomainKeys = WORKER_DOMAIN_CONFIGS.map(c => c.key as string);
+    const filtered = { ...translated };
+
+    // Remove translation data for locked domains (keep only freeDomains)
+    for (const key of Object.keys(filtered)) {
+      if (workerDomainKeys.includes(key) && !(freeDomains as readonly string[]).includes(key)) {
+        delete (filtered as Record<string, unknown>)[key];
+      }
+    }
+
+    return filtered;
+  }
+
+  /**
    * Lock recommendation with a blurred preview for free tier.
    * Keeps diagnosis fields and adds truncated recommendationPreview.
    */
@@ -466,15 +465,18 @@ export class ContentGateway {
    * Frontend detects via: strengths[0].description === '' && growthAreas[0].description === ''
    */
   private createLockedDomainTeaser(domain: WorkerInsightsContainer): WorkerInsightsContainer {
+    const { descriptionPreviewLength } = TIER_POLICY.workerInsights;
     return {
       strengths: domain.strengths.slice(0, 1).map(s => ({
         ...s,
         description: '',
+        descriptionPreview: s.description.slice(0, descriptionPreviewLength),
         evidence: [],
       })),
       growthAreas: domain.growthAreas.slice(0, 1).map(g => ({
         ...g,
         description: '',
+        descriptionPreview: g.description.slice(0, descriptionPreviewLength),
         evidence: [],
         recommendation: '',
       })),

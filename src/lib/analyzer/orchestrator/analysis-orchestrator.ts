@@ -45,6 +45,8 @@ import { EvidenceVerifierStage, type EvidenceVerifierResult } from '../stages/ev
 import { SessionSummarizerStage, type SessionSummarizerResult } from '../stages/session-summarizer';
 import { ProjectSummarizerStage, type ProjectSummarizerResult } from '../stages/project-summarizer';
 import { WeeklyInsightGeneratorStage, type WeeklyInsightGeneratorResult } from '../stages/weekly-insight-generator';
+import { computeDeterministicScores, type DeterministicScores } from '../stages/deterministic-scorer';
+import { computeDeterministicType, type DeterministicTypeResult } from '../stages/deterministic-type-mapper';
 import type {
   WorkerResult,
   WorkerContext,
@@ -314,6 +316,26 @@ export class AnalysisOrchestrator {
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // Phase 1.1: Deterministic Scoring (rubric-based, no LLM)
+    // Computes domain scores from Phase 1 metrics for consistency.
+    // These scores replace LLM-generated overallScore values.
+    // ─────────────────────────────────────────────────────────────────────
+    this.log('Phase 1.1: Deterministic Scoring (rubric-based)...');
+    const deterministicScores = computeDeterministicScores(phase1Results.dataExtractor.data);
+    this.log(`Deterministic scores: CE=${deterministicScores.contextEfficiency} SO=${deterministicScores.sessionOutcome} TQ=${deterministicScores.thinkingQuality} LB=${deterministicScores.learningBehavior} CP=${deterministicScores.communicationPatterns} CS=${deterministicScores.controlScore}`);
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Phase 1.2: Deterministic Type Mapping (rule-based, no LLM)
+    // Classifies developer type from deterministic scores.
+    // TypeClassifier LLM still generates reasoning narrative.
+    // ─────────────────────────────────────────────────────────────────────
+    this.log('Phase 1.2: Deterministic Type Mapping (rule-based)...');
+    const deterministicTypeResult = computeDeterministicType(deterministicScores, phase1Results.dataExtractor.data);
+    this.log(`Deterministic type: ${deterministicTypeResult.primaryType} (${deterministicTypeResult.matrixName} ${deterministicTypeResult.matrixEmoji})`);
+    this.log(`Deterministic control: ${deterministicTypeResult.controlLevel} (${deterministicTypeResult.controlScore})`);
+    this.log(`Deterministic distribution: ${JSON.stringify(deterministicTypeResult.distribution)}`);
+
+    // ─────────────────────────────────────────────────────────────────────
     // Phase 1.5: Session Summarization (LLM — 1 call)
     // Generates 1-line summaries for each analyzed session.
     // These are stored in evaluation.sessionSummaries.
@@ -443,6 +465,7 @@ export class AnalysisOrchestrator {
           const phase2Context: WorkerContext & { phase1Output?: Phase1Output } = {
             ...baseContext,
             phase1Output: phase1Results.dataExtractor.data,
+            deterministicScores,
           };
 
           this.log(`Phase 2 context - tier: ${phase2Context.tier}, sessions: ${phase2Context.sessions.length}, hasPhase1Output: ${!!phase2Context.phase1Output}`);
@@ -475,6 +498,10 @@ export class AnalysisOrchestrator {
           }
 
           agentOutputs = this.mergeAgentOutputs(phase2Results);
+
+          // Safety net: ensure deterministic scores are applied to merged outputs
+          this.applyDeterministicScores(agentOutputs, deterministicScores);
+
           this.log(`Merged agentOutputs keys: ${Object.keys(agentOutputs).join(', ')}`);
 
           // Emit phase preview for each worker result
@@ -507,6 +534,8 @@ export class AnalysisOrchestrator {
       const phase2Point5Start = Date.now();
       const phase2Point5Context: WorkerContext = {
         ...baseContext,
+        deterministicScores,
+        deterministicTypeResult,
       };
 
       const phase2Point5Results = await this.runPhase2Point5(
@@ -901,6 +930,30 @@ export class AnalysisOrchestrator {
   // ─────────────────────────────────────────────────────────────────────────
   // Helper Methods
   // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Apply deterministic scores to agent outputs as a safety net.
+   *
+   * Workers should already apply these during execute(), but this ensures
+   * consistency in case a worker misses the override.
+   */
+  private applyDeterministicScores(outputs: AgentOutputs, scores: DeterministicScores): void {
+    if (outputs.thinkingQuality) {
+      outputs.thinkingQuality.overallThinkingQualityScore = scores.thinkingQuality;
+    }
+    if (outputs.communicationPatterns) {
+      outputs.communicationPatterns.overallCommunicationScore = scores.communicationPatterns;
+    }
+    if (outputs.learningBehavior) {
+      outputs.learningBehavior.overallLearningScore = scores.learningBehavior;
+    }
+    if (outputs.efficiency) {
+      outputs.efficiency.overallEfficiencyScore = scores.contextEfficiency;
+    }
+    if (outputs.sessionOutcome) {
+      outputs.sessionOutcome.overallOutcomeScore = scores.sessionOutcome;
+    }
+  }
 
   private mergeAgentOutputs(results: Record<string, WorkerResult<unknown> | undefined>): AgentOutputs {
     return {
