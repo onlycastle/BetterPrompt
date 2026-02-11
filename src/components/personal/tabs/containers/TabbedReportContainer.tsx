@@ -19,9 +19,9 @@ import { ResourceSidebar } from '../resources/ResourceSidebar';
 import { ReportSummarySection } from '../shared/ReportSummarySection';
 import { TopFocusAreasSection } from '../focus/TopFocusAreasSection';
 import { useScrollSpy } from '../../../../hooks/useScrollSpy';
-import { useActiveTimer } from '../../../../hooks/useActiveTimer';
-import { useSurveyTrigger } from '../../../../hooks/useSurveyTrigger';
+import { SurveyInlineCard } from '../../../report/SurveyInlineCard';
 import { SurveyBottomSheet } from '../../../report/SurveyBottomSheet';
+import type { DisappointmentLevel } from '../../../report/SurveyBottomSheet';
 import type { VerboseAnalysisData, AnalysisMetadata, DimensionResourceMatch } from '../../../../types/verbose';
 import type { AgentOutputs, ParsedResource } from '../../../../lib/models/agent-outputs';
 import { aggregateWorkerInsights } from '../../../../lib/models/agent-outputs';
@@ -186,13 +186,9 @@ export function TabbedReportContainer({
     }
   }, [activeTab]);
 
-  // Survey trigger: active time tracking + composite condition
-  const activeTimeReached = useActiveTimer(120);
-  const { shouldShow: shouldShowSurvey, dismiss: dismissSurvey } = useSurveyTrigger({
-    activeTimeReached,
-    visitedSections,
-    resultId: reportId ?? '',
-  });
+  // Survey enrichment mode: inline card captures PMF score, optional bottom sheet for Steps 2-4
+  const [enrichmentOpen, setEnrichmentOpen] = useState(false);
+  const [enrichmentLevel, setEnrichmentLevel] = useState<DisappointmentLevel | null>(null);
 
   // FloatingProgressDots visibility: show when header scrolls out of view
   const [navVisible, setNavVisible] = useState(false);
@@ -672,6 +668,17 @@ export function TabbedReportContainer({
               />
             </div>
           )}
+
+          {/* PMF Survey Inline Card — after all sections */}
+          {reportId && (
+            <SurveyInlineCard
+              resultId={reportId}
+              onExpand={(level) => {
+                setEnrichmentLevel(level);
+                setEnrichmentOpen(true);
+              }}
+            />
+          )}
         </div>
       </div>
 
@@ -690,9 +697,14 @@ export function TabbedReportContainer({
         onClose={() => setSourceContext(null)}
       />
 
-      {/* Survey Bottom Sheet — triggered after active engagement */}
-      {shouldShowSurvey && reportId && (
-        <SurveyBottomSheet resultId={reportId} onDismiss={dismissSurvey} />
+      {/* Survey Bottom Sheet — enrichment mode (Steps 2-4 after inline PMF capture) */}
+      {enrichmentOpen && reportId && enrichmentLevel && (
+        <SurveyBottomSheet
+          resultId={reportId}
+          onDismiss={() => setEnrichmentOpen(false)}
+          mode="enrichment"
+          disappointmentLevel={enrichmentLevel}
+        />
       )}
     </div>
   );

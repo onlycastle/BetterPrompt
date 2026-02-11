@@ -1,17 +1,23 @@
 /**
  * Survey API Route
  *
- * POST: Submit survey response (rating + optional comment)
+ * POST: Submit PMF survey response (disappointment level + optional text fields)
  * No authentication required - public endpoint tied to resultId
  */
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendSlackNotification, formatKoreanTime } from '@/lib/slack';
+
+const DISAPPOINTMENT_LEVELS = ['very_disappointed', 'somewhat_disappointed', 'not_disappointed'] as const;
+type DisappointmentLevel = (typeof DISAPPOINTMENT_LEVELS)[number];
 
 interface SurveyRequest {
   resultId: string;
-  rating: number;
-  comment?: string;
+  disappointmentLevel: DisappointmentLevel;
+  targetUser?: string;
+  mainBenefit?: string;
+  improvement?: string;
 }
 
 function getSupabaseAdmin() {
@@ -33,15 +39,15 @@ function getSupabaseAdmin() {
 /**
  * POST /api/survey
  *
- * Stores a survey response in the survey_responses table.
+ * Stores a PMF survey response in the survey_responses table.
  *
- * @param request - JSON body with { resultId, rating (1-5), comment? }
+ * @param request - JSON body with { resultId, disappointmentLevel, targetUser?, mainBenefit?, improvement? }
  * @returns { success: true } or error
  */
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as SurveyRequest;
-    const { resultId, rating, comment } = body;
+    const { resultId, disappointmentLevel, targetUser, mainBenefit, improvement } = body;
 
     // Validate resultId
     if (!resultId || typeof resultId !== 'string') {
@@ -51,19 +57,37 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate rating (integer 1-5)
-    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    // Validate disappointmentLevel (required, must be one of 3 values)
+    if (!disappointmentLevel || !DISAPPOINTMENT_LEVELS.includes(disappointmentLevel)) {
       return NextResponse.json(
-        { error: 'rating must be an integer between 1 and 5' },
+        { error: 'disappointmentLevel must be one of: very_disappointed, somewhat_disappointed, not_disappointed' },
         { status: 400 }
       );
     }
 
-    // Validate comment (optional, max 500 chars)
-    if (comment !== undefined && comment !== null) {
-      if (typeof comment !== 'string' || comment.length > 500) {
+    // Validate optional text fields
+    if (targetUser !== undefined && targetUser !== null) {
+      if (typeof targetUser !== 'string' || targetUser.length > 300) {
         return NextResponse.json(
-          { error: 'comment must be a string with max 500 characters' },
+          { error: 'targetUser must be a string with max 300 characters' },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (mainBenefit !== undefined && mainBenefit !== null) {
+      if (typeof mainBenefit !== 'string' || mainBenefit.length > 300) {
+        return NextResponse.json(
+          { error: 'mainBenefit must be a string with max 300 characters' },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (improvement !== undefined && improvement !== null) {
+      if (typeof improvement !== 'string' || improvement.length > 500) {
+        return NextResponse.json(
+          { error: 'improvement must be a string with max 500 characters' },
           { status: 400 }
         );
       }
@@ -72,13 +96,22 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin();
     const { error } = await supabase.from('survey_responses').insert({
       result_id: resultId,
-      rating,
-      comment: comment || null,
+      disappointment_level: disappointmentLevel,
+      target_user: targetUser?.trim() || null,
+      main_benefit: mainBenefit?.trim() || null,
+      improvement: improvement?.trim() || null,
     });
 
     if (error) {
       throw error;
     }
+
+    // Send Slack notification (fire and forget)
+    const levelEmoji = disappointmentLevel === 'very_disappointed' ? '🟢' : disappointmentLevel === 'somewhat_disappointed' ? '🟡' : '🔴';
+    const levelLabel = disappointmentLevel === 'very_disappointed' ? 'Very Disappointed' : disappointmentLevel === 'somewhat_disappointed' ? 'Somewhat' : 'Not Disappointed';
+    sendSlackNotification({
+      text: `📋 PMF Survey Response!\n• Disappointment: ${levelEmoji} ${levelLabel}${mainBenefit ? `\n• Core Value: ${mainBenefit.trim()}` : ''}${improvement ? `\n• Improvement: ${improvement.trim()}` : ''}\n• Time: ${formatKoreanTime()}`,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

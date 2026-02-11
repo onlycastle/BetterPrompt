@@ -94,6 +94,12 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
     // Analysis metadata - always show (transparency builds trust)
     analysisMetadata: evaluation.analysisMetadata,
 
+    // Evidence detail view - utterance lookup + transformation audit
+    // ExpandableEvidence is data-driven: presence of lookup = expandable
+    // Locked domains have evidence: [] via ContentGateway, so no data leak
+    utteranceLookup: evaluation.utteranceLookup,
+    transformationAudit: evaluation.transformationAudit,
+
     // Worker insights - needed for "Your Insights" section
     // Filter recommendations for free tier (prescription paid, diagnosis free)
     // Generate from agentOutputs if not stored in DB (backwards compatibility)

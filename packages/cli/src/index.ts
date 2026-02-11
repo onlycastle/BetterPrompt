@@ -12,7 +12,7 @@
 
 import pc from 'picocolors';
 import ora from 'ora';
-import { scanSessions, scanActivitySessions, hasClaudeProjects, getSourceStatus } from './scanner.js';
+import { scanSessions, scanActivitySessions, hasClaudeProjects } from './scanner.js';
 import { uploadForAnalysis } from './uploader.js';
 import {
   displayError,
@@ -184,7 +184,7 @@ async function promptExistingAnalysis(analyses: UserAnalysis[]): Promise<'new' |
     year: 'numeric',
   });
   console.log(pc.dim(`  Latest: ${latestType} (${latestDate})`));
-  console.log(pc.dim(`  Total: ${analyses.length} analysis${analyses.length > 1 ? 'es' : ''}`));
+  console.log(pc.dim(`  Total: ${analyses.length} ${analyses.length > 1 ? 'analyses' : 'analysis'}`));
   console.log('');
 
   console.log('  ' + pc.bold('1)') + ' 🔄 Run a new analysis');
@@ -206,30 +206,8 @@ async function promptExistingAnalysis(analyses: UserAnalysis[]): Promise<'new' |
 
 /**
  * Prompt user to select their AI coding tool.
- * Auto-selects if only one source is available.
  */
 async function promptToolSelection(): Promise<ToolSelectionResult> {
-  const sourceStatus = await getSourceStatus();
-
-  const hasClaudeCode = sourceStatus.get('claude-code') ?? false;
-  const hasCursor = (sourceStatus.get('cursor') ?? false)
-    || (sourceStatus.get('cursor-composer') ?? false);
-
-  // Auto-select when only one source (or none) is available
-  if (!hasClaudeCode || !hasCursor) {
-    if (hasClaudeCode) {
-      console.log(pc.dim('  Detected: Claude Code'));
-      return TOOL_CHOICES['claude-code'];
-    }
-    if (hasCursor) {
-      console.log(pc.dim('  Detected: Cursor'));
-      return TOOL_CHOICES['cursor'];
-    }
-    // No sources detected — default to both, let later checks handle the error
-    return TOOL_CHOICES['both'];
-  }
-
-  // Both available — prompt user
   const { createInterface } = await import('node:readline');
   const rl = createInterface({
     input: process.stdin,
@@ -594,9 +572,9 @@ async function runAnalysis(options: RunAnalysisOptions = {}): Promise<void> {
     chatDisplay.addPhasePreview(msg.phase, msg.snippets);
   }
 
-  // Schedule progressive discovery messages (~7s apart during wait)
+  // Schedule progressive discovery messages (~20s apart during wait)
   const discoveryMsgs = buildProgressiveDiscoveryMessages(scanInsights);
-  chatDisplay.scheduleProgressiveMessages(discoveryMsgs, 7000);
+  chatDisplay.scheduleProgressiveMessages(discoveryMsgs, 20000);
 
   try {
     const result = await uploadForAnalysis(
