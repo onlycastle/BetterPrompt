@@ -118,8 +118,8 @@ function formatTimestamp(isoString: string): string {
  * Single expandable evidence item
  *
  * Data-driven UI:
- * - utterance presence = paid tier (show "View original")
- * - utterance absence = free tier (show locked state)
+ * - utterance presence = expandable content (show "View original")
+ * - utterance absence = no utterance data available
  */
 function EvidenceItemRow({
   item,

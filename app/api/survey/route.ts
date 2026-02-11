@@ -110,7 +110,7 @@ export async function POST(request: Request) {
     const levelEmoji = disappointmentLevel === 'very_disappointed' ? '🟢' : disappointmentLevel === 'somewhat_disappointed' ? '🟡' : '🔴';
     const levelLabel = disappointmentLevel === 'very_disappointed' ? 'Very Disappointed' : disappointmentLevel === 'somewhat_disappointed' ? 'Somewhat' : 'Not Disappointed';
     sendSlackNotification({
-      text: `📋 PMF Survey 응답!\n• 실망도: ${levelEmoji} ${levelLabel}${mainBenefit ? `\n• 핵심 가치: ${mainBenefit.trim()}` : ''}${improvement ? `\n• 개선점: ${improvement.trim()}` : ''}\n• 시간: ${formatKoreanTime()}`,
+      text: `📋 PMF Survey Response!\n• Disappointment: ${levelEmoji} ${levelLabel}${mainBenefit ? `\n• Core Value: ${mainBenefit.trim()}` : ''}${improvement ? `\n• Improvement: ${improvement.trim()}` : ''}\n• Time: ${formatKoreanTime()}`,
     });
 
     return NextResponse.json({ success: true });
