@@ -11,6 +11,4 @@ export * from './useScrollSpy';
 
 export * from './useInView';
 
-export * from './useActiveTimer';
-export * from './useSurveyTrigger';
 export * from './useEnterprise';
