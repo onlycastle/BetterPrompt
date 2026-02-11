@@ -84,7 +84,7 @@ export const TIER_POLICY = {
     /** Evidence quotes are free (they show the problem) */
     quotes: 'free',
     /** Original context lookup requires paid tier */
-    originalContext: 'paid',
+    originalContext: 'free',
   },
 
   /** Agent outputs (legacy agents) */

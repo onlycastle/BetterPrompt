@@ -10,7 +10,7 @@
  * - Timestamp of the original message
  * - Data integrity validation badge (original match indicator)
  *
- * For Free tier: Shows "Unlock to see full context" when expanded.
+ * Evidence detail view is available for all tiers.
  */
 
 'use client';
@@ -68,8 +68,8 @@ interface ExpandableEvidenceProps {
   evidence: EvidenceItem[];
   /**
    * Lookup map for utterance details (keyed by utteranceId).
-   * When undefined, "View original" is locked (free tier).
-   * Data-driven: presence of lookup = paid tier access.
+   * When undefined, "View original" is unavailable (no utterance data).
+   * Data-driven: presence of lookup = expandable content.
    */
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
   /** Transformation audit map for data integrity verification (keyed by utteranceId) */

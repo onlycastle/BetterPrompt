@@ -449,7 +449,7 @@ describe('ContentGateway', () => {
 
     it('should define evidence policy correctly', () => {
       expect(TIER_POLICY.evidence.quotes).toBe('free');
-      expect(TIER_POLICY.evidence.originalContext).toBe('paid');
+      expect(TIER_POLICY.evidence.originalContext).toBe('free');
     });
   });
 
