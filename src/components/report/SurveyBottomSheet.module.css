@@ -1,14 +1,7 @@
 /* ========================================
    SURVEY BOTTOM SHEET
-   Terminal-style slide-up survey panel
+   Terminal-style slide-up PMF survey panel
    ======================================== */
-
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 179;
-  pointer-events: none;
-}
 
 .sheet {
   position: fixed;
@@ -81,6 +74,72 @@
   padding: 20px 20px 16px;
 }
 
+/* ---- Step Indicator ---- */
+.stepIndicator {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.stepDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-light, #ccc);
+  transition: background 0.25s, transform 0.25s;
+}
+
+.stepDotActive {
+  background: var(--sketch-cyan, #06b6d4);
+  transform: scale(1.25);
+}
+
+.stepDotCompleted {
+  background: var(--ink-primary, #1a1a1a);
+}
+
+/* ---- Slide Container ---- */
+.slideContainer {
+  overflow: hidden;
+  min-height: 140px;
+}
+
+.slideContent {
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.slideForward {
+  animation-name: slideInForward;
+}
+
+.slideBackward {
+  animation-name: slideInBackward;
+}
+
+@keyframes slideInForward {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInBackward {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ---- Question ---- */
 .question {
   font-family: var(--font-mono, monospace);
   font-size: 14px;
@@ -90,48 +149,43 @@
   line-height: 1.5;
 }
 
-/* ---- Star Rating ---- */
-.stars {
+/* ---- Disappointment Option Buttons (Step 1) ---- */
+.options {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  margin-bottom: 16px;
-  justify-content: center;
+  margin-bottom: 8px;
 }
 
-.starButton {
-  background: none;
+.optionButton {
+  width: 100%;
+  padding: 12px 16px;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-primary, #1a1a1a);
+  background: var(--surface-1, #fafafa);
   border: 2px solid var(--ink-light, #ccc);
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  border-radius: 8px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
+  text-align: left;
   transition: border-color 0.15s, background 0.15s, transform 0.15s;
-  color: var(--ink-muted, #999);
 }
 
-.starButton:hover {
+.optionButton:hover {
   border-color: var(--sketch-cyan, #06b6d4);
-  transform: scale(1.1);
+  background: var(--sketch-cyan-soft, rgba(6, 182, 212, 0.05));
+  transform: translateX(4px);
 }
 
-.starButtonActive {
+.optionButtonActive {
   border-color: var(--sketch-cyan, #06b6d4);
   background: var(--sketch-cyan-soft, rgba(6, 182, 212, 0.1));
-  color: var(--sketch-cyan, #06b6d4);
+  color: var(--sketch-cyan-text, #0891b2);
 }
 
-.starButtonFilled {
-  border-color: var(--sketch-cyan, #06b6d4);
-  background: var(--sketch-cyan, #06b6d4);
-  color: var(--bg-paper, #fff);
-}
-
-/* ---- Comment Input ---- */
-.commentInput {
+/* ---- Text Input (Steps 2-4) ---- */
+.textInput {
   width: 100%;
   padding: 10px 12px;
   font-family: var(--font-mono, monospace);
@@ -142,15 +196,18 @@
   border-radius: 8px;
   outline: none;
   transition: border-color 0.15s;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   box-sizing: border-box;
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.5;
 }
 
-.commentInput::placeholder {
+.textInput::placeholder {
   color: var(--ink-muted, #999);
 }
 
-.commentInput:focus {
+.textInput:focus {
   border-color: var(--sketch-cyan, #06b6d4);
 }
 
@@ -158,7 +215,26 @@
 .actions {
   display: flex;
   gap: 8px;
-  justify-content: flex-end;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.backButton {
+  padding: 8px 16px;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-secondary, #555);
+  background: none;
+  border: 2px solid var(--ink-light, #ccc);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.backButton:hover {
+  border-color: var(--ink-primary, #1a1a1a);
+  color: var(--ink-primary, #1a1a1a);
 }
 
 .laterButton {
@@ -223,12 +299,18 @@
     transition: none;
   }
 
-  .starButton {
+  .slideContent {
+    animation: none;
+  }
+
+  .optionButton,
+  .submitButton,
+  .laterButton,
+  .backButton {
     transition: none;
   }
 
-  .submitButton,
-  .laterButton {
+  .stepDot {
     transition: none;
   }
 }
@@ -252,13 +334,12 @@
     padding: 16px;
   }
 
-  .stars {
-    gap: 6px;
+  .optionButton {
+    padding: 10px 14px;
+    font-size: 12px;
   }
 
-  .starButton {
-    width: 36px;
-    height: 36px;
-    font-size: 16px;
+  .slideContainer {
+    min-height: 120px;
   }
 }
