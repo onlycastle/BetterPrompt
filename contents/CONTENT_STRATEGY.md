@@ -20,14 +20,14 @@
 ### Tone & Voice
 
 - **Provocative but data-backed**: Claims like "AI is slowing you down" supported by METR research data
-- **Empathy + Solution**: Don't just trigger anxiety — provide concrete paths forward
-- **Bilingual approach**: LinkedIn primarily in English (global developer audience), X in both English and Korean
+- **Empathy + Solution**: Don't just trigger anxiety. Provide concrete paths forward.
+- **English-first**: All content in English for global developer audience
 
 ### Key Reference Pool
 
 | Person / Institution | Core Message | How to Use |
 |---|---|---|
-| **Andrej Karpathy** | Vibe Coding → Context Engineering → Agentic Engineering evolution | Authority for trend framing |
+| **Andrej Karpathy** | Vibe Coding to Context Engineering to Agentic Engineering evolution | Authority for trend framing |
 | **Tobi Lütke (Shopify CEO)** | "AI usage is a baseline expectation" internal memo | B2B urgency, corporate policy shift |
 | **METR Study** | Experienced devs become 19% slower with AI tools | Counter-intuitive hook, problem framing |
 | **Anthropic 2026 Report** | 60% of developer work involves AI | Market size, ubiquity evidence |
@@ -45,6 +45,12 @@
 | **Week 2** | Product Hook: "What's Your AI Coding Personality?" | 5 AI coding styles + self-diagnosis | LinkedIn 2 + X 3 |
 | **Week 3** | Thought Leadership: "Context Engineering Is the Answer" | Karpathy/Lütke quotes + 6-dimension framework | LinkedIn 2 + X 3 |
 | **Week 4** | B2B: "How to Build an AI-Ready Team" | Enterprise AI capability assessment + burnout | LinkedIn 2 + X 3 |
+
+### Post Format
+
+- **LinkedIn**: Long-form posts. All copy-paste ready inside code blocks.
+- **X**: Single long-form posts (not threads). All copy-paste ready inside code blocks.
+- **Meta section**: Each post has a Meta section with title, references, hashtags separated from the copy-paste body.
 
 ---
 
