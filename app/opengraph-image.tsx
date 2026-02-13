@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 
 export const runtime = 'nodejs';
 
-export const alt = 'VibeBetter - AI Session Intelligence for Builders';
+export const alt = 'NoMoreAISlop - AI Session Intelligence for Builders';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -88,7 +88,7 @@ export default function Image() {
               marginBottom: 28,
             }}
           >
-            VibeBetter
+            NoMoreAISlop
           </div>
 
           {/* Tagline */}
@@ -130,7 +130,7 @@ export default function Image() {
               {'\u25b8'}
             </div>
             <div style={{ display: 'flex', color: '#1A1A2E', fontSize: 22, fontWeight: 500 }}>
-              vibebetter.app
+              npx no-ai-slop
             </div>
           </div>
 
@@ -169,7 +169,7 @@ export default function Image() {
 
           {/* URL */}
           <div style={{ display: 'flex', fontSize: 15, color: '#8A8A9A' }}>
-            www.vibebetter.app
+            www.nomoreaislop.app
           </div>
         </div>
       </div>

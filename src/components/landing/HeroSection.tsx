@@ -17,7 +17,7 @@ export function HeroSection() {
   return (
     <section id="hero" className={styles.hero}>
       <div className={styles.content}>
-        <div className={styles.badge}>VibeBetter</div>
+        <div className={styles.badge}>No More AI Slop</div>
         <h1 className={styles.headline}>
           You&apos;re building with AI.
           <br />

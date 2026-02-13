@@ -63,7 +63,7 @@ export function LandingFooter() {
         </div>
 
         <p className={styles.copyright}>
-          &copy; {new Date().getFullYear()} VibeBetter
+          &copy; {new Date().getFullYear()} NoMoreAISlop
         </p>
       </div>
     </footer>
