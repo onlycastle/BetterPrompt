@@ -53,28 +53,28 @@ export const SECURITY_RISK_DATA: SecurityRiskData = {
   items: [
     {
       severity: 'CRITICAL',
-      title: 'Exposed API key in frontend bundle',
-      detail: 'src/config.ts line 12',
+      title: 'Secret key handling risk',
+      detail: 'API credentials were shared in prompts without masking',
     },
     {
       severity: 'CRITICAL',
-      title: 'No authentication on admin routes',
-      detail: '/api/admin/* endpoints',
+      title: 'Authentication checks were skipped',
+      detail: 'Privileged actions were generated without access controls',
     },
     {
       severity: 'CRITICAL',
-      title: 'SQL injection vulnerability',
-      detail: 'Raw query in user search',
+      title: 'Security review was not requested before shipping',
+      detail: 'No explicit pre-deploy security validation step detected',
     },
     {
       severity: 'HIGH',
-      title: 'Missing rate limiting on auth endpoints',
-      detail: '/api/login, /api/register',
+      title: 'Abuse protection was not included',
+      detail: 'Rate limiting was missing on account-related flows',
     },
     {
       severity: 'HIGH',
-      title: 'No input validation on form submissions',
-      detail: '2 form handlers affected',
+      title: 'Input validation was inconsistently applied',
+      detail: 'Form handling patterns lacked consistent validation checks',
     },
   ],
   footer:

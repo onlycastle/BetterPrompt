@@ -43,7 +43,7 @@ export function TerminalCommand({ command, location = 'hero' }: TerminalCommandP
     // Bookmark prompt — mobile users can't run CLI
     if (navigator.share) {
       navigator.share({
-        title: 'NoMoreAISlop - AI Coding Style Analysis',
+        title: 'NoMoreAISlop - AI Session Intelligence for Builders',
         url: window.location.href,
       }).catch(() => {});
     } else {
