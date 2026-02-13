@@ -1,0 +1,87 @@
+/* ── Section layout ── */
+.section {
+  padding: var(--space-3xl) 0;
+}
+
+/* Scroll animation */
+.content {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.content.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.headline {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  text-align: center;
+  margin-bottom: var(--space-2xl);
+}
+
+/* ── 3-column card grid (follows KnowledgeSection pattern) ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+
+.card {
+  padding: var(--space-lg);
+  background: var(--glass-bg);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  transition: transform var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.card:hover {
+  transform: rotate(-0.5deg);
+}
+
+/* Accent top border per card */
+.card:nth-child(1) {
+  border-top: 3px solid var(--sketch-cyan);
+}
+
+.card:nth-child(2) {
+  border-top: 3px solid var(--sketch-yellow);
+}
+
+.card:nth-child(3) {
+  border-top: 3px solid var(--sketch-green);
+}
+
+.trigger {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  line-height: var(--leading-tight);
+  margin: 0;
+  font-style: italic;
+}
+
+.explanation {
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  line-height: var(--leading-relaxed);
+  margin: 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+
+  .card {
+    padding: var(--space-md);
+  }
+}
