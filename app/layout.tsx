@@ -21,13 +21,13 @@ const notoSansKR = Noto_Sans_KR({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.nomoreaislop.app'),
-  title: 'NoMoreAISlop - See Your Anti-Patterns. Stop Making AI Slop.',
-  description: 'See your AI anti-patterns. Stop making slop. Get a brutally honest analysis of your coding sessions.',
+  title: 'VibeBetter - AI Session Intelligence for Builders',
+  description: 'See what is going wrong in your AI workflow. Analyze behavior patterns, risk blind spots, and practical next steps.',
   openGraph: {
-    title: 'NoMoreAISlop - See Your Anti-Patterns. Stop Making AI Slop.',
-    description: 'See your anti-patterns. Stop making AI slop.',
+    title: 'VibeBetter - AI Session Intelligence for Builders',
+    description: 'See what is going wrong in your AI workflow and how to improve with clear, behavior-based feedback.',
     type: 'website',
-    siteName: 'NoMoreAISlop',
+    siteName: 'VibeBetter',
   },
   twitter: {
     card: 'summary_large_image',
