@@ -97,9 +97,23 @@
   border-radius: var(--radius-full);
 }
 
-.stepText {
+.stepContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stepTitle {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-on-dark);
+  line-height: 1.4;
+}
+
+.stepText {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   color: var(--ink-light);
   line-height: 1.5;
 }
@@ -264,6 +278,12 @@
   font-size: var(--text-xs);
   color: var(--ink-light);
   line-height: 1.4;
+}
+
+.ctaRow {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-xl);
 }
 
 .requirements {

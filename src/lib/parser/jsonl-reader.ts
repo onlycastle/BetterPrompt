@@ -78,32 +78,62 @@ export async function readJSONLFile(filePath: string): Promise<JSONLLine[]> {
 
 /**
  * Decode project path from Claude's encoding.
- * Claude encodes paths by replacing '/' with '-'.
+ * Handles both Unix and Windows formats.
  *
  * @example
  * '-Users-dev-projects-myapp' -> '/Users/dev/projects/myapp'
+ * 'C--alphacut'               -> 'C:/alphacut'
+ * 'C--alphacut-channel-tools' -> 'C:/alphacut/channel/tools'
  */
 export function decodeProjectPath(encoded: string): string {
-  if (!encoded.startsWith('-')) {
-    return encoded;
+  // Windows: 'C--alphacut' → 'C:/alphacut'
+  if (/^[A-Za-z]--/.test(encoded)) {
+    const driveLetter = encoded[0];
+    const rest = encoded.slice(3);
+    if (!rest) return `${driveLetter}:/`;
+    return `${driveLetter}:/${rest.replace(/-/g, '/')}`;
   }
-  return encoded.replace(/-/g, '/');
+
+  // Unix: '-Users-dev-app' → '/Users/dev/app'
+  if (encoded.startsWith('-')) {
+    return encoded.replace(/-/g, '/');
+  }
+
+  return encoded;
 }
 
 /**
- * Encode a project path for Claude's format
+ * Encode a project path for Claude's format.
+ * Handles both Unix and Windows paths.
+ *
+ * @example
+ * '/Users/dev/myapp'     → '-Users-dev-myapp'
+ * 'C:\\alphacut'          → 'C--alphacut'
+ * 'C:/alphacut/channel'  → 'C--alphacut-channel'
  */
 export function encodeProjectPath(path: string): string {
+  // Windows path: starts with drive letter + colon
+  const windowsMatch = path.match(/^([A-Za-z]):[/\\](.*)/);
+  if (windowsMatch) {
+    const driveLetter = windowsMatch[1];
+    const rest = windowsMatch[2];
+    if (!rest) return `${driveLetter}--`;
+    return `${driveLetter}--${rest.replace(/[/\\]/g, '-')}`;
+  }
+
+  // Unix path
   return path.replace(/\//g, '-');
 }
 
 /**
- * Get project name from path
+ * Get project name from path (supports both Unix and Windows paths)
  */
 export function getProjectName(projectPath: string): string {
   const trimmed = projectPath.trim();
-  const parts = trimmed.split('/').filter(Boolean);
-  return parts[parts.length - 1] || 'unknown';
+  const parts = trimmed.split(/[/\\]/).filter(Boolean);
+  // Filter out drive letter (e.g. 'C:')
+  const filtered = parts.filter(p => !/^[A-Za-z]:$/.test(p));
+  return filtered[filtered.length - 1] || 'unknown';
 }
 
 /**

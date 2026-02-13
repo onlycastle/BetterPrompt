@@ -67,22 +67,34 @@ export interface ScanSummary {
 }
 
 /**
- * Decode project path from Claude's encoding
- * Claude encodes paths by replacing '/' with '-'
+ * Decode project path from Claude's encoding.
+ * Handles both Unix and Windows formats.
  */
 function decodeProjectPath(encoded: string): string {
+  // Windows: 'C--alphacut' → 'C:/alphacut'
+  if (/^[A-Za-z]--/.test(encoded)) {
+    const driveLetter = encoded[0];
+    const rest = encoded.slice(3);
+    if (!rest) return `${driveLetter}:/`;
+    return `${driveLetter}:/${rest.replace(/-/g, '/')}`;
+  }
+
+  // Unix: '-Users-dev-app' → '/Users/dev/app'
   if (encoded.startsWith('-')) {
     return encoded.replace(/-/g, '/');
   }
+
   return encoded;
 }
 
 /**
- * Get project name from path
+ * Get project name from path (supports both Unix and Windows paths)
  */
 function getProjectName(projectPath: string): string {
-  const parts = projectPath.split('/').filter(Boolean);
-  return parts[parts.length - 1] || 'unknown';
+  const parts = projectPath.split(/[/\\]/).filter(Boolean);
+  // Filter out drive letter (e.g. 'C:')
+  const filtered = parts.filter(p => !/^[A-Za-z]:$/.test(p));
+  return filtered[filtered.length - 1] || 'unknown';
 }
 
 /**

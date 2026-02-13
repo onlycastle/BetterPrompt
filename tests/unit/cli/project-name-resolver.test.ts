@@ -337,6 +337,56 @@ describe('resolveProjectName', () => {
     });
   });
 
+  describe('Windows path resolution', () => {
+    it('should resolve Windows encoded path (not return raw)', () => {
+      setExistingDirs([
+        'C:/alphacut',
+      ]);
+
+      const result = resolveProjectName('C--alphacut');
+      expect(result).toBe('alphacut');
+    });
+
+    it('should resolve Windows multi-segment path', () => {
+      setExistingDirs([
+        'C:/Users',
+        'C:/Users/ehdto',
+        'C:/Users/ehdto/projects',
+        'C:/Users/ehdto/projects/my-app',
+      ]);
+
+      const result = resolveProjectName('C--Users-ehdto-projects-my-app');
+      // Without home matching on macOS, falls back to drive root resolution
+      expect(result).not.toBe('C--Users-ehdto-projects-my-app');
+    });
+
+    it('should detect Windows temp paths', () => {
+      const result = resolveProjectName('C--temp-some-build');
+      expect(result).toBe('(temp)');
+    });
+
+    it('should detect Windows AppData temp paths', () => {
+      const result = resolveProjectName('C--AppData-Local-Temp-xyz');
+      expect(result).toBe('(temp)');
+    });
+
+    it('should handle lowercase Windows drive letter', () => {
+      setExistingDirs([
+        'c:/projects',
+        'c:/projects/test-app',
+      ]);
+
+      const result = resolveProjectName('c--projects-test-app');
+      expect(result).toBe('test-app');
+    });
+
+    it('should not treat non-drive prefix as Windows path', () => {
+      // 'ab-cd' should not match Windows pattern (needs single letter + --)
+      const result = resolveProjectName('ab--something');
+      expect(result).toBe('ab--something');
+    });
+  });
+
   describe('batch resolution', () => {
     it('should resolve multiple names', () => {
       setExistingDirs([

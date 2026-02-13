@@ -5,11 +5,11 @@ import { track } from '@vercel/analytics';
 import styles from './SectionNav.module.css';
 
 const SECTIONS = [
+  { id: 'problems', label: 'Problems' },
+  { id: 'solution', label: 'Solution' },
   { id: 'preview', label: 'Preview' },
-  { id: 'value', label: 'Why' },
-  { id: 'knowledge', label: 'Research' },
-  { id: 'enterprise', label: 'Teams' },
-  { id: 'download', label: 'Start' },
+  { id: 'teams', label: 'Teams' },
+  { id: 'pricing', label: 'Pricing' },
 ] as const;
 
 export function SectionNav() {

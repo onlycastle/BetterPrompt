@@ -1,11 +1,11 @@
 export { HeroSection } from './HeroSection';
-export { PhilosophySection } from './PhilosophySection';
-export { ValueStory } from './ValueStory';
+export { SocialProofBar } from './SocialProofBar';
+export { ProblemValidation } from './ProblemValidation';
+export { SolutionSection } from './SolutionSection';
 export { AnalysisShowcase } from './AnalysisShowcase';
-export { PatternExampleCard } from './PatternExampleCard';
-export { KnowledgeSection } from './KnowledgeSection';
 export { DownloadSection } from './DownloadSection';
 export { LandingFooter } from './LandingFooter';
 export { EnterprisePreview } from './EnterprisePreview';
+export { TrustPrivacy } from './TrustPrivacy';
 export { WaitlistModal, waitlistConfigs } from './WaitlistModal';
 export type { WaitlistConfig, WaitlistType } from './WaitlistModal';

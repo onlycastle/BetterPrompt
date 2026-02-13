@@ -8,7 +8,7 @@
  *
  * Each candidate is validated with a fingerprint check:
  * - Has a projects/ subdirectory
- * - Contains at least one dash-prefixed encoded directory
+ * - Contains at least one encoded directory (dash-prefixed or Windows drive pattern)
  * - Contains at least one .jsonl session file
  *
  * Symlink dedup ensures the same physical directory isn't registered twice.
@@ -17,14 +17,15 @@
 import { readdir, stat, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { isWindowsEncodedPath } from '../../path-encoding.js';
 
 /**
  * Validate that a directory looks like a Claude Code data directory.
  *
  * Fingerprint criteria:
  * 1. {dir}/projects/ exists and is a directory
- * 2. projects/ contains at least one subdirectory starting with '-'
- *    (Claude's path encoding: /Users/dev/app → -Users-dev-app)
+ * 2. projects/ contains at least one encoded directory
+ *    (Unix: /Users/dev/app → -Users-dev-app, Windows: C:\app → C--app)
  * 3. That subdirectory contains at least one .jsonl file
  */
 export async function validateClaudeDataDir(dir: string): Promise<boolean> {
@@ -36,8 +37,8 @@ export async function validateClaudeDataDir(dir: string): Promise<boolean> {
     const entries = await readdir(projectsDir);
 
     for (const entry of entries) {
-      // Claude encodes paths starting with '-'
-      if (!entry.startsWith('-')) continue;
+      // Claude encodes paths: Unix starts with '-', Windows matches X--
+      if (!entry.startsWith('-') && !isWindowsEncodedPath(entry)) continue;
 
       const entryPath = join(projectsDir, entry);
       const entryStat = await stat(entryPath);

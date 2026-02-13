@@ -11,6 +11,7 @@
 
 import type { ParsedSession, ParsedMessage, SessionStats, SessionSourceType } from '../session-types.js';
 import { resolveProjectName } from '../../project-name-resolver.js';
+import { decodeProjectPathCrossPlatform } from '../../path-encoding.js';
 
 // Re-export SessionSourceType for convenience
 export type { SessionSourceType };
@@ -144,14 +145,11 @@ export abstract class BaseSessionSource implements SessionSource {
   abstract readSessionContent(filePath: string): Promise<string>;
 
   /**
-   * Decode project path from encoded directory name
-   * Default implementation: replace '-' with '/'
+   * Decode project path from encoded directory name.
+   * Handles both Unix (-Users-dev-app) and Windows (C--alphacut) formats.
    */
   protected decodeProjectPath(encoded: string): string {
-    if (encoded.startsWith('-')) {
-      return encoded.replace(/-/g, '/');
-    }
-    return encoded;
+    return decodeProjectPathCrossPlatform(encoded);
   }
 
   /**
@@ -166,8 +164,10 @@ export abstract class BaseSessionSource implements SessionSource {
    * @deprecated Use resolveProjectName() for accurate names
    */
   protected getProjectName(projectPath: string): string {
-    const parts = projectPath.split('/').filter(Boolean);
-    return parts[parts.length - 1] || 'unknown';
+    const parts = projectPath.split(/[/\\]/).filter(Boolean);
+    // Filter out drive letter (e.g. 'C:')
+    const filtered = parts.filter(p => !/^[A-Za-z]:$/.test(p));
+    return filtered[filtered.length - 1] || 'unknown';
   }
 
   /**
