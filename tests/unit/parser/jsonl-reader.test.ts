@@ -128,12 +128,64 @@ describe('JSONL Reader', () => {
       });
     });
 
+    describe('Windows decodeProjectPath', () => {
+      it('should decode Windows drive path', () => {
+        expect(decodeProjectPath('C--alphacut')).toBe('C:/alphacut');
+      });
+
+      it('should decode Windows multi-segment path', () => {
+        expect(decodeProjectPath('C--alphacut-channel-tools')).toBe(
+          'C:/alphacut/channel/tools'
+        );
+      });
+
+      it('should decode lowercase drive letter', () => {
+        expect(decodeProjectPath('c--alphacut')).toBe('c:/alphacut');
+      });
+
+      it('should decode drive root', () => {
+        expect(decodeProjectPath('C--')).toBe('C:/');
+      });
+    });
+
+    describe('Windows encodeProjectPath', () => {
+      it('should encode Windows backslash path', () => {
+        expect(encodeProjectPath('C:\\alphacut')).toBe('C--alphacut');
+      });
+
+      it('should encode Windows forward-slash path', () => {
+        expect(encodeProjectPath('C:/alphacut/channel')).toBe(
+          'C--alphacut-channel'
+        );
+      });
+
+      it('should encode Windows drive root', () => {
+        expect(encodeProjectPath('C:\\')).toBe('C--');
+      });
+    });
+
     describe('round-trip encoding', () => {
-      it('should decode encoded paths correctly', () => {
+      it('should decode encoded Unix paths correctly', () => {
         const original = '/Users/dev/projects/myapp';
         const encoded = encodeProjectPath(original);
         const decoded = decodeProjectPath(encoded);
         expect(decoded).toBe(original);
+      });
+
+      it('should round-trip Windows forward-slash paths', () => {
+        const original = 'C:/alphacut/channel';
+        const encoded = encodeProjectPath(original);
+        expect(encoded).toBe('C--alphacut-channel');
+        const decoded = decodeProjectPath(encoded);
+        expect(decoded).toBe(original);
+      });
+
+      it('should round-trip Windows backslash to forward-slash', () => {
+        const encoded = encodeProjectPath('C:\\alphacut\\tools');
+        expect(encoded).toBe('C--alphacut-tools');
+        // Decode always produces forward-slash output
+        const decoded = decodeProjectPath(encoded);
+        expect(decoded).toBe('C:/alphacut/tools');
       });
     });
   });
@@ -193,6 +245,18 @@ describe('JSONL Reader', () => {
 
     it('should return unknown for whitespace-only string', () => {
       expect(getProjectName('   ')).toBe('unknown');
+    });
+
+    it('should extract project name from Windows path', () => {
+      expect(getProjectName('C:/alphacut')).toBe('alphacut');
+    });
+
+    it('should extract project name from Windows backslash path', () => {
+      expect(getProjectName('C:\\Users\\dev\\project')).toBe('project');
+    });
+
+    it('should handle Windows drive-only path', () => {
+      expect(getProjectName('C:/')).toBe('unknown');
     });
   });
 });
