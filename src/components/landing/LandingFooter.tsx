@@ -1,14 +1,17 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { BookOpen } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { Button } from '@/components/ui/Button';
 import styles from './LandingFooter.module.css';
 
 export function LandingFooter() {
+  const router = useRouter();
+
   const handleCtaClick = () => {
-    track('cta_click', { location: 'footer', type: 'get_free_assessment' });
-    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+    track('cta_click', { location: 'footer', type: 'get_started_free' });
+    router.push('/dashboard/analyze');
   };
 
   return (
@@ -22,10 +25,10 @@ export function LandingFooter() {
 
         <div className={styles.cta}>
           <Button variant="primary" size="lg" onClick={handleCtaClick}>
-            Get Your Free Assessment
+            Get Started Free
           </Button>
           <p className={styles.smallText}>
-            No credit card. No installation. Takes 2 minutes.
+            No credit card. First report in minutes.
           </p>
         </div>
 
@@ -60,7 +63,7 @@ export function LandingFooter() {
         </div>
 
         <p className={styles.copyright}>
-          &copy; {new Date().getFullYear()} NoMoreAISlop
+          &copy; {new Date().getFullYear()} VibeBetter
         </p>
       </div>
     </footer>

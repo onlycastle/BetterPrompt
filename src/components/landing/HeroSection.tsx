@@ -1,20 +1,23 @@
 'use client';
 
 import { ChevronDown } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import { Button } from '@/components/ui/Button';
 import styles from './HeroSection.module.css';
 
 export function HeroSection() {
+  const router = useRouter();
+
   const handleCtaClick = () => {
-    track('cta_click', { location: 'hero', type: 'get_free_report' });
-    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+    track('cta_click', { location: 'hero', type: 'get_started_free' });
+    router.push('/dashboard/analyze');
   };
 
   return (
     <section id="hero" className={styles.hero}>
       <div className={styles.content}>
-        <div className={styles.badge}>No More AI Slop</div>
+        <div className={styles.badge}>VibeBetter</div>
         <h1 className={styles.headline}>
           You&apos;re building with AI.
           <br />
@@ -29,7 +32,7 @@ export function HeroSection() {
 
         <div className={styles.cta}>
           <Button variant="primary" size="lg" onClick={handleCtaClick}>
-            Get Your Free Report
+            Get Started Free
           </Button>
         </div>
 

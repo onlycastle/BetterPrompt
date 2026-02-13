@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useInView } from '@/hooks/useInView';
 import { Button } from '@/components/ui/Button';
 import { track } from '@vercel/analytics';
@@ -10,13 +11,14 @@ import styles from './AnalysisShowcase.module.css';
 
 const CARDS = [ShowcaseAntiPattern, ShowcaseWeekly, ShowcaseStrength];
 
-function handleCtaClick() {
-  track('cta_click', { location: 'showcase', type: 'see_results' });
-  document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
-}
-
 export function AnalysisShowcase() {
+  const router = useRouter();
   const { ref, isInView } = useInView({ threshold: 0.1 });
+
+  const handleCtaClick = () => {
+    track('cta_click', { location: 'showcase', type: 'get_started_free' });
+    router.push('/dashboard/analyze');
+  };
 
   return (
     <section id="preview" className={styles.section}>
@@ -44,7 +46,7 @@ export function AnalysisShowcase() {
           </p>
           <div className={styles.cta}>
             <Button variant="primary" size="lg" onClick={handleCtaClick}>
-              See your real results
+              Get Started Free
             </Button>
           </div>
         </div>
