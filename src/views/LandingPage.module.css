@@ -15,7 +15,7 @@
 }
 
 /* Regular sections get max-width + padding; full-bleed sections handle their own */
-.main > section:not(#download):not(#preview) {
+.main > section:not(#pricing):not(#preview) {
   max-width: var(--content-max-width);
   margin-left: auto;
   margin-right: auto;
@@ -33,7 +33,7 @@
 }
 
 @media (max-width: 768px) {
-  .main > section:not(#download) {
+  .main > section:not(#pricing) {
     padding-left: var(--space-md);
     padding-right: var(--space-md);
   }
