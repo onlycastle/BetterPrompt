@@ -17,7 +17,7 @@ const TRUST_ITEMS = [
   },
   {
     icon: EyeOff,
-    text: 'No agents, no background processes, no tracking',
+    text: 'No background agents running on your machine',
   },
 ] as const;
 
