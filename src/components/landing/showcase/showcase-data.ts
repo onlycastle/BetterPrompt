@@ -1,169 +1,110 @@
 /** Hard-coded sample data for the Analysis Showcase section — report preview cards. */
 
-// ─── Card 1: Anti-Pattern Detection ──────────────────────────────
+// ─── Card 1: AI Dependency Score ────────────────────────────────
 
-export interface AntiPatternEvidence {
-  quote: string;
-  tag: string;
-}
-
-export interface AntiPatternData {
+export interface DependencyScoreData {
   sectionLabel: string;
-  count: number;
-  title: string;
-  severity: 'HIGH' | 'MEDIUM' | 'LOW';
-  metaFoundIn: string;
-  metaSeverity: string;
+  scorePercent: number;
+  scoreLabel: string;
   description: string;
-  evidence: AntiPatternEvidence[];
-  fix: string;
-  expertTitle: string;
-  expertBadge: string;
-  expertActions: string[];
+  breakdown: { label: string; value: number }[];
+  insight: string;
 }
 
-export const ANTI_PATTERN_DATA: AntiPatternData = {
-  sectionLabel: 'WHERE TO IMPROVE',
-  count: 1,
-  title: 'Passive Verification Loop',
-  severity: 'HIGH',
-  metaFoundIn: 'Found in 2 sessions',
-  metaSeverity: 'Severity: High',
+export const DEPENDENCY_SCORE_DATA: DependencyScoreData = {
+  sectionLabel: 'BEHAVIOR ANALYSIS',
+  scorePercent: 73,
+  scoreLabel: 'blind acceptance rate',
   description:
-    'You tend to ask AI to "check" your work rather than specifying what to verify. This creates a passive loop where neither you nor the AI performs rigorous validation.',
-  evidence: [
-    {
-      quote: '"Can you check if this looks right?"',
-      tag: 'UI debugging',
-    },
-    {
-      quote: '"Does this make sense? Just verify it for me."',
-      tag: 'Logic review',
-    },
+    'You accepted AI-generated code without reviewing in 73% of changes. Most builders don\'t realize how much they trust blindly.',
+  breakdown: [
+    { label: 'Auto-accepted', value: 73 },
+    { label: 'Reviewed', value: 18 },
+    { label: 'Rejected', value: 9 },
   ],
-  fix: 'Don\'t ask AI to "check" — tell it to "test edge cases for null input" or "verify the return type matches the interface." Specific verification prompts yield actionable feedback.',
-  expertTitle: 'Simple Agents Beat Complex Ones',
-  expertBadge: 'TREND',
-  expertActions: [
-    'Break complex prompts into single-purpose verification steps',
-    'Use assertion-style language: "Confirm X produces Y"',
-    'Chain focused checks instead of one broad "review this"',
-  ],
+  insight:
+    'Builders who review more than 50% of AI output report 3x fewer production issues',
 };
 
-// ─── Card 2: Weekly Dashboard ────────────────────────────────────
+// ─── Card 2: Security Risk Report ───────────────────────────────
 
-export interface WeeklyStat {
-  value: string;
+export interface RiskItem {
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+  title: string;
+  detail: string;
+}
+
+export interface SecurityRiskData {
+  sectionLabel: string;
+  totalIssues: number;
+  criticalCount: number;
+  highCount: number;
+  mediumCount: number;
+  items: RiskItem[];
+  footer: string;
+}
+
+export const SECURITY_RISK_DATA: SecurityRiskData = {
+  sectionLabel: 'RISK DETECTION',
+  totalIssues: 7,
+  criticalCount: 3,
+  highCount: 2,
+  mediumCount: 2,
+  items: [
+    {
+      severity: 'CRITICAL',
+      title: 'Exposed API key in frontend bundle',
+      detail: 'src/config.ts line 12',
+    },
+    {
+      severity: 'CRITICAL',
+      title: 'No authentication on admin routes',
+      detail: '/api/admin/* endpoints',
+    },
+    {
+      severity: 'CRITICAL',
+      title: 'SQL injection vulnerability',
+      detail: 'Raw query in user search',
+    },
+    {
+      severity: 'HIGH',
+      title: 'Missing rate limiting on auth endpoints',
+      detail: '/api/login, /api/register',
+    },
+    {
+      severity: 'HIGH',
+      title: 'No input validation on form submissions',
+      detail: '2 form handlers affected',
+    },
+  ],
+  footer:
+    'This is what a security audit would catch. We run one every session.',
+};
+
+// ─── Card 3: Growth Path ────────────────────────────────────────
+
+export interface GrowthWeek {
+  week: string;
   label: string;
-  delta: string;
-  direction: 'up' | 'down' | 'neutral';
+  score: number;
 }
 
-export interface ProjectBar {
-  name: string;
-  percentage: number;
-}
-
-export interface TopSession {
-  date: string;
-  duration: string;
+export interface GrowthPathData {
+  sectionLabel: string;
+  profileType: string;
+  weeks: GrowthWeek[];
   summary: string;
 }
 
-export interface WeeklyData {
-  title: string;
-  dateRange: string;
-  stats: WeeklyStat[];
-  narrative: string;
-  projects: ProjectBar[];
-  topSessions: TopSession[];
-  highlights: string[];
-}
-
-export const WEEKLY_DATA: WeeklyData = {
-  title: 'This Week',
-  dateRange: 'Feb 4 – Feb 10',
-  stats: [
-    { value: '486', label: 'sessions', delta: '↑ 8%', direction: 'up' },
-    { value: '197.4h', label: 'coding hours', delta: '↓ 1%', direction: 'down' },
-    { value: '751.3M', label: 'tokens', delta: '↑ 7.7%', direction: 'up' },
-    { value: '6/7', label: 'active days', delta: '-1', direction: 'down' },
+export const GROWTH_PATH_DATA: GrowthPathData = {
+  sectionLabel: 'YOUR GROWTH',
+  profileType: 'Navigator Architect',
+  weeks: [
+    { week: 'Week 1', label: 'Accepting everything', score: 27 },
+    { week: 'Week 2', label: 'Starting to question', score: 45 },
+    { week: 'Week 3', label: 'Asking better questions', score: 63 },
+    { week: 'Week 4', label: 'Reviewing critically', score: 78 },
   ],
-  narrative:
-    'This week focused on precision UI/UX improvements across two major projects. Heavy component refactoring in nomoreaislop with a shift toward scroll-based report layouts, while alfredworks saw backend schema migrations.',
-  projects: [
-    { name: 'nomoreaislop', percentage: 56 },
-    { name: 'alfredworks', percentage: 33 },
-    { name: 'moneybook', percentage: 5 },
-  ],
-  topSessions: [
-    {
-      date: 'Feb 6',
-      duration: '4h 12m',
-      summary: 'Report redesign — scroll layout migration and floating navigation dots',
-    },
-    {
-      date: 'Feb 8',
-      duration: '3h 45m',
-      summary: 'Schema v2 migration — verbose evaluation type system overhaul',
-    },
-    {
-      date: 'Feb 9',
-      duration: '2h 58m',
-      summary: 'Landing page showcase section — analysis preview cards',
-    },
-  ],
-  highlights: [
-    'Shipped continuous-scroll report layout replacing tabbed navigation',
-    'Migrated 12 Zod schemas to v2 type system with zero downtime',
-    'Reduced LLM calls from 14 to 11 per analysis run',
-    'Added Korean font support with dynamic loading',
-  ],
-};
-
-// ─── Card 3: Strength Analysis ───────────────────────────────────
-
-export interface StrengthEvidence {
-  quote: string;
-  tag: string;
-  expanded?: boolean;
-  originalMessage?: string;
-  metadata?: string;
-}
-
-export interface StrengthData {
-  sectionLabel: string;
-  count: number;
-  title: string;
-  description: string;
-  evidence: StrengthEvidence[];
-}
-
-export const STRENGTH_DATA: StrengthData = {
-  sectionLabel: 'WHAT YOU DO WELL',
-  count: 1,
-  title: 'Professional Design Reasoning',
-  description:
-    'Goes beyond simple requests by using terminology like "interaction affordance," "visual hierarchy," and "cognitive load." This signals deep design thinking that produces higher-quality AI outputs.',
-  evidence: [
-    {
-      quote: '"The hover state needs more affordance — add a subtle scale transform and cursor change."',
-      tag: 'Component styling',
-    },
-    {
-      quote:
-        '"Let\'s reduce cognitive load here. Group related actions into a collapsible section with a clear visual anchor."',
-      tag: 'UX architecture',
-      expanded: true,
-      originalMessage:
-        'I need to restructure the settings panel. Right now there are 14 top-level options and it feels overwhelming. Let\'s reduce cognitive load here. Group related actions into a collapsible section with a clear visual anchor — maybe an icon + bold label combo. Think progressive disclosure: show the 4 most-used settings upfront, collapse the rest under "Advanced." Use a subtle divider between groups, not a hard border.',
-      metadata: 'Session: 0bd129c8... · Turn #26 · Feb 9, 05:21 PM',
-    },
-    {
-      quote:
-        '"We need progressive disclosure — show the 4 most-used settings, collapse Advanced behind an accordion."',
-      tag: 'Information architecture',
-    },
-  ],
+  summary:
+    'From accepting everything to reviewing critically — your AI builder personality: Navigator Architect',
 };

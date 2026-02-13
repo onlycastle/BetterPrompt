@@ -1,69 +1,48 @@
-import { WEEKLY_DATA } from './showcase-data';
+import { SECURITY_RISK_DATA } from './showcase-data';
+import type { RiskItem } from './showcase-data';
 import styles from './TasteCards.module.css';
 
+/** Map severity level to CSS module class */
+const SEVERITY_CLASS: Record<RiskItem['severity'], string> = {
+  CRITICAL: styles.severityCritical,
+  HIGH: styles.severityHigh,
+  MEDIUM: styles.severityMedium,
+};
+
 export function ShowcaseWeekly() {
-  const d = WEEKLY_DATA;
+  const d = SECURITY_RISK_DATA;
 
   return (
-    <div className={styles.card}>
-      {/* Header */}
-      <div className={styles.weeklyHeader}>
-        <h3 className={styles.weeklyTitle}>{d.title}</h3>
-        <span className={styles.weeklyDate}>{d.dateRange}</span>
+    <div className={`${styles.card} ${styles.accentRed}`}>
+      {/* Section header */}
+      <div className={styles.sectionHeader}>
+        <span className={styles.sectionIconRed}>!</span>
+        <span className={styles.sectionLabel}>{d.sectionLabel}</span>
       </div>
 
-      {/* Stats grid */}
-      <div className={styles.statsGrid}>
-        {d.stats.map((s, i) => (
-          <div key={i} className={styles.statCell}>
-            <span className={styles.statValue}>{s.value}</span>
-            <span className={styles.statLabel}>{s.label}</span>
-            <span
-              className={`${styles.statDelta} ${
-                s.direction === 'up' ? styles.deltaUp : styles.deltaDown
-              }`}
-            >
-              {s.delta}
-            </span>
-          </div>
-        ))}
+      {/* Summary bar */}
+      <div className={styles.summaryBar}>
+        <span className={styles.totalIssues}>{d.totalIssues} issues found</span>
+        <span className={styles.severityCritical}>{d.criticalCount} CRITICAL</span>
+        <span className={styles.severityHigh}>{d.highCount} HIGH</span>
+        <span className={styles.severityMedium}>{d.mediumCount} MEDIUM</span>
       </div>
 
-      {/* Narrative */}
-      <blockquote className={styles.narrative}>{d.narrative}</blockquote>
-
-      {/* Project bars */}
-      <div className={styles.projectBars}>
-        {d.projects.map((p, i) => (
-          <div key={i} className={styles.projectRow}>
-            <span className={styles.projectName}>{p.name}</span>
-            <div className={styles.barTrack}>
-              <div className={styles.barFill} style={{ width: `${p.percentage}%` }} />
+      {/* Risk items list */}
+      <div className={styles.riskList}>
+        {d.items.map((item, i) => (
+          <div key={i} className={styles.riskItem}>
+            <span className={SEVERITY_CLASS[item.severity]}>{item.severity}</span>
+            <div className={styles.riskContent}>
+              <span className={styles.riskTitle}>{item.title}</span>
+              <span className={styles.riskDetail}>{item.detail}</span>
             </div>
-            <span className={styles.projectPct}>{p.percentage}%</span>
           </div>
         ))}
       </div>
 
-      {/* Top sessions */}
-      <div className={styles.topSessions}>
-        {d.topSessions.map((s, i) => (
-          <div key={i} className={styles.sessionRow}>
-            <span className={styles.sessionDate}>{s.date}</span>
-            <span className={styles.sessionDuration}>{s.duration}</span>
-            <span className={styles.sessionSummary}>{s.summary}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Highlights */}
-      <ul className={styles.highlights}>
-        {d.highlights.map((h, i) => (
-          <li key={i} className={styles.highlightItem}>
-            {h}
-          </li>
-        ))}
-      </ul>
+      {/* Footer */}
+      <p className={styles.riskFooter}>{d.footer}</p>
     </div>
   );
 }
