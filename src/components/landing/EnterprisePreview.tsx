@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * EnterprisePreview - Self-contained static preview of the Manager Dashboard
- * for the landing page. No imports from enterprise/ to keep bundle isolated.
- * All data is pre-formatted strings — no format-utils dependency.
+ * EnterprisePreview (TeamSection) - Self-contained static preview of the
+ * Team Dashboard for the landing page. No imports from enterprise/ to keep
+ * bundle isolated. All data is pre-formatted strings.
  */
 
 import { useState } from 'react';
@@ -12,7 +12,7 @@ import { useInView } from '@/hooks/useInView';
 import { WaitlistModal, waitlistConfigs } from './WaitlistModal';
 import styles from './EnterprisePreview.module.css';
 
-/* ── Inline MiniScoreRing (lightweight ProgressRing clone, 28x28) ── */
+/* -- Inline MiniScoreRing (lightweight ProgressRing clone, 28x28) -- */
 
 function MiniScoreRing({ value, color }: { value: number; color: string }) {
   const size = 28;
@@ -47,7 +47,7 @@ function MiniScoreRing({ value, color }: { value: number; color: string }) {
   );
 }
 
-/* ── Demo data (all pre-formatted strings) ── */
+/* -- Demo data (all pre-formatted strings) -- */
 
 type Direction = 'up' | 'down' | 'neutral';
 
@@ -58,10 +58,10 @@ interface StatItem {
 }
 
 const STATS: StatItem[] = [
-  { label: 'Active Members', value: '12', change: null },
-  { label: 'Sessions This Week', value: '236', change: { text: '25%', direction: 'down' } },
-  { label: 'Avg Context Fill', value: '63%', change: null },
-  { label: 'Anti-Patterns', value: '98', change: { text: 'detected', direction: 'neutral' } },
+  { label: 'Active Members', value: '8', change: null },
+  { label: 'Sessions This Week', value: '142', change: { text: '18%', direction: 'up' } },
+  { label: 'Avg AI Control', value: '64%', change: null },
+  { label: 'Risk Items', value: '23', change: { text: 'detected', direction: 'neutral' } },
 ];
 
 interface MemberItem {
@@ -69,71 +69,52 @@ interface MemberItem {
   role: string;
   score: number;
   color: string;
-  tokens: string;
-  tokenDelta: { text: string; direction: Direction };
   summaries: string[];
 }
 
 const MEMBERS: MemberItem[] = [
   {
-    name: 'Sarah Chen',
-    role: 'Senior Engineer',
-    score: 87,
+    name: 'Sarah Park',
+    role: 'Product Manager',
+    score: 72,
     color: 'var(--sketch-green)',
-    tokens: '142K',
-    tokenDelta: { text: '+12%', direction: 'up' },
-    summaries: ['Migrated auth to OAuth2', 'Refactored API middleware', 'Added rate limiting'],
+    summaries: ['Built checkout flow with Cursor', 'User dashboard prototyping', 'Payment integration'],
   },
   {
-    name: 'Marcus Kim',
-    role: 'Staff Engineer',
-    score: 82,
-    color: 'var(--sketch-green)',
-    tokens: '98K',
-    tokenDelta: { text: '+5%', direction: 'up' },
-    summaries: ['Database query optimization', 'Created caching layer'],
-  },
-  {
-    name: 'Elena Petrov',
-    role: 'Mid-level Engineer',
-    score: 74,
+    name: 'James Lee',
+    role: 'Designer',
+    score: 58,
     color: 'var(--sketch-yellow)',
-    tokens: '210K',
-    tokenDelta: { text: '-8%', direction: 'down' },
-    summaries: ['Built dashboard components', 'Fixed SSR hydration bugs', 'Updated test suite'],
+    summaries: ['Created component library', 'Landing page redesign', 'Design system tokens'],
   },
   {
-    name: 'Jake Miller',
-    role: 'Junior Engineer',
-    score: 61,
-    color: 'var(--sketch-yellow)',
-    tokens: '315K',
-    tokenDelta: { text: '+32%', direction: 'up' },
-    summaries: ['Implemented form validation', 'Styled onboarding flow'],
-  },
-  {
-    name: 'Yuki Tanaka',
-    role: 'DevOps Engineer',
-    score: 79,
+    name: 'Maria Chen',
+    role: 'Marketing Lead',
+    score: 81,
     color: 'var(--sketch-green)',
-    tokens: '67K',
-    tokenDelta: { text: '-3%', direction: 'down' },
-    summaries: ['CI/CD pipeline rework', 'Docker image optimization', 'Monitoring alerts setup'],
+    summaries: ['Analytics dashboard build', 'A/B test framework', 'Email template system'],
+  },
+  {
+    name: 'Tom Wilson',
+    role: 'Operations',
+    score: 45,
+    color: 'var(--sketch-yellow)',
+    summaries: ['Internal tools automation', 'Report generator', 'Inventory tracker'],
   },
 ];
 
-/* ── Component ── */
+/* -- Component -- */
 
 export function EnterprisePreview() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
-    <section id="enterprise" className={styles.section}>
+    <section id="teams" className={styles.section}>
       <div ref={ref} className={`${styles.content} ${isInView ? styles.visible : ''}`}>
         <h2 className={styles.headline}>See how your team uses AI</h2>
         <p className={styles.subline}>
-          Track capability growth, spot anti-patterns, and guide your team's AI adoption
+          Same analysis, team-wide visibility. Know who&apos;s building securely and who needs support.
         </p>
 
         {/* Dashboard preview card */}
@@ -142,7 +123,7 @@ export function EnterprisePreview() {
           <div className={styles.dashboardHeader}>
             <Building2 size={16} />
             <span className={styles.dashboardTitle}>Manager Dashboard</span>
-            <span className={styles.enterpriseBadge}>Enterprise</span>
+            <span className={styles.enterpriseBadge}>Team Plan</span>
           </div>
 
           {/* Stat cards */}
@@ -173,8 +154,7 @@ export function EnterprisePreview() {
                 <tr>
                   <th className={styles.th}>#</th>
                   <th className={styles.th}>Name</th>
-                  <th className={styles.th}>Score</th>
-                  <th className={styles.th}>Tokens</th>
+                  <th className={styles.th}>AI Control</th>
                   <th className={styles.th}>This Week</th>
                 </tr>
               </thead>
@@ -200,18 +180,6 @@ export function EnterprisePreview() {
                       </div>
                     </td>
                     <td className={styles.td}>
-                      <div className={styles.tokenCell}>
-                        <span className={styles.tokenMain}>{member.tokens}</span>
-                        <span className={`${styles.tokenDelta} ${
-                          member.tokenDelta.direction === 'up' ? styles.changeUp
-                            : member.tokenDelta.direction === 'down' ? styles.changeDown
-                            : styles.changeNeutral
-                        }`}>
-                          {member.tokenDelta.text}
-                        </span>
-                      </div>
-                    </td>
-                    <td className={styles.td}>
                       <ul className={styles.summaryList}>
                         {member.summaries.map((line) => (
                           <li key={line} className={styles.summaryItem}>{line}</li>
@@ -231,7 +199,7 @@ export function EnterprisePreview() {
         {/* CTA */}
         <div className={styles.cta}>
           <button className={styles.ctaButton} onClick={() => setIsModalOpen(true)}>
-            Learn more about Enterprise
+            Start a team trial
           </button>
         </div>
       </div>

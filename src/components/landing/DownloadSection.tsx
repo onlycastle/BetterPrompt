@@ -1,25 +1,26 @@
 'use client';
 
-import { Shield, Lock, Terminal, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
+import { track } from '@vercel/analytics';
 import { useInView } from '@/hooks/useInView';
-import { TerminalCommand } from './TerminalCommand';
+import { Button } from '@/components/ui/Button';
 import styles from './DownloadSection.module.css';
 
-const features = [
+const howItWorks = [
   {
-    icon: Terminal,
-    title: 'Local Scanning',
-    description: 'CLI reads your session files locally, no agents on your machine',
+    step: '1',
+    title: 'Connect your AI tool',
+    text: 'Works with Claude Code, Cursor, and more. We read your session logs \u2014 not your source code.',
   },
   {
-    icon: Shield,
-    title: 'Secure Analysis',
-    description: 'Data encrypted in transit, only insights stored — not raw sessions',
+    step: '2',
+    title: 'Get your assessment',
+    text: 'Our AI analyzes how you work with AI. Patterns, risks, and opportunities \u2014 all in one report.',
   },
   {
-    icon: Lock,
-    title: 'No Installation',
-    description: 'Run directly with npx, no global install required',
+    step: '3',
+    title: 'Start improving',
+    text: 'Actionable recommendations specific to your workflow. Track your progress over time.',
   },
 ];
 
@@ -29,84 +30,75 @@ const pricingTiers = [
     price: '$0',
     period: '',
     features: [
-      '3 analyses/month',
-      'Thinking Quality insights',
-      'Diagnosis only',
+      '3 assessments/month',
+      'Core AI Builder Profile',
+      'Basic behavior analysis',
     ],
-    missing: ['Prescriptions', 'Progress tracking', 'Knowledge Base', 'API access'],
+    missing: ['Full analysis', 'Security report', 'Progress tracking', 'Learning resources'],
   },
   {
-    name: 'One-Time',
+    name: 'Starter',
     price: '$4.99',
     period: '',
     popular: true,
     features: [
-      'Unlimited analyses',
-      'All 5 worker insights',
-      'Diagnosis + Prescriptions',
+      'Unlimited assessments',
+      'Full 6-dimension analysis',
+      'Security risk report',
+      'Growth recommendations',
     ],
-    missing: ['Progress tracking', 'Knowledge Base', 'API access'],
+    missing: ['Progress tracking', 'Learning resources'],
   },
   {
     name: 'Pro',
     price: '$6.99',
     period: '/mo',
     features: [
-      '4 full reports / month',
-      'All 5 worker insights',
-      'Diagnosis + Prescriptions',
-      'Progress tracking',
-      'Full Knowledge Base',
-      'API access',
+      'Everything in Starter',
+      'Progress tracking over time',
+      'Learning resources',
+      'Team comparison (up to 5)',
     ],
     missing: [],
   },
   {
-    name: 'Enterprise',
+    name: 'Team',
     price: 'Custom',
     period: '',
     features: [
       'Everything in Pro',
-      'Team management',
-      'Custom Knowledge Base',
-      'SSO integration',
+      'Team dashboard',
+      'Manager insights',
+      'SSO + admin controls',
     ],
     missing: [],
   },
-];
-
-const howItWorks = [
-  { step: '1', text: 'CLI reads your Claude Code sessions locally' },
-  { step: '2', text: 'Summaries (not source code) are sent for analysis' },
-  { step: '3', text: 'AI generates your personalized report' },
-  { step: '4', text: 'Raw data is deleted — only your report is saved' },
 ];
 
 export function DownloadSection() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
 
   return (
-    <section className={styles.section} id="download">
+    <section className={styles.section} id="pricing">
       <div ref={ref} className={`${styles.container} ${isInView ? styles.visible : ''}`}>
-        <h2 className={styles.headline}>Try it now</h2>
+        <h2 className={styles.headline}>Get started in 2 minutes</h2>
 
         <p className={styles.description}>
-          Run the CLI to analyze your Claude Code sessions locally.
-          Free to scan. Pay only for full insights.
+          Connect your AI tool, get your assessment, and start improving.
+          Free to start. Pay only for full insights.
         </p>
 
-        <div className={styles.downloadCard}>
-          <TerminalCommand command="npx no-ai-slop" location="download" />
-        </div>
-
-        {/* How it works — privacy explanation */}
+        {/* How it works */}
         <div className={styles.howItWorks}>
           <h3 className={styles.howTitle}>How it works</h3>
           <div className={styles.steps}>
             {howItWorks.map((item) => (
               <div key={item.step} className={styles.step}>
                 <span className={styles.stepNumber}>{item.step}</span>
-                <span className={styles.stepText}>{item.text}</span>
+                <div className={styles.stepContent}>
+                  <span className={styles.stepTitle}>{item.title}</span>
+                  <span className={styles.stepText}>{item.text}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -138,7 +130,7 @@ export function DownloadSection() {
                   ))}
                   {tier.missing.map((f) => (
                     <li key={f} className={styles.tierMissing}>
-                      <span className={styles.dash}>—</span>
+                      <span className={styles.dash}>&mdash;</span>
                       <span>{f}</span>
                     </li>
                   ))}
@@ -148,26 +140,23 @@ export function DownloadSection() {
           </div>
         </div>
 
-        <div className={styles.features}>
-          {features.map((feature) => (
-            <div key={feature.title} className={styles.feature}>
-              <div className={styles.featureIcon}>
-                <feature.icon size={18} />
-              </div>
-              <div className={styles.featureContent}>
-                <span className={styles.featureTitle}>{feature.title}</span>
-                <span className={styles.featureDescription}>
-                  {feature.description}
-                </span>
-              </div>
-            </div>
-          ))}
+        <div className={styles.ctaRow}>
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => {
+              track('pricing_cta_click');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          >
+            Get your free assessment
+          </Button>
         </div>
 
         <p className={styles.requirements}>
-          Requires Node.js 18+ · macOS, Linux, or Windows
+          Works with Claude Code. Cursor &amp; Replit support coming soon.
           <br />
-          Currently supports Claude Code. Cursor &amp; GitHub Copilot coming soon.
+          No installation required &mdash; runs in your browser.
         </p>
       </div>
     </section>

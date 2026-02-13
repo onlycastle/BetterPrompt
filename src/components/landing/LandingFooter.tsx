@@ -2,17 +2,31 @@
 
 import { BookOpen } from 'lucide-react';
 import { track } from '@vercel/analytics';
-import { TerminalCommand } from './TerminalCommand';
+import { Button } from '@/components/ui/Button';
 import styles from './LandingFooter.module.css';
 
 export function LandingFooter() {
+  const handleCtaClick = () => {
+    track('cta_click', { location: 'footer', type: 'get_free_assessment' });
+    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <footer className={styles.footer}>
       <div className={styles.content}>
-        <h2 className={styles.headline}>Ready to find out?</h2>
+        <h2 className={styles.headline}>
+          You&apos;re already building with AI.
+          <br />
+          Now find out if you&apos;re building it right.
+        </h2>
 
         <div className={styles.cta}>
-          <TerminalCommand command="npx no-ai-slop" location="footer" />
+          <Button variant="primary" size="lg" onClick={handleCtaClick}>
+            Get Your Free Assessment
+          </Button>
+          <p className={styles.smallText}>
+            No credit card. No installation. Takes 2 minutes.
+          </p>
         </div>
 
         <div className={styles.links}>
@@ -20,7 +34,7 @@ export function LandingFooter() {
             <BookOpen size={16} />
             <span>Documentation</span>
           </a>
-          <span className={styles.separator}>·</span>
+          <span className={styles.separator}>&middot;</span>
           <a
             href="https://discord.gg/xS3eDseCFH"
             target="_blank"
@@ -45,7 +59,7 @@ export function LandingFooter() {
           </a>
         </div>
 
-<p className={styles.copyright}>
+        <p className={styles.copyright}>
           &copy; {new Date().getFullYear()} NoMoreAISlop
         </p>
       </div>

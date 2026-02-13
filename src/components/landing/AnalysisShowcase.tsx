@@ -1,13 +1,19 @@
 'use client';
 
 import { useInView } from '@/hooks/useInView';
-import { TerminalCommand } from './TerminalCommand';
+import { Button } from '@/components/ui/Button';
+import { track } from '@vercel/analytics';
 import { ShowcaseAntiPattern } from './showcase/ShowcaseAntiPattern';
 import { ShowcaseWeekly } from './showcase/ShowcaseWeekly';
 import { ShowcaseStrength } from './showcase/ShowcaseStrength';
 import styles from './AnalysisShowcase.module.css';
 
 const CARDS = [ShowcaseAntiPattern, ShowcaseWeekly, ShowcaseStrength];
+
+function handleCtaClick() {
+  track('cta_click', { location: 'showcase', type: 'see_results' });
+  document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+}
 
 export function AnalysisShowcase() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
@@ -34,10 +40,12 @@ export function AnalysisShowcase() {
 
         <div className={styles.footer}>
           <p className={styles.disclaimer}>
-            Sample data. Run CLI to see yours.
+            Sample data shown. Get your personalized report.
           </p>
           <div className={styles.cta}>
-            <TerminalCommand command="npx no-ai-slop" location="download" />
+            <Button variant="primary" size="lg" onClick={handleCtaClick}>
+              See your real results
+            </Button>
           </div>
         </div>
       </div>
