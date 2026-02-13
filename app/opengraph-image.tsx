@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 
 export const runtime = 'nodejs';
 
-export const alt = 'NoMoreAISlop - See Your Anti-Patterns. Stop Making AI Slop.';
+export const alt = 'VibeBetter - AI Session Intelligence for Builders';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -88,7 +88,7 @@ export default function Image() {
               marginBottom: 28,
             }}
           >
-            NoMoreAISlop
+            VibeBetter
           </div>
 
           {/* Tagline */}
@@ -100,7 +100,7 @@ export default function Image() {
               lineHeight: 1.5,
             }}
           >
-            {"AI isn\u2019t the problem."}
+            {"See what\u2019s going wrong in your AI workflow."}
           </div>
           <div
             style={{
@@ -112,7 +112,7 @@ export default function Image() {
               marginBottom: 36,
             }}
           >
-            Unconscious dependency is.
+            Behavior patterns, risk blind spots, and next steps.
           </div>
 
           {/* Terminal CTA */}
@@ -130,7 +130,7 @@ export default function Image() {
               {'\u25b8'}
             </div>
             <div style={{ display: 'flex', color: '#1A1A2E', fontSize: 22, fontWeight: 500 }}>
-              npx no-ai-slop
+              vibebetter.app
             </div>
           </div>
 
@@ -169,7 +169,7 @@ export default function Image() {
 
           {/* URL */}
           <div style={{ display: 'flex', fontSize: 15, color: '#8A8A9A' }}>
-            www.nomoreaislop.app
+            www.vibebetter.app
           </div>
         </div>
       </div>
