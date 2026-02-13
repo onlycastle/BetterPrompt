@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { Check } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { useInView } from '@/hooks/useInView';
@@ -9,8 +10,8 @@ import styles from './DownloadSection.module.css';
 const howItWorks = [
   {
     step: '1',
-    title: 'Connect your AI tool',
-    text: 'Works with Claude Code, Cursor, and more. We read your session logs \u2014 not your source code.',
+    title: 'Sign in and connect',
+    text: 'Start in the web dashboard and connect your AI workflow. We analyze session summaries \u2014 not your source code.',
   },
   {
     step: '2',
@@ -43,7 +44,7 @@ const pricingTiers = [
     popular: true,
     features: [
       'Unlimited assessments',
-      'Full 6-dimension analysis',
+      'Full 5-dimension analysis',
       'Security risk report',
       'Growth recommendations',
     ],
@@ -76,16 +77,17 @@ const pricingTiers = [
 ];
 
 export function DownloadSection() {
+  const router = useRouter();
   const { ref, isInView } = useInView({ threshold: 0.1 });
 
   return (
     <section className={styles.section} id="pricing">
       <div ref={ref} className={`${styles.container} ${isInView ? styles.visible : ''}`}>
-        <h2 className={styles.headline}>Get started in 2 minutes</h2>
+        <h2 className={styles.headline}>Get started free in minutes</h2>
 
         <p className={styles.description}>
-          Connect your AI tool, get your assessment, and start improving.
-          Free to start. Pay only for full insights.
+          See your blind spots, risks, and growth opportunities.
+          Free to start. Upgrade only when you want deeper guidance.
         </p>
 
         {/* How it works */}
@@ -145,18 +147,18 @@ export function DownloadSection() {
             variant="secondary"
             size="lg"
             onClick={() => {
-              track('pricing_cta_click');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              track('pricing_cta_click', { type: 'get_started_free' });
+              router.push('/dashboard/analyze');
             }}
           >
-            Get your free assessment
+            Get Started Free
           </Button>
         </div>
 
         <p className={styles.requirements}>
-          Works with Claude Code. Cursor &amp; Replit support coming soon.
+          Works with Claude Code today. Cursor &amp; Replit support coming soon.
           <br />
-          No installation required &mdash; runs in your browser.
+          Start from the web dashboard, then run one command to scan local sessions.
         </p>
       </div>
     </section>
