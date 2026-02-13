@@ -17,15 +17,20 @@
  */
 
 import { readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { levenshteinDistance } from './levenshtein.js';
+import { isWindowsEncodedPath } from './path-encoding.js';
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-/** Temp directory prefixes that produce meaningless project names */
-const TEMP_PREFIXES = ['-private-var-', '-tmp-', '-temp-', '-var-folders-'];
+/** Temp directory prefixes that produce meaningless project names (Unix) */
+const UNIX_TEMP_PREFIXES = ['-private-var-', '-tmp-', '-temp-', '-var-folders-'];
+
+/** Temp directory segments for Windows (after drive letter removal) */
+const WINDOWS_TEMP_SEGMENTS = ['appdata-local-temp', 'temp', 'tmp'];
 
 /** Container directories to strip from the resolved path (case-insensitive) */
 const CONTAINER_DIRS = new Set([
@@ -85,7 +90,7 @@ function resolveSegments(basePath: string, segments: string[]): string[] {
 
   for (let len = segments.length; len >= 1; len--) {
     const candidate = segments.slice(0, len).join('-');
-    const candidatePath = `${basePath}/${candidate}`;
+    const candidatePath = basePath ? join(basePath, candidate) : `/${candidate}`;
 
     if (dirExists(candidatePath)) {
       const rest = resolveSegments(candidatePath, segments.slice(len));
@@ -119,12 +124,18 @@ export function resolveProjectName(encodedDirName: string): string {
 }
 
 function resolveProjectNameUncached(encodedDirName: string): string {
+  // Windows encoded path: 'C--alphacut-channel'
+  if (isWindowsEncodedPath(encodedDirName)) {
+    return resolveWindowsPath(encodedDirName);
+  }
+
+  // Unix encoded path must start with '-'
   if (!encodedDirName.startsWith('-')) {
     return encodedDirName || 'unknown';
   }
 
   const lower = encodedDirName.toLowerCase();
-  for (const prefix of TEMP_PREFIXES) {
+  for (const prefix of UNIX_TEMP_PREFIXES) {
     if (lower.startsWith(prefix)) {
       return '(temp)';
     }
@@ -134,7 +145,7 @@ function resolveProjectNameUncached(encodedDirName: string): string {
   if (segments.length === 0) return 'unknown';
 
   const home = homedir();
-  const homeParts = home.split('/').filter(Boolean);
+  const homeParts = home.split(/[/\\]/).filter(Boolean);
 
   let startSegments = segments;
 
@@ -158,6 +169,61 @@ function resolveProjectNameUncached(encodedDirName: string): string {
   }
 
   const resolved = resolveSegments('', segments);
+  if (resolved.length === 0) return 'unknown';
+
+  return stripContainerDirs(resolved);
+}
+
+/**
+ * Resolve a Windows encoded path: 'C--alphacut-channel' → project name
+ */
+function resolveWindowsPath(encodedDirName: string): string {
+  const driveLetter = encodedDirName[0];
+  const rest = encodedDirName.slice(3); // skip 'X--'
+
+  if (!rest) return 'unknown';
+
+  const segments = rest.split('-').filter(Boolean);
+  if (segments.length === 0) return 'unknown';
+
+  // Check for Windows temp paths
+  const lowerRest = rest.toLowerCase();
+  for (const tempSeg of WINDOWS_TEMP_SEGMENTS) {
+    if (lowerRest.startsWith(tempSeg)) {
+      return '(temp)';
+    }
+  }
+
+  // Try to match home directory (e.g. C:\Users\ehdto → homeParts = ['Users','ehdto'])
+  const home = homedir();
+  const homeParts = home.split(/[/\\]/).filter(Boolean);
+
+  // Remove drive letter from homeParts if present (e.g. 'C:' from 'C:\Users\ehdto')
+  const homePartsNoDrive = homeParts[0]?.match(/^[A-Za-z]:$/)
+    ? homeParts.slice(1)
+    : homeParts;
+
+  if (homePartsNoDrive.length > 0 && segments.length > homePartsNoDrive.length) {
+    let matchesHome = true;
+    for (let i = 0; i < homePartsNoDrive.length; i++) {
+      if (segments[i] !== homePartsNoDrive[i]) {
+        matchesHome = false;
+        break;
+      }
+    }
+
+    if (matchesHome) {
+      const afterHome = segments.slice(homePartsNoDrive.length);
+      if (afterHome.length === 0) return 'unknown';
+
+      const resolved = resolveSegments(home, afterHome);
+      return stripContainerDirs(resolved);
+    }
+  }
+
+  // No home match — resolve from drive root
+  const driveRoot = `${driveLetter}:/`;
+  const resolved = resolveSegments(driveRoot, segments);
   if (resolved.length === 0) return 'unknown';
 
   return stripContainerDirs(resolved);
