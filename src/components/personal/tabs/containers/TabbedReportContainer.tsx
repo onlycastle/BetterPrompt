@@ -386,6 +386,7 @@ export function TabbedReportContainer({
               workerInsights={workerInsights}
               translatedAgentInsights={translatedAgentInsights}
               utteranceLookup={analysis.utteranceLookup}
+              onViewContext={handleViewContext}
             />
           </div>
 
@@ -403,6 +404,7 @@ export function TabbedReportContainer({
               translatedAgentInsights={translatedAgentInsights}
               utteranceLookup={analysis.utteranceLookup}
               insightAllocation={insightAllocation}
+              onViewContext={handleViewContext}
             />
           </div>
 

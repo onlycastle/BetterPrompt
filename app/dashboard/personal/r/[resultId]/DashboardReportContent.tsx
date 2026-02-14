@@ -185,7 +185,6 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
           resultId={resultId}
           credits={credits}
           onCreditsUsed={refetch}
-          lockedDomains={undefined}
         />
       </div>
     </div>

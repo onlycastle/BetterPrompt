@@ -49,6 +49,7 @@ interface DiagnosisOverviewProps {
   translatedAgentInsights?: TranslatedAgentInsights;
   utteranceLookup?: UtteranceLookupEntry[];
   insightAllocation?: InsightAllocation;
+  onViewContext?: (utteranceId: string) => void;
 }
 
 export function DiagnosisOverview({
@@ -56,6 +57,7 @@ export function DiagnosisOverview({
   translatedAgentInsights,
   utteranceLookup,
   insightAllocation,
+  onViewContext,
 }: DiagnosisOverviewProps) {
   const { ref: containerRef, isVisible } = useScrollReveal({ threshold: 0.05 });
 
@@ -133,6 +135,7 @@ export function DiagnosisOverview({
                 growth={item.growth}
                 utteranceLookup={utteranceLookupMap}
                 referencedInsights={insight ? [insight] : undefined}
+                onViewContext={onViewContext}
               />
             </div>
           );

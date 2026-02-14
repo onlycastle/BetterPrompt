@@ -35,12 +35,14 @@ interface StrengthsOverviewProps {
   workerInsights?: AggregatedWorkerInsights;
   translatedAgentInsights?: TranslatedAgentInsights;
   utteranceLookup?: UtteranceLookupEntry[];
+  onViewContext?: (utteranceId: string) => void;
 }
 
 export function StrengthsOverview({
   workerInsights,
   translatedAgentInsights,
   utteranceLookup,
+  onViewContext,
 }: StrengthsOverviewProps) {
   const { ref: containerRef, isVisible } = useScrollReveal({ threshold: 0.05 });
 
@@ -96,6 +98,7 @@ export function StrengthsOverview({
             <StrengthCard
               strength={item.strength}
               utteranceLookup={utteranceLookupMap}
+              onViewContext={onViewContext}
             />
           </div>
         ))}

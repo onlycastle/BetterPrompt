@@ -5,19 +5,6 @@ import { Coffee, Zap, Lock, Loader2, Coins, Building2 } from 'lucide-react';
 import { WaitlistModal, waitlistConfigs } from '@/components/landing';
 import styles from './UnlockSection.module.css';
 
-/**
- * Preview data for a locked worker domain (passed from DashboardReportContent).
- * Contains just enough info to show a value teaser in the unlock section.
- */
-export interface LockedDomainPreview {
-  icon: string;
-  title: string;
-  score: number;
-  topStrength: { title: string; descriptionPreview?: string };
-  topGrowth: { title: string; descriptionPreview?: string };
-  growthCount: number;
-}
-
 interface UnlockSectionProps {
   isUnlocked: boolean;
   resultId?: string;
@@ -25,8 +12,6 @@ interface UnlockSectionProps {
   credits?: number | null;
   /** Callback after credits are used successfully */
   onCreditsUsed?: () => void;
-  /** Preview data for locked worker domains */
-  lockedDomains?: LockedDomainPreview[];
 }
 
 /**
@@ -37,7 +22,7 @@ interface UnlockSectionProps {
  * - If credits > 0: Show "Use 1 Credit to Unlock" button with balance
  * - If credits === 0 or null: Show $4.99 one-time payment option
  */
-export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed, lockedDomains }: UnlockSectionProps) {
+export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: UnlockSectionProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isCreditLoading, setIsCreditLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,53 +141,6 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed, lo
           <p className={styles.lockedDescription}>
             See the complete picture of your AI collaboration patterns
           </p>
-
-          {/* Preview Gallery - What You're Missing */}
-          {lockedDomains && lockedDomains.length > 0 && (
-            <div className={styles.previewGallery}>
-              <p className={styles.previewGalleryTitle}>What You&apos;re Missing</p>
-              <div className={styles.previewGrid}>
-                {lockedDomains.map((domain) => (
-                  <div key={domain.title} className={styles.previewCard}>
-                    <div className={styles.previewCardHeader}>
-                      <span className={styles.previewCardIcon}>{domain.icon}</span>
-                      <span className={styles.previewCardTitle}>{domain.title}</span>
-                      <span className={styles.previewCardScore}>{domain.score}</span>
-                    </div>
-                    <div className={styles.previewCardBody}>
-                      {domain.topStrength.title && (
-                        <div className={styles.previewItem}>
-                          <span className={styles.previewItemLabel}>Strength</span>
-                          <span className={styles.previewItemTitle}>{domain.topStrength.title}</span>
-                          {domain.topStrength.descriptionPreview && (
-                            <p className={styles.previewBlurred}>
-                              {domain.topStrength.descriptionPreview}...
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      {domain.topGrowth.title && (
-                        <div className={styles.previewItem} data-type="growth">
-                          <span className={styles.previewItemLabel}>Growth Area</span>
-                          <span className={styles.previewItemTitle}>{domain.topGrowth.title}</span>
-                          {domain.topGrowth.descriptionPreview && (
-                            <p className={styles.previewBlurred}>
-                              {domain.topGrowth.descriptionPreview}...
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    {domain.growthCount > 1 && (
-                      <div className={styles.previewCardFooter}>
-                        +{domain.growthCount - 1} more growth area{domain.growthCount - 1 !== 1 ? 's' : ''} with action plans
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Pricing Cards - CREDIT (if available) + ONE-TIME + PRO */}
           <div className={hasCredits ? styles.pricingCardsWithCredit : styles.pricingCards}>
