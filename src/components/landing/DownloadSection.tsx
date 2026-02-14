@@ -147,7 +147,7 @@ export function DownloadSection() {
             variant="secondary"
             size="lg"
             onClick={() => {
-              track('pricing_cta_click', { type: 'get_started_free' });
+              track('cta_click', { location: 'pricing', type: 'get_started_free' });
               router.push('/dashboard/analyze');
             }}
           >

@@ -64,6 +64,18 @@ const STATS: StatItem[] = [
   { label: 'Risk Items', value: '23', change: { text: 'detected', direction: 'neutral' } },
 ];
 
+const directionStyles: Record<Direction, string> = {
+  up: styles.changeUp,
+  down: styles.changeDown,
+  neutral: styles.changeNeutral,
+};
+
+const directionArrows: Record<Direction, string> = {
+  up: '\u2191',
+  down: '\u2193',
+  neutral: '',
+};
+
 interface MemberItem {
   name: string;
   role: string;
@@ -133,13 +145,8 @@ export function EnterprisePreview() {
                 <div className={styles.statLabel}>{stat.label}</div>
                 <div className={styles.statValue}>{stat.value}</div>
                 {stat.change && (
-                  <span className={`${styles.statChange} ${
-                    stat.change.direction === 'up' ? styles.changeUp
-                      : stat.change.direction === 'down' ? styles.changeDown
-                      : styles.changeNeutral
-                  }`}>
-                    {stat.change.direction === 'up' && '\u2191'}
-                    {stat.change.direction === 'down' && '\u2193'}
+                  <span className={`${styles.statChange} ${directionStyles[stat.change.direction]}`}>
+                    {directionArrows[stat.change.direction]}
                     {' '}{stat.change.text}
                   </span>
                 )}
