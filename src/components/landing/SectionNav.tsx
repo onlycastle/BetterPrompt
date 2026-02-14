@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { track } from '@vercel/analytics';
 import styles from './SectionNav.module.css';
 
@@ -54,9 +54,9 @@ export function SectionNav() {
     return () => observer.disconnect();
   }, []);
 
-  const handleClick = useCallback((id: string) => {
+  function handleClick(id: string): void {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+  }
 
   return (
     <nav

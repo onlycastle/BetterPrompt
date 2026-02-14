@@ -7,5 +7,6 @@ export { DownloadSection } from './DownloadSection';
 export { LandingFooter } from './LandingFooter';
 export { EnterprisePreview } from './EnterprisePreview';
 export { TrustPrivacy } from './TrustPrivacy';
+export { SectionNav } from './SectionNav';
 export { WaitlistModal, waitlistConfigs } from './WaitlistModal';
 export type { WaitlistConfig, WaitlistType } from './WaitlistModal';
