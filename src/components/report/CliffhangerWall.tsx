@@ -4,19 +4,18 @@
  * CliffhangerWall - Dramatic paywall at the story's climax
  *
  * Appears after all growth area diagnoses have been revealed.
- * The user has seen all their problems — now the solutions are just out of reach.
+ * The user has seen all their problems -- now the solutions are just out of reach.
  *
  * Design: Sticky full-viewport section with dark background.
  * Shows the most critical finding with a blurred recommendation preview,
  * progress summary, and a single CTA for payment.
- *
- * Reuses payment logic from UnlockSection (credits, checkout, waitlist).
  */
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Coffee, Loader2, Coins } from 'lucide-react';
 import type { AggregatedWorkerInsights, WorkerGrowth } from '@/lib/models/worker-insights';
 import { WORKER_DOMAIN_CONFIGS } from '@/lib/models/worker-insights';
+import { usePayment } from '@/hooks/usePayment';
 import styles from './CliffhangerWall.module.css';
 
 const SEVERITY_ORDER: Record<string, number> = {
@@ -68,9 +67,8 @@ export function CliffhangerWall({
   credits,
   onCreditsUsed,
 }: CliffhangerWallProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCreditLoading, setIsCreditLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { isCheckoutLoading, isCreditLoading, error, handleUseCredit, handleCheckout } =
+    usePayment({ resultId, onCreditsUsed });
 
   const hasCredits = credits !== null && credits !== undefined && credits > 0;
 
@@ -90,61 +88,6 @@ export function CliffhangerWall({
     }
     return { strengthCount: s, growthCount: g };
   }, [workerInsights]);
-
-  // Payment handlers (same logic as UnlockSection)
-  const handleUseCredit = async () => {
-    if (!resultId) { setError('Unable to process. Please refresh.'); return; }
-    setIsCreditLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/credits/use', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ resultId }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Failed to use credit');
-      if (data.success) {
-        onCreditsUsed?.();
-      } else {
-        setError(data.reason === 'insufficient_credits'
-          ? 'No credits available.'
-          : data.message || 'Failed to unlock. Please try again.');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setIsCreditLoading(false);
-    }
-  };
-
-  const handleCheckout = async () => {
-    if (!resultId) { setError('Unable to process payment. Please refresh.'); return; }
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/payments/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resultId }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Failed to create checkout');
-
-      if (!data.checkoutUrl || typeof data.checkoutUrl !== 'string') {
-        throw new Error('Invalid checkout URL');
-      }
-      const checkoutUrl = new URL(data.checkoutUrl);
-      if (checkoutUrl.protocol !== 'https:') throw new Error('Invalid checkout URL protocol');
-      window.location.href = checkoutUrl.href;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div className={styles.container}>
@@ -216,9 +159,9 @@ export function CliffhangerWall({
             <button
               className={styles.primaryCta}
               onClick={handleCheckout}
-              disabled={isLoading}
+              disabled={isCheckoutLoading}
             >
-              {isLoading ? (
+              {isCheckoutLoading ? (
                 <><Loader2 size={18} className={styles.spinner} /> Processing...</>
               ) : (
                 <><Coffee size={18} /> Unlock for $4.99</>

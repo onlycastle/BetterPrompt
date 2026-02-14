@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Coffee, Zap, Lock, Loader2, Coins, Building2 } from 'lucide-react';
 import { WaitlistModal, waitlistConfigs } from '@/components/landing';
+import { usePayment } from '@/hooks/usePayment';
 import styles from './UnlockSection.module.css';
 
 interface UnlockSectionProps {
@@ -23,108 +24,13 @@ interface UnlockSectionProps {
  * - If credits === 0 or null: Show $4.99 one-time payment option
  */
 export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: UnlockSectionProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCreditLoading, setIsCreditLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { isCheckoutLoading, isCreditLoading, error, handleUseCredit, handleCheckout } =
+    usePayment({ resultId, onCreditsUsed });
   const [isProWaitlistOpen, setIsProWaitlistOpen] = useState(false);
   const [isEnterpriseContactOpen, setIsEnterpriseContactOpen] = useState(false);
 
-  // Determine if user has credits available
   const hasCredits = credits !== null && credits !== undefined && credits > 0;
 
-  /**
-   * Handle using a credit to unlock the report
-   * Calls /api/credits/use and triggers refetch on success
-   */
-  const handleUseCredit = async () => {
-    if (!resultId) {
-      setError('Unable to process. Please refresh and try again.');
-      return;
-    }
-
-    setIsCreditLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/credits/use', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ resultId }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to use credit');
-      }
-
-      if (data.success) {
-        // Trigger parent refetch to reload the report with full data
-        onCreditsUsed?.();
-      } else {
-        setError(data.reason === 'insufficient_credits'
-          ? 'No credits available. Please purchase credits to unlock.'
-          : data.message || 'Failed to unlock. Please try again.');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setIsCreditLoading(false);
-    }
-  };
-
-  /**
-   * Handle checkout button click
-   * Calls the checkout API and redirects to Polar payment page
-   */
-  const handleCheckout = async () => {
-    if (!resultId) {
-      setError('Unable to process payment. Please refresh and try again.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/payments/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ resultId }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to create checkout session');
-      }
-
-      // Validate checkout URL before redirect
-      if (!data.checkoutUrl || typeof data.checkoutUrl !== 'string') {
-        throw new Error('Invalid checkout URL received from server');
-      }
-
-      try {
-        const checkoutUrl = new URL(data.checkoutUrl);
-        // Only allow HTTPS URLs for security
-        if (checkoutUrl.protocol !== 'https:') {
-          throw new Error('Invalid checkout URL protocol');
-        }
-        // Redirect to Polar checkout page
-        window.location.href = checkoutUrl.href;
-      } catch {
-        throw new Error('Invalid checkout URL format');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-      setIsLoading(false);
-    }
-  };
   // Don't render anything when already unlocked - the badge adds no value
   if (isUnlocked) {
     return null;
@@ -193,9 +99,9 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: 
               <button
                 className={hasCredits ? styles.subscribeCta : styles.unlockCta}
                 onClick={handleCheckout}
-                disabled={isLoading}
+                disabled={isCheckoutLoading}
               >
-                {isLoading ? (
+                {isCheckoutLoading ? (
                   <>
                     <Loader2 size={16} className={styles.spinner} />
                     Processing...
