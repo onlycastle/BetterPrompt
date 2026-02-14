@@ -1,0 +1,48 @@
+/**
+ * DiagnosisOverview - Staggered reveal layout for aggregated growth areas
+ */
+
+.container {
+  padding: var(--space-md) 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* Staggered reveal item */
+.revealItem {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  will-change: opacity, transform;
+}
+
+.container[data-visible] .revealItem {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Domain badge above each card */
+.domainBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  margin-bottom: var(--space-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .revealItem {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

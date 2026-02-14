@@ -43,21 +43,6 @@ function isCommunicationGrowth(item: WorkerGrowth): item is CommunicationGrowth 
   return '_meta' in item && (item as CommunicationGrowth)._meta?.source === 'communication_pattern';
 }
 
-/**
- * Detect if a domain is fully locked by ContentGateway.
- * Locked domains have description === '' on both strengths and growth areas.
- * Empty arrays (LLM omitted optional strengths) are treated as locked-compatible,
- * not as "no data". See: sessionOutcome, learningBehavior, contextEfficiency schemas.
- */
-function isDomainLocked(strengths: WorkerStrength[], growthAreas: WorkerGrowth[]): boolean {
-  const hasAnyData = strengths.length > 0 || growthAreas.length > 0;
-  if (!hasAnyData) return false;
-
-  const strengthsLocked = strengths.length === 0 || strengths[0].description === '';
-  const growthAreasLocked = growthAreas.length === 0 || growthAreas[0].description === '';
-  return strengthsLocked && growthAreasLocked;
-}
-
 // Frequency badge labels
 const FREQUENCY_LABELS: Record<string, string> = {
   frequent: 'Frequent',
@@ -120,7 +105,7 @@ function ScoreGauge({ score, label }: { score: number; label: string }) {
  * Supports Communication Pattern metadata (_meta) for showing
  * frequency/effectiveness badges when present.
  */
-function StrengthCard({
+export function StrengthCard({
   strength,
   utteranceLookup,
   onViewContext,
@@ -228,7 +213,7 @@ function renderUrgencyLabel(severity: string | undefined): ReactNode {
  * Professional Insights:
  * - Shows inline insight content when referencedInsights are present
  */
-function GrowthCard({
+export function GrowthCard({
   growth,
   utteranceLookup,
   referencedInsights,
@@ -517,75 +502,6 @@ export function WorkerDomainSection({
 
   if (!hasContent) {
     return null;
-  }
-
-  // Locked domain: show teaser with header + score + first titles only
-  const domainLocked = isDomainLocked(displayStrengths, displayGrowthAreas);
-
-  if (domainLocked) {
-    return (
-      <section ref={sectionRef} className={styles.domainSection} data-revealed={revealed || undefined}>
-        <div
-          className={styles.domainHeader}
-          role="presentation"
-        >
-          <div className={styles.domainTitleRow}>
-            <span className={styles.domainIcon}>{config.icon}</span>
-            <div className={styles.domainTitleGroup}>
-              <h3 className={styles.domainTitle}>{config.title}</h3>
-              <p className={styles.domainSubtitle}>{config.subtitle}</p>
-            </div>
-          </div>
-          <div className={styles.domainHeaderRight}>
-            {domainScore !== undefined && (
-              <ScoreGauge score={domainScore} label={config.scoreLabel} />
-            )}
-          </div>
-        </div>
-
-        <div className={styles.lockedDomainBody}>
-          {displayStrengths.length > 0 && (
-            <div className={styles.lockedTeaser}>
-              <span className={styles.teaserStrengthLabel}>Top Strength</span>
-              <span className={styles.teaserTitle}>{displayStrengths[0]?.title}</span>
-              {displayStrengths[0]?.descriptionPreview && (
-                <p className={styles.teaserBlurredText}>
-                  {displayStrengths[0].descriptionPreview}...
-                </p>
-              )}
-            </div>
-          )}
-          {displayGrowthAreas.length > 0 && (
-            <div className={styles.lockedTeaser} data-type="growth">
-              <span className={styles.teaserGrowthLabel}>Top Growth Area</span>
-              <span className={styles.teaserTitle}>{displayGrowthAreas[0]?.title}</span>
-              {displayGrowthAreas[0]?.descriptionPreview && (
-                <p className={styles.teaserBlurredText}>
-                  {displayGrowthAreas[0].descriptionPreview}...
-                </p>
-              )}
-            </div>
-          )}
-          <div className={styles.lockedDomainOverlay}>
-            <p>Unlock to see full {config.title} analysis</p>
-            {displayGrowthAreas.length > 0 && (
-              <p className={styles.lockedDomainCount}>
-                {displayGrowthAreas.length} growth area{displayGrowthAreas.length !== 1 ? 's' : ''} with detailed action plans
-              </p>
-            )}
-            <button
-              className={styles.unlockDomainCta}
-              type="button"
-              onClick={() => {
-                document.getElementById('unlock-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
-            >
-              Unlock Full Analysis
-            </button>
-          </div>
-        </div>
-      </section>
-    );
   }
 
   /**

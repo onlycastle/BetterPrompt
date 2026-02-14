@@ -8,6 +8,7 @@ export * from './usePersonalAnalytics';
 export * from './useRemoteResult';
 export * from './useOGMetadata';
 export * from './useScrollSpy';
+export * from './useScrollReveal';
 
 export * from './useInView';
 
