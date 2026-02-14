@@ -120,5 +120,3 @@ export function FloatingProgressDots({
     </nav>
   );
 }
-
-export default FloatingProgressDots;
