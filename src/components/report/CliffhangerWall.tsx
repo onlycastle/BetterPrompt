@@ -108,8 +108,10 @@ export function CliffhangerWall({
       if (!response.ok) throw new Error(data.message || 'Failed to use credit');
       if (data.success) {
         onCreditsUsed?.();
-      } else if (data.reason === 'insufficient_credits') {
-        setError('No credits available.');
+      } else {
+        setError(data.reason === 'insufficient_credits'
+          ? 'No credits available.'
+          : data.message || 'Failed to unlock. Please try again.');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');

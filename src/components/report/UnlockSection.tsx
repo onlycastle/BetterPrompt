@@ -79,8 +79,10 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed, lo
       if (data.success) {
         // Trigger parent refetch to reload the report with full data
         onCreditsUsed?.();
-      } else if (data.reason === 'insufficient_credits') {
-        setError('No credits available. Please purchase credits to unlock.');
+      } else {
+        setError(data.reason === 'insufficient_credits'
+          ? 'No credits available. Please purchase credits to unlock.'
+          : data.message || 'Failed to unlock. Please try again.');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
