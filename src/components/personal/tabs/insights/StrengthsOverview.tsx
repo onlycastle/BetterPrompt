@@ -7,24 +7,18 @@
  */
 
 import { useMemo } from 'react';
-import type { AggregatedWorkerInsights, WorkerStrength } from '../../../../lib/models/worker-insights';
+import type { WorkerStrength } from '../../../../lib/models/worker-insights';
 import {
   WORKER_DOMAIN_CONFIGS,
+  DOMAIN_TO_TRANSLATION_KEY,
   type WorkerDomainConfig,
   applyTranslatedStrengths,
+  type AggregatedWorkerInsights,
 } from '../../../../lib/models/worker-insights';
 import type { TranslatedAgentInsights, UtteranceLookupEntry } from '../../../../lib/models/verbose-evaluation';
 import { useScrollReveal } from '../../../../hooks/useScrollReveal';
 import { StrengthCard } from './WorkerInsightsSection';
 import styles from './StrengthsOverview.module.css';
-
-const DOMAIN_TO_TRANSLATION_KEY: Partial<Record<keyof AggregatedWorkerInsights, keyof TranslatedAgentInsights>> = {
-  thinkingQuality: 'thinkingQuality',
-  communicationPatterns: 'communicationPatterns',
-  learningBehavior: 'learningBehavior',
-  contextEfficiency: 'contextEfficiency',
-  sessionOutcome: 'sessionOutcome',
-};
 
 interface DomainStrength {
   config: WorkerDomainConfig;
@@ -66,7 +60,7 @@ export function StrengthsOverview({
       if (!domain?.strengths.length) continue;
 
       // Apply translations
-      const translationKey = DOMAIN_TO_TRANSLATION_KEY[config.key];
+      const translationKey = DOMAIN_TO_TRANSLATION_KEY[config.key] as keyof TranslatedAgentInsights | undefined;
       const translatedInsight = translationKey ? translatedAgentInsights?.[translationKey] : undefined;
       const translated = applyTranslatedStrengths(
         domain.strengths,

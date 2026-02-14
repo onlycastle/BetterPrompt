@@ -9,10 +9,12 @@
  */
 
 import { useMemo } from 'react';
-import type { AggregatedWorkerInsights, WorkerGrowth, ReferencedInsight } from '../../../../lib/models/worker-insights';
+import type { WorkerGrowth, ReferencedInsight } from '../../../../lib/models/worker-insights';
 import {
   WORKER_DOMAIN_CONFIGS,
+  DOMAIN_TO_TRANSLATION_KEY,
   type WorkerDomainConfig,
+  type AggregatedWorkerInsights,
   applyTranslatedGrowthAreas,
 } from '../../../../lib/models/worker-insights';
 import { createGrowthKey, type InsightAllocation } from '../../../../lib/utils/insight-deduplication';
@@ -20,14 +22,6 @@ import type { TranslatedAgentInsights, UtteranceLookupEntry } from '../../../../
 import { useScrollReveal } from '../../../../hooks/useScrollReveal';
 import { GrowthCard } from './WorkerInsightsSection';
 import styles from './DiagnosisOverview.module.css';
-
-const DOMAIN_TO_TRANSLATION_KEY: Partial<Record<keyof AggregatedWorkerInsights, keyof TranslatedAgentInsights>> = {
-  thinkingQuality: 'thinkingQuality',
-  communicationPatterns: 'communicationPatterns',
-  learningBehavior: 'learningBehavior',
-  contextEfficiency: 'contextEfficiency',
-  sessionOutcome: 'sessionOutcome',
-};
 
 const SEVERITY_ORDER: Record<string, number> = {
   critical: 0,
@@ -81,7 +75,7 @@ export function DiagnosisOverview({
       if (!domain?.growthAreas.length) continue;
 
       // Apply translations
-      const translationKey = DOMAIN_TO_TRANSLATION_KEY[config.key];
+      const translationKey = DOMAIN_TO_TRANSLATION_KEY[config.key] as keyof TranslatedAgentInsights | undefined;
       const translatedInsight = translationKey ? translatedAgentInsights?.[translationKey] : undefined;
       const translated = applyTranslatedGrowthAreas(
         domain.growthAreas,

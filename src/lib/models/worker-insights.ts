@@ -688,6 +688,29 @@ export function matchedInsightToReferenced(matched: {
 }
 
 // ============================================================================
+// Translation Key Mapping
+// ============================================================================
+
+/**
+ * Map worker domain keys to TranslatedAgentInsights keys.
+ *
+ * v3 workers (thinkingQuality, learningBehavior, contextEfficiency) are processed
+ * by the Phase 4 Translator stage which populates TranslatedAgentInsights with
+ * matching keys. This mapping enables the frontend to look up translated data
+ * for each domain when rendering non-English reports.
+ *
+ * Legacy keys (knowledgeGap) are kept for cached data compatibility.
+ */
+export const DOMAIN_TO_TRANSLATION_KEY: Record<string, string> = {
+  thinkingQuality: 'thinkingQuality',
+  communicationPatterns: 'communicationPatterns',
+  learningBehavior: 'learningBehavior',
+  contextEfficiency: 'contextEfficiency',
+  sessionOutcome: 'sessionOutcome',
+  knowledgeGap: 'knowledgeGap',
+};
+
+// ============================================================================
 // Translation Overlay Functions
 // ============================================================================
 

@@ -21,10 +21,11 @@
  * - Context Efficiency (ContextEfficiencyWorker): Token efficiency patterns
  */
 
-import { useCallback, useMemo, useRef, useState, useEffect, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import type { AggregatedWorkerInsights, WorkerStrength, WorkerGrowth, ReferencedInsight } from '../../../../lib/models/worker-insights';
 import {
   WORKER_DOMAIN_CONFIGS,
+  DOMAIN_TO_TRANSLATION_KEY,
   type WorkerDomainConfig,
   applyTranslatedStrengths,
   applyTranslatedGrowthAreas,
@@ -32,6 +33,7 @@ import {
 import { createGrowthKey, type InsightAllocation } from '../../../../lib/utils/insight-deduplication';
 import type { TranslatedAgentInsights, UtteranceLookupEntry } from '../../../../lib/models/verbose-evaluation';
 import type { CommunicationStrength, CommunicationGrowth } from '../../../../lib/transformers/prompt-pattern-transformer';
+import { useScrollReveal } from '../../../../hooks/useScrollReveal';
 import { ExpandableEvidence } from './ExpandableEvidence';
 import styles from './WorkerInsightsSection.module.css';
 
@@ -459,33 +461,8 @@ export function WorkerDomainSection({
     }
   }, [toggleExpanded]);
 
-  // Scroll-triggered reveal: IntersectionObserver fires once when section enters viewport
-  const sectionRef = useRef<HTMLElement>(null);
-  const [revealed, setRevealed] = useState(false);
-
-  useEffect(() => {
-    const el = sectionRef.current;
-    if (!el) return;
-
-    // Respect prefers-reduced-motion — show immediately
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) {
-      setRevealed(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setRevealed(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.15 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+  // Scroll-triggered reveal: fires once when section enters viewport
+  const { ref: sectionRef, isVisible: revealed } = useScrollReveal({ threshold: 0.15 });
 
   // Apply translations if available
   const displayStrengths = useMemo(
@@ -530,7 +507,7 @@ export function WorkerDomainSection({
 
   return (
     <section
-      ref={sectionRef}
+      ref={sectionRef as React.Ref<HTMLElement>}
       className={styles.domainSection}
       data-revealed={revealed || undefined}
     >
@@ -654,26 +631,6 @@ export function WorkerDomainSection({
   );
 }
 
-/**
- * Map worker domain keys to TranslatedAgentInsights keys.
- *
- * v3 workers (thinkingQuality, learningBehavior, contextEfficiency) are processed
- * by the Phase 4 Translator stage which populates TranslatedAgentInsights with
- * matching keys. This mapping enables the frontend to look up translated data
- * for each domain when rendering non-English reports.
- *
- * Legacy keys (knowledgeGap, temporalAnalysis) are kept for cached data compatibility.
- */
-const DOMAIN_TO_TRANSLATION_KEY: Partial<Record<keyof AggregatedWorkerInsights, keyof TranslatedAgentInsights>> = {
-  // v3 workers (2026-02)
-  thinkingQuality: 'thinkingQuality',
-  communicationPatterns: 'communicationPatterns',
-  learningBehavior: 'learningBehavior',
-  contextEfficiency: 'contextEfficiency',
-  sessionOutcome: 'sessionOutcome',
-  // Legacy workers (kept for cached data)
-  knowledgeGap: 'knowledgeGap',
-};
 
 /**
  * Main WorkerInsightsSection component
@@ -751,7 +708,7 @@ export function WorkerInsightsSection({
           if (!domain) return null;
 
           // Get translated data for this domain if available
-          const translationKey = DOMAIN_TO_TRANSLATION_KEY[config.key];
+          const translationKey = DOMAIN_TO_TRANSLATION_KEY[config.key] as keyof TranslatedAgentInsights | undefined;
           const translatedInsight = translationKey ? translatedAgentInsights?.[translationKey] : undefined;
 
           return (
