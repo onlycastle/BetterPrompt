@@ -81,10 +81,10 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed, lo
         onCreditsUsed?.();
       } else if (data.reason === 'insufficient_credits') {
         setError('No credits available. Please purchase credits to unlock.');
-        setIsCreditLoading(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
       setIsCreditLoading(false);
     }
   };

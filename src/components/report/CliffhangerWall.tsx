@@ -110,10 +110,10 @@ export function CliffhangerWall({
         onCreditsUsed?.();
       } else if (data.reason === 'insufficient_credits') {
         setError('No credits available.');
-        setIsCreditLoading(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
       setIsCreditLoading(false);
     }
   };
