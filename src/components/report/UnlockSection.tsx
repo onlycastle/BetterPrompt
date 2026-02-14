@@ -3,20 +3,8 @@
 import { useState } from 'react';
 import { Coffee, Zap, Lock, Loader2, Coins, Building2 } from 'lucide-react';
 import { WaitlistModal, waitlistConfigs } from '@/components/landing';
+import { usePayment } from '@/hooks/usePayment';
 import styles from './UnlockSection.module.css';
-
-/**
- * Preview data for a locked worker domain (passed from DashboardReportContent).
- * Contains just enough info to show a value teaser in the unlock section.
- */
-export interface LockedDomainPreview {
-  icon: string;
-  title: string;
-  score: number;
-  topStrength: { title: string; descriptionPreview?: string };
-  topGrowth: { title: string; descriptionPreview?: string };
-  growthCount: number;
-}
 
 interface UnlockSectionProps {
   isUnlocked: boolean;
@@ -25,8 +13,6 @@ interface UnlockSectionProps {
   credits?: number | null;
   /** Callback after credits are used successfully */
   onCreditsUsed?: () => void;
-  /** Preview data for locked worker domains */
-  lockedDomains?: LockedDomainPreview[];
 }
 
 /**
@@ -37,107 +23,14 @@ interface UnlockSectionProps {
  * - If credits > 0: Show "Use 1 Credit to Unlock" button with balance
  * - If credits === 0 or null: Show $4.99 one-time payment option
  */
-export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed, lockedDomains }: UnlockSectionProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCreditLoading, setIsCreditLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed }: UnlockSectionProps) {
+  const { isCheckoutLoading, isCreditLoading, error, handleUseCredit, handleCheckout } =
+    usePayment({ resultId, onCreditsUsed });
   const [isProWaitlistOpen, setIsProWaitlistOpen] = useState(false);
   const [isEnterpriseContactOpen, setIsEnterpriseContactOpen] = useState(false);
 
-  // Determine if user has credits available
   const hasCredits = credits !== null && credits !== undefined && credits > 0;
 
-  /**
-   * Handle using a credit to unlock the report
-   * Calls /api/credits/use and triggers refetch on success
-   */
-  const handleUseCredit = async () => {
-    if (!resultId) {
-      setError('Unable to process. Please refresh and try again.');
-      return;
-    }
-
-    setIsCreditLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/credits/use', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ resultId }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to use credit');
-      }
-
-      if (data.success) {
-        // Trigger parent refetch to reload the report with full data
-        onCreditsUsed?.();
-      } else if (data.reason === 'insufficient_credits') {
-        setError('No credits available. Please purchase credits to unlock.');
-        setIsCreditLoading(false);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-      setIsCreditLoading(false);
-    }
-  };
-
-  /**
-   * Handle checkout button click
-   * Calls the checkout API and redirects to Polar payment page
-   */
-  const handleCheckout = async () => {
-    if (!resultId) {
-      setError('Unable to process payment. Please refresh and try again.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/payments/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ resultId }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to create checkout session');
-      }
-
-      // Validate checkout URL before redirect
-      if (!data.checkoutUrl || typeof data.checkoutUrl !== 'string') {
-        throw new Error('Invalid checkout URL received from server');
-      }
-
-      try {
-        const checkoutUrl = new URL(data.checkoutUrl);
-        // Only allow HTTPS URLs for security
-        if (checkoutUrl.protocol !== 'https:') {
-          throw new Error('Invalid checkout URL protocol');
-        }
-        // Redirect to Polar checkout page
-        window.location.href = checkoutUrl.href;
-      } catch {
-        throw new Error('Invalid checkout URL format');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-      setIsLoading(false);
-    }
-  };
   // Don't render anything when already unlocked - the badge adds no value
   if (isUnlocked) {
     return null;
@@ -154,53 +47,6 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed, lo
           <p className={styles.lockedDescription}>
             See the complete picture of your AI collaboration patterns
           </p>
-
-          {/* Preview Gallery - What You're Missing */}
-          {lockedDomains && lockedDomains.length > 0 && (
-            <div className={styles.previewGallery}>
-              <p className={styles.previewGalleryTitle}>What You&apos;re Missing</p>
-              <div className={styles.previewGrid}>
-                {lockedDomains.map((domain) => (
-                  <div key={domain.title} className={styles.previewCard}>
-                    <div className={styles.previewCardHeader}>
-                      <span className={styles.previewCardIcon}>{domain.icon}</span>
-                      <span className={styles.previewCardTitle}>{domain.title}</span>
-                      <span className={styles.previewCardScore}>{domain.score}</span>
-                    </div>
-                    <div className={styles.previewCardBody}>
-                      {domain.topStrength.title && (
-                        <div className={styles.previewItem}>
-                          <span className={styles.previewItemLabel}>Strength</span>
-                          <span className={styles.previewItemTitle}>{domain.topStrength.title}</span>
-                          {domain.topStrength.descriptionPreview && (
-                            <p className={styles.previewBlurred}>
-                              {domain.topStrength.descriptionPreview}...
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      {domain.topGrowth.title && (
-                        <div className={styles.previewItem} data-type="growth">
-                          <span className={styles.previewItemLabel}>Growth Area</span>
-                          <span className={styles.previewItemTitle}>{domain.topGrowth.title}</span>
-                          {domain.topGrowth.descriptionPreview && (
-                            <p className={styles.previewBlurred}>
-                              {domain.topGrowth.descriptionPreview}...
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    {domain.growthCount > 1 && (
-                      <div className={styles.previewCardFooter}>
-                        +{domain.growthCount - 1} more growth area{domain.growthCount - 1 !== 1 ? 's' : ''} with action plans
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Pricing Cards - CREDIT (if available) + ONE-TIME + PRO */}
           <div className={hasCredits ? styles.pricingCardsWithCredit : styles.pricingCards}>
@@ -253,9 +99,9 @@ export function UnlockSection({ isUnlocked, resultId, credits, onCreditsUsed, lo
               <button
                 className={hasCredits ? styles.subscribeCta : styles.unlockCta}
                 onClick={handleCheckout}
-                disabled={isLoading}
+                disabled={isCheckoutLoading}
               >
-                {isLoading ? (
+                {isCheckoutLoading ? (
                   <>
                     <Loader2 size={16} className={styles.spinner} />
                     Processing...

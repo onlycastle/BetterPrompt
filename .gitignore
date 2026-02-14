@@ -63,3 +63,4 @@ scripts/fixtures/phase1-cache/
 
 # Local troubleshooting notes
 trouble_shooting/
+.worktrees

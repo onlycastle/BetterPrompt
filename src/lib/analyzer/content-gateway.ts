@@ -4,6 +4,9 @@
  * Filters verbose analysis content based on user tier (free, one_time, pro, enterprise).
  * Implements paywall strategy for monetization.
  *
+ * Free tier gets ALL 5 worker domains with full strengths + growth area diagnosis.
+ * Only recommendations (prescriptions) are locked behind paywall.
+ *
  * @example
  * ```typescript
  * import { createContentGateway, type Tier } from './content-gateway';
@@ -14,7 +17,7 @@
  *
  * // Filter for free tier user
  * const freeVersion = gateway.filter(fullEvaluation, 'free');
- * // Returns: type result, personalitySummary, free workerInsights domains, rest locked
+ * // Returns: type result, personalitySummary, all workerInsights domains (recommendations locked)
  *
  * // Filter for pro tier user (full access)
  * const proVersion = gateway.filter(fullEvaluation, 'pro');
@@ -31,12 +34,10 @@ import type {
   DimensionResourceMatch,
   MatchedKnowledgeItem,
   MatchedProfessionalInsight,
-  TopFocusAreas,
   TranslatedAgentInsights,
 } from '../models/verbose-evaluation';
 import type { AgentOutputs } from '../models/agent-outputs';
-import type { WorkerGrowth, WorkerInsightsContainer } from '../models/worker-insights';
-import { WORKER_DOMAIN_CONFIGS } from '../models/worker-insights';
+import type { WorkerGrowth } from '../models/worker-insights';
 import { FREE_AGENT_IDS } from '../domain/models';
 
 // Extract the workerInsights type from VerboseEvaluation for type safety
@@ -58,6 +59,8 @@ type WorkerInsightsRecord = VerboseEvaluation['workerInsights'];
 export const TIER_POLICY = {
   /** Worker insights filtering */
   workerInsights: {
+    /** All 5 worker domains are visible for free tier (no domain-level locking) */
+    allDomainsVisible: true,
     /** Strengths are always free (positive feedback builds trust) */
     strengths: 'free',
     /** Growth areas: diagnosis free, prescription paid */
@@ -67,10 +70,6 @@ export const TIER_POLICY = {
     },
     /** Max chars for blurred recommendation preview in free tier */
     recommendationPreviewLength: 100,
-    /** Max chars for blurred description preview in locked domain teasers */
-    descriptionPreviewLength: 80,
-    /** Worker domains shown in full for free tier (rest are locked to teaser) */
-    freeDomains: ['thinkingQuality'] as const,
   },
 
   /** Knowledge resources filtering */
@@ -95,11 +94,8 @@ export const TIER_POLICY = {
     teaserInsightsLimit: 2,
   },
 
-  /** Top focus areas filtering */
-  topFocusAreas: {
-    /** Number of fully visible areas for free tier */
-    freeFullCount: 1,
-  },
+  /** Top focus areas — entirely paid (part of the "prescription" layer) */
+  topFocusAreas: 'paid',
 } as const;
 
 // ============================================================================
@@ -148,8 +144,10 @@ export interface PremiumPreview {
  * ContentGateway filters verbose evaluation content based on user tier.
  *
  * Tier Access Matrix (4-tier system):
- * - Free: Type result, personalitySummary, free workerInsights domains, locked teasers for rest
- * - One-time/Pro/Enterprise: Full access - all worker domains, prompt patterns, analytics, agent outputs
+ * - Free: Type result, personalitySummary, all 5 workerInsights domains
+ *   (full strengths + diagnosis, only recommendations locked)
+ * - One-time/Pro/Enterprise: Full access - all worker domains with recommendations,
+ *   prompt patterns, analytics, agent outputs
  *
  * @example
  * ```typescript
@@ -248,8 +246,7 @@ export class ContentGateway {
    * Free tier gets:
    * - Type result (primaryType, controlLevel, distribution)
    * - Personality summary
-   * - Free workerInsights domains (full strengths + diagnosis + recommendation preview)
-   * - Locked workerInsights domains (header + score + first strength/growth title only)
+   * - All 5 workerInsights domains (full strengths + diagnosis, recommendations locked)
    * - No prompt patterns
    * - No actionable practices
    * - No anti-patterns/critical thinking/planning analysis
@@ -297,7 +294,7 @@ export class ContentGateway {
 
       // Module C outputs (locked for free)
       productivityAnalysis: undefined,
-      topFocusAreas: this.createFocusAreaTeaser(evaluation.topFocusAreas),
+      topFocusAreas: undefined,
 
       // Phase 2 Wow Agents outputs - TEASERS for free users
       // Free agents (patternDetective, metacognition) show full data
@@ -375,15 +372,15 @@ export class ContentGateway {
    * Filter worker insights based on tier.
    *
    * For FREE tier:
-   * - freeDomains (e.g., thinkingQuality): Full strengths + diagnosis + recommendation preview
-   * - Other domains: Locked teaser (header + score + first strength/growth title only)
+   * - All 5 domains visible with full strengths + growth area diagnosis
+   * - Only recommendation field is locked (empty string with blurred preview)
    *
    * For PAID tier:
    * - Full data including recommendations
    *
    * @param workerInsights - Full worker insights from analysis
    * @param tier - User tier level
-   * @returns Filtered worker insights with domain-level gating for free tier
+   * @returns Filtered worker insights with recommendation-level gating for free tier
    */
   filterWorkerInsights(
     workerInsights: WorkerInsightsRecord,
@@ -395,23 +392,18 @@ export class ContentGateway {
     if (tier !== 'free') return workerInsights;
 
     const filtered: NonNullable<WorkerInsightsRecord> = {};
-    const { freeDomains, recommendationPreviewLength } = TIER_POLICY.workerInsights;
+    const { recommendationPreviewLength } = TIER_POLICY.workerInsights;
 
     for (const [key, domain] of Object.entries(workerInsights)) {
       if (!domain) continue;
 
-      if ((freeDomains as readonly string[]).includes(key)) {
-        // FREE domains: full strengths + diagnosis + recommendation preview
-        filtered[key] = {
-          ...domain,
-          growthAreas: domain.growthAreas.map(
-            (g) => this.lockRecommendationWithPreview(g as WorkerGrowth, recommendationPreviewLength)
-          ),
-        };
-      } else {
-        // LOCKED domains: header + score + first strength/growth title only
-        filtered[key] = this.createLockedDomainTeaser(domain as WorkerInsightsContainer);
-      }
+      // All domains: full strengths + diagnosis, only recommendation locked
+      filtered[key] = {
+        ...domain,
+        growthAreas: domain.growthAreas.map(
+          (g) => this.lockRecommendationWithPreview(g as WorkerGrowth, recommendationPreviewLength)
+        ),
+      };
     }
 
     return filtered;
@@ -420,29 +412,17 @@ export class ContentGateway {
   /**
    * Filter translated agent insights based on tier.
    *
-   * Removes translation data for locked worker domains so frontend
-   * isDomainLocked() detection works correctly. Without this, translated
-   * descriptions overwrite empty (locked) descriptions via applyTranslatedStrengths().
+   * All 5 worker domains are visible for free tier, so translations
+   * pass through as-is for all tiers. No domain-level blocking needed.
    */
   filterTranslatedInsights(
     translated: TranslatedAgentInsights | undefined,
-    tier: Tier
+    _tier: Tier
   ): TranslatedAgentInsights | undefined {
     if (!translated) return undefined;
-    if (tier !== 'free') return translated;
 
-    const { freeDomains } = TIER_POLICY.workerInsights;
-    const workerDomainKeys = WORKER_DOMAIN_CONFIGS.map(c => c.key as string);
-    const filtered = { ...translated };
-
-    // Remove translation data for locked domains (keep only freeDomains)
-    for (const key of Object.keys(filtered)) {
-      if (workerDomainKeys.includes(key) && !(freeDomains as readonly string[]).includes(key)) {
-        delete (filtered as Record<string, unknown>)[key];
-      }
-    }
-
-    return filtered;
+    // All worker domains are visible for all tiers, so translations pass through
+    return translated;
   }
 
   /**
@@ -456,58 +436,6 @@ export class ContentGateway {
       recommendationPreview: growth.recommendation.length > previewLength
         ? growth.recommendation.slice(0, previewLength)
         : growth.recommendation,
-    };
-  }
-
-  /**
-   * Create a locked domain teaser for non-free domains.
-   * Shows score + first strength/growth title only with empty descriptions.
-   * Frontend detects via isDomainLocked(): empty arrays (from optional LLM fields)
-   * or description === '' both count as locked. If source domain has no strengths
-   * (e.g. LLM omitted optional field), the teaser preserves the empty array.
-   */
-  private createLockedDomainTeaser(domain: WorkerInsightsContainer): WorkerInsightsContainer {
-    const { descriptionPreviewLength } = TIER_POLICY.workerInsights;
-    return {
-      strengths: domain.strengths.slice(0, 1).map(s => ({
-        ...s,
-        description: '',
-        descriptionPreview: s.description.slice(0, descriptionPreviewLength),
-        evidence: [],
-      })),
-      growthAreas: domain.growthAreas.slice(0, 1).map(g => ({
-        ...g,
-        description: '',
-        descriptionPreview: g.description.slice(0, descriptionPreviewLength),
-        evidence: [],
-        recommendation: '',
-      })),
-      domainScore: domain.domainScore,
-    };
-  }
-
-  // ==========================================================================
-  // Top Focus Areas Filtering
-  // ==========================================================================
-
-  /**
-   * Create teaser version of top focus areas for free tier.
-   * First area is fully visible, remaining are locked (narrative='').
-   */
-  private createFocusAreaTeaser(
-    topFocusAreas: TopFocusAreas | undefined
-  ): TopFocusAreas | undefined {
-    if (!topFocusAreas?.areas?.length) return undefined;
-
-    const { freeFullCount } = TIER_POLICY.topFocusAreas;
-
-    return {
-      summary: topFocusAreas.summary,
-      areas: topFocusAreas.areas.map((area, index) =>
-        index < freeFullCount
-          ? area
-          : { ...area, narrative: '', expectedImpact: '', actions: undefined }
-      ),
     };
   }
 

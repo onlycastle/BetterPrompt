@@ -14,7 +14,7 @@
  */
 
 // Container components
-export { TabbedReportContainer, type ReportTabId, ReportTab, ProgressTab, InsightsTab } from './containers';
+export { TabbedReportContainer, type NarrativeSectionId, ReportTab, ProgressTab, InsightsTab } from './containers';
 
 // Type result components
 export { TypeResultMinimal, DualRadarCharts, RadarChart, PersonalitySummaryClean } from './type-result';

@@ -1,17 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useRemoteResult } from '@/hooks/useRemoteResult';
 import { TabbedReportContainer } from '@/components/personal/tabs';
-import { UnlockSection, type LockedDomainPreview } from '@/components/report/UnlockSection';
+import { UnlockSection } from '@/components/report/UnlockSection';
 import { ReportShareBar } from '@/components/report/ReportShareBar';
 import { ReportErrorCard } from '@/components/report/ReportErrorCard';
 import { ReportLoadingSpinner } from '@/components/report/ReportLoadingSpinner';
 import { ReportPreviewBanner } from '@/components/report/ReportPreviewBanner';
-import { WORKER_DOMAIN_CONFIGS } from '@/lib/models/worker-insights';
-import { TIER_POLICY } from '@/lib/analyzer/content-gateway';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 import styles from './page.module.css';
 
@@ -80,34 +78,6 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
       return () => clearTimeout(timer);
     }
   }, [paymentSuccess, isPaid, isLoading, retryCount, refetch]);
-
-  // Collect locked domain previews for UnlockSection value showcase
-  // NOTE: Must be above early returns to maintain consistent Hook call order (React #310)
-  const lockedDomains = useMemo((): LockedDomainPreview[] | undefined => {
-    if (isPaid || !data?.workerInsights) return undefined;
-    const freeDomains = TIER_POLICY.workerInsights.freeDomains as readonly string[];
-    const result: LockedDomainPreview[] = [];
-    for (const config of WORKER_DOMAIN_CONFIGS) {
-      if (freeDomains.includes(config.key)) continue;
-      const domain = data.workerInsights?.[config.key];
-      if (!domain) continue;
-      result.push({
-        icon: config.icon,
-        title: config.title,
-        score: domain.domainScore ?? 0,
-        topStrength: {
-          title: domain.strengths[0]?.title ?? '',
-          descriptionPreview: domain.strengths[0]?.descriptionPreview,
-        },
-        topGrowth: {
-          title: domain.growthAreas[0]?.title ?? '',
-          descriptionPreview: domain.growthAreas[0]?.descriptionPreview,
-        },
-        growthCount: domain.growthAreas.length,
-      });
-    }
-    return result.length > 0 ? result : undefined;
-  }, [isPaid, data?.workerInsights]);
 
   // Loading state
   if (isLoading) {
@@ -196,6 +166,8 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
           analysisMetadata={data.analysisMetadata}
           isPaid={isPaid}
           reportId={resultId}
+          credits={credits}
+          onCreditsUsed={refetch}
         />
       </div>
 
@@ -213,7 +185,6 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
           resultId={resultId}
           credits={credits}
           onCreditsUsed={refetch}
-          lockedDomains={lockedDomains}
         />
       </div>
     </div>

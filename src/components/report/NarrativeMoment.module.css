@@ -1,0 +1,102 @@
+/**
+ * NarrativeMoment - Full-screen sticky chapter transition
+ *
+ * Pattern: outer container reserves 100vh scroll space,
+ * inner sticky div stays pinned until scrolled past.
+ * Uses transform + opacity only for 60fps animations.
+ */
+
+.container {
+  position: relative;
+  height: 100vh;
+  pointer-events: none;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-paper);
+  z-index: 5;
+}
+
+.content {
+  text-align: center;
+  max-width: 640px;
+  padding: 0 24px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: narrativeReveal 0.8s ease-out 0.2s forwards;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-5xl);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  margin: 0;
+}
+
+.dramatic {
+  color: var(--sketch-pink);
+}
+
+.subtitle {
+  font-family: var(--font-body);
+  font-size: var(--text-lg);
+  color: var(--ink-muted);
+  margin-top: 16px;
+  font-weight: var(--weight-light);
+  line-height: var(--leading-relaxed);
+}
+
+/* Dramatic variant: different background */
+.container[data-variant='dramatic'] .sticky {
+  background: var(--ink-primary);
+}
+
+.container[data-variant='dramatic'] .title {
+  color: var(--bg-paper);
+}
+
+.container[data-variant='dramatic'] .subtitle {
+  color: var(--ink-light);
+}
+
+@keyframes narrativeReveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .content {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .title {
+    font-size: var(--text-4xl);
+  }
+
+  .subtitle {
+    font-size: var(--text-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .title {
+    font-size: var(--text-3xl);
+  }
+}

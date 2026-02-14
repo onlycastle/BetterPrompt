@@ -15,3 +15,5 @@ export { ReportFooter } from './ReportFooter';
 export { ReportErrorCard } from './ReportErrorCard';
 export { ReportLoadingSpinner } from './ReportLoadingSpinner';
 export { ReportPreviewBanner } from './ReportPreviewBanner';
+export { NarrativeMoment } from './NarrativeMoment';
+export { CliffhangerWall } from './CliffhangerWall';

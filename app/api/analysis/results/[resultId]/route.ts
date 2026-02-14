@@ -100,8 +100,8 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
     utteranceLookup: evaluation.utteranceLookup,
     transformationAudit: evaluation.transformationAudit,
 
-    // Worker insights - needed for "Your Insights" section
-    // Filter recommendations for free tier (prescription paid, diagnosis free)
+    // Worker insights - all 5 domains visible for free tier
+    // Only recommendations are locked (diagnosis free, prescription paid)
     // Generate from agentOutputs if not stored in DB (backwards compatibility)
     workerInsights: createContentGateway().filterWorkerInsights(
       evaluation.workerInsights
@@ -112,7 +112,7 @@ function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<Verbose
     ),
 
     // Translated agent insights - needed for non-English users
-    // Filter to strip translations for locked domains (prevents bypassing ContentGateway)
+    // All 5 domains visible for free tier, translations pass through
     translatedAgentInsights: createContentGateway().filterTranslatedInsights(
       evaluation.translatedAgentInsights,
       'free'

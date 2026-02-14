@@ -16,7 +16,6 @@
  */
 
 import { useState, useMemo } from 'react';
-import { ProgressiveMeter } from './ProgressiveMeter';
 import styles from './FloatingProgressDots.module.css';
 
 interface SectionConfig {
@@ -31,10 +30,6 @@ interface FloatingProgressDotsProps {
   onSectionClick: (id: string) => void;
   visible: boolean;
   visitedSections?: Set<string>;
-  /** Percentage of content unlocked (0-100). Only shown for free users. */
-  unlockPercentage?: number;
-  /** Total locked items. Only shown for free users. */
-  lockedCount?: number;
 }
 
 type DotStatus = 'visited' | 'active' | 'upcoming';
@@ -45,8 +40,6 @@ export function FloatingProgressDots({
   onSectionClick,
   visible,
   visitedSections,
-  unlockPercentage,
-  lockedCount,
 }: FloatingProgressDotsProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -89,12 +82,6 @@ export function FloatingProgressDots({
       aria-label="Section navigation"
     >
       <ul className={styles.dotList}>
-        {/* Progressive Meter — unlock gauge for free users */}
-        {lockedCount != null && lockedCount > 0 && unlockPercentage != null && (
-          <li>
-            <ProgressiveMeter percentage={unlockPercentage} lockedCount={lockedCount} />
-          </li>
-        )}
         {sections.map((section) => {
           const status = dotStatuses.get(section.id) ?? 'upcoming';
           const isActive = status === 'active';
@@ -133,5 +120,3 @@ export function FloatingProgressDots({
     </nav>
   );
 }
-
-export default FloatingProgressDots;
