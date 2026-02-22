@@ -197,8 +197,8 @@ export function PersonalitySummaryClean({
         </div>
       )}
 
-      {/* Quick Takes */}
-      {quickTakes.length > 0 && (
+      {/* Quick Takes — editorial layout only (card layout shows hero badge instead) */}
+      {isEditorial && quickTakes.length > 0 && (
         <section className={styles.quickTakeSection} aria-label="Quick summary">
           <div className={styles.quickTakeGrid}>
             {quickTakes.map((item) => (
@@ -211,8 +211,8 @@ export function PersonalitySummaryClean({
         </section>
       )}
 
-      {/* Highlight Chips */}
-      {highlightChips.length > 0 && (
+      {/* Highlight Chips — editorial layout only */}
+      {isEditorial && highlightChips.length > 0 && (
         <div className={styles.highlightChips} aria-label="Key themes">
           {highlightChips.map((chip) => (
             <span key={chip} className={styles.highlightChip}>

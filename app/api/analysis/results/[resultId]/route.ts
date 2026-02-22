@@ -244,13 +244,15 @@ export async function GET(
 
     // Check if result has expired
     if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      // Cleanup: delete expired record with expires_at guard (defense-in-depth)
       const { error: deleteError } = await supabase
         .from('analysis_results')
         .delete()
-        .eq('result_id', resultId);
+        .eq('result_id', resultId)
+        .lt('expires_at', new Date().toISOString());
 
       if (deleteError) {
-        console.error('Error deleting expired analysis result:', deleteError);
+        throw new Error(`Failed to clean up expired result ${resultId}: ${deleteError.message}`);
       }
 
       return NextResponse.json(

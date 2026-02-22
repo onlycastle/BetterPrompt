@@ -58,13 +58,15 @@ export async function GET(
 
     // Check expiration
     if (data.expires_at && new Date(data.expires_at) < new Date(now)) {
+      // Cleanup: delete expired record with expires_at guard (defense-in-depth)
       const { error: deleteError } = await supabase
         .from('shared_reports')
         .delete()
-        .eq('report_id', reportId);
+        .eq('report_id', reportId)
+        .lt('expires_at', now);
 
       if (deleteError) {
-        console.error('Error deleting expired shared report:', deleteError);
+        throw new Error(`Failed to clean up expired report ${reportId}: ${deleteError.message}`);
       }
 
       return NextResponse.json(

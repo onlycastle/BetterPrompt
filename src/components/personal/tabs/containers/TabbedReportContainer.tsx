@@ -136,8 +136,7 @@ export function TabbedReportContainer({
   showResourceSidebar = true,
   experience,
 }: TabbedReportContainerProps) {
-  const resolvedExperience: ReportExperience = experience
-    ?? (!showProgressDots && !showResourceSidebar ? 'immersive-apple' : 'dashboard');
+  const resolvedExperience: ReportExperience = experience ?? 'dashboard';
   const immersive = resolvedExperience === 'immersive-apple';
 
   const contentRef = useRef<HTMLDivElement>(null);
