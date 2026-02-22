@@ -15,6 +15,7 @@ interface ActivitySectionProps {
   projectSummaries?: ProjectSummary[];
   analysisDateRange?: { earliest: string; latest: string };
   weeklyInsights?: WeeklyInsights;
+  immersive?: boolean;
 }
 
 interface UnifiedSession {
@@ -155,6 +156,7 @@ export function ActivitySection({
   projectSummaries,
   analysisDateRange,
   weeklyInsights,
+  immersive,
 }: ActivitySectionProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const toggleExpanded = useCallback(() => setIsExpanded(prev => !prev), []);
@@ -442,7 +444,7 @@ export function ActivitySection({
   }, [totalWeeks]);
 
   return (
-    <div className={styles.activitySection}>
+    <div className={styles.activitySection} data-immersive={immersive || undefined}>
       {/* Dark Terminal Header — Accordion */}
       <div
         className={styles.domainHeader}
@@ -453,11 +455,11 @@ export function ActivitySection({
         aria-expanded={isExpanded}
       >
         <div className={styles.domainTitleRow}>
-          <span className={styles.domainIcon}>{'📊'}</span>
+          <span className={styles.domainIcon}>📊</span>
           <div className={styles.domainTitleGroup}>
             <h3 className={styles.domainTitle}>Monthly Vibe</h3>
             <p className={styles.domainSubtitle}>
-              {stats.totalSessions} sessions {'·'} {stats.activeDays} active days
+              {stats.totalSessions} sessions &middot; {stats.activeDays} active days
             </p>
           </div>
         </div>

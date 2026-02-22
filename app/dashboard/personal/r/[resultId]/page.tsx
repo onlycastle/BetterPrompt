@@ -1,40 +1,24 @@
 /**
- * Dashboard Report Detail Page
- * Shows full report within dashboard layout (with sidebar)
+ * Legacy Report Route — Redirects to Immersive Report
+ * Preserves query params (e.g., ?payment=success) through the redirect.
  */
 
-import { Suspense } from 'react';
-import { DashboardReportContent } from './DashboardReportContent';
-import styles from './page.module.css';
+import { redirect } from 'next/navigation';
 
 interface PageProps {
   params: Promise<{ resultId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export async function generateMetadata({ params }: PageProps) {
+export default async function LegacyReportPage({ params, searchParams }: PageProps) {
   const { resultId } = await params;
-  return {
-    title: `Report ${resultId.slice(0, 8)} | NoMoreAISlop`,
-    description: 'Your AI coding style analysis report',
-  };
-}
-
-function LoadingFallback() {
-  return (
-    <div className={styles.container}>
-      <div className={styles.loading}>
-        <div className={styles.spinner} />
-        <p>Loading your analysis...</p>
-      </div>
-    </div>
-  );
-}
-
-export default async function DashboardReportPage({ params }: PageProps) {
-  const { resultId } = await params;
-  return (
-    <Suspense fallback={<LoadingFallback />}>
-      <DashboardReportContent resultId={resultId} />
-    </Suspense>
-  );
+  const resolvedSearch = await searchParams;
+  const qs = new URLSearchParams(
+    Object.fromEntries(
+      Object.entries(resolvedSearch).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string'
+      )
+    )
+  ).toString();
+  redirect(`/dashboard/r/${resultId}${qs ? `?${qs}` : ''}`);
 }

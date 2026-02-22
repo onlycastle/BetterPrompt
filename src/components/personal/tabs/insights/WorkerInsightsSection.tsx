@@ -111,15 +111,18 @@ export function StrengthCard({
   strength,
   utteranceLookup,
   onViewContext,
+  immersive,
 }: {
   strength: WorkerStrength;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
   onViewContext?: (utteranceId: string) => void;
+  /** Immersive mode: strip card frame, bare text */
+  immersive?: boolean;
 }) {
   const isCommunication = isCommunicationStrength(strength);
 
   return (
-    <div className={styles.insightCard}>
+    <div className={styles.insightCard} data-immersive={immersive || undefined}>
       <div className={styles.cardHeader}>
         <h4 className={styles.cardTitle}>{strength.title}</h4>
         {/* Communication Pattern badges (frequency + effectiveness) */}
@@ -160,40 +163,26 @@ function getSeverityLabel(severity: string): string {
   return labels[severity] || severity;
 }
 
-/**
- * Get locked recommendation CSS class based on severity
- */
 function getLockedRecommendationClass(severity: string | undefined): string {
-  if (severity === 'critical') {
-    return styles.lockedCritical;
-  }
-  if (severity === 'high') {
-    return styles.lockedHigh;
-  }
+  if (severity === 'critical') return styles.lockedCritical;
+  if (severity === 'high') return styles.lockedHigh;
   return '';
 }
 
-/**
- * Render urgency label based on severity
- */
+const URGENCY_LABELS: Record<string, { emoji: string; text: string }> = {
+  critical: { emoji: '⚡', text: 'Critical Fix Available' },
+  high: { emoji: '🔥', text: 'High-Impact Solution' },
+};
+
 function renderUrgencyLabel(severity: string | undefined): ReactNode {
-  if (severity === 'critical') {
-    return (
-      <div className={styles.urgencyLabel} data-severity="critical">
-        ⚡ Critical Fix Available
-      </div>
-    );
-  }
-
-  if (severity === 'high') {
-    return (
-      <div className={styles.urgencyLabel} data-severity="high">
-        🔥 High-Impact Solution
-      </div>
-    );
-  }
-
-  return null;
+  if (!severity) return null;
+  const label = URGENCY_LABELS[severity];
+  if (!label) return null;
+  return (
+    <div className={styles.urgencyLabel} data-severity={severity}>
+      {label.emoji} {label.text}
+    </div>
+  );
 }
 
 /**
@@ -220,11 +209,17 @@ export function GrowthCard({
   utteranceLookup,
   referencedInsights,
   onViewContext,
+  immersive,
+  isDark,
 }: {
   growth: WorkerGrowth;
   utteranceLookup?: Map<string, UtteranceLookupEntry>;
   referencedInsights?: ReferencedInsight[];
   onViewContext?: (utteranceId: string) => void;
+  /** Immersive mode: strip card frame, bare text */
+  immersive?: boolean;
+  /** Dark background mode for color inversions */
+  isDark?: boolean;
 }) {
   const severityClass = growth.severity
     ? styles[`severity${growth.severity[0].toUpperCase()}${growth.severity.slice(1)}`]
@@ -252,7 +247,7 @@ export function GrowthCard({
   }, [growth.evidence]);
 
   return (
-    <div className={`${styles.insightCard} ${styles.growthCard}`}>
+    <div className={`${styles.insightCard} ${styles.growthCard}`} data-immersive={immersive || undefined} data-dark={isDark || undefined}>
       <div className={styles.cardHeader}>
         <h4 className={styles.cardTitle}>{growth.title}</h4>
         {/* Communication Pattern badges (frequency + effectiveness) */}
@@ -301,7 +296,7 @@ export function GrowthCard({
       )}
       {hasRecommendation ? (
         <div className={styles.recommendationSection}>
-          <span className={styles.recommendationLabel}>{'💡'} The Fix</span>
+          <span className={styles.recommendationLabel}>💡 The Fix</span>
           <p className={styles.recommendationText}>{growth.recommendation}</p>
         </div>
       ) : (
@@ -311,7 +306,7 @@ export function GrowthCard({
 
           {/* Coaching Preview with optional blurred recommendation teaser */}
           <div className={styles.coachingPreview}>
-            <span className={styles.recommendationLabel}>{'💡'} The Fix</span>
+            <span className={styles.recommendationLabel}>💡 The Fix</span>
             {growth.recommendationPreview && (
               <div className={styles.blurredPreview}>
                 <p className={styles.blurredText}>
@@ -328,7 +323,7 @@ export function GrowthCard({
               document.getElementById('unlock-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }}
           >
-            <span className={styles.lockIcon}>{'🔓'}</span>
+            <span className={styles.lockIcon}>🔓</span>
             Unlock the Fix
           </button>
         </div>
@@ -340,7 +335,7 @@ export function GrowthCard({
           {/* Bridge element: ── MATCHED TO THIS FINDING ── */}
           <div className={styles.expertBridge}>
             <span className={styles.bridgeLine} />
-            <span className={styles.bridgeLabel}>{'>'} Matched to this finding</span>
+            <span className={styles.bridgeLabel}>&gt; Matched to this finding</span>
             <span className={styles.bridgeLine} />
           </div>
 
@@ -349,7 +344,7 @@ export function GrowthCard({
             {/* Header: 📖 EXPERT KNOWLEDGE | [CATEGORY] */}
             <div className={styles.expertHeader}>
               <div className={styles.expertHeaderLeft}>
-                <span>{'📖'}</span>
+                <span>📖</span>
                 <span className={styles.expertLabel}>Expert Knowledge</span>
               </div>
               <span className={styles.expertCategoryBadge}>{referencedInsights[0].category}</span>
@@ -373,7 +368,7 @@ export function GrowthCard({
                 {/* Actionable advice with > prefix */}
                 {referencedInsights[0].actionableAdvice?.slice(0, 2).map((advice, i) => (
                   <div key={i} className={styles.expertAdviceItem}>
-                    <span className={styles.expertAdvicePrefix}>{'>'}</span>
+                    <span className={styles.expertAdvicePrefix}>&gt;</span>
                     <span className={styles.expertAdviceText}>{advice}</span>
                   </div>
                 ))}
@@ -393,7 +388,7 @@ export function GrowthCard({
                 )}
               </>
             ) : (
-              <span className={styles.expertLocked}>{'🔓'} Unlock Full Insight</span>
+              <span className={styles.expertLocked}>🔓 Unlock Full Insight</span>
             )}
           </div>
         </>
@@ -489,20 +484,15 @@ export function WorkerDomainSection({
    * @returns Allocated insight, or undefined if none allocated
    */
   const getInsightForGrowth = (growth: WorkerGrowth): ReferencedInsight | undefined => {
-    // Prefer deduplicated allocation
     if (insightAllocation && domainKey) {
       const key = createGrowthKey(domainKey, growth.title);
       const allocated = insightAllocation.get(key);
-      // Check for undefined only - null means "intentionally no insight" (don't fallback)
+      // undefined = not in map (fallback to legacy), null = intentionally no insight
       if (allocated !== undefined) {
-        return allocated ?? undefined; // Convert null to undefined for consistent return type
+        return allocated ?? undefined;
       }
     }
-    // Fallback to legacy referencedInsights (first one)
-    if (referencedInsights && referencedInsights.length > 0) {
-      return referencedInsights[0];
-    }
-    return undefined;
+    return referencedInsights?.[0];
   };
 
   return (
@@ -524,7 +514,7 @@ export function WorkerDomainSection({
           <div className={styles.domainTitleGroup}>
             <h3 className={styles.domainTitle}>{config.title}</h3>
             <p className={styles.domainSubtitle}>{config.subtitle}</p>
-            {!isExpanded && (displayStrengths.length > 0 || displayGrowthAreas.length > 0) && (
+            {!isExpanded && (
               <p className={styles.insightPreview}>
                 {displayStrengths.length > 0 && `${displayStrengths.length} strength${displayStrengths.length !== 1 ? 's' : ''}`}
                 {displayStrengths.length > 0 && displayGrowthAreas.length > 0 && ' \u00B7 '}
@@ -548,7 +538,7 @@ export function WorkerDomainSection({
 
       {/* Section Context Block — explains what this section analyzed */}
       <div className={styles.sectionContext}>
-        <span className={styles.sectionContextIcon}>{'📋'}</span>
+        <span className={styles.sectionContextIcon}>📋</span>
         <span>{config.contextDescription}</span>
       </div>
 
@@ -557,15 +547,15 @@ export function WorkerDomainSection({
         <div className={styles.summaryBanner}>
           {displayStrengths.length > 0 && (
             <span className={styles.summaryStrengths}>
-              {'●'} {displayStrengths.length} strength{displayStrengths.length !== 1 ? 's' : ''}
+              ● {displayStrengths.length} strength{displayStrengths.length !== 1 ? 's' : ''}
             </span>
           )}
           {displayStrengths.length > 0 && displayGrowthAreas.length > 0 && (
-            <span className={styles.summaryDivider}>{'·'}</span>
+            <span className={styles.summaryDivider}>&middot;</span>
           )}
           {displayGrowthAreas.length > 0 && (
             <span className={styles.summaryGrowth}>
-              {'▲'} {displayGrowthAreas.length} growth area{displayGrowthAreas.length !== 1 ? 's' : ''}
+              ▲ {displayGrowthAreas.length} growth area{displayGrowthAreas.length !== 1 ? 's' : ''}
             </span>
           )}
         </div>
@@ -574,7 +564,7 @@ export function WorkerDomainSection({
         {displayStrengths.length > 0 && (
           <div className={styles.insightsColumn}>
             <h4 className={`${styles.columnTitle} ${styles.columnTitleStrength}`}>
-              <span className={styles.columnIcon} data-type="strength">{'✓'}</span>
+              <span className={styles.columnIcon} data-type="strength">✓</span>
               <span>What You Do Well</span>
               <span className={`${styles.columnCount} ${styles.columnCountStrength}`}>
                 {displayStrengths.length}
@@ -597,7 +587,7 @@ export function WorkerDomainSection({
         {displayGrowthAreas.length > 0 && (
           <div className={styles.insightsColumn}>
             <h4 className={`${styles.columnTitle} ${styles.columnTitleGrowth}`}>
-              <span className={styles.columnIcon} data-type="growth">{'↑'}</span>
+              <span className={styles.columnIcon} data-type="growth">↑</span>
               <span>Where to Improve</span>
               <span className={`${styles.columnCount} ${styles.columnCountGrowth}`}>
                 {displayGrowthAreas.length}

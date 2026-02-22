@@ -1,16 +1,21 @@
+/**
+ * ImmersiveReportContent
+ * Client component for the full-screen immersive report experience.
+ * No sidebar, no progress dots, no resource sidebar — just the story.
+ */
+
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { useRemoteResult } from '@/hooks/useRemoteResult';
+import { CheckCircle } from 'lucide-react';
+import { useReportPage } from '@/hooks/useReportPage';
 import { TabbedReportContainer } from '@/components/personal/tabs';
 import { UnlockSection } from '@/components/report/UnlockSection';
 import { ReportShareBar } from '@/components/report/ReportShareBar';
 import { ReportErrorCard } from '@/components/report/ReportErrorCard';
 import { ReportLoadingSpinner } from '@/components/report/ReportLoadingSpinner';
 import { ReportPreviewBanner } from '@/components/report/ReportPreviewBanner';
-import { ArrowLeft, CheckCircle } from 'lucide-react';
+import { FloatingBackButton } from '@/components/report/FloatingBackButton';
 import styles from './page.module.css';
 
 interface ErrorCardConfig {
@@ -47,42 +52,18 @@ function getErrorCardConfig(errorStatus: number | null | undefined, errorMessage
   };
 }
 
-interface DashboardReportContentProps {
+interface ImmersiveReportContentProps {
   resultId: string;
 }
 
-export function DashboardReportContent({ resultId }: DashboardReportContentProps) {
-  const searchParams = useSearchParams();
-  const paymentSuccess = searchParams.get('payment') === 'success';
+export function ImmersiveReportContent({ resultId }: ImmersiveReportContentProps) {
+  const { data, isPaid, preview, credits, isLoading, error, errorStatus, refetch, showSuccessToast } =
+    useReportPage(resultId);
 
-  const { data, isPaid, preview, credits, isLoading, error, errorStatus, refetch } = useRemoteResult(resultId);
-  const [showSuccessToast, setShowSuccessToast] = useState(paymentSuccess);
-
-  useEffect(() => {
-    if (showSuccessToast) {
-      const timer = setTimeout(() => setShowSuccessToast(false), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [showSuccessToast]);
-
-  // Auto-retry when payment succeeded but report still shows locked
-  const [retryCount, setRetryCount] = useState(0);
-  const MAX_RETRIES = 3;
-
-  useEffect(() => {
-    if (paymentSuccess && !isPaid && !isLoading && retryCount < MAX_RETRIES) {
-      const timer = setTimeout(() => {
-        setRetryCount(c => c + 1);
-        refetch();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [paymentSuccess, isPaid, isLoading, retryCount, refetch]);
-
-  // Loading state
   if (isLoading) {
     return (
       <div className={styles.container}>
+        <FloatingBackButton resultId={resultId} />
         <div className={styles.loading}>
           <ReportLoadingSpinner />
         </div>
@@ -90,11 +71,11 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
     );
   }
 
-  // Error states
   if (error) {
     const errorConfig = getErrorCardConfig(errorStatus, error.message);
     return (
       <div className={styles.container}>
+        <FloatingBackButton resultId={resultId} />
         <ReportErrorCard
           title={errorConfig.title}
           message={errorConfig.message}
@@ -113,10 +94,10 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
     );
   }
 
-  // No data
   if (!data) {
     return (
       <div className={styles.container}>
+        <FloatingBackButton resultId={resultId} />
         <ReportErrorCard
           title="No Data Available"
           message="Unable to load the analysis data."
@@ -133,9 +114,10 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
     );
   }
 
-  // Success - render report
   return (
     <div className={styles.container}>
+      <FloatingBackButton resultId={resultId} />
+
       {/* Success Toast */}
       {showSuccessToast && (
         <div className={styles.successToast}>
@@ -143,12 +125,6 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
           <span>Payment successful! Your full report is now available.</span>
         </div>
       )}
-
-      {/* Back Link */}
-      <Link href="/dashboard/personal" className={styles.backLink}>
-        <ArrowLeft size={16} />
-        Back to Profile
-      </Link>
 
       {/* Preview Banner */}
       {!isPaid && preview && (
@@ -158,18 +134,19 @@ export function DashboardReportContent({ resultId }: DashboardReportContentProps
         </ReportPreviewBanner>
       )}
 
-      {/* Main Report - data is pre-filtered by backend based on tier */}
-      <div className={styles.reportWrapper}>
-        <TabbedReportContainer
-          analysis={data}
-          agentOutputs={data.agentOutputs}
-          analysisMetadata={data.analysisMetadata}
-          isPaid={isPaid}
-          reportId={resultId}
-          credits={credits}
-          onCreditsUsed={refetch}
-        />
-      </div>
+      {/* Main Report — no frame, no sidebar, no progress dots */}
+      <TabbedReportContainer
+        analysis={data}
+        agentOutputs={data.agentOutputs}
+        analysisMetadata={data.analysisMetadata}
+        isPaid={isPaid}
+        reportId={resultId}
+        credits={credits}
+        onCreditsUsed={refetch}
+        showProgressDots={false}
+        showResourceSidebar={false}
+        experience="immersive-apple"
+      />
 
       {/* Share buttons */}
       {data.primaryType && (

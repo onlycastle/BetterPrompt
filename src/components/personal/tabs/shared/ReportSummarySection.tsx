@@ -14,16 +14,23 @@ import { MATRIX_NAMES, MATRIX_METADATA, deriveMatrixDistribution } from '../../.
 
 import styles from './ReportSummarySection.module.css';
 
+type ReportExperience = 'dashboard' | 'immersive-apple';
+
 interface ReportSummarySectionProps {
   analysis: VerboseAnalysisData;
   workerInsights?: AggregatedWorkerInsights;
   reportId?: string;
+  /** Immersive mode: hero viewport layout for TypeResult */
+  immersive?: boolean;
+  experience?: ReportExperience;
 }
 
 export function ReportSummarySection({
   analysis,
   workerInsights,
   reportId,
+  immersive,
+  experience = 'dashboard',
 }: ReportSummarySectionProps) {
   // Derive matrix type (shared by TypeResultMinimal + PersonalitySummaryClean)
   const matrixType = useMemo(() => {
@@ -45,7 +52,9 @@ export function ReportSummarySection({
   }, [analysis.primaryType, analysis.controlLevel, analysis.controlScore, analysis.distribution]);
 
   return (
-    <div className={styles.summarySection}>
+    <div
+      className={`${styles.summarySection} ${experience === 'immersive-apple' ? styles.immersiveApple : ''}`}
+    >
       <TypeResultMinimal
         primaryType={analysis.primaryType}
         distribution={analysis.distribution}
@@ -53,6 +62,7 @@ export function ReportSummarySection({
         controlLevel={analysis.controlLevel}
         controlScore={analysis.controlScore}
         workerInsights={workerInsights}
+        immersive={immersive}
       />
 
       {analysis.personalitySummary && (
@@ -63,6 +73,7 @@ export function ReportSummarySection({
           keyStrength={matrixType.keyStrength}
           reportId={reportId}
           primaryType={analysis.primaryType}
+          layout={experience === 'immersive-apple' ? 'editorial' : 'card'}
         />
       )}
     </div>

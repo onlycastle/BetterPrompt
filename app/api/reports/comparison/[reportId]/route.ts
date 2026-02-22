@@ -15,6 +15,7 @@ export async function GET(
 ) {
   try {
     const { reportId } = await params;
+    const now = new Date().toISOString();
 
     if (!reportId) {
       return NextResponse.json(
@@ -33,7 +34,6 @@ export async function GET(
       .from('shared_reports')
       .select('*')
       .eq('report_id', reportId)
-      .eq('is_active', true)
       .single();
 
     if (error || !data) {
@@ -46,8 +46,29 @@ export async function GET(
       );
     }
 
+    if (!data.is_active) {
+      return NextResponse.json(
+        {
+          error: 'Report not found',
+          message: 'The requested report does not exist or has been removed',
+        },
+        { status: 404 }
+      );
+    }
+
     // Check expiration
-    if (data.expires_at && new Date(data.expires_at) < new Date()) {
+    if (data.expires_at && new Date(data.expires_at) < new Date(now)) {
+      // Cleanup: delete expired record with expires_at guard (defense-in-depth)
+      const { error: deleteError } = await supabase
+        .from('shared_reports')
+        .delete()
+        .eq('report_id', reportId)
+        .lt('expires_at', now);
+
+      if (deleteError) {
+        throw new Error(`Failed to clean up expired report ${reportId}: ${deleteError.message}`);
+      }
+
       return NextResponse.json(
         {
           error: 'Report expired',

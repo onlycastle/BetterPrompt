@@ -1,26 +1,59 @@
 /**
- * StrengthsOverview - Staggered reveal layout for aggregated strengths
+ * StrengthsOverview - Per-card scroll reveal layout
  */
 
 .container {
-  padding: var(--space-md) 0;
+  padding: var(--space-sm) 0;
+}
+
+.sectionIntro {
+  max-width: min(72ch, 100%);
+  margin-bottom: clamp(14px, 2.4vw, 28px);
+}
+
+.sectionTitle {
+  font-family: var(--font-interface, var(--font-primary));
+  font-size: clamp(1.05rem, 1.4vw, 1.2rem);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+}
+
+.sectionCopy {
+  margin: 0;
+  font-family: var(--font-reading, var(--font-primary));
+  font-size: clamp(0.97rem, 1.08vw, 1.04rem);
+  line-height: 1.7;
+  color: var(--ink-secondary);
+  text-wrap: pretty;
+}
+
+.sectionMeta {
+  margin: 8px 0 0;
+  font-family: var(--font-interface, var(--font-primary));
+  font-size: 12px;
+  color: var(--ink-muted);
+  letter-spacing: 0.02em;
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: clamp(18px, 2.8vw, 34px);
 }
 
-/* Staggered reveal item */
+/* Per-card reveal: each card observed individually */
 .revealItem {
   opacity: 0;
   transform: translateY(24px);
-  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  transition:
+    opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: opacity, transform;
 }
 
-.container[data-visible] .revealItem {
+.revealItem[data-visible] {
   opacity: 1;
   transform: translateY(0);
 }
@@ -29,13 +62,71 @@
 .domainBadge {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-xs);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  gap: 6px;
+  font-family: var(--font-interface, var(--font-primary));
+  font-size: 12px;
   color: var(--ink-muted);
-  margin-bottom: var(--space-xs);
-  letter-spacing: var(--tracking-wide);
+  margin-bottom: 10px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.listControls {
+  margin-top: var(--space-sm);
+}
+
+.toggleButton {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: var(--surface-1);
+  color: var(--ink-primary);
+  font-family: var(--font-interface, var(--font-primary));
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.toggleButton:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.toggleButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================================
+   Immersive Mode: Spacing revolution
+   ============================================================================ */
+
+.container[data-immersive] .list {
+  gap: clamp(22px, 3.6vw, 44px);
+}
+
+.container[data-immersive] .domainBadge {
+  font-size: 12px;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.container[data-immersive] .revealItem {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: clamp(18px, 2.8vw, 30px);
+}
+
+.container[data-immersive] .revealItem:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.container[data-immersive] .sectionIntro {
+  margin-bottom: clamp(18px, 3.2vw, 36px);
 }
 
 /* Reduced motion */
@@ -44,5 +135,12 @@
     opacity: 1;
     transform: none;
     transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .toggleButton {
+    width: 100%;
+    justify-content: center;
   }
 }

@@ -6,4 +6,12 @@
 .summarySection {
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.immersiveApple {
+  min-height: clamp(560px, 88vh, 920px);
+  padding-top: clamp(24px, 5vw, 64px);
 }

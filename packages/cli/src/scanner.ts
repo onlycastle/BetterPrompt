@@ -529,7 +529,11 @@ function selectOptimalSessions(
  *
  * Supports multiple sources (Claude Code, Cursor) via multiSourceScanner.
  */
-export async function scanSessions(maxSessions: number = 50, includeSources?: string[]): Promise<ScanResult> {
+export async function scanSessions(
+  maxSessions: number = 50,
+  includeSources?: string[],
+  projectFilter?: string[]
+): Promise<ScanResult> {
   // Phase 1: Collect file metadata from all sources (memory efficient)
   const { files: sourceFiles, sourceStats } = await multiSourceScanner.collectAllFileMetadata({
     minFileSize: PREFILTER_CONFIG.MIN_FILE_SIZE,
@@ -538,13 +542,19 @@ export async function scanSessions(maxSessions: number = 50, includeSources?: st
   });
 
   // Convert to local FileMetadata format
-  const allFiles: FileMetadata[] = sourceFiles.map(f => ({
+  let allFiles: FileMetadata[] = sourceFiles.map(f => ({
     filePath: f.filePath,
     fileSize: f.fileSize,
     mtime: f.mtime,
     projectDirName: f.projectDirName,
     source: f.source,
   }));
+
+  // Apply project filter (if user selected specific projects)
+  if (projectFilter && projectFilter.length > 0) {
+    const filterSet = new Set(projectFilter);
+    allFiles = allFiles.filter(f => filterSet.has(f.projectDirName));
+  }
 
   // Phase 2: Pre-filter to top candidates
   const candidates = prefilterCandidates(allFiles);

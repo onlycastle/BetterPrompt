@@ -1,10 +1,26 @@
 /**
  * NarrativeMoment - Full-screen sticky chapter transition
  *
- * Pattern: outer container reserves 100vh scroll space,
- * inner sticky div stays pinned until scrolled past.
- * Uses transform + opacity only for 60fps animations.
+ * TWO MODES:
+ *
+ * Default (dashboard): height=100vh, enter/hold/exit fade animation
+ *   - Scroll-progress 0.0->0.3: fade in, scale up, unblur
+ *   - Scroll-progress 0.3->0.7: hold fully visible
+ *   - Scroll-progress 0.7->1.0: fade out, scale down, drift up
+ *
+ * Cinematic (.cinematic): Apple-style cover transition
+ *   - Scroll range is controlled by --story-section-range
+ *   - Cover offset is controlled by container --story-cover-offset
+ *   - Sequential text reveal (title appears before subtitle)
+ *   - Minimal transform animation (opacity + translateY only)
+ *   - No exit animation — next section naturally covers sticky
+ *
+ * Uses transform + opacity + filter only for 60fps compositor animations.
  */
+
+/* ============================================================================
+ * Base Container + Sticky
+ * ============================================================================ */
 
 .container {
   position: relative;
@@ -15,7 +31,7 @@
 .sticky {
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: var(--story-sticky-height, 100vh);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -23,15 +39,31 @@
   z-index: 5;
 }
 
+/* ============================================================================
+ * Default Mode: Enter / Hold / Exit
+ * ============================================================================ */
+
 .content {
+  --p: var(--scroll-progress, 0.5);
+
+  /* Enter: 0->0.3 maps to 0->1 | Exit: 0.7->1.0 maps to 1->0 */
+  --enter: clamp(0, calc(var(--p) / 0.3), 1);
+  --exit: clamp(0, calc((1 - var(--p)) / 0.3), 1);
+  --vis: min(var(--enter), var(--exit));
+
   text-align: center;
-  max-width: 640px;
+  max-width: 680px;
   padding: 0 24px;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: narrativeReveal 0.8s ease-out 0.2s forwards;
+
+  opacity: var(--vis);
+  transform:
+    scale(calc(0.96 + var(--vis) * 0.04 + var(--enter) * 0.04 - var(--exit) * 0.04 + 0.0001))
+    translateY(calc((1 - var(--enter)) * 20px + (1 - var(--exit)) * -20px));
+  filter: blur(calc((1 - var(--vis)) * 6px));
+  will-change: opacity, transform, filter;
 }
 
+/* Title */
 .title {
   font-family: var(--font-display);
   font-size: var(--text-5xl);
@@ -40,12 +72,14 @@
   line-height: var(--leading-tight);
   letter-spacing: var(--tracking-tight);
   margin: 0;
+  transform: translateY(calc((0.5 - var(--scroll-progress, 0.5)) * -10px));
 }
 
 .dramatic {
   color: var(--sketch-pink);
 }
 
+/* Subtitle */
 .subtitle {
   font-family: var(--font-body);
   font-size: var(--text-lg);
@@ -53,9 +87,10 @@
   margin-top: 16px;
   font-weight: var(--weight-light);
   line-height: var(--leading-relaxed);
+  transform: translateY(calc((0.5 - var(--scroll-progress, 0.5)) * 10px));
 }
 
-/* Dramatic variant: different background */
+/* Dramatic variant: inverted colors */
 .container[data-variant='dramatic'] .sticky {
   background: var(--ink-primary);
 }
@@ -68,35 +103,127 @@
   color: var(--ink-light);
 }
 
-@keyframes narrativeReveal {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* ============================================================================
+ * Cinematic Mode: Apple-Style Cover Transition
+ * ============================================================================ */
+
+/* Backward compatible alias: .immersive */
+.cinematic,
+.immersive {
+  height: var(--story-section-range, 220vh);
 }
 
-/* Respect prefers-reduced-motion */
+.cinematic .sticky,
+.immersive .sticky {
+  z-index: 0;
+}
+
+/* Sequential reveal — no exit animation (content covers it) */
+.cinematic .content,
+.immersive .content {
+  --p: var(--scroll-progress, 0.5);
+
+  max-width: none;
+  padding: 0 clamp(20px, 5vw, 60px);
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* Title — sequential enter */
+.cinematic .title,
+.immersive .title {
+  --t-enter: clamp(0, calc((var(--p) - 0.08) / 0.12), 1);
+
+  font-size: clamp(3rem, 7.5vw, 5.4rem);
+  letter-spacing: -0.028em;
+
+  opacity: var(--t-enter);
+  transform: translateY(calc((1 - var(--t-enter)) * 36px));
+}
+
+.container[data-motion-style='subtle'].cinematic .title,
+.container[data-motion-style='subtle'].immersive .title {
+  --t-enter: clamp(0, calc((var(--p) - 0.1) / 0.18), 1);
+  transform: translateY(calc((1 - var(--t-enter)) * 22px));
+}
+
+/* Dramatic variant — larger scale */
+.cinematic[data-variant='dramatic'] .title,
+.immersive[data-variant='dramatic'] .title {
+  font-size: clamp(3.6rem, 11vw, 7.2rem);
+  letter-spacing: -0.04em;
+}
+
+/* Subtitle — delayed enter */
+.cinematic .subtitle,
+.immersive .subtitle {
+  --s-enter: clamp(0, calc((var(--p) - 0.16) / 0.12), 1);
+
+  font-size: clamp(1.05rem, 2.2vw, 1.35rem);
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+
+  opacity: var(--s-enter);
+  transform: translateY(calc((1 - var(--s-enter)) * 24px));
+}
+
+.container[data-motion-style='subtle'].cinematic .subtitle,
+.container[data-motion-style='subtle'].immersive .subtitle {
+  --s-enter: clamp(0, calc((var(--p) - 0.19) / 0.18), 1);
+  transform: translateY(calc((1 - var(--s-enter)) * 14px));
+}
+
+/* ============================================================================
+ * Reduced Motion
+ * ============================================================================ */
+
 @media (prefers-reduced-motion: reduce) {
   .content {
     opacity: 1;
     transform: none;
-    animation: none;
+    filter: none;
+    will-change: auto;
+  }
+
+  .title,
+  .subtitle {
+    transform: none;
+    opacity: 1;
+  }
+
+  /* Cinematic: still show content, just no animation */
+  .cinematic .title,
+  .cinematic .subtitle,
+  .immersive .title,
+  .immersive .subtitle {
+    opacity: 1;
+    transform: none;
   }
 }
 
-/* Mobile responsive */
+/* ============================================================================
+ * Mobile Responsive
+ * ============================================================================ */
+
 @media (max-width: 768px) {
-  .title {
+  .container:not(.cinematic):not(.immersive) .title {
     font-size: var(--text-4xl);
   }
 
-  .subtitle {
+  .container:not(.cinematic):not(.immersive) .subtitle {
     font-size: var(--text-md);
+  }
+
+  .cinematic .content,
+  .immersive .content {
+    padding: 0 24px;
   }
 }
 
 @media (max-width: 480px) {
-  .title {
+  .container:not(.cinematic):not(.immersive) .title {
     font-size: var(--text-3xl);
   }
 }

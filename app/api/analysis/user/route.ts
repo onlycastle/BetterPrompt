@@ -88,6 +88,7 @@ export async function GET(request: NextRequest) {
 
     // 2. Fetch user's claimed analyses from analysis_results
     const adminClient = getSupabaseAdmin();
+    const nowIso = new Date().toISOString();
 
     console.log('[/api/analysis/user] Querying for user_id:', userId);
 
@@ -95,6 +96,7 @@ export async function GET(request: NextRequest) {
       .from('analysis_results')
       .select('result_id, evaluation, is_paid, claimed_at, expires_at')
       .eq('user_id', userId)
+      .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
       .order('claimed_at', { ascending: false });
 
     console.log('[/api/analysis/user] Query result:', {

@@ -13,6 +13,7 @@
 import pc from 'picocolors';
 import ora from 'ora';
 import { scanSessions, scanActivitySessions, hasClaudeProjects } from './scanner.js';
+import { discoverProjects, promptProjectSelection } from './project-picker.js';
 import { uploadForAnalysis } from './uploader.js';
 import {
   displayError,
@@ -464,12 +465,31 @@ async function runAnalysis(options: RunAnalysisOptions = {}): Promise<void> {
     process.exit(1);
   }
 
-  // Step 3: Auto-scan sessions and show summary
+  // Step 2.5: Discover and select projects
+  const discoverySpinner = ora(`Discovering ${toolSelection.displayLabel} projects...`).start();
+  let allProjects;
+  try {
+    allProjects = await discoverProjects(toolSelection.includeSources);
+  } catch (error) {
+    discoverySpinner.fail('Failed to discover projects');
+    displayError(error instanceof Error ? error.message : 'Unknown error');
+    process.exit(1);
+  }
+  discoverySpinner.succeed(`Found ${allProjects.length} projects`);
+
+  const projectSelection = await promptProjectSelection(allProjects);
+  const projectFilter = projectSelection.mode === 'selected'
+    ? projectSelection.encodedNames
+    : undefined;
+
+  console.log('');
+
+  // Step 3: Scan sessions from selected projects
   const scanSpinner = ora(`Scanning ${toolSelection.displayLabel} sessions...`).start();
 
   let scanResult;
   try {
-    scanResult = await scanSessions(50, toolSelection.includeSources);
+    scanResult = await scanSessions(50, toolSelection.includeSources, projectFilter);
   } catch (error) {
     scanSpinner.fail('Failed to scan sessions');
     displayError(error instanceof Error ? error.message : 'Unknown error');

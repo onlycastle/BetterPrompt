@@ -306,6 +306,16 @@
   box-shadow: 5px 5px 0 var(--ink-primary);
 }
 
+/* Highlight animation for focused card (after returning from report) */
+.highlighted {
+  animation: cardHighlight 2s ease-out;
+}
+
+@keyframes cardHighlight {
+  0%, 30% { box-shadow: 0 0 0 3px var(--sketch-cyan); }
+  100% { box-shadow: 3px 3px 0 var(--ink-primary); }
+}
+
 .cardIcon {
   display: flex;
   align-items: center;
