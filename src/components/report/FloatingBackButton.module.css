@@ -1,0 +1,55 @@
+/**
+ * FloatingBackButton Styles
+ * Glass pill button fixed to top-left for immersive report navigation
+ */
+
+.button {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  right: 24px;
+  left: auto;
+  z-index: 150;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-full);
+  font-family: var(--font-interface, var(--font-primary));
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--surface-1);
+  border-color: var(--sketch-cyan);
+  color: var(--ink-primary);
+  transform: translateX(-2px);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  transition: transform var(--transition-fast);
+}
+
+.button:hover .icon {
+  transform: translateX(-2px);
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .button {
+    right: 12px;
+    top: max(10px, env(safe-area-inset-top));
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+}

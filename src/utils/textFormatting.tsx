@@ -283,23 +283,69 @@ export function FormattedPersonalityText({
  * @returns Array of paragraph strings
  */
 function splitIntoBalancedParagraphs(text: string, targetParagraphs = 5): string[] {
-  // Split by sentence boundaries while preserving the delimiter
-  const sentences = text.split(/(?<=[.!?])\s+/).filter((s) => s.trim());
-
-  if (sentences.length <= targetParagraphs) {
-    // Not enough sentences to split meaningfully
-    return sentences.length > 1 ? sentences : [text];
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return [text];
   }
 
-  const sentencesPerParagraph = Math.ceil(sentences.length / targetParagraphs);
-  const paragraphs: string[] = [];
+  const sentences = splitSentencesForParagraphs(normalized);
 
-  for (let i = 0; i < sentences.length; i += sentencesPerParagraph) {
-    const chunk = sentences.slice(i, i + sentencesPerParagraph).join(' ');
-    if (chunk.trim()) {
-      paragraphs.push(chunk.trim());
+  if (sentences.length <= 1) {
+    return [normalized];
+  }
+
+  const estimatedParagraphs = Math.max(
+    2,
+    Math.min(
+      targetParagraphs,
+      Math.round(normalized.length / 260)
+    )
+  );
+  const targetChars = Math.ceil(normalized.length / estimatedParagraphs);
+  const minChars = Math.max(120, Math.floor(targetChars * 0.7));
+  const maxChars = Math.max(220, Math.ceil(targetChars * 1.35));
+
+  const paragraphs: string[] = [];
+  let current = '';
+
+  for (const sentence of sentences) {
+    const candidate = current ? `${current} ${sentence}` : sentence;
+
+    if (current && candidate.length > maxChars && current.length >= minChars) {
+      paragraphs.push(current.trim());
+      current = sentence;
+      continue;
+    }
+
+    current = candidate;
+  }
+
+  if (current.trim()) {
+    paragraphs.push(current.trim());
+  }
+
+  // Avoid a tiny orphan paragraph at the end.
+  if (paragraphs.length > 1) {
+    const lastIndex = paragraphs.length - 1;
+    const shortThreshold = Math.max(80, Math.floor(minChars * 0.75));
+    if (paragraphs[lastIndex].length < shortThreshold) {
+      paragraphs[lastIndex - 1] = `${paragraphs[lastIndex - 1]} ${paragraphs[lastIndex]}`.trim();
+      paragraphs.pop();
     }
   }
 
   return paragraphs;
+}
+
+/**
+ * Split long mixed-language text into sentence-like units.
+ * Supports English punctuation and common Korean sentence endings.
+ */
+function splitSentencesForParagraphs(text: string): string[] {
+  const matches = text.match(/[^.!?。！？]+(?:니다\.|다\.|요\.|[.!?。！？])?/g);
+  if (!matches) return [text];
+  const sentences = matches
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+  return sentences.length > 0 ? sentences : [text];
 }
