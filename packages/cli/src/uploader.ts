@@ -535,7 +535,7 @@ async function handleStreamingResponse(
       case 'result':
         result = {
           ...event.data,
-          reportUrl: `${REPORT_BASE_URL}/dashboard/personal/r/${event.data.resultId}`,
+          reportUrl: `${REPORT_BASE_URL}/dashboard/r/${event.data.resultId}`,
         };
         break;
 

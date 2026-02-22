@@ -31,6 +31,13 @@ export interface RadarChartData {
 
 const BAR_WIDTH = 20;
 const LABEL_WIDTH = 12;
+// NBSP keeps padding stable in renderers that may collapse normal spaces.
+const LABEL_PAD_CHAR = '\u00A0';
+
+function padLabelEnd(label: string, width: number): string {
+  if (label.length >= width) return label;
+  return label + LABEL_PAD_CHAR.repeat(width - label.length);
+}
 
 // ── Bar Chart Rendering ──────────────────────────────────────────────────────
 
@@ -58,8 +65,8 @@ function renderBarSection(chart: RadarChartData): string[] {
     const isHighlighted = chart.highlightIndex === i;
     const marker = isHighlighted ? '*' : ' ';
 
-    // Right-align label
-    const paddedLabel = label.padStart(LABEL_WIDTH);
+    // Left-align label with stable padding so the bar start column stays fixed.
+    const paddedLabel = padLabelEnd(label, LABEL_WIDTH);
     const labelStr = isHighlighted ? chart.colorFn(paddedLabel) : pc.dim(paddedLabel);
     const markerStr = isHighlighted ? pc.bold(marker) : marker;
 
