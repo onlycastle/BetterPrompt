@@ -1,14 +1,13 @@
 /**
  * DiagnosisOverview - Aggregated growth area diagnoses from all 5 worker domains
  *
- * Renders every growth area across all domains in a flat staggered-reveal list,
- * sorted by severity (critical > high > medium > low). Used in the scrollytelling
- * narrative after the dramatic "but..." NarrativeMoment.
+ * Renders every growth area across all domains in a flat list sorted by severity
+ * (critical > high > medium > low) with per-card scroll reveal.
  *
  * Recommendation field remains locked for free tier (handled by GrowthCard internally).
  */
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import type { WorkerGrowth, ReferencedInsight } from '../../../../lib/models/worker-insights';
 import {
   WORKER_DOMAIN_CONFIGS,
@@ -30,6 +29,10 @@ const SEVERITY_ORDER: Record<string, number> = {
   low: 3,
 };
 
+const INITIAL_VISIBLE_IMMERSIVE = 3;
+const INITIAL_VISIBLE_DEFAULT = 5;
+const LOAD_BATCH = 3;
+
 interface DomainGrowth {
   config: WorkerDomainConfig;
   domainKey: string;
@@ -44,6 +47,24 @@ interface DiagnosisOverviewProps {
   utteranceLookup?: UtteranceLookupEntry[];
   insightAllocation?: InsightAllocation;
   onViewContext?: (utteranceId: string) => void;
+  /** Immersive mode: strip card frames, increase spacing */
+  immersive?: boolean;
+  /** Dark background mode for color inversions */
+  isDark?: boolean;
+}
+
+function ScrollRevealItem({ children, index }: { children: React.ReactNode; index: number }) {
+  const { ref, isVisible } = useScrollReveal({ threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+  return (
+    <div
+      ref={ref}
+      className={styles.revealItem}
+      data-visible={isVisible || undefined}
+      style={{ transitionDelay: isVisible ? `${Math.min(index, 3) * 80}ms` : '0ms' }}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function DiagnosisOverview({
@@ -52,9 +73,9 @@ export function DiagnosisOverview({
   utteranceLookup,
   insightAllocation,
   onViewContext,
+  immersive,
+  isDark,
 }: DiagnosisOverviewProps) {
-  const { ref: containerRef, isVisible } = useScrollReveal({ threshold: 0.05 });
-
   // Build utterance lookup map
   const utteranceLookupMap = useMemo(() => {
     if (!utteranceLookup?.length) return undefined;
@@ -102,6 +123,28 @@ export function DiagnosisOverview({
     return items;
   }, [workerInsights, translatedAgentInsights]);
 
+  const initialVisible = immersive ? INITIAL_VISIBLE_IMMERSIVE : INITIAL_VISIBLE_DEFAULT;
+  const [visibleCount, setVisibleCount] = useState(initialVisible);
+
+  useEffect(() => {
+    setVisibleCount(initialVisible);
+  }, [initialVisible, allGrowthAreas.length]);
+
+  const severitySummary = useMemo(() => {
+    const summary = { critical: 0, high: 0, medium: 0, low: 0 };
+    for (const item of allGrowthAreas) {
+      const key = item.growth.severity ?? 'low';
+      if (key in summary) {
+        summary[key as keyof typeof summary] += 1;
+      }
+    }
+    return summary;
+  }, [allGrowthAreas]);
+
+  const visibleGrowthAreas = allGrowthAreas.slice(0, visibleCount);
+  const hiddenCount = Math.max(allGrowthAreas.length - visibleGrowthAreas.length, 0);
+  const canCollapse = visibleGrowthAreas.length > initialVisible;
+
   if (allGrowthAreas.length === 0) return null;
 
   const getInsight = (item: DomainGrowth): ReferencedInsight | undefined => {
@@ -112,16 +155,31 @@ export function DiagnosisOverview({
   };
 
   return (
-    <div ref={containerRef} className={styles.container} data-visible={isVisible || undefined}>
+    <div className={styles.container} data-immersive={immersive || undefined} data-dark={isDark || undefined}>
+      <header className={styles.sectionIntro}>
+        <h3 className={styles.sectionTitle}>Read in Severity Order</h3>
+        <p className={styles.sectionCopy}>
+          Start from critical and high items first. The initial list is intentionally short so you can
+          act before diving into every diagnosis.
+        </p>
+        <div className={styles.severitySummary}>
+          {(['critical', 'high', 'medium', 'low'] as const).map((severity) => {
+            const count = severitySummary[severity];
+            if (count === 0) return null;
+            return (
+              <span key={severity} className={styles.severityChip} data-severity={severity}>
+                {severity} {count}
+              </span>
+            );
+          })}
+        </div>
+      </header>
+
       <div className={styles.list}>
-        {allGrowthAreas.map((item, idx) => {
+        {visibleGrowthAreas.map((item, idx) => {
           const insight = getInsight(item);
           return (
-            <div
-              key={`${item.config.key}-${idx}`}
-              className={styles.revealItem}
-              style={{ transitionDelay: isVisible ? `${idx * 80}ms` : '0ms' }}
-            >
+            <ScrollRevealItem key={`${item.config.key}-${idx}`} index={idx}>
               <span className={styles.domainBadge}>
                 {item.config.icon} {item.config.title}
               </span>
@@ -130,11 +188,36 @@ export function DiagnosisOverview({
                 utteranceLookup={utteranceLookupMap}
                 referencedInsights={insight ? [insight] : undefined}
                 onViewContext={onViewContext}
+                immersive={immersive}
+                isDark={isDark}
               />
-            </div>
+            </ScrollRevealItem>
           );
         })}
       </div>
+
+      {allGrowthAreas.length > initialVisible && (
+        <div className={styles.listControls}>
+          {hiddenCount > 0 ? (
+            <button
+              type="button"
+              className={styles.toggleButton}
+              onClick={() => setVisibleCount((prev) => Math.min(allGrowthAreas.length, prev + LOAD_BATCH))}
+            >
+              Show {Math.min(hiddenCount, LOAD_BATCH)} more diagnoses
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={styles.toggleButton}
+              onClick={() => setVisibleCount(initialVisible)}
+              disabled={!canCollapse}
+            >
+              Collapse list
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

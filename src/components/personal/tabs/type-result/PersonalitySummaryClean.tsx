@@ -9,8 +9,8 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Linkedin, Link as LinkIcon } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { ChevronDown, Linkedin, Link as LinkIcon } from 'lucide-react';
 import { Card } from '../../../ui/Card';
 import { FormattedPersonalityText } from '../../../../utils/textFormatting';
 import {
@@ -29,6 +29,12 @@ interface PersonalitySummaryCleanProps {
   keyStrength?: string;
   reportId?: string;
   primaryType?: CodingStyleType;
+  layout?: 'card' | 'editorial';
+}
+
+interface QuickTakeItem {
+  label: string;
+  text: string;
 }
 
 function openSharePopup(url: string) {
@@ -54,6 +60,56 @@ async function trackShare(reportId: string, platform: string) {
   }
 }
 
+function normalizeParagraphs(text: string): string[] {
+  const cleaned = text.trim();
+  if (!cleaned) return [];
+
+  const paragraphs = cleaned.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+  if (paragraphs.length > 1) {
+    return paragraphs;
+  }
+
+  // Long single-block content fallback.
+  return cleaned
+    .split(/(?<=[.!?。！？])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function firstSentence(text: string): string {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+
+  const match = normalized.match(/^(.{20,220}?)(?:니다\.|다\.|요\.|[.!?。！？])/);
+  if (match?.[1]) {
+    return `${match[1].trim()}.`;
+  }
+
+  if (normalized.length <= 160) return normalized;
+  return `${normalized.slice(0, 157).trim()}...`;
+}
+
+function stripMarkdown(text: string): string {
+  return text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\s+/g, ' ').trim();
+}
+
+function extractHighlightChips(text: string, limit = 6): string[] {
+  const chips: string[] = [];
+  const seen = new Set<string>();
+  const regex = /\*\*([^*]{2,90})\*\*/g;
+
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    const phrase = match[1].trim();
+    if (!phrase || seen.has(phrase)) continue;
+    seen.add(phrase);
+    chips.push(phrase);
+    if (chips.length >= limit) break;
+  }
+
+  return chips;
+}
+
 export function PersonalitySummaryClean({
   summary,
   matrixName,
@@ -61,8 +117,10 @@ export function PersonalitySummaryClean({
   keyStrength,
   reportId,
   primaryType,
+  layout = 'card',
 }: PersonalitySummaryCleanProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message);
@@ -70,6 +128,30 @@ export function PersonalitySummaryClean({
   }, []);
 
   const canShare = Boolean(reportId && primaryType);
+  const isEditorial = layout === 'editorial';
+  const paragraphs = useMemo(() => normalizeParagraphs(summary), [summary]);
+  const highlightChips = useMemo(() => extractHighlightChips(summary), [summary]);
+
+  const quickTakes = useMemo((): QuickTakeItem[] => {
+    const items: QuickTakeItem[] = [];
+    const labels = ['Core Signal', 'Risk Pattern', 'Next Shift'];
+
+    for (let i = 0; i < labels.length; i += 1) {
+      const paragraph = paragraphs[i];
+      if (!paragraph) break;
+      const sentence = firstSentence(stripMarkdown(paragraph));
+      if (!sentence) continue;
+      items.push({ label: labels[i], text: sentence });
+    }
+
+    if (items.length === 0 && keyStrength) {
+      items.push({ label: 'Core Signal', text: keyStrength });
+    }
+
+    return items;
+  }, [paragraphs, keyStrength]);
+
+  const shouldCollapseDetails = paragraphs.length > 3 || summary.length > 900;
 
   const handleTwitter = useCallback(() => {
     if (!reportId || !primaryType) return;
@@ -99,7 +181,11 @@ export function PersonalitySummaryClean({
   }, [reportId, showToast]);
 
   return (
-    <Card padding="lg" className={styles.container}>
+    <Card
+      padding={isEditorial ? 'none' : 'lg'}
+      className={`${styles.container} ${isEditorial ? styles.editorial : ''}`}
+      data-layout={layout}
+    >
       {/* Hero Badge — type emoji + name + key strength */}
       {matrixName && (
         <div className={styles.heroBadge}>
@@ -111,15 +197,56 @@ export function PersonalitySummaryClean({
         </div>
       )}
 
+      {/* Quick Takes */}
+      {quickTakes.length > 0 && (
+        <section className={styles.quickTakeSection} aria-label="Quick summary">
+          <div className={styles.quickTakeGrid}>
+            {quickTakes.map((item) => (
+              <article key={item.label} className={styles.quickTakeCard}>
+                <p className={styles.quickTakeLabel}>{item.label}</p>
+                <p className={styles.quickTakeText}>{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Highlight Chips */}
+      {highlightChips.length > 0 && (
+        <div className={styles.highlightChips} aria-label="Key themes">
+          {highlightChips.map((chip) => (
+            <span key={chip} className={styles.highlightChip}>
+              {chip}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Personality Narrative */}
-      <FormattedPersonalityText
-        text={summary}
-        className={styles.textContainer}
-        paragraphClassName={styles.paragraph}
-        quoteClassName={styles.quote}
-        boldClassName={styles.emphasis}
-        softBreakClassName={styles.softBreak}
-      />
+      <div
+        className={`${styles.detailPanel} ${shouldCollapseDetails && !isExpanded ? styles.detailPanelCollapsed : ''}`}
+      >
+        <FormattedPersonalityText
+          text={summary}
+          className={styles.textContainer}
+          paragraphClassName={styles.paragraph}
+          quoteClassName={styles.quote}
+          boldClassName={styles.emphasis}
+          softBreakClassName={styles.softBreak}
+        />
+      </div>
+
+      {shouldCollapseDetails && (
+        <button
+          type="button"
+          className={styles.expandButton}
+          onClick={() => setIsExpanded((prev) => !prev)}
+          aria-expanded={isExpanded}
+        >
+          {isExpanded ? 'Show less' : 'Read full analysis'}
+          <ChevronDown size={16} className={`${styles.expandIcon} ${isExpanded ? styles.expandIconOpen : ''}`} />
+        </button>
+      )}
 
       {/* Share Footer — only when reportId is available */}
       {canShare && (

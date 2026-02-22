@@ -6,6 +6,14 @@
 
 /* 2-column grid layout: main content + resource sidebar */
 .pageLayout {
+  --story-sticky-height: 100vh;
+  --story-section-range: 100vh;
+  --story-cover-offset: -100vh;
+  --story-section-max-width: 900px;
+  --story-reading-width: min(74ch, 100%);
+  --story-section-padding-x: var(--space-xl);
+  --story-section-padding-top: clamp(56px, 7vw, 104px);
+
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 var(--space-lg);
@@ -13,6 +21,21 @@
   grid-template-columns: 1fr 280px;
   gap: var(--space-xl);
   align-items: start;
+}
+
+/* Single column mode (no resource sidebar) — full-bleed for immersive */
+.singleColumn {
+  grid-template-columns: 1fr;
+  max-width: none;
+  padding: 0;
+}
+
+.immersiveApple {
+  --story-section-range: 200vh;
+  --story-cover-offset: -58vh;
+  --story-section-max-width: min(1040px, calc(100vw - 96px));
+  --story-section-padding-x: clamp(18px, 5vw, 56px);
+  --story-section-padding-top: clamp(64px, 8vw, 120px);
 }
 
 /* Main content column */
@@ -34,6 +57,16 @@
 /* Fixed Header Section */
 .headerSection {
   margin-bottom: var(--space-lg);
+}
+
+.pageLayout[data-experience='immersive-apple'] .headerSection {
+  padding: var(--story-section-padding-top) var(--story-section-padding-x) clamp(18px, 3vw, 32px);
+}
+
+.pageLayout[data-experience='immersive-apple'] .headerSection > * {
+  max-width: var(--story-section-max-width);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .personalitySection {
@@ -60,18 +93,69 @@
 .scrollContent {
   display: flex;
   flex-direction: column;
-  padding-bottom: var(--space-xl);
+  gap: clamp(24px, 4vw, 64px);
+  padding-bottom: clamp(48px, 8vw, 120px);
 }
 
 /* Individual scroll section */
 .scrollSection {
-  scroll-margin-top: 16px;
-  padding-top: var(--space-xl);
+  scroll-margin-top: 40px;
+  padding-top: 0;
+}
+
+/* Immersive scroll sections: solid background + elevated z-index for cover effect */
+.scrollSectionImmersive {
+  position: relative;
+  z-index: 2;
+  background: var(--bg-paper);
+  padding: var(--story-section-padding-top) var(--story-section-padding-x) clamp(10px, 2vw, 24px);
+}
+
+/* Content readability cap in immersive */
+.scrollSectionImmersive > * {
+  max-width: var(--story-section-max-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.sectionFlowReveal {
+  --story-body-progress: var(--scroll-progress, 0.35);
+}
+
+.sectionFlowRevealImmersive {
+  --story-body-enter: clamp(0, calc((var(--story-body-progress) - 0.08) / 0.36), 1);
+  opacity: calc(0.22 + var(--story-body-enter) * 0.78);
+  transform: translateY(calc((1 - var(--story-body-enter)) * 28px));
+  will-change: opacity, transform;
+}
+
+.scrollSectionImmersive :where(p, li) {
+  max-width: var(--story-reading-width);
+}
+
+/* Warm tint section (immersive only — Strengths) */
+.scrollSectionWarm {
+  background: var(--surface-2, #f7f9fc);
+}
+
+/* Dark section (immersive only — Growth after "But...") */
+.scrollSectionDark {
+  background: linear-gradient(180deg, #0f172a 0%, #0b1220 100%);
+  color: var(--bg-paper);
+}
+
+/* Cover entry: slides up over the NarrativeMoment sticky */
+.coverEntry {
+  margin-top: var(--story-cover-offset);
+  box-shadow: 0 -36px 72px -48px rgba(15, 23, 42, 0.28);
+  border-radius: clamp(20px, 4vw, 36px) clamp(20px, 4vw, 36px) 0 0;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: calc(var(--story-section-padding-top) * 0.78);
 }
 
 /* Section spacing — cards provide visual separation via border + shadow */
 .scrollSection + .scrollSection {
-  margin-top: var(--space-xl);
+  margin-top: 0;
 }
 
 /* Responsive - Tablet: Stack to single column */
@@ -85,5 +169,26 @@
   .sidebar {
     position: static;
     order: -1; /* Show sidebar above main content on mobile */
+  }
+
+  .pageLayout[data-experience='immersive-apple'] {
+    --story-cover-offset: -50vh;
+    --story-section-max-width: calc(100vw - 40px);
+    --story-section-padding-top: clamp(52px, 10vw, 88px);
+  }
+}
+
+@media (max-width: 640px) {
+  .pageLayout[data-experience='immersive-apple'] {
+    --story-cover-offset: -44vh;
+    --story-section-padding-x: clamp(14px, 5vw, 24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sectionFlowRevealImmersive {
+    opacity: 1;
+    transform: none;
+    will-change: auto;
   }
 }

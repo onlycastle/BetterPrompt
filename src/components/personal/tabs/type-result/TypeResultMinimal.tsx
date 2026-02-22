@@ -1,9 +1,9 @@
 /**
  * TypeResultMinimal Component
- * Notion/Linear style minimal type result display
+ * Notion/Linear style minimal type result display with staggered mount entrance
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { VERBOSE_TYPE_METADATA } from '../../../../types/verbose';
 import type { CodingStyleType, AIControlLevel, TypeDistribution, MatrixDistribution } from '../../../../types/verbose';
 import { MATRIX_NAMES, MATRIX_METADATA, deriveMatrixDistribution } from '../../../../lib/models/coding-style';
@@ -23,6 +23,8 @@ interface TypeResultMinimalProps {
   matrixDistribution?: MatrixDistribution;
   /** Aggregated worker insights for skill scores radar (optional) */
   workerInsights?: AggregatedWorkerInsights;
+  /** Immersive mode: hero viewport layout */
+  immersive?: boolean;
 }
 
 export function TypeResultMinimal({
@@ -33,10 +35,17 @@ export function TypeResultMinimal({
   controlScore = 50,
   matrixDistribution,
   workerInsights,
+  immersive,
 }: TypeResultMinimalProps) {
   const meta = VERBOSE_TYPE_METADATA[primaryType];
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Derive the final matrix type (the user's specific 5×3 personality type)
+  useEffect(() => {
+    const timer = setTimeout(() => setIsMounted(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Derive the final matrix type (the user's specific 5x3 personality type)
   const matrixType = useMemo(() => {
     const matrix = matrixDistribution
       ?? deriveMatrixDistribution(distribution, controlLevel, controlScore);
@@ -55,7 +64,7 @@ export function TypeResultMinimal({
   }, [primaryType, controlLevel, controlScore, distribution, matrixDistribution]);
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-mounted={isMounted || undefined} data-immersive={immersive || undefined}>
       {/* Hero Section - shows specific matrix type (e.g., "The Strategist") */}
       <div className={styles.hero}>
         <div className={styles.emoji}>{matrixType.emoji}</div>

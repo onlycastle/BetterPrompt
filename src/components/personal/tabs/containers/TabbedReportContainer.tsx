@@ -23,6 +23,7 @@ import { DiagnosisOverview } from '../insights/DiagnosisOverview';
 import { NarrativeMoment } from '../../../report/NarrativeMoment';
 import { CliffhangerWall } from '../../../report/CliffhangerWall';
 import { useScrollSpy } from '../../../../hooks/useScrollSpy';
+import { useScrollProgress } from '../../../../hooks/useScrollProgress';
 import { SurveyInlineCard } from '../../../report/SurveyInlineCard';
 import { SurveyBottomSheet } from '../../../report/SurveyBottomSheet';
 import type { DisappointmentLevel } from '../../../report/SurveyBottomSheet';
@@ -78,6 +79,7 @@ function convertKnowledgeResourcesToFlat(resources: DimensionResourceMatch[]): P
 // ============================================================================
 
 export type NarrativeSectionId = 'identity' | 'activity' | 'strengths' | 'growth';
+export type ReportExperience = 'dashboard' | 'immersive-apple';
 
 const NARRATIVE_SECTIONS: { id: NarrativeSectionId; label: string; icon: string }[] = [
   { id: 'identity', label: 'Your Type', icon: '🎭' },
@@ -85,6 +87,25 @@ const NARRATIVE_SECTIONS: { id: NarrativeSectionId; label: string; icon: string 
   { id: 'strengths', label: 'Strengths', icon: '✨' },
   { id: 'growth', label: 'Growth', icon: '📈' },
 ];
+
+function SectionFlowReveal({
+  children,
+  immersive,
+}: {
+  children: React.ReactNode;
+  immersive: boolean;
+}) {
+  const { ref } = useScrollProgress();
+
+  return (
+    <div
+      ref={ref}
+      className={`${styles.sectionFlowReveal} ${immersive ? styles.sectionFlowRevealImmersive : ''}`}
+    >
+      {children}
+    </div>
+  );
+}
 
 // ============================================================================
 // Component
@@ -98,6 +119,9 @@ interface TabbedReportContainerProps {
   reportId?: string;
   credits?: number | null;
   onCreditsUsed?: () => void;
+  showProgressDots?: boolean;
+  showResourceSidebar?: boolean;
+  experience?: ReportExperience;
 }
 
 export function TabbedReportContainer({
@@ -108,7 +132,14 @@ export function TabbedReportContainer({
   reportId,
   credits,
   onCreditsUsed,
+  showProgressDots = true,
+  showResourceSidebar = true,
+  experience,
 }: TabbedReportContainerProps) {
+  const resolvedExperience: ReportExperience = experience
+    ?? (!showProgressDots && !showResourceSidebar ? 'immersive-apple' : 'dashboard');
+  const immersive = resolvedExperience === 'immersive-apple';
+
   const contentRef = useRef<HTMLDivElement>(null);
   const headerSectionRef = useRef<HTMLDivElement>(null);
 
@@ -208,6 +239,13 @@ export function TabbedReportContainer({
   }, [rawWorkerInsights, communicationInsights]);
 
   const translatedAgentInsights = analysis.translatedAgentInsights;
+
+  // Shared NarrativeMoment props derived from immersive mode
+  const narrativeProps = useMemo((): Pick<React.ComponentProps<typeof NarrativeMoment>, 'immersive' | 'density' | 'motionStyle'> => ({
+    immersive,
+    density: immersive ? 'cinematic' : 'regular',
+    motionStyle: immersive ? 'subtle' : undefined,
+  }), [immersive]);
 
   // Scroll to section handler
   const handleSectionClick = useCallback((sectionId: string) => {
@@ -331,15 +369,20 @@ export function TabbedReportContainer({
   }, [workerInsights, insightAllocation, allResources.length]);
 
   return (
-    <div className={styles.pageLayout}>
+    <div
+      className={`${styles.pageLayout} ${showResourceSidebar ? '' : styles.singleColumn} ${immersive ? styles.immersiveApple : ''}`.trim()}
+      data-experience={resolvedExperience}
+    >
       {/* Floating Progress Dots — narrative section navigation */}
-      <FloatingProgressDots
-        sections={NARRATIVE_SECTIONS}
-        activeSection={activeTab}
-        onSectionClick={handleSectionClick}
-        visible={navVisible}
-        visitedSections={visitedSections}
-      />
+      {showProgressDots && (
+        <FloatingProgressDots
+          sections={NARRATIVE_SECTIONS}
+          activeSection={activeTab}
+          onSectionClick={handleSectionClick}
+          visible={navVisible}
+          visitedSections={visitedSections}
+        />
+      )}
 
       {/* Main Content Column */}
       <div className={styles.mainContent}>
@@ -350,6 +393,8 @@ export function TabbedReportContainer({
               analysis={analysis}
               workerInsights={workerInsights}
               reportId={reportId}
+              immersive={immersive}
+              experience={resolvedExperience}
             />
           </div>
         </div>
@@ -360,34 +405,50 @@ export function TabbedReportContainer({
           <NarrativeMoment
             title="Your Coding World"
             subtitle="A look at how you spend your time with AI"
+            {...narrativeProps}
           />
 
           {/* ── Chapter 2: Activity ── */}
-          <div ref={activityRef} data-section-id="activity" className={styles.scrollSection}>
-            <ActivitySection
-              activitySessions={analysis.activitySessions}
-              analyzedSessions={analysis.analyzedSessions ?? []}
-              sessionSummaries={analysis.sessionSummaries}
-              projectSummaries={analysis.projectSummaries}
-              analysisDateRange={analysisMetadata?.analysisDateRange}
-              weeklyInsights={analysis.weeklyInsights}
-            />
+          <div
+            ref={activityRef}
+            data-section-id="activity"
+            className={immersive ? `${styles.scrollSection} ${styles.scrollSectionImmersive} ${styles.coverEntry}` : styles.scrollSection}
+          >
+            <SectionFlowReveal immersive={immersive}>
+              <ActivitySection
+                activitySessions={analysis.activitySessions}
+                analyzedSessions={analysis.analyzedSessions ?? []}
+                sessionSummaries={analysis.sessionSummaries}
+                projectSummaries={analysis.projectSummaries}
+                analysisDateRange={analysisMetadata?.analysisDateRange}
+                weeklyInsights={analysis.weeklyInsights}
+                immersive={immersive}
+              />
+            </SectionFlowReveal>
           </div>
 
           {/* ── Narrative: "Your Shining Moments" ── */}
           <NarrativeMoment
             title="Your Shining Moments"
             subtitle="What you do exceptionally well across all domains"
+            {...narrativeProps}
           />
 
           {/* ── Chapter 3: Strengths ── */}
-          <div ref={strengthsRef} data-section-id="strengths" className={styles.scrollSection}>
-            <StrengthsOverview
-              workerInsights={workerInsights}
-              translatedAgentInsights={translatedAgentInsights}
-              utteranceLookup={analysis.utteranceLookup}
-              onViewContext={handleViewContext}
-            />
+          <div
+            ref={strengthsRef}
+            data-section-id="strengths"
+            className={immersive ? `${styles.scrollSection} ${styles.scrollSectionImmersive} ${styles.coverEntry} ${styles.scrollSectionWarm}` : styles.scrollSection}
+          >
+            <SectionFlowReveal immersive={immersive}>
+              <StrengthsOverview
+                workerInsights={workerInsights}
+                translatedAgentInsights={translatedAgentInsights}
+                utteranceLookup={analysis.utteranceLookup}
+                onViewContext={handleViewContext}
+                immersive={immersive}
+              />
+            </SectionFlowReveal>
           </div>
 
           {/* ── Narrative: Dramatic Turn ── */}
@@ -395,17 +456,26 @@ export function TabbedReportContainer({
             title="But..."
             subtitle="Every great developer has blind spots"
             variant="dramatic"
+            {...narrativeProps}
           />
 
           {/* ── Chapter 4: Growth Areas ── */}
-          <div ref={growthRef} data-section-id="growth" className={styles.scrollSection}>
-            <DiagnosisOverview
-              workerInsights={workerInsights}
-              translatedAgentInsights={translatedAgentInsights}
-              utteranceLookup={analysis.utteranceLookup}
-              insightAllocation={insightAllocation}
-              onViewContext={handleViewContext}
-            />
+          <div
+            ref={growthRef}
+            data-section-id="growth"
+            className={immersive ? `${styles.scrollSection} ${styles.scrollSectionImmersive} ${styles.coverEntry} ${styles.scrollSectionDark}` : styles.scrollSection}
+          >
+            <SectionFlowReveal immersive={immersive}>
+              <DiagnosisOverview
+                workerInsights={workerInsights}
+                translatedAgentInsights={translatedAgentInsights}
+                utteranceLookup={analysis.utteranceLookup}
+                insightAllocation={insightAllocation}
+                onViewContext={handleViewContext}
+                immersive={immersive}
+                isDark={immersive}
+              />
+            </SectionFlowReveal>
           </div>
 
           {/* ── Cliffhanger Paywall ── */}
@@ -432,11 +502,13 @@ export function TabbedReportContainer({
       </div>
 
       {/* Resource Sidebar */}
-      <aside className={styles.sidebar}>
-        {allResources.length > 0 && (
-          <ResourceSidebar resources={allResources} />
-        )}
-      </aside>
+      {showResourceSidebar && (
+        <aside className={styles.sidebar}>
+          {allResources.length > 0 && (
+            <ResourceSidebar resources={allResources} />
+          )}
+        </aside>
+      )}
 
       {/* Source Context Sidebar */}
       <SourceContextSidebar

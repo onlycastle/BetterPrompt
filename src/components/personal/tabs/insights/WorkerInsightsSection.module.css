@@ -510,10 +510,11 @@
 }
 
 .cardTitle {
-  font-family: var(--font-mono);
-  font-size: var(--text-md);
+  font-family: var(--font-interface, var(--font-primary));
+  font-size: clamp(1rem, 1.12vw, 1.12rem);
   font-weight: var(--weight-semibold);
-  line-height: 1.4;
+  line-height: 1.38;
+  letter-spacing: -0.01em;
   color: var(--ink-primary);
   margin: 0;
   flex: 1;
@@ -521,11 +522,13 @@
 }
 
 .cardDescription {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-family: var(--font-reading, var(--font-primary));
+  font-size: clamp(0.96rem, 1.02vw, 1.02rem);
   color: var(--ink-secondary);
   margin: 0;
-  line-height: var(--leading-relaxed);
+  line-height: 1.72;
+  letter-spacing: -0.002em;
+  text-wrap: pretty;
 }
 
 /* ============================================================================
@@ -625,7 +628,7 @@
 }
 
 .evidenceLabel {
-  font-family: var(--font-mono);
+  font-family: var(--font-interface, var(--font-primary));
   font-size: 11px;
   font-weight: var(--weight-bold);
   text-transform: uppercase;
@@ -642,10 +645,10 @@
 }
 
 .evidenceItem {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-family: var(--font-reading, var(--font-primary));
+  font-size: clamp(0.92rem, 0.96vw, 0.98rem);
   color: var(--ink-secondary);
-  line-height: var(--leading-relaxed);
+  line-height: 1.7;
   margin-bottom: var(--space-xs);
   padding-left: var(--space-md);
   position: relative;
@@ -673,7 +676,7 @@
 }
 
 .recommendationLabel {
-  font-family: var(--font-mono);
+  font-family: var(--font-interface, var(--font-primary));
   font-size: 13px;
   font-weight: var(--weight-bold);
   text-transform: uppercase;
@@ -684,11 +687,12 @@
 }
 
 .recommendationText {
-  font-family: var(--font-mono);
-  font-size: var(--text-md);
+  font-family: var(--font-reading, var(--font-primary));
+  font-size: clamp(0.97rem, 1.08vw, 1.06rem);
   color: var(--bg-paper);
   margin: 0;
-  line-height: var(--leading-relaxed);
+  line-height: 1.72;
+  letter-spacing: -0.002em;
 }
 
 /* ============================================================================
@@ -1374,6 +1378,301 @@
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+/* ============================================================================
+   IMMERSIVE MODE: Strip all card frames, spacing revolution
+   ============================================================================ */
+
+/* Card → Text Block: remove all framing */
+.insightCard[data-immersive] {
+  border-left: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
+.insightCard[data-immersive]::before {
+  display: none;
+}
+
+.insightCard[data-immersive]:hover {
+  transform: none;
+  background: transparent;
+}
+
+/* Growth card in immersive: also strip frame */
+.insightCard[data-immersive].growthCard {
+  border-color: transparent;
+  background: transparent;
+}
+
+.insightCard[data-immersive].growthCard:hover {
+  background: transparent;
+}
+
+.insightCard[data-immersive] .cardTitle {
+  font-size: clamp(1.1rem, 1.55vw, 1.3rem);
+  font-weight: var(--weight-semibold);
+  line-height: 1.35;
+}
+
+.insightCard[data-immersive] .cardDescription {
+  font-size: clamp(1rem, 1.12vw, 1.08rem);
+  line-height: 1.78;
+}
+
+/* Recommendation: editorial pull-quote style */
+.insightCard[data-immersive] .recommendationSection {
+  margin-top: clamp(16px, 2.6vw, 24px);
+  padding: 4px 0 4px 14px;
+  background: transparent;
+  border-left: 2px solid var(--accent-primary);
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.insightCard[data-immersive] .recommendationLabel {
+  color: var(--accent-primary);
+  letter-spacing: 0.08em;
+}
+
+.insightCard[data-immersive] .recommendationText {
+  color: var(--ink-primary);
+  line-height: 1.78;
+}
+
+/* Expert knowledge: inline citation block */
+.insightCard[data-immersive] .expertKnowledgeCard {
+  margin-top: clamp(18px, 3vw, 30px);
+  border: 0;
+  border-left: 2px solid var(--border-default);
+  padding: 4px 0 4px 14px;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.insightCard[data-immersive] .expertSourceButton:hover {
+  box-shadow: none;
+}
+
+/* Interaction restraint */
+.insightCard[data-immersive] .lockedContent:hover {
+  transform: none;
+}
+
+/* ============================================================================
+   DARK SECTION (Growth after "But...") — card-level color inversions
+   ============================================================================ */
+
+.insightCard[data-dark] .cardTitle {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.insightCard[data-dark] .cardDescription {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.insightCard[data-dark] .evidenceSection {
+  border-left-color: rgba(255, 255, 255, 0.3);
+}
+
+.insightCard[data-dark] .evidenceLabel {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.insightCard[data-dark] .evidenceItem {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.insightCard[data-dark] .evidenceItem::before {
+  color: var(--sketch-cyan);
+}
+
+.insightCard[data-dark] .recommendationSection {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.insightCard[data-dark] .recommendationLabel {
+  color: var(--sketch-cyan);
+}
+
+.insightCard[data-dark] .recommendationText {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.insightCard[data-dark][data-immersive] {
+  border-color: transparent;
+  background: transparent;
+}
+
+.insightCard[data-dark][data-immersive].growthCard {
+  border-color: transparent;
+  background: transparent;
+}
+
+.insightCard[data-dark][data-immersive] .recommendationSection {
+  background: transparent;
+  border-left-color: #7dd3fc;
+}
+
+.insightCard[data-dark][data-immersive] .recommendationLabel {
+  color: #7dd3fc;
+}
+
+.insightCard[data-dark][data-immersive] .expertKnowledgeCard {
+  border-left-color: rgba(255, 255, 255, 0.24);
+}
+
+/* ── Growth metadata badges on dark ── */
+
+.insightCard[data-dark] .growthMeta .evidenceCount {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ffb74d;
+  border-color: rgba(255, 152, 0, 0.4);
+}
+
+.insightCard[data-dark] .growthMeta .severityLevel {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.insightCard[data-dark] .growthMeta .severityLevel[data-severity="critical"] {
+  background: rgba(244, 67, 54, 0.2);
+  color: #ef9a9a;
+  border-color: rgba(244, 67, 54, 0.4);
+}
+
+.insightCard[data-dark] .growthMeta .severityLevel[data-severity="high"] {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ffcc80;
+  border-color: rgba(255, 152, 0, 0.4);
+}
+
+.insightCard[data-dark] .growthMeta .severityLevel[data-severity="medium"] {
+  background: rgba(255, 235, 59, 0.15);
+  color: #fff176;
+  border-color: rgba(255, 235, 59, 0.3);
+}
+
+/* ── Severity badge (top-right corner) on dark ── */
+
+.insightCard[data-dark] .severityMedium {
+  background: rgba(255, 235, 59, 0.25);
+  color: #fff176;
+}
+
+.insightCard[data-dark] .severityLow {
+  background: rgba(76, 175, 80, 0.2);
+  color: #a5d6a7;
+}
+
+/* ── Locked recommendation on dark ── */
+
+.insightCard[data-dark] .lockedRecommendation {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+}
+
+.insightCard[data-dark] .lockedHigh {
+  border-color: rgba(255, 152, 0, 0.5);
+}
+
+.insightCard[data-dark] .lockedCritical {
+  border-color: rgba(244, 67, 54, 0.5);
+}
+
+.insightCard[data-dark] .blurredText {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.insightCard[data-dark] .unlockCta {
+  background: rgba(255, 255, 255, 0.1);
+  border-top-color: rgba(255, 255, 255, 0.15);
+  color: var(--sketch-cyan);
+}
+
+.insightCard[data-dark] .unlockCta:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.insightCard[data-dark] .urgencyLabel[data-severity="critical"] {
+  background: rgba(244, 67, 54, 0.8);
+}
+
+.insightCard[data-dark] .urgencyLabel[data-severity="high"] {
+  background: rgba(255, 152, 0, 0.8);
+}
+
+/* ── Expert Knowledge Card on dark ── */
+
+.insightCard[data-dark] .expertBridge .bridgeLine {
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 1;
+}
+
+.insightCard[data-dark] .expertBridge .bridgeLabel {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.insightCard[data-dark] .expertKnowledgeCard {
+  background: rgba(156, 124, 244, 0.1);
+  border-color: rgba(156, 124, 244, 0.3);
+}
+
+.insightCard[data-dark] .expertLabel {
+  color: rgba(156, 124, 244, 0.8);
+}
+
+.insightCard[data-dark] .expertCategoryBadge {
+  background: rgba(156, 124, 244, 0.15);
+  color: rgba(156, 124, 244, 0.8);
+  border-color: rgba(156, 124, 244, 0.3);
+}
+
+.insightCard[data-dark] .expertTitle {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.insightCard[data-dark] .expertTakeaway {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
+  border-left-color: rgba(156, 124, 244, 0.5);
+}
+
+.insightCard[data-dark] .expertAuthorAttribution {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.insightCard[data-dark] .expertAdvicePrefix {
+  color: rgba(156, 124, 244, 0.7);
+}
+
+.insightCard[data-dark] .expertAdviceText {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.insightCard[data-dark] .expertSourceFooter {
+  border-top-color: rgba(156, 124, 244, 0.2);
+}
+
+.insightCard[data-dark] .expertSourceButton {
+  background: rgba(156, 124, 244, 0.15);
+  border-color: rgba(156, 124, 244, 0.3);
+  color: rgba(156, 124, 244, 0.8);
+}
+
+.insightCard[data-dark] .expertSourceButton:hover {
+  background: rgba(156, 124, 244, 0.3);
+  color: white;
+}
+
+.insightCard[data-dark] .expertLocked {
+  color: rgba(255, 255, 255, 0.4);
 }
 
 /* ============================================================================

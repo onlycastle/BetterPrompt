@@ -1,10 +1,34 @@
 /**
  * TypeResultMinimal - Notebook Sketch Style
+ * Staggered mount entrance: hero(0ms) -> description(150ms) -> strengths(300ms)
+ * Emoji floats with gentle animation
  */
 
 .container {
   padding: var(--space-lg);
   margin-bottom: var(--space-xl);
+}
+
+/* Staggered mount entrance children */
+.hero,
+.description,
+.strengths {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hero { transition-delay: 0ms; }
+.description { transition-delay: 150ms; }
+.strengths { transition-delay: 300ms; }
+
+.container[data-mounted] .hero,
+.container[data-mounted] .description,
+.container[data-mounted] .strengths {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .hero {
@@ -17,6 +41,12 @@
 .emoji {
   font-size: 48px;
   line-height: 1;
+  animation: emojiFloat 8s ease-in-out infinite;
+}
+
+@keyframes emojiFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 .typeInfo {
@@ -24,26 +54,34 @@
 }
 
 .typeName {
-  font-family: var(--font-primary);
+  font-family: var(--font-interface, var(--font-primary));
   font-size: var(--text-2xl);
   font-weight: var(--weight-bold);
   color: var(--ink-primary);
   margin: 0 0 var(--space-xs) 0;
+  letter-spacing: -0.02em;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .tagline {
-  font-family: var(--font-primary);
+  font-family: var(--font-interface, var(--font-primary));
   font-size: var(--text-md);
   color: var(--text-secondary);
   margin: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .description {
-  font-family: var(--font-primary);
+  font-family: var(--font-reading, var(--font-primary));
   font-size: var(--text-md);
   color: var(--text-secondary);
-  line-height: var(--leading-relaxed);
+  line-height: var(--reading-line-height, var(--leading-relaxed));
   margin: 0 0 var(--space-lg) 0;
+  letter-spacing: var(--reading-letter-spacing, 0);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .strengths {
@@ -54,7 +92,7 @@
 }
 
 .strengthBadge {
-  font-family: var(--font-primary);
+  font-family: var(--font-interface, var(--font-primary));
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--sketch-green-text);
@@ -167,6 +205,66 @@
   font-family: var(--font-primary);
   font-size: var(--text-sm);
   color: var(--text-tertiary);
+}
+
+/* ============================================================================
+   Immersive Mode: Hero viewport reveal
+   ============================================================================ */
+
+.container[data-immersive] {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: clamp(56px, 9vh, 108px) var(--space-xl) clamp(28px, 5vh, 64px);
+}
+
+.container[data-immersive] .hero {
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.container[data-immersive] .emoji {
+  font-size: clamp(64px, 10vw, 96px);
+  animation: none;
+}
+
+.container[data-immersive] .typeName {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+}
+
+.container[data-immersive] .tagline {
+  font-size: var(--text-lg);
+  max-width: 480px;
+}
+
+.container[data-immersive] .description {
+  max-width: 520px;
+  text-align: center;
+}
+
+.container[data-immersive] .strengths {
+  justify-content: center;
+}
+
+/* Reduced motion: no float, instant visibility */
+@media (prefers-reduced-motion: reduce) {
+  .hero,
+  .description,
+  .strengths {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .emoji {
+    animation: none;
+  }
 }
 
 /* Responsive */
