@@ -244,6 +244,15 @@ export async function GET(
 
     // Check if result has expired
     if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      const { error: deleteError } = await supabase
+        .from('analysis_results')
+        .delete()
+        .eq('result_id', resultId);
+
+      if (deleteError) {
+        console.error('Error deleting expired analysis result:', deleteError);
+      }
+
       return NextResponse.json(
         { error: 'Result expired', message: 'This analysis result has expired. Please run a new analysis.' },
         { status: 410 }

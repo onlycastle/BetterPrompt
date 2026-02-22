@@ -201,11 +201,13 @@ export async function GET(request: NextRequest) {
     }
 
     const adminClient = getSupabaseAdmin();
+    const nowIso = new Date().toISOString();
 
     const { data: results, error: fetchError } = await adminClient
       .from('analysis_results')
       .select('result_id, evaluation, is_paid, claimed_at')
       .eq('user_id', user.id)
+      .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
       .order('claimed_at', { ascending: true }); // Oldest first for history
 
     if (fetchError) {

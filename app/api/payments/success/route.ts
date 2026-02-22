@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
     // If resultId is available, redirect directly to the report
     if (resultId) {
       return NextResponse.redirect(
-        new URL(`/dashboard/personal/r/${resultId}?payment=success`, baseUrl)
+        new URL(`/dashboard/r/${resultId}?payment=success`, baseUrl)
       );
     }
     // Fallback to personal tab if no resultId
