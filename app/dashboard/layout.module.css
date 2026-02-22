@@ -22,6 +22,18 @@
   overflow-x: hidden;
 }
 
+/* Immersive mode: hide sidebar, expand content, kill graph paper */
+.dashboard:has([data-immersive-report]) {
+  background-image: none;
+  background: var(--bg-paper);
+}
+.dashboard:has([data-immersive-report]) > nav {
+  display: none;
+}
+.dashboard:has([data-immersive-report]) > .content {
+  margin-left: 0;
+}
+
 /* Mobile: Sidebar overlays content */
 @media (max-width: 768px) {
   .content {

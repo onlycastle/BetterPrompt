@@ -152,7 +152,7 @@ export function AnalyzeContent() {
             Most Recent Analysis
           </h3>
           <Link
-            href={`/dashboard/personal/r/${recentAnalysis.resultId}`}
+            href={`/dashboard/r/${recentAnalysis.resultId}`}
             className={styles.recentCard}
           >
             <div className={styles.recentIcon}>

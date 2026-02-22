@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,9 +37,11 @@ const TABS: Array<{ id: TabId; label: string; icon: React.ReactNode }> = [
 export function PersonalContent() {
   const searchParams = useSearchParams();
   const paymentSuccess = searchParams.get('payment') === 'success';
+  const initialTab = (searchParams.get('tab') as TabId) || 'report';
+  const focusResultId = searchParams.get('focus');
 
   const { isAuthenticated, isLoading: authLoading, user, signInWithGitHub } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabId>('report');
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [analyses, setAnalyses] = useState<UserAnalysis[]>([]);
   const [isLoadingAnalyses, setIsLoadingAnalyses] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
@@ -200,6 +202,7 @@ export function PersonalContent() {
             analyses={analyses}
             isLoading={isLoadingAnalyses}
             onDelete={handleDeleteClick}
+            focusResultId={focusResultId}
           />
         )}
         {activeTab === 'progress' && (
@@ -224,12 +227,33 @@ export function PersonalContent() {
 function ReportTabContent({
   analyses,
   isLoading,
-  onDelete
+  onDelete,
+  focusResultId,
 }: {
   analyses: UserAnalysis[];
   isLoading: boolean;
   onDelete: (analysis: UserAnalysis) => void;
+  focusResultId: string | null;
 }) {
+  const focusApplied = useRef(false);
+
+  // Scroll to focused card and highlight it
+  useEffect(() => {
+    if (!focusResultId || isLoading || analyses.length === 0 || focusApplied.current) return;
+    focusApplied.current = true;
+
+    // Wait for DOM to render
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-result-id="${CSS.escape(focusResultId)}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add(styles.highlighted);
+      setTimeout(() => el.classList.remove(styles.highlighted), 2000);
+      // Clean focus param from URL
+      window.history.replaceState({}, '', '/dashboard/personal?tab=report');
+    });
+  }, [focusResultId, isLoading, analyses]);
+
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
     return date.toLocaleDateString('en-US', {
@@ -267,8 +291,9 @@ function ReportTabContent({
       {analyses.map((analysis) => (
         <Link
           key={analysis.id}
-          href={`/dashboard/personal/r/${analysis.resultId}`}
+          href={`/dashboard/r/${analysis.resultId}`}
           className={styles.analysisCard}
+          data-result-id={analysis.resultId}
         >
           <div className={styles.cardIcon}>
             <FileText size={24} />
