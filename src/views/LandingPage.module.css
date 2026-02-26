@@ -9,22 +9,12 @@
   width: 100%;
 }
 
-/* Constrain inner content but allow full-bleed sections (e.g. DownloadSection dark bg) */
+/* Constrain inner content; pricing section handles its own layout (full-bleed dark bg) */
 .main > section {
-  scroll-margin-top: 48px;
+  scroll-margin-top: var(--header-height);
 }
 
-/* Regular sections get max-width + padding; full-bleed sections handle their own */
-.main > section:not(#pricing):not(#preview) {
-  max-width: var(--content-max-width);
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: var(--space-lg);
-  padding-right: var(--space-lg);
-}
-
-/* Full-bleed sections (download, preview) contain their own max-width */
-.main > section#preview {
+.main > section:not(#pricing) {
   max-width: var(--content-max-width);
   margin-left: auto;
   margin-right: auto;

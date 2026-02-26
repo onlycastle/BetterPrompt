@@ -5,7 +5,7 @@ import { track } from '@vercel/analytics';
 import { useInView } from '@/hooks/useInView';
 import styles from './SocialProofBar.module.css';
 
-const TOOLS = ['Claude Code', 'Cursor', 'Replit', 'Bolt'];
+const TOOLS = ['Claude Code', 'Cursor'];
 
 export function SocialProofBar() {
   const { ref, isInView } = useInView({ threshold: 0.15 });
@@ -19,7 +19,7 @@ export function SocialProofBar() {
   return (
     <div ref={ref} className={`${styles.bar} ${isInView ? styles.visible : ''}`}>
       <p className={styles.text}>
-        Trusted by <strong className={styles.highlight}>2,000+</strong> AI builders
+        Works with your favorite AI tools
       </p>
       <div className={styles.badges}>
         {TOOLS.map((tool) => (

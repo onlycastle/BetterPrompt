@@ -9,15 +9,15 @@ import styles from './TrustPrivacy.module.css';
 const TRUST_ITEMS = [
   {
     icon: Shield,
-    text: 'Session summaries are analyzed \u2014 never your source code',
+    text: 'Your AI chat history and codebase data are removed after analysis',
   },
   {
     icon: Lock,
-    text: 'Data encrypted in transit, deleted after analysis',
+    text: 'Data encrypted in transit, never stored on our servers',
   },
   {
     icon: EyeOff,
-    text: 'No background agents running on your machine',
+    text: 'No background processes. Nothing runs until you say so.',
   },
 ] as const;
 
@@ -33,7 +33,7 @@ export function TrustPrivacy() {
   return (
     <section id="trust" className={styles.section}>
       <div ref={ref} className={`${styles.content} ${isInView ? styles.visible : ''}`}>
-        <h2 className={styles.headline}>Your code stays yours</h2>
+        <h2 className={styles.headline}>Your data stays yours</h2>
 
         <div className={styles.grid}>
           {TRUST_ITEMS.map((item) => (
@@ -45,6 +45,10 @@ export function TrustPrivacy() {
             </div>
           ))}
         </div>
+
+        <p className={styles.clarification}>
+          BetterPrompt analyzes your AI chat history for a single project. All data is removed from our servers after your report is generated.
+        </p>
       </div>
     </section>
   );

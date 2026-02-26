@@ -1,38 +1,34 @@
 'use client';
 
+import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import { Button } from '@/components/ui/Button';
+import { WaitlistModal, waitlistConfigs } from './WaitlistModal';
 import styles from './HeroSection.module.css';
 
 export function HeroSection() {
-  const router = useRouter();
+  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
 
   const handleCtaClick = () => {
-    track('cta_click', { location: 'hero', type: 'get_started_free' });
-    router.push('/dashboard/analyze');
+    track('cta_click', { location: 'hero', type: 'try_it_free' });
+    setIsWaitlistOpen(true);
   };
 
   return (
     <section id="hero" className={styles.hero}>
       <div className={styles.content}>
-        <div className={styles.badge}>No More AI Slop</div>
         <h1 className={styles.headline}>
-          You&apos;re building with AI.
-          <br />
-          But can you see <span className={styles.accent}>what&apos;s going wrong?</span>
+          The right question changes everything.
         </h1>
 
         <p className={styles.subheadline}>
-          Analyze your AI coding sessions and see what&apos;s actually going
-          on — bad patterns, risky habits, and the blind spots holding you
-          back.
+          BetterPrompt reads your AI chat history, analyzes your codebase, and tells you exactly how to eliminate roadblocks.
         </p>
 
         <div className={styles.cta}>
           <Button variant="primary" size="lg" onClick={handleCtaClick}>
-            Get Started Free
+            Try It Free
           </Button>
         </div>
 
@@ -41,6 +37,11 @@ export function HeroSection() {
           <ChevronDown size={20} className={styles.scrollIcon} />
         </div>
       </div>
+      <WaitlistModal
+        isOpen={isWaitlistOpen}
+        onClose={() => setIsWaitlistOpen(false)}
+        config={waitlistConfigs.free_trial}
+      />
     </section>
   );
 }

@@ -59,6 +59,17 @@
   max-width: 280px;
 }
 
+.clarification {
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  font-style: italic;
+  margin-top: var(--space-lg);
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .grid {

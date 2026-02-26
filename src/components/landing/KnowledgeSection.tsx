@@ -9,7 +9,7 @@ const evidence = [
     icon: FlaskConical,
     title: 'VCP Research',
     stat: '60%',
-    detail: 'of developers report skill atrophy concerns',
+    detail: 'of AI users report skill atrophy concerns',
     source: 'https://www.visualcapitalist.com/',
   },
   {
