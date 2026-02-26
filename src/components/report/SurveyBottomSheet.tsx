@@ -26,10 +26,10 @@ interface SurveyData {
 }
 
 const STEPS = [
-  { command: '$ survey --pmf', question: 'How would you feel if you could no longer use NoMoreAISlop?' },
+  { command: '$ survey --pmf', question: 'How would you feel if you could no longer use BetterPrompt?' },
   { command: '$ survey --target', question: 'What type of builder do you think would benefit most from BetterPrompt?' },
-  { command: '$ survey --value', question: 'What is the main benefit you receive from NoMoreAISlop?' },
-  { command: '$ survey --improve', question: 'How can we improve NoMoreAISlop for you?' },
+  { command: '$ survey --value', question: 'What is the main benefit you receive from BetterPrompt?' },
+  { command: '$ survey --improve', question: 'How can we improve BetterPrompt for you?' },
 ] as const;
 
 const DISAPPOINTMENT_OPTIONS: { value: DisappointmentLevel; label: string }[] = [

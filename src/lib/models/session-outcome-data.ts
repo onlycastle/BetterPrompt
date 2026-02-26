@@ -54,7 +54,7 @@ export const GoalCategoryEnum = z.enum([
   'write_tests',             // Writing unit tests, integration tests
   'setup_config',            // Environment setup, configuration, tooling
   'documentation',           // Writing docs, comments, README updates
-  'code_review',             // Reviewing code, discussing approaches
+  'review_feedback',         // Reviewing work or getting feedback
   'exploration',             // Learning, exploring new concepts/APIs
   'quick_question',          // Simple Q&A, quick clarifications
   'deploy_infra',            // Deployment, infrastructure, CI/CD
@@ -580,7 +580,7 @@ export function getGoalDisplayName(goal: GoalCategory): string {
     write_tests: 'Verify & Test',
     setup_config: 'Setup & Configure',
     documentation: 'Document & Explain',
-    code_review: 'Review AI Output',
+    review_feedback: 'Review AI Output',
     exploration: 'Explore & Learn',
     quick_question: 'Quick Question',
     deploy_infra: 'Deploy & Infrastructure',
