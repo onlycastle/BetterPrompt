@@ -39,6 +39,8 @@ import type {
 import type { AgentOutputs } from '../models/agent-outputs';
 import type { WorkerGrowth } from '../models/worker-insights';
 import { FREE_AGENT_IDS } from '../domain/models';
+import type { QuickFixResult, Bottleneck } from '../models/quick-fix-data';
+import { QUICK_FIX_TIER_POLICY } from '../models/quick-fix-data';
 
 // Extract the workerInsights type from VerboseEvaluation for type safety
 type WorkerInsightsRecord = VerboseEvaluation['workerInsights'];
@@ -96,6 +98,9 @@ export const TIER_POLICY = {
 
   /** Top focus areas — entirely paid (part of the "prescription" layer) */
   topFocusAreas: 'paid',
+
+  /** Quick Fix bottleneck gating (Quick Fix pipeline) */
+  quickFix: QUICK_FIX_TIER_POLICY,
 } as const;
 
 // ============================================================================
@@ -436,6 +441,64 @@ export class ContentGateway {
       recommendationPreview: growth.recommendation.length > previewLength
         ? growth.recommendation.slice(0, previewLength)
         : growth.recommendation,
+    };
+  }
+
+  // ==========================================================================
+  // Quick Fix Filtering (Quick Fix Pipeline)
+  // ==========================================================================
+
+  /**
+   * Filter Quick Fix results based on tier.
+   *
+   * For FREE tier:
+   * - Top 1 bottleneck: full issue + suggestedPrompt + explanation (prescription)
+   * - Remaining bottlenecks: issue visible (diagnosis), suggestedPrompt/explanation locked
+   * - Health score and summary always visible
+   *
+   * For PAID tier:
+   * - All 3 bottlenecks with full prescriptions
+   *
+   * @param result - Full Quick Fix result
+   * @param tier - User tier level
+   * @returns Filtered Quick Fix result
+   */
+  filterQuickFixResult(result: QuickFixResult, tier: Tier): QuickFixResult {
+    // Paid tiers get full access
+    if (tier !== 'free') {
+      return { ...result, isFreeGated: false };
+    }
+
+    const { freeBottleneckLimit, suggestedPromptPreviewLength, explanationPreviewLength } =
+      TIER_POLICY.quickFix;
+
+    const filteredBottlenecks: Bottleneck[] = result.bottlenecks.map((bottleneck, index) => {
+      // Top N bottlenecks are fully visible
+      if (index < freeBottleneckLimit) {
+        return bottleneck;
+      }
+
+      // Remaining bottlenecks: lock prescription fields
+      return {
+        ...bottleneck,
+        // Issue (diagnosis) stays visible
+        // Lock suggestedPrompt with preview
+        suggestedPrompt: '',
+        suggestedPromptPreview: bottleneck.suggestedPrompt.length > suggestedPromptPreviewLength
+          ? bottleneck.suggestedPrompt.slice(0, suggestedPromptPreviewLength)
+          : bottleneck.suggestedPrompt,
+        // Lock explanation with preview
+        explanation: '',
+        explanationPreview: bottleneck.explanation.length > explanationPreviewLength
+          ? bottleneck.explanation.slice(0, explanationPreviewLength)
+          : bottleneck.explanation,
+      };
+    });
+
+    return {
+      ...result,
+      bottlenecks: filteredBottlenecks,
+      isFreeGated: true,
     };
   }
 
