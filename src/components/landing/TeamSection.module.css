@@ -1,0 +1,188 @@
+/* ========================================
+   TeamSection — B2B Team Leader Signal
+   3-card grid with Now→/Fix→ comparison
+   ======================================== */
+
+.section {
+  padding: var(--space-3xl) 0;
+}
+
+/* Scroll animation */
+.content {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.content.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.headline {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  text-align: center;
+  margin-bottom: var(--space-2xl);
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: var(--leading-snug);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+
+/* ============================================
+   Card — glass card with role header
+   ============================================ */
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-xl) var(--space-lg);
+  background: var(--glass-bg);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.card:hover {
+  transform: rotate(-0.5deg);
+  box-shadow: var(--shadow-md);
+}
+
+/* Role header: icon + name/title */
+.roleHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.iconWrapper {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.card:nth-child(1) .iconWrapper {
+  background: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan-text);
+}
+
+.card:nth-child(2) .iconWrapper {
+  background: var(--sketch-green-soft);
+  color: var(--sketch-green-text);
+}
+
+.card:nth-child(3) .iconWrapper {
+  background: var(--sketch-pink-soft);
+  color: var(--sketch-pink);
+}
+
+.roleName {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  line-height: 1.2;
+}
+
+.roleTitle {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  font-weight: var(--weight-medium);
+}
+
+/* ============================================
+   Stats badge — token/time usage
+   ============================================ */
+.statsBadge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.03em;
+  padding: var(--space-2xs) var(--space-sm);
+  background: var(--surface-3);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-md);
+  width: fit-content;
+}
+
+/* ============================================
+   Workflow block — Now→ / Fix→ comparison
+   Mirrors ProductPreviewSection pattern
+   ============================================ */
+.workflowBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  flex: 1;
+}
+
+.workflowItem {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: baseline;
+}
+
+.workflowLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  min-width: 36px;
+}
+
+.workflowNow {
+  color: var(--sketch-red-text);
+}
+
+.workflowFix {
+  color: var(--sketch-green-text, #16a34a);
+}
+
+.workflowText {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+/* ============================================
+   CTA — centered Book a Demo button
+   ============================================ */
+.ctaWrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-2xl);
+}
+
+/* ============================================
+   Mobile
+   ============================================ */
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+
+  .card {
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .headline {
+    font-size: var(--text-xl);
+    padding: 0 var(--space-md);
+  }
+}
