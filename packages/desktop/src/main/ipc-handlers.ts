@@ -279,8 +279,8 @@ export function setupIpcHandlers(getMainWindow: () => BrowserWindow | null): voi
           if (parsed && parsed.messages.length >= 4) {
             sessions.push(parsed);
           }
-        } catch {
-          // Skip unparseable files
+        } catch (err) {
+          console.warn(`[IPC] Quick Fix: skipping unparseable file ${filePath}:`, err);
         }
       }
 
@@ -296,7 +296,13 @@ export function setupIpcHandlers(getMainWindow: () => BrowserWindow | null): voi
         projectPath,
         isPaid,
         onProgress: (stage, percent, message) => {
-          mainWindow?.webContents.send('quick-fix:progress', { stage, percent, message });
+          try {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('quick-fix:progress', { stage, percent, message });
+            }
+          } catch {
+            // Window destroyed mid-analysis — safe to ignore
+          }
         },
       });
 
