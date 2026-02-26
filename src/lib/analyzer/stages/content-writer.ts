@@ -22,10 +22,9 @@ import { GeminiClient, type GeminiClientConfig, type TokenUsage } from '../clien
 import {
   FlatNarrativeLLMResponseSchema,
   reshapeNarrativeLLMResponse,
-  type NarrativeLLMResponse,
 } from '../../models/verbose-evaluation';
 import type { AgentOutputs } from '../../models/agent-outputs';
-import type { Phase1Output, DeveloperUtterance } from '../../models/phase1-output';
+import type { Phase1Output, UserUtterance } from '../../models/phase1-output';
 import {
   CONTENT_WRITER_SYSTEM_PROMPT_V3,
   buildContentWriterUserPromptV3,
@@ -152,14 +151,11 @@ export class ContentWriterStage {
     });
 
     // Reshape flat LLM output to nested NarrativeLLMResponse
-    const result = { data: reshapeNarrativeLLMResponse(flatResult.data), usage: flatResult.usage };
-
-    // Sanitize narrative-only response
-    const sanitized = this.sanitizeNarrativeResponse(result.data, phase1Output);
+    const narrativeData = reshapeNarrativeLLMResponse(flatResult.data);
 
     return {
-      data: sanitized,
-      usage: result.usage,
+      data: narrativeData,
+      usage: flatResult.usage,
     };
   }
 
@@ -211,39 +207,29 @@ export class ContentWriterStage {
     agentOutputs: AgentOutputs,
     phase1Output: Phase1Output
   ): void {
-    const utteranceLookup = new Map<string, DeveloperUtterance>();
+    const utteranceLookup = new Map<string, UserUtterance>();
     for (const u of phase1Output.developerUtterances) {
       utteranceLookup.set(u.id, u);
     }
 
     const stats = { verified: 0, replaced: 0, removed: 0, noUtteranceId: 0 };
 
-    const filterExamplesArray = (items: any[] | undefined, label: string): void => {
+    const filterArrayField = (items: any[] | undefined, field: 'examples' | 'evidence', label: string): void => {
       if (!items) return;
       for (const item of items) {
-        if (!Array.isArray(item.examples)) continue;
-        item.examples = item.examples.filter((ex: any) =>
-          this.verifyExampleItem(ex, utteranceLookup, stats, label)
-        );
-      }
-    };
-
-    const filterEvidenceArray = (items: any[] | undefined, label: string): void => {
-      if (!items) return;
-      for (const item of items) {
-        if (!Array.isArray(item.evidence)) continue;
-        item.evidence = item.evidence.filter((ev: any) =>
-          this.verifyExampleItem(ev, utteranceLookup, stats, label)
+        if (!Array.isArray(item[field])) continue;
+        item[field] = item[field].filter((entry: any) =>
+          this.verifyExampleItem(entry, utteranceLookup, stats, label)
         );
       }
     };
 
     const tq = agentOutputs.thinkingQuality;
     if (tq) {
-      filterExamplesArray(tq.verificationAntiPatterns, 'Anti-pattern');
-      filterExamplesArray(tq.planningHabits, 'Planning habit');
-      filterEvidenceArray(tq.strengths, 'ThinkingQuality');
-      filterEvidenceArray(tq.growthAreas, 'ThinkingQuality');
+      filterArrayField(tq.verificationAntiPatterns, 'examples', 'Anti-pattern');
+      filterArrayField(tq.planningHabits, 'examples', 'Planning habit');
+      filterArrayField(tq.strengths, 'evidence', 'ThinkingQuality');
+      filterArrayField(tq.growthAreas, 'evidence', 'ThinkingQuality');
 
       // criticalThinkingMoments require special handling (top-level array)
       if (tq.criticalThinkingMoments) {
@@ -255,19 +241,19 @@ export class ContentWriterStage {
     }
 
     if (agentOutputs.learningBehavior) {
-      filterEvidenceArray(agentOutputs.learningBehavior.strengths, 'LearningBehavior');
-      filterEvidenceArray(agentOutputs.learningBehavior.growthAreas, 'LearningBehavior');
+      filterArrayField(agentOutputs.learningBehavior.strengths, 'evidence', 'LearningBehavior');
+      filterArrayField(agentOutputs.learningBehavior.growthAreas, 'evidence', 'LearningBehavior');
     }
 
     // Legacy workers
     if (agentOutputs.contextEfficiency) {
-      filterEvidenceArray(agentOutputs.contextEfficiency.strengths, 'ContextEfficiency');
-      filterEvidenceArray(agentOutputs.contextEfficiency.growthAreas, 'ContextEfficiency');
+      filterArrayField(agentOutputs.contextEfficiency.strengths, 'evidence', 'ContextEfficiency');
+      filterArrayField(agentOutputs.contextEfficiency.growthAreas, 'evidence', 'ContextEfficiency');
     }
 
     if (agentOutputs.knowledgeGap) {
-      filterEvidenceArray(agentOutputs.knowledgeGap.strengths, 'KnowledgeGap');
-      filterEvidenceArray(agentOutputs.knowledgeGap.growthAreas, 'KnowledgeGap');
+      filterArrayField(agentOutputs.knowledgeGap.strengths, 'evidence', 'KnowledgeGap');
+      filterArrayField(agentOutputs.knowledgeGap.growthAreas, 'evidence', 'KnowledgeGap');
     }
 
     const total = stats.verified + stats.replaced + stats.removed + stats.noUtteranceId;
@@ -281,7 +267,7 @@ export class ContentWriterStage {
    */
   private verifyExampleItem(
     item: any,
-    utteranceLookup: Map<string, DeveloperUtterance>,
+    utteranceLookup: Map<string, UserUtterance>,
     stats: { verified: number; replaced: number; removed: number; noUtteranceId: number },
     label: string
   ): boolean {
@@ -296,25 +282,6 @@ export class ContentWriterStage {
       return false;
     }
     return this.verifyQuoteByUtteranceId(item, utteranceLookup, stats);
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Private Methods
-  // ─────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Sanitize narrative-only LLM response
-   *
-   * Deep clones to avoid mutation.
-   * NOTE: personalitySummary is no longer generated by ContentWriter.
-   * It is sourced from TypeClassifier.reasoning (Phase 2.5).
-   */
-  private sanitizeNarrativeResponse(
-    input: NarrativeLLMResponse,
-    _phase1Output?: Phase1Output
-  ): NarrativeLLMResponse {
-    // Deep clone to avoid mutation
-    return JSON.parse(JSON.stringify(input)) as NarrativeLLMResponse;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -356,7 +323,7 @@ export class ContentWriterStage {
    */
   private verifyQuoteByUtteranceId(
     entry: { utteranceId: string; quote: string },
-    utteranceLookup: Map<string, DeveloperUtterance>,
+    utteranceLookup: Map<string, UserUtterance>,
     stats: { verified: number; replaced: number; removed: number }
   ): boolean {
     const original = utteranceLookup.get(entry.utteranceId);
@@ -369,16 +336,16 @@ export class ContentWriterStage {
     // Always use displayText (sanitized) if available, otherwise fall back to raw text
     // This guarantees the quote is the original developer's words, not LLM paraphrase
     const originalQuote = (original.displayText || original.text).slice(0, 500);
+    const matched = this.quotesMatch(entry.quote, originalQuote);
 
-    if (this.quotesMatch(entry.quote, originalQuote)) {
-      // Quote already matches original — mark verified but still ensure we use original
-      entry.quote = originalQuote;
+    if (matched) {
       stats.verified++;
     } else {
-      // Quote was paraphrased by LLM — replace with original
-      entry.quote = originalQuote;
       stats.replaced++;
     }
+
+    // Always overwrite with original to prevent LLM paraphrasing
+    entry.quote = originalQuote;
     return true;
   }
 

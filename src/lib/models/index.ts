@@ -162,6 +162,9 @@ export {
 // Phase 1 Output Types (NEW - v2 Architecture)
 // ============================================================================
 export {
+  UserUtteranceSchema,
+  type UserUtterance,
+  // Backward compatibility aliases
   DeveloperUtteranceSchema,
   type DeveloperUtterance,
   Phase1SessionMetricsSchema,

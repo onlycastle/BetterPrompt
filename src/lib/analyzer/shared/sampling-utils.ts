@@ -12,29 +12,29 @@
  * @module analyzer/shared/sampling-utils
  */
 
-import type { DeveloperUtterance } from '../../models/phase1-output';
+import type { UserUtterance } from '../../models/phase1-output';
 
 /**
- * Strategic sampling of developer utterances.
+ * Strategic sampling of user utterances.
  *
  * Keeps first + last utterance per session (bookends), fills remaining
  * slots with evenly-spaced middle utterances. Preserves chronological order.
  */
 export function strategicSampleUtterances(
-  all: DeveloperUtterance[],
+  all: UserUtterance[],
   maxCount: number
-): DeveloperUtterance[] {
+): UserUtterance[] {
   if (all.length <= maxCount) return all;
 
   // Group by session
-  const bySession = new Map<string, DeveloperUtterance[]>();
+  const bySession = new Map<string, UserUtterance[]>();
   for (const u of all) {
     const group = bySession.get(u.sessionId) ?? [];
     group.push(u);
     bySession.set(u.sessionId, group);
   }
 
-  const sampled: Set<DeveloperUtterance> = new Set();
+  const sampled: Set<UserUtterance> = new Set();
 
   // Keep first + last per session (bookends)
   for (const group of bySession.values()) {

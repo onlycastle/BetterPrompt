@@ -42,18 +42,18 @@ export const AIInsightBlockSchema = z.object({
 
   /**
    * ID of the preceding user utterance that triggered this insight.
-   * Format: "{sessionId}_{turnIndex}" matching DeveloperUtterance.id
+   * Format: "{sessionId}_{turnIndex}" matching UserUtterance.id
    */
   triggeringUtteranceId: z.string().optional(),
 });
 export type AIInsightBlock = z.infer<typeof AIInsightBlockSchema>;
 
 // ============================================================================
-// Developer Utterance Schema (Raw Text + Structural Metadata)
+// User Utterance Schema (Raw Text + Structural Metadata)
 // ============================================================================
 
 // ============================================================================
-// Natural Language Segment Schema (Immutable Developer Text)
+// Natural Language Segment Schema (Immutable User Text)
 // ============================================================================
 
 /**
@@ -81,7 +81,7 @@ export const NaturalLanguageSegmentSchema = z.object({
 export type NaturalLanguageSegment = z.infer<typeof NaturalLanguageSegmentSchema>;
 
 /**
- * A single developer utterance extracted from a session.
+ * A single user utterance extracted from a session.
  *
  * Contains ONLY:
  * - Raw text content
@@ -93,7 +93,7 @@ export type NaturalLanguageSegment = z.infer<typeof NaturalLanguageSegmentSchema
  * - signal classification (Phase 2: StrengthGrowthWorker)
  * - semantic meaning or interpretation
  */
-export const DeveloperUtteranceSchema = z.object({
+export const UserUtteranceSchema = z.object({
   /** Unique identifier: "{sessionId}_{turnIndex}" */
   id: z.string(),
 
@@ -188,7 +188,11 @@ export const DeveloperUtteranceSchema = z.object({
   /** Whether the preceding AI response contained an error */
   precedingAIHadError: z.boolean().optional(),
 });
-export type DeveloperUtterance = z.infer<typeof DeveloperUtteranceSchema>;
+export type UserUtterance = z.infer<typeof UserUtteranceSchema>;
+
+// Backward compatibility alias
+export const DeveloperUtteranceSchema = UserUtteranceSchema;
+export type DeveloperUtterance = UserUtterance;
 
 // ============================================================================
 // Session Metrics Schema (Computed Statistics)
@@ -391,8 +395,8 @@ export type Phase1SessionMetrics = z.infer<typeof Phase1SessionMetricsSchema>;
  * 3. Clear data flow and easier testing
  */
 export const Phase1OutputSchema = z.object({
-  /** Extracted developer utterances with structural metadata */
-  developerUtterances: z.array(DeveloperUtteranceSchema),
+  /** Extracted user utterances with structural metadata */
+  developerUtterances: z.array(UserUtteranceSchema),
 
   /** Computed session metrics */
   sessionMetrics: Phase1SessionMetricsSchema,

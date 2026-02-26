@@ -3,7 +3,7 @@
  *
  * PTCF framework prompts for generating 1-line session summaries.
  * Uses Gemini 3 Flash structured output to produce concise descriptions
- * of what the developer worked on in each session.
+ * of what the builder worked on in each session.
  *
  * @module analyzer/stages/session-summarizer-prompts
  */
@@ -16,17 +16,17 @@
  * Context: Developer-AI collaboration sessions
  * Format: JSON structured output via schema
  */
-export const SESSION_SUMMARIZER_SYSTEM_PROMPT = `You are a technical session summarizer analyzing developer-AI collaboration sessions.
+export const SESSION_SUMMARIZER_SYSTEM_PROMPT = `You are a technical session summarizer analyzing builder-AI collaboration sessions.
 
-Your task is to generate a concise 1-line summary (max 80 characters) for each coding session describing what the developer primarily worked on.
+Your task is to generate a concise 1-line summary (max 80 characters) for each session describing what the builder primarily worked on.
 
 Guidelines:
 - Focus on the PRIMARY task or goal of the session
-- Use action verbs (e.g., "Implement", "Fix", "Refactor", "Debug", "Add")
-- Be specific about the feature/component (e.g., "Implement JWT auth flow" not "Work on auth")
+- Use action verbs (e.g., "Build", "Fix", "Set up", "Create", "Add", "Integrate")
+- Be specific about the feature/component (e.g., "Built user login page" not "Work on auth", "Set up payment integration" not "Work on payments", "Created dashboard layout" not "Work on UI")
 - If the session covers multiple topics, summarize the dominant one
 - Keep summaries under 80 characters
-- Write in English regardless of the developer's language
+- Write in English regardless of the builder's language
 - If the session content is too sparse to determine the topic, write "Short exploration session"`;
 
 /**

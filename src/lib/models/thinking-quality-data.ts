@@ -5,10 +5,10 @@
  * - WorkflowHabit: Planning habits, critical thinking moments, multitasking patterns
  * - TrustVerification (verification-related): Verification behavior, verification anti-patterns
  *
- * This worker answers: "How intentionally and critically does this developer work?"
+ * This worker answers: "How intentionally and critically does this user work with AI?"
  *
  * Capability-centric approach:
- * - Planning: How concrete and structured are their plans?
+ * - Planning: How concrete and structured are their plans before prompting?
  * - Critical Thinking: Do they verify AI outputs and ask questions?
  *
  * Note: Communication patterns are now handled by CommunicationPatternsWorker.
@@ -40,8 +40,8 @@ import {
 export const PlanningHabitTypeSchema = z.enum([
   'uses_plan_command',    // Uses /plan slash command (command knowledge)
   'plan_mode_usage',      // Configures plan mode for structured workflows
-  'task_decomposition',   // Breaks down complex tasks
-  'structure_first',      // Plans before coding
+  'task_decomposition',   // Breaks down complex tasks into smaller steps
+  'structure_first',      // Plans before prompting AI
   'todowrite_usage',      // Uses TodoWrite tool
   'no_planning',          // Dives in without planning
 ]);
@@ -106,13 +106,13 @@ export type CriticalThinkingMoment = z.infer<typeof CriticalThinkingMomentSchema
 // ============================================================================
 
 /**
- * Verification behavior levels - where on the Vibe Coder spectrum.
+ * Verification behavior levels - where on the Vibe Builder spectrum.
  */
 export const VerificationLevelSchema = z.enum([
-  'blind_trust',              // Vibe Coder
-  'occasional_review',        // Supervised Coder
-  'systematic_verification',  // AI-Assisted Engineer
-  'skeptical',                // Reluctant User
+  'blind_trust',              // Vibe Builder — ships without reviewing AI output
+  'occasional_review',        // Supervised Builder — spot-checks occasionally
+  'systematic_verification',  // Deliberate Builder — verifies AI output consistently
+  'skeptical',                // Reluctant User — over-verifies, slowing momentum
 ]);
 export type VerificationLevel = z.infer<typeof VerificationLevelSchema>;
 
@@ -468,11 +468,6 @@ export type ThinkingQualityLLMOutput = z.infer<typeof ThinkingQualityLLMOutputSc
 // ============================================================================
 // Parsing Functions
 // ============================================================================
-
-/** Validate utteranceId format: sessionId_turnIndex (e.g., "abc123_5") */
-function isValidUtteranceId(id: string | undefined): boolean {
-  return !!id && /_\d+$/.test(id);
-}
 
 function parsePlanningHabitsLLM(habits: PlanningHabitLLM[] | undefined): PlanningHabit[] {
   if (!habits?.length) return [];

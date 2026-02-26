@@ -5,10 +5,6 @@
  */
 
 /**
- * No-hedging directive for confident, direct language in all outputs.
- * This directive is injected into all LLM prompts to ensure definitive assessments.
- */
-/**
  * Phase 1 sampling limits.
  *
  * Phase 2 workers consume at most ~400 utterances and ~300 AI responses each.
@@ -24,20 +20,20 @@ export const PHASE1_MAX_AI_RESPONSES = 350;
 export const OBJECTIVE_ANALYSIS_DIRECTIVE = `
 ## OBJECTIVE ANALYSIS REQUIREMENT
 
-Analyze developer behavior OBJECTIVELY, not optimistically.
+Analyze builder behavior OBJECTIVELY, not optimistically.
 
 **For STRENGTHS:**
 - Identify behaviors that demonstrably improve outcomes
 - Base on evidence, not intention
 
 **For GROWTH AREAS:**
-- Every developer has room for improvement
+- Every builder has room for improvement
 - Identify patterns that limit effectiveness
 - This is NOT criticism — it's objective assessment for professional growth
-- Minimum 1 growth area required (no developer is perfect)
+- Minimum 1 growth area required (no builder is perfect)
 
-**For High-Scoring Developers (80+ score):**
-Growth areas for skilled developers focus on nuanced improvements:
+**For High-Scoring Builders (80+ score):**
+Growth areas for skilled builders focus on nuanced improvements:
 - Advanced techniques they haven't yet explored
 - Edge cases where their strong patterns occasionally break down
 - Opportunities to evolve good habits into excellent ones
@@ -46,8 +42,8 @@ Growth areas for skilled developers focus on nuanced improvements:
 
 **Balanced Assessment Principle:**
 A 90/100 score indicates 10% room for growth. Identify what that 10% represents.
-A 100/100 score is impossible — even the best developers have areas to improve.
-Constructive growth areas help developers continue improving, not criticize their work.
+A 100/100 score is impossible — even the best builders have areas to improve.
+Constructive growth areas help builders continue improving, not criticize their work.
 
 **Balance Rule:**
 - Strengths and Growth Areas should be roughly balanced
@@ -72,10 +68,10 @@ export const CLEAR_COMMAND_PATTERNS: RegExp[] = [
 ];
 
 /**
- * Known Claude Code slash commands for developer intent detection.
+ * Known Claude Code slash commands for builder intent detection.
  *
- * These are commands that developers INTENTIONALLY invoke (e.g., /plan, /commit).
- * Used to distinguish developer-initiated actions from LLM-autonomous tool calls.
+ * These are commands that builders INTENTIONALLY invoke (e.g., /plan, /commit).
+ * Used to distinguish builder-initiated actions from LLM-autonomous tool calls.
  *
  * XML-tagged commands (`<command-name>/xxx</command-name>`) are always trusted.
  * Plain-text `/xxx` is only counted if the command name is in this whitelist,
