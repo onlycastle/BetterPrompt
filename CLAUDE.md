@@ -4,11 +4,11 @@ This file provides guidance to Claude Code when working with this repository.
 
 ## Core Vision
 
-> **Core**: B2B service that assesses and educates developers' AI utilization capabilities
+> **Core**: B2B service that assesses and educates AI builders' capabilities
 >
 > **Strategy**: B2C (viral personality test) → B2B (enterprise capability assessment/training)
 
-NoMoreAISlop analyzes developer-AI collaboration sessions from `~/.claude/projects/`, evaluates coding style using LLM analysis, and generates personalized reports.
+NoMoreAISlop analyzes AI builder sessions from `~/.claude/projects/`, evaluates collaboration style using LLM analysis, and generates personalized reports.
 
 ## Language Policy
 

@@ -1,4 +1,4 @@
-# PRD: VibeBetter — AI Session Intelligence for Vibe Coders
+# PRD: BetterPrompt — AI Session Intelligence for Vibe Coders
 
 > **Version:** 3.1.0 | **Status:** Strategic Pivot | **Updated:** February 2026 | **Target Market:** United States
 
@@ -8,7 +8,7 @@
 
 > *Your AI builds it. We tell you if you're building it right.*
 
-**VibeBetter** is the first AI session intelligence platform for vibe coders. We analyze real human-AI collaboration sessions from tools like Claude Code, Cursor, and Lovable to show users what they can't see: how they're actually working with AI, and how to do it better.
+**BetterPrompt** is the first AI session intelligence platform for vibe coders. We analyze real human-AI collaboration sessions from tools like Claude Code, Cursor, and Lovable to show users what they can't see: how they're actually working with AI, and how to do it better.
 
 We are not a code linter. We are not a security scanner. We review **behavior, not code.** This makes us uniquely valuable to non-developers who can't interpret ESLint errors, but can understand "you're accepting AI output without verification 83% of the time."
 
@@ -53,7 +53,7 @@ In February 2025, Andrej Karpathy coined "vibe coding." One year later, the land
 | Code Linters | ESLint, SonarQube | Flag code issues | Non-devs can't interpret output |
 | Security Scanners | VibeGuard, Snyk | Find vulnerabilities | Code-level, not behavior-level |
 | AI Readiness | Microsoft, Cisco | Org-level assessment | C-suite consulting, not individual |
-| **VibeBetter** | — | Review AI work behavior | **Only player in this space** |
+| **BetterPrompt** | — | Review AI work behavior | **Only player in this space** |
 
 **"Individual AI capability assessment"** is an empty category. The first mover defines it.
 
@@ -104,7 +104,7 @@ Users discover us when stuck in error loops (Problem #1). They stay because we'r
 | Ship and pray | Works until it breaks. Then unrecoverable. | Proactive pattern detection |
 | Take vibe coding courses | Generic advice, not personalized | Based on YOUR actual sessions |
 | Use code linters | Non-devs can't read ESLint errors | Plain language behavior feedback |
-| **Do nothing** | *Biggest competitor. Don't know they have a problem.* | Curiosity hook: "What's my VibeBetter score?" |
+| **Do nothing** | *Biggest competitor. Don't know they have a problem.* | Curiosity hook: "What's my BetterPrompt score?" |
 
 ---
 
@@ -114,7 +114,7 @@ Users discover us when stuck in error loops (Problem #1). They stay because we'r
 
 > *The missing code review for vibe coders.*
 
-VibeBetter analyzes your AI coding sessions and reviews how you work with AI. Not the code. Your behavior. We tell you things like:
+BetterPrompt analyzes your AI coding sessions and reviews how you work with AI. Not the code. Your behavior. We tell you things like:
 
 - *"You accept AI output without verification 83% of the time. Try asking 'Is there a better approach?' before accepting."*
 - *"When errors occur, you paste the error message 4x in a row. Instead, describe what you were trying to do and where it broke."*
@@ -191,7 +191,7 @@ Like Weights & Biases, we start with individual value and grow into team/org ado
 | Phase | Moment | User Action | Emotional State |
 |-------|--------|-------------|-----------------|
 | **Discovery** | Sees shared report on Twitter/LinkedIn | "What's my score?" → runs CLI | Curiosity |
-| **First Run** | npx vibebetter | CLI scans local sessions, uploads summary | Anticipation |
+| **First Run** | npx betterprompt | CLI scans local sessions, uploads summary | Anticipation |
 | **Aha Moment** | Sees their type + behavior patterns | "I really do paste errors without context..." | Self-recognition |
 | **Share** | OG image with type + score | Shares to Twitter/LinkedIn/Slack | Pride / humor |
 | **Upgrade** | Wants locked prescriptions | Pays $4.99 one-time | Investment in growth |
@@ -200,9 +200,9 @@ Like Weights & Biases, we start with individual value and grow into team/org ado
 
 ### Distribution Strategy
 
-**Primary:** `npx vibebetter` — zero-friction CLI entry. No install, no signup to start.
+**Primary:** `npx betterprompt` — zero-friction CLI entry. No install, no signup to start.
 
-- **Dev Twitter/X** — "What's your VibeBetter type?" as viral hook. Seed with AI coding influencers.
+- **Dev Twitter/X** — "What's your BetterPrompt type?" as viral hook. Seed with AI coding influencers.
 - **LinkedIn** — B2B bridge. Engineering leaders sharing team insights.
 - **Hacker News / Reddit** — Data storytelling: "We analyzed 10,000 vibe coding sessions. Here's what we found."
 - **Internal sharing** — "Share with your team" CTA to drive organic B2B leads.
@@ -217,7 +217,7 @@ Like Weights & Biases, we start with individual value and grow into team/org ado
 
 > "You're building with AI. But can you see what's going wrong?"
 >
-> Subheadline: "VibeBetter analyzes your AI coding sessions and shows you what's actually going on — security gaps, bad patterns, and the habits holding you back."
+> Subheadline: "BetterPrompt analyzes your AI coding sessions and shows you what's actually going on — security gaps, bad patterns, and the habits holding you back."
 >
 > CTA: "Get Your Free Report"
 
@@ -297,7 +297,7 @@ Multi-phase LLM pipeline with 11 API calls per analysis, costing ~$0.04-0.05:
 
 ---
 
-**VibeBetter**: The missing code review for vibe coders.
+**BetterPrompt**: The missing code review for vibe coders.
 
 *This is a living document. Target market: United States.*
 

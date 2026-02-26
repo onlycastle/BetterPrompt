@@ -125,5 +125,5 @@
   <path d="M 80 355 Q 200 350 400 358 Q 600 365 792 355" stroke="#00BCD4" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.4"/>
 
   <!-- URL -->
-  <text x="80" y="380" font-family="'Fira Code', 'SF Mono', 'Consolas', monospace" font-size="13" font-weight="500" fill="#007B8A">nomoreaislop.com</text>
+  <text x="80" y="380" font-family="'Fira Code', 'SF Mono', 'Consolas', monospace" font-size="13" font-weight="500" fill="#007B8A">betterprompt.sh</text>
 </svg>

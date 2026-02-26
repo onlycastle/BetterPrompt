@@ -25,7 +25,7 @@ import { SessionParser } from '../src/lib/parser';
 import { DataExtractorWorker } from '../src/lib/analyzer/workers/data-extractor-worker';
 import type { WorkerContext, OrchestratorConfig } from '../src/lib/analyzer/orchestrator/types';
 import type { SessionMetrics } from '../src/lib/domain/models/analysis';
-import type { Phase1Output, DeveloperUtterance } from '../src/lib/models/phase1-output';
+import type { Phase1Output, UserUtterance } from '../src/lib/models/phase1-output';
 import type { ParsedSession } from '../src/lib/models/session';
 import { calculateActualCost, GEMINI_PRICING } from '../src/lib/analyzer/cost-estimator';
 
@@ -122,7 +122,7 @@ function findLatestSessions(count: number): string[] {
   return allJsonlFiles.slice(0, count).map(f => f.path);
 }
 
-function printUtterance(index: number, utterance: DeveloperUtterance): void {
+function printUtterance(index: number, utterance: UserUtterance): void {
   const code = formatBoolean(utterance.hasCodeBlock);
   const question = formatBoolean(utterance.hasQuestion);
 

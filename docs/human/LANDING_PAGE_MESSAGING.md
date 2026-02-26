@@ -1,7 +1,7 @@
 # Landing Page Messaging Framework
 
-> **Purpose**: Gap analysis + new messaging direction for VibeBetter landing page
-> **Context**: Pivot from developer-centric "NoMoreAISlop" → non-developer vibe coder "VibeBetter"
+> **Purpose**: Gap analysis + new messaging direction for BetterPrompt landing page
+> **Context**: Pivot from developer-centric "NoMoreAISlop" → non-developer vibe coder "BetterPrompt"
 > **Strategy**: B2C (individual vibe coders) → B2B (team/org AI readiness)
 > **Date**: 2026-02-12
 
@@ -137,7 +137,7 @@ CTA: npx no-ai-slop
 ```
 Headline: "You're building with AI. But can you see what's going wrong?"
 
-Subheadline: "VibeBetter analyzes your AI coding sessions and shows you
+Subheadline: "BetterPrompt analyzes your AI coding sessions and shows you
              what's actually going on — security gaps, bad patterns,
              and the habits holding you back."
 
@@ -433,7 +433,7 @@ When B2B demand grows, create a dedicated page:
 ```
 URL: /for-teams
 Hero: "Know how your team really uses AI"
-Subheadline: "VibeBetter gives engineering managers visibility into
+Subheadline: "BetterPrompt gives engineering managers visibility into
               AI adoption patterns, security risks, and skill gaps
               across their entire team."
 CTA: "Start Team Trial" / "Book a Demo"

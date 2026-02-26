@@ -11,13 +11,13 @@
 import { describe, it, expect } from 'vitest';
 import { computeDeterministicScores } from '../../../../src/lib/analyzer/stages/deterministic-scorer.js';
 import type { DeterministicScores } from '../../../../src/lib/analyzer/stages/deterministic-scorer.js';
-import type { Phase1Output, Phase1SessionMetrics, DeveloperUtterance } from '../../../../src/lib/models/phase1-output.js';
+import type { Phase1Output, Phase1SessionMetrics, UserUtterance } from '../../../../src/lib/models/phase1-output.js';
 
 // ============================================================================
 // Fixture Factories
 // ============================================================================
 
-function createUtterance(overrides?: Partial<DeveloperUtterance>): DeveloperUtterance {
+function createUtterance(overrides?: Partial<UserUtterance>): UserUtterance {
   return {
     id: 'session1_0',
     text: 'Fix the authentication bug',
@@ -34,7 +34,7 @@ function createUtterance(overrides?: Partial<DeveloperUtterance>): DeveloperUtte
 
 function createPhase1Output(overrides?: {
   metrics?: Partial<Phase1SessionMetrics>;
-  utterances?: DeveloperUtterance[];
+  utterances?: UserUtterance[];
 }): Phase1Output {
   const defaultMetrics: Phase1SessionMetrics = {
     totalSessions: 10,
