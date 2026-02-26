@@ -1,29 +1,25 @@
 import {
   HeroSection,
   SocialProofBar,
-  ProblemValidation,
-  SolutionSection,
-  AnalysisShowcase,
-  EnterprisePreview,
-  DownloadSection,
+  TeamSection,
+  ProductPreviewSection,
+  PricingSection,
   TrustPrivacy,
   LandingFooter,
-  SectionNav,
+  LandingHeader,
 } from '@/components/landing';
 import styles from './LandingPage.module.css';
 
 export function LandingPage() {
   return (
     <div className={`${styles.page} graph-paper`}>
-      <SectionNav />
+      <LandingHeader />
       <main className={styles.main}>
         <HeroSection />
+        <ProductPreviewSection />
         <SocialProofBar />
-        <ProblemValidation />
-        <SolutionSection />
-        <AnalysisShowcase />
-        <EnterprisePreview />
-        <DownloadSection />
+        <TeamSection />
+        <PricingSection />
         <TrustPrivacy />
       </main>
       <LandingFooter />

@@ -82,7 +82,7 @@ function LoginCTA({ onGitHubLogin, isLoading }: { onGitHubLogin: () => void; isL
         </button>
         <div className={styles.cliHint}>
           <Terminal size={16} />
-          <span>New here? Run <code>npx no-ai-slop</code> to analyze your coding style</span>
+          <span>New here? Run <code>npx no-ai-slop</code> to analyze your AI sessions</span>
         </div>
       </div>
     </div>
@@ -98,7 +98,7 @@ function EmptyState() {
       <div className={styles.emptyIcon}>&#128202;</div>
       <h2 className={styles.emptyTitle}>No Analyses Yet</h2>
       <p className={styles.emptyDescription}>
-        Run your first analysis with the CLI to see your AI coding insights here.
+        Run your first analysis to see your AI insights here.
       </p>
       <div className={styles.cliBox}>
         <code>npx no-ai-slop</code>
@@ -189,10 +189,6 @@ export function PersonalDashboardContent() {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-  };
-
   // Loading state
   if (authLoading) {
     return (
@@ -210,7 +206,7 @@ export function PersonalDashboardContent() {
     return (
       <div className={styles.page}>
         <div className={styles.container}>
-          <PageHeader isAuthenticated={false} onSignOut={handleSignOut} />
+          <PageHeader isAuthenticated={false} onSignOut={signOut} />
           <LoginCTA onGitHubLogin={handleGitHubLogin} isLoading={loginLoading} />
         </div>
       </div>
@@ -221,7 +217,7 @@ export function PersonalDashboardContent() {
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <PageHeader isAuthenticated={true} onSignOut={handleSignOut} />
+        <PageHeader isAuthenticated={true} onSignOut={signOut} />
 
         <div className={styles.dashboardHeader}>
           <h1 className={styles.dashboardTitle}>My Dashboard</h1>

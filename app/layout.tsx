@@ -20,14 +20,14 @@ const notoSansKR = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://www.nomoreaislop.app'),
-  title: 'NoMoreAISlop - AI Session Intelligence for Builders',
+  metadataBase: new URL('https://www.betterprompt.sh'),
+  title: 'BetterPrompt - AI Session Intelligence for Builders',
   description: 'See what is going wrong in your AI workflow. Analyze behavior patterns, risk blind spots, and practical next steps.',
   openGraph: {
-    title: 'NoMoreAISlop - AI Session Intelligence for Builders',
+    title: 'BetterPrompt - AI Session Intelligence for Builders',
     description: 'See what is going wrong in your AI workflow and how to improve with clear, behavior-based feedback.',
     type: 'website',
-    siteName: 'NoMoreAISlop',
+    siteName: 'BetterPrompt',
   },
   twitter: {
     card: 'summary_large_image',

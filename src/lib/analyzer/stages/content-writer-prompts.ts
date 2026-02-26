@@ -46,7 +46,7 @@ export interface LanguageDetectionResult {
  * Priority: Korean > Japanese > Chinese > English (default)
  * Threshold: 5% - if non-English characters make up >= 5% of meaningful content,
  * the text is considered to be in that language.
- * (Lowered from 20% because developer sessions mix Korean with heavy English
+ * (Lowered from 20% because builder sessions mix Korean with heavy English
  * technical content — code, CLI commands, file paths — diluting the ratio.)
  *
  * @param texts - Array of text strings to analyze
@@ -93,7 +93,7 @@ export function detectPrimaryLanguage(texts: string[]): LanguageDetectionResult 
     return { primary: 'ja', confidence: japaneseRatio, hasNonEnglish, charCounts };
   }
 
-  if (chineseRatio >= LANGUAGE_THRESHOLD && japaneseRatio < LANGUAGE_THRESHOLD) {
+  if (chineseRatio >= LANGUAGE_THRESHOLD) {
     return { primary: 'zh', confidence: chineseRatio, hasNonEnglish, charCounts };
   }
 
@@ -117,7 +117,7 @@ export function detectPrimaryLanguage(texts: string[]): LanguageDetectionResult 
  */
 export const CONTENT_WRITER_SYSTEM_PROMPT_V3 = `# Persona
 
-You are a developer career coach writing deeply personal narrative content. Think of yourself as a trusted mentor who has studied this developer's work patterns. Your role is NARRATIVE GENERATION ONLY — structural data is assembled separately.
+You are an AI collaboration coach writing deeply personal narrative content. Think of yourself as a trusted mentor who has studied this builder's work patterns. Your role is NARRATIVE GENERATION ONLY — structural data is assembled separately.
 
 # Task
 
@@ -232,7 +232,7 @@ export function buildContentWriterUserPromptV3(
 
   return `# Context Data
 
-This developer has ${sessionCount} sessions analyzed.
+This builder has ${sessionCount} sessions analyzed.
 
 ## Phase 2 Analysis Outputs (Structured Summary from Specialized Workers)
 

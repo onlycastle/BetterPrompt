@@ -30,6 +30,20 @@ interface CacheInfo {
   createdAt?: string;
 }
 
+// Quick Fix types
+export interface QuickFixProject {
+  projectName: string;
+  projectPath: string;
+  dirPath: string;
+  sessionCount: number;
+}
+
+export interface QuickFixProgress {
+  stage: string;
+  percent: number;
+  message: string;
+}
+
 // Type definitions for the exposed API
 export interface ElectronAPI {
   // Session operations - auto-selects optimal sessions
@@ -82,6 +96,20 @@ export interface ElectronAPI {
 
   // Deep link listener
   onDeepLink: (callback: (data: DeepLinkData) => void) => () => void;
+
+  // Quick Fix - local bottleneck detection
+  quickFixListProjects: () => Promise<{
+    projects: QuickFixProject[];
+    error: string | null;
+  }>;
+  quickFixAnalyze: (params: {
+    projectDirPath: string;
+    projectName: string;
+    projectPath: string;
+    apiKey: string;
+    isPaid: boolean;
+  }) => Promise<{ result: unknown; error: string | null }>;
+  onQuickFixProgress: (callback: (progress: QuickFixProgress) => void) => () => void;
 }
 
 // Expose API to renderer
@@ -137,6 +165,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
       console.log('[Preload] onDeepLink: removing listener');
       ipcRenderer.removeListener('deep-link', handler);
     };
+  },
+
+  // Quick Fix - local bottleneck detection
+  quickFixListProjects: () => ipcRenderer.invoke('quick-fix:list-projects'),
+  quickFixAnalyze: (params: {
+    projectDirPath: string;
+    projectName: string;
+    projectPath: string;
+    apiKey: string;
+    isPaid: boolean;
+  }) => ipcRenderer.invoke('quick-fix:analyze', params),
+  onQuickFixProgress: (callback: (progress: { stage: string; percent: number; message: string }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: { stage: string; percent: number; message: string }) => callback(progress);
+    ipcRenderer.on('quick-fix:progress', handler);
+    return () => ipcRenderer.removeListener('quick-fix:progress', handler);
   },
 } satisfies ElectronAPI);
 

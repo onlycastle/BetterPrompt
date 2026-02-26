@@ -96,15 +96,24 @@ function SectionFlowReveal({
   immersive: boolean;
 }) {
   const { ref } = useScrollProgress();
+  const className = immersive
+    ? `${styles.sectionFlowReveal} ${styles.sectionFlowRevealImmersive}`
+    : styles.sectionFlowReveal;
 
   return (
-    <div
-      ref={ref}
-      className={`${styles.sectionFlowReveal} ${immersive ? styles.sectionFlowRevealImmersive : ''}`}
-    >
+    <div ref={ref} className={className}>
       {children}
     </div>
   );
+}
+
+/** Build className for scroll sections with optional immersive + variant modifiers */
+function scrollSectionClass(immersive: boolean, variant?: 'warm' | 'dark'): string {
+  if (!immersive) return styles.scrollSection;
+  const base = `${styles.scrollSection} ${styles.scrollSectionImmersive} ${styles.coverEntry}`;
+  if (variant === 'warm') return `${base} ${styles.scrollSectionWarm}`;
+  if (variant === 'dark') return `${base} ${styles.scrollSectionDark}`;
+  return base;
 }
 
 // ============================================================================
@@ -136,8 +145,8 @@ export function TabbedReportContainer({
   showResourceSidebar = true,
   experience,
 }: TabbedReportContainerProps) {
-  const resolvedExperience: ReportExperience = experience ?? 'dashboard';
-  const immersive = resolvedExperience === 'immersive-apple';
+  const resolvedExperience = experience ?? 'dashboard';
+  const immersive = experience === 'immersive-apple';
 
   const contentRef = useRef<HTMLDivElement>(null);
   const headerSectionRef = useRef<HTMLDivElement>(null);
@@ -369,7 +378,11 @@ export function TabbedReportContainer({
 
   return (
     <div
-      className={`${styles.pageLayout} ${showResourceSidebar ? '' : styles.singleColumn} ${immersive ? styles.immersiveApple : ''}`.trim()}
+      className={[
+        styles.pageLayout,
+        !showResourceSidebar && styles.singleColumn,
+        immersive && styles.immersiveApple,
+      ].filter(Boolean).join(' ')}
       data-experience={resolvedExperience}
     >
       {/* Floating Progress Dots — narrative section navigation */}
@@ -402,7 +415,7 @@ export function TabbedReportContainer({
         <div ref={contentRef} className={styles.scrollContent}>
           {/* ── Narrative: "Your Coding World" ── */}
           <NarrativeMoment
-            title="Your Coding World"
+            title="Your AI World"
             subtitle="A look at how you spend your time with AI"
             {...narrativeProps}
           />
@@ -411,7 +424,7 @@ export function TabbedReportContainer({
           <div
             ref={activityRef}
             data-section-id="activity"
-            className={immersive ? `${styles.scrollSection} ${styles.scrollSectionImmersive} ${styles.coverEntry}` : styles.scrollSection}
+            className={scrollSectionClass(immersive)}
           >
             <SectionFlowReveal immersive={immersive}>
               <ActivitySection
@@ -437,7 +450,7 @@ export function TabbedReportContainer({
           <div
             ref={strengthsRef}
             data-section-id="strengths"
-            className={immersive ? `${styles.scrollSection} ${styles.scrollSectionImmersive} ${styles.coverEntry} ${styles.scrollSectionWarm}` : styles.scrollSection}
+            className={scrollSectionClass(immersive, 'warm')}
           >
             <SectionFlowReveal immersive={immersive}>
               <StrengthsOverview
@@ -453,7 +466,7 @@ export function TabbedReportContainer({
           {/* ── Narrative: Dramatic Turn ── */}
           <NarrativeMoment
             title="But..."
-            subtitle="Every great developer has blind spots"
+            subtitle="Every builder has blind spots"
             variant="dramatic"
             {...narrativeProps}
           />
@@ -462,7 +475,7 @@ export function TabbedReportContainer({
           <div
             ref={growthRef}
             data-section-id="growth"
-            className={immersive ? `${styles.scrollSection} ${styles.scrollSectionImmersive} ${styles.coverEntry} ${styles.scrollSectionDark}` : styles.scrollSection}
+            className={scrollSectionClass(immersive, 'dark')}
           >
             <SectionFlowReveal immersive={immersive}>
               <DiagnosisOverview
@@ -529,5 +542,3 @@ export function TabbedReportContainer({
     </div>
   );
 }
-
-export default TabbedReportContainer;

@@ -10,10 +10,14 @@
 
 import { ipcMain, shell, type BrowserWindow } from 'electron';
 import Store from 'electron-store';
-import { scanAndSelectSessions, loadSessionsForAnalysis, type ScanSummary } from './scanner';
+import { scanAndSelectSessions, loadSessionsForAnalysis, listProjectDirs, listSessionFiles, type ScanSummary } from './scanner';
 import { uploadForAnalysis, type AnalysisResult } from './uploader';
 import { saveCache, loadCache, clearCache, getCacheInfo } from './cache';
 import { getEncryptionKey } from './secure-storage';
+import { analyzeQuickFix, type QuickFixResult } from './quick-fix-analyzer';
+import { parseSessionContent } from './session-formatter';
+import { readFile } from 'node:fs/promises';
+import { basename } from 'node:path';
 
 // Secure store for tokens - uses OS keychain via safeStorage
 const store = new Store({
@@ -193,6 +197,120 @@ export function setupIpcHandlers(getMainWindow: () => BrowserWindow | null): voi
     } catch (error) {
       console.error('[IPC] Cache info error:', error);
       return { info: null, error: (error as Error).message };
+    }
+  });
+
+  // ========================================================================
+  // Quick Fix - Local bottleneck detection
+  // ========================================================================
+
+  // List projects for Quick Fix selection
+  ipcMain.handle('quick-fix:list-projects', async () => {
+    try {
+      const dirs = await listProjectDirs();
+
+      // Get metadata for each project
+      const projects = await Promise.all(
+        dirs.map(async (dir) => {
+          const files = await listSessionFiles(dir);
+          const dirName = basename(dir);
+          // Decode project path from dir name
+          const projectPath = dirName.startsWith('-')
+            ? dirName.replace(/-/g, '/')
+            : dirName;
+          const parts = projectPath.split('/').filter(Boolean);
+          const projectName = parts[parts.length - 1] || 'unknown';
+
+          return {
+            projectName,
+            projectPath: dirName,
+            dirPath: dir,
+            sessionCount: files.length,
+          };
+        })
+      );
+
+      // Filter to projects with sessions, sort by session count
+      const filtered = projects
+        .filter(p => p.sessionCount > 0)
+        .sort((a, b) => b.sessionCount - a.sessionCount);
+
+      return { projects: filtered, error: null };
+    } catch (error) {
+      console.error('[IPC] quick-fix:list-projects error:', error);
+      return { projects: [], error: (error as Error).message };
+    }
+  });
+
+  // Run Quick Fix analysis on a single project
+  ipcMain.handle('quick-fix:analyze', async (_event, {
+    projectDirPath,
+    projectName,
+    projectPath,
+    apiKey,
+    isPaid,
+  }: {
+    projectDirPath: string;
+    projectName: string;
+    projectPath: string;
+    apiKey: string;
+    isPaid: boolean;
+  }) => {
+    try {
+      console.log(`[IPC] Quick Fix: analyzing project "${projectName}"`);
+
+      const mainWindow = getMainWindow();
+
+      // Get recent session files (max 5 for Quick Fix speed)
+      const files = await listSessionFiles(projectDirPath);
+      const recentFiles = files.slice(-5); // Take 5 most recent
+
+      if (recentFiles.length === 0) {
+        throw new Error('No session files found for this project');
+      }
+
+      // Parse sessions
+      const sessions = [];
+      for (const filePath of recentFiles) {
+        try {
+          const content = await readFile(filePath, 'utf-8');
+          const fileName = basename(filePath, '.jsonl');
+          const parsed = parseSessionContent(fileName, projectPath, projectName, content);
+          if (parsed && parsed.messages.length >= 4) {
+            sessions.push(parsed);
+          }
+        } catch (err) {
+          console.warn(`[IPC] Quick Fix: skipping unparseable file ${filePath}:`, err);
+        }
+      }
+
+      if (sessions.length === 0) {
+        throw new Error('No valid sessions found. Need sessions with at least 4 messages.');
+      }
+
+      console.log(`[IPC] Quick Fix: parsed ${sessions.length} sessions`);
+
+      const result = await analyzeQuickFix(sessions, {
+        apiKey,
+        projectName,
+        projectPath,
+        isPaid,
+        onProgress: (stage, percent, message) => {
+          try {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('quick-fix:progress', { stage, percent, message });
+            }
+          } catch {
+            // Window destroyed mid-analysis — safe to ignore
+          }
+        },
+      });
+
+      console.log(`[IPC] Quick Fix complete: ${result.bottlenecks.length} bottlenecks, health: ${result.overallHealthScore}`);
+      return { result, error: null };
+    } catch (error) {
+      console.error('[IPC] Quick Fix error:', error);
+      return { result: null, error: (error as Error).message };
     }
   });
 

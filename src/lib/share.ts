@@ -13,7 +13,7 @@ import { TYPE_METADATA } from './models/coding-style';
 /**
  * Base URL for share links (configure in env)
  */
-const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://www.nomoreaislop.app';
+const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://www.betterprompt.sh';
 
 /**
  * Generate Twitter/X share URL with pre-filled tweet
@@ -45,7 +45,7 @@ ${shareUrl}`;
   if (includeHashtags) {
     tweetText += `
 
-#NoMoreAISlop #AntiPatterns #StopAISlop`;
+#BetterPrompt #AntiPatterns #StopAISlop`;
   }
 
   // Encode for URL
@@ -93,7 +93,7 @@ Top Strength: ${meta.strengths[0]}`;
 
 Check out my full analysis: ${shareUrl}
 
-#NoMoreAISlop`;
+#BetterPrompt`;
 
   return text;
 }
@@ -174,7 +174,7 @@ export function generateInstagramCaption(
 
 🔗 See my full analysis: ${shareUrl}
 
-#NoMoreAISlop #AntiPatterns #DeveloperType #${meta.name} #StopAISlop #DevTools`;
+#BetterPrompt #AntiPatterns #DeveloperType #${meta.name} #StopAISlop #DevTools`;
 }
 
 /**
@@ -194,6 +194,6 @@ export function generateEmbedCode(
   height="${height}"
   frameborder="0"
   style="border-radius: 12px; border: 1px solid #333;"
-  title="NoMoreAISlop Analysis"
+  title="BetterPrompt Analysis"
 ></iframe>`;
 }

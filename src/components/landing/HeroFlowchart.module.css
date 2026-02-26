@@ -1,0 +1,378 @@
+/* ========================================
+   HeroFlowchart — Static Pipeline Flowchart
+   3-node horizontal flow: Input → Process → Output
+   Notebook Sketch aesthetic
+   ======================================== */
+
+.flowchart {
+  max-width: 1060px;
+  width: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  align-items: stretch;
+  gap: 0;
+}
+
+/* ============================================
+   Shared Node Styles
+   ============================================ */
+.node {
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
+  box-shadow: 4px 4px 0 var(--ink-primary);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.nodeHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: 1.5px solid var(--border-default);
+  background: var(--surface-3);
+}
+
+.headerDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.headerTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-secondary);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.nodeBody {
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  flex: 1;
+}
+
+/* ============================================
+   Color-Coded Node Variants
+   ============================================ */
+.nodeProblem {
+  border-color: var(--sketch-red);
+  box-shadow: 4px 4px 0 rgba(239, 68, 68, 0.25);
+}
+
+.nodeProblem .nodeHeader {
+  background: var(--sketch-red-soft);
+}
+
+.nodeAnalysis {
+  border-color: var(--sketch-cyan);
+  box-shadow: 4px 4px 0 var(--sketch-cyan), 0 0 20px var(--sketch-cyan-soft);
+}
+
+.nodeAnalysis .nodeHeader {
+  background: var(--sketch-cyan-soft);
+}
+
+.nodeSuccess {
+  border-color: var(--sketch-green);
+  box-shadow: 4px 4px 0 rgba(74, 222, 128, 0.3);
+}
+
+.nodeSuccess .nodeHeader {
+  background: var(--sketch-green-soft);
+}
+
+/* ============================================
+   Node 1 — Input (problem state)
+   ============================================ */
+.dotGray {
+  background: var(--ink-muted);
+}
+
+.chatLine {
+  display: flex;
+  gap: var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.chatLineAi {
+  display: flex;
+  gap: var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: var(--leading-tight);
+  opacity: 0.5;
+}
+
+.chatRole {
+  font-weight: var(--weight-bold);
+  flex-shrink: 0;
+  min-width: 28px;
+}
+
+.chatRoleYou {
+  color: var(--ink-primary);
+}
+
+.chatRoleAi {
+  color: var(--ink-muted);
+  font-weight: var(--weight-medium);
+}
+
+.chatText {
+  color: var(--ink-primary);
+  font-weight: var(--weight-medium);
+}
+
+.chatTextFaded {
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+.ellipsis {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+  text-align: left;
+  padding: var(--space-2xs) 0;
+  letter-spacing: 0.2em;
+}
+
+.statBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  padding: 3px var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--sketch-red-soft);
+  color: var(--sketch-red-text);
+  border: 1px solid var(--sketch-red);
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+/* ============================================
+   Node 2 — Process (red accent, detection)
+   ============================================ */
+.dotCyan {
+  background: var(--sketch-cyan);
+}
+
+.dotGreen {
+  background: var(--sketch-green);
+}
+
+.detectionLabel {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  padding: 3px var(--space-md);
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--sketch-cyan-soft);
+  color: var(--sketch-cyan-text);
+  border: 1px solid var(--sketch-cyan);
+  align-self: flex-start;
+}
+
+.errorType {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--sketch-red-soft);
+  color: var(--sketch-red-text);
+  border: 1px solid var(--sketch-red);
+}
+
+.patternName {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  margin: 0;
+}
+
+.patternDesc {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  line-height: var(--leading-relaxed);
+  margin: 0;
+}
+
+/* ============================================
+   Node 3 — Output (cyan accent, solution)
+   ============================================ */
+.suggestion {
+  border-left: 3px solid var(--sketch-cyan);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--sketch-cyan-soft);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.suggestionPrefix {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--sketch-cyan-text);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.promptText {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-primary);
+  font-weight: var(--weight-medium);
+  margin-top: var(--space-2xs);
+  line-height: var(--leading-relaxed);
+  font-style: italic;
+}
+
+.outcome {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--sketch-green-text, #16a34a);
+  margin-top: auto;
+}
+
+/* ============================================
+   Arrows (CSS-only dashed + chevron)
+   ============================================ */
+.arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-sm);
+  position: relative;
+}
+
+.arrowLine {
+  width: 48px;
+  border-top: 2.5px dashed var(--sketch-cyan);
+  position: relative;
+  animation: arrowPulse 2.5s ease-in-out infinite;
+}
+
+.arrowLine::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: -7px;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 9px solid var(--sketch-cyan);
+}
+
+@keyframes arrowPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* ============================================
+   Staggered Entrance Animation
+   ============================================ */
+.staggerItem {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+.staggerItem.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger delays for each element */
+.delay0 { transition-delay: 0ms; }
+.delay1 { transition-delay: 300ms; }
+.delay2 { transition-delay: 500ms; }
+.delay3 { transition-delay: 800ms; }
+.delay4 { transition-delay: 1000ms; }
+
+/* ============================================
+   Mobile — Vertical Stack
+   ============================================ */
+@media (max-width: 768px) {
+  .flowchart {
+    grid-template-columns: 1fr;
+    gap: 0;
+    max-width: 400px;
+  }
+
+  .node {
+    box-shadow: 3px 3px 0 var(--ink-primary);
+  }
+
+  .nodeProblem {
+    box-shadow: 3px 3px 0 rgba(239, 68, 68, 0.25);
+  }
+
+  .nodeAnalysis {
+    box-shadow: 3px 3px 0 var(--sketch-cyan);
+  }
+
+  .nodeSuccess {
+    box-shadow: 3px 3px 0 rgba(74, 222, 128, 0.3);
+  }
+
+  /* Vertical arrows */
+  .arrow {
+    padding: var(--space-sm) 0;
+    justify-content: center;
+  }
+
+  .arrowLine {
+    width: 0;
+    height: 24px;
+    border-top: none;
+    border-left: 2.5px dashed var(--sketch-cyan);
+  }
+
+  .arrowLine::after {
+    right: auto;
+    left: -7px;
+    top: auto;
+    bottom: -1px;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 9px solid var(--sketch-cyan);
+    border-bottom: none;
+  }
+
+  /* Reset slide direction to horizontal-neutral on mobile */
+  .staggerItem {
+    transform: translateY(12px);
+  }
+}
+
+@media (max-width: 480px) {
+  .nodeBody {
+    padding: var(--space-sm);
+  }
+
+  .chatLine {
+    font-size: 11px;
+  }
+}

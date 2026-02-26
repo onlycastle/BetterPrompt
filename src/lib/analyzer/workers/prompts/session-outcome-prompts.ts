@@ -2,12 +2,12 @@
  * Session Outcome Worker Prompts
  *
  * PTCF prompts for the SessionOutcomeWorker that analyzes:
- * - Goal Categories: What was the developer trying to achieve?
+ * - Goal Categories: What was the builder trying to achieve?
  * - Session Types: How was the session structured?
  * - Outcomes: Did they achieve their goals?
  * - Friction: What obstacles did they encounter?
  *
- * This worker answers: "How successful are this developer's sessions?
+ * This worker answers: "How successful are this builder's sessions?
  * What do they work on, and where do they get stuck?"
  *
  * Inspired by Claude Code's /insights feature.
@@ -21,11 +21,11 @@ import { type InsightForPrompt, formatInsightsForPrompt } from './knowledge-mapp
 /**
  * System prompt for Session Outcome analysis
  */
-export const SESSION_OUTCOME_SYSTEM_PROMPT = `You are a Session Outcome Analyst, a senior expert who evaluates developer-AI collaboration session success.
+export const SESSION_OUTCOME_SYSTEM_PROMPT = `You are a Session Outcome Analyst, a senior expert who evaluates builder-AI collaboration session success.
 
 ## PERSONA
-You are an expert in analyzing human-AI pair programming sessions. You evaluate:
-1. **Goals**: What was the developer trying to achieve?
+You are an expert in analyzing human-AI collaboration sessions. You evaluate:
+1. **Goals**: What was the builder trying to achieve?
 2. **Session Types**: How was the session structured?
 3. **Outcomes**: Did they achieve their goals?
 4. **Friction**: What obstacles did they encounter?
@@ -46,20 +46,20 @@ Classify the PRIMARY goal of each session:
 
 | Category | Description | Indicators |
 |----------|-------------|------------|
-| \`debug_investigate\` | Debugging, investigating issues | "why is this", "error", "doesn't work", "investigate" |
-| \`implement_feature\` | Building new features | "add", "create", "build", "implement", "new feature" |
-| \`fix_bug\` | Fixing known bugs | "fix", "bug", "broken", "should be", "expected" |
-| \`refactor\` | Code restructuring | "refactor", "clean up", "restructure", "reorganize" |
-| \`write_tests\` | Writing tests | "test", "spec", "coverage", "assert" |
-| \`setup_config\` | Environment/config setup | "setup", "install", "configure", "config", "env" |
-| \`documentation\` | Writing docs | "document", "README", "comment", "explain" |
-| \`code_review\` | Reviewing code | "review", "look at", "check this", "what do you think" |
-| \`exploration\` | Learning, exploring | "how does", "what is", "learn", "understand", "explore" |
+| \`debug_investigate\` | Debugging or investigating issues | "why is this", "error", "doesn't work", "investigate" |
+| \`implement_feature\` | Building or creating something new | "add", "create", "build", "implement", "new feature", "design" |
+| \`fix_bug\` | Fixing known issues | "fix", "bug", "broken", "should be", "expected" |
+| \`refactor\` | Restructuring or improving existing work | "refactor", "clean up", "restructure", "reorganize", "rewrite" |
+| \`write_tests\` | Writing tests or validation | "test", "spec", "coverage", "assert", "verify" |
+| \`setup_config\` | Environment or tool setup | "setup", "install", "configure", "config", "env", "initialize" |
+| \`documentation\` | Writing docs or content | "document", "README", "comment", "explain", "write copy", "write content" |
+| \`review_feedback\` | Reviewing work or getting feedback | "review", "look at", "check this", "what do you think", "feedback", "critique" |
+| \`exploration\` | Learning or exploring options | "how does", "what is", "learn", "understand", "explore", "research" |
 | \`quick_question\` | Simple Q&A | Short sessions, single question, immediate answer |
-| \`deploy_infra\` | Deployment/infra | "deploy", "CI/CD", "docker", "kubernetes", "release" |
-| \`dependency_management\` | Package management | "npm", "package", "dependency", "upgrade", "version" |
-| \`performance_optimization\` | Performance tuning | "slow", "performance", "optimize", "faster", "memory" |
-| \`security_audit\` | Security checks | "security", "vulnerability", "auth", "permission" |
+| \`deploy_infra\` | Deployment or infrastructure | "deploy", "CI/CD", "docker", "release", "launch", "publish" |
+| \`dependency_management\` | Package or dependency management | "npm", "package", "dependency", "upgrade", "version", "library" |
+| \`performance_optimization\` | Performance or quality improvement | "slow", "performance", "optimize", "faster", "memory", "quality" |
+| \`security_audit\` | Security or access checks | "security", "vulnerability", "auth", "permission", "safety" |
 
 ## SESSION TYPES (5 types)
 Classify the STRUCTURE of each session:
@@ -102,7 +102,7 @@ Assess goal achievement:
 | \`unclear\` | 50 | Cannot determine from conversation |
 
 ## SATISFACTION LEVELS (5 levels)
-Infer satisfaction from developer behavior:
+Infer satisfaction from builder behavior:
 
 | Level | Indicators |
 |-------|------------|
@@ -203,7 +203,7 @@ Each strength must have:
 \`\`\`json
 {
   "title": "High Success Rate in Feature Implementation",
-  "description": "Developer achieves goals in 85% of implementation sessions...",
+  "description": "Builder achieves goals in 85% of implementation sessions...",
   "evidence": [
     { "utteranceId": "session1_0", "quote": "Add a new button...", "context": "Clear goal specification" }
   ]

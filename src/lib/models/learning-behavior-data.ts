@@ -5,10 +5,10 @@
  * - KnowledgeGap: Knowledge gaps, learning progress, recommended resources
  * - TrustVerification (repetition-related): Repeated mistake patterns
  *
- * This worker answers: "How much does this developer try to learn? Do they repeat the same mistakes?"
+ * This worker answers: "How much does this user try to learn from their AI sessions? Do they repeat the same mistakes?"
  *
  * Capability-centric approach:
- * - Knowledge Gaps: What topics do they struggle with?
+ * - Knowledge Gaps: What topics or skills do they struggle with?
  * - Learning Progress: Are they improving over time?
  * - Repeated Mistakes: Do they learn from errors or repeat them?
  *
@@ -97,7 +97,7 @@ export { ReferencedInsightSchema, type ReferencedInsight };
 /**
  * A repeated mistake pattern detected across sessions.
  *
- * This captures patterns where the developer makes the same type of error
+ * This captures patterns where the user makes the same type of error
  * multiple times, indicating a learning opportunity.
  */
 export const RepeatedMistakePatternSchema = z.object({
@@ -399,8 +399,8 @@ export function createEmptyLearningBehaviorOutput(): LearningBehaviorOutput {
  * to the new LearningBehavior repeated mistake patterns.
  *
  * Patterns that indicate repeated mistakes:
- * - error_loop: Same error repeated multiple times
- * - blind_retry: Retrying without understanding the error
+ * - error_loop: Same problem encountered multiple times
+ * - blind_retry: Retrying without understanding what went wrong
  * - repeated_question: Asking the same question multiple times
  */
 export function extractRepeatedMistakesFromAntiPatterns(
@@ -444,9 +444,9 @@ function getCategoryFromAntiPatternType(type: string): string {
  */
 function getDescriptionFromAntiPatternType(type: string): string {
   const descriptionMap: Record<string, string> = {
-    error_loop: 'Same error encountered multiple times without addressing the root cause. This indicates a pattern of not fully understanding error messages before attempting fixes.',
-    blind_retry: 'Retrying failed operations without analyzing the error or changing approach. This suggests treating the AI as a black box rather than a collaborative debugging partner.',
-    repeated_question: 'Asking similar questions multiple times across sessions. This may indicate incomplete mental models or lack of note-taking habits for important learnings.',
+    error_loop: 'The same problem is encountered multiple times without addressing the root cause. This indicates a pattern of not fully understanding what went wrong before attempting fixes.',
+    blind_retry: 'Retrying failed prompts without analyzing what went wrong or changing the approach. This suggests treating the AI as a black box rather than a collaborative problem-solving partner.',
+    repeated_question: 'Asking similar questions multiple times across sessions. This may indicate incomplete mental models or lack of note-taking habits for capturing important learnings.',
   };
   return descriptionMap[type] || `Repeated occurrence of ${type.replace(/_/g, ' ')} pattern.`;
 }

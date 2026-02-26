@@ -61,7 +61,7 @@ const values = [
   {
     icon: Fingerprint,
     title: 'Your Unique Profile',
-    subtitle: '5 coding styles × 3 AI control levels = 15 personality types',
+    subtitle: '5 builder styles × 3 AI control levels = 15 personality types',
     renderExtra: () => (
       <>
         <div className={styles.tagStrip}>

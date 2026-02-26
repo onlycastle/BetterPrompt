@@ -1,0 +1,471 @@
+/* ========================================
+   ProductPreviewSection — 3-Panel Product Journey
+   Step 1: Your Project (file tree + chat)
+   Step 2: Problem Found (growth card)
+   Step 3: Better Prompt (solution)
+   Notebook Sketch aesthetic (from HeroFlowchart)
+   ======================================== */
+
+.section {
+  padding: var(--space-3xl) var(--space-lg);
+}
+
+.wrapper {
+  max-width: 680px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  text-align: center;
+  margin-bottom: var(--space-2xl);
+}
+
+/* ============================================
+   Shared Node Styles (from HeroFlowchart)
+   ============================================ */
+.node {
+  background: var(--surface-1);
+  border: 2px solid var(--ink-primary);
+  border-radius: var(--radius-md);
+  box-shadow: 4px 4px 0 var(--ink-primary);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.nodeHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: 1.5px solid var(--border-default);
+  background: var(--surface-3);
+}
+
+.headerDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotGray { background: var(--ink-muted); }
+.dotRed { background: var(--sketch-red); }
+.dotCyan { background: var(--sketch-cyan); }
+
+.headerTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-secondary);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stepLabel {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.nodeBody {
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  flex: 1;
+}
+
+/* ============================================
+   Node Variants (color-coded)
+   ============================================ */
+.nodeInput {
+  border-color: var(--ink-primary);
+}
+
+.nodeAlert {
+  border-color: var(--sketch-red);
+  box-shadow: 4px 4px 0 rgba(239, 68, 68, 0.25);
+}
+
+.nodeAlert .nodeHeader {
+  background: var(--sketch-red-soft);
+}
+
+.nodeSolution {
+  border-color: var(--sketch-cyan);
+  box-shadow: 4px 4px 0 var(--sketch-cyan), 0 0 20px var(--sketch-cyan-soft);
+}
+
+.nodeSolution .nodeHeader {
+  background: var(--sketch-cyan-soft);
+}
+
+/* ============================================
+   Step 1 — Dual Panel (File Tree + Chat)
+   ============================================ */
+.dualPanel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  flex: 1;
+}
+
+.panelLeft {
+  padding: var(--space-md) var(--space-lg);
+  border-right: 1.5px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.panelRight {
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.panelTitle {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-2xs);
+}
+
+/* File tree */
+.fileTree {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+  line-height: var(--leading-relaxed);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fileEntry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.fileIcon {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.fileName {
+  color: var(--ink-secondary);
+}
+
+.fileIndent {
+  padding-left: var(--space-lg);
+}
+
+.fileStat {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  margin-top: auto;
+  padding-top: var(--space-xs);
+}
+
+/* Chat log */
+.chatLine {
+  display: flex;
+  gap: var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+}
+
+.chatRole {
+  font-weight: var(--weight-bold);
+  flex-shrink: 0;
+  min-width: 24px;
+  color: var(--ink-secondary);
+}
+
+.chatText {
+  color: var(--ink-secondary);
+}
+
+.chatTextFaded {
+  color: var(--ink-muted);
+}
+
+.chatEllipsis {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  text-align: center;
+  padding: var(--space-2xs) 0;
+  letter-spacing: 0.2em;
+}
+
+.chatStat {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  margin-top: auto;
+  padding-top: var(--space-xs);
+}
+
+/* ============================================
+   Step 2 — Problem Card
+   ============================================ */
+.problemHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-2xs);
+}
+
+.problemIcon {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--sketch-red-text);
+  line-height: 1;
+}
+
+.problemTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+}
+
+.severityBadge {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: var(--sketch-red-soft);
+  color: var(--sketch-red-text);
+  border: 1px solid var(--sketch-red);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.problemDesc {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.workflowBlock {
+  margin-top: var(--space-xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.workflowLine {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+  line-height: var(--leading-relaxed);
+  display: flex;
+  gap: var(--space-sm);
+  align-items: baseline;
+}
+
+.workflowLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.workflowNow {
+  color: var(--sketch-red-text);
+}
+
+.workflowFix {
+  color: var(--sketch-green-text, #16a34a);
+}
+
+/* ============================================
+   Step 3 — Solution Card
+   ============================================ */
+.suggestionBlock {
+  border-left: 3px solid var(--sketch-cyan);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--sketch-cyan-soft);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.suggestionPrefix {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--sketch-cyan-text);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.promptText {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-primary);
+  font-weight: var(--weight-medium);
+  margin-top: var(--space-2xs);
+  line-height: var(--leading-relaxed);
+  font-style: italic;
+}
+
+.outcome {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--sketch-green-text, #16a34a);
+}
+
+/* ============================================
+   Arrows (vertical dashed + chevron)
+   ============================================ */
+.arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-sm) 0;
+}
+
+.arrowLine {
+  width: 0;
+  height: 28px;
+  border-left: 2.5px dashed var(--sketch-cyan);
+  position: relative;
+  animation: arrowPulse 2.5s ease-in-out infinite;
+}
+
+.arrowLine::after {
+  content: '';
+  position: absolute;
+  left: -7px;
+  bottom: -1px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 9px solid var(--sketch-cyan);
+}
+
+@keyframes arrowPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* ============================================
+   CTA Button
+   ============================================ */
+.ctaWrapper {
+  margin-top: var(--space-xl);
+}
+
+/* ============================================
+   Staggered Entrance Animation
+   ============================================ */
+.staggerItem {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+.staggerItem.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.delay0 { transition-delay: 0ms; }
+.delay1 { transition-delay: 200ms; }
+.delay2 { transition-delay: 400ms; }
+.delay3 { transition-delay: 600ms; }
+.delay4 { transition-delay: 800ms; }
+
+/* ============================================
+   Mobile — responsive stacking
+   ============================================ */
+@media (max-width: 640px) {
+  .section {
+    padding: var(--space-2xl) var(--space-md);
+  }
+
+  .sectionTitle {
+    font-size: var(--text-xl);
+  }
+
+  .dualPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .panelLeft {
+    border-right: none;
+    border-bottom: 1.5px solid var(--border-default);
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .panelRight {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .node {
+    box-shadow: 3px 3px 0 var(--ink-primary);
+  }
+
+  .nodeAlert {
+    box-shadow: 3px 3px 0 rgba(239, 68, 68, 0.25);
+  }
+
+  .nodeSolution {
+    box-shadow: 3px 3px 0 var(--sketch-cyan);
+  }
+
+  .nodeBody {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .problemHeader {
+    flex-wrap: wrap;
+  }
+
+  .severityBadge {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .chatLine {
+    font-size: 11px;
+  }
+
+  .fileTree {
+    font-size: 11px;
+  }
+}

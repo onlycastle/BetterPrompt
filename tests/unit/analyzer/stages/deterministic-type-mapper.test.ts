@@ -18,7 +18,7 @@ import type { DeterministicScores } from '../../../../src/lib/analyzer/stages/de
 import type {
   Phase1Output,
   Phase1SessionMetrics,
-  DeveloperUtterance,
+  UserUtterance,
 } from '../../../../src/lib/models/phase1-output.js';
 import {
   MATRIX_NAMES,
@@ -44,7 +44,7 @@ function createScores(overrides?: Partial<DeterministicScores>): DeterministicSc
 
 function createPhase1Output(overrides?: {
   metrics?: Partial<Phase1SessionMetrics>;
-  utterances?: DeveloperUtterance[];
+  utterances?: UserUtterance[];
 }): Phase1Output {
   const defaultMetrics: Phase1SessionMetrics = {
     totalSessions: 10,
@@ -81,7 +81,7 @@ function createPhase1Output(overrides?: {
   };
 }
 
-function createUtterance(text: string, overrides?: Partial<DeveloperUtterance>): DeveloperUtterance {
+function createUtterance(text: string, overrides?: Partial<UserUtterance>): UserUtterance {
   return {
     id: 'session1_0',
     text,
@@ -342,7 +342,7 @@ describe('computeDeterministicType', () => {
       // Create utterances that produce >3% trend density
       // Each utterance with trend keywords contributes matches/totalUtterances * 100
       // 10 utterances, each with 2+ trend keywords → density = 20+ / 10 * 100 = 200%+
-      const trendUtterances: DeveloperUtterance[] = [];
+      const trendUtterances: UserUtterance[] = [];
       for (let i = 0; i < 10; i++) {
         trendUtterances.push(
           createUtterance(

@@ -1,6 +1,6 @@
 /**
  * Personal Dashboard Components
- * Barrel exports for individual developer growth components
+ * Barrel exports for individual builder growth components
  */
 
 export { JourneyHeader } from './JourneyHeader';

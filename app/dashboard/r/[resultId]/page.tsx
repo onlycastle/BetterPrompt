@@ -13,8 +13,8 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps) {
   const { resultId } = await params;
   return {
-    title: `Report ${resultId.slice(0, 8)} | VibeBetter`,
-    description: 'Your AI coding style analysis report',
+    title: `Report ${resultId.slice(0, 8)} | BetterPrompt`,
+    description: 'Your AI builder profile analysis report',
   };
 }
 

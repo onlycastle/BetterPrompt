@@ -19,7 +19,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import type { UtteranceLookupEntry, TransformationAuditEntry } from '../../../../lib/models/verbose-evaluation';
 import styles from './SourceContextSidebar.module.css';
 
@@ -72,27 +72,21 @@ export function SourceContextSidebar({
 }: SourceContextSidebarProps) {
   const [showRawOriginal, setShowRawOriginal] = useState(false);
 
-  // Handle Escape key to close sidebar
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    },
-    [isOpen, onClose]
-  );
-
-  // Add/remove event listener for Escape key + lock body scroll
+  // Escape key to close + lock body scroll while open
   useEffect(() => {
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.removeEventListener('keydown', handleKeyDown);
-        document.body.style.overflow = '';
-      };
-    }
-  }, [isOpen, handleKeyDown]);
+    if (!isOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onClose]);
 
   // Reset raw toggle when utterance changes
   useEffect(() => {
@@ -144,12 +138,12 @@ export function SourceContextSidebar({
               </div>
             )}
 
-            {/* Developer Message */}
+            {/* User Message */}
             <div className={`${styles.messageBubble} ${styles.devMessage}`}>
               <div className={styles.messageHeader}>
                 <span className={styles.roleLabel}>
-                  <span className={`${styles.roleIcon} ${styles.devRoleIcon}`}>Dev</span>
-                  Developer
+                  <span className={`${styles.roleIcon} ${styles.devRoleIcon}`}>You</span>
+                  You
                 </span>
               </div>
               <p className={styles.messageText}>{utterance.text}</p>

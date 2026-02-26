@@ -1,12 +1,11 @@
 export { HeroSection } from './HeroSection';
 export { SocialProofBar } from './SocialProofBar';
-export { ProblemValidation } from './ProblemValidation';
-export { SolutionSection } from './SolutionSection';
-export { AnalysisShowcase } from './AnalysisShowcase';
-export { DownloadSection } from './DownloadSection';
+export { TeamSection } from './TeamSection';
+export { ProductPreviewSection } from './ProductPreviewSection';
+export { PricingSection } from './PricingSection';
 export { LandingFooter } from './LandingFooter';
-export { EnterprisePreview } from './EnterprisePreview';
 export { TrustPrivacy } from './TrustPrivacy';
-export { SectionNav } from './SectionNav';
+export { LandingHeader } from './LandingHeader';
+export { BrandLogo } from './BrandLogo';
 export { WaitlistModal, waitlistConfigs } from './WaitlistModal';
 export type { WaitlistConfig, WaitlistType } from './WaitlistModal';

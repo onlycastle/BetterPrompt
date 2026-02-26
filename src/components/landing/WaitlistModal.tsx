@@ -13,7 +13,7 @@ import { Card } from '@/components/ui/Card';
 import styles from './WaitlistModal.module.css';
 
 /** Waitlist source types for Supabase tracking */
-export type WaitlistType = 'macos_app' | 'pro_subscription' | 'enterprise_contact';
+export type WaitlistType = 'macos_app' | 'pro_subscription' | 'enterprise_contact' | 'free_trial';
 
 /** Configuration for customizing modal content */
 export interface WaitlistConfig {
@@ -93,6 +93,27 @@ export const waitlistConfigs: Record<WaitlistType, WaitlistConfig> = {
     disclaimer: "We'll only email about enterprise solutions. No spam.",
     ctaText: 'Contact Sales',
     highlight: <div className={styles.enterpriseBadge}>🏢 Custom plans for teams</div>,
+  },
+  free_trial: {
+    type: 'free_trial',
+    title: 'Get Early Access',
+    subtitle: (
+      <>
+        BetterPrompt is in private beta.
+        <br />
+        Join the waitlist and be the first to try it.
+      </>
+    ),
+    successTitle: "You're in!",
+    successMessage: (
+      <>
+        We'll send you an invite
+        <br />
+        as soon as your spot opens up.
+      </>
+    ),
+    disclaimer: "We'll only email about your access. No spam.",
+    ctaText: 'Get Early Access',
   },
 };
 

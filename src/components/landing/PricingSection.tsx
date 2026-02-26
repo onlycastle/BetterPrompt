@@ -1,29 +1,12 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { useInView } from '@/hooks/useInView';
 import { Button } from '@/components/ui/Button';
-import styles from './DownloadSection.module.css';
-
-const howItWorks = [
-  {
-    step: '1',
-    title: 'Sign in and connect',
-    text: 'Start in the web dashboard and connect your AI workflow. We analyze session summaries \u2014 not your source code.',
-  },
-  {
-    step: '2',
-    title: 'Get your assessment',
-    text: 'Our AI analyzes how you work with AI. Patterns, risks, and opportunities \u2014 all in one report.',
-  },
-  {
-    step: '3',
-    title: 'Start improving',
-    text: 'Actionable recommendations specific to your workflow. Track your progress over time.',
-  },
-];
+import { WaitlistModal, waitlistConfigs } from './WaitlistModal';
+import styles from './PricingSection.module.css';
 
 const pricingTiers = [
   {
@@ -35,7 +18,7 @@ const pricingTiers = [
       'Core AI Builder Profile',
       'Basic behavior analysis',
     ],
-    missing: ['Full analysis', 'Security report', 'Progress tracking', 'Learning resources'],
+    missing: ['Full 6-dimension analysis', 'Priority processing', 'Progress tracking'],
   },
   {
     name: 'Starter',
@@ -44,11 +27,11 @@ const pricingTiers = [
     popular: true,
     features: [
       'Unlimited assessments',
-      'Full 5-dimension analysis',
+      'Full 6-dimension analysis',
       'Security risk report',
       'Growth recommendations',
     ],
-    missing: ['Progress tracking', 'Learning resources'],
+    missing: ['Progress tracking', 'Pattern history', 'Learning resources'],
   },
   {
     name: 'Pro',
@@ -57,58 +40,24 @@ const pricingTiers = [
     features: [
       'Everything in Starter',
       'Progress tracking over time',
+      'Pattern history',
       'Learning resources',
-      'Team comparison (up to 5)',
-    ],
-    missing: [],
-  },
-  {
-    name: 'Team',
-    price: 'Custom',
-    period: '',
-    features: [
-      'Everything in Pro',
-      'Team dashboard',
-      'Manager insights',
-      'SSO + admin controls',
     ],
     missing: [],
   },
 ];
 
-export function DownloadSection() {
-  const router = useRouter();
+export function PricingSection() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
+  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
 
   return (
     <section className={styles.section} id="pricing">
       <div ref={ref} className={`${styles.container} ${isInView ? styles.visible : ''}`}>
-        <h2 className={styles.headline}>Get started free in minutes</h2>
-
-        <p className={styles.description}>
-          See your blind spots, risks, and growth opportunities.
-          Free to start. Upgrade only when you want deeper guidance.
-        </p>
-
-        {/* How it works */}
-        <div className={styles.howItWorks}>
-          <h3 className={styles.howTitle}>How it works</h3>
-          <div className={styles.steps}>
-            {howItWorks.map((item) => (
-              <div key={item.step} className={styles.step}>
-                <span className={styles.stepNumber}>{item.step}</span>
-                <div className={styles.stepContent}>
-                  <span className={styles.stepTitle}>{item.title}</span>
-                  <span className={styles.stepText}>{item.text}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <h2 className={styles.headline}>Start free. Upgrade when you want more.</h2>
 
         {/* Pricing comparison */}
         <div className={styles.pricing}>
-          <h3 className={styles.pricingTitle}>Simple, transparent pricing</h3>
           <div className={styles.pricingGrid}>
             {pricingTiers.map((tier) => (
               <div
@@ -147,20 +96,23 @@ export function DownloadSection() {
             variant="secondary"
             size="lg"
             onClick={() => {
-              track('cta_click', { location: 'pricing', type: 'get_started_free' });
-              router.push('/dashboard/analyze');
+              track('cta_click', { location: 'pricing', type: 'try_it_free' });
+              setIsWaitlistOpen(true);
             }}
           >
-            Get Started Free
+            Try It Free
           </Button>
         </div>
 
         <p className={styles.requirements}>
-          Works with Claude Code today. Cursor &amp; Replit support coming soon.
-          <br />
-          Start from the web dashboard, then run one command to scan local sessions.
+          All plans include privacy-first analysis. Your session data never leaves your machine.
         </p>
       </div>
+      <WaitlistModal
+        isOpen={isWaitlistOpen}
+        onClose={() => setIsWaitlistOpen(false)}
+        config={waitlistConfigs.free_trial}
+      />
     </section>
   );
 }

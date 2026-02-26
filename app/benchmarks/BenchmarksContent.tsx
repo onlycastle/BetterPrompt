@@ -150,7 +150,7 @@ function TypeDistribution({ distribution }: { distribution: Record<string, numbe
 
   return (
     <section className={styles.typeDistributionSection}>
-      <h2 className={styles.sectionTitle}>Developer Type Distribution</h2>
+      <h2 className={styles.sectionTitle}>Builder Type Distribution</h2>
       <div className={styles.typeList}>
         {sorted.map(([type, count]) => {
           const meta = getTypeMeta(type);
@@ -252,7 +252,7 @@ function DomainScoreCard({
       </div>
 
       <p className={styles.domainDescription}>
-        Most developers score between <strong>{percentiles.p25}</strong> and{' '}
+        Most builders score between <strong>{percentiles.p25}</strong> and{' '}
         <strong>{percentiles.p75}</strong>
       </p>
       <p className={styles.domainCount}>
@@ -294,10 +294,10 @@ function DomainScores({
 function CTASection() {
   return (
     <section className={styles.ctaSection}>
-      <h2 className={styles.ctaTitle}>Discover your AI coding style</h2>
+      <h2 className={styles.ctaTitle}>Discover your AI builder profile</h2>
       <p className={styles.ctaDescription}>
         Run a free analysis of your Claude Code sessions and see where you stand
-        among thousands of developers.
+        among thousands of builders.
       </p>
       <Link href="/" className={styles.ctaButton}>
         Get Started
@@ -312,7 +312,7 @@ function EmptyState() {
       <span className={styles.emptyIcon}>{'\u{1F4CA}'}</span>
       <h2 className={styles.emptyTitle}>No Benchmark Data Yet</h2>
       <p className={styles.emptyDescription}>
-        Benchmark data is generated from developer analyses. Be one of the first
+        Benchmark data is generated from builder analyses. Be one of the first
         to contribute by running an analysis with the CLI.
       </p>
       <Link href="/" className={styles.ctaButton}>
@@ -345,84 +345,51 @@ export function BenchmarksContent() {
     retry: 2,
   });
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className={styles.page}>
-        <div className={styles.container}>
-          <PageHeader />
-          <div className={styles.loadingContainer}>
-            <ReportLoadingSpinner text="Loading benchmark data..." />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className={styles.page}>
-        <div className={styles.container}>
-          <PageHeader />
-          <ErrorState onRetry={() => refetch()} />
-        </div>
-      </div>
-    );
-  }
-
-  // Empty state (no benchmark data for current month)
-  if (!data?.benchmarks) {
-    return (
-      <div className={styles.page}>
-        <div className={styles.container}>
-          <PageHeader />
-          <div className={styles.titleSection}>
-            <h1 className={styles.pageTitle}>Global AI Coding Benchmarks</h1>
-            <p className={styles.pageSubtitle}>
-              How does your AI collaboration style compare?
-            </p>
-          </div>
-          <EmptyState />
-        </div>
-      </div>
-    );
-  }
-
-  const benchmarks = data.benchmarks;
+  const benchmarks = data?.benchmarks;
 
   return (
     <div className={styles.page}>
       <div className={styles.container}>
         <PageHeader />
 
-        {/* Title */}
-        <div className={styles.titleSection}>
-          <h1 className={styles.pageTitle}>Global AI Coding Benchmarks</h1>
-          <p className={styles.pageSubtitle}>
-            How does your AI collaboration style compare?
-          </p>
-        </div>
+        {isLoading ? (
+          <div className={styles.loadingContainer}>
+            <ReportLoadingSpinner text="Loading benchmark data..." />
+          </div>
+        ) : error ? (
+          <ErrorState onRetry={() => refetch()} />
+        ) : !benchmarks ? (
+          <>
+            <div className={styles.titleSection}>
+              <h1 className={styles.pageTitle}>Global AI Collaboration Benchmarks</h1>
+              <p className={styles.pageSubtitle}>
+                How does your AI collaboration style compare?
+              </p>
+            </div>
+            <EmptyState />
+          </>
+        ) : (
+          <>
+            <div className={styles.titleSection}>
+              <h1 className={styles.pageTitle}>Global AI Collaboration Benchmarks</h1>
+              <p className={styles.pageSubtitle}>
+                How does your AI collaboration style compare?
+              </p>
+            </div>
 
-        {/* Stats Row */}
-        <StatsRow data={benchmarks} />
+            <StatsRow data={benchmarks} />
+            <TypeDistribution distribution={benchmarks.typeDistribution} />
+            <DomainScores domainPercentiles={benchmarks.domainPercentiles} />
+            <CTASection />
 
-        {/* Type Distribution */}
-        <TypeDistribution distribution={benchmarks.typeDistribution} />
-
-        {/* Domain Score Distributions */}
-        <DomainScores domainPercentiles={benchmarks.domainPercentiles} />
-
-        {/* CTA */}
-        <CTASection />
-
-        {/* Footer */}
-        <footer className={styles.footer}>
-          <p className={styles.footerText}>
-            Updated {formatDate(benchmarks.updatedAt)} &middot; Data from{' '}
-            {formatNumber(benchmarks.totalAnalyses)} analyses
-          </p>
-        </footer>
+            <footer className={styles.footer}>
+              <p className={styles.footerText}>
+                Updated {formatDate(benchmarks.updatedAt)} &middot; Data from{' '}
+                {formatNumber(benchmarks.totalAnalyses)} analyses
+              </p>
+            </footer>
+          </>
+        )}
       </div>
     </div>
   );

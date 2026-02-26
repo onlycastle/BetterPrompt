@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
 // ============================================================================
-// AI Coding Style Types - MBTI-like personality types for developers
+// AI Building Style Types - MBTI-like personality types for builders
 // ============================================================================
 
 /**
- * The 5 AI Coding Style Types
+ * The 5 AI Building Style Types
  * All types are positive - each has strengths and growth points
  *
  * v2 Taxonomy (2026-02):
@@ -41,28 +41,28 @@ export const TYPE_METADATA: Record<
   architect: {
     emoji: '🏗️',
     name: 'Architect',
-    tagline: 'Strategic thinker who plans before diving into code',
+    tagline: 'Strategic thinker who plans before prompting',
     description:
-      'You approach AI collaboration with a clear vision. Your structured prompts and systematic planning maximize AI implementation speed while maintaining consistency.',
+      'You approach AI collaboration with a clear vision. Your structured prompts and systematic planning maximize what AI can build for you while maintaining consistency across every output.',
     strengths: [
-      'Systematic approach to complex systems',
-      "Maximizes AI's implementation speed",
+      'Systematic approach to complex projects',
+      "Maximizes AI's execution speed",
       'High consistency in output',
     ],
     growthPoints: [
-      'Quick prototyping can sometimes be more efficient',
+      'Quick experimentation can sometimes be more efficient',
       'Over-planning may delay execution',
     ],
   },
   analyst: {
     emoji: '🔬',
     name: 'Analyst',
-    tagline: 'Deep investigator who verifies and questions everything',
+    tagline: 'Deep investigator who verifies and questions AI output',
     description:
-      'You combine systematic verification with critical thinking. Your thorough approach catches bugs early, questions assumptions, and ensures high code quality through investigation.',
+      'You combine systematic verification with critical thinking. Your thorough approach catches problems early, questions AI assumptions, and ensures high quality through rigorous review.',
     strengths: [
-      'Catches bugs early through systematic verification',
-      'Questions assumptions and explores alternatives',
+      'Catches issues early through systematic verification',
+      'Questions AI assumptions and explores alternatives',
       'Low repeated mistakes through deep understanding',
     ],
     growthPoints: [
@@ -91,31 +91,31 @@ export const TYPE_METADATA: Record<
     name: 'Speedrunner',
     tagline: 'Agile executor who delivers through fast iteration',
     description:
-      'You move fast and iterate quickly. Your rapid prototyping approach leads to new discoveries through experimentation and high output per time.',
+      'You move fast and iterate quickly. Your rapid building approach leads to new discoveries through experimentation and high output per time invested.',
     strengths: [
-      'Rapid prototyping',
+      'Rapid prototyping and delivery',
       'New discoveries through experimentation',
       'High output per time',
     ],
     growthPoints: [
-      'Technical debt may accumulate',
-      'Sometimes slower design is more efficient',
+      'Shortcuts may create rework later',
+      'Sometimes a slower, deliberate approach is more efficient',
     ],
   },
   trendsetter: {
     emoji: '🚀',
     name: 'Trendsetter',
-    tagline: 'Innovation seeker who explores cutting-edge approaches',
+    tagline: 'Innovation seeker who explores cutting-edge AI approaches',
     description:
-      'You actively seek the latest tools, frameworks, and best practices. Your curiosity drives you to explore emerging technologies and modern approaches, keeping your stack ahead of the curve.',
+      'You actively seek the latest AI tools, workflows, and best practices. Your curiosity drives you to explore emerging capabilities and modern approaches, keeping your process ahead of the curve.',
     strengths: [
-      'Early adoption of effective new tools',
+      'Early adoption of effective new AI tools',
       'Awareness of industry best practices',
       'Continuous learning mindset',
     ],
     growthPoints: [
       'Novelty bias may lead to premature adoption',
-      'Proven solutions sometimes outperform trendy ones',
+      'Proven approaches sometimes outperform trendy ones',
     ],
   },
 };
@@ -435,13 +435,13 @@ interface MatrixTypeProfile {
   description: string;
   keyStrength: string;
   growthPath: string;
-  /** Core motivation — why this type codes the way they do */
+  /** Core motivation — why this type builds the way they do */
   innerDrive: string;
   /** The most type-defining behavioral moment */
   signatureScenario: string;
   /** The endearing flip side of their greatest strength */
   shadowStrength: string;
-  /** What other developers do differently — for contrast framing */
+  /** What other builders do differently — for contrast framing */
   contrastWith: string;
 }
 
@@ -455,19 +455,19 @@ export const MATRIX_METADATA: Record<
       description: 'You explore solutions through open-ended planning and vision.',
       keyStrength: 'Clear vision and creative planning',
       growthPath: 'Try validating AI output against your plans more actively',
-      innerDrive: 'Turning ambiguity into a clear blueprint before the first line is written',
-      signatureScenario: 'sketches a system diagram in comments before writing any implementation code',
-      shadowStrength: 'spending an entire session designing an architecture for a feature that could have shipped in 20 minutes',
-      contrastWith: 'jump straight into code and figure out the structure as they go',
+      innerDrive: 'Turning ambiguity into a clear blueprint before the first prompt is sent',
+      signatureScenario: 'sketches a full project structure in notes before prompting AI for a single output',
+      shadowStrength: 'spending an entire session designing a plan for a deliverable that could have shipped in 20 minutes',
+      contrastWith: 'jump straight into prompting and figure out the direction as they go',
     },
     navigator: {
       emoji: '📐',
       description: 'You balance strategic planning with hands-on verification.',
       keyStrength: 'Structured approach with balanced control',
       growthPath: 'Keep building verification habits',
-      innerDrive: 'Building reliable systems where every component earns its place through deliberate design',
+      innerDrive: 'Building reliable outcomes where every step earns its place through deliberate design',
       signatureScenario: 'writes a numbered plan in the first prompt, then checks off each step as the session progresses',
-      shadowStrength: 'reworking a perfectly functional implementation because the internal structure does not match the original plan',
+      shadowStrength: 'reworking a perfectly functional output because it does not match the original plan structure',
       contrastWith: 'treat plans as suggestions and adapt freely as requirements shift',
     },
     cartographer: {
@@ -476,9 +476,9 @@ export const MATRIX_METADATA: Record<
       keyStrength: 'Strategic AI orchestration with full control',
       growthPath: 'Share your planning techniques with others',
       innerDrive: 'Achieving total clarity — no unknowns, no surprises, every edge case mapped before execution',
-      signatureScenario: 'creates a multi-phase implementation plan with dependencies, risks, and rollback strategies before a single file is touched',
-      shadowStrength: 'producing a plan so thorough that the planning itself takes longer than the implementation would have',
-      contrastWith: 'start building and let the architecture emerge from working code',
+      signatureScenario: 'creates a multi-phase execution plan with dependencies, risks, and rollback strategies before a single AI prompt is sent',
+      shadowStrength: 'producing a plan so thorough that the planning itself takes longer than the work would have',
+      contrastWith: 'start building immediately and let the structure emerge from working output',
     },
   },
   analyst: {
@@ -487,19 +487,19 @@ export const MATRIX_METADATA: Record<
       description: 'You explore through curious questioning and open inquiry.',
       keyStrength: 'Curious mind and questioning attitude',
       growthPath: 'Try challenging AI responses more systematically',
-      innerDrive: 'Understanding the why behind every line — code without comprehension feels incomplete',
+      innerDrive: 'Understanding the why behind every output — AI-generated work without comprehension feels incomplete',
       signatureScenario: 'asks AI to explain a working solution three different ways before accepting it',
-      shadowStrength: 'going down a fascinating rabbit hole investigating how a library works internally when the task only needed a simple API call',
-      contrastWith: 'accept working code at face value and move on to the next task',
+      shadowStrength: 'going down a fascinating rabbit hole investigating how something works when the task only needed a quick result',
+      contrastWith: 'accept working output at face value and move on to the next task',
     },
     navigator: {
       emoji: '🧪',
       description: 'You navigate through hypothesis-driven investigation and verification.',
       keyStrength: 'Balanced depth with practical verification',
-      growthPath: 'Add systematic testing to your workflow',
-      innerDrive: 'Treating every coding session like a research experiment — hypothesis, test, conclude',
+      growthPath: 'Add systematic review checkpoints to your workflow',
+      innerDrive: 'Treating every AI session like a research experiment — hypothesis, test, conclude',
       signatureScenario: 'asks AI to generate two alternative approaches, then systematically compares them before choosing',
-      shadowStrength: 'running one more test case just to be sure, even when the evidence is already conclusive',
+      shadowStrength: 'running one more verification just to be sure, even when the evidence is already conclusive',
       contrastWith: 'go with the first working solution without exploring alternatives',
     },
     cartographer: {
@@ -508,8 +508,8 @@ export const MATRIX_METADATA: Record<
       keyStrength: 'Rigorous verification and error detection',
       growthPath: 'Help others develop critical thinking habits',
       innerDrive: 'Achieving certainty — no assumption goes unverified, no edge case goes untested',
-      signatureScenario: 'catches a subtle AI hallucination that would have passed most code reviews, then traces its root cause',
-      shadowStrength: 'writing exhaustive error handling for a scenario that has a one-in-a-million chance of occurring',
+      signatureScenario: 'catches a subtle AI hallucination that would have passed most reviews, then traces its root cause',
+      shadowStrength: 'building exhaustive safeguards for a scenario with a one-in-a-million chance of occurring',
       contrastWith: 'trust AI output and ship with confidence in the happy path',
     },
   },
@@ -520,8 +520,8 @@ export const MATRIX_METADATA: Record<
       keyStrength: 'Creative tool exploration and improvisation',
       growthPath: 'Build repeatable workflows from your discoveries',
       innerDrive: 'Discovering unexpected tool combinations that unlock creative solutions',
-      signatureScenario: 'experiments with a new slash command just to see what happens, then builds an entire workflow around it',
-      shadowStrength: 'over-tooling a simple task because the orchestration itself is exciting',
+      signatureScenario: 'experiments with a new AI capability just to see what happens, then builds an entire workflow around it',
+      shadowStrength: 'over-engineering a simple task because the orchestration itself is exciting',
       contrastWith: 'rely on a single trusted approach and stick with it',
     },
     navigator: {
@@ -530,8 +530,8 @@ export const MATRIX_METADATA: Record<
       keyStrength: 'Effective multi-tool coordination',
       growthPath: 'Document your workflow patterns for team sharing',
       innerDrive: 'Unlocking synergies that no single tool can achieve alone',
-      signatureScenario: 'switches between six tools mid-session like a DJ mixing tracks, each transition precisely timed',
-      shadowStrength: 'spending ten minutes configuring a workflow for a task that would take five minutes manually',
+      signatureScenario: 'switches between six AI tools mid-session like a DJ mixing tracks, each transition precisely timed',
+      shadowStrength: 'spending ten minutes configuring a workflow for a task that would take five minutes with a direct approach',
       contrastWith: 'pick one tool and master it deeply rather than orchestrating many',
     },
     cartographer: {
@@ -540,7 +540,7 @@ export const MATRIX_METADATA: Record<
       keyStrength: 'Masterful AI tool orchestration',
       growthPath: 'Mentor others in advanced AI workflow techniques',
       innerDrive: 'Achieving perfect orchestration where every tool plays its precise role at the right moment',
-      signatureScenario: 'has a custom workflow template for every type of task, with subagents delegated to specialized roles',
+      signatureScenario: 'has a custom workflow template for every type of project task, with AI agents delegated to specialized roles',
       shadowStrength: 'refusing to use a simple approach when an orchestrated multi-tool pipeline exists',
       contrastWith: 'let AI tools work independently without coordination',
     },
@@ -551,18 +551,18 @@ export const MATRIX_METADATA: Record<
       description: 'You explore through rapid experimentation and iteration.',
       keyStrength: 'High velocity and experimentation',
       growthPath: 'Add quick sanity checks to your workflow',
-      innerDrive: 'Finding the shortest path to a working solution through rapid trial and error',
-      signatureScenario: 'writes a three-word prompt and gets a working component back, then iterates twice to ship',
-      shadowStrength: 'shipping so fast that the commit message is longer than the prompt that generated the code',
-      contrastWith: 'plan extensively before writing the first line of code',
+      innerDrive: 'Finding the shortest path to a working result through rapid trial and error',
+      signatureScenario: 'fires a three-word prompt and gets a working output back, then iterates twice to ship',
+      shadowStrength: 'shipping so fast that the handoff notes are longer than the prompt that generated the work',
+      contrastWith: 'plan extensively before sending the first prompt',
     },
     navigator: {
       emoji: '🏃',
       description: 'You navigate quickly while building verification habits.',
       keyStrength: 'Fast iteration with increasing quality awareness',
       growthPath: 'Build quick-check routines into your speed',
-      innerDrive: 'Maximizing output per unit of effort — every keystroke should move the project forward',
-      signatureScenario: 'completes a feature in a single focused session with minimal back-and-forth, prompts so concise they read like commands',
+      innerDrive: 'Maximizing output per unit of effort — every prompt should move the project forward',
+      signatureScenario: 'completes a deliverable in a single focused session with minimal back-and-forth, prompts so concise they read like commands',
       shadowStrength: 'moving to the next task before fully verifying the current one because momentum feels too good to break',
       contrastWith: 'spend time reviewing and polishing before moving forward',
     },
@@ -581,31 +581,31 @@ export const MATRIX_METADATA: Record<
     explorer: {
       emoji: '🌱',
       description: 'You eagerly try new tools and approaches, staying curious about what is emerging.',
-      keyStrength: 'Early adoption and experimentation with new tech',
+      keyStrength: 'Early adoption and experimentation with new AI capabilities',
       growthPath: 'Evaluate new tools more critically before adopting',
       innerDrive: 'Being first to discover what is next — the thrill of using something no one else has tried yet',
-      signatureScenario: 'asks AI about a framework released last week, then builds a prototype with it in the same session',
-      shadowStrength: 'adopting a shiny new library for a problem that the standard library solves perfectly',
-      contrastWith: 'wait for community consensus before adopting new technology',
+      signatureScenario: 'asks AI about a capability released last week, then builds a working prototype with it in the same session',
+      shadowStrength: 'adopting a shiny new tool for a problem that a proven approach solves perfectly',
+      contrastWith: 'wait for community consensus before adopting new AI capabilities',
     },
     navigator: {
       emoji: '📡',
       description: 'You track industry trends and selectively adopt what adds value.',
       keyStrength: 'Informed technology radar with selective adoption',
-      growthPath: 'Share your technology insights with your team',
-      innerDrive: 'Curating the best of what is new — filtering signal from noise in the technology landscape',
-      signatureScenario: 'keeps a mental radar of emerging tools and knows exactly when a new approach is mature enough to adopt',
+      growthPath: 'Share your AI workflow insights with your team',
+      innerDrive: 'Curating the best of what is new — filtering signal from noise in the AI landscape',
+      signatureScenario: 'keeps a mental radar of emerging AI tools and knows exactly when a new approach is mature enough to adopt',
       shadowStrength: 'spending time evaluating a trending tool that the project does not actually need yet',
-      contrastWith: 'stick with proven technologies and avoid the adoption treadmill',
+      contrastWith: 'stick with proven approaches and avoid the adoption treadmill',
     },
     cartographer: {
       emoji: '🚀',
-      description: 'You strategically lead innovation, charting paths through emerging technology.',
+      description: 'You strategically lead innovation, charting paths through emerging AI capabilities.',
       keyStrength: 'Strategic innovation leadership',
       growthPath: 'Balance cutting-edge adoption with team readiness',
-      innerDrive: 'Charting the future technology landscape — not just using what is new, but knowing why it matters',
-      signatureScenario: 'evaluates a new technology against five criteria before recommending it, then writes the migration guide',
-      shadowStrength: 'creating a comprehensive adoption plan for a technology the team is not ready to learn yet',
+      innerDrive: 'Charting the future AI landscape — not just using what is new, but knowing why it matters',
+      signatureScenario: 'evaluates a new AI capability against five criteria before recommending it, then writes the adoption guide for the team',
+      shadowStrength: 'creating a comprehensive adoption plan for a capability the team is not ready to use yet',
       contrastWith: 'let others pioneer new tools and adopt them after they are battle-tested',
     },
   },
@@ -775,27 +775,27 @@ export function deriveMatrixDistribution(
   cartographerWeight /= totalWeight;
 
   // Apply weights to each type's distribution
-  // Helper to calculate rounded percentage
   const calcPct = (typePct: number, weight: number): number =>
     Math.round(typePct * weight * 10) / 10;
 
-  return {
-    architect_explorer: calcPct(typeDistribution.architect || 0, explorerWeight),
-    architect_navigator: calcPct(typeDistribution.architect || 0, navigatorWeight),
-    architect_cartographer: calcPct(typeDistribution.architect || 0, cartographerWeight),
-    analyst_explorer: calcPct(typeDistribution.analyst || 0, explorerWeight),
-    analyst_navigator: calcPct(typeDistribution.analyst || 0, navigatorWeight),
-    analyst_cartographer: calcPct(typeDistribution.analyst || 0, cartographerWeight),
-    conductor_explorer: calcPct(typeDistribution.conductor || 0, explorerWeight),
-    conductor_navigator: calcPct(typeDistribution.conductor || 0, navigatorWeight),
-    conductor_cartographer: calcPct(typeDistribution.conductor || 0, cartographerWeight),
-    speedrunner_explorer: calcPct(typeDistribution.speedrunner || 0, explorerWeight),
-    speedrunner_navigator: calcPct(typeDistribution.speedrunner || 0, navigatorWeight),
-    speedrunner_cartographer: calcPct(typeDistribution.speedrunner || 0, cartographerWeight),
-    trendsetter_explorer: calcPct(typeDistribution.trendsetter || 0, explorerWeight),
-    trendsetter_navigator: calcPct(typeDistribution.trendsetter || 0, navigatorWeight),
-    trendsetter_cartographer: calcPct(typeDistribution.trendsetter || 0, cartographerWeight),
+  const controlWeights: Record<AIControlLevel, number> = {
+    explorer: explorerWeight,
+    navigator: navigatorWeight,
+    cartographer: cartographerWeight,
   };
+
+  const types: CodingStyleType[] = ['architect', 'analyst', 'conductor', 'speedrunner', 'trendsetter'];
+  const levels: AIControlLevel[] = ['explorer', 'navigator', 'cartographer'];
+
+  const result = {} as MatrixDistribution;
+  for (const type of types) {
+    const typePct = typeDistribution[type] || 0;
+    for (const level of levels) {
+      const key = `${type}_${level}` as keyof MatrixDistribution;
+      result[key] = calcPct(typePct, controlWeights[level]);
+    }
+  }
+  return result;
 }
 
 /**

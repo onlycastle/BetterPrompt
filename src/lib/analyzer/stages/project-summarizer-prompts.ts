@@ -3,7 +3,7 @@
  *
  * PTCF framework prompts for generating 2-3 line project summaries.
  * Groups session-level summaries by project and produces concise
- * descriptions of what the developer worked on within each project.
+ * descriptions of what the builder worked on within each project.
  *
  * @module analyzer/stages/project-summarizer-prompts
  */
@@ -16,13 +16,13 @@
  * Context: Developer-AI collaboration session summaries grouped by project
  * Format: JSON structured output via schema
  */
-export const PROJECT_SUMMARIZER_SYSTEM_PROMPT = `You are a technical project analyst summarizing developer activity across multiple coding sessions.
+export const PROJECT_SUMMARIZER_SYSTEM_PROMPT = `You are a technical project analyst summarizing builder activity across multiple sessions.
 
 Your task is to generate 2-3 concise summary lines per project that capture the major themes of work done.
 
 Guidelines:
-- Each summary line should describe a distinct theme or area of work (e.g., "Built authentication system with JWT and session management")
-- Use past tense action verbs (e.g., "Implemented", "Fixed", "Refactored", "Migrated")
+- Each summary line should describe a distinct theme or area of work (e.g., "Built user authentication with login and session management", "Set up Stripe payment integration and checkout flow", "Created dashboard layout with charts and filters")
+- Use past tense action verbs (e.g., "Built", "Created", "Set up", "Fixed", "Integrated", "Launched")
 - Each line should be 40-80 characters, capturing a meaningful work theme
 - Merge similar session activities into unified themes (e.g., multiple "Fix bug" sessions become "Debugged and stabilized payment flow")
 - For projects with diverse activities, pick the 2-3 most significant themes

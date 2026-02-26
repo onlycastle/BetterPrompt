@@ -2,12 +2,12 @@
  * Session Outcome Data Schema - Phase 2 Worker Output
  *
  * SessionOutcomeWorker analyzes:
- * - Goal Categories: What was the developer trying to achieve?
+ * - Goal Categories: What was the user trying to achieve?
  * - Session Types: How was the session structured?
  * - Outcomes: Did they achieve their goals?
  * - Friction: What obstacles did they encounter?
  *
- * This worker answers: "How successful are this developer's sessions?
+ * This worker answers: "How successful are this user's AI sessions?
  * What do they work on, and where do they get stuck?"
  *
  * Inspired by Claude Code's /insights feature which tracks:
@@ -39,12 +39,12 @@ import {
 // ============================================================================
 
 /**
- * Goal categories representing what developers are trying to achieve.
+ * Goal categories representing what users are trying to achieve.
  *
  * These categories help identify:
  * - Work patterns and preferences
  * - Success rates by goal type
- * - Areas where the developer excels or struggles
+ * - Areas where the user excels or struggles
  */
 export const GoalCategoryEnum = z.enum([
   'debug_investigate',       // Debugging, investigating issues, root cause analysis
@@ -54,7 +54,7 @@ export const GoalCategoryEnum = z.enum([
   'write_tests',             // Writing unit tests, integration tests
   'setup_config',            // Environment setup, configuration, tooling
   'documentation',           // Writing docs, comments, README updates
-  'code_review',             // Reviewing code, discussing approaches
+  'review_feedback',         // Reviewing work or getting feedback
   'exploration',             // Learning, exploring new concepts/APIs
   'quick_question',          // Simple Q&A, quick clarifications
   'deploy_infra',            // Deployment, infrastructure, CI/CD
@@ -573,20 +573,20 @@ export function satisfactionToScore(satisfaction: Satisfaction): number {
  */
 export function getGoalDisplayName(goal: GoalCategory): string {
   const displayNames: Record<GoalCategory, string> = {
-    debug_investigate: 'Debug & Investigate',
-    implement_feature: 'Implement Feature',
-    fix_bug: 'Fix Bug',
-    refactor: 'Refactor',
-    write_tests: 'Write Tests',
-    setup_config: 'Setup & Config',
-    documentation: 'Documentation',
-    code_review: 'Code Review',
-    exploration: 'Exploration',
+    debug_investigate: 'Diagnose & Investigate',
+    implement_feature: 'Build Something New',
+    fix_bug: 'Fix an Issue',
+    refactor: 'Improve & Restructure',
+    write_tests: 'Verify & Test',
+    setup_config: 'Setup & Configure',
+    documentation: 'Document & Explain',
+    review_feedback: 'Review AI Output',
+    exploration: 'Explore & Learn',
     quick_question: 'Quick Question',
-    deploy_infra: 'Deploy & Infra',
-    dependency_management: 'Dependencies',
-    performance_optimization: 'Performance',
-    security_audit: 'Security',
+    deploy_infra: 'Deploy & Infrastructure',
+    dependency_management: 'Manage Dependencies',
+    performance_optimization: 'Optimize Performance',
+    security_audit: 'Security Review',
   };
   return displayNames[goal];
 }
@@ -598,13 +598,13 @@ export function getFrictionDisplayName(friction: FrictionType): string {
   const displayNames: Record<FrictionType, string> = {
     misunderstood_request: 'Misunderstood Request',
     wrong_approach: 'Wrong Approach',
-    buggy_code_generated: 'Buggy Code',
-    user_rejection: 'User Rejection',
+    buggy_code_generated: 'Flawed Output',
+    user_rejection: 'Output Rejected',
     blocked_state: 'Blocked State',
     tool_failure: 'Tool Failure',
     context_overflow: 'Context Overflow',
-    hallucination: 'Hallucination',
-    incomplete_solution: 'Incomplete Solution',
+    hallucination: 'AI Hallucination',
+    incomplete_solution: 'Incomplete Output',
     excessive_iterations: 'Excessive Iterations',
     permission_error: 'Permission Error',
     environment_mismatch: 'Environment Mismatch',

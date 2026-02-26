@@ -17,6 +17,14 @@ import styles from './page.module.css';
 
 type TabId = 'report' | 'progress';
 
+function formatDate(isoString: string): string {
+  return new Date(isoString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 interface UserAnalysis {
   id: string;
   resultId: string;
@@ -242,26 +250,15 @@ function ReportTabContent({
     if (!focusResultId || isLoading || analyses.length === 0 || focusApplied.current) return;
     focusApplied.current = true;
 
-    // Wait for DOM to render
     requestAnimationFrame(() => {
       const el = document.querySelector(`[data-result-id="${CSS.escape(focusResultId)}"]`);
       if (!el) return;
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       el.classList.add(styles.highlighted);
       setTimeout(() => el.classList.remove(styles.highlighted), 2000);
-      // Clean focus param from URL
       window.history.replaceState({}, '', '/dashboard/personal?tab=report');
     });
   }, [focusResultId, isLoading, analyses]);
-
-  const formatDate = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
 
   if (isLoading) {
     return (
@@ -277,7 +274,7 @@ function ReportTabContent({
       <div className={styles.emptyState}>
         <div className={styles.emptyIcon}>&#128202;</div>
         <h3>No Analysis Reports Yet</h3>
-        <p>Run your first analysis to see your AI coding insights here.</p>
+        <p>Run your first analysis to see your AI insights here.</p>
         <div className={styles.cliBox}>
           <code>npx no-ai-slop</code>
         </div>
@@ -387,12 +384,10 @@ function DeleteConfirmModal({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  // Handle ESC key
   useEffect(() => {
+    if (isDeleting) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isDeleting) {
-        onCancel();
-      }
+      if (e.key === 'Escape') onCancel();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);

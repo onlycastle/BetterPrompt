@@ -30,7 +30,7 @@ export function JourneyHeader({ analytics }: JourneyHeaderProps) {
             </span>
             <div className={styles.typeInfo}>
               <h2 className={styles.typeLabel}>{typeMetadata.label}</h2>
-              <p className={styles.subtitle}>Your current AI coding style</p>
+              <p className={styles.subtitle}>Your current AI collaboration style</p>
             </div>
           </div>
 

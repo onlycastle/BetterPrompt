@@ -2,11 +2,11 @@ import { Metadata } from 'next';
 import { DocsPage } from '@/views/DocsPage';
 
 export const metadata: Metadata = {
-  title: 'Documentation | NoMoreAISlop',
-  description: 'Technical deep-dive into NoMoreAISlop\'s analysis pipeline, CLI usage, and methodology for assessing developer-AI collaboration.',
+  title: 'Documentation | BetterPrompt',
+  description: 'Learn how to get started with BetterPrompt — connect your AI tool, get your assessment, and start improving your AI collaboration.',
   openGraph: {
-    title: 'Documentation | NoMoreAISlop',
-    description: 'Technical deep-dive into NoMoreAISlop\'s analysis pipeline, CLI usage, and methodology.',
+    title: 'Documentation | BetterPrompt',
+    description: 'Learn how to get started with BetterPrompt — connect your AI tool, get your assessment, and start improving.',
   },
 };
 

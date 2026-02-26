@@ -11,25 +11,25 @@ import type { Metadata } from 'next';
 import { ReportLoadingSpinner } from '@/components/report/ReportLoadingSpinner';
 import { BenchmarksContent } from './BenchmarksContent';
 
-const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://www.nomoreaislop.app';
+const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://www.betterprompt.sh';
 
 export const metadata: Metadata = {
-  title: 'Global AI Coding Benchmarks | NoMoreAISlop',
+  title: 'Global AI Collaboration Benchmarks | BetterPrompt',
   description:
-    'See how developers collaborate with AI. Explore type distributions, score percentiles, and discover your AI coding style.',
+    'See how builders collaborate with AI. Explore type distributions, score percentiles, and discover your AI builder profile.',
   openGraph: {
-    title: 'Global AI Coding Benchmarks | NoMoreAISlop',
+    title: 'Global AI Collaboration Benchmarks | BetterPrompt',
     description:
-      'See how developers collaborate with AI. Explore type distributions, score percentiles, and discover your AI coding style.',
+      'See how builders collaborate with AI. Explore type distributions, score percentiles, and discover your AI builder profile.',
     type: 'website',
     url: `${BASE_URL}/benchmarks`,
-    siteName: 'NoMoreAISlop',
+    siteName: 'BetterPrompt',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Global AI Coding Benchmarks | NoMoreAISlop',
+    title: 'Global AI Collaboration Benchmarks | BetterPrompt',
     description:
-      'See how developers collaborate with AI. Explore type distributions, score percentiles, and discover your AI coding style.',
+      'See how builders collaborate with AI. Explore type distributions, score percentiles, and discover your AI builder profile.',
   },
 };
 

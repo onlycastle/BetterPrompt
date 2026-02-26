@@ -26,7 +26,7 @@ import {
 import { DataExtractorWorker } from '../src/lib/analyzer/workers/data-extractor-worker';
 import type { WorkerContext, OrchestratorConfig } from '../src/lib/analyzer/orchestrator/types';
 import type { SessionMetrics } from '../src/lib/domain/models/analysis';
-import type { Phase1Output, DeveloperUtterance } from '../src/lib/models/phase1-output';
+import type { Phase1Output, UserUtterance } from '../src/lib/models/phase1-output';
 import type { ParsedSession } from '../src/lib/models/session';
 import type { SourcedParsedSession } from '../packages/cli/src/lib/scanner/sources/base';
 
@@ -151,7 +151,7 @@ function findStoreDbFiles(baseDir: string, count: number): StoreDbFile[] {
   return files.slice(0, count);
 }
 
-function printUtterance(index: number, utterance: DeveloperUtterance): void {
+function printUtterance(index: number, utterance: UserUtterance): void {
   const code = formatBoolean(utterance.hasCodeBlock);
   const question = formatBoolean(utterance.hasQuestion);
 

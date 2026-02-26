@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 
 export const runtime = 'nodejs';
 
-export const alt = 'NoMoreAISlop - AI Session Intelligence for Builders';
+export const alt = 'BetterPrompt - AI Session Intelligence for Builders';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -88,7 +88,7 @@ export default function Image() {
               marginBottom: 28,
             }}
           >
-            NoMoreAISlop
+            BetterPrompt
           </div>
 
           {/* Tagline */}
@@ -113,25 +113,6 @@ export default function Image() {
             }}
           >
             Behavior patterns, risk blind spots, and next steps.
-          </div>
-
-          {/* Terminal CTA */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              backgroundColor: 'rgba(0, 188, 212, 0.06)',
-              border: '1px solid rgba(0, 188, 212, 0.2)',
-              borderRadius: 8,
-              padding: '12px 28px',
-            }}
-          >
-            <div style={{ display: 'flex', color: '#00BCD4', fontSize: 22, marginRight: 14 }}>
-              {'\u25b8'}
-            </div>
-            <div style={{ display: 'flex', color: '#1A1A2E', fontSize: 22, fontWeight: 500 }}>
-              npx no-ai-slop
-            </div>
           </div>
 
           {/* Spacer */}
@@ -169,7 +150,7 @@ export default function Image() {
 
           {/* URL */}
           <div style={{ display: 'flex', fontSize: 15, color: '#8A8A9A' }}>
-            www.nomoreaislop.app
+            www.betterprompt.sh
           </div>
         </div>
       </div>

@@ -15,7 +15,7 @@ interface EmptyStatePromptProps {
 
 export function EmptyStatePrompt({
   title = 'No Analysis Available',
-  message = "You haven't run an analysis yet. Get started by analyzing your AI coding sessions.",
+  message = "You haven't run an analysis yet. Get started by analyzing your AI sessions.",
   showCommand = true,
 }: EmptyStatePromptProps) {
   return (
@@ -33,11 +33,9 @@ export function EmptyStatePrompt({
             <Terminal size={14} />
             <span>Run this command to get started</span>
           </div>
-          <code className={styles.command}>noslop analyze</code>
+          <code className={styles.command}>npx no-ai-slop</code>
         </div>
       )}
     </Card>
   );
 }
-
-export default EmptyStatePrompt;

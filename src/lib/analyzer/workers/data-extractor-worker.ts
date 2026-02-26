@@ -21,7 +21,7 @@
 import { BaseWorker, type WorkerResult, type WorkerContext } from './base-worker';
 import {
   type Phase1Output,
-  type DeveloperUtterance,
+  type UserUtterance,
   type Phase1SessionMetrics,
   type AIInsightBlock,
 } from '../../models/phase1-output';
@@ -141,7 +141,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     // Reset token usage for this execution
     this.filterTokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
-    const allDeveloperUtterances: DeveloperUtterance[] = [];
+    const allUserUtterances: UserUtterance[] = [];
     const allSlashCommands: string[] = [];
 
     // Process each session — extract ALL utterances first
@@ -156,10 +156,10 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       }
 
       const utterances = this.extractFromSession(session);
-      allDeveloperUtterances.push(...utterances);
+      allUserUtterances.push(...utterances);
     }
     const extractElapsed = Date.now() - extractStartTime;
-    this.log(`[Timing] Session extraction: ${extractElapsed}ms (${allDeveloperUtterances.length} utterances)`);
+    this.log(`[Timing] Session extraction: ${extractElapsed}ms (${allUserUtterances.length} utterances)`);
 
     // Extract AI insight blocks from assistant messages (deterministic, no LLM)
     const insightStartTime = Date.now();
@@ -172,11 +172,11 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
 
     // NEW: Apply LLM-based filtering to remove system metadata
     const filterStartTime = Date.now();
-    const filteredUtterances = await this.filterSystemMetadataWithLLM(allDeveloperUtterances);
+    const filteredUtterances = await this.filterSystemMetadataWithLLM(allUserUtterances);
     const filterElapsed = Date.now() - filterStartTime;
     this.log(`[Timing] LLM filtering: ${filterElapsed}ms`);
 
-    this.log(`Filtered ${allDeveloperUtterances.length - filteredUtterances.length} system metadata utterances`);
+    this.log(`Filtered ${allUserUtterances.length - filteredUtterances.length} system metadata utterances`);
 
     // Compute metrics from filtered data (accurate representation of developer input)
     const metricsStartTime = Date.now();
@@ -214,8 +214,8 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    * by tracking timestamp+text combinations to avoid counting the same
    * developer input multiple times.
    */
-  private extractFromSession(session: ParsedSession): DeveloperUtterance[] {
-    const utterances: DeveloperUtterance[] = [];
+  private extractFromSession(session: ParsedSession): UserUtterance[] {
+    const utterances: UserUtterance[] = [];
 
     // Track seen messages to deduplicate split complex messages
     // Key: timestamp ISO string + first 200 chars of cleaned text
@@ -269,7 +269,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     message: ParsedMessage,
     turnIndex: number,
     precedingAI: ParsedMessage | null
-  ): DeveloperUtterance {
+  ): UserUtterance {
     // Strip system-injected tags FIRST, before any processing
     const rawText = message.content;
     const originalText = this.stripSystemTags(rawText);
@@ -370,7 +370,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    */
   private computeSessionMetrics(
     sessions: ParsedSession[],
-    utterances: DeveloperUtterance[],
+    utterances: UserUtterance[],
     allSlashCommands: string[] = []
   ): Phase1SessionMetrics {
     const totalMessages = sessions.reduce((sum, s) => sum + s.messages.length, 0);
@@ -579,7 +579,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    */
   private computeFrictionSignals(
     sessions: ParsedSession[],
-    utterances: DeveloperUtterance[]
+    utterances: UserUtterance[]
   ): Phase1SessionMetrics['frictionSignals'] {
     let toolFailureCount = 0;
     let userRejectionSignals = 0;
@@ -666,7 +666,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     // Compute bare retry count and error chain max from utterances
     // (utterances have precedingAIHadError, wordCount, machineContentRatio)
     // Group utterances by session to compute per-session error chains
-    const utterancesBySession = new Map<string, DeveloperUtterance[]>();
+    const utterancesBySession = new Map<string, UserUtterance[]>();
     for (const u of utterances) {
       const group = utterancesBySession.get(u.sessionId) ?? [];
       group.push(u);
@@ -890,9 +890,9 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    * Delegates to shared utility (bookend + even spacing strategy).
    */
   private sampleUtterances(
-    all: DeveloperUtterance[],
+    all: UserUtterance[],
     maxCount: number
-  ): DeveloperUtterance[] {
+  ): UserUtterance[] {
     return strategicSampleUtterances(all, maxCount);
   }
 
@@ -976,8 +976,8 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    * @returns Filtered utterances with system metadata removed
    */
   private async filterSystemMetadataWithLLM(
-    utterances: DeveloperUtterance[]
-  ): Promise<DeveloperUtterance[]> {
+    utterances: UserUtterance[]
+  ): Promise<UserUtterance[]> {
     // Skip regex pre-filtering - rely solely on LLM classification
     // This allows LLM to handle all patterns including CLI/terminal output
     const preFiltered = utterances;
@@ -1000,7 +1000,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     this.log(`Classifying ${needsClassification.length} utterances for system metadata... (${totalBatches} batches, ${PARALLEL_LIMIT} parallel)`);
 
     // Prepare all batches
-    const batches: { index: number; items: DeveloperUtterance[] }[] = [];
+    const batches: { index: number; items: UserUtterance[] }[] = [];
     for (let i = 0; i < needsClassification.length; i += DataExtractorWorker.LLM_FILTER_BATCH_SIZE) {
       batches.push({
         index: batches.length + 1,
@@ -1009,7 +1009,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     }
 
     // Process batches in parallel with concurrency limit
-    const allResults: { batch: DeveloperUtterance[]; classifications: ContentClassification[] }[] = [];
+    const allResults: { batch: UserUtterance[]; classifications: ContentClassification[] }[] = [];
 
     for (let i = 0; i < batches.length; i += PARALLEL_LIMIT) {
       const parallelBatches = batches.slice(i, i + PARALLEL_LIMIT);
@@ -1030,7 +1030,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
     }
 
     // Process all classification results
-    const classifiedUtterances: DeveloperUtterance[] = [];
+    const classifiedUtterances: UserUtterance[] = [];
 
     for (const { batch, classifications } of allResults) {
       // Keep only utterances classified as developer input with sufficient confidence
@@ -1080,7 +1080,7 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
    * @returns Array of classifications in the same order as input
    */
   private async classifyBatch(
-    batch: DeveloperUtterance[]
+    batch: UserUtterance[]
   ): Promise<ContentClassification[]> {
     const inputs: ClassificationInput[] = batch.map(u => ({
       id: u.id,

@@ -26,16 +26,22 @@ interface SurveyData {
 }
 
 const STEPS = [
-  { command: '$ survey --pmf', question: 'How would you feel if you could no longer use NoMoreAISlop?' },
-  { command: '$ survey --target', question: 'What type of developer do you think would benefit most from NoMoreAISlop?' },
-  { command: '$ survey --value', question: 'What is the main benefit you receive from NoMoreAISlop?' },
-  { command: '$ survey --improve', question: 'How can we improve NoMoreAISlop for you?' },
+  { command: '$ survey --pmf', question: 'How would you feel if you could no longer use BetterPrompt?' },
+  { command: '$ survey --target', question: 'What type of builder do you think would benefit most from BetterPrompt?' },
+  { command: '$ survey --value', question: 'What is the main benefit you receive from BetterPrompt?' },
+  { command: '$ survey --improve', question: 'How can we improve BetterPrompt for you?' },
 ] as const;
 
 const DISAPPOINTMENT_OPTIONS: { value: DisappointmentLevel; label: string }[] = [
   { value: 'very_disappointed', label: 'Very disappointed' },
   { value: 'somewhat_disappointed', label: 'Somewhat disappointed' },
   { value: 'not_disappointed', label: 'Not disappointed' },
+];
+
+const TEXT_FIELDS: Array<{ field: 'targetUser' | 'mainBenefit' | 'improvement'; maxLength: number; placeholder: string }> = [
+  { field: 'targetUser', maxLength: 300, placeholder: 'e.g., "PMs and designers who build with AI tools daily"' },
+  { field: 'mainBenefit', maxLength: 300, placeholder: 'e.g., "Understanding how I actually collaborate with AI"' },
+  { field: 'improvement', maxLength: 500, placeholder: 'Any feature, change, or fix that would help...' },
 ];
 
 interface SurveyBottomSheetProps {
@@ -162,13 +168,7 @@ export function SurveyBottomSheet({ resultId, onDismiss, mode = 'full', disappoi
     }
   }, [handleNext]);
 
-  const textFields: Array<{ field: 'targetUser' | 'mainBenefit' | 'improvement'; maxLength: number; placeholder: string }> = [
-    { field: 'targetUser', maxLength: 300, placeholder: 'e.g., "Backend developers who use AI coding assistants daily"' },
-    { field: 'mainBenefit', maxLength: 300, placeholder: 'e.g., "Understanding how I actually collaborate with AI"' },
-    { field: 'improvement', maxLength: 500, placeholder: 'Any feature, change, or fix that would help...' },
-  ];
-
-  const currentTextField = step > 0 ? textFields[step - 1] : null;
+  const currentTextField = step > 0 ? TEXT_FIELDS[step - 1] : null;
   const isLastStep = step === 3;
 
   return (

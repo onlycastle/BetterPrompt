@@ -20,10 +20,8 @@ export function TerminalCommand({ command, location = 'hero' }: TerminalCommandP
   const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(command);
-      setCopied(true);
-      track('cta_copy', { location });
-      setTimeout(() => setCopied(false), 3000);
     } catch {
+      // Fallback for older browsers / restricted contexts
       const textArea = document.createElement('textarea');
       textArea.value = command;
       textArea.style.position = 'fixed';
@@ -32,10 +30,10 @@ export function TerminalCommand({ command, location = 'hero' }: TerminalCommandP
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      setCopied(true);
-      track('cta_copy', { location });
-      setTimeout(() => setCopied(false), 3000);
     }
+    setCopied(true);
+    track('cta_copy', { location });
+    setTimeout(() => setCopied(false), 3000);
   }, [command, location]);
 
   const handleMobileCta = useCallback(() => {
@@ -43,7 +41,7 @@ export function TerminalCommand({ command, location = 'hero' }: TerminalCommandP
     // Bookmark prompt — mobile users can't run CLI
     if (navigator.share) {
       navigator.share({
-        title: 'NoMoreAISlop - AI Session Intelligence for Builders',
+        title: 'BetterPrompt - AI Session Intelligence for Builders',
         url: window.location.href,
       }).catch(() => {});
     } else {
@@ -60,12 +58,12 @@ export function TerminalCommand({ command, location = 'hero' }: TerminalCommandP
     : `Copy command: ${command}`;
 
   let copyHint: string;
-  if (!copied) {
-    copyHint = isMobile ? 'Save for desktop' : 'Click to copy';
-  } else {
+  if (copied) {
     copyHint = isMobile
       ? '\u2713 Link saved!'
       : '\u2713 Copied! Paste in terminal \u2192 2 min \u2192 See your report';
+  } else {
+    copyHint = isMobile ? 'Save for desktop' : 'Click to copy';
   }
 
   return (

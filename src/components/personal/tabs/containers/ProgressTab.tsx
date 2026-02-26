@@ -80,7 +80,7 @@ export function ProgressTab({ analytics, isPremium = false }: ProgressTabProps) 
             <h3>Skill Evolution Timeline</h3>
           </div>
           <p className={styles.premiumTeaserText}>
-            See how your coding style has evolved over time, including key
+            See how your collaboration style has evolved over time, including key
             milestones and type transitions.
           </p>
           <div className={styles.premiumTeaserBlur}>
@@ -98,5 +98,3 @@ export function ProgressTab({ analytics, isPremium = false }: ProgressTabProps) 
     </div>
   );
 }
-
-export default ProgressTab;
