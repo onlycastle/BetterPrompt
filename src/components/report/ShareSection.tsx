@@ -72,9 +72,9 @@ export function ShareSection({
   const [copied, setCopied] = useState(false);
   const shareUrl = reportId ? `${baseUrl}/r/${reportId}` : '';
 
-  const tweetText = encodeURIComponent(`I'm a ${typeMeta.name} ${typeMeta.emoji} developer!
+  const tweetText = encodeURIComponent(`I'm a ${typeMeta.name} ${typeMeta.emoji} builder!
 
-My AI Coding Style:
+My AI Builder Profile:
 "${typeMeta.tagline}"
 
 Top Strength: ${typeMeta.strengths[0]}
@@ -82,7 +82,7 @@ Top Strength: ${typeMeta.strengths[0]}
 What's YOUR style? Find out:
 ${shareUrl}
 
-#NoMoreAISlop #AICollaboration #DeveloperTools`);
+#BetterPrompt #AICollaboration #AIBuilders`);
 
   const twitterUrl = `https://twitter.com/intent/tweet?text=${tweetText}`;
   const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
@@ -112,7 +112,7 @@ ${shareUrl}
     }
   }, [shareUrl, baseUrl, reportId]);
 
-  const dashboardUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
+  const dashboardUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
   return (
     <div className={styles.container}>
@@ -132,7 +132,7 @@ ${shareUrl}
       {reportId && (
         <>
           <h3 className={styles.title}>Share Your Results</h3>
-          <p className={styles.subtitle}>Show off your AI coding style!</p>
+          <p className={styles.subtitle}>Show off your AI builder profile!</p>
 
           <div className={styles.shareButtons}>
             <button className={`${styles.shareBtn} ${styles.twitter}`} onClick={handleTwitterClick}>

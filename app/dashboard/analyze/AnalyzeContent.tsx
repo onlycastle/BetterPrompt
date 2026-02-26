@@ -23,6 +23,14 @@ interface RecentAnalysis {
   claimedAt: string;
 }
 
+function formatDate(isoString: string): string {
+  return new Date(isoString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 export function AnalyzeContent() {
   const { isAuthenticated, isLoading: authLoading, signInWithGitHub } = useAuth();
   const [recentAnalysis, setRecentAnalysis] = useState<RecentAnalysis | null>(null);
@@ -64,15 +72,6 @@ export function AnalyzeContent() {
     }
   };
 
-  const formatDate = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
   // Loading state
   if (authLoading) {
     return (
@@ -93,7 +92,7 @@ export function AnalyzeContent() {
           <div className={styles.loginIcon}>&#128274;</div>
           <h1 className={styles.loginTitle}>Sign in to Analyze</h1>
           <p className={styles.loginDescription}>
-            Connect your GitHub account to start analyzing your AI coding sessions.
+            Connect your GitHub account to start analyzing your AI sessions.
           </p>
           <button
             onClick={handleGitHubLogin}
@@ -115,7 +114,7 @@ export function AnalyzeContent() {
       <header className={styles.header}>
         <h1 className={styles.title}>Analyze Your Sessions</h1>
         <p className={styles.subtitle}>
-          Discover your AI collaboration patterns and coding style
+          Discover your AI collaboration patterns and builder style
         </p>
       </header>
 

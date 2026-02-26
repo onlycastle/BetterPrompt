@@ -9,7 +9,7 @@ import styles from './page.module.css';
 
 export const metadata = {
   title: 'Personal | NoMoreAISlop',
-  description: 'Your AI coding analysis and growth journey',
+  description: 'Your AI analysis and growth journey',
 };
 
 function LoadingFallback() {

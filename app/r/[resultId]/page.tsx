@@ -19,7 +19,7 @@ import styles from './page.module.css';
 // Client component for data fetching
 import { RemoteReportContent } from './RemoteReportContent';
 
-const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://www.nomoreaislop.app';
+const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://www.betterprompt.sh';
 
 interface PageProps {
   params: Promise<{ resultId: string }>;
@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { resultId } = await params;
 
   // Default metadata - can be enhanced by fetching result server-side
-  const title = 'See Where You Make AI Slop | NoMoreAISlop';
+  const title = 'See Where You Make AI Slop | BetterPrompt';
   const description =
     'See exactly where your AI workflow breaks down — anti-patterns, blind spots, and how to fix them.';
 
@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       type: 'website',
       url: `${BASE_URL}/r/${resultId}`,
-      siteName: 'NoMoreAISlop',
+      siteName: 'BetterPrompt',
     },
     twitter: {
       card: 'summary_large_image',

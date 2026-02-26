@@ -4,7 +4,7 @@ import type { TypeResult } from '@/lib/models/coding-style';
 
 export const runtime = 'nodejs';
 
-export const alt = 'AI Coding Style Report | NoMoreAISlop';
+export const alt = 'AI Builder Profile | BetterPrompt';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -43,12 +43,12 @@ function GenericImage() {
       }}
     >
       <div style={{ fontSize: 64, fontWeight: 700, color: '#00d4ff', marginBottom: 16 }}>
-        NoMoreAISlop
+        BetterPrompt
       </div>
       <div style={{ fontSize: 28, color: '#888888', marginBottom: 40 }}>
-        AI Coding Style Report
+        AI Builder Profile
       </div>
-      <div style={{ fontSize: 20, color: '#00d4ff', opacity: 0.7 }}>www.nomoreaislop.app</div>
+      <div style={{ fontSize: 20, color: '#00d4ff', opacity: 0.7 }}>www.betterprompt.sh</div>
     </div>
   );
 }
@@ -141,7 +141,7 @@ export default async function Image({ params }: { params: { resultId: string } }
           }}
         >
           <div style={{ fontSize: 20, color: '#666666', marginBottom: 24, letterSpacing: 2 }}>
-            YOUR AI CODING STYLE
+            YOUR AI BUILDER PROFILE
           </div>
 
           <div style={{ fontSize: 72, marginBottom: 8 }}>{typeInfo.emoji}</div>
@@ -161,7 +161,7 @@ export default async function Image({ params }: { params: { resultId: string } }
             {percentage}% match
           </div>
 
-          <div style={{ fontSize: 16, color: '#00d4ff', opacity: 0.6 }}>www.nomoreaislop.app</div>
+          <div style={{ fontSize: 16, color: '#00d4ff', opacity: 0.6 }}>www.betterprompt.sh</div>
         </div>
 
         {/* Right side: Domain scores (if available) */}

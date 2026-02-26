@@ -49,7 +49,7 @@ function generateOGImageSVG(typeResult: TypeResult): string {
   <!-- Title -->
   <text x="600" y="120" text-anchor="middle"
         font-family="monospace" font-size="28" fill="#888888">
-    YOUR AI CODING STYLE
+    YOUR AI BUILDER PROFILE
   </text>
 
   <!-- Type emoji and name -->
@@ -73,7 +73,7 @@ function generateOGImageSVG(typeResult: TypeResult): string {
   <!-- CTA -->
   <text x="600" y="550" text-anchor="middle"
         font-family="monospace" font-size="24" fill="#00d4ff">
-    www.nomoreaislop.app
+    www.betterprompt.sh
   </text>
 
   <!-- Scanlines effect -->
