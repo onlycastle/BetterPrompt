@@ -7,6 +7,7 @@ import styles from './Sidebar.module.css';
 
 export type AppRoute =
   | 'login'
+  | 'quick-fix'
   | 'analyze'
   | 'results'
   | 'dashboard'
@@ -24,7 +25,8 @@ interface SidebarProps {
 }
 
 const NAV_ITEMS: Array<{ route: AppRoute; label: string }> = [
-  { route: 'analyze', label: 'Analyze' },
+  { route: 'quick-fix', label: 'Solve Issue' },
+  { route: 'analyze', label: 'Full Profile' },
   { route: 'dashboard', label: 'Dashboard' },
   { route: 'browse', label: 'Knowledge' },
   { route: 'personal', label: 'Personal' },

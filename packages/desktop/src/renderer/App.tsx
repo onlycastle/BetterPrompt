@@ -5,6 +5,7 @@ import { QueryProvider } from './providers/QueryProvider';
 import { Sidebar, type AppRoute } from './components/navigation';
 import { useCredits } from './hooks';
 import LoginPage from './pages/LoginPage';
+import QuickFixPage from './pages/QuickFixPage';
 import AnalyzePage from './pages/AnalyzePage';
 import ResultsPage from './pages/ResultsPage';
 import DashboardPage from './pages/DashboardPage';
@@ -25,7 +26,7 @@ function AppContent() {
       if (!isAuthenticated) {
         setRoute('login');
       } else if (route === 'login') {
-        setRoute('analyze');
+        setRoute('quick-fix');
       }
     }
   }, [isAuthenticated, isLoading, route]);
@@ -101,6 +102,8 @@ function AppContent() {
 
   function renderPage() {
     switch (route) {
+      case 'quick-fix':
+        return <QuickFixPage />;
       case 'analyze':
         // Pass initialResultId for deep link handling (e.g., payment-success)
         return <AnalyzePage initialResultId={resultId} />;
@@ -137,7 +140,7 @@ function AppContent() {
           />
         );
       default:
-        return <AnalyzePage initialResultId={resultId} />;
+        return <QuickFixPage />;
     }
   }
 }
