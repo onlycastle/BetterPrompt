@@ -228,3 +228,21 @@ export {
   parseLearningBehaviorLLMOutput,
   createEmptyLearningBehaviorOutput,
 } from './learning-behavior-data';
+
+// ============================================================================
+// Quick Fix Types (Dual-Path: Quick Fix Pipeline)
+// ============================================================================
+export {
+  BottleneckSeveritySchema,
+  type BottleneckSeverity,
+  BottleneckCategorySchema,
+  type BottleneckCategory,
+  BottleneckLLMSchema,
+  type BottleneckLLM,
+  BottleneckDetectorLLMOutputSchema,
+  type BottleneckDetectorLLMOutput,
+  type Bottleneck,
+  type QuickFixResult,
+  parseBottleneckDetectorOutput,
+  QUICK_FIX_TIER_POLICY,
+} from './quick-fix-data';
