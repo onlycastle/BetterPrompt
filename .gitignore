@@ -60,6 +60,8 @@ packages/desktop/dist/
 
 # Phase 1 cache (generated, user-specific session data)
 scripts/fixtures/phase1-cache/
+scripts/fixtures/phase2-cache/
+scripts/fixtures/phase3-cache/
 
 # Local troubleshooting notes
 trouble_shooting/

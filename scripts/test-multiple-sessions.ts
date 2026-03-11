@@ -6,18 +6,12 @@ import 'dotenv/config';
 import { SessionParser } from '../src/lib/parser';
 import { createVerboseAnalyzer } from '../src/lib/analyzer/verbose-analyzer';
 
-const SESSION_PATHS = [
-  // Wedding invitation project
-  '/Users/sungmancho/.claude/projects/-Users-sungmancho-projects-weddingletter-invitation/128cad25-b36c-44f5-8efc-ba3aaabfdd25.jsonl',
-  // alfredworks project
-  '/Users/sungmancho/.claude/projects/-Users-sungmancho-projects-alfredworks/3288b320-9d5b-452a-a0d2-7e5ac39d5360.jsonl',
-  '/Users/sungmancho/.claude/projects/-Users-sungmancho-projects-alfreadworks/bd86171d-ad89-4a82-b3b4-19fe3c7a7c24.jsonl',
-  '/Users/sungmancho/.claude/projects/-Users-sungmancho-projects-alfreadworks/927ecd0c-058b-4e0a-bf14-b1b044c72ec3.jsonl',
-  // nomoreaislop project
-  '/Users/sungmancho/.claude/projects/-Users-sungmancho-projects-nomoreaislop/0e02c9f0-fa6b-46e5-9c56-b01ee65433ab.jsonl',
-  '/Users/sungmancho/.claude/projects/-Users-sungmancho-projects-nomoreaislop/7049f725-49ff-457e-afa3-369bad172291.jsonl',
-  '/Users/sungmancho/.claude/projects/-Users-sungmancho-projects-nomoreaislop/1f8eab69-556a-4248-bfc1-d990715476fa.jsonl',
-];
+const SESSION_PATHS = process.argv.slice(2).length > 0
+  ? process.argv.slice(2)
+  : (process.env.NOSLOP_TEST_SESSION_PATHS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
 
 const SYSTEM_METADATA_PATTERNS = [
   { name: 'Base directory for this skill', regex: /Base directory for this skill/i },
@@ -134,6 +128,12 @@ async function analyzeSession(sessionPath: string): Promise<{
 }
 
 async function main() {
+  if (SESSION_PATHS.length === 0) {
+    throw new Error(
+      'Provide one or more JSONL paths as arguments or set NOSLOP_TEST_SESSION_PATHS.'
+    );
+  }
+
   console.log('='.repeat(80));
   console.log('Testing System Metadata Filtering Across Multiple Sessions');
   console.log('='.repeat(80));

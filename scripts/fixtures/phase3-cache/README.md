@@ -40,7 +40,7 @@ Phase 3 cache enables fast testing of:
 
 ## Contents
 
-- `phase3-cache.json` - Cached Phase 3 output (generated, not committed)
+- `phase3-cache.json` - Cached Phase 3 output (generated locally, intentionally gitignored)
 
 ## Generation
 
@@ -99,3 +99,8 @@ Regenerate the cache when:
 - New version of Phase 2 cache is generated
 
 The `generatorVersion` field tracks schema changes for invalidation.
+
+## Security
+
+- Never commit generated cache JSON from real sessions.
+- Never store API keys or workstation-specific absolute paths in cache artifacts.

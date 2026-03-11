@@ -58,7 +58,7 @@ import {
 // Configuration
 // ============================================================================
 
-const DEFAULT_JSONL_PATH = '/Users/sungmancho/.claude/projects/-Users-sungmancho-projects-nomoreaislop/e3988e3b-3c6c-4fe5-bd90-99b93009c4cb.jsonl';
+const DEFAULT_JSONL_PATH = process.env.NOSLOP_TEST_JSONL_PATH || '';
 
 function printWorkerStrengths(strengths: WorkerStrength[] | undefined, workerName: string): void {
   if (!strengths || strengths.length === 0) {
@@ -423,6 +423,10 @@ async function main() {
 
     sessions = [];
   } else {
+    if (!jsonlPath) {
+      console.error('Provide a JSONL path or set NOSLOP_TEST_JSONL_PATH for fresh Phase 2 runs.');
+      process.exit(1);
+    }
     // FRESH MODE: Parse JSONL and run Phase 1
     const fileName = jsonlPath.split('/').pop() ?? 'unknown';
     console.log('Mode: FRESH (running Phase 1)');

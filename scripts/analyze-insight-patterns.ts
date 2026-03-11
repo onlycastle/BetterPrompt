@@ -3,10 +3,11 @@
  */
 
 import * as fs from 'fs';
+import * as os from 'os';
 import * as readline from 'readline';
 import * as path from 'path';
 
-const PROJECTS_DIR = '/Users/sungmancho/.claude/projects';
+const PROJECTS_DIR = process.env.CLAUDE_PROJECTS_DIR || path.join(os.homedir(), '.claude', 'projects');
 
 interface PatternMatch {
   pattern: string;

@@ -3,9 +3,10 @@
  */
 import Database from 'better-sqlite3';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
-const CURSOR_DIR = '/Users/sungmancho/.cursor/chats';
+const CURSOR_DIR = process.env.CURSOR_CHATS_DIR || path.join(os.homedir(), '.cursor', 'chats');
 
 // Find latest store.db
 const workspaces = fs.readdirSync(CURSOR_DIR);

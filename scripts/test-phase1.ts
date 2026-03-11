@@ -34,7 +34,7 @@ import { calculateActualCost, GEMINI_PRICING } from '../src/lib/analyzer/cost-es
 // ============================================================================
 
 const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
-const DEFAULT_JSONL_PATH = '/Users/sungmancho/.claude/projects/-Users-sungmancho-projects-nomoreaislop/e3988e3b-3c6c-4fe5-bd90-99b93009c4cb.jsonl';
+const DEFAULT_JSONL_PATH = process.env.NOSLOP_TEST_JSONL_PATH || '';
 
 // ============================================================================
 // Helper Functions
@@ -206,6 +206,10 @@ async function main() {
 
   // Use default path if none provided
   if (jsonlPaths.length === 0) {
+    if (!DEFAULT_JSONL_PATH) {
+      console.error('Provide a JSONL path, use -n=COUNT, or set NOSLOP_TEST_JSONL_PATH.');
+      process.exit(1);
+    }
     jsonlPaths.push(DEFAULT_JSONL_PATH);
   }
 
