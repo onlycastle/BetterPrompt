@@ -11,7 +11,7 @@ export function HeroSection() {
   const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
 
   const handleCtaClick = () => {
-    track('cta_click', { location: 'hero', type: 'try_it_free' });
+    track('cta_click', { location: 'hero', type: 'self_hosted_get_started' });
     setIsWaitlistOpen(true);
   };
 
@@ -19,16 +19,17 @@ export function HeroSection() {
     <section id="hero" className={styles.hero}>
       <div className={styles.content}>
         <h1 className={styles.headline}>
-          The right question changes everything.
+          See how you actually work with AI.
         </h1>
 
         <p className={styles.subheadline}>
-          BetterPrompt reads your AI chat history, analyzes your codebase, and tells you exactly how to eliminate roadblocks.
+          NoMoreAISlop runs on your own server, analyzes your Claude Code and Cursor sessions
+          with your Gemini API key, and stores reports locally.
         </p>
 
         <div className={styles.cta}>
           <Button variant="primary" size="lg" onClick={handleCtaClick}>
-            Try It Free
+            Get Started
           </Button>
         </div>
 

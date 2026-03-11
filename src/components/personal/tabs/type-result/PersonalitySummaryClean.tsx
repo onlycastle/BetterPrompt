@@ -20,8 +20,6 @@ import {
 import type { CodingStyleType, TypeResult } from '../../../../lib/models/coding-style';
 import styles from './PersonalitySummaryClean.module.css';
 
-const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://www.nomoreaislop.app';
-
 interface PersonalitySummaryCleanProps {
   summary: string;
   matrixName?: string;
@@ -121,6 +119,9 @@ export function PersonalitySummaryClean({
 }: PersonalitySummaryCleanProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const baseUrl = typeof window !== 'undefined'
+    ? window.location.origin
+    : (process.env.NOSLOP_BASE_URL || 'http://localhost:3000');
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message);
@@ -170,7 +171,7 @@ export function PersonalitySummaryClean({
 
   const handleCopyLink = useCallback(async () => {
     if (!reportId) return;
-    const shareUrl = `${BASE_URL}/r/${reportId}`;
+    const shareUrl = `${baseUrl}/r/${reportId}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
       showToast('Link copied to clipboard!');
@@ -178,7 +179,7 @@ export function PersonalitySummaryClean({
       showToast('Failed to copy. Please try again.');
     }
     trackShare(reportId, 'copy_link');
-  }, [reportId, showToast]);
+  }, [baseUrl, reportId, showToast]);
 
   return (
     <Card
@@ -277,7 +278,7 @@ export function PersonalitySummaryClean({
               Copy Link
             </button>
           </div>
-          <span className={styles.watermark}>nomoreaislop.app</span>
+          <span className={styles.watermark}>{new URL(baseUrl).host}</span>
         </div>
       )}
 

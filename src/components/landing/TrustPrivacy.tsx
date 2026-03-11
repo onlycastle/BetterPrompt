@@ -9,11 +9,11 @@ import styles from './TrustPrivacy.module.css';
 const TRUST_ITEMS = [
   {
     icon: Shield,
-    text: 'Your AI chat history and codebase data are removed after analysis',
+    text: 'You choose which sessions to analyze on your own server',
   },
   {
     icon: Lock,
-    text: 'Data encrypted in transit, never stored on our servers',
+    text: 'Auth and report history stay in local SQLite, not a hosted database',
   },
   {
     icon: EyeOff,
@@ -47,7 +47,7 @@ export function TrustPrivacy() {
         </div>
 
         <p className={styles.clarification}>
-          BetterPrompt analyzes your AI chat history for a single project. All data is removed from our servers after your report is generated.
+          The CLI reads session data locally, sends it to your self-hosted Next.js server for Gemini analysis, and stores the result under your control.
         </p>
       </div>
     </section>

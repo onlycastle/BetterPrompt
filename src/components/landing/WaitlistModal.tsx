@@ -1,21 +1,13 @@
 'use client';
 
-/**
- * WaitlistModal - Reusable email signup modal for various waitlists
- * Supports multiple waitlist types via config props
- */
-
-import { useState, useEffect, useCallback, ReactNode } from 'react';
-import { X, Check } from 'lucide-react';
+import { useEffect, useCallback, type ReactNode } from 'react';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import styles from './WaitlistModal.module.css';
 
-/** Waitlist source types for Supabase tracking */
 export type WaitlistType = 'macos_app' | 'pro_subscription' | 'enterprise_contact' | 'free_trial';
 
-/** Configuration for customizing modal content */
 export interface WaitlistConfig {
   type: WaitlistType;
   title: string;
@@ -27,93 +19,90 @@ export interface WaitlistConfig {
   highlight?: ReactNode;
 }
 
-/** Pre-configured waitlist presets */
 export const waitlistConfigs: Record<WaitlistType, WaitlistConfig> = {
   macos_app: {
     type: 'macos_app',
-    title: 'Coming Soon',
+    title: 'Desktop App Removed',
     subtitle: (
       <>
-        We're crafting the macOS app.
+        The supported open-source product is the
         <br />
-        Join the waitlist to be notified when it's ready.
+        self-hosted server plus CLI workflow.
       </>
     ),
-    successTitle: "You're on the list!",
+    successTitle: 'Desktop app removed',
     successMessage: (
       <>
-        We'll notify you when the
+        Start the server locally and run the CLI
         <br />
-        macOS app is ready.
+        against your own machine instead.
       </>
     ),
-    disclaimer: "We'll only email about the macOS app launch. No spam.",
-    ctaText: 'Notify Me',
+    disclaimer: 'No desktop binary is required for the OSS build.',
+    ctaText: 'Open Dashboard',
   },
   pro_subscription: {
     type: 'pro_subscription',
-    title: 'PRO Coming Soon',
+    title: 'Self-Hosted Setup',
     subtitle: (
       <>
-        Personalized data analysis with regular assessments
+        Run the Next.js server locally,
         <br />
-        Custom learning materials and feedback for your growth
+        then connect the CLI to it.
       </>
     ),
-    successTitle: "You're on the early bird list!",
+    successTitle: 'Self-hosted only',
     successMessage: (
       <>
-        We'll notify you when PRO launches
+        Billing and hosted upgrades are removed.
         <br />
-        with your exclusive 50% discount code.
+        The full report is available by default.
       </>
     ),
-    disclaimer: "We'll only email about PRO launch. No spam.",
-    ctaText: 'Join Waitlist',
-    highlight: <div className={styles.earlyBirdBanner}>🎁 Early bird: 50% off for 3 months</div>,
+    disclaimer: 'Requires GOOGLE_GEMINI_API_KEY in your local .env file.',
+    ctaText: 'Read Setup Docs',
   },
   enterprise_contact: {
     type: 'enterprise_contact',
-    title: 'Enterprise Solutions',
+    title: 'Team Rollout',
     subtitle: (
       <>
-        Team capability testing and performance tracking
+        Use the same self-hosted server for teammates
         <br />
-        Tailored solutions for your organization
+        and invite them with local accounts.
       </>
     ),
-    successTitle: "We'll be in touch!",
+    successTitle: 'Team support is local-first',
     successMessage: (
       <>
-        Our team will reach out to discuss
+        There is no hosted enterprise sales flow
         <br />
-        your enterprise needs.
+        in the OSS build.
       </>
     ),
-    disclaimer: "We'll only email about enterprise solutions. No spam.",
-    ctaText: 'Contact Sales',
-    highlight: <div className={styles.enterpriseBadge}>🏢 Custom plans for teams</div>,
+    disclaimer: 'Commercial support and hosted onboarding are out of scope for this repo.',
+    ctaText: 'Open Dashboard',
   },
   free_trial: {
     type: 'free_trial',
-    title: 'Get Early Access',
+    title: 'Quick Start',
     subtitle: (
       <>
-        BetterPrompt is in private beta.
+        Start the server, sign in,
         <br />
-        Join the waitlist and be the first to try it.
+        and run the CLI against your own Gemini key.
       </>
     ),
-    successTitle: "You're in!",
+    successTitle: 'Ready locally',
     successMessage: (
       <>
-        We'll send you an invite
+        No waitlist, no billing, no managed backend.
         <br />
-        as soon as your spot opens up.
+        Everything runs on your own server.
       </>
     ),
-    disclaimer: "We'll only email about your access. No spam.",
-    ctaText: 'Get Early Access',
+    disclaimer: 'Use .env.example and README.md for the full setup path.',
+    ctaText: 'Open Dashboard',
   },
 };
 
@@ -123,18 +112,15 @@ interface WaitlistModalProps {
   config?: WaitlistConfig;
 }
 
-type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error' | 'already_exists';
+function getPrimaryHref(type: WaitlistType): string {
+  return type === 'pro_subscription' ? '/docs' : '/dashboard/analyze';
+}
 
 export function WaitlistModal({
   isOpen,
   onClose,
   config = waitlistConfigs.macos_app,
 }: WaitlistModalProps) {
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<SubmitStatus>('idle');
-  const [error, setError] = useState<string | null>(null);
-
-  // Handle Escape key
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       onClose();
@@ -148,59 +134,11 @@ export function WaitlistModal({
     }
   }, [isOpen, handleKeyDown]);
 
-  // Reset state when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setEmail('');
-      setStatus('idle');
-      setError(null);
-    }
-  }, [isOpen]);
-
   if (!isOpen) return null;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setStatus('submitting');
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
-      setStatus('error');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: config.type }),
-      });
-
-      const data = await response.json();
-
-      if (data.status === 'already_exists') {
-        setStatus('already_exists');
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to join waitlist');
-      }
-
-      setStatus('success');
-    } catch (err) {
-      console.error('[Waitlist] Error:', err);
-      setError('Something went wrong. Please try again.');
-      setStatus('error');
-    }
-  };
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <Card className={styles.modal} onClick={e => e.stopPropagation()}>
+      <Card className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <button
           className={styles.closeButton}
           onClick={onClose}
@@ -209,50 +147,48 @@ export function WaitlistModal({
           <X size={20} />
         </button>
 
-        {status === 'success' ? (
-          <div className={styles.successState}>
-            <Check className={styles.checkmark} size={48} strokeWidth={2.5} />
-            <h2 className={styles.successTitle}>{config.successTitle}</h2>
-            <p className={styles.successMessage}>{config.successMessage}</p>
-          </div>
-        ) : (
-          <>
-            <h2 className={styles.title}>{config.title}</h2>
-            <p className={styles.subtitle}>{config.subtitle}</p>
+        <h2 className={styles.title}>{config.title}</h2>
+        <p className={styles.subtitle}>{config.subtitle}</p>
 
-            {config.highlight}
+        {config.highlight}
 
-            <form onSubmit={handleSubmit} className={styles.form}>
-              <Input
-                type="email"
-                placeholder="your@email.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                autoFocus
-              />
+        <div className={styles.form}>
+          <p className={styles.disclaimer}>
+            1. <code>cp .env.example .env</code>
+          </p>
+          <p className={styles.disclaimer}>
+            2. Set <code>GOOGLE_GEMINI_API_KEY</code>
+          </p>
+          <p className={styles.disclaimer}>
+            3. Run <code>npm run dev</code>
+          </p>
+          <p className={styles.disclaimer}>
+            4. Run <code>npx no-ai-slop</code>
+          </p>
 
-              {status === 'error' && error && (
-                <p className={styles.error}>{error}</p>
-              )}
+          <Button
+            type="button"
+            onClick={() => {
+              window.location.href = getPrimaryHref(config.type);
+              onClose();
+            }}
+          >
+            {config.ctaText}
+          </Button>
 
-              {status === 'already_exists' && (
-                <p className={styles.alreadyOnList}>You're already on the list!</p>
-              )}
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              window.location.href = '/docs';
+              onClose();
+            }}
+          >
+            Read Docs
+          </Button>
+        </div>
 
-              <Button
-                type="submit"
-                loading={status === 'submitting'}
-                disabled={status === 'already_exists'}
-              >
-                {config.ctaText}
-              </Button>
-            </form>
-
-            <p className={styles.disclaimer}>{config.disclaimer}</p>
-          </>
-        )}
+        <p className={styles.disclaimer}>{config.disclaimer}</p>
       </Card>
     </div>
   );

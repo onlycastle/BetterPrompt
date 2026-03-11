@@ -7,7 +7,7 @@
  * 2. Activity  — Coding heatmap + session stats (your world)
  * 3. Strengths — All domain strengths aggregated (your shining moments)
  * 4. Growth    — All domain diagnoses sorted by severity (the turn)
- * 5. Unlock    — Cliffhanger paywall (prescriptions locked)
+ * 5. Next Step — Follow-up guidance and resources
  *
  * NarrativeMoment components act as chapter breaks between sections.
  * FloatingProgressDots tracks story progress on the right side.
@@ -21,12 +21,8 @@ import { ReportSummarySection } from '../shared/ReportSummarySection';
 import { StrengthsOverview } from '../insights/StrengthsOverview';
 import { DiagnosisOverview } from '../insights/DiagnosisOverview';
 import { NarrativeMoment } from '../../../report/NarrativeMoment';
-import { CliffhangerWall } from '../../../report/CliffhangerWall';
 import { useScrollSpy } from '../../../../hooks/useScrollSpy';
 import { useScrollProgress } from '../../../../hooks/useScrollProgress';
-import { SurveyInlineCard } from '../../../report/SurveyInlineCard';
-import { SurveyBottomSheet } from '../../../report/SurveyBottomSheet';
-import type { DisappointmentLevel } from '../../../report/SurveyBottomSheet';
 import type { VerboseAnalysisData, AnalysisMetadata, DimensionResourceMatch } from '../../../../types/verbose';
 import type { AgentOutputs, ParsedResource } from '../../../../lib/models/agent-outputs';
 import { aggregateWorkerInsights } from '../../../../lib/models/agent-outputs';
@@ -124,10 +120,7 @@ interface TabbedReportContainerProps {
   analysis: VerboseAnalysisData;
   agentOutputs?: AgentOutputs;
   analysisMetadata?: AnalysisMetadata;
-  isPaid?: boolean;
   reportId?: string;
-  credits?: number | null;
-  onCreditsUsed?: () => void;
   showProgressDots?: boolean;
   showResourceSidebar?: boolean;
   experience?: ReportExperience;
@@ -137,10 +130,7 @@ export function TabbedReportContainer({
   analysis,
   agentOutputs,
   analysisMetadata,
-  isPaid = false,
   reportId,
-  credits,
-  onCreditsUsed,
   showProgressDots = true,
   showResourceSidebar = true,
   experience,
@@ -180,10 +170,6 @@ export function TabbedReportContainer({
       });
     }
   }, [activeTab]);
-
-  // Survey enrichment mode
-  const [enrichmentOpen, setEnrichmentOpen] = useState(false);
-  const [enrichmentLevel, setEnrichmentLevel] = useState<DisappointmentLevel | null>(null);
 
   // FloatingProgressDots visibility: show when header scrolls out of view
   const [navVisible, setNavVisible] = useState(false);
@@ -490,26 +476,6 @@ export function TabbedReportContainer({
             </SectionFlowReveal>
           </div>
 
-          {/* ── Cliffhanger Paywall ── */}
-          {!isPaid && (
-            <CliffhangerWall
-              workerInsights={workerInsights}
-              resultId={reportId}
-              credits={credits}
-              onCreditsUsed={onCreditsUsed}
-            />
-          )}
-
-          {/* PMF Survey Inline Card — after all sections */}
-          {reportId && (
-            <SurveyInlineCard
-              resultId={reportId}
-              onExpand={(level) => {
-                setEnrichmentLevel(level);
-                setEnrichmentOpen(true);
-              }}
-            />
-          )}
         </div>
       </div>
 
@@ -530,15 +496,6 @@ export function TabbedReportContainer({
         onClose={() => setSourceContext(null)}
       />
 
-      {/* Survey Bottom Sheet */}
-      {enrichmentOpen && reportId && enrichmentLevel && (
-        <SurveyBottomSheet
-          resultId={reportId}
-          onDismiss={() => setEnrichmentOpen(false)}
-          mode="enrichment"
-          disappointmentLevel={enrichmentLevel}
-        />
-      )}
     </div>
   );
 }

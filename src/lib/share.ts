@@ -13,7 +13,7 @@ import { TYPE_METADATA } from './models/coding-style';
 /**
  * Base URL for share links (configure in env)
  */
-const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://www.betterprompt.sh';
+const BASE_URL = process.env.NOSLOP_BASE_URL || 'http://localhost:3000';
 
 /**
  * Generate Twitter/X share URL with pre-filled tweet
@@ -32,20 +32,20 @@ export function generateTwitterShareUrl(
   const topStrength = meta.strengths[0];
 
   // Build tweet text
-  let tweetText = `I'm a ${meta.name} ${meta.emoji} developer!
+  let tweetText = `I'm a ${meta.name} ${meta.emoji} builder!
 
-My AI anti-patterns:
+My self-hosted AI collaboration profile:
 "${meta.tagline}"
 
 Top Strength: ${topStrength}
 
-What are YOUR anti-patterns?
+What does your workflow look like?
 ${shareUrl}`;
 
   if (includeHashtags) {
     tweetText += `
 
-#BetterPrompt #AntiPatterns #StopAISlop`;
+#NoMoreAISlop #AICollaboration #SelfHosted`;
   }
 
   // Encode for URL
@@ -78,7 +78,7 @@ export function generateCopyText(
   const percentage = Math.round(typeResult.distribution[typeResult.primaryType] || 0);
   const shareUrl = `${BASE_URL}/r/${reportId}`;
 
-  let text = `🎯 My AI anti-patterns: ${meta.name} ${meta.emoji}
+  let text = `🎯 My AI builder profile: ${meta.name} ${meta.emoji}
 
 "${meta.tagline}"`;
 
@@ -93,7 +93,7 @@ Top Strength: ${meta.strengths[0]}`;
 
 Check out my full analysis: ${shareUrl}
 
-#BetterPrompt`;
+#NoMoreAISlop`;
 
   return text;
 }
@@ -110,9 +110,9 @@ export function generateOGMetaTags(
 
   const meta = TYPE_METADATA[typeResult.primaryType];
   const shareUrl = `${baseUrl}/r/${reportId}`;
-  const ogImageUrl = `${baseUrl}/api/reports/${reportId}/og-image`;
+  const ogImageUrl = `${baseUrl}/r/${reportId}/opengraph-image`;
 
-  const title = `I'm a ${meta.name} ${meta.emoji} - What Are Your Anti-Patterns?`;
+  const title = `I'm a ${meta.name} ${meta.emoji} builder`;
   const description = meta.tagline;
 
   return `
@@ -149,8 +149,8 @@ export function generateWebShareData(
   const shareUrl = `${BASE_URL}/r/${reportId}`;
 
   return {
-    title: `My AI Anti-Patterns: ${meta.name} ${meta.emoji}`,
-    text: `${meta.tagline} - What are YOUR anti-patterns?`,
+    title: `My AI Builder Profile: ${meta.name} ${meta.emoji}`,
+    text: `${meta.tagline} - What does your workflow look like?`,
     url: shareUrl,
   };
 }
@@ -166,7 +166,7 @@ export function generateInstagramCaption(
   const shareUrl = `${BASE_URL}/r/${reportId}`;
   const topStrength = meta.strengths[0];
 
-  return `${meta.emoji} I'm a ${meta.name} developer!
+  return `${meta.emoji} I'm a ${meta.name} builder!
 
 "${meta.tagline}"
 
@@ -174,7 +174,7 @@ export function generateInstagramCaption(
 
 🔗 See my full analysis: ${shareUrl}
 
-#BetterPrompt #AntiPatterns #DeveloperType #${meta.name} #StopAISlop #DevTools`;
+#NoMoreAISlop #AICollaboration #SelfHosted #${meta.name} #DevTools`;
 }
 
 /**
@@ -194,6 +194,6 @@ export function generateEmbedCode(
   height="${height}"
   frameborder="0"
   style="border-radius: 12px; border: 1px solid #333;"
-  title="BetterPrompt Analysis"
+  title="NoMoreAISlop Analysis"
 ></iframe>`;
 }

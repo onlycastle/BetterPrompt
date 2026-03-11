@@ -8,7 +8,6 @@
 export { TerminalWindow } from './TerminalWindow';
 export { TerminalTabs } from './TerminalTabs';
 export { TypeResultSection } from './TypeResultSection';
-export { UnlockSection } from './UnlockSection';
 export { ShareSection } from './ShareSection';
 export { AnalyzedSessions } from './AnalyzedSessions';
 export { ReportFooter } from './ReportFooter';
@@ -16,4 +15,3 @@ export { ReportErrorCard } from './ReportErrorCard';
 export { ReportLoadingSpinner } from './ReportLoadingSpinner';
 export { ReportPreviewBanner } from './ReportPreviewBanner';
 export { NarrativeMoment } from './NarrativeMoment';
-export { CliffhangerWall } from './CliffhangerWall';

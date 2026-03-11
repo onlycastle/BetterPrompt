@@ -1,11 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import { ClipboardList, Palette, Megaphone } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { useInView } from '@/hooks/useInView';
 import { Button } from '@/components/ui/Button';
-import { WaitlistModal, waitlistConfigs } from './WaitlistModal';
 import styles from './TeamSection.module.css';
 
 const teamMembers = [
@@ -37,11 +35,10 @@ const teamMembers = [
 
 export function TeamSection() {
   const { ref, isInView } = useInView({ threshold: 0.15 });
-  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
 
   const handleCtaClick = () => {
-    track('cta_click', { location: 'team', type: 'book_demo' });
-    setIsWaitlistOpen(true);
+    track('cta_click', { location: 'team', type: 'read_team_setup' });
+    window.location.href = '/docs';
   };
 
   return (
@@ -50,7 +47,7 @@ export function TeamSection() {
         <h2 className={styles.headline}>
           Your team builds with AI every day.
           <br />
-          Do you know where they get stuck?
+          Run one self-hosted server and review where they get stuck.
         </h2>
 
         <div className={styles.grid}>
@@ -84,15 +81,10 @@ export function TeamSection() {
 
         <div className={styles.ctaWrapper}>
           <Button variant="secondary" size="lg" onClick={handleCtaClick}>
-            Book a Demo →
+            Read Team Setup →
           </Button>
         </div>
       </div>
-      <WaitlistModal
-        isOpen={isWaitlistOpen}
-        onClose={() => setIsWaitlistOpen(false)}
-        config={waitlistConfigs.enterprise_contact}
-      />
     </section>
   );
 }

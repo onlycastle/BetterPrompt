@@ -67,10 +67,11 @@ function trackShare(baseUrl: string, reportId: string | undefined, platform: str
 export function ShareSection({
   typeMeta,
   reportId,
-  baseUrl = 'https://www.nomoreaislop.app',
+  baseUrl,
 }: ShareSectionProps) {
+  const resolvedBaseUrl = baseUrl || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
   const [copied, setCopied] = useState(false);
-  const shareUrl = reportId ? `${baseUrl}/r/${reportId}` : '';
+  const shareUrl = reportId ? `${resolvedBaseUrl}/r/${reportId}` : '';
 
   const tweetText = encodeURIComponent(`I'm a ${typeMeta.name} ${typeMeta.emoji} builder!
 
@@ -89,19 +90,19 @@ ${shareUrl}
 
   const handleTwitterClick = useCallback(() => {
     window.open(twitterUrl, '_blank', 'width=600,height=400');
-    trackShare(baseUrl, reportId, 'twitter');
-  }, [twitterUrl, baseUrl, reportId]);
+    trackShare(resolvedBaseUrl, reportId, 'twitter');
+  }, [twitterUrl, resolvedBaseUrl, reportId]);
 
   const handleLinkedInClick = useCallback(() => {
     window.open(linkedInUrl, '_blank', 'width=600,height=600');
-    trackShare(baseUrl, reportId, 'linkedin');
-  }, [linkedInUrl, baseUrl, reportId]);
+    trackShare(resolvedBaseUrl, reportId, 'linkedin');
+  }, [linkedInUrl, resolvedBaseUrl, reportId]);
 
   const handleCopyClick = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
-      trackShare(baseUrl, reportId, 'clipboard');
+      trackShare(resolvedBaseUrl, reportId, 'clipboard');
       setTimeout(() => setCopied(false), 2000);
     } catch {
       const input = document.querySelector<HTMLInputElement>('#share-url');
@@ -110,7 +111,7 @@ ${shareUrl}
         document.execCommand('copy');
       }
     }
-  }, [shareUrl, baseUrl, reportId]);
+  }, [shareUrl, resolvedBaseUrl, reportId]);
 
   const dashboardUrl = typeof window !== 'undefined' ? window.location.origin : '';
 

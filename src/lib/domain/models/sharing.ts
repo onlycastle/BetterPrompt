@@ -226,7 +226,7 @@ export function generateReportId(): string {
 /**
  * Build share URL for a report
  */
-export function buildShareUrl(reportId: string, baseUrl = 'https://www.betterprompt.sh'): string {
+export function buildShareUrl(reportId: string, baseUrl = 'http://localhost:3000'): string {
   return `${baseUrl}/r/${reportId}`;
 }
 

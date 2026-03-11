@@ -9,8 +9,6 @@ import styles from './LandingHeader.module.css';
 
 const SECTIONS = [
   { id: 'preview', label: 'Preview' },
-  { id: 'for-teams', label: 'Teams' },
-  { id: 'pricing', label: 'Pricing' },
 ] as const;
 
 export function LandingHeader() {
@@ -19,20 +17,18 @@ export function LandingHeader() {
   const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
   const trackedSections = useRef(new Set<string>());
 
-  // Track hero visibility — controls background + nav fade-in
   useEffect(() => {
     const heroEl = document.getElementById('hero');
     if (!heroEl) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => setScrolled(!entry.isIntersecting),
-      { threshold: 0 },
+      { threshold: 0 }
     );
     observer.observe(heroEl);
     return () => observer.disconnect();
   }, []);
 
-  // Track active section for nav highlighting + analytics
   useEffect(() => {
     const sectionEls = SECTIONS.map(({ id }) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
     if (sectionEls.length === 0) return;
@@ -49,7 +45,7 @@ export function LandingHeader() {
           }
         }
       },
-      { threshold: 0.3, rootMargin: '-64px 0px 0px 0px' },
+      { threshold: 0.3, rootMargin: '-64px 0px 0px 0px' }
     );
 
     for (const el of sectionEls) observer.observe(el);
@@ -61,7 +57,7 @@ export function LandingHeader() {
   };
 
   const handleCtaClick = () => {
-    track('cta_click', { location: 'header', type: 'try_it_free' });
+    track('cta_click', { location: 'header', type: 'self_hosted_get_started' });
     setIsWaitlistOpen(true);
   };
 
@@ -90,7 +86,7 @@ export function LandingHeader() {
 
           <div className={styles.ctaWrapper}>
             <Button variant="primary" size="sm" onClick={handleCtaClick}>
-              Try It Free
+              Get Started
             </Button>
           </div>
         </div>

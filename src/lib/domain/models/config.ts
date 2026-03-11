@@ -30,7 +30,7 @@ export const ConfigSchema = z.object({
   apiKey: z.string().nullable().default(null),
 
   // API settings
-  apiBaseUrl: z.string().url().default('https://api.nomoreaislop.app'),
+  apiBaseUrl: z.string().url().default('http://localhost:3000'),
 
   // Offline mode
   offlineMode: z.boolean().default(false),
@@ -46,7 +46,7 @@ export const DEFAULT_CONFIG: Config = {
   telemetry: true,
   storagePath: '~/.nomoreaislop',
   apiKey: null,
-  apiBaseUrl: 'https://api.nomoreaislop.app',
+  apiBaseUrl: 'http://localhost:3000',
   offlineMode: false,
   syncOnReconnect: true,
 };

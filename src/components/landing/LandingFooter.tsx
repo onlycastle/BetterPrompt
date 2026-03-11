@@ -12,7 +12,7 @@ export function LandingFooter() {
   const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
 
   const handleCtaClick = () => {
-    track('cta_click', { location: 'footer', type: 'try_it_free' });
+    track('cta_click', { location: 'footer', type: 'self_hosted_get_started' });
     setIsWaitlistOpen(true);
   };
 
@@ -56,20 +56,20 @@ export function LandingFooter() {
         <hr className={styles.divider} />
 
         <h2 className={styles.headline}>
-          You don&apos;t need to figure it out alone.
+          Run it on your own stack.
         </h2>
 
         <div className={styles.cta}>
           <Button variant="primary" size="lg" onClick={handleCtaClick}>
-            Try It Free
+            Get Started
           </Button>
           <p className={styles.smallText}>
-            No credit card. First analysis in 2 minutes.
+            Local auth, local SQLite, your own Gemini key.
           </p>
         </div>
 
         <p className={styles.copyright}>
-          &copy; {new Date().getFullYear()} BetterPrompt
+          &copy; {new Date().getFullYear()} NoMoreAISlop
         </p>
       </div>
       <WaitlistModal

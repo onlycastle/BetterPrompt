@@ -11,7 +11,6 @@ export * from './useOGMetadata';
 export * from './useScrollSpy';
 export * from './useScrollReveal';
 export * from './useScrollProgress';
-export * from './usePayment';
 
 export * from './useInView';
 

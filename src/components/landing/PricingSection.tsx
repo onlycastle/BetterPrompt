@@ -1,47 +1,43 @@
 'use client';
 
-import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { useInView } from '@/hooks/useInView';
 import { Button } from '@/components/ui/Button';
-import { WaitlistModal, waitlistConfigs } from './WaitlistModal';
 import styles from './PricingSection.module.css';
 
-const pricingTiers = [
+const setupCards = [
   {
-    name: 'Free',
-    price: '$0',
+    name: 'Next.js Server',
+    price: 'Included',
     period: '',
     features: [
-      '3 assessments/month',
-      'Core AI Builder Profile',
-      'Basic behavior analysis',
+      'Runs Gemini analysis locally',
+      'Stores auth and reports in SQLite',
+      'Serves dashboard, shared reports, and device login',
     ],
-    missing: ['Full 6-dimension analysis', 'Priority processing', 'Progress tracking'],
+    missing: ['No hosted billing', 'No managed SaaS dependencies'],
   },
   {
-    name: 'Starter',
-    price: '$4.99',
+    name: 'CLI',
+    price: 'Included',
     period: '',
     popular: true,
     features: [
-      'Unlimited assessments',
-      'Full 6-dimension analysis',
-      'Security risk report',
-      'Growth recommendations',
+      'Scans Claude Code and Cursor history',
+      'Uses device login against your server',
+      'Uploads session bundles directly to /api/analysis/run',
     ],
-    missing: ['Progress tracking', 'Pattern history', 'Learning resources'],
+    missing: ['No desktop app required'],
   },
   {
-    name: 'Pro',
-    price: '$6.99',
-    period: '/mo',
+    name: 'Local Storage',
+    price: 'Included',
+    period: '',
     features: [
-      'Everything in Starter',
-      'Progress tracking over time',
-      'Pattern history',
-      'Learning resources',
+      'SQLite for users and analysis history',
+      'Local knowledge base under ~/.nomoreaislop',
+      'Share links based on your result IDs',
     ],
     missing: [],
   },
@@ -49,17 +45,19 @@ const pricingTiers = [
 
 export function PricingSection() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
-  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
+  const handleCtaClick = () => {
+    track('cta_click', { location: 'pricing', type: 'read_setup_guide' });
+    window.location.href = '/docs';
+  };
 
   return (
     <section className={styles.section} id="pricing">
       <div ref={ref} className={`${styles.container} ${isInView ? styles.visible : ''}`}>
-        <h2 className={styles.headline}>Start free. Upgrade when you want more.</h2>
+        <h2 className={styles.headline}>One deployment model. Everything included.</h2>
 
-        {/* Pricing comparison */}
         <div className={styles.pricing}>
           <div className={styles.pricingGrid}>
-            {pricingTiers.map((tier) => (
+            {setupCards.map((tier) => (
               <div
                 key={tier.name}
                 className={`${styles.pricingCard} ${tier.popular ? styles.pricingPopular : ''}`}
@@ -95,24 +93,16 @@ export function PricingSection() {
           <Button
             variant="secondary"
             size="lg"
-            onClick={() => {
-              track('cta_click', { location: 'pricing', type: 'try_it_free' });
-              setIsWaitlistOpen(true);
-            }}
+            onClick={handleCtaClick}
           >
-            Try It Free
+            Read Setup Guide
           </Button>
         </div>
 
         <p className={styles.requirements}>
-          All plans include privacy-first analysis. Your session data never leaves your machine.
+          No waitlist, no subscription, and no separate backend service. Run the server and CLI yourself.
         </p>
       </div>
-      <WaitlistModal
-        isOpen={isWaitlistOpen}
-        onClose={() => setIsWaitlistOpen(false)}
-        config={waitlistConfigs.free_trial}
-      />
     </section>
   );
 }

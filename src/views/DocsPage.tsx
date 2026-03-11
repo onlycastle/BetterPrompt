@@ -48,7 +48,7 @@ export function DocsPage() {
                   <span className={styles.stepTitle}>Connect your AI tool</span>
                   <span className={styles.stepDesc}>
                     Open your terminal and run one command. It reads your Claude sessions
-                    from your machine — nothing is uploaded until you choose to share.
+                    from your machine and sends selected data to your self-hosted server.
                   </span>
                 </div>
               </div>
@@ -92,7 +92,7 @@ export function DocsPage() {
             </p>
             <p className={styles.paragraph}>
               Your session data stays on your machine. Only the analysis results (scores,
-              insights, your report) are sent to our servers.
+              insights, your report) are stored on the self-hosted server you control.
             </p>
           </DocsSection>
 
@@ -236,7 +236,7 @@ export function DocsPage() {
   Phase 3: ContentWriter (1 LLM)
   Phase 4: Translator (0-1 LLM)
         |
-   Supabase --> Web Report`}</pre>
+   SQLite + Local Files --> Web Report`}</pre>
                 </div>
               </div>
             </details>
@@ -460,8 +460,8 @@ export function DocsPage() {
                 <h4 className={styles.heading4}>Main Command</h4>
                 <CodeBlock code="npx no-ai-slop" />
                 <p className={styles.paragraph}>
-                  Analyzes your Claude AI sessions and generates a shareable report.
-                  First-time users are guided through device-flow authentication.
+                  Analyzes your Claude AI sessions and generates a report on your self-hosted server.
+                  First-time users are guided through local device-flow authentication.
                 </p>
 
                 <h4 className={styles.heading4}>Check Authentication Status</h4>
@@ -484,7 +484,7 @@ export function DocsPage() {
 
                 <h4 className={styles.heading4}>Authentication Flow</h4>
                 <p className={styles.paragraph}>
-                  BetterPrompt uses OAuth-style device flow authentication:
+                  NoMoreAISlop uses a self-hosted device flow:
                 </p>
                 <ol className={styles.orderedList}>
                   <li>CLI generates a unique device code</li>
