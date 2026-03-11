@@ -1,24 +1,13 @@
-/**
- * Next.js Middleware for Supabase Auth & CORS
- *
- * This middleware:
- * 1. Handles CORS for API routes (required for Electron desktop app)
- * 2. Refreshes expired auth tokens on every request
- * 3. Syncs cookies between request and response
- * 4. Ensures Server Components receive fresh auth state
- *
- * Required for SSR authentication with Supabase.
- */
-
-import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+
+const configuredBaseUrl = process.env.NOSLOP_BASE_URL;
+const configuredOrigin = configuredBaseUrl ? new URL(configuredBaseUrl).origin : null;
 
 // Allowed origins for CORS
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173', // Vite dev server
-  'https://www.nomoreaislop.app',
-  'https://nomoreaislop.app',
+  ...(configuredOrigin ? [configuredOrigin] : []),
   'app://-', // Electron app protocol
 ];
 
@@ -52,62 +41,15 @@ export async function middleware(request: NextRequest) {
     return addCorsHeaders(response, origin);
   }
 
-  // Create initial response
-  let supabaseResponse = NextResponse.next({ request });
+  const response = NextResponse.next({ request });
 
-  // Add CORS headers for API routes
   if (isApiRoute) {
-    supabaseResponse = addCorsHeaders(supabaseResponse, origin);
+    return addCorsHeaders(response, origin);
   }
 
-  // Skip auth for API routes and when Supabase is not configured
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    // Supabase not configured, skip auth middleware
-    return supabaseResponse;
-  }
-
-  // Create Supabase client with cookie handling
-  const supabase = createServerClient(
-    supabaseUrl,
-    supabaseAnonKey,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          // Update request cookies (for downstream handlers)
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          // Create new response with updated cookies
-          supabaseResponse = NextResponse.next({ request });
-          // Re-apply CORS headers after creating new response
-          if (isApiRoute) {
-            addCorsHeaders(supabaseResponse, origin);
-          }
-          // Set cookies on response (for browser)
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  // Refresh session - this will update cookies if tokens are refreshed
-  // IMPORTANT: Use getUser() not getSession() to validate with Supabase Auth server
-  try {
-    await supabase.auth.getUser();
-  } catch {
-    // Auth refresh failed, continue without blocking the request
-  }
-
-  return supabaseResponse;
+  return response;
 }
+
 
 export const config = {
   matcher: [

@@ -1,102 +1,11 @@
-/**
- * Device Flow Initiation API
- *
- * POST: Start a new device authorization flow
- * Returns device_code, user_code, and verification_uri
- *
- * Implements OAuth 2.0 Device Authorization Grant (RFC 8628)
- */
-
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { randomBytes } from 'crypto';
+import { createDeviceAuthorization } from '@/lib/local/auth';
 
-// Supabase admin client with defensive env validation
-function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceKey) {
-    console.error('[DeviceFlow] Missing required env vars:', {
-      hasUrl: !!url,
-      hasServiceKey: !!serviceKey,
-    });
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required');
-  }
-
-  return createClient(url, serviceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
-/**
- * Generate a secure random string
- */
-function generateSecureCode(length: number): string {
-  return randomBytes(length).toString('base64url').slice(0, length);
-}
-
-/**
- * Generate a user-friendly code (e.g., ABCD-1234)
- */
-function generateUserCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // No I or O to avoid confusion
-  const nums = '23456789'; // No 0 or 1 to avoid confusion
-  const bytes = randomBytes(8);
-
-  let code = '';
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(bytes[i] % chars.length);
-  }
-  code += '-';
-  for (let i = 0; i < 4; i++) {
-    code += nums.charAt(bytes[i + 4] % nums.length);
-  }
-  return code;
-}
-
-/**
- * POST /api/auth/device
- *
- * Start device authorization flow
- */
 export async function POST() {
   try {
-    const supabase = getSupabaseAdmin();
+    const { deviceCode, userCode } = createDeviceAuthorization();
 
-    // Generate codes
-    const deviceCode = generateSecureCode(48);
-    const userCode = generateUserCode();
-
-    // Expires in 15 minutes
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-
-    // Store in database
-    const { error } = await supabase.from('device_codes').insert({
-      device_code: deviceCode,
-      user_code: userCode,
-      expires_at: expiresAt,
-      status: 'pending',
-    });
-
-    if (error) {
-      console.error('[DeviceFlow] Failed to store device code:', error);
-      return NextResponse.json(
-        { error: 'server_error', error_description: 'Failed to initiate device flow' },
-        { status: 500 }
-      );
-    }
-
-    console.log('[DeviceFlow] Device code created successfully:', {
-      userCode,
-      expiresAt,
-    });
-
-    // Return RFC 8628 compliant response
-    const baseUrl = process.env.NOSLOP_BASE_URL || 'https://www.nomoreaislop.app';
+    const baseUrl = process.env.NOSLOP_BASE_URL || 'http://localhost:3000';
     const verificationUri = `${baseUrl}/auth/device`;
     const verificationUriComplete = `${verificationUri}?user_code=${userCode}`;
 

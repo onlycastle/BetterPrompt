@@ -1,10 +1,5 @@
-/**
- * Login Modal Component
- * Provides email/password and OAuth login options
- */
-
 import { useState } from 'react';
-import { X, Github, Mail } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -18,7 +13,7 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ isOpen, onClose, pendingResultId }: LoginModalProps) {
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithGitHub } = useAuth();
+  const { signInWithEmail, signUpWithEmail } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,28 +27,23 @@ export function LoginModal({ isOpen, onClose, pendingResultId }: LoginModalProps
     setError(null);
     setLoading(true);
 
-    const { error } = mode === 'login'
+    const result = mode === 'login'
       ? await signInWithEmail(email, password)
       : await signUpWithEmail(email, password);
 
-    if (error) {
-      setError(error.message);
-    } else {
-      onClose();
-    }
     setLoading(false);
-  };
 
-  const handleGitHub = async () => {
-    setError(null);
-    const { error } = await signInWithGitHub(pendingResultId);
-    if (error) setError(error.message);
-  };
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
 
-  const handleGoogle = async () => {
-    setError(null);
-    const { error } = await signInWithGoogle(pendingResultId);
-    if (error) setError(error.message);
+    if (pendingResultId) {
+      window.location.href = `/dashboard/r/${encodeURIComponent(pendingResultId)}`;
+      return;
+    }
+
+    onClose();
   };
 
   return (
@@ -68,32 +58,9 @@ export function LoginModal({ isOpen, onClose, pendingResultId }: LoginModalProps
         </h2>
         <p className={styles.subtitle}>
           {mode === 'login'
-            ? 'Sign in to unlock your full analysis'
-            : 'Create an account to track your progress'}
+            ? 'Sign in to unlock your full analysis on this self-hosted server'
+            : 'Create a local account to track your progress'}
         </p>
-
-        <div className={styles.oauthButtons}>
-          <Button
-            variant="secondary"
-            onClick={handleGitHub}
-            icon={<Github size={18} />}
-            className={styles.oauthButton}
-          >
-            Continue with GitHub
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={handleGoogle}
-            icon={<Mail size={18} />}
-            className={styles.oauthButton}
-          >
-            Continue with Google
-          </Button>
-        </div>
-
-        <div className={styles.divider}>
-          <span>or</span>
-        </div>
 
         <form onSubmit={handleEmailSubmit} className={styles.form}>
           <Input

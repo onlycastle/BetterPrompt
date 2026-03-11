@@ -1,19 +1,11 @@
-/**
- * Test Login Form Component
- * Email/password login for development/testing purposes only
- *
- * SECURITY: Only rendered when NODE_ENV !== 'production'
- */
-
 'use client';
 
 import { useState } from 'react';
-import { Mail, FlaskConical } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import styles from './TestLoginForm.module.css';
 
 interface TestLoginFormProps {
-  /** Optional callback after successful login */
   onSuccess?: () => void;
 }
 
@@ -25,33 +17,30 @@ export function TestLoginForm({ onSuccess }: TestLoginFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Only render in development
-  if (process.env.NODE_ENV === 'production') {
-    return null;
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    const { error } = mode === 'login'
+    const result = mode === 'login'
       ? await signInWithEmail(email, password)
       : await signUpWithEmail(email, password);
 
-    if (error) {
-      setError(error.message);
-    } else {
-      onSuccess?.();
-    }
     setLoading(false);
+
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+
+    onSuccess?.();
   };
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <FlaskConical size={16} className={styles.icon} />
-        <span className={styles.badge}>DEV ONLY</span>
+        <Mail size={16} className={styles.icon} />
+        <span className={styles.badge}>LOCAL ACCOUNT</span>
       </div>
 
       <form onSubmit={handleSubmit} className={styles.form}>
@@ -59,7 +48,7 @@ export function TestLoginForm({ onSuccess }: TestLoginFormProps) {
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
-          placeholder="test@example.com"
+          placeholder="you@example.com"
           required
           autoComplete="email"
           className={styles.input}
@@ -77,11 +66,7 @@ export function TestLoginForm({ onSuccess }: TestLoginFormProps) {
 
         {error && <p className={styles.error}>{error}</p>}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className={styles.submitBtn}
-        >
+        <button type="submit" disabled={loading} className={styles.submitBtn}>
           <Mail size={16} />
           {loading ? 'Processing...' : mode === 'login' ? 'Sign In' : 'Sign Up'}
         </button>
