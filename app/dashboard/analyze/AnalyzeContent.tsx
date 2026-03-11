@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { TestLoginForm } from '@/components/auth';
-import { Terminal, ArrowRight, FileText, RefreshCw, Github, Clock } from 'lucide-react';
+import { Terminal, ArrowRight, FileText, RefreshCw, Clock } from 'lucide-react';
 import styles from './page.module.css';
 
 interface RecentAnalysis {
@@ -19,7 +19,6 @@ interface RecentAnalysis {
     primaryType?: string;
     sessionsAnalyzed?: number;
   } | null;
-  isPaid: boolean;
   claimedAt: string;
 }
 
@@ -32,10 +31,9 @@ function formatDate(isoString: string): string {
 }
 
 export function AnalyzeContent() {
-  const { isAuthenticated, isLoading: authLoading, signInWithGitHub } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [recentAnalysis, setRecentAnalysis] = useState<RecentAnalysis | null>(null);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
-  const [loginLoading, setLoginLoading] = useState(false);
 
   // Fetch most recent analysis
   useEffect(() => {
@@ -61,17 +59,6 @@ export function AnalyzeContent() {
     fetchRecent();
   }, [isAuthenticated]);
 
-  const handleGitHubLogin = async () => {
-    setLoginLoading(true);
-    try {
-      await signInWithGitHub();
-    } catch (error) {
-      console.error('GitHub login failed:', error);
-    } finally {
-      setLoginLoading(false);
-    }
-  };
-
   // Loading state
   if (authLoading) {
     return (
@@ -92,16 +79,8 @@ export function AnalyzeContent() {
           <div className={styles.loginIcon}>&#128274;</div>
           <h1 className={styles.loginTitle}>Sign in to Analyze</h1>
           <p className={styles.loginDescription}>
-            Connect your GitHub account to start analyzing your AI sessions.
+            Create a local account to sync CLI runs with this self-hosted server.
           </p>
-          <button
-            onClick={handleGitHubLogin}
-            disabled={loginLoading}
-            className={styles.githubBtn}
-          >
-            <Github size={20} />
-            {loginLoading ? 'Signing in...' : 'Continue with GitHub'}
-          </button>
           <TestLoginForm />
         </div>
       </div>
@@ -125,7 +104,7 @@ export function AnalyzeContent() {
           <h2 className={styles.ctaTitle}>Start a New Analysis</h2>
           <p className={styles.ctaDescription}>
             Run the CLI command in your terminal to analyze your Claude Code sessions.
-            Your data is processed in the cloud but <strong>never stored</strong>.
+            Analysis runs on your self-hosted server with your own Gemini API key.
           </p>
           <div className={styles.cliCommand}>
             <code>npx no-ai-slop</code>
@@ -166,9 +145,6 @@ export function AnalyzeContent() {
                 {recentAnalysis.evaluation?.sessionsAnalyzed || 0} sessions
               </span>
             </div>
-            <span className={`${styles.badge} ${recentAnalysis.isPaid ? styles.paidBadge : styles.freeBadge}`}>
-              {recentAnalysis.isPaid ? 'Full' : 'Preview'}
-            </span>
             <ArrowRight size={20} className={styles.arrow} />
           </Link>
           <Link href="/dashboard/personal" className={styles.viewAllLink}>

@@ -9,10 +9,11 @@
 
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { TestLoginForm } from '@/components/auth';
 import { useKnowledgeList } from '@/hooks/useKnowledge';
 import { KnowledgeCard } from '@/components/knowledge/KnowledgeCard';
 import { AddKnowledgeDrawer } from '@/components/dashboard/AddKnowledgeDrawer';
-import { Search, Plus, X, Github } from 'lucide-react';
+import { Search, Plus, X } from 'lucide-react';
 import type { SourcePlatform } from '@/types';
 import type { DimensionName } from '@/api/client';
 import styles from './page.module.css';
@@ -36,12 +37,11 @@ const DIMENSIONS: Array<{ value: DimensionName | ''; label: string }> = [
 ];
 
 export function KnowledgeContent() {
-  const { isAuthenticated, isLoading: authLoading, signInWithGitHub } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [platform, setPlatform] = useState<SourcePlatform | ''>('');
   const [dimension, setDimension] = useState<DimensionName | ''>('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [loginLoading, setLoginLoading] = useState(false);
 
   const queryParams = useMemo(
     () => ({
@@ -85,17 +85,6 @@ export function KnowledgeContent() {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const handleGitHubLogin = async () => {
-    setLoginLoading(true);
-    try {
-      await signInWithGitHub();
-    } catch (error) {
-      console.error('GitHub login failed:', error);
-    } finally {
-      setLoginLoading(false);
-    }
-  };
-
   // Loading state
   if (authLoading) {
     return (
@@ -116,16 +105,9 @@ export function KnowledgeContent() {
           <div className={styles.loginIcon}>&#128274;</div>
           <h1 className={styles.loginTitle}>Sign in to Access Knowledge</h1>
           <p className={styles.loginDescription}>
-            Browse curated insights from AI engineering experts.
+            Browse and save knowledge on this self-hosted server.
           </p>
-          <button
-            onClick={handleGitHubLogin}
-            disabled={loginLoading}
-            className={styles.githubBtn}
-          >
-            <Github size={20} />
-            {loginLoading ? 'Signing in...' : 'Continue with GitHub'}
-          </button>
+          <TestLoginForm />
         </div>
       </div>
     );

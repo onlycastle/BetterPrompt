@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { Fira_Code, Noto_Sans_KR } from 'next/font/google';
-import { Analytics } from '@vercel/analytics/react';
 import { Providers } from '@/components/providers';
 import '@/styles/global.css';
 import '@/styles/variables.css';
@@ -20,14 +19,14 @@ const notoSansKR = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://www.betterprompt.sh'),
-  title: 'BetterPrompt - AI Session Intelligence for Builders',
-  description: 'See what is going wrong in your AI workflow. Analyze behavior patterns, risk blind spots, and practical next steps.',
+  metadataBase: new URL(process.env.NOSLOP_BASE_URL || 'http://localhost:3000'),
+  title: 'NoMoreAISlop - Self-Hosted AI Session Intelligence',
+  description: 'Analyze Claude Code and Cursor sessions on your own server with local auth, SQLite storage, and Gemini-powered workers.',
   openGraph: {
-    title: 'BetterPrompt - AI Session Intelligence for Builders',
-    description: 'See what is going wrong in your AI workflow and how to improve with clear, behavior-based feedback.',
+    title: 'NoMoreAISlop - Self-Hosted AI Session Intelligence',
+    description: 'Analyze Claude Code and Cursor sessions on your own server with local auth, SQLite storage, and Gemini-powered workers.',
     type: 'website',
-    siteName: 'BetterPrompt',
+    siteName: 'NoMoreAISlop',
   },
   twitter: {
     card: 'summary_large_image',
@@ -43,7 +42,6 @@ export default function RootLayout({
     <html lang="en" className={`${firaCode.variable} ${notoSansKR.variable}`}>
       <body>
         <Providers>{children}</Providers>
-        <Analytics />
       </body>
     </html>
   );

@@ -11,25 +11,25 @@ import type { Metadata } from 'next';
 import { ReportLoadingSpinner } from '@/components/report/ReportLoadingSpinner';
 import { BenchmarksContent } from './BenchmarksContent';
 
-const BASE_URL = process.env.NOSLOP_BASE_URL || 'https://www.betterprompt.sh';
+const BASE_URL = process.env.NOSLOP_BASE_URL || 'http://localhost:3000';
 
 export const metadata: Metadata = {
-  title: 'Global AI Collaboration Benchmarks | BetterPrompt',
+  title: 'Global AI Collaboration Benchmarks | NoMoreAISlop',
   description:
-    'See how builders collaborate with AI. Explore type distributions, score percentiles, and discover your AI builder profile.',
+    'See how builders on your self-hosted server collaborate with AI. Explore type distributions and score percentiles.',
   openGraph: {
-    title: 'Global AI Collaboration Benchmarks | BetterPrompt',
+    title: 'Global AI Collaboration Benchmarks | NoMoreAISlop',
     description:
-      'See how builders collaborate with AI. Explore type distributions, score percentiles, and discover your AI builder profile.',
+      'See how builders on your self-hosted server collaborate with AI. Explore type distributions and score percentiles.',
     type: 'website',
     url: `${BASE_URL}/benchmarks`,
-    siteName: 'BetterPrompt',
+    siteName: 'NoMoreAISlop',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Global AI Collaboration Benchmarks | BetterPrompt',
+    title: 'Global AI Collaboration Benchmarks | NoMoreAISlop',
     description:
-      'See how builders collaborate with AI. Explore type distributions, score percentiles, and discover your AI builder profile.',
+      'See how builders on your self-hosted server collaborate with AI. Explore type distributions and score percentiles.',
   },
 };
 

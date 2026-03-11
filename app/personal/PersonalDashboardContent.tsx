@@ -10,7 +10,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogOut, FileText, Terminal, ArrowRight, Github } from 'lucide-react';
+import { TestLoginForm } from '@/components/auth';
+import { LogOut, FileText, Terminal, ArrowRight } from 'lucide-react';
 import styles from './page.module.css';
 
 interface UserAnalysis {
@@ -21,7 +22,6 @@ interface UserAnalysis {
     controlLevel?: string;
     sessionsAnalyzed?: number;
   } | null;
-  isPaid: boolean;
   claimedAt: string;
   expiresAt: string;
 }
@@ -63,23 +63,16 @@ function PageHeader({ isAuthenticated, onSignOut }: { isAuthenticated: boolean; 
 /**
  * Login CTA for unauthenticated users
  */
-function LoginCTA({ onGitHubLogin, isLoading }: { onGitHubLogin: () => void; isLoading: boolean }) {
+function LoginCTA() {
   return (
     <div className={styles.loginContainer}>
       <div className={styles.loginCard}>
         <div className={styles.loginIcon}>&#128274;</div>
         <h1 className={styles.loginTitle}>Sign in to Your Dashboard</h1>
         <p className={styles.loginDescription}>
-          View your analysis history, track your progress, and unlock premium insights.
+          View your analysis history and track your progress on this self-hosted server.
         </p>
-        <button
-          onClick={onGitHubLogin}
-          disabled={isLoading}
-          className={styles.githubBtn}
-        >
-          <Github size={20} />
-          {isLoading ? 'Signing in...' : 'Continue with GitHub'}
-        </button>
+        <TestLoginForm />
         <div className={styles.cliHint}>
           <Terminal size={16} />
           <span>New here? Run <code>npx no-ai-slop</code> to analyze your AI sessions</span>
@@ -126,13 +119,6 @@ function AnalysisCard({ analysis }: { analysis: UserAnalysis }) {
           {formatDate(analysis.claimedAt)} &middot; {sessionsAnalyzed} sessions
         </div>
       </div>
-      <div className={styles.cardBadge}>
-        {analysis.isPaid ? (
-          <span className={styles.paidBadge}>Full</span>
-        ) : (
-          <span className={styles.freeBadge}>Preview</span>
-        )}
-      </div>
       <ArrowRight size={20} className={styles.cardArrow} />
     </Link>
   );
@@ -142,11 +128,10 @@ function AnalysisCard({ analysis }: { analysis: UserAnalysis }) {
  * Main dashboard content
  */
 export function PersonalDashboardContent() {
-  const { user, isAuthenticated, isLoading: authLoading, signInWithGitHub, signOut } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, signOut } = useAuth();
   const [analyses, setAnalyses] = useState<UserAnalysis[]>([]);
   const [isLoadingAnalyses, setIsLoadingAnalyses] = useState(false);
   const [analysesError, setAnalysesError] = useState<string | null>(null);
-  const [loginLoading, setLoginLoading] = useState(false);
 
   // Fetch user's analyses when authenticated
   useEffect(() => {
@@ -178,17 +163,6 @@ export function PersonalDashboardContent() {
     fetchAnalyses();
   }, [isAuthenticated, user]);
 
-  const handleGitHubLogin = async () => {
-    setLoginLoading(true);
-    try {
-      await signInWithGitHub();
-    } catch (error) {
-      console.error('GitHub login failed:', error);
-    } finally {
-      setLoginLoading(false);
-    }
-  };
-
   // Loading state
   if (authLoading) {
     return (
@@ -207,7 +181,7 @@ export function PersonalDashboardContent() {
       <div className={styles.page}>
         <div className={styles.container}>
           <PageHeader isAuthenticated={false} onSignOut={signOut} />
-          <LoginCTA onGitHubLogin={handleGitHubLogin} isLoading={loginLoading} />
+          <LoginCTA />
         </div>
       </div>
     );

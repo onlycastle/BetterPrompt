@@ -7,7 +7,7 @@ export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
 const TYPES = [
-  { name: 'Architect', color: '#00BCD4' },
+  { name: 'Architect', color: '#00d4ff' },
   { name: 'Analyst', color: '#8B5CF6' },
   { name: 'Conductor', color: '#F59E0B' },
   { name: 'Speedrunner', color: '#4ADE80' },
@@ -22,136 +22,128 @@ export default function Image() {
           width: '100%',
           height: '100%',
           display: 'flex',
-          backgroundColor: '#FFFFFF',
+          flexDirection: 'column',
+          background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%)',
           fontFamily: 'monospace',
+          padding: '56px 80px',
           position: 'relative',
         }}
       >
-        {/* Graph paper grid - horizontal lines */}
+        {/* Cyan glow border */}
         <div
           style={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            top: 20,
+            left: 20,
+            right: 20,
+            bottom: 20,
+            border: '2px solid #00d4ff',
+            borderRadius: 20,
+            opacity: 0.25,
             display: 'flex',
-            backgroundImage: 'linear-gradient(to bottom, #E8EDF5 1px, transparent 1px)',
-            backgroundSize: '100% 24px',
-          }}
-        />
-        {/* Graph paper grid - vertical lines */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex',
-            backgroundImage: 'linear-gradient(to right, #E8EDF5 1px, transparent 1px)',
-            backgroundSize: '24px 100%',
           }}
         />
 
-        {/* Left margin line (notebook style) */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: 72,
-            width: 2,
-            display: 'flex',
-            backgroundColor: 'rgba(0, 188, 212, 0.25)',
-          }}
-        />
-
-        {/* Main content */}
+        {/* Brand logo row: >_ BetterPrompt */}
         <div
           style={{
             display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            padding: '56px 80px 44px 100px',
-            flex: 1,
-            position: 'relative',
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 28,
           }}
         >
-          {/* Brand name */}
           <div
             style={{
               display: 'flex',
-              fontSize: 58,
+              fontSize: 72,
               fontWeight: 700,
-              color: '#00BCD4',
-              marginBottom: 28,
+              color: '#00d4ff',
+            }}
+          >
+            {'>_'}
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              fontSize: 72,
+              fontWeight: 700,
+              color: '#ffffff',
+              marginLeft: 16,
             }}
           >
             BetterPrompt
           </div>
+        </div>
 
-          {/* Tagline */}
-          <div
-            style={{
-              display: 'flex',
-              fontSize: 30,
-              color: '#1A1A2E',
-              lineHeight: 1.5,
-            }}
-          >
-            {"See what\u2019s going wrong in your AI workflow."}
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              fontSize: 30,
-              fontWeight: 600,
-              color: '#1A1A2E',
-              lineHeight: 1.5,
-              marginBottom: 36,
-            }}
-          >
-            Behavior patterns, risk blind spots, and next steps.
-          </div>
+        {/* Tagline */}
+        <div
+          style={{
+            display: 'flex',
+            fontSize: 36,
+            color: '#e0e0e0',
+            lineHeight: 1.4,
+            marginBottom: 12,
+          }}
+        >
+          {"See what\u2019s going wrong in your AI workflow."}
+        </div>
 
-          {/* Spacer */}
-          <div style={{ display: 'flex', flex: 1 }} />
+        {/* Sub-tagline */}
+        <div
+          style={{
+            display: 'flex',
+            fontSize: 22,
+            color: '#444466',
+            marginBottom: 36,
+          }}
+        >
+          {'Behavior patterns \u00b7 Risk blind spots \u00b7 Next steps'}
+        </div>
 
-          {/* Developer types */}
-          <div style={{ display: 'flex', flexDirection: 'row', marginBottom: 16 }}>
-            {TYPES.map((type, i) => (
+        {/* Spacer */}
+        <div style={{ display: 'flex', flex: 1 }} />
+
+        {/* Developer type badges */}
+        <div style={{ display: 'flex', flexDirection: 'row', marginBottom: 20 }}>
+          {TYPES.map((type, i) => (
+            <div
+              key={type.name}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: 24,
+                padding: '10px 20px',
+                marginLeft: i > 0 ? 12 : 0,
+              }}
+            >
               <div
-                key={type.name}
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
-                  backgroundColor: 'rgba(26, 26, 46, 0.04)',
-                  border: '1px solid rgba(26, 26, 46, 0.08)',
-                  borderRadius: 20,
-                  padding: '8px 16px',
-                  marginLeft: i > 0 ? 12 : 0,
+                  width: 12,
+                  height: 12,
+                  borderRadius: 6,
+                  backgroundColor: type.color,
+                  marginRight: 10,
                 }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: type.color,
-                    marginRight: 8,
-                  }}
-                />
-                <div style={{ display: 'flex', fontSize: 14, color: '#4A4A5A' }}>{type.name}</div>
-              </div>
-            ))}
-          </div>
+              />
+              <div style={{ display: 'flex', fontSize: 20, color: '#cccccc' }}>{type.name}</div>
+            </div>
+          ))}
+        </div>
 
-          {/* URL */}
-          <div style={{ display: 'flex', fontSize: 15, color: '#8A8A9A' }}>
-            www.betterprompt.sh
-          </div>
+        {/* URL */}
+        <div
+          style={{
+            display: 'flex',
+            fontSize: 18,
+            color: '#00d4ff',
+            opacity: 0.5,
+          }}
+        >
+          www.betterprompt.sh
         </div>
       </div>
     ),

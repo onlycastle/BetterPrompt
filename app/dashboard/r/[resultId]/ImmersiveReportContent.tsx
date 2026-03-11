@@ -7,14 +7,11 @@
 'use client';
 
 import Link from 'next/link';
-import { CheckCircle } from 'lucide-react';
 import { useReportPage } from '@/hooks/useReportPage';
 import { TabbedReportContainer } from '@/components/personal/tabs';
-import { UnlockSection } from '@/components/report/UnlockSection';
 import { ReportShareBar } from '@/components/report/ReportShareBar';
 import { ReportErrorCard } from '@/components/report/ReportErrorCard';
 import { ReportLoadingSpinner } from '@/components/report/ReportLoadingSpinner';
-import { ReportPreviewBanner } from '@/components/report/ReportPreviewBanner';
 import { FloatingBackButton } from '@/components/report/FloatingBackButton';
 import styles from './page.module.css';
 
@@ -57,7 +54,7 @@ interface ImmersiveReportContentProps {
 }
 
 export function ImmersiveReportContent({ resultId }: ImmersiveReportContentProps) {
-  const { data, isPaid, preview, credits, isLoading, error, errorStatus, refetch, showSuccessToast } =
+  const { data, isLoading, error, errorStatus, refetch } =
     useReportPage(resultId);
 
   if (isLoading) {
@@ -118,31 +115,12 @@ export function ImmersiveReportContent({ resultId }: ImmersiveReportContentProps
     <div className={styles.container}>
       <FloatingBackButton resultId={resultId} />
 
-      {/* Success Toast */}
-      {showSuccessToast && (
-        <div className={styles.successToast}>
-          <CheckCircle size={20} />
-          <span>Payment successful! Your full report is now available.</span>
-        </div>
-      )}
-
-      {/* Preview Banner */}
-      {!isPaid && preview && (
-        <ReportPreviewBanner title="Preview Mode">
-          You&apos;re viewing a preview. Unlock to see all {preview.totalPromptPatterns} patterns
-          and personalized insights.
-        </ReportPreviewBanner>
-      )}
-
       {/* Main Report — no frame, no sidebar, no progress dots */}
       <TabbedReportContainer
         analysis={data}
         agentOutputs={data.agentOutputs}
         analysisMetadata={data.analysisMetadata}
-        isPaid={isPaid}
         reportId={resultId}
-        credits={credits}
-        onCreditsUsed={refetch}
         showProgressDots={false}
         showResourceSidebar={false}
         experience="immersive-apple"
@@ -154,16 +132,6 @@ export function ImmersiveReportContent({ resultId }: ImmersiveReportContentProps
           <ReportShareBar primaryType={data.primaryType} reportId={resultId} />
         </div>
       )}
-
-      {/* Unlock Section */}
-      <div className={styles.unlockWrapper}>
-        <UnlockSection
-          isUnlocked={isPaid}
-          resultId={resultId}
-          credits={credits}
-          onCreditsUsed={refetch}
-        />
-      </div>
     </div>
   );
 }

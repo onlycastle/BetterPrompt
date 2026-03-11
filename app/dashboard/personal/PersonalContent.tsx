@@ -5,14 +5,14 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePersonalAnalytics } from '@/hooks/usePersonalAnalytics';
 import { TestLoginForm } from '@/components/auth';
 import { ProgressTab } from '@/components/personal';
-import { FileText, TrendingUp, ArrowRight, Github, CheckCircle, Trash2, AlertTriangle } from 'lucide-react';
+import { FileText, TrendingUp, ArrowRight, Trash2, AlertTriangle } from 'lucide-react';
 import styles from './page.module.css';
 
 type TabId = 'report' | 'progress';
@@ -33,7 +33,6 @@ interface UserAnalysis {
     sessionsAnalyzed?: number;
     overallScore?: number;
   } | null;
-  isPaid: boolean;
   claimedAt: string;
 }
 
@@ -44,27 +43,16 @@ const TABS: Array<{ id: TabId; label: string; icon: React.ReactNode }> = [
 
 export function PersonalContent() {
   const searchParams = useSearchParams();
-  const paymentSuccess = searchParams.get('payment') === 'success';
   const initialTab = (searchParams.get('tab') as TabId) || 'report';
   const focusResultId = searchParams.get('focus');
 
-  const { isAuthenticated, isLoading: authLoading, user, signInWithGitHub } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [analyses, setAnalyses] = useState<UserAnalysis[]>([]);
   const [isLoadingAnalyses, setIsLoadingAnalyses] = useState(false);
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [showSuccessToast, setShowSuccessToast] = useState(paymentSuccess);
   const [deleteTarget, setDeleteTarget] = useState<UserAnalysis | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  // Hide success toast after delay
-  useEffect(() => {
-    if (showSuccessToast) {
-      const timer = setTimeout(() => setShowSuccessToast(false), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [showSuccessToast]);
 
   // Fetch analyses
   useEffect(() => {
@@ -87,17 +75,6 @@ export function PersonalContent() {
 
     fetchAnalyses();
   }, [isAuthenticated]);
-
-  const handleGitHubLogin = async () => {
-    setLoginLoading(true);
-    try {
-      await signInWithGitHub();
-    } catch (error) {
-      console.error('GitHub login failed:', error);
-    } finally {
-      setLoginLoading(false);
-    }
-  };
 
   const handleDeleteClick = (analysis: UserAnalysis) => {
     setDeleteTarget(analysis);
@@ -157,14 +134,6 @@ export function PersonalContent() {
           <p className={styles.loginDescription}>
             Access your analysis history and track your growth journey.
           </p>
-          <button
-            onClick={handleGitHubLogin}
-            disabled={loginLoading}
-            className={styles.githubBtn}
-          >
-            <Github size={20} />
-            {loginLoading ? 'Signing in...' : 'Continue with GitHub'}
-          </button>
           <TestLoginForm />
         </div>
       </div>
@@ -173,14 +142,6 @@ export function PersonalContent() {
 
   return (
     <div className={styles.container}>
-      {/* Success Toast */}
-      {showSuccessToast && (
-        <div className={styles.successToast}>
-          <CheckCircle size={20} />
-          <span>Payment successful! Your report has been unlocked.</span>
-        </div>
-      )}
-
       {/* Header */}
       <header className={styles.header}>
         <h1 className={styles.title}>My Profile</h1>
@@ -304,9 +265,6 @@ function ReportTabContent({
               {analysis.evaluation?.sessionsAnalyzed || 0} sessions
             </span>
           </div>
-          <span className={`${styles.badge} ${analysis.isPaid ? styles.paidBadge : styles.freeBadge}`}>
-            {analysis.isPaid ? 'Full' : 'Preview'}
-          </span>
           <button
             className={styles.deleteBtn}
             onClick={(e) => {
@@ -328,8 +286,7 @@ function ReportTabContent({
 function ProgressTabWrapper({ analyses }: { analyses: UserAnalysis[] }) {
   const { data: analytics, isLoading, error } = usePersonalAnalytics();
 
-  // Check if user has any paid analyses (premium status)
-  const isPremium = analyses.some(a => a.isPaid);
+  const isPremium = analyses.length > 0;
 
   // Show loading state
   if (isLoading) {
