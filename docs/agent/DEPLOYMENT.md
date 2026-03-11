@@ -1,74 +1,30 @@
 # Deployment (Agent Reference)
 
-## Lambda vs Vercel
+The supported open-source deployment target is:
 
-| Feature | Vercel Pro | AWS Lambda (SST) |
-|---------|------------|-------------------|
-| Payload limit | 4.5MB (hard) | 6MB (bypassed via S3 presigned URL) |
-| Timeout | 5 minutes | 15 minutes |
-| Streaming | SSE via Edge | Lambda Response Streaming |
-| Deploy | Push to `main` | GitHub Actions (changes in `lambda/`, `infra/`, `sst.config.ts`, `src/lib/**`) |
+- one self-hosted Next.js server
+- one CLI pointed at that server
+- local SQLite plus filesystem storage
 
-## Hybrid Setup
+## Runtime Model
 
-- **Vercel**: Web frontend + light API routes (`/`, `/r/[id]`, `/api/*`)
-- **Lambda**: Heavy analysis endpoint (CLI uses `NOSLOP_API_URL` env var, falls back to hardcoded default URL)
+- `npm run dev` / `npm run build && npm run start` runs the full web + API surface.
+- `GOOGLE_GEMINI_API_KEY` is required for analysis workers.
+- `NOSLOP_BASE_URL` and `NOSLOP_WEB_APP_URL` should point at the same self-hosted server.
+- The CLI posts directly to `POST /api/analysis/run`.
 
 ## Environment Variables
 
-| Variable | Where | Purpose |
-|----------|-------|---------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Vercel + Lambda | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Vercel + Lambda | Supabase anonymous key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Vercel + Lambda | Supabase service role key |
-| `GOOGLE_GEMINI_API_KEY` | Lambda | Gemini 3 Flash API key |
-| `AWS_PROFILE` | Local only | AWS credentials profile |
-| `NOSLOP_API_URL` | CLI (optional) | Lambda endpoint URL override (default hardcoded in `packages/cli/src/uploader.ts`) |
+| Variable | Purpose |
+|----------|---------|
+| `GOOGLE_GEMINI_API_KEY` | Gemini API key for worker execution |
+| `NOSLOP_BASE_URL` | Canonical base URL for report links and metadata |
+| `NOSLOP_WEB_APP_URL` | CLI target base URL (defaults to `http://localhost:3000`) |
+| `NOSLOP_DB_PATH` | Optional SQLite database path override |
 
-## Deploy Commands
+## Deployment Notes
 
-**Standard (CI/CD)**: Push to `main` → GitHub Actions auto-deploys (see CI/CD Workflows below).
-
-**Local SST commands** (exist in `package.json` but use with caution):
-
-```bash
-npm run sst:dev       # Development (live reload)
-npm run sst:deploy    # Production deployment
-npm run sst:remove    # Remove deployment (cleanup)
-```
-
-> WARNING: NEVER use local SST deployment for production (`npx sst deploy`). Local SST has critical bugs causing routing failures and inconsistent deployments. Always use GitHub Actions for Lambda deployment.
-
-## Troubleshooting
-
-| Error | Solution |
-|-------|---------|
-| `Could not load credentials from any providers` | Run `aws sts get-caller-identity` to verify credentials |
-| `Task timed out after 15.00 seconds` | Increase timeout in `infra/api.ts` (max 15 minutes) |
-| `Access blocked by CORS policy` | Check CORS settings in `infra/api.ts` |
-
-## Cost Estimate (ap-northeast-2)
-
-- Requests: $0.20 / 1M requests
-- Execution: $0.0000166667 / GB-second
-- ~1,000 analyses/month at 30s each: **less than $1/month**
-- AWS Free Tier: 1M requests + 400K GB-seconds/month free (12 months)
-
-## CI/CD Workflows
-
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| `deploy-lambda.yml` | Push to `main` (changes in `lambda/`, `infra/`, `sst.config.ts`, `src/lib/**`) | Auto-deploy Lambda via SST |
-| `build-desktop.yml` | Manual / push | Desktop app build |
-| `publish-cli.yml` | Manual / push | CLI package publish to npm |
-
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `lambda/analysis.ts` | Lambda handler for analysis endpoint |
-| `infra/api.ts` | SST API infrastructure config |
-| `sst.config.ts` | SST project configuration |
-| `.github/workflows/deploy-lambda.yml` | Lambda CI/CD pipeline |
-| `.github/workflows/build-desktop.yml` | Desktop build pipeline |
-| `.github/workflows/publish-cli.yml` | CLI publish pipeline |
+- Use a persistent volume for the SQLite database.
+- Keep `~/.nomoreaislop/knowledge` on persistent storage if you rely on local knowledge ingestion.
+- No Lambda, Supabase, Polar, or desktop build pipeline is part of the supported OSS runtime.
+- `publish-cli.yml` remains the only shipping workflow because the CLI is still a first-class product surface.

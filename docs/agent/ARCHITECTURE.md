@@ -1,6 +1,6 @@
 # Architecture (Agent Reference)
 
-NoMoreAISlop analyzes developer-AI collaboration sessions (JSONL/SQLite) through a multi-phase LLM pipeline, generates personalized reports, and serves them via Next.js. Hexagonal architecture: Presentation (Next.js) → Application (services, analyzer) → Domain (Zod models) → Infrastructure (Supabase, LLM adapters).
+NoMoreAISlop now ships as a self-hosted Next.js server plus CLI. The active OSS runtime uses local SQLite and filesystem-backed storage; remaining Supabase/Lambda references in this document describe archived pre-open-source architecture and should be treated as historical context only.
 
 ## Directory → Purpose → Layer
 

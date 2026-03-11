@@ -1,6 +1,6 @@
 # NoMoreAISlop
 
-> Analyze your AI collaboration skills and discover your coding style.
+> Self-hosted AI session analysis with a local-first CLI and Next.js server.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js 18+](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
@@ -8,159 +8,93 @@
 
 ## Overview
 
-NoMoreAISlop analyzes your Claude Code sessions to identify your AI collaboration style and provide personalized growth recommendations.
+NoMoreAISlop analyzes your Claude Code and Cursor sessions, runs the Gemini-powered report pipeline on your own server, and stores auth, reports, and knowledge data locally.
 
-**Key Features:**
-- **AI Coding Style Detection** - Architect, Scientist, Collaborator, Speedrunner, or Craftsman
-- **6-Dimension Analysis** - AI collaboration, context engineering, burnout risk, tool mastery, control index, skill resilience
-- **LLM-Powered Insights** - Hyper-personalized analysis with evidence quotes from your actual sessions
-- **Desktop App** - Native macOS/Windows/Linux application with beautiful UI
+The open-source product surface is now:
 
----
+- `Next.js server` for auth, report pages, knowledge APIs, and local analysis execution
+- `CLI` for local session discovery, device login, and analysis uploads to your self-hosted server
+- `SQLite + local files` for persistence
+
+The desktop app is not part of the open-source path.
+Hosted billing, waitlist collection, and survey ingestion are not part of the supported runtime.
 
 ## Quick Start
 
-### Run Locally
-
 ```bash
-# Clone and install
 git clone https://github.com/nomoreaislop/nomoreaislop.git
 cd nomoreaislop
 npm install
-
-# Configure environment
 cp .env.example .env
-# Edit .env with your API keys
+```
 
-# Start development server (web app)
+Required environment:
+
+```env
+GOOGLE_GEMINI_API_KEY=your-gemini-api-key
+NOSLOP_BASE_URL=http://localhost:3000
+NOSLOP_WEB_APP_URL=http://localhost:3000
+```
+
+Start the server:
+
+```bash
 npm run dev
 ```
 
-### Environment Variables
-
-```env
-# Required - Two-stage pipeline (Gemini 3 Flash)
-GOOGLE_GEMINI_API_KEY=your-gemini-api-key-here
-
-# Optional - Legacy single-stage mode / fallback
-ANTHROPIC_API_KEY=your-anthropic-api-key-here
-
-# Optional - Configuration
-NOSLOP_MODEL=claude-sonnet-4-20250514  # Legacy mode only
-NOSLOP_TELEMETRY=false
-
-# Supabase (for knowledge platform)
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-```
-
----
-
-## Development Commands
-
-### Web App
+In another terminal, authenticate the CLI and run an analysis:
 
 ```bash
-npm run dev            # Start Next.js development server (port 3000)
-npm run build          # Build production bundle
-npm run start          # Start production server
-npm run typecheck      # Type check
-npm run test           # Run tests
-npm run lint           # ESLint
+npx no-ai-slop
 ```
 
-### Desktop App
+The CLI will open the device auth flow at your self-hosted server, then upload pre-parsed session data to `POST /api/analysis/run`.
+
+## What Is Local
+
+- Web auth uses local email/password accounts stored in SQLite.
+- CLI auth uses device flow plus long-lived local CLI tokens.
+- Analysis runs inside the Next.js server with your Gemini API key.
+- Reports are stored in SQLite.
+- Knowledge items are stored under `~/.nomoreaislop/knowledge`.
+
+## Current Scope
+
+- Supported product path: `self-hosted server + CLI`
+- Public report pages: `GET /r/:resultId`
+- Knowledge dashboard: local file-backed APIs
+
+## Commands
 
 ```bash
-cd packages/desktop
-npm run dev            # Start Electron app in development mode
-npm run build          # Build desktop app for current platform
-npm run package        # Package app for distribution
+npm run dev
+npm run build
+npm run start
+npm run typecheck
+npm test
 ```
-
----
-
-## The 5 AI Coding Styles
-
-| Type | Emoji | Tagline |
-|------|-------|---------|
-| **Architect** | 🏗️ | Strategic planner who designs before coding |
-| **Scientist** | 🔬 | Truth-seeker who verifies AI output |
-| **Collaborator** | 🤝 | Pair programmer who iterates through dialogue |
-| **Speedrunner** | ⚡ | Agile executor who moves fast |
-| **Craftsman** | 🔧 | Quality artisan who refines code |
-
----
 
 ## Project Structure
 
-```
-nomoreaislop/
-├── app/                   # Next.js 15 App Router
-│   ├── api/               # API routes (knowledge, learn, reports, etc.)
-│   ├── browse/            # Knowledge discovery page
-│   ├── dashboard/         # Analytics dashboard
-│   ├── personal/          # Personal analytics
-│   ├── enterprise/        # Team dashboard (B2B)
-│   └── report/[reportId]/ # Dynamic report pages
-├── src/
-│   ├── lib/               # Core library
-│   │   ├── analyzer/      # LLM analysis (two-stage pipeline)
-│   │   ├── parser/        # JSONL session parsing
-│   │   ├── models/        # Zod schemas
-│   │   └── search-agent/  # Knowledge curation
-│   ├── components/        # React UI components
-│   ├── hooks/             # React hooks
-│   └── views/             # Page view components
-├── packages/
-│   └── desktop/           # Electron desktop application
-├── scripts/               # Utility scripts
-└── docs/                  # Documentation
+```text
+app/              Next.js app router, web UI, local API routes
+packages/cli/     CLI for scan + login + upload
+src/lib/analyzer/ Gemini analysis pipeline
+src/lib/local/    SQLite auth and report persistence
+src/lib/search-agent/storage/knowledge-store.ts
+scripts/          local utilities and test fixtures
 ```
 
-For detailed architecture, see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+## Open Source Publication
 
----
-
-## Testing
-
-```bash
-# Run all tests
-npm test
-
-# Watch mode
-npm run test:watch
-
-# Coverage
-npm run test:coverage
-```
-
----
-
-## Data Privacy
-
-- **Local-First**: Session content only sent to LLM providers with your API keys
-- **Optional Telemetry**: Disable with `NOSLOP_TELEMETRY=false`
-
----
+Before making the repository public, complete the history purge and key rotation steps in [docs/human/OPEN_SOURCE_PUBLICATION.md](./docs/human/OPEN_SOURCE_PUBLICATION.md).
 
 ## Documentation
 
-- **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - System design, pipelines, components
-
----
+- [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [SECURITY.md](./SECURITY.md)
+- [docs/human/OPEN_SOURCE_PUBLICATION.md](./docs/human/OPEN_SOURCE_PUBLICATION.md)
 
 ## License
 
-MIT License. See [LICENSE](./LICENSE) file.
-
----
-
-## Support
-
-- **GitHub Issues** - [Report bugs or request features](https://github.com/nomoreaislop/nomoreaislop/issues)
-
----
-
-**Built with TypeScript, Next.js 15, and React 19.**
+MIT. See [LICENSE](./LICENSE).

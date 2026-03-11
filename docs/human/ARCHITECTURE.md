@@ -1,6 +1,7 @@
 # NoMoreAISlop - Architecture
 
-> Version: 5.1.0 | Status: Closed-Source SaaS | Last Updated: 2026-02-01
+> Current OSS runtime: self-hosted Next.js server + CLI + SQLite/local files
+> Historical note: sections below still contain archived SaaS-era design notes and should not be used as the source of truth for the open-source deployment model.
 
 ## Business Model
 

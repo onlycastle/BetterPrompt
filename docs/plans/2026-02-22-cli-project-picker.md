@@ -111,7 +111,7 @@ export async function discoverProjects(includeSources?: string[]): Promise<Proje
 
 **Step 2: Verify it compiles**
 
-Run: `cd /Users/sungmancho/projects/nomoreaislop && npx tsc --noEmit packages/cli/src/project-picker.ts 2>&1 | head -20`
+Run: `cd $REPO_ROOT && npx tsc --noEmit packages/cli/src/project-picker.ts 2>&1 | head -20`
 
 Note: This may fail until all exports are added. That's fine — we'll verify the full build at the end.
 
@@ -456,15 +456,15 @@ Replace lines 456-477 (from `promptToolSelection()` through `scanSessions()`) wi
 
 **Step 1: Run typecheck**
 
-Run: `cd /Users/sungmancho/projects/nomoreaislop && npm run typecheck`
+Run: `cd $REPO_ROOT && npm run typecheck`
 Expected: No errors
 
 **Step 2: Run build**
 
-Run: `cd /Users/sungmancho/projects/nomoreaislop/packages/cli && npm run build`
+Run: `cd $REPO_ROOT/packages/cli && npm run build`
 Expected: Successful build
 
 **Step 3: Manual test**
 
-Run: `cd /Users/sungmancho/projects/nomoreaislop && NOSLOP_DEBUG=1 node packages/cli/dist/index.js`
+Run: `cd $REPO_ROOT && NOSLOP_DEBUG=1 node packages/cli/dist/index.js`
 Expected: After tool selection, see ASCII card grid of discovered projects, then selection prompt.
