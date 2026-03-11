@@ -5,8 +5,7 @@
  * Supports SSE streaming for real-time progress updates
  * Uses gzip compression to reduce payload size
  *
- * Sends pre-parsed session data to avoid redundant parsing on server.
- * Always uploads via S3 presigned URL to bypass Lambda Function URL payload limits.
+ * Sends pre-parsed session data directly to the self-hosted Next.js server.
  */
 
 import { gzipSync } from 'node:zlib';
@@ -25,26 +24,26 @@ function debugLog(...args: unknown[]) {
   if (DEBUG) console.error('[DEBUG]', ...args);
 }
 
-/**
- * Ensure fetch response is OK, throw error with context if not
- */
-async function ensureResponseOk(response: Response, errorContext: string): Promise<void> {
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`${errorContext}: ${response.status} ${errorText}`);
+function getAnalysisApiUrl(): string {
+  const configured = process.env.NOSLOP_API_URL?.trim();
+  if (!configured) {
+    return `${REPORT_BASE_URL.replace(/\/$/, '')}/api/analysis/run`;
   }
-}
 
-/**
- * Lambda Function URL for analysis API
- */
-const DEFAULT_LAMBDA_URL = 'https://kgdby5xqjypfnlihknmcllqwgq0labzp.lambda-url.ap-northeast-2.on.aws';
-const LAMBDA_API_URL = process.env.NOSLOP_API_URL || DEFAULT_LAMBDA_URL;
+  const normalized = configured.replace(/\/$/, '');
+  if (normalized.endsWith('/api/analysis/run')) {
+    return normalized;
+  }
+  if (normalized.endsWith('/api/analysis')) {
+    return `${normalized}/run`;
+  }
+  return `${normalized}/api/analysis/run`;
+}
 
 /**
  * Web app base URL for report links
  */
-const REPORT_BASE_URL = 'https://www.nomoreaislop.app';
+const REPORT_BASE_URL = process.env.NOSLOP_WEB_APP_URL || 'http://localhost:3000';
 
 /**
  * Maximum payload size
@@ -392,57 +391,6 @@ function formatSize(bytes: number): string {
 }
 
 /**
- * Response from /upload-url endpoint
- */
-interface UploadUrlResponse {
-  signedUrl?: string;
-  s3Key?: string;
-  error?: string;
-}
-
-/**
- * Upload large payload via S3 Storage
- */
-async function uploadViaStorage(
-  compressedBody: Buffer,
-  accessToken: string,
-  onProgress?: ProgressCallback
-): Promise<{ s3Key: string }> {
-  onProgress?.('preparing', 3, 'Getting upload URL...');
-
-  const urlResponse = await fetch(`${LAMBDA_API_URL}/upload-url`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-      ...(DEBUG && { 'X-Debug': '1' }),
-    },
-  });
-
-  await ensureResponseOk(urlResponse, 'Failed to get upload URL');
-
-  const urlData = await urlResponse.json() as UploadUrlResponse;
-
-  if (urlData.error || !urlData.signedUrl || !urlData.s3Key) {
-    throw new Error(urlData.error || 'Invalid upload URL response');
-  }
-
-  onProgress?.('preparing', 5, `Uploading ${formatSize(compressedBody.length)} to secure storage...`);
-
-  const uploadResponse = await fetch(urlData.signedUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/octet-stream' },
-    body: new Uint8Array(compressedBody),
-  });
-
-  await ensureResponseOk(uploadResponse, 'Storage upload failed');
-
-  onProgress?.('preparing', 8, 'Upload complete, starting analysis...');
-
-  return { s3Key: urlData.s3Key };
-}
-
-/**
  * Options for upload and analysis
  */
 export interface UploadOptions {
@@ -468,25 +416,28 @@ export async function uploadForAnalysis(
   } = preparePayload(scanResult);
 
   const sizeInfo = `${formatSize(originalSizeBytes)} (gzip: ${formatSize(compressedSizeBytes)})`;
+  const analysisUrl = getAnalysisApiUrl();
 
   if (truncated) {
     onProgress?.('preparing', 0, `${sizeInfo} | Excluded ${droppedCount} session(s) to fit limit`);
   } else {
-    onProgress?.('preparing', 0, `${sizeInfo} | Using secure storage`);
+    onProgress?.('preparing', 0, `${sizeInfo} | Sending to self-hosted server`);
   }
 
-  const { s3Key } = await uploadViaStorage(compressedBody, accessToken, onProgress);
-
-  debugLog('Calling /analyze with s3Key:', s3Key);
-  const response = await fetch(`${LAMBDA_API_URL}/analyze`, {
+  onProgress?.('preparing', 5, `Uploading ${formatSize(compressedBody.length)} to ${analysisUrl}...`);
+  const response = await fetch(
+    options?.noTranslate ? `${analysisUrl}?noTranslate=1` : analysisUrl,
+    {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/octet-stream',
+      'Content-Encoding': 'gzip',
       'Authorization': `Bearer ${accessToken}`,
       ...(DEBUG && { 'X-Debug': '1' }),
     },
-    body: JSON.stringify({ s3Key, ...(options?.noTranslate && { noTranslate: true }) }),
-  });
+      body: new Uint8Array(compressedBody),
+    }
+  );
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => '');

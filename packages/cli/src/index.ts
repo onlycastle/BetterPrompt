@@ -46,7 +46,7 @@ import {
 /**
  * Web app base URL for dashboard links
  */
-const WEB_APP_URL = 'https://www.nomoreaislop.app';
+const WEB_APP_URL = process.env.NOSLOP_WEB_APP_URL || 'http://localhost:3000';
 
 // ============================================================================
 // Tool Selection Types

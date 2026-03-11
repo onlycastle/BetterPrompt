@@ -12,7 +12,7 @@ import type { CostEstimate } from './cost-estimator.js';
 import { generateCelebrationBanner } from './animations/index.js';
 import { renderDualRadarCharts, computeStyleMaxValue, type RadarChartData } from './radar-chart.js';
 
-const REPORT_BASE_URL = 'https://www.nomoreaislop.app';
+const REPORT_BASE_URL = process.env.NOSLOP_WEB_APP_URL || 'http://localhost:3000';
 
 const TYPE_COLORS: Record<string, (s: string) => string> = {
   architect: pc.blue,

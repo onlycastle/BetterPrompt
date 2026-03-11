@@ -5,7 +5,7 @@
  * for CLI applications.
  */
 
-const API_BASE = 'https://www.nomoreaislop.app';
+const API_BASE = process.env.NOSLOP_WEB_APP_URL || 'http://localhost:3000';
 
 export interface DeviceFlowResponse {
   deviceCode: string;
@@ -131,4 +131,3 @@ export async function getUserInfo(accessToken: string): Promise<{ id: string; em
 
   return response.json() as Promise<UserInfoAPIResponse>;
 }
-
