@@ -1,26 +1,18 @@
-/**
- * POST /api/learn/youtube
- * Learn from a YouTube video or playlist
- */
-
-import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
+import { NextRequest, NextResponse } from 'next/server';
 import {
   createTranscriptSkill,
   isYouTubeUrl,
 } from '@/lib/search-agent/skills/transcript';
-import { knowledgeDb } from '@/lib/search-agent/db';
-import { getInfluencerDetector } from '@/lib/search-agent/influencers';
+import { knowledgeStore } from '@/lib/search-agent/storage/knowledge-store';
+import { getCurrentUserFromRequest } from '@/lib/local/auth';
 import type {
-  KnowledgeItem,
-  TopicCategory,
   ContentType,
+  KnowledgeItem,
   KnowledgeStatus,
+  TopicCategory,
 } from '@/lib/search-agent/models/knowledge';
 
-/**
- * Keyword-to-category mapping for topic detection
- */
 const TOPIC_CATEGORY_KEYWORDS: Array<{ keywords: string[]; category: TopicCategory }> = [
   { keywords: ['prompt'], category: 'prompt-engineering' },
   { keywords: ['context', 'window'], category: 'context-engineering' },
@@ -32,44 +24,40 @@ const TOPIC_CATEGORY_KEYWORDS: Array<{ keywords: string[]; category: TopicCatego
   { keywords: ['claude', 'skill'], category: 'claude-code-skills' },
 ];
 
-/**
- * Helper: Map topics to category
- */
 function mapTopicsToCategory(topics: string[]): TopicCategory {
-  const topicLower = topics.map((t) => t.toLowerCase()).join(' ');
-
+  const text = topics.map((topic) => topic.toLowerCase()).join(' ');
   for (const { keywords, category } of TOPIC_CATEGORY_KEYWORDS) {
-    if (keywords.some((keyword) => topicLower.includes(keyword))) {
+    if (keywords.some((keyword) => text.includes(keyword))) {
       return category;
     }
   }
-
   return 'other';
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const user = getCurrentUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Please sign in to add knowledge.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
-    const { url, processPlaylist = false, maxVideos = 10 } = body;
+    const url = typeof body.url === 'string' ? body.url.trim() : '';
+    const processPlaylist = Boolean(body.processPlaylist);
+    const maxVideos = typeof body.maxVideos === 'number' ? body.maxVideos : 10;
 
     if (!url) {
-      return NextResponse.json(
-        { error: 'URL is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'URL is required.' }, { status: 400 });
     }
 
     if (!isYouTubeUrl(url)) {
-      return NextResponse.json(
-        { error: 'Invalid YouTube URL' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Invalid YouTube URL.' }, { status: 400 });
     }
 
-    // Create transcript skill (without LLM for now - just transcript fetch)
     const transcriptSkill = createTranscriptSkill();
-
-    // Execute the skill
     const result = await transcriptSkill.execute({
       url,
       processPlaylist,
@@ -77,35 +65,21 @@ export async function POST(request: NextRequest) {
     });
 
     if (!result.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: result.error,
-        },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, error: result.error }, { status: 500 });
     }
 
-    // Get influencer detector
-    const detector = getInfluencerDetector();
     const savedItems: KnowledgeItem[] = [];
     const errors: Array<{ url: string; error: string }> = [];
 
     for (const videoResult of result.data?.results || []) {
       try {
         const { transcript, analysis } = videoResult;
-
-        // Detect influencer (async)
-        let influencerResult = await detector.detectFromUrl(transcript.video.url);
-        if (!influencerResult.found) {
-          // Also try by channel name
-          const channelResult = await detector.detectFromAuthor(transcript.video.channelName);
-          if (channelResult.found) {
-            influencerResult = channelResult;
-          }
+        const existing = await knowledgeStore.getItemByUrl(transcript.video.url);
+        if (existing) {
+          savedItems.push(existing);
+          continue;
         }
 
-        // Build content string
         const contentParts = [
           analysis.summary,
           '',
@@ -117,7 +91,6 @@ export async function POST(request: NextRequest) {
           contentParts.push('', '## Code Examples', ...analysis.codeExamples);
         }
 
-        // Create knowledge item
         const knowledgeItem: KnowledgeItem = {
           id: randomUUID(),
           version: '1.0.0',
@@ -134,20 +107,18 @@ export async function POST(request: NextRequest) {
             authorHandle: transcript.video.channelName,
             fetchedAt: transcript.fetchedAt,
             publishedAt: transcript.video.publishedAt,
-            influencerId: influencerResult.influencer?.id,
-            credibilityTier: influencerResult.influencer?.credibilityTier,
           },
           relevance: {
             score: analysis.relevanceToAICoding,
             confidence: 0.8,
-            reasoning: 'Analyzed from YouTube transcript',
+            reasoning: `Imported from YouTube transcript by ${user.email}.`,
           },
           status: 'reviewed' as KnowledgeStatus,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
 
-        await knowledgeDb.save(knowledgeItem);
+        await knowledgeStore.saveItem(knowledgeItem);
         savedItems.push(knowledgeItem);
       } catch (error) {
         errors.push({
@@ -164,12 +135,9 @@ export async function POST(request: NextRequest) {
       errors: [...(result.data?.errors || []), ...errors],
     });
   } catch (error) {
-    console.error('Error learning from YouTube:', error);
+    console.error('[Learn/YouTube] Error:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      },
+      { success: false, error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

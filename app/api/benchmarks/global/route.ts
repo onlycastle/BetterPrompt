@@ -1,20 +1,9 @@
-/**
- * Global Benchmarks API Route
- *
- * Public endpoint (no auth required) that returns aggregate benchmark data
- * for the current month: type distribution, total analyses, and percentile
- * distributions for each worker domain score.
- *
- * Data is populated by the refresh_aggregate_stats() SQL function which
- * should be called periodically (e.g., via cron or after each analysis).
- */
-
 import { NextResponse } from 'next/server';
-import { getSupabase } from '@/lib/supabase';
+import { listAllAnalysisRecords } from '@/lib/local/analysis-store';
+import { getWorkerDomainScores } from '@/lib/local/reporting';
 
 export const dynamic = 'force-dynamic';
 
-/** Shape of a domain's percentile distribution stored in aggregate_stats */
 interface DomainPercentiles {
   p10: number;
   p25: number;
@@ -25,79 +14,90 @@ interface DomainPercentiles {
   count: number;
 }
 
-interface AggregateStatsRow {
-  period_start: string;
-  total_analyses: number;
-  total_shares: number;
-  type_distribution: Record<string, number>;
-  thinking_quality_percentiles: DomainPercentiles;
-  communication_percentiles: DomainPercentiles;
-  learning_behavior_percentiles: DomainPercentiles;
-  context_efficiency_percentiles: DomainPercentiles;
-  session_outcome_percentiles: DomainPercentiles;
-  updated_at: string;
+const DOMAIN_KEYS = [
+  'thinkingQuality',
+  'communicationPatterns',
+  'learningBehavior',
+  'contextEfficiency',
+  'sessionOutcome',
+] as const;
+
+function percentile(values: number[], pct: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(
+    sorted.length - 1,
+    Math.max(0, Math.round((pct / 100) * (sorted.length - 1)))
+  );
+  return Math.round(sorted[index]);
+}
+
+function buildPercentiles(values: number[]): DomainPercentiles {
+  return {
+    p10: percentile(values, 10),
+    p25: percentile(values, 25),
+    p50: percentile(values, 50),
+    p75: percentile(values, 75),
+    p90: percentile(values, 90),
+    p95: percentile(values, 95),
+    count: values.length,
+  };
 }
 
 export async function GET() {
   try {
-    const supabase = getSupabase();
-
-    // Fetch aggregate stats for the current month
-    const currentMonth = new Date();
-    currentMonth.setDate(1);
-    currentMonth.setHours(0, 0, 0, 0);
-    const periodStart = currentMonth.toISOString().split('T')[0];
-
-    const { data, error } = await supabase
-      .from('aggregate_stats')
-      .select(
-        'period_start, total_analyses, total_shares, type_distribution, ' +
-        'thinking_quality_percentiles, communication_percentiles, ' +
-        'learning_behavior_percentiles, context_efficiency_percentiles, ' +
-        'session_outcome_percentiles, updated_at'
-      )
-      .eq('period_start', periodStart)
-      .single();
-
-    if (error) {
-      // PGRST116 = no rows returned (not an error, just no data yet)
-      if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          {
-            benchmarks: null,
-            message: 'No benchmark data available for current month',
-          },
-          { status: 200 }
-        );
-      }
-
-      console.error('[benchmarks/global] Failed to fetch aggregate stats:', error);
-      throw new Error(`Failed to fetch aggregate stats: ${error.message}`);
+    const records = listAllAnalysisRecords();
+    if (records.length === 0) {
+      return NextResponse.json({
+        benchmarks: null,
+        message: 'No benchmark data available yet',
+      });
     }
 
-    const row = data as unknown as AggregateStatsRow;
+    const typeDistribution: Record<string, number> = {};
+    const domainBuckets: Record<string, number[]> = Object.fromEntries(
+      DOMAIN_KEYS.map((key) => [key, []])
+    ) as Record<string, number[]>;
+
+    let totalShares = 0;
+    let updatedAt = records[0].updatedAt;
+
+    for (const record of records) {
+      typeDistribution[record.evaluation.primaryType] =
+        (typeDistribution[record.evaluation.primaryType] ?? 0) + 1;
+      totalShares += record.shareCount;
+
+      if (record.updatedAt > updatedAt) {
+        updatedAt = record.updatedAt;
+      }
+
+      const scores = getWorkerDomainScores(record.evaluation);
+      for (const key of DOMAIN_KEYS) {
+        const value = scores?.[key]?.domainScore;
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          domainBuckets[key].push(value);
+        }
+      }
+    }
 
     return NextResponse.json({
       benchmarks: {
-        period: row.period_start,
-        totalAnalyses: row.total_analyses,
-        totalShares: row.total_shares,
-        typeDistribution: row.type_distribution,
+        period: records[records.length - 1]?.createdAt ?? updatedAt,
+        totalAnalyses: records.length,
+        totalShares,
+        typeDistribution,
         domainPercentiles: {
-          thinkingQuality: row.thinking_quality_percentiles,
-          communicationPatterns: row.communication_percentiles,
-          learningBehavior: row.learning_behavior_percentiles,
-          contextEfficiency: row.context_efficiency_percentiles,
-          sessionOutcome: row.session_outcome_percentiles,
+          thinkingQuality: buildPercentiles(domainBuckets.thinkingQuality),
+          communicationPatterns: buildPercentiles(domainBuckets.communicationPatterns),
+          learningBehavior: buildPercentiles(domainBuckets.learningBehavior),
+          contextEfficiency: buildPercentiles(domainBuckets.contextEfficiency),
+          sessionOutcome: buildPercentiles(domainBuckets.sessionOutcome),
         },
-        updatedAt: row.updated_at,
+        updatedAt,
       },
     });
   } catch (error) {
     console.error('[benchmarks/global] Error:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

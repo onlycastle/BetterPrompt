@@ -1,16 +1,9 @@
-/**
- * User Progress API Route
- *
- * Returns PersonalAnalytics data for the authenticated user.
- * Aggregates all analysis results to build growth tracking data.
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
 import type { PersonalAnalytics, AnalysisSummary, HistoryEntry, WorkerDomainScores } from '@/types/personal';
 import type { CodingStyleType, AIControlLevel } from '@/types/enterprise';
+import { authenticateRequest } from '@/lib/auth/authenticate-request';
+import { listAnalysesForUser, type StoredAnalysisResult } from '@/lib/local/analysis-store';
+import { getCurrentUserFromRequest } from '@/lib/local/auth';
 
 const WORKER_DOMAIN_KEYS = [
   'thinkingQuality',
@@ -20,74 +13,34 @@ const WORKER_DOMAIN_KEYS = [
   'sessionOutcome',
 ] as const;
 
-interface AnalysisResult {
-  result_id: string;
-  evaluation: {
-    primaryType?: CodingStyleType;
-    controlLevel?: AIControlLevel;
-    overallScore?: number;
-    workerInsights?: Record<string, { domainScore?: number }>;
-  } | null;
-  is_paid: boolean;
-  claimed_at: string;
-}
-
-/**
- * Create a Supabase server client with cookie access (for auth)
- */
-async function createSupabaseServerClient() {
-  const cookieStore = await cookies();
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-}
-
-/**
- * Create a Supabase admin client (for DB queries)
- */
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceKey) {
-    throw new Error('Supabase configuration missing');
+async function resolveUserId(request: NextRequest): Promise<string | null> {
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader) {
+    const authResult = await authenticateRequest(authHeader);
+    return authResult?.userId ?? null;
   }
 
-  return createClient(supabaseUrl, serviceKey);
+  return getCurrentUserFromRequest(request)?.id ?? null;
 }
 
-/**
- * Extract worker domain scores from evaluation.workerInsights
- * Returns null if fewer than 3 domains have valid scores
- */
-function extractWorkerDomainScores(evaluation: AnalysisResult['evaluation']): WorkerDomainScores | null {
-  const wi = evaluation?.workerInsights;
-  if (!wi) return null;
+function extractWorkerDomainScores(
+  evaluation: StoredAnalysisResult['evaluation']
+): WorkerDomainScores | null {
+  const workerInsights = evaluation.workerInsights as Record<string, { domainScore?: number }> | undefined;
+  if (!workerInsights) {
+    return null;
+  }
 
   const scores: Partial<WorkerDomainScores> = {};
-
   for (const key of WORKER_DOMAIN_KEYS) {
-    if (wi[key]?.domainScore != null) {
-      scores[key] = wi[key].domainScore;
+    if (workerInsights[key]?.domainScore != null) {
+      scores[key] = workerInsights[key].domainScore;
     }
   }
 
-  // Need at least 3 domains to be valid
-  if (Object.keys(scores).length < 3) return null;
+  if (Object.keys(scores).length < 3) {
+    return null;
+  }
 
   return {
     thinkingQuality: scores.thinkingQuality ?? 50,
@@ -98,55 +51,37 @@ function extractWorkerDomainScores(evaluation: AnalysisResult['evaluation']): Wo
   };
 }
 
-/**
- * Calculate overall score as simple average of all 5 worker domain scores
- */
 function calculateOverallScore(domainScores: WorkerDomainScores): number {
-  const { thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency, sessionOutcome } = domainScores;
-  const total = thinkingQuality + communicationPatterns + learningBehavior + contextEfficiency + sessionOutcome;
+  const total =
+    domainScores.thinkingQuality +
+    domainScores.communicationPatterns +
+    domainScores.learningBehavior +
+    domainScores.contextEfficiency +
+    domainScores.sessionOutcome;
   return Math.round(total / 5);
 }
 
-/**
- * Calculate streak from analysis dates
- * A streak is consecutive analyses (with reasonable gaps allowed)
- */
 function calculateStreak(dates: Date[]): { current: number; longest: number } {
   if (dates.length === 0) return { current: 0, longest: 0 };
   if (dates.length === 1) return { current: 1, longest: 1 };
 
-  // Sort dates in ascending order
   const sortedDates = [...dates].sort((a, b) => a.getTime() - b.getTime());
-
-  let currentStreak = 1;
   let longestStreak = 1;
   let tempStreak = 1;
 
-  // Check from oldest to newest
   for (let i = 1; i < sortedDates.length; i++) {
     const daysDiff = Math.floor(
       (sortedDates[i].getTime() - sortedDates[i - 1].getTime()) / (1000 * 60 * 60 * 24)
     );
-
-    // Consider streak broken if more than 14 days between analyses
-    if (daysDiff <= 14) {
-      tempStreak++;
-    } else {
-      tempStreak = 1;
-    }
-
-    if (tempStreak > longestStreak) {
-      longestStreak = tempStreak;
-    }
+    tempStreak = daysDiff <= 14 ? tempStreak + 1 : 1;
+    longestStreak = Math.max(longestStreak, tempStreak);
   }
 
-  // Current streak: count from most recent going backwards
-  currentStreak = 1;
+  let currentStreak = 1;
   for (let i = sortedDates.length - 1; i > 0; i--) {
     const daysDiff = Math.floor(
       (sortedDates[i].getTime() - sortedDates[i - 1].getTime()) / (1000 * 60 * 60 * 24)
     );
-
     if (daysDiff <= 14) {
       currentStreak++;
     } else {
@@ -157,9 +92,6 @@ function calculateStreak(dates: Date[]): { current: number; longest: number } {
   return { current: currentStreak, longest: longestStreak };
 }
 
-/**
- * Calculate domain score improvements (latest - first)
- */
 function calculateDomainImprovements(
   first: WorkerDomainScores,
   latest: WorkerDomainScores
@@ -173,63 +105,42 @@ function calculateDomainImprovements(
   };
 }
 
-/**
- * Build AnalysisSummary from a result
- */
-function buildAnalysisSummary(result: AnalysisResult, domainScores: WorkerDomainScores): AnalysisSummary {
-  const overallScore = result.evaluation?.overallScore ?? calculateOverallScore(domainScores);
+function buildAnalysisSummary(
+  result: StoredAnalysisResult,
+  domainScores: WorkerDomainScores
+): AnalysisSummary {
+  const overallScore = calculateOverallScore(domainScores);
   return {
-    date: result.claimed_at,
+    date: result.claimedAt,
     score: overallScore,
     overallScore,
-    primaryType: result.evaluation?.primaryType ?? 'conductor',
-    controlLevel: result.evaluation?.controlLevel ?? 'explorer',
+    primaryType: (result.evaluation.primaryType ?? 'conductor') as CodingStyleType,
+    controlLevel: (result.evaluation.controlLevel ?? 'explorer') as AIControlLevel,
     domainScores,
   };
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    const userId = await resolveUserId(request);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized', message: 'Please sign in to view your progress' },
         { status: 401 }
       );
     }
 
-    const adminClient = getSupabaseAdmin();
-    const nowIso = new Date().toISOString();
-
-    const { data: results, error: fetchError } = await adminClient
-      .from('analysis_results')
-      .select('result_id, evaluation, is_paid, claimed_at')
-      .eq('user_id', user.id)
-      .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
-      .order('claimed_at', { ascending: true }); // Oldest first for history
-
-    if (fetchError) {
-      console.error('Failed to fetch user analyses:', fetchError);
-      return NextResponse.json(
-        { error: 'Fetch Failed', message: 'Failed to fetch your analyses' },
-        { status: 500 }
-      );
-    }
-
-    if (!results || results.length === 0) {
+    const results = listAnalysesForUser(userId).slice().reverse();
+    if (results.length === 0) {
       return NextResponse.json({ analytics: null });
     }
 
-    const validResults: Array<{ result: AnalysisResult; domainScores: WorkerDomainScores }> = [];
-
-    for (const result of results as AnalysisResult[]) {
-      const domainScores = extractWorkerDomainScores(result.evaluation);
-      if (domainScores) {
-        validResults.push({ result, domainScores });
-      }
-    }
+    const validResults = results
+      .map((result) => {
+        const domainScores = extractWorkerDomainScores(result.evaluation);
+        return domainScores ? { result, domainScores } : null;
+      })
+      .filter((entry): entry is { result: StoredAnalysisResult; domainScores: WorkerDomainScores } => !!entry);
 
     if (validResults.length === 0) {
       return NextResponse.json({ analytics: null });
@@ -238,53 +149,42 @@ export async function GET(request: NextRequest) {
     const firstValid = validResults[0];
     const latestValid = validResults[validResults.length - 1];
 
-    // Build history entries
     const history: HistoryEntry[] = validResults.map(({ result, domainScores }) => ({
-      date: result.claimed_at.split('T')[0], // Just the date part
-      overallScore: result.evaluation?.overallScore ?? calculateOverallScore(domainScores),
+      date: result.claimedAt.split('T')[0],
+      overallScore: calculateOverallScore(domainScores),
       domainScores,
     }));
 
-    // Calculate streaks
-    const analysisDates = validResults.map(({ result }) => new Date(result.claimed_at));
+    const analysisDates = validResults.map(({ result }) => new Date(result.claimedAt));
     const { current: currentStreak, longest: longestStreak } = calculateStreak(analysisDates);
 
-    // Build first and latest analysis summaries
     const firstAnalysis = buildAnalysisSummary(firstValid.result, firstValid.domainScores);
     const latestAnalysis = buildAnalysisSummary(latestValid.result, latestValid.domainScores);
-
-    // Calculate improvements
     const dimensionImprovements = calculateDomainImprovements(
       firstValid.domainScores,
       latestValid.domainScores
     );
     const totalImprovement = latestAnalysis.overallScore - firstAnalysis.overallScore;
 
-    // Build PersonalAnalytics response
     const analytics: PersonalAnalytics = {
       currentType: latestAnalysis.primaryType,
-      firstAnalysisDate: firstValid.result.claimed_at,
+      firstAnalysisDate: firstValid.result.claimedAt,
       analysisCount: validResults.length,
       totalImprovement,
-
       currentDimensions: latestValid.domainScores,
       dimensionImprovements,
-
       firstAnalysis,
       latestAnalysis,
-
       journey: {
         totalAnalyses: validResults.length,
         currentStreak,
         longestStreak,
       },
-
       history,
-      recommendations: [], // Recommendations can be added later
+      recommendations: [],
     };
 
     return NextResponse.json({ analytics });
-
   } catch (error) {
     console.error('User progress fetch error:', error);
     return NextResponse.json(

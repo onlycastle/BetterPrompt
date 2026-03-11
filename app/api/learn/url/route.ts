@@ -1,37 +1,14 @@
-/**
- * POST /api/learn/url
- * Learn from a web URL (Twitter, Reddit, LinkedIn, etc.)
- *
- * If summary is provided, creates knowledge item synchronously.
- * If summary is missing, queues an async job for content analysis.
- */
-
-import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
-import { knowledgeDb } from '@/lib/search-agent/db';
-import { getInfluencerDetector } from '@/lib/search-agent/influencers';
-import { createMemoryJobQueue } from '@/lib/infrastructure/jobs';
+import { NextRequest, NextResponse } from 'next/server';
+import { getCurrentUserFromRequest } from '@/lib/local/auth';
+import { knowledgeStore } from '@/lib/search-agent/storage/knowledge-store';
 import type {
-  KnowledgeItem,
-  TopicCategory,
   ContentType,
+  KnowledgeItem,
   KnowledgeStatus,
+  TopicCategory,
 } from '@/lib/search-agent/models/knowledge';
 
-// Job queue for async learning operations
-let jobQueue: ReturnType<typeof createMemoryJobQueue> | null = null;
-
-function getJobQueue() {
-  if (!jobQueue) {
-    jobQueue = createMemoryJobQueue({ concurrency: 2 });
-    jobQueue.start();
-  }
-  return jobQueue;
-}
-
-/**
- * Helper: Detect platform from URL
- */
 function detectPlatformFromUrl(
   url: string
 ): 'twitter' | 'reddit' | 'linkedin' | 'youtube' | 'web' {
@@ -42,98 +19,81 @@ function detectPlatformFromUrl(
   return 'web';
 }
 
+function buildDefaultSummary(hostname: string, topics: string[]): string {
+  const topicText = topics.length > 0 ? topics.join(', ') : 'AI coding workflows';
+  return `Imported reference from ${hostname}. This item was added to capture useful context about ${topicText} so it can be reviewed, tagged, and improved inside the local knowledge base.`;
+}
+
 export async function POST(request: NextRequest) {
   try {
+    const user = getCurrentUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Please sign in to add knowledge.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
-    const { url, title, summary, topics = [] } = body;
+    const url = typeof body.url === 'string' ? body.url.trim() : '';
+    const title = typeof body.title === 'string' ? body.title.trim() : '';
+    const summary = typeof body.summary === 'string' ? body.summary.trim() : '';
+    const topics = Array.isArray(body.topics)
+      ? body.topics.filter((value: unknown): value is string =>
+        typeof value === 'string' && value.trim().length > 0
+      )
+      : [];
 
     if (!url) {
-      return NextResponse.json(
-        { error: 'URL is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'URL is required.' }, { status: 400 });
     }
 
-    // If no summary provided, queue for async analysis
-    if (!summary || summary.trim() === '') {
-      const queue = getJobQueue();
-      const jobResult = await queue.enqueue({
-        type: 'knowledge_learn',
-        payload: {
-          type: 'knowledge_learn',
-          query: url,
-          topics: topics.length > 0 ? topics : ['ai-coding'],
-          maxItems: 1,
-        },
-        priority: 'normal',
-      });
-
-      if (!jobResult.success) {
-        return NextResponse.json(
-          { success: false, error: 'Failed to queue learning job' },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json(
-        {
-          success: true,
-          jobId: jobResult.data.id,
-          status: 'queued',
-          message: 'Learning job queued for processing',
-        },
-        { status: 202 }
-      );
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      return NextResponse.json({ success: false, error: 'Invalid URL.' }, { status: 400 });
     }
 
-    // Synchronous path: create knowledge item immediately with provided data
-    // Detect platform from URL
+    const existing = await knowledgeStore.getItemByUrl(url);
+    if (existing) {
+      return NextResponse.json({ success: true, item: existing });
+    }
+
     const platform = detectPlatformFromUrl(url);
+    const safeSummary = summary || buildDefaultSummary(parsedUrl.hostname, topics);
+    const safeContent = `${safeSummary}\n\nSource URL: ${url}\n\nAdded by ${user.email} for local review and future enrichment inside the self-hosted knowledge base.`;
 
-    // Detect influencer (async)
-    const detector = getInfluencerDetector();
-    const influencerResult = await detector.detectFromUrl(url);
-
-    // Create basic knowledge item
-    const knowledgeItem: KnowledgeItem = {
+    const item: KnowledgeItem = {
       id: randomUUID(),
       version: '1.0.0',
-      title: (title || `Content from ${platform}`).slice(0, 200),
-      summary: summary.slice(0, 1000),
-      content: summary.slice(0, 10000),
+      title: (title || `Imported from ${parsedUrl.hostname}`).slice(0, 200),
+      summary: safeSummary.slice(0, 1000),
+      content: safeContent.slice(0, 10000),
       category: 'other' as TopicCategory,
-      contentType: 'insight' as ContentType,
+      contentType: 'reference' as ContentType,
       tags: topics.length > 0 ? topics.slice(0, 10) : ['ai-coding'],
       source: {
         platform,
         url,
         fetchedAt: new Date().toISOString(),
-        influencerId: influencerResult.influencer?.id,
-        credibilityTier: influencerResult.influencer?.credibilityTier,
       },
       relevance: {
-        score: 0.5,
+        score: 0.4,
         confidence: 0.3,
-        reasoning: 'Manually added with summary',
+        reasoning: 'Imported manually from a URL into the local knowledge base.',
       },
       status: 'reviewed' as KnowledgeStatus,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    await knowledgeDb.save(knowledgeItem);
-
-    return NextResponse.json({
-      success: true,
-      item: knowledgeItem,
-    });
+    await knowledgeStore.saveItem(item);
+    return NextResponse.json({ success: true, item });
   } catch (error) {
-    console.error('Error learning from URL:', error);
+    console.error('[Learn/URL] Error:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      },
+      { success: false, error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

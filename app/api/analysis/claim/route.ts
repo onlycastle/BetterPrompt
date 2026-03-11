@@ -1,135 +1,56 @@
-/**
- * Claim Analysis Result API Route
- *
- * Associates an anonymous analysis result with the authenticated user.
- * Called after login when user wants to claim their CLI-generated result.
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
+import { authenticateRequest } from '@/lib/auth/authenticate-request';
+import { getAnalysisRecord } from '@/lib/local/analysis-store';
+import { getCurrentUserFromRequest } from '@/lib/local/auth';
 
-/**
- * Create a Supabase server client with cookie access (for auth)
- */
-async function createSupabaseServerClient() {
-  const cookieStore = await cookies();
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-}
-
-/**
- * Create a Supabase admin client (for DB updates)
- */
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceKey) {
-    throw new Error('Supabase configuration missing');
+async function resolveUserId(request: NextRequest): Promise<string | null> {
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader) {
+    const authResult = await authenticateRequest(authHeader);
+    return authResult?.userId ?? null;
   }
 
-  return createClient(supabaseUrl, serviceKey);
+  return getCurrentUserFromRequest(request)?.id ?? null;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Verify user is authenticated
-    const supabase = await createSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    const userId = await resolveUserId(request);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized', message: 'Please sign in to claim this result' },
         { status: 401 }
       );
     }
 
-    // 2. Parse request body
-    const body = await request.json();
-    const { resultId } = body;
-
-    if (!resultId) {
+    const body = await request.json() as { resultId?: string };
+    if (!body.resultId) {
       return NextResponse.json(
         { error: 'Bad Request', message: 'resultId is required' },
         { status: 400 }
       );
     }
 
-    // 3. Use admin client to update the result
-    const adminClient = getSupabaseAdmin();
-
-    // First check if result exists and is unclaimed
-    const { data: existingResult, error: fetchError } = await adminClient
-      .from('analysis_results')
-      .select('result_id, user_id')
-      .eq('result_id', resultId)
-      .single();
-
-    if (fetchError || !existingResult) {
+    const result = getAnalysisRecord(body.resultId);
+    if (!result) {
       return NextResponse.json(
         { error: 'Not Found', message: 'Analysis result not found' },
         { status: 404 }
       );
     }
 
-    // Check if already claimed by another user
-    if (existingResult.user_id && existingResult.user_id !== user.id) {
+    if (result.userId !== userId) {
       return NextResponse.json(
-        { error: 'Forbidden', message: 'This result has already been claimed by another user' },
+        { error: 'Forbidden', message: 'This result belongs to another user' },
         { status: 403 }
-      );
-    }
-
-    // Already claimed by this user - return success
-    if (existingResult.user_id === user.id) {
-      return NextResponse.json({
-        success: true,
-        message: 'Result already claimed',
-        resultId,
-      });
-    }
-
-    // 4. Claim the result
-    const { error: updateError } = await adminClient
-      .from('analysis_results')
-      .update({
-        user_id: user.id,
-        claimed_at: new Date().toISOString(),
-      })
-      .eq('result_id', resultId)
-      .is('user_id', null); // Only update if unclaimed
-
-    if (updateError) {
-      console.error('Failed to claim result:', updateError);
-      return NextResponse.json(
-        { error: 'Claim Failed', message: 'Failed to claim the result' },
-        { status: 500 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Result claimed successfully',
-      resultId,
+      message: 'Result already belongs to this account',
+      resultId: body.resultId,
     });
-
   } catch (error) {
     console.error('Claim error:', error);
     return NextResponse.json(

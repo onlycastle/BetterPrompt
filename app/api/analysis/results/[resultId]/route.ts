@@ -1,224 +1,28 @@
-/**
- * Analysis Results API Route
- *
- * Fetches analysis result by ID for web UI
- * Implements tiered access:
- * - FREE users see preview data
- * - Users who unlocked with credits see full data
- * - Legacy is_paid results still work (backwards compatible)
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, type User } from '@supabase/supabase-js';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import type { VerboseEvaluation, PromptPattern } from '@/lib/models/verbose-evaluation';
-import type { AgentOutputs } from '@/lib/models/agent-outputs';
-import { aggregateWorkerInsights } from '@/lib/models/agent-outputs';
-import { createContentGateway } from '@/lib/analyzer/content-gateway';
+import { authenticateRequest } from '@/lib/auth/authenticate-request';
+import { deleteAnalysisRecord, getAnalysisRecord } from '@/lib/local/analysis-store';
+import { getCurrentUserFromRequest } from '@/lib/local/auth';
 
 interface RouteContext {
   params: Promise<{ resultId: string }>;
 }
 
-// ============================================================================
-// Preview Configuration
-// ============================================================================
-
-const PREVIEW_CONFIG = {
-  FULL_ITEMS: 3,      // Number of items to show in full
-  PARTIAL_ITEM: true, // Whether to show 4th item truncated
-};
-
-/**
- * Truncate text to half length with ellipsis
- */
-function truncateText(text: string): string {
-  const halfLength = Math.floor(text.length / 2);
-  return text.slice(0, halfLength) + '...';
-}
-
-/**
- * Create preview evaluation with limited premium data
- * - 3 full items + 4th item truncated
- * - Other premium fields removed
- */
-function createPreviewEvaluation(evaluation: VerboseEvaluation): Partial<VerboseEvaluation> {
-  // promptPatterns: 3 full + 4th truncated
-  const previewPatterns: PromptPattern[] | undefined = evaluation.promptPatterns?.slice(0, 4).map((pattern, idx) => {
-    if (idx < PREVIEW_CONFIG.FULL_ITEMS) {
-      return pattern;
-    }
-    // 4th item: truncate description and limit examples
-    return {
-      ...pattern,
-      description: truncateText(pattern.description),
-      examples: pattern.examples?.slice(0, 1),
-    };
-  });
-
-  return {
-    // FREE fields - full data
-    sessionId: evaluation.sessionId,
-    analyzedAt: evaluation.analyzedAt,
-    sessionsAnalyzed: evaluation.sessionsAnalyzed,
-    avgPromptLength: evaluation.avgPromptLength,
-    avgTurnsPerSession: evaluation.avgTurnsPerSession,
-    analyzedSessions: evaluation.analyzedSessions,
-    primaryType: evaluation.primaryType,
-    controlLevel: evaluation.controlLevel,
-    distribution: evaluation.distribution,
-    personalitySummary: evaluation.personalitySummary,
-
-    // Activity data - diagnostic metadata, not premium content
-    activitySessions: evaluation.activitySessions,
-    sessionSummaries: evaluation.sessionSummaries,
-    projectSummaries: evaluation.projectSummaries,
-    weeklyInsights: evaluation.weeklyInsights,
-
-    // PREMIUM fields - preview only (3 full + 4th truncated)
-    promptPatterns: previewPatterns,
-
-    // Other PREMIUM fields - removed
-    toolUsageDeepDive: undefined,
-    tokenEfficiency: undefined,
-    growthRoadmap: undefined,
-    comparativeInsights: undefined,
-    sessionTrends: undefined,
-
-    // Agent outputs - teasers for free users
-    // FREE agents (patternDetective, metacognition) show full data
-    // PREMIUM agents show 1 insight + scores only
-    agentOutputs: createContentGateway().filterAgentOutputs(evaluation.agentOutputs, 'free'),
-
-    // Analysis metadata - always show (transparency builds trust)
-    analysisMetadata: evaluation.analysisMetadata,
-
-    // Evidence detail view - utterance lookup + transformation audit
-    // ExpandableEvidence is data-driven: presence of lookup = expandable
-    // Locked domains have evidence: [] via ContentGateway, so no data leak
-    utteranceLookup: evaluation.utteranceLookup,
-    transformationAudit: evaluation.transformationAudit,
-
-    // Worker insights - all 5 domains visible for free tier
-    // Only recommendations are locked (diagnosis free, prescription paid)
-    // Generate from agentOutputs if not stored in DB (backwards compatibility)
-    workerInsights: createContentGateway().filterWorkerInsights(
-      evaluation.workerInsights
-        ?? (evaluation.agentOutputs
-          ? aggregateWorkerInsights(evaluation.agentOutputs) as VerboseEvaluation['workerInsights']
-          : undefined),
-      'free'
-    ),
-
-    // Translated agent insights - needed for non-English users
-    // All 5 domains visible for free tier, translations pass through
-    translatedAgentInsights: createContentGateway().filterTranslatedInsights(
-      evaluation.translatedAgentInsights,
-      'free'
-    ),
-  };
-}
-
-/**
- * Calculate preview metadata for frontend display
- */
-function getPreviewMetadata(evaluation: VerboseEvaluation) {
-  const totalPromptPatterns = evaluation.promptPatterns?.length ?? 0;
-
-  return {
-    totalPromptPatterns,
-    previewCount: PREVIEW_CONFIG.FULL_ITEMS,
-    hasPartialItem: PREVIEW_CONFIG.PARTIAL_ITEM,
-  };
-}
-
-/**
- * Get Supabase admin client (service role)
- */
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required');
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
-/**
- * Create Supabase server client with cookie access
- */
-async function createSupabaseServerClient() {
-  const cookieStore = await cookies();
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-}
-
-/**
- * Get authenticated user from Authorization header or cookies.
- * Tries Authorization header first (for desktop app), then falls back to cookies (for web).
- */
-async function getAuthenticatedUser(request: NextRequest): Promise<User | null> {
-  // Try Authorization header first (desktop app)
+async function resolveUserId(request: NextRequest): Promise<string | null> {
   const authHeader = request.headers.get('Authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
-    const { data, error } = await supabase.auth.getUser(token);
-    if (!error && data.user) {
-      return data.user;
-    }
+  if (authHeader) {
+    const authResult = await authenticateRequest(authHeader);
+    return authResult?.userId ?? null;
   }
 
-  // Fallback to cookies (web app)
-  try {
-    const serverSupabase = await createSupabaseServerClient();
-    const { data } = await serverSupabase.auth.getUser();
-    return data.user;
-  } catch {
-    // Cookie access might fail in some contexts
-    return null;
-  }
+  return getCurrentUserFromRequest(request)?.id ?? null;
 }
 
-/**
- * GET /api/analysis/results/:resultId
- *
- * Fetch analysis result by ID (for web UI)
- */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: RouteContext
 ): Promise<NextResponse> {
   try {
     const { resultId } = await context.params;
-
     if (!resultId) {
       return NextResponse.json(
         { error: 'Invalid request', message: 'resultId is required' },
@@ -226,87 +30,22 @@ export async function GET(
       );
     }
 
-    const supabase = getSupabaseAdmin();
-
-    // 1. Fetch the result
-    const { data, error } = await supabase
-      .from('analysis_results')
-      .select('evaluation, is_paid, expires_at')
-      .eq('result_id', resultId)
-      .single();
-
-    if (error || !data) {
+    const result = getAnalysisRecord(resultId);
+    if (!result) {
       return NextResponse.json(
-        { error: 'Result not found', message: 'Analysis result not found. It may have expired.' },
+        { error: 'Result not found', message: 'Analysis result not found' },
         { status: 404 }
       );
     }
 
-    // Check if result has expired
-    if (data.expires_at && new Date(data.expires_at) < new Date()) {
-      // Cleanup: delete expired record with expires_at guard (defense-in-depth)
-      const { error: deleteError } = await supabase
-        .from('analysis_results')
-        .delete()
-        .eq('result_id', resultId)
-        .lt('expires_at', new Date().toISOString());
-
-      if (deleteError) {
-        throw new Error(`Failed to clean up expired result ${resultId}: ${deleteError.message}`);
-      }
-
-      return NextResponse.json(
-        { error: 'Result expired', message: 'This analysis result has expired. Please run a new analysis.' },
-        { status: 410 }
-      );
-    }
-
-    const evaluation = data.evaluation as VerboseEvaluation;
-
-    // 2. Resolve authenticated user
-    const user = await getAuthenticatedUser(request);
-
-    // 3. Check if result is already paid (legacy or via credit unlock)
-    let isPaid = data.is_paid;
-
-    if (!isPaid && user) {
-      const { data: hasUnlocked } = await supabase.rpc('has_unlocked_result', {
-        p_user_id: user.id,
-        p_result_id: resultId,
-      });
-      isPaid = Boolean(hasUnlocked);
-    }
-
-    // 4. Get user's credit info if authenticated
-    let credits: number | null = null;
-    if (user) {
-      const { data: creditInfo } = await supabase.rpc('get_user_credit_info', {
-        p_user_id: user.id,
-      });
-      credits = creditInfo?.credits ?? null;
-    }
-
-    // 5. Return preview or full data
-    if (!isPaid) {
-      const previewEvaluation = createPreviewEvaluation(evaluation);
-      return NextResponse.json({
-        resultId,
-        isPaid: false,
-        evaluation: previewEvaluation,
-        preview: getPreviewMetadata(evaluation),
-        credits,
-      });
-    }
-
-    // PAID users: return full data
     return NextResponse.json({
       resultId,
       isPaid: true,
-      evaluation,
-      credits,
+      evaluation: result.evaluation,
+      credits: null,
     });
   } catch (error) {
-    console.error('Error loading remote result:', error);
+    console.error('Error loading analysis result:', error);
     return NextResponse.json(
       {
         error: 'Failed to load result',
@@ -317,18 +56,12 @@ export async function GET(
   }
 }
 
-/**
- * DELETE /api/analysis/results/:resultId
- *
- * Delete an analysis result by ID (requires ownership)
- */
 export async function DELETE(
   request: NextRequest,
   context: RouteContext
 ): Promise<NextResponse> {
   try {
     const { resultId } = await context.params;
-
     if (!resultId) {
       return NextResponse.json(
         { error: 'Invalid request', message: 'resultId is required' },
@@ -336,47 +69,31 @@ export async function DELETE(
       );
     }
 
-    // 1. Authenticate user
-    const user = await getAuthenticatedUser(request);
-    if (!user) {
+    const userId = await resolveUserId(request);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized', message: 'You must be logged in to delete reports' },
         { status: 401 }
       );
     }
 
-    const supabase = getSupabaseAdmin();
-
-    // 2. Fetch the result to verify ownership
-    const { data: result, error: fetchError } = await supabase
-      .from('analysis_results')
-      .select('user_id')
-      .eq('result_id', resultId)
-      .single();
-
-    if (fetchError || !result) {
+    const result = getAnalysisRecord(resultId);
+    if (!result) {
       return NextResponse.json(
         { error: 'Not found', message: 'Analysis result not found' },
         { status: 404 }
       );
     }
 
-    // 3. Verify ownership
-    if (result.user_id !== user.id) {
+    if (result.userId !== userId) {
       return NextResponse.json(
         { error: 'Forbidden', message: 'You can only delete your own reports' },
         { status: 403 }
       );
     }
 
-    // 4. Delete the result
-    const { error: deleteError } = await supabase
-      .from('analysis_results')
-      .delete()
-      .eq('result_id', resultId);
-
-    if (deleteError) {
-      console.error('Error deleting result:', deleteError);
+    const deleted = deleteAnalysisRecord(resultId, userId);
+    if (!deleted) {
       return NextResponse.json(
         { error: 'Delete failed', message: 'Failed to delete the analysis result' },
         { status: 500 }

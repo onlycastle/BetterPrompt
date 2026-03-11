@@ -1,10 +1,5 @@
-/**
- * POST /api/reports/:reportId/share
- * Record a share action (for analytics)
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabase } from '@/lib/supabase';
+import { getAnalysisRecord, incrementAnalysisShare } from '@/lib/local/analysis-store';
 
 export async function POST(
   request: NextRequest,
@@ -12,27 +7,30 @@ export async function POST(
 ) {
   try {
     const { reportId } = await params;
-    const body = await request.json() as { platform?: string };
-    const { platform } = body;
-
     if (!reportId) {
       return NextResponse.json(
-        {
-          error: 'Invalid request',
-          message: 'reportId is required',
-        },
+        { error: 'Invalid request', message: 'reportId is required.' },
         { status: 400 }
       );
     }
 
-    const supabase = getSupabase();
+    const result = getAnalysisRecord(reportId);
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Report not found', message: 'Analysis result not found.' },
+        { status: 404 }
+      );
+    }
 
-    // Increment share count
-    await supabase.rpc('increment_report_shares', { report_uuid: reportId });
+    const body = await request.json().catch(() => ({}));
+    incrementAnalysisShare(reportId);
 
-    return NextResponse.json({ success: true, platform: platform || 'unknown' });
+    return NextResponse.json({
+      success: true,
+      platform: typeof body.platform === 'string' ? body.platform : 'unknown',
+    });
   } catch (error) {
-    console.error('Error in POST /api/reports/:reportId/share:', error);
+    console.error('[Reports/Share] Error:', error);
     return NextResponse.json(
       {
         error: 'Internal server error',

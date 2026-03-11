@@ -1,39 +1,31 @@
-/**
- * Knowledge API Route - Single Item
- * GET /api/knowledge/:id - Get single knowledge item by ID
- * DELETE /api/knowledge/:id - Delete a knowledge item
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { knowledgeDb } from '@/lib/search-agent/db/index';
-
-type RouteContext = {
-  params: Promise<{ id: string }>;
-};
+import { knowledgeStore } from '@/lib/search-agent/storage/knowledge-store';
+import { getCurrentUserFromRequest } from '@/lib/local/auth';
 
 export async function GET(
-  request: NextRequest,
-  context: RouteContext
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
-    const item = await knowledgeDb.findById(id);
-
+    const { id } = await params;
+    const item = await knowledgeStore.loadItem(id);
     if (!item) {
       return NextResponse.json(
-        { error: 'Knowledge item not found' },
+        { error: 'Not found', message: 'Knowledge item not found.' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ item });
-  } catch (error) {
-    console.error('Error getting knowledge item:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to get knowledge item',
-        message: error instanceof Error ? error.message : String(error),
+    return NextResponse.json({
+      item: {
+        ...item,
+        category: item.category || 'other',
       },
+    });
+  } catch (error) {
+    console.error('[Knowledge/Detail] Error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error', message: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
@@ -41,27 +33,31 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  context: RouteContext
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
-    const deleted = await knowledgeDb.delete(id);
+    const user = getCurrentUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', message: 'Please sign in to delete knowledge.' },
+        { status: 401 }
+      );
+    }
 
+    const { id } = await params;
+    const deleted = await knowledgeStore.deleteItem(id);
     if (!deleted) {
       return NextResponse.json(
-        { error: 'Knowledge item not found' },
+        { error: 'Not found', message: 'Knowledge item not found.' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, id });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting knowledge item:', error);
+    console.error('[Knowledge/Delete] Error:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to delete knowledge item',
-        message: error instanceof Error ? error.message : String(error),
-      },
+      { error: 'Internal server error', message: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

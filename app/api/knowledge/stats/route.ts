@@ -1,22 +1,13 @@
-/**
- * Knowledge API Route - Stats
- * GET /api/knowledge/stats - Get knowledge base statistics
- */
-
 import { NextResponse } from 'next/server';
-import { knowledgeDb } from '@/lib/search-agent/db/index';
+import { knowledgeStore } from '@/lib/search-agent/storage/knowledge-store';
 
 export async function GET() {
   try {
-    const stats = await knowledgeDb.getStats();
-    return NextResponse.json(stats);
+    return NextResponse.json(await knowledgeStore.getStats());
   } catch (error) {
-    console.error('Error getting stats:', error);
+    console.error('[Knowledge/Stats] Error:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to get statistics',
-        message: error instanceof Error ? error.message : String(error),
-      },
+      { error: 'Internal server error', message: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
