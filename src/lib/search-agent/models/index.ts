@@ -25,7 +25,7 @@ export {
   InsightCategorySchema,
   InsightSourceTypeSchema,
   ProfessionalInsightSchema,
-  // Note: INITIAL_INSIGHTS removed - now in database (see supabase/migrations/018_seed_professional_insights.sql)
+  // Note: INITIAL_INSIGHTS removed - now managed by the local insight repository
   type TopicCategory,
   type ContentType,
   type SourcePlatform,

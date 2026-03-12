@@ -297,10 +297,6 @@ export {
   RuntimeEnvironmentSchema,
   type Config,
   type RuntimeEnvironment,
-  // Supabase config
-  SupabaseConfigSchema,
-  SUPABASE_ENV_MAPPINGS,
-  type SupabaseConfig,
   // Telemetry
   TelemetryEventTypeSchema,
   TelemetryEventSchema,
@@ -316,7 +312,6 @@ export {
   resolveConfig,
   getEnvValue,
   parseEnvBoolean,
-  validateSupabaseConfig,
 } from './config';
 
 // ============================================================================

@@ -83,8 +83,8 @@ npx no-ai-slop`}
             <article className={styles.detailCard}>
               <h3>What changed</h3>
               <ul>
-                <li>Supabase-backed auth and report storage were moved to local SQLite.</li>
-                <li>Hosted report unlocks, payments, waitlists, and survey collection were removed.</li>
+                <li>Auth and report storage now live in local SQLite.</li>
+                <li>Billing, waitlist, survey, and hosted-only unlock flows were removed.</li>
                 <li>CLI uploads now target your self-hosted analysis route directly.</li>
               </ul>
             </article>

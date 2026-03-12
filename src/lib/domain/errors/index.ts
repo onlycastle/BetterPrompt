@@ -152,7 +152,7 @@ export class AnalysisError extends DomainError {
 // ============================================================================
 
 /**
- * Errors related to data storage (Supabase, local files)
+ * Errors related to data storage (SQLite, local files)
  */
 export class StorageError extends DomainError {
   readonly code: string;

@@ -13,8 +13,8 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps) {
   const { resultId } = await params;
   return {
-    title: `Report ${resultId.slice(0, 8)} | BetterPrompt`,
-    description: 'Your AI builder profile analysis report',
+    title: `Report ${resultId.slice(0, 8)} | NoMoreAISlop`,
+    description: 'Your NoMoreAISlop analysis report',
   };
 }
 

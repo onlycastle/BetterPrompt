@@ -2,7 +2,7 @@
  * Influencer Detector
  *
  * Detects known influencers from content metadata (URLs, author names, handles).
- * Uses Supabase for persistence.
+ * Uses the local influencer registry for persistence.
  */
 
 import {

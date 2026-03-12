@@ -29,15 +29,15 @@ export function DocsPage() {
         <main className={styles.content}>
           {/* Getting Started */}
           <DocsSection id="getting-started" title="Getting Started">
-            <h3 className={styles.heading3}>What is BetterPrompt?</h3>
+            <h3 className={styles.heading3}>What is NoMoreAISlop?</h3>
             <p className={styles.paragraph}>
-              BetterPrompt analyzes your AI sessions to reveal how you collaborate with AI.
+              NoMoreAISlop analyzes your AI sessions to reveal how you collaborate with AI.
               It examines your prompts, patterns, and working style to generate a personalized
               assessment — so you can see clearly what&apos;s working and where to grow.
             </p>
             <p className={styles.paragraph}>
               Whether you&apos;re a PM, designer, founder, or builder of any kind: if you use
-              Claude to get things done, BetterPrompt can help you use it better.
+              Claude to get things done, NoMoreAISlop can help you use it better.
             </p>
 
             <h3 className={styles.heading3}>Three Steps to Your Assessment</h3>
@@ -86,7 +86,7 @@ export function DocsPage() {
 
             <h3 className={styles.heading3}>What Data is Analyzed</h3>
             <p className={styles.paragraph}>
-              BetterPrompt reads your Claude AI sessions — the conversations you&apos;ve had
+              NoMoreAISlop reads your Claude AI sessions — the conversations you&apos;ve had
               with Claude across your projects. It looks at how you ask questions, how you
               respond to Claude&apos;s output, and how you guide AI toward your goals.
             </p>
@@ -99,7 +99,7 @@ export function DocsPage() {
           {/* How It Works */}
           <DocsSection id="how-it-works" title="How It Works">
             <p className={styles.paragraph}>
-              Once you run the command, BetterPrompt works in two main stages.
+              Once you run the command, NoMoreAISlop works in two main stages.
             </p>
 
             <h3 className={styles.heading3}>Stage 1: Finding Your Best Sessions</h3>
@@ -412,7 +412,7 @@ export function DocsPage() {
           <DocsSection id="technical-details" title="Technical Details">
             <p className={styles.paragraph}>
               For builders who want to understand exactly what&apos;s happening under the hood —
-              or who need to troubleshoot, audit, or extend BetterPrompt.
+              or who need to troubleshoot, audit, or extend NoMoreAISlop.
             </p>
 
             <details className={styles.accordion}>
@@ -421,7 +421,7 @@ export function DocsPage() {
               </summary>
               <div className={styles.accordionBody}>
                 <p className={styles.paragraph}>
-                  BetterPrompt reads Claude Code session logs from <code className={styles.inlineCode}>~/.claude/projects/</code>.
+                  NoMoreAISlop reads Claude Code session logs from <code className={styles.inlineCode}>~/.claude/projects/</code>.
                   These are JSONL files containing your conversation history with Claude.
                 </p>
                 <h4 className={styles.heading4}>JSONL Message Types</h4>
@@ -447,7 +447,7 @@ export function DocsPage() {
                   For example, <code className={styles.inlineCode}>/Users/you/projects/myapp</code> becomes <code className={styles.inlineCode}>-Users-you-projects-myapp</code>.
                 </p>
                 <p className={styles.paragraph}>
-                  BetterPrompt handles this automatically via <code className={styles.inlineCode}>encodeProjectPath</code> and <code className={styles.inlineCode}>decodeProjectPath</code> utilities.
+                  NoMoreAISlop handles this automatically via <code className={styles.inlineCode}>encodeProjectPath</code> and <code className={styles.inlineCode}>decodeProjectPath</code> utilities.
                 </p>
               </div>
             </details>

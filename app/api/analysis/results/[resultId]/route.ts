@@ -42,7 +42,6 @@ export async function GET(
       resultId,
       isPaid: true,
       evaluation: result.evaluation,
-      credits: null,
     });
   } catch (error) {
     console.error('Error loading analysis result:', error);

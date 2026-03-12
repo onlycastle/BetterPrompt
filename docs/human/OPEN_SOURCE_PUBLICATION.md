@@ -2,16 +2,13 @@
 
 Use this checklist before making the repository public.
 
-## 1. Rotate Secrets
+## 1. Rotate Any Exposed Secrets
 
-Rotate any credential that may have been exposed in tracked files or prior commits, especially:
+Rotate any credential that may have been exposed in tracked files or past commits, especially:
 
 - `GOOGLE_GEMINI_API_KEY`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `POLAR_ACCESS_TOKEN`
-- `POLAR_WEBHOOK_SECRET`
-- `SLACK_WEBHOOK_URL`
+- any local `.env` values you used while developing
+- any personal access tokens or webhook URLs that may have appeared in scripts, caches, or shell history
 
 Do the rotation first. History rewrites do not make already-leaked secrets safe again.
 
@@ -40,7 +37,7 @@ Run these checks after the rewrite:
 ```bash
 git log --stat -- scripts/fixtures/phase2-cache/phase2-cache.json
 git log --stat -- scripts/fixtures/phase3-cache/phase3-cache.json
-git grep -n "AIza\\|SUPABASE_SERVICE_ROLE_KEY\\|POLAR_ACCESS_TOKEN" $(git rev-list --all)
+git grep -n "AIza" $(git rev-list --all)
 ```
 
 Expected result:
@@ -63,11 +60,12 @@ Run a final local verification pass:
 ```bash
 npm run typecheck
 npm test
+npm run build
 ```
 
 Then manually confirm:
 
-- `.env.example` files contain placeholders only
+- `.env.example` contains placeholders only
 - `.gitignore` excludes local caches and generated artifacts
-- public docs do not mention private infrastructure URLs or workstation paths
-- hosted-only APIs return `501` unless self-hosted env vars are configured
+- public docs describe only the supported self-hosted server + CLI runtime
+- the repo contains no tracked desktop, Lambda, Supabase, or billing code paths

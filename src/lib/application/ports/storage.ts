@@ -2,7 +2,7 @@
  * Storage Port Interfaces
  *
  * Defines contracts for data persistence operations.
- * Implemented by Supabase and local file adapters.
+ * Implemented by local database and filesystem adapters.
  *
  * @module application/ports/storage
  */

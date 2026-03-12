@@ -2,7 +2,7 @@
  * Share Utilities
  *
  * Helper functions for generating shareable content:
- * - Pre-filled tweets
+ * - Pre-filled social posts
  * - LinkedIn posts
  * - Copy-to-clipboard text
  */
@@ -34,12 +34,12 @@ export function generateTwitterShareUrl(
   // Build tweet text
   let tweetText = `I'm a ${meta.name} ${meta.emoji} builder!
 
-My self-hosted AI collaboration profile:
+My self-hosted NoMoreAISlop profile:
 "${meta.tagline}"
 
 Top Strength: ${topStrength}
 
-What does your workflow look like?
+See the full report:
 ${shareUrl}`;
 
   if (includeHashtags) {
@@ -78,7 +78,7 @@ export function generateCopyText(
   const percentage = Math.round(typeResult.distribution[typeResult.primaryType] || 0);
   const shareUrl = `${BASE_URL}/r/${reportId}`;
 
-  let text = `🎯 My AI builder profile: ${meta.name} ${meta.emoji}
+  let text = `🎯 My NoMoreAISlop profile: ${meta.name} ${meta.emoji}
 
 "${meta.tagline}"`;
 
@@ -149,7 +149,7 @@ export function generateWebShareData(
   const shareUrl = `${BASE_URL}/r/${reportId}`;
 
   return {
-    title: `My AI Builder Profile: ${meta.name} ${meta.emoji}`,
+    title: `My NoMoreAISlop Profile: ${meta.name} ${meta.emoji}`,
     text: `${meta.tagline} - What does your workflow look like?`,
     url: shareUrl,
   };
@@ -166,7 +166,7 @@ export function generateInstagramCaption(
   const shareUrl = `${BASE_URL}/r/${reportId}`;
   const topStrength = meta.strengths[0];
 
-  return `${meta.emoji} I'm a ${meta.name} builder!
+  return `${meta.emoji} I'm a ${meta.name} builder on NoMoreAISlop!
 
 "${meta.tagline}"
 

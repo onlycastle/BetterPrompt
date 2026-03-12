@@ -69,29 +69,6 @@ export const RuntimeEnvironmentSchema = z.enum(['development', 'staging', 'produ
 export type RuntimeEnvironment = z.infer<typeof RuntimeEnvironmentSchema>;
 
 // ============================================================================
-// Supabase Configuration
-// ============================================================================
-
-/**
- * Supabase configuration
- */
-export const SupabaseConfigSchema = z.object({
-  url: z.string().url(),
-  anonKey: z.string(),
-  serviceRoleKey: z.string().optional(),
-});
-export type SupabaseConfig = z.infer<typeof SupabaseConfigSchema>;
-
-/**
- * Environment variable mappings for Supabase
- */
-export const SUPABASE_ENV_MAPPINGS = {
-  url: 'NEXT_PUBLIC_SUPABASE_URL',
-  anonKey: 'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-  serviceRoleKey: 'SUPABASE_SERVICE_ROLE_KEY',
-} as const;
-
-// ============================================================================
 // Telemetry Configuration
 // ============================================================================
 
@@ -219,20 +196,4 @@ export function getEnvValue<K extends keyof typeof ENV_MAPPINGS>(
 export function parseEnvBoolean(value: string | undefined): boolean | undefined {
   if (value === undefined) return undefined;
   return value.toLowerCase() === 'true' || value === '1';
-}
-
-/**
- * Validate Supabase configuration
- */
-export function validateSupabaseConfig(): SupabaseConfig | null {
-  const url = process.env[SUPABASE_ENV_MAPPINGS.url];
-  const anonKey = process.env[SUPABASE_ENV_MAPPINGS.anonKey];
-
-  if (!url || !anonKey) return null;
-
-  return {
-    url,
-    anonKey,
-    serviceRoleKey: process.env[SUPABASE_ENV_MAPPINGS.serviceRoleKey],
-  };
 }

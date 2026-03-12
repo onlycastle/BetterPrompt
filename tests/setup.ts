@@ -25,16 +25,6 @@ afterEach(() => {
 
 // Global cleanup after all tests to prevent process hanging
 afterAll(async () => {
-  // Reset Supabase singleton to close any open connections
-  try {
-    const { resetSupabaseClient } = await import(
-      '../src/infrastructure/storage/supabase/client.js'
-    );
-    resetSupabaseClient?.();
-  } catch {
-    // Module may not be loaded in all test contexts
-  }
-
   // Brief delay to allow connections to close
   await new Promise((resolve) => setTimeout(resolve, 100));
 });
@@ -53,7 +43,6 @@ declare global {
 }
 
 // Date mocking utilities
-const realDate = Date;
 global.testUtils = {
   mockDate: (date: Date) => {
     vi.useFakeTimers();

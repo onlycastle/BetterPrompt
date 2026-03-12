@@ -62,8 +62,8 @@ const PRIORITY_ORDER: Record<JobPriority, number> = {
 
 interface InternalJob {
   job: Job;
-  timeoutHandle?: NodeJS.Timeout;
-  retryHandle?: NodeJS.Timeout;
+  timeoutHandle?: ReturnType<typeof setTimeout>;
+  retryHandle?: ReturnType<typeof setTimeout>;
   cancelledFlag: boolean;
   startedAt?: Date;
 }
@@ -84,7 +84,7 @@ class MemoryJobQueue implements IJobQueuePort {
   private running = false;
   private paused = false;
   private processingCount = 0;
-  private pollTimer?: NodeJS.Timeout;
+  private pollTimer?: ReturnType<typeof setInterval>;
 
   // Event emitter
   private readonly eventEmitter = new EventEmitter();

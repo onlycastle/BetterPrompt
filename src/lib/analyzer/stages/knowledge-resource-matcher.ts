@@ -2,7 +2,7 @@
  * Knowledge Resource Matcher - Phase 2.75 (Deterministic, No LLM)
  *
  * Matches growth areas from Phase 2 analysis to curated learning resources
- * in the Supabase Knowledge Base using two-level matching:
+ * in the local knowledge base using two-level matching:
  *
  * Level 1 (Mandatory Filter): Dimension overlap
  *   - Knowledge items: applicableDimensions overlaps growth area dimensions
@@ -72,7 +72,7 @@ export interface MatchingContext {
  * for style-based boosting of professional insights.
  *
  * @param agentOutputs - Combined Phase 2 + Phase 2.5 outputs
- * @param deps - Repository dependencies for Supabase queries
+ * @param deps - Repository dependencies for local knowledge queries
  * @returns Array of DimensionResourceMatch, one per dimension with growth areas
  */
 export async function matchKnowledgeResources(

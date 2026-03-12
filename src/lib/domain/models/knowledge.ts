@@ -375,19 +375,15 @@ export const RELEVANCE_THRESHOLDS = {
 /**
  * Initial Professional Insights based on verified research
  *
- * @deprecated Professional insights are now stored in the `professional_insights`
- * database table. This constant is kept only as a reference for the seed migration.
+ * @deprecated Professional insights are now stored in the local insight repository.
+ * This constant is kept only as historical reference data.
  *
- * For accessing insights programmatically, use:
+ * For accessing insights programmatically, use the active insight repository.
  * ```typescript
- * import { createSupabaseProfessionalInsightRepository } from '../infrastructure/storage/supabase/professional-insight-repo';
- * const repo = createSupabaseProfessionalInsightRepository();
+ * import { createProfessionalInsightRepository } from '../application/...';
+ * const repo = createProfessionalInsightRepository();
  * const result = await repo.findEnabled();
  * ```
- *
- * See also:
- * - supabase/migrations/017_professional_insights.sql (schema)
- * - supabase/migrations/018_seed_professional_insights.sql (seed data)
  *
  * Sources:
  * - VCP Paper (arXiv:2601.02410)

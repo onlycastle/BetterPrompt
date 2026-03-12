@@ -2,7 +2,6 @@
  * useRemoteResult Hook
  *
  * Fetches a specific analysis result by resultId for the /r/[resultId] page.
- * Handles both paid and free (preview) states.
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -26,7 +25,6 @@ export interface RemoteResultResponse {
   isPaid: boolean;
   evaluation: VerboseAnalysisData;
   preview?: RemoteResultPreview;
-  credits: number | null;
 }
 
 /**
@@ -68,14 +66,12 @@ async function fetchRemoteResult(resultId: string): Promise<RemoteResultResponse
 }
 
 export interface UseRemoteResultResult {
-  /** The evaluation data (full or preview depending on isPaid) */
+  /** The evaluation data */
   data: VerboseAnalysisData | null;
-  /** Whether the result is paid (full access) or free (preview) */
+  /** Full-access flag retained for compatibility with older report components */
   isPaid: boolean;
-  /** Preview metadata for free users */
+  /** Preview metadata retained for compatibility with older report components */
   preview: RemoteResultPreview | null;
-  /** User's credit balance (null if not authenticated) */
-  credits: number | null;
   /** Loading state */
   isLoading: boolean;
   /** Error object if request failed */
@@ -94,15 +90,13 @@ export interface UseRemoteResultResult {
  *
  * @example
  * ```tsx
- * const { data, isPaid, isLoading, error, errorStatus } = useRemoteResult('jmjV2UnU');
+ * const { data, isLoading, error, errorStatus } = useRemoteResult('jmjV2UnU');
  *
  * if (isLoading) return <Spinner />;
  * if (errorStatus === 404) return <NotFound />;
  * if (error) return <Error message={error.message} />;
  *
- * return isPaid
- *   ? <FullReport data={data} />
- *   : <PreviewReport data={data} />;
+ * return <FullReport data={data} />;
  * ```
  */
 export function useRemoteResult(resultId: string | null): UseRemoteResultResult {
@@ -127,7 +121,6 @@ export function useRemoteResult(resultId: string | null): UseRemoteResultResult 
     data: query.data?.evaluation ?? null,
     isPaid: query.data?.isPaid ?? false,
     preview: query.data?.preview ?? null,
-    credits: query.data?.credits ?? null,
     isLoading: query.isLoading,
     error: errorWithStatus,
     errorStatus: errorWithStatus?.status ?? null,

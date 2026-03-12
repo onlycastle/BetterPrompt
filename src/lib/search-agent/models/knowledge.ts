@@ -282,17 +282,12 @@ export type ProfessionalInsight = z.infer<typeof ProfessionalInsightSchema>;
  * Professional Insights are now stored in the database
  *
  * @deprecated This constant has been removed. Professional insights are now
- * managed in the `professional_insights` database table. Use the
- * IProfessionalInsightRepository interface to access them.
+ * managed by the local repository layer.
  *
- * For the canonical seed data, see:
- * - supabase/migrations/018_seed_professional_insights.sql
- * - src/lib/domain/models/knowledge.ts (INITIAL_INSIGHTS - also deprecated)
- *
- * To fetch insights programmatically, use:
+ * To fetch insights programmatically, use the active repository layer.
  * ```typescript
- * import { createSupabaseProfessionalInsightRepository } from '../infrastructure/storage/supabase/professional-insight-repo';
- * const repo = createSupabaseProfessionalInsightRepository();
+ * import { createProfessionalInsightRepository } from '../application/...';
+ * const repo = createProfessionalInsightRepository();
  * const result = await repo.findEnabled();
  * ```
  */

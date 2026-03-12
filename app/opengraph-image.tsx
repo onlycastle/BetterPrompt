@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 
 export const runtime = 'nodejs';
 
-export const alt = 'BetterPrompt - AI Session Intelligence for Builders';
+export const alt = 'NoMoreAISlop - Self-Hosted AI Session Analysis';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -44,7 +44,7 @@ export default function Image() {
           }}
         />
 
-        {/* Brand logo row: >_ BetterPrompt */}
+        {/* Brand logo row: >_ NoMoreAISlop */}
         <div
           style={{
             display: 'flex',
@@ -72,7 +72,7 @@ export default function Image() {
               marginLeft: 16,
             }}
           >
-            BetterPrompt
+            NoMoreAISlop
           </div>
         </div>
 
@@ -86,7 +86,7 @@ export default function Image() {
             marginBottom: 12,
           }}
         >
-          {"See what\u2019s going wrong in your AI workflow."}
+          {'Analyze AI sessions on your own server.'}
         </div>
 
         {/* Sub-tagline */}
@@ -98,7 +98,7 @@ export default function Image() {
             marginBottom: 36,
           }}
         >
-          {'Behavior patterns \u00b7 Risk blind spots \u00b7 Next steps'}
+          {'CLI intake \u00b7 Gemini workers \u00b7 SQLite reports'}
         </div>
 
         {/* Spacer */}
@@ -143,7 +143,7 @@ export default function Image() {
             opacity: 0.5,
           }}
         >
-          www.betterprompt.sh
+          github.com/nomoreaislop/nomoreaislop
         </div>
       </div>
     ),

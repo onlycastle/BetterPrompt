@@ -16,8 +16,7 @@ The open-source product surface is now:
 - `CLI` for local session discovery, device login, and analysis uploads to your self-hosted server
 - `SQLite + local files` for persistence
 
-The desktop app is not part of the open-source path.
-Hosted billing, waitlist collection, and survey ingestion are not part of the supported runtime.
+The repository now ships only the self-hosted server + CLI runtime.
 
 ## Quick Start
 

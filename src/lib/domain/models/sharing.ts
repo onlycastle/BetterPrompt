@@ -45,7 +45,7 @@ export type ShareToken = z.infer<typeof ShareTokenSchema>;
 export const SharedReportSchema = z.object({
   id: z.string().uuid(),
 
-  // Short URL identifier (e.g., "abc123" for www.betterprompt.sh/r/abc123)
+  // Short URL identifier (e.g., "abc123" for /r/abc123)
   reportId: z.string().min(6).max(20),
 
   // Access control
@@ -192,7 +192,7 @@ export const OGMetadataSchema = z.object({
   image: z.string().url().optional(),
   url: z.string().url(),
   type: z.literal('website').default('website'),
-  siteName: z.literal('BetterPrompt').default('BetterPrompt'),
+  siteName: z.literal('NoMoreAISlop').default('NoMoreAISlop'),
 });
 export type OGMetadata = z.infer<typeof OGMetadataSchema>;
 
@@ -235,8 +235,8 @@ export function buildShareUrl(reportId: string, baseUrl = 'http://localhost:3000
  */
 export function generateTwitterShareLink(reportId: string, typeResult: { primaryType: string }): ShareLink {
   const url = buildShareUrl(reportId);
-  const text = `I'm a ${typeResult.primaryType} when coding with AI! What are your anti-patterns?`;
-  const hashtags = ['BetterPrompt', 'AICoding', 'DeveloperProductivity'];
+  const text = `I analyzed my AI workflow with NoMoreAISlop.`;
+  const hashtags = ['NoMoreAISlop', 'AICoding', 'SelfHosted'];
 
   const twitterUrl = new URL('https://twitter.com/intent/tweet');
   twitterUrl.searchParams.set('text', text);
@@ -284,11 +284,11 @@ export function generateOGMetadata(
   const typeName = typeNames[typeResult.primaryType] || typeResult.primaryType;
 
   return {
-    title: `I'm a ${typeName} - BetterPrompt`,
-    description: `I found my AI anti-patterns. See yours — stop making slop.`,
+    title: `I'm a ${typeName} - NoMoreAISlop`,
+    description: 'I analyzed my AI workflow with NoMoreAISlop.',
     url: buildShareUrl(reportId),
     type: 'website',
-    siteName: 'BetterPrompt',
+    siteName: 'NoMoreAISlop',
   };
 }
 
