@@ -58,7 +58,7 @@ import {
 // Configuration
 // ============================================================================
 
-const DEFAULT_JSONL_PATH = process.env.NOSLOP_TEST_JSONL_PATH || '';
+const DEFAULT_JSONL_PATH = process.env.BETTERPROMPT_TEST_JSONL_PATH || '';
 
 function printWorkerStrengths(strengths: WorkerStrength[] | undefined, workerName: string): void {
   if (!strengths || strengths.length === 0) {
@@ -424,7 +424,7 @@ async function main() {
     sessions = [];
   } else {
     if (!jsonlPath) {
-      console.error('Provide a JSONL path or set NOSLOP_TEST_JSONL_PATH for fresh Phase 2 runs.');
+      console.error('Provide a JSONL path or set BETTERPROMPT_TEST_JSONL_PATH for fresh Phase 2 runs.');
       process.exit(1);
     }
     // FRESH MODE: Parse JSONL and run Phase 1

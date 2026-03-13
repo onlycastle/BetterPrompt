@@ -39,7 +39,7 @@ test.describe('Web Server', () => {
 
     test('has correct page title', async ({ page }) => {
       await page.goto('/');
-      await expect(page).toHaveTitle(/NoMoreAISlop/);
+      await expect(page).toHaveTitle(/BetterPrompt/);
     });
   });
 
@@ -91,9 +91,9 @@ test.describe('Web Server', () => {
       await expect(page.locator('.footer')).toBeVisible();
     });
 
-    test('footer contains NoMoreAISlop link', async ({ page }) => {
+    test('footer contains BetterPrompt link', async ({ page }) => {
       await page.goto('/');
-      const link = page.locator('.footer a[href*="nomoreaislop"]');
+      const link = page.locator('.footer a[href*="betterprompt"]');
       await expect(link).toBeVisible();
     });
   });

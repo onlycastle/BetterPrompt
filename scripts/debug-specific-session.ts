@@ -6,11 +6,11 @@ import 'dotenv/config';
 import { SessionParser } from '../src/lib/parser';
 import { createVerboseAnalyzer } from '../src/lib/analyzer/verbose-analyzer';
 
-const SESSION_PATH = process.argv[2] || process.env.NOSLOP_TEST_JSONL_PATH || '';
+const SESSION_PATH = process.argv[2] || process.env.BETTERPROMPT_TEST_JSONL_PATH || '';
 
 async function main() {
   if (!SESSION_PATH) {
-    throw new Error('Provide a JSONL path as the first argument or set NOSLOP_TEST_JSONL_PATH.');
+    throw new Error('Provide a JSONL path as the first argument or set BETTERPROMPT_TEST_JSONL_PATH.');
   }
   console.log('[DEBUG] Analyzing session:', SESSION_PATH);
 

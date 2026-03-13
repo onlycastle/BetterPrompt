@@ -33,7 +33,7 @@ BUSINESS.md
 *.private.md
 
 # Local storage (user data)
-.nomoreaislop/
+.betterprompt/
 
 # Temporary files
 *.tmp
@@ -66,3 +66,16 @@ scripts/fixtures/phase3-cache/
 # Local troubleshooting notes
 trouble_shooting/
 .worktrees
+
+# Agent orchestration state
+.omx/
+
+# Experimental / scratch projects
+unstuck/
+
+# Business documents
+*.docx
+docs/plans/
+
+# Marketing content
+contents/

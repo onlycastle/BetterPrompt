@@ -4,8 +4,8 @@
  * Usage:
  *   npx tsx scripts/debug-analysis.ts
  *
- * Or with NOSLOP_DEBUG for extra verbose output:
- *   NOSLOP_DEBUG=1 npx tsx scripts/debug-analysis.ts
+ * Or with BETTERPROMPT_DEBUG for extra verbose output:
+ *   BETTERPROMPT_DEBUG=1 npx tsx scripts/debug-analysis.ts
  *
  * Reads GOOGLE_GEMINI_API_KEY from .env file automatically.
  */

@@ -148,7 +148,7 @@ async function exportKnowledge(format: 'md' | 'json') {
     console.log(JSON.stringify(items, null, 2));
   } else {
     // Markdown format
-    log(`# NoMoreAISlop Knowledge Base\n`);
+    log(`# BetterPrompt Knowledge Base\n`);
     log(`Total items: ${items.length}\n`);
     log(`Exported: ${new Date().toISOString()}\n`);
 

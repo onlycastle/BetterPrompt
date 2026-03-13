@@ -18,7 +18,7 @@ test.describe('Scroll Navigation', () => {
       await expect(page.locator('.terminal-tabs')).toBeVisible();
     });
 
-    test('has at least 2 tabs (result + unlock)', async ({ page }) => {
+    test('has at least 2 tabs', async ({ page }) => {
       const tabs = page.locator('.terminal-tab');
       await expect(tabs).toHaveCount(2);
     });
@@ -59,7 +59,7 @@ test.describe('Scroll Navigation', () => {
   test.describe('snap sections', () => {
     test('renders snap sections for scrolling', async ({ page }) => {
       const snapSections = page.locator('.snap-section');
-      await expect(snapSections).toHaveCount(2); // Without dimensions: result + unlock
+      await expect(snapSections).toHaveCount(2);
     });
 
     test('snap sections have data-section attributes', async ({ page }) => {

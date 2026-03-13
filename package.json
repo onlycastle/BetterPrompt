@@ -1,5 +1,5 @@
 {
-  "name": "nomoreaislop",
+  "name": "betterprompt",
   "version": "1.1.0",
   "description": "Self-hosted AI session analysis with a local-first CLI and Next.js server",
   "main": "dist/index.js",
@@ -26,11 +26,11 @@
     "productivity",
     "analysis"
   ],
-  "author": "NoMoreAISlop",
+  "author": "BetterPrompt",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nomoreaislop/nomoreaislop"
+    "url": "https://github.com/onlycastle/BetterPrompt"
   },
   "engines": {
     "node": ">=18.0.0"

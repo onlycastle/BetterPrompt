@@ -24,8 +24,8 @@ import {
 } from '../src/search-agent/index.js';
 
 // Report storage paths
-const REPORTS_BASE_PATH = join(homedir(), '.nomoreaislop', 'reports');
-const DISCOVERY_PATH = join(homedir(), '.nomoreaislop', 'discovery');
+const REPORTS_BASE_PATH = join(homedir(), '.betterprompt', 'reports');
+const DISCOVERY_PATH = join(homedir(), '.betterprompt', 'discovery');
 const CONTENT_FILE = join(DISCOVERY_PATH, 'content.json');
 
 type Command = 'analyze' | 'gaps' | 'report' | 'suggest' | 'current' | 'help';

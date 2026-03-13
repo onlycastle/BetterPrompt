@@ -11,7 +11,7 @@ describe('Config Models', () => {
       const config = {
         version: '1.0.0',
         telemetry: true,
-        storagePath: '~/.nomoreaislop',
+        storagePath: '~/.betterprompt',
         apiKey: 'sk-ant-test-key',
       };
       const result = ConfigSchema.safeParse(config);
@@ -22,7 +22,7 @@ describe('Config Models', () => {
       const config = {
         version: '1.0.0',
         telemetry: true,
-        storagePath: '~/.nomoreaislop',
+        storagePath: '~/.betterprompt',
         apiKey: null,
       };
       const result = ConfigSchema.safeParse(config);
@@ -35,7 +35,7 @@ describe('Config Models', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.telemetry).toBe(true);
-        expect(result.data.storagePath).toBe('~/.nomoreaislop');
+        expect(result.data.storagePath).toBe('~/.betterprompt');
         expect(result.data.apiKey).toBeNull();
       }
     });
@@ -81,7 +81,7 @@ describe('Config Models', () => {
     });
 
     it('should have correct default storage path', () => {
-      expect(DEFAULT_CONFIG.storagePath).toBe('~/.nomoreaislop');
+      expect(DEFAULT_CONFIG.storagePath).toBe('~/.betterprompt');
     });
 
     it('should have null apiKey by default', () => {
@@ -100,11 +100,11 @@ describe('Config Models', () => {
     });
 
     it('should have correct telemetry mapping', () => {
-      expect(ENV_MAPPINGS.telemetry).toBe('NOSLOP_TELEMETRY');
+      expect(ENV_MAPPINGS.telemetry).toBe('BETTERPROMPT_TELEMETRY');
     });
 
     it('should have correct storage path mapping', () => {
-      expect(ENV_MAPPINGS.storagePath).toBe('NOSLOP_STORAGE_PATH');
+      expect(ENV_MAPPINGS.storagePath).toBe('BETTERPROMPT_STORAGE_PATH');
     });
 
     it('should have all config keys mapped', () => {

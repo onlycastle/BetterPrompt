@@ -66,11 +66,11 @@ describe('resolveProjectName', () => {
     it('should resolve simple project name (no hyphens)', () => {
       setExistingDirs([
         '/Users/sungmancho/projects',
-        '/Users/sungmancho/projects/nomoreaislop',
+        '/Users/sungmancho/projects/betterprompt',
       ]);
 
-      const result = resolveProjectName('-Users-sungmancho-projects-nomoreaislop');
-      expect(result).toBe('nomoreaislop');
+      const result = resolveProjectName('-Users-sungmancho-projects-betterprompt');
+      expect(result).toBe('betterprompt');
     });
 
     it('should resolve hyphenated project name', () => {

@@ -1,4 +1,4 @@
-# NoMoreAISlop Architecture
+# BetterPrompt Architecture
 
 The supported open-source product is a self-hosted Next.js server plus CLI.
 
@@ -7,7 +7,7 @@ The supported open-source product is a self-hosted Next.js server plus CLI.
 - `Next.js app` serves the web UI, auth routes, report pages, knowledge routes, and the local analysis API.
 - `CLI` discovers local Claude Code and Cursor sessions, authenticates with device flow, and posts parsed session payloads to the server.
 - `SQLite` stores users, sessions, CLI tokens, device codes, and analysis results.
-- `Local files` store curated knowledge under `~/.nomoreaislop/knowledge` and influencer registry data under `~/.nomoreaislop`.
+- `Local files` store curated knowledge under `~/.betterprompt/knowledge` and influencer registry data under `~/.betterprompt`.
 
 ## Main Data Flow
 

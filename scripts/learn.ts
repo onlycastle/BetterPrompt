@@ -89,7 +89,7 @@ The goal is to maximize signal-to-noise ratio in the context window.
 async function main() {
   const args = process.argv.slice(2);
 
-  logHeader('NoMoreAISlop Learning Pipeline');
+  logHeader('BetterPrompt Learning Pipeline');
 
   let searchResults: WebSearchItem[];
 

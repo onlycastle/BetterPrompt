@@ -8,7 +8,7 @@ import { createVerboseAnalyzer } from '../src/lib/analyzer/verbose-analyzer';
 
 const SESSION_PATHS = process.argv.slice(2).length > 0
   ? process.argv.slice(2)
-  : (process.env.NOSLOP_TEST_SESSION_PATHS || '')
+  : (process.env.BETTERPROMPT_TEST_SESSION_PATHS || '')
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
@@ -130,7 +130,7 @@ async function analyzeSession(sessionPath: string): Promise<{
 async function main() {
   if (SESSION_PATHS.length === 0) {
     throw new Error(
-      'Provide one or more JSONL paths as arguments or set NOSLOP_TEST_SESSION_PATHS.'
+      'Provide one or more JSONL paths as arguments or set BETTERPROMPT_TEST_SESSION_PATHS.'
     );
   }
 
