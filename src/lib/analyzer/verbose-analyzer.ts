@@ -69,7 +69,7 @@ export interface VerboseAnalyzerConfig {
   maxRetries?: number;
   /** Pipeline stage configuration */
   pipeline?: PipelineConfig;
-  /** User tier for content filtering */
+  /** Legacy access label kept for API compatibility */
   tier?: Tier;
   /** Collect intermediate phase outputs for debugging (default: false) */
   debug?: boolean;
@@ -100,7 +100,7 @@ const DEFAULT_CONFIG: Required<Omit<VerboseAnalyzerConfig, 'geminiApiKey' | 'kno
       maxOutputTokens: 65536,
     },
   },
-  tier: 'pro', // Generate full content by default
+  tier: 'enterprise',
   debug: false,
 };
 
@@ -131,14 +131,14 @@ export class VerboseAnalyzer {
     }
 
     // Create orchestrator config
-    // NOSLOP_DEBUG=1 env var enables verbose mode for all pipeline stages
+    // BETTERPROMPT_DEBUG=1 env var enables verbose mode for all pipeline stages
     const orchestratorConfig: OrchestratorConfig = {
       geminiApiKey,
       model: this.config.pipeline.stage1?.model ?? 'gemini-3-flash-preview',
       temperature: this.config.pipeline.stage1?.temperature ?? 1.0,
       maxOutputTokens: this.config.pipeline.stage1?.maxOutputTokens ?? 65536,
       maxRetries: this.config.maxRetries,
-      verbose: !!process.env.NOSLOP_DEBUG,
+      verbose: !!process.env.BETTERPROMPT_DEBUG,
       debug: config.debug ?? false,
       knowledgeRepo: config.knowledgeRepo,
       professionalInsightRepo: config.professionalInsightRepo,

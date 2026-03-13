@@ -10,7 +10,7 @@
  * - No Phase 1.5/2/2.5/2.8/3/4 stages
  * - Single project focus (not all projects)
  * - Returns QuickFixResult (not VerboseEvaluation)
- * - ContentGateway tier gating applied to bottlenecks
+ * - Returns the full OSS quick-fix payload without report gating
  *
  * @module analyzer/orchestrator/quick-fix-orchestrator
  */
@@ -62,9 +62,9 @@ export class QuickFixOrchestrator {
    *
    * @param sessions - Parsed sessions from the selected project (3-5 recent)
    * @param metrics - Session metrics
-   * @param tier - User tier for content gating
+   * @param tier - Legacy access label kept for API compatibility
    * @param options - Project info and progress callback
-   * @returns Quick Fix result with tier gating applied
+   * @returns Quick Fix result
    */
   async analyze(
     sessions: ParsedSession[],
@@ -114,7 +114,6 @@ export class QuickFixOrchestrator {
       overallHealthScore: output.overallHealthScore,
       summary: output.summary,
       bottlenecks: output.bottlenecks,
-      isFreeGated: false,
     };
 
     // ── Apply tier gating ───────────────────────────────────────────────

@@ -2,7 +2,7 @@
 
 > Gather, evaluate, and organize AI engineering knowledge
 
-The search-agent module extends NoMoreAISlop with capabilities to collect knowledge from web sources (Reddit, X/Twitter, blogs) about AI engineering topics and organize it into a searchable knowledge base.
+The search-agent module extends BetterPrompt with capabilities to collect knowledge from web sources (Reddit, X/Twitter, blogs) about AI engineering topics and organize it into a searchable knowledge base.
 
 ## Architecture
 
@@ -81,10 +81,10 @@ const result = await organizer.execute({
 
 ## Knowledge Storage
 
-Knowledge is persisted to `~/.nomoreaislop/knowledge/`:
+Knowledge is persisted to `~/.betterprompt/knowledge/`:
 
 ```
-~/.nomoreaislop/knowledge/
+~/.betterprompt/knowledge/
 ├── index.json          # Category index
 └── items/
     ├── {uuid}.json     # Individual items
@@ -194,13 +194,13 @@ npx tsx scripts/knowledge.ts export --format md
 
 | Command | Description |
 |---------|-------------|
-| `/noslop:learn` | Run the knowledge gathering pipeline |
-| `/noslop:search-knowledge <query>` | Search the knowledge base |
-| `/noslop:knowledge [cmd]` | Browse and manage knowledge |
+| `/betterprompt:learn` | Run the knowledge gathering pipeline |
+| `/betterprompt:search-knowledge <query>` | Search the knowledge base |
+| `/betterprompt:knowledge [cmd]` | Browse and manage knowledge |
 
 ## Integration with Analysis
 
-Knowledge items can enrich NoMoreAISlop analysis recommendations:
+Knowledge items can enrich BetterPrompt analysis recommendations:
 
 ```typescript
 import { searchKnowledge } from './search-agent';

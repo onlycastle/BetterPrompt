@@ -1,13 +1,13 @@
 import { z } from 'zod';
 
 /**
- * Configuration schema for NoMoreAISlop
+ * Configuration schema for BetterPrompt
  * Stores user preferences and settings
  */
 export const ConfigSchema = z.object({
   version: z.literal('1.0.0'),
   telemetry: z.boolean().default(true),
-  storagePath: z.string().default('~/.nomoreaislop'),
+  storagePath: z.string().default('~/.betterprompt'),
   apiKey: z.string().nullable().default(null),
 });
 export type Config = z.infer<typeof ConfigSchema>;
@@ -18,7 +18,7 @@ export type Config = z.infer<typeof ConfigSchema>;
 export const DEFAULT_CONFIG: Config = {
   version: '1.0.0',
   telemetry: true,
-  storagePath: '~/.nomoreaislop',
+  storagePath: '~/.betterprompt',
   apiKey: null,
 };
 
@@ -27,6 +27,6 @@ export const DEFAULT_CONFIG: Config = {
  */
 export const ENV_MAPPINGS = {
   apiKey: 'ANTHROPIC_API_KEY',
-  telemetry: 'NOSLOP_TELEMETRY',
-  storagePath: 'NOSLOP_STORAGE_PATH',
+  telemetry: 'BETTERPROMPT_TELEMETRY',
+  storagePath: 'BETTERPROMPT_STORAGE_PATH',
 } as const;

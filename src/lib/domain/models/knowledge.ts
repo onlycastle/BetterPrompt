@@ -634,8 +634,8 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
     ],
     source: {
       type: 'research',
-      url: 'https://nomoreaislop.com/insights/sunk-cost-fallacy',
-      author: 'NoMoreAISlop Research',
+      url: 'https://betterprompt.com/insights/sunk-cost-fallacy',
+      author: 'BetterPrompt Research',
     },
     applicableDimensions: ['aiControl', 'skillResilience'],
     maxScore: 50,
@@ -656,8 +656,8 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
     ],
     source: {
       type: 'research',
-      url: 'https://nomoreaislop.com/insights/trust-but-verify',
-      author: 'NoMoreAISlop Research',
+      url: 'https://betterprompt.com/insights/trust-but-verify',
+      author: 'BetterPrompt Research',
     },
     applicableDimensions: ['aiControl', 'skillResilience'],
     priority: 9,
@@ -679,8 +679,8 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
     ],
     source: {
       type: 'research',
-      url: 'https://nomoreaislop.com/insights/iteration-efficiency',
-      author: 'NoMoreAISlop Research',
+      url: 'https://betterprompt.com/insights/iteration-efficiency',
+      author: 'BetterPrompt Research',
     },
     applicableDimensions: ['aiControl'],
     maxScore: 60,
@@ -700,7 +700,7 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
     ],
     source: {
       type: 'research',
-      url: 'https://nomoreaislop.com/insights/learning-velocity',
+      url: 'https://betterprompt.com/insights/learning-velocity',
       author: 'Educational Research',
     },
     applicableDimensions: ['skillResilience'],
@@ -720,8 +720,8 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
     ],
     source: {
       type: 'research',
-      url: 'https://nomoreaislop.com/insights/scope-management',
-      author: 'NoMoreAISlop Research',
+      url: 'https://betterprompt.com/insights/scope-management',
+      author: 'BetterPrompt Research',
     },
     applicableDimensions: ['aiCollaboration'],
     priority: 8,
@@ -760,7 +760,7 @@ export const INITIAL_INSIGHTS: Omit<ProfessionalInsight, 'id' | 'createdAt' | 'u
     ],
     source: {
       type: 'research',
-      url: 'https://nomoreaislop.com/insights/why-question-test',
+      url: 'https://betterprompt.com/insights/why-question-test',
       author: 'Educational Research',
     },
     applicableDimensions: ['skillResilience'],

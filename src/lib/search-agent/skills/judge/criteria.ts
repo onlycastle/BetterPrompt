@@ -16,7 +16,7 @@ export interface RelevanceCriterion {
 }
 
 /**
- * NoMoreAISlop relevance criteria
+ * BetterPrompt relevance criteria
  *
  * These criteria evaluate whether content is valuable for
  * helping developers improve their AI collaboration skills.
@@ -46,7 +46,7 @@ export const RELEVANCE_CRITERIA: RelevanceCriterion[] = [
   {
     name: 'projectFit',
     weight: 0.25,
-    description: 'How applicable is this to NoMoreAISlop goals?',
+    description: 'How applicable is this to BetterPrompt goals?',
     positiveSignals: [
       'Addresses planning, critical thinking, or code understanding',
       'Provides frameworks for evaluating AI collaboration quality',

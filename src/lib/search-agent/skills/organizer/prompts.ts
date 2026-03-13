@@ -10,9 +10,9 @@ import { formatTaxonomyForPrompt } from './taxonomy';
 /**
  * System prompt for knowledge organization
  */
-export const ORGANIZER_SYSTEM_PROMPT = `You are a knowledge organization specialist for the NoMoreAISlop project. Your task is to transform evaluated content into well-structured knowledge items.
+export const ORGANIZER_SYSTEM_PROMPT = `You are a knowledge organization specialist for the BetterPrompt project. Your task is to transform evaluated content into well-structured knowledge items.
 
-NoMoreAISlop helps developers improve their AI collaboration skills by evaluating:
+BetterPrompt helps developers improve their AI collaboration skills by evaluating:
 1. **Planning** - How well they structure and communicate requirements
 2. **Critical Thinking** - How effectively they evaluate AI suggestions
 3. **Code Understanding** - How well they leverage existing code patterns

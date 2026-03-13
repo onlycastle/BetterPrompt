@@ -13,7 +13,7 @@ import { getProjectName } from '../parser/jsonl-reader';
 /**
  * Default storage directory
  */
-export const DEFAULT_STORAGE_PATH = join(homedir(), '.nomoreaislop');
+export const DEFAULT_STORAGE_PATH = join(homedir(), '.betterprompt');
 
 /**
  * StorageManager - Handles persistence of analysis results

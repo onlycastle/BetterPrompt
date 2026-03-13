@@ -23,7 +23,7 @@ import {
  */
 export const INFLUENCER_REGISTRY_PATH = join(
   homedir(),
-  '.nomoreaislop',
+  '.betterprompt',
   'influencers.json'
 );
 

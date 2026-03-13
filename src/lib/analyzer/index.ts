@@ -1,5 +1,5 @@
 /**
- * NoMoreAISlop - Analyzer Module
+ * BetterPrompt - Analyzer Module
  *
  * This module exports the analyzers and utilities for evaluating
  * developer-AI collaboration sessions.

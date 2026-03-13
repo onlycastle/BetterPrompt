@@ -192,7 +192,7 @@ export const OGMetadataSchema = z.object({
   image: z.string().url().optional(),
   url: z.string().url(),
   type: z.literal('website').default('website'),
-  siteName: z.literal('NoMoreAISlop').default('NoMoreAISlop'),
+  siteName: z.literal('BetterPrompt').default('BetterPrompt'),
 });
 export type OGMetadata = z.infer<typeof OGMetadataSchema>;
 
@@ -235,8 +235,8 @@ export function buildShareUrl(reportId: string, baseUrl = 'http://localhost:3000
  */
 export function generateTwitterShareLink(reportId: string, typeResult: { primaryType: string }): ShareLink {
   const url = buildShareUrl(reportId);
-  const text = `I analyzed my AI workflow with NoMoreAISlop.`;
-  const hashtags = ['NoMoreAISlop', 'AICoding', 'SelfHosted'];
+  const text = `I analyzed my AI workflow with BetterPrompt.`;
+  const hashtags = ['BetterPrompt', 'AICoding', 'SelfHosted'];
 
   const twitterUrl = new URL('https://twitter.com/intent/tweet');
   twitterUrl.searchParams.set('text', text);
@@ -284,11 +284,11 @@ export function generateOGMetadata(
   const typeName = typeNames[typeResult.primaryType] || typeResult.primaryType;
 
   return {
-    title: `I'm a ${typeName} - NoMoreAISlop`,
-    description: 'I analyzed my AI workflow with NoMoreAISlop.',
+    title: `I'm a ${typeName} - BetterPrompt`,
+    description: 'I analyzed my AI workflow with BetterPrompt.',
     url: buildShareUrl(reportId),
     type: 'website',
-    siteName: 'NoMoreAISlop',
+    siteName: 'BetterPrompt',
   };
 }
 

@@ -116,7 +116,7 @@ function createProgressReporter(
  * // ... more workers
  *
  * // Run analysis
- * const result = await orchestrator.analyze(sessions, metrics, 'pro');
+ * const result = await orchestrator.analyze(sessions, metrics, 'enterprise');
  * ```
  */
 export class AnalysisOrchestrator {
@@ -247,8 +247,8 @@ export class AnalysisOrchestrator {
    *
    * @param sessions - Parsed session data
    * @param metrics - Computed session metrics
-   * @param tier - User tier level
-   * @returns AnalysisResult with tier-filtered VerboseEvaluation and raw Phase1Output
+   * @param tier - Legacy access label kept for API compatibility
+   * @returns AnalysisResult with full VerboseEvaluation and raw Phase1Output
    */
   async analyze(
     sessions: ParsedSession[],
