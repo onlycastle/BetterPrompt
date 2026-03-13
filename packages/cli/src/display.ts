@@ -12,7 +12,7 @@ import type { CostEstimate } from './cost-estimator.js';
 import { generateCelebrationBanner } from './animations/index.js';
 import { renderDualRadarCharts, computeStyleMaxValue, type RadarChartData } from './radar-chart.js';
 
-const REPORT_BASE_URL = process.env.NOSLOP_WEB_APP_URL || 'http://localhost:3000';
+const REPORT_BASE_URL = process.env.BETTERPROMPT_WEB_APP_URL || 'http://localhost:3000';
 
 const TYPE_COLORS: Record<string, (s: string) => string> = {
   architect: pc.blue,
@@ -455,8 +455,8 @@ export function displayResultsWithCelebration(result: AnalysisResult): void {
   // Show regular results
   displayResults(result);
 
-  // Show actual token usage if NOSLOP_DEBUG is enabled and tokenUsage is available
-  if (process.env.NOSLOP_DEBUG === '1' && result.tokenUsage) {
+  // Show actual token usage if BETTERPROMPT_DEBUG is enabled and tokenUsage is available
+  if (process.env.BETTERPROMPT_DEBUG === '1' && result.tokenUsage) {
     console.log(renderActualTokenUsage(result.tokenUsage));
   }
 }

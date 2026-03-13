@@ -1,11 +1,12 @@
 /**
  * Server Uploader
  *
- * Handles communication with the NoMoreAISlop server
+ * Handles communication with the BetterPrompt server
  * Supports SSE streaming for real-time progress updates
  * Uses gzip compression to reduce payload size
  *
  * Sends pre-parsed session data directly to the self-hosted Next.js server.
+ * Authentication is optional — the server works without tokens.
  */
 
 import { gzipSync } from 'node:zlib';
@@ -17,15 +18,15 @@ import type { ParsedSession, ParsedMessage } from './session-formatter.js';
 import { resolveProjectName } from './lib/project-name-resolver.js';
 
 /**
- * Debug mode - set NOSLOP_DEBUG=1 to enable verbose logging
+ * Debug mode - set BETTERPROMPT_DEBUG=1 to enable verbose logging
  */
-const DEBUG = process.env.NOSLOP_DEBUG === '1';
+const DEBUG = process.env.BETTERPROMPT_DEBUG === '1';
 function debugLog(...args: unknown[]) {
   if (DEBUG) console.error('[DEBUG]', ...args);
 }
 
 function getAnalysisApiUrl(): string {
-  const configured = process.env.NOSLOP_API_URL?.trim();
+  const configured = process.env.BETTERPROMPT_API_URL?.trim();
   if (!configured) {
     return `${REPORT_BASE_URL.replace(/\/$/, '')}/api/analysis/run`;
   }
@@ -43,7 +44,7 @@ function getAnalysisApiUrl(): string {
 /**
  * Web app base URL for report links
  */
-const REPORT_BASE_URL = process.env.NOSLOP_WEB_APP_URL || 'http://localhost:3000';
+const REPORT_BASE_URL = process.env.BETTERPROMPT_WEB_APP_URL || 'http://localhost:3000';
 
 /**
  * Maximum payload size
@@ -336,14 +337,14 @@ function parseSSELine(line: string): SSEEvent | null {
 }
 
 /**
- * Save debug phase outputs to ~/.nomoreaislop/debug/{timestamp}/
+ * Save debug phase outputs to ~/.betterprompt/debug/{timestamp}/
  */
 function saveDebugOutputs(debugOutputs: DebugPhaseOutput[]): void {
   if (debugOutputs.length === 0) return;
 
   // Create timestamp directory (colons replaced with dashes for filesystem compatibility)
   const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\.\d+Z$/, '');
-  const debugDir = join(homedir(), '.nomoreaislop', 'debug', timestamp);
+  const debugDir = join(homedir(), '.betterprompt', 'debug', timestamp);
 
   mkdirSync(debugDir, { recursive: true });
 
@@ -402,7 +403,7 @@ export interface UploadOptions {
  */
 export async function uploadForAnalysis(
   scanResult: ScanResult,
-  accessToken: string,
+  accessToken: string = '',
   onProgress?: ProgressCallback,
   onPhasePreview?: PhasePreviewCallback,
   options?: UploadOptions
@@ -425,16 +426,23 @@ export async function uploadForAnalysis(
   }
 
   onProgress?.('preparing', 5, `Uploading ${formatSize(compressedBody.length)} to ${analysisUrl}...`);
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/octet-stream',
+    'Content-Encoding': 'gzip',
+  };
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+  if (DEBUG) {
+    headers['X-Debug'] = '1';
+  }
+
   const response = await fetch(
     options?.noTranslate ? `${analysisUrl}?noTranslate=1` : analysisUrl,
     {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/octet-stream',
-      'Content-Encoding': 'gzip',
-      'Authorization': `Bearer ${accessToken}`,
-      ...(DEBUG && { 'X-Debug': '1' }),
-    },
+      method: 'POST',
+      headers,
       body: new Uint8Array(compressedBody),
     }
   );

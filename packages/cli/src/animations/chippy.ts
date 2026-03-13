@@ -1,5 +1,5 @@
 /**
- * Chippy - The NoMoreAISlop Mascot
+ * Chippy - The BetterPrompt Mascot
  *
  * ASCII art mascot with various expressions for different states.
  * Based on a friendly robot character to represent AI collaboration.

@@ -110,8 +110,8 @@ function resolveSegments(basePath: string, segments: string[]): string[] {
 /**
  * Resolve a project name from Claude Code's encoded directory name.
  *
- * @param encodedDirName - The encoded directory name (e.g. "-Users-sungmancho-projects-nomoreaislop")
- * @returns The resolved project name (e.g. "nomoreaislop")
+ * @param encodedDirName - The encoded directory name (e.g. "-Users-sungmancho-projects-betterprompt")
+ * @returns The resolved project name (e.g. "betterprompt")
  */
 export function resolveProjectName(encodedDirName: string): string {
   // Check cache first

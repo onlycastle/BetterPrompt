@@ -11,7 +11,7 @@ import pc from 'picocolors';
 import { getChippyLarge } from './chippy.js';
 
 /**
- * Custom gradient for NoMoreAISlop branding
+ * Custom gradient for BetterPrompt branding
  * Solid cyan matching brand primary color
  */
 const brandGradient = gradient(['#00BCD4', '#00BCD4']);
@@ -48,7 +48,7 @@ export function generateWelcomeBanner(): string {
     // Fallback for environments where figlet fails
     lines.push('');
     lines.push(pc.bold(pc.cyan('  ╔═══════════════════════════════════════╗')));
-    lines.push(pc.bold(pc.cyan('  ║        ') + pc.magenta('NO-AI-SLOP') + pc.cyan('                  ║')));
+    lines.push(pc.bold(pc.cyan('  ║        ') + pc.magenta('BETTERPROMPT') + pc.cyan('                ║')));
     lines.push(pc.bold(pc.cyan('  ╚═══════════════════════════════════════╝')));
     lines.push('');
     lines.push(pc.dim('  Spot anti-patterns. Ship better.'));
@@ -62,7 +62,7 @@ export function generateWelcomeBanner(): string {
  * Generate a compact header (for non-welcome screens)
  */
 export function generateCompactHeader(): string {
-  return pc.bold(pc.cyan('🚀 no-ai-slop')) + pc.dim(' - Spot anti-patterns. Ship better.');
+  return pc.bold(pc.cyan('🚀 betterprompt')) + pc.dim(' - Spot anti-patterns. Ship better.');
 }
 
 /**

@@ -40,7 +40,7 @@ export interface ActivitySessionInfo {
 // Constants
 // ============================================================================
 
-const DEBUG = process.env.NOSLOP_DEBUG === '1';
+const DEBUG = process.env.BETTERPROMPT_DEBUG === '1';
 function debugLog(...args: unknown[]) {
   if (DEBUG) console.error('[DEBUG:activity-scanner]', ...args);
 }
