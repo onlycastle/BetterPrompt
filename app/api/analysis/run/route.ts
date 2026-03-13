@@ -1,6 +1,5 @@
 import { gunzipSync } from 'node:zlib';
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/auth/authenticate-request';
 import { VerboseAnalyzer } from '@/lib/analyzer/verbose-analyzer';
 import type { AnalysisResult as PipelineAnalysisResult, ProgressCallback } from '@/lib/analyzer/orchestrator/types';
 import { aggregateMetrics } from '@/lib/analyzer/type-detector';
@@ -155,16 +154,6 @@ function deserializeSession(data: SerializedSession): ParsedSession {
     })),
     stats: data.stats,
   };
-}
-
-async function resolveUserId(request: NextRequest): Promise<string | null> {
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader) {
-    const authResult = await authenticateRequest(authHeader);
-    return authResult?.userId ?? null;
-  }
-
-  return getCurrentUserFromRequest(request)?.id ?? null;
 }
 
 async function runAnalysis(
@@ -340,13 +329,7 @@ async function runAnalysis(
 }
 
 export async function POST(request: NextRequest) {
-  const userId = await resolveUserId(request);
-  if (!userId) {
-    return NextResponse.json(
-      { error: 'Unauthorized', message: 'Sign in from the CLI or web app first' },
-      { status: 401 }
-    );
-  }
+  const userId = getCurrentUserFromRequest().id;
 
   const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY;
   if (!geminiApiKey) {

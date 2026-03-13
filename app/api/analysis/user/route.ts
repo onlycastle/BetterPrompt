@@ -1,20 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/auth/authenticate-request';
 import { listAnalysesForUser } from '@/lib/local/analysis-store';
 import { getCurrentUserFromRequest } from '@/lib/local/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    const authResult = authHeader ? await authenticateRequest(authHeader) : null;
-    const userId = authResult?.userId ?? getCurrentUserFromRequest(request)?.id;
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized', message: 'Please sign in to view your analyses.' },
-        { status: 401 }
-      );
-    }
+    const userId = getCurrentUserFromRequest().id;
 
     const limitParam = request.nextUrl.searchParams.get('limit');
     const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined;

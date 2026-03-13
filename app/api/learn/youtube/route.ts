@@ -36,13 +36,7 @@ function mapTopicsToCategory(topics: string[]): TopicCategory {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = getCurrentUserFromRequest(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Please sign in to add knowledge.' },
-        { status: 401 }
-      );
-    }
+    const user = getCurrentUserFromRequest();
 
     const body = await request.json();
     const url = typeof body.url === 'string' ? body.url.trim() : '';

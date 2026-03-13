@@ -32,17 +32,11 @@ export async function GET(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = getCurrentUserFromRequest(request);
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized', message: 'Please sign in to delete knowledge.' },
-        { status: 401 }
-      );
-    }
+    getCurrentUserFromRequest();
 
     const { id } = await params;
     const deleted = await knowledgeStore.deleteItem(id);
