@@ -1,0 +1,264 @@
+/* ========================================
+   HeroSection — Light hero on graph-paper
+   Full-viewport section with serif headline,
+   terminal prompt decoration. Background is
+   transparent so the page-level graph-paper
+   grid flows through.
+   ======================================== */
+
+.hero {
+  position: relative;
+  background: transparent;
+  padding: calc(var(--header-height) + var(--space-3xl)) 0 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ============================================
+   Content container
+   ============================================ */
+.content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  max-width: 800px;
+  padding: 0 var(--space-lg);
+  animation: heroFadeIn 0.8s ease-out both;
+}
+
+@keyframes heroFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   Terminal prompt decoration
+   ============================================ */
+.terminalLine {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-xl);
+  padding: var(--space-xs) var(--space-md);
+  background: var(--sketch-cyan-soft);
+  border: 1px solid var(--sketch-cyan-light);
+  border-radius: var(--radius-sm);
+  animation: heroFadeIn 0.8s ease-out 0.2s both;
+}
+
+.promptSymbol {
+  color: var(--sketch-cyan);
+  font-weight: var(--weight-bold);
+}
+
+.command {
+  color: var(--ink-muted);
+}
+
+.cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background: var(--sketch-cyan);
+  border-radius: 1px;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* ============================================
+   Headline — Instrument Serif display font
+   ============================================ */
+.headline {
+  font-family: var(--font-mono);
+  font-size: 48px;
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  line-height: 1.15;
+  margin-bottom: var(--space-lg);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  animation: heroFadeIn 0.8s ease-out 0.1s both;
+}
+
+.headline em {
+  font-style: normal;
+  color: var(--sketch-cyan);
+}
+
+/* ============================================
+   Rotating subject text ("you" / "your team")
+   ============================================ */
+.rotatingWrapper {
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
+  vertical-align: bottom;
+  width: 9ch;
+  height: 1.15em;
+  text-align: left;
+}
+
+.rotatingText {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  color: var(--sketch-cyan);
+  transition: transform 0.4s ease, opacity 0.4s ease;
+}
+
+.rotatingIn {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.rotatingOut {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+/* ============================================
+   Subheadline — monospace, muted
+   ============================================ */
+.subheadline {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  color: var(--ink-secondary);
+  line-height: var(--leading-relaxed);
+  max-width: 600px;
+  margin: 0 auto var(--space-xl);
+  animation: heroFadeIn 0.8s ease-out 0.3s both;
+}
+
+/* ============================================
+   CTA button wrapper
+   ============================================ */
+.cta {
+  margin-bottom: var(--space-lg);
+  animation: heroFadeIn 0.8s ease-out 0.4s both;
+}
+
+.cta a {
+  text-decoration: none;
+}
+
+/* Soften sketch button for light hero context —
+   doubled selector beats .button.primary (0-2-0) specificity */
+.ctaButton.ctaButton {
+  border-color: var(--sketch-cyan);
+  box-shadow: none;
+}
+
+.ctaButton.ctaButton:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
+  transform: translateY(-2px);
+}
+
+.ctaButton.ctaButton:active:not(:disabled) {
+  box-shadow: none;
+  transform: translateY(0);
+}
+
+/* ============================================
+   Trust badges — subtle inline labels
+   ============================================ */
+.badges {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  animation: heroFadeIn 0.8s ease-out 0.5s both;
+}
+
+.badge {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  letter-spacing: 0.02em;
+}
+
+.badgeDot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--ink-light);
+}
+
+/* ============================================
+   Scroll cue
+   ============================================ */
+.scrollCue {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-2xl);
+  padding-bottom: var(--space-3xl);
+  color: var(--ink-muted);
+  cursor: pointer;
+  animation: heroFadeIn 0.8s ease-out 0.6s both;
+}
+
+.scrollText {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.scrollIcon {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (min-width: 768px) {
+  .headline {
+    font-size: 56px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero {
+    padding-top: calc(48px + var(--space-2xl));
+  }
+
+  .headline {
+    font-size: 28px;
+  }
+
+  .subheadline {
+    font-size: var(--text-sm);
+  }
+
+  .terminalLine {
+    font-size: var(--text-xs);
+  }
+
+  .scrollCue {
+    padding-bottom: var(--space-2xl);
+  }
+}
