@@ -1,26 +1,23 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-const configuredBaseUrl = process.env.NOSLOP_BASE_URL;
+const configuredBaseUrl = process.env.BETTERPROMPT_BASE_URL;
 const configuredOrigin = configuredBaseUrl ? new URL(configuredBaseUrl).origin : null;
 
 // Allowed origins for CORS
 const allowedOrigins = [
   'http://localhost:3000',
-  'http://localhost:5173', // Vite dev server
   ...(configuredOrigin ? [configuredOrigin] : []),
-  'app://-', // Electron app protocol
 ];
 
 /**
  * Add CORS headers to response
  */
 function addCorsHeaders(response: NextResponse, origin: string | null): NextResponse {
-  const isElectronApp = !origin || origin === 'null';
   const isAllowedOrigin = origin && allowedOrigins.some(allowed =>
-    origin.startsWith(allowed) || (allowed === 'app://-' && origin.startsWith('app://'))
+    origin.startsWith(allowed)
   );
 
-  if (isElectronApp || isAllowedOrigin) {
+  if (isAllowedOrigin) {
     response.headers.set('Access-Control-Allow-Origin', origin || '*');
     response.headers.set('Access-Control-Allow-Credentials', 'true');
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
