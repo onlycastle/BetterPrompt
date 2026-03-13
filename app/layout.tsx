@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Fira_Code, Noto_Sans_KR } from 'next/font/google';
+import { Fira_Code, Noto_Sans_KR, Instrument_Serif } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import '@/styles/global.css';
 import '@/styles/variables.css';
@@ -18,15 +18,22 @@ const notoSansKR = Noto_Sans_KR({
   weight: ['400', '500', '600', '700'],
 });
 
+const instrumentSerif = Instrument_Serif({
+  subsets: ['latin'],
+  variable: '--font-instrument',
+  weight: ['400'],
+  style: ['normal', 'italic'],
+});
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NOSLOP_BASE_URL || 'http://localhost:3000'),
-  title: 'NoMoreAISlop - Self-Hosted AI Session Intelligence',
+  metadataBase: new URL(process.env.BETTERPROMPT_BASE_URL || 'http://localhost:3000'),
+  title: 'BetterPrompt - Self-Hosted AI Session Intelligence',
   description: 'Analyze Claude Code and Cursor sessions on your own server with local auth, SQLite storage, and Gemini-powered workers.',
   openGraph: {
-    title: 'NoMoreAISlop - Self-Hosted AI Session Intelligence',
+    title: 'BetterPrompt - Self-Hosted AI Session Intelligence',
     description: 'Analyze Claude Code and Cursor sessions on your own server with local auth, SQLite storage, and Gemini-powered workers.',
     type: 'website',
-    siteName: 'NoMoreAISlop',
+    siteName: 'BetterPrompt',
   },
   twitter: {
     card: 'summary_large_image',
@@ -39,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${firaCode.variable} ${notoSansKR.variable}`}>
+    <html lang="en" className={`${firaCode.variable} ${notoSansKR.variable} ${instrumentSerif.variable}`}>
       <body>
         <Providers>{children}</Providers>
       </body>

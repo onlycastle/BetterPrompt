@@ -8,7 +8,7 @@ import { PersonalContent } from './PersonalContent';
 import styles from './page.module.css';
 
 export const metadata = {
-  title: 'Personal | NoMoreAISlop',
+  title: 'Personal | BetterPrompt',
   description: 'Your AI analysis and growth journey',
 };
 

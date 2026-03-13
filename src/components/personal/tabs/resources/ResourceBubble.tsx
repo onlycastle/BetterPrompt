@@ -6,16 +6,14 @@
  * - Default: Speech bubble style positioned next to the card (standalone)
  * - Inline (inline=true): Displays inside the card with a left border separator
  *
- * Data-driven UI: No isPaid prop needed.
- * Backend pre-filters resources array (free tier gets 1 resource).
- * Component simply renders what it receives.
+ * Data-driven UI: component simply renders what it receives.
  */
 
 import type { ParsedResource } from '../../../../lib/models/agent-outputs';
 import styles from './ResourceBubble.module.css';
 
 interface ResourceBubbleProps {
-  /** Resources to display (pre-filtered by backend based on tier) */
+  /** Resources to display */
   resources: ParsedResource[];
   /** When true, displays inline within the card instead of as a speech bubble */
   inline?: boolean;
@@ -42,8 +40,7 @@ function getResourceTypeIcon(type: ParsedResource['type']): string {
 }
 
 /**
- * Data-driven UI: Resources array is pre-filtered by backend.
- * Component renders all resources it receives without client-side filtering.
+ * Renders all resources it receives without client-side filtering.
  */
 export function ResourceBubble({ resources, inline = false }: ResourceBubbleProps) {
   if (resources.length === 0) return null;
@@ -65,16 +62,9 @@ export function ResourceBubble({ resources, inline = false }: ResourceBubbleProp
 
         <ul className={styles.resourceList}>
           {resources.map((resource, idx) => {
-            const isLocked = !resource.url;
             return (
-              <li key={idx} className={`${styles.resourceItem} ${isLocked ? styles.lockedItem : ''}`}>
-                {isLocked ? (
-                  <span className={`${styles.resourceLink} ${styles.lockedLink}`}>
-                    <span className={styles.resourceIcon}>{getResourceTypeIcon(resource.type)}</span>
-                    <span className={styles.resourceTopic}>{resource.topic}</span>
-                    <span className={styles.lockIcon}>&#x1f512;</span>
-                  </span>
-                ) : (
+              <li key={idx} className={styles.resourceItem}>
+                {resource.url ? (
                   <a
                     href={resource.url}
                     target="_blank"
@@ -85,6 +75,11 @@ export function ResourceBubble({ resources, inline = false }: ResourceBubbleProp
                     <span className={styles.resourceTopic}>{resource.topic}</span>
                     <span className={styles.externalIcon}>↗</span>
                   </a>
+                ) : (
+                  <span className={styles.resourceLink}>
+                    <span className={styles.resourceIcon}>{getResourceTypeIcon(resource.type)}</span>
+                    <span className={styles.resourceTopic}>{resource.topic}</span>
+                  </span>
                 )}
                 <span className={styles.resourceType}>{resource.type}</span>
               </li>

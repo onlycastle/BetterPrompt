@@ -57,16 +57,13 @@ function formatDate(dateString: string): string {
 }
 
 export function ResourcePreviewCard({ resource }: ResourcePreviewCardProps) {
-  const isLocked = !resource.url;
   const { data: metadata, isLoading } = useOGMetadata(resource.url);
 
-  // Locked variant: title-only card with lock badge (not clickable)
-  if (isLocked) {
+  if (!resource.url) {
     return (
-      <div className={`${styles.card} ${styles.lockedCard}`}>
-        <div className={`${styles.thumbnail} ${styles.lockedThumbnail}`}>
+      <div className={styles.card}>
+        <div className={styles.thumbnail}>
           <div className={styles.fallbackIcon}>{getTypeIcon(resource.type)}</div>
-          <span className={styles.lockBadge}>&#x1f512;</span>
         </div>
         <div className={styles.content}>
           <h4 className={styles.title}>{resource.topic}</h4>
@@ -87,7 +84,6 @@ export function ResourcePreviewCard({ resource }: ResourcePreviewCardProps) {
       rel="noopener noreferrer"
       className={styles.card}
     >
-      {/* Thumbnail with loading skeleton */}
       <div className={styles.thumbnail}>
         {isLoading ? (
           <div className={styles.skeleton} />
@@ -103,14 +99,11 @@ export function ResourcePreviewCard({ resource }: ResourcePreviewCardProps) {
         )}
       </div>
 
-      {/* Content section */}
       <div className={styles.content}>
-        {/* Title - prefer OG title, fallback to topic */}
         <h4 className={styles.title}>
           {metadata?.title || resource.topic}
         </h4>
 
-        {/* Metadata row */}
         <div className={styles.meta}>
           <span className={styles.siteName}>
             {getTypeIcon(resource.type)} {metadata?.siteName || resource.type}

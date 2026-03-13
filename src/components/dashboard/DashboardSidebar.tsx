@@ -8,7 +8,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { Search, BookOpen, User, LogOut, BarChart2 } from 'lucide-react';
+import { Search, BookOpen, User, BarChart2, Building2 } from 'lucide-react';
 import styles from './DashboardSidebar.module.css';
 
 interface NavItem {
@@ -21,16 +21,12 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/dashboard/analyze', label: 'Analyze', icon: <Search size={20} /> },
   { path: '/dashboard/knowledge', label: 'Knowledge', icon: <BookOpen size={20} /> },
   { path: '/dashboard/personal', label: 'Personal', icon: <User size={20} /> },
+  { path: '/dashboard/enterprise', label: 'Enterprise', icon: <Building2 size={20} /> },
 ];
 
 export function DashboardSidebar() {
   const pathname = usePathname();
-  const { user, signOut, isAuthenticated, isLoading } = useAuth();
-
-  const handleSignOut = async () => {
-    await signOut();
-    window.location.href = '/';
-  };
+  const { user, isLoading } = useAuth();
 
   // Get user display name
   const displayName = user?.email?.split('@')[0] || 'User';
@@ -38,6 +34,9 @@ export function DashboardSidebar() {
   const isActive = (itemPath: string) => {
     if (itemPath === '/dashboard/personal') {
       return pathname === itemPath || pathname.startsWith('/dashboard/personal/');
+    }
+    if (itemPath === '/dashboard/enterprise') {
+      return pathname === itemPath || pathname.startsWith('/dashboard/enterprise/');
     }
     return pathname === itemPath;
   };
@@ -47,7 +46,7 @@ export function DashboardSidebar() {
       {/* Logo */}
       <Link href="/" className={styles.logo}>
         <BarChart2 size={24} className={styles.logoIcon} />
-        <span className={styles.logoText}>NoMoreAISlop</span>
+        <span className={styles.logoText}>BetterPrompt</span>
       </Link>
 
       {/* Navigation */}
@@ -66,19 +65,13 @@ export function DashboardSidebar() {
 
       {/* Footer with user info */}
       <div className={styles.footer}>
-        {isAuthenticated && !isLoading && (
-          <>
-            <div className={styles.user}>
-              <div className={styles.avatar}>
-                {displayName.charAt(0).toUpperCase()}
-              </div>
-              <span className={styles.userName}>{displayName}</span>
+        {!isLoading && user && (
+          <div className={styles.user}>
+            <div className={styles.avatar}>
+              {displayName.charAt(0).toUpperCase()}
             </div>
-            <button className={styles.signOut} onClick={handleSignOut}>
-              <LogOut size={18} />
-              <span>Sign Out</span>
-            </button>
-          </>
+            <span className={styles.userName}>{displayName}</span>
+          </div>
         )}
       </div>
     </nav>

@@ -7,7 +7,7 @@ import { Suspense } from 'react';
 import { MemberDetailContent } from './MemberDetailContent';
 
 export const metadata = {
-  title: 'Member Profile | NoMoreAISlop',
+  title: 'Member Profile | BetterPrompt',
   description: 'Individual member analysis profile',
 };
 

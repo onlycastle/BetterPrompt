@@ -32,7 +32,7 @@ interface MemberDetailContentProps {
 }
 
 export function MemberDetailContent({ memberId }: MemberDetailContentProps) {
-  const member = useMember(memberId);
+  const { data: member, isLoading, error } = useMember(memberId);
 
   // Convert weeklyTokenTrend to HistoryEntry format for TrendLineChart
   const tokenTrendData: HistoryEntry[] = useMemo(() => {
@@ -42,6 +42,30 @@ export function MemberDetailContent({ memberId }: MemberDetailContentProps) {
       overallScore: Math.round(wt.totalTokens / 1000), // Show in K units for chart scale
     }));
   }, [member]);
+
+  if (isLoading) {
+    return (
+      <div className={styles.container}>
+        <Link href="/dashboard/enterprise/members" className={styles.backLink}>
+          <ArrowLeft size={16} />
+          Back to Members
+        </Link>
+        <p>Loading member...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={styles.container}>
+        <Link href="/dashboard/enterprise/members" className={styles.backLink}>
+          <ArrowLeft size={16} />
+          Back to Members
+        </Link>
+        <p>Failed to load member: {error.message}</p>
+      </div>
+    );
+  }
 
   if (!member) {
     return (

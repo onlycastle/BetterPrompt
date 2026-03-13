@@ -8,7 +8,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { TestLoginForm } from '@/components/auth';
 import { Terminal, ArrowRight, FileText, RefreshCw, Clock } from 'lucide-react';
 import styles from './page.module.css';
 
@@ -71,22 +70,6 @@ export function AnalyzeContent() {
     );
   }
 
-  // Not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.loginCard}>
-          <div className={styles.loginIcon}>&#128274;</div>
-          <h1 className={styles.loginTitle}>Sign in to Analyze</h1>
-          <p className={styles.loginDescription}>
-            Create a local account to sync CLI runs with this self-hosted server.
-          </p>
-          <TestLoginForm />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.container}>
       {/* Header */}
@@ -107,7 +90,7 @@ export function AnalyzeContent() {
             Analysis runs on your self-hosted server with your own Gemini API key.
           </p>
           <div className={styles.cliCommand}>
-            <code>npx no-ai-slop</code>
+            <code>npx betterprompt</code>
           </div>
           <p className={styles.ctaHint}>
             Works with Claude Code sessions from <code>~/.claude/projects/</code>

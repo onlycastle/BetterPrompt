@@ -102,7 +102,7 @@ function PageHeader() {
     <header className={styles.header}>
       <Link href="/" className={styles.logo}>
         <span className={styles.logoIcon}>{'\u{1F4CA}'}</span>
-        <span className={styles.logoText}>NoMoreAISlop</span>
+        <span className={styles.logoText}>BetterPrompt</span>
       </Link>
     </header>
   );

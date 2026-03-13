@@ -18,8 +18,24 @@ import type { DimensionScores } from '@/types/enterprise';
 import styles from './TeamDetailContent.module.css';
 
 export function TeamDetailContent({ teamId }: { teamId: string }) {
-  const team = useTeam(teamId);
-  const members = useTeamMembers(teamId);
+  const { data: team, isLoading: teamLoading, error: teamError } = useTeam(teamId);
+  const { data: members, isLoading: membersLoading } = useTeamMembers(teamId);
+
+  if (teamLoading || membersLoading) {
+    return (
+      <div className={styles.container}>
+        <p>Loading team...</p>
+      </div>
+    );
+  }
+
+  if (teamError) {
+    return (
+      <div className={styles.container}>
+        <p>Failed to load team: {teamError.message}</p>
+      </div>
+    );
+  }
 
   if (!team) {
     return (
@@ -94,10 +110,12 @@ export function TeamDetailContent({ teamId }: { teamId: string }) {
       </section>
 
       {/* Member Table */}
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Members</h2>
-        <MemberTable members={members} />
-      </section>
+      {members && members.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Members</h2>
+          <MemberTable members={members} />
+        </section>
+      )}
     </div>
   );
 }

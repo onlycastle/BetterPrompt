@@ -10,8 +10,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { TestLoginForm } from '@/components/auth';
-import { LogOut, FileText, Terminal, ArrowRight } from 'lucide-react';
+import { FileText, ArrowRight } from 'lucide-react';
 import styles from './page.module.css';
 
 interface UserAnalysis {
@@ -41,44 +40,14 @@ function formatDate(isoString: string): string {
 /**
  * Page header with branding
  */
-function PageHeader({ isAuthenticated, onSignOut }: { isAuthenticated: boolean; onSignOut: () => void }) {
+function PageHeader() {
   return (
     <header className={styles.header}>
       <Link href="/" className={styles.logo}>
         <span className={styles.logoIcon}>&#128202;</span>
-        <span className={styles.logoText}>NoMoreAISlop</span>
+        <span className={styles.logoText}>BetterPrompt</span>
       </Link>
-      <div className={styles.headerActions}>
-        {isAuthenticated && (
-          <button onClick={onSignOut} className={styles.signOutBtn}>
-            <LogOut size={16} />
-            Sign Out
-          </button>
-        )}
-      </div>
     </header>
-  );
-}
-
-/**
- * Login CTA for unauthenticated users
- */
-function LoginCTA() {
-  return (
-    <div className={styles.loginContainer}>
-      <div className={styles.loginCard}>
-        <div className={styles.loginIcon}>&#128274;</div>
-        <h1 className={styles.loginTitle}>Sign in to Your Dashboard</h1>
-        <p className={styles.loginDescription}>
-          View your analysis history and track your progress on this self-hosted server.
-        </p>
-        <TestLoginForm />
-        <div className={styles.cliHint}>
-          <Terminal size={16} />
-          <span>New here? Run <code>npx no-ai-slop</code> to analyze your AI sessions</span>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -94,7 +63,7 @@ function EmptyState() {
         Run your first analysis to see your AI insights here.
       </p>
       <div className={styles.cliBox}>
-        <code>npx no-ai-slop</code>
+        <code>npx betterprompt</code>
       </div>
     </div>
   );
@@ -128,19 +97,13 @@ function AnalysisCard({ analysis }: { analysis: UserAnalysis }) {
  * Main dashboard content
  */
 export function PersonalDashboardContent() {
-  const { user, isAuthenticated, isLoading: authLoading, signOut } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [analyses, setAnalyses] = useState<UserAnalysis[]>([]);
   const [isLoadingAnalyses, setIsLoadingAnalyses] = useState(false);
   const [analysesError, setAnalysesError] = useState<string | null>(null);
 
-  // Fetch user's analyses when authenticated
+  // Fetch user's analyses
   useEffect(() => {
-    if (!isAuthenticated || !user) {
-      setAnalyses([]);
-      setAnalysesError(null);
-      return;
-    }
-
     const fetchAnalyses = async () => {
       setIsLoadingAnalyses(true);
       setAnalysesError(null);
@@ -161,7 +124,7 @@ export function PersonalDashboardContent() {
     };
 
     fetchAnalyses();
-  }, [isAuthenticated, user]);
+  }, []);
 
   // Loading state
   if (authLoading) {
@@ -175,23 +138,10 @@ export function PersonalDashboardContent() {
     );
   }
 
-  // Not authenticated - show login CTA
-  if (!isAuthenticated) {
-    return (
-      <div className={styles.page}>
-        <div className={styles.container}>
-          <PageHeader isAuthenticated={false} onSignOut={signOut} />
-          <LoginCTA />
-        </div>
-      </div>
-    );
-  }
-
-  // Authenticated - show dashboard
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <PageHeader isAuthenticated={true} onSignOut={signOut} />
+        <PageHeader />
 
         <div className={styles.dashboardHeader}>
           <h1 className={styles.dashboardTitle}>My Dashboard</h1>

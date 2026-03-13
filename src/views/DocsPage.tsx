@@ -29,15 +29,15 @@ export function DocsPage() {
         <main className={styles.content}>
           {/* Getting Started */}
           <DocsSection id="getting-started" title="Getting Started">
-            <h3 className={styles.heading3}>What is NoMoreAISlop?</h3>
+            <h3 className={styles.heading3}>What is BetterPrompt?</h3>
             <p className={styles.paragraph}>
-              NoMoreAISlop analyzes your AI sessions to reveal how you collaborate with AI.
+              BetterPrompt analyzes your AI sessions to reveal how you collaborate with AI.
               It examines your prompts, patterns, and working style to generate a personalized
               assessment — so you can see clearly what&apos;s working and where to grow.
             </p>
             <p className={styles.paragraph}>
               Whether you&apos;re a PM, designer, founder, or builder of any kind: if you use
-              Claude to get things done, NoMoreAISlop can help you use it better.
+              Claude to get things done, BetterPrompt can help you use it better.
             </p>
 
             <h3 className={styles.heading3}>Three Steps to Your Assessment</h3>
@@ -78,7 +78,7 @@ export function DocsPage() {
             <p className={styles.paragraph}>
               Open your terminal (Terminal on Mac, or any command prompt) and run:
             </p>
-            <CodeBlock code="npx no-ai-slop" />
+            <CodeBlock code="npx betterprompt" />
             <p className={styles.paragraph}>
               That&apos;s it. The tool will guide you through sign-in and analysis automatically.
               First-time setup takes about 30 seconds; analysis runs in about a minute.
@@ -86,7 +86,7 @@ export function DocsPage() {
 
             <h3 className={styles.heading3}>What Data is Analyzed</h3>
             <p className={styles.paragraph}>
-              NoMoreAISlop reads your Claude AI sessions — the conversations you&apos;ve had
+              BetterPrompt reads your Claude AI sessions — the conversations you&apos;ve had
               with Claude across your projects. It looks at how you ask questions, how you
               respond to Claude&apos;s output, and how you guide AI toward your goals.
             </p>
@@ -99,7 +99,7 @@ export function DocsPage() {
           {/* How It Works */}
           <DocsSection id="how-it-works" title="How It Works">
             <p className={styles.paragraph}>
-              Once you run the command, NoMoreAISlop works in two main stages.
+              Once you run the command, BetterPrompt works in two main stages.
             </p>
 
             <h3 className={styles.heading3}>Stage 1: Finding Your Best Sessions</h3>
@@ -412,7 +412,7 @@ export function DocsPage() {
           <DocsSection id="technical-details" title="Technical Details">
             <p className={styles.paragraph}>
               For builders who want to understand exactly what&apos;s happening under the hood —
-              or who need to troubleshoot, audit, or extend NoMoreAISlop.
+              or who need to troubleshoot, audit, or extend BetterPrompt.
             </p>
 
             <details className={styles.accordion}>
@@ -421,7 +421,7 @@ export function DocsPage() {
               </summary>
               <div className={styles.accordionBody}>
                 <p className={styles.paragraph}>
-                  NoMoreAISlop reads Claude Code session logs from <code className={styles.inlineCode}>~/.claude/projects/</code>.
+                  BetterPrompt reads Claude Code session logs from <code className={styles.inlineCode}>~/.claude/projects/</code>.
                   These are JSONL files containing your conversation history with Claude.
                 </p>
                 <h4 className={styles.heading4}>JSONL Message Types</h4>
@@ -447,7 +447,7 @@ export function DocsPage() {
                   For example, <code className={styles.inlineCode}>/Users/you/projects/myapp</code> becomes <code className={styles.inlineCode}>-Users-you-projects-myapp</code>.
                 </p>
                 <p className={styles.paragraph}>
-                  NoMoreAISlop handles this automatically via <code className={styles.inlineCode}>encodeProjectPath</code> and <code className={styles.inlineCode}>decodeProjectPath</code> utilities.
+                  BetterPrompt handles this automatically via <code className={styles.inlineCode}>encodeProjectPath</code> and <code className={styles.inlineCode}>decodeProjectPath</code> utilities.
                 </p>
               </div>
             </details>
@@ -458,41 +458,17 @@ export function DocsPage() {
               </summary>
               <div className={styles.accordionBody}>
                 <h4 className={styles.heading4}>Main Command</h4>
-                <CodeBlock code="npx no-ai-slop" />
+                <CodeBlock code="npx betterprompt" />
                 <p className={styles.paragraph}>
                   Analyzes your Claude AI sessions and generates a report on your self-hosted server.
-                  First-time users are guided through local device-flow authentication.
-                </p>
-
-                <h4 className={styles.heading4}>Check Authentication Status</h4>
-                <CodeBlock code="npx no-ai-slop status" />
-                <p className={styles.paragraph}>
-                  Shows your current authentication status and linked account.
-                </p>
-
-                <h4 className={styles.heading4}>Logout</h4>
-                <CodeBlock code="npx no-ai-slop logout" />
-                <p className={styles.paragraph}>
-                  Clears your local authentication credentials.
+                  The CLI auto-connects to your local server with zero-config authentication.
                 </p>
 
                 <h4 className={styles.heading4}>Help</h4>
-                <CodeBlock code="npx no-ai-slop help" />
+                <CodeBlock code="npx betterprompt help" />
                 <p className={styles.paragraph}>
                   Displays all available commands and usage information.
                 </p>
-
-                <h4 className={styles.heading4}>Authentication Flow</h4>
-                <p className={styles.paragraph}>
-                  NoMoreAISlop uses a self-hosted device flow:
-                </p>
-                <ol className={styles.orderedList}>
-                  <li>CLI generates a unique device code</li>
-                  <li>Browser opens to authentication page</li>
-                  <li>You sign in with your account</li>
-                  <li>CLI receives authentication token</li>
-                  <li>Token is stored locally for future sessions</li>
-                </ol>
               </div>
             </details>
 

@@ -7,7 +7,7 @@ import { Suspense } from 'react';
 import { TeamDetailContent } from './TeamDetailContent';
 
 export const metadata = {
-  title: 'Team Detail | NoMoreAISlop',
+  title: 'Team Detail | BetterPrompt',
   description: 'Team-level AI development analytics',
 };
 

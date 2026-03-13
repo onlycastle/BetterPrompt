@@ -10,7 +10,6 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePersonalAnalytics } from '@/hooks/usePersonalAnalytics';
-import { TestLoginForm } from '@/components/auth';
 import { ProgressTab } from '@/components/personal';
 import { FileText, TrendingUp, ArrowRight, Trash2, AlertTriangle } from 'lucide-react';
 import styles from './page.module.css';
@@ -124,22 +123,6 @@ export function PersonalContent() {
     );
   }
 
-  // Not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.loginCard}>
-          <div className={styles.loginIcon}>&#128274;</div>
-          <h1 className={styles.loginTitle}>Sign in to View Profile</h1>
-          <p className={styles.loginDescription}>
-            Access your analysis history and track your growth journey.
-          </p>
-          <TestLoginForm />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.container}>
       {/* Header */}
@@ -237,7 +220,7 @@ function ReportTabContent({
         <h3>No Analysis Reports Yet</h3>
         <p>Run your first analysis to see your AI insights here.</p>
         <div className={styles.cliBox}>
-          <code>npx no-ai-slop</code>
+          <code>npx betterprompt</code>
         </div>
       </div>
     );
@@ -286,8 +269,6 @@ function ReportTabContent({
 function ProgressTabWrapper({ analyses }: { analyses: UserAnalysis[] }) {
   const { data: analytics, isLoading, error } = usePersonalAnalytics();
 
-  const isPremium = analyses.length > 0;
-
   // Show loading state
   if (isLoading) {
     return (
@@ -317,7 +298,7 @@ function ProgressTabWrapper({ analyses }: { analyses: UserAnalysis[] }) {
         <h3>No Progress Data Yet</h3>
         <p>Complete your first analysis to start tracking your growth journey.</p>
         <div className={styles.cliBox}>
-          <code>npx no-ai-slop</code>
+          <code>npx betterprompt</code>
         </div>
       </div>
     );
@@ -325,7 +306,7 @@ function ProgressTabWrapper({ analyses }: { analyses: UserAnalysis[] }) {
 
   // Show progress tab with real analytics data
   // analytics can be undefined before query completes, treat as null
-  return <ProgressTab analytics={analytics ?? null} isPremium={isPremium} />;
+  return <ProgressTab analytics={analytics ?? null} />;
 }
 
 function DeleteConfirmModal({

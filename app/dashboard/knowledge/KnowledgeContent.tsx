@@ -9,7 +9,6 @@
 
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { TestLoginForm } from '@/components/auth';
 import { useKnowledgeList } from '@/hooks/useKnowledge';
 import { KnowledgeCard } from '@/components/knowledge/KnowledgeCard';
 import { AddKnowledgeDrawer } from '@/components/dashboard/AddKnowledgeDrawer';
@@ -92,22 +91,6 @@ export function KnowledgeContent() {
         <div className={styles.loading}>
           <div className={styles.spinner} />
           <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.loginCard}>
-          <div className={styles.loginIcon}>&#128274;</div>
-          <h1 className={styles.loginTitle}>Sign in to Access Knowledge</h1>
-          <p className={styles.loginDescription}>
-            Browse and save knowledge on this self-hosted server.
-          </p>
-          <TestLoginForm />
         </div>
       </div>
     );
