@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { PersonalAnalytics, AnalysisSummary, HistoryEntry, WorkerDomainScores } from '@/types/personal';
 import type { CodingStyleType, AIControlLevel } from '@/types/enterprise';
-import { authenticateRequest } from '@/lib/auth/authenticate-request';
 import { listAnalysesForUser, type StoredAnalysisResult } from '@/lib/local/analysis-store';
 import { getCurrentUserFromRequest } from '@/lib/local/auth';
 
@@ -12,16 +11,6 @@ const WORKER_DOMAIN_KEYS = [
   'contextEfficiency',
   'sessionOutcome',
 ] as const;
-
-async function resolveUserId(request: NextRequest): Promise<string | null> {
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader) {
-    const authResult = await authenticateRequest(authHeader);
-    return authResult?.userId ?? null;
-  }
-
-  return getCurrentUserFromRequest(request)?.id ?? null;
-}
 
 function extractWorkerDomainScores(
   evaluation: StoredAnalysisResult['evaluation']
@@ -120,15 +109,9 @@ function buildAnalysisSummary(
   };
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const userId = await resolveUserId(request);
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized', message: 'Please sign in to view your progress' },
-        { status: 401 }
-      );
-    }
+    const userId = getCurrentUserFromRequest().id;
 
     const results = listAnalysesForUser(userId).slice().reverse();
     if (results.length === 0) {

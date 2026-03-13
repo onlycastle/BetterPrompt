@@ -1,20 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/auth/authenticate-request';
 import { deleteAnalysisRecord, getAnalysisRecord } from '@/lib/local/analysis-store';
 import { getCurrentUserFromRequest } from '@/lib/local/auth';
 
 interface RouteContext {
   params: Promise<{ resultId: string }>;
-}
-
-async function resolveUserId(request: NextRequest): Promise<string | null> {
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader) {
-    const authResult = await authenticateRequest(authHeader);
-    return authResult?.userId ?? null;
-  }
-
-  return getCurrentUserFromRequest(request)?.id ?? null;
 }
 
 export async function GET(
@@ -56,7 +45,7 @@ export async function GET(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   context: RouteContext
 ): Promise<NextResponse> {
   try {
@@ -68,13 +57,7 @@ export async function DELETE(
       );
     }
 
-    const userId = await resolveUserId(request);
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized', message: 'You must be logged in to delete reports' },
-        { status: 401 }
-      );
-    }
+    const userId = getCurrentUserFromRequest().id;
 
     const result = getAnalysisRecord(resultId);
     if (!result) {
