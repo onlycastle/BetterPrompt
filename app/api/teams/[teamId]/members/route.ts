@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUserFromRequest } from '@/lib/local/auth';
+import { getCurrentUserFromRequest, findUserByEmail } from '@/lib/local/auth';
 import {
   addTeamMember,
-  findUserByEmail,
   getTeam,
   getUserOrganization,
   getUserOrgRole,
   listMembersForTeam,
 } from '@/lib/local/team-store';
+
+const VALID_ROLES = ['owner', 'admin', 'member', 'viewer'] as const;
 
 export async function GET(
   _request: NextRequest,
@@ -92,11 +93,19 @@ export async function POST(
     );
   }
 
+  const memberRole = body.role ?? 'member';
+  if (!VALID_ROLES.includes(memberRole as typeof VALID_ROLES[number])) {
+    return NextResponse.json(
+      { error: 'bad_request', message: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` },
+      { status: 400 },
+    );
+  }
+
   const member = addTeamMember(
     teamId,
     targetUser.id,
     org.id,
-    body.role ?? 'member',
+    memberRole,
     user.id,
   );
 

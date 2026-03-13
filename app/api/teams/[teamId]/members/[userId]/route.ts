@@ -8,6 +8,8 @@ import {
   updateTeamMemberRole,
 } from '@/lib/local/team-store';
 
+const VALID_ROLES = ['owner', 'admin', 'member', 'viewer'] as const;
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ teamId: string; userId: string }> },
@@ -51,6 +53,13 @@ export async function PATCH(
   if (!body.role) {
     return NextResponse.json(
       { error: 'bad_request', message: 'role is required' },
+      { status: 400 },
+    );
+  }
+
+  if (!VALID_ROLES.includes(body.role as typeof VALID_ROLES[number])) {
+    return NextResponse.json(
+      { error: 'bad_request', message: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` },
       { status: 400 },
     );
   }

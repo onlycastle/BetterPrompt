@@ -159,53 +159,42 @@ function truncate(text: string, maxLength: number): string {
 // ---------------------------------------------------------------------------
 
 export async function GET(_request: NextRequest) {
-  try {
-    const userId = getCurrentUserFromRequest().id;
+  const userId = getCurrentUserFromRequest().id;
 
-    const analyses = listAnalysesForUser(userId, 1);
+  const analyses = listAnalysesForUser(userId, 1);
 
-    if (analyses.length === 0) {
-      return NextResponse.json({ summary: null });
-    }
-
-    const latest = analyses[0];
-    const evaluation = latest.evaluation;
-
-    const domainScores = getDomainScoreMap(evaluation);
-    const strengths = buildStrengths(evaluation);
-    const growthAreas = buildGrowthAreas(evaluation);
-    const antiPatterns = buildAntiPatterns(evaluation);
-    const kpt = buildKPT(strengths, antiPatterns, growthAreas);
-
-    // matrixName lives inside agentOutputs.typeClassifier
-    const matrixName =
-      evaluation.agentOutputs?.typeClassifier?.matrixName ?? '';
-
-    const summary: UserSummary = {
-      resultId: latest.resultId,
-      analyzedAt: latest.claimedAt,
-      profile: {
-        primaryType: evaluation.primaryType,
-        controlLevel: evaluation.controlLevel,
-        matrixName,
-        personalitySummary: truncate(evaluation.personalitySummary ?? '', 200),
-        domainScores,
-      },
-      growthAreas,
-      strengths,
-      antiPatterns,
-      kpt,
-    };
-
-    return NextResponse.json({ summary });
-  } catch (error) {
-    console.error('[Analysis/User/Summary] Error:', error);
-    return NextResponse.json(
-      {
-        error: 'Fetch Failed',
-        message: error instanceof Error ? error.message : 'Failed to fetch summary.',
-      },
-      { status: 500 },
-    );
+  if (analyses.length === 0) {
+    return NextResponse.json({ summary: null });
   }
+
+  const latest = analyses[0];
+  const evaluation = latest.evaluation;
+
+  const domainScores = getDomainScoreMap(evaluation);
+  const strengths = buildStrengths(evaluation);
+  const growthAreas = buildGrowthAreas(evaluation);
+  const antiPatterns = buildAntiPatterns(evaluation);
+  const kpt = buildKPT(strengths, antiPatterns, growthAreas);
+
+  // matrixName lives inside agentOutputs.typeClassifier
+  const matrixName =
+    evaluation.agentOutputs?.typeClassifier?.matrixName ?? '';
+
+  const summary: UserSummary = {
+    resultId: latest.resultId,
+    analyzedAt: latest.claimedAt,
+    profile: {
+      primaryType: evaluation.primaryType,
+      controlLevel: evaluation.controlLevel,
+      matrixName,
+      personalitySummary: truncate(evaluation.personalitySummary ?? '', 200),
+      domainScores,
+    },
+    growthAreas,
+    strengths,
+    antiPatterns,
+    kpt,
+  };
+
+  return NextResponse.json({ summary });
 }

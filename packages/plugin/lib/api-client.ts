@@ -92,8 +92,8 @@ export async function verifyAuth(): Promise<{ id: string; email: string } | null
 
     if (!response.ok) return null;
 
-    const data = await response.json() as { user: { id: string; email: string } };
-    return data.user;
+    const data = await response.json() as { id: string; email: string };
+    return data;
   } catch {
     return null;
   }
