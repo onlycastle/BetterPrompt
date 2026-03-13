@@ -2,7 +2,7 @@
  * Analysis Cache - Local caching for analysis results
  *
  * Saves analysis results to avoid repeated API costs during testing.
- * Cache location: ~/.nomoreaislop/analysis-cache.json
+ * Cache location: ~/.betterprompt/analysis-cache.json
  */
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -11,7 +11,7 @@ import { homedir } from 'node:os';
 import pc from 'picocolors';
 import type { AnalysisResult } from './uploader.js';
 
-const CACHE_DIR = join(homedir(), '.nomoreaislop');
+const CACHE_DIR = join(homedir(), '.betterprompt');
 const CACHE_FILE = join(CACHE_DIR, 'analysis-cache.json');
 
 interface AnalysisCache {

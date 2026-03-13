@@ -1,10 +1,10 @@
 {
-  "name": "no-ai-slop",
+  "name": "betterprompt",
   "version": "0.9.36",
   "description": "See your AI anti-patterns in Claude Code sessions",
   "type": "module",
   "bin": {
-    "no-ai-slop": "./dist/index.js"
+    "betterprompt": "./dist/index.js"
   },
   "main": "./dist/index.js",
   "files": [
@@ -30,11 +30,11 @@
     "analysis",
     "slop"
   ],
-  "author": "NoMoreAISlop",
+  "author": "BetterPrompt",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nomoreaislop/nomoreaislop"
+    "url": "https://github.com/onlycastle/BetterPrompt"
   },
   "engines": {
     "node": ">=18.0.0"

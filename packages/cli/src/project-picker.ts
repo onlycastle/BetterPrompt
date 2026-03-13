@@ -22,9 +22,9 @@ import { visualPadEnd } from './lib/string-utils.js';
 // ============================================================================
 
 export interface ProjectInfo {
-  /** Encoded directory name (e.g. -Users-sungmancho-projects-nomoreaislop) */
+  /** Encoded directory name (e.g. -Users-sungmancho-projects-betterprompt) */
   encodedName: string;
-  /** Human-readable project name (e.g. nomoreaislop) */
+  /** Human-readable project name (e.g. betterprompt) */
   displayName: string;
   /** Number of session files found */
   sessionCount: number;
