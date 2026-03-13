@@ -1,0 +1,47 @@
+{
+  "name": "@betterprompt/claude-code-plugin",
+  "version": "0.1.0",
+  "description": "Claude Code plugin for BetterPrompt — auto-analysis and MCP-powered developer insights",
+  "type": "module",
+  "main": "./dist/mcp/server.js",
+  "bin": {
+    "betterprompt-mcp": "./dist/mcp/server.js",
+    "betterprompt-hook": "./dist/hooks/post-session-handler.js"
+  },
+  "files": [
+    "dist",
+    ".claude-plugin",
+    "hooks"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/mcp/server.js"
+  },
+  "keywords": [
+    "claude-code",
+    "claude-code-plugin",
+    "mcp",
+    "ai-analysis",
+    "developer-tools"
+  ],
+  "author": "BetterPrompt",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/onlycastle/BetterPrompt",
+    "directory": "packages/plugin"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "better-sqlite3": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}

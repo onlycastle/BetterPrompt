@@ -1,0 +1,26 @@
+{
+  "name": "betterprompt",
+  "displayName": "BetterPrompt",
+  "version": "0.1.0",
+  "description": "AI session analysis and developer insights — surfaces your collaboration patterns, growth areas, and anti-patterns directly in Claude Code.",
+  "author": "BetterPrompt",
+  "repository": "https://github.com/onlycastle/BetterPrompt",
+  "configuration": {
+    "serverUrl": {
+      "type": "string",
+      "required": true,
+      "default": "http://localhost:3000",
+      "description": "URL of your BetterPrompt server"
+    },
+    "autoAnalyze": {
+      "type": "boolean",
+      "default": true,
+      "description": "Automatically analyze sessions after enough new ones accumulate"
+    },
+    "analyzeThreshold": {
+      "type": "number",
+      "default": 5,
+      "description": "Minimum number of new sessions before triggering auto-analysis"
+    }
+  }
+}
