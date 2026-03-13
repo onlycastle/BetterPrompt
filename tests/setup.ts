@@ -10,8 +10,8 @@ import { beforeEach, afterEach, afterAll, vi } from 'vitest';
 // Mock environment variables for testing
 process.env.NODE_ENV = 'test';
 process.env.ANTHROPIC_API_KEY = 'test-api-key-mock';
-process.env.NOSLOP_TELEMETRY = 'false';
-process.env.NOSLOP_STORAGE_PATH = '/tmp/nomoreaislop-test';
+process.env.BETTERPROMPT_TELEMETRY = 'false';
+process.env.BETTERPROMPT_STORAGE_PATH = '/tmp/betterprompt-test';
 
 // Reset mocks between tests
 beforeEach(() => {

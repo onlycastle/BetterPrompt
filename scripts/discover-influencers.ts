@@ -29,7 +29,7 @@ import {
 } from '../src/search-agent/index.js';
 
 // Discovery storage paths
-const DISCOVERY_BASE_PATH = join(homedir(), '.nomoreaislop', 'discovery');
+const DISCOVERY_BASE_PATH = join(homedir(), '.betterprompt', 'discovery');
 const CONTENT_FILE = join(DISCOVERY_BASE_PATH, 'content.json');
 const CANDIDATES_FILE = join(DISCOVERY_BASE_PATH, 'candidates.json');
 const SESSIONS_FILE = join(DISCOVERY_BASE_PATH, 'sessions.json');

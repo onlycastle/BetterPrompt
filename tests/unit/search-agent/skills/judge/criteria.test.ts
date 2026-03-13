@@ -66,7 +66,7 @@ describe('Relevance Criteria', () => {
     });
 
     describe('projectFit criterion', () => {
-      it('should focus on NoMoreAISlop goals', () => {
+      it('should focus on BetterPrompt goals', () => {
         const projectFit = RELEVANCE_CRITERIA.find((c) => c.name === 'projectFit');
         const signals = projectFit?.positiveSignals.join(' ').toLowerCase() || '';
 

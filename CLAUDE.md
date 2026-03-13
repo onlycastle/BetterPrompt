@@ -8,7 +8,7 @@ This file provides guidance to Claude Code when working with this repository.
 >
 > **Strategy**: B2C (viral personality test) → B2B (enterprise capability assessment/training)
 
-NoMoreAISlop analyzes AI builder sessions from `~/.claude/projects/`, evaluates collaboration style using LLM analysis, and generates personalized reports.
+BetterPrompt analyzes AI builder sessions from `~/.claude/projects/`, evaluates collaboration style using LLM analysis, and generates personalized reports.
 
 ## Language Policy
 
@@ -122,19 +122,6 @@ npm test               # Run all tests
 >
 > **Bug History**: `communicationPatterns` missing from #7 (commit `adf12db`), `sessionOutcome` missing from ALL (fixed 2026-02-07).
 
-> ⚠️ **Dual Data Path Filtering**: `workerInsights` and `translatedAgentInsights` are two independent data paths that converge in the frontend. **Both** must be filtered by ContentGateway for free tier.
->
-> **Problem**: `applyTranslatedStrengths()` overlays translated descriptions onto locked teaser data (empty descriptions). If `translatedAgentInsights` is unfiltered, non-empty translated descriptions overwrite `''`, causing `isDomainLocked()` to return `false` → locked domains show "View" instead of "Unlock".
->
-> **3-Layer Defense**:
-> 1. **API layer**: `createPreviewEvaluation()` in `route.ts` calls `ContentGateway.filterTranslatedInsights('free')` to strip translation data for locked domains
-> 2. **Translation overlay**: `applyTranslatedStrengths/GrowthAreas()` in `worker-insights.ts` preserves `description === ''` (locked state) even if translation exists
-> 3. **Frontend**: `isPaid` prop passed to `TabbedReportContainer` for explicit lock UI
->
-> **Rule**: When adding a new data path that carries content for worker domains (like translations, cached data, etc.), it MUST pass through `ContentGateway` filtering before reaching the frontend. Check `createPreviewEvaluation()` in `app/api/analysis/results/[resultId]/route.ts`.
->
-> **Bug History (2026-02-10)**: Non-English free tier reports showed all 5 worker domains fully unlocked because `translatedAgentInsights` bypassed `ContentGateway`.
-
 > ⚠️ **Continuous Scroll Layout**: The report page renders ALL worker sections sequentially (no tabs). `useScrollSpy` hook drives the active section indicator in the `FloatingProgressDots` component. `InsightPreviewCard` is replaced by inline insight rendering within `GrowthCard`.
 >
 > **How it works** (in `TabbedReportContainer.tsx`):
@@ -177,22 +164,27 @@ try {
 return await analyze(); // Error surfaces to user, root cause can be identified
 ```
 
+## Intentional Backward Compatibility
+
+These deprecated code paths are kept intentionally for data migration. Do NOT remove.
+
+| Location | Purpose |
+|----------|---------|
+| `src/lib/domain/models/knowledge.ts` TopicCategorySchema | Legacy topic categories for SQLite migration compatibility |
+| `src/lib/models/verbose-evaluation.ts` pipe-delimited parsers | Legacy format parsers for cached analysis data from pre-structured-JSON era |
+| `src/lib/analyzer/content-gateway.ts` ContentGateway class | Pass-through wrapper kept for API compatibility |
+
 ## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
 | `GOOGLE_GEMINI_API_KEY` | Required for multi-phase orchestrator pipeline (Gemini 3 Flash) |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (client-side) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key (client-side) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
 
 ## Release Workflow
 
-**Web/API (Vercel)**: Push to `main` → Vercel auto-deploys
+**Self-hosted**: `npm run build && npm start`
 
-**Lambda (SST)**: Push to `main` with changes in `lambda/`, `infra/`, or `sst.config.ts` → auto-deploys
-
-> ⚠️ **NEVER use local SST deployment** (`npx sst deploy`). Local SST has critical bugs causing routing failures and inconsistent deployments. Always use GitHub Actions for Lambda deployment.
+**CLI**: Published via GitHub Action (`.github/workflows/publish-cli.yml`)
 
 ## Git Workflow
 
@@ -210,7 +202,7 @@ return await analyze(); // Error surfaces to user, root cause can be identified
 |----------|--------------|
 | [docs/agent/ARCHITECTURE.md](./docs/agent/ARCHITECTURE.md) | Understanding system structure, pipeline phases, finding key files, API routes, data models |
 | [docs/agent/TESTING.md](./docs/agent/TESTING.md) | Running tests, test script options, cache workflows |
-| [docs/agent/DEPLOYMENT.md](./docs/agent/DEPLOYMENT.md) | Lambda/Vercel deployment, environment variables, infrastructure |
+| [docs/agent/DEPLOYMENT.md](./docs/agent/DEPLOYMENT.md) | Self-hosted deployment, environment variables |
 | [docs/agent/TROUBLESHOOTING.md](./docs/agent/TROUBLESHOOTING.md) | Debugging issues, known pitfalls, prevention checklists |
 
 Detailed human-readable docs: [docs/human/](./docs/human/)

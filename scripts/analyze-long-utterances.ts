@@ -5,7 +5,7 @@
 import * as fs from 'fs';
 import * as readline from 'readline';
 
-const JSONL_PATH = process.argv[2] || process.env.NOSLOP_TEST_JSONL_PATH || '';
+const JSONL_PATH = process.argv[2] || process.env.BETTERPROMPT_TEST_JSONL_PATH || '';
 
 function stripSystemTags(text: string): string {
   const patterns = [
@@ -41,7 +41,7 @@ function detectType(text: string): string {
 
 async function main() {
   if (!JSONL_PATH) {
-    throw new Error('Provide a JSONL path as the first argument or set NOSLOP_TEST_JSONL_PATH.');
+    throw new Error('Provide a JSONL path as the first argument or set BETTERPROMPT_TEST_JSONL_PATH.');
   }
   const fileStream = fs.createReadStream(JSONL_PATH);
   const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });

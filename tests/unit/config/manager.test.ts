@@ -22,9 +22,9 @@ describe('ConfigManager', () => {
     vi.clearAllMocks();
     // Reset env vars used by config
     delete process.env.ANTHROPIC_API_KEY;
-    delete process.env.NOSLOP_TELEMETRY;
-    delete process.env.NOSLOP_STORAGE_PATH;
-    delete process.env.NOSLOP_MODEL;
+    delete process.env.BETTERPROMPT_TELEMETRY;
+    delete process.env.BETTERPROMPT_STORAGE_PATH;
+    delete process.env.BETTERPROMPT_MODEL;
   });
 
   afterEach(() => {
@@ -115,25 +115,25 @@ describe('ConfigManager', () => {
       vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'));
 
       // Test 'false' string
-      process.env.NOSLOP_TELEMETRY = 'false';
+      process.env.BETTERPROMPT_TELEMETRY = 'false';
       let manager = new ConfigManager();
       let config = await manager.getConfig();
       expect(config.telemetry).toBe(false);
 
       // Test '0' string
-      process.env.NOSLOP_TELEMETRY = '0';
+      process.env.BETTERPROMPT_TELEMETRY = '0';
       manager = new ConfigManager();
       config = await manager.getConfig();
       expect(config.telemetry).toBe(false);
 
       // Test 'true' string
-      process.env.NOSLOP_TELEMETRY = 'true';
+      process.env.BETTERPROMPT_TELEMETRY = 'true';
       manager = new ConfigManager();
       config = await manager.getConfig();
       expect(config.telemetry).toBe(true);
 
       // Test any other value
-      process.env.NOSLOP_TELEMETRY = 'yes';
+      process.env.BETTERPROMPT_TELEMETRY = 'yes';
       manager = new ConfigManager();
       config = await manager.getConfig();
       expect(config.telemetry).toBe(true);
@@ -148,7 +148,7 @@ describe('ConfigManager', () => {
 
       expect(await manager.get('version')).toBe('1.0.0');
       expect(await manager.get('telemetry')).toBe(true);
-      expect(await manager.get('storagePath')).toBe('~/.nomoreaislop');
+      expect(await manager.get('storagePath')).toBe('~/.betterprompt');
     });
   });
 
@@ -254,7 +254,7 @@ describe('ConfigManager', () => {
       });
 
       it('should return false when disabled', async () => {
-        process.env.NOSLOP_TELEMETRY = 'false';
+        process.env.BETTERPROMPT_TELEMETRY = 'false';
         const manager = new ConfigManager();
         expect(await manager.isTelemetryEnabled()).toBe(false);
       });
@@ -264,11 +264,11 @@ describe('ConfigManager', () => {
       it('should expand ~ in storage path', async () => {
         const manager = new ConfigManager();
         const path = await manager.getStoragePath();
-        expect(path).toBe(`${homedir()}/.nomoreaislop`);
+        expect(path).toBe(`${homedir()}/.betterprompt`);
       });
 
       it('should return absolute path as-is', async () => {
-        process.env.NOSLOP_STORAGE_PATH = '/absolute/storage';
+        process.env.BETTERPROMPT_STORAGE_PATH = '/absolute/storage';
         const manager = new ConfigManager();
         const path = await manager.getStoragePath();
         expect(path).toBe('/absolute/storage');

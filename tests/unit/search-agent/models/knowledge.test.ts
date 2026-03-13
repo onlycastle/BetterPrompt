@@ -13,7 +13,7 @@ import {
   DEFAULT_SEARCH_TOPICS,
   TOPIC_DISPLAY_NAMES,
   TOPIC_TO_DIMENSION_MAP,
-  // Note: INITIAL_INSIGHTS removed - now in database (see supabase/migrations/018_seed_professional_insights.sql)
+  // Note: INITIAL_INSIGHTS removed - professional insights now live in local data files
 } from '../../../../src/lib/search-agent/models/knowledge.js';
 
 describe('Knowledge Models', () => {
@@ -404,7 +404,6 @@ describe('Knowledge Models', () => {
       });
     });
 
-    // Note: INITIAL_INSIGHTS tests removed - Professional Insights are now stored in database
-    // See supabase/migrations/018_seed_professional_insights.sql for canonical data
+    // Note: INITIAL_INSIGHTS tests removed - professional insights are loaded from local data
   });
 });

@@ -54,7 +54,7 @@ import type { TokenUsage } from '../src/lib/analyzer/clients/gemini-client';
 /** Version for cache invalidation. Bump when Phase3 output schema changes. */
 const GENERATOR_VERSION = '1.0.0';
 
-const DEFAULT_JSONL_PATH = process.env.NOSLOP_TEST_JSONL_PATH || '';
+const DEFAULT_JSONL_PATH = process.env.BETTERPROMPT_TEST_JSONL_PATH || '';
 
 // ============================================================================
 // Argument Parsing
@@ -201,7 +201,7 @@ async function main() {
 
   if (fresh) {
     if (!jsonlPath) {
-      throw new Error('Provide a JSONL path or set NOSLOP_TEST_JSONL_PATH when using --fresh.');
+      throw new Error('Provide a JSONL path or set BETTERPROMPT_TEST_JSONL_PATH when using --fresh.');
     }
     console.log('Mode: FRESH (running Phase 1 + Phase 2)');
     console.log(`JSONL: ${jsonlPath.split('/').pop()}`);

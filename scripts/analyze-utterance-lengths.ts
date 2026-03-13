@@ -7,7 +7,7 @@
 import * as fs from 'fs';
 import * as readline from 'readline';
 
-const JSONL_PATH = process.argv[2] || process.env.NOSLOP_TEST_JSONL_PATH || '';
+const JSONL_PATH = process.argv[2] || process.env.BETTERPROMPT_TEST_JSONL_PATH || '';
 
 // Same logic as DataExtractorWorker.stripSystemTags
 function stripSystemTags(text: string): string {
@@ -100,7 +100,7 @@ async function analyzeFile(filePath: string): Promise<UtteranceInfo[]> {
 async function main() {
   console.log('=== Utterance Length Analysis ===');
   if (!JSONL_PATH) {
-    throw new Error('Provide a JSONL path as the first argument or set NOSLOP_TEST_JSONL_PATH.');
+    throw new Error('Provide a JSONL path as the first argument or set BETTERPROMPT_TEST_JSONL_PATH.');
   }
   console.log(`File: ${JSONL_PATH}\n`);
 

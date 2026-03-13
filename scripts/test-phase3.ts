@@ -47,7 +47,7 @@ import type { NarrativeLLMResponse } from '../src/lib/models/verbose-evaluation'
 // Configuration
 // ============================================================================
 
-const DEFAULT_JSONL_PATH = process.env.NOSLOP_TEST_JSONL_PATH || '';
+const DEFAULT_JSONL_PATH = process.env.BETTERPROMPT_TEST_JSONL_PATH || '';
 
 // ============================================================================
 // Argument Parsing
@@ -221,7 +221,7 @@ async function main() {
     agentOutputs = await runPhase2Workers(config, phase1Output, tokenUsages, timings);
   } else {
     if (!jsonlPath) {
-      console.error('Provide a JSONL path or set NOSLOP_TEST_JSONL_PATH for fresh Phase 3 runs.');
+      console.error('Provide a JSONL path or set BETTERPROMPT_TEST_JSONL_PATH for fresh Phase 3 runs.');
       process.exit(1);
     }
     // FULL: Parse JSONL, run Phase 1, run Phase 2
