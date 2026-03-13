@@ -1,5 +1,5 @@
 /**
- * NoMoreAISlop - Data Models
+ * BetterPrompt - Data Models
  *
  * This module exports all type definitions and Zod schemas
  * used throughout the application.
@@ -244,5 +244,4 @@ export {
   type Bottleneck,
   type QuickFixResult,
   parseBottleneckDetectorOutput,
-  QUICK_FIX_TIER_POLICY,
 } from './quick-fix-data';

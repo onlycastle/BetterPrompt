@@ -2,7 +2,7 @@
  * Knowledge Store
  *
  * Persists knowledge items to the local filesystem.
- * Storage location: ~/.nomoreaislop/knowledge/
+ * Storage location: ~/.betterprompt/knowledge/
  */
 
 import { readFile, writeFile, readdir, mkdir } from 'node:fs/promises';
@@ -19,7 +19,7 @@ import {
 /**
  * Storage paths
  */
-export const KNOWLEDGE_BASE_PATH = join(homedir(), '.nomoreaislop', 'knowledge');
+export const KNOWLEDGE_BASE_PATH = join(homedir(), '.betterprompt', 'knowledge');
 export const ITEMS_PATH = join(KNOWLEDGE_BASE_PATH, 'items');
 export const INDEX_PATH = join(KNOWLEDGE_BASE_PATH, 'index.json');
 
@@ -65,7 +65,7 @@ export interface AdvancedSearchOptions {
  * Knowledge Store - Persists knowledge items to disk
  *
  * Storage structure:
- * ~/.nomoreaislop/knowledge/
+ * ~/.betterprompt/knowledge/
  *   ├── index.json              # Collection index with category mappings
  *   └── items/
  *       ├── {uuid}.json         # Individual knowledge items
@@ -150,11 +150,10 @@ export class KnowledgeStore {
   }
 
   /**
-   * Load a knowledge item by ID
+   * Read a single item file from disk (no initialization guard).
+   * Used internally during initialization to avoid recursive ensureInitialized() calls.
    */
-  async loadItem(id: string): Promise<KnowledgeItem | null> {
-    await this.ensureInitialized();
-
+  private async readItemFile(id: string): Promise<KnowledgeItem | null> {
     try {
       const filePath = join(ITEMS_PATH, `${id}.json`);
       const content = await readFile(filePath, 'utf-8');
@@ -163,6 +162,14 @@ export class KnowledgeStore {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Load a knowledge item by ID
+   */
+  async loadItem(id: string): Promise<KnowledgeItem | null> {
+    await this.ensureInitialized();
+    return this.readItemFile(id);
   }
 
   /**
@@ -185,7 +192,8 @@ export class KnowledgeStore {
   }
 
   /**
-   * List all knowledge items (internal, no init check)
+   * List all knowledge items (internal, no init check).
+   * Uses readItemFile() to avoid recursive ensureInitialized() calls.
    */
   private async listItemsInternal(): Promise<KnowledgeItem[]> {
     try {
@@ -195,7 +203,7 @@ export class KnowledgeStore {
       for (const file of files) {
         if (!file.endsWith('.json')) continue;
         const id = file.replace('.json', '');
-        const item = await this.loadItem(id);
+        const item = await this.readItemFile(id);
         if (item) items.push(item);
       }
 

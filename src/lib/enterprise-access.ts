@@ -1,13 +1,8 @@
 /**
  * Enterprise Access Control
- * Whitelist of emails allowed to access enterprise dashboard during development phase
+ * Checks if a user belongs to an organization (client-side check via AuthUser).
  */
 
-export const ENTERPRISE_ALLOWED_EMAILS: string[] = [
-  'sungman.cho@tbdlabs.team',
-];
-
-export function isEnterpriseAllowed(email: string | undefined): boolean {
-  if (!email) return false;
-  return ENTERPRISE_ALLOWED_EMAILS.includes(email.toLowerCase());
+export function isEnterpriseAllowed(organizationId: string | null | undefined): boolean {
+  return !!organizationId;
 }

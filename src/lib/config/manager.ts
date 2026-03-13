@@ -11,7 +11,7 @@ import {
 /**
  * Default config file path
  */
-export const DEFAULT_CONFIG_PATH = join(homedir(), '.nomoreaislop', 'config.json');
+export const DEFAULT_CONFIG_PATH = join(homedir(), '.betterprompt', 'config.json');
 
 /**
  * ConfigManager - Handles user configuration

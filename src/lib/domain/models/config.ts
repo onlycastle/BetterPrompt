@@ -14,7 +14,7 @@ import { z } from 'zod';
 // ============================================================================
 
 /**
- * Configuration schema for NoMoreAISlop
+ * Configuration schema for BetterPrompt
  * Stores application settings
  */
 export const ConfigSchema = z.object({
@@ -24,7 +24,7 @@ export const ConfigSchema = z.object({
   telemetry: z.boolean().default(true),
 
   // Storage
-  storagePath: z.string().default('~/.nomoreaislop'),
+  storagePath: z.string().default('~/.betterprompt'),
 
   // API settings
   apiKey: z.string().nullable().default(null),
@@ -44,7 +44,7 @@ export type Config = z.infer<typeof ConfigSchema>;
 export const DEFAULT_CONFIG: Config = {
   version: '1.0.0',
   telemetry: true,
-  storagePath: '~/.nomoreaislop',
+  storagePath: '~/.betterprompt',
   apiKey: null,
   apiBaseUrl: 'http://localhost:3000',
   offlineMode: false,
@@ -56,10 +56,10 @@ export const DEFAULT_CONFIG: Config = {
  */
 export const ENV_MAPPINGS = {
   apiKey: 'ANTHROPIC_API_KEY',
-  telemetry: 'NOSLOP_TELEMETRY',
-  storagePath: 'NOSLOP_STORAGE_PATH',
-  apiBaseUrl: 'NOSLOP_API_BASE_URL',
-  offlineMode: 'NOSLOP_OFFLINE_MODE',
+  telemetry: 'BETTERPROMPT_TELEMETRY',
+  storagePath: 'BETTERPROMPT_STORAGE_PATH',
+  apiBaseUrl: 'BETTERPROMPT_API_BASE_URL',
+  offlineMode: 'BETTERPROMPT_OFFLINE_MODE',
 } as const;
 
 /**

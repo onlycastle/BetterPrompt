@@ -4,7 +4,7 @@
  * Provides functions for saving and loading analysis results locally.
  * Used by the CLI to store reports that can be viewed in the React SPA.
  *
- * Storage location: ~/.nomoreaislop/reports/{id}.json
+ * Storage location: ~/.betterprompt/reports/{id}.json
  *
  * @module utils/local-analysis
  */
@@ -70,7 +70,7 @@ export interface AnalysisSummary {
  */
 const CONFIG = {
   /** Base directory for storage */
-  baseDir: path.join(os.homedir(), '.nomoreaislop'),
+  baseDir: path.join(os.homedir(), '.betterprompt'),
   /** Reports subdirectory */
   reportsDir: 'reports',
   /** Default expiration in days (0 = never expires) */

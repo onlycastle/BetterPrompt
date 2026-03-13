@@ -32,7 +32,7 @@ export const RelevanceAssessmentSchema = z.object({
     'How relevant is this to AI engineering topics?'
   ),
   projectFit: RelevanceDimensionSchema.describe(
-    'How applicable is this to NoMoreAISlop goals?'
+    'How applicable is this to BetterPrompt goals?'
   ),
   actionability: RelevanceDimensionSchema.describe(
     'Can this be turned into practical guidance?'

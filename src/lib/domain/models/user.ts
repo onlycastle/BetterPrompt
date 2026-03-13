@@ -1,7 +1,7 @@
 /**
  * User Domain Models
  *
- * Zod schemas for user management, tiers, teams, and organizations.
+ * Zod schemas for user management, access tiers, teams, and organizations.
  * Single source of truth for user-related types.
  *
  * @module domain/models/user
@@ -14,11 +14,7 @@ import { z } from 'zod';
 // ============================================================================
 
 /**
- * User subscription tiers (4-tier system)
- * - free: Limited content, 3 analyses/month
- * - one_time: Full content, 1-credit purchase (was 'paid')
- * - pro: Full content, subscription (was 'premium')
- * - enterprise: Full content + team management
+ * Access tiers used by the analyzer and team dashboards.
  */
 export const UserTierSchema = z.enum(['free', 'one_time', 'pro', 'enterprise']);
 export type UserTier = z.infer<typeof UserTierSchema>;
@@ -46,7 +42,7 @@ export const TIER_LIMITS: Record<
     apiAccess: false,
   },
   one_time: {
-    // One-time credit purchase - full content access, unlimited analyses
+    // Full access for single-user setups
     analysesPerMonth: null,
     trackingEnabled: false,
     knowledgeBaseAccess: false,
@@ -55,7 +51,7 @@ export const TIER_LIMITS: Record<
     apiAccess: false,
   },
   pro: {
-    // Subscription tier - full content access + advanced features
+    // Full access plus advanced local features
     analysesPerMonth: null,
     trackingEnabled: true,
     knowledgeBaseAccess: true,
@@ -64,7 +60,7 @@ export const TIER_LIMITS: Record<
     apiAccess: true,
   },
   enterprise: {
-    // Enterprise tier - full content access + team management
+    // Team-oriented access
     analysesPerMonth: null,
     trackingEnabled: true,
     knowledgeBaseAccess: true,
@@ -186,52 +182,6 @@ export const OrganizationSchema = z.object({
 export type Organization = z.infer<typeof OrganizationSchema>;
 
 // ============================================================================
-// License Schema (for PRO tier)
-// ============================================================================
-
-/**
- * License type
- */
-export const LicenseTypeSchema = z.enum(['one_time', 'pro', 'team']);
-export type LicenseType = z.infer<typeof LicenseTypeSchema>;
-
-/**
- * License schema
- */
-export const LicenseSchema = z.object({
-  id: z.string().uuid(),
-  key: z.string().min(20).max(3000),
-  type: LicenseTypeSchema,
-
-  // Usage
-  maxActivations: z.number().min(1).default(3),
-  activationCount: z.number().default(0),
-
-  // Validity
-  isActive: z.boolean().default(true),
-  expiresAt: z.string().datetime().optional(),
-
-  // Metadata
-  createdAt: z.string().datetime(),
-  purchasedBy: z.string().email().optional(),
-  polarOrderId: z.string().optional(),
-});
-export type License = z.infer<typeof LicenseSchema>;
-
-/**
- * License activation (device fingerprint)
- */
-export const LicenseActivationSchema = z.object({
-  id: z.string().uuid(),
-  licenseId: z.string().uuid(),
-  deviceFingerprint: z.string(),
-  activatedAt: z.string().datetime(),
-  lastUsedAt: z.string().datetime(),
-  deactivatedAt: z.string().datetime().optional(),
-});
-export type LicenseActivation = z.infer<typeof LicenseActivationSchema>;
-
-// ============================================================================
 // Usage Tracking
 // ============================================================================
 
@@ -254,7 +204,7 @@ export const UsageRecordSchema = z.object({
 export type UsageRecord = z.infer<typeof UsageRecordSchema>;
 
 /**
- * Tracking metrics for PREMIUM tier
+ * Tracking metrics for long-term progress views
  */
 export const TrackingMetricsSchema = z.object({
   id: z.string().uuid(),
@@ -285,11 +235,11 @@ export type TrackingMetrics = z.infer<typeof TrackingMetricsSchema>;
 // ============================================================================
 
 /**
- * Get effective tier for a user (supports test override via NOSLOP_TEST_TIER)
+ * Get effective tier for a user (supports test override via BETTERPROMPT_TEST_TIER)
  * Only works in non-production environments for testing all features
  */
 export function getEffectiveTier(user: User): UserTier {
-  const testTier = process.env.NOSLOP_TEST_TIER as UserTier | undefined;
+  const testTier = process.env.BETTERPROMPT_TEST_TIER as UserTier | undefined;
   const isProduction = process.env.NODE_ENV === 'production';
 
   // Only allow test tier override in non-production environments

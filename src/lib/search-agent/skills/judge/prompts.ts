@@ -10,7 +10,7 @@ import { formatCriteriaForPrompt } from './criteria';
 /**
  * System prompt for relevance evaluation
  */
-export const JUDGE_SYSTEM_PROMPT = `You are an expert evaluator for the NoMoreAISlop project, which helps developers improve their AI collaboration skills.
+export const JUDGE_SYSTEM_PROMPT = `You are an expert evaluator for the BetterPrompt project, which helps developers improve their AI collaboration skills.
 
 Your task is to evaluate content and determine if it would be valuable for helping developers:
 1. **Plan** better when working with AI (clear requirements, task breakdown)
@@ -44,7 +44,7 @@ export function buildJudgePrompt(
       ? `\n## Existing Knowledge (for novelty check)\n${existingKnowledge.slice(0, 10).map((k) => `- ${k}`).join('\n')}`
       : '';
 
-  return `Evaluate this content for inclusion in the NoMoreAISlop knowledge base.
+  return `Evaluate this content for inclusion in the BetterPrompt knowledge base.
 
 ## Content to Evaluate
 
@@ -80,7 +80,7 @@ Use the evaluate_relevance tool to provide your assessment.`;
  */
 export const JUDGE_TOOL = {
   name: 'evaluate_relevance',
-  description: 'Evaluate content relevance for the NoMoreAISlop knowledge base',
+  description: 'Evaluate content relevance for the BetterPrompt knowledge base',
   input_schema: {
     type: 'object' as const,
     properties: {

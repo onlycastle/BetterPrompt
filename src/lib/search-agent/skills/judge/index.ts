@@ -1,7 +1,7 @@
 /**
  * Judge Skill
  *
- * Evaluates gathered content for relevance to the NoMoreAISlop project.
+ * Evaluates gathered content for relevance to the BetterPrompt project.
  * Scores across multiple dimensions and makes accept/review/reject recommendations.
  */
 
@@ -53,7 +53,7 @@ export interface JudgeOutput {
  */
 export class JudgeSkill extends BaseSkill<JudgeInput, JudgeOutput> {
   readonly name = 'judge';
-  readonly description = 'Evaluates content relevance for the NoMoreAISlop project';
+  readonly description = 'Evaluates content relevance for the BetterPrompt project';
   private influencerDetector = getInfluencerDetector();
 
   async execute(input: JudgeInput): Promise<SkillResult<JudgeOutput>> {

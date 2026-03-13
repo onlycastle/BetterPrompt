@@ -7,8 +7,7 @@
  * Pipeline: Phase 1 DataExtractor (0 LLM) → BottleneckDetector (1-2 LLM)
  * Target: ~30 second time-to-value
  *
- * Tier gating: Top-1 bottleneck with full prescription (free),
- * remaining 2 show blurred preview with "Unlock" CTA.
+ * Self-hosted OSS always returns full quick-fix results.
  *
  * Gemini Nesting Depth Analysis (4 levels max, arrays don't count):
  * root{} → bottlenecks[] → bottleneck{} → evidence[] → evidenceItem{}
@@ -80,13 +79,11 @@ export const BottleneckLLMSchema = z.object({
 
   /**
    * 3-5 sentences explaining what the user is doing wrong and why it wastes time.
-   * This is the "diagnosis" — always free.
    */
   issue: z.string().min(150).describe('MINIMUM 150 characters. 3-5 sentences explaining the problem.'),
 
   /**
    * A concrete, copy-pasteable prompt that would have worked better.
-   * This is the core "prescription" — free for top-1, paid for rest.
    * Should be a real prompt the user can immediately use in their next session.
    */
   suggestedPrompt: z.string().min(100).describe(
@@ -95,7 +92,6 @@ export const BottleneckLLMSchema = z.object({
 
   /**
    * 2-3 sentences explaining WHY the suggested prompt is better.
-   * Part of the "prescription" — free for top-1, paid for rest.
    */
   explanation: z.string().min(80).describe(
     'MINIMUM 80 characters. 2-3 sentences explaining why this prompt is better.'
@@ -157,11 +153,6 @@ export interface Bottleneck {
   evidence: InsightEvidence[];
   estimatedTimeSaved: string;
 
-  /** Preview of suggestedPrompt for locked items (set by ContentGateway) */
-  suggestedPromptPreview?: string;
-
-  /** Preview of explanation for locked items (set by ContentGateway) */
-  explanationPreview?: string;
 }
 
 // ============================================================================
@@ -171,8 +162,7 @@ export interface Bottleneck {
 /**
  * Complete Quick Fix analysis result.
  *
- * Contains the top 3 bottlenecks and metadata about the analysis.
- * ContentGateway applies tier gating: top-1 fully visible, rest blurred.
+ * Contains the top bottlenecks and metadata about the analysis.
  */
 export interface QuickFixResult {
   /** Unique result ID for caching and sharing */
@@ -199,8 +189,6 @@ export interface QuickFixResult {
   /** Top 3 bottlenecks, ordered by severity */
   bottlenecks: Bottleneck[];
 
-  /** Whether free tier gating has been applied */
-  isFreeGated: boolean;
 }
 
 // ============================================================================
@@ -236,34 +224,3 @@ export function parseBottleneckDetectorOutput(
     summary: llmOutput.summary,
   };
 }
-
-// ============================================================================
-// Quick Fix Tier Policy
-// ============================================================================
-
-/**
- * Quick Fix tier gating policy.
- * Extends the main TIER_POLICY pattern from ContentGateway.
- */
-export const QUICK_FIX_TIER_POLICY = {
-  /** Number of fully visible bottlenecks for free tier */
-  freeBottleneckLimit: 1,
-
-  /** Max chars for blurred suggestedPrompt preview in free tier */
-  suggestedPromptPreviewLength: 80,
-
-  /** Max chars for blurred explanation preview in free tier */
-  explanationPreviewLength: 60,
-
-  /** Free tier: issue (diagnosis) is always visible */
-  issue: 'free',
-
-  /** Free tier: suggestedPrompt (prescription) gated after top-1 */
-  suggestedPrompt: 'gated',
-
-  /** Free tier: explanation (prescription) gated after top-1 */
-  explanation: 'gated',
-
-  /** Weekly reset: free users can run Quick Fix once per project per week */
-  freeResetIntervalDays: 7,
-} as const;

@@ -1,10 +1,10 @@
 /**
- * NoMoreAISlop - Claude Code Plugin
+ * BetterPrompt - Claude Code Plugin
  *
  * Analyze your Claude Code sessions to improve AI collaboration skills.
  * Uses Verbose Mode as the default analysis approach.
  *
- * @module nomoreaislop
+ * @module betterprompt
  */
 
 // ============================================================================

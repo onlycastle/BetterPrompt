@@ -182,13 +182,6 @@ export {
   type Team,
   type TeamMember,
   type Organization,
-  // Licenses
-  LicenseTypeSchema,
-  LicenseSchema,
-  LicenseActivationSchema,
-  type LicenseType,
-  type License,
-  type LicenseActivation,
   // Usage tracking
   UsageRecordSchema,
   TrackingMetricsSchema,

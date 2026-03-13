@@ -13,7 +13,7 @@ import { TYPE_METADATA } from './models/coding-style';
 /**
  * Base URL for share links (configure in env)
  */
-const BASE_URL = process.env.NOSLOP_BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.BETTERPROMPT_BASE_URL || 'http://localhost:3000';
 
 /**
  * Generate Twitter/X share URL with pre-filled tweet
@@ -34,7 +34,7 @@ export function generateTwitterShareUrl(
   // Build tweet text
   let tweetText = `I'm a ${meta.name} ${meta.emoji} builder!
 
-My self-hosted NoMoreAISlop profile:
+My self-hosted BetterPrompt profile:
 "${meta.tagline}"
 
 Top Strength: ${topStrength}
@@ -45,7 +45,7 @@ ${shareUrl}`;
   if (includeHashtags) {
     tweetText += `
 
-#NoMoreAISlop #AICollaboration #SelfHosted`;
+#BetterPrompt #AICollaboration #SelfHosted`;
   }
 
   // Encode for URL
@@ -78,7 +78,7 @@ export function generateCopyText(
   const percentage = Math.round(typeResult.distribution[typeResult.primaryType] || 0);
   const shareUrl = `${BASE_URL}/r/${reportId}`;
 
-  let text = `🎯 My NoMoreAISlop profile: ${meta.name} ${meta.emoji}
+  let text = `🎯 My BetterPrompt profile: ${meta.name} ${meta.emoji}
 
 "${meta.tagline}"`;
 
@@ -93,7 +93,7 @@ Top Strength: ${meta.strengths[0]}`;
 
 Check out my full analysis: ${shareUrl}
 
-#NoMoreAISlop`;
+#BetterPrompt`;
 
   return text;
 }
@@ -149,7 +149,7 @@ export function generateWebShareData(
   const shareUrl = `${BASE_URL}/r/${reportId}`;
 
   return {
-    title: `My NoMoreAISlop Profile: ${meta.name} ${meta.emoji}`,
+    title: `My BetterPrompt Profile: ${meta.name} ${meta.emoji}`,
     text: `${meta.tagline} - What does your workflow look like?`,
     url: shareUrl,
   };
@@ -166,7 +166,7 @@ export function generateInstagramCaption(
   const shareUrl = `${BASE_URL}/r/${reportId}`;
   const topStrength = meta.strengths[0];
 
-  return `${meta.emoji} I'm a ${meta.name} builder on NoMoreAISlop!
+  return `${meta.emoji} I'm a ${meta.name} builder on BetterPrompt!
 
 "${meta.tagline}"
 
@@ -174,7 +174,7 @@ export function generateInstagramCaption(
 
 🔗 See my full analysis: ${shareUrl}
 
-#NoMoreAISlop #AICollaboration #SelfHosted #${meta.name} #DevTools`;
+#BetterPrompt #AICollaboration #SelfHosted #${meta.name} #DevTools`;
 }
 
 /**
@@ -194,6 +194,6 @@ export function generateEmbedCode(
   height="${height}"
   frameborder="0"
   style="border-radius: 12px; border: 1px solid #333;"
-  title="NoMoreAISlop Analysis"
+  title="BetterPrompt Analysis"
 ></iframe>`;
 }
