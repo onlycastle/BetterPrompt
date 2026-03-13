@@ -43,7 +43,7 @@ export function getConfig(): PluginConfig {
 
     authToken:
       process.env.BETTERPROMPT_AUTH_TOKEN ??
-      process.env.BETTERPROMPT_AUTH_TOKEN ??
+      process.env.BETTERPROMPT_TOKEN ??
       DEFAULTS.authToken,
 
     autoAnalyze:

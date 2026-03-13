@@ -19,7 +19,7 @@ import type {
   TeamGrowthAreaAggregate,
   TeamKPTAggregate,
 } from '@/types/enterprise';
-import type { StoredTeam, StoredOrganization } from '@/lib/local/team-store';
+import type { StoredTeam, StoredTeamMember, StoredOrganization } from '@/lib/local/team-store';
 
 // ---------------------------------------------------------------------------
 // Generic fetch hook
@@ -174,19 +174,24 @@ export function useMember(memberId: string): AsyncState<TeamMemberAnalysis> {
 // Team-specific hooks
 // ---------------------------------------------------------------------------
 
+interface TeamDetailResponse {
+  team: StoredTeam;
+  members: StoredTeamMember[];
+}
+
 export function useTeam(teamId: string): AsyncState<TeamAnalytics> {
-  const { data: team, isLoading: teamLoading, error: teamError, refetch } = useApiFetch<StoredTeam>(`/api/teams/${teamId}`);
+  const { data: teamData, isLoading: teamLoading, error: teamError, refetch } = useApiFetch<TeamDetailResponse>(`/api/teams/${teamId}`);
   const { data: members, isLoading: membersLoading, error: membersError } = useApiFetch<TeamMemberAnalysis[]>(`/api/teams/${teamId}/members`);
 
   const [analytics, setAnalytics] = useState<TeamAnalytics | null>(null);
 
   useEffect(() => {
-    if (!team || !members) {
+    if (!teamData || !members) {
       setAnalytics(null);
       return;
     }
-    setAnalytics(buildTeamAnalytics(team.id, team.name, members));
-  }, [team, members]);
+    setAnalytics(buildTeamAnalytics(teamData.team.id, teamData.team.name, members));
+  }, [teamData, members]);
 
   return {
     data: analytics,

@@ -84,7 +84,7 @@ export function findUserByEmail(email: string): LocalUser | null {
   const db = getDatabase();
   const row = db
     .prepare('SELECT id, email, role, created_at, organization_id FROM users WHERE email = ?')
-    .get(email) as UserRow | undefined;
+    .get(email.trim().toLowerCase()) as UserRow | undefined;
 
   return row ? mapUser(row) : null;
 }

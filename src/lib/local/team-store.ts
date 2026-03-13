@@ -366,11 +366,3 @@ export function getUserOrgRole(userId: string, orgId: string): string | null {
   return row?.role ?? null;
 }
 
-export function findUserByEmail(email: string): LocalUser | null {
-  const db = getDatabase();
-  const row = db.prepare('SELECT id, email, role, created_at, organization_id FROM users WHERE email = ?')
-    .get(email.trim().toLowerCase()) as { id: string; email: string; role: string; created_at: string; organization_id: string | null } | undefined;
-
-  if (!row) return null;
-  return { id: row.id, email: row.email, role: row.role, createdAt: row.created_at, organizationId: row.organization_id };
-}

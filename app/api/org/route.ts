@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserFromRequest } from '@/lib/local/auth';
 import {
   createOrganization,
+  getOrganizationBySlug,
   getUserOrganization,
   listTeamsForOrg,
   getOrgMembers,
@@ -50,6 +51,15 @@ export async function POST(request: NextRequest) {
   if (existingOrg) {
     return NextResponse.json(
       { error: 'conflict', message: 'User already belongs to an organization' },
+      { status: 409 },
+    );
+  }
+
+  // Check slug uniqueness
+  const existingSlug = getOrganizationBySlug(body.slug);
+  if (existingSlug) {
+    return NextResponse.json(
+      { error: 'conflict', message: 'An organization with this slug already exists' },
       { status: 409 },
     );
   }
