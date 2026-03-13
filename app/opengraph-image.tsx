@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 
 export const runtime = 'nodejs';
 
-export const alt = 'NoMoreAISlop - Self-Hosted AI Session Analysis';
+export const alt = 'BetterPrompt - Self-Hosted AI Session Analysis';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -44,7 +44,7 @@ export default function Image() {
           }}
         />
 
-        {/* Brand logo row: >_ NoMoreAISlop */}
+        {/* Brand logo row: >_ BetterPrompt */}
         <div
           style={{
             display: 'flex',
@@ -72,7 +72,7 @@ export default function Image() {
               marginLeft: 16,
             }}
           >
-            NoMoreAISlop
+            BetterPrompt
           </div>
         </div>
 
@@ -143,7 +143,7 @@ export default function Image() {
             opacity: 0.5,
           }}
         >
-          github.com/nomoreaislop/nomoreaislop
+          github.com/onlycastle/BetterPrompt
         </div>
       </div>
     ),

@@ -121,7 +121,7 @@ export function PersonalitySummaryClean({
   const [isExpanded, setIsExpanded] = useState(false);
   const baseUrl = typeof window !== 'undefined'
     ? window.location.origin
-    : (process.env.NOSLOP_BASE_URL || 'http://localhost:3000');
+    : (process.env.BETTERPROMPT_BASE_URL || 'http://localhost:3000');
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message);

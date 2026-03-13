@@ -4,7 +4,7 @@ import { TYPE_METADATA, type CodingStyleType } from '@/lib/models/coding-style';
 
 export const runtime = 'nodejs';
 
-export const alt = 'NoMoreAISlop Report';
+export const alt = 'BetterPrompt Report';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -33,7 +33,7 @@ function GenericImage() {
       }}
     >
       <div style={{ fontSize: 56, fontWeight: 700, marginBottom: 16 }}>
-        NoMoreAISlop
+        BetterPrompt
       </div>
       <div style={{ fontSize: 24, opacity: 0.8 }}>
         Self-hosted AI collaboration report
@@ -105,7 +105,7 @@ export default async function Image({
             {typeMeta.tagline}
           </div>
           <div style={{ fontSize: 18, marginTop: 36, opacity: 0.75 }}>
-            nomoreaislop
+            betterprompt
           </div>
         </div>
 

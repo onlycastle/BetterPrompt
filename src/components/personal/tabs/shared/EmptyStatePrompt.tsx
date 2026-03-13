@@ -33,7 +33,7 @@ export function EmptyStatePrompt({
             <Terminal size={14} />
             <span>Run this command to get started</span>
           </div>
-          <code className={styles.command}>npx no-ai-slop</code>
+          <code className={styles.command}>npx betterprompt</code>
         </div>
       )}
     </Card>

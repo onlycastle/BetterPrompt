@@ -6,7 +6,7 @@
 import { KnowledgeContent } from './KnowledgeContent';
 
 export const metadata = {
-  title: 'Knowledge | NoMoreAISlop',
+  title: 'Knowledge | BetterPrompt',
   description: 'Browse curated AI engineering knowledge',
 };
 

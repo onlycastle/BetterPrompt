@@ -10,7 +10,7 @@ interface TerminalWindowProps {
  * macOS-style terminal window frame with traffic light buttons
  * Provides the outer window chrome for the report UI
  */
-export function TerminalWindow({ children, title = 'NoMoreAISlop — analysis-report.html' }: TerminalWindowProps) {
+export function TerminalWindow({ children, title = 'BetterPrompt — analysis-report.html' }: TerminalWindowProps) {
   return (
     <div className={styles.terminalWindow}>
       {/* macOS Titlebar */}

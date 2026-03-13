@@ -1,7 +1,6 @@
 /**
  * SettingsContent
- * Organization settings scaffolding
- * TODO: Implement actual settings when backend is ready
+ * Organization settings with real data
  */
 
 'use client';
@@ -11,7 +10,33 @@ import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import styles from './SettingsContent.module.css';
 
 export function SettingsContent() {
-  const org = useOrganization();
+  const { data: org, isLoading, error } = useOrganization();
+
+  if (isLoading) {
+    return (
+      <div className={styles.container}>
+        <p>Loading settings...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={styles.container}>
+        <p>Failed to load settings: {error.message}</p>
+      </div>
+    );
+  }
+
+  if (!org) {
+    return (
+      <div className={styles.container}>
+        <p>No organization found.</p>
+      </div>
+    );
+  }
+
+  const serverUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
   return (
     <div className={styles.container}>
@@ -41,10 +66,25 @@ export function SettingsContent() {
 
         <Card>
           <CardHeader>
-            <h2 className={styles.sectionTitle}>Seat Management</h2>
+            <h2 className={styles.sectionTitle}>Server URL</h2>
           </CardHeader>
           <CardContent>
-            <p className={styles.placeholder}>Seat allocation and billing management coming soon.</p>
+            <p className={styles.placeholder}>
+              Share this URL with your team members:
+            </p>
+            <code style={{
+              display: 'block',
+              padding: 'var(--space-sm)',
+              background: 'var(--surface-secondary)',
+              borderRadius: 'var(--radius-sm)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-sm)',
+              color: 'var(--sketch-cyan)',
+              marginTop: 'var(--space-sm)',
+              wordBreak: 'break-all',
+            }}>
+              BETTERPROMPT_API_URL={serverUrl}
+            </code>
           </CardContent>
         </Card>
 

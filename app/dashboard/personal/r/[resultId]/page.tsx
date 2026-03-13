@@ -1,6 +1,6 @@
 /**
  * Legacy Report Route — Redirects to Immersive Report
- * Preserves query params (e.g., ?payment=success) through the redirect.
+ * Preserves any query params through the redirect.
  */
 
 import { redirect } from 'next/navigation';

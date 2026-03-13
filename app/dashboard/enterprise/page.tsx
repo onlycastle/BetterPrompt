@@ -7,7 +7,7 @@ import { Suspense } from 'react';
 import { EnterpriseOverviewContent } from './EnterpriseOverviewContent';
 
 export const metadata = {
-  title: 'Enterprise Overview | NoMoreAISlop',
+  title: 'Enterprise Overview | BetterPrompt',
   description: 'Organization-wide AI development analytics',
 };
 

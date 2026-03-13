@@ -7,7 +7,7 @@ import { Suspense } from 'react';
 import { SettingsContent } from './SettingsContent';
 
 export const metadata = {
-  title: 'Settings | NoMoreAISlop',
+  title: 'Settings | BetterPrompt',
   description: 'Organization settings and configuration',
 };
 

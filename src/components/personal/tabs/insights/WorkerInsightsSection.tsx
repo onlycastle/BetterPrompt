@@ -12,7 +12,7 @@
  * - Git diff style cards (+/! prefixes via CSS)
  * - Circular SVG score gauges
  * - Vertical flow layout
- * - Shimmer effect for locked content
+ * - Full-access report rendering for all stored results
  *
  * v3 Workers displayed (2026-02):
  * - Thinking Quality (ThinkingQualityWorker): Planning + Critical Thinking
@@ -21,7 +21,7 @@
  * - Context Efficiency (ContextEfficiencyWorker): Token efficiency patterns
  */
 
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { AggregatedWorkerInsights, WorkerStrength, WorkerGrowth, ReferencedInsight } from '../../../../lib/models/worker-insights';
 import {
   WORKER_DOMAIN_CONFIGS,
@@ -64,7 +64,7 @@ interface WorkerInsightsSectionProps {
   workerInsights?: AggregatedWorkerInsights;
   /** Translated agent insights from Phase 4 Translator (non-English only) */
   translatedAgentInsights?: TranslatedAgentInsights;
-  /** Utterance lookup for evidence linking (undefined = locked for free tier) */
+  /** Optional utterance lookup for evidence linking */
   utteranceLookup?: UtteranceLookupEntry[];
 }
 
@@ -163,40 +163,13 @@ function getSeverityLabel(severity: string): string {
   return labels[severity] || severity;
 }
 
-function getLockedRecommendationClass(severity: string | undefined): string {
-  if (severity === 'critical') return styles.lockedCritical;
-  if (severity === 'high') return styles.lockedHigh;
-  return '';
-}
-
-const URGENCY_LABELS: Record<string, { emoji: string; text: string }> = {
-  critical: { emoji: '⚡', text: 'Critical Fix Available' },
-  high: { emoji: '🔥', text: 'High-Impact Solution' },
-};
-
-function renderUrgencyLabel(severity: string | undefined): ReactNode {
-  if (!severity) return null;
-  const label = URGENCY_LABELS[severity];
-  if (!label) return null;
-  return (
-    <div className={styles.urgencyLabel} data-severity={severity}>
-      {label.emoji} {label.text}
-    </div>
-  );
-}
-
 /**
  * Card component for a single growth area
  * CSS ::before pseudo-element handles the '!' prefix
  *
- * Data-driven UI: recommendation presence determines what to show
- * - recommendation exists & non-empty: show recommendation
- * - recommendation empty/missing: show locked UI with blur effect
- *
- * FREE tier enhancements:
- * - Evidence count: "Found in N sessions" - shows data-driven specificity
- * - Severity badge: Visual urgency indicator
- * - Blur + partial reveal: Teases recommendation content
+ * Data-driven UI: recommendation presence determines whether a concrete fix
+ * can be displayed. When a saved result lacks that field, the UI falls back to
+ * a neutral placeholder instead of an unlock prompt.
  *
  * Supports Communication Pattern metadata (_meta) for showing
  * frequency/effectiveness badges when present.
@@ -225,7 +198,6 @@ export function GrowthCard({
     ? styles[`severity${growth.severity[0].toUpperCase()}${growth.severity.slice(1)}`]
     : '';
 
-  // Data-driven: recommendation presence indicates paid tier
   const hasRecommendation = Boolean(growth.recommendation);
 
   // Check if this is a Communication Pattern (has _meta)
@@ -300,32 +272,11 @@ export function GrowthCard({
           <p className={styles.recommendationText}>{growth.recommendation}</p>
         </div>
       ) : (
-        <div className={`${styles.lockedRecommendation} ${getLockedRecommendationClass(growth.severity)}`}>
-          {/* Severity-based urgency label */}
-          {renderUrgencyLabel(growth.severity)}
-
-          {/* Coaching Preview with optional blurred recommendation teaser */}
-          <div className={styles.coachingPreview}>
-            <span className={styles.recommendationLabel}>💡 The Fix</span>
-            {growth.recommendationPreview && (
-              <div className={styles.blurredPreview}>
-                <p className={styles.blurredText}>
-                  {growth.recommendationPreview}...
-                </p>
-              </div>
-            )}
-          </div>
-
-          <button
-            className={styles.unlockCta}
-            type="button"
-            onClick={() => {
-              document.getElementById('unlock-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
-          >
-            <span className={styles.lockIcon}>🔓</span>
-            Unlock the Fix
-          </button>
+        <div className={styles.recommendationSection}>
+          <span className={styles.recommendationLabel}>💡 The Fix</span>
+          <p className={styles.recommendationText}>
+            No explicit next step was generated for this finding in the stored report.
+          </p>
         </div>
       )}
 

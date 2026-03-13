@@ -35,68 +35,6 @@
   to { transform: rotate(360deg); }
 }
 
-/* Login Card */
-.loginCard {
-  background: var(--surface-1);
-  border: 2px solid var(--ink-primary);
-  border-radius: var(--radius-lg);
-  padding: var(--space-2xl);
-  box-shadow: 4px 4px 0 var(--ink-muted);
-  text-align: center;
-  max-width: 400px;
-  margin: var(--space-2xl) auto;
-}
-
-.loginIcon {
-  font-size: 48px;
-  margin-bottom: var(--space-md);
-}
-
-.loginTitle {
-  font-family: var(--font-primary);
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
-  color: var(--ink-primary);
-  margin: 0 0 var(--space-sm) 0;
-}
-
-.loginDescription {
-  font-family: var(--font-primary);
-  font-size: var(--text-md);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-xl) 0;
-  line-height: var(--leading-relaxed);
-}
-
-.githubBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  width: 100%;
-  padding: var(--space-md) var(--space-lg);
-  background: var(--ink-primary);
-  border: 2px solid var(--ink-primary);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-primary);
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  color: var(--bg-paper);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  box-shadow: 3px 3px 0 var(--sketch-cyan);
-}
-
-.githubBtn:hover:not(:disabled) {
-  transform: translate(-2px, -2px);
-  box-shadow: 5px 5px 0 var(--sketch-cyan);
-}
-
-.githubBtn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
 /* Header */
 .header {
   margin-bottom: var(--space-lg);

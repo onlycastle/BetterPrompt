@@ -7,7 +7,7 @@ import { Suspense } from 'react';
 import { MembersContent } from './MembersContent';
 
 export const metadata = {
-  title: 'Members | NoMoreAISlop',
+  title: 'Members | BetterPrompt',
   description: 'Manage organization members',
 };
 

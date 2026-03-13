@@ -53,7 +53,7 @@ function PageHeader() {
     <header className={styles.header}>
       <Link href="/" className={styles.logo}>
         <span className={styles.logoIcon}>&#128202;</span>
-        <span className={styles.logoText}>NoMoreAISlop</span>
+        <span className={styles.logoText}>BetterPrompt</span>
       </Link>
       <div className={styles.headerActions}>
         <Link href="/dashboard/personal" className={styles.headerButton}>

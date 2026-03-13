@@ -63,7 +63,7 @@ export function ShareSection({
 
   const tweetText = encodeURIComponent(`I'm a ${typeMeta.name} ${typeMeta.emoji} builder!
 
-My NoMoreAISlop profile:
+My BetterPrompt profile:
 "${typeMeta.tagline}"
 
 Top Strength: ${typeMeta.strengths[0]}
@@ -71,7 +71,7 @@ Top Strength: ${typeMeta.strengths[0]}
 See the full report:
 ${shareUrl}
 
-#NoMoreAISlop #AICollaboration #SelfHosted`);
+#BetterPrompt #AICollaboration #SelfHosted`);
 
   const twitterUrl = `https://twitter.com/intent/tweet?text=${tweetText}`;
   const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;

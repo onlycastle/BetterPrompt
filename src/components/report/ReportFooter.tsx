@@ -22,8 +22,8 @@ export function ReportFooter({ generatedAt = new Date() }: ReportFooterProps) {
       <p className={styles.date}>Analysis generated on {formatDate(generatedAt)}</p>
       <p className={styles.branding}>
         Built with 💜 by{' '}
-        <a href="https://nomoreaislop.dev" target="_blank" rel="noopener noreferrer">
-          NoMoreAISlop
+        <a href="https://betterprompt.dev" target="_blank" rel="noopener noreferrer">
+          BetterPrompt
         </a>
       </p>
     </footer>

@@ -6,7 +6,7 @@
 import { AnalyzeContent } from './AnalyzeContent';
 
 export const metadata = {
-  title: 'Analyze | NoMoreAISlop',
+  title: 'Analyze | BetterPrompt',
   description: 'Start a new AI session analysis',
 };
 
