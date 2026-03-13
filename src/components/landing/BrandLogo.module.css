@@ -1,0 +1,41 @@
+.logo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25em;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.prompt {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  color: var(--sketch-cyan);
+  line-height: 1;
+  transition: color 0.3s ease-out;
+}
+
+.name {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  line-height: 1;
+  transition: color 0.3s ease-out;
+}
+
+/* Size: md (header default) */
+.md .prompt,
+.md .name {
+  font-size: var(--text-lg);
+}
+
+/* Size: sm (footer, mobile) */
+.sm .prompt,
+.sm .name {
+  font-size: var(--text-md);
+}
+
+/* Dark variant — for use on dark backgrounds */
+.dark .name {
+  color: #F8F8FC;
+}

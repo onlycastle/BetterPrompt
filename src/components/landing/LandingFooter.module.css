@@ -1,0 +1,137 @@
+/* ========================================
+   LandingFooter — Light footer on graph-paper
+   Transparent background lets page grid through.
+   Border-top provides section separation.
+   ======================================== */
+
+.footer {
+  position: relative;
+  padding: var(--space-3xl) var(--space-lg);
+  background: transparent;
+  border-top: 1px solid var(--border-default);
+  overflow: hidden;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+}
+
+/* ============================================
+   Headline
+   ============================================ */
+.headline {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  margin-bottom: var(--space-xl);
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+
+/* ============================================
+   CTA
+   ============================================ */
+.cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xl);
+}
+
+/* Soften sketch button for light footer context */
+.ctaButton.ctaButton {
+  border-color: var(--sketch-cyan);
+  box-shadow: none;
+}
+
+.ctaButton.ctaButton:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
+  transform: translateY(-2px);
+}
+
+.ctaButton.ctaButton:active:not(:disabled) {
+  box-shadow: none;
+  transform: translateY(0);
+}
+
+.smallText {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+/* ============================================
+   Divider + bottom row
+   ============================================ */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border-default);
+  margin: 0 0 var(--space-lg);
+}
+
+.bottomRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--ink-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.link:hover {
+  color: var(--sketch-cyan);
+}
+
+.separator {
+  color: var(--ink-light);
+}
+
+/* ============================================
+   Copyright
+   ============================================ */
+.copyright {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 480px) {
+  .footer {
+    padding: var(--space-2xl) var(--space-md);
+  }
+
+  .bottomRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .headline {
+    font-size: var(--text-2xl);
+  }
+}
