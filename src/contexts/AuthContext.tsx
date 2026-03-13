@@ -1,3 +1,5 @@
+'use client';
+
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 export interface AuthUser {
@@ -5,21 +7,13 @@ export interface AuthUser {
   email: string;
   role: string;
   createdAt?: string;
+  organizationId?: string | null;
 }
 
-interface AuthState {
+interface AuthContextType {
   user: AuthUser | null;
-  session: null;
   isLoading: boolean;
   isAuthenticated: boolean;
-}
-
-interface AuthContextType extends AuthState {
-  signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUpWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithGoogle: (pendingResultId?: string) => Promise<{ error: Error | null }>;
-  signInWithGitHub: (pendingResultId?: string) => Promise<{ error: Error | null }>;
-  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -30,6 +24,8 @@ interface AuthApiUser {
   role: string;
   createdAt?: string;
   created_at?: string;
+  organizationId?: string | null;
+  organization_id?: string | null;
 }
 
 function mapAuthUser(user: AuthApiUser): AuthUser {
@@ -38,17 +34,13 @@ function mapAuthUser(user: AuthApiUser): AuthUser {
     email: user.email,
     role: user.role,
     createdAt: user.createdAt ?? user.created_at,
+    organizationId: user.organizationId ?? user.organization_id ?? null,
   };
 }
 
-async function readJson(response: Response): Promise<Record<string, unknown>> {
-  return response.json().catch(() => ({}));
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({
+  const [state, setState] = useState<AuthContextType>({
     user: null,
-    session: null,
     isLoading: true,
     isAuthenticated: false,
   });
@@ -67,7 +59,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!cancelled) {
             setState({
               user: null,
-              session: null,
               isLoading: false,
               isAuthenticated: false,
             });
@@ -79,7 +70,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setState({
             user,
-            session: null,
             isLoading: false,
             isAuthenticated: true,
           });
@@ -89,7 +79,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setState({
             user: null,
-            session: null,
             isLoading: false,
             isAuthenticated: false,
           });
@@ -104,115 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signInWithEmail = async (email: string, password: string) => {
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'same-origin',
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await readJson(response);
-      if (!response.ok) {
-        return {
-          error: new Error(
-            typeof data.message === 'string' ? data.message : 'Failed to sign in'
-          ),
-        };
-      }
-
-      const user = mapAuthUser(data.user as AuthApiUser);
-      setState({
-        user,
-        session: null,
-        isLoading: false,
-        isAuthenticated: true,
-      });
-
-      return { error: null };
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error : new Error('Failed to sign in'),
-      };
-    }
-  };
-
-  const signUpWithEmail = async (email: string, password: string) => {
-    try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'same-origin',
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await readJson(response);
-      if (!response.ok) {
-        return {
-          error: new Error(
-            typeof data.message === 'string' ? data.message : 'Failed to create account'
-          ),
-        };
-      }
-
-      const user = mapAuthUser(data.user as AuthApiUser);
-      setState({
-        user,
-        session: null,
-        isLoading: false,
-        isAuthenticated: true,
-      });
-
-      return { error: null };
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error : new Error('Failed to create account'),
-      };
-    }
-  };
-
-  const signInWithGoogle = async (pendingResultId?: string) => {
-    void pendingResultId;
-    return { error: new Error('Google sign-in is not available in the self-hosted build') };
-  };
-
-  const signInWithGitHub = async (pendingResultId?: string) => {
-    void pendingResultId;
-    return { error: new Error('GitHub sign-in is not available in the self-hosted build') };
-  };
-
-  const signOut = async () => {
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      credentials: 'same-origin',
-    }).catch((error) => {
-      console.error('[AuthContext] Failed to clear session:', error);
-    });
-
-    setState({
-      user: null,
-      session: null,
-      isLoading: false,
-      isAuthenticated: false,
-    });
-  };
-
   return (
-    <AuthContext.Provider
-      value={{
-        ...state,
-        signInWithEmail,
-        signUpWithEmail,
-        signInWithGoogle,
-        signInWithGitHub,
-        signOut,
-      }}
-    >
+    <AuthContext.Provider value={state}>
       {children}
     </AuthContext.Provider>
   );
