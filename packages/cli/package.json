@@ -21,6 +21,7 @@
     "release:major": "./scripts/publish.sh major"
   },
   "keywords": [
+    "betterprompt",
     "claude",
     "claude-code",
     "ai",
