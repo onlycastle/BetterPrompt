@@ -382,8 +382,8 @@ export class AnalysisOrchestrator {
     }
 
     let agentOutputs: AgentOutputs = createEmptyAgentOutputs();
-    let projectSummarizerResult: ProjectSummarizerResult | null = null;
-    let weeklyInsightResult: WeeklyInsightGeneratorResult | null = null;
+    let projectSummarizerResult: ProjectSummarizerResult | null = null; // eslint-disable-line no-useless-assignment -- reassigned after Promise.all
+    let weeklyInsightResult: WeeklyInsightGeneratorResult | null = null; // eslint-disable-line no-useless-assignment -- reassigned after Promise.all
 
     this.log(`Phase 2 workers registered: ${this.phase2Workers.length}`);
     this.log(`Worker names: ${this.phase2Workers.map(w => w.name).join(', ')}`);
