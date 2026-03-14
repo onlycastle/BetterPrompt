@@ -24,7 +24,7 @@ Zero-config. `getOrCreateLocalUser()` auto-creates `local@localhost` admin. No l
 ### Employee Data Flow
 
 ```
-CLI (npx betterprompt) → gzip POST /api/analysis/run (SSE) → SQLite → GET /api/analysis/user → Personal UI
+CLI (npx betterprompt-cli) → gzip POST /api/analysis/run (SSE) → SQLite → GET /api/analysis/user → Personal UI
 ```
 
 ### Employee APIs

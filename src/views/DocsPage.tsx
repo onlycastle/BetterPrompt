@@ -78,7 +78,7 @@ export function DocsPage() {
             <p className={styles.paragraph}>
               Open your terminal (Terminal on Mac, or any command prompt) and run:
             </p>
-            <CodeBlock code="npx betterprompt" />
+            <CodeBlock code="npx betterprompt-cli" />
             <p className={styles.paragraph}>
               That&apos;s it. The tool will guide you through sign-in and analysis automatically.
               First-time setup takes about 30 seconds; analysis runs in about a minute.
@@ -458,14 +458,14 @@ export function DocsPage() {
               </summary>
               <div className={styles.accordionBody}>
                 <h4 className={styles.heading4}>Main Command</h4>
-                <CodeBlock code="npx betterprompt" />
+                <CodeBlock code="npx betterprompt-cli" />
                 <p className={styles.paragraph}>
                   Analyzes your Claude AI sessions and generates a report on your self-hosted server.
                   The CLI auto-connects to your local server with zero-config authentication.
                 </p>
 
                 <h4 className={styles.heading4}>Help</h4>
-                <CodeBlock code="npx betterprompt help" />
+                <CodeBlock code="npx betterprompt-cli help" />
                 <p className={styles.paragraph}>
                   Displays all available commands and usage information.
                 </p>

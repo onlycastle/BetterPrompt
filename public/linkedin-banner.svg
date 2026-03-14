@@ -79,7 +79,7 @@
     <!-- Terminal content -->
     <!-- Command line -->
     <text x="24" y="68" font-family="'Fira Code', 'SF Mono', 'Consolas', monospace" font-size="14" font-weight="600" fill="#00BCD4">$</text>
-    <text x="44" y="68" font-family="'Fira Code', 'SF Mono', 'Consolas', monospace" font-size="14" font-weight="500" fill="#1A1A2E">npx betterprompt</text>
+    <text x="44" y="68" font-family="'Fira Code', 'SF Mono', 'Consolas', monospace" font-size="14" font-weight="500" fill="#1A1A2E">npx betterprompt-cli</text>
 
     <!-- Output lines -->
     <text x="24" y="100" font-family="'Fira Code', 'SF Mono', 'Consolas', monospace" font-size="12" fill="#8A8A9A">Scanning ~/.claude/projects/...</text>

@@ -27,7 +27,7 @@ export function HeroSection() {
       <div className={styles.content}>
         <div className={styles.terminalLine}>
           <span className={styles.promptSymbol}>$</span>
-          <span className={styles.command}>npx betterprompt</span>
+          <span className={styles.command}>npx betterprompt-cli</span>
           <span className={styles.cursor} />
         </div>
 

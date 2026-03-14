@@ -59,7 +59,7 @@ npm run dev
 In a separate terminal:
 
 ```bash
-npx betterprompt
+npx betterprompt-cli
 ```
 
 The CLI discovers sessions from your AI coding tools, lets you pick a project, and uploads parsed session data to your local server for analysis.
@@ -87,10 +87,10 @@ npm run typecheck  # Type-check without emitting
 Scans session logs from supported AI coding tools, lets you pick a project, and uploads parsed data to your local server for analysis.
 
 ```bash
-npx betterprompt
+npx betterprompt-cli
 ```
 
-Published to npm as `betterprompt`. In development, run from the monorepo:
+Published to npm as `betterprompt-cli`. In development, run from the monorepo:
 
 ```bash
 cd packages/cli

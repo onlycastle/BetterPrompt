@@ -220,7 +220,7 @@ function ReportTabContent({
         <h3>No Analysis Reports Yet</h3>
         <p>Run your first analysis to see your AI insights here.</p>
         <div className={styles.cliBox}>
-          <code>npx betterprompt</code>
+          <code>npx betterprompt-cli</code>
         </div>
       </div>
     );
@@ -298,7 +298,7 @@ function ProgressTabWrapper({ analyses }: { analyses: UserAnalysis[] }) {
         <h3>No Progress Data Yet</h3>
         <p>Complete your first analysis to start tracking your growth journey.</p>
         <div className={styles.cliBox}>
-          <code>npx betterprompt</code>
+          <code>npx betterprompt-cli</code>
         </div>
       </div>
     );
