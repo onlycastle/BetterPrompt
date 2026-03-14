@@ -8,11 +8,7 @@ export default defineConfig({
     exclude: ['tests/e2e/**/*.test.ts', 'tests/integration.test.ts'],
     // Worker pool configuration to ensure proper cleanup
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true, // Use single fork to simplify cleanup
-      },
-    },
+    singleFork: true, // Use single fork to simplify cleanup
     teardownTimeout: 5000, // Allow 5s for teardown before force exit
     coverage: {
       provider: 'v8',
