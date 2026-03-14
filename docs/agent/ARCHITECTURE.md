@@ -57,6 +57,7 @@ CLI analysis → analysis_results table → /api/org/members → evaluation-to-t
 ## Related Docs
 
 - [docs/agent/USER-FLOWS.md](./USER-FLOWS.md) — Employee + Manager user flows, route→component mapping, access control, API reference
+- [AGENTS.md](../../AGENTS.md) — Machine-readable setup guide for AI coding agents (quick start, CLI flags, enterprise setup)
 
 ## Cleanup Invariants
 
