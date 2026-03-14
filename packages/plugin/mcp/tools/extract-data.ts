@@ -29,13 +29,6 @@ export const definition = {
     'Returns summary metrics and creates an analysis run for subsequent domain analysis.',
 };
 
-export const inputSchema = {
-  maxSessions: {
-    type: 'number' as const,
-    description: 'Maximum number of recent sessions to analyze (default: 50)',
-  },
-};
-
 export async function execute(args: { maxSessions?: number }): Promise<string> {
   const maxSessions = args.maxSessions ?? 50;
 

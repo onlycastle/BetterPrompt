@@ -6,7 +6,6 @@
  * Stores session list in scan cache for subsequent tools.
  */
 
-import { z } from 'zod';
 import {
   listAllSessions,
   cacheParsedSessions,
@@ -19,8 +18,6 @@ export const definition = {
     '(count, date range, projects, total messages). Use this as the first step before ' +
     'running extract_data. Does not return full session content.',
 };
-
-export const inputSchema = {};
 
 export async function execute(_args: Record<string, unknown>): Promise<string> {
   const sessions = await listAllSessions();

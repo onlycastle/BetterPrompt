@@ -16,13 +16,6 @@ export const definition = {
     'Use this to share your analysis with your team dashboard.',
 };
 
-export const inputSchema = {
-  serverUrl: {
-    type: 'string' as const,
-    description: 'Override server URL (defaults to BETTERPROMPT_SERVER_URL env var)',
-  },
-};
-
 export async function execute(args: { serverUrl?: string }): Promise<string> {
   const serverUrl = (
     args.serverUrl ??

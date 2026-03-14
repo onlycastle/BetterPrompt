@@ -19,6 +19,7 @@ import type {
   SessionHints,
   SessionMetadata,
 } from './types.js';
+import { CONTEXT_WINDOW_SIZE } from './types.js';
 import { parseJSONLLine } from './session-scanner.js';
 
 // ============================================================================
@@ -28,7 +29,6 @@ import { parseJSONLLine } from './session-scanner.js';
 const MAX_TEXT_LENGTH = 2000;
 const MAX_INSIGHT_BLOCKS = 50;
 const MAX_UTTERANCES = 200;
-const CONTEXT_WINDOW_SIZE = 200_000;
 
 /** Known slash commands (prevents false positives from file paths) */
 const KNOWN_SLASH_COMMANDS = new Set([
@@ -513,6 +513,7 @@ export async function extractPhase1Data(
   const allSlashCommands: string[] = [];
   const allInsightBlocks: AIInsightBlock[] = [];
   const allSessions: RawSessionData[] = [];
+  let skippedFiles = 0;
 
   for (const fileOrMeta of sessionFiles) {
     const filePath = typeof fileOrMeta === 'string' ? fileOrMeta : fileOrMeta.filePath;
@@ -533,13 +534,21 @@ export async function extractPhase1Data(
       allUtterances.push(...utterances);
       allSlashCommands.push(...slashCommands);
       allInsightBlocks.push(...insightBlocks);
-    } catch {
-      // Skip unreadable session files
+    } catch (error) {
+      skippedFiles++;
+      console.warn(`Skipped unreadable session file: ${filePath} (${error instanceof Error ? error.message : 'unknown error'})`);
     }
+  }
+
+  if (skippedFiles > 0 && allSessions.length === 0) {
+    throw new Error(`All ${skippedFiles} session files failed to parse. Check file permissions and format.`);
   }
 
   // Compute metrics
   const totalMessages = allSessions.reduce((sum, s) => sum + s.messages.length, 0);
+  const totalUserMessages = allSessions.reduce(
+    (sum, s) => sum + s.messages.filter(m => m.role === 'user').length, 0,
+  );
   const questionCount = allUtterances.filter(u => u.hasQuestion).length;
   const codeBlockCount = allUtterances.filter(u => u.hasCodeBlock).length;
 
@@ -557,7 +566,7 @@ export async function extractPhase1Data(
     totalSessions: allSessions.length,
     totalMessages,
     totalDeveloperUtterances: allUtterances.length,
-    totalAIResponses: totalMessages - allUtterances.length,
+    totalAIResponses: totalMessages - totalUserMessages,
     avgMessagesPerSession: allSessions.length > 0 ? totalMessages / allSessions.length : 0,
     avgDeveloperMessageLength: allUtterances.length > 0
       ? allUtterances.reduce((sum, u) => sum + u.characterCount, 0) / allUtterances.length
@@ -583,5 +592,6 @@ export async function extractPhase1Data(
     developerUtterances: sampledUtterances,
     sessionMetrics,
     ...(sampledInsights.length > 0 ? { aiInsightBlocks: sampledInsights } : {}),
+    ...(skippedFiles > 0 ? { skippedFiles } : {}),
   };
 }

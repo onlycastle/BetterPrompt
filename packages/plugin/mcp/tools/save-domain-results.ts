@@ -7,11 +7,8 @@
  * Called by domain analysis skills after the host LLM completes analysis.
  */
 
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { homedir } from 'node:os';
 import { z } from 'zod';
-import { saveDomainResult, getLatestRunId } from '../../lib/results-db.js';
+import { saveDomainResult, getCurrentRunId } from '../../lib/results-db.js';
 import type { DomainResult } from '../../lib/core/types.js';
 
 export const definition = {
@@ -23,20 +20,20 @@ export const definition = {
     'Input must include domain name, overall score, strengths, and growth areas.',
 };
 
-/** Zod schema for validating domain result input */
-const EvidenceSchema = z.object({
+/** Zod schema for validating domain result input (also used by server.ts MCP registration) */
+export const EvidenceSchema = z.object({
   utteranceId: z.string(),
   quote: z.string(),
   context: z.string().optional(),
 });
 
-const StrengthSchema = z.object({
+export const StrengthSchema = z.object({
   title: z.string(),
   description: z.string().min(100),
   evidence: z.array(EvidenceSchema).min(1),
 });
 
-const GrowthAreaSchema = z.object({
+export const GrowthAreaSchema = z.object({
   title: z.string(),
   description: z.string().min(100),
   severity: z.enum(['low', 'medium', 'high']),
@@ -44,7 +41,7 @@ const GrowthAreaSchema = z.object({
   evidence: z.array(EvidenceSchema).min(1),
 });
 
-const DomainResultInputSchema = z.object({
+export const DomainResultInputSchema = z.object({
   domain: z.enum([
     'thinkingQuality',
     'communicationPatterns',
@@ -60,44 +57,10 @@ const DomainResultInputSchema = z.object({
   data: z.record(z.string(), z.unknown()).optional(),
 });
 
-export const inputSchema = {
-  domain: {
-    type: 'string' as const,
-    description: 'Domain name: thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency, sessionOutcome, or content',
-    enum: ['thinkingQuality', 'communicationPatterns', 'learningBehavior', 'contextEfficiency', 'sessionOutcome', 'content'],
-  },
-  overallScore: {
-    type: 'number' as const,
-    description: 'Overall domain score (0-100)',
-  },
-  confidenceScore: {
-    type: 'number' as const,
-    description: 'Confidence in the analysis (0.0-1.0). Optional, defaults to 0.5.',
-  },
-  strengths: {
-    type: 'array' as const,
-    description: 'Array of strength objects with title, description (300+ chars), and evidence (utteranceId + quote pairs)',
-  },
-  growthAreas: {
-    type: 'array' as const,
-    description: 'Array of growth area objects with title, description, severity (low/medium/high), recommendation, and evidence',
-  },
-  data: {
-    type: 'object' as const,
-    description: 'Optional domain-specific extra data (e.g., planningHabits, communicationPatterns, sessionAnalyses)',
-  },
-};
 
 export async function execute(args: Record<string, unknown>): Promise<string> {
   // Get current run ID
-  let runId: number | null = null;
-  try {
-    const runIdPath = join(homedir(), '.betterprompt', 'current-run-id.txt');
-    const runIdStr = await readFile(runIdPath, 'utf-8');
-    runId = parseInt(runIdStr.trim(), 10);
-  } catch {
-    runId = getLatestRunId();
-  }
+  const runId = getCurrentRunId();
 
   if (!runId) {
     return JSON.stringify({

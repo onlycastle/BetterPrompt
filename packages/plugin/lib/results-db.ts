@@ -9,9 +9,9 @@
  */
 
 import Database from 'better-sqlite3';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
+import { PLUGIN_DATA_DIR } from './core/session-scanner.js';
 import type {
   DomainResult,
   DeterministicScores,
@@ -21,7 +21,7 @@ import type {
 } from './core/types.js';
 
 const DB_FILE = 'results.db';
-const DATA_DIR = join(homedir(), '.betterprompt');
+const DATA_DIR = PLUGIN_DATA_DIR;
 
 let db: Database.Database | null = null;
 
@@ -83,6 +83,16 @@ export function createAnalysisRun(
       JSON.stringify(scores),
     );
   return Number(result.lastInsertRowid);
+}
+
+/** Get the current run ID from file cache, falling back to latest DB run */
+export function getCurrentRunId(): number | null {
+  try {
+    const runIdStr = readFileSync(join(DATA_DIR, 'current-run-id.txt'), 'utf-8');
+    return parseInt(runIdStr.trim(), 10);
+  } catch {
+    return getLatestRunId();
+  }
 }
 
 /** Get the latest analysis run ID */
@@ -207,14 +217,7 @@ export function assembleReport(): AnalysisReport | null {
     analyzedAt: run.analyzedAt,
     phase1Metrics: run.metrics,
     deterministicScores: run.scores,
-    typeResult: run.typeResult ?? {
-      primaryType: 'analyst',
-      distribution: { architect: 20, analyst: 20, conductor: 20, speedrunner: 20, trendsetter: 20 },
-      controlLevel: 'navigator',
-      controlScore: 50,
-      matrixName: 'Systematic Analyst',
-      matrixEmoji: '🔬',
-    },
+    typeResult: run.typeResult ?? null,
     domainResults,
     content: run.content ?? undefined,
   };

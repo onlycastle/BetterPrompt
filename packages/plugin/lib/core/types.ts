@@ -183,6 +183,7 @@ export interface Phase1Output {
   developerUtterances: UserUtterance[];
   sessionMetrics: Phase1SessionMetrics;
   aiInsightBlocks?: AIInsightBlock[];
+  skippedFiles?: number;
 }
 
 // ============================================================================
@@ -258,7 +259,7 @@ export interface AnalysisReport {
   analyzedAt: string;
   phase1Metrics: Phase1SessionMetrics;
   deterministicScores: DeterministicScores;
-  typeResult: DeterministicTypeResult;
+  typeResult: DeterministicTypeResult | null;
   domainResults: DomainResult[];
   content?: {
     topFocusAreas?: Array<{
@@ -273,6 +274,12 @@ export interface AnalysisReport {
 // ============================================================================
 // Matrix Names & Metadata (from src/lib/models/coding-style.ts)
 // ============================================================================
+
+// ============================================================================
+// Shared Constants
+// ============================================================================
+
+export const CONTEXT_WINDOW_SIZE = 200_000;
 
 export const MATRIX_NAMES: Record<CodingStyleType, Record<AIControlLevel, string>> = {
   architect: {

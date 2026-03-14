@@ -16,6 +16,19 @@ import type {
 import { MATRIX_NAMES, MATRIX_METADATA } from './core/types.js';
 
 // ============================================================================
+// HTML Escaping
+// ============================================================================
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ============================================================================
 // SVG Radar Chart (ported from RadarChart.tsx math)
 // ============================================================================
 
@@ -148,13 +161,13 @@ function generateDomainSection(result: DomainResult): string {
   const strengthCards = result.strengths
     .map(s => `
       <div class="card strength-card">
-        <h4>${s.title}</h4>
-        <p>${s.description}</p>
+        <h4>${escapeHtml(s.title)}</h4>
+        <p>${escapeHtml(s.description)}</p>
         ${s.evidence.length > 0 ? `
           <details>
             <summary>Evidence (${s.evidence.length})</summary>
             <ul>
-              ${s.evidence.map(e => `<li><code>${e.utteranceId}</code>: "${e.quote}"</li>`).join('')}
+              ${s.evidence.map(e => `<li><code>${escapeHtml(e.utteranceId)}</code>: "${escapeHtml(e.quote)}"</li>`).join('')}
             </ul>
           </details>
         ` : ''}
@@ -165,15 +178,15 @@ function generateDomainSection(result: DomainResult): string {
   const growthCards = result.growthAreas
     .map(g => `
       <div class="card growth-card">
-        <div class="severity-badge severity-${g.severity}">${g.severity}</div>
-        <h4>${g.title}</h4>
-        <p>${g.description}</p>
-        <div class="recommendation">${g.recommendation}</div>
+        <div class="severity-badge severity-${escapeHtml(g.severity)}">${escapeHtml(g.severity)}</div>
+        <h4>${escapeHtml(g.title)}</h4>
+        <p>${escapeHtml(g.description)}</p>
+        <div class="recommendation">${escapeHtml(g.recommendation)}</div>
         ${g.evidence.length > 0 ? `
           <details>
             <summary>Evidence (${g.evidence.length})</summary>
             <ul>
-              ${g.evidence.map(e => `<li><code>${e.utteranceId}</code>: "${e.quote}"</li>`).join('')}
+              ${g.evidence.map(e => `<li><code>${escapeHtml(e.utteranceId)}</code>: "${escapeHtml(e.quote)}"</li>`).join('')}
             </ul>
           </details>
         ` : ''}
@@ -200,12 +213,12 @@ function generateFocusAreas(content: AnalysisReport['content']): string {
   const areas = content.topFocusAreas
     .map(area => `
       <div class="card focus-card">
-        <h3>${area.title}</h3>
-        <p>${area.narrative}</p>
+        <h3>${escapeHtml(area.title)}</h3>
+        <p>${escapeHtml(area.narrative)}</p>
         <div class="actions-grid">
-          <div class="action start"><strong>Start:</strong> ${area.actions.start}</div>
-          <div class="action stop"><strong>Stop:</strong> ${area.actions.stop}</div>
-          <div class="action continue"><strong>Continue:</strong> ${area.actions.continue}</div>
+          <div class="action start"><strong>Start:</strong> ${escapeHtml(area.actions.start)}</div>
+          <div class="action stop"><strong>Stop:</strong> ${escapeHtml(area.actions.stop)}</div>
+          <div class="action continue"><strong>Continue:</strong> ${escapeHtml(area.actions.continue)}</div>
         </div>
       </div>
     `)
@@ -244,7 +257,7 @@ export function generateReportHtml(report: AnalysisReport): string {
   const radarSvg = generateRadarSvg(radarScores, radarLabels);
 
   // Type distribution
-  const distributionBar = generateTypeDistributionBar(typeResult.distribution);
+  const distributionBar = typeResult ? generateTypeDistributionBar(typeResult.distribution) : '<p style="color:var(--ink-muted);">Type classification not yet performed. Run classify_developer_type first.</p>';
 
   // Domain sections
   const domainSections = domainResults.map(generateDomainSection).join('\n');
@@ -273,9 +286,9 @@ export function generateReportHtml(report: AnalysisReport): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BetterPrompt Analysis Report</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
   <style>
     /* ── Notebook Sketch Design System ── */
-    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap');
 
     :root {
       --bg-paper: #FFFFFF;
@@ -519,11 +532,18 @@ export function generateReportHtml(report: AnalysisReport): string {
 
     <!-- Identity -->
     <section class="identity" id="identity">
-      <div class="type-emoji">${typeResult.matrixEmoji}</div>
-      <div class="type-info">
-        <div class="type-name">${typeResult.matrixName}</div>
-        <div class="type-detail">${typeResult.primaryType} / ${typeResult.controlLevel} (control: ${typeResult.controlScore})</div>
-      </div>
+      ${typeResult ? `
+        <div class="type-emoji">${typeResult.matrixEmoji}</div>
+        <div class="type-info">
+          <div class="type-name">${escapeHtml(typeResult.matrixName)}</div>
+          <div class="type-detail">${escapeHtml(typeResult.primaryType)} / ${escapeHtml(typeResult.controlLevel)} (control: ${typeResult.controlScore})</div>
+        </div>
+      ` : `
+        <div class="type-info">
+          <div class="type-name">Type Not Classified</div>
+          <div class="type-detail">Run classify_developer_type to determine your collaboration style</div>
+        </div>
+      `}
     </section>
 
     <!-- Metrics Bar -->

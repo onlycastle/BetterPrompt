@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { computeDeterministicScores } from '../../lib/core/deterministic-scorer.js';
 import { computeDeterministicType } from '../../lib/core/deterministic-type-mapper.js';
-import { saveTypeResult, getLatestRunId, getAnalysisRun } from '../../lib/results-db.js';
+import { saveTypeResult, getCurrentRunId } from '../../lib/results-db.js';
 import type { Phase1Output } from '../../lib/core/types.js';
 
 export const definition = {
@@ -22,8 +22,6 @@ export const definition = {
     'x explorer/navigator/cartographer). Requires extract_data to have been run first. ' +
     'Returns the primary type, distribution, control level, and matrix name.',
 };
-
-export const inputSchema = {};
 
 export async function execute(_args: Record<string, unknown>): Promise<string> {
   // Read Phase 1 output
@@ -40,14 +38,7 @@ export async function execute(_args: Record<string, unknown>): Promise<string> {
   }
 
   // Get current run
-  let runId: number | null = null;
-  try {
-    const runIdPath = join(homedir(), '.betterprompt', 'current-run-id.txt');
-    const runIdStr = await readFile(runIdPath, 'utf-8');
-    runId = parseInt(runIdStr.trim(), 10);
-  } catch {
-    runId = getLatestRunId();
-  }
+  const runId = getCurrentRunId();
 
   // Compute scores and type
   const scores = computeDeterministicScores(phase1Output);

@@ -10,7 +10,7 @@
 import { readFile, readdir, stat, mkdir, writeFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
-import { JSONLLineSchema, type JSONLLine, type SessionMetadata } from './types.js';
+import { JSONLLineSchema, CONTEXT_WINDOW_SIZE, type JSONLLine, type SessionMetadata } from './types.js';
 
 /** Claude Code session log directory */
 export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -114,8 +114,6 @@ export function getProjectName(projectPath: string): string {
 // ============================================================================
 // Directory Scanning
 // ============================================================================
-
-const CONTEXT_WINDOW_SIZE = 200_000;
 
 /** List all project directories in Claude's projects folder */
 export async function listProjectDirs(): Promise<string[]> {
