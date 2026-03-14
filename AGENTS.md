@@ -96,7 +96,7 @@ After setup, verify everything works:
 # Server is running
 curl -s http://localhost:3000/api/auth/me | head -c 100
 
-# CLI can connect
+# CLI is installed and shows usage
 npx betterprompt-cli --help
 ```
 
