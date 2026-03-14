@@ -12,7 +12,7 @@
 import pc from 'picocolors';
 import ora from 'ora';
 import { scanSessions, scanActivitySessions, hasClaudeProjects } from './scanner.js';
-import { discoverProjects, promptProjectSelection } from './project-picker.js';
+import { discoverProjects, promptProjectSelection, type ProjectSelection } from './project-picker.js';
 import { uploadForAnalysis } from './uploader.js';
 import {
   displayError,
@@ -131,6 +131,8 @@ async function promptToolSelection(): Promise<ToolSelectionResult> {
  */
 interface RunAnalysisOptions {
   noTranslate?: boolean;
+  /** Non-interactive mode: skip all prompts, analyze all tools/projects */
+  auto?: boolean;
 }
 
 /**
@@ -140,8 +142,10 @@ async function runAnalysis(options: RunAnalysisOptions = {}): Promise<void> {
   // Step 1: Welcome banner with Chippy mascot
   console.log(generateWelcomeBanner());
 
-  // Tool selection: detect installed tools or prompt user
-  const toolSelection = await promptToolSelection();
+  // Tool selection: auto mode uses all tools, otherwise prompt user
+  const toolSelection = options.auto
+    ? TOOL_CHOICES['both']
+    : await promptToolSelection();
   console.log('');
 
   // Check if any session sources are available
@@ -163,7 +167,9 @@ async function runAnalysis(options: RunAnalysisOptions = {}): Promise<void> {
   }
   discoverySpinner.succeed(`Found ${allProjects.length} projects`);
 
-  const projectSelection = await promptProjectSelection(allProjects);
+  const projectSelection: ProjectSelection = options.auto
+    ? { mode: 'all' }
+    : await promptProjectSelection(allProjects);
   const projectFilter = projectSelection.mode === 'selected'
     ? projectSelection.encodedNames
     : undefined;
@@ -258,11 +264,13 @@ async function runAnalysis(options: RunAnalysisOptions = {}): Promise<void> {
     activitySessions,
   };
 
-  // Single confirmation with inline privacy notice
-  const consent = await confirmWithPrivacy();
-  if (!consent) {
-    console.log(pc.dim('\nAnalysis cancelled.'));
-    process.exit(0);
+  // Single confirmation with inline privacy notice (auto mode skips)
+  if (!options.auto) {
+    const consent = await confirmWithPrivacy();
+    if (!consent) {
+      console.log(pc.dim('\nAnalysis cancelled.'));
+      process.exit(0);
+    }
   }
 
   console.log('');
@@ -323,13 +331,15 @@ async function main(): Promise<void> {
       console.log('  help         Show this help message');
       console.log('');
       console.log(pc.bold('Options:'));
+      console.log('  --auto           Non-interactive mode: skip all prompts, analyze all projects');
       console.log('  --no-translate   Skip translation (Phase 4), keep results in English');
       console.log('');
       break;
 
     default: {
       const noTranslate = process.argv.includes('--no-translate');
-      await runAnalysis({ noTranslate });
+      const auto = process.argv.includes('--auto');
+      await runAnalysis({ noTranslate, auto });
       break;
     }
   }
