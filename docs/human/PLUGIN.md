@@ -1,6 +1,6 @@
 # Claude Code Plugin
 
-The BetterPrompt Claude Code Plugin turns manual analysis into an automated, embedded developer experience. Instead of running `npx betterprompt` after each session, the plugin handles everything -- analyzing sessions in the background and surfacing personalized insights directly inside Claude Code conversations.
+The BetterPrompt Claude Code Plugin turns manual analysis into an automated, embedded developer experience. Instead of running `npx betterprompt-cli` after each session, the plugin handles everything -- analyzing sessions in the background and surfacing personalized insights directly inside Claude Code conversations.
 
 ## How It Works
 

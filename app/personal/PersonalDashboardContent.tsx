@@ -63,7 +63,7 @@ function EmptyState() {
         Run your first analysis to see your AI insights here.
       </p>
       <div className={styles.cliBox}>
-        <code>npx betterprompt</code>
+        <code>npx betterprompt-cli</code>
       </div>
     </div>
   );

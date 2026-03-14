@@ -90,7 +90,7 @@ export function AnalyzeContent() {
             Analysis runs on your self-hosted server with your own Gemini API key.
           </p>
           <div className={styles.cliCommand}>
-            <code>npx betterprompt</code>
+            <code>npx betterprompt-cli</code>
           </div>
           <p className={styles.ctaHint}>
             Works with Claude Code sessions from <code>~/.claude/projects/</code>

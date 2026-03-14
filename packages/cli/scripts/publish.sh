@@ -1,5 +1,5 @@
 #!/bin/bash
-# NPM Publish Script for betterprompt CLI
+# NPM Publish Script for betterprompt-cli
 # Usage: ./scripts/publish.sh [patch|minor|major]
 
 set -e
@@ -19,7 +19,7 @@ if [[ ! "$VERSION_TYPE" =~ ^(patch|minor|major)$ ]]; then
   exit 1
 fi
 
-echo "📦 betterprompt CLI Publisher"
+echo "📦 betterprompt-cli Publisher"
 echo "─────────────────────────────"
 
 # Show current version
@@ -54,10 +54,10 @@ echo "🚀 Publishing to npm..."
 npm publish --access public
 
 echo ""
-echo "✅ Successfully published betterprompt@$NEW_VERSION"
+echo "✅ Successfully published betterprompt-cli@$NEW_VERSION"
 echo ""
 echo "Users can now run:"
-echo "  npx betterprompt@$NEW_VERSION"
+echo "  npx betterprompt-cli@$NEW_VERSION"
 echo ""
 echo "Don't forget to commit the version bump:"
 echo "  git add packages/cli/package.json"

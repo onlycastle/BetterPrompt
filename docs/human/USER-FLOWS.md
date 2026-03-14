@@ -83,7 +83,7 @@ The employee flow covers the individual contributor experience — running analy
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        ANALYSIS PIPELINE                             │
 │                                                                      │
-│   $ npx betterprompt                                                  │
+│   $ npx betterprompt-cli                                               │
 │        │                                                             │
 │        ├─ 1. Discovers sessions from ~/.claude/projects/            │
 │        ├─ 2. Parses JSONL files                                     │
@@ -132,7 +132,7 @@ The employee flow covers the individual contributor experience — running analy
 │  ┌─────────────────────────────────────────────────┐ │
 │  │  🖥️  Run the CLI to analyze your sessions       │ │
 │  │                                                  │ │
-│  │  $ npx betterprompt                               │ │
+│  │  $ npx betterprompt-cli                            │ │
 │  │                                                  │ │
 │  └─────────────────────────────────────────────────┘ │
 │                                                       │
@@ -618,7 +618,7 @@ Continuous-scroll diagnostic view of an individual team member:
 │                                                                      │
 │  EMPLOYEE SIDE                           MANAGER SIDE                │
 │                                                                      │
-│  $ npx betterprompt                                                   │
+│  $ npx betterprompt-cli                                                │
 │       │                                                              │
 │       ▼                                                              │
 │  POST /api/analysis/run                                             │

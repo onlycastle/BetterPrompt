@@ -74,7 +74,7 @@ jobs:
         working-directory: packages/cli
         run: |
           # Get currently published version from npm
-          NPM_VERSION=$(npm view betterprompt version 2>/dev/null || echo "0.0.0")
+          NPM_VERSION=$(npm view betterprompt-cli version 2>/dev/null || echo "0.0.0")
           echo "npm_version=$NPM_VERSION" >> $GITHUB_OUTPUT
           echo "📦 Currently published on npm: v$NPM_VERSION"
 
@@ -169,16 +169,16 @@ jobs:
           tag_name: cli-v${{ env.NEW_VERSION }}
           name: CLI v${{ env.NEW_VERSION }}
           body: |
-            ## betterprompt CLI v${{ env.NEW_VERSION }}
+            ## betterprompt-cli v${{ env.NEW_VERSION }}
 
             ### Install or Update
             ```bash
-            npx betterprompt@${{ env.NEW_VERSION }}
+            npx betterprompt-cli@${{ env.NEW_VERSION }}
             ```
 
             ### Global Install
             ```bash
-            npm install -g betterprompt@${{ env.NEW_VERSION }}
+            npm install -g betterprompt-cli@${{ env.NEW_VERSION }}
             ```
 
             ### What's New
@@ -191,11 +191,11 @@ jobs:
         run: |
           echo "## CLI Published to npm 🚀" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Package:** [betterprompt](https://www.npmjs.com/package/betterprompt)" >> $GITHUB_STEP_SUMMARY
+          echo "**Package:** [betterprompt-cli](https://www.npmjs.com/package/betterprompt-cli)" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ env.NEW_VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "**Strategy:** ${{ steps.version.outputs.strategy }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Install" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "npx betterprompt" >> $GITHUB_STEP_SUMMARY
+          echo "npx betterprompt-cli" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
