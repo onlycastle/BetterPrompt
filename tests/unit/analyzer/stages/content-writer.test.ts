@@ -9,9 +9,9 @@ import type { AgentOutputs } from '../../../../src/lib/models/agent-outputs.js';
 import type { Phase1Output } from '../../../../src/lib/models/phase1-output.js';
 
 vi.mock('../../../../src/lib/analyzer/clients/gemini-client.js', () => ({
-  GeminiClient: vi.fn().mockImplementation(() => ({
-    generateStructured: vi.fn(),
-  })),
+  GeminiClient: vi.fn().mockImplementation(function () {
+    return { generateStructured: vi.fn() };
+  }),
 }));
 
 import { ContentWriterStage, type ContentWriterConfig } from '../../../../src/lib/analyzer/stages/content-writer.js';
@@ -118,7 +118,7 @@ describe('ContentWriterStage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGenerateStructured = vi.fn();
-    vi.mocked(GeminiClient).mockImplementation(() => ({ generateStructured: mockGenerateStructured }) as unknown as GeminiClient);
+    vi.mocked(GeminiClient).mockImplementation(function () { return { generateStructured: mockGenerateStructured } as unknown as GeminiClient; });
     stage = new ContentWriterStage();
   });
 

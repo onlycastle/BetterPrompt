@@ -209,9 +209,9 @@ describe('truncateAtWordBoundary', () => {
 
 // Mock GeminiClient before importing the stage
 vi.mock('../../../../src/lib/analyzer/clients/gemini-client.js', () => ({
-  GeminiClient: vi.fn().mockImplementation(() => ({
-    generateStructured: vi.fn(),
-  })),
+  GeminiClient: vi.fn().mockImplementation(function () {
+    return { generateStructured: vi.fn() };
+  }),
 }));
 
 // Import after mock (must use .js extension to match vitest resolution)
@@ -238,9 +238,9 @@ describe('SessionSummarizerStage', () => {
       },
     });
 
-    (GeminiClient as any).mockImplementation(() => ({
-      generateStructured: mockGenerateStructured,
-    }));
+    (GeminiClient as any).mockImplementation(function () {
+      return { generateStructured: mockGenerateStructured };
+    });
 
     summarizer = new SessionSummarizerStage({
       apiKey: 'test-api-key',

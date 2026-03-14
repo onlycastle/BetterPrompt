@@ -9,9 +9,9 @@ import type { AgentOutputs } from '../../../../src/lib/models/agent-outputs.js';
 import type { TranslatorOutput, TranslatorLLMOutput } from '../../../../src/lib/models/translator-output.js';
 
 vi.mock('../../../../src/lib/analyzer/clients/gemini-client.js', () => ({
-  GeminiClient: vi.fn().mockImplementation(() => ({
-    generateStructured: vi.fn(),
-  })),
+  GeminiClient: vi.fn().mockImplementation(function () {
+    return { generateStructured: vi.fn() };
+  }),
 }));
 
 import { TranslatorStage, type TranslatorConfig } from '../../../../src/lib/analyzer/stages/translator.js';
@@ -93,7 +93,7 @@ describe('TranslatorStage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGenerateStructured = vi.fn();
-    vi.mocked(GeminiClient).mockImplementation(() => ({ generateStructured: mockGenerateStructured }) as unknown as GeminiClient);
+    vi.mocked(GeminiClient).mockImplementation(function () { return { generateStructured: mockGenerateStructured } as unknown as GeminiClient; });
     stage = new TranslatorStage();
   });
 
