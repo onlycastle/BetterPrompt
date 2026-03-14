@@ -9,9 +9,9 @@ import type { WorkerContext } from '../../../../src/lib/analyzer/workers/base-wo
 import type { TypeClassifierOutput, AgentOutputs } from '../../../../src/lib/models/agent-outputs.js';
 
 vi.mock('../../../../src/lib/analyzer/clients/gemini-client.js', () => ({
-  GeminiClient: vi.fn().mockImplementation(() => ({
-    generateStructured: vi.fn(),
-  })),
+  GeminiClient: vi.fn().mockImplementation(function () {
+    return { generateStructured: vi.fn() };
+  }),
 }));
 
 import {
@@ -109,7 +109,7 @@ describe('TypeClassifierWorker', () => {
     vi.clearAllMocks();
     context = createMockContext('premium');
     mockGenerateStructured = vi.fn();
-    vi.mocked(GeminiClient).mockImplementation(() => ({ generateStructured: mockGenerateStructured }) as unknown as GeminiClient);
+    vi.mocked(GeminiClient).mockImplementation(function () { return { generateStructured: mockGenerateStructured } as unknown as GeminiClient; });
     worker = new TypeClassifierWorker({ geminiApiKey: 'test-key', verbose: false });
   });
 

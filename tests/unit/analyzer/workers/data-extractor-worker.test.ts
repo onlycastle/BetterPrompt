@@ -545,9 +545,9 @@ with various content
         usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
       });
 
-      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(() => ({
-        generateStructured: mockGenerateStructured,
-      }) as unknown as geminiClientModule.GeminiClient);
+      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(function () {
+        return { generateStructured: mockGenerateStructured } as unknown as geminiClientModule.GeminiClient;
+      });
 
       const session = createSession([
         'Base directory for this skill: /Users/test/.claude/skills/my-skill ' + 'x'.repeat(100),  // Make long enough for LLM
@@ -577,9 +577,9 @@ with various content
         usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
       });
 
-      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(() => ({
-        generateStructured: mockGenerateStructured,
-      }) as unknown as geminiClientModule.GeminiClient);
+      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(function () {
+        return { generateStructured: mockGenerateStructured } as unknown as geminiClientModule.GeminiClient;
+      });
 
       const session = createSession([
         'This session is being continued from a previous conversation. Here is a summary of the work done so far... ' + 'x'.repeat(100),
@@ -609,9 +609,9 @@ with various content
         usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
       });
 
-      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(() => ({
-        generateStructured: mockGenerateStructured,
-      }) as unknown as geminiClientModule.GeminiClient);
+      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(function () {
+        return { generateStructured: mockGenerateStructured } as unknown as geminiClientModule.GeminiClient;
+      });
 
       const session = createSession([
         'Implement the following plan: # My Plan ## Step 1 Do something... ' + 'x'.repeat(100),
@@ -654,9 +654,9 @@ with various content
         usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
       });
 
-      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(() => ({
-        generateStructured: mockGenerateStructured,
-      }) as unknown as geminiClientModule.GeminiClient);
+      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(function () {
+        return { generateStructured: mockGenerateStructured } as unknown as geminiClientModule.GeminiClient;
+      });
 
       const longSystemMetadata = createLongText(
         'This is some skill documentation that explains how to use the feature.'
@@ -686,9 +686,9 @@ with various content
 
     it('should keep utterances when LLM classification fails', async () => {
       // Mock LLM failure
-      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(() => ({
-        generateStructured: vi.fn().mockRejectedValue(new Error('API error')),
-      }) as unknown as geminiClientModule.GeminiClient);
+      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(function () {
+        return { generateStructured: vi.fn().mockRejectedValue(new Error('API error')) } as unknown as geminiClientModule.GeminiClient;
+      });
 
       const longText = createLongText('This is a long developer message about implementing features.');
 
@@ -717,9 +717,9 @@ with various content
         usage: { promptTokens: 50, completionTokens: 25, totalTokens: 75 },
       });
 
-      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(() => ({
-        generateStructured: mockGenerateStructured,
-      }) as unknown as geminiClientModule.GeminiClient);
+      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(function () {
+        return { generateStructured: mockGenerateStructured } as unknown as geminiClientModule.GeminiClient;
+      });
 
       const ambiguousText = createLongText(
         'The system configuration requires specific setup steps.'
@@ -922,9 +922,9 @@ with various content
         usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
       });
 
-      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(() => ({
-        generateStructured: mockGenerateStructured,
-      }) as unknown as geminiClientModule.GeminiClient);
+      vi.spyOn(geminiClientModule, 'GeminiClient').mockImplementation(function () {
+        return { generateStructured: mockGenerateStructured } as unknown as geminiClientModule.GeminiClient;
+      });
 
       const longText = createLongText('Help me implement this feature please.');
 

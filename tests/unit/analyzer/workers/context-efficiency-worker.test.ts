@@ -10,9 +10,9 @@ import type { ContextEfficiencyOutput } from '../../../../src/lib/models/agent-o
 import type { Phase1Output } from '../../../../src/lib/models/phase1-output.js';
 
 vi.mock('../../../../src/lib/analyzer/clients/gemini-client.js', () => ({
-  GeminiClient: vi.fn().mockImplementation(() => ({
-    generateStructured: vi.fn(),
-  })),
+  GeminiClient: vi.fn().mockImplementation(function () {
+    return { generateStructured: vi.fn() };
+  }),
 }));
 
 import {
@@ -109,7 +109,7 @@ describe('ContextEfficiencyWorker', () => {
     vi.clearAllMocks();
     context = createMockContext('premium');
     mockGenerateStructured = vi.fn();
-    vi.mocked(GeminiClient).mockImplementation(() => ({ generateStructured: mockGenerateStructured }) as unknown as GeminiClient);
+    vi.mocked(GeminiClient).mockImplementation(function () { return { generateStructured: mockGenerateStructured } as unknown as GeminiClient; });
     worker = new ContextEfficiencyWorker({ geminiApiKey: 'test-key', verbose: false });
   });
 
