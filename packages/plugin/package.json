@@ -1,7 +1,7 @@
 {
   "name": "@betterprompt/claude-code-plugin",
-  "version": "0.1.0",
-  "description": "Claude Code plugin for BetterPrompt — auto-analysis and MCP-powered developer insights",
+  "version": "0.2.0",
+  "description": "Claude Code plugin for BetterPrompt — local-first AI collaboration analysis powered by MCP tools and analysis skills",
   "type": "module",
   "main": "./dist/mcp/server.js",
   "bin": {
@@ -11,7 +11,8 @@
   "files": [
     "dist",
     ".claude-plugin",
-    "hooks"
+    "hooks",
+    "skills"
   ],
   "scripts": {
     "build": "tsc",
@@ -37,7 +38,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "better-sqlite3": "^11.0.0"
+    "better-sqlite3": "^11.0.0",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
