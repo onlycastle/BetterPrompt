@@ -96,7 +96,7 @@ export const TelemetryEventSchema = z.object({
   timestamp: z.string().datetime(),
   anonymousId: z.string().uuid(),
   version: z.string(),
-  properties: z.record(z.unknown()).optional(),
+  properties: z.record(z.string(), z.unknown()).optional(),
 });
 export type TelemetryEvent = z.infer<typeof TelemetryEventSchema>;
 

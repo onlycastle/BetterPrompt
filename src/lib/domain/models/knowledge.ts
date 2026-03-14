@@ -139,7 +139,7 @@ export const KnowledgeItemSchema = z.object({
 
   // Classification - NEW unified dimension system
   applicableDimensions: z.array(DimensionNameSchema).min(1),
-  subCategories: z.record(DimensionNameSchema, z.array(z.string())).optional(),
+  subCategories: z.record(DimensionNameSchema, z.array(z.string()).optional()).optional(),
 
   // Legacy classification (kept for migration, will be removed)
   /** @deprecated Use applicableDimensions instead */
@@ -171,9 +171,9 @@ export type KnowledgeItem = z.infer<typeof KnowledgeItemSchema>;
 export const KnowledgeCollectionSchema = z.object({
   version: z.literal('1.0.0'),
   updatedAt: z.string().datetime(),
-  dimensions: z.record(DimensionNameSchema, z.array(z.string().uuid())),
+  dimensions: z.record(DimensionNameSchema, z.array(z.string().uuid()).optional()),
   /** @deprecated Use dimensions instead */
-  categories: z.record(TopicCategorySchema, z.array(z.string().uuid())).optional(),
+  categories: z.record(TopicCategorySchema, z.array(z.string().uuid()).optional()).optional(),
   totalItems: z.number(),
 });
 export type KnowledgeCollection = z.infer<typeof KnowledgeCollectionSchema>;

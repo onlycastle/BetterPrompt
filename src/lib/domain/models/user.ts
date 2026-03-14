@@ -102,7 +102,11 @@ export const UserSchema = z.object({
     emailNotifications: z.boolean().default(true),
     weeklyDigest: z.boolean().default(false),
     publicProfile: z.boolean().default(false),
-  }).default({}),
+  }).default(() => ({
+    emailNotifications: true,
+    weeklyDigest: false,
+    publicProfile: false,
+  })),
 });
 export type User = z.infer<typeof UserSchema>;
 
@@ -172,7 +176,11 @@ export const OrganizationSchema = z.object({
     allowedDomains: z.array(z.string()).default([]), // Email domain restrictions
     ssoEnabled: z.boolean().default(false),
     customKnowledgeBaseEnabled: z.boolean().default(false),
-  }).default({}),
+  }).default(() => ({
+    allowedDomains: [],
+    ssoEnabled: false,
+    customKnowledgeBaseEnabled: false,
+  })),
 
   // Metadata
   createdAt: z.string().datetime(),
@@ -199,7 +207,7 @@ export const UsageRecordSchema = z.object({
 
   // Metadata
   timestamp: z.string().datetime(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 export type UsageRecord = z.infer<typeof UsageRecordSchema>;
 
@@ -222,7 +230,7 @@ export const TrackingMetricsSchema = z.object({
     burnoutRisk: z.number().min(0).max(100).optional(),
     aiControl: z.number().min(0).max(100).optional(),
     skillResilience: z.number().min(0).max(100).optional(),
-  }).default({}),
+  }).default(() => ({})),
 
   // Metadata
   createdAt: z.string().datetime(),

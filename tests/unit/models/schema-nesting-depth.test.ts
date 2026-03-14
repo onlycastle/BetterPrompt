@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { z } from 'zod';
 
 // Phase 1
 import { BatchClassificationResultSchema } from '../../../src/lib/models/content-classification';
@@ -146,7 +146,7 @@ function findDeepestPath(schema: unknown, currentPath = 'root', currentDepth = 0
 /** Helper to create a nesting depth test for a given schema */
 function testSchemaDepth(schemaName: string, schema: unknown) {
   it(`should not exceed ${GEMINI_MAX_NESTING_DEPTH} levels of nesting`, () => {
-    const jsonSchema = zodToJsonSchema(schema as Parameters<typeof zodToJsonSchema>[0]);
+    const jsonSchema = z.toJSONSchema(schema as z.ZodType, { io: 'input' });
     const maxDepth = calculateMaxNestingDepth(jsonSchema);
     const deepestPath = findDeepestPath(jsonSchema);
 

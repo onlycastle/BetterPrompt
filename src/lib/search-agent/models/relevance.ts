@@ -86,7 +86,7 @@ export const JudgmentStatsSchema = z.object({
   totalJudged: z.number(),
   acceptRate: z.number().min(0).max(1),
   avgScore: z.number().min(0).max(1),
-  categoryDistribution: z.record(TopicCategorySchema, z.number()),
+  categoryDistribution: z.record(TopicCategorySchema, z.number().optional()),
 });
 export type JudgmentStats = z.infer<typeof JudgmentStatsSchema>;
 

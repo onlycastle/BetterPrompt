@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { z } from 'zod';
 import {
   KnowledgeGapOutputSchema,
   ContextEfficiencyOutputSchema,
@@ -511,21 +511,21 @@ describe('getAllTopInsights', () => {
 
 describe('JSON Schema Conversion', () => {
   it('should convert KnowledgeGapOutputSchema to JSON Schema', () => {
-    const jsonSchema = zodToJsonSchema(KnowledgeGapOutputSchema);
+    const jsonSchema = z.toJSONSchema(KnowledgeGapOutputSchema, { io: 'input' });
 
     expect(jsonSchema).toBeDefined();
     expect(jsonSchema.type).toBe('object');
   });
 
   it('should convert ContextEfficiencyOutputSchema to JSON Schema', () => {
-    const jsonSchema = zodToJsonSchema(ContextEfficiencyOutputSchema);
+    const jsonSchema = z.toJSONSchema(ContextEfficiencyOutputSchema, { io: 'input' });
 
     expect(jsonSchema).toBeDefined();
     expect(jsonSchema.type).toBe('object');
   });
 
   it('should convert AgentOutputsSchema to JSON Schema', () => {
-    const jsonSchema = zodToJsonSchema(AgentOutputsSchema);
+    const jsonSchema = z.toJSONSchema(AgentOutputsSchema, { io: 'input' });
 
     expect(jsonSchema).toBeDefined();
     expect(jsonSchema.type).toBe('object');
