@@ -354,7 +354,7 @@ export class KnowledgeStore {
 
     const byCategory: Partial<Record<TopicCategory, number>> = {};
     for (const [cat, ids] of Object.entries(this.collection?.categories || {})) {
-      byCategory[cat as TopicCategory] = ids.length;
+      byCategory[cat as TopicCategory] = ids?.length ?? 0;
     }
 
     const byPlatform: Partial<Record<SourcePlatform, number>> = {};

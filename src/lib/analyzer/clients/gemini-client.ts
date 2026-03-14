@@ -8,8 +8,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
-import { zodToJsonSchema } from 'zod-to-json-schema';
-import type { ZodSchema } from 'zod';
+import { z } from 'zod';
 
 /** Options for cleanSchemaForGemini */
 interface CleanSchemaOptions {
@@ -67,7 +66,7 @@ export interface GeminiClientConfig {
 export interface GeminiStructuredRequest<T> {
   systemPrompt: string;
   userPrompt: string;
-  responseSchema: ZodSchema<T>;
+  responseSchema: z.ZodType<T>;
   maxOutputTokens?: number;
   /** Preserve minItems/maxItems in schema (safe for small schemas < ~8000 chars) */
   preserveArrayConstraints?: boolean;
@@ -134,9 +133,7 @@ export class GeminiClient {
    */
   async generateStructured<T>(request: GeminiStructuredRequest<T>): Promise<GeminiStructuredResult<T>> {
     const schemaName = request.schemaName ?? 'unknown';
-    const jsonSchema = zodToJsonSchema(request.responseSchema, {
-      $refStrategy: 'none',
-    });
+    const jsonSchema = z.toJSONSchema(request.responseSchema, { io: 'input' });
 
     // Remove $schema and clean problematic fields
     // Gemini SDK rejects additionalProperties, and minItems/maxItems cause issues in large schemas
@@ -231,7 +228,7 @@ export class GeminiClient {
    */
   private parseResponse<T>(
     response: { text?: string; candidates?: Array<{ finishReason?: string }> },
-    schema: ZodSchema<T>
+    schema: z.ZodType<T>
   ): T {
     // Check for truncation before attempting to parse
     const finishReason = response.candidates?.[0]?.finishReason;
@@ -263,11 +260,11 @@ export class GeminiClient {
     // Validate against Zod schema
     const result = schema.safeParse(parsed);
     if (!result.success) {
-      console.error('[GeminiClient] Schema validation failed:', result.error.errors);
+      console.error('[GeminiClient] Schema validation failed:', result.error.issues);
 
       // Build detailed debug info for error message
       const debugDetails: string[] = [];
-      for (const error of result.error.errors) {
+      for (const error of result.error.issues) {
         const path = error.path.join('.');
         let actualValue: unknown = parsed;
         for (const key of error.path) {

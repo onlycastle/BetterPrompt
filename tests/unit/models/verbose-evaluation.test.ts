@@ -100,7 +100,7 @@ describe('VerboseLLMResponseSchema', () => {
           (issue) => issue.path.includes('promptPatterns')
         );
         expect(promptPatternsError).toBeDefined();
-        expect(promptPatternsError?.message).toBe('Required');
+        expect(promptPatternsError?.message).toBe('Invalid input: expected array, received undefined');
       }
     });
 

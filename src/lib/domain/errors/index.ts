@@ -543,10 +543,10 @@ export class ValidationError extends DomainError {
     this.fields = fields;
   }
 
-  static fromZod(zodError: { errors: Array<{ path: (string | number)[]; message: string }> }) {
+  static fromZod(zodError: { issues: Array<{ path: (string | number)[]; message: string }> }) {
     const fields: Record<string, string[]> = {};
 
-    for (const error of zodError.errors) {
+    for (const error of zodError.issues) {
       const path = error.path.join('.');
       if (!fields[path]) fields[path] = [];
       fields[path].push(error.message);
