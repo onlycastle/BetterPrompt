@@ -41,18 +41,17 @@ import { getProjectName } from '../../parser/jsonl-reader';
 import { BaseWorker } from '../workers/base-worker';
 import type { DimensionResourceMatch } from '../../models/verbose-evaluation';
 import { matchKnowledgeResources } from '../stages/knowledge-resource-matcher';
-import { EvidenceVerifierStage, type EvidenceVerifierResult } from '../stages/evidence-verifier';
-import { SessionSummarizerStage, type SessionSummarizerResult } from '../stages/session-summarizer';
+import { EvidenceVerifierStage } from '../stages/evidence-verifier';
+import { SessionSummarizerStage } from '../stages/session-summarizer';
 import { ProjectSummarizerStage, type ProjectSummarizerResult } from '../stages/project-summarizer';
 import { WeeklyInsightGeneratorStage, type WeeklyInsightGeneratorResult } from '../stages/weekly-insight-generator';
 import { computeDeterministicScores, type DeterministicScores } from '../stages/deterministic-scorer';
-import { computeDeterministicType, type DeterministicTypeResult } from '../stages/deterministic-type-mapper';
+import { computeDeterministicType } from '../stages/deterministic-type-mapper';
 import type {
   WorkerResult,
   WorkerContext,
   OrchestratorConfig,
   Phase1Results,
-  AggregatedTokenUsage,
   Phase1Output,
   AnalysisResult,
   DebugPhaseOutput,
@@ -62,13 +61,11 @@ import type {
 } from './types';
 import {
   DEFAULT_ORCHESTRATOR_CONFIG,
-  aggregateWorkerTokenUsage,
   aggregateConfidenceScores,
   DEFAULT_CONFIDENCE_THRESHOLD,
 } from './types';
 import {
   type StageTokenUsage,
-  type PipelineTokenUsage,
   aggregateTokenUsage,
 } from '../cost-estimator';
 

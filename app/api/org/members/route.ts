@@ -4,7 +4,7 @@
  * and transforming them via the evaluation-to-team mapper.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCurrentUserFromRequest } from '@/lib/local/auth';
 import { getUserOrganization, getOrgMembers, listTeamsForOrg } from '@/lib/local/team-store';
 import { listAnalysesForUser } from '@/lib/local/analysis-store';
@@ -12,7 +12,7 @@ import { mapUserToTeamMember } from '@/lib/local/evaluation-to-team';
 import { findUserById } from '@/lib/local/auth';
 import type { TeamMemberAnalysis } from '@/types/enterprise';
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   const user = getCurrentUserFromRequest();
 
   const org = getUserOrganization(user.id);

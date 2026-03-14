@@ -17,9 +17,7 @@
 import { z } from 'zod';
 import {
   WorkerStrengthSchema,
-  type WorkerStrength,
   WorkerGrowthSchema,
-  type WorkerGrowth,
   StructuredStrengthLLMSchema,
   StructuredGrowthLLMSchema,
   parseStructuredStrengths,

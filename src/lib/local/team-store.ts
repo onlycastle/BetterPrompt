@@ -7,7 +7,6 @@
 
 import { randomUUID } from 'node:crypto';
 import { getDatabase } from './database';
-import type { LocalUser } from './auth';
 
 // ---------------------------------------------------------------------------
 // Row types

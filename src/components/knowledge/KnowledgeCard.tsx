@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardContent, CardFooter } from '../ui/Card';
-import { Badge, PlatformBadge, TierBadge } from '../ui/Badge';
+import { Badge, PlatformBadge, TierBadge, type PlatformType } from '../ui/Badge';
 import { ExternalLink, Calendar, User } from 'lucide-react';
 import type { KnowledgeItem } from '../../types';
 import styles from './KnowledgeCard.module.css';
@@ -31,7 +31,7 @@ export function KnowledgeCard({ item, onClick }: KnowledgeCardProps) {
     <Card hover padding="lg" onClick={onClick}>
       <CardHeader>
         <div className={styles.headerTop}>
-          <PlatformBadge platform={source.platform as any} />
+          <PlatformBadge platform={source.platform as PlatformType} />
           {source.credibilityTier && (
             <TierBadge tier={source.credibilityTier} />
           )}

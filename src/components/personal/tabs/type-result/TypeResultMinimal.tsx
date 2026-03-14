@@ -30,7 +30,6 @@ interface TypeResultMinimalProps {
 export function TypeResultMinimal({
   primaryType,
   distribution,
-  sessionsAnalyzed,
   controlLevel = 'navigator',
   controlScore = 50,
   matrixDistribution,

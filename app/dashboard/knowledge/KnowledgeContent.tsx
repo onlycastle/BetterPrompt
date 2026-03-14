@@ -36,7 +36,7 @@ const DIMENSIONS: Array<{ value: DimensionName | ''; label: string }> = [
 ];
 
 export function KnowledgeContent() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isLoading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [platform, setPlatform] = useState<SourcePlatform | ''>('');
   const [dimension, setDimension] = useState<DimensionName | ''>('');

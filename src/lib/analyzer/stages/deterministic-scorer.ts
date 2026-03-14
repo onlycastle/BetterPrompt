@@ -159,7 +159,6 @@ function scoreSessionOutcome(metrics: Phase1SessionMetrics): number {
  * Signals: /plan usage, questionRatio, rejection signals, error patterns
  */
 function scoreThinkingQuality(metrics: Phase1SessionMetrics): number {
-  const totalSessions = Math.max(metrics.totalSessions, 1);
   const slashCmds = metrics.slashCommandCounts ?? {};
 
   // Planning score (40% weight)

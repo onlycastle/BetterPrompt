@@ -233,7 +233,7 @@ export function buildShareUrl(reportId: string, baseUrl = 'http://localhost:3000
 /**
  * Generate Twitter share link
  */
-export function generateTwitterShareLink(reportId: string, typeResult: { primaryType: string }): ShareLink {
+export function generateTwitterShareLink(reportId: string, _typeResult: { primaryType: string }): ShareLink {
   const url = buildShareUrl(reportId);
   const text = `I analyzed my AI workflow with BetterPrompt.`;
   const hashtags = ['BetterPrompt', 'AICoding', 'SelfHosted'];

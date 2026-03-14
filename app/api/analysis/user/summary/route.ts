@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { listAnalysesForUser } from '@/lib/local/analysis-store';
 import type { StoredAnalysisResult } from '@/lib/local/analysis-store';
 import { getCurrentUserFromRequest } from '@/lib/local/auth';
@@ -158,7 +158,7 @@ function truncate(text: string, maxLength: number): string {
 // Route handler
 // ---------------------------------------------------------------------------
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   const userId = getCurrentUserFromRequest().id;
 
   const analyses = listAnalysesForUser(userId, 1);

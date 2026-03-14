@@ -14,7 +14,6 @@
  */
 
 import { type ParsedSession, type SessionMetrics } from '../domain/models/analysis';
-import { type VerboseEvaluation } from '../models/verbose-evaluation';
 import type { Tier } from './content-gateway';
 import { AnalysisOrchestrator, createAnalysisOrchestrator } from './orchestrator';
 import type { AnalysisResult, OrchestratorConfig, ProgressCallback, PhasePreviewCallback } from './orchestrator/types';

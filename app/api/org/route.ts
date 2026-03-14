@@ -8,7 +8,7 @@ import {
   getOrgMembers,
 } from '@/lib/local/team-store';
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   const user = getCurrentUserFromRequest();
 
   const org = getUserOrganization(user.id);

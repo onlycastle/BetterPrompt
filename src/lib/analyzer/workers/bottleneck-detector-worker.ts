@@ -14,12 +14,11 @@
  */
 
 import { BaseWorker } from './base-worker';
-import type { WorkerResult, WorkerContext, Phase2WorkerContext } from '../orchestrator/types';
+import type { WorkerResult, WorkerContext } from '../orchestrator/types';
 import type { OrchestratorConfig } from '../orchestrator/types';
 import type { Phase1Output } from '../../models/phase1-output';
 import {
   BottleneckDetectorLLMOutputSchema,
-  type BottleneckDetectorLLMOutput,
   type Bottleneck,
   parseBottleneckDetectorOutput,
 } from '../../models/quick-fix-data';

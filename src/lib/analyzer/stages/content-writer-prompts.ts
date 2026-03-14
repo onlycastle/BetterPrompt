@@ -224,7 +224,7 @@ export function buildContentWriterUserPromptV3(
   agentOutputsSummary: string,
   sessionCount: number,
   knowledgeResources?: DimensionResourceMatch[],
-  topUtterances?: Array<{ id: string; text: string; wordCount: number }>
+  _topUtterances?: Array<{ id: string; text: string; wordCount: number }>
 ): string {
   const kbContextSection = knowledgeResources
     ? buildKnowledgeContextFromResources(knowledgeResources)

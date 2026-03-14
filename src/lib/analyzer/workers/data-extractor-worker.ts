@@ -599,7 +599,6 @@ export class DataExtractorWorker extends BaseWorker<Phase1Output> {
       for (const segment of segments) {
         let segmentUserMessages = 0;
         let segmentHadContextOverflow = false;
-        let currentErrorChain = 0;
 
         for (const message of segment) {
           if (message.role === 'user') {

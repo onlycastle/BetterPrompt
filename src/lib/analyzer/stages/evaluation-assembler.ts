@@ -40,7 +40,6 @@ import {
 } from '../../models/verbose-evaluation';
 import type { NarrativeLLMResponse } from '../../models/verbose-evaluation';
 import type { Phase1Output } from '../../models/phase1-output';
-import type { InsightEvidence } from '../../models/worker-insights';
 import type {
   UtteranceLookupEntry,
   TransformationAuditEntry,

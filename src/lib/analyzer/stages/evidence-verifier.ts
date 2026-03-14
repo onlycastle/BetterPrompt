@@ -30,7 +30,7 @@ import {
   MAX_PAIRS_PER_BATCH,
 } from './evidence-verifier-prompts';
 import type { AgentOutputs } from '../../models/agent-outputs';
-import type { AggregatedWorkerInsights, WorkerInsightsContainer, WorkerStrength, WorkerGrowth, EvidenceItem, InsightEvidence } from '../../models/worker-insights';
+import type { AggregatedWorkerInsights, WorkerInsightsContainer, EvidenceItem, InsightEvidence } from '../../models/worker-insights';
 import { aggregateWorkerInsights } from '../../models/agent-outputs';
 import type { Phase1Output } from '../../models/phase1-output';
 

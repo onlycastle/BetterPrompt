@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import type { PersonalAnalytics, AnalysisSummary, HistoryEntry, WorkerDomainScores } from '@/types/personal';
 import type { CodingStyleType, AIControlLevel } from '@/types/enterprise';
 import { listAnalysesForUser, type StoredAnalysisResult } from '@/lib/local/analysis-store';
@@ -109,7 +109,7 @@ function buildAnalysisSummary(
   };
 }
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const userId = getCurrentUserFromRequest().id;
 
