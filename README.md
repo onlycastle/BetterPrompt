@@ -1,21 +1,20 @@
 # BetterPrompt
 
-> Self-hosted AI coding session analysis. Reads your local session logs, runs them through a multi-phase Gemini pipeline, and generates reports on thinking patterns, communication quality, token efficiency, and more.
+> AI coding session analysis that runs entirely inside your AI coding tool. No API keys. No server. Just install the plugin and ask for your report.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js 18+](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
 
-**How it works:** BetterPrompt is a local Next.js server paired with a CLI tool. The CLI scans your AI coding sessions, sends them to the server for multi-phase Gemini analysis, and generates detailed reports. For teams, individual reports aggregate into enterprise dashboards with growth tracking and anti-pattern detection.
+**How it works:** BetterPrompt is a Claude Code plugin. It scans your session logs, extracts metrics deterministically, then uses Claude (the model you're already paying for) to analyze your collaboration patterns across 5 domains: thinking quality, communication, learning behavior, context efficiency, and session outcomes. Results are served as a standalone HTML report on localhost.
 
-Everything runs on your machine. Session data never leaves your network.
+No separate server. No Gemini API key. No data leaves your machine.
 
 **Supported AI coding tools:**
 
 | Tool | Session Source | Format |
 |------|---------------|--------|
 | Claude Code | `~/.claude/projects/` | JSONL |
-| Cursor | `~/.cursor/chats/` | SQLite |
 
 ## Screenshots
 
@@ -23,58 +22,111 @@ Everything runs on your machine. Session data never leaves your network.
 |:-:|:-:|:-:|
 | ![Team Dashboard](images/team_dashboard.png) | ![Growth Areas](images/team_problem.png) | ![Projects](images/team_projects.png) |
 
-## Prerequisites
+## Quick Start (Plugin)
+
+The recommended way to use BetterPrompt. Zero configuration required.
+
+### 1. Build the plugin
+
+```bash
+git clone https://github.com/onlycastle/BetterPrompt.git
+cd BetterPrompt
+npm install
+cd packages/plugin
+npm run build
+```
+
+### 2. Register the MCP server
+
+Add to your Claude Code settings (`~/.claude/settings.json`):
+
+```json
+{
+  "mcpServers": {
+    "betterprompt": {
+      "command": "node",
+      "args": ["/absolute/path/to/BetterPrompt/packages/plugin/dist/mcp/server.js"]
+    }
+  }
+}
+```
+
+No environment variables needed. The plugin works entirely offline.
+
+### 3. Run your analysis
+
+In any Claude Code session, say:
+
+> "Analyze my coding sessions and generate a report"
+
+Claude will call the MCP tools in sequence - scan sessions, extract data, analyze each domain, classify your type, and serve a report at `http://localhost:3456`.
+
+## Alternative: Server + CLI
+
+For teams or if you prefer a web dashboard, you can still use the traditional server-based approach.
+
+### Prerequisites
 
 - [Node.js 18+](https://nodejs.org/)
-- A [Google Gemini API key](https://aistudio.google.com/apikey) (free tier works - the pipeline uses Gemini 3 Flash)
-- Existing AI coding sessions from a supported tool (see table above)
+- A [Google Gemini API key](https://aistudio.google.com/apikey) (free tier works)
+- Existing AI coding sessions
 
-> **No sessions yet?** Use an AI coding assistant for a few sessions first. BetterPrompt needs session logs to analyze - without them, the CLI will have nothing to scan.
-
-## Getting Started
-
-### 1. Start the server
+### Setup
 
 ```bash
 git clone https://github.com/onlycastle/BetterPrompt.git
 cd BetterPrompt
 npm install
 cp .env.example .env
-```
-
-Add your Gemini API key to `.env`:
-
-```env
-GOOGLE_GEMINI_API_KEY=your-key-here
-```
-
-Start the server:
-
-```bash
+# Add GOOGLE_GEMINI_API_KEY to .env
 npm run dev
 ```
 
-### 2. Run the CLI
-
-In a separate terminal:
+Then in a separate terminal:
 
 ```bash
 npx betterprompt-cli
 ```
 
-The CLI discovers sessions from your AI coding tools, lets you pick a project, and uploads parsed session data to your local server for analysis.
-
-### 3. View your report
-
-When analysis completes, the CLI opens your browser to `http://localhost:3000/dashboard/r/{resultId}` with your full report: personality type, strengths, growth areas, and domain-level insights.
+The CLI discovers sessions, uploads parsed data to your local server, and opens your report at `http://localhost:3000/dashboard/r/{resultId}`.
 
 ## Packages
 
 This is a monorepo with three packages:
 
+### Plugin (`packages/plugin`) -- Primary
+
+Claude Code plugin with local-first analysis. Provides MCP tools for the full pipeline and analysis skills that guide Claude through each domain.
+
+**MCP Tools (local-first, no server needed):**
+
+| Tool | Description |
+|------|-------------|
+| `scan_sessions` | Discover and cache session logs from `~/.claude/projects/` |
+| `extract_data` | Run deterministic Phase 1 extraction (metrics, scores) |
+| `save_domain_results` | Store domain analysis results (called by analysis skills) |
+| `classify_developer_type` | Classify into the 5x3 type matrix |
+| `generate_report` | Generate HTML report and serve on localhost |
+| `sync_to_team` | Optional: sync results to a team server |
+
+**MCP Tools (server-backed, backward compatible):**
+
+| Tool | Description |
+|------|-------------|
+| `get_developer_profile` | Profile type, scores, personality summary |
+| `get_growth_areas` | Growth areas with optional domain filter |
+| `get_recent_insights` | Strengths, anti-patterns, KPT retrospective |
+
+**Analysis Skills** (`packages/plugin/skills/`): Markdown files containing PTCF analysis frameworks. Claude reads these as instructions and calls `save_domain_results` with structured findings. Domains: thinking quality, communication patterns, learning behavior, context efficiency, session outcomes, plus a content writer for narrative synthesis.
+
+```bash
+cd packages/plugin
+npm run build
+```
+
 ### Web Server (root)
 
-Next.js 15 app with the dashboard UI, API routes, and the Gemini analysis pipeline.
+Next.js app with the team dashboard UI, API routes, and the Gemini analysis pipeline. Required only for team/enterprise features or the web-based dashboard.
 
 ```bash
 npm run dev        # Dev server on port 3000
@@ -84,57 +136,19 @@ npm run typecheck  # Type-check without emitting
 
 ### CLI (`packages/cli`)
 
-Scans session logs from supported AI coding tools, lets you pick a project, and uploads parsed data to your local server for analysis.
+Scans session logs and uploads parsed data to the web server for analysis. Alternative to the plugin for users who prefer a CLI workflow.
 
 ```bash
 npx betterprompt-cli
 ```
 
-Published to npm as `betterprompt-cli`. In development, run from the monorepo:
+Published to npm as `betterprompt-cli`. In development:
 
 ```bash
 cd packages/cli
 npm run build
 node dist/index.js
 ```
-
-### Plugin (`packages/plugin`)
-
-Claude Code plugin that provides an MCP server and a post-session hook. After each coding session, it automatically triggers analysis in the background and exposes insights via three MCP tools:
-
-| Tool | Description |
-|------|-------------|
-| `get_developer_profile` | Profile type, scores, personality summary |
-| `get_growth_areas` | Growth areas with optional domain filter |
-| `get_recent_insights` | Strengths, anti-patterns, KPT retrospective |
-
-#### Installing the Plugin
-
-1. Build the plugin:
-
-```bash
-cd packages/plugin
-npm install
-npm run build
-```
-
-2. Add the MCP server to your Claude Code settings (`~/.claude/settings.json`):
-
-```json
-{
-  "mcpServers": {
-    "betterprompt": {
-      "command": "node",
-      "args": ["/absolute/path/to/BetterPrompt/packages/plugin/dist/mcp/server.js"],
-      "env": {
-        "BETTERPROMPT_SERVER_URL": "http://localhost:3000"
-      }
-    }
-  }
-}
-```
-
-3. The post-session hook auto-triggers analysis after enough sessions accumulate. See [Plugin docs](./docs/human/PLUGIN.md) for configuration options.
 
 ## Testing
 
@@ -165,6 +179,15 @@ tests/
 
 ## Environment Variables
 
+**Plugin (none required):**
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `BETTERPROMPT_SERVER_URL` | No | - | Team server URL (only for `sync_to_team`) |
+| `BETTERPROMPT_AUTH_TOKEN` | No | - | Auth token for team server sync |
+
+**Web Server + CLI:**
+
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `GOOGLE_GEMINI_API_KEY` | Yes | - | Gemini API key ([get one here](https://aistudio.google.com/apikey)) |
@@ -177,17 +200,26 @@ tests/
 ## Project Structure
 
 ```
-app/                        Next.js app router - pages, API routes, layouts
-packages/cli/               CLI for session discovery and upload
-packages/plugin/            MCP server plugin + post-session hook
+packages/
+  plugin/                   Claude Code plugin (primary interface)
+    mcp/                    MCP server + tool implementations
+      tools/                Individual MCP tool modules
+    skills/                 Analysis skill files (markdown)
+    lib/
+      core/                 Standalone extraction, scoring, type mapping
+      report-template.ts    HTML report generator
+      results-db.ts         Local SQLite storage
+    hooks/                  Post-session analysis trigger
+  cli/                      CLI for session discovery and upload
+
+app/                        Next.js app router (team dashboard)
 src/
   components/               React components
     dashboard/              Dashboard layout and navigation
     enterprise/             Team and org-level views
     landing/                Landing page sections
     personal/               Individual report tabs and insights
-    report/                 Shared report UI (terminal window, share, footer)
-    knowledge/              Knowledge base UI
+    report/                 Shared report UI
     ui/                     Reusable UI primitives
   lib/
     analyzer/               Gemini-powered multi-phase analysis pipeline
@@ -197,12 +229,9 @@ src/
     models/                 Zod schemas and TypeScript types
     parser/                 JSONL session log parser
     search-agent/           Knowledge search and curation engine
-    config/                 App configuration management
-    utils/                  Shared utilities (storage, local analysis)
   views/                    Page-level view components
-scripts/                    Development utilities and test helpers
-docs/                       Architecture and deployment documentation
 tests/                      Unit, integration, and E2E test suites
+docs/                       Architecture and deployment documentation
 ```
 
 ## Documentation
