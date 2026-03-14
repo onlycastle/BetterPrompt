@@ -1,10 +1,10 @@
 {
-  "name": "betterprompt",
+  "name": "betterprompt-cli",
   "version": "0.9.36",
   "description": "See your AI anti-patterns in Claude Code sessions",
   "type": "module",
   "bin": {
-    "betterprompt": "./dist/index.js"
+    "betterprompt-cli": "./dist/index.js"
   },
   "main": "./dist/index.js",
   "files": [

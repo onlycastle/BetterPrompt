@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * betterprompt CLI
+ * betterprompt-cli
  *
  * See your AI anti-patterns in Claude Code sessions
  *
  * Usage:
- *   npx betterprompt          # Analyze sessions
- *   npx betterprompt help     # Show help
+ *   npx betterprompt-cli          # Analyze sessions
+ *   npx betterprompt-cli help     # Show help
  */
 
 import pc from 'picocolors';
@@ -316,7 +316,7 @@ async function main(): Promise<void> {
     case '--help':
     case '-h':
       console.log('');
-      console.log(pc.bold(pc.cyan('Usage:')) + ' npx betterprompt [command]');
+      console.log(pc.bold(pc.cyan('Usage:')) + ' npx betterprompt-cli [command]');
       console.log('');
       console.log(pc.bold('Commands:'));
       console.log('  (default)    See anti-patterns in your Claude Code sessions');
