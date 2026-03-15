@@ -97,6 +97,15 @@ export default function EnterpriseSetupPage() {
         throw new Error(data.message || 'Failed to create team');
       }
 
+      // Auto-add the org creator as an owner of the first team
+      const team = await response.json() as { id: string };
+      await fetch(`/api/teams/${team.id}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ email: user?.email, role: 'owner' }),
+      });
+
       setStep('done');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create team');
