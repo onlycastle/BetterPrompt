@@ -6,25 +6,12 @@
 
 The plugin runs entirely inside Claude Code. No API keys. No server.
 
-```bash
-# 1. Clone and build
-git clone https://github.com/onlycastle/BetterPrompt.git
-cd BetterPrompt
-npm install
-cd packages/plugin
-npm run build
+```
+/plugin marketplace add onlycastle/BetterPrompt
+/plugin install betterprompt@betterprompt
 ```
 
-```bash
-# 2. Launch Claude Code with the plugin
-claude --plugin-dir /absolute/path/to/BetterPrompt/packages/plugin
-```
-
-```bash
-# 3. Run analysis
-# In the Claude Code session, say:
-# "Analyze my coding sessions and generate a report"
-```
+Then say: "Analyze my coding sessions and generate a report"
 
 Claude calls the MCP tools automatically -- scan sessions, extract data, analyze each domain, classify type, and serve a report at `http://localhost:3456`.
 

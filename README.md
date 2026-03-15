@@ -26,29 +26,18 @@ No separate server. No Gemini API key. No data leaves your machine.
 
 The recommended way to use BetterPrompt. Zero configuration required.
 
-### 1. Clone and build
+### 1. Install the plugin
 
-```bash
-git clone https://github.com/onlycastle/BetterPrompt.git
-cd BetterPrompt
-npm install
-cd packages/plugin
-npm run build
+In any Claude Code session, run:
+
+```
+/plugin marketplace add onlycastle/BetterPrompt
+/plugin install betterprompt@betterprompt
 ```
 
-### 2. Load the plugin
+That's it. The MCP server, analysis skills, and post-session hooks are registered automatically.
 
-Launch Claude Code with the `--plugin-dir` flag pointing to the plugin package:
-
-```bash
-claude --plugin-dir /absolute/path/to/BetterPrompt/packages/plugin
-```
-
-This registers the MCP server, analysis skills, and post-session hooks automatically -- no manual settings.json editing needed.
-
-> **Tip:** To load the plugin on every session without the flag, add it to a [plugin marketplace](https://code.claude.com/docs/en/plugin-marketplaces) or your team's managed plugins.
-
-### 3. Run your analysis
+### 2. Run your analysis
 
 In any Claude Code session, say:
 
