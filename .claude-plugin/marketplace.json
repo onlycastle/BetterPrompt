@@ -1,0 +1,25 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "betterprompt",
+  "description": "AI coding session analysis that runs entirely inside Claude Code",
+  "owner": {
+    "name": "BetterPrompt",
+    "email": "hello@betterprompt.dev"
+  },
+  "plugins": [
+    {
+      "name": "betterprompt",
+      "description": "Local-first AI collaboration analysis — surfaces your collaboration patterns, growth areas, and anti-patterns directly in Claude Code without requiring a server.",
+      "version": "0.2.0",
+      "source": "./packages/plugin",
+      "category": "productivity",
+      "homepage": "https://github.com/onlycastle/BetterPrompt",
+      "tags": [
+        "analysis",
+        "collaboration",
+        "developer-assessment",
+        "session-analysis"
+      ]
+    }
+  ]
+}
