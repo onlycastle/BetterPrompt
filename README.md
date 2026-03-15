@@ -26,7 +26,7 @@ No separate server. No Gemini API key. No data leaves your machine.
 
 The recommended way to use BetterPrompt. Zero configuration required.
 
-### 1. Build the plugin
+### 1. Clone and build
 
 ```bash
 git clone https://github.com/onlycastle/BetterPrompt.git
@@ -36,22 +36,17 @@ cd packages/plugin
 npm run build
 ```
 
-### 2. Register the MCP server
+### 2. Load the plugin
 
-Add to your Claude Code settings (`~/.claude/settings.json`):
+Launch Claude Code with the `--plugin-dir` flag pointing to the plugin package:
 
-```json
-{
-  "mcpServers": {
-    "betterprompt": {
-      "command": "node",
-      "args": ["/absolute/path/to/BetterPrompt/packages/plugin/dist/mcp/server.js"]
-    }
-  }
-}
+```bash
+claude --plugin-dir /absolute/path/to/BetterPrompt/packages/plugin
 ```
 
-No environment variables needed. The plugin works entirely offline.
+This registers the MCP server, analysis skills, and post-session hooks automatically -- no manual settings.json editing needed.
+
+> **Tip:** To load the plugin on every session without the flag, add it to a [plugin marketplace](https://code.claude.com/docs/en/plugin-marketplaces) or your team's managed plugins.
 
 ### 3. Run your analysis
 
@@ -59,7 +54,7 @@ In any Claude Code session, say:
 
 > "Analyze my coding sessions and generate a report"
 
-Claude will call the MCP tools in sequence - scan sessions, extract data, analyze each domain, classify your type, and serve a report at `http://localhost:3456`.
+Claude will call the MCP tools in sequence -- scan sessions, extract data, analyze each domain, classify your type, and serve a report at `http://localhost:3456`.
 
 ## Alternative: Server + CLI
 

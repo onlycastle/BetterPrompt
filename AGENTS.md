@@ -2,9 +2,35 @@
 
 > Machine-readable setup and usage guide for AI coding agents (Claude Code, Cursor, Copilot, etc.)
 
-## Quick Setup
+## Quick Setup (Plugin -- Recommended)
 
-Run these commands in order. The only value you need from the user is their Gemini API key.
+The plugin runs entirely inside Claude Code. No API keys. No server.
+
+```bash
+# 1. Clone and build
+git clone https://github.com/onlycastle/BetterPrompt.git
+cd BetterPrompt
+npm install
+cd packages/plugin
+npm run build
+```
+
+```bash
+# 2. Launch Claude Code with the plugin
+claude --plugin-dir /absolute/path/to/BetterPrompt/packages/plugin
+```
+
+```bash
+# 3. Run analysis
+# In the Claude Code session, say:
+# "Analyze my coding sessions and generate a report"
+```
+
+Claude calls the MCP tools automatically -- scan sessions, extract data, analyze each domain, classify type, and serve a report at `http://localhost:3456`.
+
+## Alternative: Server + CLI
+
+For teams or if you prefer a web dashboard, use the server-based approach.
 
 ```bash
 # 1. Clone and install
@@ -90,7 +116,9 @@ Their results automatically appear in the enterprise dashboard.
 
 ## Verification
 
-After setup, verify everything works:
+**Plugin mode:** In the Claude Code session, run `/help` and confirm BetterPrompt's skills and MCP tools appear under the plugin namespace.
+
+**Server + CLI mode:**
 
 ```bash
 # Server is running
