@@ -1,9 +1,10 @@
 {
-  "hooks": [
-    {
-      "event": "stop",
-      "command": "node ./dist/hooks/post-session-handler.js",
-      "description": "Auto-analyze sessions when enough new data accumulates"
-    }
-  ]
+  "hooks": {
+    "stop": [
+      {
+        "command": "node ./dist/hooks/post-session-handler.js",
+        "description": "Auto-analyze sessions when enough new data accumulates"
+      }
+    ]
+  }
 }
