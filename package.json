@@ -28,6 +28,9 @@
   ],
   "author": "BetterPrompt",
   "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/onlycastle/BetterPrompt"
