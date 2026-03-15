@@ -126,9 +126,33 @@ Call `save_domain_results` with the following structure:
 ```json
 {
   "domain": "learningBehavior",
-  "results": {
-    "overallLearningScore": 65,
-    "confidenceScore": 0.75,
+  "overallScore": 65,
+  "confidenceScore": 0.75,
+  "strengths": [
+    {
+      "title": "Active questioning during debugging sessions",
+      "description": "WHAT: You consistently ask 'why' during debugging sessions rather than just accepting fixes. This pattern of curiosity-driven debugging appears across multiple sessions and leads to deeper understanding of root causes rather than surface-level patches. WHY: Asking 'why' transforms debugging from a rote fix-apply cycle into a genuine learning opportunity, building transferable knowledge. HOW: Continue this habit and extend it to non-debugging contexts, such as asking why a particular architecture pattern is recommended before adopting it.",
+      "evidence": [
+        { "utteranceId": "utt-009", "quote": "But why is it failing here specifically?" },
+        { "utteranceId": "utt-031", "quote": "What's the root cause, not just the fix?" },
+        { "utteranceId": "utt-055", "quote": "Can you explain why this approach works better?" }
+      ]
+    }
+  ],
+  "growthAreas": [
+    {
+      "title": "Skipping error handling fundamentals in async code",
+      "description": "WHAT: Error handling is omitted in approximately 60% of async code written with AI assistance. You tend to focus on the happy path and move on without adding try/catch blocks, error boundaries, or fallback behavior. This pattern recurs across sessions involving API calls and file operations. WHY: Missing error handling creates fragile code that works during development but fails unpredictably in production. HOW: Before accepting any async code from the AI, explicitly ask: 'What happens if this fails?' to trigger error handling generation.",
+      "severity": "high",
+      "recommendation": "Add a personal checklist item: before moving past any async operation, verify that error handling exists for network failures, timeouts, and unexpected response shapes.",
+      "evidence": [
+        { "utteranceId": "utt-018", "quote": "Ok that works, next..." },
+        { "utteranceId": "utt-039", "quote": "Skip the error handling for now" },
+        { "utteranceId": "utt-062", "quote": "We can add error handling later" }
+      ]
+    }
+  ],
+  "data": {
     "knowledgeGaps": [
       {
         "area": "TypeScript generics",
@@ -180,9 +204,7 @@ Call `save_domain_results` with the following structure:
         "title": "Request explanations before implementations",
         "description": "Before asking AI to implement a solution, ask it to explain the approach first. This builds understanding and reduces scaffolding collapse."
       }
-    ],
-    "strengths": [ /* ... */ ],
-    "growthAreas": [ /* ... */ ]
+    ]
   }
 }
 ```

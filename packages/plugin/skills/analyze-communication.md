@@ -107,9 +107,33 @@ Call `save_domain_results` with the following structure:
 ```json
 {
   "domain": "communicationPatterns",
-  "results": {
-    "overallCommunicationScore": 78,
-    "confidenceScore": 0.82,
+  "overallScore": 78,
+  "confidenceScore": 0.82,
+  "strengths": [
+    {
+      "title": "Rich context provider with file references",
+      "description": "WHAT: You consistently provide detailed context in your requests, referencing specific files, function names, and expected behavior. This pattern appears in roughly 40% of your utterances and significantly reduces AI guessing. WHY: Rich context leads to more accurate first-attempt responses and fewer correction cycles. HOW: Continue referencing specific files and line numbers, and extend this habit to also include expected output examples when requesting complex transformations.",
+      "evidence": [
+        { "utteranceId": "utt-012", "quote": "In src/utils/parser.ts, the parseConfig function on line 45..." },
+        { "utteranceId": "utt-034", "quote": "The expected output should look like this JSON structure..." },
+        { "utteranceId": "utt-056", "quote": "Check the handler in api/routes/auth.ts, it needs to match..." }
+      ]
+    }
+  ],
+  "growthAreas": [
+    {
+      "title": "Minimal context in quick-fix requests",
+      "description": "WHAT: When requesting quick fixes or small changes, you often drop context entirely, using terse commands like 'fix it' or 'make it work' without specifying what 'it' refers to or what 'working' looks like. This pattern appears in about 20% of your utterances. WHY: Even small fixes benefit from a one-sentence context statement to prevent misinterpretation. HOW: Add a brief 'because' clause to quick requests: 'Fix the login redirect because it loops back to the same page instead of going to dashboard.'",
+      "severity": "medium",
+      "recommendation": "For every request under 20 words, add one sentence of context explaining the current behavior and the expected behavior to eliminate ambiguity.",
+      "evidence": [
+        { "utteranceId": "utt-023", "quote": "Fix it" },
+        { "utteranceId": "utt-045", "quote": "Make it work" },
+        { "utteranceId": "utt-071", "quote": "That's wrong, try again" }
+      ]
+    }
+  ],
+  "data": {
     "communicationPatterns": [
       {
         "patternId": "blueprint_with_constraints",
@@ -145,9 +169,7 @@ Call `save_domain_results` with the following structure:
         "quote": "...",
         "annotation": "This quote demonstrates..."
       }
-    ],
-    "strengths": [ /* ... */ ],
-    "growthAreas": [ /* ... */ ]
+    ]
   }
 }
 ```

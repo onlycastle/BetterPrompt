@@ -135,9 +135,33 @@ Call `save_domain_results` with the following structure:
 ```json
 {
   "domain": "sessionOutcome",
-  "results": {
-    "overallOutcomeScore": 71,
-    "confidenceScore": 0.85,
+  "overallScore": 71,
+  "confidenceScore": 0.85,
+  "strengths": [
+    {
+      "title": "High success rate in focused single-task sessions",
+      "description": "WHAT: Your single-task sessions with clearly defined goals achieve an 85% average outcome score, significantly outperforming multi-task sessions at 58%. When you enter a session with one clear objective, you consistently reach a successful outcome with minimal friction. WHY: Focused sessions allow both you and the AI to maintain context coherence, reducing misunderstandings and rework. HOW: Continue structuring your work as single-task sessions whenever possible, and when multi-task sessions are unavoidable, explicitly signal topic transitions.",
+      "evidence": [
+        { "utteranceId": "utt-003", "quote": "Today I need to implement the user authentication flow" },
+        { "utteranceId": "utt-025", "quote": "Perfect, that's exactly what I needed. Thanks!" },
+        { "utteranceId": "utt-048", "quote": "Great, the feature is working as expected now" }
+      ]
+    }
+  ],
+  "growthAreas": [
+    {
+      "title": "Long sessions accumulate friction and degrade outcomes",
+      "description": "WHAT: Sessions exceeding 60 minutes show a 40% lower success rate, averaging an outcome score of 52 compared to 85 for shorter sessions. These long sessions accumulate 2.3x more friction points, particularly misunderstood requests and buggy code generation, suggesting context degradation over time. WHY: As sessions grow longer, context fill increases, AI response quality drops, and both parties lose track of the original goal. HOW: Set a 45-minute soft limit on sessions. When approaching this threshold, either compact context or start a fresh session with a clear summary of progress so far.",
+      "severity": "high",
+      "recommendation": "When a session passes the 45-minute mark, pause and evaluate: compact the context, summarize progress, or start a new session. Do not push through diminishing returns.",
+      "evidence": [
+        { "utteranceId": "utt-067", "quote": "We've been going back and forth on this for a while..." },
+        { "utteranceId": "utt-089", "quote": "Wait, that's not what I asked for earlier" },
+        { "utteranceId": "utt-112", "quote": "Let me just start over in a new session" }
+      ]
+    }
+  ],
+  "data": {
     "sessionAnalyses": [
       {
         "sessionId": "...",
@@ -179,9 +203,7 @@ Call `save_domain_results` with the following structure:
         "pattern": "Sessions exceeding 60 minutes have 40% lower success rate",
         "evidence": "Long sessions averaged 52 outcome score with 2.3x more friction points"
       }
-    ],
-    "strengths": [ /* ... */ ],
-    "growthAreas": [ /* ... */ ]
+    ]
   }
 }
 ```

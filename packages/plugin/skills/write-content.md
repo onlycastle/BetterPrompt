@@ -89,7 +89,33 @@ Call `save_domain_results` with the following structure:
 ```json
 {
   "domain": "content",
-  "results": {
+  "overallScore": 92,
+  "confidenceScore": 0.85,
+  "strengths": [
+    {
+      "title": "Strong cross-domain pattern recognition in focus areas",
+      "description": "WHAT: The analysis identified compelling cross-domain themes that connect findings from thinking quality, session outcomes, and efficiency into actionable focus areas. Each focus area draws evidence from at least two domains, creating a holistic picture rather than siloed observations. WHY: Cross-domain insights are more impactful than single-domain findings because they reveal root causes rather than symptoms. HOW: Use these focus areas as the primary coaching tool, revisiting them across multiple analysis cycles to track improvement.",
+      "evidence": [
+        { "utteranceId": "focus-area-1", "quote": "You start building before the blueprint is drawn" },
+        { "utteranceId": "focus-area-2", "quote": "Connected planning gaps to session friction and context bloat" },
+        { "utteranceId": "focus-area-3", "quote": "Identified verification weakness despite strong questioning habits" }
+      ]
+    }
+  ],
+  "growthAreas": [
+    {
+      "title": "Focus areas could include more quantified impact metrics",
+      "description": "WHAT: While the narratives are compelling and personal, some focus areas would benefit from more precise quantification of the impact, such as estimated time savings or token reduction from adopting the recommended changes. Currently the narratives reference patterns qualitatively. WHY: Quantified impact helps developers prioritize which focus area to tackle first and measure progress over time. HOW: In future analysis cycles, include specific metrics like 'this pattern costs you approximately 15 minutes per session' or 'addressing this could reduce your iteration count by 30%.'",
+      "severity": "low",
+      "recommendation": "Enhance each focus area narrative with at least one quantified metric drawn from the efficiency or session outcome domain to make the coaching advice more concrete and measurable.",
+      "evidence": [
+        { "utteranceId": "narrative-1", "quote": "Narrative references pattern frequency but not time impact" },
+        { "utteranceId": "narrative-2", "quote": "Actions are specific but lack measurable success criteria" },
+        { "utteranceId": "narrative-3", "quote": "Impact scores are present but not surfaced in the narrative text" }
+      ]
+    }
+  ],
+  "data": {
     "topFocusAreas": [
       {
         "title": "You start building before the blueprint is drawn",

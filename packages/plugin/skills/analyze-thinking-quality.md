@@ -114,9 +114,33 @@ Call `save_domain_results` with the following structure:
 ```json
 {
   "domain": "thinkingQuality",
-  "results": {
-    "overallThinkingQualityScore": 72,
-    "confidenceScore": 0.85,
+  "overallScore": 72,
+  "confidenceScore": 0.85,
+  "strengths": [
+    {
+      "title": "Consistent task decomposition before implementation",
+      "description": "WHAT: You regularly break complex tasks into smaller subtasks before diving into implementation. This pattern appears in 45% of your sessions and manifests as structured lists of steps or explicit goal-setting at the start of a conversation. WHY: Task decomposition reduces cognitive load and helps the AI provide more focused, accurate responses. HOW: Continue this habit and extend it to shorter sessions where you currently skip the planning phase.",
+      "evidence": [
+        { "utteranceId": "utt-001", "quote": "Let me break this down into steps..." },
+        { "utteranceId": "utt-042", "quote": "First, let's handle the data layer, then the UI..." },
+        { "utteranceId": "utt-078", "quote": "Before we start, here's what I need to accomplish..." }
+      ]
+    }
+  ],
+  "growthAreas": [
+    {
+      "title": "Verification gaps after AI-generated code blocks",
+      "description": "WHAT: You tend to accept large code blocks from the AI without reviewing them line by line, especially when the output matches your mental model at a high level. This pattern appears most in sessions longer than 30 minutes when fatigue may reduce scrutiny. WHY: Unverified code accumulates technical debt and can introduce subtle bugs that surface later. HOW: Adopt a habit of requesting explanations for non-trivial code blocks before accepting them.",
+      "severity": "medium",
+      "recommendation": "After receiving code blocks longer than 20 lines, ask the AI to walk through the key decisions and edge cases before moving on.",
+      "evidence": [
+        { "utteranceId": "utt-015", "quote": "Looks good, let's move on" },
+        { "utteranceId": "utt-033", "quote": "Ok, that works" },
+        { "utteranceId": "utt-067", "quote": "Perfect, next step" }
+      ]
+    }
+  ],
+  "data": {
     "planningHabits": {
       "dominantType": "task_decomposition",
       "typeDistribution": { "task_decomposition": 0.45, "structure_first": 0.30, "no_planning": 0.25 },
@@ -133,9 +157,7 @@ Call `save_domain_results` with the following structure:
     ],
     "verificationAntiPatterns": [
       { "type": "error_loop", "frequency": 3, "severity": "medium", "evidence": [{ "utteranceId": "...", "quote": "..." }] }
-    ],
-    "strengths": [ /* ... */ ],
-    "growthAreas": [ /* ... */ ]
+    ]
   }
 }
 ```

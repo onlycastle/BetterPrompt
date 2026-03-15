@@ -115,10 +115,34 @@ Call `save_domain_results` with the following structure:
 ```json
 {
   "domain": "contextEfficiency",
-  "results": {
-    "overallEfficiencyScore": 58,
+  "overallScore": 58,
+  "confidenceScore": 0.80,
+  "strengths": [
+    {
+      "title": "Stable prompt lengths matched to task complexity",
+      "description": "WHAT: Your average prompt length remains stable across sessions at around 245 characters, indicating you have developed a consistent sense of how much context to provide per request. You do not over-explain simple tasks or under-explain complex ones. WHY: Prompt length stability suggests mature communication habits that avoid both token waste and context starvation. HOW: Continue calibrating prompt length to task complexity, and consider documenting your approach in CLAUDE.md so persistent context reduces even baseline prompt lengths.",
+      "evidence": [
+        { "utteranceId": "utt-005", "quote": "Fix the null check in parseUser, line 23 of src/utils.ts" },
+        { "utteranceId": "utt-028", "quote": "Add retry logic to the API client with exponential backoff, max 3 retries, starting at 1s" },
+        { "utteranceId": "utt-051", "quote": "Refactor the auth middleware to separate token validation from role checking" }
+      ]
+    }
+  ],
+  "growthAreas": [
+    {
+      "title": "Context bloat from missing compaction habits",
+      "description": "WHAT: In 6 out of 12 sessions, context fill exceeded 80% without any compaction. You tend to let context accumulate monotonically until quality degrades or the session hits limits. This pattern is most severe in sessions lasting more than 45 minutes. WHY: High context fill degrades AI response quality, increases hallucination risk, and eventually forces context loss when the window overflows. HOW: Adopt proactive compaction at the 50% context fill mark to preserve the most important context and maintain response quality.",
+      "severity": "high",
+      "recommendation": "Set a personal rule: when a session reaches 50% context fill, use the /compact command. Do not wait until you notice degraded responses, as the damage starts before it becomes obvious.",
+      "evidence": [
+        { "utteranceId": "utt-088", "quote": "The responses are getting worse, let me compact" },
+        { "utteranceId": "utt-102", "quote": "Context is full, starting a new session" },
+        { "utteranceId": "utt-119", "quote": "Wait, it forgot what we discussed earlier" }
+      ]
+    }
+  ],
+  "data": {
     "avgContextFillPercent": 62.4,
-    "confidenceScore": 0.80,
     "contextUsagePatterns": [
       {
         "pattern": "Rising fill without compaction",
@@ -165,9 +189,7 @@ Call `save_domain_results` with the following structure:
         "title": "Proactive compaction at 50% fill",
         "description": "Use the /compact command when context fill reaches 50%, before quality degrades. This preserves the most important context."
       }
-    ],
-    "strengths": [ /* ... */ ],
-    "growthAreas": [ /* ... */ ]
+    ]
   }
 }
 ```
