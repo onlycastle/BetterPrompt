@@ -116,7 +116,7 @@ Their results automatically appear in the enterprise dashboard.
 
 ## Verification
 
-**Plugin mode:** In the Claude Code session, run `/betterprompt:` and confirm the plugin's skills and MCP tools are listed.
+**Plugin mode:** In the Claude Code session, run `/help` and confirm BetterPrompt's skills and MCP tools appear under the plugin namespace.
 
 **Server + CLI mode:**
 

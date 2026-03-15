@@ -36,7 +36,7 @@ cd packages/plugin
 npm run build
 ```
 
-### 2. Install the plugin
+### 2. Load the plugin
 
 Launch Claude Code with the `--plugin-dir` flag pointing to the plugin package:
 
