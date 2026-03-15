@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { computeDeterministicScores } from '../../lib/core/deterministic-scorer.js';
 import { computeDeterministicType } from '../../lib/core/deterministic-type-mapper.js';
-import { saveTypeResult, getLatestRunId } from '../../lib/results-db.js';
+import { saveTypeResult, getCurrentRunId } from '../../lib/results-db.js';
 export const definition = {
     name: 'classify_developer_type',
     description: 'Classify the developer\'s AI collaboration type using deterministic rules. ' +
@@ -18,7 +18,6 @@ export const definition = {
         'x explorer/navigator/cartographer). Requires extract_data to have been run first. ' +
         'Returns the primary type, distribution, control level, and matrix name.',
 };
-export const inputSchema = {};
 export async function execute(_args) {
     // Read Phase 1 output
     let phase1Output;
@@ -34,15 +33,7 @@ export async function execute(_args) {
         });
     }
     // Get current run
-    let runId = null;
-    try {
-        const runIdPath = join(homedir(), '.betterprompt', 'current-run-id.txt');
-        const runIdStr = await readFile(runIdPath, 'utf-8');
-        runId = parseInt(runIdStr.trim(), 10);
-    }
-    catch {
-        runId = getLatestRunId();
-    }
+    const runId = getCurrentRunId();
     // Compute scores and type
     const scores = computeDeterministicScores(phase1Output);
     const typeResult = computeDeterministicType(scores, phase1Output);

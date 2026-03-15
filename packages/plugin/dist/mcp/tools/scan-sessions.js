@@ -12,7 +12,6 @@ export const definition = {
         '(count, date range, projects, total messages). Use this as the first step before ' +
         'running extract_data. Does not return full session content.',
 };
-export const inputSchema = {};
 export async function execute(_args) {
     const sessions = await listAllSessions();
     if (sessions.length === 0) {

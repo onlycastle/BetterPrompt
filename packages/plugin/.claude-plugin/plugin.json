@@ -3,7 +3,9 @@
   "displayName": "BetterPrompt",
   "version": "0.2.0",
   "description": "Local-first AI collaboration analysis — surfaces your collaboration patterns, growth areas, and anti-patterns directly in Claude Code without requiring a server.",
-  "author": "BetterPrompt",
+  "author": {
+    "name": "BetterPrompt"
+  },
   "repository": "https://github.com/onlycastle/BetterPrompt",
   "configuration": {
     "serverUrl": {

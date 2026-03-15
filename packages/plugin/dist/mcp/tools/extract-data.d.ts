@@ -15,12 +15,6 @@ export declare const definition: {
     name: string;
     description: string;
 };
-export declare const inputSchema: {
-    maxSessions: {
-        type: "number";
-        description: string;
-    };
-};
 export declare function execute(args: {
     maxSessions?: number;
 }): Promise<string>;

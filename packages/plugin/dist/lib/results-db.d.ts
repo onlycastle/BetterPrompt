@@ -10,6 +10,8 @@
 import type { DomainResult, DeterministicScores, DeterministicTypeResult, Phase1SessionMetrics, AnalysisReport } from './core/types.js';
 /** Create a new analysis run. Returns the run ID. */
 export declare function createAnalysisRun(metrics: Phase1SessionMetrics, scores: DeterministicScores): number;
+/** Get the current run ID from file cache, falling back to latest DB run */
+export declare function getCurrentRunId(): number | null;
 /** Get the latest analysis run ID */
 export declare function getLatestRunId(): number | null;
 /** Get analysis run by ID */

@@ -12,12 +12,6 @@ export const definition = {
         'The server receives pre-analyzed results (no LLM work needed server-side). ' +
         'Use this to share your analysis with your team dashboard.',
 };
-export const inputSchema = {
-    serverUrl: {
-        type: 'string',
-        description: 'Override server URL (defaults to BETTERPROMPT_SERVER_URL env var)',
-    },
-};
 export async function execute(args) {
     const serverUrl = (args.serverUrl ??
         process.env.BETTERPROMPT_SERVER_URL ??

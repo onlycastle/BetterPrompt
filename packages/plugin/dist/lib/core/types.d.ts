@@ -961,6 +961,7 @@ export interface Phase1Output {
     developerUtterances: UserUtterance[];
     sessionMetrics: Phase1SessionMetrics;
     aiInsightBlocks?: AIInsightBlock[];
+    skippedFiles?: number;
 }
 export interface DeterministicScores {
     contextEfficiency: number;
@@ -1021,7 +1022,7 @@ export interface AnalysisReport {
     analyzedAt: string;
     phase1Metrics: Phase1SessionMetrics;
     deterministicScores: DeterministicScores;
-    typeResult: DeterministicTypeResult;
+    typeResult: DeterministicTypeResult | null;
     domainResults: DomainResult[];
     content?: {
         topFocusAreas?: Array<{
@@ -1036,6 +1037,7 @@ export interface AnalysisReport {
         personalitySummary?: string[];
     };
 }
+export declare const CONTEXT_WINDOW_SIZE = 200000;
 export declare const MATRIX_NAMES: Record<CodingStyleType, Record<AIControlLevel, string>>;
 export declare const MATRIX_METADATA: Record<CodingStyleType, Record<AIControlLevel, {
     emoji: string;

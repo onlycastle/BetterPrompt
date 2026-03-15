@@ -9,5 +9,4 @@ export declare const definition: {
     name: string;
     description: string;
 };
-export declare const inputSchema: {};
 export declare function execute(_args: Record<string, unknown>): Promise<string>;

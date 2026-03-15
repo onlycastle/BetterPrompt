@@ -88,6 +88,10 @@ export const JSONLLineSchema = z.discriminatedUnion('type', [
 // ============================================================================
 // Matrix Names & Metadata (from src/lib/models/coding-style.ts)
 // ============================================================================
+// ============================================================================
+// Shared Constants
+// ============================================================================
+export const CONTEXT_WINDOW_SIZE = 200_000;
 export const MATRIX_NAMES = {
     architect: {
         explorer: 'Sketch Architect',

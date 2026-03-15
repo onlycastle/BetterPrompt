@@ -34,7 +34,7 @@ import { definition as insightsDef, formatResult as formatInsights, } from './to
 // New local-first tools
 import { definition as scanDef, execute as executeScan, } from './tools/scan-sessions.js';
 import { definition as extractDef, execute as executeExtract, } from './tools/extract-data.js';
-import { definition as saveDomainDef, execute as executeSaveDomain, } from './tools/save-domain-results.js';
+import { definition as saveDomainDef, execute as executeSaveDomain, DomainResultInputSchema, } from './tools/save-domain-results.js';
 import { definition as classifyDef, execute as executeClassify, } from './tools/classify-developer-type.js';
 import { definition as reportDef, execute as executeReport, } from './tools/generate-report.js';
 import { definition as syncDef, execute as executeSync, } from './tools/sync-to-team.js';
@@ -58,260 +58,65 @@ const server = new McpServer({
     name: 'betterprompt',
     version: '0.2.0',
 });
+/** Wrap a tool handler with consistent error formatting */
+function wrapToolExecution(fn) {
+    return async (args) => {
+        try {
+            const result = await fn(args);
+            return { content: [{ type: 'text', text: result }] };
+        }
+        catch (error) {
+            return {
+                content: [{
+                        type: 'text',
+                        text: JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+                    }],
+                isError: true,
+            };
+        }
+    };
+}
 // =========================================================================
 // LOCAL-FIRST TOOLS (no server needed)
 // =========================================================================
-// Tool: scan_sessions
-server.tool(scanDef.name, scanDef.description, {}, async () => {
-    try {
-        const result = await executeScan({});
-        return { content: [{ type: 'text', text: result }] };
-    }
-    catch (error) {
-        return {
-            content: [{
-                    type: 'text',
-                    text: JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-                }],
-            isError: true,
-        };
-    }
-});
-// Tool: extract_data
+server.tool(scanDef.name, scanDef.description, {}, wrapToolExecution(() => executeScan({})));
 server.tool(extractDef.name, extractDef.description, {
-    maxSessions: z
-        .number()
-        .optional()
-        .describe('Maximum number of recent sessions to analyze (default: 50)'),
-}, async (args) => {
-    try {
-        const result = await executeExtract(args);
-        return { content: [{ type: 'text', text: result }] };
-    }
-    catch (error) {
-        return {
-            content: [{
-                    type: 'text',
-                    text: JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-                }],
-            isError: true,
-        };
-    }
-});
-// Tool: save_domain_results
-server.tool(saveDomainDef.name, saveDomainDef.description, {
-    domain: z
-        .enum([
-        'thinkingQuality',
-        'communicationPatterns',
-        'learningBehavior',
-        'contextEfficiency',
-        'sessionOutcome',
-        'content',
-    ])
-        .describe('Domain name for this analysis result'),
-    overallScore: z
-        .number()
-        .min(0)
-        .max(100)
-        .describe('Overall domain score (0-100)'),
-    confidenceScore: z
-        .number()
-        .min(0)
-        .max(1)
-        .optional()
-        .describe('Confidence in the analysis (0.0-1.0)'),
-    strengths: z
-        .array(z.object({
-        title: z.string(),
-        description: z.string(),
-        evidence: z.array(z.object({
-            utteranceId: z.string(),
-            quote: z.string(),
-            context: z.string().optional(),
-        })),
-    }))
-        .describe('Strength findings with evidence'),
-    growthAreas: z
-        .array(z.object({
-        title: z.string(),
-        description: z.string(),
-        severity: z.enum(['low', 'medium', 'high']),
-        recommendation: z.string(),
-        evidence: z.array(z.object({
-            utteranceId: z.string(),
-            quote: z.string(),
-            context: z.string().optional(),
-        })),
-    }))
-        .describe('Growth area findings with evidence'),
-    data: z
-        .record(z.string(), z.unknown())
-        .optional()
-        .describe('Domain-specific extra data'),
-}, async (args) => {
-    try {
-        const result = await executeSaveDomain(args);
-        return { content: [{ type: 'text', text: result }] };
-    }
-    catch (error) {
-        return {
-            content: [{
-                    type: 'text',
-                    text: JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-                }],
-            isError: true,
-        };
-    }
-});
-// Tool: classify_developer_type
-server.tool(classifyDef.name, classifyDef.description, {}, async () => {
-    try {
-        const result = await executeClassify({});
-        return { content: [{ type: 'text', text: result }] };
-    }
-    catch (error) {
-        return {
-            content: [{
-                    type: 'text',
-                    text: JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-                }],
-            isError: true,
-        };
-    }
-});
-// Tool: generate_report
+    maxSessions: z.number().optional().describe('Maximum number of recent sessions to analyze (default: 50)'),
+}, wrapToolExecution(executeExtract));
+server.tool(saveDomainDef.name, saveDomainDef.description, DomainResultInputSchema.shape, wrapToolExecution(executeSaveDomain));
+server.tool(classifyDef.name, classifyDef.description, {}, wrapToolExecution(() => executeClassify({})));
 server.tool(reportDef.name, reportDef.description, {
-    port: z
-        .number()
-        .optional()
-        .describe('Port for the report server (default: 3456)'),
-    openBrowser: z
-        .boolean()
-        .optional()
-        .describe('Auto-open report in browser (default: true)'),
-}, async (args) => {
-    try {
-        const result = await executeReport(args);
-        return { content: [{ type: 'text', text: result }] };
-    }
-    catch (error) {
-        return {
-            content: [{
-                    type: 'text',
-                    text: JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-                }],
-            isError: true,
-        };
-    }
-});
-// Tool: sync_to_team
+    port: z.number().optional().describe('Port for the report server (default: 3456)'),
+    openBrowser: z.boolean().optional().describe('Auto-open report in browser (default: true)'),
+}, wrapToolExecution(executeReport));
 server.tool(syncDef.name, syncDef.description, {
-    serverUrl: z
-        .string()
-        .optional()
-        .describe('Override server URL (defaults to BETTERPROMPT_SERVER_URL)'),
-}, async (args) => {
-    try {
-        const result = await executeSync(args);
-        return { content: [{ type: 'text', text: result }] };
-    }
-    catch (error) {
-        return {
-            content: [{
-                    type: 'text',
-                    text: JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-                }],
-            isError: true,
-        };
-    }
-});
+    serverUrl: z.string().optional().describe('Override server URL (defaults to BETTERPROMPT_SERVER_URL)'),
+}, wrapToolExecution(executeSync));
 // =========================================================================
 // SERVER-BACKED TOOLS (backward compatible)
 // =========================================================================
-// Tool: get_developer_profile
-server.tool(profileDef.name, profileDef.description, {}, async () => {
-    try {
-        const userId = await getUserId();
-        const summary = await getSummaryWithCache(userId);
-        return {
-            content: [{ type: 'text', text: formatProfile(summary) }],
-        };
-    }
-    catch (error) {
-        return {
-            content: [{
-                    type: 'text',
-                    text: JSON.stringify({
-                        error: error instanceof Error ? error.message : 'Unknown error',
-                    }),
-                }],
-            isError: true,
-        };
-    }
-});
-// Tool: get_growth_areas
+server.tool(profileDef.name, profileDef.description, {}, wrapToolExecution(async () => {
+    const userId = await getUserId();
+    const summary = await getSummaryWithCache(userId);
+    return formatProfile(summary);
+}));
 server.tool(growthDef.name, growthDef.description, {
-    domain: z
-        .enum([
-        'thinkingQuality',
-        'communicationPatterns',
-        'learningBehavior',
-        'contextEfficiency',
-        'sessionOutcome',
-    ])
+    domain: z.enum(['thinkingQuality', 'communicationPatterns', 'learningBehavior', 'contextEfficiency', 'sessionOutcome'])
         .optional()
-        .describe('Filter by domain key. One of: thinkingQuality, communicationPatterns, ' +
-        'learningBehavior, contextEfficiency, sessionOutcome'),
-}, async (args) => {
-    try {
-        const userId = await getUserId();
-        const summary = await getSummaryWithCache(userId);
-        return {
-            content: [{ type: 'text', text: formatGrowth(summary, args) }],
-        };
-    }
-    catch (error) {
-        return {
-            content: [{
-                    type: 'text',
-                    text: JSON.stringify({
-                        error: error instanceof Error ? error.message : 'Unknown error',
-                    }),
-                }],
-            isError: true,
-        };
-    }
-});
-// Tool: get_recent_insights
+        .describe('Filter by domain key'),
+}, wrapToolExecution(async (args) => {
+    const userId = await getUserId();
+    const summary = await getSummaryWithCache(userId);
+    return formatGrowth(summary, args);
+}));
 server.tool(insightsDef.name, insightsDef.description, {
-    category: z
-        .enum(['strengths', 'anti_patterns', 'kpt'])
-        .optional()
-        .default('kpt')
+    category: z.enum(['strengths', 'anti_patterns', 'kpt']).optional().default('kpt')
         .describe('Category of insights: "strengths", "anti_patterns", or "kpt" (default)'),
-}, async (args) => {
-    try {
-        const userId = await getUserId();
-        const summary = await getSummaryWithCache(userId);
-        return {
-            content: [
-                { type: 'text', text: formatInsights(summary, args) },
-            ],
-        };
-    }
-    catch (error) {
-        return {
-            content: [{
-                    type: 'text',
-                    text: JSON.stringify({
-                        error: error instanceof Error ? error.message : 'Unknown error',
-                    }),
-                }],
-            isError: true,
-        };
-    }
-});
+}, wrapToolExecution(async (args) => {
+    const userId = await getUserId();
+    const summary = await getSummaryWithCache(userId);
+    return formatInsights(summary, args);
+}));
 // ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------

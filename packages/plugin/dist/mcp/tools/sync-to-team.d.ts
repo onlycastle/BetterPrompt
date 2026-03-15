@@ -8,12 +8,6 @@ export declare const definition: {
     name: string;
     description: string;
 };
-export declare const inputSchema: {
-    serverUrl: {
-        type: "string";
-        description: string;
-    };
-};
 export declare function execute(args: {
     serverUrl?: string;
 }): Promise<string>;

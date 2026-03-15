@@ -24,12 +24,6 @@ export const definition = {
         'and deterministic scores. Must call scan_sessions first. ' +
         'Returns summary metrics and creates an analysis run for subsequent domain analysis.',
 };
-export const inputSchema = {
-    maxSessions: {
-        type: 'number',
-        description: 'Maximum number of recent sessions to analyze (default: 50)',
-    },
-};
 export async function execute(args) {
     const maxSessions = args.maxSessions ?? 50;
     // Read cached session metadata
