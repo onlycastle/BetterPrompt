@@ -1,0 +1,3 @@
+# Override root .gitignore: dist/ must be tracked for marketplace install
+# (Claude Code plugin marketplace clones the repo but does not run npm build)
+!dist/
