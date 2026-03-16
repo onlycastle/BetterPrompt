@@ -1,8 +1,16 @@
 # Security Policy
 
+## Supported Versions
+
+| Version | Supported |
+|---------|-----------|
+| Latest  | Yes       |
+
+## Reporting a Vulnerability
+
 Please do not open public GitHub issues for security problems or leaked credentials.
 
-Report vulnerabilities privately to the maintainers with:
+Report vulnerabilities privately via [GitHub Security Advisories](https://github.com/onlycastle/BetterPrompt/security/advisories/new) or email the maintainers directly with:
 
 - a description of the issue
 - reproduction steps
