@@ -6,6 +6,8 @@
 [![Node.js 18+](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
 
+> **AI Agents:** If you are an AI coding agent (Claude Code, Cursor, Copilot, etc.), read [AGENTS.md](./AGENTS.md) instead of this file.
+
 **How it works:** BetterPrompt is a Claude Code plugin. It scans your session logs, extracts metrics deterministically, then uses Claude (the model you're already paying for) to analyze your collaboration patterns across 5 domains: thinking quality, communication, learning behavior, context efficiency, and session outcomes. Results are served as a standalone HTML report on localhost.
 
 No separate server. No Gemini API key. No data leaves your machine.
@@ -73,6 +75,52 @@ npx betterprompt-cli
 ```
 
 The CLI discovers sessions, uploads parsed data to your local server, and opens your report at `http://localhost:3000/dashboard/r/{resultId}`.
+
+## Team Manager Guide
+
+For engineering managers who want to track team-wide AI collaboration patterns. Requires the web server (see [Server + CLI](#alternative-server--cli) above).
+
+### 1. Set up your organization
+
+Start the server (`npm run dev`), then navigate to `/dashboard/enterprise`. First-time admin users are guided through a 3-step setup wizard:
+
+1. **Create organization** - set your org name (URL slug auto-generates)
+2. **Create first team** - name your team (optional, can skip)
+3. **Share server URL** - the wizard displays your `BETTERPROMPT_API_URL` for team members
+
+### 2. Invite team members
+
+Go to `/dashboard/enterprise/members` and click **Invite Member**. Add members by email and assign a role:
+
+| Role | Permissions |
+|------|-------------|
+| `owner` | Full access (org creator) |
+| `admin` | Invite/edit/remove members, create/delete teams |
+| `member` | View dashboards |
+| `viewer` | Read-only access |
+
+### 3. Team members run their analyses
+
+Each team member configures the plugin with your server URL:
+
+```bash
+# In the team member's environment
+BETTERPROMPT_SERVER_URL=https://your-server.example.com
+BETTERPROMPT_AUTH_TOKEN=<their-token>
+```
+
+After running a local analysis via the plugin, members use the `sync_to_team` MCP tool to upload results. Alternatively, members can use the CLI (`npx betterprompt-cli`) pointed at your server.
+
+### 4. Monitor your team
+
+The enterprise dashboard at `/dashboard/enterprise` provides:
+
+- **Overview** - active members, weekly sessions, token usage, anti-pattern counts
+- **Growth Leaderboard** - members ranked by score improvement
+- **Team Detail** (`/dashboard/enterprise/team/{teamId}`) - radar charts, type distribution, skill gaps
+- **Member Detail** (`/dashboard/enterprise/members/{memberId}`) - individual score history, anti-patterns, project activity
+- **KPT Retrospective** - aggregated Keep/Problem/Try patterns across the team
+- **Settings** (`/dashboard/enterprise/settings`) - org info and server URL
 
 ## Packages
 
