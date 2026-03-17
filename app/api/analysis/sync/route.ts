@@ -270,14 +270,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Resolve user: check auth header first, fall back to local user
+    // Authenticate: if BETTERPROMPT_AUTH_TOKEN is set, require it as Bearer token.
+    // This shared secret is configured on both the server and plugin side.
     const authHeader = request.headers.get('authorization');
+    const expectedToken = process.env.BETTERPROMPT_AUTH_TOKEN;
+
+    if (expectedToken) {
+      const providedToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      if (!providedToken || providedToken !== expectedToken) {
+        return NextResponse.json(
+          { error: 'unauthorized', message: 'Invalid or missing auth token.' },
+          { status: 401 },
+        );
+      }
+    }
+
+    // Resolve user: check for email in X-User-Email header, fall back to local user
+    const emailHeader = request.headers.get('x-user-email');
     let userId: string;
 
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.slice(7);
-      // Token could be an email or a user ID — try email lookup first
-      const userByEmail = findUserByEmail(token);
+    if (emailHeader) {
+      const userByEmail = findUserByEmail(emailHeader);
       userId = userByEmail?.id ?? getCurrentUserFromRequest().id;
     } else {
       userId = getCurrentUserFromRequest().id;

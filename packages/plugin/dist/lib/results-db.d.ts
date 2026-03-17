@@ -3,7 +3,9 @@
  *
  * @module plugin/lib/results-db
  */
+import Database from 'better-sqlite3';
 import type { CanonicalAnalysisRun, CanonicalEvaluationPayload, DeterministicScores, DeterministicTypeResult, DomainResult, Phase1Output, Phase1SessionMetrics, ReportActivitySession } from './core/types.js';
+export declare function getDb(): Database.Database;
 export declare function createAnalysisRun(params: {
     metrics: Phase1SessionMetrics;
     scores: DeterministicScores;

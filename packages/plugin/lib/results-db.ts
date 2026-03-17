@@ -39,7 +39,7 @@ function ensureColumn(
   }
 }
 
-function getDb(): Database.Database {
+export function getDb(): Database.Database {
   if (db) return db;
 
   mkdirSync(DATA_DIR, { recursive: true });

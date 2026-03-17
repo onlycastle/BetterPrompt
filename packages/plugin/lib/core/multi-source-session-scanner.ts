@@ -78,7 +78,10 @@ export async function readCachedParsedSessions(): Promise<ParsedSession[]> {
   try {
     const raw = await readFile(PARSED_SESSIONS_CACHE, 'utf-8');
     return JSON.parse(raw) as ParsedSession[];
-  } catch {
-    return [];
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return [];
+    }
+    throw error;
   }
 }

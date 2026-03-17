@@ -1,39 +1,31 @@
 /**
  * Stage Database - SQLite storage for pipeline stage outputs
  *
- * Extends the results database with a stage_outputs table for
- * storing non-domain stage results (session summaries, project
- * summaries, weekly insights, etc.).
+ * Reuses the shared database connection from results-db to avoid
+ * dual-connection write contention on the same results.db file.
  *
  * @module plugin/lib/stage-db
  */
-import Database from 'better-sqlite3';
-import { mkdirSync } from 'node:fs';
-import { join } from 'node:path';
-import { PLUGIN_DATA_DIR } from './core/session-scanner.js';
-const DB_FILE = 'results.db';
-let db = null;
+import { getDb as getSharedDb } from './results-db.js';
+let migrated = false;
 function getDb() {
-    if (db)
-        return db;
-    mkdirSync(PLUGIN_DATA_DIR, { recursive: true });
-    db = new Database(join(PLUGIN_DATA_DIR, DB_FILE));
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-    // Ensure stage_outputs table exists (migration-safe)
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS stage_outputs (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      run_id      INTEGER NOT NULL REFERENCES analysis_runs(id) ON DELETE CASCADE,
-      stage       TEXT NOT NULL,
-      data_json   TEXT NOT NULL,
-      created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-      UNIQUE(run_id, stage)
-    );
+    const db = getSharedDb();
+    if (!migrated) {
+        db.exec(`
+      CREATE TABLE IF NOT EXISTS stage_outputs (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id      INTEGER NOT NULL REFERENCES analysis_runs(id) ON DELETE CASCADE,
+        stage       TEXT NOT NULL,
+        data_json   TEXT NOT NULL,
+        created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(run_id, stage)
+      );
 
-    CREATE INDEX IF NOT EXISTS idx_stage_outputs_run ON stage_outputs(run_id);
-    CREATE INDEX IF NOT EXISTS idx_stage_outputs_stage ON stage_outputs(stage);
-  `);
+      CREATE INDEX IF NOT EXISTS idx_stage_outputs_run ON stage_outputs(run_id);
+      CREATE INDEX IF NOT EXISTS idx_stage_outputs_stage ON stage_outputs(stage);
+    `);
+        migrated = true;
+    }
     return db;
 }
 /** Save a stage output. Replaces existing output for same run+stage. */
@@ -64,11 +56,8 @@ export function getAllStageOutputs(runId) {
     }
     return result;
 }
-/** Close the database connection. */
+/** No-op: connection lifecycle is managed by results-db. */
 export function closeStageDb() {
-    if (db) {
-        db.close();
-        db = null;
-    }
+    // Connection is shared via results-db; call closeResultsDb() instead.
 }
 //# sourceMappingURL=stage-db.js.map

@@ -65,8 +65,11 @@ export async function readCachedParsedSessions() {
         const raw = await readFile(PARSED_SESSIONS_CACHE, 'utf-8');
         return JSON.parse(raw);
     }
-    catch {
-        return [];
+    catch (error) {
+        if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+            return [];
+        }
+        throw error;
     }
 }
 //# sourceMappingURL=multi-source-session-scanner.js.map

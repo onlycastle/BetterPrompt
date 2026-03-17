@@ -18,7 +18,7 @@ function ensureColumn(database, tableName, columnName, definition) {
         database.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
     }
 }
-function getDb() {
+export function getDb() {
     if (db)
         return db;
     mkdirSync(DATA_DIR, { recursive: true });

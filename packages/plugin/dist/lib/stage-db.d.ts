@@ -1,9 +1,8 @@
 /**
  * Stage Database - SQLite storage for pipeline stage outputs
  *
- * Extends the results database with a stage_outputs table for
- * storing non-domain stage results (session summaries, project
- * summaries, weekly insights, etc.).
+ * Reuses the shared database connection from results-db to avoid
+ * dual-connection write contention on the same results.db file.
  *
  * @module plugin/lib/stage-db
  */
@@ -13,5 +12,5 @@ export declare function saveStageOutput(runId: number, stage: string, data: unkn
 export declare function getStageOutput<T = unknown>(runId: number, stage: string): T | null;
 /** Get all stage outputs for a run. */
 export declare function getAllStageOutputs(runId: number): Record<string, unknown>;
-/** Close the database connection. */
+/** No-op: connection lifecycle is managed by results-db. */
 export declare function closeStageDb(): void;
