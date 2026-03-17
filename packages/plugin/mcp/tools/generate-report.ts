@@ -11,8 +11,9 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { createServer } from 'node:http';
 import { exec } from 'node:child_process';
-import { assembleReport } from '../../lib/results-db.js';
-import { generateReportHtml } from '../../lib/report-template.js';
+import { assembleCanonicalRun } from '../../lib/results-db.js';
+import { generateCanonicalReportHtml } from '../../lib/report-template.js';
+import { markAnalysisComplete } from '../../lib/debounce.js';
 
 export const definition = {
   name: 'generate_report',
@@ -56,8 +57,8 @@ export async function execute(args: { port?: number; openBrowser?: boolean }): P
   const openBrowser = args.openBrowser ?? true;
 
   // Assemble report data
-  const report = assembleReport();
-  if (!report) {
+  const run = assembleCanonicalRun();
+  if (!run) {
     return JSON.stringify({
       status: 'error',
       message: 'No analysis results found. Run extract_data and domain analyses first.',
@@ -65,7 +66,7 @@ export async function execute(args: { port?: number; openBrowser?: boolean }): P
   }
 
   // Generate HTML
-  const html = generateReportHtml(report);
+  const html = generateCanonicalReportHtml(run);
 
   // Save report file
   const reportsDir = join(homedir(), '.betterprompt', 'reports');
@@ -137,13 +138,15 @@ export async function execute(args: { port?: number; openBrowser?: boolean }): P
     }
   }
 
+  markAnalysisComplete(run.phase1Output.sessionMetrics.totalSessions);
+
   return JSON.stringify({
     status: 'ok',
     url,
     reportPath,
     latestPath,
-    domainCount: report.domainResults.length,
-    type: report.typeResult ? `${report.typeResult.matrixEmoji} ${report.typeResult.matrixName}` : 'Not classified',
+    domainCount: run.domainResults.length,
+    type: run.typeResult ? `${run.typeResult.matrixEmoji} ${run.typeResult.matrixName}` : 'Not classified',
     message: `Report generated and available at ${url}. Saved to ${reportPath}.`,
   });
 }
