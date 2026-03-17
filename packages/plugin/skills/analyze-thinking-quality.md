@@ -107,6 +107,10 @@ Produce 2-4 strengths and 2-4 growth areas. Each must contain:
   - HOW: Concrete next steps or reinforcement advice (1-2 sentences)
 - `evidence`: Array of 3+ items, each with `utteranceId` and `quote` (direct text from the session)
 
+**Growth areas only** (in addition to the above):
+- `severity`: One of `critical`, `high`, `medium`, `low`
+- `recommendation`: Actionable next step, MINIMUM 50 characters
+
 ### Output
 
 Call `save_domain_results` with the following structure:

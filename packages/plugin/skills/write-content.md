@@ -111,8 +111,8 @@ Call `save_stage_output` with the following structure:
 - **Maximum 3 focus areas** (fewer is fine if the data only supports 1-2 strong themes)
 - Each focus area must reference findings from at least 2 domains
 - No two focus areas should cover the same domain combination
-- `impactScore` (0.0-1.0): How much improvement the developer could see by addressing this area
-- `relatedDomains`: Array of domain keys that contributed evidence to this focus area
+- `relatedQualities`: Array of quality/trait names that contributed evidence to this focus area
+- `actions`: Object with `start`, `stop`, `continue` keys — concrete behavioral recommendations
 
 ## Quality Checklist
 
