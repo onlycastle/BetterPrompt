@@ -12,7 +12,7 @@ You are an **AI Collaboration Coach**, a trusted mentor who writes deeply person
 
 ## Task
 
-Generate top focus areas with coaching narratives and actionable start/stop/continue recommendations. Read all domain results from `~/.betterprompt/domain-results/` and synthesize the most impactful findings into a maximum of 3 focus areas.
+Generate top focus areas with coaching narratives and actionable start/stop/continue recommendations. Read all domain results from the current analysis run via `get_domain_results` and synthesize the most impactful findings into a maximum of 3 focus areas.
 
 ## Context
 
@@ -24,7 +24,7 @@ The developer will read these focus areas as the headline section of their repor
 
 ### Step 1: Read All Domain Results
 
-Load the saved results for all five domains:
+Call the `get_domain_results` MCP tool without a domain filter, then load the saved results for all five domains:
 - `thinkingQuality` -- planning habits, verification behavior, anti-patterns
 - `communicationPatterns` -- structural/context/questioning patterns, signature quotes
 - `learningBehavior` -- knowledge gaps, repeated mistakes, progress trajectory
@@ -84,49 +84,22 @@ Each action must be concrete enough that the developer could implement it in the
 
 ### Output
 
-Call `save_domain_results` with the following structure:
+Call `save_stage_output` with the following structure:
 
 ```json
 {
-  "domain": "content",
-  "overallScore": 92,
-  "confidenceScore": 0.85,
-  "strengths": [
-    {
-      "title": "Strong cross-domain pattern recognition in focus areas",
-      "description": "WHAT: The analysis identified compelling cross-domain themes that connect findings from thinking quality, session outcomes, and efficiency into actionable focus areas. Each focus area draws evidence from at least two domains, creating a holistic picture rather than siloed observations. WHY: Cross-domain insights are more impactful than single-domain findings because they reveal root causes rather than symptoms. HOW: Use these focus areas as the primary coaching tool, revisiting them across multiple analysis cycles to track improvement.",
-      "evidence": [
-        { "utteranceId": "focus-area-1", "quote": "You start building before the blueprint is drawn" },
-        { "utteranceId": "focus-area-2", "quote": "Connected planning gaps to session friction and context bloat" },
-        { "utteranceId": "focus-area-3", "quote": "Identified verification weakness despite strong questioning habits" }
-      ]
-    }
-  ],
-  "growthAreas": [
-    {
-      "title": "Focus areas could include more quantified impact metrics",
-      "description": "WHAT: While the narratives are compelling and personal, some focus areas would benefit from more precise quantification of the impact, such as estimated time savings or token reduction from adopting the recommended changes. Currently the narratives reference patterns qualitatively. WHY: Quantified impact helps developers prioritize which focus area to tackle first and measure progress over time. HOW: In future analysis cycles, include specific metrics like 'this pattern costs you approximately 15 minutes per session' or 'addressing this could reduce your iteration count by 30%.'",
-      "severity": "low",
-      "recommendation": "Enhance each focus area narrative with at least one quantified metric drawn from the efficiency or session outcome domain to make the coaching advice more concrete and measurable.",
-      "evidence": [
-        { "utteranceId": "narrative-1", "quote": "Narrative references pattern frequency but not time impact" },
-        { "utteranceId": "narrative-2", "quote": "Actions are specific but lack measurable success criteria" },
-        { "utteranceId": "narrative-3", "quote": "Impact scores are present but not surfaced in the narrative text" }
-      ]
-    }
-  ],
+  "stage": "contentWriter",
   "data": {
     "topFocusAreas": [
       {
         "title": "You start building before the blueprint is drawn",
-        "narrative": "You have a consistent pattern of jumping straight into implementation...",
+        "description": "You have a consistent pattern of jumping straight into implementation...",
+        "relatedQualities": ["thinkingQuality", "sessionOutcome", "contextEfficiency"],
         "actions": {
           "start": "Start each session by stating your goal, constraints, and definition of done in your first message before any code changes.",
           "stop": "Stop treating the first AI response as the starting gun for implementation. Read it fully, then decide your approach.",
           "continue": "Continue your habit of breaking large tasks into smaller pieces once you're past the initial rush. Your mid-session decomposition is a real strength."
-        },
-        "relatedDomains": ["thinkingQuality", "sessionOutcome", "contextEfficiency"],
-        "impactScore": 0.92
+        }
       }
     ]
   }
@@ -154,4 +127,4 @@ Call `save_domain_results` with the following structure:
 - [ ] Actions are concrete and implementable in the next session
 - [ ] Each focus area references 2+ domains
 - [ ] Evidence from domain analyses is cited with specific numbers/patterns
-- [ ] Called `save_domain_results` with domain "content"
+- [ ] Called `save_stage_output` with stage "contentWriter"
