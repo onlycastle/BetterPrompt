@@ -15,7 +15,7 @@ Zero-config. `getOrCreateLocalUser()` auto-creates `local@localhost` admin. No l
 | Route | Component | Purpose |
 |-------|-----------|---------|
 | `/` | `app/page.tsx` → `LandingPage` | Marketing entry, CTA → `/dashboard/analyze` |
-| `/dashboard/analyze` | `AnalyzeContent.tsx` | CLI instructions, most recent analysis link |
+| `/dashboard/analyze` | `AnalyzeContent.tsx` | Plugin install / analyze instructions, most recent analysis link |
 | `/dashboard/personal` | `PersonalContent.tsx` | `?tab=report` list, `?tab=progress` analytics |
 | `/dashboard/r/{resultId}` | `ImmersiveReportContent.tsx` | Full report (sidebar hidden via CSS `:has()`) |
 | `/dashboard/personal/r/{resultId}` | `page.tsx` | Legacy redirect → `/dashboard/r/{resultId}` |
@@ -24,14 +24,14 @@ Zero-config. `getOrCreateLocalUser()` auto-creates `local@localhost` admin. No l
 ### Employee Data Flow
 
 ```
-CLI (npx betterprompt-cli) → gzip POST /api/analysis/run (SSE) → SQLite → GET /api/analysis/user → Personal UI
+Plugin analysis in Claude Code → optional POST /api/analysis/sync → SQLite → GET /api/analysis/user → Personal UI
 ```
 
 ### Employee APIs
 
 | Method | Route | Purpose |
 |--------|-------|---------|
-| `POST` | `/api/analysis/run` | Run pipeline (SSE: progress/result/error) |
+| `POST` | `/api/analysis/sync` | Persist canonical plugin output |
 | `GET` | `/api/analysis/user?limit=N` | List analyses |
 | `GET` | `/api/analysis/user/progress` | PersonalAnalytics (streak, scores, history) |
 | `GET` | `/api/analysis/results/{id}` | Single result with full evaluation |

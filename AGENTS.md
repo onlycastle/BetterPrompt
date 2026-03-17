@@ -93,10 +93,12 @@ Members are invited via the web UI at `/dashboard/enterprise/members`. Each memb
 
 ### 3. Team member analysis
 
-Each team member runs the CLI pointed at the shared server:
+Each team member needs their own Gemini API key and the shared server URL.
+
+> **You must ask each team member for their Gemini API key.** Free tier keys work. Get one at https://aistudio.google.com/apikey
 
 ```bash
-BETTERPROMPT_WEB_APP_URL=http://<server-host>:3000 npx betterprompt-cli --auto
+GOOGLE_GEMINI_API_KEY=<their-own-key> BETTERPROMPT_WEB_APP_URL=http://<server-host>:3000 npx betterprompt-cli --auto
 ```
 
 Their results automatically appear in the enterprise dashboard.

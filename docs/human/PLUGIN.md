@@ -1,6 +1,6 @@
 # Claude Code Plugin
 
-The BetterPrompt Claude Code Plugin turns manual analysis into an automated, embedded developer experience. Instead of running `npx betterprompt-cli` after each session, the plugin handles everything -- analyzing sessions in the background and surfacing personalized insights directly inside Claude Code conversations.
+The BetterPrompt Claude Code Plugin is now the primary analysis entrypoint. It runs the pipeline locally inside Claude Code, queues auto-analysis across sessions, and can optionally sync finished runs to the BetterPrompt dashboard.
 
 ## How It Works
 
@@ -10,7 +10,7 @@ Developer uses Claude Code normally
             v
     +-------------------+
     |  Session Ends      |
-    |  (stop hook fires) |
+    |  (SessionEnd hook) |
     +--------+----------+
              |
              v
@@ -21,19 +21,26 @@ Developer uses Claude Code normally
              | YES
              v
     +-------------------+
-    |  Spawn Background  |  (detached process)
-    |  Analyzer          |
+    |  Mark Analysis     |
+    |  Pending           |
     +--------+----------+
              |
-             +-->  Scan sessions (~/.claude/projects/)
-             +-->  Upload to server for analysis
-             +-->  Refresh local insight cache
+             v
+    +-------------------+
+    |  Next SessionStart |
+    |  injects `/analyze`|
+    +--------+----------+
+             |
+             +-->  Scan sessions (~/.claude/projects/, Cursor)
+             +-->  Run local pipeline inside Claude Code
+             +-->  Generate report
+             +-->  Optionally sync to dashboard
              +-->  Mark analysis complete
 
     +-------------------+
     |  Next Conversation |
-    |  Claude Code calls |
-    |  MCP tools         |--> Insights appear naturally
+    |  MCP tools surface |
+    |  synced insights   |--> Insights appear naturally
     +-------------------+     in conversation context
 ```
 
@@ -55,9 +62,9 @@ Claude Code calls these tools during conversations when relevant -- for example,
 
 **Data source**: Tools read from a local SQLite cache (`~/.betterprompt/insight-cache.db`) that refreshes from the server every 24 hours or after each analysis. If the server is unreachable, stale cached data is served.
 
-### 2. Post-Session Hook (Auto-Trigger)
+### 2. Session Hooks (Auto-Trigger)
 
-A lightweight hook runs after each Claude Code session ends. It must complete in under 100ms, so it only checks debounce rules and spawns a background process if analysis is warranted.
+Lightweight hooks run at `SessionEnd` and `SessionStart`. `SessionEnd` only evaluates debounce rules and marks analysis as pending; `SessionStart` injects queued BetterPrompt context so Claude Code can resume the local pipeline in-band.
 
 **Debounce rules** (all must pass):
 
@@ -68,23 +75,21 @@ A lightweight hook runs after each Claude Code session ends. It must complete in
 
 This prevents over-analyzing short sessions or re-analyzing too frequently.
 
-### 3. Background Analyzer (Heavy Lifting)
+### 3. Local Analysis Pipeline
 
-When the hook decides to analyze, it spawns a fully detached Node.js process that:
+When Claude Code consumes the queued BetterPrompt context, the plugin:
 
-1. Scans session files from `~/.claude/projects/` (reuses the CLI scanner)
-2. Uploads sessions to the server for LLM analysis (reuses the CLI uploader)
-3. Refreshes the local insight cache with fresh results
-4. Updates the debounce state file
-
-This process runs independently -- it doesn't block Claude Code and continues even if you close your terminal.
+1. Scans supported local session sources
+2. Runs deterministic extraction and typed stage persistence
+3. Executes the domain/type/content/translation skills inside Claude Code
+4. Generates the local report and optionally syncs the canonical run to the dashboard
 
 ## Setup
 
 ### Prerequisites
 
-- A running BetterPrompt server (local: `npm run dev`, or team-hosted)
-- Node.js 18+
+- Claude Code with plugin support
+- Node.js 18+ only if you are building the plugin from source
 
 ### 1. Build the Plugin
 
@@ -94,25 +99,14 @@ npm install
 npm run build
 ```
 
-### 2. Register with Claude Code
+### 2. Install in Claude Code
 
-Add the MCP server to your Claude Code settings (`~/.claude/settings.json`):
+In Claude Code:
 
-```json
-{
-  "mcpServers": {
-    "betterprompt": {
-      "command": "node",
-      "args": ["/absolute/path/to/BetterPrompt/packages/plugin/dist/mcp/server.js"],
-      "env": {
-        "BETTERPROMPT_SERVER_URL": "http://localhost:3000"
-      }
-    }
-  }
-}
+```text
+/plugin marketplace add onlycastle/BetterPrompt
+/plugin install betterprompt@betterprompt
 ```
-
-Replace `/absolute/path/to/BetterPrompt` with the actual path where you cloned the repo.
 
 ### Configuration
 
@@ -120,7 +114,7 @@ The plugin reads from environment variables:
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `BETTERPROMPT_SERVER_URL` | No | `http://localhost:3000` | Your server URL |
+| `BETTERPROMPT_SERVER_URL` | No | `http://localhost:3000` | Team server URL for sync/cache refresh |
 | `BETTERPROMPT_AUTO_ANALYZE` | No | `true` | Enable/disable auto-analysis |
 | `BETTERPROMPT_ANALYZE_THRESHOLD` | No | `5` | Sessions before auto-trigger |
 
@@ -145,24 +139,24 @@ All plugin state lives under `~/.betterprompt/`:
 | File | Purpose |
 |------|---------|
 | `insight-cache.db` | SQLite cache of analysis summaries (24h TTL) |
-| `plugin-state.json` | Debounce tracking (last analysis time, session count, in-progress flag) |
-| `plugin-errors.log` | Background analyzer error log |
+| `plugin-state.json` | Debounce + lifecycle tracking (`idle/pending/running/complete/failed`) |
+| `plugin-errors.log` | Hook and deprecation error log |
 
 ## For Team Managers
 
 The plugin is designed for team deployment:
 
 1. **Deploy the server** -- run the Next.js app on a shared machine
-2. **Share the URL** -- team members set `BETTERPROMPT_SERVER_URL`
-3. **Members install the plugin** -- each person registers the MCP server in their Claude Code settings
-4. **Insights flow automatically** -- members get personal insights; managers see team-wide analytics on the enterprise dashboard
+2. **Share the URL/auth token** -- team members configure `sync_to_team`
+3. **Members install the plugin** -- each person installs BetterPrompt in Claude Code
+4. **Insights flow automatically** -- members run local analysis; managers see synced team analytics on the enterprise dashboard
 
 Each developer's analysis data flows to the shared server, where the enterprise dashboard aggregates it into team-level views (skill gaps, type distributions, growth patterns).
 
 ## Troubleshooting
 
 **No insights appearing?**
-- Check `~/.betterprompt/plugin-errors.log` for background analyzer errors
+- Check `~/.betterprompt/plugin-errors.log` for hook or sync errors
 - Verify the server is running: `curl http://localhost:3000/api/auth/me`
 - Check debounce state: `cat ~/.betterprompt/plugin-state.json`
 
