@@ -32,7 +32,7 @@ interface PluginDomainResult {
   growthAreas: Array<{
     title: string;
     description: string;
-    severity: 'low' | 'medium' | 'high';
+    severity: 'critical' | 'high' | 'medium' | 'low';
     recommendation: string;
     evidence: Array<{ utteranceId: string; quote: string; context?: string }>;
   }>;
@@ -274,6 +274,7 @@ export async function POST(request: NextRequest) {
     // This shared secret is configured on both the server and plugin side.
     const authHeader = request.headers.get('authorization');
     const expectedToken = process.env.BETTERPROMPT_AUTH_TOKEN;
+    let authenticated = false;
 
     if (expectedToken) {
       const providedToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -283,10 +284,12 @@ export async function POST(request: NextRequest) {
           { status: 401 },
         );
       }
+      authenticated = true;
     }
 
-    // Resolve user: check for email in X-User-Email header, fall back to local user
-    const emailHeader = request.headers.get('x-user-email');
+    // Resolve user: only trust X-User-Email when authenticated via token.
+    // Without token auth, fall back to local user to prevent identity spoofing.
+    const emailHeader = authenticated ? request.headers.get('x-user-email') : null;
     let userId: string;
 
     if (emailHeader) {
