@@ -53,7 +53,7 @@ export function handleSessionEndHook(hookInput, deps = DEFAULT_DEPS, env = proce
         };
     }
     deps.recoverStaleAnalysisState({
-        force: true,
+        force: false,
         reason: 'Recovered stale running state on SessionEnd hook startup.',
     });
     const durationMs = resolveSessionDurationMs(hookInput, env, deps.estimateSessionDurationMsFromTranscript);

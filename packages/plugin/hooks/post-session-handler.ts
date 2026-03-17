@@ -90,7 +90,7 @@ export function handleSessionEndHook(
   }
 
   deps.recoverStaleAnalysisState({
-    force: true,
+    force: false,
     reason: 'Recovered stale running state on SessionEnd hook startup.',
   });
 
