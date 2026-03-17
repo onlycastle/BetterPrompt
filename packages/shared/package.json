@@ -1,0 +1,24 @@
+{
+  "name": "@betterprompt/shared",
+  "version": "0.1.0",
+  "description": "Shared types, schemas, and deterministic logic for BetterPrompt analysis pipeline",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./schemas": "./dist/schemas/index.js",
+    "./evaluation": "./dist/evaluation/index.js",
+    "./scoring": "./dist/scoring/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

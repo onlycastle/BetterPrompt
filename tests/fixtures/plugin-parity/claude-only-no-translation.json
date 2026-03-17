@@ -1,0 +1,382 @@
+{
+  "runId": 101,
+  "analyzedAt": "2026-03-16T18:00:00.000Z",
+  "phase1Output": {
+    "developerUtterances": [
+      {
+        "id": "session-1_0",
+        "text": "Please add verification before merging this change.",
+        "timestamp": "2026-03-15T18:00:00.000Z",
+        "sessionId": "session-1",
+        "turnIndex": 0,
+        "characterCount": 48,
+        "wordCount": 8,
+        "hasCodeBlock": false,
+        "hasQuestion": false,
+        "isSessionStart": true,
+        "isContinuation": false
+      }
+    ],
+    "sessionMetrics": {
+      "totalSessions": 1,
+      "totalMessages": 2,
+      "totalDeveloperUtterances": 1,
+      "totalAIResponses": 1,
+      "avgMessagesPerSession": 2,
+      "avgDeveloperMessageLength": 48,
+      "questionRatio": 0,
+      "codeBlockRatio": 0,
+      "dateRange": {
+        "earliest": "2026-03-15T18:00:00.000Z",
+        "latest": "2026-03-15T18:05:00.000Z"
+      }
+    },
+    "activitySessions": [
+      {
+        "sessionId": "session-1",
+        "projectName": "nomoreaislop",
+        "projectPath": "/tmp/nomoreaislop",
+        "startTime": "2026-03-15T18:00:00.000Z",
+        "durationSeconds": 600,
+        "messageCount": 2,
+        "userMessageCount": 1,
+        "assistantMessageCount": 1,
+        "totalInputTokens": 120,
+        "totalOutputTokens": 80,
+        "firstUserMessage": "Please add verification before merging this change."
+      }
+    ],
+    "sessions": [
+      {
+        "sessionId": "session-1",
+        "projectPath": "/tmp/nomoreaislop",
+        "projectName": "nomoreaislop",
+        "startTime": "2026-03-15T18:00:00.000Z",
+        "endTime": "2026-03-15T18:10:00.000Z",
+        "durationSeconds": 600,
+        "claudeCodeVersion": "1.0.0",
+        "messages": [
+          {
+            "uuid": "user-1",
+            "role": "user",
+            "timestamp": "2026-03-15T18:00:00.000Z",
+            "content": "Please add verification before merging this change."
+          },
+          {
+            "uuid": "assistant-1",
+            "role": "assistant",
+            "timestamp": "2026-03-15T18:05:00.000Z",
+            "content": "Added verification.",
+            "toolCalls": [
+              {
+                "id": "tool-1",
+                "name": "edit_file",
+                "input": {},
+                "result": "ok"
+              }
+            ],
+            "tokenUsage": {
+              "input": 120,
+              "output": 80
+            }
+          }
+        ],
+        "stats": {
+          "userMessageCount": 1,
+          "assistantMessageCount": 1,
+          "toolCallCount": 1,
+          "uniqueToolsUsed": [
+            "edit_file"
+          ],
+          "totalInputTokens": 120,
+          "totalOutputTokens": 80
+        },
+        "source": "claude-code"
+      }
+    ]
+  },
+  "deterministicScores": {
+    "thinkingQuality": 80,
+    "communicationPatterns": 82,
+    "learningBehavior": 70,
+    "contextEfficiency": 76,
+    "sessionOutcome": 75,
+    "controlScore": 74
+  },
+  "typeResult": {
+    "primaryType": "architect",
+    "distribution": {
+      "architect": 45,
+      "analyst": 20,
+      "conductor": 15,
+      "speedrunner": 10,
+      "trendsetter": 10
+    },
+    "controlLevel": "navigator",
+    "controlScore": 74,
+    "matrixName": "Systems Architect",
+    "matrixEmoji": "ARCH"
+  },
+  "domainResults": [
+    {
+      "domain": "communicationPatterns",
+      "overallScore": 82,
+      "confidenceScore": 0.8,
+      "strengths": [
+        {
+          "title": "Specific requests",
+          "description": "The developer gives concrete goals, explicit completion conditions, and clear acceptance criteria so the assistant can act with less ambiguity and fewer hidden assumptions.",
+          "evidence": [
+            {
+              "utteranceId": "session-1_0",
+              "quote": "Please add verification before merging this change."
+            }
+          ]
+        }
+      ],
+      "growthAreas": [],
+      "data": {
+        "communicationPatterns": [
+          {
+            "title": "Verification-first prompts",
+            "description": "The developer asks for explicit verification before completion.",
+            "frequency": "frequent",
+            "evidence": [
+              {
+                "utteranceId": "session-1_0",
+                "quote": "Please add verification before merging this change.",
+                "context": "Sets a clear quality bar."
+              }
+            ],
+            "effectiveness": "highly_effective"
+          }
+        ]
+      },
+      "analyzedAt": "2026-03-16T18:00:00.000Z"
+    },
+    {
+      "domain": "contextEfficiency",
+      "overallScore": 76,
+      "confidenceScore": 0.7,
+      "strengths": [],
+      "growthAreas": [
+        {
+          "title": "Long context carryover",
+          "description": "The developer occasionally keeps too much stale context around between steps, which can blur the current objective and make it harder for the assistant to separate old assumptions from the next task.",
+          "severity": "medium",
+          "recommendation": "Trim no-longer-needed context between phases and restate the current objective before asking for the next change.",
+          "evidence": [
+            {
+              "utteranceId": "session-1_0",
+              "quote": "Please add verification before merging this change."
+            },
+            {
+              "utteranceId": "session-1_1",
+              "quote": "Unverified stale context example."
+            }
+          ]
+        }
+      ],
+      "data": {
+        "inefficiencyPatterns": [
+          {
+            "type": "stale_context",
+            "frequency": 30,
+            "impact": "medium"
+          }
+        ]
+      },
+      "analyzedAt": "2026-03-16T18:00:00.000Z"
+    }
+  ],
+  "stageOutputs": {
+    "sessionSummaries": {
+      "summaries": [
+        {
+          "sessionId": "session-1",
+          "summary": "Added verification before merge."
+        }
+      ]
+    },
+    "projectSummaries": {
+      "projects": [
+        {
+          "projectName": "nomoreaislop",
+          "summaryLines": [
+            "Improved plugin parity flow."
+          ],
+          "sessionCount": 1
+        }
+      ]
+    },
+    "weeklyInsights": {
+      "stats": {
+        "sessionCount": 1,
+        "totalMinutes": 10,
+        "totalTokens": 200,
+        "activeDays": 1
+      },
+      "projects": [
+        {
+          "projectName": "nomoreaislop",
+          "sessionCount": 1,
+          "percentage": 100
+        }
+      ],
+      "topSessions": [
+        {
+          "sessionId": "session-1",
+          "summary": "Added verification before merge."
+        }
+      ],
+      "narrative": "A focused week on plugin parity.",
+      "highlights": [
+        "Tightened report and sync contracts."
+      ]
+    },
+    "typeClassification": {
+      "reasoning": [
+        "You consistently ask for verification before considering work complete."
+      ],
+      "personalityNarrative": [
+        "You prefer explicit quality gates."
+      ],
+      "collaborationMaturity": "structured"
+    },
+    "contentWriter": {
+      "topFocusAreas": [
+        {
+          "title": "Keep verification visible",
+          "description": "Continue making completion checks explicit in prompts and review steps.",
+          "relatedQualities": [
+            "thinkingQuality"
+          ],
+          "actions": {
+            "start": "List the proof command up front.",
+            "stop": "Accepting unchecked changes.",
+            "continue": "Requesting validation."
+          }
+        }
+      ]
+    },
+    "evidenceVerification": {
+      "threshold": 75,
+      "domainStats": [
+        {
+          "domain": "contextEfficiency",
+          "totalEvidence": 2,
+          "keptCount": 1,
+          "filteredCount": 1
+        }
+      ],
+      "verifiedResults": [
+        {
+          "utteranceId": "session-1_0",
+          "quote": "Please add verification before merging this change.",
+          "relevanceScore": 91,
+          "verified": true
+        },
+        {
+          "utteranceId": "session-1_1",
+          "quote": "Unverified stale context example.",
+          "relevanceScore": 20,
+          "verified": false
+        }
+      ]
+    }
+  },
+  "expectedFinalSections": {
+    "activitySessions": [
+      {
+        "sessionId": "session-1",
+        "projectName": "nomoreaislop",
+        "startTime": "2026-03-15T18:00:00.000Z",
+        "durationMinutes": 10,
+        "messageCount": 2,
+        "summary": "Added verification before merge.",
+        "totalInputTokens": 120,
+        "totalOutputTokens": 80
+      }
+    ],
+    "sessionSummaries": [
+      {
+        "sessionId": "session-1",
+        "summary": "Added verification before merge."
+      }
+    ],
+    "projectSummaries": [
+      {
+        "projectName": "nomoreaislop",
+        "summaryLines": [
+          "Improved plugin parity flow."
+        ],
+        "sessionCount": 1
+      }
+    ],
+    "weeklyInsights": {
+      "weekRange": {
+        "start": "2026-03-09T18:00:00.000Z",
+        "end": "2026-03-15T18:00:00.000Z"
+      },
+      "stats": {
+        "totalSessions": 1,
+        "totalMinutes": 10,
+        "totalTokens": 200,
+        "activeDays": 1,
+        "avgSessionMinutes": 10
+      },
+      "projects": [
+        {
+          "projectName": "nomoreaislop",
+          "sessionCount": 1,
+          "totalMinutes": 10,
+          "percentage": 100
+        }
+      ],
+      "topProjectSessions": [
+        {
+          "summary": "Added verification before merge.",
+          "durationMinutes": 10,
+          "date": "Mar 15"
+        }
+      ],
+      "narrative": "A focused week on plugin parity.",
+      "highlights": [
+        "Tightened report and sync contracts."
+      ]
+    },
+    "personalitySummary": "You prefer explicit quality gates.",
+    "promptPatterns": [
+      {
+        "patternName": "Verification-first prompts",
+        "description": "The developer asks for explicit verification before completion.",
+        "frequency": "frequent",
+        "examples": [
+          {
+            "quote": "Please add verification before merging this change.",
+            "analysis": "Sets a clear quality bar."
+          }
+        ],
+        "effectiveness": "highly_effective"
+      }
+    ],
+    "topFocusAreas": {
+      "summary": "Highest-leverage collaboration habits surfaced in this analysis.",
+      "areas": [
+        {
+          "rank": 1,
+          "dimension": "aiControl",
+          "title": "Keep verification visible",
+          "narrative": "Continue making completion checks explicit in prompts and review steps.",
+          "expectedImpact": "Improves thinkingQuality.",
+          "priorityScore": 100,
+          "actions": {
+            "start": "List the proof command up front.",
+            "stop": "Accepting unchecked changes.",
+            "continue": "Requesting validation."
+          }
+        }
+      ]
+    }
+  }
+}
