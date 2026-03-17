@@ -28,10 +28,10 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.BETTERPROMPT_BASE_URL || 'http://localhost:3000'),
   title: 'BetterPrompt - Self-Hosted AI Session Intelligence',
-  description: 'Analyze Claude Code and Cursor sessions on your own server with local auth, SQLite storage, and Gemini-powered workers.',
+  description: 'Analyze Claude Code and Cursor sessions locally inside Claude Code, then optionally sync results to your BetterPrompt dashboard.',
   openGraph: {
     title: 'BetterPrompt - Self-Hosted AI Session Intelligence',
-    description: 'Analyze Claude Code and Cursor sessions on your own server with local auth, SQLite storage, and Gemini-powered workers.',
+    description: 'Analyze Claude Code and Cursor sessions locally inside Claude Code, then optionally sync results to your BetterPrompt dashboard.',
     type: 'website',
     siteName: 'BetterPrompt',
   },

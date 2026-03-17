@@ -218,9 +218,9 @@ function ReportTabContent({
       <div className={styles.emptyState}>
         <div className={styles.emptyIcon}>&#128202;</div>
         <h3>No Analysis Reports Yet</h3>
-        <p>Run your first analysis to see your AI insights here.</p>
+        <p>Install the Claude Code plugin and run your first local analysis to see your AI insights here.</p>
         <div className={styles.cliBox}>
-          <code>npx betterprompt-cli</code>
+          <code>/plugin install betterprompt@betterprompt</code>
         </div>
       </div>
     );
@@ -298,7 +298,7 @@ function ProgressTabWrapper({ analyses }: { analyses: UserAnalysis[] }) {
         <h3>No Progress Data Yet</h3>
         <p>Complete your first analysis to start tracking your growth journey.</p>
         <div className={styles.cliBox}>
-          <code>npx betterprompt-cli</code>
+          <code>Analyze my coding sessions and generate a report</code>
         </div>
       </div>
     );

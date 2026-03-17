@@ -47,8 +47,8 @@ export function DocsPage() {
                 <div className={styles.stepContent}>
                   <span className={styles.stepTitle}>Connect your AI tool</span>
                   <span className={styles.stepDesc}>
-                    Open your terminal and run one command. It reads your Claude sessions
-                    from your machine and sends selected data to your self-hosted server.
+                    Install the Claude Code plugin once. It reads your local sessions
+                    from your machine and keeps the analysis inside Claude Code.
                   </span>
                 </div>
               </div>
@@ -76,12 +76,12 @@ export function DocsPage() {
 
             <h3 className={styles.heading3}>Run the Command</h3>
             <p className={styles.paragraph}>
-              Open your terminal (Terminal on Mac, or any command prompt) and run:
+              In Claude Code, install the plugin once:
             </p>
-            <CodeBlock code="npx betterprompt-cli" />
+            <CodeBlock code="/plugin install betterprompt@betterprompt" />
             <p className={styles.paragraph}>
-              That&apos;s it. The tool will guide you through sign-in and analysis automatically.
-              First-time setup takes about 30 seconds; analysis runs in about a minute.
+              Then ask Claude Code to analyze your coding sessions and generate a report.
+              The plugin runs locally and can optionally sync the finished run to the dashboard later.
             </p>
 
             <h3 className={styles.heading3}>What Data is Analyzed</h3>
@@ -92,7 +92,7 @@ export function DocsPage() {
             </p>
             <p className={styles.paragraph}>
               Your session data stays on your machine. Only the analysis results (scores,
-              insights, your report) are stored on the self-hosted server you control.
+              insights, your report) are stored locally unless you explicitly sync them to a team server you control.
             </p>
           </DocsSection>
 
@@ -149,8 +149,8 @@ export function DocsPage() {
               </summary>
               <div className={styles.accordionBody}>
                 <p className={styles.paragraph}>
-                  The pipeline runs across 8 phases (11–12 LLM calls total),
-                  using Gemini 3 Flash for all AI-powered stages.
+                  The pipeline runs across deterministic extraction, domain analysis, type classification,
+                  evidence verification, optional translation, and final report assembly inside Claude Code.
                 </p>
 
                 <h4 className={styles.heading4}>Phase 1: Data Extraction (CLI)</h4>
@@ -211,32 +211,22 @@ export function DocsPage() {
 
                 <h4 className={styles.heading4}>Pipeline Overview</h4>
                 <div className={styles.pipelineDiagram}>
-                  <pre className={styles.asciiDiagram}>{`~/.claude/projects/ --> DataExtractor --> Sessions
-        |
-   Gemini 3 Flash
-        |
-  Phase 1.5: SessionSummarizer (1 LLM)
+                  <pre className={styles.asciiDiagram}>{`Local session logs --> Phase 1 extraction --> Session summaries
         |
   +-----------------------------------------------+
-  |  5 Insight Workers (parallel, 5 LLM)          |
+  |  5 domain skills + stage outputs              |
   |  ThinkingQuality ----+                        |
   |  CommunicationPatt --+                        |
-  |  LearningBehavior ---+--> Worker Insights     |
+  |  LearningBehavior ---+--> Canonical run       |
   |  ContextEfficiency --+                        |
   |  SessionOutcome -----+                        |
-  |                                               |
-  |  ProjectSummarizer (1 LLM) ─┐  (parallel)    |
-  |  WeeklyInsightGen  (1 LLM) ─┘                |
   +-----------------------------------------------+
         |
-  Phase 2.5:  TypeClassifier (1 LLM)
-  Phase 2.75: KnowledgeResourceMatcher (0 LLM)
-  Phase 2.8:  EvidenceVerifier (1 LLM)
+  Type classification --> Evidence verification
         |
-  Phase 3: ContentWriter (1 LLM)
-  Phase 4: Translator (0-1 LLM)
+  Content writer --> Optional translator
         |
-   SQLite + Local Files --> Web Report`}</pre>
+   Final assembly --> Local report / Optional sync`}</pre>
                 </div>
               </div>
             </details>
@@ -454,20 +444,19 @@ export function DocsPage() {
 
             <details className={styles.accordion}>
               <summary className={styles.accordionSummary}>
-                CLI commands reference
+                Plugin commands reference
               </summary>
               <div className={styles.accordionBody}>
-                <h4 className={styles.heading4}>Main Command</h4>
-                <CodeBlock code="npx betterprompt-cli" />
+                <h4 className={styles.heading4}>Install</h4>
+                <CodeBlock code="/plugin install betterprompt@betterprompt" />
                 <p className={styles.paragraph}>
-                  Analyzes your Claude AI sessions and generates a report on your self-hosted server.
-                  The CLI auto-connects to your local server with zero-config authentication.
+                  Installs the BetterPrompt Claude Code plugin, including its MCP tools, hooks, and analysis skills.
                 </p>
 
-                <h4 className={styles.heading4}>Help</h4>
-                <CodeBlock code="npx betterprompt-cli help" />
+                <h4 className={styles.heading4}>Run Analysis</h4>
+                <CodeBlock code="Analyze my coding sessions and generate a report" />
                 <p className={styles.paragraph}>
-                  Displays all available commands and usage information.
+                  Tells Claude Code to run the full local BetterPrompt pipeline and open your report.
                 </p>
               </div>
             </details>

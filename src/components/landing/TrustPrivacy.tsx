@@ -7,18 +7,18 @@ import styles from './TrustPrivacy.module.css';
 const TRUST_ITEMS = [
   {
     icon: Shield,
-    label: 'On Your Server',
-    text: 'Session data stays on your server - nothing leaves your network',
+    label: 'On Your Machine',
+    text: 'Session data stays local during analysis and does not leave your machine by default',
   },
   {
     icon: Lock,
-    label: 'Self-Hosted',
-    text: 'Self-hosted means you control access, encryption, and retention',
+    label: 'Plugin-First',
+    text: 'Claude Code runs the analysis locally with the model session you already have open',
   },
   {
     icon: EyeOff,
-    label: 'No Background',
-    text: 'No background processes. Nothing runs until you say so.',
+    label: 'Queued, Not Detached',
+    text: 'Auto-analysis is queued into the next Claude Code session instead of spawning hidden background jobs',
   },
 ] as const;
 
@@ -46,7 +46,7 @@ export function TrustPrivacy() {
         </div>
 
         <p className={styles.clarification}>
-          BetterPrompt is open source and self-hosted. Analysis runs on your server with your own Gemini API key. No session data ever leaves your network.
+          BetterPrompt is open source and local-first. Analysis runs inside Claude Code, and team sync is optional if you want dashboard storage.
         </p>
       </div>
     </section>

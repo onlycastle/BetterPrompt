@@ -19,6 +19,7 @@
  * @module analyzer/stages/evaluation-assembler
  */
 
+import { mergeTranslatedEvaluationFields } from '@betterprompt/shared/evaluation';
 import {
   normalizeReasoning,
   aggregateWorkerInsights as doAggregateWorkerInsights,
@@ -935,44 +936,11 @@ export function mergeTranslatedFields(
   translated: TranslatorOutput,
   targetLanguage?: SupportedLanguage
 ): void {
-  // Direct field assignments (truncate translated text — may exceed original length)
-  // Translation length guard: reject translations that compress too aggressively
-  // CJK languages (ko, ja, zh) naturally produce shorter text (~45-65% of English length)
-  // so we use a lower threshold (0.45) to avoid rejecting valid translations.
-  const CJK_LANGUAGES = new Set(['ko', 'ja', 'zh']);
-  const isCJK = targetLanguage ? CJK_LANGUAGES.has(targetLanguage) : false;
-  const minLengthRatio = isCJK ? 0.45 : 0.65;
-
-  if (translated.personalitySummary) {
-    const englishLength = typeof englishResponse.personalitySummary === 'string'
-      ? englishResponse.personalitySummary.length
-      : 0;
-    const translatedLength = translated.personalitySummary.length;
-    const ratio = englishLength > 0 ? translatedLength / englishLength : 1;
-
-    if (ratio < minLengthRatio && englishLength > 0) {
-      console.warn(
-        `[EvalAssembler] Translation too short: ${translatedLength} chars (${(ratio * 100).toFixed(0)}% of English ${englishLength} chars, threshold=${(minLengthRatio * 100).toFixed(0)}%). Keeping English original.`
-      );
-    } else {
-      englishResponse.personalitySummary = truncatePersonalitySummary(translated.personalitySummary);
-    }
-  }
-  if (translated.translatedAgentInsights) {
-    englishResponse.translatedAgentInsights = translated.translatedAgentInsights;
-  }
-
-  // Project summaries
-  mergeProjectSummaries(englishResponse, translated);
-
-  // Weekly insights
-  mergeWeeklyInsights(englishResponse, translated);
-
-  // Prompt patterns
-  mergePromptPatterns(englishResponse, translated);
-
-  // Top focus areas
-  mergeTopFocusAreas(englishResponse, translated);
+  mergeTranslatedEvaluationFields(
+    englishResponse,
+    translated as unknown as Record<string, unknown>,
+    targetLanguage,
+  );
 
   // Anti-patterns analysis
   mergeAntiPatternsAnalysis(englishResponse, translated);
@@ -983,88 +951,6 @@ export function mergeTranslatedFields(
 
   // Actionable practices
   mergeActionablePractices(englishResponse, translated);
-}
-
-// ============================================================================
-// Translation Merge Helpers
-// ============================================================================
-
-function mergePromptPatterns(
-  englishResponse: Record<string, unknown>,
-  translated: TranslatorOutput
-): void {
-  if (
-    !Array.isArray(translated.promptPatterns) ||
-    !Array.isArray(englishResponse.promptPatterns)
-  )
-    return;
-
-  const minLength = Math.min(
-    translated.promptPatterns.length,
-    (englishResponse.promptPatterns as any[]).length
-  );
-  for (let i = 0; i < minLength; i++) {
-    const tp = translated.promptPatterns[i];
-    const ep = (englishResponse.promptPatterns as any[])[i];
-
-    if (tp.patternName) ep.patternName = tp.patternName;
-    if (tp.description) ep.description = tp.description;
-    if (tp.tip) ep.tip = tp.tip;
-
-    if (tp.examples && Array.isArray(ep.examples)) {
-      // New structured format
-      for (let j = 0; j < Math.min(tp.examples.length, ep.examples.length); j++) {
-        if (tp.examples[j]?.analysis) {
-          ep.examples[j].analysis = tp.examples[j].analysis;
-        }
-      }
-    } else if ((tp as any).examplesData && Array.isArray(ep.examples)) {
-      // Legacy pipe-delimited fallback
-      const translatedExamples = (tp as any).examplesData.split(';').filter(Boolean);
-      for (let j = 0; j < Math.min(translatedExamples.length, ep.examples.length); j++) {
-        const parts = translatedExamples[j].split('|');
-        if (parts.length >= 2) {
-          ep.examples[j].analysis = parts[1];
-        }
-      }
-    }
-  }
-}
-
-function mergeTopFocusAreas(
-  englishResponse: Record<string, unknown>,
-  translated: TranslatorOutput
-): void {
-  if (!translated.topFocusAreas || !englishResponse.topFocusAreas) return;
-
-  const topFocusAreas = englishResponse.topFocusAreas as any;
-
-  if (translated.topFocusAreas.summary) {
-    topFocusAreas.summary = translated.topFocusAreas.summary;
-  }
-
-  if (
-    !Array.isArray(translated.topFocusAreas.areas) ||
-    !Array.isArray(topFocusAreas.areas)
-  )
-    return;
-
-  for (const ta of translated.topFocusAreas.areas) {
-    const ea = (topFocusAreas.areas as any[]).find((a: any) => a.rank === ta.rank);
-    if (!ea) continue;
-
-    if (ta.title) ea.title = ta.title;
-    if (ta.narrative) ea.narrative = ta.narrative;
-    if (ta.expectedImpact) ea.expectedImpact = ta.expectedImpact;
-    if (ta.actions && ea.actions) {
-      // New structured format
-      ea.actions = { start: ta.actions.start || '', stop: ta.actions.stop || '', continue: ta.actions.continue || '' };
-    } else if ((ta as any).actionsData && ea.actions) {
-      // Legacy pipe-delimited fallback
-      const [start, stop, cont] = (ta as any).actionsData.split('|');
-      ea.actions = { start: start || '', stop: stop || '', continue: cont || '' };
-    }
-  }
 }
 
 function mergeAntiPatternsAnalysis(
@@ -1148,46 +1034,6 @@ function mergeActionablePractices(
       );
       if (eo && to.tip) eo.tip = to.tip;
     }
-  }
-}
-
-function mergeProjectSummaries(
-  englishResponse: Record<string, unknown>,
-  translated: TranslatorOutput
-): void {
-  if (!translated.projectSummaries || !Array.isArray(englishResponse.projectSummaries)) return;
-
-  const englishProjects = englishResponse.projectSummaries as Array<{
-    projectName: string;
-    summaryLines: string[];
-    sessionCount: number;
-  }>;
-
-  for (const tp of translated.projectSummaries) {
-    const ep = englishProjects.find(p => p.projectName === tp.projectName);
-    if (!ep) continue;
-
-    // Overlay translated summaryLines, keeping sessionCount from English
-    if (tp.summaryLines && tp.summaryLines.length > 0) {
-      ep.summaryLines = tp.summaryLines;
-    }
-  }
-}
-
-function mergeWeeklyInsights(
-  englishResponse: Record<string, unknown>,
-  translated: TranslatorOutput
-): void {
-  if (!translated.weeklyInsights || !englishResponse.weeklyInsights) return;
-
-  const weeklyInsights = englishResponse.weeklyInsights as Record<string, unknown>;
-
-  if (translated.weeklyInsights.narrative) {
-    weeklyInsights.narrative = translated.weeklyInsights.narrative;
-  }
-
-  if (translated.weeklyInsights.highlights?.length) {
-    weeklyInsights.highlights = translated.weeklyInsights.highlights;
   }
 }
 

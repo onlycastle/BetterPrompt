@@ -12,6 +12,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserFromRequest, findUserByEmail } from '@/lib/local/auth';
 import { createAnalysisRecord } from '@/lib/local/analysis-store';
 import type { VerboseEvaluation } from '@/lib/models/verbose-evaluation';
+import {
+  CanonicalAnalysisRunSchema,
+  type CanonicalAnalysisRun,
+} from '@betterprompt/shared';
 
 /**
  * Plugin report shape (from packages/plugin/lib/core/types.ts AnalysisReport)
@@ -76,6 +80,12 @@ interface PluginReport {
     }>;
     personalitySummary?: string[];
   };
+}
+
+interface SyncRequestBody {
+  run?: CanonicalAnalysisRun;
+  report?: PluginReport;
+  syncedAt?: string;
 }
 
 /**
@@ -196,18 +206,69 @@ function transformToEvaluation(report: PluginReport): VerboseEvaluation {
   return evaluation;
 }
 
+export function normalizeCanonicalRunForStorage(run: CanonicalAnalysisRun): {
+  evaluation: VerboseEvaluation;
+  phase1Output: CanonicalAnalysisRun['phase1Output'];
+  canonicalRun: CanonicalAnalysisRun;
+  activitySessions: Array<{
+    sessionId: string;
+    projectName: string;
+    startTime: string;
+    durationMinutes: number;
+    messageCount: number;
+    summary: string;
+  }>;
+} {
+  return {
+    evaluation: run.evaluation as VerboseEvaluation,
+    phase1Output: run.phase1Output,
+    canonicalRun: run,
+    activitySessions: run.activitySessions.map(session => ({
+      sessionId: session.sessionId,
+      projectName: session.projectName,
+      startTime: session.startTime,
+      durationMinutes: session.durationMinutes,
+      messageCount: session.messageCount,
+      summary: session.summary,
+    })),
+  };
+}
+
+export function normalizeLegacyReportForStorage(report: PluginReport): {
+  evaluation: VerboseEvaluation;
+  activitySessions: Array<{
+    sessionId: string;
+    projectName: string;
+    startTime: string;
+    durationMinutes: number;
+    messageCount: number;
+    summary: string;
+  }> | undefined;
+} {
+  const evaluation = transformToEvaluation(report);
+
+  const activitySessions = report.phase1Metrics ? [{
+    sessionId: `plugin-${Date.now()}`,
+    projectName: 'plugin-analysis',
+    startTime: report.phase1Metrics.dateRange?.earliest ?? new Date().toISOString(),
+    durationMinutes: 0,
+    messageCount: report.phase1Metrics.totalMessages,
+    summary: `Plugin analysis of ${report.phase1Metrics.totalSessions} sessions`,
+  }] : undefined;
+
+  return { evaluation, activitySessions };
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as { report?: PluginReport; syncedAt?: string };
+    const body = await request.json() as SyncRequestBody;
 
-    if (!body.report) {
+    if (!body.report && !body.run) {
       return NextResponse.json(
-        { error: 'missing_report', message: 'Request body must include a report object.' },
+        { error: 'missing_payload', message: 'Request body must include a canonical run or legacy report object.' },
         { status: 400 },
       );
     }
-
-    const report = body.report;
 
     // Resolve user: check auth header first, fall back to local user
     const authHeader = request.headers.get('authorization');
@@ -222,25 +283,30 @@ export async function POST(request: NextRequest) {
       userId = getCurrentUserFromRequest().id;
     }
 
-    // Transform plugin report to VerboseEvaluation
-    const evaluation = transformToEvaluation(report);
-
-    // Build activity sessions from phase1 metrics (minimal)
-    const activitySessions = report.phase1Metrics ? [{
-      sessionId: `plugin-${Date.now()}`,
-      projectName: 'plugin-analysis',
-      startTime: report.phase1Metrics.dateRange?.earliest ?? new Date().toISOString(),
-      durationMinutes: 0,
-      messageCount: report.phase1Metrics.totalMessages,
-      summary: `Plugin analysis of ${report.phase1Metrics.totalSessions} sessions`,
-    }] : undefined;
+    const normalized = body.run
+      ? (() => {
+          const parsedRun = CanonicalAnalysisRunSchema.safeParse(body.run);
+          if (!parsedRun.success) {
+            throw new Error(`Invalid canonical analysis run: ${parsedRun.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ')}`);
+          }
+          return normalizeCanonicalRunForStorage(parsedRun.data);
+        })()
+      : normalizeLegacyReportForStorage(body.report!);
 
     // Store the analysis record
-    const record = createAnalysisRecord({
-      userId,
-      evaluation,
-      activitySessions,
-    });
+    const record = body.run
+      ? createAnalysisRecord({
+          userId,
+          evaluation: normalized.evaluation,
+          phase1Output: (normalized as ReturnType<typeof normalizeCanonicalRunForStorage>).phase1Output,
+          canonicalRun: (normalized as ReturnType<typeof normalizeCanonicalRunForStorage>).canonicalRun,
+          activitySessions: normalized.activitySessions,
+        })
+      : createAnalysisRecord({
+          userId,
+          evaluation: normalized.evaluation,
+          activitySessions: normalized.activitySessions,
+        });
 
     return NextResponse.json({
       status: 'ok',
