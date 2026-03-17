@@ -6,5 +6,6 @@
  *
  * @module plugin/lib/report-template
  */
-import type { AnalysisReport } from './core/types.js';
+import type { AnalysisReport, CanonicalAnalysisRun } from './core/types.js';
 export declare function generateReportHtml(report: AnalysisReport): string;
+export declare function generateCanonicalReportHtml(run: CanonicalAnalysisRun): string;

@@ -1,15 +1,17 @@
 /**
  * Core Types for Plugin-First Architecture
  *
- * Minimal type definitions needed by MCP tools and core modules.
- * These mirror the types from src/lib/models/ but are standalone
- * to avoid cross-compilation boundary issues.
+ * Re-exports canonical types from @betterprompt/shared for Phase 1,
+ * deterministic scoring, domain results, and constants.
+ *
+ * Plugin-specific types (JSONL parsing, session metadata) remain here.
  *
  * @module plugin/lib/core/types
  */
 import { z } from 'zod';
+export { CONTEXT_WINDOW_SIZE, MATRIX_NAMES, MATRIX_METADATA, } from '@betterprompt/shared';
 // ============================================================================
-// Session Types (from src/lib/models/session.ts)
+// Session Types (plugin-specific JSONL parsing)
 // ============================================================================
 export const TextBlockSchema = z.object({
     type: z.literal('text'),
@@ -85,65 +87,4 @@ export const JSONLLineSchema = z.discriminatedUnion('type', [
     z.object({ type: z.literal('queue-operation'), timestamp: z.string() }).passthrough(),
     z.object({ type: z.literal('file-history-snapshot'), timestamp: z.string() }).passthrough(),
 ]);
-// ============================================================================
-// Matrix Names & Metadata (from src/lib/models/coding-style.ts)
-// ============================================================================
-// ============================================================================
-// Shared Constants
-// ============================================================================
-export const CONTEXT_WINDOW_SIZE = 200_000;
-export const MATRIX_NAMES = {
-    architect: {
-        explorer: 'Sketch Architect',
-        navigator: 'Blueprint Architect',
-        cartographer: 'Master Architect',
-    },
-    analyst: {
-        explorer: 'Curious Analyst',
-        navigator: 'Systematic Analyst',
-        cartographer: 'Forensic Analyst',
-    },
-    conductor: {
-        explorer: 'Jam Session Conductor',
-        navigator: 'Ensemble Conductor',
-        cartographer: 'Symphony Conductor',
-    },
-    speedrunner: {
-        explorer: 'Freestyle Speedrunner',
-        navigator: 'Route Speedrunner',
-        cartographer: 'TAS Speedrunner',
-    },
-    trendsetter: {
-        explorer: 'Vibe Trendsetter',
-        navigator: 'Wave Trendsetter',
-        cartographer: 'Signal Trendsetter',
-    },
-};
-export const MATRIX_METADATA = {
-    architect: {
-        explorer: { emoji: '✏️' },
-        navigator: { emoji: '📐' },
-        cartographer: { emoji: '🏗️' },
-    },
-    analyst: {
-        explorer: { emoji: '🔍' },
-        navigator: { emoji: '🔬' },
-        cartographer: { emoji: '🧬' },
-    },
-    conductor: {
-        explorer: { emoji: '🎸' },
-        navigator: { emoji: '🎼' },
-        cartographer: { emoji: '🎻' },
-    },
-    speedrunner: {
-        explorer: { emoji: '🏄' },
-        navigator: { emoji: '⚡' },
-        cartographer: { emoji: '🎮' },
-    },
-    trendsetter: {
-        explorer: { emoji: '🌊' },
-        navigator: { emoji: '📡' },
-        cartographer: { emoji: '🔮' },
-    },
-};
 //# sourceMappingURL=types.js.map

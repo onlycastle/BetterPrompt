@@ -4,7 +4,8 @@
  * Sends analysis results to a team server (self-hosted or cloud).
  * Optional tool — only works when BETTERPROMPT_SERVER_URL is configured.
  */
-import { assembleReport } from '../../lib/results-db.js';
+import { assembleCanonicalRun } from '../../lib/results-db.js';
+import { markAnalysisComplete } from '../../lib/debounce.js';
 export const definition = {
     name: 'sync_to_team',
     description: 'Sync local analysis results to a team BetterPrompt server. ' +
@@ -23,8 +24,8 @@ export async function execute(args) {
                 'or pass serverUrl parameter to enable team sync.',
         });
     }
-    const report = assembleReport();
-    if (!report) {
+    const run = assembleCanonicalRun();
+    if (!run) {
         return JSON.stringify({
             status: 'no_data',
             message: 'No analysis results to sync. Run a full analysis first.',
@@ -39,7 +40,7 @@ export async function execute(args) {
                 ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
             },
             body: JSON.stringify({
-                report,
+                run,
                 syncedAt: new Date().toISOString(),
             }),
             signal: AbortSignal.timeout(15_000),
@@ -53,6 +54,7 @@ export async function execute(args) {
             });
         }
         const result = await response.json().catch(() => ({}));
+        markAnalysisComplete(run.phase1Output.sessionMetrics.totalSessions);
         return JSON.stringify({
             status: 'ok',
             serverUrl,

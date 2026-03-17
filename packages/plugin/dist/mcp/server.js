@@ -9,6 +9,7 @@
  *   scan_sessions          — Scan Claude Code session logs
  *   extract_data           — Run deterministic Phase 1 extraction
  *   save_domain_results    — Save domain analysis results
+ *   get_domain_results     — Read saved domain analysis results
  *   classify_developer_type — Classify developer type from scores
  *   generate_report        — Generate HTML report + start localhost server
  *   sync_to_team           — Sync results to team server (optional)
@@ -27,6 +28,8 @@ import { z } from 'zod';
 import { closeCache, getSummaryWithCache } from '../lib/cache.js';
 import { verifyAuth } from '../lib/api-client.js';
 import { closeResultsDb } from '../lib/results-db.js';
+import { closeStageDb } from '../lib/stage-db.js';
+import { recoverStaleAnalysisState } from '../lib/debounce.js';
 // Legacy server-backed tools
 import { definition as profileDef, formatResult as formatProfile, } from './tools/get-developer-profile.js';
 import { definition as growthDef, formatResult as formatGrowth, } from './tools/get-growth-areas.js';
@@ -35,9 +38,12 @@ import { definition as insightsDef, formatResult as formatInsights, } from './to
 import { definition as scanDef, execute as executeScan, } from './tools/scan-sessions.js';
 import { definition as extractDef, execute as executeExtract, } from './tools/extract-data.js';
 import { definition as saveDomainDef, execute as executeSaveDomain, DomainResultInputSchema, } from './tools/save-domain-results.js';
+import { definition as getDomainResultsDef, execute as executeGetDomainResults, GetDomainResultsInputSchema, } from './tools/get-domain-results.js';
 import { definition as classifyDef, execute as executeClassify, } from './tools/classify-developer-type.js';
 import { definition as reportDef, execute as executeReport, } from './tools/generate-report.js';
 import { definition as syncDef, execute as executeSync, } from './tools/sync-to-team.js';
+import { definition as stageDef, execute as executeStage, StageOutputInputSchema, } from './tools/save-stage-output.js';
+import { definition as getStageOutputDef, execute as executeGetStageOutput, } from './tools/get-stage-output.js';
 // Resolve user ID once at startup (for server-backed tools)
 let resolvedUserId = null;
 async function getUserId() {
@@ -84,6 +90,7 @@ server.tool(extractDef.name, extractDef.description, {
     maxSessions: z.number().optional().describe('Maximum number of recent sessions to analyze (default: 50)'),
 }, wrapToolExecution(executeExtract));
 server.tool(saveDomainDef.name, saveDomainDef.description, DomainResultInputSchema.shape, wrapToolExecution(executeSaveDomain));
+server.tool(getDomainResultsDef.name, getDomainResultsDef.description, GetDomainResultsInputSchema.shape, wrapToolExecution(executeGetDomainResults));
 server.tool(classifyDef.name, classifyDef.description, {}, wrapToolExecution(() => executeClassify({})));
 server.tool(reportDef.name, reportDef.description, {
     port: z.number().optional().describe('Port for the report server (default: 3456)'),
@@ -92,6 +99,10 @@ server.tool(reportDef.name, reportDef.description, {
 server.tool(syncDef.name, syncDef.description, {
     serverUrl: z.string().optional().describe('Override server URL (defaults to BETTERPROMPT_SERVER_URL)'),
 }, wrapToolExecution(executeSync));
+server.tool(stageDef.name, stageDef.description, StageOutputInputSchema.shape, wrapToolExecution(executeStage));
+server.tool(getStageOutputDef.name, getStageOutputDef.description, {
+    stage: z.string().optional().describe('Stage name to retrieve (omit for all stages)'),
+}, wrapToolExecution(executeGetStageOutput));
 // =========================================================================
 // SERVER-BACKED TOOLS (backward compatible)
 // =========================================================================
@@ -121,6 +132,10 @@ server.tool(insightsDef.name, insightsDef.description, {
 // Start
 // ---------------------------------------------------------------------------
 async function main() {
+    recoverStaleAnalysisState({
+        force: true,
+        reason: 'Recovered stale running state on MCP server startup.',
+    });
     const transport = new StdioServerTransport();
     await server.connect(transport);
 }
@@ -132,6 +147,7 @@ main().catch((error) => {
 function cleanup() {
     closeCache();
     closeResultsDb();
+    closeStageDb();
     process.exit(0);
 }
 process.on('SIGINT', cleanup);

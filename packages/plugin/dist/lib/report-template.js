@@ -174,12 +174,14 @@ function generateFocusAreas(content) {
         .map(area => `
       <div class="card focus-card">
         <h3>${escapeHtml(area.title)}</h3>
-        <p>${escapeHtml(area.narrative)}</p>
+        <p>${escapeHtml(area.narrative ?? area.description ?? '')}</p>
+        ${area.actions ? `
         <div class="actions-grid">
           <div class="action start"><strong>Start:</strong> ${escapeHtml(area.actions.start)}</div>
           <div class="action stop"><strong>Stop:</strong> ${escapeHtml(area.actions.stop)}</div>
           <div class="action continue"><strong>Continue:</strong> ${escapeHtml(area.actions.continue)}</div>
         </div>
+        ` : ''}
       </div>
     `)
         .join('');
@@ -187,6 +189,135 @@ function generateFocusAreas(content) {
     <section class="domain-section" id="focus-areas">
       <h2>🎯 Top Focus Areas</h2>
       ${areas}
+    </section>
+  `;
+}
+function generatePersonalitySummary(summary) {
+    if (!summary?.trim())
+        return '';
+    return `
+    <section class="domain-section" id="personality-summary">
+      <h2>🪞 Personality Summary</h2>
+      <div class="card">
+        <p>${escapeHtml(summary).replace(/\n/g, '<br>')}</p>
+      </div>
+    </section>
+  `;
+}
+function generatePromptPatternsSection(promptPatterns) {
+    if (!promptPatterns?.length)
+        return '';
+    const items = promptPatterns
+        .map(pattern => `
+      <div class="card">
+        <h4>${escapeHtml(pattern.patternName ?? 'Pattern')}</h4>
+        <p>${escapeHtml(pattern.description ?? '')}</p>
+        <p style="margin-top:8px;font-size:12px;"><strong>Frequency:</strong> ${escapeHtml(pattern.frequency ?? 'n/a')}</p>
+        ${(pattern.examples?.length ?? 0) > 0 ? `
+          <details>
+            <summary>Examples (${pattern.examples.length})</summary>
+            <ul>
+              ${pattern.examples.map(example => `<li>"${escapeHtml(example.quote ?? '')}"${example.analysis ? ` — ${escapeHtml(example.analysis)}` : ''}</li>`).join('')}
+            </ul>
+          </details>
+        ` : ''}
+      </div>
+    `)
+        .join('');
+    return `
+    <section class="domain-section" id="prompt-patterns">
+      <h2>🧩 Prompt Patterns</h2>
+      <div class="card-grid">${items}</div>
+    </section>
+  `;
+}
+function generateProjectSummariesSection(projectSummaries) {
+    if (!projectSummaries?.length)
+        return '';
+    const items = projectSummaries
+        .map(project => `
+      <div class="card">
+        <h4>${escapeHtml(project.projectName)} <span style="color:var(--ink-muted);font-weight:400;">(${project.sessionCount} sessions)</span></h4>
+        <ul style="padding-left:20px;font-size:13px;color:var(--ink-secondary);">
+          ${project.summaryLines.map(line => `<li>${escapeHtml(line)}</li>`).join('')}
+        </ul>
+      </div>
+    `)
+        .join('');
+    return `
+    <section class="domain-section" id="project-summaries">
+      <h2>📁 Project Summaries</h2>
+      <div class="card-grid">${items}</div>
+    </section>
+  `;
+}
+function generateWeeklyInsightsSection(weeklyInsights) {
+    if (!weeklyInsights)
+        return '';
+    const stats = weeklyInsights.stats;
+    const highlights = weeklyInsights.highlights ?? [];
+    const projects = weeklyInsights.projects ?? [];
+    const topSessions = weeklyInsights.topProjectSessions ?? [];
+    return `
+    <section class="domain-section" id="weekly-insights">
+      <h2>📆 Weekly Insights</h2>
+      ${stats ? `
+        <div class="metrics-bar" style="margin-bottom:16px;">
+          <div class="metric"><div class="value">${stats.totalSessions ?? 0}</div><div class="label">Sessions</div></div>
+          <div class="metric"><div class="value">${Math.round(stats.totalMinutes ?? 0)}</div><div class="label">Minutes</div></div>
+          <div class="metric"><div class="value">${Math.round((stats.totalTokens ?? 0) / 1000)}k</div><div class="label">Tokens</div></div>
+          <div class="metric"><div class="value">${stats.activeDays ?? 0}</div><div class="label">Active Days</div></div>
+        </div>
+      ` : ''}
+      ${weeklyInsights.narrative ? `<div class="card"><p>${escapeHtml(weeklyInsights.narrative)}</p></div>` : ''}
+      ${projects.length > 0 ? `
+        <div class="card">
+          <h4>Project Breakdown</h4>
+          <ul style="padding-left:20px;font-size:13px;color:var(--ink-secondary);">
+            ${projects.map(project => `<li>${escapeHtml(project.projectName)}: ${project.sessionCount} sessions, ${project.percentage}%</li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
+      ${topSessions.length > 0 ? `
+        <div class="card">
+          <h4>Top Sessions</h4>
+          <ul style="padding-left:20px;font-size:13px;color:var(--ink-secondary);">
+            ${topSessions.map(session => `<li>${escapeHtml(session.date)} · ${Math.round(session.durationMinutes)} min · ${escapeHtml(session.summary)}</li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
+      ${highlights.length > 0 ? `
+        <div class="card">
+          <h4>Highlights</h4>
+          <ul style="padding-left:20px;font-size:13px;color:var(--ink-secondary);">
+            ${highlights.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
+    </section>
+  `;
+}
+function generateActivitySection(activitySessions) {
+    if (!activitySessions?.length)
+        return '';
+    const rows = activitySessions
+        .slice(0, 20)
+        .map(session => `
+      <div class="card">
+        <h4>${escapeHtml(session.projectName)}</h4>
+        <p>${escapeHtml(session.summary)}</p>
+        <p style="margin-top:8px;font-size:12px;">
+          ${escapeHtml(new Date(session.startTime).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }))} ·
+          ${Math.round(session.durationMinutes)} min ·
+          ${session.messageCount} messages
+        </p>
+      </div>
+    `)
+        .join('');
+    return `
+    <section class="domain-section" id="activity-sessions">
+      <h2>🗂 Activity Sessions</h2>
+      <div class="card-grid">${rows}</div>
     </section>
   `;
 }
@@ -221,14 +352,14 @@ export function generateReportHtml(report) {
     const navDots = [
         { id: 'identity', label: 'Identity' },
         { id: 'scores', label: 'Scores' },
-        ...domainResults.map(d => ({
+        ...domainResults.map((d) => ({
             id: `domain-${d.domain}`,
             label: DOMAIN_LABELS[d.domain]?.label ?? d.domain,
         })),
         ...(content?.topFocusAreas?.length ? [{ id: 'focus-areas', label: 'Focus' }] : []),
     ];
     const navDotsHtml = navDots
-        .map(d => `<a href="#${d.id}" class="nav-dot" title="${d.label}"><span class="dot"></span></a>`)
+        .map((d) => `<a href="#${d.id}" class="nav-dot" title="${d.label}"><span class="dot"></span></a>`)
         .join('');
     return `<!DOCTYPE html>
 <html lang="en">
@@ -544,6 +675,182 @@ export function generateReportHtml(report) {
 
   <script>
     // Scroll spy for navigation dots
+    const sections = document.querySelectorAll('section[id], .scores-section[id]');
+    const navDots = document.querySelectorAll('.nav-dot');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          navDots.forEach(dot => dot.classList.remove('active'));
+          const id = entry.target.id;
+          const activeDot = document.querySelector('.nav-dot[href="#' + id + '"]');
+          if (activeDot) activeDot.classList.add('active');
+        }
+      });
+    }, { threshold: 0.3 });
+
+    sections.forEach(section => observer.observe(section));
+  </script>
+</body>
+</html>`;
+}
+export function generateCanonicalReportHtml(run) {
+    const evaluation = run.evaluation;
+    const personalitySummary = typeof evaluation.personalitySummary === 'string'
+        ? evaluation.personalitySummary
+        : '';
+    const promptPatterns = Array.isArray(evaluation.promptPatterns)
+        ? evaluation.promptPatterns
+        : [];
+    const projectSummaries = Array.isArray(evaluation.projectSummaries)
+        ? evaluation.projectSummaries
+        : [];
+    const weeklyInsights = evaluation.weeklyInsights;
+    const activitySessions = Array.isArray(run.activitySessions)
+        ? run.activitySessions
+        : [];
+    const focusAreas = evaluation.topFocusAreas?.areas;
+    const legacyContent = focusAreas
+        ? {
+            topFocusAreas: focusAreas.map(area => ({
+                title: area.title,
+                narrative: area.narrative,
+                description: area.narrative,
+                actions: area.actions,
+            })),
+        }
+        : undefined;
+    const typeResult = run.typeResult;
+    const radarScores = {
+        thinking: run.deterministicScores.thinkingQuality,
+        communication: run.deterministicScores.communicationPatterns,
+        learning: run.deterministicScores.learningBehavior,
+        efficiency: run.deterministicScores.contextEfficiency,
+        sessions: run.deterministicScores.sessionOutcome,
+    };
+    const radarLabels = {
+        thinking: 'Thinking',
+        communication: 'Communication',
+        learning: 'Learning',
+        efficiency: 'Efficiency',
+        sessions: 'Sessions',
+    };
+    const radarSvg = generateRadarSvg(radarScores, radarLabels);
+    const distributionBar = typeResult
+        ? generateTypeDistributionBar(typeResult.distribution)
+        : '<p style="color:var(--ink-muted);">Type classification not yet performed.</p>';
+    const domainSections = run.domainResults.map(generateDomainSection).join('\n');
+    const focusAreasSection = generateFocusAreas(legacyContent);
+    const personalitySummarySection = generatePersonalitySummary(personalitySummary);
+    const promptPatternsSection = generatePromptPatternsSection(promptPatterns);
+    const projectSummariesSection = generateProjectSummariesSection(projectSummaries);
+    const weeklyInsightsSection = generateWeeklyInsightsSection(weeklyInsights);
+    const activitySection = generateActivitySection(activitySessions);
+    const navDots = [
+        { id: 'identity', label: 'Identity' },
+        { id: 'scores', label: 'Scores' },
+        ...(personalitySummary ? [{ id: 'personality-summary', label: 'Summary' }] : []),
+        ...(promptPatterns.length > 0 ? [{ id: 'prompt-patterns', label: 'Patterns' }] : []),
+        ...(projectSummaries.length > 0 ? [{ id: 'project-summaries', label: 'Projects' }] : []),
+        ...(weeklyInsights ? [{ id: 'weekly-insights', label: 'Week' }] : []),
+        ...(activitySessions.length > 0 ? [{ id: 'activity-sessions', label: 'Activity' }] : []),
+        ...run.domainResults.map((d) => ({
+            id: `domain-${d.domain}`,
+            label: DOMAIN_LABELS[d.domain]?.label ?? d.domain,
+        })),
+        ...(legacyContent?.topFocusAreas?.length ? [{ id: 'focus-areas', label: 'Focus' }] : []),
+    ];
+    const navDotsHtml = navDots
+        .map((d) => `<a href="#${d.id}" class="nav-dot" title="${d.label}"><span class="dot"></span></a>`)
+        .join('');
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BetterPrompt Analysis Report</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
+  <style>
+    ${generateReportHtml({
+        userId: 'local',
+        analyzedAt: run.analyzedAt,
+        phase1Metrics: run.phase1Output.sessionMetrics,
+        deterministicScores: run.deterministicScores,
+        typeResult: run.typeResult ?? null,
+        domainResults: run.domainResults,
+        content: legacyContent,
+    }).match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? ''}
+  </style>
+</head>
+<body>
+  <nav class="nav-dots">${navDotsHtml}</nav>
+
+  <div class="container">
+    <header class="header">
+      <h1>BetterPrompt Analysis</h1>
+      <p class="subtitle">Generated ${new Date(run.analyzedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+    </header>
+
+    <section class="identity" id="identity">
+      ${typeResult ? `
+        <div class="type-emoji">${typeResult.matrixEmoji}</div>
+        <div class="type-info">
+          <div class="type-name">${escapeHtml(typeResult.matrixName)}</div>
+          <div class="type-detail">${escapeHtml(typeResult.primaryType)} / ${escapeHtml(typeResult.controlLevel)} (control: ${typeResult.controlScore})</div>
+        </div>
+      ` : `
+        <div class="type-info">
+          <div class="type-name">Type Not Classified</div>
+          <div class="type-detail">Run type classification before generating the final report.</div>
+        </div>
+      `}
+    </section>
+
+    <div class="metrics-bar">
+      <div class="metric">
+        <div class="value">${run.phase1Output.sessionMetrics.totalSessions}</div>
+        <div class="label">Sessions</div>
+      </div>
+      <div class="metric">
+        <div class="value">${run.phase1Output.sessionMetrics.totalDeveloperUtterances}</div>
+        <div class="label">Utterances</div>
+      </div>
+      <div class="metric">
+        <div class="value">${Math.round(run.phase1Output.sessionMetrics.avgMessagesPerSession)}</div>
+        <div class="label">Avg Messages/Session</div>
+      </div>
+      <div class="metric">
+        <div class="value">${Math.round(run.phase1Output.sessionMetrics.questionRatio * 100)}%</div>
+        <div class="label">Questions</div>
+      </div>
+      <div class="metric">
+        <div class="value">${Math.round(run.phase1Output.sessionMetrics.codeBlockRatio * 100)}%</div>
+        <div class="label">Code Blocks</div>
+      </div>
+    </div>
+
+    <section class="scores-section" id="scores">
+      <div class="radar-container">${radarSvg}</div>
+      <div class="distribution-container">
+        <h3 style="margin-bottom:12px;">Type Distribution</h3>
+        ${distributionBar}
+      </div>
+    </section>
+
+    ${personalitySummarySection}
+    ${promptPatternsSection}
+    ${projectSummariesSection}
+    ${weeklyInsightsSection}
+    ${activitySection}
+    ${domainSections}
+    ${focusAreasSection}
+
+    <footer class="footer">
+      Generated by BetterPrompt Plugin v0.2.0 - local-first AI collaboration analysis
+    </footer>
+  </div>
+
+  <script>
     const sections = document.querySelectorAll('section[id], .scores-section[id]');
     const navDots = document.querySelectorAll('.nav-dot');
 
