@@ -1404,13 +1404,13 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Multi-Source Scanner | `packages/cli/src/lib/scanner/index.ts` | Unified scanner for all sources (Claude Code + Cursor + Cursor Composer) |
-| Claude Code Source | `packages/cli/src/lib/scanner/sources/claude-code.ts` | JSONL session source (~/.claude/projects/) |
-| Cursor Source | `packages/cli/src/lib/scanner/sources/cursor.ts` | SQLite session source (~/.cursor/chats/) |
-| Cursor Composer Source | `packages/cli/src/lib/scanner/sources/cursor-composer.ts` | SQLite KV source (globalStorage/state.vscdb) |
-| Cursor Paths | `packages/cli/src/lib/scanner/sources/cursor-paths.ts` | Cross-platform Cursor directory resolution |
-| SQLite Loader | `packages/cli/src/lib/scanner/sources/sqlite-loader.ts` | Shared better-sqlite3 dynamic import |
-| Tool Mapping | `packages/cli/src/lib/scanner/tool-mapping.ts` | Cross-source tool name normalization |
+| Multi-Source Scanner | `packages/plugin/lib/scanner/index.ts` | Unified scanner for all sources (Claude Code + Cursor + Cursor Composer) |
+| Claude Code Source | `packages/plugin/lib/scanner/sources/claude-code.ts` | JSONL session source (~/.claude/projects/) |
+| Cursor Source | `packages/plugin/lib/scanner/sources/cursor.ts` | SQLite session source (~/.cursor/chats/) |
+| Cursor Composer Source | `packages/plugin/lib/scanner/sources/cursor-composer.ts` | SQLite KV source (globalStorage/state.vscdb) |
+| Cursor Paths | `packages/plugin/lib/scanner/sources/cursor-paths.ts` | Cross-platform Cursor directory resolution |
+| SQLite Loader | `packages/plugin/lib/scanner/sources/sqlite-loader.ts` | Shared better-sqlite3 dynamic import |
+| Tool Mapping | `packages/plugin/lib/scanner/tool-mapping.ts` | Cross-source tool name normalization |
 | JSONL Reader | `src/lib/parser/jsonl-reader.ts` | JSONL parsing, path encoding/decoding |
 | Session Selector | `src/lib/parser/session-selector.ts` | Duration-based optimal session selection (max 10) |
 | Session Formatter | `src/lib/analyzer/shared/session-formatter.ts` | Session data formatting (shared by Workers) |
@@ -1421,8 +1421,8 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Activity Scanner | `packages/cli/src/activity-scanner.ts` | Metadata extraction for ALL recent sessions (30 days) — tokens, duration, messages |
-| Activity Scanner Helpers | `packages/cli/src/activity-scanner.ts` | `stripSystemReminders()`, `truncateAtWordBoundary()` |
+| Activity Scanner | `packages/plugin/lib/scanner/index.ts` | Metadata extraction for ALL recent sessions (30 days) — tokens, duration, messages |
+| Activity Scanner Helpers | `packages/plugin/lib/scanner/strip-system-tags.ts` | `stripSystemReminders()`, `truncateAtWordBoundary()` |
 | Activity Section | `src/components/personal/tabs/activity/ActivitySection.tsx` | Contribution graph with token-based percentile coloring |
 | Session Summary Schema | `src/lib/models/session-summary-data.ts` | Zod schemas for Phase 1.5 LLM session summaries |
 | Frontend Type | `src/types/verbose.ts` | `ActivitySessionInfo` TypeScript interface |
