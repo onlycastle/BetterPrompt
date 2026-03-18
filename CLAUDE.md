@@ -179,6 +179,7 @@ These deprecated code paths are kept intentionally for data migration. Do NOT re
 | Variable | Description |
 |----------|-------------|
 | `GOOGLE_GEMINI_API_KEY` | Required for multi-phase orchestrator pipeline (Gemini 3 Flash) |
+| `BETTERPROMPT_ANALYSIS_MODE` | `plugin` (default) returns 410 from `/api/analysis/run`, directing users to the Claude Code plugin. Set to `server` to enable server-side analysis via that route. |
 
 ## Release Workflow
 

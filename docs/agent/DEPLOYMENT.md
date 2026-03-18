@@ -19,10 +19,11 @@ The supported open-source deployment target is:
 | `BETTERPROMPT_BASE_URL` | Canonical base URL for report links and metadata |
 | `BETTERPROMPT_WEB_APP_URL` | Dashboard base URL (defaults to `http://localhost:3000`) |
 | `BETTERPROMPT_DB_PATH` | Optional SQLite database path override |
+| `BETTERPROMPT_ANALYSIS_MODE` | `plugin` (default): `/api/analysis/run` returns 410; `server`: enables server-side analysis pipeline |
 
 ## Deployment Notes
 
 - Use a persistent volume for the SQLite database.
 - Keep `~/.betterprompt/knowledge` on persistent storage if you rely on local knowledge ingestion.
 - No Lambda, Supabase, Polar, or desktop build pipeline is part of the supported OSS runtime.
-- The plugin is the first-class analysis entrypoint; the CLI remains only as a deprecated compatibility surface.
+- The plugin is the first-class analysis entrypoint; the CLI has been removed.
