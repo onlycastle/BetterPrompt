@@ -44,6 +44,7 @@ import { definition as reportDef, execute as executeReport, } from './tools/gene
 import { definition as syncDef, execute as executeSync, } from './tools/sync-to-team.js';
 import { definition as stageDef, execute as executeStage, StageOutputInputSchema, } from './tools/save-stage-output.js';
 import { definition as getStageOutputDef, execute as executeGetStageOutput, } from './tools/get-stage-output.js';
+import { definition as getPromptContextDef, execute as executeGetPromptContext, GetPromptContextInputSchema, } from './tools/get-prompt-context.js';
 // Resolve user ID once at startup (for server-backed tools)
 let resolvedUserId = null;
 async function getUserId() {
@@ -95,6 +96,7 @@ server.tool(classifyDef.name, classifyDef.description, {}, wrapToolExecution(() 
 server.tool(reportDef.name, reportDef.description, {
     port: z.number().optional().describe('Port for the report server (default: 3456)'),
     openBrowser: z.boolean().optional().describe('Auto-open report in browser (default: true)'),
+    allowIncomplete: z.boolean().optional().describe('Override required-stage gating and generate a report anyway'),
 }, wrapToolExecution(executeReport));
 server.tool(syncDef.name, syncDef.description, {
     serverUrl: z.string().optional().describe('Override server URL (defaults to BETTERPROMPT_SERVER_URL)'),
@@ -103,6 +105,7 @@ server.tool(stageDef.name, stageDef.description, StageOutputInputSchema.shape, w
 server.tool(getStageOutputDef.name, getStageOutputDef.description, {
     stage: z.string().optional().describe('Stage name to retrieve (omit for all stages)'),
 }, wrapToolExecution(executeGetStageOutput));
+server.tool(getPromptContextDef.name, getPromptContextDef.description, GetPromptContextInputSchema.shape, wrapToolExecution(executeGetPromptContext));
 // =========================================================================
 // SERVER-BACKED TOOLS (backward compatible)
 // =========================================================================

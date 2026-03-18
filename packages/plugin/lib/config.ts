@@ -13,7 +13,7 @@
  */
 
 import { join } from 'node:path';
-import { homedir } from 'node:os';
+import { PLUGIN_DATA_DIR } from './core/session-scanner.js';
 
 export interface PluginConfig {
   serverUrl: string;
@@ -65,7 +65,7 @@ export function resetConfig(): void {
 
 /** Base directory for plugin state files */
 export function getPluginDataDir(): string {
-  return join(homedir(), '.betterprompt');
+  return PLUGIN_DATA_DIR;
 }
 
 /** Path to the plugin state file (debounce tracking) */

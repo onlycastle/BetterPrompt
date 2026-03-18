@@ -15,11 +15,11 @@ export declare const definition: {
 export declare const GetDomainResultsInputSchema: z.ZodObject<{
     domain: z.ZodOptional<z.ZodEnum<{
         content: "content";
+        thinkingQuality: "thinkingQuality";
+        communicationPatterns: "communicationPatterns";
+        learningBehavior: "learningBehavior";
         contextEfficiency: "contextEfficiency";
         sessionOutcome: "sessionOutcome";
-        thinkingQuality: "thinkingQuality";
-        learningBehavior: "learningBehavior";
-        communicationPatterns: "communicationPatterns";
     }>>;
 }, z.core.$strip>;
 export declare function execute(args: {

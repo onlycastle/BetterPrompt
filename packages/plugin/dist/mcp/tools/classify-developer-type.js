@@ -7,10 +7,10 @@
  */
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
 import { computeDeterministicScores } from '../../lib/core/deterministic-scorer.js';
 import { computeDeterministicType } from '../../lib/core/deterministic-type-mapper.js';
-import { saveTypeResult, getCurrentRunId } from '../../lib/results-db.js';
+import { PLUGIN_DATA_DIR } from '../../lib/core/session-scanner.js';
+import { getAnalysisRun, saveTypeResult, getCurrentRunId, } from '../../lib/results-db.js';
 export const definition = {
     name: 'classify_developer_type',
     description: 'Classify the developer\'s AI collaboration type using deterministic rules. ' +
@@ -19,23 +19,31 @@ export const definition = {
         'Returns the primary type, distribution, control level, and matrix name.',
 };
 export async function execute(_args) {
-    // Read Phase 1 output
-    let phase1Output;
-    try {
-        const phase1Path = join(homedir(), '.betterprompt', 'phase1-output.json');
-        const content = await readFile(phase1Path, 'utf-8');
-        phase1Output = JSON.parse(content);
-    }
-    catch {
-        return JSON.stringify({
-            status: 'error',
-            message: 'No Phase 1 data found. Call extract_data first.',
-        });
-    }
-    // Get current run
     const runId = getCurrentRunId();
+    // Prefer the persisted run record so classification does not depend on the
+    // legacy phase1-output.json artifact still existing on disk.
+    let phase1Output;
+    const existingRun = runId ? getAnalysisRun(runId) : null;
+    if (existingRun?.phase1Output) {
+        phase1Output = existingRun.phase1Output;
+    }
+    else {
+        try {
+            const phase1Path = join(PLUGIN_DATA_DIR, 'phase1-output.json');
+            const content = await readFile(phase1Path, 'utf-8');
+            phase1Output = JSON.parse(content);
+        }
+        catch {
+            return JSON.stringify({
+                status: 'error',
+                message: 'No Phase 1 data found. Call extract_data first.',
+            });
+        }
+    }
     // Compute scores and type
-    const scores = computeDeterministicScores(phase1Output);
+    const scores = existingRun?.phase1Output
+        ? existingRun.scores
+        : computeDeterministicScores(phase1Output);
     const typeResult = computeDeterministicType(scores, phase1Output);
     // Save to DB
     if (runId) {

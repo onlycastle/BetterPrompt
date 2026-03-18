@@ -13,7 +13,7 @@
 import { z } from 'zod';
 import { STAGE_SCHEMAS, } from '@betterprompt/shared';
 import { getCurrentRunId } from '../../lib/results-db.js';
-import { saveStageOutput } from '../../lib/stage-db.js';
+import { recordStageStatus, saveStageOutput } from '../../lib/stage-db.js';
 export const definition = {
     name: 'save_stage_output',
     description: 'Save output from a pipeline stage. ' +
@@ -33,8 +33,12 @@ export const StageOutputInputSchema = z.object({
     ]),
     data: z.record(z.string(), z.unknown()),
 });
+function extractStageName(args) {
+    return typeof args.stage === 'string' ? args.stage : null;
+}
 export async function execute(args) {
     const runId = getCurrentRunId();
+    const stageName = extractStageName(args);
     if (!runId) {
         return JSON.stringify({
             status: 'error',
@@ -43,6 +47,12 @@ export async function execute(args) {
     }
     const parsed = StageOutputInputSchema.safeParse(args);
     if (!parsed.success) {
+        if (stageName) {
+            recordStageStatus(runId, stageName, {
+                status: 'failed',
+                lastError: 'Invalid stage output format.',
+            });
+        }
         return JSON.stringify({
             status: 'validation_error',
             message: 'Invalid stage output format.',
@@ -53,11 +63,15 @@ export async function execute(args) {
         });
     }
     const { stage, data } = parsed.data;
-    const stageName = stage;
-    const stageSchema = STAGE_SCHEMAS[stageName];
+    const normalizedStageName = stage;
+    const stageSchema = STAGE_SCHEMAS[normalizedStageName];
     if (stageSchema) {
         const stageValidation = stageSchema.safeParse(data);
         if (!stageValidation.success) {
+            recordStageStatus(runId, stage, {
+                status: 'failed',
+                lastError: `Data does not match ${stage} schema.`,
+            });
             return JSON.stringify({
                 status: 'validation_error',
                 message: `Data does not match ${stage} schema.`,
@@ -69,6 +83,9 @@ export async function execute(args) {
         }
     }
     saveStageOutput(runId, stage, data);
+    recordStageStatus(runId, stage, {
+        status: 'validated',
+    });
     return JSON.stringify({
         status: 'ok',
         stage,

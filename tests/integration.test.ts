@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { SessionParser } from '../src/lib/parser/index.js';
-import { calculateAllDimensions } from '../src/lib/analyzer/dimensions/index.js';
 
 describe('SessionParser Integration', { timeout: 60000 }, () => {
   const parser = new SessionParser();
@@ -96,82 +95,4 @@ describe('SessionParser Integration', { timeout: 60000 }, () => {
     expect(parsed.stats.assistantMessageCount).toBe(assistantMsgs);
   });
 
-  it('should calculate dimension analysis for parsed sessions', async () => {
-    const sessions = await parser.listSessions();
-
-    if (sessions.length === 0) {
-      console.log('No sessions found, skipping');
-      return;
-    }
-
-    // Parse a few sessions for analysis
-    const parsedSessions = [];
-    for (const meta of sessions.slice(0, 5)) {
-      try {
-        const parsed = await parser.parseSessionFile(meta.filePath);
-        parsedSessions.push(parsed);
-      } catch {
-        // Skip invalid sessions
-      }
-    }
-
-    if (parsedSessions.length === 0) {
-      console.log('No valid sessions parsed, skipping');
-      return;
-    }
-
-    // Calculate dimensions
-    const dimensions = calculateAllDimensions(parsedSessions);
-
-    // Verify AI Collaboration Mastery result
-    expect(dimensions.aiCollaboration).toHaveProperty('score');
-    expect(dimensions.aiCollaboration).toHaveProperty('level');
-    expect(dimensions.aiCollaboration).toHaveProperty('breakdown');
-    expect(dimensions.aiCollaboration.score).toBeGreaterThanOrEqual(0);
-    expect(dimensions.aiCollaboration.score).toBeLessThanOrEqual(100);
-
-    // Verify breakdown categories (Context Engineering is now a separate dimension)
-    expect(dimensions.aiCollaboration.breakdown).toHaveProperty('structuredPlanning');
-    expect(dimensions.aiCollaboration.breakdown).toHaveProperty('aiOrchestration');
-    expect(dimensions.aiCollaboration.breakdown).toHaveProperty('criticalVerification');
-
-    // Verify Context Engineering result (new top-level dimension with 4 strategies)
-    expect(dimensions.contextEngineering).toHaveProperty('score');
-    expect(dimensions.contextEngineering).toHaveProperty('level');
-    expect(dimensions.contextEngineering).toHaveProperty('breakdown');
-    expect(dimensions.contextEngineering.score).toBeGreaterThanOrEqual(0);
-    expect(dimensions.contextEngineering.score).toBeLessThanOrEqual(100);
-    expect(dimensions.contextEngineering.breakdown).toHaveProperty('write');
-    expect(dimensions.contextEngineering.breakdown).toHaveProperty('select');
-    expect(dimensions.contextEngineering.breakdown).toHaveProperty('compress');
-    expect(dimensions.contextEngineering.breakdown).toHaveProperty('isolate');
-
-    // Verify Burnout Risk result
-    expect(dimensions.burnoutRisk).toHaveProperty('score');
-    expect(dimensions.burnoutRisk).toHaveProperty('level');
-    expect(dimensions.burnoutRisk).toHaveProperty('breakdown');
-
-    console.log('Dimension analysis:', {
-      aiCollaboration: {
-        score: dimensions.aiCollaboration.score,
-        level: dimensions.aiCollaboration.level,
-        breakdown: {
-          structuredPlanning: dimensions.aiCollaboration.breakdown.structuredPlanning.score,
-          aiOrchestration: dimensions.aiCollaboration.breakdown.aiOrchestration.score,
-          criticalVerification: dimensions.aiCollaboration.breakdown.criticalVerification.score,
-        },
-      },
-      contextEngineering: {
-        score: dimensions.contextEngineering.score,
-        level: dimensions.contextEngineering.level,
-        breakdown: {
-          write: dimensions.contextEngineering.breakdown.write.score,
-          select: dimensions.contextEngineering.breakdown.select.score,
-          compress: dimensions.contextEngineering.breakdown.compress.score,
-          isolate: dimensions.contextEngineering.breakdown.isolate.score,
-        },
-      },
-      burnoutRisk: { score: dimensions.burnoutRisk.score, level: dimensions.burnoutRisk.level },
-    });
-  });
 });

@@ -5,6 +5,10 @@
  * Validates the input against shared schemas (including domain-specific
  * typed data) and stores it in the results database.
  *
+ * Includes:
+ * - Domain-specific Zod validation for the `data` field (Fix 2)
+ * - Description quality gates matching server-side BaseWorker checks (Fix 3)
+ *
  * Called by domain analysis skills after the host LLM completes analysis.
  */
 import { z } from 'zod';
@@ -45,11 +49,11 @@ export declare const GrowthAreaSchema: z.ZodObject<{
 export declare const DomainResultInputSchema: z.ZodObject<{
     domain: z.ZodEnum<{
         content: "content";
+        thinkingQuality: "thinkingQuality";
+        communicationPatterns: "communicationPatterns";
+        learningBehavior: "learningBehavior";
         contextEfficiency: "contextEfficiency";
         sessionOutcome: "sessionOutcome";
-        thinkingQuality: "thinkingQuality";
-        learningBehavior: "learningBehavior";
-        communicationPatterns: "communicationPatterns";
     }>;
     overallScore: z.ZodNumber;
     confidenceScore: z.ZodOptional<z.ZodNumber>;

@@ -27,7 +27,7 @@ Phase 1 output provides per session:
 
 ### Step 1: Load Phase 1 Output
 
-Read `~/.betterprompt/phase1-output.json` and extract the list of sessions with their metadata.
+Call `get_prompt_context` with `{ "kind": "weeklyInsights" }` and extract the returned activity-session payload with Phase 1.5 summaries.
 
 ### Step 2: Compute Deterministic Stats
 
@@ -172,14 +172,14 @@ Call `save_stage_output` with the following arguments:
 
 ## Error Handling
 
-- If `~/.betterprompt/phase1-output.json` does not exist, report the error. Do not fabricate stats.
+- If `get_prompt_context` cannot return the weekly-insights payload, report the error. Do not fabricate stats.
 - If sessions have missing or unparseable `startTime`, exclude them from week splitting but log a warning.
 - If `totalInputTokens` or `totalOutputTokens` is missing from a session, treat them as 0 for token calculations.
 - If all sessions fall outside the 14-day window, use the zero-sessions edge case path.
 
 ## Quality Checklist
 
-- [ ] Read Phase 1 output from `~/.betterprompt/phase1-output.json`
+- [ ] Loaded weekly-insights context via `get_prompt_context`
 - [ ] Correctly split sessions into this-week and previous-week buckets
 - [ ] Stats are deterministic (computed from data, not estimated)
 - [ ] Deltas omitted when previous week has no sessions

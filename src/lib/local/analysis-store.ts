@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { VerboseEvaluation } from '@/lib/models/verbose-evaluation';
-import type { AnalysisResult as PipelineAnalysisResult } from '@/lib/analyzer/orchestrator/types';
+import type { Phase1Output } from '@/lib/models/phase1-output';
 import type { CanonicalAnalysisRun } from '@betterprompt/shared';
 import { getDatabase } from './database';
 
@@ -8,7 +8,7 @@ export interface StoredAnalysisResult {
   resultId: string;
   userId: string;
   evaluation: VerboseEvaluation;
-  phase1Output: PipelineAnalysisResult['phase1Output'] | null;
+  phase1Output: Phase1Output | null;
   canonicalRun: CanonicalAnalysisRun | null;
   activitySessions: Array<{
     sessionId: string;
@@ -49,7 +49,7 @@ function mapRow(row: AnalysisRow): StoredAnalysisResult {
     userId: row.user_id,
     evaluation: JSON.parse(row.evaluation_json) as VerboseEvaluation,
     phase1Output: row.phase1_output_json
-      ? JSON.parse(row.phase1_output_json) as PipelineAnalysisResult['phase1Output']
+      ? JSON.parse(row.phase1_output_json) as Phase1Output
       : null,
     canonicalRun: row.canonical_run_json
       ? JSON.parse(row.canonical_run_json) as CanonicalAnalysisRun
@@ -68,7 +68,7 @@ function mapRow(row: AnalysisRow): StoredAnalysisResult {
 export function createAnalysisRecord(params: {
   userId: string;
   evaluation: VerboseEvaluation;
-  phase1Output?: PipelineAnalysisResult['phase1Output'];
+  phase1Output?: Phase1Output;
   canonicalRun?: CanonicalAnalysisRun;
   activitySessions?: StoredAnalysisResult['activitySessions'];
 }): StoredAnalysisResult {

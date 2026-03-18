@@ -17,7 +17,7 @@ import {
   type StageName,
 } from '@betterprompt/shared';
 import { getCurrentRunId } from '../../lib/results-db.js';
-import { saveStageOutput } from '../../lib/stage-db.js';
+import { recordStageStatus, saveStageOutput } from '../../lib/stage-db.js';
 
 export const definition = {
   name: 'save_stage_output',
@@ -41,8 +41,13 @@ export const StageOutputInputSchema = z.object({
   data: z.record(z.string(), z.unknown()),
 });
 
+function extractStageName(args: Record<string, unknown>): string | null {
+  return typeof args.stage === 'string' ? args.stage : null;
+}
+
 export async function execute(args: Record<string, unknown>): Promise<string> {
   const runId = getCurrentRunId();
+  const stageName = extractStageName(args);
 
   if (!runId) {
     return JSON.stringify({
@@ -53,6 +58,12 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
 
   const parsed = StageOutputInputSchema.safeParse(args);
   if (!parsed.success) {
+    if (stageName) {
+      recordStageStatus(runId, stageName, {
+        status: 'failed',
+        lastError: 'Invalid stage output format.',
+      });
+    }
     return JSON.stringify({
       status: 'validation_error',
       message: 'Invalid stage output format.',
@@ -64,12 +75,16 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
   }
 
   const { stage, data } = parsed.data;
-  const stageName = stage as StageName;
+  const normalizedStageName = stage as StageName;
 
-  const stageSchema = STAGE_SCHEMAS[stageName];
+  const stageSchema = STAGE_SCHEMAS[normalizedStageName];
   if (stageSchema) {
     const stageValidation = stageSchema.safeParse(data);
     if (!stageValidation.success) {
+      recordStageStatus(runId, stage, {
+        status: 'failed',
+        lastError: `Data does not match ${stage} schema.`,
+      });
       return JSON.stringify({
         status: 'validation_error',
         message: `Data does not match ${stage} schema.`,
@@ -82,6 +97,9 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
   }
 
   saveStageOutput(runId, stage, data);
+  recordStageStatus(runId, stage, {
+    status: 'validated',
+  });
 
   return JSON.stringify({
     status: 'ok',

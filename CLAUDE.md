@@ -32,95 +32,11 @@ npm test               # Run all tests
 
 ## Key Implementation Details
 
-**Multi-Phase Orchestrator Pipeline**: Uses Gemini 3 Flash (`gemini-3-flash-preview`) for all LLM stages:
-
-| Phase | Component | LLM Calls | Description |
-|-------|-----------|-----------|-------------|
-| 1 | DataExtractor | 0 | Deterministic extraction (no LLM) |
-| 1.1 | DeterministicScorer | 0 | Rubric-based scoring from Phase1Output metrics → `context.deterministicScores` |
-| 1.2 | DeterministicTypeMapper | 0 | Map scores → primaryType/controlLevel/distribution → `context.deterministicTypeResult` |
-| 1.5 | SessionSummarizer | 1 | LLM-generated 1-line session summaries (batch) |
-| 2 | 5 Insight Workers | 5 | Parallel analysis (ThinkingQuality, CommunicationPatterns, LearningBehavior, ContextEfficiency, SessionOutcome) |
-| 2 | ProjectSummarizer | 1 | Project-level summaries from activitySessions (parallel with workers) |
-| 2 | WeeklyInsightGenerator | 1 | Weekly narrative + highlights from activitySessions (parallel with workers) |
-| 2.5 | TypeClassifier | 1 | Developer type classification (5x3 matrix) + MBTI-style personality narrative (3 paragraphs, 900-1300 chars, indirect behavioral patterns → personalitySummary) |
-| 2.75 | KnowledgeResourceMatcher | 0 | Deterministic resource matching from curated database |
-| 2.8 | EvidenceVerifier | 1 | LLM-based evidence verification |
-| 3 | ContentWriter | 1 | topFocusAreas narrative (personalitySummary moved to Phase 2.5) |
-| 4 | Translator | 0-1 | Conditional translation (non-English only) |
-
-- **Total**: 11 LLM calls (English), 12 LLM calls (non-English)
-- Prompts use PTCF framework (Persona · Task · Context · Format)
-- Temperature: 1.0 (Gemini's recommended default)
-
-**Structured Outputs**: Gemini stages use `responseJsonSchema` with `responseMimeType: "application/json"`. Zod schemas in `src/lib/models/` → JSON Schema via `zod-to-json-schema`.
-
-> ⚠️ **Gemini Schema Nesting Limit**: Gemini API has a **maximum nesting depth of 4 levels** for `responseJsonSchema`.
->
-> **Key Finding (2026-02-01)**: Only `object` (`{}`) counts toward nesting depth. `array` (`[]`) does NOT count.
->
-> ```
-> ✅ VALID (4 object levels):
-> root{} → antiPatterns[] → pattern{} → examples[] → example{}
->   L1                        L2                        L3 (array skipped) L4
->
-> ❌ INVALID (5 object levels):
-> root{} → config{} → settings{} → options{} → nested{}
->   L1       L2          L3          L4          L5 (exceeds limit)
-> ```
->
-> **Guidelines**:
-> - `z.array(z.object({...}))` is safe - arrays don't add nesting
-> - Avoid `z.object({ nested: z.object({ deep: z.object({...}) }) })` chains
-> - All LLM schemas use structured JSON — no pipe/semicolon-delimited fields remain
-> - Nesting depth enforced by unit tests (`schema-nesting-depth.test.ts`)
->
-> Error symptom: `"A schema in GenerationConfig in the request exceeds the maximum allowed nesting depth"`
-
-> ⚠️ **Structured JSON Convention**: All Phase 3/4 LLM schemas (`NarrativeLLMResponseSchema`, `TranslatorOutputSchema`) use structured JSON objects/arrays for all data fields.
->
-> **DO NOT** introduce pipe-delimited (`"a|b|c"`) or semicolon-delimited (`"x;y;z"`) string fields in LLM schemas. Use structured types instead:
-> - Actions: `actions: { start, stop, continue }` (not `actionsData: "start|stop|continue"`)
-> - Examples: `examples: [{ utteranceId, analysis }]` (not `examplesData: "id|text;id|text"`)
->
-> Legacy pipe-delimited formats have backward-compatible fallback paths in `evaluation-assembler.ts`.
-
-> ⚠️ **Prompt–Schema Constraint Sync**: Gemini does NOT enforce `minLength`/`maxLength` from `responseJsonSchema` during generation. Schema constraints only validate output after the fact; the LLM relies solely on **prompt instructions** to meet length requirements.
->
-> **Rule**: Every Zod constraint that affects content length (e.g., `.min(150)` on `recommendation`) MUST have a matching natural-language instruction in the worker's prompt example block (e.g., `"MINIMUM 150 characters"`).
->
-> **Worker prompt files**: `src/lib/analyzer/workers/prompts/*-prompts.ts`
->
-> **Bug History (2026-02-09)**: `SessionOutcomeWorker` prompt lacked `"MINIMUM 150 characters"` guide for `recommendation`, causing Zod validation failure (`worker-insights.ts:238`) while the other 4 workers had it.
+**Plugin-Based Analysis**: All LLM analysis runs locally via the Claude Code plugin (`packages/plugin/`). The server receives finished results via `POST /api/analysis/sync` and serves them to the dashboard. See `docs/agent/PLUGIN.md` for the plugin pipeline architecture.
 
 **JSONL Parsing**: Session logs contain `user`, `assistant`, `queue-operation`, `file-history-snapshot` types. Only `user` and `assistant` are analyzed. Content blocks: `text`, `tool_use`, `tool_result`.
 
 **Path Encoding**: Claude Code encodes paths by replacing `/` with `-`. See `encodeProjectPath`/`decodeProjectPath` in `src/lib/parser/jsonl-reader.ts`.
-
-> ⚠️ **Worker Aggregation Checklist**: When adding or modifying Phase 2 Workers, ensure `aggregateWorkerInsights()` in `src/lib/models/agent-outputs.ts` handles all workers.
->
-> **Required Updates**:
-> 1. Worker output schema in `src/lib/models/` (e.g., `communication-patterns-data.ts`)
-> 2. `AgentOutputs` type in `agent-outputs.ts` (add worker output field)
-> 3. `aggregateWorkerInsights()` function (add domain processing block)
-> 4. `AggregatedWorkerInsights` type in `worker-insights.ts` (add domain field)
-> 5. `WORKER_DOMAIN_CONFIGS` in `worker-insights.ts` (add UI config)
->
-> **Bug History (2026-02-04)**: `CommunicationPatterns` worker was missing from `aggregateWorkerInsights()`, causing Communication tab to not display despite data being generated.
-
-> ⚠️ **Translation Registration Checklist**: When adding a new Phase 2 Worker, ALL of these translation pipeline points must be updated:
->
-> **Required Updates**:
-> 1. `TranslatorOutputSchema.translatedAgentInsights` in `translator-output.ts` (nested version)
-> 2. `TranslatorLLMOutputSchema.translatedAgentInsights` in `translator-output.ts` (flat version for Gemini)
-> 3. `WORKER_KEYS` array in `translator-output.ts` (for reshape function)
-> 4. `prepareAgentOutputsForTranslator()` in `translator.ts` (extract worker data for translation)
-> 5. `VERIFIED_FIELDS` in `translation-verifier.ts` (CJK verification)
-> 6. Translator prompt field instructions in `translator-prompts.ts` (worker list in prompt)
-> 7. `DOMAIN_TO_TRANSLATION_KEY` in `WorkerInsightsSection.tsx` (frontend translation lookup)
-> 8. `TranslatedAgentInsightsSchema` in `verbose-evaluation.ts` (DB/frontend type)
->
-> **Bug History**: `communicationPatterns` missing from #7 (commit `adf12db`), `sessionOutcome` missing from ALL (fixed 2026-02-07).
 
 > ⚠️ **Continuous Scroll Layout**: The report page renders ALL worker sections sequentially (no tabs). `useScrollSpy` hook drives the active section indicator in the `FloatingProgressDots` component. `InsightPreviewCard` is replaced by inline insight rendering within `GrowthCard`.
 >
@@ -144,8 +60,7 @@ npm test               # Run all tests
 - Users get misleading data without knowing something went wrong
 
 **Implementation**:
-- Workers throw errors instead of returning empty data via `createFailedResult`
-- Orchestrator uses `Promise.all()` (not `Promise.allSettled()`) to fail fast
+- Plugin analysis skills let errors propagate instead of returning empty data
 - Frontend should show clear error states, not fake/empty results
 
 **Do NOT**:
@@ -172,19 +87,14 @@ These deprecated code paths are kept intentionally for data migration. Do NOT re
 |----------|---------|
 | `src/lib/domain/models/knowledge.ts` TopicCategorySchema | Legacy topic categories for SQLite migration compatibility |
 | `src/lib/models/verbose-evaluation.ts` pipe-delimited parsers | Legacy format parsers for cached analysis data from pre-structured-JSON era |
-| `src/lib/analyzer/content-gateway.ts` ContentGateway class | Pass-through wrapper kept for API compatibility |
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `GOOGLE_GEMINI_API_KEY` | Required for multi-phase orchestrator pipeline (Gemini 3 Flash) |
+See `docs/agent/DEPLOYMENT.md` for the full environment variable reference.
 
 ## Release Workflow
 
 **Self-hosted**: `npm run build && npm start`
-
-**CLI**: Published via GitHub Action (`.github/workflows/publish-cli.yml`)
 
 ## Git Workflow
 

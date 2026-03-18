@@ -47,7 +47,8 @@ interface FinalEvaluationEnvelopeArgs {
   analysisMetadata?: unknown;
 }
 
-const DOMAIN_TO_DIMENSION: Record<string, string> = {
+/** Maps worker domain → evaluation dimension (used by topFocusAreas for report display). */
+const DOMAIN_TO_EVALUATION_DIMENSION: Record<string, string> = {
   thinkingQuality: 'aiControl',
   communicationPatterns: 'aiCollaboration',
   learningBehavior: 'skillResilience',
@@ -248,7 +249,7 @@ function buildTopFocusAreas(contentWriter?: ContentWriterOutput): EvaluationPayl
     summary: 'Highest-leverage collaboration habits surfaced in this analysis.',
     areas: contentWriter.topFocusAreas.slice(0, 3).map((area, index) => ({
       rank: index + 1,
-      dimension: DOMAIN_TO_DIMENSION[area.relatedQualities[0] ?? ''] ?? 'aiCollaboration',
+      dimension: DOMAIN_TO_EVALUATION_DIMENSION[area.relatedQualities[0] ?? ''] ?? 'aiCollaboration',
       title: area.title,
       narrative: area.description,
       expectedImpact: `Improves ${area.relatedQualities.join(', ') || 'overall collaboration quality'}.`,
@@ -337,6 +338,168 @@ function buildWorkerInsights(domainResults: DomainResult[]): Record<string, unkn
   }
 
   return workerInsights;
+}
+
+// ============================================================================
+// Structured Sub-Analysis Assembly (Fix 4)
+//
+// These functions extract secondary structures from the thinkingQuality
+// domain's `data` field and surface them as top-level evaluation fields.
+// The server's evaluation-assembler produces these; without them, the
+// report's detail panels appear empty.
+// ============================================================================
+
+function formatDisplayName(type: string): string {
+  return type
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+function mapAntiPatternSeverity(severity: unknown): 'mild' | 'moderate' | 'significant' {
+  if (severity === 'critical' || severity === 'significant') return 'significant';
+  if (severity === 'mild') return 'mild';
+  return 'moderate';
+}
+
+function buildAntiPatternsAnalysis(domainResults: DomainResult[]): Record<string, unknown> | undefined {
+  const tq = domainResults.find(r => r.domain === 'thinkingQuality');
+  const data = tq?.data as Record<string, unknown> | undefined;
+  const antiPatterns = data?.verificationAntiPatterns;
+
+  if (!Array.isArray(antiPatterns) || antiPatterns.length === 0) {
+    return undefined;
+  }
+
+  const detected = antiPatterns
+    .filter((ap): ap is Record<string, unknown> => isRecord(ap))
+    .map(ap => {
+      const type = String(ap.type ?? 'unknown');
+      return {
+        antiPatternType: type,
+        displayName: formatDisplayName(type),
+        description: typeof ap.improvement === 'string'
+          ? ap.improvement
+          : `Detected ${type.replace(/_/g, ' ')} pattern`,
+        occurrences: typeof ap.frequency === 'number' ? ap.frequency : 1,
+        severity: mapAntiPatternSeverity(ap.severity),
+        evidence: Array.isArray(ap.examples)
+          ? ap.examples
+              .filter((e): e is Record<string, unknown> => isRecord(e))
+              .map(e => typeof e.quote === 'string' ? e.quote : '')
+              .filter(Boolean)
+          : [],
+        growthOpportunity: typeof ap.improvement === 'string'
+          ? ap.improvement
+          : `Consider addressing the ${type.replace(/_/g, ' ')} pattern`,
+        actionableTip: typeof ap.improvement === 'string'
+          ? ap.improvement
+          : `Try to be more mindful of ${type.replace(/_/g, ' ')} patterns`,
+      };
+    });
+
+  return {
+    detected,
+    summary: typeof data?.summary === 'string'
+      ? data.summary
+      : 'Some growth opportunities were identified. These are common learning patterns that every developer experiences.',
+    overallHealthScore: tq?.overallScore ?? 80,
+  };
+}
+
+function buildCriticalThinkingAnalysis(domainResults: DomainResult[]): Record<string, unknown> | undefined {
+  const tq = domainResults.find(r => r.domain === 'thinkingQuality');
+  const data = tq?.data as Record<string, unknown> | undefined;
+  const moments = data?.criticalThinkingMoments;
+
+  if (!Array.isArray(moments) || moments.length === 0) {
+    return undefined;
+  }
+
+  const strengths = moments
+    .filter((ct): ct is Record<string, unknown> => isRecord(ct))
+    .map(ct => ({
+      indicatorType: typeof ct.type === 'string' ? ct.type : 'unknown',
+      displayName: formatDisplayName(typeof ct.type === 'string' ? ct.type : 'unknown'),
+      description: typeof ct.result === 'string'
+        ? ct.result
+        : `Demonstrated ${String(ct.type ?? 'critical thinking').replace(/_/g, ' ')}`,
+      frequency: 1,
+      quality: 'intermediate' as const,
+      evidence: typeof ct.quote === 'string' ? [ct.quote] : [],
+    }));
+
+  const uniqueTypes = new Set(moments
+    .filter((ct): ct is Record<string, unknown> => isRecord(ct))
+    .map(ct => ct.type));
+  const overallScore = Math.min(100, 40 + uniqueTypes.size * 10 + moments.length * 5);
+
+  return {
+    strengths,
+    opportunities: [],
+    summary: typeof data?.summary === 'string'
+      ? data.summary
+      : 'Shows signs of critical evaluation when working with AI-generated content.',
+    overallScore,
+  };
+}
+
+function buildPlanningAnalysis(domainResults: DomainResult[]): Record<string, unknown> | undefined {
+  const tq = domainResults.find(r => r.domain === 'thinkingQuality');
+  const data = tq?.data as Record<string, unknown> | undefined;
+  const habits = data?.planningHabits;
+
+  if (!Array.isArray(habits) || habits.length === 0) {
+    return undefined;
+  }
+
+  const hasSlashPlan = habits.some((h): h is Record<string, unknown> =>
+    isRecord(h) && h.type === 'uses_plan_command');
+  const hasTodoWrite = habits.some((h): h is Record<string, unknown> =>
+    isRecord(h) && h.type === 'todowrite_usage');
+  const hasTaskDecomp = habits.some((h): h is Record<string, unknown> =>
+    isRecord(h) && h.type === 'task_decomposition');
+
+  const maturityLevel = hasSlashPlan && hasTaskDecomp ? 'expert'
+    : hasSlashPlan ? 'structured'
+    : (hasTodoWrite || hasTaskDecomp) ? 'emerging'
+    : 'reactive';
+
+  const strengths: Array<Record<string, unknown>> = [];
+  const opportunities: Array<Record<string, unknown>> = [];
+
+  for (const habit of habits) {
+    if (!isRecord(habit)) continue;
+
+    const type = typeof habit.type === 'string' ? habit.type : 'unknown';
+    const frequency = typeof habit.frequency === 'string' ? habit.frequency : 'sometimes';
+    const effectiveness = typeof habit.effectiveness === 'string' ? habit.effectiveness : 'medium';
+
+    const insight = {
+      behaviorType: type,
+      displayName: formatDisplayName(type),
+      description: `Planning habit "${type.replace(/_/g, ' ')}" observed with ${frequency} frequency`,
+      frequency: frequency === 'always' || frequency === 'often' ? 3 : frequency === 'sometimes' ? 2 : 1,
+      sophistication: effectiveness === 'high' ? 'advanced' : effectiveness === 'medium' ? 'intermediate' : 'basic',
+      evidence: Array.isArray(habit.examples) ? habit.examples : [],
+    };
+
+    const isStrength = effectiveness === 'high' || frequency === 'always' || frequency === 'often';
+    if (isStrength) {
+      strengths.push(insight);
+    } else {
+      opportunities.push(insight);
+    }
+  }
+
+  return {
+    strengths,
+    opportunities,
+    summary: typeof data?.summary === 'string'
+      ? data.summary
+      : 'Shows planning awareness in development workflow.',
+    planningMaturityLevel: maturityLevel,
+  };
 }
 
 function normalizeInefficiencyPattern(value: unknown): string {
@@ -635,6 +798,12 @@ export function buildCanonicalEvaluation(args: {
       : 'low';
 
   const agentOutputs = buildAgentOutputs(phase1Output, filteredDomainResults);
+
+  // Build sub-analyses once (avoid double-calling non-trivial functions)
+  const antiPatterns = buildAntiPatternsAnalysis(filteredDomainResults);
+  const criticalThinking = buildCriticalThinkingAnalysis(filteredDomainResults);
+  const planning = buildPlanningAnalysis(filteredDomainResults);
+
   const evaluation = assembleFinalEvaluationEnvelope({
     sessionId: activitySessions[0]?.sessionId
       ?? phase1Output.activitySessions?.[0]?.sessionId
@@ -664,6 +833,10 @@ export function buildCanonicalEvaluation(args: {
       promptPatterns: buildPromptPatterns(filteredDomainResults),
       topFocusAreas: buildTopFocusAreas(stageOutputs.contentWriter),
       workerInsights: buildWorkerInsights(filteredDomainResults),
+      // Structured sub-analyses from thinkingQuality domain data (Fix 4)
+      ...(antiPatterns ? { antiPatternsAnalysis: antiPatterns } : {}),
+      ...(criticalThinking ? { criticalThinkingAnalysis: criticalThinking } : {}),
+      ...(planning ? { planningAnalysis: planning } : {}),
     },
     agentOutputs,
     pipelineTokenUsage: {

@@ -11,4 +11,5 @@ export declare const definition: {
 export declare function execute(args: {
     port?: number;
     openBrowser?: boolean;
+    allowIncomplete?: boolean;
 }): Promise<string>;

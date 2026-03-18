@@ -321,6 +321,137 @@ function generateActivitySection(activitySessions) {
     </section>
   `;
 }
+function generatePlanningAnalysisSection(planningAnalysis) {
+    if (!planningAnalysis)
+        return '';
+    const strengths = planningAnalysis.strengths ?? [];
+    const opportunities = planningAnalysis.opportunities ?? [];
+    return `
+    <section class="domain-section" id="planning-analysis">
+      <h2>🗺 Planning Analysis</h2>
+      <div class="card">
+        ${planningAnalysis.planningMaturityLevel ? `<p><strong>Maturity:</strong> ${escapeHtml(planningAnalysis.planningMaturityLevel)}</p>` : ''}
+        ${planningAnalysis.summary ? `<p>${escapeHtml(planningAnalysis.summary)}</p>` : ''}
+      </div>
+      ${strengths.length > 0 ? `
+        <h3>Observed Strengths</h3>
+        <div class="card-grid">
+          ${strengths.map((item) => `
+            <div class="card">
+              <h4>${escapeHtml(item.displayName ?? 'Planning strength')}</h4>
+              <p>${escapeHtml(item.description ?? '')}</p>
+              ${item.sophistication ? `<p style="margin-top:8px;font-size:12px;"><strong>Sophistication:</strong> ${escapeHtml(item.sophistication)}</p>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+      ${opportunities.length > 0 ? `
+        <h3>Opportunities</h3>
+        <div class="card-grid">
+          ${opportunities.map((item) => `
+            <div class="card">
+              <h4>${escapeHtml(item.displayName ?? 'Planning opportunity')}</h4>
+              <p>${escapeHtml(item.description ?? '')}</p>
+              ${item.sophistication ? `<p style="margin-top:8px;font-size:12px;"><strong>Sophistication:</strong> ${escapeHtml(item.sophistication)}</p>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+    </section>
+  `;
+}
+function generateCriticalThinkingSection(criticalThinkingAnalysis) {
+    if (!criticalThinkingAnalysis)
+        return '';
+    const strengths = criticalThinkingAnalysis.strengths ?? [];
+    const opportunities = criticalThinkingAnalysis.opportunities ?? [];
+    return `
+    <section class="domain-section" id="critical-thinking-analysis">
+      <h2>🔍 Critical Thinking</h2>
+      <div class="card">
+        ${typeof criticalThinkingAnalysis.overallScore === 'number' ? `<p><strong>Score:</strong> ${criticalThinkingAnalysis.overallScore}/100</p>` : ''}
+        ${criticalThinkingAnalysis.summary ? `<p>${escapeHtml(criticalThinkingAnalysis.summary)}</p>` : ''}
+      </div>
+      ${strengths.length > 0 ? `
+        <div class="card-grid">
+          ${strengths.map((item) => `
+            <div class="card">
+              <h4>${escapeHtml(item.displayName ?? 'Signal')}</h4>
+              <p>${escapeHtml(item.description ?? '')}</p>
+              ${item.quality ? `<p style="margin-top:8px;font-size:12px;"><strong>Quality:</strong> ${escapeHtml(item.quality)}</p>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+      ${opportunities.length > 0 ? `
+        <div class="card-grid">
+          ${opportunities.map((item) => `
+            <div class="card">
+              <h4>${escapeHtml(item.displayName ?? 'Opportunity')}</h4>
+              <p>${escapeHtml(item.description ?? '')}</p>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+    </section>
+  `;
+}
+function generateAntiPatternsSection(antiPatternsAnalysis) {
+    if (!antiPatternsAnalysis)
+        return '';
+    const detected = antiPatternsAnalysis.detected ?? [];
+    return `
+    <section class="domain-section" id="anti-patterns-analysis">
+      <h2>🚧 Anti-Patterns</h2>
+      <div class="card">
+        ${typeof antiPatternsAnalysis.overallHealthScore === 'number' ? `<p><strong>Health Score:</strong> ${antiPatternsAnalysis.overallHealthScore}/100</p>` : ''}
+        ${antiPatternsAnalysis.summary ? `<p>${escapeHtml(antiPatternsAnalysis.summary)}</p>` : ''}
+      </div>
+      ${detected.length > 0 ? `
+        <div class="card-grid">
+          ${detected.map((item) => `
+            <div class="card">
+              <h4>${escapeHtml(item.displayName ?? 'Anti-pattern')}</h4>
+              <p>${escapeHtml(item.description ?? '')}</p>
+              <p style="margin-top:8px;font-size:12px;">
+                ${item.severity ? `<strong>Severity:</strong> ${escapeHtml(item.severity)} · ` : ''}
+                ${typeof item.occurrences === 'number' ? `<strong>Occurrences:</strong> ${item.occurrences}` : ''}
+              </p>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+    </section>
+  `;
+}
+function generateKnowledgeResourcesSection(knowledgeResources) {
+    if (!knowledgeResources?.length)
+        return '';
+    return `
+    <section class="domain-section" id="knowledge-resources">
+      <h2>📚 Knowledge Resources</h2>
+      <div class="card-grid">
+        ${knowledgeResources.map((group) => `
+          <div class="card">
+            <h4>${escapeHtml(group.dimensionDisplayName ?? 'Recommended Resources')}</h4>
+            ${(group.professionalInsights?.length ?? 0) > 0 ? `
+              <p style="margin-top:8px;"><strong>Professional Insights</strong></p>
+              <ul style="padding-left:20px;font-size:13px;color:var(--ink-secondary);">
+                ${group.professionalInsights.slice(0, 3).map((item) => `<li>${escapeHtml(item.title ?? 'Insight')}${item.keyTakeaway ? `: ${escapeHtml(item.keyTakeaway)}` : ''}</li>`).join('')}
+              </ul>
+            ` : ''}
+            ${(group.knowledgeItems?.length ?? 0) > 0 ? `
+              <p style="margin-top:8px;"><strong>Suggested Reading</strong></p>
+              <ul style="padding-left:20px;font-size:13px;color:var(--ink-secondary);">
+                ${group.knowledgeItems.slice(0, 3).map((item) => `<li>${escapeHtml(item.title ?? 'Resource')}${item.summary ? `: ${escapeHtml(item.summary)}` : ''}</li>`).join('')}
+              </ul>
+            ` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
 // ============================================================================
 // Main HTML Generator
 // ============================================================================
@@ -710,6 +841,12 @@ export function generateCanonicalReportHtml(run) {
         ? run.activitySessions
         : [];
     const focusAreas = evaluation.topFocusAreas?.areas;
+    const planningAnalysis = evaluation.planningAnalysis;
+    const criticalThinkingAnalysis = evaluation.criticalThinkingAnalysis;
+    const antiPatternsAnalysis = evaluation.antiPatternsAnalysis;
+    const knowledgeResources = Array.isArray(evaluation.knowledgeResources)
+        ? evaluation.knowledgeResources
+        : [];
     const legacyContent = focusAreas
         ? {
             topFocusAreas: focusAreas.map(area => ({
@@ -746,6 +883,10 @@ export function generateCanonicalReportHtml(run) {
     const projectSummariesSection = generateProjectSummariesSection(projectSummaries);
     const weeklyInsightsSection = generateWeeklyInsightsSection(weeklyInsights);
     const activitySection = generateActivitySection(activitySessions);
+    const planningSection = generatePlanningAnalysisSection(planningAnalysis);
+    const criticalThinkingSection = generateCriticalThinkingSection(criticalThinkingAnalysis);
+    const antiPatternsSection = generateAntiPatternsSection(antiPatternsAnalysis);
+    const knowledgeResourcesSection = generateKnowledgeResourcesSection(knowledgeResources);
     const navDots = [
         { id: 'identity', label: 'Identity' },
         { id: 'scores', label: 'Scores' },
@@ -754,6 +895,10 @@ export function generateCanonicalReportHtml(run) {
         ...(projectSummaries.length > 0 ? [{ id: 'project-summaries', label: 'Projects' }] : []),
         ...(weeklyInsights ? [{ id: 'weekly-insights', label: 'Week' }] : []),
         ...(activitySessions.length > 0 ? [{ id: 'activity-sessions', label: 'Activity' }] : []),
+        ...(planningAnalysis ? [{ id: 'planning-analysis', label: 'Planning' }] : []),
+        ...(criticalThinkingAnalysis ? [{ id: 'critical-thinking-analysis', label: 'Critical' }] : []),
+        ...(antiPatternsAnalysis ? [{ id: 'anti-patterns-analysis', label: 'Anti' }] : []),
+        ...(knowledgeResources.length > 0 ? [{ id: 'knowledge-resources', label: 'Resources' }] : []),
         ...run.domainResults.map((d) => ({
             id: `domain-${d.domain}`,
             label: DOMAIN_LABELS[d.domain]?.label ?? d.domain,
@@ -842,6 +987,10 @@ export function generateCanonicalReportHtml(run) {
     ${projectSummariesSection}
     ${weeklyInsightsSection}
     ${activitySection}
+    ${planningSection}
+    ${criticalThinkingSection}
+    ${antiPatternsSection}
+    ${knowledgeResourcesSection}
     ${domainSections}
     ${focusAreasSection}
 

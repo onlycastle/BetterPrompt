@@ -13,7 +13,8 @@ import { JSONLLineSchema, CONTEXT_WINDOW_SIZE } from './types.js';
 /** Claude Code session log directory */
 export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 /** Plugin data directory */
-export const PLUGIN_DATA_DIR = join(homedir(), '.betterprompt');
+export const PLUGIN_DATA_DIR = process.env.BETTERPROMPT_STORAGE_PATH?.trim()
+    || join(homedir(), '.betterprompt');
 /** Scan cache directory */
 export const SCAN_CACHE_DIR = join(PLUGIN_DATA_DIR, 'scan-cache');
 // ============================================================================

@@ -2,7 +2,7 @@
 
 > Machine-readable setup and usage guide for AI coding agents (Claude Code, Cursor, Copilot, etc.)
 
-## Quick Setup (Plugin -- Recommended)
+## Quick Setup (Plugin)
 
 The plugin runs entirely inside Claude Code. No API keys. No server.
 
@@ -15,9 +15,9 @@ Then say: "Analyze my coding sessions and generate a report"
 
 Claude calls the MCP tools automatically -- scan sessions, extract data, analyze each domain, classify type, and serve a report at `http://localhost:3456`.
 
-## Alternative: Server + CLI
+## Optional: Dashboard Server
 
-For teams or if you prefer a web dashboard, use the server-based approach.
+For teams or if you prefer a web dashboard, run the Next.js server alongside the plugin. Analysis still runs inside Claude Code; the server provides auth, storage, and dashboards.
 
 ```bash
 # 1. Clone and install
@@ -26,13 +26,7 @@ cd BetterPrompt
 npm install
 
 # 2. Configure environment
-cp .env.example .env
-```
-
-Then set the Gemini API key in `.env`:
-
-```
-GOOGLE_GEMINI_API_KEY=<ask the user for their key>
+export GOOGLE_GEMINI_API_KEY=<your-key>
 ```
 
 > **You must ask the user for their Gemini API key.** Free tier keys work. Get one at https://aistudio.google.com/apikey
@@ -44,21 +38,7 @@ npm run dev
 
 Wait for the server to be ready (look for `Ready on http://localhost:3000`).
 
-```bash
-# 4. Run analysis in non-interactive mode
-npx betterprompt-cli --auto
-```
-
-The `--auto` flag skips all interactive prompts (tool selection, project picker, privacy confirmation) and analyzes all available sessions from all supported tools.
-
-When complete, the CLI prints a report URL like `http://localhost:3000/dashboard/r/{resultId}`. Share this URL with the user.
-
-## CLI Flags
-
-| Flag | Purpose |
-|------|---------|
-| `--auto` | Non-interactive mode: skip all prompts, analyze all tools and projects |
-| `--no-translate` | Keep results in English (skip translation phase) |
+After running a local analysis via the plugin, use the `sync_to_team` MCP tool to upload results to the shared dashboard.
 
 ## Environment Variables
 
@@ -80,7 +60,7 @@ After the server is running, the admin needs to use the browser-based setup wiza
 Open http://localhost:3000/dashboard/enterprise/setup
 ```
 
-This is a 3-step UI wizard (not automatable via CLI):
+This is a 3-step UI wizard:
 1. Enter organization name
 2. Optionally create a first team
 3. Get the server URL to share with team members
@@ -93,33 +73,15 @@ Members are invited via the web UI at `/dashboard/enterprise/members`. Each memb
 
 ### 3. Team member analysis
 
-Each team member needs their own Gemini API key and the shared server URL.
-
-> **You must ask each team member for their Gemini API key.** Free tier keys work. Get one at https://aistudio.google.com/apikey
-
-```bash
-GOOGLE_GEMINI_API_KEY=<their-own-key> BETTERPROMPT_WEB_APP_URL=http://<server-host>:3000 npx betterprompt-cli --auto
-```
-
-Their results automatically appear in the enterprise dashboard.
+Each team member needs the BetterPrompt Claude Code plugin installed and the shared server URL for `sync_to_team`.
 
 ## Verification
 
-**Plugin mode:** In the Claude Code session, run `/help` and confirm BetterPrompt's skills and MCP tools appear under the plugin namespace.
-
-**Server + CLI mode:**
-
-```bash
-# Server is running
-curl -s http://localhost:3000/api/auth/me | head -c 100
-
-# CLI is installed and shows usage
-npx betterprompt-cli --help
-```
+In the Claude Code session, run `/help` and confirm BetterPrompt's skills and MCP tools appear under the plugin namespace.
 
 ## Supported Session Sources
 
-The CLI auto-discovers sessions from:
+The plugin auto-discovers sessions from:
 
 | Tool | Path | Format |
 |------|------|--------|

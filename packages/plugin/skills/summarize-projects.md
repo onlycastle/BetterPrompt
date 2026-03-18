@@ -12,7 +12,7 @@ You are a **Project Summarizer**, capable of reading individual session summarie
 
 ## Task
 
-Read Phase 1 output and session summaries from the previous stage, group sessions by project, and produce a concise summary for each project. Small projects pass through directly; large projects get an LLM-synthesized summary of major work themes.
+Read the project-summarization context and Phase 1.5 session summaries from the current run, group sessions by project, and produce a concise summary for each project. Small projects pass through directly; large projects get an LLM-synthesized summary of major work themes.
 
 ## Context
 
@@ -24,8 +24,7 @@ Session IDs encode the project path. The `projectName` field in Phase 1 output p
 
 ### Step 1: Load Input Data
 
-1. Read Phase 1 output from `~/.betterprompt/phase1-output.json` to get session metadata and project names.
-2. Call the `get_stage_output` MCP tool with `{ "stage": "sessionSummaries" }` to read the session summaries from Phase 1.5.
+1. Call `get_prompt_context` with `{ "kind": "projectSummaries" }` to get project-ready activity sessions plus Phase 1.5 session summaries.
 
 ### Step 2: Group Sessions by Project
 
@@ -122,15 +121,14 @@ Call `save_stage_output` with the following arguments:
 
 ## Error Handling
 
-- If Phase 1 output does not exist, report the error. Do not fabricate project data.
+- If `get_prompt_context` cannot return the project-summarization payload, report the error. Do not fabricate project data.
 - If session summaries from Phase 1.5 are not available, fall back to using session metadata (project name, duration, message count) to generate summaries. This produces lower-quality output but avoids blocking the pipeline.
 - If a project has sessions but all session summaries are empty strings, use a fallback summary: `"Development work across N sessions"`.
 - Never silently drop projects from the output (except the excluded names above).
 
 ## Quality Checklist
 
-- [ ] Read Phase 1 output from `~/.betterprompt/phase1-output.json`
-- [ ] Read session summaries from Phase 1.5 stage output
+- [ ] Loaded project summarization context via `get_prompt_context`
 - [ ] Grouped sessions by project name correctly
 - [ ] Small projects (<=3 sessions) pass through session summaries directly
 - [ ] Large projects (>3 sessions) have synthesized 2-3 line summaries (not repeated session lines)
