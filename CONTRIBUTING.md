@@ -20,7 +20,6 @@ The plugin (`packages/plugin`) works standalone without any API keys.
 | Directory | What it does |
 |-----------|-------------|
 | `packages/plugin/` | Claude Code plugin (MCP tools + analysis skills) |
-| `packages/cli/` | CLI for session upload to web server |
 | `app/` | Next.js app router (team dashboard) |
 | `src/lib/analyzer/` | Gemini-powered analysis pipeline |
 | `src/components/` | React components |

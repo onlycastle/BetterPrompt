@@ -106,11 +106,7 @@ The enterprise dashboard at `/dashboard/enterprise` provides:
 - **KPT Retrospective** - aggregated Keep/Problem/Try patterns across the team
 - **Settings** (`/dashboard/enterprise/settings`) - org info and server URL
 
-## Packages
-
-This is a monorepo with three packages:
-
-### Plugin (`packages/plugin`) -- Primary
+## Plugin (`packages/plugin`)
 
 Claude Code plugin with local-first analysis. Provides MCP tools for the full pipeline and analysis skills that guide Claude through each domain.
 
@@ -150,10 +146,6 @@ npm run build      # Production build
 npm run typecheck  # Type-check without emitting
 ```
 
-### CLI (`packages/cli`)
-
-Deprecated analysis entrypoint. Kept only for compatibility and scanner internals used by the plugin. New analysis runs should use the Claude Code plugin instead.
-
 ## Testing
 
 Tests use [Vitest](https://vitest.dev/) for unit/integration and [Playwright](https://playwright.dev/) for E2E.
@@ -175,7 +167,7 @@ Test structure:
 
 ```
 tests/
-  unit/              # Analyzer stages, workers, models, CLI, search agent
+  unit/              # Analyzer stages, workers, models, search agent
   e2e/               # Playwright browser tests (report rendering, scroll nav)
   integration.test.ts # Full pipeline: session parsing -> multi-phase analysis
   fixtures/          # Real session logs and evaluation data
@@ -195,7 +187,7 @@ tests/
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `BETTERPROMPT_BASE_URL` | No | `http://localhost:3000` | Server URL for metadata and OpenGraph |
-| `BETTERPROMPT_WEB_APP_URL` | No | `http://localhost:3000` | Web app URL for CLI report links |
+| `BETTERPROMPT_WEB_APP_URL` | No | `http://localhost:3000` | Web app URL for report links |
 | `BETTERPROMPT_DB_PATH` | No | `~/.betterprompt/betterprompt.db` | SQLite database path |
 | `BETTERPROMPT_TELEMETRY` | No | `true` | Enable/disable anonymous usage telemetry |
 | `BETTERPROMPT_DEBUG` | No | `false` | Enable verbose debug logging (`1` to enable) |
@@ -213,8 +205,6 @@ packages/
       report-template.ts    HTML report generator
       results-db.ts         Local SQLite storage
     hooks/                  Post-session analysis trigger
-  cli/                      Deprecated CLI compatibility package
-
 app/                        Next.js app router (team dashboard)
 src/
   components/               React components

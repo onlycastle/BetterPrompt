@@ -5,7 +5,6 @@ The supported runtime is `Claude Code plugin + optional self-hosted Next.js serv
 ## Active System
 
 - `app/`: Next.js pages, layouts, and API routes
-- `packages/cli/`: deprecated compatibility package; no longer an active analysis path
 - `packages/plugin/`: Claude Code plugin — MCP server, auto-analysis hooks, canonical local pipeline (see `docs/agent/PLUGIN.md`)
 - `src/lib/local/`: SQLite database, auth/session helpers, analysis persistence
 - `src/lib/analyzer/`: legacy server analyzer code plus shared evaluation compatibility

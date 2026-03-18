@@ -77,49 +77,24 @@ The employee flow covers the individual contributor experience — running analy
 ### 1.2 Analysis Flow
 
 ```
-                               CLI (user's machine)
+                            Plugin (Claude Code)
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        ANALYSIS PIPELINE                             │
 │                                                                      │
-│   $ npx betterprompt-cli                                               │
+│   "Analyze my coding sessions"                                       │
 │        │                                                             │
-│        ├─ 1. Discovers sessions from ~/.claude/projects/            │
-│        ├─ 2. Parses JSONL files                                     │
-│        ├─ 3. Gzip-compresses session data                           │
-│        ├─ 4. POST /api/analysis/run (SSE stream)                    │
+│        ├─ 1. scan_sessions — discovers local session logs            │
+│        ├─ 2. extract_data — deterministic Phase 1 extraction         │
+│        ├─ 3. save_domain_results — LLM analysis per domain          │
+│        ├─ 4. classify_developer_type — 5x3 type matrix              │
+│        ├─ 5. generate_report — HTML report on localhost:3456         │
 │        │                                                             │
-│        │   ┌──────────────── Server ────────────────────┐           │
-│        │   │                                             │           │
-│        │   │  Decompress → Parse → Aggregate metrics    │           │
-│        │   │       │                                     │           │
-│        │   │       ▼                                     │           │
-│        │   │  VerboseAnalyzer.analyzeVerbose()           │           │
-│        │   │  (11 LLM calls via Gemini 3 Flash)         │           │
-│        │   │       │                                     │           │
-│        │   │       ▼                                     │           │
-│        │   │  Store result → SQLite                      │           │
-│        │   │       │                                     │           │
-│        │   │       ▼                                     │           │
-│        │   │  Stream SSE events:                         │           │
-│        │   │    • progress (stage + %)                   │           │
-│        │   │    • phase_preview (debug)                  │           │
-│        │   │    • result (resultId + summary)            │           │
-│        │   │    • error (if failed)                      │           │
-│        │   │                                             │           │
-│        │   └─────────────────────────────────────────────┘           │
-│        │                                                             │
-│        └─ 5. Opens browser → /dashboard/r/{resultId}                │
+│        └─ 6. (optional) sync_to_team — upload to dashboard server   │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
-
-**API**: `POST /api/analysis/run` (`app/api/analysis/run/route.ts`)
-- Request: gzip-compressed JSON with `sessions`, `activitySessions`, `totalMessages`, `totalDurationMinutes`
-- Response: SSE stream with `progress`, `phase_preview`, `result`, `error` event types
-- Authentication: `getCurrentUserFromRequest()` (implicit local user)
-- Query params: `noTranslate=1` (skip translation), headers: `x-debug=1` (include debug output)
 
 ### 1.3 Analyze Page
 
@@ -130,9 +105,9 @@ The employee flow covers the individual contributor experience — running analy
 │  Analyze Your Sessions                                │
 │                                                       │
 │  ┌─────────────────────────────────────────────────┐ │
-│  │  🖥️  Run the CLI to analyze your sessions       │ │
+│  │  🔌 Use the plugin to analyze your sessions     │ │
 │  │                                                  │ │
-│  │  $ npx betterprompt-cli                            │ │
+│  │  "Analyze my coding sessions"                    │ │
 │  │                                                  │ │
 │  └─────────────────────────────────────────────────┘ │
 │                                                       │
@@ -618,10 +593,10 @@ Continuous-scroll diagnostic view of an individual team member:
 │                                                                      │
 │  EMPLOYEE SIDE                           MANAGER SIDE                │
 │                                                                      │
-│  $ npx betterprompt-cli                                                │
+│  Plugin: "Analyze my sessions"                                       │
 │       │                                                              │
 │       ▼                                                              │
-│  POST /api/analysis/run                                             │
+│  Local analysis (MCP tools)                                         │
 │       │                                                              │
 │       ▼                                                              │
 │  ┌──────────────────┐                                               │
