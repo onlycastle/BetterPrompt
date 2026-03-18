@@ -22,13 +22,13 @@ import * as path from 'path';
 import {
   CursorSource,
   CURSOR_CHATS_DIR,
-} from '../packages/cli/src/lib/scanner/sources/cursor';
+} from '../packages/plugin/lib/scanner/sources/cursor';
 import { DataExtractorWorker } from '../src/lib/analyzer/workers/data-extractor-worker';
 import type { WorkerContext, OrchestratorConfig } from '../src/lib/analyzer/orchestrator/types';
 import type { SessionMetrics } from '../src/lib/domain/models/analysis';
 import type { Phase1Output, UserUtterance } from '../src/lib/models/phase1-output';
 import type { ParsedSession } from '../src/lib/models/session';
-import type { SourcedParsedSession } from '../packages/cli/src/lib/scanner/sources/base';
+import type { SourcedParsedSession } from '../packages/plugin/lib/scanner/sources/base';
 
 // ============================================================================
 // Configuration

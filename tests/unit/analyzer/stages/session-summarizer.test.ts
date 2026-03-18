@@ -13,14 +13,12 @@ import {
   SessionSummaryBatchLLMSchema,
 } from '../../../../src/lib/models/session-summary-data';
 
-// Import activity scanner helpers
+// Import scanner helpers (moved from CLI to plugin)
 import {
   stripSystemReminders,
   truncateAtWordBoundary,
-} from '../../../../packages/cli/src/activity-scanner';
-
-// Import stripSystemTags directly for testing new tag patterns
-import { stripSystemTags } from '../../../../packages/cli/src/lib/strip-system-tags';
+  stripSystemTags,
+} from '../../../../packages/plugin/lib/scanner/strip-system-tags';
 
 // ---------------------------------------------------------------------------
 // Schema Tests

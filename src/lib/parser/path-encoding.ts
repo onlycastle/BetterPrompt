@@ -1,10 +1,10 @@
 /**
  * Cross-Platform Path Encoding/Decoding (Server-side)
  *
- * Mirror of packages/cli/src/lib/path-encoding.ts for the self-hosted Next.js
- * server package. CLI and server build independently, so this is a separate file.
+ * Mirror of packages/plugin/lib/scanner/path-encoding.ts for the self-hosted Next.js
+ * server package. Plugin and server build independently, so this is a separate file.
  *
- * @see packages/cli/src/lib/path-encoding.ts for full documentation
+ * @see packages/plugin/lib/scanner/path-encoding.ts for full documentation
  * @module path-encoding
  */
 

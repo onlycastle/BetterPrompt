@@ -11,7 +11,7 @@
  * - Structured output via SessionSummaryBatchLLMSchema
  * - Truncated message previews to minimize token usage
  *
- * Note: This is separate from the CLI Activity Scanner (packages/cli/src/activity-scanner.ts)
+ * Note: This is separate from the plugin Activity Scanner
  * which generates deterministic summaries for ALL recent sessions.
  * Phase 1.5 generates LLM-quality summaries for the top-50 analyzed sessions only.
  *

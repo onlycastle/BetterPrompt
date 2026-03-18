@@ -11,11 +11,11 @@
  *   npx tsx scripts/test-cursor-composer.ts --debug                   # Show raw bubble data
  */
 
-import { CursorComposerSource } from '../packages/cli/src/lib/scanner/sources/cursor-composer';
-import { getCursorGlobalStateDbPath } from '../packages/cli/src/lib/scanner/sources/cursor-paths';
-import { CURSOR_COMPOSER_TOOL_IDS } from '../packages/cli/src/lib/scanner/tool-mapping';
-import type { SourcedParsedSession } from '../packages/cli/src/lib/scanner/sources/base';
-import type { ParsedMessage } from '../packages/cli/src/lib/scanner/session-types';
+import { CursorComposerSource } from '../packages/plugin/lib/scanner/sources/cursor-composer';
+import { getCursorGlobalStateDbPath } from '../packages/plugin/lib/scanner/sources/cursor-paths';
+import { CURSOR_COMPOSER_TOOL_IDS } from '../packages/plugin/lib/scanner/tool-mapping';
+import type { SourcedParsedSession } from '../packages/plugin/lib/scanner/sources/base';
+import type { ParsedMessage } from '../packages/plugin/lib/scanner/session-types';
 import { existsSync } from 'node:fs';
 
 // ─────────────────────────────────────────────────────────────────────────

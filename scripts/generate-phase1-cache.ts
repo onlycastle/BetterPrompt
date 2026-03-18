@@ -21,7 +21,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-import { scanSessions } from '../packages/cli/src/scanner.js';
+import { multiSourceScanner, type SourcedParsedSession } from '../packages/plugin/lib/scanner/index.js';
 import { DataExtractorWorker } from '../src/lib/analyzer/workers/data-extractor-worker';
 import type { WorkerContext } from '../src/lib/analyzer/orchestrator/types';
 import type { SessionMetrics } from '../src/lib/domain/models/analysis';
@@ -160,42 +160,73 @@ async function main() {
     process.exit(0);
   }
 
-  // Step 1: Scan sessions
+  // Step 1: Scan sessions using multiSourceScanner
   console.log('Step 1: Scanning sessions...');
   const scanStartTime = Date.now();
-  const scanResult = await scanSessions(maxSessions);
-  const scanElapsed = Date.now() - scanStartTime;
 
+  const { files, sourceStats } = await multiSourceScanner.collectAllFileMetadata({
+    minFileSize: 1024,
+    maxFileSize: 50 * 1024 * 1024,
+  });
+
+  const allMetadata = (await Promise.all(files.map(f => multiSourceScanner.extractMetadata(f))))
+    .filter((m): m is NonNullable<typeof m> => m !== null)
+    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+    .slice(0, maxSessions);
+
+  const allParsed = (await Promise.all(allMetadata.map(m => multiSourceScanner.parseSession(m))))
+    .filter((s): s is SourcedParsedSession => s !== null);
+
+  const scanElapsed = Date.now() - scanStartTime;
   console.log(`Scan completed in ${scanElapsed}ms`);
 
-  if (scanResult.sessions.length === 0) {
+  if (allParsed.length === 0) {
     console.error('No sessions found. Check that Claude projects exist in ~/.claude/projects/');
     process.exit(1);
   }
 
-  console.log(`Found ${scanResult.sessions.length} sessions`);
-  console.log(`Total messages: ${scanResult.totalMessages}`);
+  const totalMessages = allParsed.reduce((sum, s) => sum + s.messages.length, 0);
+  console.log(`Found ${allParsed.length} sessions`);
+  console.log(`Total messages: ${totalMessages}`);
 
   // Show source distribution
-  if (scanResult.sourceStats && scanResult.sourceStats.size > 0) {
+  if (sourceStats && sourceStats.size > 0) {
     console.log('Sources:');
-    for (const [source, count] of scanResult.sourceStats) {
-      console.log(`  - ${source}: ${count} sessions`);
+    for (const [source, count] of sourceStats) {
+      console.log(`  - ${source}: ${count} files`);
     }
   }
   console.log('');
 
   // Step 2: Prepare ParsedSession[] for DataExtractorWorker
-  const parsedSessions: ParsedSession[] = scanResult.sessions.map(s => s.parsed);
+  const parsedSessions: ParsedSession[] = allParsed.map(s => ({
+    sessionId: s.sessionId,
+    projectPath: s.projectPath,
+    projectName: s.projectName,
+    startTime: s.startTime.toISOString(),
+    endTime: s.endTime.toISOString(),
+    durationSeconds: s.durationSeconds,
+    claudeCodeVersion: s.claudeCodeVersion,
+    messages: s.messages.map(m => ({
+      uuid: m.uuid,
+      role: m.role,
+      timestamp: m.timestamp.toISOString(),
+      content: m.content,
+      toolCalls: m.toolCalls,
+      tokenUsage: m.tokenUsage,
+    })),
+    stats: s.stats,
+    source: s.source,
+  }));
 
   // Build session metadata for cache
-  const sessionEntries: SessionCacheEntry[] = scanResult.sessions.map(s => ({
-    sessionId: s.metadata.sessionId,
-    projectPath: s.metadata.projectPath,
-    projectName: s.metadata.projectName,
-    messageCount: s.metadata.messageCount,
-    filePath: s.metadata.filePath,
-    source: s.metadata.source as 'claude-code' | 'cursor' | undefined,
+  const sessionEntries: SessionCacheEntry[] = allParsed.map(s => ({
+    sessionId: s.sessionId,
+    projectPath: s.projectPath,
+    projectName: s.projectName ?? s.projectPath.split('/').pop() ?? 'unknown',
+    messageCount: s.messages.length,
+    filePath: '',
+    source: s.source as 'claude-code' | 'cursor' | undefined,
   }));
 
   // Print session list
@@ -266,8 +297,8 @@ async function main() {
       },
       sessions: sessionEntries,
       stats: {
-        totalSessions: scanResult.sessions.length,
-        totalMessages: scanResult.totalMessages,
+        totalSessions: allParsed.length,
+        totalMessages,
         phase1ExecutionMs: executionMs,
         tokenUsage: result.usage ?? undefined,
       },
