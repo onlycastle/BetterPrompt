@@ -206,7 +206,7 @@ These deprecated code paths are kept intentionally for data migration. Do NOT re
 > 5. Delete `~/.claude/plugins/marketplaces/betterprompt/`
 > 6. Clear any project-level `settings.local.json` with betterprompt entries
 > 7. Check for and remove any plugin state databases (`bp-results*`, `bp-stage*`)
-> 8. Validate all modified JSON files (trailing commas break Claude Code)
+> 8. Validate all JSON files after edits (trailing comma issues are common)
 
 ## Documentation
 
@@ -215,7 +215,7 @@ These deprecated code paths are kept intentionally for data migration. Do NOT re
 | Document | When to Read |
 |----------|--------------|
 | [docs/agent/ARCHITECTURE.md](./docs/agent/ARCHITECTURE.md) | Understanding system structure, pipeline phases, finding key files, API routes, data models |
-| [docs/agent/TESTING.md](./docs/agent/TESTING.md) | Running tests, test script options, cache workflows |
+| [docs/agent/TESTING.md](./docs/agent/TESTING.md) | Running tests, test script options, cache workflows, plugin testing cleanup |
 | [docs/agent/DEPLOYMENT.md](./docs/agent/DEPLOYMENT.md) | Self-hosted deployment, environment variables |
 | [docs/agent/TROUBLESHOOTING.md](./docs/agent/TROUBLESHOOTING.md) | Debugging issues, known pitfalls, prevention checklists |
 

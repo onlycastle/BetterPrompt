@@ -163,6 +163,21 @@ npx tsx scripts/test-phase3.ts /path/to/session.jsonl
 npx tsx scripts/test-phase4.ts /path/to/session.jsonl --lang=ko
 ```
 
+## Plugin Testing
+
+Before testing the BetterPrompt plugin, remove all previous installations to cover the full flow including install. See the complete cleanup checklist in [CLAUDE.md > Plugin Testing](../../CLAUDE.md#plugin-testing).
+
+| Step | Target |
+|------|--------|
+| 1 | `~/.claude/settings.json` — disable plugin, clear marketplaces |
+| 2 | `~/.claude/plugins/installed_plugins.json` — remove entry |
+| 3 | `~/.claude/plugins/known_marketplaces.json` — remove entry |
+| 4 | Delete `~/.claude/plugins/cache/betterprompt/` and `temp_local_*` |
+| 5 | Delete `~/.claude/plugins/marketplaces/betterprompt/` |
+| 6 | Clear project `settings.local.json` betterprompt entries |
+| 7 | Remove plugin state DBs (`bp-results*`, `bp-stage*`) |
+| 8 | Validate all JSON files after edits (trailing commas) |
+
 ## Unit Tests
 
 ```bash
