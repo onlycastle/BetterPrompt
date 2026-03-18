@@ -16,5 +16,8 @@ export * from './evaluation/index.js';
 export { computeDeterministicScores } from './scoring/deterministic-scorer.js';
 export { computeDeterministicType } from './scoring/deterministic-type-mapper.js';
 
+// Knowledge resource matching
+export * from './matching/index.js';
+
 // Constants
 export { CONTEXT_WINDOW_SIZE, MATRIX_NAMES, MATRIX_METADATA } from './constants.js';
