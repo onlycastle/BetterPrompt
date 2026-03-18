@@ -6,27 +6,53 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
 import { createServer } from 'node:http';
 import { exec } from 'node:child_process';
-import { assembleCanonicalRun } from '../../lib/results-db.js';
+import {
+  assembleCanonicalRun,
+  getCurrentRunId,
+  getDomainResult,
+} from '../../lib/results-db.js';
+import { PLUGIN_DATA_DIR } from '../../lib/core/session-scanner.js';
 import { generateCanonicalReportHtml } from '../../lib/report-template.js';
 import { markAnalysisComplete } from '../../lib/debounce.js';
+import {
+  getStageStatuses,
+  getStageOutput,
+  REQUIRED_STAGE_NAMES,
+} from '../../lib/stage-db.js';
 
 export const definition = {
   name: 'generate_report',
   description:
     'Generate a standalone HTML report from all completed domain analyses ' +
     'and serve it on a local HTTP server. Returns the URL to view the report. ' +
-    'Call this after all domain analyses and type classification are complete.',
+    'Call this after all domain analyses and type classification are complete. ' +
+    'Pass allowIncomplete=true to override required-stage gating.',
 };
 
 /** Track the running server so we can shut it down */
 let activeServer: ReturnType<typeof createServer> | null = null;
 let shutdownTimer: ReturnType<typeof setTimeout> | null = null;
 const SHUTDOWN_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const DOMAIN_STAGE_NAMES = new Set([
+  'thinkingQuality',
+  'communicationPatterns',
+  'learningBehavior',
+  'contextEfficiency',
+  'sessionOutcome',
+]);
+
+interface StageGateIssue {
+  stage: string;
+  required: boolean;
+  status: 'validated' | 'failed' | 'running' | 'queued' | 'missing';
+  attemptCount: number;
+  lastError: string | null;
+  updatedAt: string | null;
+}
 
 function resetShutdownTimer(): void {
   if (shutdownTimer) clearTimeout(shutdownTimer);
@@ -52,12 +78,73 @@ function closeActiveServer(): Promise<void> {
   });
 }
 
-export async function execute(args: { port?: number; openBrowser?: boolean }): Promise<string> {
+function hasFallbackArtifact(runId: number, stage: string): boolean {
+  if (DOMAIN_STAGE_NAMES.has(stage)) {
+    return getDomainResult(runId, stage) !== null;
+  }
+  return getStageOutput(runId, stage) !== null;
+}
+
+function getRequiredStageGateIssues(runId: number): StageGateIssue[] {
+  const statuses = getStageStatuses(runId);
+  const statusLookup = new Map(statuses.map(status => [status.stage, status]));
+  const issues: StageGateIssue[] = [];
+
+  for (const stage of REQUIRED_STAGE_NAMES) {
+    const status = statusLookup.get(stage);
+    if (status) {
+      if (status.status !== 'validated') {
+        issues.push({
+          stage,
+          required: status.required,
+          status: status.status,
+          attemptCount: status.attemptCount,
+          lastError: status.lastError,
+          updatedAt: status.updatedAt,
+        });
+      }
+      continue;
+    }
+
+    if (!hasFallbackArtifact(runId, stage)) {
+      issues.push({
+        stage,
+        required: true,
+        status: 'missing',
+        attemptCount: 0,
+        lastError: null,
+        updatedAt: null,
+      });
+    }
+  }
+
+  return issues;
+}
+
+export async function execute(args: { port?: number; openBrowser?: boolean; allowIncomplete?: boolean }): Promise<string> {
   const port = args.port ?? 3456;
   const openBrowser = args.openBrowser ?? true;
+  const allowIncomplete = args.allowIncomplete ?? false;
 
   // Assemble report data
-  const run = assembleCanonicalRun();
+  const runId = getCurrentRunId();
+  if (!runId) {
+    return JSON.stringify({
+      status: 'error',
+      message: 'No analysis results found. Run extract_data and domain analyses first.',
+    });
+  }
+
+  const gateIssues = getRequiredStageGateIssues(runId);
+  if (gateIssues.length > 0 && !allowIncomplete) {
+    return JSON.stringify({
+      status: 'blocked',
+      message: 'Required analysis stages are incomplete. Re-run the missing stages or pass allowIncomplete=true to override.',
+      issues: gateIssues,
+    });
+  }
+
+  const run = assembleCanonicalRun(runId);
   if (!run) {
     return JSON.stringify({
       status: 'error',
@@ -69,7 +156,7 @@ export async function execute(args: { port?: number; openBrowser?: boolean }): P
   const html = generateCanonicalReportHtml(run);
 
   // Save report file
-  const reportsDir = join(homedir(), '.betterprompt', 'reports');
+  const reportsDir = join(PLUGIN_DATA_DIR, 'reports');
   await mkdir(reportsDir, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const reportPath = join(reportsDir, `report-${timestamp}.html`);
@@ -147,6 +234,7 @@ export async function execute(args: { port?: number; openBrowser?: boolean }): P
     latestPath,
     domainCount: run.domainResults.length,
     type: run.typeResult ? `${run.typeResult.matrixEmoji} ${run.typeResult.matrixName}` : 'Not classified',
+    ...(gateIssues.length > 0 ? { warning: 'Report generated with incomplete required stages because allowIncomplete=true.' } : {}),
     message: `Report generated and available at ${url}. Saved to ${reportPath}.`,
   });
 }

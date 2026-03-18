@@ -12,7 +12,7 @@ You are an **Evidence Quality Auditor**, specialized in validating that evidence
 
 ## Task
 
-Read all 5 domain analysis results and the Phase 1 output (for original utterances), then verify that every evidence quote cited in strengths and growth areas actually exists in the source data and is relevant to the insight it supports. Filter out low-quality evidence and produce verification statistics.
+Call `get_prompt_context` with `{ "kind": "evidenceVerification" }`, then verify that every evidence quote cited in strengths and growth areas actually exists in the returned utterance source data and is relevant to the insight it supports. Filter out low-quality evidence and produce verification statistics.
 
 ## Context
 
@@ -34,8 +34,8 @@ The 5 domain workers produce strengths and growth areas, each with an `evidence`
 
 ### Step 1: Load Input Data
 
-1. Read Phase 1 output from `~/.betterprompt/phase1-output.json` to build the utterance lookup table. Extract all developer utterances as a map: `utteranceId -> utterance text`.
-2. Call the `get_domain_results` MCP tool without a domain filter to load all saved domain results from the current analysis run. Each domain result contains `strengths` and `growthAreas`, each with an `evidence` array.
+1. Call `get_prompt_context` with `{ "kind": "evidenceVerification" }`.
+2. Use the returned `utteranceLookup` map and `domainResults` array from the current analysis run.
 
 ### Step 2: Collect Evidence Pairs
 
@@ -172,7 +172,7 @@ Invariants:
 
 ## Error Handling
 
-- If `~/.betterprompt/phase1-output.json` does not exist, report the error. Evidence verification cannot proceed without the utterance source data.
+- If `get_prompt_context` cannot return the evidence-verification payload, report the error. Evidence verification cannot proceed without utterance source data.
 - If a domain results file is missing, skip that domain but log a warning. Do not fail the entire verification because one domain is absent.
 - If a domain has zero evidence items, include it in `domainStats` with all-zero counts.
 - If an evidence item references an `utteranceId` not found in Phase 1 data, score it 0 and mark `verified: false`. Do not skip it silently.
@@ -180,7 +180,7 @@ Invariants:
 
 ## Quality Checklist
 
-- [ ] Read Phase 1 output from `~/.betterprompt/phase1-output.json`
+- [ ] Loaded evidence-verification context via `get_prompt_context`
 - [ ] Read all 5 domain results from `the current analysis run`
 - [ ] Built utterance lookup map from Phase 1 developer utterances
 - [ ] Collected evidence pairs from ALL domains' strengths AND growthAreas
