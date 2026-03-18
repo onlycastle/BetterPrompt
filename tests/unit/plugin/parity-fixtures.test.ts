@@ -11,8 +11,6 @@ import {
 } from '@betterprompt/shared';
 import {
   assembleCanonicalAnalysisRun,
-  buildCanonicalEvaluation,
-  buildReportActivitySessions,
 } from '../../../packages/plugin/lib/evaluation-assembler.js';
 import type {
   CanonicalStageOutputs,
@@ -21,9 +19,7 @@ import type {
   DomainResult,
   Phase1Output,
 } from '../../../packages/plugin/lib/core/types.js';
-import { mergeTranslatedFields } from '../../../src/lib/analyzer/stages/evaluation-assembler.js';
 import { VerboseEvaluationSchema } from '../../../src/lib/models/verbose-evaluation.js';
-import type { TranslatorOutput as ServerTranslatorOutput } from '../../../src/lib/models/translator-output.js';
 
 interface ParityFixture {
   runId: number;
@@ -60,51 +56,6 @@ function pickSections(
   );
 }
 
-function buildServerOracleEvaluation(fixture: ParityFixture): Record<string, unknown> {
-  const englishStageOutputs: CanonicalStageOutputs = {
-    ...fixture.stageOutputs,
-    translator: undefined,
-  };
-
-  const activitySessions = buildReportActivitySessions(
-    fixture.phase1Output,
-    englishStageOutputs.sessionSummaries,
-  );
-
-  const evaluation = buildCanonicalEvaluation({
-    analyzedAt: fixture.analyzedAt,
-    phase1Output: fixture.phase1Output,
-    activitySessions,
-    deterministicScores: fixture.deterministicScores,
-    typeResult: fixture.typeResult,
-    domainResults: fixture.domainResults,
-    stageOutputs: englishStageOutputs,
-  }) as Record<string, unknown>;
-
-  if (fixture.stageOutputs.translator) {
-    mergeTranslatedFields(
-      evaluation,
-      fixture.stageOutputs.translator.translatedFields as unknown as ServerTranslatorOutput,
-      fixture.stageOutputs.translator.targetLanguage as never,
-    );
-
-    const translatedWeekly = fixture.stageOutputs.translator.translatedFields.weeklyInsights as
-      | { topSessionSummaries?: string[] }
-      | undefined;
-    const weeklyInsights = evaluation.weeklyInsights as { topProjectSessions?: Array<{ summary: string }> } | undefined;
-
-    if (translatedWeekly?.topSessionSummaries?.length && weeklyInsights?.topProjectSessions?.length) {
-      translatedWeekly.topSessionSummaries.forEach((summary, index) => {
-        if (weeklyInsights.topProjectSessions?.[index]) {
-          weeklyInsights.topProjectSessions[index]!.summary = summary;
-        }
-      });
-    }
-  }
-
-  return evaluation;
-}
-
 describe('plugin parity fixtures', () => {
   const fixtureNames = [
     'claude-only-no-translation.json',
@@ -133,10 +84,6 @@ describe('plugin parity fixtures', () => {
         fixture.expectedFinalSections,
       );
       expect(pluginSections).toEqual(fixture.expectedFinalSections);
-
-      const serverOracle = buildServerOracleEvaluation(fixture);
-      const serverSections = pickSections(serverOracle, fixture.expectedFinalSections);
-      expect(pluginSections).toEqual(serverSections);
 
       if (fixtureName.includes('cursor-inclusive')) {
         const sources = fixture.phase1Output.sessions?.map(session => session.source);

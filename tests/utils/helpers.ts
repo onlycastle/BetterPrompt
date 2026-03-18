@@ -6,7 +6,7 @@
 
 import type { ParsedSession, ParsedMessage } from '../../src/lib/models/session.js';
 import type { TypeResult, CodingStyleType } from '../../src/lib/models/coding-style.js';
-import type { FullAnalysisResult } from '../../src/lib/analyzer/dimensions/index.js';
+import type { FullAnalysisResult } from '../../src/types/report.js';
 import type { VerboseEvaluation } from '../../src/lib/models/verbose-evaluation.js';
 
 // ============================================

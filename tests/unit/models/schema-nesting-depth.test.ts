@@ -22,10 +22,7 @@ import { LearningBehaviorLLMOutputSchema } from '../../../src/lib/models/learnin
 import { ContextEfficiencyLLMOutputSchema } from '../../../src/lib/models/agent-outputs';
 import { SessionOutcomeLLMOutputSchema } from '../../../src/lib/models/session-outcome-data';
 // Phase 2 Summarizers
-import { ProjectSummaryBatchLLMSchema } from '../../../src/lib/analyzer/stages/project-summarizer';
 import { WeeklyInsightsLLMSchema } from '../../../src/lib/models/weekly-insights';
-// Phase 2.5
-import { TypeClassifierLLMSchema } from '../../../src/lib/analyzer/workers/type-classifier-worker';
 // Phase 2.8
 import { EvidenceVerificationResponseSchema } from '../../../src/lib/models/evidence-verification-data';
 // Phase 3
@@ -190,17 +187,8 @@ describe('Gemini Schema Nesting Depth', () => {
   });
 
   // ─── Phase 2 Summarizers ───────────────────────────
-  describe('ProjectSummaryBatchLLMSchema (Phase 2)', () => {
-    testSchemaDepth('ProjectSummaryBatchLLMSchema', ProjectSummaryBatchLLMSchema);
-  });
-
   describe('WeeklyInsightsLLMSchema (Phase 2)', () => {
     testSchemaDepth('WeeklyInsightsLLMSchema', WeeklyInsightsLLMSchema);
-  });
-
-  // ─── Phase 2.5 ─────────────────────────────────────
-  describe('TypeClassifierLLMSchema (Phase 2.5)', () => {
-    testSchemaDepth('TypeClassifierLLMSchema', TypeClassifierLLMSchema);
   });
 
   // ─── Phase 2.8 ─────────────────────────────────────
