@@ -60,8 +60,7 @@ npm test               # Run all tests
 - Users get misleading data without knowing something went wrong
 
 **Implementation**:
-- Workers throw errors instead of returning empty data via `createFailedResult`
-- Orchestrator uses `Promise.all()` (not `Promise.allSettled()`) to fail fast
+- Plugin analysis skills let errors propagate instead of returning empty data
 - Frontend should show clear error states, not fake/empty results
 
 **Do NOT**:

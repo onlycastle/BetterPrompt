@@ -15,7 +15,7 @@ BetterPrompt serves two personas through a single self-hosted Next.js applicatio
 │   │    EMPLOYEE FLOW     │        │      MANAGER FLOW         │     │
 │   │  (Individual User)   │        │  (Enterprise Admin)       │     │
 │   │                      │        │                           │     │
-│   │  • Run CLI analysis  │        │  • Create organization    │     │
+│   │  • Run plugin analysis│        │  • Create organization    │     │
 │   │  • View reports      │◄──────►│  • Manage teams/members   │     │
 │   │  • Track progress    │  link  │  • View team analytics    │     │
 │   │                      │        │  • Monitor growth trends  │     │
@@ -534,7 +534,7 @@ Continuous-scroll diagnostic view of an individual team member:
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │ Server URL                                                │   │
-│  │ BETTERPROMPT_API_URL for team member CLI configuration         │   │
+│  │ BETTERPROMPT_API_URL for team member plugin configuration      │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐   │
@@ -720,7 +720,7 @@ Role is determined by `getUserOrgRole()` which returns the **highest** role acro
 
 | File | Purpose |
 |------|---------|
-| `app/dashboard/analyze/AnalyzeContent.tsx` | CLI instructions + most recent analysis |
+| `app/dashboard/analyze/AnalyzeContent.tsx` | Plugin instructions + most recent analysis |
 | `app/dashboard/personal/PersonalContent.tsx` | Report list + Progress tabs |
 | `app/dashboard/r/[resultId]/ImmersiveReportContent.tsx` | Full immersive report view |
 

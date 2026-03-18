@@ -19,17 +19,11 @@ The supported open-source product is a self-hosted Next.js server plus Claude Co
 
 ### Web Server
 
-- `app/api/auth/*`: local email/password auth, browser sessions, CLI device flow
+- `app/api/auth/*`: local email/password auth, browser sessions
 - `app/api/analysis/*`: run analysis, fetch user analyses, fetch/delete stored results
 - `app/api/knowledge/*` and `app/api/learn/*`: local knowledge browsing and ingestion
 - `app/api/reports/[reportId]/share`: share tracking for self-hosted public report links
 - `app/api/benchmarks/global`: aggregates local report data for benchmark views
-
-### Analyzer
-
-- `src/lib/analyzer/`: multi-phase Gemini analysis pipeline
-- Deterministic preprocessing selects and summarizes sessions before worker analysis
-- Worker outputs are assembled into a single verbose evaluation and stored in SQLite
 
 ### Persistence
 
@@ -42,7 +36,7 @@ The supported open-source product is a self-hosted Next.js server plus Claude Co
 - Landing page and docs
 - Dashboard: analyze, knowledge, personal history
 - Public report pages at `/r/:resultId`
-- CLI-based local analysis flow
+- Plugin-based local analysis flow (Claude Code plugin)
 
 Removed from the supported OSS runtime:
 

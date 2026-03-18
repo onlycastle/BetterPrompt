@@ -167,7 +167,7 @@ Test structure:
 
 ```
 tests/
-  unit/              # Analyzer stages, workers, models, search agent
+  unit/              # Models, parser, plugin parity, search agent
   e2e/               # Playwright browser tests (report rendering, scroll nav)
   integration.test.ts # Full pipeline: session parsing -> multi-phase analysis
   fixtures/          # Real session logs and evaluation data
@@ -215,7 +215,7 @@ src/
     report/                 Shared report UI
     ui/                     Reusable UI primitives
   lib/
-    analyzer/               Legacy server analyzer code + evaluation compatibility helpers
+    transformers/            Data transformation utilities
     domain/                 Domain models (config, knowledge, user, sharing)
     enterprise/             Team aggregation and enterprise features
     local/                  SQLite persistence (auth, reports, teams)

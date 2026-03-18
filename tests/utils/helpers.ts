@@ -138,7 +138,7 @@ export function createMockTypeResult(overrides: Partial<TypeResult> = {}): TypeR
  * Create mock FullAnalysisResult with all 6 dimensions
  *
  * Note: Each dimension type has a specific structure that must be respected.
- * See src/analyzer/dimensions/*.ts for type definitions.
+ * See src/types/report.ts for type definitions.
  */
 export function createMockDimensions(overrides: Partial<FullAnalysisResult> = {}): FullAnalysisResult {
   return {

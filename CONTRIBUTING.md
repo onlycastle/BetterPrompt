@@ -8,8 +8,6 @@ Thanks for your interest in BetterPrompt! Here's how to get started.
 git clone https://github.com/onlycastle/BetterPrompt.git
 cd BetterPrompt
 npm install
-cp .env.example .env
-# Add your GOOGLE_GEMINI_API_KEY to .env (only needed for web server features)
 npm run dev
 ```
 
@@ -21,8 +19,8 @@ The plugin (`packages/plugin`) works standalone without any API keys.
 |-----------|-------------|
 | `packages/plugin/` | Claude Code plugin (MCP tools + analysis skills) |
 | `app/` | Next.js app router (team dashboard) |
-| `src/lib/analyzer/` | Gemini-powered analysis pipeline |
 | `src/components/` | React components |
+| `src/lib/` | Models, parser, persistence, and domain logic |
 | `tests/` | Unit, integration, and E2E tests |
 
 ## Making Changes

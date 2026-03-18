@@ -66,5 +66,5 @@ npm run build
 Then manually confirm:
 
 - `.gitignore` excludes local caches and generated artifacts
-- public docs describe only the supported self-hosted server + CLI runtime
+- public docs describe only the supported self-hosted server + plugin runtime
 - the repo contains no tracked desktop, Lambda, Supabase, or billing code paths
