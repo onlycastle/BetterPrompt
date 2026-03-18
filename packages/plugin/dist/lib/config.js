@@ -12,7 +12,7 @@
  *   analyzeThreshold → BETTERPROMPT_ANALYZE_THRESHOLD
  */
 import { join } from 'node:path';
-import { homedir } from 'node:os';
+import { PLUGIN_DATA_DIR } from './core/session-scanner.js';
 const DEFAULTS = {
     serverUrl: 'http://localhost:3000',
     authToken: '',
@@ -41,7 +41,7 @@ export function resetConfig() {
 }
 /** Base directory for plugin state files */
 export function getPluginDataDir() {
-    return join(homedir(), '.betterprompt');
+    return PLUGIN_DATA_DIR;
 }
 /** Path to the plugin state file (debounce tracking) */
 export function getStateFilePath() {
