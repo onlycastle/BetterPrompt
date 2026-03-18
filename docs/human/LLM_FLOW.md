@@ -980,7 +980,7 @@ Philosophy: **"Diagnosis Free, Prescription Paid"**
 | Tab Container | `src/components/personal/tabs/containers/TabbedReportContainer.tsx` |
 | Worker Section | `src/components/personal/tabs/insights/WorkerInsightsSection.tsx` |
 | Pattern Transformer | `src/lib/transformers/prompt-pattern-transformer.ts` |
-| Tier Policy | `src/lib/analyzer/content-gateway.ts` (TIER_POLICY) |
+| Tier Policy | Removed (tier policy now handled in plugin) |
 
 ---
 
@@ -1317,86 +1317,71 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 
 ### Pipeline Orchestration
 
-| Component | File | Description |
-|-----------|------|-------------|
-| Analysis Orchestrator | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | Pipeline coordination (Phase 1→2→2.5→3→4→Assembly→TranslationOverlay), Worker registration/execution, `mergeTranslatedFields()` |
-| Orchestrator Types | `src/lib/analyzer/orchestrator/types.ts` | WorkerResult, WorkerContext, Phase types |
-| Verbose Analyzer | `src/lib/analyzer/verbose-analyzer.ts` | Entry point, registers all workers (1 Phase 1, 5 Phase 2, 1 Phase 2.5) |
-| Content Gateway | `src/lib/analyzer/content-gateway.ts` | Tier-based content filtering (free/premium) |
-
-### Phase 1: Data Extraction Worker (1 worker, deterministic)
+> **Note**: The analysis pipeline has moved from `src/lib/analyzer/` to the Claude Code plugin at `packages/plugin/`. Orchestration is now handled by plugin skills (`packages/plugin/skills/`) and core modules (`packages/plugin/lib/core/`).
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Base Worker | `src/lib/analyzer/workers/base-worker.ts` | BaseWorker abstract class, runWorkerSafely |
-| Data Extractor Worker | `src/lib/analyzer/workers/data-extractor-worker.ts` | Phase 1 - deterministic extraction (no LLM) |
+| Plugin Skills | `packages/plugin/skills/*.md` | Analysis pipeline steps (analyze, classify, translate, etc.) |
+| Core Types | `packages/plugin/lib/core/types.ts` | Pipeline types and interfaces |
+| Background Analyzer | `packages/plugin/lib/background-analyzer.ts` | Pipeline coordination and execution |
+
+### Phase 1: Data Extraction (deterministic)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Data Extractor | `packages/plugin/lib/core/data-extractor.ts` | Phase 1 - deterministic extraction (no LLM) |
 | Phase 1 Output Schema | `src/lib/models/phase1-output.ts` | Phase1Output Zod schema |
 
-### Phase 2: Insight Generation Workers (5 workers, 5 LLM calls)
+### Phase 2: Insight Generation (5 LLM calls via plugin skills)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Thinking Quality | `src/lib/analyzer/workers/thinking-quality-worker.ts` | Planning, critical thinking |
-| Communication Patterns | `src/lib/analyzer/workers/communication-patterns-worker.ts` | Communication patterns, signature quotes |
-| Learning Behavior | `src/lib/analyzer/workers/learning-behavior-worker.ts` | Knowledge gaps & repeated mistakes |
-| Context Efficiency | `src/lib/analyzer/workers/context-efficiency-worker.ts` | Token inefficiency |
-| Session Outcome | `src/lib/analyzer/workers/session-outcome-worker.ts` | Goals, friction, success rates |
+| Thinking Quality Skill | `packages/plugin/skills/analyze-thinking-quality.md` | Planning, critical thinking |
+| Communication Patterns Skill | `packages/plugin/skills/analyze-communication.md` | Communication patterns, signature quotes |
+| Learning Behavior Skill | `packages/plugin/skills/analyze-learning.md` | Knowledge gaps & repeated mistakes |
+| Context Efficiency Skill | `packages/plugin/skills/analyze-efficiency.md` | Token inefficiency |
+| Session Outcome Skill | `packages/plugin/skills/analyze-sessions.md` | Goals, friction, success rates |
 | Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | AgentOutputs Zod schemas |
 | Thinking Quality Schema | `src/lib/models/thinking-quality-data.ts` | ThinkingQualityOutput |
 | Communication Patterns Schema | `src/lib/models/communication-patterns-data.ts` | CommunicationPatternsOutput |
 | Learning Behavior Schema | `src/lib/models/learning-behavior-data.ts` | LearningBehaviorOutput |
 | Context Efficiency Schema | (reuses existing) | ContextEfficiencyOutput |
 | Session Outcome Schema | `src/lib/models/session-outcome-data.ts` | SessionOutcomeOutput |
-| Thinking Quality Prompts | `src/lib/analyzer/workers/prompts/thinking-quality-prompts.ts` | PTCF prompts for thinking analysis |
-| Communication Patterns Prompts | `src/lib/analyzer/workers/prompts/communication-patterns-prompts.ts` | PTCF prompts for communication analysis |
-| Learning Behavior Prompts | `src/lib/analyzer/workers/prompts/learning-behavior-prompts.ts` | PTCF prompts for learning analysis |
-| Context Efficiency Prompts | `src/lib/analyzer/workers/prompts/context-efficiency-prompts.ts` | PTCF prompts for context analysis |
-| Session Outcome Prompts | `src/lib/analyzer/workers/prompts/session-outcome-prompts.ts` | PTCF prompts for session outcome analysis |
-| Knowledge Mapping | `src/lib/analyzer/workers/prompts/knowledge-mapping.ts` | Dynamic prompt injection (dimension→insight mapping) |
 
-### Phase 2.5: Classification (1 worker, 1 LLM call)
+### Phase 2.5: Classification (1 LLM call via plugin skill)
 
-| Component | File | Tier | Description |
-|-----------|------|------|-------------|
-| TypeClassifier Worker | `src/lib/analyzer/workers/type-classifier-worker.ts` | free | Type classification |
-| TypeClassifier Prompts | `src/lib/analyzer/workers/prompts/type-classifier-prompts.ts` | — | PTCF prompts for type classification |
-| Type Detector | `src/lib/analyzer/type-detector.ts` | — | Pattern-based type detection utilities |
-| Coding Style Types | `src/lib/models/coding-style.ts` | — | 5×3 matrix types (15 combinations) |
-| AI Control Dimension | `src/lib/analyzer/dimensions/ai-control.ts` | — | Control level calculation |
+| Component | File | Description |
+|-----------|------|-------------|
+| Classify Type Skill | `packages/plugin/skills/classify-type.md` | Type classification |
+| Deterministic Type Mapper | `packages/plugin/lib/core/deterministic-type-mapper.ts` | Maps scores to primaryType/controlLevel/distribution |
+| Coding Style Types | `src/lib/models/coding-style.ts` | 5x3 matrix types (15 combinations) |
 
 ### Calculators (Pure Deterministic - No LLM)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Temporal Calculator | `src/lib/analyzer/calculators/temporal-calculator.ts` | Pure functions for temporal metrics (heatmaps, session patterns, engagement signals) |
-| Phrase Pattern Calculator | `src/lib/analyzer/calculators/phrase-pattern-calculator.ts` | N-gram phrase pattern detection using Levenshtein clustering |
 | Temporal Metrics Schema | `src/lib/models/temporal-metrics.ts` | Zod schemas for deterministic temporal metrics |
 
-### Phase 3: Content Writer — Narrative Only (1 LLM call)
+### Phase 3: Content Writer — Narrative Only (1 LLM call via plugin skill)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Stage Implementation | `src/lib/analyzer/stages/content-writer.ts` | ContentWriterStage class, narrative-only generation (personalitySummary, promptPatterns, topFocusAreas) |
-| Phase 3 Summarizer | `src/lib/analyzer/stages/phase3-summarizer.ts` | Summarizes AgentOutputs into structured text for Phase 3 prompt (~15-20K chars vs 50-100K from JSON) |
-| Prompts (PTCF) | `src/lib/analyzer/stages/content-writer-prompts.ts` | System/user prompt builders (always English; translation is Phase 4) |
+| Write Content Skill | `packages/plugin/skills/write-content.md` | Narrative generation (personalitySummary, promptPatterns, topFocusAreas) |
 | Narrative Schema | `src/lib/models/verbose-evaluation.ts` | `NarrativeLLMResponseSchema` (personalitySummary, promptPatterns, topFocusAreas) |
 
-### Phase 4: Translator — Conditional Translation (0-1 LLM call)
+### Phase 4: Translator — Conditional Translation (0-1 LLM call via plugin skill)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Translator Stage | `src/lib/analyzer/stages/translator.ts` | TranslatorStage class, conditional translation for non-English users |
-| Translator Prompts | `src/lib/analyzer/stages/translator-prompts.ts` | System/user prompt builders for Korean/Japanese/Chinese translation |
+| Translate Report Skill | `packages/plugin/skills/translate-report.md` | Conditional translation for non-English users (ko, ja, zh) |
 | Translator Schema | `src/lib/models/translator-output.ts` | `TranslatorOutput` Zod schema (translated text fields + translatedAgentInsights) |
-| Language Detection | `src/lib/analyzer/stages/content-writer-prompts.ts` | `detectPrimaryLanguage()` — 5% threshold for non-ASCII characters |
 
 ### Evaluation Assembly + Translation Overlay (deterministic, no LLM)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Evaluation Assembler | `src/lib/analyzer/stages/evaluation-assembler.ts` | `assembleEvaluation()` — merges Phase 2 structural data + Phase 3 narrative into VerboseEvaluation fields (English defaults) |
-| Evidence Verifier | `src/lib/analyzer/stages/evidence-verifier.ts` | Validates utteranceId references; supports domains: thinkingQuality, learningBehavior, contextEfficiency |
-| Translation Merge | `src/lib/analyzer/orchestrator/analysis-orchestrator.ts` | `mergeTranslatedFields()` — overlays translations onto assembled data (called AFTER assembleEvaluation) |
+| Evaluation Assembler | `packages/plugin/lib/evaluation-assembler.ts` | `assembleEvaluation()` — merges Phase 2 structural data + Phase 3 narrative into VerboseEvaluation fields (English defaults) |
+| Verify Evidence Skill | `packages/plugin/skills/verify-evidence.md` | Validates utteranceId references |
 | Translator Output Schema | `src/lib/models/translator-output.ts` | `TranslatorOutput` schema (translated text fields + translatedAgentInsights) |
 | Output Schema | `src/lib/models/verbose-evaluation.ts` | `VerboseEvaluation` schema (full evaluation including assembled fields + metadata + translatedAgentInsights) |
 
@@ -1413,7 +1398,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Tool Mapping | `packages/plugin/lib/scanner/tool-mapping.ts` | Cross-source tool name normalization |
 | JSONL Reader | `src/lib/parser/jsonl-reader.ts` | JSONL parsing, path encoding/decoding |
 | Session Selector | `src/lib/parser/session-selector.ts` | Duration-based optimal session selection (max 10) |
-| Session Formatter | `src/lib/analyzer/shared/session-formatter.ts` | Session data formatting (shared by Workers) |
+| Prompt Context | `packages/plugin/lib/prompt-context.ts` | Session data formatting for plugin skills |
 | Session Types | `src/lib/models/session.ts` | JSONLLine, SessionMetadata types, SessionSourceType |
 | Domain Types | `src/lib/domain/models/analysis.ts` | ParsedSession, SessionMetrics types |
 
@@ -1432,59 +1417,45 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Context Builder | `src/lib/analyzer/verbose-knowledge-context.ts` | XML-formatted expert knowledge builder |
 | Research Insights | `src/lib/domain/models/knowledge.ts` | INITIAL_INSIGHTS expert insight definitions |
-| Behavioral Signals | `src/lib/analyzer/dimension-keywords.ts` | DIMENSION_KEYWORDS behavioral signal mapping |
 
 ### API Client
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Gemini Client | `src/lib/analyzer/clients/gemini-client.ts` | @google/genai SDK wrapper, structured output support |
+| Plugin API Client | `packages/plugin/lib/api-client.ts` | API client for submitting results to the server |
 
 ---
 
 ## Configuration
 
 ```
-OrchestratorConfig (src/lib/analyzer/orchestrator/types.ts)
+Plugin Config (packages/plugin/lib/config.ts)
 │
-├── geminiApiKey: string              ← Required for all phases
-├── model: 'gemini-3-flash-preview'   ← Used by all workers
-├── temperature: 1.0                  ← Gemini default (do not lower)
-├── maxOutputTokens: 65536
-├── maxRetries: 2                     ← Per-worker retry count
-└── verbose: false                    ← Log worker progress
+├── Analysis mode configuration
+├── Stage database for pipeline state tracking
+└── Background analyzer coordination
 
-VerboseAnalyzerConfig (src/lib/analyzer/verbose-analyzer.ts)
+Plugin Skills (packages/plugin/skills/):
 │
-├── pipeline
-│   ├── mode: 'single' | 'two-stage'  ← default: 'two-stage' (runs orchestrator)
-│   │
-│   ├── stage1 (Phase 1: Data Extractor config)
-│   │   └── (deterministic, no LLM config needed)
-│   │
-│   └── stage2 (Phase 3: Content Writer config)
-│       ├── model: 'gemini-3-flash-preview'
-│       ├── temperature: 1.0
-│       └── maxOutputTokens: 65536
+├── Phase 1 (deterministic):
+│   └── Data extraction (packages/plugin/lib/core/data-extractor.ts)
 │
-└── tier: 'free' | 'one_time' | 'pro' | 'enterprise'  ← default: 'pro'
-
-Worker Registration (src/lib/analyzer/verbose-analyzer.ts):
+├── Phase 2 (5 LLM calls, parallel):
+│   ├── analyze-thinking-quality.md (planning, critical thinking)
+│   ├── analyze-communication.md (communication patterns, signature quotes)
+│   ├── analyze-learning.md (knowledge gaps, repeated mistakes)
+│   ├── analyze-efficiency.md (token inefficiency)
+│   └── analyze-sessions.md (goals, friction, success rates)
 │
-├── Phase 1 (1 worker):
-│   └── DataExtractorWorker (deterministic, no LLM)
+├── Phase 2.5 (1 LLM call):
+│   └── classify-type.md (type classification)
 │
-├── Phase 2 (5 workers, parallel):
-│   ├── ThinkingQualityWorker (planning, critical thinking)
-│   ├── CommunicationPatternsWorker (communication patterns, signature quotes)
-│   ├── LearningBehaviorWorker (knowledge gaps, repeated mistakes)
-│   ├── ContextEfficiencyWorker (token inefficiency)
-│   └── SessionOutcomeWorker (goals, friction, success rates)
+├── Phase 3 (1 LLM call):
+│   └── write-content.md (narrative generation)
 │
-└── Phase 2.5 (1 worker):
-    └── TypeClassifierWorker (free)
+└── Phase 4 (0-1 LLM call):
+    └── translate-report.md (conditional translation)
 
 Environment Variables:
 └── GOOGLE_GEMINI_API_KEY  ← Required for orchestrator pipeline
