@@ -184,8 +184,6 @@ These deprecated code paths are kept intentionally for data migration. Do NOT re
 
 **Self-hosted**: `npm run build && npm start`
 
-**CLI**: Published via GitHub Action (`.github/workflows/publish-cli.yml`)
-
 ## Git Workflow
 
 > ⚠️ **Post-merge cleanup**: After merging a PR, always switch back to `main` and pull latest:

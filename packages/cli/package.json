@@ -14,11 +14,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
-    "prepublishOnly": "npm run build",
-    "release": "./scripts/publish.sh",
-    "release:patch": "./scripts/publish.sh patch",
-    "release:minor": "./scripts/publish.sh minor",
-    "release:major": "./scripts/publish.sh major"
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "betterprompt",
