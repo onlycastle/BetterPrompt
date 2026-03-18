@@ -19,8 +19,6 @@ The supported open-source deployment target is:
 | `BETTERPROMPT_BASE_URL` | Canonical base URL for report links and metadata |
 | `BETTERPROMPT_WEB_APP_URL` | Dashboard base URL (defaults to `http://localhost:3000`) |
 | `BETTERPROMPT_DB_PATH` | Optional SQLite database path override |
-| `BETTERPROMPT_ANALYSIS_MODE` | `plugin` (default): `/api/analysis/run` returns 410; `server`: enables server-side analysis pipeline |
-
 ## Deployment Notes
 
 - Use a persistent volume for the SQLite database.

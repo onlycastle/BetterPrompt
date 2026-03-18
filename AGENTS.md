@@ -26,13 +26,7 @@ cd BetterPrompt
 npm install
 
 # 2. Configure environment
-cp .env.example .env
-```
-
-Then set the Gemini API key in `.env`:
-
-```
-GOOGLE_GEMINI_API_KEY=<ask the user for their key>
+export GOOGLE_GEMINI_API_KEY=<your-key>
 ```
 
 > **You must ask the user for their Gemini API key.** Free tier keys work. Get one at https://aistudio.google.com/apikey

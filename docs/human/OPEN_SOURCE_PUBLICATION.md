@@ -7,7 +7,7 @@ Use this checklist before making the repository public.
 Rotate any credential that may have been exposed in tracked files or past commits, especially:
 
 - `GOOGLE_GEMINI_API_KEY`
-- any local `.env` values you used while developing
+- any local environment variable values you used while developing
 - any personal access tokens or webhook URLs that may have appeared in scripts, caches, or shell history
 
 Do the rotation first. History rewrites do not make already-leaked secrets safe again.
@@ -65,7 +65,6 @@ npm run build
 
 Then manually confirm:
 
-- `.env.example` contains placeholders only
 - `.gitignore` excludes local caches and generated artifacts
 - public docs describe only the supported self-hosted server + CLI runtime
 - the repo contains no tracked desktop, Lambda, Supabase, or billing code paths

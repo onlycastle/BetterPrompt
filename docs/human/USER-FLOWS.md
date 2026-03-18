@@ -673,7 +673,7 @@ Role is determined by `getUserOrgRole()` which returns the **highest** role acro
 | Method | Route | Purpose |
 |--------|-------|---------|
 | `GET` | `/api/auth/me` | Get current user (implicit local auth) |
-| `POST` | `/api/analysis/run` | Run analysis pipeline (SSE stream) |
+| `POST` | `/api/analysis/sync` | Receive plugin analysis results |
 | `GET` | `/api/analysis/user` | List user's analyses |
 | `GET` | `/api/analysis/user/progress` | Get progress analytics |
 | `GET` | `/api/analysis/results/{resultId}` | Get single result |
@@ -750,7 +750,7 @@ Role is determined by `getUserOrgRole()` which returns the **highest** role acro
 
 | File | Purpose |
 |------|---------|
-| `app/api/analysis/run/route.ts` | SSE endpoint for running analysis |
+| `app/api/analysis/sync/route.ts` | Receives plugin analysis results |
 | `app/api/analysis/user/route.ts` | List user's analyses |
 | `app/api/analysis/results/[resultId]/route.ts` | Get/delete single result |
 | `app/api/analysis/user/progress/route.ts` | Personal analytics |

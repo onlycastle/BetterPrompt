@@ -32,11 +32,7 @@ scripts/
 ## Prerequisites
 
 ```bash
-# Required environment variable
-GOOGLE_GEMINI_API_KEY=your_api_key_here
-
-# Ensure .env is configured
-cp .env.example .env
+export GOOGLE_GEMINI_API_KEY=your_api_key_here
 ```
 
 ## test-phase1.ts
@@ -559,8 +555,7 @@ npx tsx scripts/test-cursor-scanner.ts /path/to/store.db
 # Check environment variable
 echo $GOOGLE_GEMINI_API_KEY
 
-# Or add to .env
-echo "GOOGLE_GEMINI_API_KEY=your_key" >> .env
+export GOOGLE_GEMINI_API_KEY=your_key
 ```
 
 ### "Phase 1 cache file not found"

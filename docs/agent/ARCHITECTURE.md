@@ -7,7 +7,6 @@ The supported runtime is `Claude Code plugin + optional self-hosted Next.js serv
 - `app/`: Next.js pages, layouts, and API routes
 - `packages/plugin/`: Claude Code plugin — MCP server, auto-analysis hooks, canonical local pipeline (see `docs/agent/PLUGIN.md`)
 - `src/lib/local/`: SQLite database, auth/session helpers, analysis persistence
-- `src/lib/analyzer/`: legacy server analyzer code plus shared evaluation compatibility
 - `src/lib/search-agent/storage/knowledge-store.ts`: filesystem knowledge store
 - `src/lib/search-agent/influencers/registry.ts`: filesystem influencer registry
 
@@ -36,7 +35,6 @@ Zero-config local auth — server auto-creates `local@localhost` admin via `getO
 - `src/lib/local/evaluation-to-team.ts`: Pure mapper from `StoredAnalysisResult[]` → `TeamMemberAnalysis`
 - `src/lib/enterprise/aggregation.ts`: Team-level aggregation (growth areas, KPT, anti-patterns, team analytics)
 - `src/lib/enterprise-access.ts`: Access control (checks `user.organizationId`)
-- `src/hooks/useEnterprise.ts`: Async API-backed hooks for org/team/member data
 - API routes: `app/api/org/`, `app/api/teams/`
 - Enterprise pages: `app/dashboard/enterprise/` (overview, members, team detail, settings, setup)
 - Setup flow: `app/dashboard/enterprise/setup/` (first-time org creation)
