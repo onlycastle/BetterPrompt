@@ -1,9 +1,27 @@
 {
   "hooks": {
-    "stop": [
+    "SessionStart": [
       {
-        "command": "node ./dist/hooks/post-session-handler.js",
-        "description": "Auto-analyze sessions when enough new data accumulates"
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/hooks/session-start-handler.js",
+            "description": "Inject queued BetterPrompt auto-analysis context at session start"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/hooks/post-session-handler.js",
+            "description": "Queue BetterPrompt auto-analysis when enough new sessions accumulate"
+          }
+        ]
       }
     ]
   }

@@ -28,7 +28,6 @@ npm run dev            # Start Next.js development server (port 3000)
 npm run build          # Build production bundle
 npm run typecheck      # Type check without emitting
 npm test               # Run all tests
-npx betterprompt-cli --auto  # Non-interactive analysis (skips all prompts)
 ```
 
 ## Key Implementation Details

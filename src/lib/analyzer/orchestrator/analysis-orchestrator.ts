@@ -28,6 +28,7 @@
  */
 
 import type { ParsedSession, SessionMetrics } from '../../domain/models/analysis';
+import { assembleFinalEvaluationEnvelope } from '@betterprompt/shared/evaluation';
 import type { VerboseEvaluation } from '../../models/verbose-evaluation';
 import type { AgentOutputs } from '../../models/agent-outputs';
 import { createEmptyAgentOutputs, normalizeReasoning } from '../../models/agent-outputs';
@@ -750,22 +751,22 @@ export class AnalysisOrchestrator {
       mergeTranslatedFields(assembledData, translatorData, languageResult.primary);
     }
 
-    const evaluation = {
+    const evaluation = assembleFinalEvaluationEnvelope({
       sessionId: sessions[sessions.length - 1]?.sessionId ?? 'unknown',
       analyzedAt: new Date().toISOString(),
       sessionsAnalyzed: sessions.length,
       avgPromptLength: Math.round(metrics.avgPromptLength),
       avgTurnsPerSession: Math.round(metrics.avgTurnsPerSession * 10) / 10,
-      analyzedSessions,
-      sessionSummaries: summaryResult.data.summaries,
       activitySessions: options?.activitySessions,
+      sessionSummaries: summaryResult.data.summaries,
       projectSummaries: projectSummarizerResult?.data,
       weeklyInsights: weeklyInsightResult?.data,
-      ...assembledData,
-      agentOutputs: agentOutputs,
-      ...(translatorData?.translatedAgentInsights
-        ? { translatedAgentInsights: translatorData.translatedAgentInsights }
-        : {}),
+      assembledSections: {
+        analyzedSessions,
+        ...assembledData,
+      },
+      agentOutputs,
+      translatedAgentInsights: translatorData?.translatedAgentInsights,
       knowledgeResources: knowledgeResources.length > 0 ? knowledgeResources : undefined,
       pipelineTokenUsage,
       analysisMetadata: {
@@ -777,23 +778,7 @@ export class AnalysisOrchestrator {
         confidenceThreshold: confidenceMetadata.confidenceThreshold,
         insightsFiltered: confidenceMetadata.insightsFiltered,
       },
-    } as VerboseEvaluation;
-
-    if (translatorData?.weeklyInsights && evaluation.weeklyInsights) {
-      if (translatorData.weeklyInsights.narrative) {
-        evaluation.weeklyInsights.narrative = translatorData.weeklyInsights.narrative;
-      }
-      if (translatorData.weeklyInsights.highlights?.length) {
-        evaluation.weeklyInsights.highlights = translatorData.weeklyInsights.highlights;
-      }
-      if (translatorData.weeklyInsights.topSessionSummaries?.length && evaluation.weeklyInsights.topProjectSessions) {
-        translatorData.weeklyInsights.topSessionSummaries.forEach((translated, i) => {
-          if (evaluation.weeklyInsights!.topProjectSessions![i]) {
-            evaluation.weeklyInsights!.topProjectSessions![i].summary = translated;
-          }
-        });
-      }
-    }
+    }) as VerboseEvaluation;
 
     if (process.env.NODE_ENV === 'development') {
       console.log(`[Orchestrator] Final evaluation.translatedAgentInsights present: ${!!evaluation.translatedAgentInsights}`);

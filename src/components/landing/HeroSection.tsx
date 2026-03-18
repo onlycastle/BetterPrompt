@@ -27,7 +27,7 @@ export function HeroSection() {
       <div className={styles.content}>
         <div className={styles.terminalLine}>
           <span className={styles.promptSymbol}>$</span>
-          <span className={styles.command}>npx betterprompt-cli</span>
+          <span className={styles.command}>/plugin install betterprompt@betterprompt</span>
           <span className={styles.cursor} />
         </div>
 
@@ -42,8 +42,8 @@ export function HeroSection() {
         </h1>
 
         <p className={styles.subheadline}>
-          Analyze AI coding sessions from Claude Code and Cursor.
-          Get reports on thinking patterns, efficiency, and growth areas.
+          Analyze AI coding sessions from Claude Code and Cursor directly inside Claude Code.
+          Get local reports on thinking patterns, efficiency, and growth areas without a separate analysis server.
         </p>
 
         <div className={styles.cta}>

@@ -1,35 +1,29 @@
 /**
- * Data Extractor - Deterministic Phase 1 extraction from JSONL sessions
+ * Data Extractor - Deterministic Phase 1 extraction from parsed sessions
  *
- * Simplified version of DataExtractorWorker for plugin use.
- * Works directly with JSONL files (no ParsedSession abstraction).
- * Skips LLM-based content classification (host LLM handles raw data).
+ * Accepts canonical parsed sessions and produces the plugin Phase 1 artifact.
+ * Full parsed sessions are preserved on the output so downstream stages keep
+ * transcript access while the extracted utterance layer remains deterministic.
  *
  * @module plugin/lib/core/data-extractor
  */
 
-import { readFile } from 'node:fs/promises';
 import type {
-  JSONLLine,
   UserUtterance,
   AIInsightBlock,
   Phase1Output,
   Phase1SessionMetrics,
   FrictionSignals,
   SessionHints,
-  SessionMetadata,
+  ParsedSession,
 } from './types.js';
 import { CONTEXT_WINDOW_SIZE } from './types.js';
-import { parseJSONLLine } from './session-scanner.js';
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 const MAX_TEXT_LENGTH = 2000;
-const MAX_INSIGHT_BLOCKS = 50;
-const MAX_UTTERANCES = 200;
-
 /** Known slash commands (prevents false positives from file paths) */
 const KNOWN_SLASH_COMMANDS = new Set([
   'plan', 'review', 'commit', 'compact', 'clear', 'help', 'init',
@@ -199,41 +193,48 @@ interface RawSessionData {
   }>;
 }
 
-/** Parse a JSONL file into raw session data */
-function parseSessionFile(lines: JSONLLine[], sessionId: string): RawSessionData {
-  const messages: RawSessionData['messages'] = [];
+function toRawSessionData(session: ParsedSession): RawSessionData {
+  return {
+    sessionId: session.sessionId,
+    messages: session.messages.map(message => {
+      if (message.role === 'user') {
+        return {
+          role: 'user',
+          rawContent: message.content,
+          content: [{ type: 'text', text: message.content }],
+          timestamp: new Date(message.timestamp),
+        };
+      }
 
-  for (const line of lines) {
-    if (line.type === 'user') {
-      const rawContent = typeof line.message.content === 'string'
-        ? line.message.content
-        : JSON.stringify(line.message.content);
-      const content = typeof line.message.content === 'string'
-        ? [{ type: 'text' as const, text: line.message.content }]
-        : (line.message.content as RawSessionData['messages'][0]['content']);
+      const content: RawSessionData['messages'][0]['content'] = [];
+      if (message.content) {
+        content.push({ type: 'text', text: message.content });
+      }
+      for (const toolCall of message.toolCalls ?? []) {
+        content.push({
+          type: 'tool_use',
+          id: toolCall.id,
+          name: toolCall.name,
+        });
+        if (toolCall.result !== undefined) {
+          content.push({
+            type: 'tool_result',
+            tool_use_id: toolCall.id,
+            content: toolCall.result,
+            is_error: toolCall.isError,
+          });
+        }
+      }
 
-      messages.push({
-        role: 'user',
-        rawContent,
-        content,
-        timestamp: new Date(line.timestamp),
-      });
-    } else if (line.type === 'assistant') {
-      const content = line.message.content as RawSessionData['messages'][0]['content'];
-      messages.push({
+      return {
         role: 'assistant',
-        rawContent: '',
+        rawContent: message.content,
         content,
-        timestamp: new Date(line.timestamp),
-        tokenUsage: line.message.usage ? {
-          input: line.message.usage.input_tokens,
-          output: line.message.usage.output_tokens,
-        } : undefined,
-      });
-    }
-  }
-
-  return { sessionId, messages };
+        timestamp: new Date(message.timestamp),
+        tokenUsage: message.tokenUsage,
+      };
+    }),
+  };
 }
 
 /** Extract utterances from a single session */
@@ -473,75 +474,28 @@ function computeContextFillMetrics(
   };
 }
 
-/** Strategic sampling to limit downstream token usage */
-function strategicSample(utterances: UserUtterance[], maxCount: number): UserUtterance[] {
-  if (utterances.length <= maxCount) return utterances;
-
-  // Keep first, last, and evenly distributed middle samples
-  const result: UserUtterance[] = [utterances[0]!];
-  const step = (utterances.length - 1) / (maxCount - 1);
-
-  for (let i = 1; i < maxCount - 1; i++) {
-    const index = Math.round(i * step);
-    result.push(utterances[index]!);
-  }
-
-  result.push(utterances[utterances.length - 1]!);
-  return result;
-}
-
-// ============================================================================
-// Main Entry Point
-// ============================================================================
-
 /**
- * Extract Phase 1 output from session files.
- *
- * Deterministic extraction (no LLM calls):
- * 1. Parses JSONL files
- * 2. Extracts developer utterances with structural metadata
- * 3. Computes session metrics (friction signals, context fill, etc.)
- * 4. Extracts AI insight blocks
- *
- * @param sessionFiles - Array of session file paths or {sessionId, filePath} objects
- * @returns Phase1Output ready for scoring and analysis
+ * Extract Phase 1 output from parsed sessions.
  */
-export async function extractPhase1Data(
-  sessionFiles: Array<string | SessionMetadata>,
+export async function extractPhase1DataFromParsedSessions(
+  sessions: ParsedSession[],
 ): Promise<Phase1Output> {
   const allUtterances: UserUtterance[] = [];
   const allSlashCommands: string[] = [];
   const allInsightBlocks: AIInsightBlock[] = [];
   const allSessions: RawSessionData[] = [];
-  let skippedFiles = 0;
-
-  for (const fileOrMeta of sessionFiles) {
-    const filePath = typeof fileOrMeta === 'string' ? fileOrMeta : fileOrMeta.filePath;
-    const sessionId = typeof fileOrMeta === 'string'
-      ? filePath.split('/').pop()?.replace('.jsonl', '') ?? 'unknown'
-      : fileOrMeta.sessionId;
-
-    try {
-      const content = await readFile(filePath, 'utf-8');
-      const lines = content.split('\n')
-        .map(l => parseJSONLLine(l))
-        .filter((l): l is JSONLLine => l !== null);
-
-      const session = parseSessionFile(lines, sessionId);
-      allSessions.push(session);
-
-      const { utterances, slashCommands, insightBlocks } = extractFromSession(session);
-      allUtterances.push(...utterances);
-      allSlashCommands.push(...slashCommands);
-      allInsightBlocks.push(...insightBlocks);
-    } catch (error) {
-      skippedFiles++;
-      console.warn(`Skipped unreadable session file: ${filePath} (${error instanceof Error ? error.message : 'unknown error'})`);
-    }
+  if (sessions.length === 0) {
+    throw new Error('No parsed sessions available for Phase 1 extraction.');
   }
 
-  if (skippedFiles > 0 && allSessions.length === 0) {
-    throw new Error(`All ${skippedFiles} session files failed to parse. Check file permissions and format.`);
+  for (const parsedSession of sessions) {
+    const session = toRawSessionData(parsedSession);
+    allSessions.push(session);
+
+    const { utterances, slashCommands, insightBlocks } = extractFromSession(session);
+    allUtterances.push(...utterances);
+    allSlashCommands.push(...slashCommands);
+    allInsightBlocks.push(...insightBlocks);
   }
 
   // Compute metrics
@@ -584,14 +538,47 @@ export async function extractPhase1Data(
     ...(allInsightBlocks.length > 0 ? { aiInsightBlockCount: allInsightBlocks.length } : {}),
   };
 
-  // Strategic sampling
-  const sampledUtterances = strategicSample(allUtterances, MAX_UTTERANCES);
-  const sampledInsights = allInsightBlocks.slice(0, MAX_INSIGHT_BLOCKS);
+  // Build per-session activity metadata for Phase 1.5/2 stages
+  const activitySessions = allSessions.map((session, idx) => {
+    const parsedSession = sessions[idx]!;
+    const userMessages = session.messages.filter(m => m.role === 'user');
+    const assistantMessages = session.messages.filter(m => m.role === 'assistant');
+    const sessionTimestamps = session.messages.map(m => m.timestamp.getTime()).sort();
+    const startTime = sessionTimestamps.length > 0
+      ? new Date(sessionTimestamps[0]).toISOString()
+      : new Date().toISOString();
+    const endTime = sessionTimestamps.length > 0
+      ? sessionTimestamps[sessionTimestamps.length - 1]
+      : Date.now();
+    const durationSeconds = sessionTimestamps.length > 1
+      ? (endTime - sessionTimestamps[0]) / 1000
+      : parsedSession.durationSeconds;
+
+    const totalInputTokens = session.messages.reduce((sum, m) => sum + (m.tokenUsage?.input ?? 0), 0);
+    const totalOutputTokens = session.messages.reduce((sum, m) => sum + (m.tokenUsage?.output ?? 0), 0);
+
+    const firstUserMsg = userMessages[0]?.rawContent?.slice(0, 200) ?? '';
+
+    return {
+      sessionId: session.sessionId,
+      projectName: parsedSession.projectName ?? 'unknown',
+      ...(parsedSession.projectPath ? { projectPath: parsedSession.projectPath } : {}),
+      startTime,
+      durationSeconds: Math.round(durationSeconds),
+      messageCount: session.messages.length,
+      userMessageCount: userMessages.length,
+      assistantMessageCount: assistantMessages.length,
+      totalInputTokens,
+      totalOutputTokens,
+      ...(firstUserMsg ? { firstUserMessage: firstUserMsg } : {}),
+    };
+  });
 
   return {
-    developerUtterances: sampledUtterances,
+    developerUtterances: allUtterances,
     sessionMetrics,
-    ...(sampledInsights.length > 0 ? { aiInsightBlocks: sampledInsights } : {}),
-    ...(skippedFiles > 0 ? { skippedFiles } : {}),
+    ...(allInsightBlocks.length > 0 ? { aiInsightBlocks: allInsightBlocks } : {}),
+    activitySessions,
+    sessions,
   };
 }

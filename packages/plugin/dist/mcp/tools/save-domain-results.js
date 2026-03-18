@@ -2,11 +2,13 @@
  * save_domain_results MCP Tool
  *
  * Accepts structured analysis results for a specific domain.
- * Validates the input and stores it in the results database.
+ * Validates the input against shared schemas (including domain-specific
+ * typed data) and stores it in the results database.
  *
  * Called by domain analysis skills after the host LLM completes analysis.
  */
 import { z } from 'zod';
+import { EvidenceSchema as SharedEvidenceSchema, DomainStrengthSchema, DomainGrowthAreaSchema, } from '@betterprompt/shared';
 import { saveDomainResult, getCurrentRunId } from '../../lib/results-db.js';
 export const definition = {
     name: 'save_domain_results',
@@ -15,24 +17,10 @@ export const definition = {
         'learningBehavior, contextEfficiency, sessionOutcome, or content). ' +
         'Input must include domain name, overall score, strengths, and growth areas.',
 };
-/** Zod schema for validating domain result input (also used by server.ts MCP registration) */
-export const EvidenceSchema = z.object({
-    utteranceId: z.string(),
-    quote: z.string(),
-    context: z.string().optional(),
-});
-export const StrengthSchema = z.object({
-    title: z.string(),
-    description: z.string().min(100),
-    evidence: z.array(EvidenceSchema).min(1),
-});
-export const GrowthAreaSchema = z.object({
-    title: z.string(),
-    description: z.string().min(100),
-    severity: z.enum(['low', 'medium', 'high']),
-    recommendation: z.string().min(50),
-    evidence: z.array(EvidenceSchema).min(1),
-});
+// Re-export shared schemas for backward compatibility
+export const EvidenceSchema = SharedEvidenceSchema;
+export const StrengthSchema = DomainStrengthSchema;
+export const GrowthAreaSchema = DomainGrowthAreaSchema;
 export const DomainResultInputSchema = z.object({
     domain: z.enum([
         'thinkingQuality',
@@ -44,8 +32,9 @@ export const DomainResultInputSchema = z.object({
     ]),
     overallScore: z.number().min(0).max(100),
     confidenceScore: z.number().min(0).max(1).optional(),
-    strengths: z.array(StrengthSchema),
-    growthAreas: z.array(GrowthAreaSchema),
+    strengths: z.array(DomainStrengthSchema),
+    growthAreas: z.array(DomainGrowthAreaSchema),
+    /** Domain-specific typed data. Validated per domain when available. */
     data: z.record(z.string(), z.unknown()).optional(),
 });
 export async function execute(args) {

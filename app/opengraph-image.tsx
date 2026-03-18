@@ -86,7 +86,7 @@ export default function Image() {
             marginBottom: 12,
           }}
         >
-          {'Analyze AI sessions on your own server.'}
+          {'Analyze AI sessions locally inside Claude Code.'}
         </div>
 
         {/* Sub-tagline */}
@@ -98,7 +98,7 @@ export default function Image() {
             marginBottom: 36,
           }}
         >
-          {'CLI intake \u00b7 Gemini workers \u00b7 SQLite reports'}
+          {'Plugin-first analysis \u00b7 Optional team sync \u00b7 SQLite reports'}
         </div>
 
         {/* Spacer */}

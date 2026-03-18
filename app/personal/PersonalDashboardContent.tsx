@@ -60,10 +60,10 @@ function EmptyState() {
       <div className={styles.emptyIcon}>&#128202;</div>
       <h2 className={styles.emptyTitle}>No Analyses Yet</h2>
       <p className={styles.emptyDescription}>
-        Run your first analysis to see your AI insights here.
+        Install the Claude Code plugin and run your first local analysis to see your AI insights here.
       </p>
       <div className={styles.cliBox}>
-        <code>npx betterprompt-cli</code>
+        <code>/plugin install betterprompt@betterprompt</code>
       </div>
     </div>
   );

@@ -1,9 +1,5 @@
 /**
- * Results Database - Local SQLite storage for analysis results
- *
- * Stores domain analysis results, type classification, and report data
- * at ~/.betterprompt/results.db. Separate from the insight cache DB
- * (insight-cache.db) which stores server-fetched summaries.
+ * Results Database - Local SQLite storage for canonical analysis runs.
  *
  * @module plugin/lib/results-db
  */
@@ -11,10 +7,18 @@ import Database from 'better-sqlite3';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PLUGIN_DATA_DIR } from './core/session-scanner.js';
+import { assembleCanonicalAnalysisRun } from './evaluation-assembler.js';
+import { getAllStageOutputs } from './stage-db.js';
 const DB_FILE = 'results.db';
 const DATA_DIR = PLUGIN_DATA_DIR;
 let db = null;
-function getDb() {
+function ensureColumn(database, tableName, columnName, definition) {
+    const columns = database.prepare(`PRAGMA table_info(${tableName})`).all();
+    if (!columns.some(column => column.name === columnName)) {
+        database.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+    }
+}
+export function getDb() {
     if (db)
         return db;
     mkdirSync(DATA_DIR, { recursive: true });
@@ -23,13 +27,16 @@ function getDb() {
     db.pragma('foreign_keys = ON');
     db.exec(`
     CREATE TABLE IF NOT EXISTS analysis_runs (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      analyzed_at   TEXT NOT NULL,
-      metrics_json  TEXT NOT NULL,
-      scores_json   TEXT NOT NULL,
-      type_json     TEXT,
-      content_json  TEXT,
-      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+      id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+      analyzed_at            TEXT NOT NULL,
+      metrics_json           TEXT NOT NULL,
+      scores_json            TEXT NOT NULL,
+      type_json              TEXT,
+      content_json           TEXT,
+      phase1_output_json     TEXT,
+      activity_sessions_json TEXT,
+      evaluation_json        TEXT,
+      created_at             TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS domain_results (
@@ -46,21 +53,27 @@ function getDb() {
     CREATE INDEX IF NOT EXISTS idx_domain_results_domain ON domain_results(domain);
     CREATE INDEX IF NOT EXISTS idx_domain_results_run ON domain_results(run_id);
   `);
+    ensureColumn(db, 'analysis_runs', 'phase1_output_json', 'TEXT');
+    ensureColumn(db, 'analysis_runs', 'activity_sessions_json', 'TEXT');
+    ensureColumn(db, 'analysis_runs', 'evaluation_json', 'TEXT');
     return db;
 }
-// ============================================================================
-// Analysis Run Management
-// ============================================================================
-/** Create a new analysis run. Returns the run ID. */
-export function createAnalysisRun(metrics, scores) {
+export function createAnalysisRun(params) {
     const database = getDb();
-    const result = database
-        .prepare(`INSERT INTO analysis_runs (analyzed_at, metrics_json, scores_json)
-       VALUES (?, ?, ?)`)
-        .run(new Date().toISOString(), JSON.stringify(metrics), JSON.stringify(scores));
+    const analyzedAt = params.analyzedAt ?? new Date().toISOString();
+    const result = database.prepare(`
+      INSERT INTO analysis_runs (
+        analyzed_at,
+        metrics_json,
+        scores_json,
+        phase1_output_json,
+        activity_sessions_json
+      )
+      VALUES (?, ?, ?, ?, ?)
+    `)
+        .run(analyzedAt, JSON.stringify(params.metrics), JSON.stringify(params.scores), params.phase1Output ? JSON.stringify(params.phase1Output) : null, params.activitySessions ? JSON.stringify(params.activitySessions) : null);
     return Number(result.lastInsertRowid);
 }
-/** Get the current run ID from file cache, falling back to latest DB run */
 export function getCurrentRunId() {
     try {
         const runIdStr = readFileSync(join(DATA_DIR, 'current-run-id.txt'), 'utf-8');
@@ -70,7 +83,6 @@ export function getCurrentRunId() {
         return getLatestRunId();
     }
 }
-/** Get the latest analysis run ID */
 export function getLatestRunId() {
     const database = getDb();
     const row = database
@@ -78,7 +90,6 @@ export function getLatestRunId() {
         .get();
     return row?.id ?? null;
 }
-/** Get analysis run by ID */
 export function getAnalysisRun(runId) {
     const database = getDb();
     const row = database
@@ -92,21 +103,23 @@ export function getAnalysisRun(runId) {
         metrics: JSON.parse(row.metrics_json),
         scores: JSON.parse(row.scores_json),
         typeResult: row.type_json ? JSON.parse(row.type_json) : null,
+        phase1Output: row.phase1_output_json ? JSON.parse(row.phase1_output_json) : null,
+        activitySessions: row.activity_sessions_json
+            ? JSON.parse(row.activity_sessions_json)
+            : null,
+        evaluation: row.evaluation_json ? JSON.parse(row.evaluation_json) : null,
         content: row.content_json ? JSON.parse(row.content_json) : null,
     };
 }
-// ============================================================================
-// Domain Result Storage
-// ============================================================================
-/** Save a domain analysis result */
 export function saveDomainResult(runId, result) {
     const database = getDb();
     database
-        .prepare(`INSERT OR REPLACE INTO domain_results (run_id, domain, score, confidence, data_json)
-       VALUES (?, ?, ?, ?, ?)`)
+        .prepare(`
+      INSERT OR REPLACE INTO domain_results (run_id, domain, score, confidence, data_json)
+      VALUES (?, ?, ?, ?, ?)
+    `)
         .run(runId, result.domain, result.overallScore, result.confidenceScore, JSON.stringify(result));
 }
-/** Get all domain results for a run */
 export function getDomainResults(runId) {
     const database = getDb();
     const rows = database
@@ -114,7 +127,6 @@ export function getDomainResults(runId) {
         .all(runId);
     return rows.map(row => JSON.parse(row.data_json));
 }
-/** Get a specific domain result */
 export function getDomainResult(runId, domain) {
     const database = getDb();
     const row = database
@@ -122,46 +134,53 @@ export function getDomainResult(runId, domain) {
         .get(runId, domain);
     return row ? JSON.parse(row.data_json) : null;
 }
-// ============================================================================
-// Type Classification Storage
-// ============================================================================
-/** Save type classification result */
 export function saveTypeResult(runId, typeResult) {
     const database = getDb();
     database
         .prepare('UPDATE analysis_runs SET type_json = ? WHERE id = ?')
         .run(JSON.stringify(typeResult), runId);
 }
-/** Save content (topFocusAreas, personalitySummary) */
 export function saveContent(runId, content) {
     const database = getDb();
     database
         .prepare('UPDATE analysis_runs SET content_json = ? WHERE id = ?')
         .run(JSON.stringify(content), runId);
 }
-// ============================================================================
-// Full Report Assembly
-// ============================================================================
-/** Assemble a complete analysis report from the latest run */
-export function assembleReport() {
-    const latestRunId = getLatestRunId();
-    if (!latestRunId)
-        return null;
-    const run = getAnalysisRun(latestRunId);
-    if (!run)
-        return null;
-    const domainResults = getDomainResults(latestRunId);
-    return {
-        userId: 'local',
-        analyzedAt: run.analyzedAt,
-        phase1Metrics: run.metrics,
-        deterministicScores: run.scores,
-        typeResult: run.typeResult ?? null,
-        domainResults,
-        content: run.content ?? undefined,
-    };
+export function saveEvaluation(runId, evaluation) {
+    const database = getDb();
+    database
+        .prepare('UPDATE analysis_runs SET evaluation_json = ? WHERE id = ?')
+        .run(JSON.stringify(evaluation), runId);
 }
-/** Close the database connection */
+function saveAssembledArtifacts(runId, activitySessions, evaluation) {
+    const database = getDb();
+    database
+        .prepare(`
+      UPDATE analysis_runs
+      SET activity_sessions_json = ?, evaluation_json = ?
+      WHERE id = ?
+    `)
+        .run(JSON.stringify(activitySessions), JSON.stringify(evaluation), runId);
+}
+export function assembleCanonicalRun(runId = getLatestRunId() ?? undefined) {
+    if (!runId)
+        return null;
+    const run = getAnalysisRun(runId);
+    if (!run?.phase1Output)
+        return null;
+    const stageOutputs = getAllStageOutputs(runId);
+    const assembledRun = assembleCanonicalAnalysisRun({
+        runId,
+        analyzedAt: run.analyzedAt,
+        phase1Output: run.phase1Output,
+        deterministicScores: run.scores,
+        stageOutputs,
+        typeResult: run.typeResult,
+        domainResults: getDomainResults(runId),
+    });
+    saveAssembledArtifacts(runId, assembledRun.activitySessions, assembledRun.evaluation);
+    return assembledRun;
+}
 export function closeResultsDb() {
     if (db) {
         db.close();

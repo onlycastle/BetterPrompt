@@ -108,6 +108,10 @@ Produce 2-4 strengths and 2-4 growth areas. Each must contain:
 - `description`: WHAT-WHY-HOW narrative, minimum 300 characters
 - `evidence`: Array of 3+ items, each with `utteranceId` and `quote` (or `sessionId` and metric value for quantitative evidence)
 
+**Growth areas only** (in addition to the above):
+- `severity`: One of `critical`, `high`, `medium`, `low`
+- `recommendation`: Actionable next step, MINIMUM 50 characters
+
 ### Output
 
 Call `save_domain_results` with the following structure:

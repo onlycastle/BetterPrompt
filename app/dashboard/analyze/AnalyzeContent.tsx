@@ -1,6 +1,6 @@
 /**
  * AnalyzeContent - Client Component
- * Shows CLI command CTA and recent analysis summary
+ * Shows plugin-first analysis CTA and recent analysis summary
  */
 
 'use client';
@@ -80,20 +80,20 @@ export function AnalyzeContent() {
         </p>
       </header>
 
-      {/* CLI CTA Card */}
+      {/* Plugin CTA Card */}
       <section className={styles.ctaCard}>
         <div className={styles.ctaContent}>
           <Terminal size={48} className={styles.ctaIcon} />
           <h2 className={styles.ctaTitle}>Start a New Analysis</h2>
           <p className={styles.ctaDescription}>
-            Run the CLI command in your terminal to analyze your Claude Code sessions.
-            Analysis runs on your self-hosted server with your own Gemini API key.
+            Install the BetterPrompt Claude Code plugin, then ask Claude Code to analyze your sessions locally.
+            Use <code>sync_to_team</code> afterward if you want this run stored in the dashboard.
           </p>
           <div className={styles.cliCommand}>
-            <code>npx betterprompt-cli</code>
+            <code>/plugin install betterprompt@betterprompt</code>
           </div>
           <p className={styles.ctaHint}>
-            Works with Claude Code sessions from <code>~/.claude/projects/</code>
+            Then say: <code>Analyze my coding sessions and generate a report</code>
           </p>
         </div>
       </section>
@@ -139,7 +139,7 @@ export function AnalyzeContent() {
         <section className={styles.emptyRecent}>
           <FileText size={32} className={styles.emptyIcon} />
           <p className={styles.emptyText}>
-            No analyses yet. Run the CLI command above to get started!
+            No analyses yet. Install the plugin above and run your first local analysis.
           </p>
         </section>
       )}

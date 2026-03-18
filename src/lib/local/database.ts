@@ -8,6 +8,18 @@ const DB_PATH = process.env.BETTERPROMPT_DB_PATH || DEFAULT_DB_PATH;
 
 let db: Database.Database | null = null;
 
+function ensureColumn(
+  database: Database.Database,
+  tableName: string,
+  columnName: string,
+  definition: string,
+): void {
+  const columns = database.pragma(`table_info(${tableName})`) as Array<{ name: string }>;
+  if (!columns.some(column => column.name === columnName)) {
+    database.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+  }
+}
+
 function initializeSchema(database: Database.Database): void {
   database.pragma('journal_mode = WAL');
   database.pragma('foreign_keys = ON');
@@ -95,6 +107,8 @@ function initializeSchema(database: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_team_members_organization_id
       ON team_members(organization_id);
   `);
+
+  ensureColumn(database, 'analysis_results', 'canonical_run_json', 'TEXT');
 
   // Add organization_id column to users if it doesn't exist (migration for existing DBs)
   const userColumns = database.pragma('table_info(users)') as { name: string }[];

@@ -1,0 +1,57 @@
+/**
+ * Hook Utilities
+ *
+ * Shared helpers for BetterPrompt Claude Code hooks.
+ *
+ * @module plugin/lib/hook-utils
+ */
+
+import { readFileSync } from 'node:fs';
+
+interface TranscriptLine {
+  timestamp?: string;
+}
+
+function extractTimestampMs(line: string): number | null {
+  try {
+    const parsed = JSON.parse(line) as TranscriptLine;
+    if (typeof parsed.timestamp !== 'string') {
+      return null;
+    }
+
+    const timestampMs = new Date(parsed.timestamp).getTime();
+    return Number.isNaN(timestampMs) ? null : timestampMs;
+  } catch {
+    return null;
+  }
+}
+
+export function estimateSessionDurationMsFromTranscript(transcriptPath: string): number {
+  try {
+    const content = readFileSync(transcriptPath, 'utf-8');
+    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
+
+    if (lines.length < 2) {
+      return 0;
+    }
+
+    const firstTimestamp = extractTimestampMs(lines[0]!);
+    const lastTimestamp = extractTimestampMs(lines[lines.length - 1]!);
+
+    if (firstTimestamp === null || lastTimestamp === null || lastTimestamp <= firstTimestamp) {
+      return 0;
+    }
+
+    return lastTimestamp - firstTimestamp;
+  } catch {
+    return 0;
+  }
+}
+
+export function buildPendingAnalysisAdditionalContext(): string {
+  return [
+    'BetterPrompt auto-analysis is pending from a previous session.',
+    'Immediately invoke the BetterPrompt `/analyze` skill to consume the queued analysis unless the user explicitly asks to cancel or defer it.',
+    'Run the full local-first BetterPrompt pipeline through report generation for this queued task before treating it as complete, including translation when the report language requires it.',
+  ].join(' ');
+}

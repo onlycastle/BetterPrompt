@@ -31,9 +31,9 @@ export function EmptyStatePrompt({
         <div className={styles.commandSection}>
           <div className={styles.commandLabel}>
             <Terminal size={14} />
-            <span>Run this command to get started</span>
+            <span>Install the plugin in Claude Code</span>
           </div>
-          <code className={styles.command}>npx betterprompt-cli</code>
+          <code className={styles.command}>/plugin install betterprompt@betterprompt</code>
         </div>
       )}
     </Card>

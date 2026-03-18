@@ -1,0 +1,687 @@
+{
+  "runId": 102,
+  "analyzedAt": "2026-03-16T20:00:00.000Z",
+  "phase1Output": {
+    "developerUtterances": [
+      {
+        "id": "cursor-session_0",
+        "text": "Document the cursor sync edge cases and verify the retries.",
+        "timestamp": "2026-03-15T19:00:00.000Z",
+        "sessionId": "cursor-session",
+        "turnIndex": 0,
+        "characterCount": 59,
+        "wordCount": 10,
+        "hasCodeBlock": false,
+        "hasQuestion": false,
+        "isSessionStart": true,
+        "isContinuation": false
+      },
+      {
+        "id": "claude-session_0",
+        "text": "Please map the API dependencies before editing.",
+        "timestamp": "2026-03-14T18:00:00.000Z",
+        "sessionId": "claude-session",
+        "turnIndex": 0,
+        "characterCount": 47,
+        "wordCount": 7,
+        "hasCodeBlock": false,
+        "hasQuestion": false,
+        "isSessionStart": true,
+        "isContinuation": false
+      }
+    ],
+    "sessionMetrics": {
+      "totalSessions": 2,
+      "totalMessages": 6,
+      "totalDeveloperUtterances": 2,
+      "totalAIResponses": 2,
+      "avgMessagesPerSession": 3,
+      "avgDeveloperMessageLength": 53,
+      "questionRatio": 0,
+      "codeBlockRatio": 0,
+      "dateRange": {
+        "earliest": "2026-03-14T18:00:00.000Z",
+        "latest": "2026-03-15T19:10:00.000Z"
+      }
+    },
+    "activitySessions": [
+      {
+        "sessionId": "cursor-session",
+        "projectName": "sync-dashboard",
+        "projectPath": "/tmp/sync-dashboard",
+        "startTime": "2026-03-15T19:00:00.000Z",
+        "durationSeconds": 1200,
+        "messageCount": 3,
+        "userMessageCount": 1,
+        "assistantMessageCount": 2,
+        "totalInputTokens": 220,
+        "totalOutputTokens": 140,
+        "firstUserMessage": "Document the cursor sync edge cases and verify the retries."
+      },
+      {
+        "sessionId": "claude-session",
+        "projectName": "api-gateway",
+        "projectPath": "/tmp/api-gateway",
+        "startTime": "2026-03-14T18:00:00.000Z",
+        "durationSeconds": 900,
+        "messageCount": 3,
+        "userMessageCount": 1,
+        "assistantMessageCount": 2,
+        "totalInputTokens": 170,
+        "totalOutputTokens": 110,
+        "firstUserMessage": "Please map the API dependencies before editing."
+      }
+    ],
+    "sessions": [
+      {
+        "sessionId": "cursor-session",
+        "projectPath": "/tmp/sync-dashboard",
+        "projectName": "sync-dashboard",
+        "startTime": "2026-03-15T19:00:00.000Z",
+        "endTime": "2026-03-15T19:20:00.000Z",
+        "durationSeconds": 1200,
+        "claudeCodeVersion": "1.0.0",
+        "messages": [
+          {
+            "uuid": "cursor-user-1",
+            "role": "user",
+            "timestamp": "2026-03-15T19:00:00.000Z",
+            "content": "Document the cursor sync edge cases and verify the retries."
+          },
+          {
+            "uuid": "cursor-assistant-1",
+            "role": "assistant",
+            "timestamp": "2026-03-15T19:06:00.000Z",
+            "content": "Mapped the retry paths and highlighted the sync risk.",
+            "tokenUsage": {
+              "input": 120,
+              "output": 70
+            }
+          },
+          {
+            "uuid": "cursor-assistant-2",
+            "role": "assistant",
+            "timestamp": "2026-03-15T19:12:00.000Z",
+            "content": "Outlined verification checks for the retry loop.",
+            "toolCalls": [
+              {
+                "id": "cursor-tool-1",
+                "name": "read_file",
+                "input": {},
+                "result": "ok"
+              }
+            ],
+            "tokenUsage": {
+              "input": 100,
+              "output": 70
+            }
+          }
+        ],
+        "stats": {
+          "userMessageCount": 1,
+          "assistantMessageCount": 2,
+          "toolCallCount": 1,
+          "uniqueToolsUsed": [
+            "read_file"
+          ],
+          "totalInputTokens": 220,
+          "totalOutputTokens": 140
+        },
+        "source": "cursor"
+      },
+      {
+        "sessionId": "claude-session",
+        "projectPath": "/tmp/api-gateway",
+        "projectName": "api-gateway",
+        "startTime": "2026-03-14T18:00:00.000Z",
+        "endTime": "2026-03-14T18:15:00.000Z",
+        "durationSeconds": 900,
+        "claudeCodeVersion": "1.0.0",
+        "messages": [
+          {
+            "uuid": "claude-user-1",
+            "role": "user",
+            "timestamp": "2026-03-14T18:00:00.000Z",
+            "content": "Please map the API dependencies before editing."
+          },
+          {
+            "uuid": "claude-assistant-1",
+            "role": "assistant",
+            "timestamp": "2026-03-14T18:07:00.000Z",
+            "content": "Mapped the services and endpoints first.",
+            "tokenUsage": {
+              "input": 90,
+              "output": 60
+            }
+          },
+          {
+            "uuid": "claude-assistant-2",
+            "role": "assistant",
+            "timestamp": "2026-03-14T18:11:00.000Z",
+            "content": "Flagged the risk around auth and retry ordering.",
+            "tokenUsage": {
+              "input": 80,
+              "output": 50
+            }
+          }
+        ],
+        "stats": {
+          "userMessageCount": 1,
+          "assistantMessageCount": 2,
+          "toolCallCount": 0,
+          "uniqueToolsUsed": [],
+          "totalInputTokens": 170,
+          "totalOutputTokens": 110
+        },
+        "source": "claude-code"
+      }
+    ]
+  },
+  "deterministicScores": {
+    "thinkingQuality": 81,
+    "communicationPatterns": 88,
+    "learningBehavior": 79,
+    "contextEfficiency": 73,
+    "sessionOutcome": 77,
+    "controlScore": 78
+  },
+  "typeResult": {
+    "primaryType": "architect",
+    "distribution": {
+      "architect": 42,
+      "analyst": 23,
+      "conductor": 15,
+      "speedrunner": 10,
+      "trendsetter": 10
+    },
+    "controlLevel": "navigator",
+    "controlScore": 78,
+    "matrixName": "Systems Architect",
+    "matrixEmoji": "ARCH"
+  },
+  "domainResults": [
+    {
+      "domain": "communicationPatterns",
+      "overallScore": 88,
+      "confidenceScore": 0.86,
+      "strengths": [
+        {
+          "title": "Dependency framing",
+          "description": "The developer frames requests around dependencies, edge cases, and explicit verification points, which gives the assistant a strong planning surface before any edits begin.",
+          "evidence": [
+            {
+              "utteranceId": "cursor-session_0",
+              "quote": "Document the cursor sync edge cases and verify the retries."
+            }
+          ]
+        }
+      ],
+      "growthAreas": [],
+      "data": {
+        "communicationPatterns": [
+          {
+            "title": "Dependency-mapping prompts",
+            "description": "The developer asks for dependency and edge-case mapping before implementation.",
+            "frequency": "frequent",
+            "evidence": [
+              {
+                "utteranceId": "cursor-session_0",
+                "quote": "Document the cursor sync edge cases and verify the retries.",
+                "context": "Clarifies the plan before editing."
+              }
+            ],
+            "effectiveness": "highly_effective"
+          }
+        ]
+      },
+      "analyzedAt": "2026-03-16T20:00:00.000Z"
+    },
+    {
+      "domain": "learningBehavior",
+      "overallScore": 79,
+      "confidenceScore": 0.75,
+      "strengths": [
+        {
+          "title": "Upfront system mapping",
+          "description": "The developer regularly asks for system maps and dependency layouts before acting, which shows a learning style built around understanding structure before making changes.",
+          "evidence": [
+            {
+              "utteranceId": "claude-session_0",
+              "quote": "Please map the API dependencies before editing."
+            }
+          ]
+        }
+      ],
+      "growthAreas": [],
+      "data": {},
+      "analyzedAt": "2026-03-16T20:00:00.000Z"
+    },
+    {
+      "domain": "contextEfficiency",
+      "overallScore": 73,
+      "confidenceScore": 0.72,
+      "strengths": [],
+      "growthAreas": [
+        {
+          "title": "Retry-context spillover",
+          "description": "The developer sometimes carries too many related retry details into the next step, which can blur the current task boundary and make the assistant spend tokens re-separating active work from background concerns.",
+          "severity": "medium",
+          "recommendation": "Restate the current task in one sentence after a large discovery step so the next prompt uses only the active dependency context.",
+          "evidence": [
+            {
+              "utteranceId": "cursor-session_0",
+              "quote": "Document the cursor sync edge cases and verify the retries."
+            },
+            {
+              "utteranceId": "cursor-session_1",
+              "quote": "Unverified retry spillover example."
+            }
+          ]
+        }
+      ],
+      "data": {
+        "inefficiencyPatterns": [
+          {
+            "type": "context_spillover",
+            "frequency": 26,
+            "impact": "medium"
+          }
+        ]
+      },
+      "analyzedAt": "2026-03-16T20:00:00.000Z"
+    }
+  ],
+  "stageOutputs": {
+    "sessionSummaries": {
+      "summaries": [
+        {
+          "sessionId": "cursor-session",
+          "summary": "Mapped cursor retry edge cases and verification checks."
+        },
+        {
+          "sessionId": "claude-session",
+          "summary": "Mapped API dependencies before editing."
+        }
+      ]
+    },
+    "projectSummaries": {
+      "projects": [
+        {
+          "projectName": "sync-dashboard",
+          "summaryLines": [
+            "Mapped retry edge cases for cursor sync."
+          ],
+          "sessionCount": 1
+        },
+        {
+          "projectName": "api-gateway",
+          "summaryLines": [
+            "Mapped service dependencies before code changes."
+          ],
+          "sessionCount": 1
+        }
+      ]
+    },
+    "weeklyInsights": {
+      "stats": {
+        "sessionCount": 2,
+        "totalMinutes": 35,
+        "totalTokens": 640,
+        "activeDays": 2,
+        "deltaSessionCount": 1,
+        "deltaMinutes": 15,
+        "deltaTokens": 220
+      },
+      "projects": [
+        {
+          "projectName": "sync-dashboard",
+          "sessionCount": 1,
+          "percentage": 57.1
+        },
+        {
+          "projectName": "api-gateway",
+          "sessionCount": 1,
+          "percentage": 42.9
+        }
+      ],
+      "topSessions": [
+        {
+          "sessionId": "cursor-session",
+          "summary": "Mapped cursor retry edge cases and verification checks."
+        },
+        {
+          "sessionId": "claude-session",
+          "summary": "Mapped API dependencies before editing."
+        }
+      ],
+      "narrative": "A week of mapping dependencies before code changes.",
+      "highlights": [
+        "Documented retry risks before editing.",
+        "Mapped API dependencies before implementation."
+      ]
+    },
+    "typeClassification": {
+      "reasoning": [
+        "You default to system mapping before acting, and that planning-first habit keeps the assistant aligned with the real dependency graph."
+      ],
+      "personalityNarrative": [
+        "You work like a planner who wants the graph before the patch. You repeatedly ask for dependencies, edge cases, and verification points before edits begin, which keeps the collaboration grounded and reduces drift."
+      ],
+      "collaborationMaturity": "structured"
+    },
+    "contentWriter": {
+      "topFocusAreas": [
+        {
+          "title": "Keep narrowing the brief before coding",
+          "description": "Continue turning discovery into a tighter next-step brief so the assistant spends fewer tokens carrying background context into implementation.",
+          "relatedQualities": [
+            "communicationPatterns",
+            "contextEfficiency"
+          ],
+          "actions": {
+            "start": "Start each implementation step with a one-line restatement of the active task and edge case in scope.",
+            "stop": "Stop carrying every discovery detail into the next prompt once the immediate task has been chosen.",
+            "continue": "Continue mapping dependencies before edits so the assistant starts from the right system model."
+          }
+        }
+      ]
+    },
+    "evidenceVerification": {
+      "threshold": 75,
+      "domainStats": [
+        {
+          "domain": "communicationPatterns",
+          "totalEvidence": 1,
+          "keptCount": 1,
+          "filteredCount": 0
+        },
+        {
+          "domain": "learningBehavior",
+          "totalEvidence": 1,
+          "keptCount": 1,
+          "filteredCount": 0
+        },
+        {
+          "domain": "contextEfficiency",
+          "totalEvidence": 2,
+          "keptCount": 1,
+          "filteredCount": 1
+        }
+      ],
+      "verifiedResults": [
+        {
+          "utteranceId": "cursor-session_0",
+          "quote": "Document the cursor sync edge cases and verify the retries.",
+          "relevanceScore": 93,
+          "verified": true
+        },
+        {
+          "utteranceId": "claude-session_0",
+          "quote": "Please map the API dependencies before editing.",
+          "relevanceScore": 88,
+          "verified": true
+        },
+        {
+          "utteranceId": "cursor-session_1",
+          "quote": "Unverified retry spillover example.",
+          "relevanceScore": 22,
+          "verified": false
+        }
+      ]
+    },
+    "translator": {
+      "targetLanguage": "es",
+      "translatedFields": {
+        "personalitySummary": "Trabajas como alguien que quiere ver el mapa antes del parche. Pides dependencias, casos limite y puntos de verificacion antes de editar, y eso mantiene la colaboracion alineada con el sistema real en lugar de con una suposicion apresurada.",
+        "promptPatterns": [
+          {
+            "patternName": "Prompts de mapeo de dependencias",
+            "description": "Pides un mapa de dependencias y casos limite antes de implementar.",
+            "examples": [
+              {
+                "quote": "Document the cursor sync edge cases and verify the retries.",
+                "analysis": "Aclara el plan antes de editar."
+              }
+            ],
+            "tip": "Sigue usando este patron cuando el riesgo tecnico sea alto."
+          }
+        ],
+        "topFocusAreas": {
+          "summary": "Los habitos con mayor impacto para la siguiente mejora.",
+          "areas": [
+            {
+              "rank": 1,
+              "title": "Sigue estrechando el encargo antes de programar",
+              "narrative": "Convierte el descubrimiento en un siguiente paso mas estrecho para que el asistente no arrastre contexto secundario hacia la implementacion.",
+              "expectedImpact": "Reduce el contexto sobrante durante la ejecucion.",
+              "actions": {
+                "start": "Empieza cada paso de implementacion con una linea que restablezca la tarea activa y el caso limite en alcance.",
+                "stop": "Deja de llevar todos los detalles del descubrimiento al siguiente prompt una vez elegida la tarea inmediata.",
+                "continue": "Sigue mapeando dependencias antes de editar para que el asistente parta del modelo correcto."
+              }
+            }
+          ]
+        },
+        "projectSummaries": [
+          {
+            "projectName": "sync-dashboard",
+            "summaryLines": [
+              "Mapeo los riesgos de reintento para la sincronizacion de Cursor."
+            ]
+          },
+          {
+            "projectName": "api-gateway",
+            "summaryLines": [
+              "Mapeo las dependencias del servicio antes de cambiar codigo."
+            ]
+          }
+        ],
+        "weeklyInsights": {
+          "narrative": "Fue una semana centrada en mapear dependencias y riesgos antes de tocar el codigo.",
+          "highlights": [
+            "Documento los riesgos de reintento antes de editar.",
+            "Mapeo las dependencias de la API antes de implementar."
+          ],
+          "topSessionSummaries": [
+            "Mapeo los casos limite de Cursor y las verificaciones de reintento.",
+            "Mapeo las dependencias de la API antes de editar."
+          ]
+        },
+        "translatedAgentInsights": {
+          "communicationPatterns": {
+            "strengths": [
+              {
+                "title": "Enmarcado por dependencias",
+                "description": "Formulas las solicitudes alrededor de dependencias, casos limite y puntos de verificacion para que el asistente empiece con un mejor plan."
+              }
+            ],
+            "growthAreas": []
+          },
+          "learningBehavior": {
+            "strengths": [
+              {
+                "title": "Mapeo del sistema al inicio",
+                "description": "Aprendes mejor cuando pides la estructura y las dependencias antes de hacer cambios."
+              }
+            ],
+            "growthAreas": []
+          },
+          "contextEfficiency": {
+            "strengths": [],
+            "growthAreas": [
+              {
+                "title": "Desborde de contexto por reintentos",
+                "description": "A veces llevas demasiados detalles de reintentos al siguiente paso y eso ensancha el contexto activo.",
+                "recommendation": "Reformula la tarea activa en una frase despues del descubrimiento para reducir el contexto sobrante."
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "expectedFinalSections": {
+    "activitySessions": [
+      {
+        "sessionId": "cursor-session",
+        "projectName": "sync-dashboard",
+        "startTime": "2026-03-15T19:00:00.000Z",
+        "durationMinutes": 20,
+        "messageCount": 3,
+        "summary": "Mapped cursor retry edge cases and verification checks.",
+        "totalInputTokens": 220,
+        "totalOutputTokens": 140
+      },
+      {
+        "sessionId": "claude-session",
+        "projectName": "api-gateway",
+        "startTime": "2026-03-14T18:00:00.000Z",
+        "durationMinutes": 15,
+        "messageCount": 3,
+        "summary": "Mapped API dependencies before editing.",
+        "totalInputTokens": 170,
+        "totalOutputTokens": 110
+      }
+    ],
+    "sessionSummaries": [
+      {
+        "sessionId": "cursor-session",
+        "summary": "Mapped cursor retry edge cases and verification checks."
+      },
+      {
+        "sessionId": "claude-session",
+        "summary": "Mapped API dependencies before editing."
+      }
+    ],
+    "projectSummaries": [
+      {
+        "projectName": "sync-dashboard",
+        "summaryLines": [
+          "Mapeo los riesgos de reintento para la sincronizacion de Cursor."
+        ],
+        "sessionCount": 1
+      },
+      {
+        "projectName": "api-gateway",
+        "summaryLines": [
+          "Mapeo las dependencias del servicio antes de cambiar codigo."
+        ],
+        "sessionCount": 1
+      }
+    ],
+    "weeklyInsights": {
+      "weekRange": {
+        "start": "2026-03-09T19:00:00.000Z",
+        "end": "2026-03-15T19:00:00.000Z"
+      },
+      "stats": {
+        "totalSessions": 2,
+        "totalMinutes": 35,
+        "totalTokens": 640,
+        "activeDays": 2,
+        "avgSessionMinutes": 17.5
+      },
+      "comparison": {
+        "sessionsDelta": 1,
+        "minutesDelta": 15,
+        "tokensDelta": 220,
+        "activeDaysDelta": 0
+      },
+      "projects": [
+        {
+          "projectName": "sync-dashboard",
+          "sessionCount": 1,
+          "totalMinutes": 20,
+          "percentage": 57.1
+        },
+        {
+          "projectName": "api-gateway",
+          "sessionCount": 1,
+          "totalMinutes": 15,
+          "percentage": 42.9
+        }
+      ],
+      "topProjectSessions": [
+        {
+          "summary": "Mapeo los casos limite de Cursor y las verificaciones de reintento.",
+          "durationMinutes": 20,
+          "date": "Mar 15"
+        },
+        {
+          "summary": "Mapeo las dependencias de la API antes de editar.",
+          "durationMinutes": 15,
+          "date": "Mar 14"
+        }
+      ],
+      "narrative": "Fue una semana centrada en mapear dependencias y riesgos antes de tocar el codigo.",
+      "highlights": [
+        "Documento los riesgos de reintento antes de editar.",
+        "Mapeo las dependencias de la API antes de implementar."
+      ]
+    },
+    "personalitySummary": "Trabajas como alguien que quiere ver el mapa antes del parche. Pides dependencias, casos limite y puntos de verificacion antes de editar, y eso mantiene la colaboracion alineada con el sistema real en lugar de con una suposicion apresurada.",
+    "promptPatterns": [
+      {
+        "patternName": "Prompts de mapeo de dependencias",
+        "description": "Pides un mapa de dependencias y casos limite antes de implementar.",
+        "frequency": "frequent",
+        "examples": [
+          {
+            "quote": "Document the cursor sync edge cases and verify the retries.",
+            "analysis": "Aclara el plan antes de editar."
+          }
+        ],
+        "effectiveness": "highly_effective",
+        "tip": "Sigue usando este patron cuando el riesgo tecnico sea alto."
+      }
+    ],
+    "topFocusAreas": {
+      "summary": "Los habitos con mayor impacto para la siguiente mejora.",
+      "areas": [
+        {
+          "rank": 1,
+          "dimension": "aiCollaboration",
+          "title": "Sigue estrechando el encargo antes de programar",
+          "narrative": "Convierte el descubrimiento en un siguiente paso mas estrecho para que el asistente no arrastre contexto secundario hacia la implementacion.",
+          "expectedImpact": "Reduce el contexto sobrante durante la ejecucion.",
+          "priorityScore": 100,
+          "actions": {
+            "start": "Empieza cada paso de implementacion con una linea que restablezca la tarea activa y el caso limite en alcance.",
+            "stop": "Deja de llevar todos los detalles del descubrimiento al siguiente prompt una vez elegida la tarea inmediata.",
+            "continue": "Sigue mapeando dependencias antes de editar para que el asistente parta del modelo correcto."
+          }
+        }
+      ]
+    },
+    "translatedAgentInsights": {
+      "communicationPatterns": {
+        "strengths": [
+          {
+            "title": "Enmarcado por dependencias",
+            "description": "Formulas las solicitudes alrededor de dependencias, casos limite y puntos de verificacion para que el asistente empiece con un mejor plan."
+          }
+        ],
+        "growthAreas": []
+      },
+      "learningBehavior": {
+        "strengths": [
+          {
+            "title": "Mapeo del sistema al inicio",
+            "description": "Aprendes mejor cuando pides la estructura y las dependencias antes de hacer cambios."
+          }
+        ],
+        "growthAreas": []
+      },
+      "contextEfficiency": {
+        "strengths": [],
+        "growthAreas": [
+          {
+            "title": "Desborde de contexto por reintentos",
+            "description": "A veces llevas demasiados detalles de reintentos al siguiente paso y eso ensancha el contexto activo.",
+            "recommendation": "Reformula la tarea activa en una frase despues del descubrimiento para reducir el contexto sobrante."
+          }
+        ]
+      }
+    }
+  }
+}

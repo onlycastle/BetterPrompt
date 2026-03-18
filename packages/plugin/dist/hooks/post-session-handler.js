@@ -1,53 +1,84 @@
 #!/usr/bin/env node
 /**
- * Post-Session Hook Handler
+ * Session End Hook Handler
  *
- * Called by Claude Code after each session ends.
- * Checks debounce rules and spawns the background analyzer if needed.
+ * Called by Claude Code when a session ends.
+ * Checks debounce rules and marks analysis as pending for the next session.
+ *
+ * DEFERRED QUEUE PATTERN:
+ * Instead of spawning a detached background process (which has no LLM host),
+ * this hook simply marks analysis as "pending" in plugin-state.json.
+ * The next Claude Code session detects the pending flag and runs the full
+ * skill-based analysis pipeline with Claude Code as the LLM host.
  *
  * Exit codes:
- *   0 = hook ran successfully (analysis may or may not have been triggered)
+ *   0 = hook ran successfully (analysis may or may not have been queued)
  *   1 = unexpected error
  *
- * This must be fast (<100ms) — it runs synchronously in Claude Code's
- * hook pipeline, so we only check debounce rules and spawn a detached process.
+ * This must be fast because SessionEnd hooks default to a 1.5s timeout.
  */
-import { spawn } from 'node:child_process';
-import { join, dirname } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { getConfig } from '../lib/config.js';
-import { shouldTriggerAnalysis, markAnalysisStarted } from '../lib/debounce.js';
-const __dirname = dirname(fileURLToPath(import.meta.url));
-function main() {
-    const config = getConfig();
+import { markAnalysisPending, recoverStaleAnalysisState, shouldTriggerAnalysis, } from '../lib/debounce.js';
+import { estimateSessionDurationMsFromTranscript } from '../lib/hook-utils.js';
+const DEFAULT_DEPS = {
+    getConfig,
+    recoverStaleAnalysisState,
+    shouldTriggerAnalysis,
+    markAnalysisPending,
+    estimateSessionDurationMsFromTranscript,
+};
+export function readHookInput(raw) {
+    try {
+        const payload = raw ?? readFileSync(0, 'utf-8').trim();
+        return payload ? JSON.parse(payload) : {};
+    }
+    catch {
+        return {};
+    }
+}
+export function resolveSessionDurationMs(hookInput, env, estimateDuration = estimateSessionDurationMsFromTranscript) {
+    return Number.parseInt(env.CLAUDE_SESSION_DURATION_MS ?? '0', 10)
+        || (hookInput.transcript_path ? estimateDuration(hookInput.transcript_path) : 0);
+}
+export function handleSessionEndHook(hookInput, deps = DEFAULT_DEPS, env = process.env) {
+    const config = deps.getConfig();
     // Skip if auto-analyze is disabled
     if (!config.autoAnalyze) {
-        process.exit(0);
+        return {
+            queued: false,
+            reason: 'Auto-analysis disabled',
+            durationMs: 0,
+        };
     }
-    // Parse session duration from hook context (if provided via env)
-    const durationMs = Number.parseInt(process.env.CLAUDE_SESSION_DURATION_MS ?? '0', 10) || 0;
-    // Check debounce rules
-    const result = shouldTriggerAnalysis(durationMs);
-    if (!result.shouldAnalyze) {
-        // Silent exit — debounce rules not met
-        process.exit(0);
-    }
-    // Mark as in-progress before spawning
-    markAnalysisStarted();
-    // Spawn background analyzer as a fully detached process
-    const analyzerPath = join(__dirname, '..', 'lib', 'background-analyzer.js');
-    const child = spawn('node', [analyzerPath], {
-        detached: true,
-        stdio: 'ignore',
-        env: {
-            ...process.env,
-            BETTERPROMPT_SERVER_URL: config.serverUrl,
-            BETTERPROMPT_AUTH_TOKEN: config.authToken,
-        },
+    deps.recoverStaleAnalysisState({
+        force: false,
+        reason: 'Recovered stale running state on SessionEnd hook startup.',
     });
-    // Detach so the hook can exit immediately
-    child.unref();
+    const durationMs = resolveSessionDurationMs(hookInput, env, deps.estimateSessionDurationMsFromTranscript);
+    // Check debounce rules
+    const result = deps.shouldTriggerAnalysis(durationMs);
+    if (!result.shouldAnalyze) {
+        return {
+            queued: false,
+            reason: result.reason,
+            durationMs,
+        };
+    }
+    // Mark as pending for the next Claude Code session to pick up
+    deps.markAnalysisPending();
+    return {
+        queued: true,
+        reason: result.reason,
+        durationMs,
+    };
+}
+function main() {
+    handleSessionEndHook(readHookInput());
     process.exit(0);
 }
-main();
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+    main();
+}
 //# sourceMappingURL=post-session-handler.js.map

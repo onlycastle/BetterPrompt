@@ -1,9 +1,10 @@
 /**
  * Core Types for Plugin-First Architecture
  *
- * Minimal type definitions needed by MCP tools and core modules.
- * These mirror the types from src/lib/models/ but are standalone
- * to avoid cross-compilation boundary issues.
+ * Re-exports canonical types from @betterprompt/shared for Phase 1,
+ * deterministic scoring, domain results, and constants.
+ *
+ * Plugin-specific types (JSONL parsing, session metadata) remain here.
  *
  * @module plugin/lib/core/types
  */
@@ -11,7 +12,39 @@
 import { z } from 'zod';
 
 // ============================================================================
-// Session Types (from src/lib/models/session.ts)
+// Re-exports from @betterprompt/shared (canonical source of truth)
+// ============================================================================
+
+export type {
+  UserUtterance,
+  AIInsightBlock,
+  FrictionSignals,
+  SessionHints,
+  Phase1SessionMetrics,
+  Phase1Output,
+  ReportActivitySession,
+  DeterministicScores,
+  CodingStyleType,
+  AIControlLevel,
+  DeterministicTypeResult,
+  DomainStrength,
+  DomainGrowthArea,
+  DomainResult,
+  AnalysisReport,
+  CanonicalStageOutputs,
+  CanonicalEvaluationPayload,
+  CanonicalAnalysisRun,
+  CanonicalAnalysisRunParts,
+} from '@betterprompt/shared/schemas';
+
+export {
+  CONTEXT_WINDOW_SIZE,
+  MATRIX_NAMES,
+  MATRIX_METADATA,
+} from '@betterprompt/shared';
+
+// ============================================================================
+// Session Types (plugin-specific JSONL parsing)
 // ============================================================================
 
 export const TextBlockSchema = z.object({
@@ -52,6 +85,50 @@ export const TokenUsageSchema = z.object({
     .optional(),
   service_tier: z.string().optional(),
 });
+
+export type SessionSourceType = 'claude-code' | 'cursor' | 'cursor-composer';
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+  result?: string;
+  isError?: boolean;
+}
+
+export interface ParsedMessage {
+  uuid: string;
+  role: 'user' | 'assistant';
+  timestamp: string;
+  content: string;
+  toolCalls?: ToolCall[];
+  tokenUsage?: {
+    input: number;
+    output: number;
+  };
+}
+
+export interface SessionStats {
+  userMessageCount: number;
+  assistantMessageCount: number;
+  toolCallCount: number;
+  uniqueToolsUsed: string[];
+  totalInputTokens: number;
+  totalOutputTokens: number;
+}
+
+export interface ParsedSession {
+  sessionId: string;
+  projectPath: string;
+  projectName?: string;
+  startTime: string;
+  endTime: string;
+  durationSeconds: number;
+  claudeCodeVersion: string;
+  messages: ParsedMessage[];
+  stats: SessionStats;
+  source?: SessionSourceType;
+}
 
 export const UserMessageSchema = z.object({
   type: z.literal('user'),
@@ -98,7 +175,7 @@ export const JSONLLineSchema = z.discriminatedUnion('type', [
 export type JSONLLine = z.infer<typeof JSONLLineSchema>;
 
 // ============================================================================
-// Session Metadata
+// Session Metadata (plugin-specific)
 // ============================================================================
 
 export interface SessionMetadata {
@@ -112,227 +189,3 @@ export interface SessionMetadata {
   avgContextUtilization?: number;
   maxContextUtilization?: number;
 }
-
-// ============================================================================
-// Phase 1 Output Types (from src/lib/models/phase1-output.ts)
-// ============================================================================
-
-export interface UserUtterance {
-  id: string;
-  text: string;
-  displayText?: string;
-  timestamp: string;
-  sessionId: string;
-  turnIndex: number;
-  characterCount: number;
-  wordCount: number;
-  hasCodeBlock: boolean;
-  hasQuestion: boolean;
-  isSessionStart?: boolean;
-  isContinuation?: boolean;
-  machineContentRatio?: number;
-  precedingAIToolCalls?: string[];
-  precedingAIHadError?: boolean;
-}
-
-export interface AIInsightBlock {
-  sessionId: string;
-  turnIndex: number;
-  content: string;
-  triggeringUtteranceId?: string;
-}
-
-export interface FrictionSignals {
-  toolFailureCount: number;
-  userRejectionSignals: number;
-  excessiveIterationSessions: number;
-  contextOverflowSessions: number;
-  frustrationExpressionCount: number;
-  repeatedToolErrorPatterns: number;
-  bareRetryAfterErrorCount: number;
-  errorChainMaxLength: number;
-}
-
-export interface SessionHints {
-  avgTurnsPerSession: number;
-  shortSessions: number;
-  mediumSessions: number;
-  longSessions: number;
-}
-
-export interface Phase1SessionMetrics {
-  totalSessions: number;
-  totalMessages: number;
-  totalDeveloperUtterances: number;
-  totalAIResponses: number;
-  avgMessagesPerSession: number;
-  avgDeveloperMessageLength: number;
-  questionRatio: number;
-  codeBlockRatio: number;
-  dateRange: { earliest: string; latest: string };
-  slashCommandCounts?: Record<string, number>;
-  avgContextFillPercent?: number;
-  maxContextFillPercent?: number;
-  contextFillExceeded90Count?: number;
-  frictionSignals?: FrictionSignals;
-  sessionHints?: SessionHints;
-  aiInsightBlockCount?: number;
-}
-
-export interface Phase1Output {
-  developerUtterances: UserUtterance[];
-  sessionMetrics: Phase1SessionMetrics;
-  aiInsightBlocks?: AIInsightBlock[];
-  skippedFiles?: number;
-}
-
-// ============================================================================
-// Deterministic Scoring Types
-// ============================================================================
-
-export interface DeterministicScores {
-  contextEfficiency: number;
-  sessionOutcome: number;
-  thinkingQuality: number;
-  learningBehavior: number;
-  communicationPatterns: number;
-  controlScore: number;
-}
-
-// ============================================================================
-// Coding Style Types (from src/lib/models/coding-style.ts)
-// ============================================================================
-
-export type CodingStyleType = 'architect' | 'analyst' | 'conductor' | 'speedrunner' | 'trendsetter';
-export type AIControlLevel = 'explorer' | 'navigator' | 'cartographer';
-
-export interface DeterministicTypeResult {
-  primaryType: CodingStyleType;
-  distribution: {
-    architect: number;
-    analyst: number;
-    conductor: number;
-    speedrunner: number;
-    trendsetter: number;
-  };
-  controlLevel: AIControlLevel;
-  controlScore: number;
-  matrixName: string;
-  matrixEmoji: string;
-}
-
-// ============================================================================
-// Domain Results (for save_domain_results tool)
-// ============================================================================
-
-export interface DomainStrength {
-  title: string;
-  description: string;
-  evidence: Array<{ utteranceId: string; quote: string; context?: string }>;
-}
-
-export interface DomainGrowthArea {
-  title: string;
-  description: string;
-  severity: 'low' | 'medium' | 'high';
-  recommendation: string;
-  evidence: Array<{ utteranceId: string; quote: string; context?: string }>;
-}
-
-export interface DomainResult {
-  domain: string;
-  overallScore: number;
-  confidenceScore: number;
-  strengths: DomainStrength[];
-  growthAreas: DomainGrowthArea[];
-  /** Domain-specific extra data (varies per domain) */
-  data?: Record<string, unknown>;
-  analyzedAt: string;
-}
-
-// ============================================================================
-// Report Types
-// ============================================================================
-
-export interface AnalysisReport {
-  userId: string;
-  analyzedAt: string;
-  phase1Metrics: Phase1SessionMetrics;
-  deterministicScores: DeterministicScores;
-  typeResult: DeterministicTypeResult | null;
-  domainResults: DomainResult[];
-  content?: {
-    topFocusAreas?: Array<{
-      title: string;
-      narrative: string;
-      actions: { start: string; stop: string; continue: string };
-    }>;
-    personalitySummary?: string[];
-  };
-}
-
-// ============================================================================
-// Matrix Names & Metadata (from src/lib/models/coding-style.ts)
-// ============================================================================
-
-// ============================================================================
-// Shared Constants
-// ============================================================================
-
-export const CONTEXT_WINDOW_SIZE = 200_000;
-
-export const MATRIX_NAMES: Record<CodingStyleType, Record<AIControlLevel, string>> = {
-  architect: {
-    explorer: 'Sketch Architect',
-    navigator: 'Blueprint Architect',
-    cartographer: 'Master Architect',
-  },
-  analyst: {
-    explorer: 'Curious Analyst',
-    navigator: 'Systematic Analyst',
-    cartographer: 'Forensic Analyst',
-  },
-  conductor: {
-    explorer: 'Jam Session Conductor',
-    navigator: 'Ensemble Conductor',
-    cartographer: 'Symphony Conductor',
-  },
-  speedrunner: {
-    explorer: 'Freestyle Speedrunner',
-    navigator: 'Route Speedrunner',
-    cartographer: 'TAS Speedrunner',
-  },
-  trendsetter: {
-    explorer: 'Vibe Trendsetter',
-    navigator: 'Wave Trendsetter',
-    cartographer: 'Signal Trendsetter',
-  },
-};
-
-export const MATRIX_METADATA: Record<CodingStyleType, Record<AIControlLevel, { emoji: string }>> = {
-  architect: {
-    explorer: { emoji: '✏️' },
-    navigator: { emoji: '📐' },
-    cartographer: { emoji: '🏗️' },
-  },
-  analyst: {
-    explorer: { emoji: '🔍' },
-    navigator: { emoji: '🔬' },
-    cartographer: { emoji: '🧬' },
-  },
-  conductor: {
-    explorer: { emoji: '🎸' },
-    navigator: { emoji: '🎼' },
-    cartographer: { emoji: '🎻' },
-  },
-  speedrunner: {
-    explorer: { emoji: '🏄' },
-    navigator: { emoji: '⚡' },
-    cartographer: { emoji: '🎮' },
-  },
-  trendsetter: {
-    explorer: { emoji: '🌊' },
-    navigator: { emoji: '📡' },
-    cartographer: { emoji: '🔮' },
-  },
-};

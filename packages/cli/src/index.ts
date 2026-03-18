@@ -2,11 +2,11 @@
 /**
  * betterprompt-cli
  *
- * See your AI anti-patterns in Claude Code sessions
+ * Deprecated analysis entrypoint retained for compatibility messaging.
  *
  * Usage:
- *   npx betterprompt-cli          # Analyze sessions
- *   npx betterprompt-cli help     # Show help
+ *   betterprompt-cli       # Prints plugin migration guidance
+ *   betterprompt-cli help  # Prints plugin migration guidance
  */
 
 import pc from 'picocolors';
@@ -133,6 +133,17 @@ interface RunAnalysisOptions {
   noTranslate?: boolean;
   /** Non-interactive mode: skip all prompts, analyze all tools/projects */
   auto?: boolean;
+}
+
+function printPluginMigrationNotice(): void {
+  console.log('');
+  console.log(pc.bold(pc.yellow('betterprompt-cli is deprecated for analysis runs.')));
+  console.log('Install the BetterPrompt Claude Code plugin instead:');
+  console.log(pc.cyan('  /plugin marketplace add onlycastle/BetterPrompt'));
+  console.log(pc.cyan('  /plugin install betterprompt@betterprompt'));
+  console.log('');
+  console.log('Then ask Claude Code to analyze your sessions locally and use `sync_to_team` for dashboard storage when needed.');
+  console.log('');
 }
 
 /**
@@ -323,23 +334,12 @@ async function main(): Promise<void> {
     case 'help':
     case '--help':
     case '-h':
-      console.log('');
-      console.log(pc.bold(pc.cyan('Usage:')) + ' npx betterprompt-cli [command]');
-      console.log('');
-      console.log(pc.bold('Commands:'));
-      console.log('  (default)    See anti-patterns in your Claude Code sessions');
-      console.log('  help         Show this help message');
-      console.log('');
-      console.log(pc.bold('Options:'));
-      console.log('  --auto           Non-interactive mode: skip all prompts, analyze all projects');
-      console.log('  --no-translate   Skip translation (Phase 4), keep results in English');
-      console.log('');
+      printPluginMigrationNotice();
       break;
 
     default: {
-      const noTranslate = process.argv.includes('--no-translate');
-      const auto = process.argv.includes('--auto');
-      await runAnalysis({ noTranslate, auto });
+      printPluginMigrationNotice();
+      process.exit(1);
       break;
     }
   }

@@ -5,7 +5,8 @@
  * Optional tool — only works when BETTERPROMPT_SERVER_URL is configured.
  */
 
-import { assembleReport } from '../../lib/results-db.js';
+import { assembleCanonicalRun } from '../../lib/results-db.js';
+import { markAnalysisComplete } from '../../lib/debounce.js';
 
 export const definition = {
   name: 'sync_to_team',
@@ -32,8 +33,8 @@ export async function execute(args: { serverUrl?: string }): Promise<string> {
     });
   }
 
-  const report = assembleReport();
-  if (!report) {
+  const run = assembleCanonicalRun();
+  if (!run) {
     return JSON.stringify({
       status: 'no_data',
       message: 'No analysis results to sync. Run a full analysis first.',
@@ -50,7 +51,7 @@ export async function execute(args: { serverUrl?: string }): Promise<string> {
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       },
       body: JSON.stringify({
-        report,
+        run,
         syncedAt: new Date().toISOString(),
       }),
       signal: AbortSignal.timeout(15_000),
@@ -66,6 +67,7 @@ export async function execute(args: { serverUrl?: string }): Promise<string> {
     }
 
     const result = await response.json().catch(() => ({})) as Record<string, unknown>;
+    markAnalysisComplete(run.phase1Output.sessionMetrics.totalSessions);
 
     return JSON.stringify({
       status: 'ok',

@@ -9,6 +9,7 @@
  *   scan_sessions          — Scan Claude Code session logs
  *   extract_data           — Run deterministic Phase 1 extraction
  *   save_domain_results    — Save domain analysis results
+ *   get_domain_results     — Read saved domain analysis results
  *   classify_developer_type — Classify developer type from scores
  *   generate_report        — Generate HTML report + start localhost server
  *   sync_to_team           — Sync results to team server (optional)

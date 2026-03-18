@@ -17,7 +17,7 @@
     "autoAnalyze": {
       "type": "boolean",
       "default": true,
-      "description": "Automatically analyze sessions after enough new ones accumulate"
+      "description": "Queue analysis after enough new sessions accumulate and auto-resume it in the next Claude Code session"
     },
     "analyzeThreshold": {
       "type": "number",

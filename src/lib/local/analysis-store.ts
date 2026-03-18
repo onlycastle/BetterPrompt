@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { VerboseEvaluation } from '@/lib/models/verbose-evaluation';
 import type { AnalysisResult as PipelineAnalysisResult } from '@/lib/analyzer/orchestrator/types';
+import type { CanonicalAnalysisRun } from '@betterprompt/shared';
 import { getDatabase } from './database';
 
 export interface StoredAnalysisResult {
@@ -8,6 +9,7 @@ export interface StoredAnalysisResult {
   userId: string;
   evaluation: VerboseEvaluation;
   phase1Output: PipelineAnalysisResult['phase1Output'] | null;
+  canonicalRun: CanonicalAnalysisRun | null;
   activitySessions: Array<{
     sessionId: string;
     projectName: string;
@@ -28,6 +30,7 @@ interface AnalysisRow {
   user_id: string;
   evaluation_json: string;
   phase1_output_json: string | null;
+  canonical_run_json: string | null;
   activity_sessions_json: string | null;
   created_at: string;
   claimed_at: string;
@@ -48,6 +51,9 @@ function mapRow(row: AnalysisRow): StoredAnalysisResult {
     phase1Output: row.phase1_output_json
       ? JSON.parse(row.phase1_output_json) as PipelineAnalysisResult['phase1Output']
       : null,
+    canonicalRun: row.canonical_run_json
+      ? JSON.parse(row.canonical_run_json) as CanonicalAnalysisRun
+      : null,
     activitySessions: row.activity_sessions_json
       ? JSON.parse(row.activity_sessions_json) as StoredAnalysisResult['activitySessions']
       : null,
@@ -63,6 +69,7 @@ export function createAnalysisRecord(params: {
   userId: string;
   evaluation: VerboseEvaluation;
   phase1Output?: PipelineAnalysisResult['phase1Output'];
+  canonicalRun?: CanonicalAnalysisRun;
   activitySessions?: StoredAnalysisResult['activitySessions'];
 }): StoredAnalysisResult {
   const db = getDatabase();
@@ -75,16 +82,18 @@ export function createAnalysisRecord(params: {
       user_id,
       evaluation_json,
       phase1_output_json,
+      canonical_run_json,
       activity_sessions_json,
       created_at,
       claimed_at,
       updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     resultId,
     params.userId,
     JSON.stringify(params.evaluation),
     params.phase1Output ? JSON.stringify(params.phase1Output) : null,
+    params.canonicalRun ? JSON.stringify(params.canonicalRun) : null,
     params.activitySessions ? JSON.stringify(params.activitySessions) : null,
     now,
     now,
@@ -97,7 +106,7 @@ export function createAnalysisRecord(params: {
 export function getAnalysisRecord(resultId: string): StoredAnalysisResult | null {
   const db = getDatabase();
   const row = db.prepare(`
-    SELECT result_id, user_id, evaluation_json, phase1_output_json, activity_sessions_json,
+    SELECT result_id, user_id, evaluation_json, phase1_output_json, canonical_run_json, activity_sessions_json,
            created_at, claimed_at, updated_at, view_count, share_count
     FROM analysis_results
     WHERE result_id = ?
@@ -109,7 +118,7 @@ export function getAnalysisRecord(resultId: string): StoredAnalysisResult | null
 export function listAnalysesForUser(userId: string, limit?: number): StoredAnalysisResult[] {
   const db = getDatabase();
   const query = `
-    SELECT result_id, user_id, evaluation_json, phase1_output_json, activity_sessions_json,
+    SELECT result_id, user_id, evaluation_json, phase1_output_json, canonical_run_json, activity_sessions_json,
            created_at, claimed_at, updated_at, view_count, share_count
     FROM analysis_results
     WHERE user_id = ?
@@ -126,7 +135,7 @@ export function listAnalysesForUser(userId: string, limit?: number): StoredAnaly
 export function listAllAnalysisRecords(): StoredAnalysisResult[] {
   const db = getDatabase();
   const rows = db.prepare(`
-    SELECT result_id, user_id, evaluation_json, phase1_output_json, activity_sessions_json,
+    SELECT result_id, user_id, evaluation_json, phase1_output_json, canonical_run_json, activity_sessions_json,
            created_at, claimed_at, updated_at, view_count, share_count
     FROM analysis_results
     ORDER BY claimed_at DESC

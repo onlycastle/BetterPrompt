@@ -8,7 +8,7 @@
 
 > **AI Agents:** If you are an AI coding agent (Claude Code, Cursor, Copilot, etc.), read [AGENTS.md](./AGENTS.md) instead of this file.
 
-**How it works:** BetterPrompt is a Claude Code plugin. It scans your session logs, extracts metrics deterministically, then uses Claude (the model you're already paying for) to analyze your collaboration patterns across 5 domains: thinking quality, communication, learning behavior, context efficiency, and session outcomes. Results are served as a standalone HTML report on localhost.
+**How it works:** BetterPrompt is a Claude Code plugin. It scans your local session logs, extracts metrics deterministically, then uses Claude (the model you're already paying for) to analyze your collaboration patterns across 5 domains: thinking quality, communication, learning behavior, context efficiency, and session outcomes. Results are assembled into a canonical local run and served as a standalone HTML report on localhost.
 
 No separate server. No Gemini API key. No data leaves your machine.
 
@@ -17,6 +17,7 @@ No separate server. No Gemini API key. No data leaves your machine.
 | Tool | Session Source | Format |
 |------|---------------|--------|
 | Claude Code | `~/.claude/projects/` | JSONL |
+| Cursor | `~/.cursor/chats/` and Cursor composer storage | SQLite |
 
 ## Screenshots
 
@@ -39,6 +40,8 @@ In any Claude Code session, run:
 
 That's it. The MCP server, analysis skills, and post-session hooks are registered automatically.
 
+If `autoAnalyze` is enabled, BetterPrompt can queue an analysis at session end and inject startup context in the next Claude Code session so the queued run resumes automatically.
+
 ### 2. Run your analysis
 
 In any Claude Code session, say:
@@ -47,38 +50,22 @@ In any Claude Code session, say:
 
 Claude will call the MCP tools in sequence -- scan sessions, extract data, analyze each domain, classify your type, and serve a report at `http://localhost:3456`.
 
-## Alternative: Server + CLI
+## Optional: Dashboard Server
 
-For teams or if you prefer a web dashboard, you can still use the traditional server-based approach.
-
-### Prerequisites
-
-- [Node.js 18+](https://nodejs.org/)
-- A [Google Gemini API key](https://aistudio.google.com/apikey) (free tier works)
-- Existing AI coding sessions
-
-### Setup
+If you want persistence, sharing, or enterprise dashboards, run the Next.js server alongside the plugin. Analysis itself still runs inside Claude Code; the server is for auth, storage, and dashboards.
 
 ```bash
 git clone https://github.com/onlycastle/BetterPrompt.git
 cd BetterPrompt
 npm install
-cp .env.example .env
-# Add GOOGLE_GEMINI_API_KEY to .env
 npm run dev
 ```
 
-Then in a separate terminal:
-
-```bash
-npx betterprompt-cli
-```
-
-The CLI discovers sessions, uploads parsed data to your local server, and opens your report at `http://localhost:3000/dashboard/r/{resultId}`.
+When you want a local plugin run stored on the server, use the plugin's `sync_to_team` MCP tool or `POST /api/analysis/sync`.
 
 ## Team Manager Guide
 
-For engineering managers who want to track team-wide AI collaboration patterns. Requires the web server (see [Server + CLI](#alternative-server--cli) above).
+For engineering managers who want to track team-wide AI collaboration patterns. Requires the web server, but team members still run analysis through the Claude Code plugin.
 
 ### 1. Set up your organization
 
@@ -101,15 +88,12 @@ Go to `/dashboard/enterprise/members` and click **Invite Member**. Add members b
 
 ### 3. Team members run their analyses
 
-Each team member configures the plugin with your server URL:
+Each team member needs:
 
-```bash
-# In the team member's environment
-BETTERPROMPT_SERVER_URL=https://your-server.example.com
-BETTERPROMPT_AUTH_TOKEN=<their-token>
-```
+1. The BetterPrompt Claude Code plugin installed
+2. Your server URL and auth token for `sync_to_team`
 
-After running a local analysis via the plugin, members use the `sync_to_team` MCP tool to upload results. Alternatively, members can use the CLI (`npx betterprompt-cli`) pointed at your server.
+After running a local analysis via the plugin, members use the `sync_to_team` MCP tool to upload the canonical run to the shared dashboard.
 
 ### 4. Monitor your team
 
@@ -134,7 +118,7 @@ Claude Code plugin with local-first analysis. Provides MCP tools for the full pi
 
 | Tool | Description |
 |------|-------------|
-| `scan_sessions` | Discover and cache session logs from `~/.claude/projects/` |
+| `scan_sessions` | Discover and cache supported local session logs from Claude Code and Cursor |
 | `extract_data` | Run deterministic Phase 1 extraction (metrics, scores) |
 | `save_domain_results` | Store domain analysis results (called by analysis skills) |
 | `classify_developer_type` | Classify into the 5x3 type matrix |
@@ -158,7 +142,7 @@ npm run build
 
 ### Web Server (root)
 
-Next.js app with the team dashboard UI, API routes, and the Gemini analysis pipeline. Required only for team/enterprise features or the web-based dashboard.
+Next.js app with the team dashboard UI, auth, persistence, and sync routes. Required only for team/enterprise features or the web-based dashboard.
 
 ```bash
 npm run dev        # Dev server on port 3000
@@ -168,19 +152,7 @@ npm run typecheck  # Type-check without emitting
 
 ### CLI (`packages/cli`)
 
-Scans session logs and uploads parsed data to the web server for analysis. Alternative to the plugin for users who prefer a CLI workflow.
-
-```bash
-npx betterprompt-cli
-```
-
-Published to npm as `betterprompt-cli`. In development:
-
-```bash
-cd packages/cli
-npm run build
-node dist/index.js
-```
+Deprecated analysis entrypoint. Kept only for compatibility and scanner internals used by the plugin. New analysis runs should use the Claude Code plugin instead.
 
 ## Testing
 
@@ -218,11 +190,10 @@ tests/
 | `BETTERPROMPT_SERVER_URL` | No | - | Team server URL (only for `sync_to_team`) |
 | `BETTERPROMPT_AUTH_TOKEN` | No | - | Auth token for team server sync |
 
-**Web Server + CLI:**
+**Web Server:**
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GOOGLE_GEMINI_API_KEY` | Yes | - | Gemini API key ([get one here](https://aistudio.google.com/apikey)) |
 | `BETTERPROMPT_BASE_URL` | No | `http://localhost:3000` | Server URL for metadata and OpenGraph |
 | `BETTERPROMPT_WEB_APP_URL` | No | `http://localhost:3000` | Web app URL for CLI report links |
 | `BETTERPROMPT_DB_PATH` | No | `~/.betterprompt/betterprompt.db` | SQLite database path |
@@ -242,7 +213,7 @@ packages/
       report-template.ts    HTML report generator
       results-db.ts         Local SQLite storage
     hooks/                  Post-session analysis trigger
-  cli/                      CLI for session discovery and upload
+  cli/                      Deprecated CLI compatibility package
 
 app/                        Next.js app router (team dashboard)
 src/
@@ -254,7 +225,7 @@ src/
     report/                 Shared report UI
     ui/                     Reusable UI primitives
   lib/
-    analyzer/               Gemini-powered multi-phase analysis pipeline
+    analyzer/               Legacy server analyzer code + evaluation compatibility helpers
     domain/                 Domain models (config, knowledge, user, sharing)
     enterprise/             Team aggregation and enterprise features
     local/                  SQLite persistence (auth, reports, teams)

@@ -1,12 +1,9 @@
 /**
- * Server Uploader
+ * Deprecated CLI Uploader
  *
- * Handles communication with the BetterPrompt server
- * Supports SSE streaming for real-time progress updates
- * Uses gzip compression to reduce payload size
- *
- * Sends pre-parsed session data directly to the self-hosted Next.js server.
- * Authentication is optional — the server works without tokens.
+ * Kept for compatibility only. Analysis uploads were removed in the plugin-only
+ * cutover; callers now receive a migration error that points them to the Claude
+ * Code plugin and canonical sync flow.
  */
 
 import { gzipSync } from 'node:zlib';
@@ -28,17 +25,17 @@ function debugLog(...args: unknown[]) {
 function getAnalysisApiUrl(): string {
   const configured = process.env.BETTERPROMPT_API_URL?.trim();
   if (!configured) {
-    return `${REPORT_BASE_URL.replace(/\/$/, '')}/api/analysis/run`;
+    return `${REPORT_BASE_URL.replace(/\/$/, '')}/api/analysis/sync`;
   }
 
   const normalized = configured.replace(/\/$/, '');
-  if (normalized.endsWith('/api/analysis/run')) {
+  if (normalized.endsWith('/api/analysis/sync')) {
     return normalized;
   }
   if (normalized.endsWith('/api/analysis')) {
-    return `${normalized}/run`;
+    return `${normalized}/sync`;
   }
-  return `${normalized}/api/analysis/run`;
+  return `${normalized}/api/analysis/sync`;
 }
 
 /**
@@ -402,57 +399,15 @@ export interface UploadOptions {
  * Upload session data for analysis with streaming progress
  */
 export async function uploadForAnalysis(
-  scanResult: ScanResult,
-  accessToken: string = '',
-  onProgress?: ProgressCallback,
-  onPhasePreview?: PhasePreviewCallback,
-  options?: UploadOptions
+  _scanResult: ScanResult,
+  _accessToken: string = '',
+  _onProgress?: ProgressCallback,
+  _onPhasePreview?: PhasePreviewCallback,
+  _options?: UploadOptions
 ): Promise<AnalysisResult> {
-  const {
-    compressed: compressedBody,
-    truncated,
-    droppedCount,
-    originalSizeBytes,
-    compressedSizeBytes,
-  } = preparePayload(scanResult);
-
-  const sizeInfo = `${formatSize(originalSizeBytes)} (gzip: ${formatSize(compressedSizeBytes)})`;
-  const analysisUrl = getAnalysisApiUrl();
-
-  if (truncated) {
-    onProgress?.('preparing', 0, `${sizeInfo} | Excluded ${droppedCount} session(s) to fit limit`);
-  } else {
-    onProgress?.('preparing', 0, `${sizeInfo} | Sending to self-hosted server`);
-  }
-
-  onProgress?.('preparing', 5, `Uploading ${formatSize(compressedBody.length)} to ${analysisUrl}...`);
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/octet-stream',
-    'Content-Encoding': 'gzip',
-  };
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-  if (DEBUG) {
-    headers['X-Debug'] = '1';
-  }
-
-  const response = await fetch(
-    options?.noTranslate ? `${analysisUrl}?noTranslate=1` : analysisUrl,
-    {
-      method: 'POST',
-      headers,
-      body: new Uint8Array(compressedBody),
-    }
+  throw new Error(
+    'betterprompt-cli no longer runs server-side analysis. Install the BetterPrompt Claude Code plugin, run `/analyze` locally, and use `sync_to_team` if you need dashboard sync.',
   );
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Analysis request failed: ${response.status} ${errorText}`);
-  }
-
-  return handleStreamingResponse(response, onProgress, onPhasePreview);
 }
 
 /**

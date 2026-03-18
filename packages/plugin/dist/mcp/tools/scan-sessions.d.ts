@@ -1,9 +1,8 @@
 /**
  * scan_sessions MCP Tool
  *
- * Scans ~/.claude/projects/ for JSONL session logs.
+ * Scans all supported local session sources and caches fully parsed sessions.
  * Returns session metadata (count, date range, total messages).
- * Stores session list in scan cache for subsequent tools.
  */
 export declare const definition: {
     name: string;

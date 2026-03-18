@@ -1,6 +1,6 @@
 # Plugin (Agent Reference)
 
-Claude Code plugin at `packages/plugin/`. MCP server + post-session hook + background analyzer.
+Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hooks + local report pipeline.
 
 ## File Map
 
@@ -14,9 +14,10 @@ Claude Code plugin at `packages/plugin/`. MCP server + post-session hook + backg
 | `lib/cache.ts` | SQLite cache (better-sqlite3, WAL mode) |
 | `lib/api-client.ts` | HTTP client, `fetchUserSummary()`, `verifyAuth()` |
 | `lib/debounce.ts` | Debounce rules, state file read/write |
-| `lib/background-analyzer.ts` | Detached child process, dynamic CLI imports |
-| `hooks/post-session-handler.ts` | Stop hook, <100ms, spawns background analyzer |
-| `hooks/hooks.json` | Hook registration (`stop` event) |
+| `lib/background-analyzer.ts` | Deprecated cutover stub kept only to fail loudly if invoked |
+| `hooks/post-session-handler.ts` | `SessionEnd` hook, <1.5s, queues the next local analysis run |
+| `hooks/session-start-handler.ts` | `SessionStart` hook, injects queued `/analyze` context |
+| `hooks/hooks.json` | Hook registration (`SessionStart` + `SessionEnd`) |
 | `.claude-plugin/plugin.json` | Plugin metadata + config schema |
 | `.mcp.json` | MCP server config (stdio transport) |
 
@@ -36,7 +37,7 @@ Domain enum: `thinkingQuality`, `communicationPatterns`, `learningBehavior`, `co
 |----------|--------|---------|
 | `/api/analysis/user/summary` | GET | `api-client.ts` → `fetchUserSummary()` |
 | `/api/auth/me` | GET | `api-client.ts` → `verifyAuth()` |
-| `/api/analysis/run` | POST | `background-analyzer.ts` (via CLI uploader) |
+| `/api/analysis/sync` | POST | `sync_to_team` / canonical run persistence |
 
 Route implementation: `app/api/analysis/user/summary/route.ts`
 
@@ -54,8 +55,8 @@ Route implementation: `app/api/analysis/user/summary/route.ts`
 | Path | Format | Content |
 |------|--------|---------|
 | `~/.betterprompt/insight-cache.db` | SQLite | `cached_insights(user_id, result_id, profile_json, growth_json, insights_json, fetched_at)` |
-| `~/.betterprompt/plugin-state.json` | JSON | `{ lastAnalysisTimestamp, lastAnalysisSessionCount, analysisInProgress }` |
-| `~/.betterprompt/plugin-errors.log` | Text | Timestamped error log from background analyzer |
+| `~/.betterprompt/plugin-state.json` | JSON | Lifecycle state: `idle/pending/running/complete/failed` + timestamps |
+| `~/.betterprompt/plugin-errors.log` | Text | Timestamped hook/deprecation errors |
 
 ## Cache Behavior
 
@@ -82,20 +83,22 @@ Evaluated in order by `shouldTriggerAnalysis(sessionDurationMs)`:
 
 Session count: scans `~/.claude/projects/*/` for `.jsonl` files (filesystem only, no content reading).
 
-## Background Analyzer Flow
+## Queued Auto-Analysis Flow
 
 ```
-verifyAuth() → loadCliModules() → scanSessions() → uploadForAnalysis() → refreshCache() → markAnalysisComplete()
+SessionEnd hook → shouldTriggerAnalysis() → markAnalysisPending()
+SessionStart hook → inject queued `/analyze` context
+extract_data → markAnalysisStarted()
+generate_report / sync_to_team → markAnalysisComplete()
 ```
-
-CLI module loading: dynamic import, tries `betterprompt/scanner` (npm) first, falls back to `../../cli/src/scanner.js` (monorepo dev). No compile-time CLI dependency — uses local interface definitions.
 
 ## Hook Execution
 
-- Event: `stop` (Claude Code session ends)
-- Command: `node ./dist/hooks/post-session-handler.js`
-- Must exit in <100ms
-- Spawns `background-analyzer.js` via `spawn('node', [...], { detached: true, stdio: 'ignore' })` + `child.unref()`
+- Events: `SessionStart`, `SessionEnd`
+- Commands:
+  - `node ./dist/hooks/session-start-handler.js`
+  - `node ./dist/hooks/post-session-handler.js`
+- `SessionEnd` queues work; `SessionStart` injects context so Claude Code consumes the queued run in-band
 
 ## Build
 

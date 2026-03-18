@@ -1,14 +1,14 @@
 # Architecture (Agent Reference)
 
-The only supported runtime is `self-hosted Next.js server + CLI`.
+The supported runtime is `Claude Code plugin + optional self-hosted Next.js server`.
 
 ## Active System
 
 - `app/`: Next.js pages, layouts, and API routes
-- `packages/cli/`: local session discovery, upload to `/api/analysis/run`
-- `packages/plugin/`: Claude Code plugin — MCP server, auto-analysis hooks, insight cache (see `docs/agent/PLUGIN.md`)
+- `packages/cli/`: deprecated compatibility package; no longer an active analysis path
+- `packages/plugin/`: Claude Code plugin — MCP server, auto-analysis hooks, canonical local pipeline (see `docs/agent/PLUGIN.md`)
 - `src/lib/local/`: SQLite database, auth/session helpers, analysis persistence
-- `src/lib/analyzer/`: Gemini worker pipeline
+- `src/lib/analyzer/`: legacy server analyzer code plus shared evaluation compatibility
 - `src/lib/search-agent/storage/knowledge-store.ts`: filesystem knowledge store
 - `src/lib/search-agent/influencers/registry.ts`: filesystem influencer registry
 
@@ -19,7 +19,7 @@ Zero-config local auth — server auto-creates `local@localhost` admin via `getO
 ## Core Request Paths
 
 - Auth: `app/api/auth/me` (zero-config, auto-created local admin user)
-- Analysis run: `app/api/analysis/run`
+- Analysis sync: `app/api/analysis/sync`
 - Analysis retrieval/delete: `app/api/analysis/results/[resultId]`
 - User history: `app/api/analysis/user`
 - User summary (plugin): `app/api/analysis/user/summary` — compact ~5KB summary for MCP tools
@@ -45,7 +45,7 @@ Zero-config local auth — server auto-creates `local@localhost` admin via `getO
 ### Data Flow
 
 ```
-CLI analysis → analysis_results table → /api/org/members → evaluation-to-team mapper → TeamMemberAnalysis → hooks → enterprise UI
+Plugin local analysis → optional /api/analysis/sync → analysis_results table → /api/org/members → evaluation-to-team mapper → TeamMemberAnalysis → hooks → enterprise UI
 ```
 
 ### Access Control
@@ -57,7 +57,7 @@ CLI analysis → analysis_results table → /api/org/members → evaluation-to-t
 ## Related Docs
 
 - [docs/agent/USER-FLOWS.md](./USER-FLOWS.md) — Employee + Manager user flows, route→component mapping, access control, API reference
-- [AGENTS.md](../../AGENTS.md) — Machine-readable setup guide for AI coding agents (quick start, CLI flags, enterprise setup)
+- [AGENTS.md](../../AGENTS.md) — Machine-readable setup guide for AI coding agents (plugin quick start, enterprise setup)
 
 ## Cleanup Invariants
 
