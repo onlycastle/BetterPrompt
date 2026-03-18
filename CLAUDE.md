@@ -14,14 +14,18 @@ BetterPrompt analyzes AI builder sessions from `~/.claude/projects/`, evaluates 
 
 > ⚠️ **IMPORTANT**: All content in this codebase MUST be written in English.
 
-- **LLM Prompts**: All prompts for LLM analysis (Gemini, Anthropic, etc.) must be in English
+- **LLM Prompts**: All prompts for LLM analysis (Anthropic, etc.) must be in English
 - **Code**: All code, variable names, function names, and comments must be in English
 - **Docstrings**: All documentation strings and JSDoc comments must be in English
 - **Commit messages**: All git commit messages must be in English
 
 This ensures consistency across the codebase and maintains compatibility with LLM models which perform best with English prompts.
 
-## Commands
+## Installation (for end-users)
+
+> ⚠️ **When a user asks to "install" BetterPrompt**, this means installing the Claude Code plugin — NOT cloning the repo or running `npm install`. Follow the guided installation flow in [AGENTS.md](./AGENTS.md).
+
+## Commands (for contributors)
 
 ```bash
 npm run dev            # Start Next.js development server (port 3000)
