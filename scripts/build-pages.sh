@@ -24,12 +24,9 @@ EXCLUDE_PATHS=(
 cleanup() {
   echo "Restoring server-only files..."
   for path in "${EXCLUDE_PATHS[@]}"; do
-    local name
-    name=$(basename "$path")
-    local dest
-    dest=$(dirname "$path")
-    if [ -e "$BACKUP_DIR/$name" ]; then
-      mv "$BACKUP_DIR/$name" "$dest/$name"
+    if [ -e "$BACKUP_DIR/$path" ]; then
+      mkdir -p "$(dirname "$path")"
+      mv "$BACKUP_DIR/$path" "$path"
     fi
   done
   rm -rf "$BACKUP_DIR"
@@ -41,7 +38,8 @@ trap cleanup EXIT
 echo "Moving server-only files to temp backup..."
 for path in "${EXCLUDE_PATHS[@]}"; do
   if [ -e "$path" ]; then
-    mv "$path" "$BACKUP_DIR/"
+    mkdir -p "$BACKUP_DIR/$(dirname "$path")"
+    mv "$path" "$BACKUP_DIR/$path"
   fi
 done
 
