@@ -28,34 +28,23 @@ Follow these phases in strict order. Each phase must complete before the next be
 
 Run the `summarize-sessions` skill. This generates a concise 1-line summary for each analyzed session and persists the results via `save_stage_output`.
 
-### Phase 2: Domain Analysis + Context Generation (Two Batches)
+### Phase 2: Domain Analysis + Context Generation (Sequential)
 
-Run domain analyzers and context generators in **two sequential batches** to avoid rate limit failures. Each unit persists its own output to the current local analysis run.
+Run each skill **one at a time, sequentially** to avoid rate limit failures on Claude Max. Wait for each skill to fully complete before starting the next. Each unit persists its own output to the current local analysis run.
 
-#### Batch A (3 parallel)
+Run the following skills in this exact order:
 
-Launch these three skills in parallel:
+| # | Subagent Skill | Type | Key | Purpose |
+|---|----------------|------|-----|---------|
+| 1 | `analyze-thinking-quality` | Domain (`save_domain_results`) | thinkingQuality | Planning habits, verification behavior, critical thinking |
+| 2 | `analyze-communication` | Domain (`save_domain_results`) | communicationPatterns | Prompt structure, context patterns, signature quotes |
+| 3 | `analyze-efficiency` | Domain (`save_domain_results`) | contextEfficiency | Token optimization, context fill, inefficiency patterns |
+| 4 | `analyze-learning` | Domain (`save_domain_results`) | learningBehavior | Knowledge gaps, repeated mistakes, growth indicators |
+| 5 | `analyze-sessions` | Domain (`save_domain_results`) | sessionOutcome | Goal achievement, friction points, success/failure patterns |
+| 6 | `summarize-projects` | Context (`save_stage_output`) | projectSummaries | Project-level summaries from session data |
+| 7 | `generate-weekly-insights` | Context (`save_stage_output`) | weeklyInsights | This Week narrative, stats, and highlights |
 
-| Subagent Skill | Domain Key | Purpose |
-|----------------|------------|---------|
-| `analyze-thinking-quality` | thinkingQuality | Planning habits, verification behavior, critical thinking |
-| `analyze-communication` | communicationPatterns | Prompt structure, context patterns, signature quotes |
-| `analyze-efficiency` | contextEfficiency | Token optimization, context fill, inefficiency patterns |
-
-**Wait for all Batch A skills to complete before proceeding.**
-
-#### Batch B (4 parallel)
-
-Launch these four skills in parallel:
-
-| Subagent Skill | Type | Key | Purpose |
-|----------------|------|-----|---------|
-| `analyze-learning` | Domain (`save_domain_results`) | learningBehavior | Knowledge gaps, repeated mistakes, growth indicators |
-| `analyze-sessions` | Domain (`save_domain_results`) | sessionOutcome | Goal achievement, friction points, success/failure patterns |
-| `summarize-projects` | Context (`save_stage_output`) | projectSummaries | Project-level summaries from session data |
-| `generate-weekly-insights` | Context (`save_stage_output`) | weeklyInsights | This Week narrative, stats, and highlights |
-
-**Wait for all Batch B skills to complete before proceeding.**
+**Do NOT run any of these skills in parallel. Start each skill only after the previous one has completed.**
 
 ### Phase 2.5: Developer Type Classification
 
