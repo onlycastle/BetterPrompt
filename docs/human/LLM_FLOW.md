@@ -267,7 +267,7 @@ All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
 - Phase 2 = Semantic Analysis (on extracted data only)
 
 **Worker Input Filtering**
-All 5 workers apply identical quality filters on utterances:
+All 5 domain analyzers apply identical quality filters on utterances:
 ```typescript
 // Filter applied before LLM analysis
 utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
@@ -1350,6 +1350,8 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Learning Behavior Skill | `packages/plugin/skills/analyze-learning/SKILL.md` | Knowledge gaps & repeated mistakes |
 | Context Efficiency Skill | `packages/plugin/skills/analyze-efficiency/SKILL.md` | Token inefficiency |
 | Session Outcome Skill | `packages/plugin/skills/analyze-sessions/SKILL.md` | Goals, friction, success rates |
+| Summarize Projects Skill | `packages/plugin/skills/summarize-projects/SKILL.md` | Project-level summaries from session data |
+| Weekly Insights Skill | `packages/plugin/skills/generate-weekly-insights/SKILL.md` | This Week narrative, stats, and highlights |
 | Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | AgentOutputs Zod schemas |
 | Thinking Quality Schema | `src/lib/models/thinking-quality-data.ts` | ThinkingQualityOutput |
 | Communication Patterns Schema | `src/lib/models/communication-patterns-data.ts` | CommunicationPatternsOutput |
