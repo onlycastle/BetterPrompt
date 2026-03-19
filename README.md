@@ -29,18 +29,24 @@ The recommended way to use BetterPrompt. Zero configuration required.
 
 ### 1. Install the plugin
 
-In any Claude Code session, run:
+In your terminal:
 
-```
-/plugin marketplace add onlycastle/BetterPrompt
-/plugin install betterprompt@betterprompt
+```bash
+claude plugin marketplace add onlycastle/BetterPrompt
+claude plugin install betterprompt@betterprompt
 ```
 
 That's it. The MCP server, analysis skills, and post-session hooks are registered automatically.
 
-If `autoAnalyze` is enabled, BetterPrompt can queue an analysis at session end and inject startup context in the next Claude Code session so the queued run resumes automatically.
+### 2. First-time setup
 
-### 2. Run your analysis
+On your first Claude Code session after installation, the `/bp-setup` wizard runs automatically. It verifies your installation, optionally adds a command reference to your CLAUDE.md, and points you toward your first analysis. You can also invoke it manually anytime:
+
+```
+/bp-setup
+```
+
+### 3. Run your analysis
 
 In any Claude Code session, run:
 
@@ -49,6 +55,8 @@ In any Claude Code session, run:
 ```
 
 The plugin orchestrates the full pipeline -- scan sessions, extract data, analyze each domain, classify your type, and serve a report at `http://localhost:3456`.
+
+If `autoAnalyze` is enabled, BetterPrompt can queue an analysis at session end and inject startup context in the next Claude Code session so the queued run resumes automatically.
 
 ### Available Commands
 
@@ -63,10 +71,10 @@ The plugin orchestrates the full pipeline -- scan sessions, extract data, analyz
 
 ### Uninstalling
 
-In any Claude Code session, run:
+In your terminal:
 
-```
-/plugin uninstall betterprompt@betterprompt
+```bash
+claude plugin uninstall betterprompt@betterprompt
 ```
 
 To also remove local analysis data (results, reports, caches):

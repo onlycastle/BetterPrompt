@@ -28,6 +28,7 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `lib/report-template.ts` | Standalone HTML report generator |
 | `lib/evaluation-assembler.ts` | Assembles canonical run from results DB |
 | `lib/api-client.ts` | HTTP client, `fetchUserSummary()`, `verifyAuth()` |
+| `lib/prefs.ts` | User preferences (`~/.betterprompt/prefs.json`), first-run detection |
 | `lib/debounce.ts` | Debounce rules, state file read/write |
 | `lib/background-analyzer.ts` | Deprecated cutover stub kept only to fail loudly if invoked |
 | `lib/core/session-scanner.ts` | Claude Code JSONL parsing and local data-dir helpers |
@@ -46,8 +47,10 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `lib/scanner/sources/sqlite-loader.ts` | Shared SQLite loader for Cursor sources |
 | `lib/scanner/tool-mapping.ts` | Tool name normalization across sources |
 | `hooks/post-session-handler.ts` | `SessionEnd` hook, <1.5s, queues the next local analysis run |
-| `hooks/session-start-handler.ts` | `SessionStart` hook, injects queued `/bp-analyze` context |
+| `hooks/session-start-handler.ts` | `SessionStart` hook, first-run detection + queued `/bp-analyze` context |
 | `hooks/hooks.json` | Hook registration (`SessionStart` + `SessionEnd`) |
+| `skills/bp-setup/SKILL.md` | Guided onboarding wizard skill |
+| `skills/bp-analyze/SKILL.md` | Full analysis pipeline orchestrator skill |
 | `.claude-plugin/plugin.json` | Plugin metadata + config schema |
 | `.mcp.json` | MCP server config (stdio transport) |
 
@@ -112,6 +115,7 @@ Route implementation: `app/api/analysis/user/summary/route.ts`
 | `~/.betterprompt/current-run-id.txt` | Text | Active analysis run ID for cross-tool coordination |
 | `~/.betterprompt/scan-cache/` | JSON | Parsed session cache from multi-source scanner |
 | `~/.betterprompt/reports/` | HTML | Generated reports (`report-{timestamp}.html`, `latest.html`) |
+| `~/.betterprompt/prefs.json` | JSON | User preferences: `welcomeCompleted`, `welcomeVersion`, `starAsked` |
 | `~/.betterprompt/plugin-state.json` | JSON | Lifecycle state: `idle/pending/running/complete/failed` + timestamps |
 | `~/.betterprompt/plugin-errors.log` | Text | Timestamped hook/deprecation errors |
 
@@ -186,6 +190,7 @@ Discovery for Claude Code data dirs uses a waterfall: default `~/.claude/` path,
   - `node ./dist/hooks/session-start-handler.js`
   - `node ./dist/hooks/post-session-handler.js`
 - `SessionEnd` queues work; `SessionStart` injects context so Claude Code consumes the queued run in-band
+- `SessionStart` priority: (1) skip `compact`, (2) first-run → `/bp-setup`, (3) pending analysis → `/bp-analyze`, (4) no-op
 
 ## Build
 
