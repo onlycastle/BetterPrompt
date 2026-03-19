@@ -8,12 +8,7 @@ function isLocalHost(host: string): boolean {
 
 export function normalizeSiteOrigin(candidate?: string | null): string {
   if (!candidate) return DEFAULT_SITE_ORIGIN;
-
-  try {
-    return new URL(candidate).origin;
-  } catch {
-    return DEFAULT_SITE_ORIGIN;
-  }
+  return new URL(candidate).origin;
 }
 
 export function resolveSiteOrigin(headers: {
