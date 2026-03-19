@@ -67,7 +67,6 @@ export {
 export {
   ConfigSchema,
   DEFAULT_CONFIG,
-  ENV_MAPPINGS,
   type Config,
 } from './config';
 
@@ -228,4 +227,3 @@ export {
   parseLearningBehaviorLLMOutput,
   createEmptyLearningBehaviorOutput,
 } from './learning-behavior-data';
-

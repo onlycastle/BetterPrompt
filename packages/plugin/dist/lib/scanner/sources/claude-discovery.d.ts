@@ -1,10 +1,9 @@
 /**
  * Claude Data Directory Discovery
  *
- * Discovers Claude Code data directories using a 3-step waterfall:
- * 1. BETTERPROMPT_CLAUDE_DIR environment variable (explicit override)
- * 2. Default ~/.claude/projects/ path
- * 3. Prefix glob: scan homedir for .claude* directories
+ * Discovers Claude Code data directories using a 2-step waterfall:
+ * 1. Default ~/.claude/projects/ path
+ * 2. Prefix glob: scan homedir for .claude* directories
  *
  * Each candidate is validated with a fingerprint check:
  * - Has a projects/ subdirectory
@@ -30,8 +29,7 @@ export declare function validateClaudeDataDir(dir: string): Promise<boolean>;
  * Results are deduped by resolved real path to handle symlinks.
  *
  * Waterfall:
- * 1. BETTERPROMPT_CLAUDE_DIR env var → validate → use if valid
- * 2. ~/.claude/projects/ → check existence → use if valid
- * 3. Scan homedir for .claude* directories → validate each
+ * 1. ~/.claude/projects/ → check existence → use if valid
+ * 2. Scan homedir for .claude* directories → validate each
  */
 export declare function discoverClaudeDataDirs(): Promise<string[]>;

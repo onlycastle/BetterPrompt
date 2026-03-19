@@ -1,23 +1,24 @@
 import type { NextConfig } from 'next';
 
+const isStaticExport = process.env.STATIC_EXPORT === '1';
+
 const nextConfig: NextConfig = {
-  // Enable server external packages for LLM SDKs
-  serverExternalPackages: ['@anthropic-ai/sdk'],
+  ...(isStaticExport && { output: 'export' }),
 
-  // Experimental features
-  experimental: {
-    // Enable 50MB body size for server actions (web-based uploads)
-    serverActions: {
-      bodySizeLimit: '50mb',
+  ...(!isStaticExport && { serverExternalPackages: ['@anthropic-ai/sdk'] }),
+
+  ...(!isStaticExport && {
+    experimental: {
+      serverActions: {
+        bodySizeLimit: '50mb',
+      },
     },
-  },
+  }),
 
-  // Image optimization
   images: {
-    remotePatterns: [],
+    ...(isStaticExport ? { unoptimized: true } : { remotePatterns: [] }),
   },
 
-  // TypeScript strict mode
   typescript: {
     ignoreBuildErrors: false,
   },

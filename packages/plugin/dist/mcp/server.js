@@ -52,8 +52,8 @@ async function getUserId() {
         return resolvedUserId;
     const user = await verifyAuth();
     if (!user) {
-        throw new Error('Could not authenticate with BetterPrompt server. ' +
-            'Check your BETTERPROMPT_AUTH_TOKEN and BETTERPROMPT_SERVER_URL.');
+        throw new Error('Could not reach the BetterPrompt server. ' +
+            'Check the plugin serverUrl setting and confirm the dashboard server is running.');
     }
     resolvedUserId = user.id;
     return resolvedUserId;
@@ -99,7 +99,7 @@ server.tool(reportDef.name, reportDef.description, {
     allowIncomplete: z.boolean().optional().describe('Override required-stage gating and generate a report anyway'),
 }, wrapToolExecution(executeReport));
 server.tool(syncDef.name, syncDef.description, {
-    serverUrl: z.string().optional().describe('Override server URL (defaults to BETTERPROMPT_SERVER_URL)'),
+    serverUrl: z.string().optional().describe('Override the configured BetterPrompt server URL for this sync call'),
 }, wrapToolExecution(executeSync));
 server.tool(stageDef.name, stageDef.description, StageOutputInputSchema.shape, wrapToolExecution(executeStage));
 server.tool(getStageOutputDef.name, getStageOutputDef.description, {

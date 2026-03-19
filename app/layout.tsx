@@ -26,7 +26,7 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.BETTERPROMPT_BASE_URL || 'http://localhost:3000'),
+  metadataBase: new URL(process.env.BETTERPROMPT_BASE_URL || 'https://betterprompt.sh'),
   title: 'BetterPrompt - Self-Hosted AI Session Intelligence',
   description: 'Analyze Claude Code and Cursor sessions locally inside Claude Code, then optionally sync results to your BetterPrompt dashboard.',
   openGraph: {

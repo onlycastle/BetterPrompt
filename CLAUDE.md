@@ -92,9 +92,9 @@ These deprecated code paths are kept intentionally for data migration. Do NOT re
 | `src/lib/domain/models/knowledge.ts` TopicCategorySchema | Legacy topic categories for SQLite migration compatibility |
 | `src/lib/models/verbose-evaluation.ts` pipe-delimited parsers | Legacy format parsers for cached analysis data from pre-structured-JSON era |
 
-## Environment Variables
+## Runtime Defaults
 
-See `docs/agent/DEPLOYMENT.md` for the full environment variable reference.
+See `docs/agent/DEPLOYMENT.md` for the current self-hosted runtime model and defaults.
 
 ## Release Workflow
 
@@ -130,7 +130,7 @@ See `docs/agent/DEPLOYMENT.md` for the full environment variable reference.
 |----------|--------------|
 | [docs/agent/ARCHITECTURE.md](./docs/agent/ARCHITECTURE.md) | Understanding system structure, pipeline phases, finding key files, API routes, data models |
 | [docs/agent/TESTING.md](./docs/agent/TESTING.md) | Running tests, test script options, cache workflows, plugin testing cleanup |
-| [docs/agent/DEPLOYMENT.md](./docs/agent/DEPLOYMENT.md) | Self-hosted deployment, environment variables |
+| [docs/agent/DEPLOYMENT.md](./docs/agent/DEPLOYMENT.md) | Self-hosted deployment, runtime defaults |
 | [docs/agent/TROUBLESHOOTING.md](./docs/agent/TROUBLESHOOTING.md) | Debugging issues, known pitfalls, prevention checklists |
 
 Detailed human-readable docs: [docs/human/](./docs/human/)

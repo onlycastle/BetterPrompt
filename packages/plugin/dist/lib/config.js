@@ -1,21 +1,14 @@
 /**
  * Plugin Configuration
  *
- * Reads configuration from environment variables (set by Claude Code
- * from plugin.json configuration schema).
- *
- * Environment variable mapping (Claude Code convention):
- *   plugin.json key  → env var
- *   serverUrl        → BETTERPROMPT_SERVER_URL
- *   authToken        → BETTERPROMPT_AUTH_TOKEN
- *   autoAnalyze      → BETTERPROMPT_AUTO_ANALYZE
- *   analyzeThreshold → BETTERPROMPT_ANALYZE_THRESHOLD
+ * Claude Code injects plugin.json settings into the plugin runtime.
+ * BetterPrompt treats these as plugin settings, not as a user-facing
+ * environment-variable configuration surface.
  */
 import { join } from 'node:path';
-import { PLUGIN_DATA_DIR } from './core/session-scanner.js';
+import { getPluginDataDir as resolvePluginDataDir } from './core/session-scanner.js';
 const DEFAULTS = {
     serverUrl: 'http://localhost:3000',
-    authToken: '',
     autoAnalyze: true,
     analyzeThreshold: 5,
 };
@@ -24,12 +17,7 @@ export function getConfig() {
     if (cachedConfig)
         return cachedConfig;
     cachedConfig = {
-        serverUrl: (process.env.BETTERPROMPT_SERVER_URL ??
-            process.env.BETTERPROMPT_API_URL ??
-            DEFAULTS.serverUrl).replace(/\/$/, ''),
-        authToken: process.env.BETTERPROMPT_AUTH_TOKEN ??
-            process.env.BETTERPROMPT_TOKEN ??
-            DEFAULTS.authToken,
+        serverUrl: (process.env.BETTERPROMPT_SERVER_URL ?? DEFAULTS.serverUrl).replace(/\/$/, ''),
         autoAnalyze: process.env.BETTERPROMPT_AUTO_ANALYZE !== 'false',
         analyzeThreshold: Number.parseInt(process.env.BETTERPROMPT_ANALYZE_THRESHOLD ?? '', 10) || DEFAULTS.analyzeThreshold,
     };
@@ -41,7 +29,7 @@ export function resetConfig() {
 }
 /** Base directory for plugin state files */
 export function getPluginDataDir() {
-    return PLUGIN_DATA_DIR;
+    return resolvePluginDataDir();
 }
 /** Path to the plugin state file (debounce tracking) */
 export function getStateFilePath() {

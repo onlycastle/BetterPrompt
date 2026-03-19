@@ -2,26 +2,25 @@
  * sync_to_team MCP Tool
  *
  * Sends analysis results to a team server (self-hosted or cloud).
- * Optional tool — only works when BETTERPROMPT_SERVER_URL is configured.
+ * Optional tool — uses the configured plugin server URL unless overridden.
  */
+import { getConfig } from '../../lib/config.js';
 import { assembleCanonicalRun } from '../../lib/results-db.js';
 import { markAnalysisComplete } from '../../lib/debounce.js';
 export const definition = {
     name: 'sync_to_team',
     description: 'Sync local analysis results to a team BetterPrompt server. ' +
-        'Requires BETTERPROMPT_SERVER_URL to be configured. ' +
+        'Uses the BetterPrompt plugin server URL setting unless serverUrl is passed explicitly. ' +
         'The server receives pre-analyzed results (no LLM work needed server-side). ' +
         'Use this to share your analysis with your team dashboard.',
 };
 export async function execute(args) {
-    const serverUrl = (args.serverUrl ??
-        process.env.BETTERPROMPT_SERVER_URL ??
-        process.env.BETTERPROMPT_API_URL)?.replace(/\/$/, '');
+    const serverUrl = (args.serverUrl ?? getConfig().serverUrl)?.replace(/\/$/, '');
     if (!serverUrl) {
         return JSON.stringify({
             status: 'not_configured',
-            message: 'No team server configured. Set BETTERPROMPT_SERVER_URL environment variable ' +
-                'or pass serverUrl parameter to enable team sync.',
+            message: 'No team server URL is available. Set the BetterPrompt plugin serverUrl setting ' +
+                'or pass serverUrl to enable team sync.',
         });
     }
     const run = assembleCanonicalRun();
@@ -32,12 +31,10 @@ export async function execute(args) {
         });
     }
     try {
-        const authToken = process.env.BETTERPROMPT_AUTH_TOKEN ?? process.env.BETTERPROMPT_TOKEN ?? '';
         const response = await fetch(`${serverUrl}/api/analysis/sync`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
             },
             body: JSON.stringify({
                 run,

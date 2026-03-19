@@ -8,7 +8,6 @@
  * @module plugin/lib/core/multi-source-session-scanner
  */
 import type { ParsedSession } from './types.js';
-export declare const SCAN_CACHE_DIR: string;
 /**
  * Discover, parse, normalize, and cache sessions from all available sources.
  */

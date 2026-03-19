@@ -8,11 +8,11 @@
  */
 import { type JSONLLine, type SessionMetadata } from './types.js';
 /** Claude Code session log directory */
-export declare const CLAUDE_PROJECTS_DIR: string;
+export declare function getClaudeProjectsDir(): string;
 /** Plugin data directory */
-export declare const PLUGIN_DATA_DIR: string;
+export declare function getPluginDataDir(): string;
 /** Scan cache directory */
-export declare const SCAN_CACHE_DIR: string;
+export declare function getScanCacheDir(): string;
 /** Parse a single line of JSONL. Returns null for invalid/empty lines. */
 export declare function parseJSONLLine(line: string): JSONLLine | null;
 /** Read and parse a JSONL file */

@@ -2,7 +2,7 @@
  * sync_to_team MCP Tool
  *
  * Sends analysis results to a team server (self-hosted or cloud).
- * Optional tool — only works when BETTERPROMPT_SERVER_URL is configured.
+ * Optional tool — uses the configured plugin server URL unless overridden.
  */
 export declare const definition: {
     name: string;

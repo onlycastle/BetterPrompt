@@ -69,7 +69,7 @@ export function TeamSection() {
         </div>
 
         <div className={styles.ctaWrapper}>
-          <a href="/dashboard/enterprise" style={{ textDecoration: 'none' }}>
+          <a href="https://github.com/onlycastle/BetterPrompt" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
             <Button variant="secondary" size="lg">
               Enterprise Dashboard
             </Button>

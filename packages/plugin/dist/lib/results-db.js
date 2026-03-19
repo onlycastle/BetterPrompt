@@ -6,11 +6,10 @@
 import Database from 'better-sqlite3';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { PLUGIN_DATA_DIR } from './core/session-scanner.js';
+import { getPluginDataDir } from './core/session-scanner.js';
 import { assembleCanonicalAnalysisRun } from './evaluation-assembler.js';
 import { getAllStageOutputs } from './stage-db.js';
 const DB_FILE = 'results.db';
-const DATA_DIR = PLUGIN_DATA_DIR;
 let db = null;
 function ensureColumn(database, tableName, columnName, definition) {
     const columns = database.prepare(`PRAGMA table_info(${tableName})`).all();
@@ -21,8 +20,9 @@ function ensureColumn(database, tableName, columnName, definition) {
 export function getDb() {
     if (db)
         return db;
-    mkdirSync(DATA_DIR, { recursive: true });
-    db = new Database(join(DATA_DIR, DB_FILE));
+    const dataDir = getPluginDataDir();
+    mkdirSync(dataDir, { recursive: true });
+    db = new Database(join(dataDir, DB_FILE));
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     db.exec(`
@@ -76,7 +76,7 @@ export function createAnalysisRun(params) {
 }
 export function getCurrentRunId() {
     try {
-        const runIdStr = readFileSync(join(DATA_DIR, 'current-run-id.txt'), 'utf-8');
+        const runIdStr = readFileSync(join(getPluginDataDir(), 'current-run-id.txt'), 'utf-8');
         return parseInt(runIdStr.trim(), 10);
     }
     catch {

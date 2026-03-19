@@ -1,19 +1,12 @@
 /**
  * Plugin Configuration
  *
- * Reads configuration from environment variables (set by Claude Code
- * from plugin.json configuration schema).
- *
- * Environment variable mapping (Claude Code convention):
- *   plugin.json key  → env var
- *   serverUrl        → BETTERPROMPT_SERVER_URL
- *   authToken        → BETTERPROMPT_AUTH_TOKEN
- *   autoAnalyze      → BETTERPROMPT_AUTO_ANALYZE
- *   analyzeThreshold → BETTERPROMPT_ANALYZE_THRESHOLD
+ * Claude Code injects plugin.json settings into the plugin runtime.
+ * BetterPrompt treats these as plugin settings, not as a user-facing
+ * environment-variable configuration surface.
  */
 export interface PluginConfig {
     serverUrl: string;
-    authToken: string;
     autoAnalyze: boolean;
     analyzeThreshold: number;
 }

@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { exec } from 'node:child_process';
 import { assembleCanonicalRun, getCurrentRunId, getDomainResult, } from '../../lib/results-db.js';
-import { PLUGIN_DATA_DIR } from '../../lib/core/session-scanner.js';
+import { getPluginDataDir } from '../../lib/core/session-scanner.js';
 import { generateCanonicalReportHtml } from '../../lib/report-template.js';
 import { markAnalysisComplete } from '../../lib/debounce.js';
 import { getStageStatuses, getStageOutput, REQUIRED_STAGE_NAMES, } from '../../lib/stage-db.js';
@@ -123,7 +123,7 @@ export async function execute(args) {
     // Generate HTML
     const html = generateCanonicalReportHtml(run);
     // Save report file
-    const reportsDir = join(PLUGIN_DATA_DIR, 'reports');
+    const reportsDir = join(getPluginDataDir(), 'reports');
     await mkdir(reportsDir, { recursive: true });
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const reportPath = join(reportsDir, `report-${timestamp}.html`);

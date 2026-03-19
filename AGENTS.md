@@ -43,7 +43,7 @@ npm run dev
 
 Wait for `Ready on http://localhost:3000`.
 
-**What to do next:** Visit `/dashboard/enterprise/setup` to create your organization and invite team members. Share the server URL with your team — each member needs to configure `BETTERPROMPT_SERVER_URL` in their plugin settings and use `sync_to_team` to upload their analysis results.
+**What to do next:** Visit `/dashboard/enterprise/setup` to create your organization and invite team members. Share the server URL with your team — each member can set the BetterPrompt plugin `serverUrl` setting or pass `serverUrl` to `sync_to_team` when they upload their analysis results.
 
 ## Verification
 

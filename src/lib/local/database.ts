@@ -3,10 +3,11 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 
-const DEFAULT_DB_PATH = join(homedir(), '.betterprompt', 'betterprompt.db');
-const DB_PATH = process.env.BETTERPROMPT_DB_PATH || DEFAULT_DB_PATH;
-
 let db: Database.Database | null = null;
+
+function getDefaultDatabasePath(): string {
+  return join(homedir(), '.betterprompt', 'betterprompt.db');
+}
 
 function ensureColumn(
   database: Database.Database,
@@ -122,14 +123,15 @@ export function getDatabase(): Database.Database {
     return db;
   }
 
-  mkdirSync(dirname(DB_PATH), { recursive: true });
-  db = new Database(DB_PATH);
+  const dbPath = getDefaultDatabasePath();
+  mkdirSync(dirname(dbPath), { recursive: true });
+  db = new Database(dbPath);
   initializeSchema(db);
   return db;
 }
 
 export function getDatabasePath(): string {
-  return DB_PATH;
+  return getDefaultDatabasePath();
 }
 
 export function resetDatabaseForTests(): void {

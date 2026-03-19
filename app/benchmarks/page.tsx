@@ -8,30 +8,41 @@
 
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { ReportLoadingSpinner } from '@/components/report/ReportLoadingSpinner';
+import { buildAbsoluteSiteUrl, resolveSiteOrigin } from '@/lib/site-origin';
 import { BenchmarksContent } from './BenchmarksContent';
 
-const BASE_URL = process.env.BETTERPROMPT_BASE_URL || 'http://localhost:3000';
+export async function generateMetadata(): Promise<Metadata> {
+  const headerStore = await headers();
+  const origin = resolveSiteOrigin({
+    host: headerStore.get('host'),
+    forwardedHost: headerStore.get('x-forwarded-host'),
+    forwardedProto: headerStore.get('x-forwarded-proto'),
+    origin: headerStore.get('origin'),
+    referer: headerStore.get('referer'),
+  });
 
-export const metadata: Metadata = {
-  title: 'Global AI Collaboration Benchmarks | BetterPrompt',
-  description:
-    'See how builders on your self-hosted server collaborate with AI. Explore type distributions and score percentiles.',
-  openGraph: {
+  return {
     title: 'Global AI Collaboration Benchmarks | BetterPrompt',
     description:
       'See how builders on your self-hosted server collaborate with AI. Explore type distributions and score percentiles.',
-    type: 'website',
-    url: `${BASE_URL}/benchmarks`,
-    siteName: 'BetterPrompt',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Global AI Collaboration Benchmarks | BetterPrompt',
-    description:
-      'See how builders on your self-hosted server collaborate with AI. Explore type distributions and score percentiles.',
-  },
-};
+    openGraph: {
+      title: 'Global AI Collaboration Benchmarks | BetterPrompt',
+      description:
+        'See how builders on your self-hosted server collaborate with AI. Explore type distributions and score percentiles.',
+      type: 'website',
+      url: buildAbsoluteSiteUrl('/benchmarks', origin),
+      siteName: 'BetterPrompt',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'Global AI Collaboration Benchmarks | BetterPrompt',
+      description:
+        'See how builders on your self-hosted server collaborate with AI. Explore type distributions and score percentiles.',
+    },
+  };
+}
 
 export default function BenchmarksPage() {
   return (

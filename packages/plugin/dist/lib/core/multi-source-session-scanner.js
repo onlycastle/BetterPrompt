@@ -10,9 +10,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { multiSourceScanner } from '../scanner/index.js';
-import { PLUGIN_DATA_DIR } from './session-scanner.js';
-export const SCAN_CACHE_DIR = join(PLUGIN_DATA_DIR, 'scan-cache');
-const PARSED_SESSIONS_CACHE = join(SCAN_CACHE_DIR, 'parsed-sessions.json');
+import { getScanCacheDir } from './session-scanner.js';
+function getParsedSessionsCachePath() {
+    return join(getScanCacheDir(), 'parsed-sessions.json');
+}
 function isNonNull(value) {
     return value !== null;
 }
@@ -56,13 +57,15 @@ export async function scanAndCacheParsedSessions() {
     return parsedSessions;
 }
 export async function cacheParsedSessions(sessions) {
-    await mkdir(SCAN_CACHE_DIR, { recursive: true });
-    await writeFile(PARSED_SESSIONS_CACHE, JSON.stringify(sessions, null, 2), 'utf-8');
-    return PARSED_SESSIONS_CACHE;
+    const scanCacheDir = getScanCacheDir();
+    const cachePath = getParsedSessionsCachePath();
+    await mkdir(scanCacheDir, { recursive: true });
+    await writeFile(cachePath, JSON.stringify(sessions, null, 2), 'utf-8');
+    return cachePath;
 }
 export async function readCachedParsedSessions() {
     try {
-        const raw = await readFile(PARSED_SESSIONS_CACHE, 'utf-8');
+        const raw = await readFile(getParsedSessionsCachePath(), 'utf-8');
         return JSON.parse(raw);
     }
     catch (error) {

@@ -54,7 +54,7 @@ import { discoverClaudeDataDirs } from './sources/claude-discovery.js';
  * Registry of all available session sources
  *
  * Claude Code sources are lazily discovered on first getAvailable() call
- * using waterfall discovery (env var → default path → prefix glob).
+ * using waterfall discovery (default path → prefix glob).
  * Cursor sources are registered synchronously in the constructor.
  */
 export class SourceRegistry {

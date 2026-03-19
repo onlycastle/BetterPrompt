@@ -15,10 +15,11 @@ import type {
   SourcedParsedSession,
 } from '../scanner/index.js';
 import type { ParsedSession } from './types.js';
-import { PLUGIN_DATA_DIR } from './session-scanner.js';
+import { getScanCacheDir } from './session-scanner.js';
 
-export const SCAN_CACHE_DIR = join(PLUGIN_DATA_DIR, 'scan-cache');
-const PARSED_SESSIONS_CACHE = join(SCAN_CACHE_DIR, 'parsed-sessions.json');
+function getParsedSessionsCachePath(): string {
+  return join(getScanCacheDir(), 'parsed-sessions.json');
+}
 
 function isNonNull<T>(value: T | null): value is T {
   return value !== null;
@@ -69,14 +70,16 @@ export async function scanAndCacheParsedSessions(): Promise<ParsedSession[]> {
 }
 
 export async function cacheParsedSessions(sessions: ParsedSession[]): Promise<string> {
-  await mkdir(SCAN_CACHE_DIR, { recursive: true });
-  await writeFile(PARSED_SESSIONS_CACHE, JSON.stringify(sessions, null, 2), 'utf-8');
-  return PARSED_SESSIONS_CACHE;
+  const scanCacheDir = getScanCacheDir();
+  const cachePath = getParsedSessionsCachePath();
+  await mkdir(scanCacheDir, { recursive: true });
+  await writeFile(cachePath, JSON.stringify(sessions, null, 2), 'utf-8');
+  return cachePath;
 }
 
 export async function readCachedParsedSessions(): Promise<ParsedSession[]> {
   try {
-    const raw = await readFile(PARSED_SESSIONS_CACHE, 'utf-8');
+    const raw = await readFile(getParsedSessionsCachePath(), 'utf-8');
     return JSON.parse(raw) as ParsedSession[];
   } catch (error: unknown) {
     if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {

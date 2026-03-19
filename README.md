@@ -62,6 +62,7 @@ npm run dev
 ```
 
 When you want a local plugin run stored on the server, use the plugin's `sync_to_team` MCP tool or `POST /api/analysis/sync`.
+For a shared dashboard, set the plugin's `serverUrl` setting to your BetterPrompt server or pass `serverUrl` directly to `sync_to_team`.
 
 ## Team Manager Guide
 
@@ -73,7 +74,7 @@ Start the server (`npm run dev`), then navigate to `/dashboard/enterprise`. Firs
 
 1. **Create organization** - set your org name (URL slug auto-generates)
 2. **Create first team** - name your team (optional, can skip)
-3. **Share server URL** - the wizard displays your `BETTERPROMPT_API_URL` for team members
+3. **Share server URL** - the wizard shows the dashboard URL for your team members
 
 ### 2. Invite team members
 
@@ -91,9 +92,9 @@ Go to `/dashboard/enterprise/members` and click **Invite Member**. Add members b
 Each team member needs:
 
 1. The BetterPrompt Claude Code plugin installed
-2. Your server URL and auth token for `sync_to_team`
+2. Your shared BetterPrompt server URL
 
-After running a local analysis via the plugin, members use the `sync_to_team` MCP tool to upload the canonical run to the shared dashboard.
+After running a local analysis via the plugin, members use the plugin's `serverUrl` setting or pass `serverUrl` to `sync_to_team` to upload the canonical run to the shared dashboard.
 
 ### 4. Monitor your team
 
@@ -173,24 +174,18 @@ tests/
   fixtures/          # Real session logs and evaluation data
 ```
 
-## Environment Variables
+## Plugin Settings
 
-**Plugin (none required):**
+BetterPrompt no longer expects `BETTERPROMPT_*` environment variables for normal setup. Use the plugin settings surface in Claude Code instead:
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `BETTERPROMPT_SERVER_URL` | No | - | Team server URL (only for `sync_to_team`) |
-| `BETTERPROMPT_AUTH_TOKEN` | No | - | Auth token for team server sync |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `serverUrl` | `http://localhost:3000` | Dashboard server URL for sync and server-backed insights |
+| `autoAnalyze` | `true` | Queue auto-analysis when enough new sessions accumulate |
+| `analyzeThreshold` | `5` | Minimum new sessions before auto-analysis queues |
+| `reportPort` | `3456` | Port for the local report server |
 
-**Web Server:**
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `BETTERPROMPT_BASE_URL` | No | `http://localhost:3000` | Server URL for metadata and OpenGraph |
-| `BETTERPROMPT_WEB_APP_URL` | No | `http://localhost:3000` | Web app URL for report links |
-| `BETTERPROMPT_DB_PATH` | No | `~/.betterprompt/betterprompt.db` | SQLite database path |
-| `BETTERPROMPT_TELEMETRY` | No | `true` | Enable/disable anonymous usage telemetry |
-| `BETTERPROMPT_DEBUG` | No | `false` | Enable verbose debug logging (`1` to enable) |
+The web app stores its SQLite database at `~/.betterprompt/betterprompt.db` and derives public URLs from the current request origin.
 
 ## Project Structure
 

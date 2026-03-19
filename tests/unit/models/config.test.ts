@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   ConfigSchema,
   DEFAULT_CONFIG,
-  ENV_MAPPINGS,
 } from '../../../src/lib/models/config.js';
 
 describe('Config Models', () => {
@@ -94,24 +93,4 @@ describe('Config Models', () => {
     });
   });
 
-  describe('ENV_MAPPINGS', () => {
-    it('should have correct API key mapping', () => {
-      expect(ENV_MAPPINGS.apiKey).toBe('ANTHROPIC_API_KEY');
-    });
-
-    it('should have correct telemetry mapping', () => {
-      expect(ENV_MAPPINGS.telemetry).toBe('BETTERPROMPT_TELEMETRY');
-    });
-
-    it('should have correct storage path mapping', () => {
-      expect(ENV_MAPPINGS.storagePath).toBe('BETTERPROMPT_STORAGE_PATH');
-    });
-
-    it('should have all config keys mapped', () => {
-      const configKeys = ['apiKey', 'telemetry', 'storagePath'];
-      for (const key of configKeys) {
-        expect(ENV_MAPPINGS).toHaveProperty(key);
-      }
-    });
-  });
 });

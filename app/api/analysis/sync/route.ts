@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUserFromRequest, findUserByEmail } from '@/lib/local/auth';
+import { getCurrentUserFromRequest } from '@/lib/local/auth';
 import { createAnalysisRecord } from '@/lib/local/analysis-store';
 import type { VerboseEvaluation } from '@/lib/models/verbose-evaluation';
 import {
@@ -270,34 +270,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Authenticate: if BETTERPROMPT_AUTH_TOKEN is set, require it as Bearer token.
-    // This shared secret is configured on both the server and plugin side.
-    const authHeader = request.headers.get('authorization');
-    const expectedToken = process.env.BETTERPROMPT_AUTH_TOKEN;
-    let authenticated = false;
-
-    if (expectedToken) {
-      const providedToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-      if (!providedToken || providedToken !== expectedToken) {
-        return NextResponse.json(
-          { error: 'unauthorized', message: 'Invalid or missing auth token.' },
-          { status: 401 },
-        );
-      }
-      authenticated = true;
-    }
-
-    // Resolve user: only trust X-User-Email when authenticated via token.
-    // Without token auth, fall back to local user to prevent identity spoofing.
-    const emailHeader = authenticated ? request.headers.get('x-user-email') : null;
-    let userId: string;
-
-    if (emailHeader) {
-      const userByEmail = findUserByEmail(emailHeader);
-      userId = userByEmail?.id ?? getCurrentUserFromRequest().id;
-    } else {
-      userId = getCurrentUserFromRequest().id;
-    }
+    const userId = getCurrentUserFromRequest(request).id;
 
     const normalized = body.run
       ? (() => {

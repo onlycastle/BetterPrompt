@@ -110,19 +110,18 @@ In Claude Code:
 
 ### Configuration
 
-The plugin reads from environment variables:
+Configure BetterPrompt through Claude Code plugin settings:
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `BETTERPROMPT_SERVER_URL` | No | `http://localhost:3000` | Team server URL for sync/cache refresh |
-| `BETTERPROMPT_AUTO_ANALYZE` | No | `true` | Enable/disable auto-analysis |
-| `BETTERPROMPT_ANALYZE_THRESHOLD` | No | `5` | Sessions before auto-trigger |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `serverUrl` | `http://localhost:3000` | Team server URL for sync/cache refresh |
+| `autoAnalyze` | `true` | Enable/disable auto-analysis |
+| `analyzeThreshold` | `5` | Sessions before auto-trigger |
+| `reportPort` | `3456` | Port for the local report server |
 
 ### Running the MCP Server Manually
 
 ```bash
-export BETTERPROMPT_SERVER_URL=http://localhost:3000
-
 node packages/plugin/dist/mcp/server.js
 ```
 
@@ -147,7 +146,7 @@ All plugin state lives under `~/.betterprompt/`:
 The plugin is designed for team deployment:
 
 1. **Deploy the server** -- run the Next.js app on a shared machine
-2. **Share the URL/auth token** -- team members configure `sync_to_team`
+2. **Share the URL** -- team members set the BetterPrompt plugin `serverUrl` setting or pass `serverUrl` to `sync_to_team`
 3. **Members install the plugin** -- each person installs BetterPrompt in Claude Code
 4. **Insights flow automatically** -- members run local analysis; managers see synced team analytics on the enterprise dashboard
 
@@ -163,7 +162,7 @@ Each developer's analysis data flows to the shared server, where the enterprise 
 **Analysis not triggering?**
 - Debounce requires at least 5 sessions (configurable) and 4-hour cooldown
 - Check if `analysisInProgress` is stuck `true` in state file -- delete the file to reset
-- Ensure `autoAnalyze` is not disabled
+- Ensure `autoAnalyze` is not disabled in plugin settings
 
 **Cache stale?**
 - Force refresh by deleting `~/.betterprompt/insight-cache.db`

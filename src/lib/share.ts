@@ -9,11 +9,7 @@
 
 import type { TypeResult } from './models/coding-style';
 import { TYPE_METADATA } from './models/coding-style';
-
-/**
- * Base URL for share links (configure in env)
- */
-const BASE_URL = process.env.BETTERPROMPT_BASE_URL || 'http://localhost:3000';
+import { getBrowserSiteOrigin } from './site-origin';
 
 /**
  * Generate Twitter/X share URL with pre-filled tweet
@@ -21,12 +17,12 @@ const BASE_URL = process.env.BETTERPROMPT_BASE_URL || 'http://localhost:3000';
 export function generateTwitterShareUrl(
   typeResult: TypeResult,
   reportId: string,
-  options: { includeHashtags?: boolean } = {}
+  options: { includeHashtags?: boolean; baseUrl?: string } = {}
 ): string {
-  const { includeHashtags = true } = options;
+  const { includeHashtags = true, baseUrl = getBrowserSiteOrigin() } = options;
 
   const meta = TYPE_METADATA[typeResult.primaryType];
-  const shareUrl = `${BASE_URL}/r/${reportId}`;
+  const shareUrl = `${baseUrl}/r/${reportId}`;
 
   // Get top strength from the type
   const topStrength = meta.strengths[0];
@@ -57,8 +53,11 @@ ${shareUrl}`;
 /**
  * Generate LinkedIn share URL
  */
-export function generateLinkedInShareUrl(reportId: string): string {
-  const shareUrl = `${BASE_URL}/r/${reportId}`;
+export function generateLinkedInShareUrl(
+  reportId: string,
+  options: { baseUrl?: string } = {},
+): string {
+  const shareUrl = `${options.baseUrl ?? getBrowserSiteOrigin()}/r/${reportId}`;
   const encodedUrl = encodeURIComponent(shareUrl);
 
   return `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
@@ -70,13 +69,13 @@ export function generateLinkedInShareUrl(reportId: string): string {
 export function generateCopyText(
   typeResult: TypeResult,
   reportId: string,
-  options: { includeStats?: boolean } = {}
+  options: { includeStats?: boolean; baseUrl?: string } = {}
 ): string {
-  const { includeStats = false } = options;
+  const { includeStats = false, baseUrl = getBrowserSiteOrigin() } = options;
 
   const meta = TYPE_METADATA[typeResult.primaryType];
   const percentage = Math.round(typeResult.distribution[typeResult.primaryType] || 0);
-  const shareUrl = `${BASE_URL}/r/${reportId}`;
+  const shareUrl = `${baseUrl}/r/${reportId}`;
 
   let text = `🎯 My BetterPrompt profile: ${meta.name} ${meta.emoji}
 
@@ -106,7 +105,7 @@ export function generateOGMetaTags(
   reportId: string,
   options: { baseUrl?: string } = {}
 ): string {
-  const { baseUrl = BASE_URL } = options;
+  const { baseUrl = getBrowserSiteOrigin() } = options;
 
   const meta = TYPE_METADATA[typeResult.primaryType];
   const shareUrl = `${baseUrl}/r/${reportId}`;
@@ -143,10 +142,11 @@ export function generateOGMetaTags(
  */
 export function generateWebShareData(
   typeResult: TypeResult,
-  reportId: string
+  reportId: string,
+  options: { baseUrl?: string } = {},
 ): { title: string; text: string; url: string } {
   const meta = TYPE_METADATA[typeResult.primaryType];
-  const shareUrl = `${BASE_URL}/r/${reportId}`;
+  const shareUrl = `${options.baseUrl ?? getBrowserSiteOrigin()}/r/${reportId}`;
 
   return {
     title: `My BetterPrompt Profile: ${meta.name} ${meta.emoji}`,
@@ -160,10 +160,11 @@ export function generateWebShareData(
  */
 export function generateInstagramCaption(
   typeResult: TypeResult,
-  reportId: string
+  reportId: string,
+  options: { baseUrl?: string } = {},
 ): string {
   const meta = TYPE_METADATA[typeResult.primaryType];
-  const shareUrl = `${BASE_URL}/r/${reportId}`;
+  const shareUrl = `${options.baseUrl ?? getBrowserSiteOrigin()}/r/${reportId}`;
   const topStrength = meta.strengths[0];
 
   return `${meta.emoji} I'm a ${meta.name} builder on BetterPrompt!
@@ -183,10 +184,10 @@ export function generateInstagramCaption(
 export function generateEmbedCode(
   _typeResult: TypeResult,
   reportId: string,
-  options: { width?: number; height?: number } = {}
+  options: { width?: number; height?: number; baseUrl?: string } = {}
 ): string {
-  const { width = 400, height = 300 } = options;
-  const embedUrl = `${BASE_URL}/embed/${reportId}`;
+  const { width = 400, height = 300, baseUrl = getBrowserSiteOrigin() } = options;
+  const embedUrl = `${baseUrl}/embed/${reportId}`;
 
   return `<iframe
   src="${embedUrl}"

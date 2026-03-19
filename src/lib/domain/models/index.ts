@@ -286,7 +286,6 @@ export {
   // Core config
   ConfigSchema,
   DEFAULT_CONFIG,
-  ENV_MAPPINGS,
   RuntimeEnvironmentSchema,
   type Config,
   type RuntimeEnvironment,
@@ -303,8 +302,6 @@ export {
   type FeatureFlags,
   // Helpers
   resolveConfig,
-  getEnvValue,
-  parseEnvBoolean,
 } from './config';
 
 // ============================================================================

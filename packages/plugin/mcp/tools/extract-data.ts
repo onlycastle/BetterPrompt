@@ -15,7 +15,7 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { readCachedParsedSessions } from '../../lib/core/multi-source-session-scanner.js';
-import { PLUGIN_DATA_DIR } from '../../lib/core/session-scanner.js';
+import { getPluginDataDir } from '../../lib/core/session-scanner.js';
 import { extractPhase1DataFromParsedSessions } from '../../lib/core/data-extractor.js';
 import { computeDeterministicScores } from '../../lib/core/deterministic-scorer.js';
 import { buildReportActivitySessions } from '../../lib/evaluation-assembler.js';
@@ -63,8 +63,9 @@ export async function execute(args: { maxSessions?: number }): Promise<string> {
     const activitySessions = buildReportActivitySessions(phase1Output);
 
     // Store Phase 1 output for domain analysis skills to read
-    await mkdir(PLUGIN_DATA_DIR, { recursive: true });
-    const phase1Path = join(PLUGIN_DATA_DIR, 'phase1-output.json');
+    const pluginDataDir = getPluginDataDir();
+    await mkdir(pluginDataDir, { recursive: true });
+    const phase1Path = join(pluginDataDir, 'phase1-output.json');
     await writeFile(phase1Path, JSON.stringify(phase1Output, null, 2), 'utf-8');
 
     // Create analysis run in results DB
@@ -76,7 +77,7 @@ export async function execute(args: { maxSessions?: number }): Promise<string> {
     });
 
     // Store run ID for subsequent tools
-    const runIdPath = join(PLUGIN_DATA_DIR, 'current-run-id.txt');
+    const runIdPath = join(pluginDataDir, 'current-run-id.txt');
     await writeFile(runIdPath, String(runId), 'utf-8');
 
     const metrics = phase1Output.sessionMetrics;

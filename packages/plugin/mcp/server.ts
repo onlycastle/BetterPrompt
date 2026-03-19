@@ -102,8 +102,8 @@ async function getUserId(): Promise<string> {
   const user = await verifyAuth();
   if (!user) {
     throw new Error(
-      'Could not authenticate with BetterPrompt server. ' +
-      'Check your BETTERPROMPT_AUTH_TOKEN and BETTERPROMPT_SERVER_URL.',
+      'Could not reach the BetterPrompt server. ' +
+      'Check the plugin serverUrl setting and confirm the dashboard server is running.',
     );
   }
 
@@ -167,7 +167,7 @@ server.tool(reportDef.name, reportDef.description, {
 }, wrapToolExecution(executeReport));
 
 server.tool(syncDef.name, syncDef.description, {
-  serverUrl: z.string().optional().describe('Override server URL (defaults to BETTERPROMPT_SERVER_URL)'),
+  serverUrl: z.string().optional().describe('Override the configured BetterPrompt server URL for this sync call'),
 }, wrapToolExecution(executeSync));
 
 server.tool(stageDef.name, stageDef.description, StageOutputInputSchema.shape,
