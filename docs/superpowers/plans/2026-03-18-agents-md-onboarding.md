@@ -41,7 +41,7 @@ Install the Claude Code plugin. No server, no API keys, no cloning needed.
 /plugin install betterprompt@betterprompt
 ```
 
-**What to do next:** Say "Analyze my coding sessions and generate a report" in any Claude Code session. The plugin queues analysis automatically when enough new sessions accumulate. Reports are served at `http://localhost:3456`.
+**What to do next:** Run `/bp-analyze` in any Claude Code session. The plugin queues analysis automatically when enough new sessions accumulate. Reports are served at `http://localhost:3456`.
 
 ### Team Manager
 

@@ -51,7 +51,7 @@ export function estimateSessionDurationMsFromTranscript(transcriptPath: string):
 export function buildPendingAnalysisAdditionalContext(): string {
   return [
     'BetterPrompt auto-analysis is pending from a previous session.',
-    'Immediately invoke the BetterPrompt `/analyze` skill to consume the queued analysis unless the user explicitly asks to cancel or defer it.',
+    'Immediately invoke the BetterPrompt `/bp-analyze` skill to consume the queued analysis unless the user explicitly asks to cancel or defer it.',
     'Run the full local-first BetterPrompt pipeline through report generation for this queued task before treating it as complete, including translation when the report language requires it.',
   ].join(' ');
 }

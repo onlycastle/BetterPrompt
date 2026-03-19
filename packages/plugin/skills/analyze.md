@@ -1,5 +1,5 @@
 ---
-name: analyze
+name: bp-analyze
 description: Orchestrate a full BetterPrompt analysis of your Claude Code sessions
 model: sonnet
 ---

@@ -63,7 +63,7 @@ describe('plugin session hooks', () => {
 
     const startup = handleSessionStartHook({ source: 'startup' });
     expect(startup?.hookSpecificOutput.hookEventName).toBe('SessionStart');
-    expect(startup?.hookSpecificOutput.additionalContext).toContain('/analyze');
+    expect(startup?.hookSpecificOutput.additionalContext).toContain('/bp-analyze');
     expect(startup?.hookSpecificOutput.additionalContext).toContain('translation');
   });
 

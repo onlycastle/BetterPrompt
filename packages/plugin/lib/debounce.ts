@@ -10,11 +10,9 @@
  * State tracked in ~/.betterprompt/plugin-state.json
  */
 
-import Database from 'better-sqlite3';
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
-import { homedir, platform } from 'node:os';
-import { dirname } from 'node:path';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { homedir } from 'node:os';
 import { getConfig, getStateFilePath } from './config.js';
 
 const COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours
@@ -95,97 +93,24 @@ export function writeState(state: PluginState): void {
 }
 
 /**
- * Count Claude Code session JSONL files.
+ * Count Claude Code session JSONL files across all projects.
  */
 function countClaudeSessions(): number {
   const projectsDir = join(homedir(), '.claude', 'projects');
-  let count = 0;
 
   try {
     const projects = readdirSync(projectsDir);
-    for (const project of projects) {
-      const projectPath = join(projectsDir, project);
+    return projects.reduce((count, project) => {
       try {
-        const files = readdirSync(projectPath);
-        for (const file of files) {
-          if (file.endsWith('.jsonl')) {
-            count++;
-          }
-        }
+        const files = readdirSync(join(projectsDir, project));
+        return count + files.filter(f => f.endsWith('.jsonl')).length;
       } catch {
-        // Skip unreadable project directories
+        return count;
       }
-    }
+    }, 0);
   } catch {
-    // ~/.claude/projects doesn't exist
-  }
-
-  return count;
-}
-
-function getCursorChatsDir(): string {
-  return join(homedir(), '.cursor', 'chats');
-}
-
-function countCursorSessions(): number {
-  const chatsDir = getCursorChatsDir();
-  let count = 0;
-
-  try {
-    const workspaces = readdirSync(chatsDir);
-    for (const workspace of workspaces) {
-      const workspacePath = join(chatsDir, workspace);
-      try {
-        const sessions = readdirSync(workspacePath);
-        for (const session of sessions) {
-          if (existsSync(join(workspacePath, session, 'store.db'))) {
-            count++;
-          }
-        }
-      } catch {
-        // Skip unreadable workspace directories
-      }
-    }
-  } catch {
-    // ~/.cursor/chats doesn't exist
-  }
-
-  return count;
-}
-
-function getCursorComposerDbPath(): string {
-  switch (platform()) {
-    case 'darwin':
-      return join(homedir(), 'Library', 'Application Support', 'Cursor', 'User', 'globalStorage', 'state.vscdb');
-    case 'win32':
-      return join(process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming'), 'Cursor', 'User', 'globalStorage', 'state.vscdb');
-    default:
-      return join(homedir(), '.config', 'Cursor', 'User', 'globalStorage', 'state.vscdb');
-  }
-}
-
-function countCursorComposerSessions(): number {
-  const dbPath = getCursorComposerDbPath();
-  if (!existsSync(dbPath)) {
     return 0;
   }
-
-  let db: Database.Database | null = null;
-  try {
-    db = new Database(dbPath, { readonly: true, fileMustExist: true });
-    const row = db
-      .prepare("SELECT COUNT(*) as count FROM cursorDiskKV WHERE key LIKE 'composerData:%'")
-      .get() as { count?: number } | undefined;
-    return row?.count ?? 0;
-  } catch {
-    return 0;
-  } finally {
-    db?.close();
-  }
-}
-
-function countLocalSessions(): number {
-  return countClaudeSessions() + countCursorSessions() + countCursorComposerSessions();
 }
 
 export interface DebounceResult {
@@ -219,14 +144,12 @@ export function recoverStaleAnalysisState(options?: {
   const recoveredState: PluginState = {
     ...state,
     analysisState: 'failed',
-    analysisInProgress: false,
-    analysisPending: false,
     pendingSince: null,
     lastError: options?.reason ?? state.lastError ?? 'Recovered stale running analysis state.',
   };
 
   writeState(recoveredState);
-  return recoveredState;
+  return normalizeState(recoveredState);
 }
 
 /**
@@ -265,7 +188,7 @@ export function shouldTriggerAnalysis(sessionDurationMs: number): DebounceResult
   }
 
   // Rule 2: Threshold — ≥N new sessions since last analysis
-  const currentCount = countLocalSessions();
+  const currentCount = countClaudeSessions();
   const newSessions = currentCount - state.lastAnalysisSessionCount;
   if (newSessions < config.analyzeThreshold) {
     return {
@@ -285,28 +208,23 @@ export function shouldTriggerAnalysis(sessionDurationMs: number): DebounceResult
  */
 export function markAnalysisStarted(): void {
   const state = readState();
-  state.analysisState = 'running';
-  state.analysisInProgress = true;
-  state.analysisPending = false;
-  state.pendingSince = null;
-  state.lastError = null;
-  writeState(state);
+  writeState({
+    ...state,
+    analysisState: 'running',
+    pendingSince: null,
+    lastError: null,
+  });
 }
 
 /**
  * Mark analysis as complete. Called after the local pipeline finishes successfully.
  */
 export function markAnalysisComplete(sessionCount?: number): void {
-  const currentCount = sessionCount ?? countLocalSessions();
   writeState({
+    ...DEFAULT_STATE,
     lastAnalysisTimestamp: new Date().toISOString(),
-    lastAnalysisSessionCount: currentCount,
+    lastAnalysisSessionCount: sessionCount ?? countClaudeSessions(),
     analysisState: 'complete',
-    analysisInProgress: false,
-    analysisPending: false,
-    pendingSince: null,
-    lastError: null,
-    stateUpdatedAt: new Date().toISOString(),
   });
 }
 
@@ -315,12 +233,12 @@ export function markAnalysisComplete(sessionCount?: number): void {
  */
 export function markAnalysisFailed(error?: unknown): void {
   const state = readState();
-  state.analysisState = 'failed';
-  state.analysisInProgress = false;
-  state.analysisPending = false;
-  state.pendingSince = null;
-  state.lastError = error instanceof Error ? error.message : (error ? String(error) : null);
-  writeState(state);
+  writeState({
+    ...state,
+    analysisState: 'failed',
+    pendingSince: null,
+    lastError: error instanceof Error ? error.message : (error ? String(error) : null),
+  });
 }
 
 /**
@@ -329,12 +247,12 @@ export function markAnalysisFailed(error?: unknown): void {
  */
 export function markAnalysisPending(): void {
   const state = readState();
-  state.analysisState = 'pending';
-  state.analysisPending = true;
-  state.analysisInProgress = false;
-  state.pendingSince = new Date().toISOString();
-  state.lastError = null;
-  writeState(state);
+  writeState({
+    ...state,
+    analysisState: 'pending',
+    pendingSince: new Date().toISOString(),
+    lastError: null,
+  });
 }
 
 /**
@@ -350,10 +268,12 @@ export function isAnalysisPending(): boolean {
  */
 export function clearAnalysisPending(): void {
   const state = readState();
-  if (state.analysisState === 'pending') {
-    state.analysisState = 'idle';
-    state.analysisPending = false;
-    state.pendingSince = null;
+  if (state.analysisState !== 'pending') {
+    return;
   }
-  writeState(state);
+  writeState({
+    ...state,
+    analysisState: 'idle',
+    pendingSince: null,
+  });
 }

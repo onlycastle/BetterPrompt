@@ -14,12 +14,8 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   dts: false,
-  // Bundle @betterprompt/shared into output (not on npm)
-  noExternal: [/@betterprompt\/shared/],
-  // Keep npm-published deps as external imports
-  external: [
-    '@modelcontextprotocol/sdk',
-    'better-sqlite3',
-    'zod',
-  ],
+  // Bundle these into output (not available via node_modules at runtime)
+  noExternal: [/@betterprompt\/shared/, '@modelcontextprotocol/sdk', 'zod'],
+  // Only native addon stays external — installed by SessionStart hook
+  external: ['better-sqlite3'],
 });

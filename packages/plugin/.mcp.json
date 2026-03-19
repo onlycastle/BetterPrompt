@@ -3,7 +3,9 @@
     "betterprompt": {
       "command": "node",
       "args": ["./dist/mcp/server.js"],
-      "env": {}
+      "env": {
+        "NODE_PATH": "${CLAUDE_PLUGIN_DATA}/node_modules"
+      }
     }
   }
 }

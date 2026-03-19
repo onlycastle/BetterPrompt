@@ -7,7 +7,9 @@
  * can consume the pending analysis run automatically in the next session.
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isAnalysisPending } from '../lib/debounce.js';
 import { buildPendingAnalysisAdditionalContext } from '../lib/hook-utils.js';
@@ -58,7 +60,30 @@ export function handleSessionStartHook(
   };
 }
 
+/**
+ * Ensure native dependencies are installed in the persistent plugin data directory.
+ * Runs once on first session; subsequent sessions skip (directory exists).
+ */
+function ensureNativeDeps(): void {
+  const pluginDataDir = process.env.CLAUDE_PLUGIN_DATA;
+  if (!pluginDataDir) return;
+
+  const marker = join(pluginDataDir, 'node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node');
+  if (existsSync(marker)) return;
+
+  try {
+    execFileSync('npm', ['install', '--prefix', pluginDataDir, 'better-sqlite3@12.8.0'], {
+      stdio: 'ignore',
+      timeout: 60_000,
+    });
+  } catch (err) {
+    process.stderr.write(`[betterprompt] Failed to install better-sqlite3: ${err instanceof Error ? err.message : err}\n`);
+  }
+}
+
 function main(): void {
+  ensureNativeDeps();
+
   const output = handleSessionStartHook(readHookInput());
   if (!output) {
     process.exit(0);

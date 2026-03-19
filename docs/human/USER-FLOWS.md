@@ -83,7 +83,7 @@ The employee flow covers the individual contributor experience — running analy
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        ANALYSIS PIPELINE                             │
 │                                                                      │
-│   "Analyze my coding sessions"                                       │
+│   /bp-analyze                                                        │
 │        │                                                             │
 │        ├─ 1. scan_sessions — discovers local session logs            │
 │        ├─ 2. extract_data — deterministic Phase 1 extraction         │
@@ -107,7 +107,7 @@ The employee flow covers the individual contributor experience — running analy
 │  ┌─────────────────────────────────────────────────┐ │
 │  │  🔌 Use the plugin to analyze your sessions     │ │
 │  │                                                  │ │
-│  │  "Analyze my coding sessions"                    │ │
+│  │  /bp-analyze                                     │ │
 │  │                                                  │ │
 │  └─────────────────────────────────────────────────┘ │
 │                                                       │
