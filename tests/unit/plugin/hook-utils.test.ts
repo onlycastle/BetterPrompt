@@ -28,7 +28,7 @@ describe('plugin hook utils', () => {
     const context = buildPendingAnalysisAdditionalContext();
 
     expect(context).toContain('queued');
-    expect(context).toContain('/analyze');
+    expect(context).toContain('/bp-analyze');
     expect(context).toContain('auto-analysis');
   });
 });
