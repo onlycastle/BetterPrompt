@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "betterprompt",
-      "description": "Local-first AI collaboration analysis — surfaces your collaboration patterns, growth areas, and anti-patterns directly in Claude Code without requiring a server.",
+      "description": "Local-first AI collaboration analysis that surfaces your collaboration patterns, growth areas, and anti-patterns directly in Claude Code without requiring a server.",
       "source": "./packages/plugin",
       "category": "productivity",
       "homepage": "https://github.com/onlycastle/BetterPrompt",
