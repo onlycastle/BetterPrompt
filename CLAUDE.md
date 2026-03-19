@@ -108,6 +108,20 @@ See `docs/agent/DEPLOYMENT.md` for the full environment variable reference.
 > ```
 > This prevents accidentally continuing work on a stale feature branch.
 
+## Plugin Testing
+
+> ⚠️ **Clean Environment Required**: When testing the BetterPrompt plugin, **always remove all previous installations first** to test the full flow including the installation step. A test that skips install doesn't reflect what a real user encounters.
+>
+> **Cleanup checklist** (all must be done before testing):
+> 1. `~/.claude/settings.json` — set `enabledPlugins["betterprompt@betterprompt"]` to `false`, clear `extraKnownMarketplaces`
+> 2. `~/.claude/plugins/installed_plugins.json` — remove `betterprompt@betterprompt` entry
+> 3. `~/.claude/plugins/known_marketplaces.json` — remove `betterprompt` entry
+> 4. Delete `~/.claude/plugins/cache/betterprompt/` and `temp_local_*` dirs
+> 5. Delete `~/.claude/plugins/marketplaces/betterprompt/`
+> 6. Clear any project-level `settings.local.json` with betterprompt entries
+> 7. Check for and remove any plugin state databases (`bp-results*`, `bp-stage*`)
+> 8. Validate all JSON files after edits (trailing comma issues are common)
+
 ## Documentation
 
 > ⚠️ **Context Loading**: Before exploring the codebase for architecture, pipeline, file locations, or debugging context, **read `docs/agent/` first**. These docs are optimized for fast lookups (concise, table-based) and cover most questions about system structure, key files, test workflows, and known issues. Only dive into source files when `docs/agent/` doesn't have the specific detail you need.
@@ -115,7 +129,7 @@ See `docs/agent/DEPLOYMENT.md` for the full environment variable reference.
 | Document | When to Read |
 |----------|--------------|
 | [docs/agent/ARCHITECTURE.md](./docs/agent/ARCHITECTURE.md) | Understanding system structure, pipeline phases, finding key files, API routes, data models |
-| [docs/agent/TESTING.md](./docs/agent/TESTING.md) | Running tests, test script options, cache workflows |
+| [docs/agent/TESTING.md](./docs/agent/TESTING.md) | Running tests, test script options, cache workflows, plugin testing cleanup |
 | [docs/agent/DEPLOYMENT.md](./docs/agent/DEPLOYMENT.md) | Self-hosted deployment, environment variables |
 | [docs/agent/TROUBLESHOOTING.md](./docs/agent/TROUBLESHOOTING.md) | Debugging issues, known pitfalls, prevention checklists |
 
