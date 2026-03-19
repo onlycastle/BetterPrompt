@@ -2,7 +2,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   // Enable server external packages for LLM SDKs
-  serverExternalPackages: ['@anthropic-ai/sdk', '@google/genai'],
+  serverExternalPackages: ['@anthropic-ai/sdk'],
 
   // Experimental features
   experimental: {

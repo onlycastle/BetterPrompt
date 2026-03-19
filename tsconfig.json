@@ -56,7 +56,7 @@
   ],
   "exclude": [
     "node_modules",
-    "packages/cli",
+
     "packages/plugin",
     "scripts",
     "web-ui",

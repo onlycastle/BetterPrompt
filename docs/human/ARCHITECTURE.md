@@ -1,37 +1,29 @@
 # BetterPrompt Architecture
 
-The supported open-source product is a self-hosted Next.js server plus CLI.
+The supported open-source product is a self-hosted Next.js server plus Claude Code plugin.
 
 ## Runtime Shape
 
-- `Next.js app` serves the web UI, auth routes, report pages, knowledge routes, and the local analysis API.
-- `CLI` discovers local Claude Code and Cursor sessions, authenticates with device flow, and posts parsed session payloads to the server.
-- `SQLite` stores users, sessions, CLI tokens, device codes, and analysis results.
+- `Next.js app` serves the web UI, auth routes, report pages, knowledge routes, and the analysis sync API.
+- `Claude Code plugin` (`packages/plugin/`) runs LLM analysis locally and syncs results to the server.
+- `SQLite` stores users, sessions, and analysis results.
 - `Local files` store curated knowledge under `~/.betterprompt/knowledge` and influencer registry data under `~/.betterprompt`.
 
 ## Main Data Flow
 
-1. The CLI scans local session sources and prepares analysis payloads.
-2. The user authenticates against the self-hosted server with device flow.
-3. The CLI sends the selected sessions to `POST /api/analysis/run`.
-4. The server runs the Gemini-based analyzer pipeline locally.
-5. Results are persisted to SQLite and exposed through authenticated dashboard pages and public `/r/:resultId` report pages.
+1. The Claude Code plugin scans local session sources and runs LLM analysis locally.
+2. Finished analysis results sync to the server via `POST /api/analysis/sync`.
+3. Results are persisted to SQLite and exposed through authenticated dashboard pages and public `/r/:resultId` report pages.
 
 ## Key Subsystems
 
 ### Web Server
 
-- `app/api/auth/*`: local email/password auth, browser sessions, CLI device flow
+- `app/api/auth/*`: local email/password auth, browser sessions
 - `app/api/analysis/*`: run analysis, fetch user analyses, fetch/delete stored results
 - `app/api/knowledge/*` and `app/api/learn/*`: local knowledge browsing and ingestion
 - `app/api/reports/[reportId]/share`: share tracking for self-hosted public report links
 - `app/api/benchmarks/global`: aggregates local report data for benchmark views
-
-### Analyzer
-
-- `src/lib/analyzer/`: multi-phase Gemini analysis pipeline
-- Deterministic preprocessing selects and summarizes sessions before worker analysis
-- Worker outputs are assembled into a single verbose evaluation and stored in SQLite
 
 ### Persistence
 
@@ -44,7 +36,7 @@ The supported open-source product is a self-hosted Next.js server plus CLI.
 - Landing page and docs
 - Dashboard: analyze, knowledge, personal history
 - Public report pages at `/r/:resultId`
-- CLI-based local analysis flow
+- Plugin-based local analysis flow (Claude Code plugin)
 
 Removed from the supported OSS runtime:
 

@@ -1,15 +1,15 @@
 /**
  * Multi-source session scanner wrapper for the plugin.
  *
- * Reuses the CLI's mature source discovery and parsing so the plugin can
- * analyze Claude Code and Cursor sessions with one canonical parsed-session
- * format instead of maintaining a Claude-only scanner.
+ * Uses the plugin's scanner library to discover and parse sessions from
+ * multiple AI coding assistant sources (Claude Code, Cursor) into a
+ * canonical parsed-session format.
  *
  * @module plugin/lib/core/multi-source-session-scanner
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { multiSourceScanner } from 'betterprompt-cli/dist/lib/scanner/index.js';
+import { multiSourceScanner } from '../scanner/index.js';
 import { PLUGIN_DATA_DIR } from './session-scanner.js';
 export const SCAN_CACHE_DIR = join(PLUGIN_DATA_DIR, 'scan-cache');
 const PARSED_SESSIONS_CACHE = join(SCAN_CACHE_DIR, 'parsed-sessions.json');

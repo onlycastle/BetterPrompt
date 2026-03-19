@@ -6,7 +6,7 @@
 
 import type { ParsedSession, ParsedMessage } from '../../src/lib/models/session.js';
 import type { TypeResult, CodingStyleType } from '../../src/lib/models/coding-style.js';
-import type { FullAnalysisResult } from '../../src/lib/analyzer/dimensions/index.js';
+import type { FullAnalysisResult } from '../../src/types/report.js';
 import type { VerboseEvaluation } from '../../src/lib/models/verbose-evaluation.js';
 
 // ============================================
@@ -138,7 +138,7 @@ export function createMockTypeResult(overrides: Partial<TypeResult> = {}): TypeR
  * Create mock FullAnalysisResult with all 6 dimensions
  *
  * Note: Each dimension type has a specific structure that must be respected.
- * See src/analyzer/dimensions/*.ts for type definitions.
+ * See src/types/report.ts for type definitions.
  */
 export function createMockDimensions(overrides: Partial<FullAnalysisResult> = {}): FullAnalysisResult {
   return {

@@ -87,6 +87,11 @@ import {
   definition as getStageOutputDef,
   execute as executeGetStageOutput,
 } from './tools/get-stage-output.js';
+import {
+  definition as getPromptContextDef,
+  execute as executeGetPromptContext,
+  GetPromptContextInputSchema,
+} from './tools/get-prompt-context.js';
 
 // Resolve user ID once at startup (for server-backed tools)
 let resolvedUserId: string | null = null;
@@ -158,6 +163,7 @@ server.tool(classifyDef.name, classifyDef.description, {},
 server.tool(reportDef.name, reportDef.description, {
   port: z.number().optional().describe('Port for the report server (default: 3456)'),
   openBrowser: z.boolean().optional().describe('Auto-open report in browser (default: true)'),
+  allowIncomplete: z.boolean().optional().describe('Override required-stage gating and generate a report anyway'),
 }, wrapToolExecution(executeReport));
 
 server.tool(syncDef.name, syncDef.description, {
@@ -170,6 +176,9 @@ server.tool(stageDef.name, stageDef.description, StageOutputInputSchema.shape,
 server.tool(getStageOutputDef.name, getStageOutputDef.description, {
   stage: z.string().optional().describe('Stage name to retrieve (omit for all stages)'),
 }, wrapToolExecution(executeGetStageOutput));
+
+server.tool(getPromptContextDef.name, getPromptContextDef.description, GetPromptContextInputSchema.shape,
+  wrapToolExecution(executeGetPromptContext));
 
 // =========================================================================
 // SERVER-BACKED TOOLS (backward compatible)

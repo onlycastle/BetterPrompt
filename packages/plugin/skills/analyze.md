@@ -22,7 +22,7 @@ Follow these phases in strict order. Each phase must complete before the next be
    - Number of sessions found
    - Date range covered
    - Key metrics snapshot (total tokens, average session length, top projects)
-4. Phase 1 output is persisted at `~/.betterprompt/phase1-output.json`. The current run envelope is also stored locally for later stage assembly and sync.
+4. Phase 1 output is persisted at `~/.betterprompt/phase1-output.json` for diagnostics and parity capture. Downstream skills should read stage-specific payloads through `get_prompt_context`, not by rereading the raw file.
 
 ### Phase 1.5: Session Summaries
 
@@ -100,7 +100,7 @@ If the sessions are already primarily English and the user did not request trans
 
 ## Quality Checklist
 
-- [ ] Phase 1 output file exists at `~/.betterprompt/phase1-output.json`
+- [ ] Phase 1 output persisted for diagnostics, and downstream stages use `get_prompt_context`
 - [ ] Session summaries generated (Phase 1.5)
 - [ ] All 5 domain analyses completed (or failures reported)
 - [ ] Project summaries and weekly insights generated

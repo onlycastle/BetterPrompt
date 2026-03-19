@@ -178,7 +178,7 @@ Before testing the BetterPrompt plugin, remove all previous installations to cov
 | 7 | Remove plugin state DBs (`bp-results*`, `bp-stage*`) |
 | 8 | Validate all JSON files after edits (trailing commas) |
 
-## Unit Tests
+## Commands
 
 ```bash
 npm test                    # Run all tests
@@ -188,19 +188,22 @@ npm run test:integration    # Run integration tests only
 npm run typecheck           # Type check without emitting
 ```
 
-Test directories:
+## Test Directories
 
 | Directory | Coverage |
 |-----------|----------|
-| `tests/unit/analyzer/workers/` | Phase 1-2 worker tests |
-| `tests/unit/analyzer/stages/` | Phase 1.5-4 stage tests (session-summarizer, content-writer, translator, evaluation-assembler, evidence-verifier, knowledge-resource-matcher, phase3-summarizer) |
-| `tests/unit/analyzer/orchestrator/` | Orchestrator + types tests |
-| `tests/unit/analyzer/dimensions/` | Dimension calculation tests |
 | `tests/unit/models/` | Zod schema validation tests (verbose-evaluation, agent-outputs, worker-insights, schema-nesting-depth) |
 | `tests/unit/parser/` | JSONL reader tests |
-| `tests/unit/cli/` | CLI-specific tests (segment-detector, session-scoring, project-name-resolver) |
-| `tests/unit/desktop/` | Desktop app tests (scanner, session-formatter) |
-| `tests/unit/config/` | Config manager tests |
 | `tests/unit/search-agent/` | Search agent tests (knowledge, relevance, judge criteria) |
 | `tests/unit/utils/` | Utility tests (insight-deduplication) |
 | `tests/unit/lib/` | Library tests (result) |
+
+## Plugin Tests
+
+The plugin has its own test suite in `packages/plugin/`:
+
+```bash
+cd packages/plugin && npm test
+```
+
+See `packages/plugin/README.md` for plugin-specific test workflows.

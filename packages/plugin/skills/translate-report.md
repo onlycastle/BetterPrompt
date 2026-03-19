@@ -18,13 +18,8 @@ This stage is conditional. Run it only when the developer's sessions are primari
 
 ## Inputs
 
-1. Read `~/.betterprompt/phase1-output.json` to infer the developer's dominant language from recent utterances.
-2. Call `get_stage_output` with no stage filter, or read the specific saved stages you need:
-   - `typeClassification`
-   - `projectSummaries`
-   - `weeklyInsights`
-   - `contentWriter`
-3. Call `get_domain_results` without a domain filter to load the saved domain results so you can translate worker-facing strengths and growth areas.
+1. Call `get_prompt_context` with `{ "kind": "translation" }`.
+2. Use the returned `languageSample`, `stageOutputs`, and `domainResults` payload instead of rereading the raw Phase 1 file.
 
 ## Translation Rules
 

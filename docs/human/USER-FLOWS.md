@@ -15,7 +15,7 @@ BetterPrompt serves two personas through a single self-hosted Next.js applicatio
 │   │    EMPLOYEE FLOW     │        │      MANAGER FLOW         │     │
 │   │  (Individual User)   │        │  (Enterprise Admin)       │     │
 │   │                      │        │                           │     │
-│   │  • Run CLI analysis  │        │  • Create organization    │     │
+│   │  • Run plugin analysis│        │  • Create organization    │     │
 │   │  • View reports      │◄──────►│  • Manage teams/members   │     │
 │   │  • Track progress    │  link  │  • View team analytics    │     │
 │   │                      │        │  • Monitor growth trends  │     │
@@ -77,49 +77,24 @@ The employee flow covers the individual contributor experience — running analy
 ### 1.2 Analysis Flow
 
 ```
-                               CLI (user's machine)
+                            Plugin (Claude Code)
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        ANALYSIS PIPELINE                             │
 │                                                                      │
-│   $ npx betterprompt-cli                                               │
+│   "Analyze my coding sessions"                                       │
 │        │                                                             │
-│        ├─ 1. Discovers sessions from ~/.claude/projects/            │
-│        ├─ 2. Parses JSONL files                                     │
-│        ├─ 3. Gzip-compresses session data                           │
-│        ├─ 4. POST /api/analysis/run (SSE stream)                    │
+│        ├─ 1. scan_sessions — discovers local session logs            │
+│        ├─ 2. extract_data — deterministic Phase 1 extraction         │
+│        ├─ 3. save_domain_results — LLM analysis per domain          │
+│        ├─ 4. classify_developer_type — 5x3 type matrix              │
+│        ├─ 5. generate_report — HTML report on localhost:3456         │
 │        │                                                             │
-│        │   ┌──────────────── Server ────────────────────┐           │
-│        │   │                                             │           │
-│        │   │  Decompress → Parse → Aggregate metrics    │           │
-│        │   │       │                                     │           │
-│        │   │       ▼                                     │           │
-│        │   │  VerboseAnalyzer.analyzeVerbose()           │           │
-│        │   │  (11 LLM calls via Gemini 3 Flash)         │           │
-│        │   │       │                                     │           │
-│        │   │       ▼                                     │           │
-│        │   │  Store result → SQLite                      │           │
-│        │   │       │                                     │           │
-│        │   │       ▼                                     │           │
-│        │   │  Stream SSE events:                         │           │
-│        │   │    • progress (stage + %)                   │           │
-│        │   │    • phase_preview (debug)                  │           │
-│        │   │    • result (resultId + summary)            │           │
-│        │   │    • error (if failed)                      │           │
-│        │   │                                             │           │
-│        │   └─────────────────────────────────────────────┘           │
-│        │                                                             │
-│        └─ 5. Opens browser → /dashboard/r/{resultId}                │
+│        └─ 6. (optional) sync_to_team — upload to dashboard server   │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
-
-**API**: `POST /api/analysis/run` (`app/api/analysis/run/route.ts`)
-- Request: gzip-compressed JSON with `sessions`, `activitySessions`, `totalMessages`, `totalDurationMinutes`
-- Response: SSE stream with `progress`, `phase_preview`, `result`, `error` event types
-- Authentication: `getCurrentUserFromRequest()` (implicit local user)
-- Query params: `noTranslate=1` (skip translation), headers: `x-debug=1` (include debug output)
 
 ### 1.3 Analyze Page
 
@@ -130,9 +105,9 @@ The employee flow covers the individual contributor experience — running analy
 │  Analyze Your Sessions                                │
 │                                                       │
 │  ┌─────────────────────────────────────────────────┐ │
-│  │  🖥️  Run the CLI to analyze your sessions       │ │
+│  │  🔌 Use the plugin to analyze your sessions     │ │
 │  │                                                  │ │
-│  │  $ npx betterprompt-cli                            │ │
+│  │  "Analyze my coding sessions"                    │ │
 │  │                                                  │ │
 │  └─────────────────────────────────────────────────┘ │
 │                                                       │
@@ -559,7 +534,7 @@ Continuous-scroll diagnostic view of an individual team member:
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │ Server URL                                                │   │
-│  │ BETTERPROMPT_API_URL for team member CLI configuration         │   │
+│  │ BETTERPROMPT_API_URL for team member plugin configuration      │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐   │
@@ -618,10 +593,10 @@ Continuous-scroll diagnostic view of an individual team member:
 │                                                                      │
 │  EMPLOYEE SIDE                           MANAGER SIDE                │
 │                                                                      │
-│  $ npx betterprompt-cli                                                │
+│  Plugin: "Analyze my sessions"                                       │
 │       │                                                              │
 │       ▼                                                              │
-│  POST /api/analysis/run                                             │
+│  Local analysis (MCP tools)                                         │
 │       │                                                              │
 │       ▼                                                              │
 │  ┌──────────────────┐                                               │
@@ -698,7 +673,7 @@ Role is determined by `getUserOrgRole()` which returns the **highest** role acro
 | Method | Route | Purpose |
 |--------|-------|---------|
 | `GET` | `/api/auth/me` | Get current user (implicit local auth) |
-| `POST` | `/api/analysis/run` | Run analysis pipeline (SSE stream) |
+| `POST` | `/api/analysis/sync` | Receive plugin analysis results |
 | `GET` | `/api/analysis/user` | List user's analyses |
 | `GET` | `/api/analysis/user/progress` | Get progress analytics |
 | `GET` | `/api/analysis/results/{resultId}` | Get single result |
@@ -745,7 +720,7 @@ Role is determined by `getUserOrgRole()` which returns the **highest** role acro
 
 | File | Purpose |
 |------|---------|
-| `app/dashboard/analyze/AnalyzeContent.tsx` | CLI instructions + most recent analysis |
+| `app/dashboard/analyze/AnalyzeContent.tsx` | Plugin instructions + most recent analysis |
 | `app/dashboard/personal/PersonalContent.tsx` | Report list + Progress tabs |
 | `app/dashboard/r/[resultId]/ImmersiveReportContent.tsx` | Full immersive report view |
 
@@ -775,7 +750,7 @@ Role is determined by `getUserOrgRole()` which returns the **highest** role acro
 
 | File | Purpose |
 |------|---------|
-| `app/api/analysis/run/route.ts` | SSE endpoint for running analysis |
+| `app/api/analysis/sync/route.ts` | Receives plugin analysis results |
 | `app/api/analysis/user/route.ts` | List user's analyses |
 | `app/api/analysis/results/[resultId]/route.ts` | Get/delete single result |
 | `app/api/analysis/user/progress/route.ts` | Personal analytics |
