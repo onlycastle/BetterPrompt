@@ -1,43 +1,78 @@
 #!/usr/bin/env node
 import {
+  buildFirstRunAdditionalContext,
   buildPendingAnalysisAdditionalContext
-} from "../chunk-FE2ZIUDY.js";
+} from "../chunk-ZDSGFUFB.js";
 import {
+  getPluginDataDir2 as getPluginDataDir,
   isAnalysisPending
-} from "../chunk-V53KKR74.js";
+} from "../chunk-UH4HUW7Y.js";
 
 // hooks/session-start-handler.ts
-import { readFileSync, existsSync } from "fs";
+import { readFileSync as readFileSync2, existsSync } from "fs";
 import { execFileSync } from "child_process";
-import { join } from "path";
+import { join as join2 } from "path";
 import { fileURLToPath } from "url";
+
+// lib/prefs.ts
+import { readFileSync, writeFileSync, mkdirSync } from "fs";
+import { join, dirname } from "path";
+function getPrefsFilePath() {
+  return join(getPluginDataDir(), "prefs.json");
+}
+function readPrefs() {
+  try {
+    const raw = readFileSync(getPrefsFilePath(), "utf-8");
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+function isFirstRun() {
+  return !readPrefs().welcomeCompleted;
+}
+
+// hooks/session-start-handler.ts
 var DEFAULT_DEPS = {
+  isFirstRun,
+  buildFirstRunAdditionalContext,
   isAnalysisPending,
   buildPendingAnalysisAdditionalContext
 };
 function readHookInput(raw) {
   try {
-    const payload = raw ?? readFileSync(0, "utf-8").trim();
+    const payload = raw ?? readFileSync2(0, "utf-8").trim();
     return payload ? JSON.parse(payload) : {};
   } catch {
     return {};
   }
 }
 function handleSessionStartHook(input, deps = DEFAULT_DEPS) {
-  if (!deps.isAnalysisPending() || input.source === "compact") {
+  if (input.source === "compact") {
     return null;
   }
-  return {
-    hookSpecificOutput: {
-      hookEventName: "SessionStart",
-      additionalContext: deps.buildPendingAnalysisAdditionalContext()
-    }
-  };
+  if (deps.isFirstRun()) {
+    return {
+      hookSpecificOutput: {
+        hookEventName: "SessionStart",
+        additionalContext: deps.buildFirstRunAdditionalContext()
+      }
+    };
+  }
+  if (deps.isAnalysisPending()) {
+    return {
+      hookSpecificOutput: {
+        hookEventName: "SessionStart",
+        additionalContext: deps.buildPendingAnalysisAdditionalContext()
+      }
+    };
+  }
+  return null;
 }
 function ensureNativeDeps() {
   const pluginDataDir = process.env.CLAUDE_PLUGIN_DATA;
   if (!pluginDataDir) return;
-  const marker = join(pluginDataDir, "node_modules", "better-sqlite3", "build", "Release", "better_sqlite3.node");
+  const marker = join2(pluginDataDir, "node_modules", "better-sqlite3", "build", "Release", "better_sqlite3.node");
   if (existsSync(marker)) return;
   try {
     execFileSync("npm", ["install", "--prefix", pluginDataDir, "better-sqlite3@12.8.0"], {
