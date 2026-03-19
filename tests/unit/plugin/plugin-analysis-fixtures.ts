@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { computeDeterministicType } from '../../../packages/plugin/lib/core/deterministic-type-mapper.js';
-import { PLUGIN_DATA_DIR } from '../../../packages/plugin/lib/core/session-scanner.js';
+import { getPluginDataDir } from '../../../packages/plugin/lib/core/session-scanner.js';
 import { closeResultsDb } from '../../../packages/plugin/lib/results-db.js';
 import type {
   CanonicalStageOutputs,
@@ -22,12 +22,13 @@ export const deterministicScores: DeterministicScores = {
 
 export function resetResultsStorage(): void {
   closeResultsDb();
-  rmSync(PLUGIN_DATA_DIR, { recursive: true, force: true });
+  rmSync(getPluginDataDir(), { recursive: true, force: true });
 }
 
 export function pinCurrentRunId(runId: number): void {
-  mkdirSync(PLUGIN_DATA_DIR, { recursive: true });
-  writeFileSync(join(PLUGIN_DATA_DIR, 'current-run-id.txt'), String(runId));
+  const pluginDataDir = getPluginDataDir();
+  mkdirSync(pluginDataDir, { recursive: true });
+  writeFileSync(join(pluginDataDir, 'current-run-id.txt'), String(runId));
 }
 
 export function createPhase1Output(): Phase1Output {

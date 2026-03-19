@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist/
 build/
+out/
 
 # Environment
 .env
@@ -69,6 +70,9 @@ trouble_shooting/
 
 # Agent orchestration state
 .omx/
+
+# Claude plugin local config
+.claude-plugin/
 
 # Experimental / scratch projects
 unstuck/

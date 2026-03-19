@@ -87,7 +87,7 @@ export function AnalyzeContent() {
           <h2 className={styles.ctaTitle}>Start a New Analysis</h2>
           <p className={styles.ctaDescription}>
             Install the BetterPrompt Claude Code plugin, then ask Claude Code to analyze your sessions locally.
-            Use <code>sync_to_team</code> afterward if you want this run stored in the dashboard.
+            Use <code>sync_to_team</code> afterward if you want this run stored in the dashboard, and pass <code>serverUrl</code> if you are syncing to a shared server.
           </p>
           <div className={styles.cliCommand}>
             <code>/plugin install betterprompt@betterprompt</code>

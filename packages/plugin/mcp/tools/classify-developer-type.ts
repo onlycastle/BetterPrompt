@@ -10,7 +10,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { computeDeterministicScores } from '../../lib/core/deterministic-scorer.js';
 import { computeDeterministicType } from '../../lib/core/deterministic-type-mapper.js';
-import { PLUGIN_DATA_DIR } from '../../lib/core/session-scanner.js';
+import { getPluginDataDir } from '../../lib/core/session-scanner.js';
 import {
   getAnalysisRun,
   saveTypeResult,
@@ -39,7 +39,7 @@ export async function execute(_args: Record<string, unknown>): Promise<string> {
     phase1Output = existingRun.phase1Output;
   } else {
     try {
-      const phase1Path = join(PLUGIN_DATA_DIR, 'phase1-output.json');
+      const phase1Path = join(getPluginDataDir(), 'phase1-output.json');
       const content = await readFile(phase1Path, 'utf-8');
       phase1Output = JSON.parse(content);
     } catch {

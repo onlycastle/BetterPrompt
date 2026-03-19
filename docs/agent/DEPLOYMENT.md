@@ -9,16 +9,25 @@ The supported open-source deployment target is:
 ## Runtime Model
 
 - `npm run dev` / `npm run build && npm run start` runs the web, auth, sync, and dashboard surface.
-- `BETTERPROMPT_BASE_URL` and `BETTERPROMPT_WEB_APP_URL` should point at the same self-hosted server.
 - Plugin-produced canonical runs sync through `POST /api/analysis/sync`.
+- Public report/dashboard URLs are derived from the incoming request origin.
+- The local SQLite database lives at `~/.betterprompt/betterprompt.db`.
 
-## Environment Variables
+## GitHub Pages (Landing Page)
 
-| Variable | Purpose |
-|----------|---------|
-| `BETTERPROMPT_BASE_URL` | Canonical base URL for report links and metadata |
-| `BETTERPROMPT_WEB_APP_URL` | Dashboard base URL (defaults to `http://localhost:3000`) |
-| `BETTERPROMPT_DB_PATH` | Optional SQLite database path override |
+The landing page and docs page are deployed as static HTML to GitHub Pages at `betterprompt.sh`.
+
+| Command | Purpose |
+|---------|---------|
+| `npm run build:pages` | Static export to `out/` directory |
+| `npx serve out` | Test static output locally |
+
+**How it works**: `scripts/build-pages.sh` temporarily moves server-only files (`app/api/`, `app/dashboard/`, `middleware.ts`, etc.) out of the build path, runs `next build` with `STATIC_EXPORT=1` (which sets `output: 'export'`), then restores everything via `trap` cleanup.
+
+**Trigger**: Push to `main` triggers `.github/workflows/deploy-pages.yml`, which builds and deploys to GitHub Pages.
+
+**DNS**: `betterprompt.sh` must point to GitHub Pages IPs (`185.199.108-111.153`) or CNAME to `onlycastle.github.io`.
+
 ## Deployment Notes
 
 - Use a persistent volume for the SQLite database.

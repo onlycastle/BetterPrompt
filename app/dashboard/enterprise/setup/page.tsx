@@ -264,14 +264,14 @@ export default function EnterpriseSetupPage() {
             <CardContent>
               <p className={styles.doneText}>
                 <strong>{createdOrgName}</strong> is ready. Share this server URL with your team members
-                so they can connect their CLI:
+                so they can connect their plugin:
               </p>
               <div className={styles.urlBox}>
                 <code className={styles.urlCode}>{serverUrl}</code>
               </div>
               <p className={styles.doneHint}>
-                Team members should set <code>BETTERPROMPT_API_URL={serverUrl}</code> in their environment
-                and run their analysis. Their results will appear in the team dashboard.
+                Team members can add this URL to the BetterPrompt plugin <code>serverUrl</code> setting
+                or pass it to <code>sync_to_team</code> when they run their analysis.
               </p>
               <button
                 className={styles.primaryBtn}

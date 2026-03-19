@@ -1,8 +1,8 @@
 /**
  * Configuration Domain Models
  *
- * Zod schemas for application configuration, environment variables,
- * and user settings. Single source of truth for config-related types.
+ * Zod schemas for application configuration and user settings.
+ * Single source of truth for config-related types.
  *
  * @module domain/models/config
  */
@@ -50,17 +50,6 @@ export const DEFAULT_CONFIG: Config = {
   offlineMode: false,
   syncOnReconnect: true,
 };
-
-/**
- * Environment variable mappings
- */
-export const ENV_MAPPINGS = {
-  apiKey: 'ANTHROPIC_API_KEY',
-  telemetry: 'BETTERPROMPT_TELEMETRY',
-  storagePath: 'BETTERPROMPT_STORAGE_PATH',
-  apiBaseUrl: 'BETTERPROMPT_API_BASE_URL',
-  offlineMode: 'BETTERPROMPT_OFFLINE_MODE',
-} as const;
 
 /**
  * Runtime environment
@@ -167,33 +156,15 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
 // ============================================================================
 
 /**
- * Resolve configuration from environment and defaults
+ * Resolve configuration from defaults plus persisted overrides.
  */
 export function resolveConfig(
-  envConfig: Partial<Config> = {},
+  configOverrides: Partial<Config> = {},
   fileConfig: Partial<Config> = {}
 ): Config {
   return {
     ...DEFAULT_CONFIG,
     ...fileConfig,
-    ...envConfig,
+    ...configOverrides,
   };
-}
-
-/**
- * Read config value from environment
- */
-export function getEnvValue<K extends keyof typeof ENV_MAPPINGS>(
-  key: K
-): string | undefined {
-  const envKey = ENV_MAPPINGS[key];
-  return process.env[envKey];
-}
-
-/**
- * Parse boolean from environment variable
- */
-export function parseEnvBoolean(value: string | undefined): boolean | undefined {
-  if (value === undefined) return undefined;
-  return value.toLowerCase() === 'true' || value === '1';
 }

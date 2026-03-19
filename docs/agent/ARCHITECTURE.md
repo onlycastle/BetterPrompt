@@ -54,7 +54,6 @@ Plugin local analysis → optional /api/analysis/sync → analysis_results table
 ## Related Docs
 
 - [docs/agent/USER-FLOWS.md](./USER-FLOWS.md) — Employee + Manager user flows, route→component mapping, access control, API reference
-- [AGENTS.md](../../AGENTS.md) — Machine-readable setup guide for AI coding agents (persona-based installation onboarding)
 
 ## Cleanup Invariants
 

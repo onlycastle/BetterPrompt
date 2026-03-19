@@ -15,8 +15,8 @@
     "skills"
   ],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "start": "node dist/mcp/server.js"
   },
   "keywords": [
@@ -37,15 +37,14 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@betterprompt/shared": "*",
     "@modelcontextprotocol/sdk": "^1.12.1",
-
     "better-sqlite3": "^12.8.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^25.5.0",
+    "tsup": "^8.5.0",
     "typescript": "^5.7.0"
   }
 }

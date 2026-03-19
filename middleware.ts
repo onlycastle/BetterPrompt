@@ -1,24 +1,23 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-const configuredBaseUrl = process.env.BETTERPROMPT_BASE_URL;
-const configuredOrigin = configuredBaseUrl ? new URL(configuredBaseUrl).origin : null;
-
-// Allowed origins for CORS
-const allowedOrigins = [
+const allowedOrigins = new Set([
   'http://localhost:3000',
-  ...(configuredOrigin ? [configuredOrigin] : []),
-];
+  'http://127.0.0.1:3000',
+]);
 
 /**
  * Add CORS headers to response
  */
-function addCorsHeaders(response: NextResponse, origin: string | null): NextResponse {
-  const isAllowedOrigin = origin && allowedOrigins.some(allowed =>
-    origin.startsWith(allowed)
-  );
+function addCorsHeaders(
+  response: NextResponse,
+  origin: string | null,
+  requestOrigin: string,
+): NextResponse {
+  const isAllowedOrigin = origin !== null
+    && (origin === requestOrigin || allowedOrigins.has(origin));
 
   if (isAllowedOrigin) {
-    response.headers.set('Access-Control-Allow-Origin', origin || '*');
+    response.headers.set('Access-Control-Allow-Origin', origin);
     response.headers.set('Access-Control-Allow-Credentials', 'true');
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
@@ -31,17 +30,18 @@ function addCorsHeaders(response: NextResponse, origin: string | null): NextResp
 export async function middleware(request: NextRequest) {
   const origin = request.headers.get('origin');
   const isApiRoute = request.nextUrl.pathname.startsWith('/api/');
+  const requestOrigin = request.nextUrl.origin;
 
   // Handle CORS preflight requests for API routes
   if (isApiRoute && request.method === 'OPTIONS') {
     const response = new NextResponse(null, { status: 204 });
-    return addCorsHeaders(response, origin);
+    return addCorsHeaders(response, origin, requestOrigin);
   }
 
   const response = NextResponse.next({ request });
 
   if (isApiRoute) {
-    return addCorsHeaders(response, origin);
+    return addCorsHeaders(response, origin, requestOrigin);
   }
 
   return response;

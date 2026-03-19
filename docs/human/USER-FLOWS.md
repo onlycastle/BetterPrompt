@@ -339,7 +339,7 @@ First-time organization creation for admin users. Three-step wizard:
 
      Step 1 ──────────────► Step 2 ────────────────► Step 3
      POST /api/org          POST /api/teams           Show server URL
-     Creates org +          Creates first team         Display BETTERPROMPT_API_URL
+     Creates org +          Creates first team         Display dashboard URL
      sets user.orgId        (optional, can skip)       for team members
                                                        Force reload auth
 ```
@@ -347,7 +347,7 @@ First-time organization creation for admin users. Three-step wizard:
 **Step details**:
 1. **Create Organization** — name (auto-slugifies) + URL slug → `POST /api/org`
 2. **Create Team** (optional) — name + description → `POST /api/teams` (can skip)
-3. **Ready** — displays server URL (`BETTERPROMPT_API_URL`) for sharing, then redirects to enterprise dashboard
+3. **Ready** — displays the server URL for sharing, then redirects to enterprise dashboard
 
 **Post-setup**: Forces full page reload to re-fetch auth state with new `organizationId`.
 
@@ -534,7 +534,7 @@ Continuous-scroll diagnostic view of an individual team member:
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │ Server URL                                                │   │
-│  │ BETTERPROMPT_API_URL for team member plugin configuration      │   │
+│  │ Share this URL with team members for the plugin `serverUrl`    │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐   │

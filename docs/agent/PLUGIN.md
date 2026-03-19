@@ -20,7 +20,7 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `mcp/tools/get-developer-profile.ts` | Tool (server-backed): profile type, scores, personality |
 | `mcp/tools/get-growth-areas.ts` | Tool (server-backed): growth areas, optional domain filter |
 | `mcp/tools/get-recent-insights.ts` | Tool (server-backed): strengths / anti-patterns / KPT |
-| `lib/config.ts` | Env var reader, path helpers |
+| `lib/config.ts` | Plugin settings reader, path helpers |
 | `lib/cache.ts` | SQLite cache (better-sqlite3, WAL mode) |
 | `lib/results-db.ts` | SQLite results database for canonical analysis runs |
 | `lib/stage-db.ts` | SQLite stage outputs + status tracking (shares `results.db` connection) |
@@ -30,7 +30,7 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `lib/api-client.ts` | HTTP client, `fetchUserSummary()`, `verifyAuth()` |
 | `lib/debounce.ts` | Debounce rules, state file read/write |
 | `lib/background-analyzer.ts` | Deprecated cutover stub kept only to fail loudly if invoked |
-| `lib/core/session-scanner.ts` | Claude Code JSONL parsing, `PLUGIN_DATA_DIR` |
+| `lib/core/session-scanner.ts` | Claude Code JSONL parsing and local data-dir helpers |
 | `lib/core/multi-source-session-scanner.ts` | Multi-source scanner coordinator (Claude Code + Cursor) |
 | `lib/core/data-extractor.ts` | Phase 1 utterance extraction from parsed sessions |
 | `lib/core/deterministic-scorer.ts` | Rubric-based deterministic scoring |
@@ -92,16 +92,15 @@ Prompt context kinds: `sessionSummaries`, `domainAnalysis`, `projectSummaries`, 
 
 Route implementation: `app/api/analysis/user/summary/route.ts`
 
-## Config (Environment Variables)
+## Config (Plugin Settings + Runtime Defaults)
 
-| Variable | Fallback | Default |
-|----------|----------|---------|
-| `BETTERPROMPT_SERVER_URL` | `BETTERPROMPT_API_URL` | `http://localhost:3000` |
-| `BETTERPROMPT_AUTH_TOKEN` | `BETTERPROMPT_TOKEN` | `""` |
-| `BETTERPROMPT_AUTO_ANALYZE` | — | `true` |
-| `BETTERPROMPT_ANALYZE_THRESHOLD` | — | `5` |
-| `BETTERPROMPT_STORAGE_PATH` | — | `~/.betterprompt` |
-| `BETTERPROMPT_CLAUDE_DIR` | — | Auto-discovered (waterfall: env var, default path, prefix glob) |
+| Surface | Key | Default |
+|---------|-----|---------|
+| Plugin setting | `serverUrl` | `http://localhost:3000` |
+| Plugin setting | `autoAnalyze` | `true` |
+| Plugin setting | `analyzeThreshold` | `5` |
+| Runtime default | Local data dir | `~/.betterprompt` |
+| Runtime default | Claude Code discovery | `~/.claude/`, then `.claude*` prefix scan |
 
 ## Local Files
 
@@ -178,7 +177,7 @@ The scanner module (`lib/scanner/`) supports multiple session sources:
 | `cursor` | SQLite | `~/Library/Application Support/Cursor/User/globalStorage/` |
 | `cursor-composer` | SQLite | Same as cursor (composer-specific tables) |
 
-Discovery for Claude Code data dirs uses a waterfall: `BETTERPROMPT_CLAUDE_DIR` env var, default `~/.claude/` path, then prefix glob fallback.
+Discovery for Claude Code data dirs uses a waterfall: default `~/.claude/` path, then prefix glob fallback.
 
 ## Hook Execution
 

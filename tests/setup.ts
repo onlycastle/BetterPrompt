@@ -11,7 +11,7 @@ import { beforeEach, afterEach, afterAll, vi } from 'vitest';
 process.env.NODE_ENV = 'test';
 process.env.ANTHROPIC_API_KEY = 'test-api-key-mock';
 process.env.BETTERPROMPT_TELEMETRY = 'false';
-process.env.BETTERPROMPT_STORAGE_PATH = '/tmp/betterprompt-test';
+process.env.HOME = '/tmp/betterprompt-test-home';
 
 // Reset mocks between tests
 beforeEach(() => {

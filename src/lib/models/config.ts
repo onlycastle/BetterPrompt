@@ -21,12 +21,3 @@ export const DEFAULT_CONFIG: Config = {
   storagePath: '~/.betterprompt',
   apiKey: null,
 };
-
-/**
- * Environment variable mappings
- */
-export const ENV_MAPPINGS = {
-  apiKey: 'ANTHROPIC_API_KEY',
-  telemetry: 'BETTERPROMPT_TELEMETRY',
-  storagePath: 'BETTERPROMPT_STORAGE_PATH',
-} as const;

@@ -17,6 +17,7 @@ import {
   generateTwitterShareUrl,
   generateLinkedInShareUrl,
 } from '../../../../lib/share';
+import { getBrowserSiteOrigin } from '../../../../lib/site-origin';
 import type { CodingStyleType, TypeResult } from '../../../../lib/models/coding-style';
 import styles from './PersonalitySummaryClean.module.css';
 
@@ -119,9 +120,7 @@ export function PersonalitySummaryClean({
 }: PersonalitySummaryCleanProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
-  const baseUrl = typeof window !== 'undefined'
-    ? window.location.origin
-    : (process.env.BETTERPROMPT_BASE_URL || 'http://localhost:3000');
+  const baseUrl = getBrowserSiteOrigin();
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message);
@@ -157,14 +156,14 @@ export function PersonalitySummaryClean({
   const handleTwitter = useCallback(() => {
     if (!reportId || !primaryType) return;
     const typeResult = buildMinimalTypeResult(primaryType);
-    const url = generateTwitterShareUrl(typeResult, reportId);
+    const url = generateTwitterShareUrl(typeResult, reportId, { baseUrl });
     openSharePopup(url);
     trackShare(reportId, 'twitter');
   }, [reportId, primaryType]);
 
   const handleLinkedIn = useCallback(() => {
     if (!reportId) return;
-    const url = generateLinkedInShareUrl(reportId);
+    const url = generateLinkedInShareUrl(reportId, { baseUrl });
     openSharePopup(url);
     trackShare(reportId, 'linkedin');
   }, [reportId]);

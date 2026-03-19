@@ -1,10 +1,9 @@
 /**
  * Claude Data Directory Discovery
  *
- * Discovers Claude Code data directories using a 3-step waterfall:
- * 1. BETTERPROMPT_CLAUDE_DIR environment variable (explicit override)
- * 2. Default ~/.claude/projects/ path
- * 3. Prefix glob: scan homedir for .claude* directories
+ * Discovers Claude Code data directories using a 2-step waterfall:
+ * 1. Default ~/.claude/projects/ path
+ * 2. Prefix glob: scan homedir for .claude* directories
  *
  * Each candidate is validated with a fingerprint check:
  * - Has a projects/ subdirectory
@@ -64,9 +63,8 @@ export async function validateClaudeDataDir(dir: string): Promise<boolean> {
  * Results are deduped by resolved real path to handle symlinks.
  *
  * Waterfall:
- * 1. BETTERPROMPT_CLAUDE_DIR env var → validate → use if valid
- * 2. ~/.claude/projects/ → check existence → use if valid
- * 3. Scan homedir for .claude* directories → validate each
+ * 1. ~/.claude/projects/ → check existence → use if valid
+ * 2. Scan homedir for .claude* directories → validate each
  */
 export async function discoverClaudeDataDirs(): Promise<string[]> {
   const discovered = new Map<string, string>(); // realPath → projectsDir
@@ -89,17 +87,7 @@ export async function discoverClaudeDataDirs(): Promise<string[]> {
     return false;
   };
 
-  // Step 1: Environment variable override
-  const envDir = process.env.BETTERPROMPT_CLAUDE_DIR;
-  if (envDir) {
-    await addIfValid(envDir);
-    // If env var is set, use it exclusively (don't mix with defaults)
-    if (discovered.size > 0) {
-      return Array.from(discovered.values());
-    }
-  }
-
-  // Step 2: Default path ~/.claude/projects/
+  // Step 1: Default path ~/.claude/projects/
   const defaultDir = join(homedir(), '.claude');
   await addIfValid(defaultDir);
 
@@ -108,7 +96,7 @@ export async function discoverClaudeDataDirs(): Promise<string[]> {
     return Array.from(discovered.values());
   }
 
-  // Step 3: Prefix glob — scan homedir for .claude* directories
+  // Step 2: Prefix glob — scan homedir for .claude* directories
   try {
     const home = homedir();
     const entries = await readdir(home);

@@ -83,8 +83,11 @@ export function SettingsContent() {
               marginTop: 'var(--space-sm)',
               wordBreak: 'break-all',
             }}>
-              BETTERPROMPT_API_URL={serverUrl}
+              {serverUrl}
             </code>
+            <p className={styles.placeholder} style={{ marginTop: 'var(--space-sm)' }}>
+              Team members can use this as the BetterPrompt plugin <code>serverUrl</code> setting or pass it to <code>sync_to_team</code>.
+            </p>
           </CardContent>
         </Card>
 

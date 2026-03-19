@@ -13,14 +13,19 @@ import { homedir } from 'node:os';
 import { JSONLLineSchema, CONTEXT_WINDOW_SIZE, type JSONLLine, type SessionMetadata } from './types.js';
 
 /** Claude Code session log directory */
-export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
+export function getClaudeProjectsDir(): string {
+  return join(homedir(), '.claude', 'projects');
+}
 
 /** Plugin data directory */
-export const PLUGIN_DATA_DIR = process.env.BETTERPROMPT_STORAGE_PATH?.trim()
-  || join(homedir(), '.betterprompt');
+export function getPluginDataDir(): string {
+  return join(homedir(), '.betterprompt');
+}
 
 /** Scan cache directory */
-export const SCAN_CACHE_DIR = join(PLUGIN_DATA_DIR, 'scan-cache');
+export function getScanCacheDir(): string {
+  return join(getPluginDataDir(), 'scan-cache');
+}
 
 // ============================================================================
 // JSONL Parsing
@@ -119,11 +124,12 @@ export function getProjectName(projectPath: string): string {
 /** List all project directories in Claude's projects folder */
 export async function listProjectDirs(): Promise<string[]> {
   try {
-    const entries = await readdir(CLAUDE_PROJECTS_DIR);
+    const projectsDir = getClaudeProjectsDir();
+    const entries = await readdir(projectsDir);
     const dirs: string[] = [];
 
     for (const entry of entries) {
-      const fullPath = join(CLAUDE_PROJECTS_DIR, entry);
+      const fullPath = join(projectsDir, entry);
       try {
         const stats = await stat(fullPath);
         if (stats.isDirectory()) {
@@ -251,9 +257,10 @@ export async function listAllSessions(): Promise<SessionMetadata[]> {
 export async function cacheParsedSessions(
   sessions: SessionMetadata[],
 ): Promise<string> {
-  await mkdir(SCAN_CACHE_DIR, { recursive: true });
+  const scanCacheDir = getScanCacheDir();
+  await mkdir(scanCacheDir, { recursive: true });
 
-  const cachePath = join(SCAN_CACHE_DIR, 'sessions.json');
+  const cachePath = join(scanCacheDir, 'sessions.json');
   await writeFile(cachePath, JSON.stringify(sessions, null, 2), 'utf-8');
   return cachePath;
 }
@@ -261,7 +268,7 @@ export async function cacheParsedSessions(
 /** Read cached session metadata */
 export async function readCachedSessions(): Promise<SessionMetadata[]> {
   try {
-    const cachePath = join(SCAN_CACHE_DIR, 'sessions.json');
+    const cachePath = join(getScanCacheDir(), 'sessions.json');
     const content = await readFile(cachePath, 'utf-8');
     const raw = JSON.parse(content) as Array<SessionMetadata & { timestamp: string }>;
     return raw.map(s => ({ ...s, timestamp: new Date(s.timestamp) }));
