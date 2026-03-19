@@ -28,7 +28,7 @@ Developer uses Claude Code normally
              v
     +-------------------+
     |  Next SessionStart |
-    |  injects `/analyze`|
+    |  injects `/bp-analyze`|
     +--------+----------+
              |
              +-->  Scan sessions (~/.claude/projects/, Cursor)

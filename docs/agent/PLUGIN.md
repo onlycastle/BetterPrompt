@@ -46,7 +46,7 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `lib/scanner/sources/sqlite-loader.ts` | Shared SQLite loader for Cursor sources |
 | `lib/scanner/tool-mapping.ts` | Tool name normalization across sources |
 | `hooks/post-session-handler.ts` | `SessionEnd` hook, <1.5s, queues the next local analysis run |
-| `hooks/session-start-handler.ts` | `SessionStart` hook, injects queued `/analyze` context |
+| `hooks/session-start-handler.ts` | `SessionStart` hook, injects queued `/bp-analyze` context |
 | `hooks/hooks.json` | Hook registration (`SessionStart` + `SessionEnd`) |
 | `.claude-plugin/plugin.json` | Plugin metadata + config schema |
 | `.mcp.json` | MCP server config (stdio transport) |
@@ -144,7 +144,7 @@ Session count: scans `~/.claude/projects/*/` for `.jsonl` files (filesystem only
 
 ```
 SessionEnd hook → shouldTriggerAnalysis() → markAnalysisPending()
-SessionStart hook → inject queued `/analyze` context
+SessionStart hook → inject queued `/bp-analyze` context
 extract_data → markAnalysisStarted()
 generate_report / sync_to_team → markAnalysisComplete()
 ```

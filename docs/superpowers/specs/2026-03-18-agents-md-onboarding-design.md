@@ -20,14 +20,14 @@ Replace the current AGENTS.md with a persona-based onboarding flow:
    - **Individual Developer:** Plugin install only (2 commands, no server/keys/cloning)
    - **Team Manager:** Plugin install + clone repo + start dashboard server
 3. **Soft onboarding** — Each path ends with a "What to do next" sentence:
-   - Individual: "Say 'Analyze my coding sessions and generate a report'"
+   - Individual: "Run `/bp-analyze` to start your first analysis"
    - Team Manager: "Visit `/dashboard/enterprise/setup` to create your org and invite members"
 
 ### Content Removed from AGENTS.md
 
 | Removed | Reason |
 |---------|--------|
-| `GOOGLE_GEMINI_API_KEY` references | Gemini SDK not imported anywhere; analysis runs through Claude |
+| `GOOGLE_GEMINI_API_KEY` references | Gemini SDK not imported anywhere; analysis runs through Claude  |
 | Environment variables tables | All variables are optional; unnecessary for installation |
 | Supported Session Sources table | Removed from installation context — Cursor has no plugin system. Note: the plugin still scans Cursor session logs if present; this is a runtime feature, not an installation concern. |
 | Enterprise setup walkthrough | Collapsed to "visit the web wizard" — the UI handles it |
@@ -76,7 +76,7 @@ Install the Claude Code plugin. No server, no API keys, no cloning needed.
 /plugin install betterprompt@betterprompt
 ```
 
-**What to do next:** Say "Analyze my coding sessions and generate a report" in any Claude Code session. The plugin queues analysis automatically when enough new sessions accumulate. Reports are served at `http://localhost:3456`.
+**What to do next:** Run `/bp-analyze` in any Claude Code session. The plugin queues analysis automatically when enough new sessions accumulate. Reports are served at `http://localhost:3456`.
 
 ### Team Manager
 

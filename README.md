@@ -42,11 +42,24 @@ If `autoAnalyze` is enabled, BetterPrompt can queue an analysis at session end a
 
 ### 2. Run your analysis
 
-In any Claude Code session, say:
+In any Claude Code session, run:
 
-> "Analyze my coding sessions and generate a report"
+```
+/bp-analyze
+```
 
-Claude will call the MCP tools in sequence -- scan sessions, extract data, analyze each domain, classify your type, and serve a report at `http://localhost:3456`.
+The plugin orchestrates the full pipeline -- scan sessions, extract data, analyze each domain, classify your type, and serve a report at `http://localhost:3456`.
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `/bp-analyze` | Run the full analysis pipeline: scan, extract, analyze 5 domains, classify type, generate report |
+| `/summarize-sessions` | Generate a concise 1-line summary for each analyzed session |
+| `/summarize-projects` | Generate project-level summaries from session data |
+| `/generate-weekly-insights` | Create a "This Week" narrative with stats and highlights |
+| `/classify-type` | Classify your developer type into the 5x3 matrix with narrative |
+| `/translate-report` | Translate report output for non-English sessions |
 
 ### Uninstalling
 
