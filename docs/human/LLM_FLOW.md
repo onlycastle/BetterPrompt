@@ -1442,20 +1442,20 @@ Plugin Skills (packages/plugin/skills/):
 │   └── Data extraction (packages/plugin/lib/core/data-extractor.ts)
 │
 ├── Phase 2 (5 LLM calls, parallel):
-│   ├── analyze-thinking-quality.md (planning, critical thinking)
-│   ├── analyze-communication.md (communication patterns, signature quotes)
-│   ├── analyze-learning.md (knowledge gaps, repeated mistakes)
-│   ├── analyze-efficiency.md (token inefficiency)
-│   └── analyze-sessions.md (goals, friction, success rates)
+│   ├── analyze-thinking-quality/SKILL.md (planning, critical thinking)
+│   ├── analyze-communication/SKILL.md (communication patterns, signature quotes)
+│   ├── analyze-learning/SKILL.md (knowledge gaps, repeated mistakes)
+│   ├── analyze-efficiency/SKILL.md (token inefficiency)
+│   └── analyze-sessions/SKILL.md (goals, friction, success rates)
 │
 ├── Phase 2.5 (1 LLM call):
-│   └── classify-type.md (type classification)
+│   └── classify-type/SKILL.md (type classification)
 │
 ├── Phase 3 (1 LLM call):
-│   └── write-content.md (narrative generation)
+│   └── write-content/SKILL.md (narrative generation)
 │
 └── Phase 4 (0-1 LLM call):
-    └── translate-report.md (conditional translation)
+    └── translate-report/SKILL.md (conditional translation)
 
 Environment Variables:
 └── GOOGLE_GEMINI_API_KEY  ← Required for orchestrator pipeline
