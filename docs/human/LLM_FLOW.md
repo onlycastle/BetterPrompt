@@ -1321,7 +1321,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Plugin Skills | `packages/plugin/skills/*.md` | Analysis pipeline steps (analyze, classify, translate, etc.) |
+| Plugin Skills | `packages/plugin/skills/*/SKILL.md` | Analysis pipeline steps (analyze, classify, translate, etc.) |
 | Core Types | `packages/plugin/lib/core/types.ts` | Pipeline types and interfaces |
 | Background Analyzer | `packages/plugin/lib/background-analyzer.ts` | Pipeline coordination and execution |
 
@@ -1336,11 +1336,11 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Thinking Quality Skill | `packages/plugin/skills/analyze-thinking-quality.md` | Planning, critical thinking |
-| Communication Patterns Skill | `packages/plugin/skills/analyze-communication.md` | Communication patterns, signature quotes |
-| Learning Behavior Skill | `packages/plugin/skills/analyze-learning.md` | Knowledge gaps & repeated mistakes |
-| Context Efficiency Skill | `packages/plugin/skills/analyze-efficiency.md` | Token inefficiency |
-| Session Outcome Skill | `packages/plugin/skills/analyze-sessions.md` | Goals, friction, success rates |
+| Thinking Quality Skill | `packages/plugin/skills/analyze-thinking-quality/SKILL.md` | Planning, critical thinking |
+| Communication Patterns Skill | `packages/plugin/skills/analyze-communication/SKILL.md` | Communication patterns, signature quotes |
+| Learning Behavior Skill | `packages/plugin/skills/analyze-learning/SKILL.md` | Knowledge gaps & repeated mistakes |
+| Context Efficiency Skill | `packages/plugin/skills/analyze-efficiency/SKILL.md` | Token inefficiency |
+| Session Outcome Skill | `packages/plugin/skills/analyze-sessions/SKILL.md` | Goals, friction, success rates |
 | Agent Outputs Schema | `src/lib/models/agent-outputs.ts` | AgentOutputs Zod schemas |
 | Thinking Quality Schema | `src/lib/models/thinking-quality-data.ts` | ThinkingQualityOutput |
 | Communication Patterns Schema | `src/lib/models/communication-patterns-data.ts` | CommunicationPatternsOutput |
@@ -1352,7 +1352,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Classify Type Skill | `packages/plugin/skills/classify-type.md` | Type classification |
+| Classify Type Skill | `packages/plugin/skills/classify-type/SKILL.md` | Type classification |
 | Deterministic Type Mapper | `packages/plugin/lib/core/deterministic-type-mapper.ts` | Maps scores to primaryType/controlLevel/distribution |
 | Coding Style Types | `src/lib/models/coding-style.ts` | 5x3 matrix types (15 combinations) |
 
@@ -1366,14 +1366,14 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Write Content Skill | `packages/plugin/skills/write-content.md` | Narrative generation (personalitySummary, promptPatterns, topFocusAreas) |
+| Write Content Skill | `packages/plugin/skills/write-content/SKILL.md` | Narrative generation (personalitySummary, promptPatterns, topFocusAreas) |
 | Narrative Schema | `src/lib/models/verbose-evaluation.ts` | `NarrativeLLMResponseSchema` (personalitySummary, promptPatterns, topFocusAreas) |
 
 ### Phase 4: Translator — Conditional Translation (0-1 LLM call via plugin skill)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Translate Report Skill | `packages/plugin/skills/translate-report.md` | Conditional translation for non-English users (ko, ja, zh) |
+| Translate Report Skill | `packages/plugin/skills/translate-report/SKILL.md` | Conditional translation for non-English users (ko, ja, zh) |
 | Translator Schema | `src/lib/models/translator-output.ts` | `TranslatorOutput` Zod schema (translated text fields + translatedAgentInsights) |
 
 ### Evaluation Assembly + Translation Overlay (deterministic, no LLM)
@@ -1381,7 +1381,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Component | File | Description |
 |-----------|------|-------------|
 | Evaluation Assembler | `packages/plugin/lib/evaluation-assembler.ts` | `assembleEvaluation()` — merges Phase 2 structural data + Phase 3 narrative into VerboseEvaluation fields (English defaults) |
-| Verify Evidence Skill | `packages/plugin/skills/verify-evidence.md` | Validates utteranceId references |
+| Verify Evidence Skill | `packages/plugin/skills/verify-evidence/SKILL.md` | Validates utteranceId references |
 | Translator Output Schema | `src/lib/models/translator-output.ts` | `TranslatorOutput` schema (translated text fields + translatedAgentInsights) |
 | Output Schema | `src/lib/models/verbose-evaluation.ts` | `VerboseEvaluation` schema (full evaluation including assembled fields + metadata + translatedAgentInsights) |
 
