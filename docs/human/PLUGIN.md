@@ -86,38 +86,7 @@ When Claude Code consumes the queued BetterPrompt context, the plugin:
 
 ## Setup
 
-### Prerequisites
-
-- Claude Code with plugin support
-- Node.js 18+ only if you are building the plugin from source
-
-### 1. Build the Plugin
-
-```bash
-cd packages/plugin
-npm install
-npm run build
-```
-
-### 2. Install in Claude Code
-
-In Claude Code:
-
-```text
-/plugin marketplace add onlycastle/BetterPrompt
-/plugin install betterprompt@betterprompt
-```
-
-### Configuration
-
-Configure BetterPrompt through Claude Code plugin settings:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `serverUrl` | `http://localhost:3000` | Team server URL for sync/cache refresh |
-| `autoAnalyze` | `true` | Enable/disable auto-analysis |
-| `analyzeThreshold` | `5` | Sessions before auto-trigger |
-| `reportPort` | `3456` | Port for the local report server |
+See [Quick Start](../../README.md#quick-start-plugin) in the README for installation and configuration.
 
 ### Running the MCP Server Manually
 

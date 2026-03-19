@@ -6,8 +6,6 @@
 [![Node.js 18+](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
 
-> **AI Agents:** If you are an AI coding agent (Claude Code, Cursor, Copilot, etc.), read [AGENTS.md](./AGENTS.md) instead of this file.
-
 **How it works:** BetterPrompt is a Claude Code plugin. It scans your local session logs, extracts metrics deterministically, then uses Claude (the model you're already paying for) to analyze your collaboration patterns across 5 domains: thinking quality, communication, learning behavior, context efficiency, and session outcomes. Results are assembled into a canonical local run and served as a standalone HTML report on localhost.
 
 No separate server. No Gemini API key. No data leaves your machine.
@@ -49,6 +47,27 @@ In any Claude Code session, say:
 > "Analyze my coding sessions and generate a report"
 
 Claude will call the MCP tools in sequence -- scan sessions, extract data, analyze each domain, classify your type, and serve a report at `http://localhost:3456`.
+
+### Uninstalling
+
+In any Claude Code session, run:
+
+```
+/plugin uninstall betterprompt@betterprompt
+```
+
+To also remove local analysis data (results, reports, caches):
+
+```bash
+rm -rf ~/.betterprompt
+```
+
+Optionally, clean up the marketplace registration:
+
+```bash
+rm -rf ~/.claude/plugins/cache/betterprompt
+rm -rf ~/.claude/plugins/marketplaces/betterprompt
+```
 
 ## Optional: Dashboard Server
 
@@ -173,19 +192,6 @@ tests/
   integration.test.ts # Full pipeline: session parsing -> multi-phase analysis
   fixtures/          # Real session logs and evaluation data
 ```
-
-## Plugin Settings
-
-BetterPrompt no longer expects `BETTERPROMPT_*` environment variables for normal setup. Use the plugin settings surface in Claude Code instead:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `serverUrl` | `http://localhost:3000` | Dashboard server URL for sync and server-backed insights |
-| `autoAnalyze` | `true` | Queue auto-analysis when enough new sessions accumulate |
-| `analyzeThreshold` | `5` | Minimum new sessions before auto-analysis queues |
-| `reportPort` | `3456` | Port for the local report server |
-
-The web app stores its SQLite database at `~/.betterprompt/betterprompt.db` and derives public URLs from the current request origin.
 
 ## Project Structure
 

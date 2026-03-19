@@ -21,10 +21,6 @@ BetterPrompt analyzes AI builder sessions from `~/.claude/projects/`, evaluates 
 
 This ensures consistency across the codebase and maintains compatibility with LLM models which perform best with English prompts.
 
-## Installation (for end-users)
-
-> ⚠️ **When a user asks to "install" BetterPrompt**, this means installing the Claude Code plugin — NOT cloning the repo or running `npm install`. Follow the guided installation flow in [AGENTS.md](./AGENTS.md).
-
 ## Commands (for contributors)
 
 ```bash
