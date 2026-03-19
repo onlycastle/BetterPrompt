@@ -71,8 +71,9 @@ trouble_shooting/
 # Agent orchestration state
 .omx/
 
-# Claude plugin local config
-.claude-plugin/
+# Claude plugin local config (marketplace.json must be tracked for plugin installation)
+.claude-plugin/*
+!.claude-plugin/marketplace.json
 
 # Experimental / scratch projects
 unstuck/
