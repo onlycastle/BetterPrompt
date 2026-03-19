@@ -99,8 +99,8 @@ If the sessions are already primarily English and the user did not request trans
 - If `scan_sessions` finds zero sessions, stop and inform the user. Do not proceed.
 - If `extract_data` fails, surface the error. Do not fabricate Phase 1 data.
 - If the `summarize-sessions` skill fails, continue -- session summaries are optional context.
-- If any Phase 2 skill fails with a rate limit or throttling error (e.g., "Rate limit reached", "429", "Too Many Requests"), wait ~30 seconds and retry that skill once. If the retry also fails, wait another ~30 seconds and retry a final time (max 2 retries). If still failing after retries, treat it as a domain failure and continue with remaining domains.
-- If any domain subagent fails for non-rate-limit reasons, report which domain failed and continue with the remaining domains. The report will note incomplete sections.
+- If any Phase 2 skill fails with a rate limit or throttling error (e.g., "Rate limit reached", "429", "Too Many Requests"), wait ~30 seconds and retry that skill once. If the retry also fails, wait another ~30 seconds and retry a final time (max 2 retries). If still failing after retries, treat it as a skill failure and continue with remaining skills.
+- If any Phase 2 skill fails for non-rate-limit reasons, report which skill failed and continue with the remaining skills. The report will note incomplete sections.
 - If `verify-evidence` fails, continue -- evidence verification is a quality enhancement, not blocking.
 - If `translate-report` is skipped because English output is appropriate, continue normally. If translation is needed but fails, continue with English output and note that translation is incomplete.
 - Never silently swallow errors or return placeholder data.

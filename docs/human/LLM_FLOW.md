@@ -53,16 +53,19 @@
 │   ║  └───────────────────────────────────────────────────────────────────────┘   ║   │
 │   ║                              │                                                ║   │
 │   ║  ┌───────────────────────────┴───────────────────────────────────────────┐   ║   │
-│   ║  │ PHASE 2: Insight Generation (parallel, 5 workers, 5 LLM calls)        │   ║   │
+│   ║  │ PHASE 2: Insight Generation (2 batches, 7 skills, 7 LLM calls)        │   ║   │
 │   ║  │                                                                         │   ║   │
+│   ║  │ Batch A (3 parallel):                                                   │   ║   │
+│   ║  │ ┌────────────────┐ ┌────────────────┐ ┌────────────────┐              │   ║   │
+│   ║  │ │    Thinking    │ │ Communication  │ │    Context     │              │   ║   │
+│   ║  │ │    Quality     │ │   Patterns     │ │   Efficiency   │              │   ║   │
+│   ║  │ └────────────────┘ └────────────────┘ └────────────────┘              │   ║   │
+│   ║  │                         ↓ wait ↓                                        │   ║   │
+│   ║  │ Batch B (4 parallel):                                                   │   ║   │
 │   ║  │ ┌────────────────┐ ┌────────────────┐ ┌────────────────┐ ┌──────────┐│   ║   │
-│   ║  │ │    Thinking    │ │ Communication  │ │    Learning    │ │ Context  ││   ║   │
-│   ║  │ │    Quality     │ │   Patterns     │ │    Behavior    │ │Efficiency││   ║   │
+│   ║  │ │    Learning    │ │    Session     │ │   Summarize    │ │  Weekly  ││   ║   │
+│   ║  │ │    Behavior    │ │    Outcome     │ │   Projects     │ │ Insights ││   ║   │
 │   ║  │ └────────────────┘ └────────────────┘ └────────────────┘ └──────────┘│   ║   │
-│   ║  │ ┌────────────────┐                                                    │   ║   │
-│   ║  │ │    Session     │                                                    │   ║   │
-│   ║  │ │    Outcome     │                                                    │   ║   │
-│   ║  │ └────────────────┘                                                    │   ║   │
 │   ║  │                                                                         │   ║   │
 │   ║  │                                   │                                     │   ║   │
 │   ║  │                                   ▼                                     │   ║   │
@@ -256,7 +259,7 @@ Phase1Output
 
 **Purpose**: Generate deep insights based on Phase 1 results (capability-based approach)
 
-> 5 workers run in parallel. Each outputs capability-specific strengths/growthAreas directly.
+> 7 skills run in **two sequential batches** (3 + 4) to avoid rate limit failures. Batch A: Thinking Quality, Communication Patterns, Context Efficiency. Batch B: Learning Behavior, Session Outcome, Summarize Projects, Weekly Insights.
 
 **IMPORTANT: Context Isolation**
 All Phase 2 workers receive ONLY Phase1Output (not raw sessions). This enforces:
@@ -274,7 +277,7 @@ utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    PHASE 2: 5 WORKERS (PARALLEL)                        │
+│                  PHASE 2: 7 SKILLS (TWO BATCHES)                        │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌──────────────────────────────┐                                       │
@@ -283,17 +286,19 @@ utterances.filter(u => u.isNoteworthy !== false && u.wordCount >= 8)
 │  └────────────┬─────────────────┘                                       │
 │               │                                                          │
 │  ┌────────────┴───────────────────────────────────────────────────┐    │
-│  │                                                                  │    │
-│  │  5 Parallel Workers (LLM-based, capability-focused)            │    │
+│  │  Batch A (3 parallel, LLM-based)                                │    │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐           │    │
+│  │  │   Thinking   │ │Communication │ │   Context    │           │    │
+│  │  │   Quality    │ │  Patterns    │ │  Efficiency  │           │    │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘           │    │
+│  └──────────────────────────────────┬──────────────────────────────┘    │
+│                                      │ wait                              │
+│  ┌──────────────────────────────────┴──────────────────────────────┐    │
+│  │  Batch B (4 parallel, LLM-based)                                │    │
 │  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌────────┐│    │
-│  │  │   Thinking   │ │Communication │ │   Learning   │ │Context ││    │
-│  │  │   Quality    │ │  Patterns    │ │   Behavior   │ │Efficien││    │
+│  │  │   Learning   │ │   Session    │ │  Summarize   │ │ Weekly ││    │
+│  │  │   Behavior   │ │   Outcome    │ │  Projects    │ │Insights││    │
 │  │  └──────────────┘ └──────────────┘ └──────────────┘ └────────┘│    │
-│  │  ┌──────────────┐                                              │    │
-│  │  │   Session    │                                              │    │
-│  │  │   Outcome    │                                              │    │
-│  │  └──────────────┘                                              │    │
-│  │                                                                  │    │
 │  └──────────────────────────────────┬──────────────────────────────┘    │
 │                                      │                                   │
 │                                      ▼                                   │
@@ -1134,17 +1139,21 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
                        │ [3] Pass Phase1Output to Phase 2 (Premium+ only)
                        ▼
   ╔═══════════════════════════════════════════════════════════════════╗
-  ║         PHASE 2: INSIGHT GENERATION (5 workers, 5 LLM calls)      ║
+  ║         PHASE 2: INSIGHT GENERATION (2 batches, 7 skills)          ║
   ║                                                                    ║
-  ║   [5 parallel workers]                                             ║
+  ║   Batch A (3 parallel):                                            ║
+  ║           - ThinkingQuality → planning, critical thinking          ║
+  ║           - CommunicationPatterns → patterns, quotes               ║
+  ║           - ContextEfficiency → token usage                        ║
+  ║   ── wait for Batch A ──                                           ║
+  ║   Batch B (4 parallel):                                            ║
+  ║           - LearningBehavior → knowledge gaps, mistakes            ║
+  ║           - SessionOutcome → goals, friction, success rates        ║
+  ║           - SummarizeProjects → project-level summaries            ║
+  ║           - WeeklyInsights → this week narrative + stats           ║
   ║                                                                    ║
   ║   INPUT:  Phase1Output (ONLY - no raw sessions)                   ║
   ║   OUTPUT: AgentOutputs (merged)                                    ║
-  ║           - ThinkingQualityWorker → planning, critical thinking   ║
-  ║           - CommunicationPatternsWorker → patterns, quotes        ║
-  ║           - LearningBehaviorWorker → knowledge gaps, mistakes     ║
-  ║           - ContextEfficiencyWorker → token usage                 ║
-  ║           - SessionOutcomeWorker → goals, friction, success rates ║
   ║                                                                    ║
   ║   NO FALLBACK POLICY: Worker failures propagate as errors         ║
   ╚═══════════════════════════════════════════════════════════════════╝
@@ -1276,11 +1285,11 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 │  ┌──────────────────────────────────────────────────────────┐           │
 │  │  PHASE 1: DataExtractor (deterministic, no LLM cost)     │           │
 │  │                                                           │           │
-│  │  PHASE 2 (Parallel): 5 Workers                            │           │
-│  │  ~4K tokens per worker, ~20K total (all workers)         │           │
-│  │  All workers run: ThinkingQuality, CommunicationPatterns,│           │
-│  │  LearningBehavior, ContextEfficiency, SessionOutcome     │           │
-│  │  (5 LLM calls)                                          │           │
+│  │  PHASE 2 (Two Batches): 7 Skills                          │           │
+│  │  ~4K tokens per skill, ~28K total (all skills)           │           │
+│  │  Batch A (3): ThinkingQuality, Communication, Efficiency │           │
+│  │  Batch B (4): Learning, Sessions, Projects, Insights     │           │
+│  │  (7 LLM calls)                                          │           │
 │  │                                                           │           │
 │  │  PHASE 2.5: TypeClassifier (1 LLM call)                  │           │
 │  │  Input: ~4K tokens    Output: ~1K tokens                 │           │
@@ -1295,8 +1304,8 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 │  │  Input: ~8K tokens    Output: ~6K tokens                 │           │
 │  │                                                           │           │
 │  │  Total LLM Calls:                                         │           │
-│  │  - English:     11 calls (1+5+1+1+1+1+1+0)               │           │
-│  │  - Non-English: 12 calls (1+5+1+1+1+1+1+1)              │           │
+│  │  - English:     13 calls (1+7+1+1+1+1+1+0)               │           │
+│  │  - Non-English: 14 calls (1+7+1+1+1+1+1+1)              │           │
 │  │                                                           │           │
 │  │  Total Cost: ~$0.04-0.05 per analysis                    │           │
 │  └──────────────────────────────────────────────────────────┘           │
@@ -1304,7 +1313,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 │  Key Benefits:                                                           │
 │  - Gemini 3 Flash: Pro-level intelligence at Flash pricing              │
 │  - 1M token context window for comprehensive analysis                   │
-│  - Parallel execution speeds up Phase 2                                 │
+│  - Two-batch execution in Phase 2 avoids rate limits                    │
 │  - NO FALLBACK POLICY: Worker failures propagate to identify issues     │
 │  - Tier-based worker filtering reduces cost for Free users              │
 │                                                                          │
@@ -1332,7 +1341,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Data Extractor | `packages/plugin/lib/core/data-extractor.ts` | Phase 1 - deterministic extraction (no LLM) |
 | Phase 1 Output Schema | `src/lib/models/phase1-output.ts` | Phase1Output Zod schema |
 
-### Phase 2: Insight Generation (5 LLM calls via plugin skills)
+### Phase 2: Insight Generation (7 LLM calls via plugin skills, 2 batches)
 
 | Component | File | Description |
 |-----------|------|-------------|
@@ -1441,12 +1450,16 @@ Plugin Skills (packages/plugin/skills/):
 ├── Phase 1 (deterministic):
 │   └── Data extraction (packages/plugin/lib/core/data-extractor.ts)
 │
-├── Phase 2 (5 LLM calls, parallel):
-│   ├── analyze-thinking-quality/SKILL.md (planning, critical thinking)
-│   ├── analyze-communication/SKILL.md (communication patterns, signature quotes)
-│   ├── analyze-learning/SKILL.md (knowledge gaps, repeated mistakes)
-│   ├── analyze-efficiency/SKILL.md (token inefficiency)
-│   └── analyze-sessions/SKILL.md (goals, friction, success rates)
+├── Phase 2 (7 LLM calls, two batches):
+│   ├── Batch A (3 parallel):
+│   │   ├── analyze-thinking-quality/SKILL.md (planning, critical thinking)
+│   │   ├── analyze-communication/SKILL.md (communication patterns, signature quotes)
+│   │   └── analyze-efficiency/SKILL.md (token inefficiency)
+│   └── Batch B (4 parallel):
+│       ├── analyze-learning/SKILL.md (knowledge gaps, repeated mistakes)
+│       ├── analyze-sessions/SKILL.md (goals, friction, success rates)
+│       ├── summarize-projects/SKILL.md (project-level summaries)
+│       └── generate-weekly-insights/SKILL.md (this week narrative + stats)
 │
 ├── Phase 2.5 (1 LLM call):
 │   └── classify-type/SKILL.md (type classification)
