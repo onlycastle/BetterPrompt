@@ -28,28 +28,34 @@ Follow these phases in strict order. Each phase must complete before the next be
 
 Run the `summarize-sessions` skill. This generates a concise 1-line summary for each analyzed session and persists the results via `save_stage_output`.
 
-### Phase 2: Domain Analysis + Context Generation (Parallelizable)
+### Phase 2: Domain Analysis + Context Generation (Two Batches)
 
-Run the domain analyzers and context generators in parallel when Claude Code decides it is appropriate. Each unit persists its own output to the current local analysis run.
+Run domain analyzers and context generators in **two sequential batches** to avoid rate limit failures. Each unit persists its own output to the current local analysis run.
 
-**Domain Analyzers** (each calls `save_domain_results`):
+#### Batch A (3 parallel)
+
+Launch these three skills in parallel:
 
 | Subagent Skill | Domain Key | Purpose |
 |----------------|------------|---------|
 | `analyze-thinking-quality` | thinkingQuality | Planning habits, verification behavior, critical thinking |
 | `analyze-communication` | communicationPatterns | Prompt structure, context patterns, signature quotes |
-| `analyze-learning` | learningBehavior | Knowledge gaps, repeated mistakes, growth indicators |
 | `analyze-efficiency` | contextEfficiency | Token optimization, context fill, inefficiency patterns |
-| `analyze-sessions` | sessionOutcome | Goal achievement, friction points, success/failure patterns |
 
-**Context Generators** (each calls `save_stage_output`):
+**Wait for all Batch A skills to complete before proceeding.**
 
-| Subagent Skill | Stage Key | Purpose |
-|----------------|-----------|---------|
-| `summarize-projects` | projectSummaries | Project-level summaries from session data |
-| `generate-weekly-insights` | weeklyInsights | This Week narrative, stats, and highlights |
+#### Batch B (4 parallel)
 
-Wait for all analyses to complete. Each one persists its output independently.
+Launch these four skills in parallel:
+
+| Subagent Skill | Type | Key | Purpose |
+|----------------|------|-----|---------|
+| `analyze-learning` | Domain (`save_domain_results`) | learningBehavior | Knowledge gaps, repeated mistakes, growth indicators |
+| `analyze-sessions` | Domain (`save_domain_results`) | sessionOutcome | Goal achievement, friction points, success/failure patterns |
+| `summarize-projects` | Context (`save_stage_output`) | projectSummaries | Project-level summaries from session data |
+| `generate-weekly-insights` | Context (`save_stage_output`) | weeklyInsights | This Week narrative, stats, and highlights |
+
+**Wait for all Batch B skills to complete before proceeding.**
 
 ### Phase 2.5: Developer Type Classification
 
@@ -93,7 +99,8 @@ If the sessions are already primarily English and the user did not request trans
 - If `scan_sessions` finds zero sessions, stop and inform the user. Do not proceed.
 - If `extract_data` fails, surface the error. Do not fabricate Phase 1 data.
 - If the `summarize-sessions` skill fails, continue -- session summaries are optional context.
-- If any domain subagent fails, report which domain failed and continue with the remaining domains. The report will note incomplete sections.
+- If any Phase 2 skill fails with a rate limit or throttling error (e.g., "Rate limit reached", "429", "Too Many Requests"), wait ~30 seconds and retry that skill once. If the retry also fails, wait another ~30 seconds and retry a final time (max 2 retries). If still failing after retries, treat it as a skill failure and continue with remaining skills.
+- If any Phase 2 skill fails for non-rate-limit reasons, report which skill failed and continue with the remaining skills. The report will note incomplete sections.
 - If `verify-evidence` fails, continue -- evidence verification is a quality enhancement, not blocking.
 - If `translate-report` is skipped because English output is appropriate, continue normally. If translation is needed but fails, continue with English output and note that translation is incomplete.
 - Never silently swallow errors or return placeholder data.
