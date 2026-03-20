@@ -6,6 +6,7 @@ import { resetConfig } from '../../../packages/plugin/lib/config.js';
 import { handleSessionEndHook } from '../../../packages/plugin/hooks/post-session-handler.js';
 import { handleSessionStartHook } from '../../../packages/plugin/hooks/session-start-handler.js';
 import { readState, markAnalysisStarted, markAnalysisComplete } from '../../../packages/plugin/lib/debounce.js';
+import { writePrefs } from '../../../packages/plugin/lib/prefs.js';
 
 describe('plugin session hooks', () => {
   const originalHome = process.env.HOME;
@@ -19,6 +20,8 @@ describe('plugin session hooks', () => {
     process.env.BETTERPROMPT_AUTO_ANALYZE = 'true';
     process.env.BETTERPROMPT_ANALYZE_THRESHOLD = '1';
     resetConfig();
+    // Mark setup as completed so existing tests exercise the pending-analysis path
+    writePrefs({ welcomeCompleted: '2026-01-01T00:00:00.000Z' });
   });
 
   afterEach(() => {
@@ -74,6 +77,68 @@ describe('plugin session hooks', () => {
 
     expect(handleSessionStartHook({ source: 'compact' })).toBeNull();
     expect(readState().analysisState).toBe('pending');
+  });
+
+  it('injects first-run context when isFirstRun returns true', () => {
+    const startup = handleSessionStartHook({ source: 'startup' }, {
+      isFirstRun: () => true,
+      buildFirstRunAdditionalContext: () => 'first-run-context /bp-setup',
+      isAnalysisPending: () => false,
+      buildPendingAnalysisAdditionalContext: () => 'pending-context',
+    });
+
+    expect(startup?.hookSpecificOutput.hookEventName).toBe('SessionStart');
+    expect(startup?.hookSpecificOutput.additionalContext).toContain('/bp-setup');
+  });
+
+  it('first-run takes priority over pending analysis', () => {
+    const startup = handleSessionStartHook({ source: 'startup' }, {
+      isFirstRun: () => true,
+      buildFirstRunAdditionalContext: () => 'first-run-context /bp-setup',
+      isAnalysisPending: () => true,
+      buildPendingAnalysisAdditionalContext: () => 'pending-context /bp-analyze',
+    });
+
+    expect(startup?.hookSpecificOutput.additionalContext).toContain('/bp-setup');
+    expect(startup?.hookSpecificOutput.additionalContext).not.toContain('/bp-analyze');
+  });
+
+  it('suppresses first-run injection for compact sessions', () => {
+    const startup = handleSessionStartHook({ source: 'compact' }, {
+      isFirstRun: () => true,
+      buildFirstRunAdditionalContext: () => 'first-run-context',
+      isAnalysisPending: () => false,
+      buildPendingAnalysisAdditionalContext: () => 'pending-context',
+    });
+
+    expect(startup).toBeNull();
+  });
+
+  it('falls through to pending analysis when first-run is complete', () => {
+    createClaudeSessionFile();
+    const transcriptPath = createTranscript();
+    handleSessionEndHook({ transcript_path: transcriptPath });
+
+    const startup = handleSessionStartHook({ source: 'startup' }, {
+      isFirstRun: () => false,
+      buildFirstRunAdditionalContext: () => 'first-run-context',
+      isAnalysisPending: () => true,
+      buildPendingAnalysisAdditionalContext: () => 'pending-context /bp-analyze',
+    });
+
+    expect(startup?.hookSpecificOutput.additionalContext).toContain('/bp-analyze');
+    expect(startup?.hookSpecificOutput.additionalContext).not.toContain('/bp-setup');
+  });
+
+  it('returns null when neither first-run nor pending', () => {
+    const startup = handleSessionStartHook({ source: 'startup' }, {
+      isFirstRun: () => false,
+      buildFirstRunAdditionalContext: () => 'first-run-context',
+      isAnalysisPending: () => false,
+      buildPendingAnalysisAdditionalContext: () => 'pending-context',
+    });
+
+    expect(startup).toBeNull();
   });
 
   it('transitions queued analysis through running to complete without leaving stale pending state', () => {

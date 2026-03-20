@@ -12,7 +12,8 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isAnalysisPending } from '../lib/debounce.js';
-import { buildPendingAnalysisAdditionalContext } from '../lib/hook-utils.js';
+import { buildPendingAnalysisAdditionalContext, buildFirstRunAdditionalContext } from '../lib/hook-utils.js';
+import { isFirstRun } from '../lib/prefs.js';
 
 export interface SessionStartHookInput {
   source?: 'startup' | 'resume' | 'clear' | 'compact';
@@ -26,11 +27,15 @@ export interface SessionStartHookOutput {
 }
 
 interface SessionStartHookDeps {
+  isFirstRun: () => boolean;
+  buildFirstRunAdditionalContext: () => string;
   isAnalysisPending: () => boolean;
   buildPendingAnalysisAdditionalContext: () => string;
 }
 
 const DEFAULT_DEPS: SessionStartHookDeps = {
+  isFirstRun,
+  buildFirstRunAdditionalContext,
   isAnalysisPending,
   buildPendingAnalysisAdditionalContext,
 };
@@ -48,16 +53,29 @@ export function handleSessionStartHook(
   input: SessionStartHookInput,
   deps: SessionStartHookDeps = DEFAULT_DEPS,
 ): SessionStartHookOutput | null {
-  if (!deps.isAnalysisPending() || input.source === 'compact') {
+  if (input.source === 'compact') {
     return null;
   }
 
-  return {
-    hookSpecificOutput: {
-      hookEventName: 'SessionStart',
-      additionalContext: deps.buildPendingAnalysisAdditionalContext(),
-    },
-  };
+  if (deps.isFirstRun()) {
+    return {
+      hookSpecificOutput: {
+        hookEventName: 'SessionStart',
+        additionalContext: deps.buildFirstRunAdditionalContext(),
+      },
+    };
+  }
+
+  if (deps.isAnalysisPending()) {
+    return {
+      hookSpecificOutput: {
+        hookEventName: 'SessionStart',
+        additionalContext: deps.buildPendingAnalysisAdditionalContext(),
+      },
+    };
+  }
+
+  return null;
 }
 
 /**

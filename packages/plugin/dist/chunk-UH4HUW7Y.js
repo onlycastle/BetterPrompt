@@ -15765,6 +15765,7 @@ export {
   getPluginDataDir,
   getScanCacheDir,
   getConfig,
+  getPluginDataDir2,
   getCacheDbPath,
   getAnalysisLifecycleState,
   recoverStaleAnalysisState,
@@ -15776,4 +15777,4 @@ export {
   isAnalysisPending,
   clearAnalysisPending
 };
-//# sourceMappingURL=chunk-V53KKR74.js.map
+//# sourceMappingURL=chunk-UH4HUW7Y.js.map

@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
+  buildFirstRunAdditionalContext,
   buildPendingAnalysisAdditionalContext,
   estimateSessionDurationMsFromTranscript,
 } from '../../../packages/plugin/lib/hook-utils.js';
@@ -30,5 +31,13 @@ describe('plugin hook utils', () => {
     expect(context).toContain('queued');
     expect(context).toContain('/bp-analyze');
     expect(context).toContain('auto-analysis');
+  });
+
+  it('builds startup context for first-run onboarding', () => {
+    const context = buildFirstRunAdditionalContext();
+
+    expect(context).toContain('/bp-setup');
+    expect(context).toContain('onboarding');
+    expect(context).toContain('not been set up');
   });
 });
