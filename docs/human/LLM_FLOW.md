@@ -1335,7 +1335,7 @@ Expert knowledge structure injected into Phase 2 workers via prompts:
 | Data Extractor | `packages/plugin/lib/core/data-extractor.ts` | Phase 1 - deterministic extraction (no LLM) |
 | Phase 1 Output Schema | `src/lib/models/phase1-output.ts` | Phase1Output Zod schema |
 
-### Phase 2: Insight Generation (7 LLM calls via plugin skills, 2 batches)
+### Phase 2: Insight Generation (7 LLM calls via plugin skills, sequential)
 
 | Component | File | Description |
 |-----------|------|-------------|
