@@ -4,7 +4,7 @@ import { execFileSync } from "child_process";
 import { join } from "path";
 import { homedir } from "os";
 function ensureNativeDeps(opts) {
-  const installDir = opts?.pluginRoot ?? process.env.CLAUDE_PLUGIN_DATA ?? join(homedir(), ".betterprompt");
+  const installDir = opts?.pluginRoot ?? join(homedir(), ".betterprompt");
   const marker = join(installDir, "node_modules", "better-sqlite3", "build", "Release", "better_sqlite3.node");
   if (existsSync(marker)) return;
   try {
@@ -24,4 +24,4 @@ function ensureNativeDeps(opts) {
 export {
   ensureNativeDeps
 };
-//# sourceMappingURL=chunk-QHWHFHUD.js.map
+//# sourceMappingURL=chunk-N7IIUGRQ.js.map

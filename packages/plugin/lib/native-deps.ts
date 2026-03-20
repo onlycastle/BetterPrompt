@@ -19,7 +19,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 
 export function ensureNativeDeps(opts?: { pluginRoot?: string; fatal?: boolean }): void {
-  const installDir = opts?.pluginRoot ?? process.env.CLAUDE_PLUGIN_DATA ?? join(homedir(), '.betterprompt');
+  const installDir = opts?.pluginRoot ?? join(homedir(), '.betterprompt');
 
   const marker = join(installDir, 'node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node');
   if (existsSync(marker)) return;
