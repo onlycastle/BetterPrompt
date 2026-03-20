@@ -148,7 +148,7 @@ Session count: scans `~/.claude/projects/*/` for `.jsonl` files (filesystem only
 
 ## Single-Session Install Flow
 
-After `claude plugin install`, the MCP server isn't running yet (plugin lifecycle starts next session). The `/bp-setup` skill handles this with Step 0.5:
+After `/plugin install`, the MCP server isn't running yet (plugin lifecycle starts next session). The `/bp-setup` skill handles this with Step 0.5:
 
 ```
 install plugin → /bp-setup → Step 0.5: `claude mcp add -s user -e NODE_PATH=... -e CLAUDE_PLUGIN_DATA=... betterprompt -- node <server-entry.js>` → MCP tools available → continue setup
