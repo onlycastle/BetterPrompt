@@ -68,7 +68,7 @@ Call the `scan_sessions` MCP tool to confirm the plugin is working.
   - Number of sessions discovered
   - Date range of sessions
   - Sources detected (Claude Code, Cursor, etc.)
-- **On failure**: Report the error clearly and suggest the user verify the plugin is installed correctly (`claude plugin install betterprompt@betterprompt`).
+- **On failure**: Report the error clearly and suggest the user verify the plugin is installed correctly (`/plugin install betterprompt@betterprompt`).
 
 ### Step 2: CLAUDE.md Integration
 
