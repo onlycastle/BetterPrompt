@@ -88,20 +88,12 @@ AI session analysis plugin. Runs locally inside Claude Code.
 This is a one-time ask, tracked via `starAsked` in `~/.betterprompt/prefs.json`.
 
 1. If `starAsked` is already `true`, skip this step silently.
-2. Check if the GitHub CLI is available and authenticated:
-   ```bash
-   gh auth status
-   ```
-   If `gh` is not found or not authenticated, skip this step silently.
-3. Ask the user:
-   > "If BetterPrompt has been useful, would you consider starring the repo? This helps others discover it."
+2. Ask the user:
+   > "If BetterPrompt has been useful, would you consider starring the repo?
+   > It helps others discover it: https://github.com/onlycastle/BetterPrompt"
    >
-   > **"Star it"** / **"No thanks"**
-4. If accepted, run:
-   ```bash
-   gh api -X PUT /user/starred/onlycastle/BetterPrompt
-   ```
-5. Regardless of choice, write `starAsked: true` to prefs.
+   > **"Sure, I'll star it"** / **"Skip"**
+3. Regardless of choice, write `starAsked: true` to prefs.
 
 ### Step 4: Quick Reference
 
