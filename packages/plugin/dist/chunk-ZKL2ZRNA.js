@@ -32,14 +32,14 @@ function estimateSessionDurationMsFromTranscript(transcriptPath) {
 function buildFirstRunAdditionalContext() {
   return [
     "BetterPrompt is installed but has not been set up yet.",
-    "Immediately invoke the BetterPrompt `/bp-setup` skill to guide the user through first-time onboarding.",
+    "Immediately invoke the BetterPrompt `bp setup` skill to guide the user through first-time onboarding.",
     "This is a quick (~1 min) wizard that verifies the installation, optionally adds a command reference to CLAUDE.md, and points the user toward their first analysis."
   ].join(" ");
 }
 function buildPendingAnalysisAdditionalContext() {
   return [
     "BetterPrompt auto-analysis is pending from a previous session.",
-    "Immediately invoke the BetterPrompt `/bp-analyze` skill to consume the queued analysis unless the user explicitly asks to cancel or defer it.",
+    "Immediately invoke the BetterPrompt `bp analyze` skill to consume the queued analysis unless the user explicitly asks to cancel or defer it.",
     "Run the full local-first BetterPrompt pipeline through report generation for this queued task before treating it as complete, including translation when the report language requires it."
   ].join(" ");
 }
@@ -49,4 +49,4 @@ export {
   buildFirstRunAdditionalContext,
   buildPendingAnalysisAdditionalContext
 };
-//# sourceMappingURL=chunk-ZDSGFUFB.js.map
+//# sourceMappingURL=chunk-ZKL2ZRNA.js.map

@@ -8,6 +8,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isAnalysisPending } from '../lib/debounce.js';
 import { buildPendingAnalysisAdditionalContext, buildFirstRunAdditionalContext } from '../lib/hook-utils.js';
@@ -78,7 +79,8 @@ export function handleSessionStartHook(
 }
 
 function main(): void {
-  ensureNativeDeps();
+  const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+  ensureNativeDeps({ pluginRoot });
 
   const output = handleSessionStartHook(readHookInput());
   if (!output) {

@@ -1,10 +1,16 @@
 /**
  * Shared native dependency installer.
  *
- * Ensures `better-sqlite3` is compiled and available in the persistent
- * plugin data directory.  Safe to call from multiple entry points
- * (SessionStart hook, MCP server startup) — a marker file prevents
- * redundant installs.
+ * Ensures `better-sqlite3` is compiled and available so that Node's
+ * standard module resolution finds it at runtime.
+ *
+ * Primary strategy: install into `pluginRoot/node_modules/` so that
+ * `require('better-sqlite3')` from `dist/` resolves naturally via
+ * directory walking.  Fallback: `~/.betterprompt/node_modules/` for
+ * callers that don't know the plugin root.
+ *
+ * Safe to call from multiple entry points (SessionStart hook, MCP
+ * server startup) — a marker file prevents redundant installs.
  */
 
 import { existsSync } from 'node:fs';
@@ -12,14 +18,14 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 
-export function ensureNativeDeps(opts?: { fatal?: boolean }): void {
-  const pluginDataDir = process.env.CLAUDE_PLUGIN_DATA || join(homedir(), '.betterprompt');
+export function ensureNativeDeps(opts?: { pluginRoot?: string; fatal?: boolean }): void {
+  const installDir = opts?.pluginRoot ?? process.env.CLAUDE_PLUGIN_DATA ?? join(homedir(), '.betterprompt');
 
-  const marker = join(pluginDataDir, 'node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node');
+  const marker = join(installDir, 'node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node');
   if (existsSync(marker)) return;
 
   try {
-    execFileSync('npm', ['install', '--prefix', pluginDataDir, 'better-sqlite3@12.8.0'], {
+    execFileSync('npm', ['install', '--prefix', installDir, 'better-sqlite3@12.8.0'], {
       stdio: 'ignore',
       timeout: 60_000,
     });
