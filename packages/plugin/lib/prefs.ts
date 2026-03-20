@@ -17,6 +17,7 @@ export interface UserPrefs {
   welcomeCompleted?: string;   // ISO timestamp
   welcomeVersion?: string;
   starAsked?: boolean;
+  selectedProjects?: string[];
 }
 
 function getPrefsFilePath(): string {

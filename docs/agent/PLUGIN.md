@@ -48,10 +48,10 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `lib/scanner/sources/sqlite-loader.ts` | Shared SQLite loader for Cursor sources |
 | `lib/scanner/tool-mapping.ts` | Tool name normalization across sources |
 | `hooks/post-session-handler.ts` | `SessionEnd` hook, <1.5s, queues the next local analysis run |
-| `lib/native-deps.ts` | Shared `ensureNativeDeps()` — idempotent better-sqlite3 installer used by both server-entry and SessionStart hook |
-| `hooks/session-start-handler.ts` | `SessionStart` hook, first-run detection + queued `/bp-analyze` context |
+| `lib/native-deps.ts` | Shared `ensureNativeDeps({ pluginRoot?, fatal? })` — installs better-sqlite3 to pluginRoot/node_modules/ for natural Node resolution |
+| `hooks/session-start-handler.ts` | `SessionStart` hook, first-run detection + queued `bp analyze` context |
 | `hooks/hooks.json` | Hook registration (`SessionStart` + `SessionEnd`) |
-| `skills/bp-setup/SKILL.md` | Guided onboarding wizard skill (includes mid-session MCP registration via `claude mcp add`) |
+| `skills/bp-setup/SKILL.md` | Guided onboarding wizard skill (7 integer steps, includes project selection) |
 | `skills/bp-analyze/SKILL.md` | Full analysis pipeline orchestrator skill |
 | `.claude-plugin/plugin.json` | Plugin metadata + config schema |
 | `.mcp.json` | MCP server config (stdio transport) |
@@ -62,8 +62,8 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 
 | Tool | Parameters | Returns |
 |------|-----------|---------|
-| `scan_sessions` | none | `{ sessionCount, projectCount, projects, sources, totalMessages, dateRange, analysisState }` |
-| `extract_data` | `maxSessions?: number` (default 50) | `{ runId, metrics, deterministicScores }` |
+| `scan_sessions` | `includeProjects?: string[]` | `{ sessionCount, projectCount, projects, allProjects, sources, totalMessages, dateRange, analysisState }` |
+| `extract_data` | `maxSessions?: number` (default 50), `includeProjects?: string[]` | `{ runId, metrics, deterministicScores }` |
 | `save_domain_results` | `domain: enum`, `overallScore`, `strengths[]`, `growthAreas[]`, `data?: {}` | `{ domain, score, runId }` |
 | `get_domain_results` | `domain?: enum` | Single domain or all saved domains |
 | `classify_developer_type` | none | `{ primaryType, controlLevel, matrixName, matrixEmoji, distribution }` |
@@ -117,7 +117,7 @@ Route implementation: `app/api/analysis/user/summary/route.ts`
 | `~/.betterprompt/current-run-id.txt` | Text | Active analysis run ID for cross-tool coordination |
 | `~/.betterprompt/scan-cache/` | JSON | Parsed session cache from multi-source scanner |
 | `~/.betterprompt/reports/` | HTML | Generated reports (`report-{timestamp}.html`, `latest.html`) |
-| `~/.betterprompt/prefs.json` | JSON | User preferences: `welcomeCompleted`, `welcomeVersion`, `starAsked` |
+| `~/.betterprompt/prefs.json` | JSON | User preferences: `welcomeCompleted`, `welcomeVersion`, `starAsked`, `selectedProjects` |
 | `~/.betterprompt/plugin-state.json` | JSON | Lifecycle state: `idle/pending/running/complete/failed` + timestamps |
 | `~/.betterprompt/plugin-errors.log` | Text | Timestamped hook/deprecation errors |
 
@@ -146,21 +146,17 @@ Evaluated in order by `shouldTriggerAnalysis(sessionDurationMs)`:
 
 Session count: scans `~/.claude/projects/*/` for `.jsonl` files (filesystem only, no content reading).
 
-## Single-Session Install Flow
+## Native Dependency Resolution
 
-After `/plugin install`, the MCP server isn't running yet (plugin lifecycle starts next session). The `/bp-setup` skill handles this with Step 0.5:
+`ensureNativeDeps({ pluginRoot })` installs `better-sqlite3` to `<pluginRoot>/node_modules/`. Both `server-entry.ts` and `session-start-handler.ts` derive `pluginRoot` by walking up 2 directories from their `dist/` location. Node's standard module resolution finds the native addon by walking up from `dist/mcp/server-entry.js` → `node_modules/better-sqlite3/`.
 
-```
-install plugin → /bp-setup → Step 0.5: `claude mcp add -s user -e NODE_PATH=... -e CLAUDE_PLUGIN_DATA=... betterprompt -- node <server-entry.js>` → MCP tools available → continue setup
-```
-
-The `claude mcp add` command registers the server at user scope with `NODE_PATH` and `CLAUDE_PLUGIN_DATA` env vars pointing to `~/.betterprompt/`. On subsequent sessions, the plugin's `.mcp.json` handles server startup normally — Claude Code deduplicates by server name, so the user-scoped entry and the plugin-managed `.mcp.json` entry do not conflict.
+No `NODE_PATH` or `CLAUDE_PLUGIN_DATA` env vars are needed. The `.mcp.json` uses a clean config without env overrides.
 
 ## Queued Auto-Analysis Flow
 
 ```
 SessionEnd hook → shouldTriggerAnalysis() → markAnalysisPending()
-SessionStart hook → inject queued `/bp-analyze` context
+SessionStart hook → inject queued `bp analyze` context
 extract_data → markAnalysisStarted()
 generate_report / sync_to_team → markAnalysisComplete()
 ```
@@ -202,7 +198,8 @@ Discovery for Claude Code data dirs uses a waterfall: default `~/.claude/` path,
   - `node ./dist/hooks/session-start-handler.js`
   - `node ./dist/hooks/post-session-handler.js`
 - `SessionEnd` queues work; `SessionStart` injects context so Claude Code consumes the queued run in-band
-- `SessionStart` priority: (1) skip `compact`, (2) first-run → `/bp-setup`, (3) pending analysis → `/bp-analyze`, (4) no-op
+- `SessionStart` priority: (1) skip `compact`, (2) first-run → `bp setup`, (3) pending analysis → `bp analyze`, (4) no-op
+- Both hooks derive `pluginRoot` for `ensureNativeDeps()` via `join(dirname(fileURLToPath(import.meta.url)), '..', '..')`
 
 ## Build
 

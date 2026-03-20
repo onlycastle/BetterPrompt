@@ -20,7 +20,7 @@ Replace the current AGENTS.md with a persona-based onboarding flow:
    - **Individual Developer:** Plugin install only (2 commands, no server/keys/cloning)
    - **Team Manager:** Plugin install + clone repo + start dashboard server
 3. **Soft onboarding** — Each path ends with a "What to do next" sentence:
-   - Individual: "Run `/bp-analyze` to start your first analysis"
+   - Individual: "Run `bp analyze` to start your first analysis"
    - Team Manager: "Visit `/dashboard/enterprise/setup` to create your org and invite members"
 
 ### Content Removed from AGENTS.md
@@ -76,7 +76,7 @@ Install the Claude Code plugin. No server, no API keys, no cloning needed.
 /plugin install betterprompt@betterprompt
 ```
 
-**What to do next:** Run `/bp-analyze` in any Claude Code session. The plugin queues analysis automatically when enough new sessions accumulate. Reports are served at `http://localhost:3456`.
+**What to do next:** Run `bp analyze` in any Claude Code session. The plugin queues analysis automatically when enough new sessions accumulate. Reports are served at `http://localhost:3456`.
 
 ### Team Manager
 

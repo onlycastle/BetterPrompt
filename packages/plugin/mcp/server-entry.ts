@@ -13,10 +13,18 @@
  * crash Node during module evaluation if the native addon is missing.
  * By deferring the server import to a dynamic `import()`, we ensure
  * ensureNativeDeps() runs first.
+ *
+ * pluginRoot derivation: this file lives at dist/mcp/server-entry.js,
+ * so going up 2 levels reaches the plugin root where node_modules/
+ * is installed by ensureNativeDeps.
  */
 
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ensureNativeDeps } from '../lib/native-deps.js';
 
-ensureNativeDeps({ fatal: true });
+const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+ensureNativeDeps({ pluginRoot, fatal: true });
 
 await import('./server.js');

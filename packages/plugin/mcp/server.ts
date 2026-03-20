@@ -144,11 +144,13 @@ function wrapToolExecution<T>(
 // LOCAL-FIRST TOOLS (no server needed)
 // =========================================================================
 
-server.tool(scanDef.name, scanDef.description, {},
-  wrapToolExecution(() => executeScan({})));
+server.tool(scanDef.name, scanDef.description, {
+  includeProjects: z.array(z.string()).optional().describe('Filter results to only these project names'),
+}, wrapToolExecution(executeScan));
 
 server.tool(extractDef.name, extractDef.description, {
   maxSessions: z.number().optional().describe('Maximum number of recent sessions to analyze (default: 50)'),
+  includeProjects: z.array(z.string()).optional().describe('Filter to only these project names before applying maxSessions limit'),
 }, wrapToolExecution(executeExtract));
 
 server.tool(saveDomainDef.name, saveDomainDef.description, DomainResultInputSchema.shape,

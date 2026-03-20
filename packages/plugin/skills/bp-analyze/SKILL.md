@@ -16,13 +16,14 @@ Follow these phases in strict order. Each phase must complete before the next be
 
 ### Phase 1: Data Discovery and Extraction
 
-1. Call the `scan_sessions` MCP tool to discover all supported local session sources on this machine, including Claude Code and Cursor.
-2. Call the `extract_data` MCP tool to run deterministic Phase 1 extraction. This produces the canonical Phase 1 artifact with structured metrics, activity sessions, and full parsed-session access for later stages.
-3. Present a brief summary to the user:
-   - Number of sessions found
+1. Read `~/.betterprompt/prefs.json` and check for `selectedProjects`. If present and non-empty, use it as the `includeProjects` parameter for both `scan_sessions` and `extract_data`. If absent or empty, analyze all projects.
+2. Call the `scan_sessions` MCP tool (with `includeProjects` if set) to discover all supported local session sources on this machine.
+3. Call the `extract_data` MCP tool (with `includeProjects` if set) to run deterministic Phase 1 extraction. This produces the canonical Phase 1 artifact with structured metrics, activity sessions, and full parsed-session access for later stages.
+4. Present a brief summary to the user:
+   - Number of sessions found (and "X of Y projects" if filtering is active)
    - Date range covered
    - Key metrics snapshot (total tokens, average session length, top projects)
-4. Phase 1 output is persisted at `~/.betterprompt/phase1-output.json` for diagnostics and parity capture. Downstream skills should read stage-specific payloads through `get_prompt_context`, not by rereading the raw file.
+5. Phase 1 output is persisted at `~/.betterprompt/phase1-output.json` for diagnostics and parity capture. Downstream skills should read stage-specific payloads through `get_prompt_context`, not by rereading the raw file.
 
 ### Phase 1.5: Session Summaries
 

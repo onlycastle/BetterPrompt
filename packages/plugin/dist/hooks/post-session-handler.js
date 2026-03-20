@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   estimateSessionDurationMsFromTranscript
-} from "../chunk-ZDSGFUFB.js";
+} from "../chunk-ZKL2ZRNA.js";
 import {
   getConfig,
   markAnalysisPending,

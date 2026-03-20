@@ -18,17 +18,37 @@ export const definition = {
     'running extract_data. Does not return full session content.',
 };
 
-export async function execute(_args: Record<string, unknown>): Promise<string> {
-  const sessions = await scanAndCacheParsedSessions();
+export async function execute(args: { includeProjects?: string[] }): Promise<string> {
+  const allSessions = await scanAndCacheParsedSessions();
 
-  if (sessions.length === 0) {
+  if (allSessions.length === 0) {
     return JSON.stringify({
       status: 'no_sessions',
       message: 'No supported Claude Code or Cursor sessions found on this machine.',
     });
   }
 
-  // Aggregate metadata
+  // Build per-project session counts (always from full set)
+  const allProjectNames = [...new Set(allSessions.map(s => s.projectName ?? 'unknown'))];
+  const allProjects = allProjectNames.map(name => ({
+    name,
+    sessionCount: allSessions.filter(s => (s.projectName ?? 'unknown') === name).length,
+  })).sort((a, b) => b.sessionCount - a.sessionCount);
+
+  // Apply project filter if provided
+  const sessions = args.includeProjects?.length
+    ? allSessions.filter(s => args.includeProjects!.includes(s.projectName ?? 'unknown'))
+    : allSessions;
+
+  if (sessions.length === 0) {
+    return JSON.stringify({
+      status: 'no_sessions_after_filter',
+      allProjects,
+      message: `No sessions match the selected projects. ${allSessions.length} total sessions available across ${allProjectNames.length} projects.`,
+    });
+  }
+
+  // Aggregate metadata from filtered sessions
   const projectNames = [...new Set(sessions.map(s => s.projectName ?? 'unknown'))];
   const totalMessages = sessions.reduce((sum, s) => sum + s.messages.length, 0);
   const totalDuration = sessions.reduce((sum, s) => sum + s.durationSeconds, 0);
@@ -49,6 +69,7 @@ export async function execute(_args: Record<string, unknown>): Promise<string> {
     sessionCount: sessions.length,
     projectCount: projectNames.length,
     projects: projectNames.slice(0, 10),
+    allProjects,
     sources: sourceCounts,
     totalMessages,
     totalDurationMinutes: Math.round(totalDuration / 60),

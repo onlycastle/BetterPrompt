@@ -64,4 +64,20 @@ describe('plugin user preferences', () => {
     writePrefs({ welcomeCompleted: new Date().toISOString() });
     expect(isFirstRun()).toBe(false);
   });
+
+  it('writes and reads selectedProjects array', () => {
+    writePrefs({ selectedProjects: ['project-a', 'project-b'] });
+
+    const prefs = readPrefs();
+    expect(prefs.selectedProjects).toEqual(['project-a', 'project-b']);
+  });
+
+  it('merges selectedProjects with existing preferences', () => {
+    writePrefs({ welcomeShown: true });
+    writePrefs({ selectedProjects: ['my-project'] });
+
+    const prefs = readPrefs();
+    expect(prefs.welcomeShown).toBe(true);
+    expect(prefs.selectedProjects).toEqual(['my-project']);
+  });
 });

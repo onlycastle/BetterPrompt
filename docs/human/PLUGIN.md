@@ -28,7 +28,7 @@ Developer uses Claude Code normally
              v
     +-------------------+
     |  Next SessionStart |
-    |  injects `/bp-analyze`|
+    |  injects `bp analyze` |
     +--------+----------+
              |
              +-->  Scan sessions (~/.claude/projects/, Cursor)
@@ -79,10 +79,11 @@ This prevents over-analyzing short sessions or re-analyzing too frequently.
 
 When Claude Code consumes the queued BetterPrompt context, the plugin:
 
-1. Scans supported local session sources
-2. Runs deterministic extraction and typed stage persistence
-3. Executes the domain/type/content/translation skills inside Claude Code
-4. Generates the local report and optionally syncs the canonical run to the dashboard
+1. Reads `selectedProjects` from user preferences (if set during `bp setup`)
+2. Scans supported local session sources (filtered by selected projects)
+3. Runs deterministic extraction and typed stage persistence
+4. Executes the domain/type/content/translation skills inside Claude Code
+5. Generates the local report and optionally syncs the canonical run to the dashboard
 
 ## Setup
 

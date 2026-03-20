@@ -35,15 +35,27 @@ export const definition = {
     'Returns summary metrics and creates an analysis run for subsequent domain analysis.',
 };
 
-export async function execute(args: { maxSessions?: number }): Promise<string> {
+export async function execute(args: { maxSessions?: number; includeProjects?: string[] }): Promise<string> {
   const maxSessions = args.maxSessions ?? 50;
 
   // Read cached parsed sessions from the multi-source scanner
-  const sessions = await readCachedParsedSessions();
-  if (sessions.length === 0) {
+  const allSessions = await readCachedParsedSessions();
+  if (allSessions.length === 0) {
     return JSON.stringify({
       status: 'no_data',
       message: 'No cached parsed sessions. Call scan_sessions first.',
+    });
+  }
+
+  // Filter by project before applying recency limit
+  const sessions = args.includeProjects?.length
+    ? allSessions.filter(s => args.includeProjects!.includes(s.projectName ?? 'unknown'))
+    : allSessions;
+
+  if (sessions.length === 0) {
+    return JSON.stringify({
+      status: 'no_data',
+      message: 'No sessions match the selected projects. Call scan_sessions to see available projects.',
     });
   }
 
@@ -52,7 +64,7 @@ export async function execute(args: { maxSessions?: number }): Promise<string> {
   markAnalysisStarted();
 
   try {
-    // Limit to recent sessions
+    // Limit to recent sessions (within filtered set)
     const selectedSessions = sessions.slice(0, maxSessions);
 
     // Run Phase 1 extraction

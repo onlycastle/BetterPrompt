@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import {
   ensureNativeDeps
-} from "../chunk-KH675EAB.js";
+} from "../chunk-N7IIUGRQ.js";
 import {
   buildFirstRunAdditionalContext,
   buildPendingAnalysisAdditionalContext
-} from "../chunk-ZDSGFUFB.js";
+} from "../chunk-ZKL2ZRNA.js";
 import {
   getPluginDataDir2 as getPluginDataDir,
   isAnalysisPending
@@ -14,6 +14,7 @@ import "../chunk-PR4QN5HX.js";
 
 // hooks/session-start-handler.ts
 import { readFileSync as readFileSync2 } from "fs";
+import { dirname as dirname2, join as join2 } from "path";
 import { fileURLToPath } from "url";
 
 // lib/prefs.ts
@@ -72,7 +73,8 @@ function handleSessionStartHook(input, deps = DEFAULT_DEPS) {
   return null;
 }
 function main() {
-  ensureNativeDeps();
+  const pluginRoot = join2(dirname2(fileURLToPath(import.meta.url)), "..", "..");
+  ensureNativeDeps({ pluginRoot });
   const output = handleSessionStartHook(readHookInput());
   if (!output) {
     process.exit(0);

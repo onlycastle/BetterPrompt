@@ -24491,12 +24491,25 @@ var definition4 = {
   name: "scan_sessions",
   description: "Scan Claude Code and Cursor session logs on this machine. Returns session metadata (count, date range, projects, total messages, and sources). Use this as the first step before running extract_data. Does not return full session content."
 };
-async function execute(_args) {
-  const sessions = await scanAndCacheParsedSessions();
-  if (sessions.length === 0) {
+async function execute(args) {
+  const allSessions = await scanAndCacheParsedSessions();
+  if (allSessions.length === 0) {
     return JSON.stringify({
       status: "no_sessions",
       message: "No supported Claude Code or Cursor sessions found on this machine."
+    });
+  }
+  const allProjectNames = [...new Set(allSessions.map((s) => s.projectName ?? "unknown"))];
+  const allProjects = allProjectNames.map((name) => ({
+    name,
+    sessionCount: allSessions.filter((s) => (s.projectName ?? "unknown") === name).length
+  })).sort((a, b) => b.sessionCount - a.sessionCount);
+  const sessions = args.includeProjects?.length ? allSessions.filter((s) => args.includeProjects.includes(s.projectName ?? "unknown")) : allSessions;
+  if (sessions.length === 0) {
+    return JSON.stringify({
+      status: "no_sessions_after_filter",
+      allProjects,
+      message: `No sessions match the selected projects. ${allSessions.length} total sessions available across ${allProjectNames.length} projects.`
     });
   }
   const projectNames = [...new Set(sessions.map((s) => s.projectName ?? "unknown"))];
@@ -24516,6 +24529,7 @@ async function execute(_args) {
     sessionCount: sessions.length,
     projectCount: projectNames.length,
     projects: projectNames.slice(0, 10),
+    allProjects,
     sources: sourceCounts,
     totalMessages,
     totalDurationMinutes: Math.round(totalDuration / 60),
@@ -24948,11 +24962,18 @@ var definition5 = {
 };
 async function execute2(args) {
   const maxSessions = args.maxSessions ?? 50;
-  const sessions = await readCachedParsedSessions();
-  if (sessions.length === 0) {
+  const allSessions = await readCachedParsedSessions();
+  if (allSessions.length === 0) {
     return JSON.stringify({
       status: "no_data",
       message: "No cached parsed sessions. Call scan_sessions first."
+    });
+  }
+  const sessions = args.includeProjects?.length ? allSessions.filter((s) => args.includeProjects.includes(s.projectName ?? "unknown")) : allSessions;
+  if (sessions.length === 0) {
+    return JSON.stringify({
+      status: "no_data",
+      message: "No sessions match the selected projects. Call scan_sessions to see available projects."
     });
   }
   clearAnalysisPending();
@@ -27066,14 +27087,12 @@ function wrapToolExecution(fn) {
     }
   };
 }
-server.tool(
-  definition4.name,
-  definition4.description,
-  {},
-  wrapToolExecution(() => execute({}))
-);
+server.tool(definition4.name, definition4.description, {
+  includeProjects: external_exports.array(external_exports.string()).optional().describe("Filter results to only these project names")
+}, wrapToolExecution(execute));
 server.tool(definition5.name, definition5.description, {
-  maxSessions: external_exports.number().optional().describe("Maximum number of recent sessions to analyze (default: 50)")
+  maxSessions: external_exports.number().optional().describe("Maximum number of recent sessions to analyze (default: 50)"),
+  includeProjects: external_exports.array(external_exports.string()).optional().describe("Filter to only these project names before applying maxSessions limit")
 }, wrapToolExecution(execute2));
 server.tool(
   definition6.name,
