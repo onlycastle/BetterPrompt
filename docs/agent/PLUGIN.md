@@ -6,7 +6,8 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 
 | File | Purpose |
 |------|---------|
-| `mcp/server.ts` | MCP entry point, stdio transport, registers 13 tools (10 local-first + 3 server-backed) |
+| `mcp/server-entry.ts` | Bootstrap entry point — installs native deps (better-sqlite3) then dynamically imports server.ts. Enables single-session install-to-result flow |
+| `mcp/server.ts` | MCP server, stdio transport, registers 13 tools (10 local-first + 3 server-backed) |
 | `mcp/tools/scan-sessions.ts` | Tool: scan Claude Code + Cursor session logs, return metadata |
 | `mcp/tools/extract-data.ts` | Tool: deterministic Phase 1 extraction + scoring |
 | `mcp/tools/save-domain-results.ts` | Tool: save domain analysis with Zod validation + quality gates |
@@ -47,6 +48,7 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `lib/scanner/sources/sqlite-loader.ts` | Shared SQLite loader for Cursor sources |
 | `lib/scanner/tool-mapping.ts` | Tool name normalization across sources |
 | `hooks/post-session-handler.ts` | `SessionEnd` hook, <1.5s, queues the next local analysis run |
+| `lib/native-deps.ts` | Shared `ensureNativeDeps()` — idempotent better-sqlite3 installer used by both server-entry and SessionStart hook |
 | `hooks/session-start-handler.ts` | `SessionStart` hook, first-run detection + queued `/bp-analyze` context |
 | `hooks/hooks.json` | Hook registration (`SessionStart` + `SessionEnd`) |
 | `skills/bp-setup/SKILL.md` | Guided onboarding wizard skill |
@@ -198,7 +200,7 @@ Discovery for Claude Code data dirs uses a waterfall: default `~/.claude/` path,
 cd packages/plugin
 npm run build     # tsc → dist/
 npm run dev       # tsc --watch
-npm start         # node dist/mcp/server.js
+npm start         # node dist/mcp/server-entry.js
 ```
 
 Output: `packages/plugin/dist/` (ESM, ES2022/NodeNext)
