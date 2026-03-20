@@ -32,7 +32,6 @@ import { verifyAuth } from '../lib/api-client.js';
 import { closeResultsDb } from '../lib/results-db.js';
 import { closeStageDb } from '../lib/stage-db.js';
 import { recoverStaleAnalysisState } from '../lib/debounce.js';
-import { ensureNativeDeps } from '../lib/native-deps.js';
 
 // Legacy server-backed tools
 import {
@@ -216,7 +215,6 @@ server.tool(insightsDef.name, insightsDef.description, {
 // ---------------------------------------------------------------------------
 
 async function main() {
-  ensureNativeDeps();
   recoverStaleAnalysisState({
     force: true,
     reason: 'Recovered stale running state on MCP server startup.',
