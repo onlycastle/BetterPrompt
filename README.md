@@ -29,11 +29,11 @@ The recommended way to use BetterPrompt. Zero configuration required.
 
 ### 1. Install the plugin
 
-In your terminal:
+In Claude Code:
 
-```bash
-claude plugin marketplace add onlycastle/BetterPrompt
-claude plugin install betterprompt@betterprompt
+```
+/plugin marketplace add onlycastle/BetterPrompt
+/plugin install betterprompt@betterprompt
 ```
 
 That's it. The MCP server, analysis skills, and post-session hooks are registered automatically.
@@ -71,23 +71,18 @@ If `autoAnalyze` is enabled, BetterPrompt can queue an analysis at session end a
 
 ### Uninstalling
 
-In your terminal:
+In Claude Code:
 
-```bash
-claude plugin uninstall betterprompt@betterprompt
+```
+/plugin uninstall betterprompt@betterprompt
+/plugin marketplace remove betterprompt
 ```
 
-To also remove local analysis data (results, reports, caches):
+To also remove local data and cache:
 
 ```bash
 rm -rf ~/.betterprompt
-```
-
-Optionally, clean up the marketplace registration:
-
-```bash
 rm -rf ~/.claude/plugins/cache/betterprompt
-rm -rf ~/.claude/plugins/marketplaces/betterprompt
 ```
 
 ## Optional: Dashboard Server
