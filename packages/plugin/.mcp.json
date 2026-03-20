@@ -2,7 +2,7 @@
   "mcpServers": {
     "betterprompt": {
       "command": "node",
-      "args": ["./dist/mcp/server.js"],
+      "args": ["./dist/mcp/server-entry.js"],
       "env": {
         "NODE_PATH": "${CLAUDE_PLUGIN_DATA}/node_modules"
       }

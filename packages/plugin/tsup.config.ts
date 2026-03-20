@@ -2,6 +2,7 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig({
   entry: {
+    'mcp/server-entry': 'mcp/server-entry.ts',
     'mcp/server': 'mcp/server.ts',
     'hooks/post-session-handler': 'hooks/post-session-handler.ts',
     'hooks/session-start-handler': 'hooks/session-start-handler.ts',
