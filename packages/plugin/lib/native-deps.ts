@@ -14,7 +14,6 @@ import { homedir } from 'node:os';
 
 export function ensureNativeDeps(opts?: { fatal?: boolean }): void {
   const pluginDataDir = process.env.CLAUDE_PLUGIN_DATA || join(homedir(), '.betterprompt');
-  if (!pluginDataDir) return;
 
   const marker = join(pluginDataDir, 'node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node');
   if (existsSync(marker)) return;

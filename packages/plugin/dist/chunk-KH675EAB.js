@@ -5,7 +5,6 @@ import { join } from "path";
 import { homedir } from "os";
 function ensureNativeDeps(opts) {
   const pluginDataDir = process.env.CLAUDE_PLUGIN_DATA || join(homedir(), ".betterprompt");
-  if (!pluginDataDir) return;
   const marker = join(pluginDataDir, "node_modules", "better-sqlite3", "build", "Release", "better_sqlite3.node");
   if (existsSync(marker)) return;
   try {
@@ -25,4 +24,4 @@ function ensureNativeDeps(opts) {
 export {
   ensureNativeDeps
 };
-//# sourceMappingURL=chunk-M3JIHQUB.js.map
+//# sourceMappingURL=chunk-KH675EAB.js.map
