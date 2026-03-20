@@ -116,7 +116,8 @@ See `docs/agent/DEPLOYMENT.md` for the current self-hosted runtime model and def
 > 5. Delete `~/.claude/plugins/marketplaces/betterprompt/`
 > 6. Clear any project-level `settings.local.json` with betterprompt entries
 > 7. Check for and remove any plugin state databases (`bp-results*`, `bp-stage*`)
-> 8. Validate all JSON files after edits (trailing comma issues are common)
+> 8. Delete `~/.betterprompt/prefs.json` to reset first-run onboarding state
+> 9. Validate all JSON files after edits (trailing comma issues are common)
 
 ## Documentation
 
