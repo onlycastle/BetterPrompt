@@ -7,7 +7,8 @@ import {
   markAnalysisPending,
   recoverStaleAnalysisState,
   shouldTriggerAnalysis
-} from "../chunk-UH4HUW7Y.js";
+} from "../chunk-P47QYDTU.js";
+import "../chunk-PR4QN5HX.js";
 
 // hooks/post-session-handler.ts
 import { readFileSync } from "fs";

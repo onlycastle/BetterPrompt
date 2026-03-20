@@ -3,9 +3,9 @@
   "version": "0.2.0",
   "description": "Claude Code plugin for BetterPrompt — local-first AI collaboration analysis powered by MCP tools and analysis skills",
   "type": "module",
-  "main": "./dist/mcp/server.js",
+  "main": "./dist/mcp/server-entry.js",
   "bin": {
-    "betterprompt-mcp": "./dist/mcp/server.js",
+    "betterprompt-mcp": "./dist/mcp/server-entry.js",
     "betterprompt-hook": "./dist/hooks/post-session-handler.js"
   },
   "files": [
@@ -17,7 +17,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "start": "node dist/mcp/server.js"
+    "start": "node dist/mcp/server-entry.js"
   },
   "keywords": [
     "claude-code",

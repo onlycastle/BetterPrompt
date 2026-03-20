@@ -11,7 +11,7 @@ import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 
-export function ensureNativeDeps(): void {
+export function ensureNativeDeps(opts?: { fatal?: boolean }): void {
   const pluginDataDir = process.env.CLAUDE_PLUGIN_DATA;
   if (!pluginDataDir) return;
 
@@ -24,6 +24,10 @@ export function ensureNativeDeps(): void {
       timeout: 60_000,
     });
   } catch (err) {
-    process.stderr.write(`[betterprompt] Failed to install better-sqlite3: ${err instanceof Error ? err.message : err}\n`);
+    const msg = `[betterprompt] Failed to install better-sqlite3: ${err instanceof Error ? err.message : err}`;
+    if (opts?.fatal) {
+      throw new Error(msg);
+    }
+    process.stderr.write(msg + '\n');
   }
 }

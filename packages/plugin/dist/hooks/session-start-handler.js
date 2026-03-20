@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 import {
+  ensureNativeDeps
+} from "../chunk-IEEHTH2R.js";
+import {
   buildFirstRunAdditionalContext,
   buildPendingAnalysisAdditionalContext
 } from "../chunk-ZDSGFUFB.js";
 import {
   getPluginDataDir2 as getPluginDataDir,
   isAnalysisPending
-} from "../chunk-UH4HUW7Y.js";
+} from "../chunk-P47QYDTU.js";
+import "../chunk-PR4QN5HX.js";
 
 // hooks/session-start-handler.ts
-import { readFileSync as readFileSync2, existsSync } from "fs";
-import { execFileSync } from "child_process";
-import { join as join2 } from "path";
+import { readFileSync as readFileSync2 } from "fs";
 import { fileURLToPath } from "url";
 
 // lib/prefs.ts
@@ -68,21 +70,6 @@ function handleSessionStartHook(input, deps = DEFAULT_DEPS) {
     };
   }
   return null;
-}
-function ensureNativeDeps() {
-  const pluginDataDir = process.env.CLAUDE_PLUGIN_DATA;
-  if (!pluginDataDir) return;
-  const marker = join2(pluginDataDir, "node_modules", "better-sqlite3", "build", "Release", "better_sqlite3.node");
-  if (existsSync(marker)) return;
-  try {
-    execFileSync("npm", ["install", "--prefix", pluginDataDir, "better-sqlite3@12.8.0"], {
-      stdio: "ignore",
-      timeout: 6e4
-    });
-  } catch (err) {
-    process.stderr.write(`[betterprompt] Failed to install better-sqlite3: ${err instanceof Error ? err.message : err}
-`);
-  }
 }
 function main() {
   ensureNativeDeps();

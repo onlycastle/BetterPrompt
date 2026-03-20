@@ -91,13 +91,13 @@ See [Quick Start](../../README.md#quick-start-plugin) in the README for installa
 ### Running the MCP Server Manually
 
 ```bash
-node packages/plugin/dist/mcp/server.js
+node packages/plugin/dist/mcp/server-entry.js
 ```
 
 The server accepts JSON-RPC over stdin/stdout. Use the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) to test tools interactively:
 
 ```bash
-npx @modelcontextprotocol/inspector node packages/plugin/dist/mcp/server.js
+npx @modelcontextprotocol/inspector node packages/plugin/dist/mcp/server-entry.js
 ```
 
 ## Local Data
