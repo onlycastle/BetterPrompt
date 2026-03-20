@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import {
   ensureNativeDeps
-} from "../chunk-T7MBAB73.js";
+} from "../chunk-IEEHTH2R.js";
 import "../chunk-PR4QN5HX.js";
 
 // mcp/server-entry.ts
-ensureNativeDeps();
+ensureNativeDeps({ fatal: true });
 await import("./server.js");
 //# sourceMappingURL=server-entry.js.map

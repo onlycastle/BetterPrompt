@@ -17,6 +17,6 @@
 
 import { ensureNativeDeps } from '../lib/native-deps.js';
 
-ensureNativeDeps();
+ensureNativeDeps({ fatal: true });
 
 await import('./server.js');
