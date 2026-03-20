@@ -15,7 +15,6 @@ No separate server. No Gemini API key. No data leaves your machine.
 | Tool | Session Source | Format |
 |------|---------------|--------|
 | Claude Code | `~/.claude/projects/` | JSONL |
-| Cursor | `~/.cursor/chats/` and Cursor composer storage | SQLite |
 
 ## Screenshots
 
@@ -150,7 +149,7 @@ Claude Code plugin with local-first analysis. Provides MCP tools for the full pi
 
 | Tool | Description |
 |------|-------------|
-| `scan_sessions` | Discover and cache supported local session logs from Claude Code and Cursor |
+| `scan_sessions` | Discover and cache supported local session logs from Claude Code |
 | `extract_data` | Run deterministic Phase 1 extraction (metrics, scores) |
 | `save_domain_results` | Store domain analysis results (called by analysis skills) |
 | `classify_developer_type` | Classify into the 5x3 type matrix |
