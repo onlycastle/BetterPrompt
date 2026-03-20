@@ -151,10 +151,10 @@ Session count: scans `~/.claude/projects/*/` for `.jsonl` files (filesystem only
 After `claude plugin install`, the MCP server isn't running yet (plugin lifecycle starts next session). The `/bp-setup` skill handles this with Step 0.5:
 
 ```
-install plugin → /bp-setup → Step 0.5: `claude mcp add -s user betterprompt` → MCP tools available → continue setup
+install plugin → /bp-setup → Step 0.5: `claude mcp add -s user -e NODE_PATH=... -e CLAUDE_PLUGIN_DATA=... betterprompt -- node <server-entry.js>` → MCP tools available → continue setup
 ```
 
-The `claude mcp add` command registers the server at user scope with `NODE_PATH` and `CLAUDE_PLUGIN_DATA` env vars pointing to `~/.betterprompt/`. On subsequent sessions, the plugin's `.mcp.json` handles server startup normally.
+The `claude mcp add` command registers the server at user scope with `NODE_PATH` and `CLAUDE_PLUGIN_DATA` env vars pointing to `~/.betterprompt/`. On subsequent sessions, the plugin's `.mcp.json` handles server startup normally — Claude Code deduplicates by server name, so the user-scoped entry and the plugin-managed `.mcp.json` entry do not conflict.
 
 ## Queued Auto-Analysis Flow
 
