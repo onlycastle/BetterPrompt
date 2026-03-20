@@ -37,6 +37,29 @@ your machine.
 This setup takes about 1 minute.
 ```
 
+### Step 0.5: Ensure MCP Server
+
+After a fresh plugin installation, the MCP server is not running yet in the current session. This step registers it so all BetterPrompt tools become available immediately.
+
+1. Run `claude mcp list` via Bash and check whether `betterprompt` appears in the output.
+2. If `betterprompt` is already listed, skip to Step 1.
+3. If NOT listed:
+   a. Find the plugin's server entry point — search for the file matching this glob pattern:
+      ```
+      ~/.claude/plugins/cache/betterprompt/betterprompt/*/dist/mcp/server-entry.js
+      ```
+   b. Create the data directory if it doesn't exist: `mkdir -p ~/.betterprompt`
+   c. Register the MCP server:
+      ```bash
+      claude mcp add -s user \
+        -e NODE_PATH="$HOME/.betterprompt/node_modules" \
+        -e CLAUDE_PLUGIN_DATA="$HOME/.betterprompt" \
+        betterprompt -- \
+        node "<absolute-path-from-step-a>"
+      ```
+   d. Tell the user: "MCP server registered. BetterPrompt tools are now available."
+4. If the server entry point cannot be found, inform the user and suggest reinstalling the plugin.
+
 ### Step 1: Verify Installation
 
 Call the `scan_sessions` MCP tool to confirm the plugin is working.
@@ -147,7 +170,8 @@ Use `AskUserQuestion` with these options:
 
 ## Important Notes
 
-- Never skip Step 1 (verification) -- this confirms the plugin works.
+- Never skip Step 0.5 (MCP server) or Step 1 (verification) -- these confirm the plugin works.
+- Step 0.5 makes install-then-setup possible in a single Claude Code session.
 - Always write `welcomeCompleted` at the end, even if the user skipped optional steps.
 - If any step fails, log the error but continue to the next step. Do not abort the entire wizard for a non-critical failure (Steps 2, 3 are non-critical).
 - The CLAUDE.md block uses HTML comment markers (`<!-- bp:START -->` / `<!-- bp:END -->`) so it can be cleanly replaced or removed later.
