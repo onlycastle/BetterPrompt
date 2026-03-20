@@ -66,7 +66,7 @@ describe('plugin session hooks', () => {
 
     const startup = handleSessionStartHook({ source: 'startup' });
     expect(startup?.hookSpecificOutput.hookEventName).toBe('SessionStart');
-    expect(startup?.hookSpecificOutput.additionalContext).toContain('/bp-analyze');
+    expect(startup?.hookSpecificOutput.additionalContext).toContain('bp analyze');
     expect(startup?.hookSpecificOutput.additionalContext).toContain('translation');
   });
 
@@ -82,25 +82,25 @@ describe('plugin session hooks', () => {
   it('injects first-run context when isFirstRun returns true', () => {
     const startup = handleSessionStartHook({ source: 'startup' }, {
       isFirstRun: () => true,
-      buildFirstRunAdditionalContext: () => 'first-run-context /bp-setup',
+      buildFirstRunAdditionalContext: () => 'first-run-context bp setup',
       isAnalysisPending: () => false,
       buildPendingAnalysisAdditionalContext: () => 'pending-context',
     });
 
     expect(startup?.hookSpecificOutput.hookEventName).toBe('SessionStart');
-    expect(startup?.hookSpecificOutput.additionalContext).toContain('/bp-setup');
+    expect(startup?.hookSpecificOutput.additionalContext).toContain('bp setup');
   });
 
   it('first-run takes priority over pending analysis', () => {
     const startup = handleSessionStartHook({ source: 'startup' }, {
       isFirstRun: () => true,
-      buildFirstRunAdditionalContext: () => 'first-run-context /bp-setup',
+      buildFirstRunAdditionalContext: () => 'first-run-context bp setup',
       isAnalysisPending: () => true,
-      buildPendingAnalysisAdditionalContext: () => 'pending-context /bp-analyze',
+      buildPendingAnalysisAdditionalContext: () => 'pending-context bp analyze',
     });
 
-    expect(startup?.hookSpecificOutput.additionalContext).toContain('/bp-setup');
-    expect(startup?.hookSpecificOutput.additionalContext).not.toContain('/bp-analyze');
+    expect(startup?.hookSpecificOutput.additionalContext).toContain('bp setup');
+    expect(startup?.hookSpecificOutput.additionalContext).not.toContain('bp analyze');
   });
 
   it('suppresses first-run injection for compact sessions', () => {
@@ -123,11 +123,11 @@ describe('plugin session hooks', () => {
       isFirstRun: () => false,
       buildFirstRunAdditionalContext: () => 'first-run-context',
       isAnalysisPending: () => true,
-      buildPendingAnalysisAdditionalContext: () => 'pending-context /bp-analyze',
+      buildPendingAnalysisAdditionalContext: () => 'pending-context bp analyze',
     });
 
-    expect(startup?.hookSpecificOutput.additionalContext).toContain('/bp-analyze');
-    expect(startup?.hookSpecificOutput.additionalContext).not.toContain('/bp-setup');
+    expect(startup?.hookSpecificOutput.additionalContext).toContain('bp analyze');
+    expect(startup?.hookSpecificOutput.additionalContext).not.toContain('bp setup');
   });
 
   it('returns null when neither first-run nor pending', () => {
