@@ -7,6 +7,8 @@
     "name": "BetterPrompt"
   },
   "repository": "https://github.com/onlycastle/BetterPrompt",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
   "configuration": {
     "serverUrl": {
       "type": "string",

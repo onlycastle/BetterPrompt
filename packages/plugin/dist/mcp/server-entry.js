@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   ensureNativeDeps
-} from "../chunk-IEEHTH2R.js";
+} from "../chunk-KH675EAB.js";
 import "../chunk-PR4QN5HX.js";
 
 // mcp/server-entry.ts
