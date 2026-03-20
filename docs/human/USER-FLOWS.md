@@ -83,10 +83,10 @@ The employee flow covers the individual contributor experience — running analy
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        ANALYSIS PIPELINE                             │
 │                                                                      │
-│   /bp-analyze                                                        │
+│   bp analyze                                                         │
 │        │                                                             │
-│        ├─ 1. scan_sessions — discovers local session logs            │
-│        ├─ 2. extract_data — deterministic Phase 1 extraction         │
+│        ├─ 1. scan_sessions — discovers local session logs (filterable by project) │
+│        ├─ 2. extract_data — deterministic Phase 1 extraction (respects project filter) │
 │        ├─ 3. save_domain_results — LLM analysis per domain          │
 │        ├─ 4. classify_developer_type — 5x3 type matrix              │
 │        ├─ 5. generate_report — HTML report on localhost:3456         │
@@ -107,7 +107,7 @@ The employee flow covers the individual contributor experience — running analy
 │  ┌─────────────────────────────────────────────────┐ │
 │  │  🔌 Use the plugin to analyze your sessions     │ │
 │  │                                                  │ │
-│  │  /bp-analyze                                     │ │
+│  │  bp analyze                                      │ │
 │  │                                                  │ │
 │  └─────────────────────────────────────────────────┘ │
 │                                                       │
