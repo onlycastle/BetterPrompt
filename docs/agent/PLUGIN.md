@@ -51,7 +51,7 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `lib/native-deps.ts` | Shared `ensureNativeDeps()` — idempotent better-sqlite3 installer used by both server-entry and SessionStart hook |
 | `hooks/session-start-handler.ts` | `SessionStart` hook, first-run detection + queued `/bp-analyze` context |
 | `hooks/hooks.json` | Hook registration (`SessionStart` + `SessionEnd`) |
-| `skills/bp-setup/SKILL.md` | Guided onboarding wizard skill |
+| `skills/bp-setup/SKILL.md` | Guided onboarding wizard skill (includes mid-session MCP registration via `claude mcp add`) |
 | `skills/bp-analyze/SKILL.md` | Full analysis pipeline orchestrator skill |
 | `.claude-plugin/plugin.json` | Plugin metadata + config schema |
 | `.mcp.json` | MCP server config (stdio transport) |
@@ -145,6 +145,16 @@ Evaluated in order by `shouldTriggerAnalysis(sessionDurationMs)`:
 | 4 | Threshold — enough new sessions | `≥ analyzeThreshold` (default 5) |
 
 Session count: scans `~/.claude/projects/*/` for `.jsonl` files (filesystem only, no content reading).
+
+## Single-Session Install Flow
+
+After `claude plugin install`, the MCP server isn't running yet (plugin lifecycle starts next session). The `/bp-setup` skill handles this with Step 0.5:
+
+```
+install plugin → /bp-setup → Step 0.5: `claude mcp add -s user betterprompt` → MCP tools available → continue setup
+```
+
+The `claude mcp add` command registers the server at user scope with `NODE_PATH` and `CLAUDE_PLUGIN_DATA` env vars pointing to `~/.betterprompt/`. On subsequent sessions, the plugin's `.mcp.json` handles server startup normally.
 
 ## Queued Auto-Analysis Flow
 
