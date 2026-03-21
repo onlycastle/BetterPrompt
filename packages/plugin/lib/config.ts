@@ -8,6 +8,7 @@
 
 import { join } from 'node:path';
 import { getPluginDataDir as resolvePluginDataDir } from './core/session-scanner.js';
+import { debug } from './logger.js';
 
 export interface PluginConfig {
   serverUrl: string;
@@ -38,6 +39,7 @@ export function getConfig(): PluginConfig {
     ) || DEFAULTS.analyzeThreshold,
   };
 
+  debug('config', 'resolved', { ...cachedConfig });
   return cachedConfig;
 }
 

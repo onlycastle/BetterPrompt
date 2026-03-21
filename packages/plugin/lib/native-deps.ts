@@ -17,23 +17,29 @@ import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { debug, info, error as logError } from './logger.js';
 
 export function ensureNativeDeps(opts?: { pluginRoot?: string; fatal?: boolean }): void {
   const installDir = opts?.pluginRoot ?? join(homedir(), '.betterprompt');
 
   const marker = join(installDir, 'node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node');
-  if (existsSync(marker)) return;
+  if (existsSync(marker)) {
+    debug('native-deps', 'marker found, skipping install', { installDir });
+    return;
+  }
 
+  info('native-deps', 'installing better-sqlite3', { installDir });
   try {
     execFileSync('npm', ['install', '--prefix', installDir, 'better-sqlite3@12.8.0'], {
       stdio: 'ignore',
       timeout: 60_000,
     });
+    info('native-deps', 'install succeeded');
   } catch (err) {
-    const msg = `[betterprompt] Failed to install better-sqlite3: ${err instanceof Error ? err.message : err}`;
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    logError('native-deps', 'install failed', { error: errorMsg });
     if (opts?.fatal) {
-      throw new Error(msg);
+      throw new Error(`[betterprompt] Failed to install better-sqlite3: ${errorMsg}`);
     }
-    process.stderr.write(msg + '\n');
   }
 }

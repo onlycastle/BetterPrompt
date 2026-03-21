@@ -14,6 +14,7 @@ import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { getConfig, getStateFilePath } from './config.js';
+import { debug } from './logger.js';
 
 const COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours
 const MIN_SESSION_DURATION_MS = 3 * 60 * 1000; // 3 minutes
@@ -141,6 +142,7 @@ export function recoverStaleAnalysisState(options?: {
     return state;
   }
 
+  debug('debounce', 'recovering stale running state', { reason: options?.reason ?? 'stale' });
   const recoveredState: PluginState = {
     ...state,
     analysisState: 'failed',
@@ -164,15 +166,15 @@ export function shouldTriggerAnalysis(sessionDurationMs: number): DebounceResult
 
   // Rule 4: Guard — no analysis already in progress
   if (state.analysisInProgress) {
+    debug('debounce', 'shouldTriggerAnalysis', { shouldAnalyze: false, reason: 'Analysis already in progress' });
     return { shouldAnalyze: false, reason: 'Analysis already in progress' };
   }
 
   // Rule 3: Duration — session must be ≥3 minutes
   if (sessionDurationMs > 0 && sessionDurationMs < MIN_SESSION_DURATION_MS) {
-    return {
-      shouldAnalyze: false,
-      reason: `Session too short (${Math.round(sessionDurationMs / 1000)}s < 3min)`,
-    };
+    const reason = `Session too short (${Math.round(sessionDurationMs / 1000)}s < 3min)`;
+    debug('debounce', 'shouldTriggerAnalysis', { shouldAnalyze: false, reason });
+    return { shouldAnalyze: false, reason };
   }
 
   // Rule 1: Cooldown — ≥4 hours since last analysis
@@ -180,10 +182,9 @@ export function shouldTriggerAnalysis(sessionDurationMs: number): DebounceResult
     const elapsed = Date.now() - new Date(state.lastAnalysisTimestamp).getTime();
     if (elapsed < COOLDOWN_MS) {
       const remainingMin = Math.round((COOLDOWN_MS - elapsed) / 60_000);
-      return {
-        shouldAnalyze: false,
-        reason: `Cooldown active (${remainingMin}min remaining)`,
-      };
+      const reason = `Cooldown active (${remainingMin}min remaining)`;
+      debug('debounce', 'shouldTriggerAnalysis', { shouldAnalyze: false, reason });
+      return { shouldAnalyze: false, reason };
     }
   }
 
@@ -191,22 +192,24 @@ export function shouldTriggerAnalysis(sessionDurationMs: number): DebounceResult
   const currentCount = countClaudeSessions();
   const newSessions = currentCount - state.lastAnalysisSessionCount;
   if (newSessions < config.analyzeThreshold) {
-    return {
-      shouldAnalyze: false,
-      reason: `Not enough new sessions (${newSessions}/${config.analyzeThreshold})`,
-    };
+    const reason = `Not enough new sessions (${newSessions}/${config.analyzeThreshold})`;
+    debug('debounce', 'shouldTriggerAnalysis', { shouldAnalyze: false, reason });
+    return { shouldAnalyze: false, reason };
   }
 
-  return {
+  const result: DebounceResult = {
     shouldAnalyze: true,
     reason: `${newSessions} new sessions, cooldown passed`,
   };
+  debug('debounce', 'shouldTriggerAnalysis', { shouldAnalyze: result.shouldAnalyze, reason: result.reason });
+  return result;
 }
 
 /**
  * Mark analysis as in-progress. Called when the queued local analysis starts.
  */
 export function markAnalysisStarted(): void {
+  debug('debounce', 'state transition: -> running');
   const state = readState();
   writeState({
     ...state,
@@ -220,6 +223,7 @@ export function markAnalysisStarted(): void {
  * Mark analysis as complete. Called after the local pipeline finishes successfully.
  */
 export function markAnalysisComplete(sessionCount?: number): void {
+  debug('debounce', 'state transition: -> complete');
   writeState({
     ...DEFAULT_STATE,
     lastAnalysisTimestamp: new Date().toISOString(),
@@ -232,12 +236,14 @@ export function markAnalysisComplete(sessionCount?: number): void {
  * Clear the in-progress flag. Called on failure or crash recovery.
  */
 export function markAnalysisFailed(error?: unknown): void {
+  const errorMsg = error instanceof Error ? error.message : (error ? String(error) : null);
+  debug('debounce', 'state transition: -> failed', { error: errorMsg ?? undefined });
   const state = readState();
   writeState({
     ...state,
     analysisState: 'failed',
     pendingSince: null,
-    lastError: error instanceof Error ? error.message : (error ? String(error) : null),
+    lastError: errorMsg,
   });
 }
 
@@ -246,6 +252,7 @@ export function markAnalysisFailed(error?: unknown): void {
  * Called by the post-session hook instead of spawning a background process.
  */
 export function markAnalysisPending(): void {
+  debug('debounce', 'state transition: -> pending');
   const state = readState();
   writeState({
     ...state,
