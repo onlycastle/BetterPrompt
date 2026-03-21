@@ -22,9 +22,8 @@ export function debug(tag: string, msg: string, data?: Record<string, unknown>):
   write(tag, msg, data);
 }
 
-/** Info-level log — no-op when BETTERPROMPT_DEBUG is not set. */
+/** Info-level log — always emits (lifecycle events, install status). */
 export function info(tag: string, msg: string, data?: Record<string, unknown>): void {
-  if (!enabled) return;
   write(tag, msg, data);
 }
 
