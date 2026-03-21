@@ -39,9 +39,9 @@
 }
 
 .emoji {
-  font-size: 48px;
+  font-size: clamp(52px, 8vw, 68px);
   line-height: 1;
-  animation: emojiFloat 8s ease-in-out infinite;
+  animation: emojiFloat 12s ease-in-out infinite;
 }
 
 @keyframes emojiFloat {
@@ -54,9 +54,9 @@
 }
 
 .typeName {
-  font-family: var(--font-interface, var(--font-primary));
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-bold);
+  font-family: var(--font-headline);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-regular);
   color: var(--ink-primary);
   margin: 0 0 var(--space-xs) 0;
   letter-spacing: -0.02em;
@@ -64,9 +64,19 @@
   overflow-wrap: anywhere;
 }
 
+.typeName::after {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 2px;
+  background: var(--sketch-cyan);
+  margin-top: var(--space-sm);
+}
+
 .tagline {
-  font-family: var(--font-interface, var(--font-primary));
-  font-size: var(--text-md);
+  font-family: var(--font-headline);
+  font-size: var(--text-lg);
+  font-style: italic;
   color: var(--text-secondary);
   margin: 0;
   word-break: keep-all;
@@ -100,6 +110,7 @@
   padding: var(--space-xs) var(--space-sm);
   border-radius: var(--radius-sm);
   border: 1.5px solid var(--sketch-green);
+  box-shadow: var(--shadow-sketch-sm);
 }
 
 .distributionSection {
@@ -233,12 +244,16 @@
 }
 
 .container[data-immersive] .typeName {
+  font-family: var(--font-headline);
+  font-weight: var(--weight-regular);
   font-size: clamp(2.5rem, 6vw, 4rem);
   letter-spacing: -0.02em;
   line-height: 1.12;
 }
 
 .container[data-immersive] .tagline {
+  font-family: var(--font-headline);
+  font-style: italic;
   font-size: var(--text-lg);
   max-width: 480px;
 }
@@ -279,7 +294,7 @@
   }
 
   .typeName {
-    font-size: var(--text-xl);
+    font-size: var(--text-2xl);
   }
 
   .distName {

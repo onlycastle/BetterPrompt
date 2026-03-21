@@ -40,12 +40,11 @@
 }
 
 .title {
-  font-family: var(--font-mono);
+  font-family: var(--font-headline);
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
   color: var(--ink-primary);
   margin: 0;
-  letter-spacing: var(--tracking-tight);
 }
 
 .dateRange {
@@ -88,17 +87,18 @@
   background: var(--surface-2);
   border: 1.5px solid var(--border-default);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sketch-sm);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .statCard:hover {
   border-color: var(--sketch-cyan);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-sketch-hover);
 }
 
 .statValue {
   font-family: var(--font-mono);
-  font-size: var(--text-2xl);
+  font-size: var(--text-3xl);
   font-weight: var(--weight-bold);
   color: var(--ink-primary);
   line-height: 1;
@@ -124,11 +124,19 @@
 .deltaUp {
   composes: delta;
   color: var(--sketch-green);
+  font-size: 13px;
+  background: var(--sketch-green-soft);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
 }
 
 .deltaDown {
   composes: delta;
   color: var(--sketch-red, #ef4444);
+  font-size: 13px;
+  background: var(--sketch-red-soft, rgba(239, 68, 68, 0.1));
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
 }
 
 .deltaFlat {
@@ -141,8 +149,9 @@
    ============================================================================ */
 
 .narrative {
-  font-family: var(--font-primary);
+  font-family: var(--font-headline);
   font-size: var(--text-sm);
+  font-style: italic;
   line-height: var(--leading-relaxed);
   color: var(--ink-secondary);
   padding: var(--space-md) var(--space-lg);
@@ -186,7 +195,7 @@
 
 .barFill {
   height: 100%;
-  background: linear-gradient(90deg, var(--sketch-cyan), var(--sketch-green));
+  background: var(--sketch-cyan);
   border-radius: var(--radius-sm);
   transition: width var(--transition-normal);
 }

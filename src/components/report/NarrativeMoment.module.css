@@ -65,9 +65,9 @@
 
 /* Title */
 .title {
-  font-family: var(--font-display);
+  font-family: var(--font-headline);
   font-size: var(--text-5xl);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-regular);
   color: var(--ink-primary);
   line-height: var(--leading-tight);
   letter-spacing: var(--tracking-tight);
@@ -75,17 +75,28 @@
   transform: translateY(calc((0.5 - var(--scroll-progress, 0.5)) * -10px));
 }
 
+.title::before {
+  content: '';
+  display: block;
+  width: 60px;
+  height: 1px;
+  background: var(--ink-light);
+  margin: 0 auto var(--space-md);
+}
+
 .dramatic {
   color: var(--sketch-pink);
+  text-shadow: 0 0 40px rgba(255, 107, 157, 0.15);
 }
 
 /* Subtitle */
 .subtitle {
-  font-family: var(--font-body);
+  font-family: var(--font-headline);
   font-size: var(--text-lg);
   color: var(--ink-muted);
   margin-top: 16px;
   font-weight: var(--weight-light);
+  font-style: italic;
   line-height: var(--leading-relaxed);
   transform: translateY(calc((0.5 - var(--scroll-progress, 0.5)) * 10px));
 }
@@ -135,6 +146,8 @@
 .immersive .title {
   --t-enter: clamp(0, calc((var(--p) - 0.08) / 0.12), 1);
 
+  font-family: var(--font-headline);
+  font-weight: var(--weight-regular);
   font-size: clamp(3rem, 7.5vw, 5.4rem);
   letter-spacing: -0.028em;
 
@@ -160,6 +173,8 @@
 .immersive .subtitle {
   --s-enter: clamp(0, calc((var(--p) - 0.16) / 0.12), 1);
 
+  font-family: var(--font-headline);
+  font-style: italic;
   font-size: clamp(1.05rem, 2.2vw, 1.35rem);
   max-width: 560px;
   margin-left: auto;
