@@ -32,6 +32,7 @@ import { verifyAuth } from '../lib/api-client.js';
 import { closeResultsDb } from '../lib/results-db.js';
 import { closeStageDb } from '../lib/stage-db.js';
 import { recoverStaleAnalysisState } from '../lib/debounce.js';
+import { debug, info, error as logError } from '../lib/logger.js';
 
 // Legacy server-backed tools
 import {
@@ -120,20 +121,24 @@ const server = new McpServer({
   version: '0.2.0',
 });
 
-/** Wrap a tool handler with consistent error formatting */
+/** Wrap a tool handler with consistent error formatting and debug logging */
 function wrapToolExecution<T>(
+  toolName: string,
   fn: (args: T) => Promise<string>,
 ): (args: T) => Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }> {
   return async (args: T) => {
+    const start = Date.now();
+    const argRecord = args as Record<string, unknown>;
+    debug('tool', `${toolName} called`, Object.keys(argRecord).length > 0 ? argRecord : undefined);
     try {
       const result = await fn(args);
+      debug('tool', `${toolName} completed`, { durationMs: Date.now() - start });
       return { content: [{ type: 'text' as const, text: result }] };
-    } catch (error) {
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      logError('tool', `${toolName} failed`, { durationMs: Date.now() - start, error: errorMsg });
       return {
-        content: [{
-          type: 'text' as const,
-          text: JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-        }],
+        content: [{ type: 'text' as const, text: JSON.stringify({ error: errorMsg }) }],
         isError: true,
       };
     }
@@ -146,48 +151,48 @@ function wrapToolExecution<T>(
 
 server.tool(scanDef.name, scanDef.description, {
   includeProjects: z.array(z.string()).optional().describe('Filter results to only these project names'),
-}, wrapToolExecution(executeScan));
+}, wrapToolExecution(scanDef.name, executeScan));
 
 server.tool(extractDef.name, extractDef.description, {
   maxSessions: z.number().optional().describe('Maximum number of recent sessions to analyze (default: 50)'),
   includeProjects: z.array(z.string()).optional().describe('Filter to only these project names before applying maxSessions limit'),
-}, wrapToolExecution(executeExtract));
+}, wrapToolExecution(extractDef.name, executeExtract));
 
 server.tool(saveDomainDef.name, saveDomainDef.description, DomainResultInputSchema.shape,
-  wrapToolExecution(executeSaveDomain));
+  wrapToolExecution(saveDomainDef.name, executeSaveDomain));
 
 server.tool(getDomainResultsDef.name, getDomainResultsDef.description, GetDomainResultsInputSchema.shape,
-  wrapToolExecution(executeGetDomainResults));
+  wrapToolExecution(getDomainResultsDef.name, executeGetDomainResults));
 
 server.tool(classifyDef.name, classifyDef.description, {},
-  wrapToolExecution(() => executeClassify({})));
+  wrapToolExecution(classifyDef.name, () => executeClassify({})));
 
 server.tool(reportDef.name, reportDef.description, {
   port: z.number().optional().describe('Port for the report server (default: 3456)'),
   openBrowser: z.boolean().optional().describe('Auto-open report in browser (default: true)'),
   allowIncomplete: z.boolean().optional().describe('Override required-stage gating and generate a report anyway'),
-}, wrapToolExecution(executeReport));
+}, wrapToolExecution(reportDef.name, executeReport));
 
 server.tool(syncDef.name, syncDef.description, {
   serverUrl: z.string().optional().describe('Override the configured BetterPrompt server URL for this sync call'),
-}, wrapToolExecution(executeSync));
+}, wrapToolExecution(syncDef.name, executeSync));
 
 server.tool(stageDef.name, stageDef.description, StageOutputInputSchema.shape,
-  wrapToolExecution(executeStage));
+  wrapToolExecution(stageDef.name, executeStage));
 
 server.tool(getStageOutputDef.name, getStageOutputDef.description, {
   stage: z.string().optional().describe('Stage name to retrieve (omit for all stages)'),
-}, wrapToolExecution(executeGetStageOutput));
+}, wrapToolExecution(getStageOutputDef.name, executeGetStageOutput));
 
 server.tool(getPromptContextDef.name, getPromptContextDef.description, GetPromptContextInputSchema.shape,
-  wrapToolExecution(executeGetPromptContext));
+  wrapToolExecution(getPromptContextDef.name, executeGetPromptContext));
 
 // =========================================================================
 // SERVER-BACKED TOOLS (backward compatible)
 // =========================================================================
 
 server.tool(profileDef.name, profileDef.description, {},
-  wrapToolExecution(async () => {
+  wrapToolExecution(profileDef.name, async () => {
     const userId = await getUserId();
     const summary = await getSummaryWithCache(userId);
     return formatProfile(summary);
@@ -197,7 +202,7 @@ server.tool(growthDef.name, growthDef.description, {
   domain: z.enum(['thinkingQuality', 'communicationPatterns', 'learningBehavior', 'contextEfficiency', 'sessionOutcome'])
     .optional()
     .describe('Filter by domain key'),
-}, wrapToolExecution(async (args) => {
+}, wrapToolExecution(growthDef.name, async (args) => {
   const userId = await getUserId();
   const summary = await getSummaryWithCache(userId);
   return formatGrowth(summary, args);
@@ -206,7 +211,7 @@ server.tool(growthDef.name, growthDef.description, {
 server.tool(insightsDef.name, insightsDef.description, {
   category: z.enum(['strengths', 'anti_patterns', 'kpt']).optional().default('kpt')
     .describe('Category of insights: "strengths", "anti_patterns", or "kpt" (default)'),
-}, wrapToolExecution(async (args) => {
+}, wrapToolExecution(insightsDef.name, async (args) => {
   const userId = await getUserId();
   const summary = await getSummaryWithCache(userId);
   return formatInsights(summary, args);
@@ -217,21 +222,24 @@ server.tool(insightsDef.name, insightsDef.description, {
 // ---------------------------------------------------------------------------
 
 async function main() {
+  info('server', 'starting');
   recoverStaleAnalysisState({
     force: true,
     reason: 'Recovered stale running state on MCP server startup.',
   });
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  info('server', 'connected');
 }
 
-main().catch((error) => {
-  console.error('MCP server failed to start:', error);
+main().catch((err) => {
+  logError('server', 'failed to start', { error: err instanceof Error ? err.message : String(err) });
   process.exit(1);
 });
 
 // Clean up on shutdown
 function cleanup() {
+  info('server', 'shutting down');
   closeCache();
   closeResultsDb();
   closeStageDb();

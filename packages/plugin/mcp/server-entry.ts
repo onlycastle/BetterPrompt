@@ -22,9 +22,12 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ensureNativeDeps } from '../lib/native-deps.js';
+import { info } from '../lib/logger.js';
 
 const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
+info('bootstrap', 'ensuring native deps');
 ensureNativeDeps({ pluginRoot, fatal: true });
+info('bootstrap', 'native deps ready, loading server');
 
 await import('./server.js');
