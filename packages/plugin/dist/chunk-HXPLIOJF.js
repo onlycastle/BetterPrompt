@@ -34,10 +34,32 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
+// lib/logger.ts
+var enabled = process.env.BETTERPROMPT_DEBUG === "1";
+function write(tag, msg, data) {
+  const suffix = data ? ` ${JSON.stringify(data)}` : "";
+  process.stderr.write(`[bp:${tag}] ${msg}${suffix}
+`);
+}
+function debug(tag, msg, data) {
+  if (!enabled) return;
+  write(tag, msg, data);
+}
+function info(tag, msg, data) {
+  if (!enabled) return;
+  write(tag, msg, data);
+}
+function error(tag, msg, data) {
+  write(tag, msg, data);
+}
+
 export {
   __require,
   __commonJS,
   __export,
-  __toESM
+  __toESM,
+  debug,
+  info,
+  error
 };
-//# sourceMappingURL=chunk-PR4QN5HX.js.map
+//# sourceMappingURL=chunk-HXPLIOJF.js.map

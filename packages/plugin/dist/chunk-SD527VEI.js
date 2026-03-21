@@ -1,6 +1,7 @@
 import {
-  __export
-} from "./chunk-PR4QN5HX.js";
+  __export,
+  debug
+} from "./chunk-HXPLIOJF.js";
 
 // ../../node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -15496,6 +15497,7 @@ function getConfig() {
       10
     ) || DEFAULTS.analyzeThreshold
   };
+  debug("config", "resolved", { ...cachedConfig });
   return cachedConfig;
 }
 function getPluginDataDir2() {
@@ -15591,6 +15593,7 @@ function recoverStaleAnalysisState(options) {
   if (!isStale) {
     return state;
   }
+  debug("debounce", "recovering stale running state", { reason: options?.reason ?? "stale" });
   const recoveredState = {
     ...state,
     analysisState: "failed",
@@ -15604,38 +15607,39 @@ function shouldTriggerAnalysis(sessionDurationMs) {
   const state = recoverStaleAnalysisState();
   const config2 = getConfig();
   if (state.analysisInProgress) {
+    debug("debounce", "shouldTriggerAnalysis", { shouldAnalyze: false, reason: "Analysis already in progress" });
     return { shouldAnalyze: false, reason: "Analysis already in progress" };
   }
   if (sessionDurationMs > 0 && sessionDurationMs < MIN_SESSION_DURATION_MS) {
-    return {
-      shouldAnalyze: false,
-      reason: `Session too short (${Math.round(sessionDurationMs / 1e3)}s < 3min)`
-    };
+    const reason = `Session too short (${Math.round(sessionDurationMs / 1e3)}s < 3min)`;
+    debug("debounce", "shouldTriggerAnalysis", { shouldAnalyze: false, reason });
+    return { shouldAnalyze: false, reason };
   }
   if (state.lastAnalysisTimestamp) {
     const elapsed = Date.now() - new Date(state.lastAnalysisTimestamp).getTime();
     if (elapsed < COOLDOWN_MS) {
       const remainingMin = Math.round((COOLDOWN_MS - elapsed) / 6e4);
-      return {
-        shouldAnalyze: false,
-        reason: `Cooldown active (${remainingMin}min remaining)`
-      };
+      const reason = `Cooldown active (${remainingMin}min remaining)`;
+      debug("debounce", "shouldTriggerAnalysis", { shouldAnalyze: false, reason });
+      return { shouldAnalyze: false, reason };
     }
   }
   const currentCount = countClaudeSessions();
   const newSessions = currentCount - state.lastAnalysisSessionCount;
   if (newSessions < config2.analyzeThreshold) {
-    return {
-      shouldAnalyze: false,
-      reason: `Not enough new sessions (${newSessions}/${config2.analyzeThreshold})`
-    };
+    const reason = `Not enough new sessions (${newSessions}/${config2.analyzeThreshold})`;
+    debug("debounce", "shouldTriggerAnalysis", { shouldAnalyze: false, reason });
+    return { shouldAnalyze: false, reason };
   }
-  return {
+  const result = {
     shouldAnalyze: true,
     reason: `${newSessions} new sessions, cooldown passed`
   };
+  debug("debounce", "shouldTriggerAnalysis", { shouldAnalyze: result.shouldAnalyze, reason: result.reason });
+  return result;
 }
 function markAnalysisStarted() {
+  debug("debounce", "state transition: -> running");
   const state = readState();
   writeState({
     ...state,
@@ -15645,6 +15649,7 @@ function markAnalysisStarted() {
   });
 }
 function markAnalysisComplete(sessionCount) {
+  debug("debounce", "state transition: -> complete");
   writeState({
     ...DEFAULT_STATE,
     lastAnalysisTimestamp: (/* @__PURE__ */ new Date()).toISOString(),
@@ -15653,15 +15658,18 @@ function markAnalysisComplete(sessionCount) {
   });
 }
 function markAnalysisFailed(error48) {
+  const errorMsg = error48 instanceof Error ? error48.message : error48 ? String(error48) : null;
+  debug("debounce", "state transition: -> failed", { error: errorMsg ?? void 0 });
   const state = readState();
   writeState({
     ...state,
     analysisState: "failed",
     pendingSince: null,
-    lastError: error48 instanceof Error ? error48.message : error48 ? String(error48) : null
+    lastError: errorMsg
   });
 }
 function markAnalysisPending() {
+  debug("debounce", "state transition: -> pending");
   const state = readState();
   writeState({
     ...state,
@@ -15742,4 +15750,4 @@ export {
   isAnalysisPending,
   clearAnalysisPending
 };
-//# sourceMappingURL=chunk-P47QYDTU.js.map
+//# sourceMappingURL=chunk-SD527VEI.js.map

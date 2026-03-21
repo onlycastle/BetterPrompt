@@ -7,8 +7,10 @@ import {
   markAnalysisPending,
   recoverStaleAnalysisState,
   shouldTriggerAnalysis
-} from "../chunk-P47QYDTU.js";
-import "../chunk-PR4QN5HX.js";
+} from "../chunk-SD527VEI.js";
+import {
+  debug
+} from "../chunk-HXPLIOJF.js";
 
 // hooks/post-session-handler.ts
 import { readFileSync } from "fs";
@@ -32,8 +34,10 @@ function resolveSessionDurationMs(hookInput, env, estimateDuration = estimateSes
   return Number.parseInt(env.CLAUDE_SESSION_DURATION_MS ?? "0", 10) || (hookInput.transcript_path ? estimateDuration(hookInput.transcript_path) : 0);
 }
 function handleSessionEndHook(hookInput, deps = DEFAULT_DEPS, env = process.env) {
+  debug("hook", "session-end");
   const config = deps.getConfig();
   if (!config.autoAnalyze) {
+    debug("hook", "session-end: auto-analyze disabled");
     return {
       queued: false,
       reason: "Auto-analysis disabled",
@@ -51,6 +55,7 @@ function handleSessionEndHook(hookInput, deps = DEFAULT_DEPS, env = process.env)
   );
   const result = deps.shouldTriggerAnalysis(durationMs);
   if (!result.shouldAnalyze) {
+    debug("hook", "session-end: analysis skipped", { reason: result.reason, durationMs });
     return {
       queued: false,
       reason: result.reason,
@@ -58,6 +63,7 @@ function handleSessionEndHook(hookInput, deps = DEFAULT_DEPS, env = process.env)
     };
   }
   deps.markAnalysisPending();
+  debug("hook", "session-end: analysis queued", { reason: result.reason, durationMs });
   return {
     queued: true,
     reason: result.reason,
