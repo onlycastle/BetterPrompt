@@ -2,7 +2,7 @@ import {
   debug,
   error,
   info
-} from "./chunk-HXPLIOJF.js";
+} from "./chunk-QCP6GYGV.js";
 
 // lib/native-deps.ts
 import { existsSync } from "fs";
@@ -35,4 +35,4 @@ function ensureNativeDeps(opts) {
 export {
   ensureNativeDeps
 };
-//# sourceMappingURL=chunk-OVK5UFIL.js.map
+//# sourceMappingURL=chunk-KNCLT3SU.js.map

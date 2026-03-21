@@ -46,7 +46,6 @@ function debug(tag, msg, data) {
   write(tag, msg, data);
 }
 function info(tag, msg, data) {
-  if (!enabled) return;
   write(tag, msg, data);
 }
 function error(tag, msg, data) {
@@ -62,4 +61,4 @@ export {
   info,
   error
 };
-//# sourceMappingURL=chunk-HXPLIOJF.js.map
+//# sourceMappingURL=chunk-QCP6GYGV.js.map

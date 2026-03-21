@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   ensureNativeDeps
-} from "../chunk-OVK5UFIL.js";
+} from "../chunk-KNCLT3SU.js";
 import {
   buildFirstRunAdditionalContext,
   buildPendingAnalysisAdditionalContext
@@ -9,10 +9,10 @@ import {
 import {
   getPluginDataDir2 as getPluginDataDir,
   isAnalysisPending
-} from "../chunk-SD527VEI.js";
+} from "../chunk-AZMXAWYX.js";
 import {
   debug
-} from "../chunk-HXPLIOJF.js";
+} from "../chunk-QCP6GYGV.js";
 
 // hooks/session-start-handler.ts
 import { readFileSync as readFileSync2 } from "fs";

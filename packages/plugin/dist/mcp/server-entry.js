@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import {
   ensureNativeDeps
-} from "../chunk-OVK5UFIL.js";
+} from "../chunk-KNCLT3SU.js";
 import {
   info
-} from "../chunk-HXPLIOJF.js";
+} from "../chunk-QCP6GYGV.js";
 
 // mcp/server-entry.ts
 import { dirname, join } from "path";
