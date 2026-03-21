@@ -177,6 +177,14 @@ Call `save_stage_output` with the following arguments:
 - If `totalInputTokens` or `totalOutputTokens` is missing from a session, treat them as 0 for token calculations.
 - If all sessions fall outside the 14-day window, use the zero-sessions edge case path.
 
+## Progress Reporting
+
+Print a brief `[bp]` status line at each key step:
+1. After loading data: `"[bp] Loaded data for weekly insights"`
+2. Before processing: `"[bp] Generating weekly insights..."`
+3. Before saving: `"[bp] Saving weekly insights..."`
+4. On completion: `"[bp] weekly-insights complete."`
+
 ## Quality Checklist
 
 - [ ] Loaded weekly-insights context via `get_prompt_context`

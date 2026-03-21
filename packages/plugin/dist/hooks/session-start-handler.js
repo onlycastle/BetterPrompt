@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   ensureNativeDeps
-} from "../chunk-N7IIUGRQ.js";
+} from "../chunk-KNCLT3SU.js";
 import {
   buildFirstRunAdditionalContext,
   buildPendingAnalysisAdditionalContext
@@ -9,8 +9,10 @@ import {
 import {
   getPluginDataDir2 as getPluginDataDir,
   isAnalysisPending
-} from "../chunk-P47QYDTU.js";
-import "../chunk-PR4QN5HX.js";
+} from "../chunk-AZMXAWYX.js";
+import {
+  debug
+} from "../chunk-QCP6GYGV.js";
 
 // hooks/session-start-handler.ts
 import { readFileSync as readFileSync2 } from "fs";
@@ -51,10 +53,13 @@ function readHookInput(raw) {
   }
 }
 function handleSessionStartHook(input, deps = DEFAULT_DEPS) {
+  debug("hook", "session-start", { source: input.source });
   if (input.source === "compact") {
+    debug("hook", "session-start: compact source, skipping");
     return null;
   }
   if (deps.isFirstRun()) {
+    debug("hook", "session-start: first run detected");
     return {
       hookSpecificOutput: {
         hookEventName: "SessionStart",
@@ -63,6 +68,7 @@ function handleSessionStartHook(input, deps = DEFAULT_DEPS) {
     };
   }
   if (deps.isAnalysisPending()) {
+    debug("hook", "session-start: pending analysis detected");
     return {
       hookSpecificOutput: {
         hookEventName: "SessionStart",
@@ -70,6 +76,7 @@ function handleSessionStartHook(input, deps = DEFAULT_DEPS) {
       }
     };
   }
+  debug("hook", "session-start: no action needed");
   return null;
 }
 function main() {

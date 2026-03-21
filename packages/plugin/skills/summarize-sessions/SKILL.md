@@ -89,6 +89,14 @@ Every session in Phase 1 output MUST have a corresponding entry in the summaries
 - If a session has no utterances at all, still include it with the empty session summary text described above.
 - Never silently drop sessions from the output. The count of summaries must equal the count of sessions in Phase 1 data.
 
+## Progress Reporting
+
+Print a brief `[bp]` status line at each key step:
+1. After loading data: `"[bp] Loaded N sessions for summarization"`
+2. Before processing: `"[bp] Summarizing sessions..."`
+3. Before saving: `"[bp] Saving session summaries..."`
+4. On completion: `"[bp] session-summaries complete."`
+
 ## Quality Checklist
 
 - [ ] Loaded session summarization context via `get_prompt_context`

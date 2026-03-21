@@ -217,6 +217,14 @@ Analyze builder behavior OBJECTIVELY, not optimistically.
 - Communication patterns should have SUBSTANTIAL examples (not "ok" or "thanks").
 - Prefer identifying 5-8 high-quality communication patterns over 12 weak ones.
 
+## Progress Reporting
+
+Print a brief `[bp]` status line at each key step:
+1. After loading context: `"[bp] Loaded communication context (N sessions, M utterances)"`
+2. Before analysis: `"[bp] Analyzing communication patterns..."`
+3. Before saving: `"[bp] Saving communication results (score: X/100)..."`
+4. On completion: `"[bp] communication complete."`
+
 ## Quality Checklist
 
 - [ ] Loaded communication prompt context via `get_prompt_context`

@@ -14,6 +14,7 @@ import { isAnalysisPending } from '../lib/debounce.js';
 import { buildPendingAnalysisAdditionalContext, buildFirstRunAdditionalContext } from '../lib/hook-utils.js';
 import { isFirstRun } from '../lib/prefs.js';
 import { ensureNativeDeps } from '../lib/native-deps.js';
+import { debug } from '../lib/logger.js';
 
 export interface SessionStartHookInput {
   source?: 'startup' | 'resume' | 'clear' | 'compact';
@@ -53,11 +54,15 @@ export function handleSessionStartHook(
   input: SessionStartHookInput,
   deps: SessionStartHookDeps = DEFAULT_DEPS,
 ): SessionStartHookOutput | null {
+  debug('hook', 'session-start', { source: input.source });
+
   if (input.source === 'compact') {
+    debug('hook', 'session-start: compact source, skipping');
     return null;
   }
 
   if (deps.isFirstRun()) {
+    debug('hook', 'session-start: first run detected');
     return {
       hookSpecificOutput: {
         hookEventName: 'SessionStart',
@@ -67,6 +72,7 @@ export function handleSessionStartHook(
   }
 
   if (deps.isAnalysisPending()) {
+    debug('hook', 'session-start: pending analysis detected');
     return {
       hookSpecificOutput: {
         hookEventName: 'SessionStart',
@@ -75,6 +81,7 @@ export function handleSessionStartHook(
     };
   }
 
+  debug('hook', 'session-start: no action needed');
   return null;
 }
 

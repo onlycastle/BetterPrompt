@@ -28,6 +28,7 @@ import {
   shouldTriggerAnalysis,
 } from '../lib/debounce.js';
 import { estimateSessionDurationMsFromTranscript } from '../lib/hook-utils.js';
+import { debug } from '../lib/logger.js';
 
 export interface SessionEndHookInput {
   transcript_path?: string;
@@ -78,10 +79,12 @@ export function handleSessionEndHook(
   deps: SessionEndHookDeps = DEFAULT_DEPS,
   env: NodeJS.ProcessEnv = process.env,
 ): SessionEndHookResult {
+  debug('hook', 'session-end');
   const config = deps.getConfig();
 
   // Skip if auto-analyze is disabled
   if (!config.autoAnalyze) {
+    debug('hook', 'session-end: auto-analyze disabled');
     return {
       queued: false,
       reason: 'Auto-analysis disabled',
@@ -104,6 +107,7 @@ export function handleSessionEndHook(
   const result = deps.shouldTriggerAnalysis(durationMs);
 
   if (!result.shouldAnalyze) {
+    debug('hook', 'session-end: analysis skipped', { reason: result.reason, durationMs });
     return {
       queued: false,
       reason: result.reason,
@@ -113,6 +117,7 @@ export function handleSessionEndHook(
 
   // Mark as pending for the next Claude Code session to pick up
   deps.markAnalysisPending();
+  debug('hook', 'session-end: analysis queued', { reason: result.reason, durationMs });
 
   return {
     queued: true,
