@@ -14,7 +14,7 @@
    ============================================================================ */
 
 .container {
-  margin-top: var(--space-md);
+  margin-top: var(--space-sm);
   padding-left: var(--space-md);
   border-left: 2px solid var(--ink-light);
 }
@@ -178,7 +178,7 @@
 
 .expandedContent {
   margin-top: var(--space-xs);
-  margin-left: calc(12px + var(--space-sm)); /* Align with quote text */
+  margin-left: var(--space-sm);
   padding: var(--space-md);
   background: var(--surface-1);
   border: 1px solid var(--sketch-blue);
@@ -239,7 +239,7 @@
 .metadata {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-md);
+  gap: var(--space-sm);
   padding-top: var(--space-sm);
   border-top: 1px dashed var(--ink-light);
 }

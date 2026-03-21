@@ -68,6 +68,24 @@ If `autoAnalyze` is enabled, BetterPrompt can queue an analysis at session end a
 | `classify type` | Classify your developer type into the 5x3 matrix with narrative |
 | `translate report` | Translate report output for non-English sessions |
 
+### Troubleshooting
+
+If the plugin isn't working, run the verification script:
+
+```bash
+bash scripts/verify-plugin.sh
+```
+
+This checks all 8 components (build artifacts, native dependencies, MCP config, plugin registration, server startup, session files) and reports what's broken with fix instructions.
+
+**Common issues:**
+
+| Problem | Fix |
+|---------|-----|
+| `better-sqlite3` won't compile | Install build tools: `xcode-select --install` (macOS) or `sudo apt install build-essential python3` (Linux) |
+| MCP server not starting | Restart Claude Code after plugin install |
+| Rate limits during analysis | Reduce scope: select fewer projects in `bp setup`, or run analysis during off-peak hours |
+
 ### Uninstalling
 
 In Claude Code:

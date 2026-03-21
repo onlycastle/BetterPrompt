@@ -12,7 +12,7 @@
 }
 
 .sectionTitle {
-  font-family: var(--font-interface, var(--font-primary));
+  font-family: var(--font-headline);
   font-size: clamp(1.05rem, 1.4vw, 1.2rem);
   font-weight: var(--weight-semibold);
   color: var(--ink-primary);
@@ -22,8 +22,9 @@
 
 .sectionCopy {
   margin: 0;
-  font-family: var(--font-reading, var(--font-primary));
+  font-family: var(--font-headline);
   font-size: clamp(0.97rem, 1.08vw, 1.04rem);
+  font-style: italic;
   line-height: 1.7;
   color: var(--ink-secondary);
   text-wrap: pretty;

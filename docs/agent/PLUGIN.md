@@ -21,7 +21,7 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `mcp/tools/get-developer-profile.ts` | Tool (server-backed): profile type, scores, personality |
 | `mcp/tools/get-growth-areas.ts` | Tool (server-backed): growth areas, optional domain filter |
 | `mcp/tools/get-recent-insights.ts` | Tool (server-backed): strengths / anti-patterns / KPT |
-| `lib/logger.ts` | Structured stderr logger (`debug`/`info`/`error`). `debug` requires `BETTERPROMPT_DEBUG=1`; `info` and `error` always emit |
+| `lib/logger.ts` | Dual-destination logger (`debug`/`info`/`error`). All levels write to `~/.betterprompt/debug.log` (timestamped). Stderr: `debug` requires `BETTERPROMPT_DEBUG=1`; `info` and `error` always emit |
 | `lib/config.ts` | Plugin settings reader, path helpers |
 | `lib/cache.ts` | SQLite cache (better-sqlite3, WAL mode) |
 | `lib/results-db.ts` | SQLite results database for canonical analysis runs |
@@ -122,6 +122,7 @@ Route implementation: `app/api/analysis/user/summary/route.ts`
 | `~/.betterprompt/prefs.json` | JSON | User preferences: `welcomeCompleted`, `welcomeVersion`, `starAsked`, `selectedProjects` |
 | `~/.betterprompt/plugin-state.json` | JSON | Lifecycle state: `idle/pending/running/complete/failed` + timestamps |
 | `~/.betterprompt/plugin-errors.log` | Text | Timestamped hook/deprecation errors |
+| `~/.betterprompt/debug.log` | Text | All logger output (debug/info/error) with ISO timestamps, written unconditionally |
 
 ## Cache Behavior
 

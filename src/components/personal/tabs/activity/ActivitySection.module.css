@@ -72,9 +72,9 @@
 }
 
 .domainTitle {
-  font-family: var(--font-interface, var(--font-primary));
+  font-family: var(--font-headline);
   font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-medium);
   text-transform: none;
   letter-spacing: -0.01em;
   color: var(--bg-paper);

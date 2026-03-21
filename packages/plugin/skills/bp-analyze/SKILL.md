@@ -29,9 +29,11 @@ Follow these phases in strict order. Each phase must complete before the next be
 
 Run the `summarize-sessions` skill. This generates a concise 1-line summary for each analyzed session and persists the results via `save_stage_output`.
 
-### Phase 2: Domain Analysis + Context Generation (Sequential)
+### Phase 2: Domain Analysis + Context Generation (Sequential with Cooldown)
 
 Run each skill **one at a time, sequentially** to avoid rate limit failures on Claude Max. Wait for each skill to fully complete before starting the next. Each unit persists its own output to the current local analysis run.
+
+**Rate Limit Prevention:** After each skill completes, pause briefly before starting the next. This spreading prevents token-per-minute rate limit spikes on Claude Max plans. Print the cooldown status so the user knows you are pacing intentionally, not stalling.
 
 Run the following skills in this exact order:
 
@@ -102,11 +104,21 @@ Print a brief `[bp]` status line at each major phase:
 - If `scan_sessions` finds zero sessions, stop and inform the user. Do not proceed.
 - If `extract_data` fails, surface the error. Do not fabricate Phase 1 data.
 - If the `summarize-sessions` skill fails, continue -- session summaries are optional context.
-- If any Phase 2 skill fails with a rate limit or throttling error (e.g., "Rate limit reached", "429", "Too Many Requests"), wait ~30 seconds and retry that skill once. If the retry also fails, wait another ~30 seconds and retry a final time (max 2 retries). If still failing after retries, treat it as a skill failure and continue with remaining skills.
+- If any Phase 2 skill fails with a rate limit or throttling error (e.g., "Rate limit reached", "429", "Too Many Requests", "overloaded", "capacity"):
+  1. Print `"[bp] Rate limit hit. Waiting 60 seconds before retrying <skill-name>..."`
+  2. Wait ~60 seconds (not 30 — longer pauses prevent cascading rate limits)
+  3. Retry the skill once
+  4. If the retry also fails with a rate limit, wait ~90 seconds and retry a final time (max 2 retries)
+  5. If still failing after retries, treat it as a skill failure and continue with remaining skills
+  6. After a rate-limit recovery, wait an additional ~30 seconds before starting the next skill to avoid immediately hitting the limit again
 - If any Phase 2 skill fails for non-rate-limit reasons, report which skill failed and continue with the remaining skills. The report will note incomplete sections.
 - If `verify-evidence` fails, continue -- evidence verification is a quality enhancement, not blocking.
 - If `translate-report` is skipped because English output is appropriate, continue normally. If translation is needed but fails, continue with English output and note that translation is incomplete.
 - Never silently swallow errors or return placeholder data.
+
+### Rate Limit Context
+
+Rate limits on Claude Max are token-per-minute based. Each analysis skill consumes a large prompt context (session data + analysis rubric) plus generates a detailed structured output. Running 7 skills back-to-back can exhaust the rate limit. The sequential execution with cooldowns and progressive backoff mitigates this. If rate limits persist, the user can reduce the analysis scope by selecting fewer projects in `~/.betterprompt/prefs.json` or reducing `maxSessions` in the `extract_data` call.
 
 ## Quality Checklist
 

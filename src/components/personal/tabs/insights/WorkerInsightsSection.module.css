@@ -510,9 +510,9 @@
 }
 
 .cardTitle {
-  font-family: var(--font-interface, var(--font-primary));
-  font-size: clamp(1rem, 1.12vw, 1.12rem);
-  font-weight: var(--weight-semibold);
+  font-family: var(--font-headline);
+  font-size: clamp(1.08rem, 1.28vw, 1.25rem);
+  font-weight: var(--weight-medium);
   line-height: 1.38;
   letter-spacing: -0.01em;
   color: var(--ink-primary);
@@ -676,11 +676,10 @@
 }
 
 .recommendationLabel {
-  font-family: var(--font-interface, var(--font-primary));
+  font-family: var(--font-headline);
   font-size: 13px;
   font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.04em;
   color: var(--sketch-blue);
   display: block;
   margin-bottom: var(--space-sm);
@@ -1413,6 +1412,7 @@
 }
 
 .insightCard[data-immersive] .cardTitle {
+  font-family: var(--font-headline);
   font-size: clamp(1.1rem, 1.55vw, 1.3rem);
   font-weight: var(--weight-semibold);
   line-height: 1.35;
