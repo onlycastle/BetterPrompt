@@ -163,6 +163,17 @@ Use `AskUserQuestion` with these options:
    Run bp analyze anytime to analyze your sessions.
    ```
 
+## Progress Reporting
+
+Print a brief `[bp]` status line before each step:
+1. `"[bp] Step 1: Welcome"`
+2. `"[bp] Step 2: Verifying environment..."`
+3. `"[bp] Step 3: Project selection"`
+4. `"[bp] Step 4: CLAUDE.md integration"`
+5. `"[bp] Step 5: GitHub star"`
+6. `"[bp] Step 6: Quick reference"`
+7. `"[bp] Setup complete."`
+
 ## Important Notes
 
 - Never skip Step 2 (verification) -- it confirms the plugin works.

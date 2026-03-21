@@ -263,6 +263,14 @@ Each evidence item must include:
 
 Evidence without a valid utteranceId cannot be verified and will be removed.
 
+## Progress Reporting
+
+Print a brief `[bp]` status line at each key step:
+1. After loading context: `"[bp] Loaded efficiency context (N sessions, M utterances)"`
+2. Before analysis: `"[bp] Analyzing efficiency patterns..."`
+3. Before saving: `"[bp] Saving efficiency results (score: X/100)..."`
+4. On completion: `"[bp] efficiency complete."`
+
 ## Quality Checklist
 
 - [ ] Loaded context-efficiency prompt context via `get_prompt_context`

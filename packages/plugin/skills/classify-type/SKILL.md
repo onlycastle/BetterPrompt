@@ -276,6 +276,14 @@ Call `save_stage_output` with:
 - Distribution MUST sum to 100.
 - All output is in English.
 
+## Progress Reporting
+
+Print a brief `[bp]` status line at each key step:
+1. After loading scores: `"[bp] Loaded domain scores for type classification"`
+2. Before classification: `"[bp] Classifying developer type..."`
+3. Before saving: `"[bp] Saving type classification..."`
+4. On completion: `"[bp] type-classification complete."`
+
 ## Quality Checklist
 
 - [ ] Loaded type-classification context via `get_prompt_context`

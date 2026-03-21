@@ -241,6 +241,14 @@ Analyze builder behavior OBJECTIVELY, not optimistically.
 5. **Prioritize high-impact friction**: Focus on friction types that most affect outcomes.
 6. **When in doubt about outcome, use "unclear"**: Do not force a classification when the data is ambiguous.
 
+## Progress Reporting
+
+Print a brief `[bp]` status line at each key step:
+1. After loading context: `"[bp] Loaded sessions context (N sessions)"`
+2. Before analysis: `"[bp] Analyzing session outcome patterns..."`
+3. Before saving: `"[bp] Saving session-outcome results (score: X/100)..."`
+4. On completion: `"[bp] session-outcome complete."`
+
 ## Quality Checklist
 
 - [ ] Loaded session-outcome prompt context via `get_prompt_context`

@@ -115,6 +115,14 @@ Call `save_stage_output` with the following structure:
 - `relatedQualities`: Array of quality/trait names that contributed evidence to this focus area
 - `actions`: Object with `start`, `stop`, `continue` keys — concrete behavioral recommendations
 
+## Progress Reporting
+
+Print a brief `[bp]` status line at each key step:
+1. After loading data: `"[bp] Loaded domain results for content generation"`
+2. Before processing: `"[bp] Writing coaching narratives..."`
+3. Before saving: `"[bp] Saving content output..."`
+4. On completion: `"[bp] content-generation complete."`
+
 ## Quality Checklist
 
 - [ ] Loaded content-writer context via `get_prompt_context`

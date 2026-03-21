@@ -289,6 +289,14 @@ Detection signals:
 
 Repeated mistakes require 2+ occurrences to be classified as a pattern. A first-time mistake is NOT a repeated mistake pattern.
 
+## Progress Reporting
+
+Print a brief `[bp]` status line at each key step:
+1. After loading context: `"[bp] Loaded learning context (N sessions, M utterances)"`
+2. Before analysis: `"[bp] Analyzing learning patterns..."`
+3. Before saving: `"[bp] Saving learning results (score: X/100)..."`
+4. On completion: `"[bp] learning complete."`
+
 ## Quality Checklist
 
 - [ ] Loaded learning-behavior prompt context via `get_prompt_context`

@@ -126,6 +126,14 @@ Call `save_stage_output` with the following arguments:
 - If a project has sessions but all session summaries are empty strings, use a fallback summary: `"Development work across N sessions"`.
 - Never silently drop projects from the output (except the excluded names above).
 
+## Progress Reporting
+
+Print a brief `[bp]` status line at each key step:
+1. After loading data: `"[bp] Loaded N projects for summarization"`
+2. Before processing: `"[bp] Summarizing projects..."`
+3. Before saving: `"[bp] Saving project summaries..."`
+4. On completion: `"[bp] project-summaries complete."`
+
 ## Quality Checklist
 
 - [ ] Loaded project summarization context via `get_prompt_context`

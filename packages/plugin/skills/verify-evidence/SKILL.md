@@ -178,6 +178,14 @@ Invariants:
 - If an evidence item references an `utteranceId` not found in Phase 1 data, score it 0 and mark `verified: false`. Do not skip it silently.
 - Never fabricate utterance text or relevance scores. If you cannot verify an evidence pair, mark it as unverified with score 0.
 
+## Progress Reporting
+
+Print a brief `[bp]` status line at each key step:
+1. After loading data: `"[bp] Loaded evidence for verification"`
+2. Before verification: `"[bp] Verifying evidence quotes..."`
+3. Before saving: `"[bp] Saving verification results..."`
+4. On completion: `"[bp] evidence-verification complete."`
+
 ## Quality Checklist
 
 - [ ] Loaded evidence-verification context via `get_prompt_context`

@@ -122,6 +122,14 @@ Call `save_stage_output` with this shape:
 }
 ```
 
+## Progress Reporting
+
+Print a brief `[bp]` status line at each key step:
+1. After loading data: `"[bp] Loaded report content for translation"`
+2. Before translating: `"[bp] Translating report..."`
+3. Before saving: `"[bp] Saving translated output..."`
+4. On completion: `"[bp] translation complete."`
+
 ## Quality Checklist
 
 - [ ] Confirmed translation is actually needed

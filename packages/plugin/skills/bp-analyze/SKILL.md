@@ -84,6 +84,19 @@ If the sessions are already primarily English and the user did not request trans
    - Overall scores by domain
    - Report URL for the full interactive report
 
+## Progress Reporting
+
+Print a brief `[bp]` status line at each major phase:
+1. Before Phase 1: `"[bp] Phase 1: Scanning and extracting session data..."`
+2. Before Phase 1.5: `"[bp] Phase 1.5: Summarizing sessions..."`
+3. Before each Phase 2 skill: `"[bp] Running <skill-name>..."` (e.g., `"[bp] Running analyze-thinking-quality..."`)
+4. Before Phase 2.5: `"[bp] Phase 2.5: Classifying developer type..."`
+5. Before Phase 2.8: `"[bp] Phase 2.8: Verifying evidence..."`
+6. Before Phase 3: `"[bp] Phase 3: Generating narratives..."`
+7. Before Phase 3.5 (if applicable): `"[bp] Phase 3.5: Translating report..."`
+8. Before Phase 4: `"[bp] Phase 4: Assembling report..."`
+9. On completion: `"[bp] Analysis complete."`
+
 ## Error Handling
 
 - If `scan_sessions` finds zero sessions, stop and inform the user. Do not proceed.

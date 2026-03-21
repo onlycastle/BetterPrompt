@@ -337,6 +337,14 @@ Call `save_domain_results` with the following structure:
 }
 ```
 
+## Progress Reporting
+
+Print a brief `[bp]` status line at each key step:
+1. After loading context: `"[bp] Loaded thinking-quality context (N sessions, M utterances)"`
+2. Before analysis: `"[bp] Analyzing thinking-quality patterns..."`
+3. Before saving: `"[bp] Saving thinking-quality results (score: X/100)..."`
+4. On completion: `"[bp] thinking-quality complete."`
+
 ## Quality Checklist
 
 - [ ] Loaded thinking-quality prompt context via `get_prompt_context`
