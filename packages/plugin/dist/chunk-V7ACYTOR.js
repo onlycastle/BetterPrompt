@@ -27857,6 +27857,26 @@ var TranslatorOutputSchema = external_exports2.object({
   targetLanguage: external_exports2.string(),
   translatedFields: external_exports2.record(external_exports2.string(), external_exports2.unknown())
 });
+var DimensionExtractionSchema = external_exports2.object({
+  dimension: external_exports2.string(),
+  quotes: external_exports2.array(external_exports2.object({
+    text: external_exports2.string(),
+    utteranceId: external_exports2.string().optional(),
+    sessionId: external_exports2.string().optional(),
+    behavioralMarker: external_exports2.string().optional(),
+    signalType: external_exports2.enum(["strength", "growth"]).optional(),
+    confidence: external_exports2.number().min(0).max(1).optional()
+  }).passthrough()),
+  patterns: external_exports2.array(external_exports2.object({
+    name: external_exports2.string(),
+    category: external_exports2.string().optional(),
+    examples: external_exports2.array(external_exports2.string()).optional(),
+    frequency: external_exports2.string().optional()
+  }).passthrough()).optional(),
+  signals: external_exports2.record(external_exports2.string(), external_exports2.unknown()).optional(),
+  score: external_exports2.number().min(0).max(100).optional(),
+  metadata: external_exports2.record(external_exports2.string(), external_exports2.unknown()).optional()
+}).passthrough();
 var STAGE_SCHEMAS = {
   sessionSummaries: SessionSummaryBatchSchema,
   projectSummaries: ProjectSummaryBatchSchema,
@@ -27864,7 +27884,13 @@ var STAGE_SCHEMAS = {
   typeClassification: TypeClassificationStageOutputSchema,
   evidenceVerification: EvidenceVerificationOutputSchema,
   contentWriter: ContentWriterOutputSchema,
-  translator: TranslatorOutputSchema
+  translator: TranslatorOutputSchema,
+  extractAiCollaboration: DimensionExtractionSchema,
+  extractContextEngineering: DimensionExtractionSchema,
+  extractToolMastery: DimensionExtractionSchema,
+  extractBurnoutRisk: DimensionExtractionSchema,
+  extractAiControl: DimensionExtractionSchema,
+  extractSkillResilience: DimensionExtractionSchema
 };
 
 // ../shared/dist/schemas/analysis-run.js
@@ -29518,4 +29544,4 @@ export {
   isAnalysisPending,
   clearAnalysisPending
 };
-//# sourceMappingURL=chunk-2RN5XMRL.js.map
+//# sourceMappingURL=chunk-V7ACYTOR.js.map
