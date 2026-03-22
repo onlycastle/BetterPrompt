@@ -1,8 +1,9 @@
 /**
  * Stage Output Schemas
  *
- * Schemas for non-worker pipeline stages that don't exist in the plugin yet:
+ * Validation schemas for pipeline stage outputs saved via save_stage_output:
  * - Session Summarizer (Phase 1.5)
+ * - Dimension Extractors (Phase 2, Stage 1) — 6 extract-* skills
  * - Project Summarizer (Phase 2, parallel)
  * - Weekly Insight Generator (Phase 2, parallel)
  * - Evidence Verifier (Phase 2.8)

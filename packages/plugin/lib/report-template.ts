@@ -585,7 +585,12 @@ function generateActivityHeatmapSection(
       </div>
     </section>
     <script>
-      var __heatmapData = ${JSON.stringify(sessionDataByDate)};
+      var __heatmapData = ${JSON.stringify(sessionDataByDate).replace(/</g, '\\u003c')};
+      function escHtml(s) {
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(s));
+        return d.innerHTML;
+      }
       function formatHmTokens(t) {
         if (t >= 1e9) return (t/1e9).toFixed(1)+'B';
         if (t >= 1e6) return (t/1e6).toFixed(1)+'M';
@@ -639,13 +644,13 @@ function generateActivityHeatmapSection(
           if (p.totalMinutes > 0) meta += ' &middot; ' + formatHmDuration(p.totalMinutes);
           html += '<div class="hm-detail-project">' +
             '<div class="hm-detail-project-header">' +
-            '<span class="hm-detail-project-name">' + name + '</span>' +
+            '<span class="hm-detail-project-name">' + escHtml(name) + '</span>' +
             '<span class="hm-detail-project-meta">' + meta + '</span>' +
             '</div>';
           var summaries = p.sessions.map(function(s) { return s.summary; }).filter(function(s) { return s; });
           if (summaries.length > 0) {
             html += '<ul class="hm-detail-summaries">';
-            summaries.slice(0, 3).forEach(function(s) { html += '<li>' + s + '</li>'; });
+            summaries.slice(0, 3).forEach(function(s) { html += '<li>' + escHtml(s) + '</li>'; });
             if (summaries.length > 3) html += '<li style="opacity:0.6;">+' + (summaries.length - 3) + ' more</li>';
             html += '</ul>';
           }
