@@ -1,10 +1,20 @@
 ---
 name: analyze-efficiency
-description: Analyze context usage efficiency and token optimization
+description: "[DEPRECATED] Replaced by extract-context-engineering + write-context-engineering"
 model: sonnet
 ---
 
-# Context Efficiency Analysis
+## DEPRECATED
+
+**This skill is deprecated.** It has been replaced by the two-stage pipeline:
+- **Stage 1**: `extract-context-engineering` (data extraction via `save_stage_output`)
+- **Stage 2**: `write-context-engineering` (narrative generation via `save_domain_results`)
+
+The orchestrator (`bp-analyze`) no longer calls this skill. It is kept temporarily for reference.
+
+---
+
+# Context Efficiency Analysis (DEPRECATED)
 
 ## Persona
 

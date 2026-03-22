@@ -29,29 +29,48 @@ Follow these phases in strict order. Each phase must complete before the next be
 
 Run the `summarize-sessions` skill. This generates a concise 1-line summary for each analyzed session and persists the results via `save_stage_output`.
 
-### Phase 2: Domain Analysis + Context Generation (Sequential with Cooldown)
+### Phase 2: Dimension Extraction (Sequential with Cooldown)
 
 Run each skill **one at a time, sequentially** to avoid rate limit failures on Claude Max. Wait for each skill to fully complete before starting the next. Each unit persists its own output to the current local analysis run.
 
 **Rate Limit Prevention:** After each skill completes, pause briefly before starting the next. This spreading prevents token-per-minute rate limit spikes on Claude Max plans. Print the cooldown status so the user knows you are pacing intentionally, not stalling.
 
-Run the following skills in this exact order:
+**Stage 1 - Data Extraction:** Run the 6 data-analyst skills first. These extract structured signals, quotes, and patterns from Phase 1 data and save via `save_stage_output`.
+
+| # | Subagent Skill | Type | Stage Key | Purpose |
+|---|----------------|------|-----------|---------|
+| 1 | `extract-ai-collaboration` | Extractor (`save_stage_output`) | extractAiCollaboration | Planning, orchestration, verification signals |
+| 2 | `extract-context-engineering` | Extractor (`save_stage_output`) | extractContextEngineering | WRITE/SELECT/COMPRESS/ISOLATE signals |
+| 3 | `extract-tool-mastery` | Extractor (`save_stage_output`) | extractToolMastery | Tool diversity, advanced usage, workflow signals |
+| 4 | `extract-burnout-risk` | Extractor (`save_stage_output`) | extractBurnoutRisk | Session patterns, time distribution, frustration signals |
+| 5 | `extract-ai-control` | Extractor (`save_stage_output`) | extractAiControl | Verification, constraints, critique signals |
+| 6 | `extract-skill-resilience` | Extractor (`save_stage_output`) | extractSkillResilience | Cold start, hallucination detection, explainability signals |
+
+**Stage 2 - Narrative Generation:** After ALL extractors complete, run the 6 content-writer skills. These read extraction data via `get_stage_output` and generate narrative strengths/growth areas via `save_domain_results`.
+
+| # | Subagent Skill | Type | Domain Key | Purpose |
+|---|----------------|------|------------|---------|
+| 7 | `write-ai-collaboration` | Writer (`save_domain_results`) | thinkingQuality | Narrative for planning/orchestration/verification |
+| 8 | `write-context-engineering` | Writer (`save_domain_results`) | contextEfficiency | Narrative for context engineering mastery |
+| 9 | `write-tool-mastery` | Writer (`save_domain_results`) | communicationPatterns | Narrative for tool usage mastery |
+| 10 | `write-burnout-risk` | Writer (`save_domain_results`) | learningBehavior | Narrative for burnout risk and sustainability |
+| 11 | `write-ai-control` | Writer (`save_domain_results`) | sessionOutcome | Narrative for AI control and verification mastery |
+| 12 | `write-skill-resilience` | Writer (`save_domain_results`) | content | Narrative for skill resilience (VCP metrics) |
+
+**Stage 3 - Context Generation:** After all writers complete, run context generation skills.
 
 | # | Subagent Skill | Type | Key | Purpose |
 |---|----------------|------|-----|---------|
-| 1 | `analyze-thinking-quality` | Domain (`save_domain_results`) | thinkingQuality | Planning habits, verification behavior, critical thinking |
-| 2 | `analyze-communication` | Domain (`save_domain_results`) | communicationPatterns | Prompt structure, context patterns, signature quotes |
-| 3 | `analyze-efficiency` | Domain (`save_domain_results`) | contextEfficiency | Token optimization, context fill, inefficiency patterns |
-| 4 | `analyze-learning` | Domain (`save_domain_results`) | learningBehavior | Knowledge gaps, repeated mistakes, growth indicators |
-| 5 | `analyze-sessions` | Domain (`save_domain_results`) | sessionOutcome | Goal achievement, friction points, success/failure patterns |
-| 6 | `summarize-projects` | Context (`save_stage_output`) | projectSummaries | Project-level summaries from session data |
-| 7 | `generate-weekly-insights` | Context (`save_stage_output`) | weeklyInsights | This Week narrative, stats, and highlights |
+| 13 | `summarize-projects` | Context (`save_stage_output`) | projectSummaries | Project-level summaries from session data |
+| 14 | `generate-weekly-insights` | Context (`save_stage_output`) | weeklyInsights | This Week narrative, stats, and highlights |
 
 **Do NOT run any of these skills in parallel. Start each skill only after the previous one has completed.**
 
 ### Phase 2.5: Developer Type Classification
 
 After all domain results are saved:
+
+**Note:** Deterministic scores are computed but NOT used to override LLM domain scores for the 6-dimension framework. The `classify_developer_type` tool still runs for type classification only. Content-writer skills score based on their extraction data, not deterministic overrides.
 
 1. Call the `classify_developer_type` MCP tool. This reads deterministic scores and produces:
 
@@ -91,7 +110,7 @@ If the sessions are already primarily English and the user did not request trans
 Print a brief `[bp]` status line at each major phase:
 1. Before Phase 1: `"[bp] Phase 1: Scanning and extracting session data..."`
 2. Before Phase 1.5: `"[bp] Phase 1.5: Summarizing sessions..."`
-3. Before each Phase 2 skill: `"[bp] Running <skill-name>..."` (e.g., `"[bp] Running analyze-thinking-quality..."`)
+3. Before each Phase 2 skill: `"[bp] Running <skill-name>..."` (e.g., `"[bp] Running extract-ai-collaboration..."`)
 4. Before Phase 2.5: `"[bp] Phase 2.5: Classifying developer type..."`
 5. Before Phase 2.8: `"[bp] Phase 2.8: Verifying evidence..."`
 6. Before Phase 3: `"[bp] Phase 3: Generating narratives..."`
@@ -124,7 +143,8 @@ Rate limits on Claude Max are token-per-minute based. Each analysis skill consum
 
 - [ ] Phase 1 output persisted for diagnostics, and downstream stages use `get_prompt_context`
 - [ ] Session summaries generated (Phase 1.5)
-- [ ] All 5 domain analyses completed (or failures reported)
+- [ ] All 6 dimension extractions completed (or failures reported)
+- [ ] All 6 dimension narratives completed (or failures reported)
 - [ ] Project summaries and weekly insights generated
 - [ ] Developer type classification completed
 - [ ] Evidence verification completed

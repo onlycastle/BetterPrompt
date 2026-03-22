@@ -1,10 +1,20 @@
 ---
 name: analyze-sessions
-description: Analyze session outcomes, goals, and friction patterns
+description: "[DEPRECATED] Replaced by extract-ai-control + write-ai-control"
 model: sonnet
 ---
 
-# Session Outcome Analysis
+## DEPRECATED
+
+**This skill is deprecated.** It has been replaced by the two-stage pipeline:
+- **Stage 1**: `extract-ai-control` (data extraction via `save_stage_output`)
+- **Stage 2**: `write-ai-control` (narrative generation via `save_domain_results`)
+
+The orchestrator (`bp-analyze`) no longer calls this skill. It is kept temporarily for reference.
+
+---
+
+# Session Outcome Analysis (DEPRECATED)
 
 ## Persona
 

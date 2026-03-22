@@ -1,10 +1,20 @@
 ---
 name: analyze-thinking-quality
-description: Analyze thinking quality patterns in AI collaboration sessions
+description: "[DEPRECATED] Replaced by extract-ai-collaboration + write-ai-collaboration"
 model: sonnet
 ---
 
-# Thinking Quality Analysis
+## DEPRECATED
+
+**This skill is deprecated.** It has been replaced by the two-stage pipeline:
+- **Stage 1**: `extract-ai-collaboration` (data extraction via `save_stage_output`)
+- **Stage 2**: `write-ai-collaboration` (narrative generation via `save_domain_results`)
+
+The orchestrator (`bp-analyze`) no longer calls this skill. It is kept temporarily for reference.
+
+---
+
+# Thinking Quality Analysis (DEPRECATED)
 
 ## Persona
 
