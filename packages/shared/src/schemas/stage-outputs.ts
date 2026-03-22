@@ -146,6 +146,33 @@ export const TranslatorOutputSchema = z.object({
 export type TranslatorOutput = z.infer<typeof TranslatorOutputSchema>;
 
 // ============================================================================
+// Dimension Extraction (Phase 2 Data Analyst stage)
+// ============================================================================
+
+/** Permissive schema for dimension extraction stage outputs (data-analyst workers) */
+export const DimensionExtractionSchema = z.object({
+  dimension: z.string(),
+  quotes: z.array(z.object({
+    text: z.string(),
+    utteranceId: z.string().optional(),
+    sessionId: z.string().optional(),
+    behavioralMarker: z.string().optional(),
+    signalType: z.enum(['strength', 'growth']).optional(),
+    confidence: z.number().min(0).max(1).optional(),
+  }).passthrough()),
+  patterns: z.array(z.object({
+    name: z.string(),
+    category: z.string().optional(),
+    examples: z.array(z.string()).optional(),
+    frequency: z.string().optional(),
+  }).passthrough()).optional(),
+  signals: z.record(z.string(), z.unknown()).optional(),
+  score: z.number().min(0).max(100).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+}).passthrough();
+export type DimensionExtraction = z.infer<typeof DimensionExtractionSchema>;
+
+// ============================================================================
 // Stage Output Union (for save_stage_output tool validation)
 // ============================================================================
 
@@ -157,6 +184,12 @@ export const STAGE_NAMES = [
   'evidenceVerification',
   'contentWriter',
   'translator',
+  'extractAiCollaboration',
+  'extractContextEngineering',
+  'extractToolMastery',
+  'extractBurnoutRisk',
+  'extractAiControl',
+  'extractSkillResilience',
 ] as const;
 
 export type StageName = typeof STAGE_NAMES[number];
@@ -170,4 +203,10 @@ export const STAGE_SCHEMAS: Record<StageName, z.ZodTypeAny> = {
   evidenceVerification: EvidenceVerificationOutputSchema,
   contentWriter: ContentWriterOutputSchema,
   translator: TranslatorOutputSchema,
+  extractAiCollaboration: DimensionExtractionSchema,
+  extractContextEngineering: DimensionExtractionSchema,
+  extractToolMastery: DimensionExtractionSchema,
+  extractBurnoutRisk: DimensionExtractionSchema,
+  extractAiControl: DimensionExtractionSchema,
+  extractSkillResilience: DimensionExtractionSchema,
 };
