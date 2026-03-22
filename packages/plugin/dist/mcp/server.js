@@ -7,6 +7,7 @@ import {
   DomainGrowthAreaSchema,
   DomainStrengthSchema,
   MultitaskingPatternSchema,
+  STAGE_NAMES,
   STAGE_SCHEMAS,
   ZodOptional,
   _enum,
@@ -51,7 +52,7 @@ import {
   toJSONSchema,
   union,
   unknown
-} from "../chunk-V7ACYTOR.js";
+} from "../chunk-KAELRNDJ.js";
 import {
   __commonJS,
   __require,
@@ -19857,6 +19858,22 @@ function generateTypeDistributionBar(distribution) {
     `).join("");
   return `<div style="margin:16px 0;">${bars}</div>`;
 }
+var RADAR_LABELS = {
+  thinking: "Thinking",
+  communication: "Communication",
+  learning: "Learning",
+  efficiency: "Efficiency",
+  sessions: "Sessions"
+};
+function buildRadarScores(scores) {
+  return {
+    thinking: scores.thinkingQuality,
+    communication: scores.communicationPatterns,
+    learning: scores.learningBehavior,
+    efficiency: scores.contextEfficiency,
+    sessions: scores.sessionOutcome
+  };
+}
 var DOMAIN_LABELS = {
   thinkingQuality: { label: "Thinking Quality", emoji: "\u{1F9E0}" },
   communicationPatterns: { label: "Communication", emoji: "\u{1F4AC}" },
@@ -20170,7 +20187,12 @@ function generateActivityHeatmapSection(activitySessions) {
       </div>
     </section>
     <script>
-      var __heatmapData = ${JSON.stringify(sessionDataByDate)};
+      var __heatmapData = ${JSON.stringify(sessionDataByDate).replace(/</g, "\\u003c")};
+      function escHtml(s) {
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(s));
+        return d.innerHTML;
+      }
       function formatHmTokens(t) {
         if (t >= 1e9) return (t/1e9).toFixed(1)+'B';
         if (t >= 1e6) return (t/1e6).toFixed(1)+'M';
@@ -20224,13 +20246,13 @@ function generateActivityHeatmapSection(activitySessions) {
           if (p.totalMinutes > 0) meta += ' &middot; ' + formatHmDuration(p.totalMinutes);
           html += '<div class="hm-detail-project">' +
             '<div class="hm-detail-project-header">' +
-            '<span class="hm-detail-project-name">' + name + '</span>' +
+            '<span class="hm-detail-project-name">' + escHtml(name) + '</span>' +
             '<span class="hm-detail-project-meta">' + meta + '</span>' +
             '</div>';
           var summaries = p.sessions.map(function(s) { return s.summary; }).filter(function(s) { return s; });
           if (summaries.length > 0) {
             html += '<ul class="hm-detail-summaries">';
-            summaries.slice(0, 3).forEach(function(s) { html += '<li>' + s + '</li>'; });
+            summaries.slice(0, 3).forEach(function(s) { html += '<li>' + escHtml(s) + '</li>'; });
             if (summaries.length > 3) html += '<li style="opacity:0.6;">+' + (summaries.length - 3) + ' more</li>';
             html += '</ul>';
           }
@@ -20322,44 +20344,8 @@ function generateKnowledgeResourcesSection(knowledgeResources) {
     </section>
   `;
 }
-function generateReportHtml(report) {
-  const { typeResult, deterministicScores, phase1Metrics, domainResults, content } = report;
-  const radarScores = {
-    thinking: deterministicScores.thinkingQuality,
-    communication: deterministicScores.communicationPatterns,
-    learning: deterministicScores.learningBehavior,
-    efficiency: deterministicScores.contextEfficiency,
-    sessions: deterministicScores.sessionOutcome
-  };
-  const radarLabels = {
-    thinking: "Thinking",
-    communication: "Communication",
-    learning: "Learning",
-    efficiency: "Efficiency",
-    sessions: "Sessions"
-  };
-  const radarSvg = generateRadarSvg(radarScores, radarLabels);
-  const distributionBar = typeResult ? generateTypeDistributionBar(typeResult.distribution) : '<p style="color:var(--ink-muted);">Type classification not yet performed. Run classify_developer_type first.</p>';
-  const domainSections = domainResults.map(generateDomainSection).join("\n");
-  const focusAreasSection = generateFocusAreas(content);
-  const navDots = [
-    { id: "identity", label: "Identity" },
-    { id: "scores", label: "Scores" },
-    ...domainResults.map((d) => ({
-      id: `domain-${d.domain}`,
-      label: DOMAIN_LABELS[d.domain]?.label ?? d.domain
-    })),
-    ...content?.topFocusAreas?.length ? [{ id: "focus-areas", label: "Focus" }] : []
-  ];
-  const navDotsHtml = navDots.map((d) => `<a href="#${d.id}" class="nav-dot" title="${d.label}"><span class="dot"></span></a>`).join("");
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BetterPrompt Analysis Report</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
-  <style>
+function generateBaseCss() {
+  return `
     /* \u2500\u2500 Notebook Sketch Design System \u2500\u2500 */
 
     :root {
@@ -20446,7 +20432,6 @@ function generateReportHtml(report) {
     .card h4 { font-size: 14px; margin-bottom: 8px; }
     .card p { font-size: 13px; color: var(--ink-secondary); line-height: 1.5; }
     .card-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-
 
     .strength-card { border-left: 3px solid var(--sketch-green); }
     .growth-card { border-left: 3px solid var(--sketch-orange); }
@@ -20591,81 +20576,57 @@ function generateReportHtml(report) {
       .scores-section { flex-direction: column; }
       .actions-grid { grid-template-columns: 1fr; }
     }
-  </style>
-</head>
-<body>
-  <nav class="nav-dots">${navDotsHtml}</nav>
-
-  <div class="container">
-    <header class="header">
-      <h1>BetterPrompt Analysis</h1>
-      <p class="subtitle">Generated ${new Date(report.analyzedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
-    </header>
-
-    <!-- Identity -->
-    <section class="identity" id="identity">
-      ${typeResult ? `
-        <div class="type-emoji">${typeResult.matrixEmoji}</div>
-        <div class="type-info">
-          <div class="type-name">${escapeHtml(typeResult.matrixName)}</div>
-          <div class="type-detail">${escapeHtml(typeResult.primaryType)} / ${escapeHtml(typeResult.controlLevel)} (control: ${typeResult.controlScore})</div>
-        </div>
-      ` : `
-        <div class="type-info">
-          <div class="type-name">Type Not Classified</div>
-          <div class="type-detail">Run classify_developer_type to determine your collaboration style</div>
-        </div>
-      `}
-    </section>
-
-    <!-- Metrics Bar -->
+  `;
+}
+function renderNavDotsHtml(dots) {
+  return dots.map((d) => `<a href="#${d.id}" class="nav-dot" title="${d.label}"><span class="dot"></span></a>`).join("");
+}
+function renderIdentitySection(typeResult, fallbackMessage) {
+  if (typeResult) {
+    return `
+      <div class="type-emoji">${typeResult.matrixEmoji}</div>
+      <div class="type-info">
+        <div class="type-name">${escapeHtml(typeResult.matrixName)}</div>
+        <div class="type-detail">${escapeHtml(typeResult.primaryType)} / ${escapeHtml(typeResult.controlLevel)} (control: ${typeResult.controlScore})</div>
+      </div>
+    `;
+  }
+  return `
+    <div class="type-info">
+      <div class="type-name">Type Not Classified</div>
+      <div class="type-detail">${escapeHtml(fallbackMessage)}</div>
+    </div>
+  `;
+}
+function renderMetricsBar(metrics) {
+  return `
     <div class="metrics-bar">
       <div class="metric">
-        <div class="value">${phase1Metrics.totalSessions}</div>
+        <div class="value">${metrics.totalSessions}</div>
         <div class="label">Sessions</div>
       </div>
       <div class="metric">
-        <div class="value">${phase1Metrics.totalDeveloperUtterances}</div>
+        <div class="value">${metrics.totalDeveloperUtterances}</div>
         <div class="label">Utterances</div>
       </div>
       <div class="metric">
-        <div class="value">${Math.round(phase1Metrics.avgMessagesPerSession)}</div>
+        <div class="value">${Math.round(metrics.avgMessagesPerSession)}</div>
         <div class="label">Avg Messages/Session</div>
       </div>
       <div class="metric">
-        <div class="value">${Math.round(phase1Metrics.questionRatio * 100)}%</div>
+        <div class="value">${Math.round(metrics.questionRatio * 100)}%</div>
         <div class="label">Questions</div>
       </div>
       <div class="metric">
-        <div class="value">${Math.round(phase1Metrics.codeBlockRatio * 100)}%</div>
+        <div class="value">${Math.round(metrics.codeBlockRatio * 100)}%</div>
         <div class="label">Code Blocks</div>
       </div>
     </div>
-
-    <!-- Scores -->
-    <section class="scores-section" id="scores">
-      <div class="radar-container">
-        ${radarSvg}
-      </div>
-      <div class="distribution-container">
-        <h3 style="margin-bottom:12px;">Type Distribution</h3>
-        ${distributionBar}
-      </div>
-    </section>
-
-    <!-- Domain Results -->
-    ${domainSections}
-
-    <!-- Focus Areas -->
-    ${focusAreasSection}
-
-    <footer class="footer">
-      Generated by BetterPrompt Plugin v0.2.0 &mdash; local-first AI collaboration analysis
-    </footer>
-  </div>
-
+  `;
+}
+function renderScrollSpyScript() {
+  return `
   <script>
-    // Scroll spy for navigation dots
     const sections = document.querySelectorAll('section[id], .scores-section[id]');
     const navDots = document.querySelectorAll('.nav-dot');
 
@@ -20681,9 +20642,7 @@ function generateReportHtml(report) {
     }, { threshold: 0.3 });
 
     sections.forEach(section => observer.observe(section));
-  </script>
-</body>
-</html>`;
+  </script>`;
 }
 function generateCanonicalReportHtml(run) {
   const evaluation = run.evaluation;
@@ -20702,21 +20661,7 @@ function generateCanonicalReportHtml(run) {
     }))
   } : void 0;
   const typeResult = run.typeResult;
-  const radarScores = {
-    thinking: run.deterministicScores.thinkingQuality,
-    communication: run.deterministicScores.communicationPatterns,
-    learning: run.deterministicScores.learningBehavior,
-    efficiency: run.deterministicScores.contextEfficiency,
-    sessions: run.deterministicScores.sessionOutcome
-  };
-  const radarLabels = {
-    thinking: "Thinking",
-    communication: "Communication",
-    learning: "Learning",
-    efficiency: "Efficiency",
-    sessions: "Sessions"
-  };
-  const radarSvg = generateRadarSvg(radarScores, radarLabels);
+  const radarSvg = generateRadarSvg(buildRadarScores(run.deterministicScores), RADAR_LABELS);
   const distributionBar = typeResult ? generateTypeDistributionBar(typeResult.distribution) : '<p style="color:var(--ink-muted);">Type classification not yet performed.</p>';
   const domainSections = run.domainResults.map(generateDomainSection).join("\n");
   const focusAreasSection = generateFocusAreas(legacyContent);
@@ -20741,7 +20686,6 @@ function generateCanonicalReportHtml(run) {
     })),
     ...legacyContent?.topFocusAreas?.length ? [{ id: "focus-areas", label: "Focus" }] : []
   ];
-  const navDotsHtml = navDots.map((d) => `<a href="#${d.id}" class="nav-dot" title="${d.label}"><span class="dot"></span></a>`).join("");
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20750,15 +20694,7 @@ function generateCanonicalReportHtml(run) {
   <title>BetterPrompt Analysis Report</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
   <style>
-    ${generateReportHtml({
-    userId: "local",
-    analyzedAt: run.analyzedAt,
-    phase1Metrics: run.phase1Output.sessionMetrics,
-    deterministicScores: run.deterministicScores,
-    typeResult: run.typeResult ?? null,
-    domainResults: run.domainResults,
-    content: legacyContent
-  }).match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? ""}
+    ${generateBaseCss()}
 
     /* \u2500\u2500 Activity Heatmap \u2500\u2500 */
     .heatmap-section {
@@ -20979,7 +20915,7 @@ function generateCanonicalReportHtml(run) {
   </style>
 </head>
 <body>
-  <nav class="nav-dots">${navDotsHtml}</nav>
+  <nav class="nav-dots">${renderNavDotsHtml(navDots)}</nav>
 
   <div class="container">
     <header class="header">
@@ -20988,42 +20924,10 @@ function generateCanonicalReportHtml(run) {
     </header>
 
     <section class="identity" id="identity">
-      ${typeResult ? `
-        <div class="type-emoji">${typeResult.matrixEmoji}</div>
-        <div class="type-info">
-          <div class="type-name">${escapeHtml(typeResult.matrixName)}</div>
-          <div class="type-detail">${escapeHtml(typeResult.primaryType)} / ${escapeHtml(typeResult.controlLevel)} (control: ${typeResult.controlScore})</div>
-        </div>
-      ` : `
-        <div class="type-info">
-          <div class="type-name">Type Not Classified</div>
-          <div class="type-detail">Run type classification before generating the final report.</div>
-        </div>
-      `}
+      ${renderIdentitySection(typeResult, "Run type classification before generating the final report.")}
     </section>
 
-    <div class="metrics-bar">
-      <div class="metric">
-        <div class="value">${run.phase1Output.sessionMetrics.totalSessions}</div>
-        <div class="label">Sessions</div>
-      </div>
-      <div class="metric">
-        <div class="value">${run.phase1Output.sessionMetrics.totalDeveloperUtterances}</div>
-        <div class="label">Utterances</div>
-      </div>
-      <div class="metric">
-        <div class="value">${Math.round(run.phase1Output.sessionMetrics.avgMessagesPerSession)}</div>
-        <div class="label">Avg Messages/Session</div>
-      </div>
-      <div class="metric">
-        <div class="value">${Math.round(run.phase1Output.sessionMetrics.questionRatio * 100)}%</div>
-        <div class="label">Questions</div>
-      </div>
-      <div class="metric">
-        <div class="value">${Math.round(run.phase1Output.sessionMetrics.codeBlockRatio * 100)}%</div>
-        <div class="label">Code Blocks</div>
-      </div>
-    </div>
+    ${renderMetricsBar(run.phase1Output.sessionMetrics)}
 
     <section class="scores-section" id="scores">
       <div class="radar-container">${radarSvg}</div>
@@ -21046,24 +20950,7 @@ function generateCanonicalReportHtml(run) {
       Generated by BetterPrompt Plugin v0.2.0 - local-first AI collaboration analysis
     </footer>
   </div>
-
-  <script>
-    const sections = document.querySelectorAll('section[id], .scores-section[id]');
-    const navDots = document.querySelectorAll('.nav-dot');
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          navDots.forEach(dot => dot.classList.remove('active'));
-          const id = entry.target.id;
-          const activeDot = document.querySelector('.nav-dot[href="#' + id + '"]');
-          if (activeDot) activeDot.classList.add('active');
-        }
-      });
-    }, { threshold: 0.3 });
-
-    sections.forEach(section => observer.observe(section));
-  </script>
+  ${renderScrollSpyScript()}
 </body>
 </html>`;
 }
@@ -21298,21 +21185,7 @@ var definition11 = {
   description: "Save output from a pipeline stage. Called after completing a stage (sessionSummaries, projectSummaries, weeklyInsights, typeClassification, evidenceVerification, contentWriter, translator, extractAiCollaboration, extractContextEngineering, extractToolMastery, extractBurnoutRisk, extractAiControl, extractSkillResilience). Input must include stage name and structured data matching the stage schema."
 };
 var StageOutputInputSchema = external_exports.object({
-  stage: external_exports.enum([
-    "sessionSummaries",
-    "projectSummaries",
-    "weeklyInsights",
-    "typeClassification",
-    "evidenceVerification",
-    "contentWriter",
-    "translator",
-    "extractAiCollaboration",
-    "extractContextEngineering",
-    "extractToolMastery",
-    "extractBurnoutRisk",
-    "extractAiControl",
-    "extractSkillResilience"
-  ]),
+  stage: external_exports.enum(STAGE_NAMES),
   data: external_exports.record(external_exports.string(), external_exports.unknown())
 });
 function extractStageName(args) {
@@ -21345,8 +21218,7 @@ async function execute8(args) {
     });
   }
   const { stage, data } = parsed.data;
-  const normalizedStageName = stage;
-  const stageSchema = STAGE_SCHEMAS[normalizedStageName];
+  const stageSchema = STAGE_SCHEMAS[stage];
   if (stageSchema) {
     const stageValidation = stageSchema.safeParse(data);
     if (!stageValidation.success) {

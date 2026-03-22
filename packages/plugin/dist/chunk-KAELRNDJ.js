@@ -27877,6 +27877,21 @@ var DimensionExtractionSchema = external_exports2.object({
   score: external_exports2.number().min(0).max(100).optional(),
   metadata: external_exports2.record(external_exports2.string(), external_exports2.unknown()).optional()
 }).passthrough();
+var STAGE_NAMES = [
+  "sessionSummaries",
+  "projectSummaries",
+  "weeklyInsights",
+  "typeClassification",
+  "evidenceVerification",
+  "contentWriter",
+  "translator",
+  "extractAiCollaboration",
+  "extractContextEngineering",
+  "extractToolMastery",
+  "extractBurnoutRisk",
+  "extractAiControl",
+  "extractSkillResilience"
+];
 var STAGE_SCHEMAS = {
   sessionSummaries: SessionSummaryBatchSchema,
   projectSummaries: ProjectSummaryBatchSchema,
@@ -29522,6 +29537,7 @@ export {
   external_exports,
   DomainStrengthSchema,
   DomainGrowthAreaSchema,
+  STAGE_NAMES,
   STAGE_SCHEMAS,
   MultitaskingPatternSchema,
   buildReportActivitySessions,
@@ -29544,4 +29560,4 @@ export {
   isAnalysisPending,
   clearAnalysisPending
 };
-//# sourceMappingURL=chunk-V7ACYTOR.js.map
+//# sourceMappingURL=chunk-KAELRNDJ.js.map
