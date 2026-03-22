@@ -264,6 +264,7 @@ export class ClaudeCodeSource extends BaseSessionSource {
     return {
       sessionId,
       projectPath,
+      projectName,
       startTime,
       endTime,
       durationSeconds,
