@@ -1,10 +1,20 @@
 ---
 name: analyze-communication
-description: Analyze communication patterns in AI collaboration sessions
+description: "[DEPRECATED] Replaced by extract-tool-mastery + write-tool-mastery"
 model: sonnet
 ---
 
-# Communication Patterns Analysis
+## DEPRECATED
+
+**This skill is deprecated.** It has been replaced by the two-stage pipeline:
+- **Stage 1**: `extract-tool-mastery` (data extraction via `save_stage_output`)
+- **Stage 2**: `write-tool-mastery` (narrative generation via `save_domain_results`)
+
+The orchestrator (`bp-analyze`) no longer calls this skill. It is kept temporarily for reference.
+
+---
+
+# Communication Patterns Analysis (DEPRECATED)
 
 ## Persona
 

@@ -1,10 +1,20 @@
 ---
 name: analyze-learning
-description: Analyze learning behavior and knowledge patterns
+description: "[DEPRECATED] Replaced by extract-burnout-risk + write-burnout-risk"
 model: sonnet
 ---
 
-# Learning Behavior Analysis
+## DEPRECATED
+
+**This skill is deprecated.** It has been replaced by the two-stage pipeline:
+- **Stage 1**: `extract-burnout-risk` (data extraction via `save_stage_output`)
+- **Stage 2**: `write-burnout-risk` (narrative generation via `save_domain_results`)
+
+The orchestrator (`bp-analyze`) no longer calls this skill. It is kept temporarily for reference.
+
+---
+
+# Learning Behavior Analysis (DEPRECATED)
 
 ## Persona
 

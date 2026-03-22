@@ -7,6 +7,7 @@ import {
   DomainGrowthAreaSchema,
   DomainStrengthSchema,
   MultitaskingPatternSchema,
+  STAGE_NAMES,
   STAGE_SCHEMAS,
   ZodOptional,
   _enum,
@@ -51,7 +52,7 @@ import {
   toJSONSchema,
   union,
   unknown
-} from "../chunk-2RN5XMRL.js";
+} from "../chunk-KAELRNDJ.js";
 import {
   __commonJS,
   __require,
@@ -16495,11 +16496,18 @@ import { join } from "path";
 var migratedDb = null;
 var REQUIRED_STAGE_NAMES = [
   "sessionSummaries",
+  "extractAiCollaboration",
+  "extractContextEngineering",
+  "extractToolMastery",
+  "extractBurnoutRisk",
+  "extractAiControl",
+  "extractSkillResilience",
   "thinkingQuality",
+  "contextEfficiency",
   "communicationPatterns",
   "learningBehavior",
-  "contextEfficiency",
   "sessionOutcome",
+  "content",
   "projectSummaries",
   "weeklyInsights",
   "typeClassification",
@@ -17314,6 +17322,7 @@ var ClaudeCodeSource = class extends BaseSessionSource {
     return {
       sessionId,
       projectPath,
+      projectName,
       startTime,
       endTime,
       durationSeconds,
@@ -19849,6 +19858,22 @@ function generateTypeDistributionBar(distribution) {
     `).join("");
   return `<div style="margin:16px 0;">${bars}</div>`;
 }
+var RADAR_LABELS = {
+  thinking: "Thinking",
+  communication: "Communication",
+  learning: "Learning",
+  efficiency: "Efficiency",
+  sessions: "Sessions"
+};
+function buildRadarScores(scores) {
+  return {
+    thinking: scores.thinkingQuality,
+    communication: scores.communicationPatterns,
+    learning: scores.learningBehavior,
+    efficiency: scores.contextEfficiency,
+    sessions: scores.sessionOutcome
+  };
+}
 var DOMAIN_LABELS = {
   thinkingQuality: { label: "Thinking Quality", emoji: "\u{1F9E0}" },
   communicationPatterns: { label: "Communication", emoji: "\u{1F4AC}" },
@@ -19970,6 +19995,283 @@ function generateProjectSummariesSection(projectSummaries) {
     </section>
   `;
 }
+function heatmapToDateKey(dateStr) {
+  return dateStr.slice(0, 10);
+}
+function heatmapGetWeekStart(date) {
+  const d = new Date(date);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+}
+function heatmapAddDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+function heatmapFormatTokenCount(tokens) {
+  if (tokens >= 1e9) return `${(tokens / 1e9).toFixed(1)}B`;
+  if (tokens >= 1e6) return `${(tokens / 1e6).toFixed(1)}M`;
+  if (tokens >= 1e3) return `${(tokens / 1e3).toFixed(1)}K`;
+  return String(tokens);
+}
+function heatmapGetIntensityByCount(count) {
+  if (count === 0) return 0;
+  if (count <= 2) return count;
+  if (count <= 4) return 3;
+  return 4;
+}
+function heatmapComputeTokenIntensity(grid) {
+  const nonZero = grid.map((d) => d.totalTokens).filter((t) => t > 0).sort((a, b) => a - b);
+  if (nonZero.length === 0) {
+    return () => 0;
+  }
+  const p25 = nonZero[Math.floor(nonZero.length * 0.25)];
+  const p50 = nonZero[Math.floor(nonZero.length * 0.5)];
+  const p75 = nonZero[Math.floor(nonZero.length * 0.75)];
+  return (tokens) => {
+    if (tokens === 0) return 0;
+    if (tokens <= p25) return 1;
+    if (tokens <= p50) return 2;
+    if (tokens <= p75) return 3;
+    return 4;
+  };
+}
+function heatmapFormatDate(dateStr) {
+  const d = /* @__PURE__ */ new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+function generateActivityHeatmapSection(activitySessions) {
+  if (!activitySessions || activitySessions.length === 0) return "";
+  const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const unified = activitySessions.map((s) => ({
+    sessionId: s.sessionId,
+    projectName: s.projectName,
+    startTime: s.startTime,
+    durationMinutes: s.durationMinutes,
+    messageCount: s.messageCount,
+    summary: s.summary || "",
+    totalTokens: (s.totalInputTokens || 0) + (s.totalOutputTokens || 0)
+  }));
+  const sessionsByDate = /* @__PURE__ */ new Map();
+  for (const session of unified) {
+    const dateKey = heatmapToDateKey(session.startTime);
+    if (!sessionsByDate.has(dateKey)) {
+      sessionsByDate.set(dateKey, []);
+    }
+    sessionsByDate.get(dateKey).push(session);
+  }
+  const dates = unified.map((s) => new Date(s.startTime)).sort((a, b) => a.getTime() - b.getTime());
+  const startDate = dates[0];
+  const endDate = dates[dates.length - 1];
+  const weekStart = heatmapGetWeekStart(startDate);
+  const weekEnd = heatmapAddDays(endDate, 6 - endDate.getDay());
+  const grid = [];
+  const monthLabels = [];
+  let currentDate = new Date(weekStart);
+  let prevMonth = -1;
+  let column = 0;
+  while (currentDate <= weekEnd) {
+    const dateKey = currentDate.toISOString().slice(0, 10);
+    const sessions = sessionsByDate.get(dateKey) || [];
+    const totalTokens = sessions.reduce((sum, s) => sum + s.totalTokens, 0);
+    grid.push({ date: dateKey, count: sessions.length, totalTokens, sessions });
+    const dayOfWeek = currentDate.getDay();
+    const month = currentDate.getMonth();
+    if (dayOfWeek === 0 && month !== prevMonth) {
+      monthLabels.push({ text: MONTH_NAMES[month], column });
+      prevMonth = month;
+    }
+    if (dayOfWeek === 6) {
+      column++;
+    }
+    currentDate = heatmapAddDays(currentDate, 1);
+  }
+  const totalWeeks = Math.ceil(grid.length / 7);
+  const hasTokenData = unified.some((s) => s.totalTokens > 0);
+  const getTokenIntensity = heatmapComputeTokenIntensity(grid);
+  const cellSize = 16;
+  const gap = 3;
+  const totalSessions = unified.length;
+  const activeDays = sessionsByDate.size;
+  const totalTokensAll = unified.reduce((sum, s) => sum + s.totalTokens, 0);
+  const projectCounts = /* @__PURE__ */ new Map();
+  for (const session of unified) {
+    projectCounts.set(session.projectName, (projectCounts.get(session.projectName) || 0) + 1);
+  }
+  let mostActiveProject = "";
+  let maxCount = 0;
+  for (const [project, count] of projectCounts) {
+    if (count > maxCount) {
+      mostActiveProject = project;
+      maxCount = count;
+    }
+  }
+  const statCards = `
+    <div class="heatmap-stats">
+      <div class="heatmap-stat heatmap-stat-blue">
+        <span class="heatmap-stat-value">${totalSessions}</span>
+        <span class="heatmap-stat-label">Sessions</span>
+      </div>
+      <div class="heatmap-stat heatmap-stat-green">
+        <span class="heatmap-stat-value">${activeDays}</span>
+        <span class="heatmap-stat-label">Active Days</span>
+      </div>
+      ${totalTokensAll > 0 ? `
+        <div class="heatmap-stat heatmap-stat-purple">
+          <span class="heatmap-stat-value">${heatmapFormatTokenCount(totalTokensAll)}</span>
+          <span class="heatmap-stat-label">Total Tokens</span>
+        </div>
+      ` : ""}
+      ${mostActiveProject ? `
+        <div class="heatmap-stat heatmap-stat-blue">
+          <span class="heatmap-stat-value">${escapeHtml(mostActiveProject)}</span>
+          <span class="heatmap-stat-label">Top Project</span>
+        </div>
+      ` : ""}
+    </div>
+  `;
+  const monthLabelsHtml = monthLabels.map(
+    (m) => `<span class="hm-month-label" style="left:${36 + m.column * (cellSize + gap)}px;">${m.text}</span>`
+  ).join("");
+  const dayLabelsHtml = DAY_LABELS.map(
+    (label, i) => `<span class="hm-day-label${i % 2 === 0 ? " hm-day-hidden" : ""}" style="height:${cellSize}px;line-height:${cellSize}px;">${label}</span>`
+  ).join("");
+  const cellsHtml = grid.map((day) => {
+    const intensity = hasTokenData ? getTokenIntensity(day.totalTokens) : heatmapGetIntensityByCount(day.count);
+    const title = day.count > 0 ? `${heatmapFormatDate(day.date)}: ${day.totalTokens > 0 ? `${heatmapFormatTokenCount(day.totalTokens)} tokens, ` : ""}${day.count} session${day.count !== 1 ? "s" : ""}` : `${heatmapFormatDate(day.date)}: No sessions`;
+    return `<div class="hm-cell hm-level${intensity}" data-date="${day.date}" title="${escapeHtml(title)}"${day.count > 0 ? ' onclick="showHeatmapDetail(this.dataset.date)"' : ""}></div>`;
+  }).join("");
+  const legendHtml = `
+    <div class="hm-legend">
+      <span class="hm-legend-label">Less</span>
+      <div class="hm-legend-cells">
+        ${[0, 1, 2, 3, 4].map((level) => `<div class="hm-legend-cell hm-level${level}"></div>`).join("")}
+      </div>
+      <span class="hm-legend-label">More</span>
+    </div>
+  `;
+  const sessionDataByDate = {};
+  for (const day of grid) {
+    if (day.sessions.length > 0) {
+      sessionDataByDate[day.date] = day.sessions;
+    }
+  }
+  return `
+    <section class="heatmap-section" id="activity-heatmap">
+      <div class="heatmap-header">
+        <span class="heatmap-header-icon">\u{1F4CA}</span>
+        <div class="heatmap-header-text">
+          <h2 class="heatmap-title">Monthly Vibe</h2>
+          <p class="heatmap-subtitle">${totalSessions} sessions &middot; ${activeDays} active days</p>
+        </div>
+      </div>
+      <div class="heatmap-body">
+        ${statCards}
+        <div class="heatmap-graph">
+          <div class="hm-month-row">${monthLabelsHtml}</div>
+          <div class="hm-graph-wrapper">
+            <div class="hm-day-labels">${dayLabelsHtml}</div>
+            <div class="hm-grid" style="grid-template-columns:repeat(${totalWeeks},${cellSize}px);">
+              ${cellsHtml}
+            </div>
+          </div>
+          ${legendHtml}
+        </div>
+        <div id="heatmap-detail" class="hm-detail" style="display:none;"></div>
+      </div>
+    </section>
+    <script>
+      var __heatmapData = ${JSON.stringify(sessionDataByDate).replace(/</g, "\\u003c")};
+      function escHtml(s) {
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(s));
+        return d.innerHTML;
+      }
+      function formatHmTokens(t) {
+        if (t >= 1e9) return (t/1e9).toFixed(1)+'B';
+        if (t >= 1e6) return (t/1e6).toFixed(1)+'M';
+        if (t >= 1e3) return (t/1e3).toFixed(1)+'K';
+        return String(t);
+      }
+      function formatHmDuration(m) {
+        if (m < 60) return m + 'm';
+        return Math.floor(m/60) + 'h ' + (m%60) + 'm';
+      }
+      function showHeatmapDetail(dateKey) {
+        var panel = document.getElementById('heatmap-detail');
+        if (panel.dataset.activeDate === dateKey) {
+          panel.style.display = 'none';
+          panel.dataset.activeDate = '';
+          document.querySelectorAll('.hm-cell-selected').forEach(function(el) { el.classList.remove('hm-cell-selected'); });
+          return;
+        }
+        panel.dataset.activeDate = dateKey;
+        document.querySelectorAll('.hm-cell-selected').forEach(function(el) { el.classList.remove('hm-cell-selected'); });
+        var clickedCell = document.querySelector('.hm-cell[data-date="' + dateKey + '"]');
+        if (clickedCell) clickedCell.classList.add('hm-cell-selected');
+
+        var sessions = __heatmapData[dateKey] || [];
+        if (sessions.length === 0) { panel.style.display = 'none'; return; }
+
+        var d = new Date(dateKey + 'T00:00:00');
+        var dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+        // Group by project
+        var projects = {};
+        sessions.forEach(function(s) {
+          if (!projects[s.projectName]) projects[s.projectName] = { sessions: [], totalTokens: 0, totalMinutes: 0 };
+          projects[s.projectName].sessions.push(s);
+          projects[s.projectName].totalTokens += s.totalTokens;
+          projects[s.projectName].totalMinutes += s.durationMinutes;
+        });
+
+        var html = '<div class="hm-detail-header">' +
+          '<h4 class="hm-detail-date">' + dateStr + '</h4>' +
+          '<span class="hm-detail-count">' + sessions.length + ' session' + (sessions.length !== 1 ? 's' : '') + '</span>' +
+          '<button class="hm-detail-close" onclick="closeHeatmapDetail()" type="button">&times;</button>' +
+          '</div><div class="hm-detail-projects">';
+
+        Object.keys(projects).sort(function(a, b) {
+          return projects[b].sessions.length - projects[a].sessions.length;
+        }).forEach(function(name) {
+          var p = projects[name];
+          var meta = p.sessions.length + ' session' + (p.sessions.length !== 1 ? 's' : '');
+          if (p.totalTokens > 0) meta += ' &middot; ' + formatHmTokens(p.totalTokens) + ' tokens';
+          if (p.totalMinutes > 0) meta += ' &middot; ' + formatHmDuration(p.totalMinutes);
+          html += '<div class="hm-detail-project">' +
+            '<div class="hm-detail-project-header">' +
+            '<span class="hm-detail-project-name">' + escHtml(name) + '</span>' +
+            '<span class="hm-detail-project-meta">' + meta + '</span>' +
+            '</div>';
+          var summaries = p.sessions.map(function(s) { return s.summary; }).filter(function(s) { return s; });
+          if (summaries.length > 0) {
+            html += '<ul class="hm-detail-summaries">';
+            summaries.slice(0, 3).forEach(function(s) { html += '<li>' + escHtml(s) + '</li>'; });
+            if (summaries.length > 3) html += '<li style="opacity:0.6;">+' + (summaries.length - 3) + ' more</li>';
+            html += '</ul>';
+          }
+          html += '</div>';
+        });
+
+        html += '</div>';
+        panel.innerHTML = html;
+        panel.style.display = 'block';
+      }
+      function closeHeatmapDetail() {
+        var panel = document.getElementById('heatmap-detail');
+        panel.style.display = 'none';
+        panel.dataset.activeDate = '';
+        document.querySelectorAll('.hm-cell-selected').forEach(function(el) { el.classList.remove('hm-cell-selected'); });
+      }
+    </script>
+  `;
+}
 function generateWeeklyInsightsSection(weeklyInsights) {
   if (!weeklyInsights) return "";
   const stats = weeklyInsights.stats;
@@ -20015,126 +20317,6 @@ function generateWeeklyInsightsSection(weeklyInsights) {
     </section>
   `;
 }
-function generateActivitySection(activitySessions) {
-  if (!activitySessions?.length) return "";
-  const rows = activitySessions.slice(0, 20).map((session) => `
-      <div class="card">
-        <h4>${escapeHtml(session.projectName)}</h4>
-        <p>${escapeHtml(session.summary)}</p>
-        <p style="margin-top:8px;font-size:12px;">
-          ${escapeHtml(new Date(session.startTime).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }))} \xB7
-          ${Math.round(session.durationMinutes)} min \xB7
-          ${session.messageCount} messages
-        </p>
-      </div>
-    `).join("");
-  return `
-    <section class="domain-section" id="activity-sessions">
-      <h2>\u{1F5C2} Activity Sessions</h2>
-      <div class="card-grid">${rows}</div>
-    </section>
-  `;
-}
-function generatePlanningAnalysisSection(planningAnalysis) {
-  if (!planningAnalysis) return "";
-  const strengths = planningAnalysis.strengths ?? [];
-  const opportunities = planningAnalysis.opportunities ?? [];
-  return `
-    <section class="domain-section" id="planning-analysis">
-      <h2>\u{1F5FA} Planning Analysis</h2>
-      <div class="card">
-        ${planningAnalysis.planningMaturityLevel ? `<p><strong>Maturity:</strong> ${escapeHtml(planningAnalysis.planningMaturityLevel)}</p>` : ""}
-        ${planningAnalysis.summary ? `<p>${escapeHtml(planningAnalysis.summary)}</p>` : ""}
-      </div>
-      ${strengths.length > 0 ? `
-        <h3>Observed Strengths</h3>
-        <div class="card-grid">
-          ${strengths.map((item) => `
-            <div class="card">
-              <h4>${escapeHtml(item.displayName ?? "Planning strength")}</h4>
-              <p>${escapeHtml(item.description ?? "")}</p>
-              ${item.sophistication ? `<p style="margin-top:8px;font-size:12px;"><strong>Sophistication:</strong> ${escapeHtml(item.sophistication)}</p>` : ""}
-            </div>
-          `).join("")}
-        </div>
-      ` : ""}
-      ${opportunities.length > 0 ? `
-        <h3>Opportunities</h3>
-        <div class="card-grid">
-          ${opportunities.map((item) => `
-            <div class="card">
-              <h4>${escapeHtml(item.displayName ?? "Planning opportunity")}</h4>
-              <p>${escapeHtml(item.description ?? "")}</p>
-              ${item.sophistication ? `<p style="margin-top:8px;font-size:12px;"><strong>Sophistication:</strong> ${escapeHtml(item.sophistication)}</p>` : ""}
-            </div>
-          `).join("")}
-        </div>
-      ` : ""}
-    </section>
-  `;
-}
-function generateCriticalThinkingSection(criticalThinkingAnalysis) {
-  if (!criticalThinkingAnalysis) return "";
-  const strengths = criticalThinkingAnalysis.strengths ?? [];
-  const opportunities = criticalThinkingAnalysis.opportunities ?? [];
-  return `
-    <section class="domain-section" id="critical-thinking-analysis">
-      <h2>\u{1F50D} Critical Thinking</h2>
-      <div class="card">
-        ${typeof criticalThinkingAnalysis.overallScore === "number" ? `<p><strong>Score:</strong> ${criticalThinkingAnalysis.overallScore}/100</p>` : ""}
-        ${criticalThinkingAnalysis.summary ? `<p>${escapeHtml(criticalThinkingAnalysis.summary)}</p>` : ""}
-      </div>
-      ${strengths.length > 0 ? `
-        <div class="card-grid">
-          ${strengths.map((item) => `
-            <div class="card">
-              <h4>${escapeHtml(item.displayName ?? "Signal")}</h4>
-              <p>${escapeHtml(item.description ?? "")}</p>
-              ${item.quality ? `<p style="margin-top:8px;font-size:12px;"><strong>Quality:</strong> ${escapeHtml(item.quality)}</p>` : ""}
-            </div>
-          `).join("")}
-        </div>
-      ` : ""}
-      ${opportunities.length > 0 ? `
-        <div class="card-grid">
-          ${opportunities.map((item) => `
-            <div class="card">
-              <h4>${escapeHtml(item.displayName ?? "Opportunity")}</h4>
-              <p>${escapeHtml(item.description ?? "")}</p>
-            </div>
-          `).join("")}
-        </div>
-      ` : ""}
-    </section>
-  `;
-}
-function generateAntiPatternsSection(antiPatternsAnalysis) {
-  if (!antiPatternsAnalysis) return "";
-  const detected = antiPatternsAnalysis.detected ?? [];
-  return `
-    <section class="domain-section" id="anti-patterns-analysis">
-      <h2>\u{1F6A7} Anti-Patterns</h2>
-      <div class="card">
-        ${typeof antiPatternsAnalysis.overallHealthScore === "number" ? `<p><strong>Health Score:</strong> ${antiPatternsAnalysis.overallHealthScore}/100</p>` : ""}
-        ${antiPatternsAnalysis.summary ? `<p>${escapeHtml(antiPatternsAnalysis.summary)}</p>` : ""}
-      </div>
-      ${detected.length > 0 ? `
-        <div class="card-grid">
-          ${detected.map((item) => `
-            <div class="card">
-              <h4>${escapeHtml(item.displayName ?? "Anti-pattern")}</h4>
-              <p>${escapeHtml(item.description ?? "")}</p>
-              <p style="margin-top:8px;font-size:12px;">
-                ${item.severity ? `<strong>Severity:</strong> ${escapeHtml(item.severity)} \xB7 ` : ""}
-                ${typeof item.occurrences === "number" ? `<strong>Occurrences:</strong> ${item.occurrences}` : ""}
-              </p>
-            </div>
-          `).join("")}
-        </div>
-      ` : ""}
-    </section>
-  `;
-}
 function generateKnowledgeResourcesSection(knowledgeResources) {
   if (!knowledgeResources?.length) return "";
   return `
@@ -20162,44 +20344,8 @@ function generateKnowledgeResourcesSection(knowledgeResources) {
     </section>
   `;
 }
-function generateReportHtml(report) {
-  const { typeResult, deterministicScores, phase1Metrics, domainResults, content } = report;
-  const radarScores = {
-    thinking: deterministicScores.thinkingQuality,
-    communication: deterministicScores.communicationPatterns,
-    learning: deterministicScores.learningBehavior,
-    efficiency: deterministicScores.contextEfficiency,
-    sessions: deterministicScores.sessionOutcome
-  };
-  const radarLabels = {
-    thinking: "Thinking",
-    communication: "Communication",
-    learning: "Learning",
-    efficiency: "Efficiency",
-    sessions: "Sessions"
-  };
-  const radarSvg = generateRadarSvg(radarScores, radarLabels);
-  const distributionBar = typeResult ? generateTypeDistributionBar(typeResult.distribution) : '<p style="color:var(--ink-muted);">Type classification not yet performed. Run classify_developer_type first.</p>';
-  const domainSections = domainResults.map(generateDomainSection).join("\n");
-  const focusAreasSection = generateFocusAreas(content);
-  const navDots = [
-    { id: "identity", label: "Identity" },
-    { id: "scores", label: "Scores" },
-    ...domainResults.map((d) => ({
-      id: `domain-${d.domain}`,
-      label: DOMAIN_LABELS[d.domain]?.label ?? d.domain
-    })),
-    ...content?.topFocusAreas?.length ? [{ id: "focus-areas", label: "Focus" }] : []
-  ];
-  const navDotsHtml = navDots.map((d) => `<a href="#${d.id}" class="nav-dot" title="${d.label}"><span class="dot"></span></a>`).join("");
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BetterPrompt Analysis Report</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
-  <style>
+function generateBaseCss() {
+  return `
     /* \u2500\u2500 Notebook Sketch Design System \u2500\u2500 */
 
     :root {
@@ -20286,7 +20432,6 @@ function generateReportHtml(report) {
     .card h4 { font-size: 14px; margin-bottom: 8px; }
     .card p { font-size: 13px; color: var(--ink-secondary); line-height: 1.5; }
     .card-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-    @media (min-width: 640px) { .card-grid { grid-template-columns: 1fr 1fr; } }
 
     .strength-card { border-left: 3px solid var(--sketch-green); }
     .growth-card { border-left: 3px solid var(--sketch-orange); }
@@ -20431,81 +20576,57 @@ function generateReportHtml(report) {
       .scores-section { flex-direction: column; }
       .actions-grid { grid-template-columns: 1fr; }
     }
-  </style>
-</head>
-<body>
-  <nav class="nav-dots">${navDotsHtml}</nav>
-
-  <div class="container">
-    <header class="header">
-      <h1>BetterPrompt Analysis</h1>
-      <p class="subtitle">Generated ${new Date(report.analyzedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
-    </header>
-
-    <!-- Identity -->
-    <section class="identity" id="identity">
-      ${typeResult ? `
-        <div class="type-emoji">${typeResult.matrixEmoji}</div>
-        <div class="type-info">
-          <div class="type-name">${escapeHtml(typeResult.matrixName)}</div>
-          <div class="type-detail">${escapeHtml(typeResult.primaryType)} / ${escapeHtml(typeResult.controlLevel)} (control: ${typeResult.controlScore})</div>
-        </div>
-      ` : `
-        <div class="type-info">
-          <div class="type-name">Type Not Classified</div>
-          <div class="type-detail">Run classify_developer_type to determine your collaboration style</div>
-        </div>
-      `}
-    </section>
-
-    <!-- Metrics Bar -->
+  `;
+}
+function renderNavDotsHtml(dots) {
+  return dots.map((d) => `<a href="#${d.id}" class="nav-dot" title="${d.label}"><span class="dot"></span></a>`).join("");
+}
+function renderIdentitySection(typeResult, fallbackMessage) {
+  if (typeResult) {
+    return `
+      <div class="type-emoji">${typeResult.matrixEmoji}</div>
+      <div class="type-info">
+        <div class="type-name">${escapeHtml(typeResult.matrixName)}</div>
+        <div class="type-detail">${escapeHtml(typeResult.primaryType)} / ${escapeHtml(typeResult.controlLevel)} (control: ${typeResult.controlScore})</div>
+      </div>
+    `;
+  }
+  return `
+    <div class="type-info">
+      <div class="type-name">Type Not Classified</div>
+      <div class="type-detail">${escapeHtml(fallbackMessage)}</div>
+    </div>
+  `;
+}
+function renderMetricsBar(metrics) {
+  return `
     <div class="metrics-bar">
       <div class="metric">
-        <div class="value">${phase1Metrics.totalSessions}</div>
+        <div class="value">${metrics.totalSessions}</div>
         <div class="label">Sessions</div>
       </div>
       <div class="metric">
-        <div class="value">${phase1Metrics.totalDeveloperUtterances}</div>
+        <div class="value">${metrics.totalDeveloperUtterances}</div>
         <div class="label">Utterances</div>
       </div>
       <div class="metric">
-        <div class="value">${Math.round(phase1Metrics.avgMessagesPerSession)}</div>
+        <div class="value">${Math.round(metrics.avgMessagesPerSession)}</div>
         <div class="label">Avg Messages/Session</div>
       </div>
       <div class="metric">
-        <div class="value">${Math.round(phase1Metrics.questionRatio * 100)}%</div>
+        <div class="value">${Math.round(metrics.questionRatio * 100)}%</div>
         <div class="label">Questions</div>
       </div>
       <div class="metric">
-        <div class="value">${Math.round(phase1Metrics.codeBlockRatio * 100)}%</div>
+        <div class="value">${Math.round(metrics.codeBlockRatio * 100)}%</div>
         <div class="label">Code Blocks</div>
       </div>
     </div>
-
-    <!-- Scores -->
-    <section class="scores-section" id="scores">
-      <div class="radar-container">
-        ${radarSvg}
-      </div>
-      <div class="distribution-container">
-        <h3 style="margin-bottom:12px;">Type Distribution</h3>
-        ${distributionBar}
-      </div>
-    </section>
-
-    <!-- Domain Results -->
-    ${domainSections}
-
-    <!-- Focus Areas -->
-    ${focusAreasSection}
-
-    <footer class="footer">
-      Generated by BetterPrompt Plugin v0.2.0 &mdash; local-first AI collaboration analysis
-    </footer>
-  </div>
-
+  `;
+}
+function renderScrollSpyScript() {
+  return `
   <script>
-    // Scroll spy for navigation dots
     const sections = document.querySelectorAll('section[id], .scores-section[id]');
     const navDots = document.querySelectorAll('.nav-dot');
 
@@ -20521,9 +20642,7 @@ function generateReportHtml(report) {
     }, { threshold: 0.3 });
 
     sections.forEach(section => observer.observe(section));
-  </script>
-</body>
-</html>`;
+  </script>`;
 }
 function generateCanonicalReportHtml(run) {
   const evaluation = run.evaluation;
@@ -20531,11 +20650,7 @@ function generateCanonicalReportHtml(run) {
   const promptPatterns = Array.isArray(evaluation.promptPatterns) ? evaluation.promptPatterns : [];
   const projectSummaries = Array.isArray(evaluation.projectSummaries) ? evaluation.projectSummaries : [];
   const weeklyInsights = evaluation.weeklyInsights;
-  const activitySessions = Array.isArray(run.activitySessions) ? run.activitySessions : [];
   const focusAreas = evaluation.topFocusAreas?.areas;
-  const planningAnalysis = evaluation.planningAnalysis;
-  const criticalThinkingAnalysis = evaluation.criticalThinkingAnalysis;
-  const antiPatternsAnalysis = evaluation.antiPatternsAnalysis;
   const knowledgeResources = Array.isArray(evaluation.knowledgeResources) ? evaluation.knowledgeResources : [];
   const legacyContent = focusAreas ? {
     topFocusAreas: focusAreas.map((area) => ({
@@ -20546,21 +20661,7 @@ function generateCanonicalReportHtml(run) {
     }))
   } : void 0;
   const typeResult = run.typeResult;
-  const radarScores = {
-    thinking: run.deterministicScores.thinkingQuality,
-    communication: run.deterministicScores.communicationPatterns,
-    learning: run.deterministicScores.learningBehavior,
-    efficiency: run.deterministicScores.contextEfficiency,
-    sessions: run.deterministicScores.sessionOutcome
-  };
-  const radarLabels = {
-    thinking: "Thinking",
-    communication: "Communication",
-    learning: "Learning",
-    efficiency: "Efficiency",
-    sessions: "Sessions"
-  };
-  const radarSvg = generateRadarSvg(radarScores, radarLabels);
+  const radarSvg = generateRadarSvg(buildRadarScores(run.deterministicScores), RADAR_LABELS);
   const distributionBar = typeResult ? generateTypeDistributionBar(typeResult.distribution) : '<p style="color:var(--ink-muted);">Type classification not yet performed.</p>';
   const domainSections = run.domainResults.map(generateDomainSection).join("\n");
   const focusAreasSection = generateFocusAreas(legacyContent);
@@ -20568,22 +20669,16 @@ function generateCanonicalReportHtml(run) {
   const promptPatternsSection = generatePromptPatternsSection(promptPatterns);
   const projectSummariesSection = generateProjectSummariesSection(projectSummaries);
   const weeklyInsightsSection = generateWeeklyInsightsSection(weeklyInsights);
-  const activitySection = generateActivitySection(activitySessions);
-  const planningSection = generatePlanningAnalysisSection(planningAnalysis);
-  const criticalThinkingSection = generateCriticalThinkingSection(criticalThinkingAnalysis);
-  const antiPatternsSection = generateAntiPatternsSection(antiPatternsAnalysis);
   const knowledgeResourcesSection = generateKnowledgeResourcesSection(knowledgeResources);
+  const activityHeatmapSection = generateActivityHeatmapSection(run.activitySessions);
   const navDots = [
     { id: "identity", label: "Identity" },
     { id: "scores", label: "Scores" },
+    ...(run.activitySessions?.length ?? 0) > 0 ? [{ id: "activity-heatmap", label: "Activity" }] : [],
     ...personalitySummary ? [{ id: "personality-summary", label: "Summary" }] : [],
     ...promptPatterns.length > 0 ? [{ id: "prompt-patterns", label: "Patterns" }] : [],
     ...projectSummaries.length > 0 ? [{ id: "project-summaries", label: "Projects" }] : [],
     ...weeklyInsights ? [{ id: "weekly-insights", label: "Week" }] : [],
-    ...activitySessions.length > 0 ? [{ id: "activity-sessions", label: "Activity" }] : [],
-    ...planningAnalysis ? [{ id: "planning-analysis", label: "Planning" }] : [],
-    ...criticalThinkingAnalysis ? [{ id: "critical-thinking-analysis", label: "Critical" }] : [],
-    ...antiPatternsAnalysis ? [{ id: "anti-patterns-analysis", label: "Anti" }] : [],
     ...knowledgeResources.length > 0 ? [{ id: "knowledge-resources", label: "Resources" }] : [],
     ...run.domainResults.map((d) => ({
       id: `domain-${d.domain}`,
@@ -20591,7 +20686,6 @@ function generateCanonicalReportHtml(run) {
     })),
     ...legacyContent?.topFocusAreas?.length ? [{ id: "focus-areas", label: "Focus" }] : []
   ];
-  const navDotsHtml = navDots.map((d) => `<a href="#${d.id}" class="nav-dot" title="${d.label}"><span class="dot"></span></a>`).join("");
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20600,19 +20694,228 @@ function generateCanonicalReportHtml(run) {
   <title>BetterPrompt Analysis Report</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
   <style>
-    ${generateReportHtml({
-    userId: "local",
-    analyzedAt: run.analyzedAt,
-    phase1Metrics: run.phase1Output.sessionMetrics,
-    deterministicScores: run.deterministicScores,
-    typeResult: run.typeResult ?? null,
-    domainResults: run.domainResults,
-    content: legacyContent
-  }).match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? ""}
+    ${generateBaseCss()}
+
+    /* \u2500\u2500 Activity Heatmap \u2500\u2500 */
+    .heatmap-section {
+      margin-bottom: 48px;
+      background: var(--bg-paper);
+      border: 2px solid var(--ink-primary);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .heatmap-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      background: var(--ink-primary);
+      color: var(--bg-paper);
+    }
+    .heatmap-header-icon { font-size: 24px; }
+    .heatmap-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+      color: var(--bg-paper);
+    }
+    .heatmap-subtitle {
+      font-size: 12px;
+      color: var(--ink-muted);
+      margin: 2px 0 0 0;
+    }
+    .heatmap-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .heatmap-stats {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .heatmap-stat {
+      flex: 1;
+      min-width: 110px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 12px;
+      border: 1px solid var(--bg-grid-color);
+      border-left: 3px solid var(--bg-grid-color);
+      border-radius: 8px;
+      background: var(--bg-paper);
+    }
+    .heatmap-stat-blue { border-left-color: var(--sketch-blue); background: rgba(59,130,246,0.06); }
+    .heatmap-stat-green { border-left-color: var(--sketch-green); background: rgba(74,222,128,0.06); }
+    .heatmap-stat-purple { border-left-color: var(--sketch-purple); background: rgba(156,124,244,0.06); }
+    .heatmap-stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--ink-primary);
+      line-height: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .heatmap-stat-blue .heatmap-stat-value { color: var(--sketch-blue); }
+    .heatmap-stat-green .heatmap-stat-value { color: #16a34a; }
+    .heatmap-stat-purple .heatmap-stat-value { color: var(--sketch-purple); }
+    .heatmap-stat-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--ink-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .heatmap-graph { padding: 8px 0; }
+    .hm-month-row {
+      position: relative;
+      height: 16px;
+      margin-bottom: 4px;
+      padding-left: 36px;
+    }
+    .hm-month-label {
+      position: absolute;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--ink-muted);
+      white-space: nowrap;
+    }
+    .hm-graph-wrapper {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 4px;
+    }
+    .hm-day-labels {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      width: 32px;
+      flex-shrink: 0;
+    }
+    .hm-day-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--ink-muted);
+      text-align: right;
+    }
+    .hm-day-hidden { visibility: hidden; }
+    .hm-grid {
+      display: grid;
+      grid-template-rows: repeat(7, 16px);
+      grid-auto-flow: column;
+      grid-auto-columns: 16px;
+      gap: 3px;
+    }
+    .hm-cell {
+      width: 16px;
+      height: 16px;
+      border-radius: 2px;
+      cursor: default;
+      outline: none;
+      transition: outline-color 0.1s;
+    }
+    .hm-cell[onclick] { cursor: pointer; }
+    .hm-cell:hover { outline: 2px solid var(--ink-secondary); outline-offset: -1px; }
+    .hm-cell-selected {
+      outline: 2px solid var(--ink-primary);
+      outline-offset: -1px;
+      box-shadow: 0 0 0 2px var(--sketch-blue);
+    }
+    .hm-level0 { background-color: #EBEDF0; }
+    .hm-level1 { background-color: #9BE9A8; }
+    .hm-level2 { background-color: #40C463; }
+    .hm-level3 { background-color: #30A14E; }
+    .hm-level4 { background-color: #216E39; }
+    .hm-legend {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      margin-top: 12px;
+    }
+    .hm-legend-label { font-size: 10px; font-weight: 500; color: var(--ink-muted); }
+    .hm-legend-cells { display: flex; gap: 3px; }
+    .hm-legend-cell { width: 16px; height: 16px; border-radius: 2px; }
+    .hm-detail {
+      padding: 16px 20px;
+      background: #F8F9FA;
+      border: 1px solid var(--bg-grid-color);
+      border-top: 3px solid var(--sketch-blue);
+      border-radius: 8px;
+    }
+    .hm-detail-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--bg-grid-color);
+    }
+    .hm-detail-date { font-size: 14px; font-weight: 700; margin: 0; }
+    .hm-detail-count { font-size: 11px; color: var(--ink-muted); margin-left: auto; }
+    .hm-detail-close {
+      width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent;
+      border: 1px solid var(--bg-grid-color);
+      border-radius: 4px;
+      font-size: 14px;
+      color: var(--ink-muted);
+      cursor: pointer;
+    }
+    .hm-detail-close:hover { color: var(--ink-primary); border-color: var(--ink-primary); }
+    .hm-detail-projects { display: flex; flex-direction: column; gap: 8px; }
+    .hm-detail-project {
+      padding: 8px 12px;
+      background: var(--bg-paper);
+      border-left: 3px solid var(--sketch-blue);
+      border-radius: 0 8px 8px 0;
+    }
+    .hm-detail-project-header { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .hm-detail-project-name { font-size: 13px; font-weight: 700; color: var(--ink-primary); }
+    .hm-detail-project-meta { font-size: 11px; color: var(--ink-muted); margin-left: auto; }
+    .hm-detail-summaries {
+      list-style: none;
+      margin: 6px 0 0 0;
+      padding: 6px 0 0 0;
+      border-top: 1px solid var(--bg-grid-color);
+    }
+    .hm-detail-summaries li {
+      font-size: 12px;
+      color: var(--ink-secondary);
+      line-height: 1.5;
+      padding-left: 12px;
+      position: relative;
+      margin-bottom: 2px;
+    }
+    .hm-detail-summaries li::before {
+      content: '\\00B7';
+      position: absolute;
+      left: 0;
+      color: var(--ink-muted);
+      font-weight: 700;
+    }
+
+    @media (max-width: 640px) {
+      .heatmap-stats { flex-direction: column; }
+      .hm-grid { grid-template-rows: repeat(7, 12px); grid-auto-columns: 12px; gap: 2px; }
+      .hm-cell { width: 12px; height: 12px; }
+      .hm-day-labels { gap: 2px; width: 24px; }
+      .hm-day-label { font-size: 9px; }
+      .hm-month-row { padding-left: 28px; }
+      .hm-month-label { font-size: 9px; }
+      .hm-legend-cell { width: 12px; height: 12px; }
+      .hm-detail-project-header { flex-direction: column; gap: 2px; }
+      .hm-detail-project-meta { margin-left: 0; }
+    }
   </style>
 </head>
 <body>
-  <nav class="nav-dots">${navDotsHtml}</nav>
+  <nav class="nav-dots">${renderNavDotsHtml(navDots)}</nav>
 
   <div class="container">
     <header class="header">
@@ -20621,42 +20924,10 @@ function generateCanonicalReportHtml(run) {
     </header>
 
     <section class="identity" id="identity">
-      ${typeResult ? `
-        <div class="type-emoji">${typeResult.matrixEmoji}</div>
-        <div class="type-info">
-          <div class="type-name">${escapeHtml(typeResult.matrixName)}</div>
-          <div class="type-detail">${escapeHtml(typeResult.primaryType)} / ${escapeHtml(typeResult.controlLevel)} (control: ${typeResult.controlScore})</div>
-        </div>
-      ` : `
-        <div class="type-info">
-          <div class="type-name">Type Not Classified</div>
-          <div class="type-detail">Run type classification before generating the final report.</div>
-        </div>
-      `}
+      ${renderIdentitySection(typeResult, "Run type classification before generating the final report.")}
     </section>
 
-    <div class="metrics-bar">
-      <div class="metric">
-        <div class="value">${run.phase1Output.sessionMetrics.totalSessions}</div>
-        <div class="label">Sessions</div>
-      </div>
-      <div class="metric">
-        <div class="value">${run.phase1Output.sessionMetrics.totalDeveloperUtterances}</div>
-        <div class="label">Utterances</div>
-      </div>
-      <div class="metric">
-        <div class="value">${Math.round(run.phase1Output.sessionMetrics.avgMessagesPerSession)}</div>
-        <div class="label">Avg Messages/Session</div>
-      </div>
-      <div class="metric">
-        <div class="value">${Math.round(run.phase1Output.sessionMetrics.questionRatio * 100)}%</div>
-        <div class="label">Questions</div>
-      </div>
-      <div class="metric">
-        <div class="value">${Math.round(run.phase1Output.sessionMetrics.codeBlockRatio * 100)}%</div>
-        <div class="label">Code Blocks</div>
-      </div>
-    </div>
+    ${renderMetricsBar(run.phase1Output.sessionMetrics)}
 
     <section class="scores-section" id="scores">
       <div class="radar-container">${radarSvg}</div>
@@ -20666,14 +20937,11 @@ function generateCanonicalReportHtml(run) {
       </div>
     </section>
 
+    ${activityHeatmapSection}
     ${personalitySummarySection}
     ${promptPatternsSection}
     ${projectSummariesSection}
     ${weeklyInsightsSection}
-    ${activitySection}
-    ${planningSection}
-    ${criticalThinkingSection}
-    ${antiPatternsSection}
     ${knowledgeResourcesSection}
     ${domainSections}
     ${focusAreasSection}
@@ -20682,24 +20950,7 @@ function generateCanonicalReportHtml(run) {
       Generated by BetterPrompt Plugin v0.2.0 - local-first AI collaboration analysis
     </footer>
   </div>
-
-  <script>
-    const sections = document.querySelectorAll('section[id], .scores-section[id]');
-    const navDots = document.querySelectorAll('.nav-dot');
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          navDots.forEach(dot => dot.classList.remove('active'));
-          const id = entry.target.id;
-          const activeDot = document.querySelector('.nav-dot[href="#' + id + '"]');
-          if (activeDot) activeDot.classList.add('active');
-        }
-      });
-    }, { threshold: 0.3 });
-
-    sections.forEach(section => observer.observe(section));
-  </script>
+  ${renderScrollSpyScript()}
 </body>
 </html>`;
 }
@@ -20931,18 +21182,10 @@ async function execute7(args) {
 // mcp/tools/save-stage-output.ts
 var definition11 = {
   name: "save_stage_output",
-  description: "Save output from a pipeline stage. Called after completing a stage (sessionSummaries, projectSummaries, weeklyInsights, typeClassification, evidenceVerification, contentWriter, translator). Input must include stage name and structured data matching the stage schema."
+  description: "Save output from a pipeline stage. Called after completing a stage (sessionSummaries, projectSummaries, weeklyInsights, typeClassification, evidenceVerification, contentWriter, translator, extractAiCollaboration, extractContextEngineering, extractToolMastery, extractBurnoutRisk, extractAiControl, extractSkillResilience). Input must include stage name and structured data matching the stage schema."
 };
 var StageOutputInputSchema = external_exports.object({
-  stage: external_exports.enum([
-    "sessionSummaries",
-    "projectSummaries",
-    "weeklyInsights",
-    "typeClassification",
-    "evidenceVerification",
-    "contentWriter",
-    "translator"
-  ]),
+  stage: external_exports.enum(STAGE_NAMES),
   data: external_exports.record(external_exports.string(), external_exports.unknown())
 });
 function extractStageName(args) {
@@ -20975,8 +21218,7 @@ async function execute8(args) {
     });
   }
   const { stage, data } = parsed.data;
-  const normalizedStageName = stage;
-  const stageSchema = STAGE_SCHEMAS[normalizedStageName];
+  const stageSchema = STAGE_SCHEMAS[stage];
   if (stageSchema) {
     const stageValidation = stageSchema.safeParse(data);
     if (!stageValidation.success) {

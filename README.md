@@ -95,12 +95,25 @@ In Claude Code:
 /plugin marketplace remove betterprompt
 ```
 
-To also remove local data and cache:
+These commands deregister the MCP server, hooks, and skills. To also remove all local data, caches, and plugin registry entries:
 
 ```bash
+# Analysis data, reports, databases, and logs
 rm -rf ~/.betterprompt
+
+# Plugin cache and marketplace directories
 rm -rf ~/.claude/plugins/cache/betterprompt
+rm -rf ~/.claude/plugins/marketplaces/betterprompt
 ```
+
+If you want a fully clean slate (e.g., the plugin commands didn't fully clean up), also check these files and remove any `betterprompt` entries:
+
+| File | What to remove |
+|------|---------------|
+| `~/.claude/settings.json` | `enabledPlugins["betterprompt@betterprompt"]` and `plugins.betterprompt` section |
+| `~/.claude/plugins/installed_plugins.json` | `betterprompt@betterprompt` entry |
+| `~/.claude/plugins/known_marketplaces.json` | `betterprompt` entry |
+| Project-level `.claude/settings.local.json` | Any `betterprompt` entries |
 
 ## Optional: Dashboard Server
 

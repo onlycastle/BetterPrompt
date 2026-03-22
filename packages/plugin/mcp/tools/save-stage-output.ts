@@ -13,8 +13,8 @@
 
 import { z } from 'zod';
 import {
+  STAGE_NAMES,
   STAGE_SCHEMAS,
-  type StageName,
 } from '@betterprompt/shared';
 import { getCurrentRunId } from '../../lib/results-db.js';
 import { recordStageStatus, saveStageOutput } from '../../lib/stage-db.js';
@@ -24,20 +24,14 @@ export const definition = {
   description:
     'Save output from a pipeline stage. ' +
     'Called after completing a stage (sessionSummaries, projectSummaries, ' +
-    'weeklyInsights, typeClassification, evidenceVerification, contentWriter, translator). ' +
+    'weeklyInsights, typeClassification, evidenceVerification, contentWriter, translator, ' +
+    'extractAiCollaboration, extractContextEngineering, extractToolMastery, ' +
+    'extractBurnoutRisk, extractAiControl, extractSkillResilience). ' +
     'Input must include stage name and structured data matching the stage schema.',
 };
 
 export const StageOutputInputSchema = z.object({
-  stage: z.enum([
-    'sessionSummaries',
-    'projectSummaries',
-    'weeklyInsights',
-    'typeClassification',
-    'evidenceVerification',
-    'contentWriter',
-    'translator',
-  ]),
+  stage: z.enum(STAGE_NAMES),
   data: z.record(z.string(), z.unknown()),
 });
 
@@ -75,9 +69,7 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
   }
 
   const { stage, data } = parsed.data;
-  const normalizedStageName = stage as StageName;
-
-  const stageSchema = STAGE_SCHEMAS[normalizedStageName];
+  const stageSchema = STAGE_SCHEMAS[stage];
   if (stageSchema) {
     const stageValidation = stageSchema.safeParse(data);
     if (!stageValidation.success) {
