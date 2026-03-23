@@ -383,6 +383,27 @@ export function createStageOutputs(): CanonicalStageOutputs {
         },
       ],
     },
+    extractAiCollaboration: { dimension: 'aiCollaboration', quotes: [] },
+    extractContextEngineering: { dimension: 'contextEngineering', quotes: [] },
+    extractToolMastery: { dimension: 'toolMastery', quotes: [] },
+    extractBurnoutRisk: { dimension: 'burnoutRisk', quotes: [] },
+    extractAiControl: { dimension: 'aiControl', quotes: [] },
+    extractSkillResilience: { dimension: 'skillResilience', quotes: [] },
+    content: {
+      topFocusAreas: [
+        {
+          title: 'Test focus area',
+          description: 'Test description for content stage.',
+          relatedQualities: ['thinkingQuality'],
+          actions: {
+            start: 'Start test.',
+            stop: 'Stop test.',
+            continue: 'Continue test.',
+          },
+        },
+      ],
+      personalitySummary: ['Test personality summary.'],
+    },
     projectSummaries: {
       projects: [
         {
