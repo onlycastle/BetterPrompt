@@ -1,7 +1,6 @@
 ---
 name: bp-setup
 description: Guided onboarding wizard for first-time BetterPrompt users
-model: sonnet
 ---
 
 # BetterPrompt Setup Wizard
