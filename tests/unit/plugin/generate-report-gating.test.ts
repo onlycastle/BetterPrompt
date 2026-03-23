@@ -127,8 +127,8 @@ describe('generate_report stage gating', () => {
     expect(existsSync(parsed.reportPath)).toBe(true);
 
     const html = readFileSync(parsed.reportPath, 'utf-8');
-    expect(html).toContain('Planning Analysis');
-    expect(html).toContain('Critical Thinking');
-    expect(html).toContain('Anti-Patterns');
+    expect(html).toContain('Top Focus Areas');
+    expect(html).toContain('Personality Summary');
+    expect(html).toContain('Weekly Insights');
   });
 });
