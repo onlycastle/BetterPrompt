@@ -35,8 +35,8 @@ export const definition = {
   name: 'save_domain_results',
   description:
     'Save structured analysis results for a specific domain. ' +
-    'Called after analyzing a domain (thinkingQuality, communicationPatterns, ' +
-    'learningBehavior, contextEfficiency, sessionOutcome, or content). ' +
+    'Called after analyzing a domain (aiPartnership, sessionCraft, toolMastery, ' +
+    'skillResilience, sessionMastery). ' +
     'Input must include domain name, overall score, strengths, and growth areas.',
 };
 
@@ -47,6 +47,46 @@ export const GrowthAreaSchema = DomainGrowthAreaSchema;
 
 function extractDomainName(args: Record<string, unknown>): string | null {
   return typeof args.domain === 'string' ? args.domain : null;
+}
+
+function parseStringifiedInput(value: unknown): unknown {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return value;
+  }
+
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}'))
+    || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return value;
+    }
+  }
+
+  if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
+    const numericValue = Number(trimmed);
+    if (Number.isFinite(numericValue)) {
+      return numericValue;
+    }
+  }
+
+  return value;
+}
+
+function normalizeDomainResultArgs(args: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...args,
+    overallScore: parseStringifiedInput(args.overallScore),
+    confidenceScore: parseStringifiedInput(args.confidenceScore),
+    strengths: parseStringifiedInput(args.strengths),
+    growthAreas: parseStringifiedInput(args.growthAreas),
+    data: parseStringifiedInput(args.data),
+  };
 }
 
 // ============================================================================
@@ -229,6 +269,13 @@ const SessionOutcomeDataSchema = z.object({
 
 /** Domain → data schema lookup. Domains without specific schemas fall through to permissive. */
 const DOMAIN_DATA_SCHEMAS: Record<string, z.ZodTypeAny> = {
+  // v2 domains: merged schemas are permissive (.passthrough()) to accept combined data
+  aiPartnership: ThinkingQualityDataSchema.merge(SessionOutcomeDataSchema.partial()).passthrough(),
+  sessionCraft: ContextEfficiencyDataSchema.merge(LearningBehaviorDataSchema.partial()).passthrough(),
+  toolMastery: CommunicationPatternsDataSchema,
+  skillResilience: z.record(z.string(), z.unknown()), // permissive
+  sessionMastery: z.record(z.string(), z.unknown()), // permissive
+  // Legacy domains
   thinkingQuality: ThinkingQualityDataSchema,
   communicationPatterns: CommunicationPatternsDataSchema,
   learningBehavior: LearningBehaviorDataSchema,
@@ -257,6 +304,13 @@ const QUALITY_THRESHOLDS = {
 
 export const DomainResultInputSchema = z.object({
   domain: z.enum([
+    // v2 domains
+    'aiPartnership',
+    'sessionCraft',
+    'toolMastery',
+    'skillResilience',
+    'sessionMastery',
+    // Legacy domains
     'thinkingQuality',
     'communicationPatterns',
     'learningBehavior',
@@ -343,9 +397,11 @@ function validateContentQuality(
 // ============================================================================
 
 export async function execute(args: Record<string, unknown>): Promise<string> {
+  const normalizedArgs = normalizeDomainResultArgs(args);
+
   // Get current run ID
   const runId = getCurrentRunId();
-  const domainName = extractDomainName(args);
+  const domainName = extractDomainName(normalizedArgs);
 
   if (!runId) {
     return JSON.stringify({
@@ -355,7 +411,7 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
   }
 
   // Step 1: Validate top-level structure
-  const parsed = DomainResultInputSchema.safeParse(args);
+  const parsed = DomainResultInputSchema.safeParse(normalizedArgs);
   if (!parsed.success) {
     if (domainName) {
       recordStageStatus(runId, domainName, {
@@ -463,16 +519,27 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
 
 function getDomainDataHint(domain: string): string {
   const hints: Record<string, string> = {
+    aiPartnership:
+      'Expected: planningHabits[], verificationBehavior, sessionAnalyses[], overallSuccessRate',
+    sessionCraft:
+      'Expected: inefficiencyPatterns[], contextUsagePatterns[], knowledgeGaps[], repeatedMistakePatterns[]',
+    toolMastery:
+      'Required: communicationPatterns[] (min 1). Optional: signatureQuotes[]',
+    skillResilience:
+      'Expected: domain-specific data (flexible schema)',
+    sessionMastery:
+      'Expected: absenceIndicators[], sessionCleanliness[], cleanSessionPercentage, scaffoldingDependencyScore',
+    // Legacy domains
     thinkingQuality:
       'Required: planningHabits[] (min 1), verificationBehavior, criticalThinkingMoments[], verificationAntiPatterns[]',
     communicationPatterns:
-      'Required: communicationPatterns[] (min 1). Optional: signatureQuotes[], structuralDistribution, contextDistribution, questioningDistribution',
+      'Required: communicationPatterns[] (min 1). Optional: signatureQuotes[]',
     learningBehavior:
       'Expected: knowledgeGaps[], repeatedMistakePatterns[], learningProgress[], recommendedResources[]',
     contextEfficiency:
       'Expected: inefficiencyPatterns[], contextUsagePatterns[], promptLengthTrends, avgContextFillPercent',
     sessionOutcome:
-      'Required: sessionAnalyses[] (min 1, each with sessionId, sessionType, outcome). Optional: overallSuccessRate, goalDistribution[], frictionSummary[]',
+      'Required: sessionAnalyses[] (min 1, each with sessionId, sessionType, outcome). Optional: overallSuccessRate',
   };
   return hints[domain] ?? '';
 }

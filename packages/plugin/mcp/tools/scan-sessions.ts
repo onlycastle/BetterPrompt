@@ -9,6 +9,7 @@ import {
   scanAndCacheParsedSessions,
 } from '../../lib/core/multi-source-session-scanner.js';
 import { getAnalysisLifecycleState, isAnalysisPending } from '../../lib/debounce.js';
+import { normalizeProjectFilters, normalizeProjectNameValue } from '../../lib/project-filters.js';
 
 export const definition = {
   name: 'scan_sessions',
@@ -20,6 +21,7 @@ export const definition = {
 
 export async function execute(args: { includeProjects?: string[] }): Promise<string> {
   const allSessions = await scanAndCacheParsedSessions();
+  const includeProjects = normalizeProjectFilters(args.includeProjects);
 
   if (allSessions.length === 0) {
     return JSON.stringify({
@@ -29,15 +31,15 @@ export async function execute(args: { includeProjects?: string[] }): Promise<str
   }
 
   // Build per-project session counts (always from full set)
-  const allProjectNames = [...new Set(allSessions.map(s => s.projectName ?? 'unknown'))];
+  const allProjectNames = [...new Set(allSessions.map(s => normalizeProjectNameValue(s.projectName)))];
   const allProjects = allProjectNames.map(name => ({
     name,
-    sessionCount: allSessions.filter(s => (s.projectName ?? 'unknown') === name).length,
+    sessionCount: allSessions.filter(s => normalizeProjectNameValue(s.projectName) === name).length,
   })).sort((a, b) => b.sessionCount - a.sessionCount);
 
   // Apply project filter if provided
-  const sessions = args.includeProjects?.length
-    ? allSessions.filter(s => args.includeProjects!.includes(s.projectName ?? 'unknown'))
+  const sessions = includeProjects?.length
+    ? allSessions.filter(s => includeProjects.includes(normalizeProjectNameValue(s.projectName)))
     : allSessions;
 
   if (sessions.length === 0) {
@@ -49,7 +51,7 @@ export async function execute(args: { includeProjects?: string[] }): Promise<str
   }
 
   // Aggregate metadata from filtered sessions
-  const projectNames = [...new Set(sessions.map(s => s.projectName ?? 'unknown'))];
+  const projectNames = [...new Set(sessions.map(s => normalizeProjectNameValue(s.projectName)))];
   const totalMessages = sessions.reduce((sum, s) => sum + s.messages.length, 0);
   const totalDuration = sessions.reduce((sum, s) => sum + s.durationSeconds, 0);
   const sourceCounts = sessions.reduce<Record<string, number>>((acc, session) => {

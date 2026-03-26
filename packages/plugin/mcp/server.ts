@@ -11,7 +11,10 @@
  *   extract_data           — Run deterministic Phase 1 extraction
  *   save_domain_results    — Save domain analysis results
  *   get_domain_results     — Read saved domain analysis results
+ *   get_user_prefs         — Read persisted BetterPrompt user preferences
+ *   get_run_progress       — Inspect resumable local analysis progress
  *   classify_developer_type — Classify developer type from scores
+ *   verify_evidence        — Deterministically validate saved evidence quotes
  *   generate_report        — Generate HTML report + start localhost server
  *   sync_to_team           — Sync results to team server (optional)
  *
@@ -31,7 +34,7 @@ import { closeCache, getSummaryWithCache } from '../lib/cache.js';
 import { verifyAuth } from '../lib/api-client.js';
 import { closeResultsDb } from '../lib/results-db.js';
 import { closeStageDb } from '../lib/stage-db.js';
-import { recoverStaleAnalysisState } from '../lib/debounce.js';
+import { recoverStaleAnalysisState, touchAnalysisHeartbeat } from '../lib/debounce.js';
 import { debug, info, error as logError } from '../lib/logger.js';
 
 // Legacy server-backed tools
@@ -68,9 +71,27 @@ import {
   GetDomainResultsInputSchema,
 } from './tools/get-domain-results.js';
 import {
+  definition as getUserPrefsDef,
+  execute as executeGetUserPrefs,
+} from './tools/get-user-prefs.js';
+import {
+  definition as runProgressDef,
+  execute as executeRunProgress,
+} from './tools/get-run-progress.js';
+import {
+  definition as saveUserPrefsDef,
+  execute as executeSaveUserPrefs,
+  SaveUserPrefsInputSchema,
+} from './tools/save-user-prefs.js';
+import {
   definition as classifyDef,
   execute as executeClassify,
 } from './tools/classify-developer-type.js';
+import {
+  definition as verifyEvidenceDef,
+  execute as executeVerifyEvidence,
+  VerifyEvidenceInputSchema,
+} from './tools/verify-evidence.js';
 import {
   definition as reportDef,
   execute as executeReport,
@@ -93,7 +114,6 @@ import {
   execute as executeGetPromptContext,
   GetPromptContextInputSchema,
 } from './tools/get-prompt-context.js';
-
 // Resolve user ID once at startup (for server-backed tools)
 let resolvedUserId: string | null = null;
 
@@ -129,12 +149,15 @@ function wrapToolExecution<T>(
   return async (args: T) => {
     const start = Date.now();
     const argRecord = args as Record<string, unknown>;
+    touchAnalysisHeartbeat();
     debug('tool', `${toolName} called`, Object.keys(argRecord).length > 0 ? argRecord : undefined);
     try {
       const result = await fn(args);
+      touchAnalysisHeartbeat();
       debug('tool', `${toolName} completed`, { durationMs: Date.now() - start });
       return { content: [{ type: 'text' as const, text: result }] };
     } catch (err) {
+      touchAnalysisHeartbeat();
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
       logError('tool', `${toolName} failed`, { durationMs: Date.now() - start, error: errorMsg });
       return {
@@ -164,8 +187,17 @@ server.tool(saveDomainDef.name, saveDomainDef.description, DomainResultInputSche
 server.tool(getDomainResultsDef.name, getDomainResultsDef.description, GetDomainResultsInputSchema.shape,
   wrapToolExecution(getDomainResultsDef.name, executeGetDomainResults));
 
+server.tool(getUserPrefsDef.name, getUserPrefsDef.description, {},
+  wrapToolExecution(getUserPrefsDef.name, () => executeGetUserPrefs()));
+
+server.tool(runProgressDef.name, runProgressDef.description, {},
+  wrapToolExecution(runProgressDef.name, () => executeRunProgress()));
+
 server.tool(classifyDef.name, classifyDef.description, {},
   wrapToolExecution(classifyDef.name, () => executeClassify({})));
+
+server.tool(verifyEvidenceDef.name, verifyEvidenceDef.description, VerifyEvidenceInputSchema.shape,
+  wrapToolExecution(verifyEvidenceDef.name, executeVerifyEvidence));
 
 server.tool(reportDef.name, reportDef.description, {
   port: z.number().optional().describe('Port for the report server (default: 3456)'),
@@ -187,6 +219,9 @@ server.tool(getStageOutputDef.name, getStageOutputDef.description, {
 server.tool(getPromptContextDef.name, getPromptContextDef.description, GetPromptContextInputSchema.shape,
   wrapToolExecution(getPromptContextDef.name, executeGetPromptContext));
 
+server.tool(saveUserPrefsDef.name, saveUserPrefsDef.description, SaveUserPrefsInputSchema.shape,
+  wrapToolExecution(saveUserPrefsDef.name, executeSaveUserPrefs));
+
 // =========================================================================
 // SERVER-BACKED TOOLS (backward compatible)
 // =========================================================================
@@ -199,7 +234,7 @@ server.tool(profileDef.name, profileDef.description, {},
   }));
 
 server.tool(growthDef.name, growthDef.description, {
-  domain: z.enum(['thinkingQuality', 'communicationPatterns', 'learningBehavior', 'contextEfficiency', 'sessionOutcome'])
+  domain: z.enum(['aiPartnership', 'sessionCraft', 'toolMastery', 'skillResilience', 'sessionMastery'])
     .optional()
     .describe('Filter by domain key'),
 }, wrapToolExecution(growthDef.name, async (args) => {

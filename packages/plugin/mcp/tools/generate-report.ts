@@ -38,11 +38,11 @@ let activeServer: ReturnType<typeof createServer> | null = null;
 let shutdownTimer: ReturnType<typeof setTimeout> | null = null;
 const SHUTDOWN_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const DOMAIN_STAGE_NAMES = new Set([
-  'thinkingQuality',
-  'communicationPatterns',
-  'learningBehavior',
-  'contextEfficiency',
-  'sessionOutcome',
+  'aiPartnership',
+  'sessionCraft',
+  'toolMastery',
+  'skillResilience',
+  'sessionMastery',
 ]);
 
 interface StageGateIssue {

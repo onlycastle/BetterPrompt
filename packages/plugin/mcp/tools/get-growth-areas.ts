@@ -13,21 +13,21 @@ export const definition = {
     'Get the developer\'s top growth areas — specific areas where they can improve ' +
     'their AI collaboration skills. Each area includes a title, domain, severity, ' +
     'and actionable recommendation. Optionally filter by domain ' +
-    '(thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency, sessionOutcome).',
+    '(aiPartnership, sessionCraft, toolMastery, skillResilience, sessionMastery).',
   inputSchema: {
     type: 'object' as const,
     properties: {
       domain: {
         type: 'string',
         description:
-          'Filter by domain key. One of: thinkingQuality, communicationPatterns, ' +
-          'learningBehavior, contextEfficiency, sessionOutcome',
+          'Filter by domain key. One of: aiPartnership, sessionCraft, ' +
+          'toolMastery, skillResilience, sessionMastery',
         enum: [
-          'thinkingQuality',
-          'communicationPatterns',
-          'learningBehavior',
-          'contextEfficiency',
-          'sessionOutcome',
+          'aiPartnership',
+          'sessionCraft',
+          'toolMastery',
+          'skillResilience',
+          'sessionMastery',
         ],
       },
     },

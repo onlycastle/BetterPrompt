@@ -20,6 +20,7 @@ import { extractPhase1DataFromParsedSessions } from '../../lib/core/data-extract
 import { computeDeterministicScores } from '../../lib/core/deterministic-scorer.js';
 import { buildReportActivitySessions } from '../../lib/evaluation-assembler.js';
 import { createAnalysisRun } from '../../lib/results-db.js';
+import { normalizeProjectFilters, normalizeProjectNameValue } from '../../lib/project-filters.js';
 import {
   clearAnalysisPending,
   markAnalysisFailed,
@@ -37,6 +38,7 @@ export const definition = {
 
 export async function execute(args: { maxSessions?: number; includeProjects?: string[] }): Promise<string> {
   const maxSessions = args.maxSessions ?? 50;
+  const includeProjects = normalizeProjectFilters(args.includeProjects);
 
   // Read cached parsed sessions from the multi-source scanner
   const allSessions = await readCachedParsedSessions();
@@ -48,8 +50,8 @@ export async function execute(args: { maxSessions?: number; includeProjects?: st
   }
 
   // Filter by project before applying recency limit
-  const sessions = args.includeProjects?.length
-    ? allSessions.filter(s => args.includeProjects!.includes(s.projectName ?? 'unknown'))
+  const sessions = includeProjects?.length
+    ? allSessions.filter(s => includeProjects.includes(normalizeProjectNameValue(s.projectName)))
     : allSessions;
 
   if (sessions.length === 0) {
@@ -109,11 +111,11 @@ export async function execute(args: { maxSessions?: number; includeProjects?: st
         dateRange: metrics.dateRange,
       },
       deterministicScores: {
-        thinkingQuality: scores.thinkingQuality,
-        communicationPatterns: scores.communicationPatterns,
-        learningBehavior: scores.learningBehavior,
-        contextEfficiency: scores.contextEfficiency,
-        sessionOutcome: scores.sessionOutcome,
+        aiPartnership: scores.aiPartnership,
+        sessionCraft: scores.sessionCraft,
+        toolMastery: scores.toolMastery,
+        skillResilience: scores.skillResilience,
+        sessionMastery: scores.sessionMastery,
         controlScore: scores.controlScore,
       },
       message:
