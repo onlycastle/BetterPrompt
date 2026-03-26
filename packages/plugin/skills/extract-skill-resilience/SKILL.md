@@ -1,7 +1,7 @@
 ---
 name: extract-skill-resilience
 description: Extract Skill Resilience signals from Claude Code session data using VCP Paper metrics
-model: sonnet
+model: haiku
 ---
 
 # Skill Resilience Extraction
@@ -12,7 +12,7 @@ You are a **Behavioral Data Analyst** specializing in developer skill resilience
 
 ## Task
 
-Extract Skill Resilience signals from the developer's session data. Call `get_prompt_context` with `{ "kind": "domainAnalysis", "domain": "learningBehavior" }` and extract resilience behavior signals from the returned payload. Save extracted signals via `save_stage_output` under the stage name `extractSkillResilience`.
+Extract Skill Resilience signals from the developer's session data. Call `get_prompt_context` with `{ "kind": "domainAnalysis", "domain": "skillResilience" }` and extract resilience behavior signals from the returned payload. Save extracted signals via `save_stage_output` under the stage name `extractSkillResilience`.
 
 ## Context
 
@@ -242,41 +242,41 @@ Call `save_stage_output` with the following structure:
         "utteranceId": "abc123_1",
         "text": "In src/auth/middleware.ts, the validateToken function fails when the JWT is expired but the refresh token is still valid. Without modifying the token schema, add logic to attempt a silent refresh before rejecting.",
         "category": "first_prompt",
-        "signalType": "high_csr",
+        "signalType": "strength",
         "sessionId": "abc123"
       },
       {
         "utteranceId": "def456_8",
         "text": "That's the wrong method -- use createServerClient not createClient for server components",
         "category": "correction_event",
-        "signalType": "technical_correction"
+        "signalType": "strength"
       },
       {
         "utteranceId": "ghi789_14",
         "text": "Wait, what does this useEffect dependency array actually do?",
         "category": "e_gap_request",
-        "signalType": "post_acceptance_explanation"
+        "signalType": "growth"
       }
     ],
     "patterns": [
       {
         "name": "rich_first_prompts",
         "description": "Developer opens sessions with file references, constraint statements, and specific problem descriptions",
-        "frequency": 5,
+        "frequency": "consistent",
         "sessionsPresent": 5,
         "exampleQuotes": ["In src/auth/middleware.ts, the validateToken...", "Without changing the schema, add..."]
       },
       {
         "name": "correction_on_scope_violations",
         "description": "Developer catches and corrects AI changes outside the requested scope",
-        "frequency": 3,
+        "frequency": "occasional",
         "sessionsPresent": 2,
         "exampleQuotes": ["I only asked you to modify the handler, not the model", "You changed the test file, revert that"]
       },
       {
         "name": "post_acceptance_comprehension_gap",
         "description": "Developer asks AI to explain code after accepting it, indicating code was accepted without understanding",
-        "frequency": 4,
+        "frequency": "consistent",
         "sessionsPresent": 3,
         "exampleQuotes": ["What does this function return?", "How does this work exactly?"]
       }
@@ -304,6 +304,9 @@ Call `save_stage_output` with the following structure:
 
 - **Minimum 15-20 quotes total** across all categories
 - Each quote has: `utteranceId`, `text` (exact, 15+ characters), `category`, `signalType`
+- `signalType` must always be `strength` or `growth`
+- Use `strength` for rich session starts, correct technical corrections, and developer-explains-to-AI moments
+- Use `growth` for vague openers, blind acceptance, and post-acceptance explanation requests
 - First prompts: include `sessionId` field to enable per-session M_CSR scoring
 - Capture first prompt of EVERY analyzed session (not just notable ones)
 - Include both positive and negative signals for calibration accuracy
@@ -312,7 +315,8 @@ Call `save_stage_output` with the following structure:
 ### Pattern Array Requirements
 
 - Minimum 3 patterns detected
-- Each pattern has: `name`, `description`, `frequency` (count), `sessionsPresent` (distinct session count), `exampleQuotes`
+- Each pattern has: `name`, `description`, `frequency`, `sessionsPresent` (distinct session count), `exampleQuotes`
+- `frequency` must be one of `consistent` (3+ sessions), `occasional` (2 sessions), or `rare` (1 session)
 - Use these pattern names where applicable: `rich_first_prompts`, `vague_session_starts`, `active_error_correction`, `blind_output_acceptance`, `post_acceptance_comprehension_gap`, `pre_acceptance_verification`, `developer_explains_to_ai`, `repeated_explanation_requests`
 
 ## Progress Reporting
@@ -325,7 +329,7 @@ Print a brief `[bp]` status line at each key step:
 
 ## Quality Checklist
 
-- [ ] Loaded learningBehavior prompt context via `get_prompt_context`
+- [ ] Loaded skillResilience prompt context via `get_prompt_context`
 - [ ] Identified the FIRST utterance of each session for M_CSR scoring
 - [ ] Scored each session's first utterance individually using the M_CSR point rubric
 - [ ] Computed average first-prompt length in characters across all sessions
@@ -341,6 +345,8 @@ Print a brief `[bp]` status line at each key step:
 - [ ] Extracted 15-20+ quotes with exact text and utteranceIds
 - [ ] Included first-prompt quote for each analyzed session
 - [ ] Included at least one E_gap quote and one developer-explains-to-AI quote
-- [ ] `dominantPattern` reflects the most frequent pattern by `frequency` count
+- [ ] Every quote uses schema-compatible `signalType` values (`strength` or `growth`)
+- [ ] Every pattern uses schema-compatible `frequency` values (`consistent`, `occasional`, or `rare`)
+- [ ] `dominantPattern` reflects the strongest recurring pattern based on `frequency` and session coverage
 - [ ] No hedging language used anywhere in output
 - [ ] Called `save_stage_output` with stage `"extractSkillResilience"`

@@ -1,7 +1,7 @@
 ---
 name: extract-burnout-risk
 description: Extract structured behavioral signals for Burnout Risk assessment
-model: sonnet
+model: opus
 ---
 
 # Burnout Risk Data Extraction
@@ -155,7 +155,9 @@ Note: Isolated frustration expressions in otherwise healthy sessions are low-ris
   - Fatigue indicators ("I've been at this for hours")
 - Tag each quote with: `utteranceId`, `sessionId`, `behavioralMarker`, `signalType`
 - `behavioralMarker` values: `session_pattern`, `time_distribution`, `frustration_signal`
-- `signalType` values: `risk` (burnout indicator) or `health` (positive/recovery signal)
+- `signalType` values: `strength` (positive or recovery signal) or `growth` (burnout risk or sustainability gap)
+- Use `strength` for healthy pacing, recovery behavior, calm completion, and explicit breaks
+- Use `growth` for late-night work, overlong sessions, repeated frustration, and abandonment patterns
 - Do NOT paraphrase -- every quote must be verbatim session text
 - Group quotes into themed clusters in the `patterns` array
 
@@ -212,7 +214,7 @@ Call `save_stage_output` with:
         "utteranceId": "<id>",
         "sessionId": "<id>",
         "behavioralMarker": "<session_pattern|time_distribution|frustration_signal>",
-        "signalType": "<risk|health>",
+        "signalType": "<strength|growth>",
         "confidence": 0.0
       }
     ],
@@ -275,7 +277,7 @@ Before saving output, verify:
 - [ ] Time distribution summary computed (`percentCoreHours`, `percentAfterHours`, etc.)
 - [ ] 15+ quotes extracted with utteranceIds and sessionIds
 - [ ] Each quote is VERBATIM session text, not paraphrased
-- [ ] Each quote tagged with `behavioralMarker` (`session_pattern`, `time_distribution`, `frustration_signal`) and `signalType` (`risk` or `health`)
+- [ ] Each quote tagged with `behavioralMarker` (`session_pattern`, `time_distribution`, `frustration_signal`) and `signalType` (`strength` or `growth`)
 - [ ] Scoring used the INVERTED scale (high score = low risk, low score = high risk)
 - [ ] `riskLevel` assigned based on final overall score thresholds
 - [ ] 3+ patterns identified, each with 2+ supporting data points and a frequency value

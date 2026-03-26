@@ -3,50 +3,36 @@ import {
   ensureNativeDeps
 } from "../chunk-ZSMKKVNT.js";
 import {
+  isFirstRun
+} from "../chunk-NH4BKYT6.js";
+import {
   buildFirstRunAdditionalContext,
   buildPendingAnalysisAdditionalContext
-} from "../chunk-ZKL2ZRNA.js";
+} from "../chunk-VADEIFYQ.js";
 import {
-  getPluginDataDir2 as getPluginDataDir,
-  isAnalysisPending
-} from "../chunk-KAELRNDJ.js";
+  isAnalysisPending,
+  markAnalysisPending,
+  shouldResumeRunningAnalysis
+} from "../chunk-72GWNTBD.js";
 import {
   debug
 } from "../chunk-PP5673GG.js";
 
 // hooks/session-start-handler.ts
-import { readFileSync as readFileSync2 } from "fs";
-import { dirname as dirname2, join as join2 } from "path";
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
 import { fileURLToPath } from "url";
-
-// lib/prefs.ts
-import { readFileSync, writeFileSync, mkdirSync } from "fs";
-import { join, dirname } from "path";
-function getPrefsFilePath() {
-  return join(getPluginDataDir(), "prefs.json");
-}
-function readPrefs() {
-  try {
-    const raw = readFileSync(getPrefsFilePath(), "utf-8");
-    return JSON.parse(raw);
-  } catch {
-    return {};
-  }
-}
-function isFirstRun() {
-  return !readPrefs().welcomeCompleted;
-}
-
-// hooks/session-start-handler.ts
 var DEFAULT_DEPS = {
   isFirstRun,
   buildFirstRunAdditionalContext,
   isAnalysisPending,
+  shouldResumeRunningAnalysis,
+  markAnalysisPending,
   buildPendingAnalysisAdditionalContext
 };
 function readHookInput(raw) {
   try {
-    const payload = raw ?? readFileSync2(0, "utf-8").trim();
+    const payload = raw ?? readFileSync(0, "utf-8").trim();
     return payload ? JSON.parse(payload) : {};
   } catch {
     return {};
@@ -67,6 +53,16 @@ function handleSessionStartHook(input, deps = DEFAULT_DEPS) {
       }
     };
   }
+  if (deps.shouldResumeRunningAnalysis()) {
+    deps.markAnalysisPending();
+    debug("hook", "session-start: stale running analysis detected, converted to pending");
+    return {
+      hookSpecificOutput: {
+        hookEventName: "SessionStart",
+        additionalContext: deps.buildPendingAnalysisAdditionalContext()
+      }
+    };
+  }
   if (deps.isAnalysisPending()) {
     debug("hook", "session-start: pending analysis detected");
     return {
@@ -80,7 +76,7 @@ function handleSessionStartHook(input, deps = DEFAULT_DEPS) {
   return null;
 }
 function main() {
-  const pluginRoot = join2(dirname2(fileURLToPath(import.meta.url)), "..", "..");
+  const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
   ensureNativeDeps({ pluginRoot });
   const output = handleSessionStartHook(readHookInput());
   if (!output) {

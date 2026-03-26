@@ -1,7 +1,7 @@
 ---
 name: analyze-learning
 description: "[DEPRECATED] Replaced by extract-burnout-risk + write-burnout-risk"
-model: sonnet
+model: opus
 ---
 
 ## DEPRECATED

@@ -149,20 +149,20 @@ function generateTypeDistributionBar(distribution: DeterministicTypeResult['dist
 // ============================================================================
 
 const RADAR_LABELS: Record<string, string> = {
-  thinking: 'Thinking',
-  communication: 'Communication',
-  learning: 'Learning',
-  efficiency: 'Efficiency',
-  sessions: 'Sessions',
+  aiPartnership: 'AI Partnership',
+  sessionCraft: 'Session Craft',
+  toolMastery: 'Tool Mastery',
+  skillResilience: 'Skill Resilience',
+  sessionMastery: 'Session Mastery',
 };
 
 function buildRadarScores(scores: AnalysisReport['deterministicScores']): Record<string, number> {
   return {
-    thinking: scores.thinkingQuality,
-    communication: scores.communicationPatterns,
-    learning: scores.learningBehavior,
-    efficiency: scores.contextEfficiency,
-    sessions: scores.sessionOutcome,
+    aiPartnership: scores.aiPartnership,
+    sessionCraft: scores.sessionCraft,
+    toolMastery: scores.toolMastery,
+    skillResilience: scores.skillResilience,
+    sessionMastery: scores.sessionMastery,
   };
 }
 
@@ -171,11 +171,18 @@ function buildRadarScores(scores: AnalysisReport['deterministicScores']): Record
 // ============================================================================
 
 const DOMAIN_LABELS: Record<string, { label: string; emoji: string }> = {
+  aiPartnership: { label: 'AI Partnership', emoji: '🤝' },
+  sessionCraft: { label: 'Session Craft', emoji: '🛠️' },
+  toolMastery: { label: 'Tool Mastery', emoji: '🔧' },
+  skillResilience: { label: 'Skill Resilience', emoji: '🧩' },
+  sessionMastery: { label: 'Session Mastery', emoji: '✨' },
+  // Legacy domain labels for old runs
   thinkingQuality: { label: 'Thinking Quality', emoji: '🧠' },
   communicationPatterns: { label: 'Communication', emoji: '💬' },
   learningBehavior: { label: 'Learning', emoji: '📚' },
   contextEfficiency: { label: 'Efficiency', emoji: '⚡' },
   sessionOutcome: { label: 'Sessions', emoji: '🎯' },
+  content: { label: 'Skill Resilience', emoji: '🧩' },
 };
 
 function generateDomainSection(result: DomainResult): string {

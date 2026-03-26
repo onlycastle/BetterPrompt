@@ -14,6 +14,8 @@ import { multiSourceScanner } from '../scanner/index.js';
 import type {
   SourcedParsedSession,
 } from '../scanner/index.js';
+import { resolveProjectName } from '../scanner/project-name-resolver.js';
+import { normalizeProjectNameValue } from '../project-filters.js';
 import type { ParsedSession } from './types.js';
 import { getScanCacheDir } from './session-scanner.js';
 
@@ -26,10 +28,21 @@ function isNonNull<T>(value: T | null): value is T {
 }
 
 function serializeParsedSession(session: SourcedParsedSession): ParsedSession {
+  // Defensive: derive projectName from projectPath if missing.
+  // resolveProjectName expects the encoded form (e.g. "-Users-foo-projects-bar"),
+  // so re-encode projectPath by replacing "/" with "-".
+  let projectName = session.projectName;
+  if (!projectName && session.projectPath) {
+    const encoded = session.projectPath.replace(/\//g, '-');
+    projectName = resolveProjectName(encoded);
+  }
+
+  projectName = normalizeProjectNameValue(projectName);
+
   return {
     sessionId: session.sessionId,
     projectPath: session.projectPath,
-    projectName: session.projectName,
+    projectName,
     startTime: session.startTime.toISOString(),
     endTime: session.endTime.toISOString(),
     durationSeconds: session.durationSeconds,

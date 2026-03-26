@@ -7,17 +7,21 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | File | Purpose |
 |------|---------|
 | `mcp/server-entry.ts` | Bootstrap entry point — installs native deps (better-sqlite3) then dynamically imports server.ts. Enables single-session install-to-result flow |
-| `mcp/server.ts` | MCP server, stdio transport, registers 13 tools (10 local-first + 3 server-backed) |
+| `mcp/server.ts` | MCP server, stdio transport, registers 17 tools (14 local-first + 3 server-backed) |
 | `mcp/tools/scan-sessions.ts` | Tool: scan Claude Code + Cursor session logs, return metadata |
 | `mcp/tools/extract-data.ts` | Tool: deterministic Phase 1 extraction + scoring |
 | `mcp/tools/save-domain-results.ts` | Tool: save domain analysis with Zod validation + quality gates |
 | `mcp/tools/get-domain-results.ts` | Tool: read saved domain results (one or all) |
+| `mcp/tools/get-run-progress.ts` | Tool: inspect current run progress and resume point |
 | `mcp/tools/classify-developer-type.ts` | Tool: deterministic type classification (5x3 matrix) |
+| `mcp/tools/verify-evidence.ts` | Tool: deterministic evidence verification + stage persistence |
 | `mcp/tools/generate-report.ts` | Tool: generate HTML report + localhost server |
 | `mcp/tools/sync-to-team.ts` | Tool: sync results to team server (optional) |
 | `mcp/tools/save-stage-output.ts` | Tool: save pipeline stage output with schema validation |
 | `mcp/tools/get-stage-output.ts` | Tool: read pipeline stage outputs (one or all) |
 | `mcp/tools/get-prompt-context.ts` | Tool: stage/domain-specific prompt payloads for skills |
+| `mcp/tools/get-user-prefs.ts` | Tool: read user preferences (selected projects, onboarding state) |
+| `mcp/tools/save-user-prefs.ts` | Tool: save user preferences |
 | `mcp/tools/get-developer-profile.ts` | Tool (server-backed): profile type, scores, personality |
 | `mcp/tools/get-growth-areas.ts` | Tool (server-backed): growth areas, optional domain filter |
 | `mcp/tools/get-recent-insights.ts` | Tool (server-backed): strengths / anti-patterns / KPT |
@@ -32,6 +36,7 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `lib/api-client.ts` | HTTP client, `fetchUserSummary()`, `verifyAuth()` |
 | `lib/prefs.ts` | User preferences (`~/.betterprompt/prefs.json`), first-run detection |
 | `lib/debounce.ts` | Debounce rules, state file read/write |
+| `lib/project-filters.ts` | Session filtering by selected projects |
 | `lib/background-analyzer.ts` | Deprecated cutover stub kept only to fail loudly if invoked |
 | `lib/core/session-scanner.ts` | Claude Code JSONL parsing and local data-dir helpers |
 | `lib/core/multi-source-session-scanner.ts` | Multi-source scanner coordinator (Claude Code + Cursor) |
@@ -67,18 +72,22 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `extract_data` | `maxSessions?: number` (default 50), `includeProjects?: string[]` | `{ runId, metrics, deterministicScores }` |
 | `save_domain_results` | `domain: enum`, `overallScore`, `strengths[]`, `growthAreas[]`, `data?: {}` | `{ domain, score, runId }` |
 | `get_domain_results` | `domain?: enum` | Single domain or all saved domains |
+| `get_run_progress` | none | `{ runId, completionStatus, nextStep, stages[] }` |
+| `verify_evidence` | `threshold?` | `{ totalEvidence, keptCount, filteredCount, domainStats[] }` |
 | `classify_developer_type` | none | `{ primaryType, controlLevel, matrixName, matrixEmoji, distribution }` |
 | `generate_report` | `port?: number`, `openBrowser?: boolean`, `allowIncomplete?: boolean` | `{ url, reportPath }` |
 | `sync_to_team` | `serverUrl?: string` | `{ serverUrl }` |
 | `save_stage_output` | `stage: enum`, `data: {}` | `{ stage, runId }` |
 | `get_stage_output` | `stage?: string` | Single stage output or all stages |
 | `get_prompt_context` | `kind: enum`, `domain?: enum` | Stage/domain-specific prompt payload |
+| `get_user_prefs` | none | User preferences (selected projects, onboarding state) |
+| `save_user_prefs` | `prefs: {}` | Save user preferences |
 
-Domain enum: `thinkingQuality`, `communicationPatterns`, `learningBehavior`, `contextEfficiency`, `sessionOutcome`, `content`
+Domain enum: `aiPartnership`, `sessionCraft`, `toolMastery`, `skillResilience`, `sessionMastery`
 
-Stage enum: `sessionSummaries`, `projectSummaries`, `weeklyInsights`, `typeClassification`, `evidenceVerification`, `contentWriter`, `translator`
+Stage enum: `sessionSummaries`, `extractAiPartnership`, `extractSessionCraft`, `extractToolMastery`, `extractSkillResilience`, `extractSessionMastery`, `projectSummaries`, `weeklyInsights`, `typeClassification`, `evidenceVerification`, `contentWriter`
 
-Prompt context kinds: `sessionSummaries`, `domainAnalysis`, `projectSummaries`, `weeklyInsights`, `typeClassification`, `evidenceVerification`, `contentWriter`, `translation`
+Prompt context kinds: `sessionSummaries`, `domainAnalysis`, `projectSummaries`, `weeklyInsights`, `typeClassification`, `evidenceVerification`, `contentWriter`
 
 ### Server-Backed Tools (backward compatible)
 
@@ -167,18 +176,39 @@ generate_report / sync_to_team → markAnalysisComplete()
 ## Local-First Analysis Pipeline
 
 ```
-scan_sessions → extract_data → [domain analyses via save_domain_results] →
-  [save_stage_output for each stage] → classify_developer_type →
+scan_sessions → extract_data → [agent-dispatched skills] →
+  classify_developer_type → verify_evidence →
   generate_report → (optional) sync_to_team
 ```
 
-Tools use `get_prompt_context` to retrieve stage/domain-specific prompt payloads instead of reading raw Phase 1 files. Domain analyses and stage outputs are validated with Zod schemas and quality gates before persistence.
+### Agent-Based Dispatch
+
+`bp analyze` dispatches each analysis skill as an **isolated Agent** (via Claude Code's Agent tool) rather than running skills inline. This prevents context accumulation across stages and enables per-stage model selection.
+
+Each agent reads its skill instructions, calls MCP tools (`get_prompt_context`, `save_stage_output`, `save_domain_results`), and returns. The orchestrator tracks progress via `get_run_progress` and dispatches the next agent.
+
+### Model Tiering
+
+| Tier | Model | Skills |
+|------|-------|--------|
+| Orchestrator | sonnet | bp-analyze |
+| Extraction | haiku | extract-ai-partnership, extract-session-craft, extract-tool-mastery, extract-skill-resilience, extract-session-mastery |
+| Summarization | haiku | summarize-sessions, summarize-projects, generate-weekly-insights |
+| Narrative | sonnet | write-ai-partnership, write-session-craft, write-tool-mastery, write-skill-resilience, write-session-mastery |
+| Classification | sonnet | classify-type |
+| Content | sonnet | write-content, translate-report |
+
+### Resume
+
+`bp analyze` calls `get_run_progress` before Phase 1. If a prior run is incomplete, it resumes from the first missing required stage instead of rerunning extraction. `nextStep.tool` is used for deterministic stages like `verify_evidence`; `nextStep.skill` is used for agent-dispatched stages.
+
+Writer contract: `write-*` skills must include `severity` on every growth area, include the domain `data` payload, and retry `save_domain_results` locally on validation errors.
 
 ### Stage Gate
 
 `generate_report` checks all required stages before generating:
 
-Required stages: `sessionSummaries`, `thinkingQuality`, `communicationPatterns`, `learningBehavior`, `contextEfficiency`, `sessionOutcome`, `projectSummaries`, `weeklyInsights`, `typeClassification`, `evidenceVerification`, `contentWriter`
+Required stages (5-dimension pipeline): `sessionSummaries`, `extractAiPartnership`, `extractSessionCraft`, `extractToolMastery`, `extractSkillResilience`, `extractSessionMastery`, `aiPartnership`, `sessionCraft`, `toolMastery`, `skillResilience`, `sessionMastery`, `projectSummaries`, `weeklyInsights`, `typeClassification`, `evidenceVerification`, `contentWriter`
 
 Pass `allowIncomplete=true` to override the gate.
 

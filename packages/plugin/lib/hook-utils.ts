@@ -12,6 +12,16 @@ interface TranscriptLine {
   timestamp?: string;
 }
 
+interface TranscriptEntry {
+  type?: string;
+  isMeta?: boolean;
+  sourceToolUseID?: string;
+  toolUseResult?: unknown;
+  message?: {
+    stop_reason?: string | null;
+  };
+}
+
 function extractTimestampMs(line: string): number | null {
   try {
     const parsed = JSON.parse(line) as TranscriptLine;
@@ -46,6 +56,45 @@ export function estimateSessionDurationMsFromTranscript(transcriptPath: string):
   } catch {
     return 0;
   }
+}
+
+export function readLastTranscriptEntry(transcriptPath: string): TranscriptEntry | null {
+  try {
+    const content = readFileSync(transcriptPath, 'utf-8');
+    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
+    if (lines.length === 0) {
+      return null;
+    }
+
+    return JSON.parse(lines[lines.length - 1]!) as TranscriptEntry;
+  } catch {
+    return null;
+  }
+}
+
+export function isInFlightTranscriptBoundary(transcriptPath: string): boolean {
+  const lastEntry = readLastTranscriptEntry(transcriptPath);
+  if (!lastEntry) {
+    return false;
+  }
+
+  if (lastEntry.type === 'progress') {
+    return true;
+  }
+
+  if (lastEntry.isMeta || typeof lastEntry.sourceToolUseID === 'string') {
+    return true;
+  }
+
+  if (lastEntry.toolUseResult !== undefined) {
+    return true;
+  }
+
+  if (lastEntry.message?.stop_reason === 'tool_use') {
+    return true;
+  }
+
+  return false;
 }
 
 export function buildFirstRunAdditionalContext(): string {

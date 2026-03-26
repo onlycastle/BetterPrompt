@@ -13,13 +13,28 @@ import { z } from 'zod';
 // Deterministic Scores
 // ============================================================================
 
+/**
+ * 5-dimension deterministic scores (v2).
+ * - aiPartnership: merged thinkingQuality + controlScore
+ * - sessionCraft: merged contextEfficiency + learningBehavior (burnout)
+ * - toolMastery: communication/tool patterns
+ * - skillResilience: cold-start, hallucination detection, VCP
+ * - sessionMastery: absence-of-anti-pattern scoring
+ * - controlScore: retained for type classification
+ */
 export const DeterministicScoresSchema = z.object({
-  contextEfficiency: z.number().min(0).max(100),
-  sessionOutcome: z.number().min(0).max(100),
-  thinkingQuality: z.number().min(0).max(100),
-  learningBehavior: z.number().min(0).max(100),
-  communicationPatterns: z.number().min(0).max(100),
+  aiPartnership: z.number().min(0).max(100),
+  sessionCraft: z.number().min(0).max(100),
+  toolMastery: z.number().min(0).max(100),
+  skillResilience: z.number().min(0).max(100),
+  sessionMastery: z.number().min(0).max(100),
   controlScore: z.number().min(0).max(100),
+  // Legacy fields — present on old runs, not computed for new
+  contextEfficiency: z.number().min(0).max(100).optional(),
+  sessionOutcome: z.number().min(0).max(100).optional(),
+  thinkingQuality: z.number().min(0).max(100).optional(),
+  learningBehavior: z.number().min(0).max(100).optional(),
+  communicationPatterns: z.number().min(0).max(100).optional(),
 });
 export type DeterministicScores = z.infer<typeof DeterministicScoresSchema>;
 

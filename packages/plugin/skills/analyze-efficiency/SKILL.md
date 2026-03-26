@@ -1,7 +1,7 @@
 ---
 name: analyze-efficiency
 description: "[DEPRECATED] Replaced by extract-context-engineering + write-context-engineering"
-model: sonnet
+model: opus
 ---
 
 ## DEPRECATED

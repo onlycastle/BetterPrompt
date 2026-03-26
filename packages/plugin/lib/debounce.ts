@@ -19,6 +19,7 @@ import { debug } from './logger.js';
 const COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours
 const MIN_SESSION_DURATION_MS = 3 * 60 * 1000; // 3 minutes
 const MAX_RUNNING_STATE_AGE_MS = 30 * 60 * 1000; // 30 minutes
+const RUNNING_ANALYSIS_RESUME_GRACE_MS = 45 * 1000; // 45 seconds
 
 export type AnalysisLifecycleState =
   | 'idle'
@@ -93,6 +94,10 @@ export function writeState(state: PluginState): void {
   );
 }
 
+function getStateUpdatedAtMs(state: PluginState): number {
+  return state.stateUpdatedAt ? new Date(state.stateUpdatedAt).getTime() : Number.NaN;
+}
+
 /**
  * Count Claude Code session JSONL files across all projects.
  */
@@ -133,7 +138,7 @@ export function recoverStaleAnalysisState(options?: {
     return state;
   }
 
-  const updatedAt = state.stateUpdatedAt ? new Date(state.stateUpdatedAt).getTime() : Number.NaN;
+  const updatedAt = getStateUpdatedAtMs(state);
   const isStale = options?.force
     || Number.isNaN(updatedAt)
     || (Date.now() - updatedAt) > MAX_RUNNING_STATE_AGE_MS;
@@ -220,6 +225,19 @@ export function markAnalysisStarted(): void {
 }
 
 /**
+ * Refresh the running-analysis heartbeat so startup recovery can distinguish
+ * between a genuinely interrupted run and an in-flight tool/skill handoff.
+ */
+export function touchAnalysisHeartbeat(): void {
+  const state = readState();
+  if (state.analysisState !== 'running') {
+    return;
+  }
+
+  writeState(state);
+}
+
+/**
  * Mark analysis as complete. Called after the local pipeline finishes successfully.
  */
 export function markAnalysisComplete(sessionCount?: number): void {
@@ -283,4 +301,14 @@ export function clearAnalysisPending(): void {
     analysisState: 'idle',
     pendingSince: null,
   });
+}
+
+export function shouldResumeRunningAnalysis(now: number = Date.now()): boolean {
+  const state = readState();
+  if (state.analysisState !== 'running') {
+    return false;
+  }
+
+  const updatedAt = getStateUpdatedAtMs(state);
+  return Number.isNaN(updatedAt) || (now - updatedAt) > RUNNING_ANALYSIS_RESUME_GRACE_MS;
 }

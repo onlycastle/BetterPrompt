@@ -1,7 +1,7 @@
 ---
 name: summarize-projects
 description: Generate project-level summaries from session data
-model: sonnet
+model: haiku
 ---
 
 # Project Summarizer

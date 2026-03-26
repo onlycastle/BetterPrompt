@@ -10,7 +10,11 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isAnalysisPending } from '../lib/debounce.js';
+import {
+  isAnalysisPending,
+  markAnalysisPending,
+  shouldResumeRunningAnalysis,
+} from '../lib/debounce.js';
 import { buildPendingAnalysisAdditionalContext, buildFirstRunAdditionalContext } from '../lib/hook-utils.js';
 import { isFirstRun } from '../lib/prefs.js';
 import { ensureNativeDeps } from '../lib/native-deps.js';
@@ -31,6 +35,8 @@ interface SessionStartHookDeps {
   isFirstRun: () => boolean;
   buildFirstRunAdditionalContext: () => string;
   isAnalysisPending: () => boolean;
+  shouldResumeRunningAnalysis: () => boolean;
+  markAnalysisPending: () => void;
   buildPendingAnalysisAdditionalContext: () => string;
 }
 
@@ -38,6 +44,8 @@ const DEFAULT_DEPS: SessionStartHookDeps = {
   isFirstRun,
   buildFirstRunAdditionalContext,
   isAnalysisPending,
+  shouldResumeRunningAnalysis,
+  markAnalysisPending,
   buildPendingAnalysisAdditionalContext,
 };
 
@@ -67,6 +75,17 @@ export function handleSessionStartHook(
       hookSpecificOutput: {
         hookEventName: 'SessionStart',
         additionalContext: deps.buildFirstRunAdditionalContext(),
+      },
+    };
+  }
+
+  if (deps.shouldResumeRunningAnalysis()) {
+    deps.markAnalysisPending();
+    debug('hook', 'session-start: stale running analysis detected, converted to pending');
+    return {
+      hookSpecificOutput: {
+        hookEventName: 'SessionStart',
+        additionalContext: deps.buildPendingAnalysisAdditionalContext(),
       },
     };
   }

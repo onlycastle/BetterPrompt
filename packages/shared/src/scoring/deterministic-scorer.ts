@@ -206,22 +206,131 @@ function scoreControl(metrics: Phase1SessionMetrics): number {
 }
 
 // ============================================================================
+// v2 Merged Domain Rubrics
+// ============================================================================
+
+/**
+ * AI Partnership score: merges thinkingQuality + sessionOutcome + control signals.
+ * Measures how effectively the developer partners with AI: planning, verification,
+ * goal achievement, and appropriate control.
+ */
+function scoreAiPartnership(metrics: Phase1SessionMetrics): number {
+  const thinking = scoreThinkingQuality(metrics);
+  const outcome = scoreSessionOutcome(metrics);
+  const control = scoreControl(metrics);
+  // Weighted: planning/thinking 40%, outcomes 35%, control 25%
+  return clampScore(thinking * 0.4 + outcome * 0.35 + control * 0.25);
+}
+
+/**
+ * Session Craft score: merges contextEfficiency + learningBehavior (burnout).
+ * Measures session sustainability: efficient context usage, avoiding burnout
+ * patterns, and learning from mistakes.
+ */
+function scoreSessionCraft(metrics: Phase1SessionMetrics): number {
+  const efficiency = scoreContextEfficiency(metrics);
+  const learning = scoreLearningBehavior(metrics);
+  // Weighted: context efficiency 55%, burnout/learning 45%
+  return clampScore(efficiency * 0.55 + learning * 0.45);
+}
+
+/**
+ * Skill Resilience score: based on cold-start capability, error recovery,
+ * and maintaining quality across varied task types.
+ */
+function scoreSkillResilience(metrics: Phase1SessionMetrics): number {
+  const totalSessions = Math.max(metrics.totalSessions, 1);
+  const totalUtterances = Math.max(metrics.totalDeveloperUtterances, 1);
+
+  // Cold start capability: short sessions with quick resolution
+  const shortSessions = metrics.sessionHints?.shortSessions ?? 0;
+  const shortRatio = shortSessions / totalSessions;
+  const coldStartScore = bellCurveScore(shortRatio * 100, 20, 50, 0.003);
+
+  // Error recovery: low bare-retry rate indicates resilient problem solving
+  const bareRetryRate = (metrics.frictionSignals?.bareRetryAfterErrorCount ?? 0) / totalUtterances;
+  const recoveryScore = invertedScale(bareRetryRate * 200);
+
+  // Task diversity: handling different types of work
+  const slashCmds = metrics.slashCommandCounts ?? {};
+  const uniqueCommands = Object.keys(slashCmds).length;
+  const diversityScore = Math.min(uniqueCommands * 12 + 20, 100);
+
+  return clampScore(
+    coldStartScore * 0.3 +
+    recoveryScore * 0.4 +
+    diversityScore * 0.3,
+  );
+}
+
+/**
+ * Session Mastery score: absence-of-anti-pattern scoring.
+ * Higher scores indicate clean sessions free of common pitfalls.
+ * Expert developers produce clean sessions with no retries, no context
+ * overflows, and focused single-topic work.
+ *
+ * Key principle: absence of scaffolding tool usage when skill is internalized
+ * scores neutral or positive, never negative.
+ */
+function scoreSessionMastery(metrics: Phase1SessionMetrics): number {
+  const totalSessions = Math.max(metrics.totalSessions, 1);
+  const totalUtterances = Math.max(metrics.totalDeveloperUtterances, 1);
+  const friction = metrics.frictionSignals;
+
+  // Anti-pattern: excessive iterations (sessions that spin without resolution)
+  const excessiveIterationRate = (friction?.excessiveIterationSessions ?? 0) / totalSessions;
+  const noExcessiveScore = invertedScale(excessiveIterationRate * 150);
+
+  // Anti-pattern: context overflow (sessions that fill the context window)
+  const overflowRate = (metrics.contextFillExceeded90Count ?? 0) / totalSessions;
+  const noOverflowScore = invertedScale(overflowRate * 120);
+
+  // Anti-pattern: bare retries after errors (copy-paste retry without thought)
+  const bareRetryRate = (friction?.bareRetryAfterErrorCount ?? 0) / totalUtterances;
+  const noRetryScore = invertedScale(bareRetryRate * 300);
+
+  // Anti-pattern: frustration expressions
+  const frustrationRate = (friction?.frustrationExpressionCount ?? 0) / totalUtterances;
+  const noFrustrationScore = invertedScale(frustrationRate * 400);
+
+  // Anti-pattern: tool failures (indicates poor tool command construction)
+  const toolFailureRate = (friction?.toolFailureCount ?? 0) / Math.max(metrics.totalMessages, 1);
+  const noToolFailureScore = invertedScale(toolFailureRate * 200);
+
+  // Session focus: medium-length sessions indicate controlled, focused work
+  const mediumSessions = metrics.sessionHints?.mediumSessions ?? 0;
+  const focusBonus = (mediumSessions / totalSessions) * 15;
+
+  return clampScore(
+    noExcessiveScore * 0.25 +
+    noOverflowScore * 0.2 +
+    noRetryScore * 0.2 +
+    noFrustrationScore * 0.15 +
+    noToolFailureScore * 0.1 +
+    focusBonus +
+    10, // baseline: everyone starts at 10
+  );
+}
+
+// ============================================================================
 // Main Entry Point
 // ============================================================================
 
 /**
  * Compute deterministic scores from Phase 1 output.
  * Pure function: same Phase1Output always produces same DeterministicScores.
+ *
+ * v2: Returns 5-dimension scores + controlScore.
  */
 export function computeDeterministicScores(phase1Output: Phase1Output): DeterministicScores {
   const metrics = phase1Output.sessionMetrics;
 
   return {
-    contextEfficiency: scoreContextEfficiency(metrics),
-    sessionOutcome: scoreSessionOutcome(metrics),
-    thinkingQuality: scoreThinkingQuality(metrics),
-    learningBehavior: scoreLearningBehavior(metrics),
-    communicationPatterns: scoreCommunicationPatterns(metrics, phase1Output),
+    aiPartnership: scoreAiPartnership(metrics),
+    sessionCraft: scoreSessionCraft(metrics),
+    toolMastery: scoreCommunicationPatterns(metrics, phase1Output),
+    skillResilience: scoreSkillResilience(metrics),
+    sessionMastery: scoreSessionMastery(metrics),
     controlScore: scoreControl(metrics),
   };
 }

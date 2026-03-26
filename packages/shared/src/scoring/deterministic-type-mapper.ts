@@ -55,15 +55,17 @@ function computeAffinities(
   const slashCmds = metrics.slashCommandCounts ?? {};
 
   // Architect: planning-heavy + structured + controlling
+  // Uses aiPartnership (merged thinking + control) as primary signal
   const planCount = (slashCmds['plan'] ?? 0) + (slashCmds['review'] ?? 0);
   const planBonus = planCount > 0 ? Math.min(planCount * 8, 30) : 0;
-  const architectAffinity = scores.thinkingQuality * 0.5 + scores.controlScore * 0.3 + planBonus;
+  const architectAffinity = scores.aiPartnership * 0.5 + scores.controlScore * 0.3 + planBonus;
 
-  // Analyst: thorough investigation + learning + low mistakes
+  // Analyst: thorough investigation + learning + clean sessions
+  // Uses aiPartnership + sessionCraft as signals
   const analystAffinity =
-    scores.thinkingQuality * 0.3 +
-    scores.learningBehavior * 0.4 +
-    scores.sessionOutcome * 0.2 +
+    scores.aiPartnership * 0.3 +
+    scores.sessionCraft * 0.4 +
+    scores.sessionMastery * 0.2 +
     (metrics.questionRatio > 0.2 ? 10 : 0);
 
   // Conductor: slash command mastery
@@ -77,16 +79,17 @@ function computeAffinities(
   const conductorAffinity = commandDiversityScore + commandVolumeScore + orchestrationBonus;
 
   // Speedrunner: efficiency + conciseness
+  // Uses sessionCraft (context efficiency component) as primary signal
   const avgLen = metrics.avgDeveloperMessageLength;
   const concisenessScore = avgLen < 200 ? 40 : avgLen < 400 ? 25 : 10;
   const speedrunnerAffinity =
-    scores.contextEfficiency * 0.5 +
+    scores.sessionCraft * 0.5 +
     concisenessScore +
-    (scores.sessionOutcome > 70 ? 15 : 0);
+    (scores.sessionMastery > 70 ? 15 : 0);
 
   // Trendsetter: trend keywords + learning curiosity
   const trendKeywordScore = trendDensity > 3 ? Math.min(trendDensity * 15, 60) : trendDensity * 5;
-  const learningCuriosityBonus = scores.learningBehavior > 70 ? 15 : 0;
+  const learningCuriosityBonus = scores.sessionCraft > 70 ? 15 : 0;
   const trendsetterAffinity = trendKeywordScore + learningCuriosityBonus;
 
   return {

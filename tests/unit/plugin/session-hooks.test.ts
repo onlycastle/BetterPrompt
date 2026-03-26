@@ -5,7 +5,12 @@ import { tmpdir } from 'node:os';
 import { resetConfig } from '../../../packages/plugin/lib/config.js';
 import { handleSessionEndHook } from '../../../packages/plugin/hooks/post-session-handler.js';
 import { handleSessionStartHook } from '../../../packages/plugin/hooks/session-start-handler.js';
-import { readState, markAnalysisStarted, markAnalysisComplete } from '../../../packages/plugin/lib/debounce.js';
+import {
+  markAnalysisComplete,
+  markAnalysisPending,
+  markAnalysisStarted,
+  readState,
+} from '../../../packages/plugin/lib/debounce.js';
 import { writePrefs } from '../../../packages/plugin/lib/prefs.js';
 
 describe('plugin session hooks', () => {
@@ -55,6 +60,12 @@ describe('plugin session hooks', () => {
     return transcriptPath;
   }
 
+  function createTranscriptWithEntries(entries: unknown[], fileName = 'transcript-custom.jsonl'): string {
+    const transcriptPath = join(homeDir, fileName);
+    writeFileSync(transcriptPath, entries.map(entry => JSON.stringify(entry)).join('\n'));
+    return transcriptPath;
+  }
+
   it('queues analysis on SessionEnd and injects startup context on the next SessionStart', () => {
     createClaudeSessionFile();
     const transcriptPath = createTranscript();
@@ -84,6 +95,8 @@ describe('plugin session hooks', () => {
       isFirstRun: () => true,
       buildFirstRunAdditionalContext: () => 'first-run-context bp setup',
       isAnalysisPending: () => false,
+      shouldResumeRunningAnalysis: () => false,
+      markAnalysisPending: () => undefined,
       buildPendingAnalysisAdditionalContext: () => 'pending-context',
     });
 
@@ -96,6 +109,8 @@ describe('plugin session hooks', () => {
       isFirstRun: () => true,
       buildFirstRunAdditionalContext: () => 'first-run-context bp setup',
       isAnalysisPending: () => true,
+      shouldResumeRunningAnalysis: () => false,
+      markAnalysisPending: () => undefined,
       buildPendingAnalysisAdditionalContext: () => 'pending-context bp analyze',
     });
 
@@ -108,6 +123,8 @@ describe('plugin session hooks', () => {
       isFirstRun: () => true,
       buildFirstRunAdditionalContext: () => 'first-run-context',
       isAnalysisPending: () => false,
+      shouldResumeRunningAnalysis: () => false,
+      markAnalysisPending: () => undefined,
       buildPendingAnalysisAdditionalContext: () => 'pending-context',
     });
 
@@ -123,6 +140,8 @@ describe('plugin session hooks', () => {
       isFirstRun: () => false,
       buildFirstRunAdditionalContext: () => 'first-run-context',
       isAnalysisPending: () => true,
+      shouldResumeRunningAnalysis: () => false,
+      markAnalysisPending: () => undefined,
       buildPendingAnalysisAdditionalContext: () => 'pending-context bp analyze',
     });
 
@@ -135,6 +154,8 @@ describe('plugin session hooks', () => {
       isFirstRun: () => false,
       buildFirstRunAdditionalContext: () => 'first-run-context',
       isAnalysisPending: () => false,
+      shouldResumeRunningAnalysis: () => false,
+      markAnalysisPending: () => undefined,
       buildPendingAnalysisAdditionalContext: () => 'pending-context',
     });
 
@@ -156,5 +177,58 @@ describe('plugin session hooks', () => {
     expect(finalState.analysisPending).toBe(false);
     expect(finalState.analysisInProgress).toBe(false);
     expect(finalState.lastAnalysisSessionCount).toBe(1);
+  });
+
+  it('re-queues an interrupted running analysis when the session ends', () => {
+    const transcriptPath = createTranscript();
+
+    markAnalysisStarted();
+    const result = handleSessionEndHook({ transcript_path: transcriptPath });
+
+    expect(result.queued).toBe(true);
+    expect(result.reason).toContain('queued resume');
+    expect(readState().analysisState).toBe('pending');
+    expect(readState().analysisPending).toBe(true);
+    expect(readState().analysisInProgress).toBe(false);
+  });
+
+  it('does not re-queue a running analysis when SessionEnd fires during a skill handoff', () => {
+    const transcriptPath = createTranscriptWithEntries([
+      { timestamp: '2026-03-16T10:00:00.000Z' },
+      {
+        timestamp: '2026-03-16T10:00:05.000Z',
+        type: 'user',
+        isMeta: true,
+        sourceToolUseID: 'toolu_123',
+        message: { role: 'user', content: [{ type: 'text', text: 'Skill payload' }] },
+      },
+    ]);
+
+    markAnalysisStarted();
+    const result = handleSessionEndHook({ transcript_path: transcriptPath });
+
+    expect(result.queued).toBe(false);
+    expect(result.reason).toContain('mid-turn');
+    expect(readState().analysisState).toBe('running');
+    expect(readState().analysisInProgress).toBe(true);
+  });
+
+  it('converts stale running analysis to pending on the next startup', () => {
+    markAnalysisStarted();
+
+    const startup = handleSessionStartHook({ source: 'startup' }, {
+      isFirstRun: () => false,
+      buildFirstRunAdditionalContext: () => 'first-run-context',
+      isAnalysisPending: () => false,
+      shouldResumeRunningAnalysis: () => true,
+      markAnalysisPending,
+      buildPendingAnalysisAdditionalContext: () => 'pending-context bp analyze',
+    });
+
+    expect(startup?.hookSpecificOutput.hookEventName).toBe('SessionStart');
+    expect(startup?.hookSpecificOutput.additionalContext).toContain('bp analyze');
+    expect(readState().analysisState).toBe('pending');
+    expect(readState().analysisPending).toBe(true);
+    expect(readState().analysisInProgress).toBe(false);
   });
 });

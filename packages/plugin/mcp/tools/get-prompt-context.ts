@@ -16,6 +16,7 @@ import {
   type PromptContextDomain,
 } from '../../lib/prompt-context.js';
 import type { CanonicalStageOutputs } from '../../lib/core/types.js';
+import { debug } from '../../lib/logger.js';
 
 export const definition = {
   name: 'get_prompt_context',
@@ -29,11 +30,11 @@ export const definition = {
 export const GetPromptContextInputSchema = z.object({
   kind: z.enum(PROMPT_CONTEXT_KINDS),
   domain: z.enum([
-    'thinkingQuality',
-    'communicationPatterns',
-    'learningBehavior',
-    'contextEfficiency',
-    'sessionOutcome',
+    'aiPartnership',
+    'sessionCraft',
+    'toolMastery',
+    'skillResilience',
+    'sessionMastery',
   ]).optional(),
 });
 
@@ -78,13 +79,21 @@ export async function execute(args: { kind: typeof PROMPT_CONTEXT_KINDS[number];
       stageOutputs: getAllStageOutputs(runId) as CanonicalStageOutputs,
     });
 
-    return JSON.stringify({
+    const result = JSON.stringify({
       status: 'ok',
       runId,
       kind: parsed.data.kind,
       ...(parsed.data.domain ? { domain: parsed.data.domain } : {}),
       data,
     });
+
+    const label = `${parsed.data.kind}${parsed.data.domain ? `:${parsed.data.domain}` : ''}`;
+    debug('prompt-context', `${label} payload`, {
+      bytes: result.length,
+      estimatedTokens: Math.round(result.length / 4),
+    });
+
+    return result;
   } catch (error) {
     return JSON.stringify({
       status: 'error',

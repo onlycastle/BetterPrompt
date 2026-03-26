@@ -1,7 +1,7 @@
 ---
 name: analyze-sessions
 description: "[DEPRECATED] Replaced by extract-ai-control + write-ai-control"
-model: sonnet
+model: opus
 ---
 
 ## DEPRECATED

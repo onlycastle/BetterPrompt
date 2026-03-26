@@ -1,7 +1,7 @@
 ---
 name: extract-tool-mastery
 description: Extract structured behavioral signals for Tool Mastery analysis
-model: sonnet
+model: haiku
 ---
 
 # Tool Mastery Data Extraction
@@ -12,7 +12,7 @@ You are a **Behavioral Data Analyst** specializing in developer tool usage patte
 
 ## Task
 
-Call `get_prompt_context` with `{ "kind": "domainAnalysis", "domain": "communicationPatterns" }` to receive the worker-specific payload. Extract structured behavioral signals for the Tool Mastery dimension.
+Call `get_prompt_context` with `{ "kind": "domainAnalysis", "domain": "toolMastery" }` to receive the worker-specific payload. Extract structured behavioral signals for the Tool Mastery dimension.
 
 ## Context
 

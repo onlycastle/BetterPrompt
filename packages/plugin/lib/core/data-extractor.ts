@@ -24,6 +24,7 @@ import { CONTEXT_WINDOW_SIZE } from './types.js';
 // ============================================================================
 
 const MAX_TEXT_LENGTH = 2000;
+const SKILL_INJECTION_PREFIX = 'Base directory for this skill:';
 /** Known slash commands (prevents false positives from file paths) */
 const KNOWN_SLASH_COMMANDS = new Set([
   'plan', 'review', 'commit', 'compact', 'clear', 'help', 'init',
@@ -189,8 +190,23 @@ interface RawSessionData {
     rawContent: string;
     content: Array<{ type: string; text?: string; name?: string; is_error?: boolean; id?: string; tool_use_id?: string; content?: string | unknown[] }>;
     timestamp: Date;
+    isMeta?: boolean;
+    sourceToolUseID?: string;
+    toolUseResult?: unknown;
     tokenUsage?: { input: number; output: number };
   }>;
+}
+
+function isAnalyzableUserMessage(
+  message: RawSessionData['messages'][number],
+): boolean {
+  const isSkillInjectedPrompt = message.rawContent.trim().startsWith(SKILL_INJECTION_PREFIX);
+
+  return message.role === 'user'
+    && !message.isMeta
+    && typeof message.sourceToolUseID !== 'string'
+    && message.toolUseResult === undefined
+    && !isSkillInjectedPrompt;
 }
 
 function toRawSessionData(session: ParsedSession): RawSessionData {
@@ -203,6 +219,11 @@ function toRawSessionData(session: ParsedSession): RawSessionData {
           rawContent: message.content,
           content: [{ type: 'text', text: message.content }],
           timestamp: new Date(message.timestamp),
+          ...(message.isMeta ? { isMeta: true } : {}),
+          ...(typeof message.sourceToolUseID === 'string'
+            ? { sourceToolUseID: message.sourceToolUseID }
+            : {}),
+          ...(message.toolUseResult !== undefined ? { toolUseResult: message.toolUseResult } : {}),
         };
       }
 
@@ -254,6 +275,11 @@ function extractFromSession(session: RawSessionData): {
     const message = session.messages[i]!;
 
     if (message.role === 'user') {
+      if (!isAnalyzableUserMessage(message)) {
+        precedingAssistantContent = null;
+        continue;
+      }
+
       // Extract slash commands from raw content BEFORE stripping
       const rawText = extractTextFromContent(
         message.content as unknown as string | Array<{ type: string; text?: string }>,
@@ -352,7 +378,7 @@ function computeFrictionSignals(
     let currentErrorChain = 0;
 
     for (const message of session.messages) {
-      if (message.role === 'user') {
+      if (isAnalyzableUserMessage(message)) {
         sessionUserMessages++;
       } else if (message.role === 'assistant') {
         // Count tool failures
@@ -429,7 +455,7 @@ function computeSessionHints(sessions: RawSessionData[]): SessionHints {
   let longSessions = 0;
 
   for (const session of sessions) {
-    const userTurns = session.messages.filter(m => m.role === 'user').length;
+    const userTurns = session.messages.filter(isAnalyzableUserMessage).length;
     totalUserTurns += userTurns;
 
     if (userTurns <= 3) shortSessions++;
@@ -501,7 +527,7 @@ export async function extractPhase1DataFromParsedSessions(
   // Compute metrics
   const totalMessages = allSessions.reduce((sum, s) => sum + s.messages.length, 0);
   const totalUserMessages = allSessions.reduce(
-    (sum, s) => sum + s.messages.filter(m => m.role === 'user').length, 0,
+    (sum, s) => sum + s.messages.filter(isAnalyzableUserMessage).length, 0,
   );
   const questionCount = allUtterances.filter(u => u.hasQuestion).length;
   const codeBlockCount = allUtterances.filter(u => u.hasCodeBlock).length;
@@ -541,7 +567,7 @@ export async function extractPhase1DataFromParsedSessions(
   // Build per-session activity metadata for Phase 1.5/2 stages
   const activitySessions = allSessions.map((session, idx) => {
     const parsedSession = sessions[idx]!;
-    const userMessages = session.messages.filter(m => m.role === 'user');
+    const userMessages = session.messages.filter(isAnalyzableUserMessage);
     const assistantMessages = session.messages.filter(m => m.role === 'assistant');
     const sessionTimestamps = session.messages.map(m => m.timestamp.getTime()).sort();
     const startTime = sessionTimestamps.length > 0

@@ -178,12 +178,17 @@
     ]
   },
   "deterministicScores": {
+    "aiPartnership": 79,
+    "sessionCraft": 76,
+    "toolMastery": 88,
+    "skillResilience": 74,
+    "sessionMastery": 77,
+    "controlScore": 78,
     "thinkingQuality": 81,
     "communicationPatterns": 88,
     "learningBehavior": 79,
     "contextEfficiency": 73,
-    "sessionOutcome": 77,
-    "controlScore": 78
+    "sessionOutcome": 77
   },
   "typeResult": {
     "primaryType": "architect",

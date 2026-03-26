@@ -16,12 +16,17 @@ export const definition = {
   description:
     'Read previously saved domain analysis results from the current local analysis run. ' +
     'Provide a domain name to get one domain, or omit it to get all saved domains. ' +
-    'Available domains: thinkingQuality, communicationPatterns, learningBehavior, ' +
-    'contextEfficiency, sessionOutcome, content.',
+    'Available domains: aiPartnership, sessionCraft, toolMastery, skillResilience, sessionMastery.',
 };
 
 export const GetDomainResultsInputSchema = z.object({
   domain: z.enum([
+    'aiPartnership',
+    'sessionCraft',
+    'toolMastery',
+    'skillResilience',
+    'sessionMastery',
+    // Legacy domains
     'thinkingQuality',
     'communicationPatterns',
     'learningBehavior',

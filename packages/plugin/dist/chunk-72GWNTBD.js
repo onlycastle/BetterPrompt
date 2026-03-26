@@ -29326,6 +29326,7 @@ import { homedir as homedir2 } from "os";
 var COOLDOWN_MS = 4 * 60 * 60 * 1e3;
 var MIN_SESSION_DURATION_MS = 3 * 60 * 1e3;
 var MAX_RUNNING_STATE_AGE_MS = 30 * 60 * 1e3;
+var RUNNING_ANALYSIS_RESUME_GRACE_MS = 45 * 1e3;
 var DEFAULT_STATE = {
   lastAnalysisTimestamp: null,
   lastAnalysisSessionCount: 0,
@@ -29373,6 +29374,9 @@ function writeState(state) {
     )
   );
 }
+function getStateUpdatedAtMs(state) {
+  return state.stateUpdatedAt ? new Date(state.stateUpdatedAt).getTime() : Number.NaN;
+}
 function countClaudeSessions() {
   const projectsDir = join3(homedir2(), ".claude", "projects");
   try {
@@ -29397,7 +29401,7 @@ function recoverStaleAnalysisState(options) {
   if (state.analysisState !== "running") {
     return state;
   }
-  const updatedAt = state.stateUpdatedAt ? new Date(state.stateUpdatedAt).getTime() : Number.NaN;
+  const updatedAt = getStateUpdatedAtMs(state);
   const isStale = options?.force || Number.isNaN(updatedAt) || Date.now() - updatedAt > MAX_RUNNING_STATE_AGE_MS;
   if (!isStale) {
     return state;
@@ -29457,6 +29461,13 @@ function markAnalysisStarted() {
     lastError: null
   });
 }
+function touchAnalysisHeartbeat() {
+  const state = readState();
+  if (state.analysisState !== "running") {
+    return;
+  }
+  writeState(state);
+}
 function markAnalysisComplete(sessionCount) {
   debug("debounce", "state transition: -> complete");
   writeState({
@@ -29501,6 +29512,14 @@ function clearAnalysisPending() {
     analysisState: "idle",
     pendingSince: null
   });
+}
+function shouldResumeRunningAnalysis(now = Date.now()) {
+  const state = readState();
+  if (state.analysisState !== "running") {
+    return false;
+  }
+  const updatedAt = getStateUpdatedAtMs(state);
+  return Number.isNaN(updatedAt) || now - updatedAt > RUNNING_ANALYSIS_RESUME_GRACE_MS;
 }
 
 export {
@@ -29554,10 +29573,12 @@ export {
   recoverStaleAnalysisState,
   shouldTriggerAnalysis,
   markAnalysisStarted,
+  touchAnalysisHeartbeat,
   markAnalysisComplete,
   markAnalysisFailed,
   markAnalysisPending,
   isAnalysisPending,
-  clearAnalysisPending
+  clearAnalysisPending,
+  shouldResumeRunningAnalysis
 };
-//# sourceMappingURL=chunk-KAELRNDJ.js.map
+//# sourceMappingURL=chunk-72GWNTBD.js.map

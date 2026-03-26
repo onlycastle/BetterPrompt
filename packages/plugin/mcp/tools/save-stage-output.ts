@@ -25,8 +25,8 @@ export const definition = {
     'Save output from a pipeline stage. ' +
     'Called after completing a stage (sessionSummaries, projectSummaries, ' +
     'weeklyInsights, typeClassification, evidenceVerification, contentWriter, translator, ' +
-    'extractAiCollaboration, extractContextEngineering, extractToolMastery, ' +
-    'extractBurnoutRisk, extractAiControl, extractSkillResilience). ' +
+    'extractAiPartnership, extractSessionCraft, extractToolMastery, ' +
+    'extractSkillResilience, extractSessionMastery). ' +
     'Input must include stage name and structured data matching the stage schema.',
 };
 
