@@ -29,6 +29,9 @@ export interface ParsedMessage {
   role: 'user' | 'assistant';
   timestamp: Date;
   content: string;
+  isMeta?: boolean;
+  sourceToolUseID?: string;
+  toolUseResult?: unknown;
   toolCalls?: ToolCall[];
   tokenUsage?: {
     input: number;

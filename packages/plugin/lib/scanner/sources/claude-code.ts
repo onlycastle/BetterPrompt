@@ -62,6 +62,9 @@ interface JSONLLine {
   uuid: string;
   timestamp: string;
   version?: string;
+  isMeta?: boolean;
+  sourceToolUseID?: string;
+  toolUseResult?: unknown;
   message: {
     role?: string;
     content: string | ContentBlock[];
@@ -234,6 +237,11 @@ export class ClaudeCodeSource extends BaseSessionSource {
           role: 'user',
           timestamp: new Date(line.timestamp),
           content: textContent,
+          ...(line.isMeta ? { isMeta: true } : {}),
+          ...(typeof line.sourceToolUseID === 'string'
+            ? { sourceToolUseID: line.sourceToolUseID }
+            : {}),
+          ...(line.toolUseResult !== undefined ? { toolUseResult: line.toolUseResult } : {}),
         });
       } else if (line.type === 'assistant') {
         const textContent = this.extractTextContent(line.message.content);

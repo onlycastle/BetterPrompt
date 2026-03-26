@@ -14,18 +14,19 @@ let migratedDb: Database.Database | null = null;
 
 export const REQUIRED_STAGE_NAMES = [
   'sessionSummaries',
-  'extractAiCollaboration',
-  'extractContextEngineering',
+  // 5 extractors (v2)
+  'extractAiPartnership',
+  'extractSessionCraft',
   'extractToolMastery',
-  'extractBurnoutRisk',
-  'extractAiControl',
   'extractSkillResilience',
-  'thinkingQuality',
-  'contextEfficiency',
-  'communicationPatterns',
-  'learningBehavior',
-  'sessionOutcome',
-  'content',
+  'extractSessionMastery',
+  // 5 domain writers (v2)
+  'aiPartnership',
+  'sessionCraft',
+  'toolMastery',
+  'skillResilience',
+  'sessionMastery',
+  // Context + classification
   'projectSummaries',
   'weeklyInsights',
   'typeClassification',
