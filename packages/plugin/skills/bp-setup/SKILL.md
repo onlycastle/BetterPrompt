@@ -162,9 +162,8 @@ Then ask the user what they would like to do next.
 If the user already said to continue working or to run analysis now, follow that instruction directly and do not call `AskUserQuestion`.
 
 Use `AskUserQuestion` with these options:
-- **"Queue bp analyze for next session"** (Recommended) — call `save_user_prefs` with `{ "queueAnalysis": true }` so the analysis auto-starts in the next session with a fresh rate-limit budget. Tell the user: "Analysis queued! It will start automatically in your next Claude Code session."
-- **"Run bp analyze now"** — warn the user: "Running analysis immediately after setup may hit API rate limits. If it fails, just start a new session and it will auto-resume." Then invoke the `bp-analyze` skill.
-- **"Continue working"** — call `save_user_prefs` with `{ "queueAnalysis": true }` so analysis starts in a future session, then exit the wizard
+- **"Run bp analyze now"** (Recommended) — dispatch `bp-analyze` as an **Agent** (not as an inline skill). Use the Agent tool with `model: sonnet`, prompt: `"Read the skill instructions at [PLUGIN_PATH]/skills/bp-analyze/SKILL.md and follow them exactly. You have access to BetterPrompt MCP tools. Execute the complete analysis workflow."`, description: `"bp: analyze"`. This ensures the orchestrator starts with a clean context and avoids inheriting the setup session's token budget.
+- **"Continue working"** — call `save_user_prefs` with `{ "queueAnalysis": true }` so analysis auto-starts in a future session, then exit the wizard
 
 ### Step 7: Complete
 
