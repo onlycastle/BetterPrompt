@@ -12,11 +12,11 @@ import type {
 } from '../../../packages/plugin/lib/core/types.js';
 
 export const deterministicScores: DeterministicScores = {
-  thinkingQuality: 80,
-  communicationPatterns: 82,
-  learningBehavior: 74,
-  contextEfficiency: 76,
-  sessionOutcome: 78,
+  aiPartnership: 80,
+  sessionCraft: 76,
+  toolMastery: 82,
+  skillResilience: 74,
+  sessionMastery: 78,
   controlScore: 74,
 };
 
@@ -176,8 +176,8 @@ export function createTypeResult(phase1Output = createPhase1Output()): Determini
 export function createDomainResults(): DomainResult[] {
   return [
     {
-      domain: 'thinkingQuality',
-      overallScore: deterministicScores.thinkingQuality,
+      domain: 'aiPartnership',
+      overallScore: deterministicScores.aiPartnership,
       confidenceScore: 0.86,
       strengths: [
         {
@@ -211,67 +211,13 @@ export function createDomainResults(): DomainResult[] {
         verificationBehavior: {
           level: 'systematic',
         },
-        criticalThinkingMoments: [
-          {
-            type: 'assumption_check',
-            quote: 'Summarize the root cause and the fix.',
-            result: 'The request forces the model to separate symptoms from root cause.',
-            utteranceId: 'session-1_1',
-            sessionId: 'session-1',
-          },
-        ],
-        verificationAntiPatterns: [
-          {
-            type: 'late_assumption_check',
-            severity: 'low',
-            frequency: 1,
-            evidence: [
-              { utteranceId: 'session-1_1', quote: 'The retry logs still show stale context. Summarize the root cause and the fix.' },
-            ],
-            improvement: 'Ask for the root-cause frame before the retry loop widens.',
-          },
-        ],
-        planQualityScore: 82,
       },
       analyzedAt: '2026-03-16T10:00:00.000Z',
     },
     {
-      domain: 'communicationPatterns',
-      overallScore: deterministicScores.communicationPatterns,
-      confidenceScore: 0.83,
-      strengths: [
-        {
-          title: 'Explicit completion criteria',
-          description: 'The developer names the desired artifact and the proof step in the same prompt, which keeps the assistant aligned on both output and validation.',
-          evidence: [
-            { utteranceId: 'session-1_0', quote: 'Map the plan first, then verify it with tests before merging.' },
-          ],
-        },
-      ],
-      growthAreas: [],
-      data: {
-        communicationPatterns: [
-          {
-            title: 'Verification-first prompts',
-            description: 'Requests pair implementation with proof.',
-            frequency: 'frequent',
-            effectiveness: 'highly_effective',
-            evidence: [
-              {
-                utteranceId: 'session-1_0',
-                quote: 'Map the plan first, then verify it with tests before merging.',
-                context: 'The prompt defines both the edit sequence and completion proof.',
-              },
-            ],
-          },
-        ],
-      },
-      analyzedAt: '2026-03-16T10:00:00.000Z',
-    },
-    {
-      domain: 'learningBehavior',
-      overallScore: deterministicScores.learningBehavior,
-      confidenceScore: 0.79,
+      domain: 'sessionCraft',
+      overallScore: deterministicScores.sessionCraft,
+      confidenceScore: 0.78,
       strengths: [
         {
           title: 'Requests root-cause explanations',
@@ -281,43 +227,6 @@ export function createDomainResults(): DomainResult[] {
           ],
         },
       ],
-      growthAreas: [],
-      data: {
-        knowledgeGaps: [
-          {
-            topic: 'stale context management',
-            severity: 'medium',
-            description: 'Retry loops occasionally widen the active context before the root cause is named.',
-            evidence: [
-              { utteranceId: 'session-1_1', quote: 'The retry logs still show stale context.' },
-            ],
-          },
-        ],
-        learningProgress: [
-          {
-            topic: 'verification discipline',
-            startLevel: 'emerging',
-            currentLevel: 'consistent',
-            milestones: ['Started naming proof steps up front.'],
-          },
-        ],
-        recommendedResources: [
-          {
-            name: 'Prompt Compression Notes',
-            topic: 'stale context management',
-            resourceType: 'guide',
-            targetGap: 'Retry loops carrying old assumptions.',
-            priority: 'high',
-          },
-        ],
-      },
-      analyzedAt: '2026-03-16T10:00:00.000Z',
-    },
-    {
-      domain: 'contextEfficiency',
-      overallScore: deterministicScores.contextEfficiency,
-      confidenceScore: 0.78,
-      strengths: [],
       growthAreas: [
         {
           title: 'Retry context spillover',
@@ -342,9 +251,25 @@ export function createDomainResults(): DomainResult[] {
       analyzedAt: '2026-03-16T10:00:00.000Z',
     },
     {
-      domain: 'sessionOutcome',
-      overallScore: deterministicScores.sessionOutcome,
-      confidenceScore: 0.81,
+      domain: 'toolMastery',
+      overallScore: deterministicScores.toolMastery,
+      confidenceScore: 0.83,
+      strengths: [
+        {
+          title: 'Explicit completion criteria',
+          description: 'The developer names the desired artifact and the proof step in the same prompt, which keeps the assistant aligned on both output and validation.',
+          evidence: [
+            { utteranceId: 'session-1_0', quote: 'Map the plan first, then verify it with tests before merging.' },
+          ],
+        },
+      ],
+      growthAreas: [],
+      analyzedAt: '2026-03-16T10:00:00.000Z',
+    },
+    {
+      domain: 'skillResilience',
+      overallScore: deterministicScores.skillResilience,
+      confidenceScore: 0.79,
       strengths: [
         {
           title: 'Sessions end with proof',
@@ -355,19 +280,22 @@ export function createDomainResults(): DomainResult[] {
         },
       ],
       growthAreas: [],
-      data: {
-        sessionAnalyses: [
-          {
-            sessionId: 'session-1',
-            goals: ['land the fix', 'verify with tests'],
-            sessionType: 'implementation',
-            outcome: 'successful',
-            outcomeScore: 84,
-            frictionTypes: ['stale_context'],
-          },
-        ],
-        overallSuccessRate: 100,
-      },
+      analyzedAt: '2026-03-16T10:00:00.000Z',
+    },
+    {
+      domain: 'sessionMastery',
+      overallScore: deterministicScores.sessionMastery,
+      confidenceScore: 0.81,
+      strengths: [
+        {
+          title: 'Clean session execution',
+          description: 'The developer produces sessions with minimal anti-patterns, indicating internalized collaboration skills and clean workflow habits.',
+          evidence: [
+            { utteranceId: 'session-1_0', quote: 'Map the plan first, then verify it with tests before merging.' },
+          ],
+        },
+      ],
+      growthAreas: [],
       analyzedAt: '2026-03-16T10:00:00.000Z',
     },
   ];
@@ -383,12 +311,11 @@ export function createStageOutputs(): CanonicalStageOutputs {
         },
       ],
     },
-    extractAiCollaboration: { dimension: 'aiCollaboration', quotes: [] },
-    extractContextEngineering: { dimension: 'contextEngineering', quotes: [] },
+    extractAiPartnership: { dimension: 'aiPartnership', quotes: [] },
+    extractSessionCraft: { dimension: 'sessionCraft', quotes: [] },
     extractToolMastery: { dimension: 'toolMastery', quotes: [] },
-    extractBurnoutRisk: { dimension: 'burnoutRisk', quotes: [] },
-    extractAiControl: { dimension: 'aiControl', quotes: [] },
     extractSkillResilience: { dimension: 'skillResilience', quotes: [] },
+    extractSessionMastery: { dimension: 'sessionMastery', quotes: [] },
     content: {
       topFocusAreas: [
         {
@@ -445,7 +372,7 @@ export function createStageOutputs(): CanonicalStageOutputs {
       threshold: 75,
       domainStats: [
         {
-          domain: 'thinkingQuality',
+          domain: 'aiPartnership',
           totalEvidence: 2,
           keptCount: 2,
           filteredCount: 0,

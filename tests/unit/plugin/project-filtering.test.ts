@@ -125,6 +125,29 @@ describe('project filtering logic', () => {
     expect(filtered).toHaveLength(0);
   });
 
+  it('normalizes path-like includeProjects values to project names', async () => {
+    const {
+      normalizeProjectFilters,
+      normalizeProjectNameValue,
+    } = await import('../../../packages/plugin/lib/project-filters.js');
+
+    expect(
+      normalizeProjectFilters([
+        '/private/tmp/betterprompt-parity-20260324-r1/bp-parity-moneybook',
+        'nomoreaislop/cleanroom-projects/bp-parity-youtube',
+        'bp-parity-moneybook',
+      ]),
+    ).toEqual(['bp-parity-moneybook', 'bp-parity-youtube']);
+
+    expect(
+      normalizeProjectNameValue('private/tmp/betterprompt-parity-20260324-r2/bp-parity-moneybook'),
+    ).toBe('bp-parity-moneybook');
+
+    expect(
+      normalizeProjectNameValue('single-person-company/youtube'),
+    ).toBe('single-person-company/youtube');
+  });
+
   it('treats sessions without projectName as "unknown"', () => {
     const sessions = [
       { ...makeSession('s1', 'project-a'), projectName: undefined as unknown as string },
