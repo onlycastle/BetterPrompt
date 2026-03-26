@@ -136,7 +136,12 @@ This is a one-time ask, tracked via `starAsked` in `~/.betterprompt/prefs.json`.
    > It helps others discover it: https://github.com/onlycastle/BetterPrompt"
    >
    > **"Sure, I'll star it"** / **"Skip"**
-3. Regardless of choice, write `starAsked: true` to prefs.
+3. If the user chose **"Sure, I'll star it"**, open the repo page in their browser:
+   ```bash
+   open "https://github.com/onlycastle/BetterPrompt"
+   ```
+   (Use `open` on macOS, `xdg-open` on Linux, `start` on Windows.)
+4. Regardless of choice, write `starAsked: true` to prefs.
    Prefer `save_user_prefs` instead of writing JSON manually.
 
 ### Step 6: Quick Reference + First Action
@@ -162,7 +167,7 @@ Then ask the user what they would like to do next.
 If the user already said to continue working or to run analysis now, follow that instruction directly and do not call `AskUserQuestion`.
 
 Use `AskUserQuestion` with these options:
-- **"Run bp analyze now"** (Recommended) — dispatch `bp-analyze` as an **Agent** (not as an inline skill) so it starts with a clean context. Use the Agent tool with:
+- **"Run bp analyze now"** (Recommended) — dispatch `bp-analyze` as an **Agent** (not as an inline skill) so it starts with a clean context. Use Claude Code's built-in `Agent` tool (do NOT use Bash to run `claude` CLI):
     ```
     model: sonnet
     description: "bp: analyze"

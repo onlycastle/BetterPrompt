@@ -39,6 +39,11 @@ describe('bp-analyze agent dispatch contract', () => {
     expect(content).toContain('must NOT internally spawn additional Agents or Tasks');
   });
 
+  it('explicitly warns against using Bash for agent dispatch', () => {
+    expect(content).toContain('Do NOT use Bash');
+    expect(content).toContain('built-in `Agent` tool');
+  });
+
   it('does not contain old single-session constraint language', () => {
     expect(content).not.toContain('single-session and deterministic');
     expect(content).not.toContain('Do NOT switch to `Agent`, `Task`, or any delegation mechanism');
