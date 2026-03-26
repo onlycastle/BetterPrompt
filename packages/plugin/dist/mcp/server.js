@@ -2,7 +2,7 @@
 import {
   readPrefs,
   writePrefs
-} from "../chunk-FLVXQHKF.js";
+} from "../chunk-NH4BKYT6.js";
 import {
   $ZodObject,
   $ZodType,
@@ -58,7 +58,7 @@ import {
   touchAnalysisHeartbeat,
   union,
   unknown
-} from "../chunk-TQTIO4Y6.js";
+} from "../chunk-72GWNTBD.js";
 import {
   __commonJS,
   __require,
@@ -16502,18 +16502,19 @@ import { join } from "path";
 var migratedDb = null;
 var REQUIRED_STAGE_NAMES = [
   "sessionSummaries",
-  "extractAiCollaboration",
-  "extractContextEngineering",
+  // 5 extractors (v2)
+  "extractAiPartnership",
+  "extractSessionCraft",
   "extractToolMastery",
-  "extractBurnoutRisk",
-  "extractAiControl",
   "extractSkillResilience",
-  "thinkingQuality",
-  "contextEfficiency",
-  "communicationPatterns",
-  "learningBehavior",
-  "sessionOutcome",
-  "content",
+  "extractSessionMastery",
+  // 5 domain writers (v2)
+  "aiPartnership",
+  "sessionCraft",
+  "toolMastery",
+  "skillResilience",
+  "sessionMastery",
+  // Context + classification
   "projectSummaries",
   "weeklyInsights",
   "typeClassification",
@@ -16819,19 +16820,19 @@ function formatResult(summary) {
 // mcp/tools/get-growth-areas.ts
 var definition2 = {
   name: "get_growth_areas",
-  description: "Get the developer's top growth areas \u2014 specific areas where they can improve their AI collaboration skills. Each area includes a title, domain, severity, and actionable recommendation. Optionally filter by domain (thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency, sessionOutcome).",
+  description: "Get the developer's top growth areas \u2014 specific areas where they can improve their AI collaboration skills. Each area includes a title, domain, severity, and actionable recommendation. Optionally filter by domain (aiPartnership, sessionCraft, toolMastery, skillResilience, sessionMastery).",
   inputSchema: {
     type: "object",
     properties: {
       domain: {
         type: "string",
-        description: "Filter by domain key. One of: thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency, sessionOutcome",
+        description: "Filter by domain key. One of: aiPartnership, sessionCraft, toolMastery, skillResilience, sessionMastery",
         enum: [
-          "thinkingQuality",
-          "communicationPatterns",
-          "learningBehavior",
-          "contextEfficiency",
-          "sessionOutcome"
+          "aiPartnership",
+          "sessionCraft",
+          "toolMastery",
+          "skillResilience",
+          "sessionMastery"
         ]
       }
     },
@@ -19398,11 +19399,11 @@ async function execute2(args) {
         dateRange: metrics.dateRange
       },
       deterministicScores: {
-        thinkingQuality: scores.thinkingQuality,
-        communicationPatterns: scores.communicationPatterns,
-        learningBehavior: scores.learningBehavior,
-        contextEfficiency: scores.contextEfficiency,
-        sessionOutcome: scores.sessionOutcome,
+        aiPartnership: scores.aiPartnership,
+        sessionCraft: scores.sessionCraft,
+        toolMastery: scores.toolMastery,
+        skillResilience: scores.skillResilience,
+        sessionMastery: scores.sessionMastery,
         controlScore: scores.controlScore
       },
       message: `Extracted ${metrics.totalDeveloperUtterances} utterances from ${metrics.totalSessions} sessions. Analysis run #${runId} created. Phase 1 data saved to ${phase1Path}. Ready for domain analysis.`
@@ -19416,7 +19417,7 @@ async function execute2(args) {
 // mcp/tools/save-domain-results.ts
 var definition6 = {
   name: "save_domain_results",
-  description: "Save structured analysis results for a specific domain. Called after analyzing a domain (thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency, sessionOutcome, or content). Input must include domain name, overall score, strengths, and growth areas."
+  description: "Save structured analysis results for a specific domain. Called after analyzing a domain (aiPartnership, sessionCraft, toolMastery, skillResilience, sessionMastery). Input must include domain name, overall score, strengths, and growth areas."
 };
 function extractDomainName(args) {
   return typeof args.domain === "string" ? args.domain : null;
@@ -19603,6 +19604,15 @@ var SessionOutcomeDataSchema = external_exports.object({
   failurePatterns: external_exports.array(external_exports.unknown()).optional()
 }).passthrough();
 var DOMAIN_DATA_SCHEMAS = {
+  // v2 domains: merged schemas are permissive (.passthrough()) to accept combined data
+  aiPartnership: ThinkingQualityDataSchema.merge(SessionOutcomeDataSchema.partial()).passthrough(),
+  sessionCraft: ContextEfficiencyDataSchema.merge(LearningBehaviorDataSchema.partial()).passthrough(),
+  toolMastery: CommunicationPatternsDataSchema,
+  skillResilience: external_exports.record(external_exports.string(), external_exports.unknown()),
+  // permissive
+  sessionMastery: external_exports.record(external_exports.string(), external_exports.unknown()),
+  // permissive
+  // Legacy domains
   thinkingQuality: ThinkingQualityDataSchema,
   communicationPatterns: CommunicationPatternsDataSchema,
   learningBehavior: LearningBehaviorDataSchema,
@@ -19619,6 +19629,13 @@ var QUALITY_THRESHOLDS = {
 };
 var DomainResultInputSchema = external_exports.object({
   domain: external_exports.enum([
+    // v2 domains
+    "aiPartnership",
+    "sessionCraft",
+    "toolMastery",
+    "skillResilience",
+    "sessionMastery",
+    // Legacy domains
     "thinkingQuality",
     "communicationPatterns",
     "learningBehavior",
@@ -19778,11 +19795,17 @@ async function execute3(args) {
 }
 function getDomainDataHint(domain) {
   const hints = {
+    aiPartnership: "Expected: planningHabits[], verificationBehavior, sessionAnalyses[], overallSuccessRate",
+    sessionCraft: "Expected: inefficiencyPatterns[], contextUsagePatterns[], knowledgeGaps[], repeatedMistakePatterns[]",
+    toolMastery: "Required: communicationPatterns[] (min 1). Optional: signatureQuotes[]",
+    skillResilience: "Expected: domain-specific data (flexible schema)",
+    sessionMastery: "Expected: absenceIndicators[], sessionCleanliness[], cleanSessionPercentage, scaffoldingDependencyScore",
+    // Legacy domains
     thinkingQuality: "Required: planningHabits[] (min 1), verificationBehavior, criticalThinkingMoments[], verificationAntiPatterns[]",
-    communicationPatterns: "Required: communicationPatterns[] (min 1). Optional: signatureQuotes[], structuralDistribution, contextDistribution, questioningDistribution",
+    communicationPatterns: "Required: communicationPatterns[] (min 1). Optional: signatureQuotes[]",
     learningBehavior: "Expected: knowledgeGaps[], repeatedMistakePatterns[], learningProgress[], recommendedResources[]",
     contextEfficiency: "Expected: inefficiencyPatterns[], contextUsagePatterns[], promptLengthTrends, avgContextFillPercent",
-    sessionOutcome: "Required: sessionAnalyses[] (min 1, each with sessionId, sessionType, outcome). Optional: overallSuccessRate, goalDistribution[], frictionSummary[]"
+    sessionOutcome: "Required: sessionAnalyses[] (min 1, each with sessionId, sessionType, outcome). Optional: overallSuccessRate"
   };
   return hints[domain] ?? "";
 }
@@ -19790,10 +19813,16 @@ function getDomainDataHint(domain) {
 // mcp/tools/get-domain-results.ts
 var definition7 = {
   name: "get_domain_results",
-  description: "Read previously saved domain analysis results from the current local analysis run. Provide a domain name to get one domain, or omit it to get all saved domains. Available domains: thinkingQuality, communicationPatterns, learningBehavior, contextEfficiency, sessionOutcome, content."
+  description: "Read previously saved domain analysis results from the current local analysis run. Provide a domain name to get one domain, or omit it to get all saved domains. Available domains: aiPartnership, sessionCraft, toolMastery, skillResilience, sessionMastery."
 };
 var GetDomainResultsInputSchema = external_exports.object({
   domain: external_exports.enum([
+    "aiPartnership",
+    "sessionCraft",
+    "toolMastery",
+    "skillResilience",
+    "sessionMastery",
+    // Legacy domains
     "thinkingQuality",
     "communicationPatterns",
     "learningBehavior",
@@ -19855,27 +19884,27 @@ var definition9 = {
   description: "Inspect the current local analysis run and report which required stages are complete, missing, or need to be resumed. Use this before starting bp analyze to resume interrupted runs."
 };
 var DOMAIN_STAGE_NAMES = /* @__PURE__ */ new Set([
-  "thinkingQuality",
-  "communicationPatterns",
-  "learningBehavior",
-  "contextEfficiency",
-  "sessionOutcome",
-  "content"
+  "aiPartnership",
+  "sessionCraft",
+  "toolMastery",
+  "skillResilience",
+  "sessionMastery"
 ]);
 var REQUIRED_STAGE_SEQUENCE = [
   { stage: "sessionSummaries", skill: "summarize-sessions", tool: null, kind: "stage" },
-  { stage: "extractAiCollaboration", skill: "extract-ai-collaboration", tool: null, kind: "stage" },
-  { stage: "extractContextEngineering", skill: "extract-context-engineering", tool: null, kind: "stage" },
+  // 5 extractors (down from 6)
+  { stage: "extractAiPartnership", skill: "extract-ai-partnership", tool: null, kind: "stage" },
+  { stage: "extractSessionCraft", skill: "extract-session-craft", tool: null, kind: "stage" },
   { stage: "extractToolMastery", skill: "extract-tool-mastery", tool: null, kind: "stage" },
-  { stage: "extractBurnoutRisk", skill: "extract-burnout-risk", tool: null, kind: "stage" },
-  { stage: "extractAiControl", skill: "extract-ai-control", tool: null, kind: "stage" },
   { stage: "extractSkillResilience", skill: "extract-skill-resilience", tool: null, kind: "stage" },
-  { stage: "thinkingQuality", skill: "write-ai-collaboration", tool: null, kind: "domain" },
-  { stage: "contextEfficiency", skill: "write-context-engineering", tool: null, kind: "domain" },
-  { stage: "communicationPatterns", skill: "write-tool-mastery", tool: null, kind: "domain" },
-  { stage: "learningBehavior", skill: "write-burnout-risk", tool: null, kind: "domain" },
-  { stage: "sessionOutcome", skill: "write-ai-control", tool: null, kind: "domain" },
-  { stage: "content", skill: "write-skill-resilience", tool: null, kind: "domain" },
+  { stage: "extractSessionMastery", skill: "extract-session-mastery", tool: null, kind: "stage" },
+  // 5 writers (down from 6)
+  { stage: "aiPartnership", skill: "write-ai-partnership", tool: null, kind: "domain" },
+  { stage: "sessionCraft", skill: "write-session-craft", tool: null, kind: "domain" },
+  { stage: "toolMastery", skill: "write-tool-mastery", tool: null, kind: "domain" },
+  { stage: "skillResilience", skill: "write-skill-resilience", tool: null, kind: "domain" },
+  { stage: "sessionMastery", skill: "write-session-mastery", tool: null, kind: "domain" },
+  // Context generation + classification
   { stage: "projectSummaries", skill: "summarize-projects", tool: null, kind: "stage" },
   { stage: "weeklyInsights", skill: "generate-weekly-insights", tool: null, kind: "stage" },
   { stage: "deterministicType", skill: null, tool: "classify_developer_type", kind: "stage" },
@@ -20379,22 +20408,28 @@ function generateTypeDistributionBar(distribution) {
   return `<div style="margin:16px 0;">${bars}</div>`;
 }
 var RADAR_LABELS = {
-  thinking: "Thinking",
-  communication: "Communication",
-  learning: "Learning",
-  efficiency: "Efficiency",
-  sessions: "Sessions"
+  aiPartnership: "AI Partnership",
+  sessionCraft: "Session Craft",
+  toolMastery: "Tool Mastery",
+  skillResilience: "Skill Resilience",
+  sessionMastery: "Session Mastery"
 };
 function buildRadarScores(scores) {
   return {
-    thinking: scores.thinkingQuality,
-    communication: scores.communicationPatterns,
-    learning: scores.learningBehavior,
-    efficiency: scores.contextEfficiency,
-    sessions: scores.sessionOutcome
+    aiPartnership: scores.aiPartnership,
+    sessionCraft: scores.sessionCraft,
+    toolMastery: scores.toolMastery,
+    skillResilience: scores.skillResilience,
+    sessionMastery: scores.sessionMastery
   };
 }
 var DOMAIN_LABELS = {
+  aiPartnership: { label: "AI Partnership", emoji: "\u{1F91D}" },
+  sessionCraft: { label: "Session Craft", emoji: "\u{1F6E0}\uFE0F" },
+  toolMastery: { label: "Tool Mastery", emoji: "\u{1F527}" },
+  skillResilience: { label: "Skill Resilience", emoji: "\u{1F9E9}" },
+  sessionMastery: { label: "Session Mastery", emoji: "\u2728" },
+  // Legacy domain labels for old runs
   thinkingQuality: { label: "Thinking Quality", emoji: "\u{1F9E0}" },
   communicationPatterns: { label: "Communication", emoji: "\u{1F4AC}" },
   learningBehavior: { label: "Learning", emoji: "\u{1F4DA}" },
@@ -21485,11 +21520,11 @@ var activeServer = null;
 var shutdownTimer = null;
 var SHUTDOWN_TIMEOUT_MS = 30 * 60 * 1e3;
 var DOMAIN_STAGE_NAMES2 = /* @__PURE__ */ new Set([
-  "thinkingQuality",
-  "communicationPatterns",
-  "learningBehavior",
-  "contextEfficiency",
-  "sessionOutcome"
+  "aiPartnership",
+  "sessionCraft",
+  "toolMastery",
+  "skillResilience",
+  "sessionMastery"
 ]);
 function resetShutdownTimer() {
   if (shutdownTimer) clearTimeout(shutdownTimer);
@@ -21703,7 +21738,7 @@ async function execute11(args) {
 // mcp/tools/save-stage-output.ts
 var definition15 = {
   name: "save_stage_output",
-  description: "Save output from a pipeline stage. Called after completing a stage (sessionSummaries, projectSummaries, weeklyInsights, typeClassification, evidenceVerification, contentWriter, translator, extractAiCollaboration, extractContextEngineering, extractToolMastery, extractBurnoutRisk, extractAiControl, extractSkillResilience). Input must include stage name and structured data matching the stage schema."
+  description: "Save output from a pipeline stage. Called after completing a stage (sessionSummaries, projectSummaries, weeklyInsights, typeClassification, evidenceVerification, contentWriter, translator, extractAiPartnership, extractSessionCraft, extractToolMastery, extractSkillResilience, extractSessionMastery). Input must include stage name and structured data matching the stage schema."
 };
 var StageOutputInputSchema = external_exports.object({
   stage: external_exports.enum(STAGE_NAMES),
@@ -22063,11 +22098,15 @@ function buildEfficiencyContext(phase1Output) {
     developerUtterances: buildTrimmedDeveloperUtterances(phase1Output, 240)
   };
 }
-function buildSessionOutcomeContext(phase1Output) {
+function buildSessionMasteryContext(phase1Output) {
   return {
     sessionMetrics: phase1Output.sessionMetrics,
     activitySessions: phase1Output.activitySessions ?? [],
-    sessionOverviews: buildSessionOverviews(phase1Output)
+    sessionOverviews: buildSessionOverviews(phase1Output),
+    interactionSnapshots: buildInteractionSnapshots(phase1Output, {
+      maxUserChars: 200,
+      maxAssistantChars: 160
+    })
   };
 }
 function buildDomainAnalysisContext(domain, phase1Output, deterministicScores) {
@@ -22077,16 +22116,29 @@ function buildDomainAnalysisContext(domain, phase1Output, deterministicScores) {
     dateRange: phase1Output.sessionMetrics.dateRange
   };
   switch (domain) {
-    case "thinkingQuality":
-      return { ...base, phase1: buildThinkingQualityContext(phase1Output) };
-    case "communicationPatterns":
+    case "aiPartnership":
+      return { ...base, phase1: {
+        ...buildThinkingQualityContext(phase1Output),
+        activitySessions: phase1Output.activitySessions ?? []
+      } };
+    case "sessionCraft":
+      return { ...base, phase1: {
+        ...buildEfficiencyContext(phase1Output),
+        ...phase1Output.aiInsightBlocks?.length ? {
+          aiInsightBlocks: phase1Output.aiInsightBlocks.slice(0, 24).map((block) => ({
+            sessionId: block.sessionId,
+            turnIndex: block.turnIndex,
+            content: trimText(block.content, 200),
+            triggeringUtteranceId: block.triggeringUtteranceId
+          }))
+        } : {}
+      } };
+    case "toolMastery":
       return { ...base, phase1: buildCommunicationContext(phase1Output) };
-    case "learningBehavior":
+    case "skillResilience":
       return { ...base, phase1: buildLearningContext(phase1Output) };
-    case "contextEfficiency":
-      return { ...base, phase1: buildEfficiencyContext(phase1Output) };
-    case "sessionOutcome":
-      return { ...base, phase1: buildSessionOutcomeContext(phase1Output) };
+    case "sessionMastery":
+      return { ...base, phase1: buildSessionMasteryContext(phase1Output) };
   }
 }
 function buildPromptContext(input) {
@@ -22186,11 +22238,11 @@ var definition17 = {
 var GetPromptContextInputSchema = external_exports.object({
   kind: external_exports.enum(PROMPT_CONTEXT_KINDS),
   domain: external_exports.enum([
-    "thinkingQuality",
-    "communicationPatterns",
-    "learningBehavior",
-    "contextEfficiency",
-    "sessionOutcome"
+    "aiPartnership",
+    "sessionCraft",
+    "toolMastery",
+    "skillResilience",
+    "sessionMastery"
   ]).optional()
 });
 async function execute14(args) {
@@ -22374,7 +22426,7 @@ server.tool(
   })
 );
 server.tool(definition2.name, definition2.description, {
-  domain: external_exports.enum(["thinkingQuality", "communicationPatterns", "learningBehavior", "contextEfficiency", "sessionOutcome"]).optional().describe("Filter by domain key")
+  domain: external_exports.enum(["aiPartnership", "sessionCraft", "toolMastery", "skillResilience", "sessionMastery"]).optional().describe("Filter by domain key")
 }, wrapToolExecution(definition2.name, async (args) => {
   const userId = await getUserId();
   const summary = await getSummaryWithCache(userId);
