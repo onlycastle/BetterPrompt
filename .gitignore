@@ -84,3 +84,7 @@ docs/plans/
 
 # Marketing content
 contents/
+
+# Runtime artifacts
+.ouroboros/
+local.db
