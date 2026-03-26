@@ -27,7 +27,10 @@ import {
   recoverStaleAnalysisState,
   shouldTriggerAnalysis,
 } from '../lib/debounce.js';
-import { estimateSessionDurationMsFromTranscript } from '../lib/hook-utils.js';
+import {
+  estimateSessionDurationMsFromTranscript,
+  isInFlightTranscriptBoundary,
+} from '../lib/hook-utils.js';
 import { debug } from '../lib/logger.js';
 
 export interface SessionEndHookInput {
@@ -40,6 +43,7 @@ interface SessionEndHookDeps {
   shouldTriggerAnalysis: typeof shouldTriggerAnalysis;
   markAnalysisPending: typeof markAnalysisPending;
   estimateSessionDurationMsFromTranscript: typeof estimateSessionDurationMsFromTranscript;
+  isInFlightTranscriptBoundary: typeof isInFlightTranscriptBoundary;
 }
 
 export interface SessionEndHookResult {
@@ -54,6 +58,7 @@ const DEFAULT_DEPS: SessionEndHookDeps = {
   shouldTriggerAnalysis,
   markAnalysisPending,
   estimateSessionDurationMsFromTranscript,
+  isInFlightTranscriptBoundary,
 };
 
 export function readHookInput(raw?: string): SessionEndHookInput {
@@ -92,7 +97,7 @@ export function handleSessionEndHook(
     };
   }
 
-  deps.recoverStaleAnalysisState({
+  const recoveredState = deps.recoverStaleAnalysisState({
     force: false,
     reason: 'Recovered stale running state on SessionEnd hook startup.',
   });
@@ -102,6 +107,31 @@ export function handleSessionEndHook(
     env,
     deps.estimateSessionDurationMsFromTranscript,
   );
+
+  if (recoveredState.analysisState === 'running') {
+    const stillActive = hookInput.transcript_path
+      ? deps.isInFlightTranscriptBoundary(hookInput.transcript_path)
+      : false;
+
+    if (stillActive) {
+      const reason = 'Analysis still appears to be mid-turn; skipping requeue for this SessionEnd event';
+      debug('hook', 'session-end: running analysis still active, skipping requeue', { reason, durationMs });
+      return {
+        queued: false,
+        reason,
+        durationMs,
+      };
+    }
+
+    const reason = 'Active analysis session ended before completion; queued resume for the next session';
+    deps.markAnalysisPending();
+    debug('hook', 'session-end: interrupted analysis re-queued', { reason, durationMs });
+    return {
+      queued: true,
+      reason,
+      durationMs,
+    };
+  }
 
   // Check debounce rules
   const result = deps.shouldTriggerAnalysis(durationMs);
