@@ -64,6 +64,7 @@ export {
   DomainResultSchema,
   AnalysisReportSchema,
   DOMAIN_NAMES,
+  LEGACY_DOMAIN_NAMES,
 } from './domain-result.js';
 export type {
   Evidence,
@@ -71,6 +72,7 @@ export type {
   DomainGrowthArea,
   DomainResult,
   DomainName,
+  LegacyDomainName,
   AnalysisReport,
 } from './domain-result.js';
 
@@ -107,6 +109,7 @@ export {
   TranslatorOutputSchema,
   STAGE_NAMES,
   STAGE_SCHEMAS,
+  LEGACY_EXTRACTOR_STAGE_NAMES,
 } from './stage-outputs.js';
 export type {
   SessionSummary,
@@ -134,24 +137,31 @@ export {
   WorkerGrowthSeveritySchema,
   WorkerGrowthSchema,
   ReferencedInsightSchema,
-  // ThinkingQuality
+  // ThinkingQuality (legacy)
   ThinkingQualityOutputSchema,
   PlanningHabitSchema,
   CriticalThinkingMomentSchema,
   VerificationBehaviorSchema,
   DetectedAntiPatternSchema,
   MultitaskingPatternSchema,
-  // CommunicationPatterns
+  // CommunicationPatterns (legacy)
   CommunicationPatternsOutputSchema,
   CommunicationPatternSchema,
   SignatureQuoteSchema,
-  // LearningBehavior
+  // LearningBehavior (legacy)
   LearningBehaviorOutputSchema,
-  // ContextEfficiency
+  // ContextEfficiency (legacy)
   ContextEfficiencyOutputSchema,
-  // SessionOutcome
+  // SessionOutcome (legacy)
   SessionOutcomeOutputSchema,
   SessionAnalysisSchema,
+  // v2 merged domains
+  AiPartnershipOutputSchema,
+  SessionCraftOutputSchema,
+  // v2 new domain
+  SessionMasteryOutputSchema,
+  AbsenceIndicatorSchema,
+  SessionCleanlinessSchema,
 } from './worker-outputs.js';
 export type {
   InsightEvidence,
@@ -172,4 +182,9 @@ export type {
   ContextEfficiencyOutput,
   SessionOutcomeOutput,
   SessionAnalysis,
+  AiPartnershipOutput,
+  SessionCraftOutput,
+  SessionMasteryOutput,
+  AbsenceIndicator,
+  SessionCleanliness,
 } from './worker-outputs.js';

@@ -177,6 +177,16 @@ export type DimensionExtraction = z.infer<typeof DimensionExtractionSchema>;
 // Stage Output Union (for save_stage_output tool validation)
 // ============================================================================
 
+/**
+ * Legacy 6-extractor stage names — kept for backward compatibility with old runs.
+ */
+export const LEGACY_EXTRACTOR_STAGE_NAMES = [
+  'extractAiCollaboration',
+  'extractContextEngineering',
+  'extractBurnoutRisk',
+  'extractAiControl',
+] as const;
+
 export const STAGE_NAMES = [
   'sessionSummaries',
   'projectSummaries',
@@ -185,12 +195,17 @@ export const STAGE_NAMES = [
   'evidenceVerification',
   'contentWriter',
   'translator',
+  // 5-dimension extractors (v2)
+  'extractAiPartnership',
+  'extractSessionCraft',
+  'extractToolMastery',
+  'extractSkillResilience',
+  'extractSessionMastery',
+  // Legacy extractors (old runs only)
   'extractAiCollaboration',
   'extractContextEngineering',
-  'extractToolMastery',
   'extractBurnoutRisk',
   'extractAiControl',
-  'extractSkillResilience',
 ] as const;
 
 export type StageName = typeof STAGE_NAMES[number];
@@ -204,10 +219,15 @@ export const STAGE_SCHEMAS: Record<StageName, z.ZodTypeAny> = {
   evidenceVerification: EvidenceVerificationOutputSchema,
   contentWriter: ContentWriterOutputSchema,
   translator: TranslatorOutputSchema,
+  // 5-dimension extractors (v2)
+  extractAiPartnership: DimensionExtractionSchema,
+  extractSessionCraft: DimensionExtractionSchema,
+  extractToolMastery: DimensionExtractionSchema,
+  extractSkillResilience: DimensionExtractionSchema,
+  extractSessionMastery: DimensionExtractionSchema,
+  // Legacy extractors (old runs)
   extractAiCollaboration: DimensionExtractionSchema,
   extractContextEngineering: DimensionExtractionSchema,
-  extractToolMastery: DimensionExtractionSchema,
   extractBurnoutRisk: DimensionExtractionSchema,
   extractAiControl: DimensionExtractionSchema,
-  extractSkillResilience: DimensionExtractionSchema,
 };

@@ -46,13 +46,35 @@ export type DomainGrowthArea = z.infer<typeof DomainGrowthAreaSchema>;
 // Domain Names
 // ============================================================================
 
-export const DOMAIN_NAMES = [
+/**
+ * Legacy 6-domain names — kept for backward compatibility with old runs.
+ * New analyses use DOMAIN_NAMES (5-dimension framework).
+ */
+export const LEGACY_DOMAIN_NAMES = [
   'thinkingQuality',
   'communicationPatterns',
   'learningBehavior',
   'contextEfficiency',
   'sessionOutcome',
   'content',
+] as const;
+
+export type LegacyDomainName = typeof LEGACY_DOMAIN_NAMES[number];
+
+/**
+ * 5-dimension framework (v2):
+ * - aiPartnership: merged AI Collaboration + AI Control
+ * - sessionCraft: merged Context Engineering + Burnout Risk
+ * - toolMastery: unchanged Tool Mastery
+ * - skillResilience: unchanged Skill Resilience
+ * - sessionMastery: NEW absence-of-anti-pattern scoring
+ */
+export const DOMAIN_NAMES = [
+  'aiPartnership',
+  'sessionCraft',
+  'toolMastery',
+  'skillResilience',
+  'sessionMastery',
 ] as const;
 
 export type DomainName = typeof DOMAIN_NAMES[number];
@@ -63,6 +85,12 @@ export type DomainName = typeof DOMAIN_NAMES[number];
 
 export const DomainResultSchema = z.object({
   domain: z.enum([
+    'aiPartnership',
+    'sessionCraft',
+    'toolMastery',
+    'skillResilience',
+    'sessionMastery',
+    // Legacy domains accepted for backward compat with old runs
     'thinkingQuality',
     'communicationPatterns',
     'learningBehavior',

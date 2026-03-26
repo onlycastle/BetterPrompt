@@ -613,3 +613,157 @@ export const SessionOutcomeOutputSchema = z.object({
   referencedInsights: z.array(ReferencedInsightSchema).optional(),
 });
 export type SessionOutcomeOutput = z.infer<typeof SessionOutcomeOutputSchema>;
+
+// ============================================================================
+// AI Partnership Domain Schemas (v2 — merged Collaboration + Control)
+// ============================================================================
+
+/**
+ * Complete output from AiPartnershipWorker.
+ * Merges ThinkingQuality (planning, verification, critical thinking) with
+ * SessionOutcome (goal achievement, friction, AI control patterns) into a
+ * unified AI Partnership dimension.
+ */
+export const AiPartnershipOutputSchema = z.object({
+  // Planning Dimension (from ThinkingQuality)
+  planningHabits: z.array(PlanningHabitSchema),
+  planQualityScore: z.number().min(0).max(100),
+  multitaskingPattern: MultitaskingPatternSchema.optional(),
+
+  // Critical Thinking Dimension (from ThinkingQuality)
+  verificationBehavior: VerificationBehaviorSchema,
+  criticalThinkingMoments: z.array(CriticalThinkingMomentSchema),
+  verificationAntiPatterns: z.array(DetectedAntiPatternSchema),
+
+  // AI Control Dimension (from SessionOutcome)
+  sessionAnalyses: z.array(SessionAnalysisSchema),
+  overallSuccessRate: z.number().min(0).max(100),
+  goalDistribution: z.array(GoalDistributionItemSchema),
+  frictionSummary: z.array(FrictionSummaryItemSchema),
+
+  // Overall Scores
+  overallAiPartnershipScore: z.number().min(0).max(100),
+  confidenceScore: z.number().min(0).max(1),
+  summary: z.string().optional(),
+
+  // Domain-specific Strengths & Growth Areas
+  strengths: z.array(WorkerStrengthSchema).optional(),
+  growthAreas: z.array(WorkerGrowthSchema).optional(),
+  referencedInsights: z.array(ReferencedInsightSchema).optional(),
+});
+export type AiPartnershipOutput = z.infer<typeof AiPartnershipOutputSchema>;
+
+// ============================================================================
+// Session Craft Domain Schemas (v2 — merged Context Engineering + Burnout Risk)
+// ============================================================================
+
+/**
+ * Complete output from SessionCraftWorker.
+ * Merges ContextEfficiency (token usage, prompt patterns) with
+ * LearningBehavior (burnout risk, repeated mistakes) into a unified
+ * Session Craft dimension.
+ */
+export const SessionCraftOutputSchema = z.object({
+  // Context Efficiency Dimension
+  contextUsagePatterns: z.array(ContextUsagePatternSchema),
+  inefficiencyPatterns: z.array(InefficiencySchema),
+  promptLengthTrends: z.array(PromptLengthTrendSchema),
+  avgContextFillPercent: z.number().min(0).max(100),
+
+  // Burnout / Learning Dimension
+  repeatedMistakePatterns: z.array(RepeatedMistakePatternSchema),
+  knowledgeGaps: z.array(KnowledgeGapItemSchema),
+
+  // Insights
+  topInsights: z.array(z.string()).max(3),
+
+  // Overall Scores
+  overallSessionCraftScore: z.number().min(0).max(100),
+  confidenceScore: z.number().min(0).max(1),
+  summary: z.string().optional(),
+
+  // Domain-specific Strengths & Growth Areas
+  strengths: z.array(WorkerStrengthSchema).optional(),
+  growthAreas: z.array(WorkerGrowthSchema).optional(),
+  referencedInsights: z.array(ReferencedInsightSchema).optional(),
+});
+export type SessionCraftOutput = z.infer<typeof SessionCraftOutputSchema>;
+
+// ============================================================================
+// Session Mastery Domain Schemas (v2 — absence-of-anti-pattern scoring)
+// ============================================================================
+
+/**
+ * Anti-pattern absence indicator.
+ * Tracks whether a negative pattern is present or absent.
+ * Absence of the pattern when skill is internalized scores positive.
+ */
+export const AbsenceIndicatorSchema = z.object({
+  /** Name of the anti-pattern being checked */
+  pattern: z.string(),
+  /** Whether the anti-pattern was observed */
+  present: z.boolean(),
+  /** Number of occurrences (0 = absent) */
+  occurrenceCount: z.number().int().min(0),
+  /** Total sessions checked */
+  sessionsChecked: z.number().int().min(1),
+  /** Score contribution: 0 (always present) to 100 (always absent) */
+  absenceScore: z.number().min(0).max(100),
+  /** Evidence of presence (empty if absent — which is good) */
+  evidence: z.array(EvidenceItemSchema),
+  /**
+   * Expert interpretation:
+   * - 'internalized': absence indicates mastery (skill no longer needs scaffolding)
+   * - 'not_applicable': pattern not relevant for this developer's workflow
+   * - 'concerning': absence may indicate gap (e.g., never verifies output)
+   */
+  interpretation: z.enum(['internalized', 'not_applicable', 'concerning']),
+});
+export type AbsenceIndicator = z.infer<typeof AbsenceIndicatorSchema>;
+
+/**
+ * Session cleanliness score for individual sessions.
+ * Experts produce "clean" sessions: low friction, no retries, focused work.
+ */
+export const SessionCleanlinessSchema = z.object({
+  sessionId: z.string(),
+  cleanlinessScore: z.number().min(0).max(100),
+  antiPatternCount: z.number().int().min(0),
+  /** Indicates expert-level session control */
+  isCleanSession: z.boolean(),
+});
+export type SessionCleanliness = z.infer<typeof SessionCleanlinessSchema>;
+
+/**
+ * Complete output from SessionMasteryWorker (v2 — absence scoring).
+ * Distinguishes intermediate (uses scaffolding tools) from expert
+ * (internalized skills, clean sessions) by scoring the ABSENCE of
+ * anti-patterns rather than the presence of positive signals.
+ *
+ * Key rubric principle: absence of tool usage when skill is internalized
+ * scores neutral or positive, never negative.
+ */
+export const SessionMasteryOutputSchema = z.object({
+  // Absence Indicators
+  absenceIndicators: z.array(AbsenceIndicatorSchema),
+
+  // Session Cleanliness
+  sessionCleanliness: z.array(SessionCleanlinessSchema),
+  cleanSessionPercentage: z.number().min(0).max(100),
+
+  // Expert Differentiation
+  scaffoldingDependencyScore: z.number().min(0).max(100),
+  internalizedSkillSignals: z.array(z.string()),
+  expertBehaviorIndicators: z.array(z.string()),
+
+  // Overall Scores
+  overallSessionMasteryScore: z.number().min(0).max(100),
+  confidenceScore: z.number().min(0).max(1),
+  summary: z.string().optional(),
+
+  // Domain-specific Strengths & Growth Areas
+  strengths: z.array(WorkerStrengthSchema).optional(),
+  growthAreas: z.array(WorkerGrowthSchema).optional(),
+  referencedInsights: z.array(ReferencedInsightSchema).optional(),
+});
+export type SessionMasteryOutput = z.infer<typeof SessionMasteryOutputSchema>;

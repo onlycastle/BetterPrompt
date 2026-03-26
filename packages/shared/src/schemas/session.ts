@@ -24,6 +24,9 @@ export const ParsedMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
   timestamp: z.string(),
   content: z.string(),
+  isMeta: z.boolean().optional(),
+  sourceToolUseID: z.string().optional(),
+  toolUseResult: z.unknown().optional(),
   toolCalls: z.array(ToolCallSchema).optional(),
   tokenUsage: z.object({
     input: z.number().int().min(0),
