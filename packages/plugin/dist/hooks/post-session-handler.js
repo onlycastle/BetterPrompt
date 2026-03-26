@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 import {
-  estimateSessionDurationMsFromTranscript
-} from "../chunk-ZKL2ZRNA.js";
+  estimateSessionDurationMsFromTranscript,
+  isInFlightTranscriptBoundary
+} from "../chunk-VADEIFYQ.js";
 import {
   getConfig,
   markAnalysisPending,
   recoverStaleAnalysisState,
   shouldTriggerAnalysis
-} from "../chunk-KAELRNDJ.js";
+} from "../chunk-TQTIO4Y6.js";
 import {
   debug
 } from "../chunk-PP5673GG.js";
@@ -20,7 +21,8 @@ var DEFAULT_DEPS = {
   recoverStaleAnalysisState,
   shouldTriggerAnalysis,
   markAnalysisPending,
-  estimateSessionDurationMsFromTranscript
+  estimateSessionDurationMsFromTranscript,
+  isInFlightTranscriptBoundary
 };
 function readHookInput(raw) {
   try {
@@ -44,7 +46,7 @@ function handleSessionEndHook(hookInput, deps = DEFAULT_DEPS, env = process.env)
       durationMs: 0
     };
   }
-  deps.recoverStaleAnalysisState({
+  const recoveredState = deps.recoverStaleAnalysisState({
     force: false,
     reason: "Recovered stale running state on SessionEnd hook startup."
   });
@@ -53,6 +55,26 @@ function handleSessionEndHook(hookInput, deps = DEFAULT_DEPS, env = process.env)
     env,
     deps.estimateSessionDurationMsFromTranscript
   );
+  if (recoveredState.analysisState === "running") {
+    const stillActive = hookInput.transcript_path ? deps.isInFlightTranscriptBoundary(hookInput.transcript_path) : false;
+    if (stillActive) {
+      const reason2 = "Analysis still appears to be mid-turn; skipping requeue for this SessionEnd event";
+      debug("hook", "session-end: running analysis still active, skipping requeue", { reason: reason2, durationMs });
+      return {
+        queued: false,
+        reason: reason2,
+        durationMs
+      };
+    }
+    const reason = "Active analysis session ended before completion; queued resume for the next session";
+    deps.markAnalysisPending();
+    debug("hook", "session-end: interrupted analysis re-queued", { reason, durationMs });
+    return {
+      queued: true,
+      reason,
+      durationMs
+    };
+  }
   const result = deps.shouldTriggerAnalysis(durationMs);
   if (!result.shouldAnalyze) {
     debug("hook", "session-end: analysis skipped", { reason: result.reason, durationMs });

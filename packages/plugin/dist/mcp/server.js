@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 import {
+  readPrefs,
+  writePrefs
+} from "../chunk-FLVXQHKF.js";
+import {
   $ZodObject,
   $ZodType,
   $constructor,
@@ -36,6 +40,7 @@ import {
   looseObject,
   markAnalysisComplete,
   markAnalysisFailed,
+  markAnalysisPending,
   markAnalysisStarted,
   normalizeParams,
   number,
@@ -50,9 +55,10 @@ import {
   safeParseAsync,
   string,
   toJSONSchema,
+  touchAnalysisHeartbeat,
   union,
   unknown
-} from "../chunk-KAELRNDJ.js";
+} from "../chunk-TQTIO4Y6.js";
 import {
   __commonJS,
   __require,
@@ -4223,12 +4229,12 @@ var require_core = __commonJS({
           return this;
         }
         keywordMetaschema.call(this, def);
-        const definition14 = {
+        const definition18 = {
           ...def,
           type: (0, dataType_1.getJSONTypes)(def.type),
           schemaType: (0, dataType_1.getJSONTypes)(def.schemaType)
         };
-        (0, util_1.eachItem)(keyword, definition14.type.length === 0 ? (k) => addRule.call(this, k, definition14) : (k) => definition14.type.forEach((t) => addRule.call(this, k, definition14, t)));
+        (0, util_1.eachItem)(keyword, definition18.type.length === 0 ? (k) => addRule.call(this, k, definition18) : (k) => definition18.type.forEach((t) => addRule.call(this, k, definition18, t)));
         return this;
       }
       getKeyword(keyword) {
@@ -4421,9 +4427,9 @@ var require_core = __commonJS({
         throw new Error('$data keyword must have "code" or "validate" function');
       }
     }
-    function addRule(keyword, definition14, dataType) {
+    function addRule(keyword, definition18, dataType) {
       var _a;
-      const post = definition14 === null || definition14 === void 0 ? void 0 : definition14.post;
+      const post = definition18 === null || definition18 === void 0 ? void 0 : definition18.post;
       if (dataType && post)
         throw new Error('keyword with "post" flag cannot have "type"');
       const { RULES } = this;
@@ -4433,22 +4439,22 @@ var require_core = __commonJS({
         RULES.rules.push(ruleGroup);
       }
       RULES.keywords[keyword] = true;
-      if (!definition14)
+      if (!definition18)
         return;
       const rule = {
         keyword,
         definition: {
-          ...definition14,
-          type: (0, dataType_1.getJSONTypes)(definition14.type),
-          schemaType: (0, dataType_1.getJSONTypes)(definition14.schemaType)
+          ...definition18,
+          type: (0, dataType_1.getJSONTypes)(definition18.type),
+          schemaType: (0, dataType_1.getJSONTypes)(definition18.schemaType)
         }
       };
-      if (definition14.before)
-        addBeforeRule.call(this, ruleGroup, rule, definition14.before);
+      if (definition18.before)
+        addBeforeRule.call(this, ruleGroup, rule, definition18.before);
       else
         ruleGroup.rules.push(rule);
       RULES.all[keyword] = rule;
-      (_a = definition14.implements) === null || _a === void 0 ? void 0 : _a.forEach((kwd) => this.addKeyword(kwd));
+      (_a = definition18.implements) === null || _a === void 0 ? void 0 : _a.forEach((kwd) => this.addKeyword(kwd));
     }
     function addBeforeRule(ruleGroup, rule, before) {
       const i = ruleGroup.rules.findIndex((_rule) => _rule.keyword === before);
@@ -16627,10 +16633,10 @@ function closeStageDb() {
 // lib/results-db.ts
 var DB_FILE = "results.db";
 var db2 = null;
-function ensureColumn(database, tableName, columnName, definition14) {
+function ensureColumn(database, tableName, columnName, definition18) {
   const columns = database.prepare(`PRAGMA table_info(${tableName})`).all();
   if (!columns.some((column) => column.name === columnName)) {
-    database.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition14}`);
+    database.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition18}`);
   }
 }
 function getDb2() {
@@ -17299,7 +17305,10 @@ var ClaudeCodeSource = class extends BaseSessionSource {
           uuid: line.uuid,
           role: "user",
           timestamp: new Date(line.timestamp),
-          content: textContent
+          content: textContent,
+          ...line.isMeta ? { isMeta: true } : {},
+          ...typeof line.sourceToolUseID === "string" ? { sourceToolUseID: line.sourceToolUseID } : {},
+          ...line.toolUseResult !== void 0 ? { toolUseResult: line.toolUseResult } : {}
         });
       } else if (line.type === "assistant") {
         const textContent = this.extractTextContent(line.message.content);
@@ -18746,6 +18755,47 @@ var MultiSourceScanner = class {
 };
 var multiSourceScanner = new MultiSourceScanner();
 
+// lib/project-filters.ts
+var TEMP_PROJECT_PREFIXES = [
+  "private/tmp/",
+  "tmp/",
+  "temp/",
+  "var/folders/",
+  "private/var/"
+];
+function normalizeSlashes(value) {
+  return value.trim().replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
+}
+function normalizeProjectNameValue(value) {
+  const normalized = value ? normalizeSlashes(value) : "";
+  if (!normalized) {
+    return "unknown";
+  }
+  const lower = normalized.toLowerCase();
+  if (TEMP_PROJECT_PREFIXES.some((prefix) => lower.startsWith(prefix))) {
+    const segments = normalized.split("/").filter(Boolean);
+    return segments[segments.length - 1] ?? normalized;
+  }
+  return normalized;
+}
+function normalizeProjectFilter(value) {
+  const normalized = normalizeSlashes(value);
+  if (!normalized) {
+    return "";
+  }
+  const segments = normalized.split("/").filter(Boolean);
+  return segments[segments.length - 1] ?? normalized;
+}
+function normalizeProjectFilters(includeProjects) {
+  if (!includeProjects?.length) {
+    return includeProjects;
+  }
+  const normalized = Array.from(
+    new Set(includeProjects.map(normalizeProjectFilter).filter(Boolean))
+  );
+  return normalized.length ? normalized : void 0;
+}
+
 // lib/core/multi-source-session-scanner.ts
 function getParsedSessionsCachePath() {
   return join7(getScanCacheDir(), "parsed-sessions.json");
@@ -18754,10 +18804,16 @@ function isNonNull(value) {
   return value !== null;
 }
 function serializeParsedSession(session) {
+  let projectName = session.projectName;
+  if (!projectName && session.projectPath) {
+    const encoded = session.projectPath.replace(/\//g, "-");
+    projectName = resolveProjectName(encoded);
+  }
+  projectName = normalizeProjectNameValue(projectName);
   return {
     sessionId: session.sessionId,
     projectPath: session.projectPath,
-    projectName: session.projectName,
+    projectName,
     startTime: session.startTime.toISOString(),
     endTime: session.endTime.toISOString(),
     durationSeconds: session.durationSeconds,
@@ -18810,18 +18866,19 @@ var definition4 = {
 };
 async function execute(args) {
   const allSessions = await scanAndCacheParsedSessions();
+  const includeProjects = normalizeProjectFilters(args.includeProjects);
   if (allSessions.length === 0) {
     return JSON.stringify({
       status: "no_sessions",
       message: "No supported Claude Code or Cursor sessions found on this machine."
     });
   }
-  const allProjectNames = [...new Set(allSessions.map((s) => s.projectName ?? "unknown"))];
+  const allProjectNames = [...new Set(allSessions.map((s) => normalizeProjectNameValue(s.projectName)))];
   const allProjects = allProjectNames.map((name) => ({
     name,
-    sessionCount: allSessions.filter((s) => (s.projectName ?? "unknown") === name).length
+    sessionCount: allSessions.filter((s) => normalizeProjectNameValue(s.projectName) === name).length
   })).sort((a, b) => b.sessionCount - a.sessionCount);
-  const sessions = args.includeProjects?.length ? allSessions.filter((s) => args.includeProjects.includes(s.projectName ?? "unknown")) : allSessions;
+  const sessions = includeProjects?.length ? allSessions.filter((s) => includeProjects.includes(normalizeProjectNameValue(s.projectName))) : allSessions;
   if (sessions.length === 0) {
     return JSON.stringify({
       status: "no_sessions_after_filter",
@@ -18829,7 +18886,7 @@ async function execute(args) {
       message: `No sessions match the selected projects. ${allSessions.length} total sessions available across ${allProjectNames.length} projects.`
     });
   }
-  const projectNames = [...new Set(sessions.map((s) => s.projectName ?? "unknown"))];
+  const projectNames = [...new Set(sessions.map((s) => normalizeProjectNameValue(s.projectName)))];
   const totalMessages = sessions.reduce((sum, s) => sum + s.messages.length, 0);
   const totalDuration = sessions.reduce((sum, s) => sum + s.durationSeconds, 0);
   const sourceCounts = sessions.reduce((acc, session) => {
@@ -18867,6 +18924,7 @@ import { join as join8 } from "path";
 
 // lib/core/data-extractor.ts
 var MAX_TEXT_LENGTH = 2e3;
+var SKILL_INJECTION_PREFIX = "Base directory for this skill:";
 var KNOWN_SLASH_COMMANDS = /* @__PURE__ */ new Set([
   "plan",
   "review",
@@ -18982,6 +19040,10 @@ function isRejection(text) {
 function isFrustration(text) {
   return FRUSTRATION_PATTERNS.some((p) => p.test(text));
 }
+function isAnalyzableUserMessage(message) {
+  const isSkillInjectedPrompt = message.rawContent.trim().startsWith(SKILL_INJECTION_PREFIX);
+  return message.role === "user" && !message.isMeta && typeof message.sourceToolUseID !== "string" && message.toolUseResult === void 0 && !isSkillInjectedPrompt;
+}
 function toRawSessionData(session) {
   return {
     sessionId: session.sessionId,
@@ -18991,7 +19053,10 @@ function toRawSessionData(session) {
           role: "user",
           rawContent: message.content,
           content: [{ type: "text", text: message.content }],
-          timestamp: new Date(message.timestamp)
+          timestamp: new Date(message.timestamp),
+          ...message.isMeta ? { isMeta: true } : {},
+          ...typeof message.sourceToolUseID === "string" ? { sourceToolUseID: message.sourceToolUseID } : {},
+          ...message.toolUseResult !== void 0 ? { toolUseResult: message.toolUseResult } : {}
         };
       }
       const content = [];
@@ -19032,6 +19097,10 @@ function extractFromSession(session) {
   for (let i = 0; i < session.messages.length; i++) {
     const message = session.messages[i];
     if (message.role === "user") {
+      if (!isAnalyzableUserMessage(message)) {
+        precedingAssistantContent = null;
+        continue;
+      }
       const rawText = extractTextFromContent(
         message.content
       );
@@ -19096,7 +19165,7 @@ function computeFrictionSignals(sessions, utterances) {
     let sessionHadOverflow = false;
     let currentErrorChain = 0;
     for (const message of session.messages) {
-      if (message.role === "user") {
+      if (isAnalyzableUserMessage(message)) {
         sessionUserMessages++;
       } else if (message.role === "assistant") {
         for (const block of message.content) {
@@ -19157,7 +19226,7 @@ function computeSessionHints(sessions) {
   let mediumSessions = 0;
   let longSessions = 0;
   for (const session of sessions) {
-    const userTurns = session.messages.filter((m) => m.role === "user").length;
+    const userTurns = session.messages.filter(isAnalyzableUserMessage).length;
     totalUserTurns += userTurns;
     if (userTurns <= 3) shortSessions++;
     else if (userTurns <= 10) mediumSessions++;
@@ -19206,7 +19275,7 @@ async function extractPhase1DataFromParsedSessions(sessions) {
   }
   const totalMessages = allSessions.reduce((sum, s) => sum + s.messages.length, 0);
   const totalUserMessages = allSessions.reduce(
-    (sum, s) => sum + s.messages.filter((m) => m.role === "user").length,
+    (sum, s) => sum + s.messages.filter(isAnalyzableUserMessage).length,
     0
   );
   const questionCount = allUtterances.filter((u) => u.hasQuestion).length;
@@ -19240,7 +19309,7 @@ async function extractPhase1DataFromParsedSessions(sessions) {
   };
   const activitySessions = allSessions.map((session, idx) => {
     const parsedSession = sessions[idx];
-    const userMessages = session.messages.filter((m) => m.role === "user");
+    const userMessages = session.messages.filter(isAnalyzableUserMessage);
     const assistantMessages = session.messages.filter((m) => m.role === "assistant");
     const sessionTimestamps = session.messages.map((m) => m.timestamp.getTime()).sort();
     const startTime = sessionTimestamps.length > 0 ? new Date(sessionTimestamps[0]).toISOString() : (/* @__PURE__ */ new Date()).toISOString();
@@ -19279,6 +19348,7 @@ var definition5 = {
 };
 async function execute2(args) {
   const maxSessions = args.maxSessions ?? 50;
+  const includeProjects = normalizeProjectFilters(args.includeProjects);
   const allSessions = await readCachedParsedSessions();
   if (allSessions.length === 0) {
     return JSON.stringify({
@@ -19286,7 +19356,7 @@ async function execute2(args) {
       message: "No cached parsed sessions. Call scan_sessions first."
     });
   }
-  const sessions = args.includeProjects?.length ? allSessions.filter((s) => args.includeProjects.includes(s.projectName ?? "unknown")) : allSessions;
+  const sessions = includeProjects?.length ? allSessions.filter((s) => includeProjects.includes(normalizeProjectNameValue(s.projectName))) : allSessions;
   if (sessions.length === 0) {
     return JSON.stringify({
       status: "no_data",
@@ -19350,6 +19420,39 @@ var definition6 = {
 };
 function extractDomainName(args) {
   return typeof args.domain === "string" ? args.domain : null;
+}
+function parseStringifiedInput(value) {
+  if (typeof value !== "string") {
+    return value;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return value;
+  }
+  if (trimmed.startsWith("{") && trimmed.endsWith("}") || trimmed.startsWith("[") && trimmed.endsWith("]")) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return value;
+    }
+  }
+  if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
+    const numericValue = Number(trimmed);
+    if (Number.isFinite(numericValue)) {
+      return numericValue;
+    }
+  }
+  return value;
+}
+function normalizeDomainResultArgs(args) {
+  return {
+    ...args,
+    overallScore: parseStringifiedInput(args.overallScore),
+    confidenceScore: parseStringifiedInput(args.confidenceScore),
+    strengths: parseStringifiedInput(args.strengths),
+    growthAreas: parseStringifiedInput(args.growthAreas),
+    data: parseStringifiedInput(args.data)
+  };
 }
 var ThinkingQualityDataSchema = external_exports.object({
   planningHabits: external_exports.union([
@@ -19579,15 +19682,16 @@ function validateContentQuality(strengths, growthAreas) {
   return issues;
 }
 async function execute3(args) {
+  const normalizedArgs = normalizeDomainResultArgs(args);
   const runId = getCurrentRunId();
-  const domainName = extractDomainName(args);
+  const domainName = extractDomainName(normalizedArgs);
   if (!runId) {
     return JSON.stringify({
       status: "error",
       message: "No active analysis run. Call extract_data first to start an analysis."
     });
   }
-  const parsed = DomainResultInputSchema.safeParse(args);
+  const parsed = DomainResultInputSchema.safeParse(normalizedArgs);
   if (!parsed.success) {
     if (domainName) {
       recordStageStatus(runId, domainName, {
@@ -19732,14 +19836,247 @@ async function execute4(args) {
   });
 }
 
+// mcp/tools/get-user-prefs.ts
+var definition8 = {
+  name: "get_user_prefs",
+  description: "Read BetterPrompt user preferences from ~/.betterprompt/prefs.json. Use this instead of direct file reads in setup and analysis skills."
+};
+async function execute5() {
+  return JSON.stringify({
+    status: "ok",
+    prefs: readPrefs(),
+    message: "Loaded BetterPrompt user preferences."
+  });
+}
+
+// mcp/tools/get-run-progress.ts
+var definition9 = {
+  name: "get_run_progress",
+  description: "Inspect the current local analysis run and report which required stages are complete, missing, or need to be resumed. Use this before starting bp analyze to resume interrupted runs."
+};
+var DOMAIN_STAGE_NAMES = /* @__PURE__ */ new Set([
+  "thinkingQuality",
+  "communicationPatterns",
+  "learningBehavior",
+  "contextEfficiency",
+  "sessionOutcome",
+  "content"
+]);
+var REQUIRED_STAGE_SEQUENCE = [
+  { stage: "sessionSummaries", skill: "summarize-sessions", tool: null, kind: "stage" },
+  { stage: "extractAiCollaboration", skill: "extract-ai-collaboration", tool: null, kind: "stage" },
+  { stage: "extractContextEngineering", skill: "extract-context-engineering", tool: null, kind: "stage" },
+  { stage: "extractToolMastery", skill: "extract-tool-mastery", tool: null, kind: "stage" },
+  { stage: "extractBurnoutRisk", skill: "extract-burnout-risk", tool: null, kind: "stage" },
+  { stage: "extractAiControl", skill: "extract-ai-control", tool: null, kind: "stage" },
+  { stage: "extractSkillResilience", skill: "extract-skill-resilience", tool: null, kind: "stage" },
+  { stage: "thinkingQuality", skill: "write-ai-collaboration", tool: null, kind: "domain" },
+  { stage: "contextEfficiency", skill: "write-context-engineering", tool: null, kind: "domain" },
+  { stage: "communicationPatterns", skill: "write-tool-mastery", tool: null, kind: "domain" },
+  { stage: "learningBehavior", skill: "write-burnout-risk", tool: null, kind: "domain" },
+  { stage: "sessionOutcome", skill: "write-ai-control", tool: null, kind: "domain" },
+  { stage: "content", skill: "write-skill-resilience", tool: null, kind: "domain" },
+  { stage: "projectSummaries", skill: "summarize-projects", tool: null, kind: "stage" },
+  { stage: "weeklyInsights", skill: "generate-weekly-insights", tool: null, kind: "stage" },
+  { stage: "deterministicType", skill: null, tool: "classify_developer_type", kind: "stage" },
+  { stage: "typeClassification", skill: "classify-type", tool: null, kind: "stage" },
+  { stage: "evidenceVerification", skill: null, tool: "verify_evidence", kind: "stage" },
+  { stage: "contentWriter", skill: "write-content", tool: null, kind: "stage" }
+];
+function hasArtifact(runId, stage) {
+  if (stage === "deterministicType") {
+    return getAnalysisRun(runId)?.typeResult !== null;
+  }
+  if (DOMAIN_STAGE_NAMES.has(stage)) {
+    return getDomainResult(runId, stage) !== null;
+  }
+  return getStageOutput(runId, stage) !== null;
+}
+function buildStepStatus(runId, step, statusLookup) {
+  const savedStatus = statusLookup.get(step.stage);
+  const artifactPresent = hasArtifact(runId, step.stage);
+  if (savedStatus) {
+    return {
+      stage: step.stage,
+      skill: step.skill,
+      tool: step.tool,
+      kind: step.kind,
+      status: savedStatus.status,
+      completed: savedStatus.status === "validated",
+      hasArtifact: artifactPresent,
+      attemptCount: savedStatus.attemptCount,
+      lastError: savedStatus.lastError,
+      updatedAt: savedStatus.updatedAt
+    };
+  }
+  return {
+    stage: step.stage,
+    skill: step.skill,
+    tool: step.tool,
+    kind: step.kind,
+    status: artifactPresent ? "validated" : "missing",
+    completed: artifactPresent,
+    hasArtifact: artifactPresent,
+    attemptCount: 0,
+    lastError: null,
+    updatedAt: null
+  };
+}
+function computeRunProgress(runId) {
+  const run = getAnalysisRun(runId);
+  if (!run?.phase1Output) {
+    return null;
+  }
+  const statusLookup = new Map(
+    getStageStatuses(runId).map((status) => [status.stage, status])
+  );
+  const stages = REQUIRED_STAGE_SEQUENCE.map((step) => buildStepStatus(runId, step, statusLookup));
+  const nextIncomplete = stages.find((stage) => !stage.completed);
+  const completedRequiredStages = stages.filter((stage) => stage.completed).length;
+  const projectNames = Array.from(
+    new Set(
+      (run.phase1Output.sessions ?? []).map((session) => session.projectName).filter((name) => typeof name === "string" && name.length > 0)
+    )
+  ).sort();
+  return {
+    runId,
+    analyzedAt: run.analyzedAt,
+    phase1Complete: true,
+    sessionCount: run.phase1Output.sessionMetrics.totalSessions,
+    projectNames,
+    completionStatus: nextIncomplete ? "incomplete" : "complete",
+    completedRequiredStages,
+    totalRequiredStages: REQUIRED_STAGE_SEQUENCE.length,
+    completedDomainCount: stages.filter((stage) => DOMAIN_STAGE_NAMES.has(stage.stage) && stage.completed).length,
+    totalDomainCount: DOMAIN_STAGE_NAMES.size,
+    nextStep: nextIncomplete ? {
+      stage: nextIncomplete.stage,
+      skill: nextIncomplete.skill,
+      tool: nextIncomplete.tool,
+      kind: nextIncomplete.kind
+    } : {
+      stage: "generateReport",
+      skill: null,
+      tool: "generate_report",
+      kind: "report"
+    },
+    stages
+  };
+}
+async function execute6() {
+  const runId = getCurrentRunId();
+  if (!runId) {
+    return JSON.stringify({
+      status: "no_run",
+      message: "No active analysis run. Start Phase 1 with scan_sessions and extract_data."
+    });
+  }
+  const progress = computeRunProgress(runId);
+  if (!progress) {
+    return JSON.stringify({
+      status: "no_run",
+      runId,
+      message: "The current run has no resumable Phase 1 data. Start Phase 1 again."
+    });
+  }
+  const pendingStages = progress.stages.filter((stage) => !stage.completed).map(({ stage, skill, tool, kind, status, lastError }) => ({
+    stage,
+    skill,
+    tool,
+    kind,
+    status,
+    ...lastError ? { lastError } : {}
+  }));
+  return JSON.stringify({
+    status: "ok",
+    runId: progress.runId,
+    analyzedAt: progress.analyzedAt,
+    phase1Complete: progress.phase1Complete,
+    sessionCount: progress.sessionCount,
+    projectNames: progress.projectNames,
+    completionStatus: progress.completionStatus,
+    completedRequiredStages: progress.completedRequiredStages,
+    totalRequiredStages: progress.totalRequiredStages,
+    completedDomainCount: progress.completedDomainCount,
+    totalDomainCount: progress.totalDomainCount,
+    nextStep: progress.nextStep,
+    pendingStages,
+    message: progress.completionStatus === "complete" ? `Run #${runId} already has all required stages. Call generate_report to reopen the report.` : `Run #${runId} is incomplete (${progress.completedRequiredStages}/${progress.totalRequiredStages}). Resume with ${progress.nextStep.tool ?? progress.nextStep.skill ?? progress.nextStep.stage}.`
+  });
+}
+
+// mcp/tools/save-user-prefs.ts
+var definition10 = {
+  name: "save_user_prefs",
+  description: "Update BetterPrompt user preferences in ~/.betterprompt/prefs.json. Provided fields are merged with existing prefs. Set markWelcomeCompleted=true to stamp welcomeCompleted with the exact current ISO timestamp."
+};
+var SaveUserPrefsInputSchema = external_exports.object({
+  selectedProjects: external_exports.array(external_exports.string()).optional().describe('Project names to analyze. Use [] to mean "all projects".'),
+  starAsked: external_exports.boolean().optional().describe("Whether the GitHub star prompt has already been handled."),
+  welcomeShown: external_exports.boolean().optional().describe("Whether the setup welcome has been shown."),
+  welcomeVersion: external_exports.string().optional().describe('Setup flow version, for example "2.0".'),
+  markWelcomeCompleted: external_exports.boolean().optional().describe("When true, sets welcomeCompleted to the exact current ISO timestamp."),
+  queueAnalysis: external_exports.boolean().optional().describe("When true, queues a pending analysis for the next session via plugin-state.json.")
+});
+function normalizeWelcomeVersion(value) {
+  if (value === void 0) {
+    return void 0;
+  }
+  const trimmed = value.trim();
+  if (trimmed.startsWith('"') && trimmed.endsWith('"') || trimmed.startsWith("'") && trimmed.endsWith("'")) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+async function execute7(args) {
+  const parsed = SaveUserPrefsInputSchema.safeParse(args);
+  if (!parsed.success) {
+    return JSON.stringify({
+      status: "validation_error",
+      message: "Invalid user prefs payload.",
+      errors: parsed.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message
+      }))
+    });
+  }
+  const { markWelcomeCompleted = false, queueAnalysis = false, ...partial2 } = parsed.data;
+  const nextPrefs = {
+    ...partial2,
+    ...partial2.welcomeVersion !== void 0 ? { welcomeVersion: normalizeWelcomeVersion(partial2.welcomeVersion) } : {}
+  };
+  if (markWelcomeCompleted) {
+    nextPrefs.welcomeCompleted = (/* @__PURE__ */ new Date()).toISOString();
+  }
+  if (Object.keys(nextPrefs).length === 0 && !queueAnalysis) {
+    return JSON.stringify({
+      status: "noop",
+      prefs: readPrefs(),
+      message: "No preference fields were provided."
+    });
+  }
+  if (Object.keys(nextPrefs).length > 0) {
+    writePrefs(nextPrefs);
+  }
+  if (queueAnalysis) {
+    markAnalysisPending();
+  }
+  return JSON.stringify({
+    status: "ok",
+    prefs: readPrefs(),
+    ...queueAnalysis ? { analysisQueued: true } : {},
+    message: queueAnalysis ? "Updated preferences and queued analysis for next session." : "Updated BetterPrompt user preferences."
+  });
+}
+
 // mcp/tools/classify-developer-type.ts
 import { readFile as readFile3 } from "fs/promises";
 import { join as join9 } from "path";
-var definition8 = {
+var definition11 = {
   name: "classify_developer_type",
   description: "Classify the developer's AI collaboration type using deterministic rules. Uses the 5x3 type matrix (architect/analyst/conductor/speedrunner/trendsetter x explorer/navigator/cartographer). Requires extract_data to have been run first. Returns the primary type, distribution, control level, and matrix name."
 };
-async function execute5(_args) {
+async function execute8(_args) {
   const runId = getCurrentRunId();
   let phase1Output;
   const existingRun = runId ? getAnalysisRun(runId) : null;
@@ -19773,6 +20110,189 @@ async function execute5(_args) {
     runId,
     message: `Developer type: ${typeResult.matrixEmoji} ${typeResult.matrixName} (${typeResult.primaryType} / ${typeResult.controlLevel}). Distribution: architect ${typeResult.distribution.architect}%, analyst ${typeResult.distribution.analyst}%, conductor ${typeResult.distribution.conductor}%, speedrunner ${typeResult.distribution.speedrunner}%, trendsetter ${typeResult.distribution.trendsetter}%.`
   });
+}
+
+// mcp/tools/verify-evidence.ts
+var definition12 = {
+  name: "verify_evidence",
+  description: "Deterministically verify saved evidence quotes against the current run's developer utterances, persist the evidenceVerification stage output, and return kept/filtered counts."
+};
+var VerifyEvidenceInputSchema = external_exports.object({
+  threshold: external_exports.number().int().min(0).max(100).optional()
+});
+function normalizeText(text) {
+  return text.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+function tokenize(text) {
+  return normalizeText(text).split(" ").filter((token) => token.length > 1);
+}
+function bigrams(text) {
+  const normalized = normalizeText(text).replace(/\s+/g, " ");
+  if (normalized.length < 2) return normalized ? [normalized] : [];
+  const grams = [];
+  for (let index = 0; index < normalized.length - 1; index += 1) {
+    grams.push(normalized.slice(index, index + 2));
+  }
+  return grams;
+}
+function diceCoefficient(left, right) {
+  const leftBigrams = bigrams(left);
+  const rightBigrams = bigrams(right);
+  if (leftBigrams.length === 0 || rightBigrams.length === 0) {
+    return 0;
+  }
+  const rightCounts = /* @__PURE__ */ new Map();
+  for (const gram of rightBigrams) {
+    rightCounts.set(gram, (rightCounts.get(gram) ?? 0) + 1);
+  }
+  let intersection2 = 0;
+  for (const gram of leftBigrams) {
+    const count = rightCounts.get(gram) ?? 0;
+    if (count > 0) {
+      intersection2 += 1;
+      rightCounts.set(gram, count - 1);
+    }
+  }
+  return 2 * intersection2 / (leftBigrams.length + rightBigrams.length);
+}
+function scoreEvidence(quote, utterance) {
+  const normalizedQuote = normalizeText(quote);
+  const normalizedUtterance = normalizeText(utterance);
+  if (!normalizedQuote || !normalizedUtterance) {
+    return 0;
+  }
+  if (normalizedUtterance.includes(normalizedQuote) || normalizedQuote.includes(normalizedUtterance)) {
+    return 100;
+  }
+  const quoteTokens = tokenize(quote);
+  const utteranceTokens = new Set(tokenize(utterance));
+  if (quoteTokens.length === 0) {
+    return 0;
+  }
+  const sharedTokens = quoteTokens.filter((token) => utteranceTokens.has(token)).length;
+  const tokenCoverage = sharedTokens / quoteTokens.length;
+  const similarity = diceCoefficient(normalizedQuote, normalizedUtterance);
+  if (tokenCoverage >= 0.85 || similarity >= 0.82) {
+    return 85;
+  }
+  if (tokenCoverage >= 0.6 || similarity >= 0.65) {
+    return 65;
+  }
+  if (tokenCoverage >= 0.4 || similarity >= 0.5) {
+    return 45;
+  }
+  return 0;
+}
+async function execute9(args = {}) {
+  const parsed = VerifyEvidenceInputSchema.safeParse(args);
+  if (!parsed.success) {
+    return JSON.stringify({
+      status: "validation_error",
+      message: "Invalid verify_evidence request.",
+      errors: parsed.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message
+      }))
+    });
+  }
+  const threshold = parsed.data.threshold ?? 50;
+  const runId = getCurrentRunId();
+  if (!runId) {
+    return JSON.stringify({
+      status: "error",
+      message: "No active analysis run. Call extract_data first."
+    });
+  }
+  const run = getAnalysisRun(runId);
+  if (!run?.phase1Output) {
+    return JSON.stringify({
+      status: "error",
+      runId,
+      message: `Run #${runId} has no Phase 1 output.`
+    });
+  }
+  const domainResults = getDomainResults(runId);
+  if (domainResults.length === 0) {
+    return JSON.stringify({
+      status: "error",
+      runId,
+      message: `Run #${runId} has no saved domain results to verify.`
+    });
+  }
+  recordStageStatus(runId, "evidenceVerification", { status: "running" });
+  try {
+    const utteranceLookup = Object.fromEntries(
+      run.phase1Output.developerUtterances.map((utterance) => [
+        utterance.id,
+        utterance.displayText || utterance.text
+      ])
+    );
+    const verifiedResults = [];
+    const domainStats = [];
+    for (const result of domainResults) {
+      const evidenceItems = [
+        ...result.strengths.flatMap((strength) => strength.evidence ?? []),
+        ...result.growthAreas.flatMap((growthArea) => growthArea.evidence ?? [])
+      ];
+      let keptCount2 = 0;
+      let filteredCount2 = 0;
+      for (const evidence of evidenceItems) {
+        const utteranceId = typeof evidence.utteranceId === "string" ? evidence.utteranceId : "";
+        const quote = typeof evidence.quote === "string" ? evidence.quote : "";
+        const sourceUtterance = utteranceId ? utteranceLookup[utteranceId] ?? "" : "";
+        const relevanceScore = scoreEvidence(quote, sourceUtterance);
+        const verified = relevanceScore >= threshold;
+        if (verified) {
+          keptCount2 += 1;
+        } else {
+          filteredCount2 += 1;
+        }
+        verifiedResults.push({
+          utteranceId,
+          quote,
+          relevanceScore,
+          verified
+        });
+      }
+      domainStats.push({
+        domain: result.domain,
+        totalEvidence: evidenceItems.length,
+        keptCount: keptCount2,
+        filteredCount: filteredCount2
+      });
+    }
+    const data = {
+      verifiedResults,
+      domainStats,
+      threshold
+    };
+    saveStageOutput(runId, "evidenceVerification", data);
+    recordStageStatus(runId, "evidenceVerification", { status: "validated" });
+    const keptCount = verifiedResults.filter((result) => result.verified).length;
+    const filteredCount = verifiedResults.length - keptCount;
+    return JSON.stringify({
+      status: "ok",
+      runId,
+      stage: "evidenceVerification",
+      threshold,
+      totalEvidence: verifiedResults.length,
+      keptCount,
+      filteredCount,
+      domainStats,
+      message: `Verified ${verifiedResults.length} evidence items for run #${runId}. Kept ${keptCount}, filtered ${filteredCount}.`
+    });
+  } catch (error2) {
+    const message = error2 instanceof Error ? error2.message : "Failed to verify evidence.";
+    recordStageStatus(runId, "evidenceVerification", {
+      status: "failed",
+      lastError: message
+    });
+    return JSON.stringify({
+      status: "error",
+      runId,
+      message
+    });
+  }
 }
 
 // mcp/tools/generate-report.ts
@@ -19879,7 +20399,8 @@ var DOMAIN_LABELS = {
   communicationPatterns: { label: "Communication", emoji: "\u{1F4AC}" },
   learningBehavior: { label: "Learning", emoji: "\u{1F4DA}" },
   contextEfficiency: { label: "Efficiency", emoji: "\u26A1" },
-  sessionOutcome: { label: "Sessions", emoji: "\u{1F3AF}" }
+  sessionOutcome: { label: "Sessions", emoji: "\u{1F3AF}" },
+  content: { label: "Skill Resilience", emoji: "\u{1F9E9}" }
 };
 function generateDomainSection(result) {
   const meta2 = DOMAIN_LABELS[result.domain] ?? { label: result.domain, emoji: "\u{1F4CA}" };
@@ -20956,14 +21477,14 @@ function generateCanonicalReportHtml(run) {
 }
 
 // mcp/tools/generate-report.ts
-var definition9 = {
+var definition13 = {
   name: "generate_report",
   description: "Generate a standalone HTML report from all completed domain analyses and serve it on a local HTTP server. Returns the URL to view the report. Call this after all domain analyses and type classification are complete. Pass allowIncomplete=true to override required-stage gating."
 };
 var activeServer = null;
 var shutdownTimer = null;
 var SHUTDOWN_TIMEOUT_MS = 30 * 60 * 1e3;
-var DOMAIN_STAGE_NAMES = /* @__PURE__ */ new Set([
+var DOMAIN_STAGE_NAMES2 = /* @__PURE__ */ new Set([
   "thinkingQuality",
   "communicationPatterns",
   "learningBehavior",
@@ -20992,7 +21513,7 @@ function closeActiveServer() {
   });
 }
 function hasFallbackArtifact(runId, stage) {
-  if (DOMAIN_STAGE_NAMES.has(stage)) {
+  if (DOMAIN_STAGE_NAMES2.has(stage)) {
     return getDomainResult(runId, stage) !== null;
   }
   return getStageOutput(runId, stage) !== null;
@@ -21029,7 +21550,7 @@ function getRequiredStageGateIssues(runId) {
   }
   return issues;
 }
-async function execute6(args) {
+async function execute10(args) {
   const port = args.port ?? 3456;
   const openBrowser = args.openBrowser ?? true;
   const allowIncomplete = args.allowIncomplete ?? false;
@@ -21124,11 +21645,11 @@ async function execute6(args) {
 }
 
 // mcp/tools/sync-to-team.ts
-var definition10 = {
+var definition14 = {
   name: "sync_to_team",
   description: "Sync local analysis results to a team BetterPrompt server. Uses the BetterPrompt plugin server URL setting unless serverUrl is passed explicitly. The server receives pre-analyzed results (no LLM work needed server-side). Use this to share your analysis with your team dashboard."
 };
-async function execute7(args) {
+async function execute11(args) {
   const serverUrl = (args.serverUrl ?? getConfig().serverUrl)?.replace(/\/$/, "");
   if (!serverUrl) {
     return JSON.stringify({
@@ -21180,7 +21701,7 @@ async function execute7(args) {
 }
 
 // mcp/tools/save-stage-output.ts
-var definition11 = {
+var definition15 = {
   name: "save_stage_output",
   description: "Save output from a pipeline stage. Called after completing a stage (sessionSummaries, projectSummaries, weeklyInsights, typeClassification, evidenceVerification, contentWriter, translator, extractAiCollaboration, extractContextEngineering, extractToolMastery, extractBurnoutRisk, extractAiControl, extractSkillResilience). Input must include stage name and structured data matching the stage schema."
 };
@@ -21191,7 +21712,7 @@ var StageOutputInputSchema = external_exports.object({
 function extractStageName(args) {
   return typeof args.stage === "string" ? args.stage : null;
 }
-async function execute8(args) {
+async function execute12(args) {
   const runId = getCurrentRunId();
   const stageName = extractStageName(args);
   if (!runId) {
@@ -21249,11 +21770,11 @@ async function execute8(args) {
 }
 
 // mcp/tools/get-stage-output.ts
-var definition12 = {
+var definition16 = {
   name: "get_stage_output",
   description: "Read a previously saved pipeline stage output. Provide a stage name to get that specific output, or omit to get all stages. Available stages: sessionSummaries, projectSummaries, weeklyInsights, typeClassification, evidenceVerification, contentWriter, translator."
 };
-async function execute9(args) {
+async function execute13(args) {
   const runId = getCurrentRunId();
   if (!runId) {
     return JSON.stringify({
@@ -21299,10 +21820,14 @@ var PROMPT_CONTEXT_KINDS = [
   "contentWriter",
   "translation"
 ];
+var SKILL_INJECTION_PREFIX2 = "Base directory for this skill:";
 function trimText(text, maxChars) {
   if (!text) return "";
   if (text.length <= maxChars) return text;
   return `${text.slice(0, maxChars - 1)}\u2026`;
+}
+function isAnalyzablePromptContextUserMessage(message) {
+  return message.role === "user" && !message.isMeta && typeof message.sourceToolUseID !== "string" && message.toolUseResult === void 0 && !message.content.trim().startsWith(SKILL_INJECTION_PREFIX2);
 }
 function trimMessages(messages, maxMessages, maxChars) {
   return messages.slice(0, maxMessages).map((message) => ({
@@ -21318,6 +21843,95 @@ function trimMessages(messages, maxMessages, maxChars) {
     } : {},
     ...message.tokenUsage ? { tokenUsage: message.tokenUsage } : {}
   }));
+}
+var MAX_UTTERANCES = 300;
+var MAX_INTERACTION_SNAPSHOTS = 200;
+var MAX_SESSION_OVERVIEWS = 40;
+function buildTrimmedDeveloperUtterances(phase1Output, maxChars) {
+  return phase1Output.developerUtterances.slice(0, MAX_UTTERANCES).map((utterance) => ({
+    id: utterance.id,
+    text: trimText(utterance.displayText || utterance.text, maxChars),
+    sessionId: utterance.sessionId,
+    turnIndex: utterance.turnIndex,
+    characterCount: utterance.characterCount,
+    wordCount: utterance.wordCount,
+    hasCodeBlock: utterance.hasCodeBlock,
+    hasQuestion: utterance.hasQuestion,
+    isSessionStart: utterance.isSessionStart,
+    isContinuation: utterance.isContinuation,
+    precedingAIToolCalls: utterance.precedingAIToolCalls?.slice(0, 8),
+    precedingAIHadError: utterance.precedingAIHadError,
+    timestamp: utterance.timestamp
+  }));
+}
+function asSessionMessageWithMeta(message) {
+  return message;
+}
+function buildSessionOverviews(phase1Output) {
+  return (phase1Output.sessions ?? []).slice(0, MAX_SESSION_OVERVIEWS).map((session) => {
+    const messages = session.messages.map(asSessionMessageWithMeta);
+    const userMessages = messages.filter(isAnalyzablePromptContextUserMessage);
+    const assistantMessages = messages.filter((message) => message.role === "assistant");
+    const firstAssistant = assistantMessages[0];
+    const toolSequence = assistantMessages.flatMap((message) => message.toolCalls?.map((toolCall) => toolCall.name) ?? []).filter((toolName, index, all) => all.indexOf(toolName) === index).slice(0, 10);
+    const peakAssistantInputTokens = assistantMessages.reduce(
+      (max, message) => Math.max(max, message.tokenUsage?.input ?? 0),
+      0
+    );
+    const peakContextFillPercent = peakAssistantInputTokens > 0 ? Math.round(peakAssistantInputTokens / CONTEXT_WINDOW_SIZE * 1e3) / 10 : void 0;
+    return {
+      sessionId: session.sessionId,
+      projectName: session.projectName ?? "unknown",
+      startTime: session.startTime,
+      endTime: session.endTime,
+      durationSeconds: session.durationSeconds,
+      stats: {
+        userMessageCount: userMessages.length,
+        assistantMessageCount: assistantMessages.length,
+        toolCallCount: session.stats.toolCallCount,
+        uniqueToolsUsed: session.stats.uniqueToolsUsed,
+        totalInputTokens: session.stats.totalInputTokens,
+        totalOutputTokens: session.stats.totalOutputTokens
+      },
+      firstUserMessage: trimText(userMessages[0]?.content, 220),
+      firstAssistantPreview: trimText(firstAssistant?.content, 220),
+      firstAssistantAskedQuestion: Boolean(firstAssistant?.content?.includes("?")),
+      assistantErrorCount: assistantMessages.reduce(
+        (count, message) => count + (message.toolCalls?.some((toolCall) => toolCall.isError) ? 1 : 0),
+        0
+      ),
+      toolSequence,
+      peakContextFillPercent
+    };
+  });
+}
+function buildInteractionSnapshots(phase1Output, options) {
+  const { maxUserChars = 260, maxAssistantChars = 220 } = options ?? {};
+  const snapshots = (phase1Output.sessions ?? []).flatMap((session) => {
+    const messages = session.messages.map(asSessionMessageWithMeta);
+    return messages.flatMap((message, index) => {
+      if (!isAnalyzablePromptContextUserMessage(message)) {
+        return [];
+      }
+      const precedingAssistant = [...messages.slice(0, index)].reverse().find((candidate) => candidate.role === "assistant");
+      return [{
+        utteranceId: `${session.sessionId}_${index}`,
+        sessionId: session.sessionId,
+        projectName: session.projectName ?? "unknown",
+        turnIndex: index,
+        text: trimText(message.content, maxUserChars),
+        characterCount: message.content.length,
+        hasQuestion: message.content.includes("?"),
+        isSessionStart: !messages.slice(0, index).some(isAnalyzablePromptContextUserMessage),
+        precedingAssistantPreview: trimText(precedingAssistant?.content, maxAssistantChars),
+        precedingAssistantLength: precedingAssistant?.content?.length ?? 0,
+        precedingAssistantHadCodeBlock: Boolean(precedingAssistant?.content?.includes("```")),
+        precedingAIToolCalls: precedingAssistant?.toolCalls?.map((toolCall) => toolCall.name).slice(0, 8),
+        precedingAIHadError: precedingAssistant?.toolCalls?.some((toolCall) => toolCall.isError) ?? false
+      }];
+    });
+  });
+  return snapshots.slice(0, MAX_INTERACTION_SNAPSHOTS);
 }
 function buildUtteranceLookup(phase1Output) {
   return Object.fromEntries(
@@ -21340,24 +21954,95 @@ function buildTrimmedSessionInput(phase1Output) {
     messages: trimMessages(session.messages, 12, 700)
   }));
 }
+function buildCondensedDomainResults(domainResults, options) {
+  const {
+    maxStrengths = 2,
+    maxGrowthAreas = 2,
+    maxDescriptionChars = 420,
+    maxRecommendationChars = 260
+  } = options ?? {};
+  return domainResults.map((result) => ({
+    domain: result.domain,
+    overallScore: result.overallScore,
+    confidenceScore: result.confidenceScore,
+    strengths: result.strengths.slice(0, maxStrengths).map((strength) => ({
+      title: strength.title,
+      description: trimText(strength.description, maxDescriptionChars),
+      evidenceCount: strength.evidence.length
+    })),
+    growthAreas: result.growthAreas.slice(0, maxGrowthAreas).map((growthArea) => ({
+      title: growthArea.title,
+      description: trimText(growthArea.description, maxDescriptionChars),
+      severity: growthArea.severity,
+      recommendation: trimText(growthArea.recommendation, maxRecommendationChars),
+      evidenceCount: growthArea.evidence.length
+    })),
+    analyzedAt: result.analyzedAt
+  }));
+}
+function buildCondensedContentWriterStageOutputs(stageOutputs) {
+  return {
+    typeClassification: stageOutputs.typeClassification ? {
+      collaborationMaturity: stageOutputs.typeClassification.collaborationMaturity,
+      reasoning: stageOutputs.typeClassification.reasoning.slice(0, 1).map((paragraph) => trimText(paragraph, 500)),
+      personalityNarrative: stageOutputs.typeClassification.personalityNarrative.slice(0, 1).map((paragraph) => trimText(paragraph, 500))
+    } : void 0,
+    weeklyInsights: stageOutputs.weeklyInsights ? {
+      stats: stageOutputs.weeklyInsights.stats,
+      projects: stageOutputs.weeklyInsights.projects,
+      topSessions: stageOutputs.weeklyInsights.topSessions,
+      narrative: trimText(stageOutputs.weeklyInsights.narrative, 600),
+      highlights: stageOutputs.weeklyInsights.highlights.slice(0, 5).map((item) => trimText(item, 180))
+    } : void 0,
+    projectSummaries: stageOutputs.projectSummaries,
+    evidenceVerification: stageOutputs.evidenceVerification ? {
+      threshold: stageOutputs.evidenceVerification.threshold,
+      domainStats: stageOutputs.evidenceVerification.domainStats,
+      verifiedEvidenceCount: stageOutputs.evidenceVerification.verifiedResults.length
+    } : void 0
+  };
+}
 function buildThinkingQualityContext(phase1Output) {
   return {
-    developerUtterances: phase1Output.developerUtterances.map((utterance) => ({
-      id: utterance.id,
-      text: trimText(utterance.displayText || utterance.text, 1e3),
-      sessionId: utterance.sessionId,
-      turnIndex: utterance.turnIndex,
-      wordCount: utterance.wordCount,
-      hasCodeBlock: utterance.hasCodeBlock,
-      hasQuestion: utterance.hasQuestion,
-      isSessionStart: utterance.isSessionStart,
-      isContinuation: utterance.isContinuation,
-      precedingAIHadError: utterance.precedingAIHadError,
-      timestamp: utterance.timestamp
-    })),
+    developerUtterances: buildTrimmedDeveloperUtterances(phase1Output, 280),
     sessionMetrics: phase1Output.sessionMetrics,
+    sessionOverviews: buildSessionOverviews(phase1Output),
+    interactionSnapshots: buildInteractionSnapshots(phase1Output, {
+      maxUserChars: 260,
+      maxAssistantChars: 200
+    }),
     ...phase1Output.aiInsightBlocks?.length ? {
       aiInsightBlocks: phase1Output.aiInsightBlocks.slice(0, 20).map((block) => ({
+        sessionId: block.sessionId,
+        turnIndex: block.turnIndex,
+        content: trimText(block.content, 180),
+        triggeringUtteranceId: block.triggeringUtteranceId
+      }))
+    } : {}
+  };
+}
+function buildCommunicationContext(phase1Output) {
+  return {
+    developerUtterances: buildTrimmedDeveloperUtterances(phase1Output, 260),
+    sessionMetrics: phase1Output.sessionMetrics,
+    sessionOverviews: buildSessionOverviews(phase1Output),
+    interactionSnapshots: buildInteractionSnapshots(phase1Output, {
+      maxUserChars: 220,
+      maxAssistantChars: 160
+    })
+  };
+}
+function buildLearningContext(phase1Output) {
+  return {
+    sessionMetrics: phase1Output.sessionMetrics,
+    developerUtterances: buildTrimmedDeveloperUtterances(phase1Output, 260),
+    sessionOverviews: buildSessionOverviews(phase1Output),
+    interactionSnapshots: buildInteractionSnapshots(phase1Output, {
+      maxUserChars: 240,
+      maxAssistantChars: 200
+    }),
+    ...phase1Output.aiInsightBlocks?.length ? {
+      aiInsightBlocks: phase1Output.aiInsightBlocks.slice(0, 24).map((block) => ({
         sessionId: block.sessionId,
         turnIndex: block.turnIndex,
         content: trimText(block.content, 200),
@@ -21366,71 +22051,23 @@ function buildThinkingQualityContext(phase1Output) {
     } : {}
   };
 }
-function buildCommunicationContext(phase1Output) {
-  return {
-    developerUtterances: phase1Output.developerUtterances.map((utterance) => ({
-      id: utterance.id,
-      text: trimText(utterance.displayText || utterance.text, 1e3),
-      sessionId: utterance.sessionId,
-      turnIndex: utterance.turnIndex,
-      wordCount: utterance.wordCount,
-      hasCodeBlock: utterance.hasCodeBlock,
-      hasQuestion: utterance.hasQuestion,
-      isSessionStart: utterance.isSessionStart,
-      isContinuation: utterance.isContinuation,
-      timestamp: utterance.timestamp
-    })),
-    sessionMetrics: phase1Output.sessionMetrics
-  };
-}
-function buildLearningContext(phase1Output) {
-  return {
-    sessionMetrics: phase1Output.sessionMetrics,
-    developerUtterances: phase1Output.developerUtterances.map((utterance) => ({
-      id: utterance.id,
-      sessionId: utterance.sessionId,
-      turnIndex: utterance.turnIndex,
-      text: trimText(utterance.displayText || utterance.text, 1e3),
-      hasQuestion: utterance.hasQuestion,
-      precedingAIToolCalls: utterance.precedingAIToolCalls?.slice(0, 8),
-      precedingAIHadError: utterance.precedingAIHadError,
-      timestamp: utterance.timestamp
-    })),
-    ...phase1Output.aiInsightBlocks?.length ? {
-      aiInsightBlocks: phase1Output.aiInsightBlocks.slice(0, 40).map((block) => ({
-        sessionId: block.sessionId,
-        turnIndex: block.turnIndex,
-        content: trimText(block.content, 400),
-        triggeringUtteranceId: block.triggeringUtteranceId
-      }))
-    } : {},
-    sessions: buildTrimmedSessionInput(phase1Output)
-  };
-}
 function buildEfficiencyContext(phase1Output) {
   return {
     sessionMetrics: phase1Output.sessionMetrics,
     activitySessions: phase1Output.activitySessions ?? [],
-    sessions: buildTrimmedSessionInput(phase1Output),
-    developerUtterances: phase1Output.developerUtterances.map((utterance) => ({
-      id: utterance.id,
-      sessionId: utterance.sessionId,
-      turnIndex: utterance.turnIndex,
-      text: trimText(utterance.displayText || utterance.text, 800),
-      characterCount: utterance.characterCount,
-      wordCount: utterance.wordCount,
-      hasCodeBlock: utterance.hasCodeBlock,
-      hasQuestion: utterance.hasQuestion,
-      precedingAIToolCalls: utterance.precedingAIToolCalls?.slice(0, 8),
-      timestamp: utterance.timestamp
-    }))
+    sessionOverviews: buildSessionOverviews(phase1Output),
+    interactionSnapshots: buildInteractionSnapshots(phase1Output, {
+      maxUserChars: 220,
+      maxAssistantChars: 160
+    }),
+    developerUtterances: buildTrimmedDeveloperUtterances(phase1Output, 240)
   };
 }
 function buildSessionOutcomeContext(phase1Output) {
   return {
     sessionMetrics: phase1Output.sessionMetrics,
     activitySessions: phase1Output.activitySessions ?? [],
-    sessions: buildTrimmedSessionInput(phase1Output)
+    sessionOverviews: buildSessionOverviews(phase1Output)
   };
 }
 function buildDomainAnalysisContext(domain, phase1Output, deterministicScores) {
@@ -21505,7 +22142,12 @@ function buildPromptContext(input) {
         deterministicScores,
         deterministicType: typeResult,
         sessionMetrics: phase1Output.sessionMetrics,
-        domainResults
+        domainResults: buildCondensedDomainResults(domainResults, {
+          maxStrengths: 2,
+          maxGrowthAreas: 2,
+          maxDescriptionChars: 420,
+          maxRecommendationChars: 260
+        })
       };
     case "evidenceVerification":
       return {
@@ -21517,13 +22159,13 @@ function buildPromptContext(input) {
       return {
         ...base,
         deterministicType: typeResult,
-        domainResults,
-        stageOutputs: {
-          typeClassification: stageOutputs.typeClassification,
-          weeklyInsights: stageOutputs.weeklyInsights,
-          projectSummaries: stageOutputs.projectSummaries,
-          evidenceVerification: stageOutputs.evidenceVerification
-        }
+        domainResults: buildCondensedDomainResults(domainResults, {
+          maxStrengths: 2,
+          maxGrowthAreas: 2,
+          maxDescriptionChars: 520,
+          maxRecommendationChars: 320
+        }),
+        stageOutputs: buildCondensedContentWriterStageOutputs(stageOutputs)
       };
     case "translation":
       return {
@@ -21537,7 +22179,7 @@ function buildPromptContext(input) {
 }
 
 // mcp/tools/get-prompt-context.ts
-var definition13 = {
+var definition17 = {
   name: "get_prompt_context",
   description: "Read a stage- or domain-specific prompt payload from the current analysis run. Use this instead of reading ~/.betterprompt/phase1-output.json directly. Kinds: sessionSummaries, domainAnalysis, projectSummaries, weeklyInsights, typeClassification, evidenceVerification, contentWriter, translation."
 };
@@ -21551,7 +22193,7 @@ var GetPromptContextInputSchema = external_exports.object({
     "sessionOutcome"
   ]).optional()
 });
-async function execute10(args) {
+async function execute14(args) {
   const parsed = GetPromptContextInputSchema.safeParse(args);
   if (!parsed.success) {
     return JSON.stringify({
@@ -21588,13 +22230,19 @@ async function execute10(args) {
       domainResults: getDomainResults(runId),
       stageOutputs: getAllStageOutputs(runId)
     });
-    return JSON.stringify({
+    const result = JSON.stringify({
       status: "ok",
       runId,
       kind: parsed.data.kind,
       ...parsed.data.domain ? { domain: parsed.data.domain } : {},
       data
     });
+    const label = `${parsed.data.kind}${parsed.data.domain ? `:${parsed.data.domain}` : ""}`;
+    debug("prompt-context", `${label} payload`, {
+      bytes: result.length,
+      estimatedTokens: Math.round(result.length / 4)
+    });
+    return result;
   } catch (error2) {
     return JSON.stringify({
       status: "error",
@@ -21625,12 +22273,15 @@ function wrapToolExecution(toolName, fn) {
   return async (args) => {
     const start = Date.now();
     const argRecord = args;
+    touchAnalysisHeartbeat();
     debug("tool", `${toolName} called`, Object.keys(argRecord).length > 0 ? argRecord : void 0);
     try {
       const result = await fn(args);
+      touchAnalysisHeartbeat();
       debug("tool", `${toolName} completed`, { durationMs: Date.now() - start });
       return { content: [{ type: "text", text: result }] };
     } catch (err) {
+      touchAnalysisHeartbeat();
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
       error("tool", `${toolName} failed`, { durationMs: Date.now() - start, error: errorMsg });
       return {
@@ -21663,30 +22314,54 @@ server.tool(
   definition8.name,
   definition8.description,
   {},
-  wrapToolExecution(definition8.name, () => execute5({}))
+  wrapToolExecution(definition8.name, () => execute5())
 );
-server.tool(definition9.name, definition9.description, {
-  port: external_exports.number().optional().describe("Port for the report server (default: 3456)"),
-  openBrowser: external_exports.boolean().optional().describe("Auto-open report in browser (default: true)"),
-  allowIncomplete: external_exports.boolean().optional().describe("Override required-stage gating and generate a report anyway")
-}, wrapToolExecution(definition9.name, execute6));
-server.tool(definition10.name, definition10.description, {
-  serverUrl: external_exports.string().optional().describe("Override the configured BetterPrompt server URL for this sync call")
-}, wrapToolExecution(definition10.name, execute7));
+server.tool(
+  definition9.name,
+  definition9.description,
+  {},
+  wrapToolExecution(definition9.name, () => execute6())
+);
 server.tool(
   definition11.name,
   definition11.description,
-  StageOutputInputSchema.shape,
-  wrapToolExecution(definition11.name, execute8)
+  {},
+  wrapToolExecution(definition11.name, () => execute8({}))
 );
-server.tool(definition12.name, definition12.description, {
-  stage: external_exports.string().optional().describe("Stage name to retrieve (omit for all stages)")
-}, wrapToolExecution(definition12.name, execute9));
 server.tool(
-  definition13.name,
-  definition13.description,
+  definition12.name,
+  definition12.description,
+  VerifyEvidenceInputSchema.shape,
+  wrapToolExecution(definition12.name, execute9)
+);
+server.tool(definition13.name, definition13.description, {
+  port: external_exports.number().optional().describe("Port for the report server (default: 3456)"),
+  openBrowser: external_exports.boolean().optional().describe("Auto-open report in browser (default: true)"),
+  allowIncomplete: external_exports.boolean().optional().describe("Override required-stage gating and generate a report anyway")
+}, wrapToolExecution(definition13.name, execute10));
+server.tool(definition14.name, definition14.description, {
+  serverUrl: external_exports.string().optional().describe("Override the configured BetterPrompt server URL for this sync call")
+}, wrapToolExecution(definition14.name, execute11));
+server.tool(
+  definition15.name,
+  definition15.description,
+  StageOutputInputSchema.shape,
+  wrapToolExecution(definition15.name, execute12)
+);
+server.tool(definition16.name, definition16.description, {
+  stage: external_exports.string().optional().describe("Stage name to retrieve (omit for all stages)")
+}, wrapToolExecution(definition16.name, execute13));
+server.tool(
+  definition17.name,
+  definition17.description,
   GetPromptContextInputSchema.shape,
-  wrapToolExecution(definition13.name, execute10)
+  wrapToolExecution(definition17.name, execute14)
+);
+server.tool(
+  definition10.name,
+  definition10.description,
+  SaveUserPrefsInputSchema.shape,
+  wrapToolExecution(definition10.name, execute7)
 );
 server.tool(
   definition.name,

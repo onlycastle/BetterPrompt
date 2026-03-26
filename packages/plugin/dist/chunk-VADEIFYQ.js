@@ -29,6 +29,37 @@ function estimateSessionDurationMsFromTranscript(transcriptPath) {
     return 0;
   }
 }
+function readLastTranscriptEntry(transcriptPath) {
+  try {
+    const content = readFileSync(transcriptPath, "utf-8");
+    const lines = content.split("\n").map((line) => line.trim()).filter(Boolean);
+    if (lines.length === 0) {
+      return null;
+    }
+    return JSON.parse(lines[lines.length - 1]);
+  } catch {
+    return null;
+  }
+}
+function isInFlightTranscriptBoundary(transcriptPath) {
+  const lastEntry = readLastTranscriptEntry(transcriptPath);
+  if (!lastEntry) {
+    return false;
+  }
+  if (lastEntry.type === "progress") {
+    return true;
+  }
+  if (lastEntry.isMeta || typeof lastEntry.sourceToolUseID === "string") {
+    return true;
+  }
+  if (lastEntry.toolUseResult !== void 0) {
+    return true;
+  }
+  if (lastEntry.message?.stop_reason === "tool_use") {
+    return true;
+  }
+  return false;
+}
 function buildFirstRunAdditionalContext() {
   return [
     "BetterPrompt is installed but has not been set up yet.",
@@ -46,7 +77,8 @@ function buildPendingAnalysisAdditionalContext() {
 
 export {
   estimateSessionDurationMsFromTranscript,
+  isInFlightTranscriptBoundary,
   buildFirstRunAdditionalContext,
   buildPendingAnalysisAdditionalContext
 };
-//# sourceMappingURL=chunk-ZKL2ZRNA.js.map
+//# sourceMappingURL=chunk-VADEIFYQ.js.map
