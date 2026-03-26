@@ -1,6 +1,5 @@
 {
   "name": "betterprompt",
-  "displayName": "BetterPrompt",
   "version": "0.2.0",
   "description": "Local-first AI collaboration analysis — surfaces your collaboration patterns, growth areas, and anti-patterns directly in Claude Code without requiring a server.",
   "author": {
@@ -8,28 +7,5 @@
   },
   "repository": "https://github.com/onlycastle/BetterPrompt",
   "skills": "./skills/",
-  "mcpServers": "./.mcp.json",
-  "configuration": {
-    "serverUrl": {
-      "type": "string",
-      "required": false,
-      "default": "http://localhost:3000",
-      "description": "URL of your BetterPrompt server (only needed for team sync mode)"
-    },
-    "autoAnalyze": {
-      "type": "boolean",
-      "default": true,
-      "description": "Queue analysis after enough new sessions accumulate and auto-resume it in the next Claude Code session"
-    },
-    "analyzeThreshold": {
-      "type": "number",
-      "default": 5,
-      "description": "Minimum number of new sessions before triggering auto-analysis"
-    },
-    "reportPort": {
-      "type": "number",
-      "default": 3456,
-      "description": "Port for the local report server"
-    }
-  }
+  "mcpServers": "./.mcp.json"
 }
