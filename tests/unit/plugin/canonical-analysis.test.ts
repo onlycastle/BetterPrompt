@@ -275,12 +275,17 @@ function createStageOutputs(): CanonicalStageOutputs {
 }
 
 const deterministicScores: DeterministicScores = {
+  aiPartnership: 77,
+  sessionCraft: 73,
+  toolMastery: 82,
+  skillResilience: 72,
+  sessionMastery: 75,
+  controlScore: 74,
   thinkingQuality: 80,
   communicationPatterns: 82,
   learningBehavior: 70,
   contextEfficiency: 76,
   sessionOutcome: 75,
-  controlScore: 74,
 };
 
 const typeResult: DeterministicTypeResult = {
