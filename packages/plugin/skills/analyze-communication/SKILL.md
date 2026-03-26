@@ -1,7 +1,7 @@
 ---
 name: analyze-communication
 description: "[DEPRECATED] Replaced by extract-tool-mastery + write-tool-mastery"
-model: sonnet
+model: opus
 ---
 
 ## DEPRECATED

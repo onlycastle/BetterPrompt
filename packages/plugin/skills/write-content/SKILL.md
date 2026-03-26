@@ -31,6 +31,8 @@ Call `get_prompt_context` with `{ "kind": "contentWriter" }`, then load the retu
 - `contextEfficiency` -- inefficiency patterns, context management, token usage
 - `sessionOutcome` -- goal achievement, friction patterns, success/failure analysis
 
+Do NOT read raw `tool-results` files or `~/.betterprompt/phase1-output.json` after calling `get_prompt_context`. Use the returned MCP payload as the full input for this stage.
+
 ### Step 2: Identify Cross-Domain Themes
 
 Look for patterns that span multiple domains. The best focus areas connect findings across 2-3 domains. Examples:

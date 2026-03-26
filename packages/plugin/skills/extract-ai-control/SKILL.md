@@ -1,7 +1,7 @@
 ---
 name: extract-ai-control
 description: Extract AI Control Index signals from Claude Code session data
-model: sonnet
+model: opus
 ---
 
 # AI Control Index Extraction
@@ -203,27 +203,27 @@ Call `save_stage_output` with the following structure:
         "utteranceId": "abc123_7",
         "text": "No, that's the wrong import path -- use @lib/auth not @utils/auth",
         "category": "direct_correction",
-        "signalType": "direct_correction"
+        "signalType": "strength"
       },
       {
         "utteranceId": "def456_12",
         "text": "Only modify files in src/auth/, do not touch the API layer",
         "category": "constraint_specification",
-        "signalType": "boundary_definition"
+        "signalType": "strength"
       }
     ],
     "patterns": [
       {
         "name": "systematic_correction",
         "description": "Developer provides specific technical corrections with correct values, not just flags errors",
-        "frequency": 8,
+        "frequency": "consistent",
         "sessionsPresent": 4,
         "exampleQuotes": ["No, use createServerClient not createClient", "That API is deprecated, use the v2 endpoint"]
       },
       {
         "name": "explicit_scoping",
         "description": "Developer specifies file and scope boundaries before AI edits",
-        "frequency": 6,
+        "frequency": "occasional",
         "sessionsPresent": 3,
         "exampleQuotes": ["Only touch auth.ts", "Leave the test files unchanged"]
       }
@@ -250,6 +250,9 @@ Call `save_stage_output` with the following structure:
 
 - **Minimum 15-20 quotes total** across all categories
 - Each quote has: `utteranceId`, `text` (exact, 15+ characters), `category`, `signalType`
+- `signalType` must always be `strength` or `growth`
+- Use `strength` for deliberate control signals (corrections, constraints, verification gates, context isolation)
+- Use `growth` for passive acceptance, vague delegation, critique avoidance, or other control gaps
 - Prioritize correction and constraint quotes -- these carry the highest signal value
 - Include at least 2 negative signals (blind acceptance, vague delegation) for calibration
 - Do not fabricate quotes -- if fewer than 15 quotes are found, report `totalQuotesExtracted` accurately and note the data limitation
@@ -257,7 +260,8 @@ Call `save_stage_output` with the following structure:
 ### Pattern Array Requirements
 
 - Minimum 3 patterns detected (positive or negative)
-- Each pattern has: `name`, `description`, `frequency` (count), `sessionsPresent` (distinct session count), `exampleQuotes` (2-3 short examples)
+- Each pattern has: `name`, `description`, `frequency`, `sessionsPresent` (distinct session count), `exampleQuotes` (2-3 short examples)
+- `frequency` must be one of `consistent` (3+ sessions), `occasional` (2 sessions), or `rare` (1 session)
 - Use these pattern names where applicable: `systematic_correction`, `explicit_scoping`, `blind_acceptance_habit`, `constraint_heavy`, `vague_delegation_pattern`, `verification_gating`, `context_isolation`, `critique_avoidance`
 
 ## Progress Reporting
@@ -279,9 +283,11 @@ Print a brief `[bp]` status line at each key step:
 - [ ] Classified control level using score range table (vibe-coder / developing / ai-master)
 - [ ] Extracted 15-20+ quotes with exact text and utteranceIds
 - [ ] Quotes include corrections, constraints, verifications, AND acceptance patterns
+- [ ] Every quote uses schema-compatible `signalType` values (`strength` or `growth`)
 - [ ] Patterns include at least one negative signal pattern
+- [ ] Every pattern uses schema-compatible `frequency` values (`consistent`, `occasional`, or `rare`)
 - [ ] `modificationRate` computed as `(correction_events + rejection_events) / total_ai_responses`
-- [ ] `dominantPattern` reflects the most frequent pattern by `frequency` count
+- [ ] `dominantPattern` reflects the strongest recurring pattern based on `frequency` and session coverage
 - [ ] No hedging language used anywhere in output
 - [ ] All signals stated as quantified facts
 - [ ] Called `save_stage_output` with stage `"extractAiControl"`

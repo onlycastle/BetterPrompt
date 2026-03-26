@@ -1,6 +1,7 @@
 ---
 name: bp-setup
 description: Guided onboarding wizard for first-time BetterPrompt users
+model: opus
 ---
 
 # BetterPrompt Setup Wizard
@@ -13,12 +14,28 @@ You are the **BetterPrompt onboarding assistant**. You guide first-time users th
 
 Before starting the wizard:
 
-1. Read `~/.betterprompt/prefs.json` (if it exists) and check for `welcomeCompleted`.
+1. Call `get_user_prefs` and check `prefs.welcomeCompleted`.
 2. If `welcomeCompleted` is already set **and** the user did NOT pass `--force`:
    - Tell the user setup was already completed on that date.
    - Ask: **"Re-run setup?"** / **"Skip"**
    - If they choose Skip, exit gracefully.
 3. If `welcomeCompleted` is not set, or `--force` was passed, proceed to Step 1.
+
+### Explicit Instruction Shortcut
+
+If the user's initial prompt already specifies concrete setup choices, follow those instructions directly instead of asking again.
+
+Examples:
+- If the user names exact projects to select, skip the project-choice question and persist only those canonical project names from `scan_sessions.allProjects[].name`.
+- If the user says to skip CLAUDE.md integration, skip Step 4 without calling `AskUserQuestion`.
+- If the user says to skip the GitHub star step, mark `starAsked: true` and move on without calling `AskUserQuestion`.
+- If the user says to continue working instead of running analysis now, choose that path directly in Step 6.
+
+If `AskUserQuestion` returns an error such as `Answer questions?`, treat that as an unavailable interaction channel and fall back to the user's explicit instructions. If the user did not specify a choice for an optional step, pick the safest non-destructive default:
+- Projects: keep existing selection if one exists, otherwise `selectedProjects: []`
+- CLAUDE.md integration: Skip
+- GitHub star: Skip, but still mark `starAsked: true`
+- Next action: Continue working
 
 ## Steps
 
@@ -51,23 +68,30 @@ Call the `scan_sessions` MCP tool to verify the plugin is working (native deps +
 
 Display the project list from Step 2 (name + session count) and let the user choose which projects to include in analysis.
 
+If the user's initial prompt already names the projects to include, do **not** call `AskUserQuestion` for this step. Match the requested names against `scan_sessions.allProjects[].name`, confirm the matched canonical names, and persist them directly.
+
 Use `AskUserQuestion` with these options:
 - **"Analyze all projects"** — include everything
 - **"Select specific projects"** — show the full project list and let the user specify which ones
 
 If the user selects specific projects:
 1. Confirm the selection back to the user.
-2. Write the selection to `~/.betterprompt/prefs.json` via `selectedProjects` (merge with existing prefs):
+2. Persist only canonical project names from `scan_sessions.allProjects[].name`.
+   Never write filesystem paths, encoded Claude project directory names, or repo-relative paths to `selectedProjects`.
+3. Write the selection to `~/.betterprompt/prefs.json` via `selectedProjects` (merge with existing prefs):
+   call `save_user_prefs` with:
    ```json
    { "selectedProjects": ["project-a", "project-b"] }
    ```
 
 If the user chooses "Analyze all":
-1. Write `selectedProjects` as an empty array (meaning "all") or omit the key entirely.
+1. Call `save_user_prefs` with `selectedProjects: []` (meaning "all").
 
 ### Step 4: CLAUDE.md Integration
 
 Ask the user whether to add a BetterPrompt command reference block to their project's CLAUDE.md file.
+
+If the user already said to skip or add this step, follow that explicit instruction directly and do not call `AskUserQuestion`.
 
 Use `AskUserQuestion` with these options:
 - **"Add command reference"** — append the block
@@ -106,12 +130,14 @@ AI session analysis plugin. Runs locally inside Claude Code.
 This is a one-time ask, tracked via `starAsked` in `~/.betterprompt/prefs.json`.
 
 1. If `starAsked` is already `true`, skip this step silently.
+2. If the user already said to skip or accept the star prompt, follow that instruction directly and do not call `AskUserQuestion`.
 2. Ask the user:
    > "If BetterPrompt has been useful, would you consider starring the repo?
    > It helps others discover it: https://github.com/onlycastle/BetterPrompt"
    >
    > **"Sure, I'll star it"** / **"Skip"**
 3. Regardless of choice, write `starAsked: true` to prefs.
+   Prefer `save_user_prefs` instead of writing JSON manually.
 
 ### Step 6: Quick Reference + First Action
 
@@ -133,10 +159,12 @@ Available BetterPrompt Commands:
 
 Then ask the user what they would like to do next.
 
+If the user already said to continue working or to run analysis now, follow that instruction directly and do not call `AskUserQuestion`.
+
 Use `AskUserQuestion` with these options:
-- **"Run bp analyze now"** — invoke the `bp-analyze` skill
-- **"Explore commands"** — repeat the Quick Reference table and let them choose
-- **"Continue working"** — exit the wizard
+- **"Queue bp analyze for next session"** (Recommended) — call `save_user_prefs` with `{ "queueAnalysis": true }` so the analysis auto-starts in the next session with a fresh rate-limit budget. Tell the user: "Analysis queued! It will start automatically in your next Claude Code session."
+- **"Run bp analyze now"** — warn the user: "Running analysis immediately after setup may hit API rate limits. If it fails, just start a new session and it will auto-resume." Then invoke the `bp-analyze` skill.
+- **"Continue working"** — call `save_user_prefs` with `{ "queueAnalysis": true }` so analysis starts in a future session, then exit the wizard
 
 ### Step 7: Complete
 
@@ -144,11 +172,13 @@ Use `AskUserQuestion` with these options:
    ```json
    {
      "welcomeShown": true,
-     "welcomeCompleted": "<current ISO timestamp>",
-     "welcomeVersion": "2.0"
+     "welcomeVersion": "2.0",
+     "markWelcomeCompleted": true
    }
    ```
-   Use the `writePrefs` function or write directly.
+   Call `save_user_prefs` so the plugin stamps the exact current ISO 8601 timestamp in code.
+   The literal `welcomeVersion` value must be `2.0`, not a JSON-encoded string like `"\"2.0\""`.
+   Do not hand-write `welcomeCompleted`, do not round to the minute, and do not hardcode the date.
 
 2. Display a completion summary:
    ```
@@ -177,5 +207,6 @@ Print a brief `[bp]` status line before each step:
 
 - Never skip Step 2 (verification) -- it confirms the plugin works.
 - Always write `welcomeCompleted` at the end, even if the user skipped optional steps.
+- Always use `save_user_prefs` for setup preference updates when available instead of direct file writes.
 - If any step fails, log the error but continue to the next step. Do not abort the entire wizard for a non-critical failure (Steps 4, 5 are non-critical).
 - The CLAUDE.md block uses HTML comment markers (`<!-- bp:START -->` / `<!-- bp:END -->`) so it can be cleanly replaced or removed later.

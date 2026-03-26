@@ -1,7 +1,7 @@
 ---
 name: analyze-thinking-quality
 description: "[DEPRECATED] Replaced by extract-ai-collaboration + write-ai-collaboration"
-model: sonnet
+model: opus
 ---
 
 ## DEPRECATED

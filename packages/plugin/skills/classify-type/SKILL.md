@@ -25,6 +25,10 @@ Based on saved domain analysis results, classify the builder into:
 
 1. Call `get_prompt_context` with `{ "kind": "typeClassification" }`.
 2. Use the returned deterministic scores, deterministic type result, session metrics, and saved domain results for the current run.
+3. Do NOT read raw `tool-results` files, `~/.betterprompt/phase1-output.json`, or other saved artifacts after calling `get_prompt_context`. The returned MCP payload is the canonical input for this skill.
+4. If `deterministicType` is null, call `classify_developer_type`, then call `get_prompt_context` again and continue with the refreshed payload.
+5. If `deterministicType` is still null after that refresh, stop and report the missing deterministic type result. Do not invent one.
+6. If `domainResults` is empty, stop and report that the writer stages have not been saved yet. Do not fabricate narrative domain evidence from scratch.
 
 ## Context
 
@@ -288,7 +292,7 @@ Print a brief `[bp]` status line at each key step:
 
 - [ ] Loaded type-classification context via `get_prompt_context`
 - [ ] Read deterministic type result (do not reclassify from scratch)
-- [ ] Read all saved domain results for evidence
+- [ ] Used only the returned `get_prompt_context` payload for domain evidence
 - [ ] `reasoning` is an ARRAY of exactly 3 strings
 - [ ] Each reasoning element is 300-500 characters (total 900-1300)
 - [ ] Element [0] uses 3rd person with matrixName as subject

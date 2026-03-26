@@ -1,7 +1,7 @@
 ---
 name: generate-weekly-insights
 description: Generate This Week narrative with stats and highlights
-model: sonnet
+model: haiku
 ---
 
 # Weekly Insight Generator
@@ -19,7 +19,7 @@ Compute deterministic weekly stats from Phase 1 output and generate a narrative 
 This is Phase 2 of the BetterPrompt pipeline, running in parallel with the 5 domain insight workers and the Project Summarizer. The weekly insights appear prominently in the report's "This Week" card, giving developers an at-a-glance view of their recent activity. The stats are deterministic (computed from data), while the narrative and highlights require synthesis.
 
 Phase 1 output provides per session:
-- `sessionId`, `projectName`, `startTime` (ISO 8601), `durationMinutes`
+- `sessionId`, `projectName`, `startTime` (ISO 8601), `durationSeconds`
 - `messageCount`, `totalInputTokens`, `totalOutputTokens`
 - Session summaries from Phase 1.5 (if available)
 
@@ -40,7 +40,7 @@ For each week bucket, compute:
 | Stat | Calculation |
 |------|-------------|
 | `sessionCount` | Number of sessions in the week |
-| `totalMinutes` | Sum of `durationMinutes` across all sessions |
+| `totalMinutes` | Sum of `durationSeconds / 60` across all sessions (round to nearest integer) |
 | `totalTokens` | Sum of (`totalInputTokens` + `totalOutputTokens`) across all sessions |
 | `activeDays` | Count of unique calendar dates with at least one session (0-7) |
 

@@ -1,7 +1,7 @@
 ---
 name: extract-ai-collaboration
 description: Extract structured behavioral signals for AI Collaboration Mastery analysis
-model: sonnet
+model: opus
 ---
 
 # AI Collaboration Data Extraction

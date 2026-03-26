@@ -1,7 +1,7 @@
 ---
 name: extract-context-engineering
 description: Extract structured behavioral signals for Context Engineering analysis
-model: sonnet
+model: opus
 ---
 
 # Context Engineering Data Extraction

@@ -1,7 +1,7 @@
 ---
 name: summarize-sessions
 description: Generate 1-line summaries for each analyzed session
-model: sonnet
+model: haiku
 ---
 
 # Session Summarizer
