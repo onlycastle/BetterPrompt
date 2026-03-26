@@ -8,7 +8,7 @@ import {
   markAnalysisPending,
   recoverStaleAnalysisState,
   shouldTriggerAnalysis
-} from "../chunk-72GWNTBD.js";
+} from "../chunk-SUEN2LKX.js";
 import {
   debug
 } from "../chunk-PP5673GG.js";
