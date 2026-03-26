@@ -35,7 +35,9 @@ Each analysis skill runs as an **isolated Agent** rather than inline in this ses
 
 ## Agent Dispatch
 
-When `get_run_progress` returns a `nextStep` with a non-null `skill`, dispatch it as an Agent using the Agent tool:
+**CRITICAL**: Use the built-in `Agent` tool from your tool list to dispatch skills. Do NOT use Bash to run `claude` CLI commands (e.g., `claude --model haiku -p "..."`). The Agent tool is a first-class tool like `Read` or `Bash` -- invoke it directly with the parameters listed below.
+
+When `get_run_progress` returns a `nextStep` with a non-null `skill`, dispatch it as an Agent using the built-in `Agent` tool:
 
 - **prompt**: `"You are executing a BetterPrompt analysis stage. Read the skill instructions at [PLUGIN_PATH]/skills/[SKILL_NAME]/SKILL.md and follow them exactly. You have access to BetterPrompt MCP tools (get_prompt_context, get_stage_output, save_stage_output, save_domain_results, etc.). Execute the complete skill workflow. When finished, report whether the stage completed successfully or failed (include the error message if failed). Do not delegate to other agents or tasks."`
 - **model**: Use the model from the Model Tiering table above

@@ -27560,6 +27560,9 @@ var ParsedMessageSchema = external_exports2.object({
   role: external_exports2.enum(["user", "assistant"]),
   timestamp: external_exports2.string(),
   content: external_exports2.string(),
+  isMeta: external_exports2.boolean().optional(),
+  sourceToolUseID: external_exports2.string().optional(),
+  toolUseResult: external_exports2.unknown().optional(),
   toolCalls: external_exports2.array(ToolCallSchema).optional(),
   tokenUsage: external_exports2.object({
     input: external_exports2.number().int().min(0),
@@ -27686,12 +27689,18 @@ var Phase1OutputSchema = external_exports2.object({
 
 // ../shared/dist/schemas/deterministic-scores.js
 var DeterministicScoresSchema = external_exports2.object({
-  contextEfficiency: external_exports2.number().min(0).max(100),
-  sessionOutcome: external_exports2.number().min(0).max(100),
-  thinkingQuality: external_exports2.number().min(0).max(100),
-  learningBehavior: external_exports2.number().min(0).max(100),
-  communicationPatterns: external_exports2.number().min(0).max(100),
-  controlScore: external_exports2.number().min(0).max(100)
+  aiPartnership: external_exports2.number().min(0).max(100),
+  sessionCraft: external_exports2.number().min(0).max(100),
+  toolMastery: external_exports2.number().min(0).max(100),
+  skillResilience: external_exports2.number().min(0).max(100),
+  sessionMastery: external_exports2.number().min(0).max(100),
+  controlScore: external_exports2.number().min(0).max(100),
+  // Legacy fields — present on old runs, not computed for new
+  contextEfficiency: external_exports2.number().min(0).max(100).optional(),
+  sessionOutcome: external_exports2.number().min(0).max(100).optional(),
+  thinkingQuality: external_exports2.number().min(0).max(100).optional(),
+  learningBehavior: external_exports2.number().min(0).max(100).optional(),
+  communicationPatterns: external_exports2.number().min(0).max(100).optional()
 });
 var CodingStyleTypeSchema = external_exports2.enum([
   "architect",
@@ -27740,6 +27749,12 @@ var DomainGrowthAreaSchema = external_exports2.object({
 });
 var DomainResultSchema = external_exports2.object({
   domain: external_exports2.enum([
+    "aiPartnership",
+    "sessionCraft",
+    "toolMastery",
+    "skillResilience",
+    "sessionMastery",
+    // Legacy domains accepted for backward compat with old runs
     "thinkingQuality",
     "communicationPatterns",
     "learningBehavior",
@@ -27885,12 +27900,17 @@ var STAGE_NAMES = [
   "evidenceVerification",
   "contentWriter",
   "translator",
+  // 5-dimension extractors (v2)
+  "extractAiPartnership",
+  "extractSessionCraft",
+  "extractToolMastery",
+  "extractSkillResilience",
+  "extractSessionMastery",
+  // Legacy extractors (old runs only)
   "extractAiCollaboration",
   "extractContextEngineering",
-  "extractToolMastery",
   "extractBurnoutRisk",
-  "extractAiControl",
-  "extractSkillResilience"
+  "extractAiControl"
 ];
 var STAGE_SCHEMAS = {
   sessionSummaries: SessionSummaryBatchSchema,
@@ -27900,12 +27920,17 @@ var STAGE_SCHEMAS = {
   evidenceVerification: EvidenceVerificationOutputSchema,
   contentWriter: ContentWriterOutputSchema,
   translator: TranslatorOutputSchema,
+  // 5-dimension extractors (v2)
+  extractAiPartnership: DimensionExtractionSchema,
+  extractSessionCraft: DimensionExtractionSchema,
+  extractToolMastery: DimensionExtractionSchema,
+  extractSkillResilience: DimensionExtractionSchema,
+  extractSessionMastery: DimensionExtractionSchema,
+  // Legacy extractors (old runs)
   extractAiCollaboration: DimensionExtractionSchema,
   extractContextEngineering: DimensionExtractionSchema,
-  extractToolMastery: DimensionExtractionSchema,
   extractBurnoutRisk: DimensionExtractionSchema,
-  extractAiControl: DimensionExtractionSchema,
-  extractSkillResilience: DimensionExtractionSchema
+  extractAiControl: DimensionExtractionSchema
 };
 
 // ../shared/dist/schemas/analysis-run.js
@@ -28329,6 +28354,96 @@ var SessionOutcomeOutputSchema = external_exports2.object({
   failurePatterns: external_exports2.array(FailurePatternSchema),
   // Overall Scores
   overallOutcomeScore: external_exports2.number().min(0).max(100),
+  confidenceScore: external_exports2.number().min(0).max(1),
+  summary: external_exports2.string().optional(),
+  // Domain-specific Strengths & Growth Areas
+  strengths: external_exports2.array(WorkerStrengthSchema).optional(),
+  growthAreas: external_exports2.array(WorkerGrowthSchema).optional(),
+  referencedInsights: external_exports2.array(ReferencedInsightSchema).optional()
+});
+var AiPartnershipOutputSchema = external_exports2.object({
+  // Planning Dimension (from ThinkingQuality)
+  planningHabits: external_exports2.array(PlanningHabitSchema),
+  planQualityScore: external_exports2.number().min(0).max(100),
+  multitaskingPattern: MultitaskingPatternSchema.optional(),
+  // Critical Thinking Dimension (from ThinkingQuality)
+  verificationBehavior: VerificationBehaviorSchema,
+  criticalThinkingMoments: external_exports2.array(CriticalThinkingMomentSchema),
+  verificationAntiPatterns: external_exports2.array(DetectedAntiPatternSchema),
+  // AI Control Dimension (from SessionOutcome)
+  sessionAnalyses: external_exports2.array(SessionAnalysisSchema),
+  overallSuccessRate: external_exports2.number().min(0).max(100),
+  goalDistribution: external_exports2.array(GoalDistributionItemSchema),
+  frictionSummary: external_exports2.array(FrictionSummaryItemSchema),
+  // Overall Scores
+  overallAiPartnershipScore: external_exports2.number().min(0).max(100),
+  confidenceScore: external_exports2.number().min(0).max(1),
+  summary: external_exports2.string().optional(),
+  // Domain-specific Strengths & Growth Areas
+  strengths: external_exports2.array(WorkerStrengthSchema).optional(),
+  growthAreas: external_exports2.array(WorkerGrowthSchema).optional(),
+  referencedInsights: external_exports2.array(ReferencedInsightSchema).optional()
+});
+var SessionCraftOutputSchema = external_exports2.object({
+  // Context Efficiency Dimension
+  contextUsagePatterns: external_exports2.array(ContextUsagePatternSchema),
+  inefficiencyPatterns: external_exports2.array(InefficiencySchema),
+  promptLengthTrends: external_exports2.array(PromptLengthTrendSchema),
+  avgContextFillPercent: external_exports2.number().min(0).max(100),
+  // Burnout / Learning Dimension
+  repeatedMistakePatterns: external_exports2.array(RepeatedMistakePatternSchema),
+  knowledgeGaps: external_exports2.array(KnowledgeGapItemSchema),
+  // Insights
+  topInsights: external_exports2.array(external_exports2.string()).max(3),
+  // Overall Scores
+  overallSessionCraftScore: external_exports2.number().min(0).max(100),
+  confidenceScore: external_exports2.number().min(0).max(1),
+  summary: external_exports2.string().optional(),
+  // Domain-specific Strengths & Growth Areas
+  strengths: external_exports2.array(WorkerStrengthSchema).optional(),
+  growthAreas: external_exports2.array(WorkerGrowthSchema).optional(),
+  referencedInsights: external_exports2.array(ReferencedInsightSchema).optional()
+});
+var AbsenceIndicatorSchema = external_exports2.object({
+  /** Name of the anti-pattern being checked */
+  pattern: external_exports2.string(),
+  /** Whether the anti-pattern was observed */
+  present: external_exports2.boolean(),
+  /** Number of occurrences (0 = absent) */
+  occurrenceCount: external_exports2.number().int().min(0),
+  /** Total sessions checked */
+  sessionsChecked: external_exports2.number().int().min(1),
+  /** Score contribution: 0 (always present) to 100 (always absent) */
+  absenceScore: external_exports2.number().min(0).max(100),
+  /** Evidence of presence (empty if absent — which is good) */
+  evidence: external_exports2.array(EvidenceItemSchema),
+  /**
+   * Expert interpretation:
+   * - 'internalized': absence indicates mastery (skill no longer needs scaffolding)
+   * - 'not_applicable': pattern not relevant for this developer's workflow
+   * - 'concerning': absence may indicate gap (e.g., never verifies output)
+   */
+  interpretation: external_exports2.enum(["internalized", "not_applicable", "concerning"])
+});
+var SessionCleanlinessSchema = external_exports2.object({
+  sessionId: external_exports2.string(),
+  cleanlinessScore: external_exports2.number().min(0).max(100),
+  antiPatternCount: external_exports2.number().int().min(0),
+  /** Indicates expert-level session control */
+  isCleanSession: external_exports2.boolean()
+});
+var SessionMasteryOutputSchema = external_exports2.object({
+  // Absence Indicators
+  absenceIndicators: external_exports2.array(AbsenceIndicatorSchema),
+  // Session Cleanliness
+  sessionCleanliness: external_exports2.array(SessionCleanlinessSchema),
+  cleanSessionPercentage: external_exports2.number().min(0).max(100),
+  // Expert Differentiation
+  scaffoldingDependencyScore: external_exports2.number().min(0).max(100),
+  internalizedSkillSignals: external_exports2.array(external_exports2.string()),
+  expertBehaviorIndicators: external_exports2.array(external_exports2.string()),
+  // Overall Scores
+  overallSessionMasteryScore: external_exports2.number().min(0).max(100),
   confidenceScore: external_exports2.number().min(0).max(1),
   summary: external_exports2.string().optional(),
   // Domain-specific Strengths & Growth Areas
@@ -29026,14 +29141,56 @@ function scoreControl(metrics) {
   const commandSignal = Math.min(uniqueCommands * 10 + totalCommands * 2, 100);
   return clampScore(rejectionSignal * 0.25 + questionSignal * 0.25 + lengthSignal * 0.25 + commandSignal * 0.25);
 }
+function scoreAiPartnership(metrics) {
+  const thinking = scoreThinkingQuality(metrics);
+  const outcome = scoreSessionOutcome(metrics);
+  const control = scoreControl(metrics);
+  return clampScore(thinking * 0.4 + outcome * 0.35 + control * 0.25);
+}
+function scoreSessionCraft(metrics) {
+  const efficiency = scoreContextEfficiency(metrics);
+  const learning = scoreLearningBehavior(metrics);
+  return clampScore(efficiency * 0.55 + learning * 0.45);
+}
+function scoreSkillResilience(metrics) {
+  const totalSessions = Math.max(metrics.totalSessions, 1);
+  const totalUtterances = Math.max(metrics.totalDeveloperUtterances, 1);
+  const shortSessions = metrics.sessionHints?.shortSessions ?? 0;
+  const shortRatio = shortSessions / totalSessions;
+  const coldStartScore = bellCurveScore(shortRatio * 100, 20, 50, 3e-3);
+  const bareRetryRate = (metrics.frictionSignals?.bareRetryAfterErrorCount ?? 0) / totalUtterances;
+  const recoveryScore = invertedScale(bareRetryRate * 200);
+  const slashCmds = metrics.slashCommandCounts ?? {};
+  const uniqueCommands = Object.keys(slashCmds).length;
+  const diversityScore = Math.min(uniqueCommands * 12 + 20, 100);
+  return clampScore(coldStartScore * 0.3 + recoveryScore * 0.4 + diversityScore * 0.3);
+}
+function scoreSessionMastery(metrics) {
+  const totalSessions = Math.max(metrics.totalSessions, 1);
+  const totalUtterances = Math.max(metrics.totalDeveloperUtterances, 1);
+  const friction = metrics.frictionSignals;
+  const excessiveIterationRate = (friction?.excessiveIterationSessions ?? 0) / totalSessions;
+  const noExcessiveScore = invertedScale(excessiveIterationRate * 150);
+  const overflowRate = (metrics.contextFillExceeded90Count ?? 0) / totalSessions;
+  const noOverflowScore = invertedScale(overflowRate * 120);
+  const bareRetryRate = (friction?.bareRetryAfterErrorCount ?? 0) / totalUtterances;
+  const noRetryScore = invertedScale(bareRetryRate * 300);
+  const frustrationRate = (friction?.frustrationExpressionCount ?? 0) / totalUtterances;
+  const noFrustrationScore = invertedScale(frustrationRate * 400);
+  const toolFailureRate = (friction?.toolFailureCount ?? 0) / Math.max(metrics.totalMessages, 1);
+  const noToolFailureScore = invertedScale(toolFailureRate * 200);
+  const mediumSessions = metrics.sessionHints?.mediumSessions ?? 0;
+  const focusBonus = mediumSessions / totalSessions * 15;
+  return clampScore(noExcessiveScore * 0.25 + noOverflowScore * 0.2 + noRetryScore * 0.2 + noFrustrationScore * 0.15 + noToolFailureScore * 0.1 + focusBonus + 10);
+}
 function computeDeterministicScores(phase1Output) {
   const metrics = phase1Output.sessionMetrics;
   return {
-    contextEfficiency: scoreContextEfficiency(metrics),
-    sessionOutcome: scoreSessionOutcome(metrics),
-    thinkingQuality: scoreThinkingQuality(metrics),
-    learningBehavior: scoreLearningBehavior(metrics),
-    communicationPatterns: scoreCommunicationPatterns(metrics, phase1Output),
+    aiPartnership: scoreAiPartnership(metrics),
+    sessionCraft: scoreSessionCraft(metrics),
+    toolMastery: scoreCommunicationPatterns(metrics, phase1Output),
+    skillResilience: scoreSkillResilience(metrics),
+    sessionMastery: scoreSessionMastery(metrics),
     controlScore: scoreControl(metrics)
   };
 }
@@ -29120,8 +29277,8 @@ function computeAffinities(scores, metrics, trendDensity) {
   const slashCmds = metrics.slashCommandCounts ?? {};
   const planCount = (slashCmds["plan"] ?? 0) + (slashCmds["review"] ?? 0);
   const planBonus = planCount > 0 ? Math.min(planCount * 8, 30) : 0;
-  const architectAffinity = scores.thinkingQuality * 0.5 + scores.controlScore * 0.3 + planBonus;
-  const analystAffinity = scores.thinkingQuality * 0.3 + scores.learningBehavior * 0.4 + scores.sessionOutcome * 0.2 + (metrics.questionRatio > 0.2 ? 10 : 0);
+  const architectAffinity = scores.aiPartnership * 0.5 + scores.controlScore * 0.3 + planBonus;
+  const analystAffinity = scores.aiPartnership * 0.3 + scores.sessionCraft * 0.4 + scores.sessionMastery * 0.2 + (metrics.questionRatio > 0.2 ? 10 : 0);
   const uniqueCommands = Object.keys(slashCmds).length;
   const totalCommands = Object.values(slashCmds).reduce((sum, c) => sum + c, 0);
   const orchestrationCmds = (slashCmds["sisyphus"] ?? 0) + (slashCmds["orchestrator"] ?? 0) + (slashCmds["ultrawork"] ?? 0) + (slashCmds["ralph-loop"] ?? 0);
@@ -29131,9 +29288,9 @@ function computeAffinities(scores, metrics, trendDensity) {
   const conductorAffinity = commandDiversityScore + commandVolumeScore + orchestrationBonus;
   const avgLen = metrics.avgDeveloperMessageLength;
   const concisenessScore = avgLen < 200 ? 40 : avgLen < 400 ? 25 : 10;
-  const speedrunnerAffinity = scores.contextEfficiency * 0.5 + concisenessScore + (scores.sessionOutcome > 70 ? 15 : 0);
+  const speedrunnerAffinity = scores.sessionCraft * 0.5 + concisenessScore + (scores.sessionMastery > 70 ? 15 : 0);
   const trendKeywordScore = trendDensity > 3 ? Math.min(trendDensity * 15, 60) : trendDensity * 5;
-  const learningCuriosityBonus = scores.learningBehavior > 70 ? 15 : 0;
+  const learningCuriosityBonus = scores.sessionCraft > 70 ? 15 : 0;
   const trendsetterAffinity = trendKeywordScore + learningCuriosityBonus;
   return {
     architect: architectAffinity,
@@ -29581,4 +29738,4 @@ export {
   clearAnalysisPending,
   shouldResumeRunningAnalysis
 };
-//# sourceMappingURL=chunk-72GWNTBD.js.map
+//# sourceMappingURL=chunk-SUEN2LKX.js.map
