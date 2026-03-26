@@ -162,9 +162,14 @@ Then ask the user what they would like to do next.
 If the user already said to continue working or to run analysis now, follow that instruction directly and do not call `AskUserQuestion`.
 
 Use `AskUserQuestion` with these options:
-- **"Queue bp analyze for next session"** (Recommended) — call `save_user_prefs` with `{ "queueAnalysis": true }` so the analysis auto-starts in the next session with a fresh rate-limit budget. Tell the user: "Analysis queued! It will start automatically in your next Claude Code session."
-- **"Run bp analyze now"** — warn the user: "Running analysis immediately after setup may hit API rate limits. If it fails, just start a new session and it will auto-resume." Then invoke the `bp-analyze` skill.
-- **"Continue working"** — call `save_user_prefs` with `{ "queueAnalysis": true }` so analysis starts in a future session, then exit the wizard
+- **"Run bp analyze now"** (Recommended) — dispatch `bp-analyze` as an **Agent** (not as an inline skill) so it starts with a clean context. Use the Agent tool with:
+    ```
+    model: sonnet
+    description: "bp: analyze"
+    prompt: "Read the skill instructions at [PLUGIN_PATH]/skills/bp-analyze/SKILL.md and follow them exactly. You have access to BetterPrompt MCP tools. Execute the complete analysis workflow."
+    ```
+    To resolve `[PLUGIN_PATH]`: find the BetterPrompt plugin root by searching for the skills directory under `~/.claude/plugins/cache/betterprompt/`.
+- **"Continue working"** — call `save_user_prefs` with `{ "queueAnalysis": true }` so analysis auto-starts in a future session, then exit the wizard
 
 ### Step 7: Complete
 
