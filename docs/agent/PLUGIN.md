@@ -7,7 +7,7 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | File | Purpose |
 |------|---------|
 | `mcp/server-entry.ts` | Bootstrap entry point — installs native deps (better-sqlite3) then dynamically imports server.ts. Enables single-session install-to-result flow |
-| `mcp/server.ts` | MCP server, stdio transport, registers 15 tools (12 local-first + 3 server-backed) |
+| `mcp/server.ts` | MCP server, stdio transport, registers 17 tools (14 local-first + 3 server-backed) |
 | `mcp/tools/scan-sessions.ts` | Tool: scan Claude Code + Cursor session logs, return metadata |
 | `mcp/tools/extract-data.ts` | Tool: deterministic Phase 1 extraction + scoring |
 | `mcp/tools/save-domain-results.ts` | Tool: save domain analysis with Zod validation + quality gates |
@@ -20,6 +20,8 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `mcp/tools/save-stage-output.ts` | Tool: save pipeline stage output with schema validation |
 | `mcp/tools/get-stage-output.ts` | Tool: read pipeline stage outputs (one or all) |
 | `mcp/tools/get-prompt-context.ts` | Tool: stage/domain-specific prompt payloads for skills |
+| `mcp/tools/get-user-prefs.ts` | Tool: read user preferences (selected projects, onboarding state) |
+| `mcp/tools/save-user-prefs.ts` | Tool: save user preferences |
 | `mcp/tools/get-developer-profile.ts` | Tool (server-backed): profile type, scores, personality |
 | `mcp/tools/get-growth-areas.ts` | Tool (server-backed): growth areas, optional domain filter |
 | `mcp/tools/get-recent-insights.ts` | Tool (server-backed): strengths / anti-patterns / KPT |
@@ -34,6 +36,7 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `lib/api-client.ts` | HTTP client, `fetchUserSummary()`, `verifyAuth()` |
 | `lib/prefs.ts` | User preferences (`~/.betterprompt/prefs.json`), first-run detection |
 | `lib/debounce.ts` | Debounce rules, state file read/write |
+| `lib/project-filters.ts` | Session filtering by selected projects |
 | `lib/background-analyzer.ts` | Deprecated cutover stub kept only to fail loudly if invoked |
 | `lib/core/session-scanner.ts` | Claude Code JSONL parsing and local data-dir helpers |
 | `lib/core/multi-source-session-scanner.ts` | Multi-source scanner coordinator (Claude Code + Cursor) |
@@ -77,12 +80,14 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `save_stage_output` | `stage: enum`, `data: {}` | `{ stage, runId }` |
 | `get_stage_output` | `stage?: string` | Single stage output or all stages |
 | `get_prompt_context` | `kind: enum`, `domain?: enum` | Stage/domain-specific prompt payload |
+| `get_user_prefs` | none | User preferences (selected projects, onboarding state) |
+| `save_user_prefs` | `prefs: {}` | Save user preferences |
 
-Domain enum: `thinkingQuality`, `communicationPatterns`, `learningBehavior`, `contextEfficiency`, `sessionOutcome`, `content`
+Domain enum: `aiPartnership`, `sessionCraft`, `toolMastery`, `skillResilience`, `sessionMastery`
 
-Stage enum: `sessionSummaries`, `projectSummaries`, `weeklyInsights`, `typeClassification`, `evidenceVerification`, `contentWriter`, `translator`
+Stage enum: `sessionSummaries`, `extractAiPartnership`, `extractSessionCraft`, `extractToolMastery`, `extractSkillResilience`, `extractSessionMastery`, `projectSummaries`, `weeklyInsights`, `typeClassification`, `evidenceVerification`, `contentWriter`
 
-Prompt context kinds: `sessionSummaries`, `domainAnalysis`, `projectSummaries`, `weeklyInsights`, `typeClassification`, `evidenceVerification`, `contentWriter`, `translation`
+Prompt context kinds: `sessionSummaries`, `domainAnalysis`, `projectSummaries`, `weeklyInsights`, `typeClassification`, `evidenceVerification`, `contentWriter`
 
 ### Server-Backed Tools (backward compatible)
 

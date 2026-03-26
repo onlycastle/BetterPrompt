@@ -31,7 +31,7 @@ const DOMAIN_STAGE_NAMES = new Set([
 
 /**
  * 5-dimension pipeline stage sequence (v2).
- * Reduced from 19 stages (6+6 extract/write) to 15 stages (5+5 extract/write).
+ * Reduced from 19 stages (6+6 extract/write) to 17 stages (5+5 extract/write + context/classification/verification/content).
  */
 export const REQUIRED_STAGE_SEQUENCE = [
   { stage: 'sessionSummaries', skill: 'summarize-sessions', tool: null, kind: 'stage' },
@@ -217,7 +217,7 @@ export async function execute(): Promise<string> {
   }
 
   // Return compact response to reduce orchestrator context accumulation.
-  // Only include incomplete/failed stages instead of the full 19-entry array.
+  // Only include incomplete/failed stages instead of the full 17-entry array.
   const pendingStages = progress.stages
     .filter(stage => !stage.completed)
     .map(({ stage, skill, tool, kind, status, lastError }) => ({
