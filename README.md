@@ -91,7 +91,7 @@ This checks all 8 components (build artifacts, native dependencies, MCP config, 
 | Problem | Fix |
 |---------|-----|
 | `better-sqlite3` won't compile | Install build tools: `xcode-select --install` (macOS) or `sudo apt install build-essential python3` (Linux) |
-| MCP server not starting | Restart Claude Code after plugin install |
+| MCP server not starting | Run `/reload-plugins` in Claude Code, or restart Claude Code |
 | Rate limits during analysis | Reduce scope: select fewer projects in `bp setup`, or run analysis during off-peak hours |
 
 ### Uninstalling
