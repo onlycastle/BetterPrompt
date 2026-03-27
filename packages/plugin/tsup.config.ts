@@ -2,8 +2,7 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig({
   entry: {
-    'mcp/server-entry': 'mcp/server-entry.ts',
-    'mcp/server': 'mcp/server.ts',
+    'cli/index': 'cli/index.ts',
     'hooks/post-session-handler': 'hooks/post-session-handler.ts',
     'hooks/session-start-handler': 'hooks/session-start-handler.ts',
   },
@@ -16,7 +15,7 @@ export default defineConfig({
   sourcemap: true,
   dts: false,
   // Bundle these into output (not available via node_modules at runtime)
-  noExternal: [/@betterprompt\/shared/, '@modelcontextprotocol/sdk', 'zod'],
+  noExternal: [/@betterprompt\/shared/, 'zod'],
   // Only native addon stays external — installed by SessionStart hook
   external: ['better-sqlite3'],
 });
