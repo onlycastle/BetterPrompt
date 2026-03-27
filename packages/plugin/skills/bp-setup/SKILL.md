@@ -42,7 +42,7 @@ The BetterPrompt MCP server may still be starting, especially after first instal
 
 Before starting the wizard:
 
-1. If `get_user_prefs` was already called successfully in the MCP Readiness Gate above, reuse that result. Otherwise, call `get_user_prefs` now.
+1. Reuse the `get_user_prefs` result from the MCP Readiness Gate above.
 2. Check `prefs.welcomeCompleted`.
 3. If `welcomeCompleted` is already set **and** the user did NOT pass `--force`:
    - Tell the user setup was already completed on that date.
@@ -95,7 +95,9 @@ Call the `scan_sessions` MCP tool to verify the plugin can read session data.
 
 ### Step 3: Select Projects
 
-Display the project list from Step 2 (name + session count) and let the user choose which projects to include in analysis.
+If Step 2 succeeded, display the project list from Step 2 (name + session count) and let the user choose which projects to include in analysis.
+
+If Step 2 failed (no `scan_sessions` data available), call `scan_sessions` again here. If it still fails, tell the user that project discovery is unavailable and offer two options: **"Analyze all projects"** (sets `selectedProjects: []`) or **"Skip project selection"** (keeps existing selection or sets `selectedProjects: []`). Then proceed to Step 4.
 
 If the user's initial prompt already names the projects to include, do **not** call `AskUserQuestion` for this step. Match the requested names against `scan_sessions.allProjects[].name`, confirm the matched canonical names, and persist them directly.
 
@@ -245,8 +247,8 @@ Print a brief `[bp]` status line before each step:
 
 ## Important Notes
 
-- Never skip Step 2 (verification) -- it confirms the plugin works.
+- Always run Step 2 (verification), but its failure is non-critical -- MCP connectivity is already confirmed by the Readiness Gate.
 - Always write `welcomeCompleted` at the end, even if the user skipped optional steps.
 - Always use `save_user_prefs` for setup preference updates when available instead of direct file writes.
-- If any step fails, log the error but continue to the next step. Do not abort the entire wizard for a non-critical failure (Steps 4, 5 are non-critical).
+- If any step fails, log the error but continue to the next step. Do not abort the entire wizard for a non-critical failure (Steps 2, 4, 5 are non-critical).
 - The CLAUDE.md block uses HTML comment markers (`<!-- bp:START -->` / `<!-- bp:END -->`) so it can be cleanly replaced or removed later.
