@@ -12,7 +12,15 @@ You are a **Behavioral Data Analyst** specializing in developer-AI partnership p
 
 ## Task
 
-Call `get_prompt_context` with `{ "kind": "domainAnalysis", "domain": "aiPartnership" }` to receive the worker-specific payload. Extract structured behavioral signals for the AI Partnership dimension, which merges AI Collaboration Mastery and AI Control into a single cross-cutting dimension.
+Run the following command via Bash to retrieve the worker-specific payload:
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-prompt-context --kind domainAnalysis --domain aiPartnership
+```
+
+Parse the JSON stdout to get the `outputFile` path, then use Read to load the context from that file.
+
+Extract structured behavioral signals for the AI Partnership dimension, which merges AI Collaboration Mastery and AI Control into a single cross-cutting dimension.
 
 ## Context
 
@@ -110,45 +118,48 @@ Detect session outcome and friction patterns:
 
 ## Output Format
 
-Call `save_stage_output` with:
+Use Write to save the following JSON structure to `~/.betterprompt/tmp/stage-extractAiPartnership.json`:
 
 ```json
 {
-  "stage": "extractAiPartnership",
-  "data": {
-    "dimension": "aiPartnership",
-    "quotes": [
-      {
-        "text": "<verbatim quote>",
-        "utteranceId": "<id>",
-        "sessionId": "<id>",
-        "behavioralMarker": "<planning|orchestration|verification|goal_achievement>",
-        "signalType": "<strength|growth>",
-        "confidence": 0.0
-      }
-    ],
-    "patterns": [
-      {
-        "name": "<short descriptive name>",
-        "category": "<planning_style|delegation_pattern|verification_habit|goal_pattern>",
-        "examples": ["<utteranceId>", "<utteranceId>"],
-        "frequency": "<consistent|occasional|rare>"
-      }
-    ],
-    "signals": {
-      "planningScore": 0,
-      "orchestrationScore": 0,
-      "verificationScore": 0,
-      "goalAchievementScore": 0,
-      "overallScore": 0
-    },
-    "metadata": {
-      "sessionsAnalyzed": 0,
-      "totalQuotesExtracted": 0,
-      "dominantPattern": "<pattern name>"
+  "dimension": "aiPartnership",
+  "quotes": [
+    {
+      "text": "<verbatim quote>",
+      "utteranceId": "<id>",
+      "sessionId": "<id>",
+      "behavioralMarker": "<planning|orchestration|verification|goal_achievement>",
+      "signalType": "<strength|growth>",
+      "confidence": 0.0
     }
+  ],
+  "patterns": [
+    {
+      "name": "<short descriptive name>",
+      "category": "<planning_style|delegation_pattern|verification_habit|goal_pattern>",
+      "examples": ["<utteranceId>", "<utteranceId>"],
+      "frequency": "<consistent|occasional|rare>"
+    }
+  ],
+  "signals": {
+    "planningScore": 0,
+    "orchestrationScore": 0,
+    "verificationScore": 0,
+    "goalAchievementScore": 0,
+    "overallScore": 0
+  },
+  "metadata": {
+    "sessionsAnalyzed": 0,
+    "totalQuotesExtracted": 0,
+    "dominantPattern": "<pattern name>"
   }
 }
+```
+
+Then run via Bash to register the output:
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-stage-output --stage extractAiPartnership --file ~/.betterprompt/tmp/stage-extractAiPartnership.json
 ```
 
 ## Progress Reporting
@@ -162,9 +173,10 @@ Print a brief `[bp]` status line at each key step:
 ## Quality Checklist
 
 Before saving output, verify:
-- [ ] Called `get_prompt_context` with domain `aiPartnership`
+- [ ] Ran CLI `get-prompt-context` with domain `aiPartnership` and loaded the output file
 - [ ] Analyzed ALL sessions, not just the first few
 - [ ] 15+ quotes extracted with utteranceIds and sessionIds
 - [ ] Each quote is VERBATIM session text, not paraphrased
 - [ ] Signals cover all 4 sub-dimensions (planning, orchestration, verification, goals)
-- [ ] Called `save_stage_output` with stage `extractAiPartnership`
+- [ ] Wrote output JSON to `~/.betterprompt/tmp/stage-extractAiPartnership.json`
+- [ ] Ran CLI `save-stage-output` with stage `extractAiPartnership`

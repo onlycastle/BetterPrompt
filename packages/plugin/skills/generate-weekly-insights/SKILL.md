@@ -27,7 +27,12 @@ Phase 1 output provides per session:
 
 ### Step 1: Load Phase 1 Output
 
-Call `get_prompt_context` with `{ "kind": "weeklyInsights" }` and extract the returned activity-session payload with Phase 1.5 summaries.
+Run via Bash:
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-prompt-context --kind weeklyInsights
+```
+
+Parse the JSON stdout to get the `outputFile` path, then use Read to load that file. Extract the returned activity-session payload with Phase 1.5 summaries.
 
 ### Step 2: Compute Deterministic Stats
 
@@ -100,11 +105,11 @@ If no sessions fall within the current week window:
 - Set `highlights` to an empty array
 - Set `projects` to an empty array
 - Set `topSessions` to an empty array
-- Still call `save_stage_output` with this zero-state data
+- Still save this zero-state data via Write + CLI `save-stage-output` as described in Step 7
 
 ### Step 7: Save Output
 
-Call `save_stage_output` with the following arguments:
+Use Write to save the output JSON to `~/.betterprompt/tmp/stage-weeklyInsights.json` with this structure:
 
 ```json
 {
@@ -157,6 +162,11 @@ Call `save_stage_output` with the following arguments:
 }
 ```
 
+Then run via Bash:
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-stage-output --stage weeklyInsights --file ~/.betterprompt/tmp/stage-weeklyInsights.json
+```
+
 **Schema requirements:**
 - `stats.sessionCount` (integer >= 0): Total sessions this week
 - `stats.totalMinutes` (number >= 0): Total minutes this week
@@ -172,7 +182,7 @@ Call `save_stage_output` with the following arguments:
 
 ## Error Handling
 
-- If `get_prompt_context` cannot return the weekly-insights payload, report the error. Do not fabricate stats.
+- If the CLI `get-prompt-context` command fails or cannot return the weekly-insights payload, report the error. Do not fabricate stats.
 - If sessions have missing or unparseable `startTime`, exclude them from week splitting but log a warning.
 - If `totalInputTokens` or `totalOutputTokens` is missing from a session, treat them as 0 for token calculations.
 - If all sessions fall outside the 14-day window, use the zero-sessions edge case path.
@@ -187,7 +197,7 @@ Print a brief `[bp]` status line at each key step:
 
 ## Quality Checklist
 
-- [ ] Loaded weekly-insights context via `get_prompt_context`
+- [ ] Loaded weekly-insights context via CLI `get-prompt-context`
 - [ ] Correctly split sessions into this-week and previous-week buckets
 - [ ] Stats are deterministic (computed from data, not estimated)
 - [ ] Deltas omitted when previous week has no sessions
@@ -197,4 +207,4 @@ Print a brief `[bp]` status line at each key step:
 - [ ] Narrative is 2-3 sentences, specific, references project names
 - [ ] Highlights are 3-5 items, each one concise sentence with specific info
 - [ ] Zero-session edge case handled correctly
-- [ ] Called `save_stage_output` with stage `"weeklyInsights"`
+- [ ] Saved output via Write + CLI `save-stage-output` with stage `"weeklyInsights"`

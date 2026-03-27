@@ -23,10 +23,14 @@ Based on saved domain analysis results, classify the builder into:
 
 ## Inputs
 
-1. Call `get_prompt_context` with `{ "kind": "typeClassification" }`.
+1. Run via Bash:
+   ```bash
+   node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-prompt-context --kind typeClassification
+   ```
+   Parse the JSON stdout to get the `outputFile` path, then use Read to load that file.
 2. Use the returned deterministic scores, deterministic type result, session metrics, and saved domain results for the current run.
-3. Do NOT read raw `tool-results` files, `~/.betterprompt/phase1-output.json`, or other saved artifacts after calling `get_prompt_context`. The returned MCP payload is the canonical input for this skill.
-4. If `deterministicType` is null, call `classify_developer_type`, then call `get_prompt_context` again and continue with the refreshed payload.
+3. Do NOT read raw `tool-results` files, `~/.betterprompt/phase1-output.json`, or other saved artifacts after loading the context. The returned CLI payload is the canonical input for this skill.
+4. If `deterministicType` is null, run `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js classify-developer-type` via Bash, then run `get-prompt-context` again and continue with the refreshed payload.
 5. If `deterministicType` is still null after that refresh, stop and report the missing deterministic type result. Do not invent one.
 6. If `domainResults` is empty, stop and report that the writer stages have not been saved yet. Do not fabricate narrative domain evidence from scratch.
 
@@ -242,7 +246,7 @@ Frame the growth edge using the "shadow-strength" technique:
 
 ## Output
 
-Call `save_stage_output` with:
+Use Write to save the output JSON to `~/.betterprompt/tmp/stage-typeClassification.json` with this structure, then run `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-stage-output --stage typeClassification --file ~/.betterprompt/tmp/stage-typeClassification.json` via Bash.
 
 ```json
 {
@@ -290,9 +294,9 @@ Print a brief `[bp]` status line at each key step:
 
 ## Quality Checklist
 
-- [ ] Loaded type-classification context via `get_prompt_context`
+- [ ] Loaded type-classification context via CLI `get-prompt-context`
 - [ ] Read deterministic type result (do not reclassify from scratch)
-- [ ] Used only the returned `get_prompt_context` payload for domain evidence
+- [ ] Used only the returned CLI payload for domain evidence
 - [ ] `reasoning` is an ARRAY of exactly 3 strings
 - [ ] Each reasoning element is 300-500 characters (total 900-1300)
 - [ ] Element [0] uses 3rd person with matrixName as subject
@@ -305,4 +309,4 @@ Print a brief `[bp]` status line at each key step:
 - [ ] Distribution sums to 100
 - [ ] No hedging words used ("may", "might", "tends to", etc.)
 - [ ] Metaphors are universally recognizable (no culture-specific idioms)
-- [ ] Called `save_stage_output` with stage "typeClassification"
+- [ ] Saved output via Write + CLI `save-stage-output` with stage `"typeClassification"`

@@ -12,7 +12,15 @@ You are a **Behavioral Data Analyst** specializing in session sustainability and
 
 ## Task
 
-Call `get_prompt_context` with `{ "kind": "domainAnalysis", "domain": "sessionCraft" }` to receive the worker-specific payload. Extract structured behavioral signals for the Session Craft dimension, which merges Context Engineering and Burnout Risk into a single cross-cutting dimension.
+Run the following command via Bash to retrieve the worker-specific payload:
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-prompt-context --kind domainAnalysis --domain sessionCraft
+```
+
+Parse the JSON stdout to get the `outputFile` path, then use Read to load the context from that file.
+
+Extract structured behavioral signals for the Session Craft dimension, which merges Context Engineering and Burnout Risk into a single cross-cutting dimension.
 
 ## Context
 
@@ -79,28 +87,31 @@ Extract signals OBJECTIVELY. Identify BOTH strength and growth signals with equa
 
 ## Output Format
 
-Call `save_stage_output` with:
+Use Write to save the following JSON structure to `~/.betterprompt/tmp/stage-extractSessionCraft.json`:
 
 ```json
 {
-  "stage": "extractSessionCraft",
-  "data": {
-    "dimension": "sessionCraft",
-    "quotes": [...],
-    "patterns": [...],
-    "signals": {
-      "contextEfficiencyScore": 0,
-      "sustainabilityScore": 0,
-      "learningScore": 0,
-      "overallScore": 0
-    },
-    "metadata": {
-      "sessionsAnalyzed": 0,
-      "totalQuotesExtracted": 0,
-      "avgContextFillPercent": 0
-    }
+  "dimension": "sessionCraft",
+  "quotes": [...],
+  "patterns": [...],
+  "signals": {
+    "contextEfficiencyScore": 0,
+    "sustainabilityScore": 0,
+    "learningScore": 0,
+    "overallScore": 0
+  },
+  "metadata": {
+    "sessionsAnalyzed": 0,
+    "totalQuotesExtracted": 0,
+    "avgContextFillPercent": 0
   }
 }
+```
+
+Then run via Bash to register the output:
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-stage-output --stage extractSessionCraft --file ~/.betterprompt/tmp/stage-extractSessionCraft.json
 ```
 
 ## Progress Reporting
@@ -112,8 +123,9 @@ Call `save_stage_output` with:
 
 ## Quality Checklist
 
-- [ ] Called `get_prompt_context` with domain `sessionCraft`
+- [ ] Ran CLI `get-prompt-context` with domain `sessionCraft` and loaded the output file
 - [ ] Analyzed ALL sessions
 - [ ] 12+ quotes extracted with utteranceIds
 - [ ] Signals cover all 3 sub-dimensions
-- [ ] Called `save_stage_output` with stage `extractSessionCraft`
+- [ ] Wrote output JSON to `~/.betterprompt/tmp/stage-extractSessionCraft.json`
+- [ ] Ran CLI `save-stage-output` with stage `extractSessionCraft`

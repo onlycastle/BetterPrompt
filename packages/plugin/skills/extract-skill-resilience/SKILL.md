@@ -12,7 +12,13 @@ You are a **Behavioral Data Analyst** specializing in developer skill resilience
 
 ## Task
 
-Extract Skill Resilience signals from the developer's session data. Call `get_prompt_context` with `{ "kind": "domainAnalysis", "domain": "skillResilience" }` and extract resilience behavior signals from the returned payload. Save extracted signals via `save_stage_output` under the stage name `extractSkillResilience`.
+Extract Skill Resilience signals from the developer's session data. Run the following command via Bash to retrieve the worker-specific payload:
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-prompt-context --kind domainAnalysis --domain skillResilience
+```
+
+Parse the JSON stdout to get the `outputFile` path, then use Read to load the context from that file. Extract resilience behavior signals from the loaded payload. Save extracted signals under the stage name `extractSkillResilience` (see Output section below).
 
 ## Context
 
@@ -230,74 +236,77 @@ Extract quotes for the following categories. Each quote must be the developer's 
 
 ### Output
 
-Call `save_stage_output` with the following structure:
+Use Write to save the following JSON structure to `~/.betterprompt/tmp/stage-extractSkillResilience.json`:
 
 ```json
 {
-  "stage": "extractSkillResilience",
-  "data": {
-    "dimension": "skillResilience",
-    "quotes": [
-      {
-        "utteranceId": "abc123_1",
-        "text": "In src/auth/middleware.ts, the validateToken function fails when the JWT is expired but the refresh token is still valid. Without modifying the token schema, add logic to attempt a silent refresh before rejecting.",
-        "category": "first_prompt",
-        "signalType": "strength",
-        "sessionId": "abc123"
-      },
-      {
-        "utteranceId": "def456_8",
-        "text": "That's the wrong method -- use createServerClient not createClient for server components",
-        "category": "correction_event",
-        "signalType": "strength"
-      },
-      {
-        "utteranceId": "ghi789_14",
-        "text": "Wait, what does this useEffect dependency array actually do?",
-        "category": "e_gap_request",
-        "signalType": "growth"
-      }
-    ],
-    "patterns": [
-      {
-        "name": "rich_first_prompts",
-        "description": "Developer opens sessions with file references, constraint statements, and specific problem descriptions",
-        "frequency": "consistent",
-        "sessionsPresent": 5,
-        "exampleQuotes": ["In src/auth/middleware.ts, the validateToken...", "Without changing the schema, add..."]
-      },
-      {
-        "name": "correction_on_scope_violations",
-        "description": "Developer catches and corrects AI changes outside the requested scope",
-        "frequency": "occasional",
-        "sessionsPresent": 2,
-        "exampleQuotes": ["I only asked you to modify the handler, not the model", "You changed the test file, revert that"]
-      },
-      {
-        "name": "post_acceptance_comprehension_gap",
-        "description": "Developer asks AI to explain code after accepting it, indicating code was accepted without understanding",
-        "frequency": "consistent",
-        "sessionsPresent": 3,
-        "exampleQuotes": ["What does this function return?", "How does this work exactly?"]
-      }
-    ],
-    "signals": {
-      "coldStartScore": 74,
-      "hallucinationDetectionScore": 52,
-      "explainabilityScore": 60,
-      "overallScore": 63,
-      "resilienceLevel": "developing"
+  "dimension": "skillResilience",
+  "quotes": [
+    {
+      "utteranceId": "abc123_1",
+      "text": "In src/auth/middleware.ts, the validateToken function fails when the JWT is expired but the refresh token is still valid. Without modifying the token schema, add logic to attempt a silent refresh before rejecting.",
+      "category": "first_prompt",
+      "signalType": "strength",
+      "sessionId": "abc123"
     },
-    "metadata": {
-      "sessionsAnalyzed": 8,
-      "totalQuotesExtracted": 19,
-      "avgFirstPromptLength": 187,
-      "correctionRate": 0.12,
-      "explanationRequestRate": 0.10,
-      "dominantPattern": "rich_first_prompts"
+    {
+      "utteranceId": "def456_8",
+      "text": "That's the wrong method -- use createServerClient not createClient for server components",
+      "category": "correction_event",
+      "signalType": "strength"
+    },
+    {
+      "utteranceId": "ghi789_14",
+      "text": "Wait, what does this useEffect dependency array actually do?",
+      "category": "e_gap_request",
+      "signalType": "growth"
     }
+  ],
+  "patterns": [
+    {
+      "name": "rich_first_prompts",
+      "description": "Developer opens sessions with file references, constraint statements, and specific problem descriptions",
+      "frequency": "consistent",
+      "sessionsPresent": 5,
+      "exampleQuotes": ["In src/auth/middleware.ts, the validateToken...", "Without changing the schema, add..."]
+    },
+    {
+      "name": "correction_on_scope_violations",
+      "description": "Developer catches and corrects AI changes outside the requested scope",
+      "frequency": "occasional",
+      "sessionsPresent": 2,
+      "exampleQuotes": ["I only asked you to modify the handler, not the model", "You changed the test file, revert that"]
+    },
+    {
+      "name": "post_acceptance_comprehension_gap",
+      "description": "Developer asks AI to explain code after accepting it, indicating code was accepted without understanding",
+      "frequency": "consistent",
+      "sessionsPresent": 3,
+      "exampleQuotes": ["What does this function return?", "How does this work exactly?"]
+    }
+  ],
+  "signals": {
+    "coldStartScore": 74,
+    "hallucinationDetectionScore": 52,
+    "explainabilityScore": 60,
+    "overallScore": 63,
+    "resilienceLevel": "developing"
+  },
+  "metadata": {
+    "sessionsAnalyzed": 8,
+    "totalQuotesExtracted": 19,
+    "avgFirstPromptLength": 187,
+    "correctionRate": 0.12,
+    "explanationRequestRate": 0.10,
+    "dominantPattern": "rich_first_prompts"
   }
 }
+```
+
+Then run via Bash to register the output:
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-stage-output --stage extractSkillResilience --file ~/.betterprompt/tmp/stage-extractSkillResilience.json
 ```
 
 ### Quote Array Requirements
@@ -329,7 +338,7 @@ Print a brief `[bp]` status line at each key step:
 
 ## Quality Checklist
 
-- [ ] Loaded skillResilience prompt context via `get_prompt_context`
+- [ ] Ran CLI `get-prompt-context` with domain `skillResilience` and loaded the output file
 - [ ] Identified the FIRST utterance of each session for M_CSR scoring
 - [ ] Scored each session's first utterance individually using the M_CSR point rubric
 - [ ] Computed average first-prompt length in characters across all sessions
@@ -349,4 +358,5 @@ Print a brief `[bp]` status line at each key step:
 - [ ] Every pattern uses schema-compatible `frequency` values (`consistent`, `occasional`, or `rare`)
 - [ ] `dominantPattern` reflects the strongest recurring pattern based on `frequency` and session coverage
 - [ ] No hedging language used anywhere in output
-- [ ] Called `save_stage_output` with stage `"extractSkillResilience"`
+- [ ] Wrote output JSON to `~/.betterprompt/tmp/stage-extractSkillResilience.json`
+- [ ] Ran CLI `save-stage-output` with stage `extractSkillResilience`

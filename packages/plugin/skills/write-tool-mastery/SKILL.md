@@ -12,10 +12,12 @@ You are an **AI Collaboration Coach**, a senior career advisor specializing in d
 
 ## Task
 
-1. Call `get_stage_output` with `{ "stage": "extractToolMastery" }` to read the extraction results
+1. Run via Bash: `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-stage-output --stage extractToolMastery`
+   Parse the JSON stdout to get the `outputFile` path, then use Read to load the extraction from that file.
 2. Transform the structured signals, quotes, and patterns into narrative strengths and growth areas
-3. Save results via `save_domain_results` with `{ "domain": "toolMastery" }`
-4. If `save_domain_results` returns a validation error, fix the payload and retry the same MCP call. Do NOT internally spawn additional Agents or Tasks.
+3. Use Write to save the domain result JSON to `~/.betterprompt/tmp/domain-toolMastery.json`
+   Then run via Bash: `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-domain-results --file ~/.betterprompt/tmp/domain-toolMastery.json`
+4. If `save-domain-results` returns a validation error, fix the JSON file and retry the same CLI command. Do NOT internally spawn additional Agents or Tasks.
 
 ## Context
 
@@ -86,9 +88,9 @@ Identify what makes THIS developer unique in this dimension. Reference their act
 
 ## Data Mapping
 
-The extraction output from `extractToolMastery` maps to the `communicationPatterns` domain schema as follows. The tool mastery dimension is stored under the communication domain because the schema pre-dates this dimension. Map tool behavior as communication-style patterns:
+The extraction output from `extractToolMastery` maps to the `toolMastery` domain schema as follows. Build tool behavior patterns from the extraction data:
 
-- **communicationPatterns**: Build from extraction `patterns` array. Each pattern becomes a communication-style entry:
+- **toolMastery**: Build from extraction `patterns` array. Each pattern becomes an entry:
   - `patternName`: Use the pattern's `name` field directly
   - `category`: `"tool_usage"` for all entries (this is a tool mastery dimension, not literal communication)
   - `description`: Describe the tool behavior this pattern represents (30-100 chars)
@@ -107,7 +109,7 @@ Focus dimensions for this domain: tool diversity, advanced tool usage (Task, Tod
 
 ## Output Format
 
-Call `save_domain_results` with:
+Write the following JSON to `~/.betterprompt/tmp/domain-toolMastery.json`, then save via CLI:
 
 ```json
 {
@@ -185,4 +187,4 @@ Print a brief `[bp]` status line at each key step:
 - [ ] Bash overuse sessions represented as a pattern if bashOveruseDetected appears in toolInventory
 - [ ] signatureQuotes from strength quotes with advanced_usage or workflow_composition markers
 - [ ] Never internally spawned additional Agents or Tasks
-- [ ] Called `save_domain_results` with domain `"toolMastery"`
+- [ ] Saved domain results via CLI with domain `"toolMastery"`
