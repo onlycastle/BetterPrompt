@@ -1,6 +1,6 @@
 {
   "name": "@betterprompt/claude-code-plugin",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Claude Code plugin for BetterPrompt — local-first AI collaboration analysis powered by CLI tools and analysis skills",
   "type": "module",
   "main": "./dist/cli/index.js",

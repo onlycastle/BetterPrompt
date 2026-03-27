@@ -88,9 +88,9 @@ Identify what makes THIS developer unique in this dimension. Reference their act
 
 ## Data Mapping
 
-The extraction output from `extractToolMastery` maps to the `communicationPatterns` domain schema as follows. The tool mastery dimension is stored under the communication domain because the schema pre-dates this dimension. Map tool behavior as communication-style patterns:
+The extraction output from `extractToolMastery` maps to the `toolMastery` domain schema as follows. Build tool behavior patterns from the extraction data:
 
-- **communicationPatterns**: Build from extraction `patterns` array. Each pattern becomes a communication-style entry:
+- **toolMastery**: Build from extraction `patterns` array. Each pattern becomes an entry:
   - `patternName`: Use the pattern's `name` field directly
   - `category`: `"tool_usage"` for all entries (this is a tool mastery dimension, not literal communication)
   - `description`: Describe the tool behavior this pattern represents (30-100 chars)

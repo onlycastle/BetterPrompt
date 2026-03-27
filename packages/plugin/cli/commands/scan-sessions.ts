@@ -20,7 +20,7 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
   if (allSessions.length === 0) {
     return JSON.stringify({
       status: 'no_sessions',
-      message: 'No supported Claude Code or Cursor sessions found on this machine.',
+      message: 'No supported Claude Code sessions found on this machine.',
     });
   }
 

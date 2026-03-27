@@ -23,8 +23,9 @@ export const TOOL_MAPPING: Record<SessionSourceType, Record<string, string>> = {
   'claude-code': {},
 
   /**
-   * Cursor uses snake_case tool names
-   * Map to Claude Code equivalents
+   * @deprecated Cursor support was dropped. These mappings are retained only
+   * for type compatibility with SessionSourceType and the cursor scanner sources.
+   * Remove when the cursor/cursor-composer scanners are deleted.
    */
   'cursor': {
     // File operations
@@ -78,10 +79,7 @@ export const TOOL_MAPPING: Record<SessionSourceType, Record<string, string>> = {
     'user_input': 'AskUserQuestion',
   },
 
-  /**
-   * Cursor Composer uses the same snake_case tool names as Cursor
-   * Reuses the same mapping for consistency
-   */
+  /** @deprecated See cursor entry above. */
   'cursor-composer': {
     // File operations
     'read_file': 'Read',
@@ -214,14 +212,10 @@ export function getToolCategory(
 }
 
 /**
- * Cursor Composer numeric tool ID → tool name mapping
+ * @deprecated Cursor support was dropped. Retained for type compatibility.
  *
- * Cursor Composer stores tool calls with numeric capabilityType IDs
- * in the toolFormerData.tool field. This maps known IDs to tool names
- * which can then be normalized via TOOL_MAPPING['cursor-composer'].
- *
+ * Cursor Composer numeric tool ID to tool name mapping.
  * Known IDs verified from real state.vscdb data (2026-02-05).
- * Unknown IDs will fall through as 'tool_{id}'.
  */
 export const CURSOR_COMPOSER_TOOL_IDS: Record<number, string> = {
   15: 'run_terminal_cmd',

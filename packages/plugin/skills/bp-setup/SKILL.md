@@ -16,7 +16,13 @@ Verify the BetterPrompt CLI is available by running:
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-user-prefs
 ```
-If the command succeeds, proceed to the Pre-Check (reuse the result there). If it fails, the plugin is not installed correctly -- print an error and exit gracefully.
+If the command succeeds, proceed to the Pre-Check (reuse the result there).
+
+If the first attempt fails, retry up to 2 more times with pauses (the plugin may still be unpacking after a fresh install):
+1. Wait 3 seconds, then retry.
+2. If still failing, wait 5 seconds, then retry once more.
+
+If all 3 attempts fail, the plugin is not installed correctly -- print an error and exit gracefully.
 
 ## Pre-Check
 

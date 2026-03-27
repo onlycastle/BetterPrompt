@@ -46,8 +46,11 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
   if (typeof data === 'string') {
     try {
       data = JSON.parse(data);
-    } catch {
-      // leave as-is
+    } catch (error) {
+      return JSON.stringify({
+        status: 'error',
+        message: `Invalid JSON in --data: ${error instanceof Error ? error.message : 'parse error'}`,
+      });
     }
   }
 

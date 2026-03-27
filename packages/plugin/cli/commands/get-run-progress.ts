@@ -2,7 +2,6 @@
  * get-run-progress CLI command
  *
  * Reports resumable progress for the current local analysis run.
- * Contains the computeRunProgress logic (extracted from MCP tool).
  *
  * Usage: betterprompt-cli get-run-progress
  */
@@ -26,7 +25,7 @@ const DOMAIN_STAGE_NAMES = new Set([
   'sessionMastery',
 ]);
 
-const REQUIRED_STAGE_SEQUENCE = [
+export const REQUIRED_STAGE_SEQUENCE = [
   { stage: 'sessionSummaries', skill: 'summarize-sessions', tool: null, kind: 'stage' },
   { stage: 'extractAiPartnership', skill: 'extract-ai-partnership', tool: null, kind: 'stage' },
   { stage: 'extractSessionCraft', skill: 'extract-session-craft', tool: null, kind: 'stage' },
@@ -46,10 +45,10 @@ const REQUIRED_STAGE_SEQUENCE = [
   { stage: 'contentWriter', skill: 'write-content', tool: null, kind: 'stage' },
 ] as const;
 
-type RequiredStep = (typeof REQUIRED_STAGE_SEQUENCE)[number];
+export type RequiredStep = (typeof REQUIRED_STAGE_SEQUENCE)[number];
 type StepStatus = StageLifecycleStatus | 'missing';
 
-interface RunProgressStep {
+export interface RunProgressStep {
   stage: string;
   skill: string | null;
   tool: string | null;
@@ -64,7 +63,7 @@ interface RunProgressStep {
 
 function hasArtifact(runId: number, stage: string): boolean {
   if (stage === 'deterministicType') {
-    return getAnalysisRun(runId)?.typeResult !== null;
+    return getAnalysisRun(runId)?.typeResult != null;
   }
   if (DOMAIN_STAGE_NAMES.has(stage)) {
     return getDomainResult(runId, stage) !== null;

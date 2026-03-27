@@ -89,9 +89,9 @@ extractors -> writer domains -> projectSummaries -> weeklyInsights -> classify-d
 
 ### Phase 1: Data Discovery and Extraction
 
-1. Run `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-user-prefs` via Bash and check `prefs.selectedProjects`. If present and non-empty, use it as the `--include-projects` parameter for both `scan-sessions` and `extract-data`. If absent or empty, analyze all projects.
-2. Run `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js scan-sessions` via Bash (with `--include-projects` if set) to discover all supported local session sources on this machine.
-3. Run `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js extract-data` via Bash (with `--include-projects` if set) to run deterministic Phase 1 extraction. This produces the canonical Phase 1 artifact with structured metrics, activity sessions, and full parsed-session access for later stages.
+1. Run `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-user-prefs` via Bash and check `prefs.selectedProjects`. If present and non-empty, use it as the `--includeProjects` parameter for both `scan-sessions` and `extract-data`. If absent or empty, analyze all projects.
+2. Run `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js scan-sessions` via Bash (with `--includeProjects` if set) to discover all supported local session sources on this machine.
+3. Run `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js extract-data` via Bash (with `--includeProjects` if set) to run deterministic Phase 1 extraction. This produces the canonical Phase 1 artifact with structured metrics, activity sessions, and full parsed-session access for later stages.
 4. Present a brief summary to the user:
    - Number of sessions found (and "X of Y projects" if filtering is active)
    - Date range covered

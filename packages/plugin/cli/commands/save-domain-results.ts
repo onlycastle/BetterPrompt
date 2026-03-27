@@ -161,10 +161,22 @@ const SessionOutcomeDataSchema = z.object({
   failurePatterns: z.array(z.unknown()).optional(),
 }).passthrough();
 
+const ToolMasteryDataSchema = z.object({
+  toolMastery: z.array(z.object({
+    patternName: z.string().optional(),
+    category: z.string().optional(),
+    description: z.string().optional(),
+    frequency: z.union([z.string(), z.number()]).optional(),
+    examples: z.array(z.unknown()).optional(),
+    evidence: z.array(z.unknown()).optional(),
+  }).passthrough()).min(1),
+  signatureQuotes: z.array(z.object({ utteranceId: z.string() }).passthrough()).optional(),
+}).passthrough();
+
 const DOMAIN_DATA_SCHEMAS: Record<string, z.ZodTypeAny> = {
   aiPartnership: ThinkingQualityDataSchema.merge(SessionOutcomeDataSchema.partial()).passthrough(),
   sessionCraft: ContextEfficiencyDataSchema.merge(LearningBehaviorDataSchema.partial()).passthrough(),
-  toolMastery: CommunicationPatternsDataSchema,
+  toolMastery: ToolMasteryDataSchema,
   skillResilience: z.record(z.string(), z.unknown()),
   sessionMastery: z.record(z.string(), z.unknown()),
   thinkingQuality: ThinkingQualityDataSchema,
@@ -283,7 +295,7 @@ function getDomainDataHint(domain: string): string {
   const hints: Record<string, string> = {
     aiPartnership: 'Expected: planningHabits[], verificationBehavior, sessionAnalyses[], overallSuccessRate',
     sessionCraft: 'Expected: inefficiencyPatterns[], contextUsagePatterns[], knowledgeGaps[], repeatedMistakePatterns[]',
-    toolMastery: 'Required: communicationPatterns[] (min 1). Optional: signatureQuotes[]',
+    toolMastery: 'Required: toolMastery[] (min 1). Optional: signatureQuotes[]',
     skillResilience: 'Expected: domain-specific data (flexible schema)',
     sessionMastery: 'Expected: absenceIndicators[], sessionCleanliness[], cleanSessionPercentage, scaffoldingDependencyScore',
     thinkingQuality: 'Required: planningHabits[] (min 1), verificationBehavior, criticalThinkingMoments[], verificationAntiPatterns[]',

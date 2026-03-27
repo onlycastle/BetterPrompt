@@ -54,6 +54,10 @@ function parseArgs(argv: string[]): { command: string; args: Record<string, unkn
       const key = toCamelCase(token.slice(2));
       const next = rest[i + 1];
 
+      if (key in args) {
+        throw new Error(`Duplicate flag: ${token} (already provided)`);
+      }
+
       // Boolean flag (no value or next token is also a flag)
       if (next === undefined || next.startsWith('--')) {
         args[key] = true;

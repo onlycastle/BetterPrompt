@@ -1,7 +1,7 @@
 /**
  * get-domain-results CLI command
  *
- * Reads previously saved domain analysis results. Writes large output to file.
+ * Reads previously saved domain analysis results. Writes output to a tmp file.
  *
  * Usage: betterprompt-cli get-domain-results [--domain aiPartnership]
  */

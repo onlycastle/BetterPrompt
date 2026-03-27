@@ -116,10 +116,10 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
   const latestPath = join(reportsDir, 'latest.html');
   await writeFile(latestPath, html, 'utf-8');
 
-  markAnalysisComplete(run.phase1Output.sessionMetrics.totalSessions);
-
   // Default: open the HTML file directly in the browser
   if (!serve) {
+    markAnalysisComplete(run.phase1Output.sessionMetrics.totalSessions);
+
     if (!noOpen) {
       try {
         const cmd = process.platform === 'darwin' ? `open "${reportPath}"`
@@ -153,11 +153,7 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-cache',
       });
-      try {
-        res.end(readFileSync(latestPath, 'utf-8'));
-      } catch {
-        res.end(html);
-      }
+      res.end(readFileSync(latestPath, 'utf-8'));
     });
 
     server.on('error', (err: NodeJS.ErrnoException) => {
@@ -165,12 +161,14 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
       else reject(err);
     });
 
-    // Auto-shutdown after 30 minutes
     server.listen(port, () => {
-      setTimeout(() => server.close(), 30 * 60 * 1000);
+      setTimeout(() => server.close(), 30 * 60 * 1000).unref();
+      server.unref();
       resolve(`http://localhost:${port}`);
     });
   });
+
+  markAnalysisComplete(run.phase1Output.sessionMetrics.totalSessions);
 
   if (!noOpen && url.startsWith('http')) {
     try {

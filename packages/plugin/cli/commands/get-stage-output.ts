@@ -1,7 +1,7 @@
 /**
  * get-stage-output CLI command
  *
- * Reads a previously saved pipeline stage output. Writes large output to file.
+ * Reads a previously saved pipeline stage output. Writes output to a tmp file.
  *
  * Usage: betterprompt-cli get-stage-output [--stage sessionSummaries]
  */

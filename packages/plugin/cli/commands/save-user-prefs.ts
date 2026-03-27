@@ -6,6 +6,9 @@
  * Usage: betterprompt-cli save-user-prefs --json '{"selectedProjects":[]}'
  *   OR:  betterprompt-cli save-user-prefs --file /path/to/prefs.json
  *   OR:  betterprompt-cli save-user-prefs --selectedProjects '[]' --starAsked true --markWelcomeCompleted true
+ *
+ * Note: --json and --file are input channels, not persisted fields. They are
+ * stripped before validation — unrecognized keys in the JSON payload are ignored.
  */
 
 import { readFileSync } from 'node:fs';
