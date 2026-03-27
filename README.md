@@ -37,7 +37,15 @@ In Claude Code:
 
 That's it. The MCP server, analysis skills, and post-session hooks are registered automatically.
 
-### 2. First-time setup
+### 2. Reload plugins
+
+After installing, reload plugins so Claude Code picks up the new MCP server and skills:
+
+```
+/reload-plugins
+```
+
+### 3. First-time setup
 
 On your first Claude Code session after installation, the `bp setup` wizard runs automatically. It verifies your installation, optionally adds a command reference to your CLAUDE.md, and points you toward your first analysis. You can also invoke it manually anytime:
 
@@ -45,7 +53,7 @@ On your first Claude Code session after installation, the `bp setup` wizard runs
 bp setup
 ```
 
-### 3. Run your analysis
+### 4. Run your analysis
 
 In any Claude Code session, run:
 
