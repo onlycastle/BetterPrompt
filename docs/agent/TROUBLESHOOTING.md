@@ -4,6 +4,10 @@
 
 Analysis runs locally via the Claude Code plugin (`packages/plugin/`). Finished results sync to the server via `POST /api/analysis/sync`. The server no longer runs its own analysis pipeline.
 
+## Plugin Setup (bp-setup)
+
+The `bp-setup` wizard includes an MCP Readiness Gate that retries `get_user_prefs` up to 3 times (0s, 3s, 5s backoff) before proceeding. This handles the delay between plugin install/`/reload-plugins` and the MCP server becoming available. If all 3 attempts fail, the wizard exits with a reinstall suggestion. If the gate passes but `scan_sessions` fails in Step 2, setup continues (non-critical) — project selection in Step 3 will retry or offer defaults.
+
 ## Key Files
 
 | File | Role |

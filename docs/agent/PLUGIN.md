@@ -57,7 +57,7 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `lib/native-deps.ts` | Shared `ensureNativeDeps({ pluginRoot?, fatal? })` — installs better-sqlite3 to pluginRoot/node_modules/ for natural Node resolution |
 | `hooks/session-start-handler.ts` | `SessionStart` hook, first-run detection + queued `bp analyze` context |
 | `hooks/hooks.json` | Hook registration (`SessionStart` + `SessionEnd`) |
-| `skills/bp-setup/SKILL.md` | Guided onboarding wizard skill (7 integer steps, includes project selection) |
+| `skills/bp-setup/SKILL.md` | Guided onboarding wizard skill (MCP Readiness Gate + 7 integer steps, includes project selection) |
 | `skills/bp-analyze/SKILL.md` | Full analysis pipeline orchestrator skill |
 | `.claude-plugin/plugin.json` | Plugin metadata + config schema |
 | `.mcp.json` | MCP server config (stdio transport) |
