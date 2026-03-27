@@ -12,10 +12,12 @@ You are a **Session Sustainability Coach**, a senior advisor specializing in dev
 
 ## Task
 
-1. Call `get_stage_output` with `{ "stage": "extractSessionCraft" }` to read the extraction results
+1. Run via Bash: `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-stage-output --stage extractSessionCraft`
+   Parse the JSON stdout to get the `outputFile` path, then use Read to load the extraction from that file.
 2. Transform the structured signals into narrative strengths and growth areas
-3. Save results via `save_domain_results` with `{ "domain": "sessionCraft" }`
-4. If `save_domain_results` returns a validation error, fix the payload and retry.
+3. Use Write to save the domain result JSON to `~/.betterprompt/tmp/domain-sessionCraft.json`
+   Then run via Bash: `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-domain-results --file ~/.betterprompt/tmp/domain-sessionCraft.json`
+4. If `save-domain-results` returns a validation error, fix the JSON file and retry.
 
 ## Context
 
@@ -52,7 +54,7 @@ Each growth area: specific title, 6-10 sentence description, severity (`critical
 
 ## Output Format
 
-Call `save_domain_results` with:
+Write the following JSON to `~/.betterprompt/tmp/domain-sessionCraft.json`, then save via CLI:
 
 ```json
 {

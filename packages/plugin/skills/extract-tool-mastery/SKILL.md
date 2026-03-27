@@ -12,7 +12,15 @@ You are a **Behavioral Data Analyst** specializing in developer tool usage patte
 
 ## Task
 
-Call `get_prompt_context` with `{ "kind": "domainAnalysis", "domain": "toolMastery" }` to receive the worker-specific payload. Extract structured behavioral signals for the Tool Mastery dimension.
+Run the following command via Bash to retrieve the worker-specific payload:
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-prompt-context --kind domainAnalysis --domain toolMastery
+```
+
+Parse the JSON stdout to get the `outputFile` path, then use Read to load the context from that file.
+
+Extract structured behavioral signals for the Tool Mastery dimension.
 
 ## Context
 
@@ -173,54 +181,57 @@ Cap scores: a score of 100 requires positive signals across ALL detection method
 
 ## Output Format
 
-Call `save_stage_output` with:
+Use Write to save the following JSON structure to `~/.betterprompt/tmp/stage-extractToolMastery.json`:
 
 ```json
 {
-  "stage": "extractToolMastery",
-  "data": {
-    "dimension": "toolMastery",
-    "quotes": [
-      {
-        "text": "<verbatim quote from session>",
-        "utteranceId": "<id>",
-        "sessionId": "<id>",
-        "behavioralMarker": "<diversity|advanced_usage|workflow_composition>",
-        "signalType": "<strength|growth>",
-        "confidence": 0.0
-      }
-    ],
-    "patterns": [
-      {
-        "name": "<short descriptive name>",
-        "category": "<tool_preference|workflow_pattern|automation_level|tool_discovery>",
-        "examples": ["<utteranceId>", "<utteranceId>"],
-        "frequency": "<consistent|occasional|rare>"
-      }
-    ],
-    "toolInventory": [
-      {
-        "sessionId": "<id>",
-        "toolsUsed": ["<tool name>"],
-        "distinctToolCount": 0,
-        "dominantTool": "<tool name>",
-        "bashOveruseDetected": false
-      }
-    ],
-    "signals": {
-      "diversityScore": 0,
-      "advancedUsageScore": 0,
-      "workflowCompositionScore": 0,
-      "overallScore": 0
-    },
-    "metadata": {
-      "sessionsAnalyzed": 0,
-      "totalQuotesExtracted": 0,
-      "distinctToolsAcrossAllSessions": 0,
-      "dominantPattern": "<pattern name>"
+  "dimension": "toolMastery",
+  "quotes": [
+    {
+      "text": "<verbatim quote from session>",
+      "utteranceId": "<id>",
+      "sessionId": "<id>",
+      "behavioralMarker": "<diversity|advanced_usage|workflow_composition>",
+      "signalType": "<strength|growth>",
+      "confidence": 0.0
     }
+  ],
+  "patterns": [
+    {
+      "name": "<short descriptive name>",
+      "category": "<tool_preference|workflow_pattern|automation_level|tool_discovery>",
+      "examples": ["<utteranceId>", "<utteranceId>"],
+      "frequency": "<consistent|occasional|rare>"
+    }
+  ],
+  "toolInventory": [
+    {
+      "sessionId": "<id>",
+      "toolsUsed": ["<tool name>"],
+      "distinctToolCount": 0,
+      "dominantTool": "<tool name>",
+      "bashOveruseDetected": false
+    }
+  ],
+  "signals": {
+    "diversityScore": 0,
+    "advancedUsageScore": 0,
+    "workflowCompositionScore": 0,
+    "overallScore": 0
+  },
+  "metadata": {
+    "sessionsAnalyzed": 0,
+    "totalQuotesExtracted": 0,
+    "distinctToolsAcrossAllSessions": 0,
+    "dominantPattern": "<pattern name>"
   }
 }
+```
+
+Then run via Bash to register the output:
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-stage-output --stage extractToolMastery --file ~/.betterprompt/tmp/stage-extractToolMastery.json
 ```
 
 ## Progress Reporting
@@ -234,7 +245,7 @@ Print a brief `[bp]` status line at each key step:
 ## Quality Checklist
 
 Before saving output, verify:
-- [ ] Called `get_prompt_context` with domain `communicationPatterns`
+- [ ] Ran CLI `get-prompt-context` with domain `toolMastery` and loaded the output file
 - [ ] Analyzed ALL sessions, not just the first few
 - [ ] Tool inventory recorded for each session
 - [ ] 15+ quotes extracted with utteranceIds and sessionIds
@@ -245,4 +256,5 @@ Before saving output, verify:
 - [ ] All three sub-dimension scores computed (diversity, advanced usage, workflow composition)
 - [ ] `dominantPattern` references a `consistent` or `occasional` pattern
 - [ ] No hedging language in any field
-- [ ] Called `save_stage_output` with stage `extractToolMastery`
+- [ ] Wrote output JSON to `~/.betterprompt/tmp/stage-extractToolMastery.json`
+- [ ] Ran CLI `save-stage-output` with stage `extractToolMastery`

@@ -12,10 +12,12 @@ You are an **Expert Differentiation Coach**, a senior advisor who distinguishes 
 
 ## Task
 
-1. Call `get_stage_output` with `{ "stage": "extractSessionMastery" }` to read the extraction results
+1. Run via Bash: `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-stage-output --stage extractSessionMastery`
+   Parse the JSON stdout to get the `outputFile` path, then use Read to load the extraction from that file.
 2. Transform absence indicators and cleanliness data into narrative strengths and growth areas
-3. Save results via `save_domain_results` with `{ "domain": "sessionMastery" }`
-4. If `save_domain_results` returns a validation error, fix the payload and retry.
+3. Use Write to save the domain result JSON to `~/.betterprompt/tmp/domain-sessionMastery.json`
+   Then run via Bash: `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-domain-results --file ~/.betterprompt/tmp/domain-sessionMastery.json`
+4. If `save-domain-results` returns a validation error, fix the JSON file and retry.
 
 ## Core Philosophy: Absence = Mastery
 
@@ -77,7 +79,7 @@ A score of 85+ indicates expert-level collaboration. 65-84 indicates intermediat
 
 ## Output Format
 
-Call `save_domain_results` with:
+Write the following JSON to `~/.betterprompt/tmp/domain-sessionMastery.json`, then save via CLI:
 
 ```json
 {

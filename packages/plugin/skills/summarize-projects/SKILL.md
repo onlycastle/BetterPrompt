@@ -24,7 +24,11 @@ Session IDs encode the project path. The `projectName` field in Phase 1 output p
 
 ### Step 1: Load Input Data
 
-1. Call `get_prompt_context` with `{ "kind": "projectSummaries" }` to get project-ready activity sessions plus Phase 1.5 session summaries.
+1. Run via Bash:
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-prompt-context --kind projectSummaries
+```
+Parse the JSON stdout to get the `outputFile` path, then use Read to load that file. This provides project-ready activity sessions plus Phase 1.5 session summaries.
 
 ### Step 2: Group Sessions by Project
 
@@ -80,7 +84,7 @@ For example, a project with 12 sessions:
 
 ### Step 4: Save Output
 
-Call `save_stage_output` with the following arguments:
+Use Write to save the output JSON to `~/.betterprompt/tmp/stage-projectSummaries.json` with this structure:
 
 ```json
 {
@@ -108,6 +112,12 @@ Call `save_stage_output` with the following arguments:
 }
 ```
 
+Then run via Bash:
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-stage-output --stage projectSummaries --file ~/.betterprompt/tmp/stage-projectSummaries.json
+```
+```
+
 **Schema requirements:**
 - `projects` is an array of project objects
 - `projectName` (string): Human-readable project name from Phase 1 output
@@ -117,11 +127,11 @@ Call `save_stage_output` with the following arguments:
 ### Filtering Rules
 
 - Exclude projects named `"(temp)"` or `"unknown"` from the output. These are noise from temporary directories or unrecognized project paths.
-- If all projects are excluded, call `save_stage_output` with an empty projects array.
+- If all projects are excluded, save an empty projects array and run `save-stage-output` as described above.
 
 ## Error Handling
 
-- If `get_prompt_context` cannot return the project-summarization payload, report the error. Do not fabricate project data.
+- If the CLI `get-prompt-context` command fails or cannot return the project-summarization payload, report the error. Do not fabricate project data.
 - If session summaries from Phase 1.5 are not available, fall back to using session metadata (project name, duration, message count) to generate summaries. This produces lower-quality output but avoids blocking the pipeline.
 - If a project has sessions but all session summaries are empty strings, use a fallback summary: `"Development work across N sessions"`.
 - Never silently drop projects from the output (except the excluded names above).
@@ -136,11 +146,11 @@ Print a brief `[bp]` status line at each key step:
 
 ## Quality Checklist
 
-- [ ] Loaded project summarization context via `get_prompt_context`
+- [ ] Loaded project summarization context via CLI `get-prompt-context`
 - [ ] Grouped sessions by project name correctly
 - [ ] Small projects (<=3 sessions) pass through session summaries directly
 - [ ] Large projects (>3 sessions) have synthesized 2-3 line summaries (not repeated session lines)
 - [ ] Projects sorted by session count descending
 - [ ] Excluded `"(temp)"` and `"unknown"` projects
 - [ ] Each project has 1-3 summaryLines (not more)
-- [ ] Called `save_stage_output` with stage `"projectSummaries"`
+- [ ] Saved output via Write + CLI `save-stage-output` with stage `"projectSummaries"`

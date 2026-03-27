@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import {
-  ensureNativeDeps
-} from "../chunk-ZSMKKVNT.js";
-import {
   isFirstRun
-} from "../chunk-QFCYET5Y.js";
+} from "../chunk-IQ4EWBXE.js";
+import {
+  ensureNativeDeps
+} from "../chunk-A6TBYMRP.js";
 import {
   buildFirstRunAdditionalContext,
   buildPendingAnalysisAdditionalContext
@@ -13,10 +13,13 @@ import {
   isAnalysisPending,
   markAnalysisPending,
   shouldResumeRunningAnalysis
-} from "../chunk-SUEN2LKX.js";
+} from "../chunk-VXUKPHXP.js";
+import "../chunk-FIGO7IPG.js";
 import {
   debug
-} from "../chunk-PP5673GG.js";
+} from "../chunk-FW6ZW4J3.js";
+import "../chunk-UORQZYNI.js";
+import "../chunk-NSBPE2FW.js";
 
 // hooks/session-start-handler.ts
 import { readFileSync } from "fs";

@@ -12,7 +12,15 @@ You are a **Behavioral Data Analyst** specializing in expert pattern recognition
 
 ## Task
 
-Call `get_prompt_context` with `{ "kind": "domainAnalysis", "domain": "sessionMastery" }` to receive the worker-specific payload. Extract absence-of-anti-pattern signals that distinguish intermediate from expert-level AI collaboration.
+Run the following command via Bash to retrieve the worker-specific payload:
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-prompt-context --kind domainAnalysis --domain sessionMastery
+```
+
+Parse the JSON stdout to get the `outputFile` path, then use Read to load the context from that file.
+
+Extract absence-of-anti-pattern signals that distinguish intermediate from expert-level AI collaboration.
 
 ## Core Philosophy: Absence Scoring
 
@@ -70,55 +78,58 @@ Look for these positive indicators that distinguish experts:
 
 ## Output Format
 
-Call `save_stage_output` with:
+Use Write to save the following JSON structure to `~/.betterprompt/tmp/stage-extractSessionMastery.json`:
 
 ```json
 {
-  "stage": "extractSessionMastery",
-  "data": {
-    "dimension": "sessionMastery",
-    "quotes": [
-      {
-        "text": "<verbatim quote showing anti-pattern>",
-        "utteranceId": "<id>",
-        "sessionId": "<id>",
-        "behavioralMarker": "<anti-pattern type>",
-        "signalType": "growth",
-        "confidence": 0.0
-      }
-    ],
-    "patterns": [
-      {
-        "name": "<anti-pattern name>",
-        "category": "absence_indicator",
-        "examples": ["<utteranceId>"],
-        "frequency": "<consistent|occasional|rare|absent>"
-      }
-    ],
-    "signals": {
-      "absenceScores": {
-        "bareRetry": 0,
-        "contextOverflow": 0,
-        "excessiveIteration": 0,
-        "frustration": 0,
-        "topicMixing": 0,
-        "blindAcceptance": 0,
-        "marathon": 0,
-        "toolFailure": 0
-      },
-      "cleanSessionPercentage": 0,
-      "scaffoldingDependencyScore": 0,
-      "overallScore": 0
-    },
-    "metadata": {
-      "sessionsAnalyzed": 0,
-      "cleanSessionCount": 0,
-      "totalAntiPatternOccurrences": 0,
-      "expertBehaviorIndicators": ["<signal>"],
-      "internalizedSkillSignals": ["<signal>"]
+  "dimension": "sessionMastery",
+  "quotes": [
+    {
+      "text": "<verbatim quote showing anti-pattern>",
+      "utteranceId": "<id>",
+      "sessionId": "<id>",
+      "behavioralMarker": "<anti-pattern type>",
+      "signalType": "growth",
+      "confidence": 0.0
     }
+  ],
+  "patterns": [
+    {
+      "name": "<anti-pattern name>",
+      "category": "absence_indicator",
+      "examples": ["<utteranceId>"],
+      "frequency": "<consistent|occasional|rare|absent>"
+    }
+  ],
+  "signals": {
+    "absenceScores": {
+      "bareRetry": 0,
+      "contextOverflow": 0,
+      "excessiveIteration": 0,
+      "frustration": 0,
+      "topicMixing": 0,
+      "blindAcceptance": 0,
+      "marathon": 0,
+      "toolFailure": 0
+    },
+    "cleanSessionPercentage": 0,
+    "scaffoldingDependencyScore": 0,
+    "overallScore": 0
+  },
+  "metadata": {
+    "sessionsAnalyzed": 0,
+    "cleanSessionCount": 0,
+    "totalAntiPatternOccurrences": 0,
+    "expertBehaviorIndicators": ["<signal>"],
+    "internalizedSkillSignals": ["<signal>"]
   }
 }
+```
+
+Then run via Bash to register the output:
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-stage-output --stage extractSessionMastery --file ~/.betterprompt/tmp/stage-extractSessionMastery.json
 ```
 
 ## Progress Reporting
@@ -130,10 +141,11 @@ Call `save_stage_output` with:
 
 ## Quality Checklist
 
-- [ ] Called `get_prompt_context` with domain `sessionMastery`
+- [ ] Ran CLI `get-prompt-context` with domain `sessionMastery` and loaded the output file
 - [ ] Checked ALL 8 anti-patterns across ALL sessions
 - [ ] Scored absence correctly (absent = high score, present = low score)
 - [ ] Did NOT penalize absence of scaffolding tools when sessions are clean
 - [ ] Computed per-session cleanliness scores
 - [ ] Identified expert behavior indicators
-- [ ] Called `save_stage_output` with stage `extractSessionMastery`
+- [ ] Wrote output JSON to `~/.betterprompt/tmp/stage-extractSessionMastery.json`
+- [ ] Ran CLI `save-stage-output` with stage `extractSessionMastery`

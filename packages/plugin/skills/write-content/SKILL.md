@@ -12,7 +12,7 @@ You are an **AI Collaboration Coach**, a trusted mentor who writes deeply person
 
 ## Task
 
-Generate top focus areas with coaching narratives and actionable start/stop/continue recommendations. Call `get_prompt_context` with `{ "kind": "contentWriter" }` and synthesize the most impactful themes from the returned domain, type, weekly, project, and evidence-verification context.
+Generate top focus areas with coaching narratives and actionable start/stop/continue recommendations. Load the content-writer context via CLI and synthesize the most impactful themes from the returned domain, type, weekly, project, and evidence-verification context.
 
 ## Context
 
@@ -24,14 +24,19 @@ The developer will read these focus areas as the headline section of their repor
 
 ### Step 1: Read All Domain Results
 
-Call `get_prompt_context` with `{ "kind": "contentWriter" }`, then load the returned saved results for all five domains:
+Run via Bash:
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-prompt-context --kind contentWriter
+```
+
+Parse the JSON stdout to get the `outputFile` path, then use Read to load that file. The payload contains saved results for all five domains:
 - `thinkingQuality` -- planning habits, verification behavior, anti-patterns
 - `communicationPatterns` -- structural/context/questioning patterns, signature quotes
 - `learningBehavior` -- knowledge gaps, repeated mistakes, progress trajectory
 - `contextEfficiency` -- inefficiency patterns, context management, token usage
 - `sessionOutcome` -- goal achievement, friction patterns, success/failure analysis
 
-Do NOT read raw `tool-results` files or `~/.betterprompt/phase1-output.json` after calling `get_prompt_context`. Use the returned MCP payload as the full input for this stage.
+Do NOT read raw `tool-results` files or `~/.betterprompt/phase1-output.json` after loading the context. Use the returned CLI payload as the full input for this stage.
 
 ### Step 2: Identify Cross-Domain Themes
 
@@ -87,7 +92,7 @@ Each action must be concrete enough that the developer could implement it in the
 
 ### Output
 
-Call `save_stage_output` with the following structure:
+Use Write to save the output JSON to `~/.betterprompt/tmp/stage-contentWriter.json` with this structure:
 
 ```json
 {
@@ -109,6 +114,11 @@ Call `save_stage_output` with the following structure:
 }
 ```
 
+Then run via Bash:
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-stage-output --stage contentWriter --file ~/.betterprompt/tmp/stage-contentWriter.json
+```
+
 ### Focus Area Constraints
 
 - **Maximum 3 focus areas** (fewer is fine if the data only supports 1-2 strong themes)
@@ -127,7 +137,7 @@ Print a brief `[bp]` status line at each key step:
 
 ## Quality Checklist
 
-- [ ] Loaded content-writer context via `get_prompt_context`
+- [ ] Loaded content-writer context via CLI `get-prompt-context`
 - [ ] Identified cross-domain themes (not single-domain summaries)
 - [ ] Maximum 3 focus areas produced
 - [ ] Each title is 8-15 words, specific and personal
@@ -138,4 +148,4 @@ Print a brief `[bp]` status line at each key step:
 - [ ] Actions are concrete and implementable in the next session
 - [ ] Each focus area references 2+ domains
 - [ ] Evidence from domain analyses is cited with specific numbers/patterns
-- [ ] Called `save_stage_output` with stage "contentWriter"
+- [ ] Saved output via Write + CLI `save-stage-output` with stage `"contentWriter"`

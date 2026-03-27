@@ -12,7 +12,7 @@ You are a **Session Summarizer**, skilled at reading developer-AI collaboration 
 
 ## Task
 
-Call `get_prompt_context` with `{ "kind": "sessionSummaries" }` and generate a concise 1-line summary for every session in the returned dataset. Each summary should describe the primary work accomplished in that session.
+Load the session-summarization context via CLI and generate a concise 1-line summary for every session in the returned dataset. Each summary should describe the primary work accomplished in that session.
 
 ## Context
 
@@ -30,7 +30,12 @@ Phase 1 data provides per session:
 
 ### Step 1: Load Phase 1 Output
 
-Call `get_prompt_context` with `{ "kind": "sessionSummaries" }`. Use the returned `phase1.sessions` payload for summarization instead of rereading the raw Phase 1 file.
+Run via Bash:
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-prompt-context --kind sessionSummaries
+```
+
+Parse the JSON stdout to get the `outputFile` path, then use Read to load that file. Use the returned `phase1.sessions` payload for summarization instead of rereading the raw Phase 1 file.
 
 ### Step 2: Generate Summaries
 
@@ -55,7 +60,7 @@ For EVERY session in the Phase 1 output, generate exactly one summary line.
 
 ### Step 3: Save Output
 
-Call `save_stage_output` with the following arguments:
+Use Write to save the output JSON to `~/.betterprompt/tmp/stage-sessionSummaries.json` with this structure:
 
 ```json
 {
@@ -75,6 +80,11 @@ Call `save_stage_output` with the following arguments:
 }
 ```
 
+Then run via Bash:
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-stage-output --stage sessionSummaries --file ~/.betterprompt/tmp/stage-sessionSummaries.json
+```
+
 **Schema requirements:**
 - `summaries` is a non-empty array (one entry per session in Phase 1 output)
 - `sessionId` (string): Must match the sessionId from Phase 1 output exactly
@@ -84,8 +94,8 @@ Every session in Phase 1 output MUST have a corresponding entry in the summaries
 
 ## Error Handling
 
-- If `get_prompt_context` cannot return the session-summarization payload, report the error immediately. Do not fabricate data.
-- If Phase 1 output contains zero sessions, call `save_stage_output` with an empty summaries array: `{ "summaries": [] }`.
+- If the CLI `get-prompt-context` command fails or cannot return the session-summarization payload, report the error immediately. Do not fabricate data.
+- If Phase 1 output contains zero sessions, save an empty summaries array `{ "summaries": [] }` and run `save-stage-output` as described above.
 - If a session has no utterances at all, still include it with the empty session summary text described above.
 - Never silently drop sessions from the output. The count of summaries must equal the count of sessions in Phase 1 data.
 
@@ -99,10 +109,10 @@ Print a brief `[bp]` status line at each key step:
 
 ## Quality Checklist
 
-- [ ] Loaded session summarization context via `get_prompt_context`
+- [ ] Loaded session summarization context via CLI `get-prompt-context`
 - [ ] Generated exactly one summary per session (no skips, no duplicates)
 - [ ] Every summary starts with a verb
 - [ ] Summaries are 5-15 words, specific, not generic
 - [ ] Empty/short sessions handled with appropriate fallback text
 - [ ] sessionId values match Phase 1 output exactly
-- [ ] Called `save_stage_output` with stage `"sessionSummaries"`
+- [ ] Saved output via Write + CLI `save-stage-output` with stage `"sessionSummaries"`

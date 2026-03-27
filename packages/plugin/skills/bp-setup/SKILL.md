@@ -10,39 +10,19 @@ model: opus
 
 You are the **BetterPrompt onboarding assistant**. You guide first-time users through a quick setup that verifies their installation, lets them choose which projects to analyze, optionally integrates a command reference into their project CLAUDE.md, and points them toward their first analysis. The entire process takes about 1 minute.
 
-## MCP Readiness Gate
+## CLI Readiness Check
 
-The BetterPrompt MCP server may still be starting, especially after first install or `/reload-plugins`. Before proceeding, confirm that MCP tools are available.
-
-1. Attempt to call `get_user_prefs`. If it succeeds, proceed to the Pre-Check (reuse the result there).
-2. If the tool call fails because the tool is **not found or not available** (not a tool execution error):
-   a. Print: `"[bp] MCP tools are still loading (this is normal on first run)..."`
-   b. Wait 3 seconds using Bash: `sleep 3`
-   c. Retry `get_user_prefs`.
-3. If the second attempt also fails with tool-not-found:
-   a. Print: `"[bp] Still waiting for MCP server..."`
-   b. Wait 5 seconds using Bash: `sleep 5`
-   c. Retry `get_user_prefs` one final time.
-4. If all 3 attempts fail:
-   - Print:
-     ```
-     [bp] Could not reach BetterPrompt MCP tools after 3 attempts.
-
-     This usually means the plugin was not installed correctly.
-     Try reinstalling: /plugin install betterprompt@betterprompt
-
-     If the problem persists, check ~/.betterprompt/debug.log for details.
-     ```
-   - Do NOT continue with the remaining wizard steps. Exit gracefully.
-5. If the tool call succeeds at any attempt, print: `"[bp] MCP server ready."` and proceed.
-
-**Important**: If the tool **is found** but returns an error result (e.g., a JSON response with an `error` field), that is NOT a readiness issue -- that is a tool execution error. Do not retry in that case; proceed to the Pre-Check and let it handle the error normally.
+Verify the BetterPrompt CLI is available by running:
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js get-user-prefs
+```
+If the command succeeds, proceed to the Pre-Check (reuse the result there). If it fails, the plugin is not installed correctly -- print an error and exit gracefully.
 
 ## Pre-Check
 
 Before starting the wizard:
 
-1. Reuse the `get_user_prefs` result from the MCP Readiness Gate above.
+1. Reuse the `get-user-prefs` result from the CLI Readiness Check above.
 2. Check `prefs.welcomeCompleted`.
 3. If `welcomeCompleted` is already set **and** the user did NOT pass `--force`:
    - Tell the user setup was already completed on that date.
@@ -55,7 +35,7 @@ Before starting the wizard:
 If the user's initial prompt already specifies concrete setup choices, follow those instructions directly instead of asking again.
 
 Examples:
-- If the user names exact projects to select, skip the project-choice question and persist only those canonical project names from `scan_sessions.allProjects[].name`.
+- If the user names exact projects to select, skip the project-choice question and persist only those canonical project names from `scan-sessions output allProjects[].name`.
 - If the user says to skip CLAUDE.md integration, skip Step 4 without calling `AskUserQuestion`.
 - If the user says to skip the GitHub star step, mark `starAsked: true` and move on without calling `AskUserQuestion`.
 - If the user says to continue working instead of running analysis now, choose that path directly in Step 6.
@@ -84,22 +64,22 @@ This setup takes about 1 minute.
 
 ### Step 2: Verify Environment
 
-Call the `scan_sessions` MCP tool to verify the plugin can read session data.
+Run `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js scan-sessions` via Bash to verify the plugin can read session data.
 
 - **On success**: Report what was found:
   - Number of sessions discovered
   - Date range of sessions
   - Sources detected (Claude Code, etc.)
   - List of projects with session counts
-- **On failure**: Since MCP connectivity was already confirmed by the Readiness Gate, a failure here means `scan_sessions` encountered an error reading session data (no sessions found, permission issue, etc.). Report the error but continue with setup -- Step 2 failure is non-critical. The user can still configure preferences and run analysis later.
+- **On failure**: Since CLI availability was already confirmed by the Readiness Check, a failure here means `scan-sessions` encountered an error reading session data (no sessions found, permission issue, etc.). Report the error but continue with setup -- Step 2 failure is non-critical. The user can still configure preferences and run analysis later.
 
 ### Step 3: Select Projects
 
 If Step 2 succeeded, display the project list from Step 2 (name + session count) and let the user choose which projects to include in analysis.
 
-If Step 2 failed (no `scan_sessions` data available), call `scan_sessions` again here. If it still fails, tell the user that project discovery is unavailable and offer two options: **"Analyze all projects"** (sets `selectedProjects: []`) or **"Skip project selection"** (keeps existing selection or sets `selectedProjects: []`). Then proceed to Step 4.
+If Step 2 failed (no `scan-sessions` data available), run `scan-sessions` again via the CLI. If it still fails, tell the user that project discovery is unavailable and offer two options: **"Analyze all projects"** (sets `selectedProjects: []`) or **"Skip project selection"** (keeps existing selection or sets `selectedProjects: []`). Then proceed to Step 4.
 
-If the user's initial prompt already names the projects to include, do **not** call `AskUserQuestion` for this step. Match the requested names against `scan_sessions.allProjects[].name`, confirm the matched canonical names, and persist them directly.
+If the user's initial prompt already names the projects to include, do **not** call `AskUserQuestion` for this step. Match the requested names against `scan-sessions output allProjects[].name`, confirm the matched canonical names, and persist them directly.
 
 Use `AskUserQuestion` with these options:
 - **"Analyze all projects"** — include everything
@@ -107,16 +87,13 @@ Use `AskUserQuestion` with these options:
 
 If the user selects specific projects:
 1. Confirm the selection back to the user.
-2. Persist only canonical project names from `scan_sessions.allProjects[].name`.
+2. Persist only canonical project names from `scan-sessions output allProjects[].name`.
    Never write filesystem paths, encoded Claude project directory names, or repo-relative paths to `selectedProjects`.
 3. Write the selection to `~/.betterprompt/prefs.json` via `selectedProjects` (merge with existing prefs):
-   call `save_user_prefs` with:
-   ```json
-   { "selectedProjects": ["project-a", "project-b"] }
-   ```
+   Run via Bash: `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-user-prefs --json '{"selectedProjects":["project-a","project-b"]}'`
 
 If the user chooses "Analyze all":
-1. Call `save_user_prefs` with `selectedProjects: []` (meaning "all").
+1. Run via Bash: `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-user-prefs --json '{"selectedProjects":[]}'`
 
 ### Step 4: CLAUDE.md Integration
 
@@ -173,7 +150,7 @@ This is a one-time ask, tracked via `starAsked` in `~/.betterprompt/prefs.json`.
    ```
    (Use `open` on macOS, `xdg-open` on Linux, `start` on Windows.)
 4. Regardless of choice, write `starAsked: true` to prefs.
-   Prefer `save_user_prefs` instead of writing JSON manually.
+   Run via Bash: `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-user-prefs --json '{"starAsked":true}'`
 
 ### Step 6: Quick Reference + First Action
 
@@ -202,10 +179,10 @@ Use `AskUserQuestion` with these options:
     ```
     model: sonnet
     description: "bp: analyze"
-    prompt: "Read the skill instructions at [PLUGIN_PATH]/skills/bp-analyze/SKILL.md and follow them exactly. You have access to BetterPrompt MCP tools. Execute the complete analysis workflow."
+    prompt: "Read the skill instructions at [PLUGIN_PATH]/skills/bp-analyze/SKILL.md and follow them exactly. You have access to the BetterPrompt CLI at ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js. Execute the complete analysis workflow."
     ```
     To resolve `[PLUGIN_PATH]`: find the BetterPrompt plugin root by searching for the skills directory under `~/.claude/plugins/cache/betterprompt/`.
-- **"Continue working"** — call `save_user_prefs` with `{ "queueAnalysis": true }` so analysis auto-starts in a future session, then exit the wizard
+- **"Continue working"** — run via Bash: `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-user-prefs --json '{"queueAnalysis":true}'` so analysis auto-starts in a future session, then exit the wizard
 
 ### Step 7: Complete
 
@@ -217,7 +194,8 @@ Use `AskUserQuestion` with these options:
      "markWelcomeCompleted": true
    }
    ```
-   Call `save_user_prefs` so the plugin stamps the exact current ISO 8601 timestamp in code.
+   Run via Bash: `node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-user-prefs --json '{"welcomeShown":true,"welcomeVersion":"2.0","markWelcomeCompleted":true}'`
+   This lets the CLI stamp the exact current ISO 8601 timestamp in code.
    The literal `welcomeVersion` value must be `2.0`, not a JSON-encoded string like `"\"2.0\""`.
    Do not hand-write `welcomeCompleted`, do not round to the minute, and do not hardcode the date.
 
@@ -236,7 +214,6 @@ Use `AskUserQuestion` with these options:
 ## Progress Reporting
 
 Print a brief `[bp]` status line before each step:
-0. `"[bp] Connecting to MCP server..."` (only shown if readiness gate needs to retry)
 1. `"[bp] Step 1: Welcome"`
 2. `"[bp] Step 2: Verifying environment..."`
 3. `"[bp] Step 3: Project selection"`
@@ -247,8 +224,8 @@ Print a brief `[bp]` status line before each step:
 
 ## Important Notes
 
-- Always run Step 2 (verification), but its failure is non-critical -- MCP connectivity is already confirmed by the Readiness Gate.
+- Always run Step 2 (verification), but its failure is non-critical -- CLI availability is already confirmed by the Readiness Check.
 - Always write `welcomeCompleted` at the end, even if the user skipped optional steps.
-- Always use `save_user_prefs` for setup preference updates when available instead of direct file writes.
+- Always use the `save-user-prefs` CLI command for setup preference updates instead of direct file writes.
 - If any step fails, log the error but continue to the next step. Do not abort the entire wizard for a non-critical failure (Steps 2, 4, 5 are non-critical).
 - The CLAUDE.md block uses HTML comment markers (`<!-- bp:START -->` / `<!-- bp:END -->`) so it can be cleanly replaced or removed later.

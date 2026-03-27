@@ -9,8 +9,8 @@
  * directory walking.  Fallback: `~/.betterprompt/node_modules/` for
  * callers that don't know the plugin root.
  *
- * Safe to call from multiple entry points (SessionStart hook, MCP
- * server startup) — a marker file prevents redundant installs.
+ * Safe to call from multiple entry points (SessionStart hook, CLI
+ * startup) — a marker file prevents redundant installs.
  */
 
 import { existsSync, mkdirSync } from 'node:fs';
