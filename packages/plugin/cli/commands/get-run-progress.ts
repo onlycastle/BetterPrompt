@@ -86,7 +86,7 @@ function buildStepStatus(
       tool: step.tool,
       kind: step.kind,
       status: savedStatus.status,
-      completed: savedStatus.status === 'validated',
+      completed: savedStatus.status === 'validated' || (savedStatus.status === 'failed' && artifactPresent),
       hasArtifact: artifactPresent,
       attemptCount: savedStatus.attemptCount,
       lastError: savedStatus.lastError,

@@ -59,9 +59,9 @@ function expandHomePath(filePath: string): string {
 }
 
 function isBetterPromptCliCommand(command: string, cliPath: string): boolean {
-  // The command may use the expanded CLAUDE_PLUGIN_ROOT or a relative path.
-  // Match if the command invokes `node <path-to-plugin>/dist/cli/index.js`.
-  return command.includes(cliPath) || command.includes('dist/cli/index.js');
+  // Match only the fully resolved absolute CLI path to avoid approving
+  // unrelated commands that happen to contain a similar relative path.
+  return command.includes(cliPath);
 }
 
 function isBetterPromptTmpWrite(filePath: string): boolean {

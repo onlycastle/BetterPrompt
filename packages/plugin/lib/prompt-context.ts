@@ -64,6 +64,7 @@ function isAnalyzablePromptContextUserMessage(message: SessionMessageWithMeta): 
     && !message.isMeta
     && typeof message.sourceToolUseID !== 'string'
     && message.toolUseResult === undefined
+    && typeof message.content === 'string'
     && !message.content.trim().startsWith(SKILL_INJECTION_PREFIX);
 }
 
@@ -431,6 +432,8 @@ function buildDomainAnalysisContext(
           : {}),
       } };
     case 'toolMastery':
+      // Tool mastery analysis uses the communication context (utterances + interaction snapshots)
+      // because tool usage patterns are best observed through developer-AI dialogue.
       return { ...base, phase1: buildCommunicationContext(phase1Output) };
     case 'skillResilience':
       // Cold-start, error recovery: needs session overviews + interaction data
