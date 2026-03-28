@@ -11,20 +11,20 @@ import { fileURLToPath } from "url";
 var pluginRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 ensureNativeDeps({ pluginRoot, fatal: true });
 var COMMANDS = {
-  "scan-sessions": () => import("../scan-sessions-C7ZTXOWT.js"),
-  "extract-data": () => import("../extract-data-SA3L25BI.js"),
-  "get-prompt-context": () => import("../get-prompt-context-RPLLOGSK.js"),
-  "save-stage-output": () => import("../save-stage-output-D2ZQMBHP.js"),
-  "get-stage-output": () => import("../get-stage-output-RZT4A4FD.js"),
-  "save-domain-results": () => import("../save-domain-results-MGOM6TKS.js"),
-  "get-domain-results": () => import("../get-domain-results-AJSUPVA2.js"),
-  "get-run-progress": () => import("../get-run-progress-O6LL2U2R.js"),
-  "classify-developer-type": () => import("../classify-developer-type-XXBUUHDB.js"),
-  "verify-evidence": () => import("../verify-evidence-XTM6E7ST.js"),
-  "generate-report": () => import("../generate-report-LCHULA3Z.js"),
-  "sync-to-team": () => import("../sync-to-team-TJFZJDZM.js"),
-  "get-user-prefs": () => import("../get-user-prefs-Z4HGQUNP.js"),
-  "save-user-prefs": () => import("../save-user-prefs-TSPPMLMV.js")
+  "scan-sessions": () => import("../scan-sessions-IEYC3OGU.js"),
+  "extract-data": () => import("../extract-data-BNI4EU2Y.js"),
+  "get-prompt-context": () => import("../get-prompt-context-75OGJJFL.js"),
+  "save-stage-output": () => import("../save-stage-output-QEBZJIV3.js"),
+  "get-stage-output": () => import("../get-stage-output-4SOREKVM.js"),
+  "save-domain-results": () => import("../save-domain-results-WOSYE2OO.js"),
+  "get-domain-results": () => import("../get-domain-results-UFBWF2BD.js"),
+  "get-run-progress": () => import("../get-run-progress-ZQDGBVPJ.js"),
+  "classify-developer-type": () => import("../classify-developer-type-GJA7F7C6.js"),
+  "verify-evidence": () => import("../verify-evidence-OVMWTJBY.js"),
+  "generate-report": () => import("../generate-report-WUBLVEZS.js"),
+  "sync-to-team": () => import("../sync-to-team-JXTNIVR4.js"),
+  "get-user-prefs": () => import("../get-user-prefs-MXRY4JP6.js"),
+  "save-user-prefs": () => import("../save-user-prefs-JF4B7TQJ.js")
 };
 function toCamelCase(str) {
   return str.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
@@ -37,6 +37,9 @@ function parseArgs(argv) {
     if (token.startsWith("--")) {
       const key = toCamelCase(token.slice(2));
       const next = rest[i + 1];
+      if (key in args) {
+        throw new Error(`Duplicate flag: ${token} (already provided)`);
+      }
       if (next === void 0 || next.startsWith("--")) {
         args[key] = true;
         continue;
