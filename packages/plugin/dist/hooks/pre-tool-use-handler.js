@@ -28,7 +28,7 @@ function expandHomePath(filePath) {
   return filePath;
 }
 function isBetterPromptCliCommand(command, cliPath) {
-  return command.includes(cliPath) || command.includes("dist/cli/index.js");
+  return command.includes(cliPath);
 }
 function isBetterPromptTmpWrite(filePath) {
   const expanded = expandHomePath(filePath);

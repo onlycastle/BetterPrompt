@@ -54,7 +54,7 @@ function buildStepStatus(runId, step, statusLookup) {
       tool: step.tool,
       kind: step.kind,
       status: savedStatus.status,
-      completed: savedStatus.status === "validated",
+      completed: savedStatus.status === "validated" || savedStatus.status === "failed" && artifactPresent,
       hasArtifact: artifactPresent,
       attemptCount: savedStatus.attemptCount,
       lastError: savedStatus.lastError,
@@ -142,4 +142,4 @@ export {
   REQUIRED_STAGE_SEQUENCE,
   execute
 };
-//# sourceMappingURL=get-run-progress-ZQDGBVPJ.js.map
+//# sourceMappingURL=get-run-progress-V26JTAXY.js.map

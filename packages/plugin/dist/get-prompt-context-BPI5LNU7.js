@@ -33,7 +33,7 @@ function trimText(text, maxChars) {
   return `${text.slice(0, maxChars - 1)}\u2026`;
 }
 function isAnalyzablePromptContextUserMessage(message) {
-  return message.role === "user" && !message.isMeta && typeof message.sourceToolUseID !== "string" && message.toolUseResult === void 0 && !message.content.trim().startsWith(SKILL_INJECTION_PREFIX);
+  return message.role === "user" && !message.isMeta && typeof message.sourceToolUseID !== "string" && message.toolUseResult === void 0 && typeof message.content === "string" && !message.content.trim().startsWith(SKILL_INJECTION_PREFIX);
 }
 function trimMessages(messages, maxMessages, maxChars) {
   return messages.slice(0, maxMessages).map((message) => ({
@@ -486,4 +486,4 @@ async function execute(args) {
 export {
   execute
 };
-//# sourceMappingURL=get-prompt-context-75OGJJFL.js.map
+//# sourceMappingURL=get-prompt-context-BPI5LNU7.js.map
