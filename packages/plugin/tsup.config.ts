@@ -4,6 +4,7 @@ export default defineConfig({
   entry: {
     'cli/index': 'cli/index.ts',
     'hooks/post-session-handler': 'hooks/post-session-handler.ts',
+    'hooks/pre-tool-use-handler': 'hooks/pre-tool-use-handler.ts',
     'hooks/session-start-handler': 'hooks/session-start-handler.ts',
   },
   outDir: 'dist',
