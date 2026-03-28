@@ -101,7 +101,7 @@ export function buildFirstRunAdditionalContext(): string {
   return [
     'BetterPrompt is installed but has not been set up yet.',
     'Immediately invoke the BetterPrompt `bp setup` skill to guide the user through first-time onboarding.',
-    'This is a quick (~1 min) wizard that verifies the installation, optionally adds a command reference to CLAUDE.md, and points the user toward their first analysis.',
+    'This is a quick (~1 min) wizard that verifies the installation and points the user toward their first analysis.',
   ].join(' ');
 }
 

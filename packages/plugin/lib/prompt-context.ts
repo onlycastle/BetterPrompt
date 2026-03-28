@@ -64,6 +64,7 @@ function isAnalyzablePromptContextUserMessage(message: SessionMessageWithMeta): 
     && !message.isMeta
     && typeof message.sourceToolUseID !== 'string'
     && message.toolUseResult === undefined
+    && typeof message.content === 'string'
     && !message.content.trim().startsWith(SKILL_INJECTION_PREFIX);
 }
 
@@ -89,11 +90,12 @@ function trimMessages(
   }));
 }
 
-// Caps to keep domainAnalysis payloads under ~80k tokens for haiku-class models.
-// Tune these if analysis quality degrades or rate limits persist.
-const MAX_UTTERANCES = 300;
+// Target ~120k tokens for domain analysis payloads (Haiku-class: 200k context).
+// Leaves ~80k tokens for SKILL.md instructions + generation + safety margin.
+const MAX_UTTERANCES = 500;
 const MAX_INTERACTION_SNAPSHOTS = 200;
-const MAX_SESSION_OVERVIEWS = 40;
+const MAX_SESSION_OVERVIEWS = 60;
+const MAX_SESSION_TRANSCRIPTS = 40;
 
 function buildTrimmedDeveloperUtterances(
   phase1Output: Phase1Output,
@@ -154,8 +156,8 @@ function buildSessionOverviews(phase1Output: Phase1Output) {
         totalInputTokens: session.stats.totalInputTokens,
         totalOutputTokens: session.stats.totalOutputTokens,
       },
-      firstUserMessage: trimText(userMessages[0]?.content, 220),
-      firstAssistantPreview: trimText(firstAssistant?.content, 220),
+      firstUserMessage: trimText(userMessages[0]?.content, 350),
+      firstAssistantPreview: trimText(firstAssistant?.content, 350),
       firstAssistantAskedQuestion: Boolean(firstAssistant?.content?.includes('?')),
       assistantErrorCount: assistantMessages.reduce(
         (count, message) => count + (message.toolCalls?.some((toolCall) => toolCall.isError) ? 1 : 0),
@@ -214,8 +216,16 @@ function buildUtteranceLookup(phase1Output: Phase1Output): Record<string, string
   );
 }
 
-function buildTrimmedSessionInput(phase1Output: Phase1Output) {
-  return (phase1Output.sessions ?? []).map((session) => ({
+function buildTrimmedSessionInput(
+  phase1Output: Phase1Output,
+  maxSessions?: number,
+  maxMsgChars?: number,
+) {
+  const sessions = maxSessions
+    ? (phase1Output.sessions ?? []).slice(0, maxSessions)
+    : (phase1Output.sessions ?? []);
+  const msgChars = maxMsgChars ?? 700;
+  return sessions.map((session) => ({
     sessionId: session.sessionId,
     projectPath: session.projectPath,
     projectName: session.projectName ?? 'unknown',
@@ -224,7 +234,7 @@ function buildTrimmedSessionInput(phase1Output: Phase1Output) {
     durationSeconds: session.durationSeconds,
     source: session.source,
     stats: session.stats,
-    messages: trimMessages(session.messages, 12, 700),
+    messages: trimMessages(session.messages, 10, msgChars),
   }));
 }
 
@@ -269,10 +279,10 @@ function buildCondensedContentWriterStageOutputs(stageOutputs: CanonicalStageOut
     typeClassification: stageOutputs.typeClassification
       ? {
           collaborationMaturity: stageOutputs.typeClassification.collaborationMaturity,
-          reasoning: stageOutputs.typeClassification.reasoning.slice(0, 1).map((paragraph) => trimText(paragraph, 500)),
+          reasoning: stageOutputs.typeClassification.reasoning.slice(0, 3).map((paragraph) => trimText(paragraph, 600)),
           personalityNarrative: stageOutputs.typeClassification.personalityNarrative
-            .slice(0, 1)
-            .map((paragraph) => trimText(paragraph, 500)),
+            .slice(0, 3)
+            .map((paragraph) => trimText(paragraph, 600)),
         }
       : undefined,
     weeklyInsights: stageOutputs.weeklyInsights
@@ -280,8 +290,8 @@ function buildCondensedContentWriterStageOutputs(stageOutputs: CanonicalStageOut
           stats: stageOutputs.weeklyInsights.stats,
           projects: stageOutputs.weeklyInsights.projects,
           topSessions: stageOutputs.weeklyInsights.topSessions,
-          narrative: trimText(stageOutputs.weeklyInsights.narrative, 600),
-          highlights: stageOutputs.weeklyInsights.highlights.slice(0, 5).map((item) => trimText(item, 180)),
+          narrative: trimText(stageOutputs.weeklyInsights.narrative, 800),
+          highlights: stageOutputs.weeklyInsights.highlights.slice(0, 8).map((item) => trimText(item, 250)),
         }
       : undefined,
     projectSummaries: stageOutputs.projectSummaries,
@@ -297,19 +307,19 @@ function buildCondensedContentWriterStageOutputs(stageOutputs: CanonicalStageOut
 
 function buildThinkingQualityContext(phase1Output: Phase1Output) {
   return {
-    developerUtterances: buildTrimmedDeveloperUtterances(phase1Output, 280),
+    developerUtterances: buildTrimmedDeveloperUtterances(phase1Output, 700),
     sessionMetrics: phase1Output.sessionMetrics,
     sessionOverviews: buildSessionOverviews(phase1Output),
     interactionSnapshots: buildInteractionSnapshots(phase1Output, {
-      maxUserChars: 260,
-      maxAssistantChars: 200,
+      maxUserChars: 400,
+      maxAssistantChars: 300,
     }),
     ...(phase1Output.aiInsightBlocks?.length
       ? {
-          aiInsightBlocks: phase1Output.aiInsightBlocks.slice(0, 20).map((block) => ({
+          aiInsightBlocks: phase1Output.aiInsightBlocks.slice(0, 25).map((block) => ({
             sessionId: block.sessionId,
             turnIndex: block.turnIndex,
-            content: trimText(block.content, 180),
+            content: trimText(block.content, 250),
             triggeringUtteranceId: block.triggeringUtteranceId,
           })),
         }
@@ -319,12 +329,12 @@ function buildThinkingQualityContext(phase1Output: Phase1Output) {
 
 function buildCommunicationContext(phase1Output: Phase1Output) {
   return {
-    developerUtterances: buildTrimmedDeveloperUtterances(phase1Output, 260),
+    developerUtterances: buildTrimmedDeveloperUtterances(phase1Output, 600),
     sessionMetrics: phase1Output.sessionMetrics,
     sessionOverviews: buildSessionOverviews(phase1Output),
     interactionSnapshots: buildInteractionSnapshots(phase1Output, {
-      maxUserChars: 220,
-      maxAssistantChars: 160,
+      maxUserChars: 350,
+      maxAssistantChars: 250,
     }),
   };
 }
@@ -332,22 +342,23 @@ function buildCommunicationContext(phase1Output: Phase1Output) {
 function buildLearningContext(phase1Output: Phase1Output) {
   return {
     sessionMetrics: phase1Output.sessionMetrics,
-    developerUtterances: buildTrimmedDeveloperUtterances(phase1Output, 260),
+    developerUtterances: buildTrimmedDeveloperUtterances(phase1Output, 700),
     sessionOverviews: buildSessionOverviews(phase1Output),
     interactionSnapshots: buildInteractionSnapshots(phase1Output, {
-      maxUserChars: 240,
-      maxAssistantChars: 200,
+      maxUserChars: 380,
+      maxAssistantChars: 300,
     }),
     ...(phase1Output.aiInsightBlocks?.length
       ? {
-          aiInsightBlocks: phase1Output.aiInsightBlocks.slice(0, 24).map((block) => ({
+          aiInsightBlocks: phase1Output.aiInsightBlocks.slice(0, 40).map((block) => ({
             sessionId: block.sessionId,
             turnIndex: block.turnIndex,
-            content: trimText(block.content, 200),
+            content: trimText(block.content, 350),
             triggeringUtteranceId: block.triggeringUtteranceId,
           })),
         }
       : {}),
+    sessions: buildTrimmedSessionInput(phase1Output, MAX_SESSION_TRANSCRIPTS, 500),
   };
 }
 
@@ -357,10 +368,11 @@ function buildEfficiencyContext(phase1Output: Phase1Output) {
     activitySessions: phase1Output.activitySessions ?? [],
     sessionOverviews: buildSessionOverviews(phase1Output),
     interactionSnapshots: buildInteractionSnapshots(phase1Output, {
-      maxUserChars: 220,
-      maxAssistantChars: 160,
+      maxUserChars: 350,
+      maxAssistantChars: 250,
     }),
-    developerUtterances: buildTrimmedDeveloperUtterances(phase1Output, 240),
+    developerUtterances: buildTrimmedDeveloperUtterances(phase1Output, 600),
+    sessions: buildTrimmedSessionInput(phase1Output, MAX_SESSION_TRANSCRIPTS, 500),
   };
 }
 
@@ -369,6 +381,7 @@ function buildSessionOutcomeContext(phase1Output: Phase1Output) {
     sessionMetrics: phase1Output.sessionMetrics,
     activitySessions: phase1Output.activitySessions ?? [],
     sessionOverviews: buildSessionOverviews(phase1Output),
+    sessions: buildTrimmedSessionInput(phase1Output, MAX_SESSION_TRANSCRIPTS, 500),
   };
 }
 
@@ -378,9 +391,10 @@ function buildSessionMasteryContext(phase1Output: Phase1Output) {
     activitySessions: phase1Output.activitySessions ?? [],
     sessionOverviews: buildSessionOverviews(phase1Output),
     interactionSnapshots: buildInteractionSnapshots(phase1Output, {
-      maxUserChars: 200,
-      maxAssistantChars: 160,
+      maxUserChars: 300,
+      maxAssistantChars: 220,
     }),
+    sessions: buildTrimmedSessionInput(phase1Output, MAX_SESSION_TRANSCRIPTS, 400),
   };
 }
 
@@ -408,16 +422,18 @@ function buildDomainAnalysisContext(
         ...buildEfficiencyContext(phase1Output),
         ...(phase1Output.aiInsightBlocks?.length
           ? {
-              aiInsightBlocks: phase1Output.aiInsightBlocks.slice(0, 24).map((block) => ({
+              aiInsightBlocks: phase1Output.aiInsightBlocks.slice(0, 30).map((block) => ({
                 sessionId: block.sessionId,
                 turnIndex: block.turnIndex,
-                content: trimText(block.content, 200),
+                content: trimText(block.content, 300),
                 triggeringUtteranceId: block.triggeringUtteranceId,
               })),
             }
           : {}),
       } };
     case 'toolMastery':
+      // Tool mastery analysis uses the communication context (utterances + interaction snapshots)
+      // because tool usage patterns are best observed through developer-AI dialogue.
       return { ...base, phase1: buildCommunicationContext(phase1Output) };
     case 'skillResilience':
       // Cold-start, error recovery: needs session overviews + interaction data
@@ -484,10 +500,10 @@ export function buildPromptContext(input: PromptContextInput): Record<string, un
         deterministicType: typeResult,
         sessionMetrics: phase1Output.sessionMetrics,
         domainResults: buildCondensedDomainResults(domainResults, {
-          maxStrengths: 2,
-          maxGrowthAreas: 2,
-          maxDescriptionChars: 420,
-          maxRecommendationChars: 260,
+          maxStrengths: 3,
+          maxGrowthAreas: 3,
+          maxDescriptionChars: 600,
+          maxRecommendationChars: 400,
         }),
       };
     case 'evidenceVerification':
@@ -501,10 +517,10 @@ export function buildPromptContext(input: PromptContextInput): Record<string, un
         ...base,
         deterministicType: typeResult,
         domainResults: buildCondensedDomainResults(domainResults, {
-          maxStrengths: 2,
-          maxGrowthAreas: 2,
-          maxDescriptionChars: 520,
-          maxRecommendationChars: 320,
+          maxStrengths: 3,
+          maxGrowthAreas: 3,
+          maxDescriptionChars: 700,
+          maxRecommendationChars: 500,
         }),
         stageOutputs: buildCondensedContentWriterStageOutputs(stageOutputs),
       };

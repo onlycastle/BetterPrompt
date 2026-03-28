@@ -12,6 +12,18 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Write|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/hooks/pre-tool-use-handler.js",
+            "description": "Auto-approve BetterPrompt CLI commands and plugin data file operations"
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "matcher": "",

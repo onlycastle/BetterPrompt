@@ -86,7 +86,7 @@ function buildStepStatus(
       tool: step.tool,
       kind: step.kind,
       status: savedStatus.status,
-      completed: savedStatus.status === 'validated',
+      completed: savedStatus.status === 'validated' || (savedStatus.status === 'failed' && artifactPresent),
       hasArtifact: artifactPresent,
       attemptCount: savedStatus.attemptCount,
       lastError: savedStatus.lastError,
@@ -131,8 +131,11 @@ export async function execute(_args: Record<string, unknown>): Promise<string> {
     getStageStatuses(runId).map(status => [status.stage, status]),
   );
   const stages = REQUIRED_STAGE_SEQUENCE.map(step => buildStepStatus(runId, step, statusLookup));
-  const nextIncomplete = stages.find(stage => !stage.completed);
+  // Skip failed stages so the pipeline advances past permanently-failed stages
+  // instead of getting stuck retrying the same failure forever.
+  const nextIncomplete = stages.find(stage => !stage.completed && stage.status !== 'failed');
   const completedRequiredStages = stages.filter(stage => stage.completed).length;
+  const skippedStages = stages.filter(stage => stage.status === 'failed');
   const projectNames = Array.from(
     new Set(
       (run.phase1Output.sessions ?? [])
@@ -142,11 +145,15 @@ export async function execute(_args: Record<string, unknown>): Promise<string> {
   ).sort();
 
   const pendingStages = stages
-    .filter(stage => !stage.completed)
+    .filter(stage => !stage.completed && stage.status !== 'failed')
     .map(({ stage, skill, tool, kind, status, lastError }) => ({
       stage, skill, tool, kind, status,
       ...(lastError ? { lastError } : {}),
     }));
+
+  const skippedStagesSummary = skippedStages.map(({ stage, skill, tool, kind, lastError, attemptCount }) => ({
+    stage, skill, tool, kind, lastError, attemptCount,
+  }));
 
   const nextStep = nextIncomplete
     ? { stage: nextIncomplete.stage, skill: nextIncomplete.skill, tool: nextIncomplete.tool, kind: nextIncomplete.kind }
@@ -164,10 +171,12 @@ export async function execute(_args: Record<string, unknown>): Promise<string> {
     totalRequiredStages: REQUIRED_STAGE_SEQUENCE.length,
     completedDomainCount: stages.filter(stage => DOMAIN_STAGE_NAMES.has(stage.stage) && stage.completed).length,
     totalDomainCount: DOMAIN_STAGE_NAMES.size,
+    skippedStageCount: skippedStages.length,
     nextStep,
     pendingStages,
+    skippedStages: skippedStagesSummary,
     message: nextIncomplete
-      ? `Run #${runId} is incomplete (${completedRequiredStages}/${REQUIRED_STAGE_SEQUENCE.length}). Resume with ${nextStep.tool ?? nextStep.skill ?? nextStep.stage}.`
-      : `Run #${runId} already has all required stages. Ready to generate report.`,
+      ? `Run #${runId} is incomplete (${completedRequiredStages}/${REQUIRED_STAGE_SEQUENCE.length}${skippedStages.length > 0 ? `, ${skippedStages.length} skipped due to failures` : ''}). Resume with ${nextStep.tool ?? nextStep.skill ?? nextStep.stage}.`
+      : `Run #${runId} ${skippedStages.length > 0 ? `completed with ${skippedStages.length} skipped stage(s)` : 'already has all required stages'}. Ready to generate report.`,
   });
 }
