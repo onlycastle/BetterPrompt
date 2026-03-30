@@ -182,26 +182,18 @@ The enterprise dashboard at `/dashboard/enterprise` provides:
 
 ## Plugin (`packages/plugin`)
 
-Claude Code plugin with local-first analysis. Provides MCP tools for the full pipeline and analysis skills that guide Claude through each domain.
+Claude Code plugin with local-first analysis. Provides CLI commands for the full pipeline and analysis skills that guide Claude through each domain.
 
-**MCP Tools (local-first, no server needed):**
+**CLI Commands** (`packages/plugin/cli/commands/`):
 
-| Tool | Description |
-|------|-------------|
+| Command | Description |
+|---------|-------------|
 | `scan_sessions` | Discover and cache supported local session logs from Claude Code |
 | `extract_data` | Run deterministic Phase 1 extraction (metrics, scores) |
 | `save_domain_results` | Store domain analysis results (called by analysis skills) |
 | `classify_developer_type` | Classify into the 5x3 type matrix |
 | `generate_report` | Generate HTML report and serve on localhost |
 | `sync_to_team` | Optional: sync results to a team server |
-
-**MCP Tools (server-backed, backward compatible):**
-
-| Tool | Description |
-|------|-------------|
-| `get_developer_profile` | Profile type, scores, personality summary |
-| `get_growth_areas` | Growth areas with optional domain filter |
-| `get_recent_insights` | Strengths, anti-patterns, KPT retrospective |
 
 **Analysis Skills** (`packages/plugin/skills/`): Markdown files containing PTCF analysis frameworks. Claude reads these as instructions and calls `save_domain_results` with structured findings. Domains: thinking quality, communication patterns, learning behavior, context efficiency, session outcomes, plus a content writer for narrative synthesis.
 
@@ -241,7 +233,7 @@ Test structure:
 
 ```
 tests/
-  unit/              # Models, parser, plugin parity, search agent
+  unit/              # Models, parser, plugin parity, search agent, team/enterprise
   e2e/               # Playwright browser tests (report rendering, scroll nav)
   integration.test.ts # Full pipeline: session parsing -> multi-phase analysis
   fixtures/          # Real session logs and evaluation data
