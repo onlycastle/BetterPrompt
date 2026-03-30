@@ -167,17 +167,22 @@ No `NODE_PATH` or `CLAUDE_PLUGIN_DATA` env vars are needed. The `.mcp.json` uses
 ## Queued Auto-Analysis Flow
 
 ```
-SessionEnd hook → shouldTriggerAnalysis() → markAnalysisPending()
+SessionEnd hook → durationMs > 0 guard → shouldTriggerAnalysis() → markAnalysisPending()
 SessionStart hook → inject queued `bp analyze` context
 extract_data → markAnalysisStarted()
 generate_report / sync_to_team → markAnalysisComplete()
 ```
+
+`markAnalysisComplete()` always reads the filesystem session count via `countClaudeSessions()` to set the debounce baseline. Callers do not pass a session count.
+
+The `SessionEnd` hook skips auto-analysis when `durationMs <= 0` (duration unavailable), returning early before debounce evaluation. This guard runs after the interrupted-analysis recovery check so that stale running analyses are still re-queued.
 
 ## Local-First Analysis Pipeline
 
 ```
 scan_sessions → extract_data → [agent-dispatched skills] →
   classify_developer_type → verify_evidence →
+  near-duplicate evidence dedup →
   generate_report → (optional) sync_to_team
 ```
 
@@ -211,6 +216,18 @@ Writer contract: `write-*` skills must include `severity` on every growth area, 
 Required stages (5-dimension pipeline): `sessionSummaries`, `extractAiPartnership`, `extractSessionCraft`, `extractToolMastery`, `extractSkillResilience`, `extractSessionMastery`, `aiPartnership`, `sessionCraft`, `toolMastery`, `skillResilience`, `sessionMastery`, `projectSummaries`, `weeklyInsights`, `typeClassification`, `evidenceVerification`, `contentWriter`
 
 Pass `allowIncomplete=true` to override the gate.
+
+### Near-Duplicate Evidence Deduplication
+
+After `applyEvidenceVerification`, both `buildCanonicalEvaluation` and `assembleCanonicalAnalysisRun` run `deduplicateNearDuplicateEvidence`. This uses word-level Jaccard similarity to remove near-identical evidence quotes within each strength/growthArea evidence array.
+
+| Parameter | Value |
+|-----------|-------|
+| Default threshold | 0.85 (85% word overlap) |
+| Consecutive-turn threshold | 0.75 (stricter for adjacent turns) |
+| Scope | Per evidence array (within each strength or growth area) |
+
+Implementation: `packages/shared/src/evaluation/canonical-analysis.ts`
 
 ## Multi-Source Scanner
 
