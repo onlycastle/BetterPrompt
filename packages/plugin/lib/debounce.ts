@@ -3,7 +3,7 @@
  *
  * Determines whether an auto-analysis should be triggered based on:
  *   1. Cooldown: ≥4 hours since last analysis
- *   2. Threshold: ≥N new sessions since last analysis (configurable)
+ *   2. Threshold: ≥N new session files since last analysis (configurable)
  *   3. Duration: Just-ended session was ≥3 minutes
  *   4. Guard: No analysis already in progress
  *
@@ -163,7 +163,6 @@ export function recoverStaleAnalysisState(options?: {
  * Evaluate all debounce rules.
  *
  * @param sessionDurationMs - Duration of the just-ended session in milliseconds.
- *   Pass 0 if unknown (e.g. manual trigger).
  */
 export function shouldTriggerAnalysis(sessionDurationMs: number): DebounceResult {
   const state = recoverStaleAnalysisState();
@@ -239,13 +238,15 @@ export function touchAnalysisHeartbeat(): void {
 
 /**
  * Mark analysis as complete. Called after the local pipeline finishes successfully.
+ * Uses the current Claude session-file count as the debounce baseline so the
+ * threshold reflects the filesystem view used by shouldTriggerAnalysis().
  */
-export function markAnalysisComplete(sessionCount?: number): void {
+export function markAnalysisComplete(): void {
   debug('debounce', 'state transition: -> complete');
   writeState({
     ...DEFAULT_STATE,
     lastAnalysisTimestamp: new Date().toISOString(),
-    lastAnalysisSessionCount: sessionCount ?? countClaudeSessions(),
+    lastAnalysisSessionCount: countClaudeSessions(),
     analysisState: 'complete',
   });
 }

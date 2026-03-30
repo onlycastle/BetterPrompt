@@ -46,7 +46,7 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
     }
 
     const result = await response.json().catch(() => ({})) as Record<string, unknown>;
-    markAnalysisComplete(run.phase1Output.sessionMetrics.totalSessions);
+    markAnalysisComplete();
 
     return JSON.stringify({
       status: 'ok',
