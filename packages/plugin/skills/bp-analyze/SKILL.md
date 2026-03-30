@@ -37,6 +37,8 @@ Each analysis skill runs as an **isolated Agent** rather than inline in this ses
 
 **CRITICAL**: Use the built-in `Agent` tool from your tool list to dispatch skills. Do NOT use Bash to run `claude` CLI commands (e.g., `claude --model haiku -p "..."`). The Agent tool is a first-class tool like `Read` or `Bash` -- invoke it directly with the parameters listed below.
 
+**NEVER use SendMessage.** Each stage must be a fresh `Agent` invocation. Do not attempt to resume, message, or reuse a previously completed agent. After an agent returns, spawn a completely new Agent for the next stage.
+
 When `get-run-progress` returns a `nextStep` with a non-null `skill`, dispatch it as an Agent using the built-in `Agent` tool:
 
 - **prompt**: `"You are executing a BetterPrompt analysis stage. Read the skill instructions at [PLUGIN_PATH]/skills/[SKILL_NAME]/SKILL.md and follow them exactly. You have access to the BetterPrompt CLI at ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js. Execute the complete skill workflow. When finished, report whether the stage completed successfully or failed (include the error message if failed). Do not delegate to other agents or tasks."`
