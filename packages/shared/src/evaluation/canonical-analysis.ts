@@ -115,6 +115,83 @@ export function applyEvidenceVerification(
   }));
 }
 
+// ============================================================================
+// Near-Duplicate Evidence Deduplication
+// ============================================================================
+
+const FUZZY_DEDUP_THRESHOLD = 0.85;
+const CONSECUTIVE_TURN_DEDUP_THRESHOLD = 0.75;
+
+function tokenizeForJaccard(text: string): string[] {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 0);
+}
+
+function wordJaccardSimilarity(a: string, b: string): number {
+  const tokensA = tokenizeForJaccard(a);
+  const tokensB = tokenizeForJaccard(b);
+  if (tokensA.length === 0 && tokensB.length === 0) return 1;
+  if (tokensA.length === 0 || tokensB.length === 0) return 0;
+
+  const freqB = new Map<string, number>();
+  for (const t of tokensB) freqB.set(t, (freqB.get(t) ?? 0) + 1);
+
+  let intersection = 0;
+  const used = new Map<string, number>();
+  for (const t of tokensA) {
+    const available = (freqB.get(t) ?? 0) - (used.get(t) ?? 0);
+    if (available > 0) {
+      intersection++;
+      used.set(t, (used.get(t) ?? 0) + 1);
+    }
+  }
+
+  const union = tokensA.length + tokensB.length - intersection;
+  return union === 0 ? 1 : intersection / union;
+}
+
+function areConsecutiveTurns(idA: string, idB: string): boolean {
+  const matchA = idA.match(/^(.+)_(\d+)$/);
+  const matchB = idB.match(/^(.+)_(\d+)$/);
+  if (!matchA || !matchB) return false;
+  return matchA[1] === matchB[1] && Math.abs(Number(matchA[2]) - Number(matchB[2])) <= 2;
+}
+
+function deduplicateEvidenceArray(evidence: Evidence[]): Evidence[] {
+  const accepted: Evidence[] = [];
+  for (const item of evidence) {
+    const isDuplicate = accepted.some(existing => {
+      const similarity = wordJaccardSimilarity(item.quote, existing.quote);
+      const threshold = areConsecutiveTurns(item.utteranceId, existing.utteranceId)
+        ? CONSECUTIVE_TURN_DEDUP_THRESHOLD
+        : FUZZY_DEDUP_THRESHOLD;
+      return similarity >= threshold;
+    });
+    if (!isDuplicate) {
+      accepted.push(item);
+    }
+  }
+  return accepted;
+}
+
+function deduplicateNearDuplicateEvidence(domainResults: DomainResult[]): DomainResult[] {
+  return domainResults.map(result => ({
+    ...result,
+    strengths: result.strengths.map(strength => ({
+      ...strength,
+      evidence: deduplicateEvidenceArray(strength.evidence),
+    })),
+    growthAreas: result.growthAreas.map(area => ({
+      ...area,
+      evidence: deduplicateEvidenceArray(area.evidence),
+    })),
+  }));
+}
+
 function buildSessionSummaryLookup(
   sessionSummaries?: { summaries?: SessionSummary[] },
 ): Map<string, string> {
@@ -778,9 +855,11 @@ export function buildCanonicalEvaluation(args: {
     stageOutputs,
   } = args;
 
-  const filteredDomainResults = applyEvidenceVerification(
-    domainResults,
-    stageOutputs.evidenceVerification,
+  const filteredDomainResults = deduplicateNearDuplicateEvidence(
+    applyEvidenceVerification(
+      domainResults,
+      stageOutputs.evidenceVerification,
+    ),
   );
 
   const confidenceScores = filteredDomainResults
@@ -899,9 +978,11 @@ export function assembleCanonicalAnalysisRun(args: {
     activitySessions,
     deterministicScores: args.deterministicScores,
     typeResult: args.typeResult,
-    domainResults: applyEvidenceVerification(
-      args.domainResults,
-      args.stageOutputs.evidenceVerification,
+    domainResults: deduplicateNearDuplicateEvidence(
+      applyEvidenceVerification(
+        args.domainResults,
+        args.stageOutputs.evidenceVerification,
+      ),
     ),
     stageOutputs: args.stageOutputs,
     evaluation,

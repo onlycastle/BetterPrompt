@@ -133,6 +133,16 @@ export function handleSessionEndHook(
     };
   }
 
+  if (durationMs <= 0) {
+    const reason = 'Session duration unavailable; skipping auto-analysis queue';
+    debug('hook', 'session-end: analysis skipped', { reason, durationMs });
+    return {
+      queued: false,
+      reason,
+      durationMs,
+    };
+  }
+
   // Check debounce rules
   const result = deps.shouldTriggerAnalysis(durationMs);
 

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -10,6 +10,7 @@ import {
   markAnalysisPending,
   markAnalysisStarted,
   readState,
+  shouldTriggerAnalysis,
 } from '../../../packages/plugin/lib/debounce.js';
 import { writePrefs } from '../../../packages/plugin/lib/prefs.js';
 
@@ -30,6 +31,8 @@ describe('plugin session hooks', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
+
     if (originalHome === undefined) delete process.env.HOME;
     else process.env.HOME = originalHome;
 
@@ -171,12 +174,31 @@ describe('plugin session hooks', () => {
     expect(readState().analysisState).toBe('running');
     expect(readState().analysisPending).toBe(false);
 
-    markAnalysisComplete(1);
+    markAnalysisComplete();
     const finalState = readState();
     expect(finalState.analysisState).toBe('complete');
     expect(finalState.analysisPending).toBe(false);
     expect(finalState.analysisInProgress).toBe(false);
     expect(finalState.lastAnalysisSessionCount).toBe(1);
+  });
+
+  it('uses the filesystem session count as the completion baseline for future debounce checks', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-16T10:00:00.000Z'));
+
+    createClaudeSessionFile('session-1.jsonl');
+    createClaudeSessionFile('session-2.jsonl');
+
+    markAnalysisComplete();
+
+    vi.setSystemTime(new Date('2026-03-16T15:00:00.000Z'));
+
+    const result = shouldTriggerAnalysis(7 * 60 * 1000);
+    const finalState = readState();
+
+    expect(finalState.lastAnalysisSessionCount).toBe(2);
+    expect(result.shouldAnalyze).toBe(false);
+    expect(result.reason).toBe('Not enough new sessions (0/1)');
   });
 
   it('re-queues an interrupted running analysis when the session ends', () => {
@@ -211,6 +233,18 @@ describe('plugin session hooks', () => {
     expect(result.reason).toContain('mid-turn');
     expect(readState().analysisState).toBe('running');
     expect(readState().analysisInProgress).toBe(true);
+  });
+
+  it('does not queue analysis when SessionEnd cannot determine session duration', () => {
+    createClaudeSessionFile();
+
+    const result = handleSessionEndHook({});
+
+    expect(result.queued).toBe(false);
+    expect(result.durationMs).toBe(0);
+    expect(result.reason).toContain('duration unavailable');
+    expect(readState().analysisState).toBe('idle');
+    expect(readState().analysisPending).toBe(false);
   });
 
   it('converts stale running analysis to pending on the next startup', () => {

@@ -196,7 +196,9 @@ npm run typecheck           # Type check without emitting
 | `tests/unit/parser/` | JSONL reader tests |
 | `tests/unit/search-agent/` | Search agent tests (knowledge, relevance, judge criteria) |
 | `tests/unit/utils/` | Utility tests (insight-deduplication) |
-| `tests/unit/lib/` | Library tests (result) |
+| `tests/unit/api/` | API route handler tests (teams CRUD, auth, error cases) |
+| `tests/unit/lib/` | Library tests (result, team-store, aggregation, evaluation-to-team) |
+| `tests/utils/` | Shared test helpers and factories (team-helpers) |
 
 ## Plugin Tests
 

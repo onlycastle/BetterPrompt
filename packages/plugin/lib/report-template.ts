@@ -29,6 +29,10 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
+function formatMarkdownBold(html: string): string {
+  return html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+}
+
 // ============================================================================
 // SVG Radar Chart (ported from RadarChart.tsx math)
 // ============================================================================
@@ -271,7 +275,7 @@ function generatePersonalitySummary(summary: string | undefined): string {
     <section class="domain-section" id="personality-summary">
       <h2>🪞 Personality Summary</h2>
       <div class="card">
-        <p>${escapeHtml(summary).replace(/\n/g, '<br>')}</p>
+        <p>${formatMarkdownBold(escapeHtml(summary)).replace(/\n/g, '<br>')}</p>
       </div>
     </section>
   `;

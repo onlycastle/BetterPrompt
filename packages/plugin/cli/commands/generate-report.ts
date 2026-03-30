@@ -74,6 +74,15 @@ function getRequiredStageGateIssues(runId: number): StageGateIssue[] {
   return issues;
 }
 
+function openInBrowser(target: string): void {
+  try {
+    const cmd = process.platform === 'darwin' ? `open "${target}"`
+      : process.platform === 'win32' ? `start "${target}"`
+      : `xdg-open "${target}"`;
+    exec(cmd);
+  } catch { /* non-critical */ }
+}
+
 export async function execute(args: Record<string, unknown>): Promise<string> {
   const serve = args.serve === true;
   const port = (typeof args.port === 'number' ? args.port : 3456);
@@ -116,18 +125,17 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
   const latestPath = join(reportsDir, 'latest.html');
   await writeFile(latestPath, html, 'utf-8');
 
+  const typeLabel = run.typeResult
+    ? `${run.typeResult.matrixEmoji} ${run.typeResult.matrixName}`
+    : 'Not classified';
+  const incompleteWarning = gateIssues.length > 0
+    ? { warning: 'Report generated with incomplete stages.' }
+    : {};
+
   // Default: open the HTML file directly in the browser
   if (!serve) {
-    markAnalysisComplete(run.phase1Output.sessionMetrics.totalSessions);
-
-    if (!noOpen) {
-      try {
-        const cmd = process.platform === 'darwin' ? `open "${reportPath}"`
-          : process.platform === 'win32' ? `start "${reportPath}"`
-          : `xdg-open "${reportPath}"`;
-        exec(cmd);
-      } catch { /* non-critical */ }
-    }
+    markAnalysisComplete();
+    if (!noOpen) openInBrowser(reportPath);
 
     return JSON.stringify({
       status: 'ok',
@@ -135,8 +143,8 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
       reportPath,
       latestPath,
       domainCount: run.domainResults.length,
-      type: run.typeResult ? `${run.typeResult.matrixEmoji} ${run.typeResult.matrixName}` : 'Not classified',
-      ...(gateIssues.length > 0 ? { warning: 'Report generated with incomplete stages.' } : {}),
+      type: typeLabel,
+      ...incompleteWarning,
       message: `Report saved to ${reportPath}. Opened in browser.`,
     });
   }
@@ -168,16 +176,8 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
     });
   });
 
-  markAnalysisComplete(run.phase1Output.sessionMetrics.totalSessions);
-
-  if (!noOpen && url.startsWith('http')) {
-    try {
-      const cmd = process.platform === 'darwin' ? `open "${url}"`
-        : process.platform === 'win32' ? `start "${url}"`
-        : `xdg-open "${url}"`;
-      exec(cmd);
-    } catch { /* non-critical */ }
-  }
+  markAnalysisComplete();
+  if (!noOpen && url.startsWith('http')) openInBrowser(url);
 
   return JSON.stringify({
     status: 'ok',
@@ -185,8 +185,8 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
     reportPath,
     latestPath,
     domainCount: run.domainResults.length,
-    type: run.typeResult ? `${run.typeResult.matrixEmoji} ${run.typeResult.matrixName}` : 'Not classified',
-    ...(gateIssues.length > 0 ? { warning: 'Report generated with incomplete stages.' } : {}),
+    type: typeLabel,
+    ...incompleteWarning,
     message: `Report available at ${url}. Saved to ${reportPath}.`,
   });
 }
