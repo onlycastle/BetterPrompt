@@ -32,6 +32,14 @@ function tokenize(text: string): string[] {
     .filter(token => token.length > 1);
 }
 
+function collapseWhitespace(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function stripAnsi(text: string): string {
+  return text.replace(/\u001B\[[0-9;]*m/g, '');
+}
+
 function bigrams(text: string): string[] {
   const normalized = normalizeText(text).replace(/\s+/g, ' ');
   if (normalized.length < 2) return normalized ? [normalized] : [];
@@ -85,6 +93,95 @@ function scoreEvidence(quote: string, utterance: string): number {
   if (tokenCoverage >= 0.6 || similarity >= 0.65) return 65;
   if (tokenCoverage >= 0.4 || similarity >= 0.5) return 45;
   return 0;
+}
+
+function looksLikeTaggedSystemText(text: string): boolean {
+  return /<(?:system-reminder|task-notification|task-id|status|summary|result|output-file|local-command-(?:stdout|stderr|caveat)|command-name|command-message|command-args|tool_result)\b/i.test(text);
+}
+
+function looksLikeTaskStatusText(text: string): boolean {
+  const normalized = collapseWhitespace(stripAnsi(text)).toLowerCase();
+
+  return /\b(task-id|tool-use-id|output-file)\b/.test(normalized)
+    || /\bstatus:\s*(completed|failed|killed|running|queued|stopped)\b/.test(normalized)
+    || /^background command\b/.test(normalized)
+    || /^agent\s+["'][^"']+["']\s+completed\b/.test(normalized);
+}
+
+function looksLikeSlashCommandPrompt(text: string): boolean {
+  const normalized = collapseWhitespace(stripAnsi(text));
+
+  if (!normalized.startsWith('/')) {
+    return false;
+  }
+
+  const tokens = normalized.split(' ');
+  const commandToken = tokens[0] ?? '';
+
+  return /^\/[\w:-]+$/.test(commandToken)
+    && tokens.length <= 4
+    && normalized.length <= 80
+    && !/[?!]/.test(normalized);
+}
+
+function looksLikeLogExcerpt(text: string): boolean {
+  const lines = stripAnsi(text)
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  if (lines.length < 2) {
+    return false;
+  }
+
+  const logLines = lines.filter(line =>
+    /^at\s+\S+/.test(line)
+    || /^traceback/i.test(line)
+    || /^file\s+".+",\s+line\s+\d+/i.test(line)
+    || /^(npm|pnpm|yarn)\s+(err!?|warn\b|notice\b)/i.test(line)
+    || /^(error|exception|caused by):/i.test(line)
+    || /^\d{4}-\d{2}-\d{2}[ t]/i.test(line)
+    || /\b(exit code|status code)\b/i.test(line),
+  ).length;
+
+  return logLines >= 2 && logLines >= Math.ceil(lines.length / 2);
+}
+
+function looksLikeInjectedInstructionBlock(text: string): boolean {
+  const normalized = stripAnsi(text).trim();
+
+  if (!normalized) {
+    return false;
+  }
+
+  if (/^\[[A-Z0-9 _-]+ ACTIVATED\]/.test(normalized)) {
+    return true;
+  }
+
+  const headingCount = (normalized.match(/^#{1,6}\s+/gm) ?? []).length;
+  const listCount = (normalized.match(/^[-*+]\s+/gm) ?? []).length + (normalized.match(/^\d+\.\s+/gm) ?? []).length;
+  const hasCodeFence = /```/.test(normalized);
+  const instructionPhrase = /(How Ralph Loop Works|Complete Shipping Workflow|Error Handling|Quick Reference|Begin working on the task|output <promise>DONE<\/promise>|output `<promise>DONE<\/promise>`)/i.test(normalized);
+
+  return normalized.length >= 150
+    && (instructionPhrase || headingCount >= 2 || hasCodeFence)
+    && (headingCount + listCount >= 4 || hasCodeFence);
+}
+
+const EVIDENCE_REJECTION_CHECKS = [
+  looksLikeTaggedSystemText,
+  looksLikeTaskStatusText,
+  looksLikeSlashCommandPrompt,
+  looksLikeInjectedInstructionBlock,
+  looksLikeLogExcerpt,
+];
+
+function shouldRejectEvidence(quote: string, sourceUtterance: string): boolean {
+  if (!collapseWhitespace(quote) || !collapseWhitespace(sourceUtterance)) {
+    return true;
+  }
+
+  return EVIDENCE_REJECTION_CHECKS.some(check => check(quote) || check(sourceUtterance));
 }
 
 export async function execute(args: Record<string, unknown>): Promise<string> {
@@ -152,7 +249,9 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
         const utteranceId = typeof evidence.utteranceId === 'string' ? evidence.utteranceId : '';
         const quote = typeof evidence.quote === 'string' ? evidence.quote : '';
         const sourceUtterance = utteranceId ? (utteranceLookup[utteranceId] ?? '') : '';
-        const relevanceScore = scoreEvidence(quote, sourceUtterance);
+        const relevanceScore = shouldRejectEvidence(quote, sourceUtterance)
+          ? 0
+          : scoreEvidence(quote, sourceUtterance);
         const verified = relevanceScore >= threshold;
 
         if (verified) keptCount++;
