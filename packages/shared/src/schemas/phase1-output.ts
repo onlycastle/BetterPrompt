@@ -89,6 +89,44 @@ export const SessionHintsSchema = z.object({
 export type SessionHints = z.infer<typeof SessionHintsSchema>;
 
 // ============================================================================
+// Expert Signals Schema (derived from Claude Code internal patterns)
+// ============================================================================
+
+/**
+ * Expert-level behavioral signals detected from session data.
+ * Based on patterns extracted from Claude Code's own architecture:
+ * layered instructions, prompt-cache discipline, typed hooks,
+ * mode-aware permissions, and thin subagent contexts.
+ */
+export const ExpertSignalsSchema = z.object({
+  /** CLAUDE.md references detected (writing, updating, reading) */
+  claudeMdReferences: z.number().int().min(0),
+  /** .claude/rules/ scoped rule references */
+  scopedRuleReferences: z.number().int().min(0),
+  /** Hook-related references (PreToolUse, PostToolUse, settings.json hooks) */
+  hookReferences: z.number().int().min(0),
+  /** Skill invocations detected (beyond built-in slash commands) */
+  skillInvocations: z.number().int().min(0),
+  /** Proper tool selection ratio: using Read/Edit/Grep/Glob over bash equivalents */
+  properToolSelectionRatio: z.number().min(0).max(1),
+  /** Bash misuse count: using bash cat/grep/find when dedicated tools available */
+  bashMisuseCount: z.number().int().min(0),
+  /** Task/Agent delegation count for parallel or isolated work */
+  taskDelegationCount: z.number().int().min(0),
+  /** Context compaction actions (/compact, /clear) relative to session count */
+  compactionRate: z.number().min(0),
+  /** Sessions with structured first prompt (context + task + constraints) */
+  structuredColdStartCount: z.number().int().min(0),
+  /** Fresh session starts after failures (sunk cost avoidance) */
+  freshSessionAfterFailureCount: z.number().int().min(0),
+  /** Error chain breaks (strategy change after consecutive errors) */
+  errorChainBreakCount: z.number().int().min(0),
+  /** Verification requests before accepting output */
+  verificationRequestCount: z.number().int().min(0),
+});
+export type ExpertSignals = z.infer<typeof ExpertSignalsSchema>;
+
+// ============================================================================
 // Phase 1 Session Metrics Schema
 // ============================================================================
 
@@ -112,6 +150,7 @@ export const Phase1SessionMetricsSchema = z.object({
   frictionSignals: FrictionSignalsSchema.optional(),
   sessionHints: SessionHintsSchema.optional(),
   aiInsightBlockCount: z.number().int().min(0).optional(),
+  expertSignals: ExpertSignalsSchema.optional(),
 });
 export type Phase1SessionMetrics = z.infer<typeof Phase1SessionMetricsSchema>;
 

@@ -407,6 +407,9 @@ function buildDomainAnalysisContext(
     domain,
     deterministicScores,
     dateRange: phase1Output.sessionMetrics.dateRange,
+    ...(phase1Output.sessionMetrics.expertSignals
+      ? { expertSignals: phase1Output.sessionMetrics.expertSignals }
+      : {}),
   };
 
   switch (domain) {

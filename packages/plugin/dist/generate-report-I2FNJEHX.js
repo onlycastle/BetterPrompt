@@ -1,222 +1,176 @@
-/**
- * HTML Report Template Generator
- *
- * Generates a standalone HTML report with inlined CSS/JS/SVG.
- * Uses the notebook-sketch design system from the main app.
- *
- * @module plugin/lib/report-template
- */
+import {
+  markAnalysisComplete
+} from "./chunk-LPUYAQ2F.js";
+import "./chunk-RQKQQ22T.js";
+import "./chunk-FW6ZW4J3.js";
+import {
+  REQUIRED_STAGE_NAMES,
+  assembleCanonicalRun,
+  getCurrentRunId,
+  getDomainResult,
+  getStageOutput,
+  getStageStatuses
+} from "./chunk-TPRBO53W.js";
+import {
+  getPluginDataDir
+} from "./chunk-VNV2GGMC.js";
+import "./chunk-NSBPE2FW.js";
 
-import type {
-  AnalysisReport,
-  CanonicalAnalysisRun,
-  DomainResult,
-  DeterministicTypeResult,
-  CodingStyleType,
-  ReportActivitySession,
-} from './core/types.js';
+// cli/commands/generate-report.ts
+import { readFileSync } from "fs";
+import { writeFile, mkdir } from "fs/promises";
+import { join } from "path";
+import { createServer } from "http";
+import { exec } from "child_process";
 
-// ============================================================================
-// HTML Escaping
-// ============================================================================
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+// lib/report-template.ts
+function escapeHtml(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
-
-function renderInlineMarkdown(text: string): string {
-  return escapeHtml(text)
-    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/(^|[^\*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+function renderInlineMarkdown(text) {
+  return escapeHtml(text).replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[^\*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
 }
-
-function renderMarkdown(markdown: string): string {
-  const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
-  const html: string[] = [];
-  const paragraphLines: string[] = [];
-  let activeList: 'ul' | 'ol' | null = null;
+function renderMarkdown(markdown) {
+  const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
+  const html = [];
+  const paragraphLines = [];
+  let activeList = null;
   let inCodeBlock = false;
-  let codeLanguage = '';
-  const codeLines: string[] = [];
-
+  let codeLanguage = "";
+  const codeLines = [];
   const flushParagraph = () => {
     if (paragraphLines.length === 0) {
       return;
     }
-
-    html.push(`<p>${renderInlineMarkdown(paragraphLines.join(' '))}</p>`);
+    html.push(`<p>${renderInlineMarkdown(paragraphLines.join(" "))}</p>`);
     paragraphLines.length = 0;
   };
-
   const closeList = () => {
     if (!activeList) {
       return;
     }
-
     html.push(`</${activeList}>`);
     activeList = null;
   };
-
   const closeCodeBlock = () => {
     if (!inCodeBlock) {
       return;
     }
-
-    const languageClass = codeLanguage ? ` class="language-${escapeHtml(codeLanguage)}"` : '';
-    html.push(`<pre><code${languageClass}>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+    const languageClass = codeLanguage ? ` class="language-${escapeHtml(codeLanguage)}"` : "";
+    html.push(`<pre><code${languageClass}>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
     inCodeBlock = false;
-    codeLanguage = '';
+    codeLanguage = "";
     codeLines.length = 0;
   };
-
   for (const rawLine of lines) {
     const line = rawLine.trimEnd();
     const trimmed = line.trim();
-
     if (inCodeBlock) {
-      if (trimmed.startsWith('```')) {
+      if (trimmed.startsWith("```")) {
         closeCodeBlock();
       } else {
         codeLines.push(rawLine);
       }
       continue;
     }
-
-    if (trimmed.startsWith('```')) {
+    if (trimmed.startsWith("```")) {
       flushParagraph();
       closeList();
       inCodeBlock = true;
       codeLanguage = trimmed.slice(3).trim();
       continue;
     }
-
     if (!trimmed) {
       flushParagraph();
       closeList();
       continue;
     }
-
     const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
     if (headingMatch) {
       flushParagraph();
       closeList();
-      const level = Math.min(headingMatch[1]!.length + 2, 6);
-      html.push(`<h${level}>${renderInlineMarkdown(headingMatch[2]!)}</h${level}>`);
+      const level = Math.min(headingMatch[1].length + 2, 6);
+      html.push(`<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`);
       continue;
     }
-
     const orderedItemMatch = trimmed.match(/^\d+\.\s+(.*)$/);
     if (orderedItemMatch) {
       flushParagraph();
-      if (activeList !== 'ol') {
+      if (activeList !== "ol") {
         closeList();
-        html.push('<ol>');
-        activeList = 'ol';
+        html.push("<ol>");
+        activeList = "ol";
       }
-      html.push(`<li>${renderInlineMarkdown(orderedItemMatch[1]!)}</li>`);
+      html.push(`<li>${renderInlineMarkdown(orderedItemMatch[1])}</li>`);
       continue;
     }
-
     const unorderedItemMatch = trimmed.match(/^[-*+]\s+(.*)$/);
     if (unorderedItemMatch) {
       flushParagraph();
-      if (activeList !== 'ul') {
+      if (activeList !== "ul") {
         closeList();
-        html.push('<ul>');
-        activeList = 'ul';
+        html.push("<ul>");
+        activeList = "ul";
       }
-      html.push(`<li>${renderInlineMarkdown(unorderedItemMatch[1]!)}</li>`);
+      html.push(`<li>${renderInlineMarkdown(unorderedItemMatch[1])}</li>`);
       continue;
     }
-
     paragraphLines.push(trimmed);
   }
-
   flushParagraph();
   closeList();
   closeCodeBlock();
-
-  return html.join('\n');
+  return html.join("\n");
 }
-
-function renderRichText(markdown: string | undefined): string {
+function renderRichText(markdown) {
   if (!markdown?.trim()) {
-    return '';
+    return "";
   }
-
   return `<div class="rich-text">${renderMarkdown(markdown)}</div>`;
 }
-
-function renderEvidenceList(
-  evidence: Array<{ utteranceId: string; quote: string; context?: string }>,
-): string {
+function renderEvidenceList(evidence) {
   if (evidence.length === 0) {
-    return '';
+    return "";
   }
-
   return `
     <details>
       <summary>Evidence (${evidence.length})</summary>
       <ul class="evidence-list">
-        ${evidence.map(item => `
+        ${evidence.map((item) => `
           <li class="evidence-item">
             <div class="evidence-quote">"${escapeHtml(item.quote)}"</div>
-            ${item.context ? `<div class="evidence-context">${escapeHtml(item.context)}</div>` : ''}
+            ${item.context ? `<div class="evidence-context">${escapeHtml(item.context)}</div>` : ""}
             <div class="evidence-meta"><code>${escapeHtml(item.utteranceId)}</code></div>
           </li>
-        `).join('')}
+        `).join("")}
       </ul>
     </details>
   `;
 }
-
-// ============================================================================
-// SVG Radar Chart (ported from RadarChart.tsx math)
-// ============================================================================
-
-function polarToCartesian(
-  cx: number,
-  cy: number,
-  radius: number,
-  angleDeg: number,
-): { x: number; y: number } {
-  const angleRad = ((angleDeg - 90) * Math.PI) / 180;
+function polarToCartesian(cx, cy, radius, angleDeg) {
+  const angleRad = (angleDeg - 90) * Math.PI / 180;
   return {
     x: cx + radius * Math.cos(angleRad),
-    y: cy + radius * Math.sin(angleRad),
+    y: cy + radius * Math.sin(angleRad)
   };
 }
-
-function getTextAnchor(index: number, total: number): 'start' | 'middle' | 'end' {
-  const angle = (index / total) * 2 * Math.PI - Math.PI / 2;
+function getTextAnchor(index, total) {
+  const angle = index / total * 2 * Math.PI - Math.PI / 2;
   const x = Math.cos(angle);
-  if (Math.abs(x) < 0.15) return 'middle';
-  return x > 0 ? 'start' : 'end';
+  if (Math.abs(x) < 0.15) return "middle";
+  return x > 0 ? "start" : "end";
 }
-
-function getDominantBaseline(index: number, total: number): 'auto' | 'hanging' | 'central' {
-  const angle = (index / total) * 2 * Math.PI - Math.PI / 2;
+function getDominantBaseline(index, total) {
+  const angle = index / total * 2 * Math.PI - Math.PI / 2;
   const y = Math.sin(angle);
-  if (y < -0.3) return 'auto';
-  if (y > 0.3) return 'hanging';
-  return 'central';
+  if (y < -0.3) return "auto";
+  if (y > 0.3) return "hanging";
+  return "central";
 }
-
-function generateRadarSvg(
-  scores: Record<string, number>,
-  labels: Record<string, string>,
-  size = 320,
-): string {
+function generateRadarSvg(scores, labels, size = 320) {
   const entries = Object.entries(scores);
   const count = entries.length;
-  if (count === 0) return '';
-
+  if (count === 0) return "";
   const paddingH = 56;
   const paddingV = 12;
   const labelOffset = 22;
@@ -224,50 +178,33 @@ function generateRadarSvg(
   const cy = size / 2;
   const maxRadius = size / 2 - 58;
   const angleStep = 360 / count;
-
-  // Grid circles
-  const gridCircles = [0.25, 0.5, 0.75, 1.0]
-    .map(frac => {
-      const r = maxRadius * frac;
-      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#E8EDF5" stroke-width="1" />`;
-    })
-    .join('\n');
-
-  // Grid lines + labels
-  const gridLines = entries
-    .map(([key], i) => {
-      const angle = i * angleStep;
-      const end = polarToCartesian(cx, cy, maxRadius, angle);
-      const labelPos = polarToCartesian(cx, cy, maxRadius + labelOffset, angle);
-      const label = labels[key] ?? key;
-      return `
+  const gridCircles = [0.25, 0.5, 0.75, 1].map((frac) => {
+    const r = maxRadius * frac;
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#E8EDF5" stroke-width="1" />`;
+  }).join("\n");
+  const gridLines = entries.map(([key], i) => {
+    const angle = i * angleStep;
+    const end = polarToCartesian(cx, cy, maxRadius, angle);
+    const labelPos = polarToCartesian(cx, cy, maxRadius + labelOffset, angle);
+    const label = labels[key] ?? key;
+    return `
         <line x1="${cx}" y1="${cy}" x2="${end.x}" y2="${end.y}" stroke="#E8EDF5" stroke-width="1" />
         <text x="${labelPos.x}" y="${labelPos.y}" text-anchor="${getTextAnchor(i, count)}" dominant-baseline="${getDominantBaseline(i, count)}"
               font-size="11" font-family="'Fira Code', monospace" fill="#4A4A5A">${escapeHtml(label)}</text>
       `;
-    })
-    .join('\n');
-
-  // Data polygon
-  const points = entries
-    .map(([, score], i) => {
-      const angle = i * angleStep;
-      const r = maxRadius * (score / 100);
-      const p = polarToCartesian(cx, cy, r, angle);
-      return `${p.x},${p.y}`;
-    })
-    .join(' ');
-
-  // Data dots
-  const dots = entries
-    .map(([, score], i) => {
-      const angle = i * angleStep;
-      const r = maxRadius * (score / 100);
-      const p = polarToCartesian(cx, cy, r, angle);
-      return `<circle cx="${p.x}" cy="${p.y}" r="4" fill="#00BCD4" />`;
-    })
-    .join('\n');
-
+  }).join("\n");
+  const points = entries.map(([, score], i) => {
+    const angle = i * angleStep;
+    const r = maxRadius * (score / 100);
+    const p = polarToCartesian(cx, cy, r, angle);
+    return `${p.x},${p.y}`;
+  }).join(" ");
+  const dots = entries.map(([, score], i) => {
+    const angle = i * angleStep;
+    const r = maxRadius * (score / 100);
+    const p = polarToCartesian(cx, cy, r, angle);
+    return `<circle cx="${p.x}" cy="${p.y}" r="4" fill="#00BCD4" />`;
+  }).join("\n");
   return `
     <svg viewBox="${-paddingH} ${-paddingV} ${size + 2 * paddingH} ${size + 2 * paddingV}" class="radar-svg" xmlns="http://www.w3.org/2000/svg">
       ${gridCircles}
@@ -277,25 +214,17 @@ function generateRadarSvg(
     </svg>
   `;
 }
-
-// ============================================================================
-// Type Distribution Bar
-// ============================================================================
-
-function generateTypeDistributionBar(distribution: DeterministicTypeResult['distribution']): string {
-  const colors: Record<CodingStyleType, string> = {
-    architect: '#3B82F6',
-    analyst: '#9C7CF4',
-    conductor: '#FFD93D',
-    speedrunner: '#4ADE80',
-    trendsetter: '#FF6B9D',
+function generateTypeDistributionBar(distribution) {
+  const colors = {
+    architect: "#3B82F6",
+    analyst: "#9C7CF4",
+    conductor: "#FFD93D",
+    speedrunner: "#4ADE80",
+    trendsetter: "#FF6B9D"
   };
-
-  const entries = Object.entries(distribution) as [CodingStyleType, number][];
+  const entries = Object.entries(distribution);
   entries.sort((a, b) => b[1] - a[1]);
-
-  const bars = entries
-    .map(([type, pct]) => `
+  const bars = entries.map(([type, pct]) => `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
         <span style="width:100px;font-size:12px;color:#4A4A5A;text-transform:capitalize;">${type}</span>
         <div style="flex:1;height:20px;background:#F0F0F5;border-radius:4px;overflow:hidden;">
@@ -303,68 +232,49 @@ function generateTypeDistributionBar(distribution: DeterministicTypeResult['dist
         </div>
         <span style="width:35px;text-align:right;font-size:12px;font-weight:600;color:#1A1A2E;">${pct}%</span>
       </div>
-    `)
-    .join('');
-
+    `).join("");
   return `<div style="margin:16px 0;">${bars}</div>`;
 }
-
-// ============================================================================
-// Shared Radar / Scores Helpers
-// ============================================================================
-
-const RADAR_LABELS: Record<string, string> = {
-  aiPartnership: 'AI Partnership',
-  sessionCraft: 'Session Craft',
-  toolMastery: 'Tool Mastery',
-  skillResilience: 'Skill Resilience',
-  sessionMastery: 'Session Mastery',
+var RADAR_LABELS = {
+  aiPartnership: "AI Partnership",
+  sessionCraft: "Session Craft",
+  toolMastery: "Tool Mastery",
+  skillResilience: "Skill Resilience",
+  sessionMastery: "Session Mastery"
 };
-
-function buildRadarScores(scores: AnalysisReport['deterministicScores']): Record<string, number> {
+function buildRadarScores(scores) {
   return {
     aiPartnership: scores.aiPartnership,
     sessionCraft: scores.sessionCraft,
     toolMastery: scores.toolMastery,
     skillResilience: scores.skillResilience,
-    sessionMastery: scores.sessionMastery,
+    sessionMastery: scores.sessionMastery
   };
 }
-
-// ============================================================================
-// Domain Section Cards
-// ============================================================================
-
-const DOMAIN_LABELS: Record<string, { label: string; emoji: string }> = {
-  aiPartnership: { label: 'AI Partnership', emoji: '🤝' },
-  sessionCraft: { label: 'Session Craft', emoji: '🛠️' },
-  toolMastery: { label: 'Tool Mastery', emoji: '🔧' },
-  skillResilience: { label: 'Skill Resilience', emoji: '🧩' },
-  sessionMastery: { label: 'Session Mastery', emoji: '✨' },
+var DOMAIN_LABELS = {
+  aiPartnership: { label: "AI Partnership", emoji: "\u{1F91D}" },
+  sessionCraft: { label: "Session Craft", emoji: "\u{1F6E0}\uFE0F" },
+  toolMastery: { label: "Tool Mastery", emoji: "\u{1F527}" },
+  skillResilience: { label: "Skill Resilience", emoji: "\u{1F9E9}" },
+  sessionMastery: { label: "Session Mastery", emoji: "\u2728" },
   // Legacy domain labels for old runs
-  thinkingQuality: { label: 'Thinking Quality', emoji: '🧠' },
-  communicationPatterns: { label: 'Communication', emoji: '💬' },
-  learningBehavior: { label: 'Learning', emoji: '📚' },
-  contextEfficiency: { label: 'Efficiency', emoji: '⚡' },
-  sessionOutcome: { label: 'Sessions', emoji: '🎯' },
-  content: { label: 'Skill Resilience', emoji: '🧩' },
+  thinkingQuality: { label: "Thinking Quality", emoji: "\u{1F9E0}" },
+  communicationPatterns: { label: "Communication", emoji: "\u{1F4AC}" },
+  learningBehavior: { label: "Learning", emoji: "\u{1F4DA}" },
+  contextEfficiency: { label: "Efficiency", emoji: "\u26A1" },
+  sessionOutcome: { label: "Sessions", emoji: "\u{1F3AF}" },
+  content: { label: "Skill Resilience", emoji: "\u{1F9E9}" }
 };
-
-function generateDomainSection(result: DomainResult): string {
-  const meta = DOMAIN_LABELS[result.domain] ?? { label: result.domain, emoji: '📊' };
-
-  const strengthCards = result.strengths
-    .map(s => `
+function generateDomainSection(result) {
+  const meta = DOMAIN_LABELS[result.domain] ?? { label: result.domain, emoji: "\u{1F4CA}" };
+  const strengthCards = result.strengths.map((s) => `
       <div class="card strength-card">
         <h4>${escapeHtml(s.title)}</h4>
         ${renderRichText(s.description)}
         ${renderEvidenceList(s.evidence)}
       </div>
-    `)
-    .join('');
-
-  const growthCards = result.growthAreas
-    .map(g => `
+    `).join("");
+  const growthCards = result.growthAreas.map((g) => `
       <div class="card growth-card">
         <div class="severity-badge severity-${escapeHtml(g.severity)}">${escapeHtml(g.severity)}</div>
         <h4>${escapeHtml(g.title)}</h4>
@@ -372,186 +282,128 @@ function generateDomainSection(result: DomainResult): string {
         <div class="recommendation">${renderRichText(g.recommendation)}</div>
         ${renderEvidenceList(g.evidence)}
       </div>
-    `)
-    .join('');
-
+    `).join("");
   return `
     <section class="domain-section" id="domain-${result.domain}">
       <h2>${meta.emoji} ${meta.label} <span class="score">${result.overallScore}/100</span></h2>
-      ${result.strengths.length > 0 ? `<h3>Strengths</h3><div class="card-grid">${strengthCards}</div>` : ''}
-      ${result.growthAreas.length > 0 ? `<h3>Growth Areas</h3><div class="card-grid">${growthCards}</div>` : ''}
+      ${result.strengths.length > 0 ? `<h3>Strengths</h3><div class="card-grid">${strengthCards}</div>` : ""}
+      ${result.growthAreas.length > 0 ? `<h3>Growth Areas</h3><div class="card-grid">${growthCards}</div>` : ""}
     </section>
   `;
 }
-
-// ============================================================================
-// Focus Areas Section
-// ============================================================================
-
-function generateFocusAreas(content: AnalysisReport['content']): string {
-  if (!content?.topFocusAreas?.length) return '';
-
-  const areas = content.topFocusAreas
-    .map(area => `
+function generateFocusAreas(content) {
+  if (!content?.topFocusAreas?.length) return "";
+  const areas = content.topFocusAreas.map((area) => `
       <div class="card focus-card">
         <h3>${escapeHtml(area.title)}</h3>
-        ${renderRichText(area.narrative ?? area.description ?? '')}
+        ${renderRichText(area.narrative ?? area.description ?? "")}
         ${area.actions ? `
         <div class="actions-grid">
           <div class="action start"><strong>Start:</strong> ${escapeHtml(area.actions.start)}</div>
           <div class="action stop"><strong>Stop:</strong> ${escapeHtml(area.actions.stop)}</div>
           <div class="action continue"><strong>Continue:</strong> ${escapeHtml(area.actions.continue)}</div>
         </div>
-        ` : ''}
+        ` : ""}
       </div>
-    `)
-    .join('');
-
+    `).join("");
   return `
     <section class="domain-section" id="focus-areas">
-      <h2>🎯 Top Focus Areas</h2>
+      <h2>\u{1F3AF} Top Focus Areas</h2>
       ${areas}
     </section>
   `;
 }
-
-function generatePersonalitySummary(summary: string | undefined): string {
-  if (!summary?.trim()) return '';
-
+function generatePersonalitySummary(summary) {
+  if (!summary?.trim()) return "";
   return `
     <section class="domain-section" id="personality-summary">
-      <h2>🪞 Personality Summary</h2>
+      <h2>\u{1FA9E} Personality Summary</h2>
       <div class="card">
         ${renderRichText(summary)}
       </div>
     </section>
   `;
 }
-
-function generatePromptPatternsSection(
-  promptPatterns: Array<{ patternName?: string; description?: string; frequency?: string; examples?: Array<{ quote?: string; analysis?: string }> }> | undefined,
-): string {
-  if (!promptPatterns?.length) return '';
-
-  const items = promptPatterns
-    .map(pattern => `
+function generatePromptPatternsSection(promptPatterns) {
+  if (!promptPatterns?.length) return "";
+  const items = promptPatterns.map((pattern) => `
       <div class="card">
-        <h4>${escapeHtml(pattern.patternName ?? 'Pattern')}</h4>
-        ${renderRichText(pattern.description ?? '')}
-        <p style="margin-top:8px;font-size:12px;"><strong>Frequency:</strong> ${escapeHtml(pattern.frequency ?? 'n/a')}</p>
+        <h4>${escapeHtml(pattern.patternName ?? "Pattern")}</h4>
+        ${renderRichText(pattern.description ?? "")}
+        <p style="margin-top:8px;font-size:12px;"><strong>Frequency:</strong> ${escapeHtml(pattern.frequency ?? "n/a")}</p>
         ${(pattern.examples?.length ?? 0) > 0 ? `
           <details>
-            <summary>Examples (${pattern.examples!.length})</summary>
+            <summary>Examples (${pattern.examples.length})</summary>
             <ul class="prompt-example-list">
-              ${pattern.examples!.map(example => `
+              ${pattern.examples.map((example) => `
                 <li class="prompt-example-item">
-                  <div class="prompt-example-quote">"${escapeHtml(example.quote ?? '')}"</div>
-                  ${example.analysis ? `<div class="prompt-example-context">${escapeHtml(example.analysis)}</div>` : ''}
+                  <div class="prompt-example-quote">"${escapeHtml(example.quote ?? "")}"</div>
+                  ${example.analysis ? `<div class="prompt-example-context">${escapeHtml(example.analysis)}</div>` : ""}
                 </li>
-              `).join('')}
+              `).join("")}
             </ul>
           </details>
-        ` : ''}
+        ` : ""}
       </div>
-    `)
-    .join('');
-
+    `).join("");
   return `
     <section class="domain-section" id="prompt-patterns">
-      <h2>🧩 Prompt Patterns</h2>
+      <h2>\u{1F9E9} Prompt Patterns</h2>
       <div class="card-grid">${items}</div>
     </section>
   `;
 }
-
-function generateProjectSummariesSection(
-  projectSummaries: Array<{ projectName: string; summaryLines: string[]; sessionCount: number }> | undefined,
-): string {
-  if (!projectSummaries?.length) return '';
-
-  const items = projectSummaries
-    .map(project => `
+function generateProjectSummariesSection(projectSummaries) {
+  if (!projectSummaries?.length) return "";
+  const items = projectSummaries.map((project) => `
       <div class="card">
         <h4>${escapeHtml(project.projectName)} <span style="color:var(--ink-muted);font-weight:400;">(${project.sessionCount} sessions)</span></h4>
         <ul style="padding-left:20px;font-size:13px;color:var(--ink-secondary);">
-          ${project.summaryLines.map(line => `<li>${escapeHtml(line)}</li>`).join('')}
+          ${project.summaryLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
         </ul>
       </div>
-    `)
-    .join('');
-
+    `).join("");
   return `
     <section class="domain-section" id="project-summaries">
-      <h2>📁 Project Summaries</h2>
+      <h2>\u{1F4C1} Project Summaries</h2>
       <div class="card-grid">${items}</div>
     </section>
   `;
 }
-
-// ============================================================================
-// Activity Heatmap Section (ported from ActivitySection.tsx)
-// ============================================================================
-
-interface HeatmapDayData {
-  date: string;
-  count: number;
-  totalTokens: number;
-  sessions: Array<{
-    sessionId: string;
-    projectName: string;
-    startTime: string;
-    durationMinutes: number;
-    messageCount: number;
-    summary: string;
-    totalTokens: number;
-  }>;
-}
-
-function heatmapToDateKey(dateStr: string): string {
+function heatmapToDateKey(dateStr) {
   return dateStr.slice(0, 10);
 }
-
-function heatmapGetWeekStart(date: Date): Date {
+function heatmapGetWeekStart(date) {
   const d = new Date(date);
   d.setDate(d.getDate() - d.getDay());
   return d;
 }
-
-function heatmapAddDays(date: Date, days: number): Date {
+function heatmapAddDays(date, days) {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
   return d;
 }
-
-function heatmapFormatTokenCount(tokens: number): string {
-  if (tokens >= 1_000_000_000) return `${(tokens / 1_000_000_000).toFixed(1)}B`;
-  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
-  if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}K`;
+function heatmapFormatTokenCount(tokens) {
+  if (tokens >= 1e9) return `${(tokens / 1e9).toFixed(1)}B`;
+  if (tokens >= 1e6) return `${(tokens / 1e6).toFixed(1)}M`;
+  if (tokens >= 1e3) return `${(tokens / 1e3).toFixed(1)}K`;
   return String(tokens);
 }
-
-function heatmapGetIntensityByCount(count: number): number {
+function heatmapGetIntensityByCount(count) {
   if (count === 0) return 0;
   if (count <= 2) return count;
   if (count <= 4) return 3;
   return 4;
 }
-
-function heatmapComputeTokenIntensity(grid: HeatmapDayData[]): (tokens: number) => number {
-  const nonZero = grid
-    .map(d => d.totalTokens)
-    .filter(t => t > 0)
-    .sort((a, b) => a - b);
-
+function heatmapComputeTokenIntensity(grid) {
+  const nonZero = grid.map((d) => d.totalTokens).filter((t) => t > 0).sort((a, b) => a - b);
   if (nonZero.length === 0) {
     return () => 0;
   }
-
   const p25 = nonZero[Math.floor(nonZero.length * 0.25)];
-  const p50 = nonZero[Math.floor(nonZero.length * 0.50)];
+  const p50 = nonZero[Math.floor(nonZero.length * 0.5)];
   const p75 = nonZero[Math.floor(nonZero.length * 0.75)];
-
-  return (tokens: number) => {
+  return (tokens) => {
     if (tokens === 0) return 0;
     if (tokens <= p25) return 1;
     if (tokens <= p50) return 2;
@@ -559,68 +411,51 @@ function heatmapComputeTokenIntensity(grid: HeatmapDayData[]): (tokens: number) 
     return 4;
   };
 }
-
-function heatmapFormatDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
+function heatmapFormatDate(dateStr) {
+  const d = /* @__PURE__ */ new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric"
   });
 }
-
-function generateActivityHeatmapSection(
-  activitySessions: ReportActivitySession[] | undefined,
-): string {
-  if (!activitySessions || activitySessions.length === 0) return '';
-
-  const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  // Unify session data
-  const unified = activitySessions.map(s => ({
+function generateActivityHeatmapSection(activitySessions) {
+  if (!activitySessions || activitySessions.length === 0) return "";
+  const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const unified = activitySessions.map((s) => ({
     sessionId: s.sessionId,
     projectName: s.projectName,
     startTime: s.startTime,
     durationMinutes: s.durationMinutes,
     messageCount: s.messageCount,
-    summary: s.summary || '',
-    totalTokens: (s.totalInputTokens || 0) + (s.totalOutputTokens || 0),
+    summary: s.summary || "",
+    totalTokens: (s.totalInputTokens || 0) + (s.totalOutputTokens || 0)
   }));
-
-  // Group sessions by date
-  const sessionsByDate = new Map<string, typeof unified>();
+  const sessionsByDate = /* @__PURE__ */ new Map();
   for (const session of unified) {
     const dateKey = heatmapToDateKey(session.startTime);
     if (!sessionsByDate.has(dateKey)) {
       sessionsByDate.set(dateKey, []);
     }
-    sessionsByDate.get(dateKey)!.push(session);
+    sessionsByDate.get(dateKey).push(session);
   }
-
-  // Compute date range
-  const dates = unified.map(s => new Date(s.startTime)).sort((a, b) => a.getTime() - b.getTime());
+  const dates = unified.map((s) => new Date(s.startTime)).sort((a, b) => a.getTime() - b.getTime());
   const startDate = dates[0];
   const endDate = dates[dates.length - 1];
-
-  // Pad to full weeks
   const weekStart = heatmapGetWeekStart(startDate);
   const weekEnd = heatmapAddDays(endDate, 6 - endDate.getDay());
-
-  // Build grid
-  const grid: HeatmapDayData[] = [];
-  const monthLabels: { text: string; column: number }[] = [];
+  const grid = [];
+  const monthLabels = [];
   let currentDate = new Date(weekStart);
   let prevMonth = -1;
   let column = 0;
-
   while (currentDate <= weekEnd) {
     const dateKey = currentDate.toISOString().slice(0, 10);
     const sessions = sessionsByDate.get(dateKey) || [];
     const totalTokens = sessions.reduce((sum, s) => sum + s.totalTokens, 0);
     grid.push({ date: dateKey, count: sessions.length, totalTokens, sessions });
-
     const dayOfWeek = currentDate.getDay();
     const month = currentDate.getMonth();
     if (dayOfWeek === 0 && month !== prevMonth) {
@@ -632,23 +467,19 @@ function generateActivityHeatmapSection(
     }
     currentDate = heatmapAddDays(currentDate, 1);
   }
-
   const totalWeeks = Math.ceil(grid.length / 7);
-  const hasTokenData = unified.some(s => s.totalTokens > 0);
+  const hasTokenData = unified.some((s) => s.totalTokens > 0);
   const getTokenIntensity = heatmapComputeTokenIntensity(grid);
   const cellSize = 16;
   const gap = 3;
-
-  // Compute stats
   const totalSessions = unified.length;
   const activeDays = sessionsByDate.size;
   const totalTokensAll = unified.reduce((sum, s) => sum + s.totalTokens, 0);
-
-  const projectCounts = new Map<string, number>();
+  const projectCounts = /* @__PURE__ */ new Map();
   for (const session of unified) {
     projectCounts.set(session.projectName, (projectCounts.get(session.projectName) || 0) + 1);
   }
-  let mostActiveProject = '';
+  let mostActiveProject = "";
   let maxCount = 0;
   for (const [project, count] of projectCounts) {
     if (count > maxCount) {
@@ -656,8 +487,6 @@ function generateActivityHeatmapSection(
       maxCount = count;
     }
   }
-
-  // Build stat cards HTML
   const statCards = `
     <div class="heatmap-stats">
       <div class="heatmap-stat heatmap-stat-blue">
@@ -673,60 +502,45 @@ function generateActivityHeatmapSection(
           <span class="heatmap-stat-value">${heatmapFormatTokenCount(totalTokensAll)}</span>
           <span class="heatmap-stat-label">Total Tokens</span>
         </div>
-      ` : ''}
+      ` : ""}
       ${mostActiveProject ? `
         <div class="heatmap-stat heatmap-stat-blue">
           <span class="heatmap-stat-value">${escapeHtml(mostActiveProject)}</span>
           <span class="heatmap-stat-label">Top Project</span>
         </div>
-      ` : ''}
+      ` : ""}
     </div>
   `;
-
-  // Build month labels HTML
-  const monthLabelsHtml = monthLabels.map(m =>
-    `<span class="hm-month-label" style="left:${36 + m.column * (cellSize + gap)}px;">${m.text}</span>`
-  ).join('');
-
-  // Build day labels HTML (show Mon/Wed/Fri only)
-  const dayLabelsHtml = DAY_LABELS.map((label, i) =>
-    `<span class="hm-day-label${i % 2 === 0 ? ' hm-day-hidden' : ''}" style="height:${cellSize}px;line-height:${cellSize}px;">${label}</span>`
-  ).join('');
-
-  // Build grid cells HTML
+  const monthLabelsHtml = monthLabels.map(
+    (m) => `<span class="hm-month-label" style="left:${36 + m.column * (cellSize + gap)}px;">${m.text}</span>`
+  ).join("");
+  const dayLabelsHtml = DAY_LABELS.map(
+    (label, i) => `<span class="hm-day-label${i % 2 === 0 ? " hm-day-hidden" : ""}" style="height:${cellSize}px;line-height:${cellSize}px;">${label}</span>`
+  ).join("");
   const cellsHtml = grid.map((day) => {
-    const intensity = hasTokenData
-      ? getTokenIntensity(day.totalTokens)
-      : heatmapGetIntensityByCount(day.count);
-    const title = day.count > 0
-      ? `${heatmapFormatDate(day.date)}: ${day.totalTokens > 0 ? `${heatmapFormatTokenCount(day.totalTokens)} tokens, ` : ''}${day.count} session${day.count !== 1 ? 's' : ''}`
-      : `${heatmapFormatDate(day.date)}: No sessions`;
-    return `<div class="hm-cell hm-level${intensity}" data-date="${day.date}" title="${escapeHtml(title)}"${day.count > 0 ? ' onclick="showHeatmapDetail(this.dataset.date)"' : ''}></div>`;
-  }).join('');
-
-  // Build legend
+    const intensity = hasTokenData ? getTokenIntensity(day.totalTokens) : heatmapGetIntensityByCount(day.count);
+    const title = day.count > 0 ? `${heatmapFormatDate(day.date)}: ${day.totalTokens > 0 ? `${heatmapFormatTokenCount(day.totalTokens)} tokens, ` : ""}${day.count} session${day.count !== 1 ? "s" : ""}` : `${heatmapFormatDate(day.date)}: No sessions`;
+    return `<div class="hm-cell hm-level${intensity}" data-date="${day.date}" title="${escapeHtml(title)}"${day.count > 0 ? ' onclick="showHeatmapDetail(this.dataset.date)"' : ""}></div>`;
+  }).join("");
   const legendHtml = `
     <div class="hm-legend">
       <span class="hm-legend-label">Less</span>
       <div class="hm-legend-cells">
-        ${[0, 1, 2, 3, 4].map(level => `<div class="hm-legend-cell hm-level${level}"></div>`).join('')}
+        ${[0, 1, 2, 3, 4].map((level) => `<div class="hm-legend-cell hm-level${level}"></div>`).join("")}
       </div>
       <span class="hm-legend-label">More</span>
     </div>
   `;
-
-  // Build session data JSON for client-side detail panel
-  const sessionDataByDate: Record<string, typeof unified> = {};
+  const sessionDataByDate = {};
   for (const day of grid) {
     if (day.sessions.length > 0) {
       sessionDataByDate[day.date] = day.sessions;
     }
   }
-
   return `
     <section class="heatmap-section" id="activity-heatmap">
       <div class="heatmap-header">
-        <span class="heatmap-header-icon">📊</span>
+        <span class="heatmap-header-icon">\u{1F4CA}</span>
         <div class="heatmap-header-text">
           <h2 class="heatmap-title">Monthly Vibe</h2>
           <p class="heatmap-subtitle">${totalSessions} sessions &middot; ${activeDays} active days</p>
@@ -748,7 +562,7 @@ function generateActivityHeatmapSection(
       </div>
     </section>
     <script>
-      var __heatmapData = ${JSON.stringify(sessionDataByDate).replace(/</g, '\\u003c')};
+      var __heatmapData = ${JSON.stringify(sessionDataByDate).replace(/</g, "\\u003c")};
       function escHtml(s) {
         var d = document.createElement('div');
         d.appendChild(document.createTextNode(s));
@@ -833,105 +647,81 @@ function generateActivityHeatmapSection(
     </script>
   `;
 }
-
-function generateWeeklyInsightsSection(
-  weeklyInsights: {
-    stats?: { totalSessions?: number; totalMinutes?: number; totalTokens?: number; activeDays?: number };
-    projects?: Array<{ projectName: string; sessionCount: number; percentage: number }>;
-    narrative?: string;
-    highlights?: string[];
-    topProjectSessions?: Array<{ summary: string; durationMinutes: number; date: string }>;
-  } | undefined,
-): string {
-  if (!weeklyInsights) return '';
-
+function generateWeeklyInsightsSection(weeklyInsights) {
+  if (!weeklyInsights) return "";
   const stats = weeklyInsights.stats;
   const highlights = weeklyInsights.highlights ?? [];
   const projects = weeklyInsights.projects ?? [];
   const topSessions = weeklyInsights.topProjectSessions ?? [];
-
   return `
     <section class="domain-section" id="weekly-insights">
-      <h2>📆 Weekly Insights</h2>
+      <h2>\u{1F4C6} Weekly Insights</h2>
       ${stats ? `
         <div class="metrics-bar" style="margin-bottom:16px;">
           <div class="metric"><div class="value">${stats.totalSessions ?? 0}</div><div class="label">Sessions</div></div>
           <div class="metric"><div class="value">${Math.round(stats.totalMinutes ?? 0)}</div><div class="label">Minutes</div></div>
-          <div class="metric"><div class="value">${Math.round((stats.totalTokens ?? 0) / 1000)}k</div><div class="label">Tokens</div></div>
+          <div class="metric"><div class="value">${Math.round((stats.totalTokens ?? 0) / 1e3)}k</div><div class="label">Tokens</div></div>
           <div class="metric"><div class="value">${stats.activeDays ?? 0}</div><div class="label">Active Days</div></div>
         </div>
-      ` : ''}
-      ${weeklyInsights.narrative ? `<div class="card">${renderRichText(weeklyInsights.narrative)}</div>` : ''}
+      ` : ""}
+      ${weeklyInsights.narrative ? `<div class="card">${renderRichText(weeklyInsights.narrative)}</div>` : ""}
       ${projects.length > 0 ? `
         <div class="card">
           <h4>Project Breakdown</h4>
           <ul style="padding-left:20px;font-size:13px;color:var(--ink-secondary);">
-            ${projects.map(project => `<li>${escapeHtml(project.projectName)}: ${project.sessionCount} sessions, ${project.percentage}%</li>`).join('')}
+            ${projects.map((project) => `<li>${escapeHtml(project.projectName)}: ${project.sessionCount} sessions, ${project.percentage}%</li>`).join("")}
           </ul>
         </div>
-      ` : ''}
+      ` : ""}
       ${topSessions.length > 0 ? `
         <div class="card">
           <h4>Top Sessions</h4>
           <ul style="padding-left:20px;font-size:13px;color:var(--ink-secondary);">
-            ${topSessions.map(session => `<li>${escapeHtml(session.date)} · ${Math.round(session.durationMinutes)} min · ${escapeHtml(session.summary)}</li>`).join('')}
+            ${topSessions.map((session) => `<li>${escapeHtml(session.date)} \xB7 ${Math.round(session.durationMinutes)} min \xB7 ${escapeHtml(session.summary)}</li>`).join("")}
           </ul>
         </div>
-      ` : ''}
+      ` : ""}
       ${highlights.length > 0 ? `
         <div class="card">
           <h4>Highlights</h4>
           <ul style="padding-left:20px;font-size:13px;color:var(--ink-secondary);">
-            ${highlights.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+            ${highlights.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
           </ul>
         </div>
-      ` : ''}
+      ` : ""}
     </section>
   `;
 }
-
-function generateKnowledgeResourcesSection(
-  knowledgeResources: Array<{
-    dimensionDisplayName?: string;
-    knowledgeItems?: Array<{ title?: string; summary?: string; sourceAuthor?: string; sourceUrl?: string }>;
-    professionalInsights?: Array<{ title?: string; keyTakeaway?: string; sourceAuthor?: string; sourceUrl?: string }>;
-  }> | undefined,
-): string {
-  if (!knowledgeResources?.length) return '';
-
+function generateKnowledgeResourcesSection(knowledgeResources) {
+  if (!knowledgeResources?.length) return "";
   return `
     <section class="domain-section" id="knowledge-resources">
-      <h2>📚 Knowledge Resources</h2>
+      <h2>\u{1F4DA} Knowledge Resources</h2>
       <div class="card-grid">
         ${knowledgeResources.map((group) => `
           <div class="card">
-            <h4>${escapeHtml(group.dimensionDisplayName ?? 'Recommended Resources')}</h4>
+            <h4>${escapeHtml(group.dimensionDisplayName ?? "Recommended Resources")}</h4>
             ${(group.professionalInsights?.length ?? 0) > 0 ? `
               <p style="margin-top:8px;"><strong>Professional Insights</strong></p>
               <ul style="padding-left:20px;font-size:13px;color:var(--ink-secondary);">
-                ${group.professionalInsights!.slice(0, 3).map((item) => `<li>${escapeHtml(item.title ?? 'Insight')}${item.keyTakeaway ? `: ${escapeHtml(item.keyTakeaway)}` : ''}</li>`).join('')}
+                ${group.professionalInsights.slice(0, 3).map((item) => `<li>${escapeHtml(item.title ?? "Insight")}${item.keyTakeaway ? `: ${escapeHtml(item.keyTakeaway)}` : ""}</li>`).join("")}
               </ul>
-            ` : ''}
+            ` : ""}
             ${(group.knowledgeItems?.length ?? 0) > 0 ? `
               <p style="margin-top:8px;"><strong>Suggested Reading</strong></p>
               <ul style="padding-left:20px;font-size:13px;color:var(--ink-secondary);">
-                ${group.knowledgeItems!.slice(0, 3).map((item) => `<li>${escapeHtml(item.title ?? 'Resource')}${item.summary ? `: ${escapeHtml(item.summary)}` : ''}</li>`).join('')}
+                ${group.knowledgeItems.slice(0, 3).map((item) => `<li>${escapeHtml(item.title ?? "Resource")}${item.summary ? `: ${escapeHtml(item.summary)}` : ""}</li>`).join("")}
               </ul>
-            ` : ''}
+            ` : ""}
           </div>
-        `).join('')}
+        `).join("")}
       </div>
     </section>
   `;
 }
-
-// ============================================================================
-// Shared HTML Fragments
-// ============================================================================
-
-function generateBaseCss(): string {
+function generateBaseCss() {
   return `
-    /* ── Notebook Sketch Design System ── */
+    /* \u2500\u2500 Notebook Sketch Design System \u2500\u2500 */
 
     :root {
       --bg-paper: #FFFFFF;
@@ -970,7 +760,7 @@ function generateBaseCss(): string {
       margin: 0 auto;
     }
 
-    /* ── Header ── */
+    /* \u2500\u2500 Header \u2500\u2500 */
     .header {
       text-align: center;
       margin-bottom: 48px;
@@ -980,7 +770,7 @@ function generateBaseCss(): string {
     .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
     .header .subtitle { color: var(--ink-secondary); font-size: 13px; }
 
-    /* ── Identity Section ── */
+    /* \u2500\u2500 Identity Section \u2500\u2500 */
     .identity {
       display: flex;
       gap: 32px;
@@ -996,7 +786,7 @@ function generateBaseCss(): string {
     .identity .type-name { font-size: 22px; font-weight: 700; margin-top: 8px; }
     .identity .type-detail { color: var(--ink-secondary); font-size: 13px; margin-top: 4px; }
 
-    /* ── Scores Grid ── */
+    /* \u2500\u2500 Scores Grid \u2500\u2500 */
     .scores-section {
       display: flex;
       flex-wrap: wrap;
@@ -1020,7 +810,7 @@ function generateBaseCss(): string {
       overflow: visible;
     }
 
-    /* ── Cards ── */
+    /* \u2500\u2500 Cards \u2500\u2500 */
     .card {
       background: var(--bg-paper);
       border: 1px solid var(--bg-grid-color);
@@ -1137,7 +927,7 @@ function generateBaseCss(): string {
       color: var(--ink-muted);
     }
 
-    /* ── Domain Sections ── */
+    /* \u2500\u2500 Domain Sections \u2500\u2500 */
     .domain-section {
       margin-bottom: 48px;
       padding-bottom: 24px;
@@ -1165,7 +955,7 @@ function generateBaseCss(): string {
       margin-left: auto;
     }
 
-    /* ── Actions Grid ── */
+    /* \u2500\u2500 Actions Grid \u2500\u2500 */
     .actions-grid {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
@@ -1183,7 +973,7 @@ function generateBaseCss(): string {
     .action.continue { background: rgba(59,130,246,0.1); }
     .action strong { display: block; font-size: 11px; color: var(--ink-primary); margin-bottom: 4px; }
 
-    /* ── Metrics Bar ── */
+    /* \u2500\u2500 Metrics Bar \u2500\u2500 */
     .metrics-bar {
       display: flex;
       gap: 24px;
@@ -1203,7 +993,7 @@ function generateBaseCss(): string {
     .metric.expert .value { font-size: 20px; color: var(--sketch-purple, #a78bfa); }
     .metric.expert .label { font-size: 10px; color: var(--ink-muted); }
 
-    /* ── Navigation Dots ── */
+    /* \u2500\u2500 Navigation Dots \u2500\u2500 */
     .nav-dots {
       position: fixed;
       right: 20px;
@@ -1234,7 +1024,7 @@ function generateBaseCss(): string {
       transform: scale(1.5);
     }
 
-    /* ── Footer ── */
+    /* \u2500\u2500 Footer \u2500\u2500 */
     .footer {
       text-align: center;
       padding: 24px;
@@ -1249,14 +1039,10 @@ function generateBaseCss(): string {
     }
   `;
 }
-
-function renderNavDotsHtml(dots: Array<{ id: string; label: string }>): string {
-  return dots
-    .map(d => `<a href="#${d.id}" class="nav-dot" title="${d.label}"><span class="dot"></span></a>`)
-    .join('');
+function renderNavDotsHtml(dots) {
+  return dots.map((d) => `<a href="#${d.id}" class="nav-dot" title="${d.label}"><span class="dot"></span></a>`).join("");
 }
-
-function renderIdentitySection(typeResult: DeterministicTypeResult | null, fallbackMessage: string): string {
+function renderIdentitySection(typeResult, fallbackMessage) {
   if (typeResult) {
     return `
       <div class="type-emoji">${typeResult.matrixEmoji}</div>
@@ -1273,32 +1059,23 @@ function renderIdentitySection(typeResult: DeterministicTypeResult | null, fallb
     </div>
   `;
 }
-
-function renderExpertSignalsBar(metrics: AnalysisReport['phase1Metrics']): string {
+function renderExpertSignalsBar(metrics) {
   const expert = metrics.expertSignals;
-  if (!expert) return '';
-
-  const hasSignals = expert.claudeMdReferences > 0
-    || expert.taskDelegationCount > 0
-    || expert.hookReferences > 0
-    || expert.skillInvocations > 0
-    || expert.compactionRate > 0;
-
-  if (!hasSignals) return '';
-
+  if (!expert) return "";
+  const hasSignals = expert.claudeMdReferences > 0 || expert.taskDelegationCount > 0 || expert.hookReferences > 0 || expert.skillInvocations > 0 || expert.compactionRate > 0;
+  if (!hasSignals) return "";
   return `
     <div class="metrics-bar expert-signals" data-testid="expert-signals">
-      ${expert.claudeMdReferences > 0 ? `<div class="metric expert"><div class="value">${expert.claudeMdReferences}</div><div class="label">CLAUDE.md Refs</div></div>` : ''}
-      ${expert.taskDelegationCount > 0 ? `<div class="metric expert"><div class="value">${expert.taskDelegationCount}</div><div class="label">Task Delegations</div></div>` : ''}
-      ${expert.compactionRate > 0 ? `<div class="metric expert"><div class="value">${Math.round(expert.compactionRate * 100)}%</div><div class="label">Compaction Rate</div></div>` : ''}
-      ${expert.verificationRequestCount > 0 ? `<div class="metric expert"><div class="value">${expert.verificationRequestCount}</div><div class="label">Verifications</div></div>` : ''}
-      ${expert.structuredColdStartCount > 0 ? `<div class="metric expert"><div class="value">${expert.structuredColdStartCount}</div><div class="label">Structured Starts</div></div>` : ''}
-      ${Math.round(expert.properToolSelectionRatio * 100) < 100 ? `<div class="metric expert"><div class="value">${Math.round(expert.properToolSelectionRatio * 100)}%</div><div class="label">Tool Selection</div></div>` : ''}
+      ${expert.claudeMdReferences > 0 ? `<div class="metric expert"><div class="value">${expert.claudeMdReferences}</div><div class="label">CLAUDE.md Refs</div></div>` : ""}
+      ${expert.taskDelegationCount > 0 ? `<div class="metric expert"><div class="value">${expert.taskDelegationCount}</div><div class="label">Task Delegations</div></div>` : ""}
+      ${expert.compactionRate > 0 ? `<div class="metric expert"><div class="value">${Math.round(expert.compactionRate * 100)}%</div><div class="label">Compaction Rate</div></div>` : ""}
+      ${expert.verificationRequestCount > 0 ? `<div class="metric expert"><div class="value">${expert.verificationRequestCount}</div><div class="label">Verifications</div></div>` : ""}
+      ${expert.structuredColdStartCount > 0 ? `<div class="metric expert"><div class="value">${expert.structuredColdStartCount}</div><div class="label">Structured Starts</div></div>` : ""}
+      ${Math.round(expert.properToolSelectionRatio * 100) < 100 ? `<div class="metric expert"><div class="value">${Math.round(expert.properToolSelectionRatio * 100)}%</div><div class="label">Tool Selection</div></div>` : ""}
     </div>
   `;
 }
-
-function renderMetricsBar(metrics: AnalysisReport['phase1Metrics']): string {
+function renderMetricsBar(metrics) {
   return `
     <div class="metrics-bar">
       <div class="metric">
@@ -1325,8 +1102,7 @@ function renderMetricsBar(metrics: AnalysisReport['phase1Metrics']): string {
     ${renderExpertSignalsBar(metrics)}
   `;
 }
-
-function renderScrollSpyScript(): string {
+function renderScrollSpyScript() {
   return `
   <script>
     const sections = document.querySelectorAll('section[id], .scores-section[id]');
@@ -1346,119 +1122,26 @@ function renderScrollSpyScript(): string {
     sections.forEach(section => observer.observe(section));
   </script>`;
 }
-
-// ============================================================================
-// Main HTML Generator
-// ============================================================================
-
-export function generateReportHtml(report: AnalysisReport): string {
-  const { typeResult, deterministicScores, phase1Metrics, domainResults, content } = report;
-
-  const radarSvg = generateRadarSvg(buildRadarScores(deterministicScores), RADAR_LABELS);
-  const distributionBar = typeResult
-    ? generateTypeDistributionBar(typeResult.distribution)
-    : '<p style="color:var(--ink-muted);">Type classification not yet performed. Run classify_developer_type first.</p>';
-  const domainSections = domainResults.map(generateDomainSection).join('\n');
-  const focusAreasSection = generateFocusAreas(content);
-
-  const navDots = [
-    { id: 'identity', label: 'Identity' },
-    { id: 'scores', label: 'Scores' },
-    ...domainResults.map((d: DomainResult) => ({
-      id: `domain-${d.domain}`,
-      label: DOMAIN_LABELS[d.domain]?.label ?? d.domain,
-    })),
-    ...(content?.topFocusAreas?.length ? [{ id: 'focus-areas', label: 'Focus' }] : []),
-  ];
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BetterPrompt Analysis Report</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
-  <style>${generateBaseCss()}</style>
-</head>
-<body>
-  <nav class="nav-dots">${renderNavDotsHtml(navDots)}</nav>
-
-  <div class="container">
-    <header class="header">
-      <h1>BetterPrompt Analysis</h1>
-      <p class="subtitle">Generated ${new Date(report.analyzedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-    </header>
-
-    <section class="identity" id="identity">
-      ${renderIdentitySection(typeResult, 'Run classify_developer_type to determine your collaboration style')}
-    </section>
-
-    ${renderMetricsBar(phase1Metrics)}
-
-    <section class="scores-section" id="scores">
-      <div class="radar-container">${radarSvg}</div>
-      <div class="distribution-container">
-        <h3 style="margin-bottom:12px;">Type Distribution</h3>
-        ${distributionBar}
-      </div>
-    </section>
-
-    ${domainSections}
-    ${focusAreasSection}
-
-    <footer class="footer">
-      Generated by BetterPrompt Plugin v0.2.0 &mdash; local-first AI collaboration analysis
-    </footer>
-  </div>
-  ${renderScrollSpyScript()}
-</body>
-</html>`;
-}
-
-export function generateCanonicalReportHtml(run: CanonicalAnalysisRun): string {
-  const evaluation = run.evaluation as Record<string, unknown>;
-  const personalitySummary = typeof evaluation.personalitySummary === 'string'
-    ? evaluation.personalitySummary
-    : '';
-  const promptPatterns = Array.isArray(evaluation.promptPatterns)
-    ? evaluation.promptPatterns as Array<{ patternName?: string; description?: string; frequency?: string; examples?: Array<{ quote?: string; analysis?: string }> }>
-    : [];
-  const projectSummaries = Array.isArray(evaluation.projectSummaries)
-    ? evaluation.projectSummaries as Array<{ projectName: string; summaryLines: string[]; sessionCount: number }>
-    : [];
-  const weeklyInsights = evaluation.weeklyInsights as {
-    stats?: { totalSessions?: number; totalMinutes?: number; totalTokens?: number; activeDays?: number };
-    projects?: Array<{ projectName: string; sessionCount: number; percentage: number }>;
-    narrative?: string;
-    highlights?: string[];
-    topProjectSessions?: Array<{ summary: string; durationMinutes: number; date: string }>;
-  } | undefined;
-  const focusAreas = (evaluation.topFocusAreas as { areas?: Array<{ title: string; narrative?: string; actions?: { start: string; stop: string; continue: string } }> } | undefined)?.areas;
-  const knowledgeResources = Array.isArray(evaluation.knowledgeResources)
-    ? evaluation.knowledgeResources as Array<{
-        dimensionDisplayName?: string;
-        knowledgeItems?: Array<{ title?: string; summary?: string; sourceAuthor?: string; sourceUrl?: string }>;
-        professionalInsights?: Array<{ title?: string; keyTakeaway?: string; sourceAuthor?: string; sourceUrl?: string }>;
-      }>
-    : [];
-
-  const legacyContent = focusAreas
-    ? {
-        topFocusAreas: focusAreas.map(area => ({
-          title: area.title,
-          narrative: area.narrative,
-          description: area.narrative,
-          actions: area.actions,
-        })),
-      }
-    : undefined;
-
+function generateCanonicalReportHtml(run) {
+  const evaluation = run.evaluation;
+  const personalitySummary = typeof evaluation.personalitySummary === "string" ? evaluation.personalitySummary : "";
+  const promptPatterns = Array.isArray(evaluation.promptPatterns) ? evaluation.promptPatterns : [];
+  const projectSummaries = Array.isArray(evaluation.projectSummaries) ? evaluation.projectSummaries : [];
+  const weeklyInsights = evaluation.weeklyInsights;
+  const focusAreas = evaluation.topFocusAreas?.areas;
+  const knowledgeResources = Array.isArray(evaluation.knowledgeResources) ? evaluation.knowledgeResources : [];
+  const legacyContent = focusAreas ? {
+    topFocusAreas: focusAreas.map((area) => ({
+      title: area.title,
+      narrative: area.narrative,
+      description: area.narrative,
+      actions: area.actions
+    }))
+  } : void 0;
   const typeResult = run.typeResult;
   const radarSvg = generateRadarSvg(buildRadarScores(run.deterministicScores), RADAR_LABELS);
-  const distributionBar = typeResult
-    ? generateTypeDistributionBar(typeResult.distribution)
-    : '<p style="color:var(--ink-muted);">Type classification not yet performed.</p>';
-  const domainSections = run.domainResults.map(generateDomainSection).join('\n');
+  const distributionBar = typeResult ? generateTypeDistributionBar(typeResult.distribution) : '<p style="color:var(--ink-muted);">Type classification not yet performed.</p>';
+  const domainSections = run.domainResults.map(generateDomainSection).join("\n");
   const focusAreasSection = generateFocusAreas(legacyContent);
   const personalitySummarySection = generatePersonalitySummary(personalitySummary);
   const promptPatternsSection = generatePromptPatternsSection(promptPatterns);
@@ -1466,23 +1149,21 @@ export function generateCanonicalReportHtml(run: CanonicalAnalysisRun): string {
   const weeklyInsightsSection = generateWeeklyInsightsSection(weeklyInsights);
   const knowledgeResourcesSection = generateKnowledgeResourcesSection(knowledgeResources);
   const activityHeatmapSection = generateActivityHeatmapSection(run.activitySessions);
-
   const navDots = [
-    { id: 'identity', label: 'Identity' },
-    { id: 'scores', label: 'Scores' },
-    ...((run.activitySessions?.length ?? 0) > 0 ? [{ id: 'activity-heatmap', label: 'Activity' }] : []),
-    ...(personalitySummary ? [{ id: 'personality-summary', label: 'Summary' }] : []),
-    ...(promptPatterns.length > 0 ? [{ id: 'prompt-patterns', label: 'Patterns' }] : []),
-    ...(projectSummaries.length > 0 ? [{ id: 'project-summaries', label: 'Projects' }] : []),
-    ...(weeklyInsights ? [{ id: 'weekly-insights', label: 'Week' }] : []),
-    ...(knowledgeResources.length > 0 ? [{ id: 'knowledge-resources', label: 'Resources' }] : []),
-    ...run.domainResults.map((d: DomainResult) => ({
+    { id: "identity", label: "Identity" },
+    { id: "scores", label: "Scores" },
+    ...(run.activitySessions?.length ?? 0) > 0 ? [{ id: "activity-heatmap", label: "Activity" }] : [],
+    ...personalitySummary ? [{ id: "personality-summary", label: "Summary" }] : [],
+    ...promptPatterns.length > 0 ? [{ id: "prompt-patterns", label: "Patterns" }] : [],
+    ...projectSummaries.length > 0 ? [{ id: "project-summaries", label: "Projects" }] : [],
+    ...weeklyInsights ? [{ id: "weekly-insights", label: "Week" }] : [],
+    ...knowledgeResources.length > 0 ? [{ id: "knowledge-resources", label: "Resources" }] : [],
+    ...run.domainResults.map((d) => ({
       id: `domain-${d.domain}`,
-      label: DOMAIN_LABELS[d.domain]?.label ?? d.domain,
+      label: DOMAIN_LABELS[d.domain]?.label ?? d.domain
     })),
-    ...(legacyContent?.topFocusAreas?.length ? [{ id: 'focus-areas', label: 'Focus' }] : []),
+    ...legacyContent?.topFocusAreas?.length ? [{ id: "focus-areas", label: "Focus" }] : []
   ];
-
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1493,7 +1174,7 @@ export function generateCanonicalReportHtml(run: CanonicalAnalysisRun): string {
   <style>
     ${generateBaseCss()}
 
-    /* ── Activity Heatmap ── */
+    /* \u2500\u2500 Activity Heatmap \u2500\u2500 */
     .heatmap-section {
       margin-bottom: 48px;
       background: var(--bg-paper);
@@ -1717,11 +1398,11 @@ export function generateCanonicalReportHtml(run: CanonicalAnalysisRun): string {
   <div class="container">
     <header class="header">
       <h1>BetterPrompt Analysis</h1>
-      <p class="subtitle">Generated ${new Date(run.analyzedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      <p class="subtitle">Generated ${new Date(run.analyzedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
     </header>
 
     <section class="identity" id="identity">
-      ${renderIdentitySection(typeResult, 'Run type classification before generating the final report.')}
+      ${renderIdentitySection(typeResult, "Run type classification before generating the final report.")}
     </section>
 
     ${renderMetricsBar(run.phase1Output.sessionMetrics)}
@@ -1751,3 +1432,146 @@ export function generateCanonicalReportHtml(run: CanonicalAnalysisRun): string {
 </body>
 </html>`;
 }
+
+// cli/commands/generate-report.ts
+var DOMAIN_STAGE_NAMES = /* @__PURE__ */ new Set([
+  "aiPartnership",
+  "sessionCraft",
+  "toolMastery",
+  "skillResilience",
+  "sessionMastery"
+]);
+function hasFallbackArtifact(runId, stage) {
+  if (DOMAIN_STAGE_NAMES.has(stage)) return getDomainResult(runId, stage) !== null;
+  return getStageOutput(runId, stage) !== null;
+}
+function getRequiredStageGateIssues(runId) {
+  const statuses = getStageStatuses(runId);
+  const statusLookup = new Map(statuses.map((s) => [s.stage, s]));
+  const issues = [];
+  for (const stage of REQUIRED_STAGE_NAMES) {
+    const status = statusLookup.get(stage);
+    if (status) {
+      if (status.status !== "validated") {
+        issues.push({
+          stage,
+          required: status.required,
+          status: status.status,
+          attemptCount: status.attemptCount,
+          lastError: status.lastError,
+          updatedAt: status.updatedAt
+        });
+      }
+      continue;
+    }
+    if (!hasFallbackArtifact(runId, stage)) {
+      issues.push({
+        stage,
+        required: true,
+        status: "missing",
+        attemptCount: 0,
+        lastError: null,
+        updatedAt: null
+      });
+    }
+  }
+  return issues;
+}
+function openInBrowser(target) {
+  try {
+    const cmd = process.platform === "darwin" ? `open "${target}"` : process.platform === "win32" ? `start "${target}"` : `xdg-open "${target}"`;
+    exec(cmd);
+  } catch {
+  }
+}
+async function execute(args) {
+  const serve = args.serve === true;
+  const port = typeof args.port === "number" ? args.port : 3456;
+  const noOpen = args.noOpen === true;
+  const allowIncomplete = args.allowIncomplete === true;
+  const runId = getCurrentRunId();
+  if (!runId) {
+    return JSON.stringify({
+      status: "error",
+      message: "No analysis results found. Run extract-data and domain analyses first."
+    });
+  }
+  const gateIssues = getRequiredStageGateIssues(runId);
+  if (gateIssues.length > 0 && !allowIncomplete) {
+    return JSON.stringify({
+      status: "blocked",
+      message: "Required analysis stages are incomplete. Re-run the missing stages or pass --allowIncomplete.",
+      issues: gateIssues
+    });
+  }
+  const run = assembleCanonicalRun(runId);
+  if (!run) {
+    return JSON.stringify({
+      status: "error",
+      message: "No analysis results found. Run extract-data and domain analyses first."
+    });
+  }
+  const html = generateCanonicalReportHtml(run);
+  const reportsDir = join(getPluginDataDir(), "reports");
+  await mkdir(reportsDir, { recursive: true });
+  const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const reportPath = join(reportsDir, `report-${timestamp}.html`);
+  await writeFile(reportPath, html, "utf-8");
+  const latestPath = join(reportsDir, "latest.html");
+  await writeFile(latestPath, html, "utf-8");
+  const typeLabel = run.typeResult ? `${run.typeResult.matrixEmoji} ${run.typeResult.matrixName}` : "Not classified";
+  const incompleteWarning = gateIssues.length > 0 ? { warning: "Report generated with incomplete stages." } : {};
+  if (!serve) {
+    markAnalysisComplete();
+    if (!noOpen) openInBrowser(reportPath);
+    return JSON.stringify({
+      status: "ok",
+      url: `file://${reportPath}`,
+      reportPath,
+      latestPath,
+      domainCount: run.domainResults.length,
+      type: typeLabel,
+      ...incompleteWarning,
+      message: `Report saved to ${reportPath}. Opened in browser.`
+    });
+  }
+  const url = await new Promise((resolve, reject) => {
+    const server = createServer((req, res) => {
+      if (req.url !== "/" && req.url !== "") {
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("Not Found");
+        return;
+      }
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-cache"
+      });
+      res.end(readFileSync(latestPath, "utf-8"));
+    });
+    server.on("error", (err) => {
+      if (err.code === "EADDRINUSE") resolve(`file://${reportPath}`);
+      else reject(err);
+    });
+    server.listen(port, () => {
+      setTimeout(() => server.close(), 30 * 60 * 1e3).unref();
+      server.unref();
+      resolve(`http://localhost:${port}`);
+    });
+  });
+  markAnalysisComplete();
+  if (!noOpen && url.startsWith("http")) openInBrowser(url);
+  return JSON.stringify({
+    status: "ok",
+    url,
+    reportPath,
+    latestPath,
+    domainCount: run.domainResults.length,
+    type: typeLabel,
+    ...incompleteWarning,
+    message: `Report available at ${url}. Saved to ${reportPath}.`
+  });
+}
+export {
+  execute
+};
+//# sourceMappingURL=generate-report-I2FNJEHX.js.map

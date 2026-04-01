@@ -76,7 +76,7 @@ async function loadGenerateReportTool(mockBusyPort = false) {
     vi.doUnmock('node:http');
   }
 
-  return import('../../../packages/plugin/mcp/tools/generate-report.js');
+  return import('../../../packages/plugin/cli/commands/generate-report.ts');
 }
 
 afterEach(() => {
@@ -122,7 +122,7 @@ describe('generate_report stage gating', () => {
 
     expect(parsed.status).toBe('ok');
     expect(parsed.url.startsWith('file://')).toBe(true);
-    expect(parsed.warning).toContain('allowIncomplete=true');
+    expect(parsed.warning).toContain('incomplete stages');
     expect(parsed.domainCount).toBe(5);
     expect(existsSync(parsed.reportPath)).toBe(true);
 

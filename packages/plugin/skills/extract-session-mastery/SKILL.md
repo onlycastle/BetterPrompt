@@ -22,6 +22,9 @@ Parse the JSON stdout to get the `outputFile` path, then use Read to load the co
 
 Extract absence-of-anti-pattern signals that distinguish intermediate from expert-level AI collaboration.
 
+For research context and scoring rubrics, see `../shared/research-insights.md`.
+For expert-level behavioral benchmarks from Claude Code internals, see `../shared/expert-knowledge-base.md`.
+
 ## Core Philosophy: Absence Scoring
 
 Traditional analysis scores PRESENCE of good patterns. Session Mastery inverts this:

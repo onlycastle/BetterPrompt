@@ -33,6 +33,7 @@ Phase 1 data includes:
 - Session metadata (timestamps, durations, project paths)
 
 For research context and scoring rubrics, see `../shared/research-insights.md`.
+For expert-level behavioral benchmarks from Claude Code internals, see `../shared/expert-knowledge-base.md`.
 
 ## Language Directives
 

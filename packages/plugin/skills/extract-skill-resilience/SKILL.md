@@ -28,6 +28,9 @@ The Skill Resilience Index is grounded in the VCP Paper (arXiv:2601.02410), whic
 - **M_HT (Hallucination Detection)**: Does the developer catch and correct AI errors? Or do mistakes propagate unchallenged into the codebase?
 - **E_gap (Explainability Gap)**: Does the developer understand AI-generated code? Or do they ask the AI to explain code it just wrote for them -- a direct indicator of skill atrophy?
 
+For research context and scoring rubrics, see `../shared/research-insights.md`.
+For expert-level behavioral benchmarks from Claude Code internals, see `../shared/expert-knowledge-base.md`.
+
 Reference `../shared/research-insights.md` for the VCP Paper metrics and the heavy-AI-reliance-skill-decay correlation finding.
 
 **Key insight from VCP research**: Heavy AI reliance correlates with measurable skill decay. The developer who asks "What does this code do?" immediately after accepting it has transferred comprehension responsibility to the AI. The developer who asks "Why did you choose this approach?" shows they already understand the code and are evaluating the decision.

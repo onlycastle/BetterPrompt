@@ -7,14 +7,14 @@ import {
   markAnalysisPending,
   recoverStaleAnalysisState,
   shouldTriggerAnalysis
-} from "../chunk-ZNJUTHXJ.js";
+} from "../chunk-LPUYAQ2F.js";
 import {
   getConfig
-} from "../chunk-SE3623WC.js";
+} from "../chunk-RQKQQ22T.js";
 import {
   debug
 } from "../chunk-FW6ZW4J3.js";
-import "../chunk-SVAMHER4.js";
+import "../chunk-VNV2GGMC.js";
 import "../chunk-NSBPE2FW.js";
 
 // hooks/post-session-handler.ts
@@ -75,6 +75,15 @@ function handleSessionEndHook(hookInput, deps = DEFAULT_DEPS, env = process.env)
     debug("hook", "session-end: interrupted analysis re-queued", { reason, durationMs });
     return {
       queued: true,
+      reason,
+      durationMs
+    };
+  }
+  if (durationMs <= 0) {
+    const reason = "Session duration unavailable; skipping auto-analysis queue";
+    debug("hook", "session-end: analysis skipped", { reason, durationMs });
+    return {
+      queued: false,
       reason,
       durationMs
     };

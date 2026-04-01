@@ -15,13 +15,19 @@
 // Tag Patterns
 // ============================================================================
 
+/** Command tags that should be unwrapped, not discarded, to preserve user intent. */
+const COMMAND_TAG_TRANSFORMS: Array<{ pattern: RegExp; replacement: string }> = [
+  { pattern: /<command-message>[\s\S]*?<\/command-message>/g, replacement: '' },
+  { pattern: /<command-name>([\s\S]*?)<\/command-name>/g, replacement: '$1' },
+  { pattern: /<command-args>([\s\S]*?)<\/command-args>/g, replacement: '\n$1' },
+];
+
 /** System-injected XML tag patterns to remove from user messages */
 const SYSTEM_TAG_PATTERNS: RegExp[] = [
   // Claude Code system tags
   /<system-reminder>[\s\S]*?<\/system-reminder>/g,
-  /<command-name>[\s\S]*?<\/command-name>/g,
-  /<command-message>[\s\S]*?<\/command-message>/g,
-  /<command-args>[\s\S]*?<\/command-args>/g,
+  /<EXTREMELY_IMPORTANT>[\s\S]*?<\/EXTREMELY_IMPORTANT>/g,
+  /<tool_result>[\s\S]*?<\/tool_result>/g,
   /<local-command-stdout>[\s\S]*?<\/local-command-stdout>/g,
   /<local-command-caveat>[\s\S]*?<\/local-command-caveat>/g,
   /<local-command-stderr>[\s\S]*?<\/local-command-stderr>/g,
@@ -52,6 +58,10 @@ const NOISE_TEXT_PATTERNS: RegExp[] = [
 export function stripSystemTags(text: string): string {
   let cleaned = text;
 
+  for (const { pattern, replacement } of COMMAND_TAG_TRANSFORMS) {
+    cleaned = cleaned.replace(pattern, replacement);
+  }
+
   for (const pattern of SYSTEM_TAG_PATTERNS) {
     cleaned = cleaned.replace(pattern, '');
   }
@@ -60,7 +70,12 @@ export function stripSystemTags(text: string): string {
     cleaned = cleaned.replace(pattern, '');
   }
 
-  return cleaned.replace(/\s{2,}/g, ' ').trim();
+  return cleaned
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 /**

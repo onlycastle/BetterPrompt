@@ -20,6 +20,7 @@ export type {
   AIInsightBlock,
   FrictionSignals,
   SessionHints,
+  ExpertSignals,
   Phase1SessionMetrics,
   Phase1Output,
   ReportActivitySession,
