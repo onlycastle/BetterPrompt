@@ -15,9 +15,11 @@ import type {
   Phase1SessionMetrics,
   FrictionSignals,
   SessionHints,
+  ExpertSignals,
   ParsedSession,
 } from './types.js';
 import { CONTEXT_WINDOW_SIZE } from './types.js';
+import { stripSystemTags } from '../scanner/strip-system-tags.js';
 
 // ============================================================================
 // Constants
@@ -43,29 +45,6 @@ const CLEAR_COMMAND_PATTERNS = [
 
 /** Insight block regex */
 const INSIGHT_BLOCK_PATTERN = /`★\s*Insight\s*─+`\n([\s\S]*?)\n`─+`/g;
-
-// ============================================================================
-// System Tag Stripping
-// ============================================================================
-
-/**
- * Strip system-injected tags from user message content.
- * These tags are added by Claude Code, not the developer.
- */
-function stripSystemTags(content: string): string {
-  return content
-    // Remove system-reminder tags
-    .replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '')
-    // Remove command-name tags but keep the text
-    .replace(/<command-name>([\s\S]*?)<\/command-name>/g, '$1')
-    // Remove EXTREMELY_IMPORTANT tags
-    .replace(/<EXTREMELY_IMPORTANT>[\s\S]*?<\/EXTREMELY_IMPORTANT>/g, '')
-    // Remove tool result formatting
-    .replace(/<tool_result>[\s\S]*?<\/tool_result>/g, '')
-    // Collapse excessive whitespace
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
 
 // ============================================================================
 // Text Utilities
@@ -97,6 +76,57 @@ function isContinuation(text: string): boolean {
 
 function isClearCommand(content: string): boolean {
   return CLEAR_COMMAND_PATTERNS.some(p => p.test(content));
+}
+
+function countMatches(text: string, pattern: RegExp): number {
+  return text.match(pattern)?.length ?? 0;
+}
+
+function hasTaggedSlashCommand(rawContent: string): boolean {
+  return /<command-name>\/[\w:-]+<\/command-name>/.test(rawContent);
+}
+
+function looksLikeCommandExpansionBody(text: string): boolean {
+  const trimmed = text.trim();
+
+  if (/^\[[A-Z0-9 _-]+ ACTIVATED\]/.test(trimmed)) {
+    return true;
+  }
+
+  const markdownHeadings = countMatches(trimmed, /^#{1,6}\s+/gm);
+  const listItems = countMatches(trimmed, /^[-*+]\s+/gm) + countMatches(trimmed, /^\d+\.\s+/gm);
+  const hasCodeFence = /```/.test(trimmed);
+  const mentionsWorkflowInstructions = /(How Ralph Loop Works|Complete Shipping Workflow|Error Handling|Quick Reference|Begin working on the task|output <promise>DONE<\/promise>|output `<promise>DONE<\/promise>`)/i.test(trimmed);
+
+  return trimmed.length >= 150
+    && (mentionsWorkflowInstructions || markdownHeadings >= 2 || hasCodeFence)
+    && (markdownHeadings + listItems >= 4 || hasCodeFence);
+}
+
+function isLikelyExpandedSkillDocument(
+  message: RawSessionData['messages'][number],
+  previousMessages: Array<RawSessionData['messages'][number]>,
+): boolean {
+  const trimmed = message.rawContent.trim();
+
+  if (trimmed.startsWith(SKILL_INJECTION_PREFIX)) {
+    return true;
+  }
+
+  if (previousMessages.length === 0) {
+    return false;
+  }
+
+  const hasSameTimestampSlashCommand = previousMessages.some(previousMessage =>
+    previousMessage.role === 'user'
+    && previousMessage.timestamp.getTime() === message.timestamp.getTime()
+    && hasTaggedSlashCommand(previousMessage.rawContent),
+  );
+  if (!hasSameTimestampSlashCommand) {
+    return false;
+  }
+
+  return looksLikeCommandExpansionBody(trimmed);
 }
 
 // ============================================================================
@@ -273,6 +303,7 @@ function extractFromSession(session: RawSessionData): {
 
   for (let i = 0; i < session.messages.length; i++) {
     const message = session.messages[i]!;
+    const previousMessages = session.messages.slice(0, i);
 
     if (message.role === 'user') {
       if (!isAnalyzableUserMessage(message)) {
@@ -288,6 +319,11 @@ function extractFromSession(session: RawSessionData): {
 
       // Skip /clear commands
       if (isClearCommand(rawText)) {
+        precedingAssistantContent = null;
+        continue;
+      }
+
+      if (isLikelyExpandedSkillDocument(message, previousMessages)) {
         precedingAssistantContent = null;
         continue;
       }
@@ -500,6 +536,211 @@ function computeContextFillMetrics(
   };
 }
 
+// ============================================================================
+// Expert Signal Detection (Claude Code internal patterns)
+// ============================================================================
+
+/** Patterns indicating CLAUDE.md usage or authoring */
+const CLAUDE_MD_PATTERNS = [
+  /CLAUDE\.md/i,
+  /claude\.md/,
+  /\.claude\/CLAUDE\.md/,
+  /CLAUDE\.local\.md/i,
+];
+
+/** Patterns indicating scoped rule usage */
+const SCOPED_RULE_PATTERNS = [
+  /\.claude\/rules\//,
+  /scoped rule/i,
+  /path-scoped/i,
+];
+
+/** Patterns indicating hook awareness */
+const HOOK_PATTERNS = [
+  /\bhook/i,
+  /PreToolUse/,
+  /PostToolUse/,
+  /SessionStart/,
+  /SessionEnd/,
+  /settings\.json.*hook/i,
+  /hook.*settings/i,
+];
+
+/** Patterns indicating verification behavior */
+const VERIFICATION_PATTERNS = [
+  /are you sure/i,
+  /did you (check|verify|test)/i,
+  /run the tests/i,
+  /write tests? (for|first)/i,
+  /let me (check|verify|review)/i,
+  /can you (verify|confirm|check)/i,
+  /does (this|that|it) (work|pass|compile)/i,
+];
+
+/** Patterns indicating structured cold start */
+const STRUCTURED_START_PATTERNS = [
+  /here'?s (the|my) (task|goal|requirement)/i,
+  /context:/i,
+  /constraint/i,
+  /requirements?:/i,
+  /objective:/i,
+  /background:/i,
+  /the goal is/i,
+  /i need (you to|to)/i,
+];
+
+/** Bash commands that should use dedicated tools */
+const BASH_MISUSE_PATTERNS = [
+  /\bcat\s+[^\s|;]+/,
+  /\bhead\s+/,
+  /\btail\s+/,
+  /\bgrep\s+/,
+  /\brg\s+/,
+  /\bfind\s+\./,
+  /\bls\s+/,
+  /\bsed\s+/,
+  /\bawk\s+/,
+];
+
+function computeExpertSignals(
+  sessions: RawSessionData[],
+  utterances: UserUtterance[],
+): ExpertSignals {
+  let claudeMdReferences = 0;
+  let scopedRuleReferences = 0;
+  let hookReferences = 0;
+  let skillInvocations = 0;
+  let bashMisuseCount = 0;
+  let taskDelegationCount = 0;
+  let structuredColdStartCount = 0;
+  let freshSessionAfterFailureCount = 0;
+  let errorChainBreakCount = 0;
+  let verificationRequestCount = 0;
+
+  let totalToolCalls = 0;
+  let properToolCalls = 0;
+
+  // Track sessions that ended with errors for fresh-start detection
+  const sessionsEndedWithError = new Set<number>();
+
+  for (let sIdx = 0; sIdx < sessions.length; sIdx++) {
+    const session = sessions[sIdx]!;
+    let sessionHadError = false;
+    let consecutiveErrors = 0;
+    let isFirstUserMessage = true;
+
+    for (const message of session.messages) {
+      if (message.role === 'user' && isAnalyzableUserMessage(message)) {
+        const text = message.rawContent;
+
+        // CLAUDE.md reference detection
+        if (CLAUDE_MD_PATTERNS.some(p => p.test(text))) claudeMdReferences++;
+
+        // Scoped rule detection
+        if (SCOPED_RULE_PATTERNS.some(p => p.test(text))) scopedRuleReferences++;
+
+        // Hook awareness detection
+        if (HOOK_PATTERNS.some(p => p.test(text))) hookReferences++;
+
+        // Verification request detection
+        if (VERIFICATION_PATTERNS.some(p => p.test(text))) verificationRequestCount++;
+
+        // Structured cold start detection
+        if (isFirstUserMessage) {
+          const matchCount = STRUCTURED_START_PATTERNS.filter(p => p.test(text)).length;
+          if (matchCount >= 2 || text.length >= 200) {
+            structuredColdStartCount++;
+          }
+          isFirstUserMessage = false;
+        }
+
+        // Error chain break detection (strategy change after errors)
+        if (consecutiveErrors >= 2 && text.length > 50) {
+          errorChainBreakCount++;
+          consecutiveErrors = 0;
+        }
+      } else if (message.role === 'assistant') {
+        // Track tool usage for proper selection scoring
+        for (const block of message.content) {
+          if (block.type === 'tool_use' && block.name) {
+            totalToolCalls++;
+
+            // Check if proper tool was used
+            if (['Read', 'Edit', 'Write', 'Grep', 'Glob'].includes(block.name)) {
+              properToolCalls++;
+            } else if (block.name === 'Bash') {
+              // Check for bash misuse in the preceding user message
+              const precedingUser = [...session.messages]
+                .slice(0, session.messages.indexOf(message))
+                .reverse()
+                .find(m => m.role === 'user');
+              if (precedingUser && BASH_MISUSE_PATTERNS.some(p => p.test(precedingUser.rawContent))) {
+                bashMisuseCount++;
+              }
+            } else if (block.name === 'Task' || block.name === 'Agent') {
+              taskDelegationCount++;
+            }
+          }
+
+          // Track errors for chain detection
+          if (block.type === 'tool_result' && block.is_error) {
+            consecutiveErrors++;
+            sessionHadError = true;
+          } else if (block.type === 'tool_result' && !block.is_error) {
+            consecutiveErrors = 0;
+          }
+        }
+      }
+    }
+
+    if (sessionHadError) sessionsEndedWithError.add(sIdx);
+  }
+
+  // Detect fresh sessions after failures
+  for (let i = 1; i < sessions.length; i++) {
+    if (sessionsEndedWithError.has(i - 1)) {
+      const firstMsg = sessions[i]!.messages.find(isAnalyzableUserMessage);
+      if (firstMsg && firstMsg.rawContent.length >= 100) {
+        freshSessionAfterFailureCount++;
+      }
+    }
+  }
+
+  // Count skill invocations from slash commands beyond built-in ones
+  for (const utterance of utterances) {
+    const skillPatterns = /\/(bp|ouroboros|ralph|spc|codex|ship-it|debug|simplify)/i;
+    if (skillPatterns.test(utterance.text)) {
+      skillInvocations++;
+    }
+  }
+
+  // Compute compaction rate
+  const slashCmds: Record<string, number> = {};
+  for (const utterance of utterances) {
+    const commands = extractSlashCommands(utterance.text);
+    for (const cmd of commands) {
+      slashCmds[cmd] = (slashCmds[cmd] ?? 0) + 1;
+    }
+  }
+  const compactCount = (slashCmds['compact'] ?? 0) + (slashCmds['clear'] ?? 0);
+  const compactionRate = sessions.length > 0 ? compactCount / sessions.length : 0;
+
+  return {
+    claudeMdReferences,
+    scopedRuleReferences,
+    hookReferences,
+    skillInvocations,
+    properToolSelectionRatio: totalToolCalls > 0 ? properToolCalls / totalToolCalls : 1,
+    bashMisuseCount,
+    taskDelegationCount,
+    compactionRate,
+    structuredColdStartCount,
+    freshSessionAfterFailureCount,
+    errorChainBreakCount,
+    verificationRequestCount,
+  };
+}
+
 /**
  * Extract Phase 1 output from parsed sessions.
  */
@@ -510,6 +751,7 @@ export async function extractPhase1DataFromParsedSessions(
   const allSlashCommands: string[] = [];
   const allInsightBlocks: AIInsightBlock[] = [];
   const allSessions: RawSessionData[] = [];
+  const utterancesBySession = new Map<string, UserUtterance[]>();
   if (sessions.length === 0) {
     throw new Error('No parsed sessions available for Phase 1 extraction.');
   }
@@ -519,6 +761,7 @@ export async function extractPhase1DataFromParsedSessions(
     allSessions.push(session);
 
     const { utterances, slashCommands, insightBlocks } = extractFromSession(session);
+    utterancesBySession.set(session.sessionId, utterances);
     allUtterances.push(...utterances);
     allSlashCommands.push(...slashCommands);
     allInsightBlocks.push(...insightBlocks);
@@ -541,6 +784,7 @@ export async function extractPhase1DataFromParsedSessions(
   const contextFillMetrics = computeContextFillMetrics(allSessions);
   const frictionSignals = computeFrictionSignals(allSessions, allUtterances);
   const sessionHints = computeSessionHints(allSessions);
+  const expertSignals = computeExpertSignals(allSessions, allUtterances);
 
   const sessionMetrics: Phase1SessionMetrics = {
     totalSessions: allSessions.length,
@@ -562,12 +806,13 @@ export async function extractPhase1DataFromParsedSessions(
     frictionSignals,
     sessionHints,
     ...(allInsightBlocks.length > 0 ? { aiInsightBlockCount: allInsightBlocks.length } : {}),
+    expertSignals,
   };
 
   // Build per-session activity metadata for Phase 1.5/2 stages
   const activitySessions = allSessions.map((session, idx) => {
     const parsedSession = sessions[idx]!;
-    const userMessages = session.messages.filter(isAnalyzableUserMessage);
+    const userUtterances = utterancesBySession.get(session.sessionId) ?? [];
     const assistantMessages = session.messages.filter(m => m.role === 'assistant');
     const sessionTimestamps = session.messages.map(m => m.timestamp.getTime()).sort();
     const startTime = sessionTimestamps.length > 0
@@ -583,7 +828,7 @@ export async function extractPhase1DataFromParsedSessions(
     const totalInputTokens = session.messages.reduce((sum, m) => sum + (m.tokenUsage?.input ?? 0), 0);
     const totalOutputTokens = session.messages.reduce((sum, m) => sum + (m.tokenUsage?.output ?? 0), 0);
 
-    const firstUserMsg = userMessages[0]?.rawContent?.slice(0, 200) ?? '';
+    const firstUserMsg = userUtterances[0]?.displayText ?? userUtterances[0]?.text ?? '';
 
     return {
       sessionId: session.sessionId,
@@ -592,7 +837,7 @@ export async function extractPhase1DataFromParsedSessions(
       startTime,
       durationSeconds: Math.round(durationSeconds),
       messageCount: session.messages.length,
-      userMessageCount: userMessages.length,
+      userMessageCount: userUtterances.length,
       assistantMessageCount: assistantMessages.length,
       totalInputTokens,
       totalOutputTokens,
