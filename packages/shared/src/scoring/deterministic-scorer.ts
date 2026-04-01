@@ -160,26 +160,31 @@ function scoreCommunicationPatterns(
   metrics: Phase1SessionMetrics,
   phase1Output: Phase1Output,
 ): number {
-  // Prompt quality (40% weight)
+  // Prompt quality (30% weight)
   const avgLen = metrics.avgDeveloperMessageLength;
   const promptQualityScore = bellCurveScore(avgLen, 200, 500, 0.00003);
 
-  // Structure (30% weight)
+  // Structure (25% weight)
   const codeStructure = Math.min(metrics.codeBlockRatio * 200, 100);
   const questionStructure = Math.min(metrics.questionRatio * 250, 100);
   const structureScore = codeStructure * 0.5 + questionStructure * 0.5;
 
-  // Consistency (30% weight)
+  // Consistency (20% weight)
   const wordCounts = phase1Output.developerUtterances.map(u => u.wordCount);
   const cv = coefficientOfVariation(wordCounts);
   const consistencyScore = 100 * Math.exp(-0.3 * cv);
 
+  // Tool selection quality (25% weight) — aligns base score with expert bonus dimension
+  const toolRatio = metrics.expertSignals?.properToolSelectionRatio ?? 0.5;
+  const toolScore = toolRatio * 100;
+
   const expertBonus = expertBonusToolMastery(metrics);
 
   return clampScore(
-    promptQualityScore * 0.4 +
-    structureScore * 0.3 +
-    consistencyScore * 0.3 +
+    promptQualityScore * 0.3 +
+    structureScore * 0.25 +
+    consistencyScore * 0.2 +
+    toolScore * 0.25 +
     expertBonus,
   );
 }

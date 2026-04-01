@@ -218,7 +218,7 @@ interface RawSessionData {
   messages: Array<{
     role: 'user' | 'assistant';
     rawContent: string;
-    content: Array<{ type: string; text?: string; name?: string; is_error?: boolean; id?: string; tool_use_id?: string; content?: string | unknown[] }>;
+    content: Array<{ type: string; text?: string; name?: string; input?: Record<string, unknown>; is_error?: boolean; id?: string; tool_use_id?: string; content?: string | unknown[] }>;
     timestamp: Date;
     isMeta?: boolean;
     sourceToolUseID?: string;
@@ -266,6 +266,7 @@ function toRawSessionData(session: ParsedSession): RawSessionData {
           type: 'tool_use',
           id: toolCall.id,
           name: toolCall.name,
+          input: toolCall.input,
         });
         if (toolCall.result !== undefined) {
           content.push({
@@ -669,12 +670,9 @@ function computeExpertSignals(
             if (['Read', 'Edit', 'Write', 'Grep', 'Glob'].includes(block.name)) {
               properToolCalls++;
             } else if (block.name === 'Bash') {
-              // Check for bash misuse in the preceding user message
-              const precedingUser = [...session.messages]
-                .slice(0, session.messages.indexOf(message))
-                .reverse()
-                .find(m => m.role === 'user');
-              if (precedingUser && BASH_MISUSE_PATTERNS.some(p => p.test(precedingUser.rawContent))) {
+              // Check the actual Bash command input for tool misuse patterns
+              const cmd = typeof block.input?.command === 'string' ? block.input.command : '';
+              if (cmd && BASH_MISUSE_PATTERNS.some(p => p.test(cmd))) {
                 bashMisuseCount++;
               }
             } else if (block.name === 'Task' || block.name === 'Agent') {

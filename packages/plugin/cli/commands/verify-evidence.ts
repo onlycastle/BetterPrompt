@@ -181,7 +181,7 @@ function shouldRejectEvidence(quote: string, sourceUtterance: string): boolean {
     return true;
   }
 
-  return EVIDENCE_REJECTION_CHECKS.some(check => check(quote) || check(sourceUtterance));
+  return EVIDENCE_REJECTION_CHECKS.some(check => check(quote));
 }
 
 export async function execute(args: Record<string, unknown>): Promise<string> {
