@@ -4,8 +4,8 @@ import {
   getDomainResults,
   recordStageStatus,
   saveStageOutput
-} from "./chunk-FFMI5SRQ.js";
-import "./chunk-SVAMHER4.js";
+} from "./chunk-E3ILNPAD.js";
+import "./chunk-HGESGWN4.js";
 import "./chunk-NSBPE2FW.js";
 
 // cli/commands/verify-evidence.ts
@@ -14,6 +14,12 @@ function normalizeText(text) {
 }
 function tokenize(text) {
   return normalizeText(text).split(" ").filter((token) => token.length > 1);
+}
+function collapseWhitespace(text) {
+  return text.replace(/\s+/g, " ").trim();
+}
+function stripAnsi(text) {
+  return text.replace(/\u001B\[[0-9;]*m/g, "");
 }
 function bigrams(text) {
   const normalized = normalizeText(text).replace(/\s+/g, " ");
@@ -59,6 +65,64 @@ function scoreEvidence(quote, utterance) {
   if (tokenCoverage >= 0.6 || similarity >= 0.65) return 65;
   if (tokenCoverage >= 0.4 || similarity >= 0.5) return 45;
   return 0;
+}
+function looksLikeTaggedSystemText(text) {
+  return /<(?:system-reminder|task-notification|task-id|status|summary|result|output-file|local-command-(?:stdout|stderr|caveat)|command-name|command-message|command-args|tool_result)\b/i.test(text);
+}
+function looksLikeTaskStatusText(text) {
+  const normalized = collapseWhitespace(stripAnsi(text)).toLowerCase();
+  return /\b(task-id|tool-use-id|output-file)\b/.test(normalized) || /\bstatus:\s*(completed|failed|killed|running|queued|stopped)\b/.test(normalized) || /^background command\b/.test(normalized) || /^agent\s+["'][^"']+["']\s+completed\b/.test(normalized);
+}
+function looksLikeSlashCommandPrompt(text) {
+  const normalized = collapseWhitespace(stripAnsi(text));
+  if (!normalized.startsWith("/")) {
+    return false;
+  }
+  const tokens = normalized.split(" ");
+  const commandToken = tokens[0] ?? "";
+  return /^\/[\w:-]+$/.test(commandToken) && tokens.length <= 4 && normalized.length <= 80 && !/[?!]/.test(normalized);
+}
+function looksLikeLogExcerpt(text) {
+  const lines = stripAnsi(text).split("\n").map((line) => line.trim()).filter(Boolean);
+  if (lines.length < 2) {
+    return false;
+  }
+  const logLines = lines.filter(
+    (line) => /^at\s+\S+/.test(line) || /^traceback/i.test(line) || /^file\s+".+",\s+line\s+\d+/i.test(line) || /^(npm|pnpm|yarn)\s+(err!?|warn\b|notice\b)/i.test(line) || /^(error|exception|caused by):/i.test(line) || /^\d{4}-\d{2}-\d{2}[ t]/i.test(line) || /\b(exit code|status code)\b/i.test(line)
+  ).length;
+  return logLines >= 2 && logLines >= Math.ceil(lines.length / 2);
+}
+function looksLikeInjectedInstructionBlock(text) {
+  const normalized = stripAnsi(text).trim();
+  if (!normalized) {
+    return false;
+  }
+  if (/^\[[A-Z0-9 _-]+ ACTIVATED\]/.test(normalized)) {
+    return true;
+  }
+  const headingCount = (normalized.match(/^#{1,6}\s+/gm) ?? []).length;
+  const listCount = (normalized.match(/^[-*+]\s+/gm) ?? []).length + (normalized.match(/^\d+\.\s+/gm) ?? []).length;
+  const hasCodeFence = /```/.test(normalized);
+  const instructionPhrase = /(How Ralph Loop Works|Complete Shipping Workflow|Error Handling|Quick Reference|Begin working on the task|output <promise>DONE<\/promise>|output `<promise>DONE<\/promise>`)/i.test(normalized);
+  return normalized.length >= 150 && (instructionPhrase || headingCount >= 2 || hasCodeFence) && (headingCount + listCount >= 4 || hasCodeFence);
+}
+function shouldRejectEvidence(quote, sourceUtterance) {
+  if (!collapseWhitespace(quote) || !collapseWhitespace(sourceUtterance)) {
+    return true;
+  }
+  if (looksLikeTaggedSystemText(quote) || looksLikeTaggedSystemText(sourceUtterance)) {
+    return true;
+  }
+  if (looksLikeTaskStatusText(quote) || looksLikeTaskStatusText(sourceUtterance)) {
+    return true;
+  }
+  if (looksLikeSlashCommandPrompt(quote) || looksLikeSlashCommandPrompt(sourceUtterance)) {
+    return true;
+  }
+  if (looksLikeInjectedInstructionBlock(quote) || looksLikeInjectedInstructionBlock(sourceUtterance)) {
+    return true;
+  }
+  return looksLikeLogExcerpt(quote) || looksLikeLogExcerpt(sourceUtterance);
 }
 async function execute(args) {
   const threshold = typeof args.threshold === "number" ? args.threshold : 50;
@@ -106,7 +170,7 @@ async function execute(args) {
         const utteranceId = typeof evidence.utteranceId === "string" ? evidence.utteranceId : "";
         const quote = typeof evidence.quote === "string" ? evidence.quote : "";
         const sourceUtterance = utteranceId ? utteranceLookup[utteranceId] ?? "" : "";
-        const relevanceScore = scoreEvidence(quote, sourceUtterance);
+        const relevanceScore = shouldRejectEvidence(quote, sourceUtterance) ? 0 : scoreEvidence(quote, sourceUtterance);
         const verified = relevanceScore >= threshold;
         if (verified) keptCount2++;
         else filteredCount2++;
@@ -139,4 +203,4 @@ async function execute(args) {
 export {
   execute
 };
-//# sourceMappingURL=verify-evidence-OVMWTJBY.js.map
+//# sourceMappingURL=verify-evidence-S4XZYZIV.js.map

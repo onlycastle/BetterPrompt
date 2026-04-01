@@ -1,7 +1,7 @@
 import {
   markAnalysisComplete
-} from "./chunk-ZNJUTHXJ.js";
-import "./chunk-SE3623WC.js";
+} from "./chunk-UVIVAI6Z.js";
+import "./chunk-66MDY4NM.js";
 import "./chunk-FW6ZW4J3.js";
 import {
   REQUIRED_STAGE_NAMES,
@@ -10,10 +10,10 @@ import {
   getDomainResult,
   getStageOutput,
   getStageStatuses
-} from "./chunk-FFMI5SRQ.js";
+} from "./chunk-E3ILNPAD.js";
 import {
   getPluginDataDir
-} from "./chunk-SVAMHER4.js";
+} from "./chunk-HGESGWN4.js";
 import "./chunk-NSBPE2FW.js";
 
 // cli/commands/generate-report.ts
@@ -27,6 +27,126 @@ import { exec } from "child_process";
 function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
+function renderInlineMarkdown(text) {
+  return escapeHtml(text).replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[^\*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
+}
+function renderMarkdown(markdown) {
+  const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
+  const html = [];
+  const paragraphLines = [];
+  let activeList = null;
+  let inCodeBlock = false;
+  let codeLanguage = "";
+  const codeLines = [];
+  const flushParagraph = () => {
+    if (paragraphLines.length === 0) {
+      return;
+    }
+    html.push(`<p>${renderInlineMarkdown(paragraphLines.join(" "))}</p>`);
+    paragraphLines.length = 0;
+  };
+  const closeList = () => {
+    if (!activeList) {
+      return;
+    }
+    html.push(`</${activeList}>`);
+    activeList = null;
+  };
+  const closeCodeBlock = () => {
+    if (!inCodeBlock) {
+      return;
+    }
+    const languageClass = codeLanguage ? ` class="language-${escapeHtml(codeLanguage)}"` : "";
+    html.push(`<pre><code${languageClass}>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+    inCodeBlock = false;
+    codeLanguage = "";
+    codeLines.length = 0;
+  };
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+    const trimmed = line.trim();
+    if (inCodeBlock) {
+      if (trimmed.startsWith("```")) {
+        closeCodeBlock();
+      } else {
+        codeLines.push(rawLine);
+      }
+      continue;
+    }
+    if (trimmed.startsWith("```")) {
+      flushParagraph();
+      closeList();
+      inCodeBlock = true;
+      codeLanguage = trimmed.slice(3).trim();
+      continue;
+    }
+    if (!trimmed) {
+      flushParagraph();
+      closeList();
+      continue;
+    }
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+    if (headingMatch) {
+      flushParagraph();
+      closeList();
+      const level = Math.min(headingMatch[1].length + 2, 6);
+      html.push(`<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`);
+      continue;
+    }
+    const orderedItemMatch = trimmed.match(/^\d+\.\s+(.*)$/);
+    if (orderedItemMatch) {
+      flushParagraph();
+      if (activeList !== "ol") {
+        closeList();
+        html.push("<ol>");
+        activeList = "ol";
+      }
+      html.push(`<li>${renderInlineMarkdown(orderedItemMatch[1])}</li>`);
+      continue;
+    }
+    const unorderedItemMatch = trimmed.match(/^[-*+]\s+(.*)$/);
+    if (unorderedItemMatch) {
+      flushParagraph();
+      if (activeList !== "ul") {
+        closeList();
+        html.push("<ul>");
+        activeList = "ul";
+      }
+      html.push(`<li>${renderInlineMarkdown(unorderedItemMatch[1])}</li>`);
+      continue;
+    }
+    paragraphLines.push(trimmed);
+  }
+  flushParagraph();
+  closeList();
+  closeCodeBlock();
+  return html.join("\n");
+}
+function renderRichText(markdown) {
+  if (!markdown?.trim()) {
+    return "";
+  }
+  return `<div class="rich-text">${renderMarkdown(markdown)}</div>`;
+}
+function renderEvidenceList(evidence) {
+  if (evidence.length === 0) {
+    return "";
+  }
+  return `
+    <details>
+      <summary>Evidence (${evidence.length})</summary>
+      <ul class="evidence-list">
+        ${evidence.map((item) => `
+          <li class="evidence-item">
+            <div class="evidence-quote">"${escapeHtml(item.quote)}"</div>
+            ${item.context ? `<div class="evidence-context">${escapeHtml(item.context)}</div>` : ""}
+            <div class="evidence-meta"><code>${escapeHtml(item.utteranceId)}</code></div>
+          </li>
+        `).join("")}
+      </ul>
+    </details>
+  `;
+}
 function polarToCartesian(cx, cy, radius, angleDeg) {
   const angleRad = (angleDeg - 90) * Math.PI / 180;
   return {
@@ -34,13 +154,29 @@ function polarToCartesian(cx, cy, radius, angleDeg) {
     y: cy + radius * Math.sin(angleRad)
   };
 }
-function generateRadarSvg(scores, labels, size = 300) {
+function getTextAnchor(index, total) {
+  const angle = index / total * 2 * Math.PI - Math.PI / 2;
+  const x = Math.cos(angle);
+  if (Math.abs(x) < 0.15) return "middle";
+  return x > 0 ? "start" : "end";
+}
+function getDominantBaseline(index, total) {
+  const angle = index / total * 2 * Math.PI - Math.PI / 2;
+  const y = Math.sin(angle);
+  if (y < -0.3) return "auto";
+  if (y > 0.3) return "hanging";
+  return "central";
+}
+function generateRadarSvg(scores, labels, size = 320) {
   const entries = Object.entries(scores);
   const count = entries.length;
   if (count === 0) return "";
+  const paddingH = 56;
+  const paddingV = 12;
+  const labelOffset = 22;
   const cx = size / 2;
   const cy = size / 2;
-  const maxRadius = size / 2 - 40;
+  const maxRadius = size / 2 - 58;
   const angleStep = 360 / count;
   const gridCircles = [0.25, 0.5, 0.75, 1].map((frac) => {
     const r = maxRadius * frac;
@@ -49,12 +185,12 @@ function generateRadarSvg(scores, labels, size = 300) {
   const gridLines = entries.map(([key], i) => {
     const angle = i * angleStep;
     const end = polarToCartesian(cx, cy, maxRadius, angle);
-    const labelPos = polarToCartesian(cx, cy, maxRadius + 20, angle);
+    const labelPos = polarToCartesian(cx, cy, maxRadius + labelOffset, angle);
     const label = labels[key] ?? key;
     return `
         <line x1="${cx}" y1="${cy}" x2="${end.x}" y2="${end.y}" stroke="#E8EDF5" stroke-width="1" />
-        <text x="${labelPos.x}" y="${labelPos.y}" text-anchor="middle" dominant-baseline="middle"
-              font-size="11" font-family="'Fira Code', monospace" fill="#4A4A5A">${label}</text>
+        <text x="${labelPos.x}" y="${labelPos.y}" text-anchor="${getTextAnchor(i, count)}" dominant-baseline="${getDominantBaseline(i, count)}"
+              font-size="11" font-family="'Fira Code', monospace" fill="#4A4A5A">${escapeHtml(label)}</text>
       `;
   }).join("\n");
   const points = entries.map(([, score], i) => {
@@ -70,7 +206,7 @@ function generateRadarSvg(scores, labels, size = 300) {
     return `<circle cx="${p.x}" cy="${p.y}" r="4" fill="#00BCD4" />`;
   }).join("\n");
   return `
-    <svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="${-paddingH} ${-paddingV} ${size + 2 * paddingH} ${size + 2 * paddingV}" class="radar-svg" xmlns="http://www.w3.org/2000/svg">
       ${gridCircles}
       ${gridLines}
       <polygon points="${points}" fill="rgba(0,188,212,0.15)" stroke="#00BCD4" stroke-width="2" />
@@ -134,31 +270,17 @@ function generateDomainSection(result) {
   const strengthCards = result.strengths.map((s) => `
       <div class="card strength-card">
         <h4>${escapeHtml(s.title)}</h4>
-        <p>${escapeHtml(s.description)}</p>
-        ${s.evidence.length > 0 ? `
-          <details>
-            <summary>Evidence (${s.evidence.length})</summary>
-            <ul>
-              ${s.evidence.map((e) => `<li><code>${escapeHtml(e.utteranceId)}</code>: "${escapeHtml(e.quote)}"</li>`).join("")}
-            </ul>
-          </details>
-        ` : ""}
+        ${renderRichText(s.description)}
+        ${renderEvidenceList(s.evidence)}
       </div>
     `).join("");
   const growthCards = result.growthAreas.map((g) => `
       <div class="card growth-card">
         <div class="severity-badge severity-${escapeHtml(g.severity)}">${escapeHtml(g.severity)}</div>
         <h4>${escapeHtml(g.title)}</h4>
-        <p>${escapeHtml(g.description)}</p>
-        <div class="recommendation">${escapeHtml(g.recommendation)}</div>
-        ${g.evidence.length > 0 ? `
-          <details>
-            <summary>Evidence (${g.evidence.length})</summary>
-            <ul>
-              ${g.evidence.map((e) => `<li><code>${escapeHtml(e.utteranceId)}</code>: "${escapeHtml(e.quote)}"</li>`).join("")}
-            </ul>
-          </details>
-        ` : ""}
+        ${renderRichText(g.description)}
+        <div class="recommendation">${renderRichText(g.recommendation)}</div>
+        ${renderEvidenceList(g.evidence)}
       </div>
     `).join("");
   return `
@@ -174,7 +296,7 @@ function generateFocusAreas(content) {
   const areas = content.topFocusAreas.map((area) => `
       <div class="card focus-card">
         <h3>${escapeHtml(area.title)}</h3>
-        <p>${escapeHtml(area.narrative ?? area.description ?? "")}</p>
+        ${renderRichText(area.narrative ?? area.description ?? "")}
         ${area.actions ? `
         <div class="actions-grid">
           <div class="action start"><strong>Start:</strong> ${escapeHtml(area.actions.start)}</div>
@@ -197,7 +319,7 @@ function generatePersonalitySummary(summary) {
     <section class="domain-section" id="personality-summary">
       <h2>\u{1FA9E} Personality Summary</h2>
       <div class="card">
-        <p>${escapeHtml(summary).replace(/\n/g, "<br>")}</p>
+        ${renderRichText(summary)}
       </div>
     </section>
   `;
@@ -207,13 +329,18 @@ function generatePromptPatternsSection(promptPatterns) {
   const items = promptPatterns.map((pattern) => `
       <div class="card">
         <h4>${escapeHtml(pattern.patternName ?? "Pattern")}</h4>
-        <p>${escapeHtml(pattern.description ?? "")}</p>
+        ${renderRichText(pattern.description ?? "")}
         <p style="margin-top:8px;font-size:12px;"><strong>Frequency:</strong> ${escapeHtml(pattern.frequency ?? "n/a")}</p>
         ${(pattern.examples?.length ?? 0) > 0 ? `
           <details>
             <summary>Examples (${pattern.examples.length})</summary>
-            <ul>
-              ${pattern.examples.map((example) => `<li>"${escapeHtml(example.quote ?? "")}"${example.analysis ? ` \u2014 ${escapeHtml(example.analysis)}` : ""}</li>`).join("")}
+            <ul class="prompt-example-list">
+              ${pattern.examples.map((example) => `
+                <li class="prompt-example-item">
+                  <div class="prompt-example-quote">"${escapeHtml(example.quote ?? "")}"</div>
+                  ${example.analysis ? `<div class="prompt-example-context">${escapeHtml(example.analysis)}</div>` : ""}
+                </li>
+              `).join("")}
             </ul>
           </details>
         ` : ""}
@@ -537,7 +664,7 @@ function generateWeeklyInsightsSection(weeklyInsights) {
           <div class="metric"><div class="value">${stats.activeDays ?? 0}</div><div class="label">Active Days</div></div>
         </div>
       ` : ""}
-      ${weeklyInsights.narrative ? `<div class="card"><p>${escapeHtml(weeklyInsights.narrative)}</p></div>` : ""}
+      ${weeklyInsights.narrative ? `<div class="card">${renderRichText(weeklyInsights.narrative)}</div>` : ""}
       ${projects.length > 0 ? `
         <div class="card">
           <h4>Project Breakdown</h4>
@@ -662,12 +789,26 @@ function generateBaseCss() {
     /* \u2500\u2500 Scores Grid \u2500\u2500 */
     .scores-section {
       display: flex;
+      flex-wrap: wrap;
       gap: 32px;
       margin-bottom: 48px;
       align-items: flex-start;
     }
-    .radar-container { flex-shrink: 0; }
-    .distribution-container { flex: 1; }
+    .radar-container {
+      flex: 1 1 320px;
+      min-width: 280px;
+      max-width: 360px;
+    }
+    .distribution-container {
+      flex: 1 1 280px;
+      min-width: 260px;
+    }
+    .radar-svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      overflow: visible;
+    }
 
     /* \u2500\u2500 Cards \u2500\u2500 */
     .card {
@@ -680,6 +821,46 @@ function generateBaseCss() {
     .card h4 { font-size: 14px; margin-bottom: 8px; }
     .card p { font-size: 13px; color: var(--ink-secondary); line-height: 1.5; }
     .card-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+
+    .rich-text {
+      font-size: 13px;
+      color: var(--ink-secondary);
+      line-height: 1.6;
+    }
+    .rich-text > *:first-child { margin-top: 0; }
+    .rich-text > *:last-child { margin-bottom: 0; }
+    .rich-text p,
+    .rich-text ul,
+    .rich-text ol,
+    .rich-text pre { margin: 0 0 10px 0; }
+    .rich-text ul,
+    .rich-text ol { padding-left: 20px; }
+    .rich-text h3,
+    .rich-text h4,
+    .rich-text h5,
+    .rich-text h6 {
+      margin: 12px 0 8px;
+      color: var(--ink-primary);
+      line-height: 1.35;
+    }
+    .rich-text code {
+      font-size: 12px;
+      background: #f0f0f5;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+    .rich-text pre {
+      overflow-x: auto;
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: #f7f8fb;
+      border: 1px solid var(--bg-grid-color);
+    }
+    .rich-text pre code {
+      padding: 0;
+      background: transparent;
+      border-radius: 0;
+    }
 
     .strength-card { border-left: 3px solid var(--sketch-green); }
     .growth-card { border-left: 3px solid var(--sketch-orange); }
@@ -713,9 +894,38 @@ function generateBaseCss() {
       font-size: 12px;
       color: var(--ink-muted);
     }
-    details ul { margin-top: 4px; padding-left: 20px; font-size: 12px; color: var(--ink-secondary); }
-    details li { margin-bottom: 4px; }
+    details ul { margin-top: 4px; font-size: 12px; color: var(--ink-secondary); }
+    details li { margin-bottom: 8px; }
     details code { font-size: 11px; background: #f0f0f5; padding: 1px 4px; border-radius: 2px; }
+
+    .evidence-list,
+    .prompt-example-list {
+      padding-left: 0;
+      list-style: none;
+    }
+    .evidence-item,
+    .prompt-example-item {
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: rgba(0, 188, 212, 0.05);
+      border: 1px solid rgba(0, 188, 212, 0.12);
+    }
+    .evidence-quote,
+    .prompt-example-quote {
+      font-size: 13px;
+      color: var(--ink-primary);
+    }
+    .evidence-context,
+    .prompt-example-context {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--ink-secondary);
+    }
+    .evidence-meta {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--ink-muted);
+    }
 
     /* \u2500\u2500 Domain Sections \u2500\u2500 */
     .domain-section {
@@ -779,6 +989,9 @@ function generateBaseCss() {
     }
     .metric .value { font-size: 24px; font-weight: 700; color: var(--sketch-cyan); }
     .metric .label { font-size: 11px; color: var(--ink-muted); }
+    .metrics-bar.expert-signals { margin-top: -24px; border-top: none; border-top-left-radius: 0; border-top-right-radius: 0; background: rgba(139,92,246,0.04); border-color: rgba(139,92,246,0.15); }
+    .metric.expert .value { font-size: 20px; color: var(--sketch-purple, #a78bfa); }
+    .metric.expert .label { font-size: 10px; color: var(--ink-muted); }
 
     /* \u2500\u2500 Navigation Dots \u2500\u2500 */
     .nav-dots {
@@ -846,6 +1059,22 @@ function renderIdentitySection(typeResult, fallbackMessage) {
     </div>
   `;
 }
+function renderExpertSignalsBar(metrics) {
+  const expert = metrics.expertSignals;
+  if (!expert) return "";
+  const hasSignals = expert.claudeMdReferences > 0 || expert.taskDelegationCount > 0 || expert.hookReferences > 0 || expert.skillInvocations > 0 || expert.compactionRate > 0;
+  if (!hasSignals) return "";
+  return `
+    <div class="metrics-bar expert-signals" data-testid="expert-signals">
+      ${expert.claudeMdReferences > 0 ? `<div class="metric expert"><div class="value">${expert.claudeMdReferences}</div><div class="label">CLAUDE.md Refs</div></div>` : ""}
+      ${expert.taskDelegationCount > 0 ? `<div class="metric expert"><div class="value">${expert.taskDelegationCount}</div><div class="label">Task Delegations</div></div>` : ""}
+      ${expert.compactionRate > 0 ? `<div class="metric expert"><div class="value">${Math.round(expert.compactionRate * 100)}%</div><div class="label">Compaction Rate</div></div>` : ""}
+      ${expert.verificationRequestCount > 0 ? `<div class="metric expert"><div class="value">${expert.verificationRequestCount}</div><div class="label">Verifications</div></div>` : ""}
+      ${expert.structuredColdStartCount > 0 ? `<div class="metric expert"><div class="value">${expert.structuredColdStartCount}</div><div class="label">Structured Starts</div></div>` : ""}
+      ${Math.round(expert.properToolSelectionRatio * 100) < 100 ? `<div class="metric expert"><div class="value">${Math.round(expert.properToolSelectionRatio * 100)}%</div><div class="label">Tool Selection</div></div>` : ""}
+    </div>
+  `;
+}
 function renderMetricsBar(metrics) {
   return `
     <div class="metrics-bar">
@@ -870,6 +1099,7 @@ function renderMetricsBar(metrics) {
         <div class="label">Code Blocks</div>
       </div>
     </div>
+    ${renderExpertSignalsBar(metrics)}
   `;
 }
 function renderScrollSpyScript() {
@@ -1247,6 +1477,13 @@ function getRequiredStageGateIssues(runId) {
   }
   return issues;
 }
+function openInBrowser(target) {
+  try {
+    const cmd = process.platform === "darwin" ? `open "${target}"` : process.platform === "win32" ? `start "${target}"` : `xdg-open "${target}"`;
+    exec(cmd);
+  } catch {
+  }
+}
 async function execute(args) {
   const serve = args.serve === true;
   const port = typeof args.port === "number" ? args.port : 3456;
@@ -1282,23 +1519,19 @@ async function execute(args) {
   await writeFile(reportPath, html, "utf-8");
   const latestPath = join(reportsDir, "latest.html");
   await writeFile(latestPath, html, "utf-8");
+  const typeLabel = run.typeResult ? `${run.typeResult.matrixEmoji} ${run.typeResult.matrixName}` : "Not classified";
+  const incompleteWarning = gateIssues.length > 0 ? { warning: "Report generated with incomplete stages." } : {};
   if (!serve) {
-    markAnalysisComplete(run.phase1Output.sessionMetrics.totalSessions);
-    if (!noOpen) {
-      try {
-        const cmd = process.platform === "darwin" ? `open "${reportPath}"` : process.platform === "win32" ? `start "${reportPath}"` : `xdg-open "${reportPath}"`;
-        exec(cmd);
-      } catch {
-      }
-    }
+    markAnalysisComplete();
+    if (!noOpen) openInBrowser(reportPath);
     return JSON.stringify({
       status: "ok",
       url: `file://${reportPath}`,
       reportPath,
       latestPath,
       domainCount: run.domainResults.length,
-      type: run.typeResult ? `${run.typeResult.matrixEmoji} ${run.typeResult.matrixName}` : "Not classified",
-      ...gateIssues.length > 0 ? { warning: "Report generated with incomplete stages." } : {},
+      type: typeLabel,
+      ...incompleteWarning,
       message: `Report saved to ${reportPath}. Opened in browser.`
     });
   }
@@ -1325,26 +1558,20 @@ async function execute(args) {
       resolve(`http://localhost:${port}`);
     });
   });
-  markAnalysisComplete(run.phase1Output.sessionMetrics.totalSessions);
-  if (!noOpen && url.startsWith("http")) {
-    try {
-      const cmd = process.platform === "darwin" ? `open "${url}"` : process.platform === "win32" ? `start "${url}"` : `xdg-open "${url}"`;
-      exec(cmd);
-    } catch {
-    }
-  }
+  markAnalysisComplete();
+  if (!noOpen && url.startsWith("http")) openInBrowser(url);
   return JSON.stringify({
     status: "ok",
     url,
     reportPath,
     latestPath,
     domainCount: run.domainResults.length,
-    type: run.typeResult ? `${run.typeResult.matrixEmoji} ${run.typeResult.matrixName}` : "Not classified",
-    ...gateIssues.length > 0 ? { warning: "Report generated with incomplete stages." } : {},
+    type: typeLabel,
+    ...incompleteWarning,
     message: `Report available at ${url}. Saved to ${reportPath}.`
   });
 }
 export {
   execute
 };
-//# sourceMappingURL=generate-report-WUBLVEZS.js.map
+//# sourceMappingURL=generate-report-X7GZ7GGW.js.map

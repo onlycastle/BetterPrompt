@@ -27632,6 +27632,32 @@ var SessionHintsSchema = external_exports2.object({
   mediumSessions: external_exports2.number().int().min(0),
   longSessions: external_exports2.number().int().min(0)
 });
+var ExpertSignalsSchema = external_exports2.object({
+  /** CLAUDE.md references detected (writing, updating, reading) */
+  claudeMdReferences: external_exports2.number().int().min(0),
+  /** .claude/rules/ scoped rule references */
+  scopedRuleReferences: external_exports2.number().int().min(0),
+  /** Hook-related references (PreToolUse, PostToolUse, settings.json hooks) */
+  hookReferences: external_exports2.number().int().min(0),
+  /** Skill invocations detected (beyond built-in slash commands) */
+  skillInvocations: external_exports2.number().int().min(0),
+  /** Proper tool selection ratio: using Read/Edit/Grep/Glob over bash equivalents */
+  properToolSelectionRatio: external_exports2.number().min(0).max(1),
+  /** Bash misuse count: using bash cat/grep/find when dedicated tools available */
+  bashMisuseCount: external_exports2.number().int().min(0),
+  /** Task/Agent delegation count for parallel or isolated work */
+  taskDelegationCount: external_exports2.number().int().min(0),
+  /** Context compaction actions (/compact, /clear) relative to session count */
+  compactionRate: external_exports2.number().min(0),
+  /** Sessions with structured first prompt (context + task + constraints) */
+  structuredColdStartCount: external_exports2.number().int().min(0),
+  /** Fresh session starts after failures (sunk cost avoidance) */
+  freshSessionAfterFailureCount: external_exports2.number().int().min(0),
+  /** Error chain breaks (strategy change after consecutive errors) */
+  errorChainBreakCount: external_exports2.number().int().min(0),
+  /** Verification requests before accepting output */
+  verificationRequestCount: external_exports2.number().int().min(0)
+});
 var Phase1SessionMetricsSchema = external_exports2.object({
   totalSessions: external_exports2.number().int().min(0),
   totalMessages: external_exports2.number().int().min(0),
@@ -27651,7 +27677,8 @@ var Phase1SessionMetricsSchema = external_exports2.object({
   contextFillExceeded90Count: external_exports2.number().int().min(0).optional(),
   frictionSignals: FrictionSignalsSchema.optional(),
   sessionHints: SessionHintsSchema.optional(),
-  aiInsightBlockCount: external_exports2.number().int().min(0).optional()
+  aiInsightBlockCount: external_exports2.number().int().min(0).optional(),
+  expertSignals: ExpertSignalsSchema.optional()
 });
 var ActivitySessionSchema = external_exports2.object({
   sessionId: external_exports2.string(),
@@ -28488,6 +28515,67 @@ function applyEvidenceVerification(domainResults, verification) {
     })).filter((area) => area.evidence.length > 0)
   }));
 }
+var FUZZY_DEDUP_THRESHOLD = 0.85;
+var CONSECUTIVE_TURN_DEDUP_THRESHOLD = 0.75;
+function tokenizeForJaccard(text) {
+  return text.trim().toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 0);
+}
+function wordJaccardSimilarity(a, b) {
+  const tokensA = tokenizeForJaccard(a);
+  const tokensB = tokenizeForJaccard(b);
+  if (tokensA.length === 0 && tokensB.length === 0)
+    return 1;
+  if (tokensA.length === 0 || tokensB.length === 0)
+    return 0;
+  const freqB = /* @__PURE__ */ new Map();
+  for (const t of tokensB)
+    freqB.set(t, (freqB.get(t) ?? 0) + 1);
+  let intersection3 = 0;
+  const used = /* @__PURE__ */ new Map();
+  for (const t of tokensA) {
+    const available = (freqB.get(t) ?? 0) - (used.get(t) ?? 0);
+    if (available > 0) {
+      intersection3++;
+      used.set(t, (used.get(t) ?? 0) + 1);
+    }
+  }
+  const union3 = tokensA.length + tokensB.length - intersection3;
+  return union3 === 0 ? 1 : intersection3 / union3;
+}
+function areConsecutiveTurns(idA, idB) {
+  const matchA = idA.match(/^(.+)_(\d+)$/);
+  const matchB = idB.match(/^(.+)_(\d+)$/);
+  if (!matchA || !matchB)
+    return false;
+  return matchA[1] === matchB[1] && Math.abs(Number(matchA[2]) - Number(matchB[2])) <= 2;
+}
+function deduplicateEvidenceArray(evidence) {
+  const accepted = [];
+  for (const item of evidence) {
+    const isDuplicate = accepted.some((existing) => {
+      const similarity = wordJaccardSimilarity(item.quote, existing.quote);
+      const threshold = areConsecutiveTurns(item.utteranceId, existing.utteranceId) ? CONSECUTIVE_TURN_DEDUP_THRESHOLD : FUZZY_DEDUP_THRESHOLD;
+      return similarity >= threshold;
+    });
+    if (!isDuplicate) {
+      accepted.push(item);
+    }
+  }
+  return accepted;
+}
+function deduplicateNearDuplicateEvidence(domainResults) {
+  return domainResults.map((result) => ({
+    ...result,
+    strengths: result.strengths.map((strength) => ({
+      ...strength,
+      evidence: deduplicateEvidenceArray(strength.evidence)
+    })),
+    growthAreas: result.growthAreas.map((area) => ({
+      ...area,
+      evidence: deduplicateEvidenceArray(area.evidence)
+    }))
+  }));
+}
 function buildSessionSummaryLookup(sessionSummaries) {
   const lookup = /* @__PURE__ */ new Map();
   for (const item of sessionSummaries?.summaries ?? []) {
@@ -28927,7 +29015,7 @@ function mergeTranslation(evaluation, translator) {
 }
 function buildCanonicalEvaluation(args) {
   const { analyzedAt, phase1Output, activitySessions, deterministicScores, typeResult, domainResults, stageOutputs } = args;
-  const filteredDomainResults = applyEvidenceVerification(domainResults, stageOutputs.evidenceVerification);
+  const filteredDomainResults = deduplicateNearDuplicateEvidence(applyEvidenceVerification(domainResults, stageOutputs.evidenceVerification));
   const confidenceScores = filteredDomainResults.map((result) => result.confidenceScore).filter((score) => typeof score === "number");
   const overallConfidence = confidenceScores.length > 0 ? Math.round(confidenceScores.reduce((sum, score) => sum + score, 0) / confidenceScores.length * 100) / 100 : 0;
   const filteredEvidenceCount = stageOutputs.evidenceVerification?.domainStats?.reduce((sum, stat2) => sum + stat2.filteredCount, 0) ?? 0;
@@ -29009,7 +29097,7 @@ function assembleCanonicalAnalysisRun(args) {
     activitySessions,
     deterministicScores: args.deterministicScores,
     typeResult: args.typeResult,
-    domainResults: applyEvidenceVerification(args.domainResults, args.stageOutputs.evidenceVerification),
+    domainResults: deduplicateNearDuplicateEvidence(applyEvidenceVerification(args.domainResults, args.stageOutputs.evidenceVerification)),
     stageOutputs: args.stageOutputs,
     evaluation,
     ...args.stageOutputs.translator ? { translation: args.stageOutputs.translator } : {}
@@ -29117,7 +29205,8 @@ function scoreCommunicationPatterns(metrics, phase1Output) {
   const wordCounts = phase1Output.developerUtterances.map((u) => u.wordCount);
   const cv = coefficientOfVariation(wordCounts);
   const consistencyScore = 100 * Math.exp(-0.3 * cv);
-  return clampScore(promptQualityScore * 0.4 + structureScore * 0.3 + consistencyScore * 0.3);
+  const expertBonus = expertBonusToolMastery(metrics);
+  return clampScore(promptQualityScore * 0.4 + structureScore * 0.3 + consistencyScore * 0.3 + expertBonus);
 }
 function scoreControl(metrics) {
   const totalUtterances = Math.max(metrics.totalDeveloperUtterances, 1);
@@ -29132,16 +29221,97 @@ function scoreControl(metrics) {
   const commandSignal = Math.min(uniqueCommands * 10 + totalCommands * 2, 100);
   return clampScore(rejectionSignal * 0.25 + questionSignal * 0.25 + lengthSignal * 0.25 + commandSignal * 0.25);
 }
+function expertBonusAiPartnership(metrics) {
+  const expert = metrics.expertSignals;
+  if (!expert)
+    return 0;
+  let bonus = 0;
+  if (expert.claudeMdReferences > 0)
+    bonus += Math.min(expert.claudeMdReferences * 2, 5);
+  if (expert.scopedRuleReferences > 0)
+    bonus += 3;
+  if (expert.taskDelegationCount > 0)
+    bonus += Math.min(expert.taskDelegationCount * 1.5, 5);
+  if (expert.verificationRequestCount > 0)
+    bonus += Math.min(expert.verificationRequestCount, 4);
+  return Math.min(bonus, 15);
+}
+function expertBonusSessionCraft(metrics) {
+  const expert = metrics.expertSignals;
+  if (!expert)
+    return 0;
+  let bonus = 0;
+  if (expert.compactionRate > 0.1)
+    bonus += Math.min(expert.compactionRate * 20, 6);
+  if (expert.freshSessionAfterFailureCount > 0)
+    bonus += Math.min(expert.freshSessionAfterFailureCount * 2, 5);
+  if (expert.errorChainBreakCount > 0)
+    bonus += Math.min(expert.errorChainBreakCount * 2, 4);
+  return Math.min(bonus, 15);
+}
+function expertBonusToolMastery(metrics) {
+  const expert = metrics.expertSignals;
+  if (!expert)
+    return 0;
+  let bonus = 0;
+  if (expert.properToolSelectionRatio > 0.7)
+    bonus += Math.round((expert.properToolSelectionRatio - 0.7) * 20);
+  if (expert.bashMisuseCount === 0)
+    bonus += 3;
+  if (expert.taskDelegationCount > 0)
+    bonus += Math.min(expert.taskDelegationCount, 4);
+  if (expert.skillInvocations > 0)
+    bonus += Math.min(expert.skillInvocations, 3);
+  if (expert.hookReferences > 0)
+    bonus += 2;
+  if (expert.bashMisuseCount > 3)
+    bonus -= Math.min(expert.bashMisuseCount - 3, 5);
+  return clampScore(Math.min(Math.max(bonus, -5), 15), -5, 15);
+}
+function expertBonusSkillResilience(metrics) {
+  const expert = metrics.expertSignals;
+  if (!expert)
+    return 0;
+  let bonus = 0;
+  const totalSessions = Math.max(metrics.totalSessions, 1);
+  const structuredRatio = expert.structuredColdStartCount / totalSessions;
+  if (structuredRatio > 0.3)
+    bonus += Math.min(Math.round(structuredRatio * 10), 6);
+  if (expert.errorChainBreakCount > 0)
+    bonus += Math.min(expert.errorChainBreakCount * 2, 4);
+  if (expert.claudeMdReferences > 0)
+    bonus += Math.min(expert.claudeMdReferences, 3);
+  if (expert.freshSessionAfterFailureCount > 0)
+    bonus += 2;
+  return Math.min(bonus, 15);
+}
+function expertBonusSessionMastery(metrics) {
+  const expert = metrics.expertSignals;
+  if (!expert)
+    return 0;
+  let bonus = 0;
+  if (expert.compactionRate > 0.15)
+    bonus += 3;
+  if (expert.hookReferences > 0)
+    bonus += 2;
+  if (expert.verificationRequestCount > 2)
+    bonus += 2;
+  if (expert.bashMisuseCount === 0 && expert.properToolSelectionRatio > 0.8)
+    bonus += 3;
+  return Math.min(bonus, 10);
+}
 function scoreAiPartnership(metrics) {
   const thinking = scoreThinkingQuality(metrics);
   const outcome = scoreSessionOutcome(metrics);
   const control = scoreControl(metrics);
-  return clampScore(thinking * 0.4 + outcome * 0.35 + control * 0.25);
+  const expertBonus = expertBonusAiPartnership(metrics);
+  return clampScore(thinking * 0.4 + outcome * 0.35 + control * 0.25 + expertBonus);
 }
 function scoreSessionCraft(metrics) {
   const efficiency = scoreContextEfficiency(metrics);
   const learning = scoreLearningBehavior(metrics);
-  return clampScore(efficiency * 0.55 + learning * 0.45);
+  const expertBonus = expertBonusSessionCraft(metrics);
+  return clampScore(efficiency * 0.55 + learning * 0.45 + expertBonus);
 }
 function scoreSkillResilience(metrics) {
   const totalSessions = Math.max(metrics.totalSessions, 1);
@@ -29154,7 +29324,8 @@ function scoreSkillResilience(metrics) {
   const slashCmds = metrics.slashCommandCounts ?? {};
   const uniqueCommands = Object.keys(slashCmds).length;
   const diversityScore = Math.min(uniqueCommands * 12 + 20, 100);
-  return clampScore(coldStartScore * 0.3 + recoveryScore * 0.4 + diversityScore * 0.3);
+  const expertBonus = expertBonusSkillResilience(metrics);
+  return clampScore(coldStartScore * 0.3 + recoveryScore * 0.4 + diversityScore * 0.3 + expertBonus);
 }
 function scoreSessionMastery(metrics) {
   const totalSessions = Math.max(metrics.totalSessions, 1);
@@ -29172,7 +29343,9 @@ function scoreSessionMastery(metrics) {
   const noToolFailureScore = invertedScale(toolFailureRate * 200);
   const mediumSessions = metrics.sessionHints?.mediumSessions ?? 0;
   const focusBonus = mediumSessions / totalSessions * 15;
-  return clampScore(noExcessiveScore * 0.25 + noOverflowScore * 0.2 + noRetryScore * 0.2 + noFrustrationScore * 0.15 + noToolFailureScore * 0.1 + focusBonus + 10);
+  const expertBonus = expertBonusSessionMastery(metrics);
+  return clampScore(noExcessiveScore * 0.25 + noOverflowScore * 0.2 + noRetryScore * 0.2 + noFrustrationScore * 0.15 + noToolFailureScore * 0.1 + focusBonus + 10 + // baseline: everyone starts at 10
+  expertBonus);
 }
 function computeDeterministicScores(phase1Output) {
   const metrics = phase1Output.sessionMetrics;
@@ -29457,4 +29630,4 @@ export {
   getPluginDataDir,
   getScanCacheDir
 };
-//# sourceMappingURL=chunk-SVAMHER4.js.map
+//# sourceMappingURL=chunk-HGESGWN4.js.map

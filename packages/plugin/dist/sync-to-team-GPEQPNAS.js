@@ -1,14 +1,14 @@
 import {
   markAnalysisComplete
-} from "./chunk-ZNJUTHXJ.js";
+} from "./chunk-UVIVAI6Z.js";
 import {
   getConfig
-} from "./chunk-SE3623WC.js";
+} from "./chunk-66MDY4NM.js";
 import "./chunk-FW6ZW4J3.js";
 import {
   assembleCanonicalRun
-} from "./chunk-FFMI5SRQ.js";
-import "./chunk-SVAMHER4.js";
+} from "./chunk-E3ILNPAD.js";
+import "./chunk-HGESGWN4.js";
 import "./chunk-NSBPE2FW.js";
 
 // cli/commands/sync-to-team.ts
@@ -43,7 +43,7 @@ async function execute(args) {
       });
     }
     const result = await response.json().catch(() => ({}));
-    markAnalysisComplete(run.phase1Output.sessionMetrics.totalSessions);
+    markAnalysisComplete();
     return JSON.stringify({
       status: "ok",
       serverUrl,
@@ -60,4 +60,4 @@ async function execute(args) {
 export {
   execute
 };
-//# sourceMappingURL=sync-to-team-JXTNIVR4.js.map
+//# sourceMappingURL=sync-to-team-GPEQPNAS.js.map

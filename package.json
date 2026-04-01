@@ -13,6 +13,8 @@
     "test:integration": "vitest run tests/integration.test.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "npx playwright test --config tests/e2e/playwright.config.ts",
+    "test:e2e:server": "next start -p 3000",
     "build:pages": "bash scripts/build-pages.sh"
   },
   "keywords": [

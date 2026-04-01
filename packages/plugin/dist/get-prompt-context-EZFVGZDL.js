@@ -3,12 +3,12 @@ import {
   getAnalysisRun,
   getCurrentRunId,
   getDomainResults
-} from "./chunk-FFMI5SRQ.js";
+} from "./chunk-E3ILNPAD.js";
 import {
   CONTEXT_WINDOW_SIZE,
   external_exports,
   getPluginDataDir
-} from "./chunk-SVAMHER4.js";
+} from "./chunk-HGESGWN4.js";
 import "./chunk-NSBPE2FW.js";
 
 // cli/commands/get-prompt-context.ts
@@ -290,7 +290,8 @@ function buildDomainAnalysisContext(domain, phase1Output, deterministicScores) {
   const base = {
     domain,
     deterministicScores,
-    dateRange: phase1Output.sessionMetrics.dateRange
+    dateRange: phase1Output.sessionMetrics.dateRange,
+    ...phase1Output.sessionMetrics.expertSignals ? { expertSignals: phase1Output.sessionMetrics.expertSignals } : {}
   };
   switch (domain) {
     case "aiPartnership":
@@ -486,4 +487,4 @@ async function execute(args) {
 export {
   execute
 };
-//# sourceMappingURL=get-prompt-context-BPI5LNU7.js.map
+//# sourceMappingURL=get-prompt-context-EZFVGZDL.js.map

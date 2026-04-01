@@ -1,7 +1,7 @@
 import {
   getConfig,
   getStateFilePath
-} from "./chunk-SE3623WC.js";
+} from "./chunk-66MDY4NM.js";
 import {
   debug
 } from "./chunk-FW6ZW4J3.js";
@@ -148,12 +148,12 @@ function markAnalysisStarted() {
     lastError: null
   });
 }
-function markAnalysisComplete(sessionCount) {
+function markAnalysisComplete() {
   debug("debounce", "state transition: -> complete");
   writeState({
     ...DEFAULT_STATE,
     lastAnalysisTimestamp: (/* @__PURE__ */ new Date()).toISOString(),
-    lastAnalysisSessionCount: sessionCount ?? countClaudeSessions(),
+    lastAnalysisSessionCount: countClaudeSessions(),
     analysisState: "complete"
   });
 }
@@ -214,4 +214,4 @@ export {
   clearAnalysisPending,
   shouldResumeRunningAnalysis
 };
-//# sourceMappingURL=chunk-ZNJUTHXJ.js.map
+//# sourceMappingURL=chunk-UVIVAI6Z.js.map

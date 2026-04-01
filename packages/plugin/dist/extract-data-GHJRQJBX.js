@@ -3,28 +3,76 @@ import {
   normalizeProjectFilters,
   normalizeProjectNameValue,
   readCachedParsedSessions
-} from "./chunk-5ERQTXTD.js";
+} from "./chunk-A4ECDSM2.js";
 import {
   clearAnalysisPending,
   markAnalysisFailed,
   markAnalysisStarted
-} from "./chunk-ZNJUTHXJ.js";
-import "./chunk-SE3623WC.js";
+} from "./chunk-UVIVAI6Z.js";
+import "./chunk-66MDY4NM.js";
 import "./chunk-FW6ZW4J3.js";
 import {
   createAnalysisRun
-} from "./chunk-FFMI5SRQ.js";
+} from "./chunk-E3ILNPAD.js";
 import {
   CONTEXT_WINDOW_SIZE,
   buildReportActivitySessions,
   computeDeterministicScores,
   getPluginDataDir
-} from "./chunk-SVAMHER4.js";
+} from "./chunk-HGESGWN4.js";
 import "./chunk-NSBPE2FW.js";
 
 // cli/commands/extract-data.ts
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+
+// lib/scanner/strip-system-tags.ts
+var COMMAND_TAG_TRANSFORMS = [
+  /<command-message>[\s\S]*?<\/command-message>/g,
+  /<command-name>([\s\S]*?)<\/command-name>/g,
+  /<command-args>([\s\S]*?)<\/command-args>/g
+].map((pattern, index) => {
+  if (index === 0) {
+    return { pattern, replacement: "" };
+  }
+  if (index === 1) {
+    return { pattern, replacement: "$1" };
+  }
+  return { pattern, replacement: "\n$1" };
+});
+var SYSTEM_TAG_PATTERNS = [
+  // Claude Code system tags
+  /<system-reminder>[\s\S]*?<\/system-reminder>/g,
+  /<EXTREMELY_IMPORTANT>[\s\S]*?<\/EXTREMELY_IMPORTANT>/g,
+  /<tool_result>[\s\S]*?<\/tool_result>/g,
+  /<local-command-stdout>[\s\S]*?<\/local-command-stdout>/g,
+  /<local-command-caveat>[\s\S]*?<\/local-command-caveat>/g,
+  /<local-command-stderr>[\s\S]*?<\/local-command-stderr>/g,
+  // Task notification tags (Sisyphus/Ralph Loop system)
+  /<task-notification>[\s\S]*?<\/task-notification>/g,
+  /<task-id>[\s\S]*?<\/task-id>/g,
+  /<status>[\s\S]*?<\/status>/g,
+  /<summary>[\s\S]*?<\/summary>/g,
+  /<result>[\s\S]*?<\/result>/g,
+  /<output-file>[\s\S]*?<\/output-file>/g
+];
+var NOISE_TEXT_PATTERNS = [
+  /\[Request interrupted by user for tool use\]/g,
+  /\[Request interrupted by user\]/g
+];
+function stripSystemTags(text) {
+  let cleaned = text;
+  for (const { pattern, replacement } of COMMAND_TAG_TRANSFORMS) {
+    cleaned = cleaned.replace(pattern, replacement);
+  }
+  for (const pattern of SYSTEM_TAG_PATTERNS) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+  for (const pattern of NOISE_TEXT_PATTERNS) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+  return cleaned.replace(/[ \t]+\n/g, "\n").replace(/\n[ \t]+/g, "\n").replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+}
 
 // lib/core/data-extractor.ts
 var MAX_TEXT_LENGTH = 2e3;
@@ -66,9 +114,6 @@ var CLEAR_COMMAND_PATTERNS = [
   /<command-name>\/clear<\/command-name>/
 ];
 var INSIGHT_BLOCK_PATTERN = /`★\s*Insight\s*─+`\n([\s\S]*?)\n`─+`/g;
-function stripSystemTags(content) {
-  return content.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, "").replace(/<command-name>([\s\S]*?)<\/command-name>/g, "$1").replace(/<EXTREMELY_IMPORTANT>[\s\S]*?<\/EXTREMELY_IMPORTANT>/g, "").replace(/<tool_result>[\s\S]*?<\/tool_result>/g, "").replace(/\n{3,}/g, "\n\n").trim();
-}
 function truncateText(text, maxLen) {
   if (text.length <= maxLen) return text;
   return text.slice(0, maxLen) + "... [truncated]";
@@ -90,6 +135,39 @@ function isContinuation(text) {
 }
 function isClearCommand(content) {
   return CLEAR_COMMAND_PATTERNS.some((p) => p.test(content));
+}
+function countMatches(text, pattern) {
+  return text.match(pattern)?.length ?? 0;
+}
+function hasTaggedSlashCommand(rawContent) {
+  return /<command-name>\/[\w:-]+<\/command-name>/.test(rawContent);
+}
+function looksLikeCommandExpansionBody(text) {
+  const trimmed = text.trim();
+  if (/^\[[A-Z0-9 _-]+ ACTIVATED\]/.test(trimmed)) {
+    return true;
+  }
+  const markdownHeadings = countMatches(trimmed, /^#{1,6}\s+/gm);
+  const listItems = countMatches(trimmed, /^[-*+]\s+/gm) + countMatches(trimmed, /^\d+\.\s+/gm);
+  const hasCodeFence = /```/.test(trimmed);
+  const mentionsWorkflowInstructions = /(How Ralph Loop Works|Complete Shipping Workflow|Error Handling|Quick Reference|Begin working on the task|output <promise>DONE<\/promise>|output `<promise>DONE<\/promise>`)/i.test(trimmed);
+  return trimmed.length >= 150 && (mentionsWorkflowInstructions || markdownHeadings >= 2 || hasCodeFence) && (markdownHeadings + listItems >= 4 || hasCodeFence);
+}
+function isLikelyExpandedSkillDocument(message, previousMessages) {
+  const trimmed = message.rawContent.trim();
+  if (trimmed.startsWith(SKILL_INJECTION_PREFIX)) {
+    return true;
+  }
+  if (previousMessages.length === 0) {
+    return false;
+  }
+  const hasSameTimestampSlashCommand = previousMessages.some(
+    (previousMessage) => previousMessage.role === "user" && previousMessage.timestamp.getTime() === message.timestamp.getTime() && hasTaggedSlashCommand(previousMessage.rawContent)
+  );
+  if (!hasSameTimestampSlashCommand) {
+    return false;
+  }
+  return looksLikeCommandExpansionBody(trimmed);
 }
 function extractSlashCommands(rawContent) {
   const commands = [];
@@ -200,6 +278,7 @@ function extractFromSession(session) {
   let precedingAssistantContent = null;
   for (let i = 0; i < session.messages.length; i++) {
     const message = session.messages[i];
+    const previousMessages = session.messages.slice(0, i);
     if (message.role === "user") {
       if (!isAnalyzableUserMessage(message)) {
         precedingAssistantContent = null;
@@ -210,6 +289,10 @@ function extractFromSession(session) {
       );
       slashCommands.push(...extractSlashCommands(message.rawContent || rawText));
       if (isClearCommand(rawText)) {
+        precedingAssistantContent = null;
+        continue;
+      }
+      if (isLikelyExpandedSkillDocument(message, previousMessages)) {
         precedingAssistantContent = null;
         continue;
       }
@@ -361,11 +444,163 @@ function computeContextFillMetrics(sessions) {
     contextFillExceeded90Count: fillPercentages.filter((p) => p >= 90).length
   };
 }
+var CLAUDE_MD_PATTERNS = [
+  /CLAUDE\.md/i,
+  /claude\.md/,
+  /\.claude\/CLAUDE\.md/,
+  /CLAUDE\.local\.md/i
+];
+var SCOPED_RULE_PATTERNS = [
+  /\.claude\/rules\//,
+  /scoped rule/i,
+  /path-scoped/i
+];
+var HOOK_PATTERNS = [
+  /\bhook/i,
+  /PreToolUse/,
+  /PostToolUse/,
+  /SessionStart/,
+  /SessionEnd/,
+  /settings\.json.*hook/i,
+  /hook.*settings/i
+];
+var VERIFICATION_PATTERNS = [
+  /are you sure/i,
+  /did you (check|verify|test)/i,
+  /run the tests/i,
+  /write tests? (for|first)/i,
+  /let me (check|verify|review)/i,
+  /can you (verify|confirm|check)/i,
+  /does (this|that|it) (work|pass|compile)/i
+];
+var STRUCTURED_START_PATTERNS = [
+  /here'?s (the|my) (task|goal|requirement)/i,
+  /context:/i,
+  /constraint/i,
+  /requirements?:/i,
+  /objective:/i,
+  /background:/i,
+  /the goal is/i,
+  /i need (you to|to)/i
+];
+var BASH_MISUSE_PATTERNS = [
+  /\bcat\s+[^\s|;]+/,
+  /\bhead\s+/,
+  /\btail\s+/,
+  /\bgrep\s+/,
+  /\brg\s+/,
+  /\bfind\s+\./,
+  /\bls\s+/,
+  /\bsed\s+/,
+  /\bawk\s+/
+];
+function computeExpertSignals(sessions, utterances) {
+  let claudeMdReferences = 0;
+  let scopedRuleReferences = 0;
+  let hookReferences = 0;
+  let skillInvocations = 0;
+  let bashMisuseCount = 0;
+  let taskDelegationCount = 0;
+  let structuredColdStartCount = 0;
+  let freshSessionAfterFailureCount = 0;
+  let errorChainBreakCount = 0;
+  let verificationRequestCount = 0;
+  let totalToolCalls = 0;
+  let properToolCalls = 0;
+  const sessionsEndedWithError = /* @__PURE__ */ new Set();
+  for (let sIdx = 0; sIdx < sessions.length; sIdx++) {
+    const session = sessions[sIdx];
+    let sessionHadError = false;
+    let consecutiveErrors = 0;
+    let isFirstUserMessage = true;
+    for (const message of session.messages) {
+      if (message.role === "user" && isAnalyzableUserMessage(message)) {
+        const text = message.rawContent;
+        if (CLAUDE_MD_PATTERNS.some((p) => p.test(text))) claudeMdReferences++;
+        if (SCOPED_RULE_PATTERNS.some((p) => p.test(text))) scopedRuleReferences++;
+        if (HOOK_PATTERNS.some((p) => p.test(text))) hookReferences++;
+        if (VERIFICATION_PATTERNS.some((p) => p.test(text))) verificationRequestCount++;
+        if (isFirstUserMessage) {
+          const matchCount = STRUCTURED_START_PATTERNS.filter((p) => p.test(text)).length;
+          if (matchCount >= 2 || text.length >= 200) {
+            structuredColdStartCount++;
+          }
+          isFirstUserMessage = false;
+        }
+        if (consecutiveErrors >= 2 && text.length > 50) {
+          errorChainBreakCount++;
+          consecutiveErrors = 0;
+        }
+      } else if (message.role === "assistant") {
+        for (const block of message.content) {
+          if (block.type === "tool_use" && block.name) {
+            totalToolCalls++;
+            if (["Read", "Edit", "Write", "Grep", "Glob"].includes(block.name)) {
+              properToolCalls++;
+            } else if (block.name === "Bash") {
+              const precedingUser = [...session.messages].slice(0, session.messages.indexOf(message)).reverse().find((m) => m.role === "user");
+              if (precedingUser && BASH_MISUSE_PATTERNS.some((p) => p.test(precedingUser.rawContent))) {
+                bashMisuseCount++;
+              }
+            } else if (block.name === "Task" || block.name === "Agent") {
+              taskDelegationCount++;
+            }
+          }
+          if (block.type === "tool_result" && block.is_error) {
+            consecutiveErrors++;
+            sessionHadError = true;
+          } else if (block.type === "tool_result" && !block.is_error) {
+            consecutiveErrors = 0;
+          }
+        }
+      }
+    }
+    if (sessionHadError) sessionsEndedWithError.add(sIdx);
+  }
+  for (let i = 1; i < sessions.length; i++) {
+    if (sessionsEndedWithError.has(i - 1)) {
+      const firstMsg = sessions[i].messages.find(isAnalyzableUserMessage);
+      if (firstMsg && firstMsg.rawContent.length >= 100) {
+        freshSessionAfterFailureCount++;
+      }
+    }
+  }
+  for (const utterance of utterances) {
+    const skillPatterns = /\/(bp|ouroboros|ralph|spc|codex|ship-it|debug|simplify)/i;
+    if (skillPatterns.test(utterance.text)) {
+      skillInvocations++;
+    }
+  }
+  const slashCmds = {};
+  for (const utterance of utterances) {
+    const commands = extractSlashCommands(utterance.text);
+    for (const cmd of commands) {
+      slashCmds[cmd] = (slashCmds[cmd] ?? 0) + 1;
+    }
+  }
+  const compactCount = (slashCmds["compact"] ?? 0) + (slashCmds["clear"] ?? 0);
+  const compactionRate = sessions.length > 0 ? compactCount / sessions.length : 0;
+  return {
+    claudeMdReferences,
+    scopedRuleReferences,
+    hookReferences,
+    skillInvocations,
+    properToolSelectionRatio: totalToolCalls > 0 ? properToolCalls / totalToolCalls : 1,
+    bashMisuseCount,
+    taskDelegationCount,
+    compactionRate,
+    structuredColdStartCount,
+    freshSessionAfterFailureCount,
+    errorChainBreakCount,
+    verificationRequestCount
+  };
+}
 async function extractPhase1DataFromParsedSessions(sessions) {
   const allUtterances = [];
   const allSlashCommands = [];
   const allInsightBlocks = [];
   const allSessions = [];
+  const utterancesBySession = /* @__PURE__ */ new Map();
   if (sessions.length === 0) {
     throw new Error("No parsed sessions available for Phase 1 extraction.");
   }
@@ -373,6 +608,7 @@ async function extractPhase1DataFromParsedSessions(sessions) {
     const session = toRawSessionData(parsedSession);
     allSessions.push(session);
     const { utterances, slashCommands, insightBlocks } = extractFromSession(session);
+    utterancesBySession.set(session.sessionId, utterances);
     allUtterances.push(...utterances);
     allSlashCommands.push(...slashCommands);
     allInsightBlocks.push(...insightBlocks);
@@ -392,6 +628,7 @@ async function extractPhase1DataFromParsedSessions(sessions) {
   const contextFillMetrics = computeContextFillMetrics(allSessions);
   const frictionSignals = computeFrictionSignals(allSessions, allUtterances);
   const sessionHints = computeSessionHints(allSessions);
+  const expertSignals = computeExpertSignals(allSessions, allUtterances);
   const sessionMetrics = {
     totalSessions: allSessions.length,
     totalMessages,
@@ -409,11 +646,12 @@ async function extractPhase1DataFromParsedSessions(sessions) {
     ...contextFillMetrics,
     frictionSignals,
     sessionHints,
-    ...allInsightBlocks.length > 0 ? { aiInsightBlockCount: allInsightBlocks.length } : {}
+    ...allInsightBlocks.length > 0 ? { aiInsightBlockCount: allInsightBlocks.length } : {},
+    expertSignals
   };
   const activitySessions = allSessions.map((session, idx) => {
     const parsedSession = sessions[idx];
-    const userMessages = session.messages.filter(isAnalyzableUserMessage);
+    const userUtterances = utterancesBySession.get(session.sessionId) ?? [];
     const assistantMessages = session.messages.filter((m) => m.role === "assistant");
     const sessionTimestamps = session.messages.map((m) => m.timestamp.getTime()).sort();
     const startTime = sessionTimestamps.length > 0 ? new Date(sessionTimestamps[0]).toISOString() : (/* @__PURE__ */ new Date()).toISOString();
@@ -421,7 +659,7 @@ async function extractPhase1DataFromParsedSessions(sessions) {
     const durationSeconds = sessionTimestamps.length > 1 ? (endTime - sessionTimestamps[0]) / 1e3 : parsedSession.durationSeconds;
     const totalInputTokens = session.messages.reduce((sum, m) => sum + (m.tokenUsage?.input ?? 0), 0);
     const totalOutputTokens = session.messages.reduce((sum, m) => sum + (m.tokenUsage?.output ?? 0), 0);
-    const firstUserMsg = userMessages[0]?.rawContent?.slice(0, 200) ?? "";
+    const firstUserMsg = userUtterances[0]?.displayText ?? userUtterances[0]?.text ?? "";
     return {
       sessionId: session.sessionId,
       projectName: parsedSession.projectName ?? "unknown",
@@ -429,7 +667,7 @@ async function extractPhase1DataFromParsedSessions(sessions) {
       startTime,
       durationSeconds: Math.round(durationSeconds),
       messageCount: session.messages.length,
-      userMessageCount: userMessages.length,
+      userMessageCount: userUtterances.length,
       assistantMessageCount: assistantMessages.length,
       totalInputTokens,
       totalOutputTokens,
@@ -515,4 +753,4 @@ async function execute(args) {
 export {
   execute
 };
-//# sourceMappingURL=extract-data-BNI4EU2Y.js.map
+//# sourceMappingURL=extract-data-GHJRQJBX.js.map
