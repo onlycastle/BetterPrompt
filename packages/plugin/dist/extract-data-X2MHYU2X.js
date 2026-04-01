@@ -3,23 +3,23 @@ import {
   normalizeProjectFilters,
   normalizeProjectNameValue,
   readCachedParsedSessions
-} from "./chunk-A4ECDSM2.js";
+} from "./chunk-27WHCL7Y.js";
 import {
   clearAnalysisPending,
   markAnalysisFailed,
   markAnalysisStarted
-} from "./chunk-UVIVAI6Z.js";
-import "./chunk-66MDY4NM.js";
+} from "./chunk-LPUYAQ2F.js";
+import "./chunk-RQKQQ22T.js";
 import "./chunk-FW6ZW4J3.js";
 import {
   createAnalysisRun
-} from "./chunk-E3ILNPAD.js";
+} from "./chunk-TPRBO53W.js";
 import {
   CONTEXT_WINDOW_SIZE,
   buildReportActivitySessions,
   computeDeterministicScores,
   getPluginDataDir
-} from "./chunk-HGESGWN4.js";
+} from "./chunk-VNV2GGMC.js";
 import "./chunk-NSBPE2FW.js";
 
 // cli/commands/extract-data.ts
@@ -28,18 +28,10 @@ import { join } from "path";
 
 // lib/scanner/strip-system-tags.ts
 var COMMAND_TAG_TRANSFORMS = [
-  /<command-message>[\s\S]*?<\/command-message>/g,
-  /<command-name>([\s\S]*?)<\/command-name>/g,
-  /<command-args>([\s\S]*?)<\/command-args>/g
-].map((pattern, index) => {
-  if (index === 0) {
-    return { pattern, replacement: "" };
-  }
-  if (index === 1) {
-    return { pattern, replacement: "$1" };
-  }
-  return { pattern, replacement: "\n$1" };
-});
+  { pattern: /<command-message>[\s\S]*?<\/command-message>/g, replacement: "" },
+  { pattern: /<command-name>([\s\S]*?)<\/command-name>/g, replacement: "$1" },
+  { pattern: /<command-args>([\s\S]*?)<\/command-args>/g, replacement: "\n$1" }
+];
 var SYSTEM_TAG_PATTERNS = [
   // Claude Code system tags
   /<system-reminder>[\s\S]*?<\/system-reminder>/g,
@@ -249,7 +241,8 @@ function toRawSessionData(session) {
         content.push({
           type: "tool_use",
           id: toolCall.id,
-          name: toolCall.name
+          name: toolCall.name,
+          input: toolCall.input
         });
         if (toolCall.result !== void 0) {
           content.push({
@@ -538,8 +531,8 @@ function computeExpertSignals(sessions, utterances) {
             if (["Read", "Edit", "Write", "Grep", "Glob"].includes(block.name)) {
               properToolCalls++;
             } else if (block.name === "Bash") {
-              const precedingUser = [...session.messages].slice(0, session.messages.indexOf(message)).reverse().find((m) => m.role === "user");
-              if (precedingUser && BASH_MISUSE_PATTERNS.some((p) => p.test(precedingUser.rawContent))) {
+              const cmd = typeof block.input?.command === "string" ? block.input.command : "";
+              if (cmd && BASH_MISUSE_PATTERNS.some((p) => p.test(cmd))) {
                 bashMisuseCount++;
               }
             } else if (block.name === "Task" || block.name === "Agent") {
@@ -753,4 +746,4 @@ async function execute(args) {
 export {
   execute
 };
-//# sourceMappingURL=extract-data-GHJRQJBX.js.map
+//# sourceMappingURL=extract-data-X2MHYU2X.js.map

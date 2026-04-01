@@ -4,8 +4,8 @@ import {
   getDomainResults,
   recordStageStatus,
   saveStageOutput
-} from "./chunk-E3ILNPAD.js";
-import "./chunk-HGESGWN4.js";
+} from "./chunk-TPRBO53W.js";
+import "./chunk-VNV2GGMC.js";
 import "./chunk-NSBPE2FW.js";
 
 // cli/commands/verify-evidence.ts
@@ -106,23 +106,18 @@ function looksLikeInjectedInstructionBlock(text) {
   const instructionPhrase = /(How Ralph Loop Works|Complete Shipping Workflow|Error Handling|Quick Reference|Begin working on the task|output <promise>DONE<\/promise>|output `<promise>DONE<\/promise>`)/i.test(normalized);
   return normalized.length >= 150 && (instructionPhrase || headingCount >= 2 || hasCodeFence) && (headingCount + listCount >= 4 || hasCodeFence);
 }
+var EVIDENCE_REJECTION_CHECKS = [
+  looksLikeTaggedSystemText,
+  looksLikeTaskStatusText,
+  looksLikeSlashCommandPrompt,
+  looksLikeInjectedInstructionBlock,
+  looksLikeLogExcerpt
+];
 function shouldRejectEvidence(quote, sourceUtterance) {
   if (!collapseWhitespace(quote) || !collapseWhitespace(sourceUtterance)) {
     return true;
   }
-  if (looksLikeTaggedSystemText(quote) || looksLikeTaggedSystemText(sourceUtterance)) {
-    return true;
-  }
-  if (looksLikeTaskStatusText(quote) || looksLikeTaskStatusText(sourceUtterance)) {
-    return true;
-  }
-  if (looksLikeSlashCommandPrompt(quote) || looksLikeSlashCommandPrompt(sourceUtterance)) {
-    return true;
-  }
-  if (looksLikeInjectedInstructionBlock(quote) || looksLikeInjectedInstructionBlock(sourceUtterance)) {
-    return true;
-  }
-  return looksLikeLogExcerpt(quote) || looksLikeLogExcerpt(sourceUtterance);
+  return EVIDENCE_REJECTION_CHECKS.some((check) => check(quote));
 }
 async function execute(args) {
   const threshold = typeof args.threshold === "number" ? args.threshold : 50;
@@ -203,4 +198,4 @@ async function execute(args) {
 export {
   execute
 };
-//# sourceMappingURL=verify-evidence-S4XZYZIV.js.map
+//# sourceMappingURL=verify-evidence-QBGWIVKE.js.map
