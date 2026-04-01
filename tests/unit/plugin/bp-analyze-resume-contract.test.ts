@@ -13,8 +13,8 @@ describe('bp-analyze resume contract', () => {
   it('checks run progress before restarting Phase 1', () => {
     const content = readSkill('bp-analyze');
 
-    expect(content).toContain('Before starting Phase 1, call `get_run_progress`.');
-    expect(content).toContain('Do **NOT** call `scan_sessions` or `extract_data` again when a resumable run already exists.');
+    expect(content).toContain('Before starting Phase 1, run');
+    expect(content).toContain('Do **NOT** run `scan-sessions` or `extract-data` again when a resumable run already exists.');
     expect(content).toContain('resume from `nextStep` using the saved current run');
   });
 
@@ -22,13 +22,13 @@ describe('bp-analyze resume contract', () => {
     const content = readSkill('bp-analyze');
 
     expect(content).toContain('`completionStatus: "complete"`');
-    expect(content).toContain('skip straight to Phase 4 and call `generate_report`');
+    expect(content).toContain('skip straight to Phase 4 and run `generate-report`');
   });
 
   it('dispatches each stage as an isolated agent and tracks via get_run_progress', () => {
     const content = readSkill('bp-analyze');
 
     expect(content).toContain('dispatch it as an Agent');
-    expect(content).toContain('call `get_run_progress` again and follow the returned `nextStep`');
+    expect(content).toContain('`get-run-progress` again and follow the returned `nextStep`');
   });
 });

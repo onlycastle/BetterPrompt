@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, afterEach } from 'vitest';
@@ -7,7 +7,15 @@ import {
   createAnalysisRun,
   saveDomainResult,
 } from '../../../packages/plugin/lib/results-db.js';
-import { execute } from '../../../packages/plugin/mcp/tools/get-domain-results.js';
+import { execute } from '../../../packages/plugin/cli/commands/get-domain-results.js';
+
+async function executeAndRead(args: Record<string, unknown>) {
+  const response = JSON.parse(await execute(args));
+  if (response.outputFile) {
+    return JSON.parse(readFileSync(response.outputFile, 'utf-8'));
+  }
+  return response;
+}
 
 function resetResultsStorage(): void {
   closeResultsDb();
@@ -74,7 +82,7 @@ describe('get_domain_results tool', () => {
 
     pinCurrentRunId(runId);
 
-    const parsed = JSON.parse(await execute({}));
+    const parsed = await executeAndRead({});
     expect(parsed.status).toBe('ok');
     expect(parsed.runId).toBe(runId);
     expect(parsed.domainsAvailable).toEqual(['communicationPatterns']);
@@ -132,7 +140,7 @@ describe('get_domain_results tool', () => {
 
     pinCurrentRunId(runId);
 
-    const parsed = JSON.parse(await execute({ domain: 'contextEfficiency' }));
+    const parsed = await executeAndRead({ domain: 'contextEfficiency' });
     expect(parsed.status).toBe('ok');
     expect(parsed.runId).toBe(runId);
     expect(parsed.domain).toBe('contextEfficiency');

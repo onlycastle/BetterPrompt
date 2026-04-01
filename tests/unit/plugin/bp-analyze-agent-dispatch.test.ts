@@ -25,14 +25,14 @@ describe('bp-analyze agent dispatch contract', () => {
   });
 
   it('uses get_run_progress as the state machine', () => {
-    expect(content).toContain('`get_run_progress` is the ONLY source of truth');
-    expect(content).toContain('call `get_run_progress` again');
+    expect(content).toContain('`get-run-progress` is the ONLY source of truth');
+    expect(content).toContain('`get-run-progress` again');
   });
 
-  it('calls MCP tools directly for deterministic stages', () => {
-    expect(content).toContain('Call the `classify_developer_type` MCP tool');
-    expect(content).toContain('Call the `verify_evidence` MCP tool');
-    expect(content).toContain('call that MCP tool directly');
+  it('calls CLI commands directly for deterministic stages', () => {
+    expect(content).toContain('classify-developer-type');
+    expect(content).toContain('verify-evidence');
+    expect(content).toContain('run that CLI command directly');
   });
 
   it('prohibits skills from spawning sub-agents internally', () => {
@@ -51,9 +51,9 @@ describe('bp-analyze agent dispatch contract', () => {
   });
 
   it('still supports resume flow', () => {
-    expect(content).toContain('Before starting Phase 1, call `get_run_progress`.');
+    expect(content).toContain('Before starting Phase 1, run');
     expect(content).toContain('`completionStatus: "complete"`');
-    expect(content).toContain('skip straight to Phase 4 and call `generate_report`');
-    expect(content).toContain('Do **NOT** call `scan_sessions` or `extract_data` again when a resumable run already exists.');
+    expect(content).toContain('skip straight to Phase 4 and run `generate-report`');
+    expect(content).toContain('Do **NOT** run `scan-sessions` or `extract-data` again when a resumable run already exists.');
   });
 });

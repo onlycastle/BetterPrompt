@@ -25,7 +25,7 @@ describe('writer skill contracts', () => {
     }
   });
 
-  it('persists output via save_domain_results for each writer', () => {
+  it('persists output via save-domain-results for each writer', () => {
     const expectedDomains: Record<string, string> = {
       'write-ai-partnership': 'aiPartnership',
       'write-session-craft': 'sessionCraft',
@@ -37,7 +37,7 @@ describe('writer skill contracts', () => {
     for (const skill of WRITER_SKILLS) {
       const content = readSkill(skill);
       const domain = expectedDomains[skill];
-      expect(content, `${skill} must call save_domain_results`).toContain('save_domain_results');
+      expect(content, `${skill} must call save-domain-results`).toContain('save-domain-results');
       expect(content, `${skill} must save to domain "${domain}"`).toContain(`"${domain}"`);
     }
   });
@@ -46,7 +46,7 @@ describe('writer skill contracts', () => {
     for (const skill of WRITER_SKILLS) {
       const content = readSkill(skill);
       expect(content, `${skill} must retry validation errors`).toMatch(
-        /validation error, fix the payload and retry/,
+        /validation error.*retry/,
       );
     }
   });

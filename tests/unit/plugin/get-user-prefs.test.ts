@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { resetConfig } from '../../../packages/plugin/lib/config.js';
 import { writePrefs } from '../../../packages/plugin/lib/prefs.js';
-import { execute } from '../../../packages/plugin/mcp/tools/get-user-prefs.js';
+import { execute } from '../../../packages/plugin/cli/commands/get-user-prefs.js';
 
 describe('get_user_prefs tool', () => {
   const originalHome = process.env.HOME;

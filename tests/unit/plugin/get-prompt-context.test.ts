@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   createAnalysisRun,
   saveDomainResult,
   saveTypeResult,
 } from '../../../packages/plugin/lib/results-db.js';
 import { saveStageOutput } from '../../../packages/plugin/lib/stage-db.js';
-import { execute } from '../../../packages/plugin/mcp/tools/get-prompt-context.js';
+import { execute } from '../../../packages/plugin/cli/commands/get-prompt-context.js';
 import {
   createDomainResults,
   createPhase1Output,
@@ -38,6 +39,14 @@ function seedRun(): number {
   return runId;
 }
 
+async function executeAndRead(args: Record<string, unknown>) {
+  const response = JSON.parse(await execute(args));
+  if (response.outputFile) {
+    return JSON.parse(readFileSync(response.outputFile, 'utf-8'));
+  }
+  return response;
+}
+
 afterEach(() => {
   resetResultsStorage();
 });
@@ -46,10 +55,10 @@ describe('get_prompt_context tool', () => {
   it('returns domain-specific context for skill resilience analysis without rereading raw phase1 files', async () => {
     const runId = seedRun();
 
-    const parsed = JSON.parse(await execute({
+    const parsed = await executeAndRead({
       kind: 'domainAnalysis',
       domain: 'skillResilience',
-    }));
+    });
 
     expect(parsed.status).toBe('ok');
     expect(parsed.runId).toBe(runId);
@@ -60,18 +69,18 @@ describe('get_prompt_context tool', () => {
     expect(parsed.data.phase1.developerUtterances[0].precedingAIToolCalls).toEqual(['read_file', 'search_code']);
     expect(parsed.data.phase1.aiInsightBlocks[0].triggeringUtteranceId).toBe('session-1_1');
     expect(parsed.data.phase1.sessionOverviews[0].toolSequence).toEqual(['read_file', 'run_tests']);
-    expect(parsed.data.phase1.interactionSnapshots[1].precedingAssistantPreview).toHaveLength(200);
+    expect(parsed.data.phase1.interactionSnapshots[1].precedingAssistantPreview).toHaveLength(300);
     expect(parsed.data.phase1.interactionSnapshots[1].precedingAssistantPreview.endsWith('…')).toBe(true);
-    expect(parsed.data.phase1.sessions).toBeUndefined();
+    expect(parsed.data.phase1.sessions).toBeDefined();
   });
 
-  it('returns condensed domain-analysis payloads so extractor stages do not carry raw session dumps', async () => {
+  it('returns condensed domain-analysis payloads with trimmed session transcripts', async () => {
     seedRun();
 
-    const parsed = JSON.parse(await execute({
+    const parsed = await executeAndRead({
       kind: 'domainAnalysis',
       domain: 'aiPartnership',
-    }));
+    });
 
     expect(parsed.status).toBe('ok');
     expect(parsed.data.phase1.sessions).toBeUndefined();
@@ -83,7 +92,7 @@ describe('get_prompt_context tool', () => {
   it('returns the narrowed content-writer context instead of dumping every prior stage', async () => {
     seedRun();
 
-    const parsed = JSON.parse(await execute({ kind: 'contentWriter' }));
+    const parsed = await executeAndRead({ kind: 'contentWriter' });
 
     expect(parsed.status).toBe('ok');
     expect(parsed.data.deterministicType.matrixName).toBeTruthy();
@@ -103,7 +112,7 @@ describe('get_prompt_context tool', () => {
   it('returns condensed type-classification context so skills can stay on MCP payloads', async () => {
     seedRun();
 
-    const parsed = JSON.parse(await execute({ kind: 'typeClassification' }));
+    const parsed = await executeAndRead({ kind: 'typeClassification' });
     const domainWithGrowth = parsed.data.domainResults.find(
       (result: { growthAreas: Array<{ recommendation?: string }> }) => result.growthAreas.length > 0,
     );
@@ -140,10 +149,10 @@ describe('get_prompt_context tool', () => {
 
     pinCurrentRunId(runId);
 
-    const parsed = JSON.parse(await execute({
+    const parsed = await executeAndRead({
       kind: 'domainAnalysis',
       domain: 'aiPartnership',
-    }));
+    });
 
     expect(parsed.status).toBe('ok');
     expect(parsed.data.phase1.sessionOverviews[0].stats.userMessageCount).toBe(2);

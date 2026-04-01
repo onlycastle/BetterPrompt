@@ -18,7 +18,7 @@ function readSkill(skillName: string): string {
 }
 
 describe('extractor skill contracts', () => {
-  it('calls get_prompt_context with the correct domain for each extractor', () => {
+  it('calls get-prompt-context with the correct domain for each extractor', () => {
     const expectedDomains: Record<string, string> = {
       'extract-ai-partnership': 'aiPartnership',
       'extract-session-craft': 'sessionCraft',
@@ -30,12 +30,12 @@ describe('extractor skill contracts', () => {
     for (const skill of EXTRACTOR_SKILLS) {
       const content = readSkill(skill);
       const domain = expectedDomains[skill];
-      expect(content, `${skill} must call get_prompt_context`).toContain('get_prompt_context');
+      expect(content, `${skill} must call get-prompt-context`).toContain('get-prompt-context');
       expect(content, `${skill} must specify domain "${domain}"`).toContain(`"${domain}"`);
     }
   });
 
-  it('persists output via save_stage_output for each extractor', () => {
+  it('persists output via save-stage-output for each extractor', () => {
     const expectedStages: Record<string, string> = {
       'extract-ai-partnership': 'extractAiPartnership',
       'extract-session-craft': 'extractSessionCraft',
@@ -47,8 +47,8 @@ describe('extractor skill contracts', () => {
     for (const skill of EXTRACTOR_SKILLS) {
       const content = readSkill(skill);
       const stage = expectedStages[skill];
-      expect(content, `${skill} must call save_stage_output`).toContain('save_stage_output');
-      expect(content, `${skill} must save to stage "${stage}"`).toContain(`"${stage}"`);
+      expect(content, `${skill} must call save-stage-output`).toContain('save-stage-output');
+      expect(content, `${skill} must save to stage "${stage}"`).toContain(stage);
     }
   });
 

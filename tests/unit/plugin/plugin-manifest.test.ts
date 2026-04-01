@@ -23,12 +23,10 @@ describe('plugin manifest', () => {
       'license',
       'keywords',
       'skills',
-      'mcpServers',
     ]);
 
     expect(Object.keys(manifest).every((key) => allowedKeys.has(key))).toBe(true);
     expect(manifest.name).toBe('betterprompt');
     expect(manifest.skills).toBe('./skills/');
-    expect(manifest.mcpServers).toBe('./.mcp.json');
   });
 });

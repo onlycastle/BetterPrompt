@@ -108,24 +108,9 @@ function buildStepStatus(
   };
 }
 
-export async function execute(_args: Record<string, unknown>): Promise<string> {
-  const runId = getCurrentRunId();
-
-  if (!runId) {
-    return JSON.stringify({
-      status: 'no_run',
-      message: 'No active analysis run. Start Phase 1 with scan-sessions and extract-data.',
-    });
-  }
-
+export function computeRunProgress(runId: number) {
   const run = getAnalysisRun(runId);
-  if (!run?.phase1Output) {
-    return JSON.stringify({
-      status: 'no_run',
-      runId,
-      message: 'The current run has no resumable Phase 1 data. Start Phase 1 again.',
-    });
-  }
+  if (!run?.phase1Output) return null;
 
   const statusLookup = new Map(
     getStageStatuses(runId).map(status => [status.stage, status]),
@@ -159,8 +144,7 @@ export async function execute(_args: Record<string, unknown>): Promise<string> {
     ? { stage: nextIncomplete.stage, skill: nextIncomplete.skill, tool: nextIncomplete.tool, kind: nextIncomplete.kind }
     : { stage: 'generateReport', skill: null, tool: 'generate-report', kind: 'report' as const };
 
-  return JSON.stringify({
-    status: 'ok',
+  return {
     runId,
     analyzedAt: run.analyzedAt,
     phase1Complete: true,
@@ -173,10 +157,36 @@ export async function execute(_args: Record<string, unknown>): Promise<string> {
     totalDomainCount: DOMAIN_STAGE_NAMES.size,
     skippedStageCount: skippedStages.length,
     nextStep,
+    stages,
     pendingStages,
     skippedStages: skippedStagesSummary,
-    message: nextIncomplete
-      ? `Run #${runId} is incomplete (${completedRequiredStages}/${REQUIRED_STAGE_SEQUENCE.length}${skippedStages.length > 0 ? `, ${skippedStages.length} skipped due to failures` : ''}). Resume with ${nextStep.tool ?? nextStep.skill ?? nextStep.stage}.`
-      : `Run #${runId} ${skippedStages.length > 0 ? `completed with ${skippedStages.length} skipped stage(s)` : 'already has all required stages'}. Ready to generate report.`,
+  };
+}
+
+export async function execute(_args: Record<string, unknown>): Promise<string> {
+  const runId = getCurrentRunId();
+
+  if (!runId) {
+    return JSON.stringify({
+      status: 'no_run',
+      message: 'No active analysis run. Start Phase 1 with scan-sessions and extract-data.',
+    });
+  }
+
+  const progress = computeRunProgress(runId);
+  if (!progress) {
+    return JSON.stringify({
+      status: 'no_run',
+      runId,
+      message: 'The current run has no resumable Phase 1 data. Start Phase 1 again.',
+    });
+  }
+
+  return JSON.stringify({
+    status: 'ok',
+    ...progress,
+    message: progress.completionStatus === 'incomplete'
+      ? `Run #${runId} is incomplete (${progress.completedRequiredStages}/${progress.totalRequiredStages}${progress.skippedStageCount > 0 ? `, ${progress.skippedStageCount} skipped due to failures` : ''}). Resume with ${progress.nextStep.tool ?? progress.nextStep.skill ?? progress.nextStep.stage}.`
+      : `Run #${runId} ${progress.skippedStageCount > 0 ? `completed with ${progress.skippedStageCount} skipped stage(s)` : 'already has all required stages'}. Ready to generate report.`,
   });
 }

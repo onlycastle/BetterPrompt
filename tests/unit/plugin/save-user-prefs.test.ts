@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { resetConfig } from '../../../packages/plugin/lib/config.js';
 import { readPrefs } from '../../../packages/plugin/lib/prefs.js';
 import { readState } from '../../../packages/plugin/lib/debounce.js';
-import { execute } from '../../../packages/plugin/mcp/tools/save-user-prefs.js';
+import { execute } from '../../../packages/plugin/cli/commands/save-user-prefs.js';
 
 describe('save_user_prefs tool', () => {
   const originalHome = process.env.HOME;

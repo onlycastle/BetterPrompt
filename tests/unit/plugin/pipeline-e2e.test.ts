@@ -2,8 +2,8 @@
  * Pipeline E2E Test
  *
  * Verifies the full BetterPrompt analysis pipeline data flow by programmatically
- * executing each stage's MCP tool persistence and validating progress tracking.
- * Does NOT invoke skills (those require an LLM) -- tests the MCP tool layer.
+ * executing each stage's CLI command persistence and validating progress tracking.
+ * Does NOT invoke skills (those require an LLM) -- tests the CLI command layer.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -18,7 +18,7 @@ import {
 import {
   REQUIRED_STAGE_SEQUENCE,
   computeRunProgress,
-} from '../../../packages/plugin/mcp/tools/get-run-progress.js';
+} from '../../../packages/plugin/cli/commands/get-run-progress.js';
 import {
   createDomainResults,
   createPhase1Output,
@@ -62,7 +62,7 @@ describe('plugin pipeline e2e', () => {
   describe('Phase 1: initial state', () => {
     it('reports no_run before Phase 1 data exists', async () => {
       const { execute } = await import(
-        '../../../packages/plugin/mcp/tools/get-run-progress.js'
+        '../../../packages/plugin/cli/commands/get-run-progress.js'
       );
       const result = JSON.parse(await execute());
       expect(result.status).toBe('no_run');
@@ -127,7 +127,7 @@ describe('plugin pipeline e2e', () => {
       expect(finalProgress!.nextStep).toEqual({
         stage: 'generateReport',
         skill: null,
-        tool: 'generate_report',
+        tool: 'generate-report',
         kind: 'report',
       });
     });
@@ -144,7 +144,7 @@ describe('plugin pipeline e2e', () => {
         expect(next.stage).toBe(step.stage);
 
         if (step.tool) {
-          expect(next.tool, `${step.stage} should dispatch as MCP tool`).toBe(step.tool);
+          expect(next.tool, `${step.stage} should dispatch as CLI command`).toBe(step.tool);
           expect(next.skill).toBeNull();
         } else {
           expect(next.skill, `${step.stage} should dispatch as skill/agent`).toBe(step.skill);
@@ -267,8 +267,8 @@ describe('plugin pipeline e2e', () => {
         'evidenceVerification',
       ]);
       expect(toolStages.map((s) => s.tool)).toEqual([
-        'classify_developer_type',
-        'verify_evidence',
+        'classify-developer-type',
+        'verify-evidence',
       ]);
     });
 

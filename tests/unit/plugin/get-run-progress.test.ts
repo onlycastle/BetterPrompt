@@ -72,7 +72,7 @@ afterEach(() => {
 
 describe('get_run_progress', () => {
   it('reports when no resumable run exists', async () => {
-    const { execute } = await import('../../../packages/plugin/mcp/tools/get-run-progress.js');
+    const { execute } = await import('../../../packages/plugin/cli/commands/get-run-progress.js');
 
     const parsed = JSON.parse(await execute());
 
@@ -82,7 +82,7 @@ describe('get_run_progress', () => {
 
   it('returns the first incomplete required stage for a partial run', async () => {
     const runId = seedPartialRun();
-    const { execute } = await import('../../../packages/plugin/mcp/tools/get-run-progress.js');
+    const { execute } = await import('../../../packages/plugin/cli/commands/get-run-progress.js');
 
     const parsed = JSON.parse(await execute());
 
@@ -124,7 +124,7 @@ describe('get_run_progress', () => {
       recordStageStatus(runId, stage, { status: 'validated' });
     }
 
-    const { execute } = await import('../../../packages/plugin/mcp/tools/get-run-progress.js');
+    const { execute } = await import('../../../packages/plugin/cli/commands/get-run-progress.js');
     const parsed = JSON.parse(await execute());
 
     expect(parsed.status).toBe('ok');
@@ -132,12 +132,12 @@ describe('get_run_progress', () => {
     expect(parsed.nextStep).toEqual({
       stage: 'evidenceVerification',
       skill: null,
-      tool: 'verify_evidence',
+      tool: 'verify-evidence',
       kind: 'stage',
     });
   });
 
-  it('returns classify_developer_type when deterministic type is missing after writers and context stages', async () => {
+  it('returns classify-developer-type when deterministic type is missing after writers and context stages', async () => {
     const phase1Output = createPhase1Output();
     const runId = createAnalysisRun({
       metrics: phase1Output.sessionMetrics,
@@ -162,7 +162,7 @@ describe('get_run_progress', () => {
       recordStageStatus(runId, stage, { status: 'validated' });
     }
 
-    const { execute } = await import('../../../packages/plugin/mcp/tools/get-run-progress.js');
+    const { execute } = await import('../../../packages/plugin/cli/commands/get-run-progress.js');
     const parsed = JSON.parse(await execute());
 
     expect(parsed.status).toBe('ok');
@@ -170,13 +170,13 @@ describe('get_run_progress', () => {
     expect(parsed.nextStep).toEqual({
       stage: 'deterministicType',
       skill: null,
-      tool: 'classify_developer_type',
+      tool: 'classify-developer-type',
       kind: 'stage',
     });
   });
 
-  it('reports generate_report as the next step when all required stages are present', async () => {
-    const { execute } = await import('../../../packages/plugin/mcp/tools/get-run-progress.js');
+  it('reports generate-report as the next step when all required stages are present', async () => {
+    const { execute } = await import('../../../packages/plugin/cli/commands/get-run-progress.js');
     seedCompleteRun();
 
     const parsed = JSON.parse(await execute());
@@ -187,7 +187,7 @@ describe('get_run_progress', () => {
     expect(parsed.nextStep).toEqual({
       stage: 'generateReport',
       skill: null,
-      tool: 'generate_report',
+      tool: 'generate-report',
       kind: 'report',
     });
   });

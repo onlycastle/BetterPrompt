@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resetConfig } from '../../../packages/plugin/lib/config.js';
 import { closeResultsDb, createAnalysisRun, getDomainResult } from '../../../packages/plugin/lib/results-db.js';
-import { execute } from '../../../packages/plugin/mcp/tools/save-domain-results.js';
+import { execute } from '../../../packages/plugin/cli/commands/save-domain-results.js';
 
 function makeLongText(label: string, minimumLength: number): string {
   return `${label} ${'x'.repeat(minimumLength)}`;

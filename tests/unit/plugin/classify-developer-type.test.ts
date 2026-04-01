@@ -3,7 +3,7 @@ import {
   createAnalysisRun,
   getAnalysisRun,
 } from '../../../packages/plugin/lib/results-db.js';
-import { execute } from '../../../packages/plugin/mcp/tools/classify-developer-type.js';
+import { execute } from '../../../packages/plugin/cli/commands/classify-developer-type.js';
 import {
   createPhase1Output,
   deterministicScores,
