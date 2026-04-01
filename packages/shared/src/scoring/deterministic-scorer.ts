@@ -174,10 +174,13 @@ function scoreCommunicationPatterns(
   const cv = coefficientOfVariation(wordCounts);
   const consistencyScore = 100 * Math.exp(-0.3 * cv);
 
+  const expertBonus = expertBonusToolMastery(metrics);
+
   return clampScore(
     promptQualityScore * 0.4 +
     structureScore * 0.3 +
-    consistencyScore * 0.3,
+    consistencyScore * 0.3 +
+    expertBonus,
   );
 }
 
@@ -206,6 +209,105 @@ function scoreControl(metrics: Phase1SessionMetrics): number {
 }
 
 // ============================================================================
+// Expert Signal Scoring (Claude Code internal pattern bonuses)
+// ============================================================================
+
+/**
+ * Compute expert-pattern bonus for a domain based on detected expert signals.
+ * Returns a bonus in [0, 15] range -- enough to differentiate expert users
+ * from competent ones without dominating the score.
+ */
+function expertBonusAiPartnership(metrics: Phase1SessionMetrics): number {
+  const expert = metrics.expertSignals;
+  if (!expert) return 0;
+
+  let bonus = 0;
+  // CLAUDE.md usage shows instruction-layer awareness
+  if (expert.claudeMdReferences > 0) bonus += Math.min(expert.claudeMdReferences * 2, 5);
+  // Scoped rules show advanced configuration knowledge
+  if (expert.scopedRuleReferences > 0) bonus += 3;
+  // Task delegation shows orchestration maturity
+  if (expert.taskDelegationCount > 0) bonus += Math.min(expert.taskDelegationCount * 1.5, 5);
+  // Verification requests show control discipline
+  if (expert.verificationRequestCount > 0) bonus += Math.min(expert.verificationRequestCount, 4);
+
+  return Math.min(bonus, 15);
+}
+
+function expertBonusSessionCraft(metrics: Phase1SessionMetrics): number {
+  const expert = metrics.expertSignals;
+  if (!expert) return 0;
+
+  let bonus = 0;
+  // Proactive compaction shows context awareness
+  if (expert.compactionRate > 0.1) bonus += Math.min(expert.compactionRate * 20, 6);
+  // Fresh sessions after failure show sunk-cost avoidance
+  if (expert.freshSessionAfterFailureCount > 0) bonus += Math.min(expert.freshSessionAfterFailureCount * 2, 5);
+  // Error chain breaks show strategic recovery
+  if (expert.errorChainBreakCount > 0) bonus += Math.min(expert.errorChainBreakCount * 2, 4);
+
+  return Math.min(bonus, 15);
+}
+
+function expertBonusToolMastery(metrics: Phase1SessionMetrics): number {
+  const expert = metrics.expertSignals;
+  if (!expert) return 0;
+
+  let bonus = 0;
+  // High proper tool selection ratio
+  if (expert.properToolSelectionRatio > 0.7) bonus += Math.round((expert.properToolSelectionRatio - 0.7) * 20);
+  // Low bash misuse
+  if (expert.bashMisuseCount === 0) bonus += 3;
+  // Task delegation
+  if (expert.taskDelegationCount > 0) bonus += Math.min(expert.taskDelegationCount, 4);
+  // Skill invocations
+  if (expert.skillInvocations > 0) bonus += Math.min(expert.skillInvocations, 3);
+  // Hook awareness
+  if (expert.hookReferences > 0) bonus += 2;
+
+  // Bash misuse penalty
+  if (expert.bashMisuseCount > 3) bonus -= Math.min(expert.bashMisuseCount - 3, 5);
+
+  return clampScore(Math.min(Math.max(bonus, -5), 15), -5, 15);
+}
+
+function expertBonusSkillResilience(metrics: Phase1SessionMetrics): number {
+  const expert = metrics.expertSignals;
+  if (!expert) return 0;
+
+  let bonus = 0;
+  // Structured cold starts show context-loading discipline
+  const totalSessions = Math.max(metrics.totalSessions, 1);
+  const structuredRatio = expert.structuredColdStartCount / totalSessions;
+  if (structuredRatio > 0.3) bonus += Math.min(Math.round(structuredRatio * 10), 6);
+  // Error chain breaks
+  if (expert.errorChainBreakCount > 0) bonus += Math.min(expert.errorChainBreakCount * 2, 4);
+  // CLAUDE.md references in starts show instruction awareness
+  if (expert.claudeMdReferences > 0) bonus += Math.min(expert.claudeMdReferences, 3);
+  // Fresh sessions after failure
+  if (expert.freshSessionAfterFailureCount > 0) bonus += 2;
+
+  return Math.min(bonus, 15);
+}
+
+function expertBonusSessionMastery(metrics: Phase1SessionMetrics): number {
+  const expert = metrics.expertSignals;
+  if (!expert) return 0;
+
+  let bonus = 0;
+  // Compaction discipline prevents context overflow
+  if (expert.compactionRate > 0.15) bonus += 3;
+  // Hook awareness shows automation maturity
+  if (expert.hookReferences > 0) bonus += 2;
+  // Verification shows quality discipline
+  if (expert.verificationRequestCount > 2) bonus += 2;
+  // Low bash misuse shows tool command mastery
+  if (expert.bashMisuseCount === 0 && expert.properToolSelectionRatio > 0.8) bonus += 3;
+
+  return Math.min(bonus, 10);
+}
+
+// ============================================================================
 // v2 Merged Domain Rubrics
 // ============================================================================
 
@@ -213,30 +315,35 @@ function scoreControl(metrics: Phase1SessionMetrics): number {
  * AI Partnership score: merges thinkingQuality + sessionOutcome + control signals.
  * Measures how effectively the developer partners with AI: planning, verification,
  * goal achievement, and appropriate control.
+ * Expert bonus: up to +15 for CLAUDE.md usage, task delegation, verification.
  */
 function scoreAiPartnership(metrics: Phase1SessionMetrics): number {
   const thinking = scoreThinkingQuality(metrics);
   const outcome = scoreSessionOutcome(metrics);
   const control = scoreControl(metrics);
-  // Weighted: planning/thinking 40%, outcomes 35%, control 25%
-  return clampScore(thinking * 0.4 + outcome * 0.35 + control * 0.25);
+  const expertBonus = expertBonusAiPartnership(metrics);
+  // Weighted: planning/thinking 40%, outcomes 35%, control 25% + expert bonus
+  return clampScore(thinking * 0.4 + outcome * 0.35 + control * 0.25 + expertBonus);
 }
 
 /**
  * Session Craft score: merges contextEfficiency + learningBehavior (burnout).
  * Measures session sustainability: efficient context usage, avoiding burnout
  * patterns, and learning from mistakes.
+ * Expert bonus: up to +15 for compaction discipline, sunk-cost avoidance.
  */
 function scoreSessionCraft(metrics: Phase1SessionMetrics): number {
   const efficiency = scoreContextEfficiency(metrics);
   const learning = scoreLearningBehavior(metrics);
-  // Weighted: context efficiency 55%, burnout/learning 45%
-  return clampScore(efficiency * 0.55 + learning * 0.45);
+  const expertBonus = expertBonusSessionCraft(metrics);
+  // Weighted: context efficiency 55%, burnout/learning 45% + expert bonus
+  return clampScore(efficiency * 0.55 + learning * 0.45 + expertBonus);
 }
 
 /**
  * Skill Resilience score: based on cold-start capability, error recovery,
  * and maintaining quality across varied task types.
+ * Expert bonus: up to +15 for structured cold starts, error recovery strategy.
  */
 function scoreSkillResilience(metrics: Phase1SessionMetrics): number {
   const totalSessions = Math.max(metrics.totalSessions, 1);
@@ -256,10 +363,13 @@ function scoreSkillResilience(metrics: Phase1SessionMetrics): number {
   const uniqueCommands = Object.keys(slashCmds).length;
   const diversityScore = Math.min(uniqueCommands * 12 + 20, 100);
 
+  const expertBonus = expertBonusSkillResilience(metrics);
+
   return clampScore(
     coldStartScore * 0.3 +
     recoveryScore * 0.4 +
-    diversityScore * 0.3,
+    diversityScore * 0.3 +
+    expertBonus,
   );
 }
 
@@ -271,6 +381,7 @@ function scoreSkillResilience(metrics: Phase1SessionMetrics): number {
  *
  * Key principle: absence of scaffolding tool usage when skill is internalized
  * scores neutral or positive, never negative.
+ * Expert bonus: up to +10 for compaction discipline, tool mastery.
  */
 function scoreSessionMastery(metrics: Phase1SessionMetrics): number {
   const totalSessions = Math.max(metrics.totalSessions, 1);
@@ -301,6 +412,8 @@ function scoreSessionMastery(metrics: Phase1SessionMetrics): number {
   const mediumSessions = metrics.sessionHints?.mediumSessions ?? 0;
   const focusBonus = (mediumSessions / totalSessions) * 15;
 
+  const expertBonus = expertBonusSessionMastery(metrics);
+
   return clampScore(
     noExcessiveScore * 0.25 +
     noOverflowScore * 0.2 +
@@ -308,7 +421,8 @@ function scoreSessionMastery(metrics: Phase1SessionMetrics): number {
     noFrustrationScore * 0.15 +
     noToolFailureScore * 0.1 +
     focusBonus +
-    10, // baseline: everyone starts at 10
+    10 + // baseline: everyone starts at 10
+    expertBonus,
   );
 }
 
