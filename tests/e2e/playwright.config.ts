@@ -40,28 +40,40 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
 
-  // Configure projects for major browsers
+  // Configure projects for major browsers.
+  // The "seed" project runs first (seeds test data after webServer starts),
+  // then all browser projects depend on it.
   projects: [
+    {
+      name: 'seed',
+      testDir: './setup',
+      testMatch: 'seed-team-data.setup.ts',
+    },
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      dependencies: ['seed'],
     },
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
+      dependencies: ['seed'],
     },
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
+      dependencies: ['seed'],
     },
     // Mobile viewports
     {
       name: 'Mobile Chrome',
       use: { ...devices['Pixel 5'] },
+      dependencies: ['seed'],
     },
     {
       name: 'Mobile Safari',
       use: { ...devices['iPhone 12'] },
+      dependencies: ['seed'],
     },
   ],
 
