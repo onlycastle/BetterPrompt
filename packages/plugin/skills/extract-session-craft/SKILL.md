@@ -33,6 +33,7 @@ Phase 1 data includes:
 - Activity sessions with duration and message counts
 
 For research context and scoring rubrics, see `../shared/research-insights.md`.
+For expert-level behavioral benchmarks from Claude Code internals, see `../shared/expert-knowledge-base.md`.
 
 ## Language Directives
 
