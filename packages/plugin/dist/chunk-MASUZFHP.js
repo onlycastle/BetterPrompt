@@ -1,6 +1,6 @@
 import {
   getPluginDataDir
-} from "./chunk-RQKQQ22T.js";
+} from "./chunk-F5Y7AP55.js";
 
 // lib/prefs.ts
 import { readFileSync, writeFileSync, mkdirSync } from "fs";
@@ -34,4 +34,4 @@ export {
   writePrefs,
   isFirstRun
 };
-//# sourceMappingURL=chunk-M3CHNGFP.js.map
+//# sourceMappingURL=chunk-MASUZFHP.js.map

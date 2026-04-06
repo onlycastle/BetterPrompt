@@ -3,23 +3,26 @@ import {
   normalizeProjectFilters,
   normalizeProjectNameValue,
   readCachedParsedSessions
-} from "./chunk-27WHCL7Y.js";
+} from "./chunk-OUOPAYE6.js";
 import {
   clearAnalysisPending,
   markAnalysisFailed,
   markAnalysisStarted
-} from "./chunk-LPUYAQ2F.js";
-import "./chunk-RQKQQ22T.js";
+} from "./chunk-CLCAJ5NO.js";
+import "./chunk-F5Y7AP55.js";
 import "./chunk-FW6ZW4J3.js";
 import {
+  buildEvidenceContexts
+} from "./chunk-NY62CIHE.js";
+import {
   createAnalysisRun
-} from "./chunk-TPRBO53W.js";
+} from "./chunk-C2D64W37.js";
 import {
   CONTEXT_WINDOW_SIZE,
   buildReportActivitySessions,
   computeDeterministicScores,
   getPluginDataDir
-} from "./chunk-VNV2GGMC.js";
+} from "./chunk-YLUEXS7F.js";
 import "./chunk-NSBPE2FW.js";
 
 // cli/commands/extract-data.ts
@@ -667,13 +670,74 @@ async function extractPhase1DataFromParsedSessions(sessions) {
       ...firstUserMsg ? { firstUserMessage: firstUserMsg } : {}
     };
   });
+  const evidenceContexts = buildEvidenceContexts(sessions);
   return {
     developerUtterances: allUtterances,
     sessionMetrics,
     ...allInsightBlocks.length > 0 ? { aiInsightBlocks: allInsightBlocks } : {},
     activitySessions,
-    sessions
+    sessions,
+    evidenceContexts
   };
+}
+function selectDateSpreadSessions(sessions, maxSessions) {
+  if (sessions.length <= maxSessions) return sessions;
+  const byDate = /* @__PURE__ */ new Map();
+  for (const s of sessions) {
+    const dateKey = s.startTime.slice(0, 10);
+    const group = byDate.get(dateKey);
+    if (group) {
+      group.push(s);
+    } else {
+      byDate.set(dateKey, [s]);
+    }
+  }
+  for (const group of byDate.values()) {
+    group.sort((a, b) => b.durationSeconds - a.durationSeconds);
+  }
+  const dateKeys = [...byDate.keys()].sort().reverse();
+  const slotsPerDate = /* @__PURE__ */ new Map();
+  let remaining = maxSessions;
+  for (const date of dateKeys) {
+    const count = byDate.get(date).length;
+    const share = Math.max(1, Math.round(count / sessions.length * maxSessions));
+    const allocated = Math.min(share, count, remaining);
+    slotsPerDate.set(date, allocated);
+    remaining -= allocated;
+    if (remaining <= 0) break;
+  }
+  if (remaining > 0) {
+    for (const date of dateKeys) {
+      const available = byDate.get(date).length - (slotsPerDate.get(date) ?? 0);
+      if (available > 0) {
+        const extra = Math.min(available, remaining);
+        slotsPerDate.set(date, (slotsPerDate.get(date) ?? 0) + extra);
+        remaining -= extra;
+        if (remaining <= 0) break;
+      }
+    }
+  }
+  const selected = [];
+  for (const date of dateKeys) {
+    const group = byDate.get(date);
+    const count = slotsPerDate.get(date) ?? 0;
+    selected.push(...group.slice(0, count));
+  }
+  return selected.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+}
+function buildActivityMetadataFromSessions(sessions) {
+  return sessions.map((session) => ({
+    sessionId: session.sessionId,
+    projectName: session.projectName ?? "unknown",
+    ...session.projectPath ? { projectPath: session.projectPath } : {},
+    startTime: session.startTime,
+    durationSeconds: Math.round(session.durationSeconds),
+    messageCount: session.stats.userMessageCount + session.stats.assistantMessageCount,
+    userMessageCount: session.stats.userMessageCount,
+    assistantMessageCount: session.stats.assistantMessageCount,
+    totalInputTokens: session.stats.totalInputTokens,
+    totalOutputTokens: session.stats.totalOutputTokens
+  }));
 }
 
 // cli/commands/extract-data.ts
@@ -697,9 +761,22 @@ async function execute(args) {
   clearAnalysisPending();
   markAnalysisStarted();
   try {
-    const selectedSessions = sessions.slice(0, maxSessions);
+    const selectedSessions = selectDateSpreadSessions(sessions, maxSessions);
     const phase1Output = await extractPhase1DataFromParsedSessions(selectedSessions);
     const scores = computeDeterministicScores(phase1Output);
+    const allSessionsActivity = buildActivityMetadataFromSessions(sessions);
+    phase1Output.activitySessions = allSessionsActivity;
+    const allTimestamps = sessions.map((s) => new Date(s.startTime).getTime()).sort((a, b) => a - b);
+    if (allTimestamps.length > 0) {
+      phase1Output.sessionMetrics = {
+        ...phase1Output.sessionMetrics,
+        totalSessions: sessions.length,
+        dateRange: {
+          earliest: new Date(allTimestamps[0]).toISOString(),
+          latest: new Date(allTimestamps[allTimestamps.length - 1]).toISOString()
+        }
+      };
+    }
     const activitySessions = buildReportActivitySessions(phase1Output);
     const pluginDataDir = getPluginDataDir();
     await mkdir(pluginDataDir, { recursive: true });
@@ -746,4 +823,4 @@ async function execute(args) {
 export {
   execute
 };
-//# sourceMappingURL=extract-data-X2MHYU2X.js.map
+//# sourceMappingURL=extract-data-WMDOXE6E.js.map

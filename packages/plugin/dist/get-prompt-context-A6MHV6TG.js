@@ -1,14 +1,17 @@
 import {
+  buildEvidenceContextIndex
+} from "./chunk-NY62CIHE.js";
+import {
   getAllStageOutputs,
   getAnalysisRun,
   getCurrentRunId,
   getDomainResults
-} from "./chunk-TPRBO53W.js";
+} from "./chunk-C2D64W37.js";
 import {
   CONTEXT_WINDOW_SIZE,
   external_exports,
   getPluginDataDir
-} from "./chunk-VNV2GGMC.js";
+} from "./chunk-YLUEXS7F.js";
 import "./chunk-NSBPE2FW.js";
 
 // cli/commands/get-prompt-context.ts
@@ -26,6 +29,55 @@ var PROMPT_CONTEXT_KINDS = [
   "contentWriter",
   "translation"
 ];
+function extractToolInputSummaries(toolCalls) {
+  const seen = /* @__PURE__ */ new Set();
+  const summaries = [];
+  for (const tc of toolCalls.slice(0, 8)) {
+    const input = tc.input;
+    if (["Read", "Edit", "Write", "MultiEdit", "NotebookEdit"].includes(tc.name)) {
+      const fp = typeof input.file_path === "string" ? input.file_path : null;
+      if (fp) {
+        const parts = fp.replace(/\\/g, "/").split("/").filter(Boolean);
+        const brief = parts.length > 2 ? parts.slice(-2).join("/") : fp;
+        if (!seen.has(brief)) {
+          seen.add(brief);
+          summaries.push(brief);
+        }
+      }
+    }
+    if (tc.name === "Grep") {
+      const searchPath = typeof input.path === "string" ? input.path : null;
+      if (searchPath && searchPath !== "." && searchPath !== "/") {
+        const parts = searchPath.replace(/\\/g, "/").split("/").filter(Boolean);
+        const brief = parts.length > 2 ? parts.slice(-2).join("/") : searchPath;
+        if (!seen.has(brief)) {
+          seen.add(brief);
+          summaries.push(brief);
+        }
+      }
+    }
+    if (tc.name === "Glob") {
+      const globPath = typeof input.path === "string" ? input.path : null;
+      if (globPath && globPath !== "." && globPath !== "/") {
+        const parts = globPath.replace(/\\/g, "/").split("/").filter(Boolean);
+        const brief = parts.length > 2 ? parts.slice(-2).join("/") : globPath;
+        if (!seen.has(brief)) {
+          seen.add(brief);
+          summaries.push(brief);
+        }
+      }
+    }
+    if (tc.name === "Bash" && typeof input.command === "string") {
+      const cmd = input.command.trim().slice(0, 80);
+      if (cmd && !seen.has(cmd)) {
+        seen.add(cmd);
+        summaries.push(cmd);
+      }
+    }
+    if (summaries.length >= 6) break;
+  }
+  return summaries;
+}
 var SKILL_INJECTION_PREFIX = "Base directory for this skill:";
 function trimText(text, maxChars) {
   if (!text) return "";
@@ -114,18 +166,27 @@ function buildSessionOverviews(phase1Output) {
 }
 function buildInteractionSnapshots(phase1Output, options) {
   const { maxUserChars = 260, maxAssistantChars = 220 } = options ?? {};
+  const evidenceContextIndex = phase1Output.evidenceContexts ? buildEvidenceContextIndex(phase1Output.evidenceContexts) : null;
   const snapshots = (phase1Output.sessions ?? []).flatMap((session) => {
     const messages = session.messages.map(asSessionMessageWithMeta);
     return messages.flatMap((message, index) => {
       if (!isAnalyzablePromptContextUserMessage(message)) {
         return [];
       }
+      const utteranceId = `${session.sessionId}_${index}`;
       const precedingAssistant = [...messages.slice(0, index)].reverse().find((candidate) => candidate.role === "assistant");
+      const evidenceCtx = evidenceContextIndex?.get(utteranceId);
       return [{
-        utteranceId: `${session.sessionId}_${index}`,
+        utteranceId,
         sessionId: session.sessionId,
         projectName: session.projectName ?? "unknown",
         turnIndex: index,
+        /**
+         * ISO timestamp of the message — enables evidence moments to carry
+         * explicit session time for temporal verification of distinctness.
+         * LLM extract/write stages should propagate this into evidenceMoments.
+         */
+        timestamp: message.timestamp,
         text: trimText(message.content, maxUserChars),
         characterCount: message.content.length,
         hasQuestion: message.content.includes("?"),
@@ -134,7 +195,72 @@ function buildInteractionSnapshots(phase1Output, options) {
         precedingAssistantLength: precedingAssistant?.content?.length ?? 0,
         precedingAssistantHadCodeBlock: Boolean(precedingAssistant?.content?.includes("```")),
         precedingAIToolCalls: precedingAssistant?.toolCalls?.map((toolCall) => toolCall.name).slice(0, 8),
-        precedingAIHadError: precedingAssistant?.toolCalls?.some((toolCall) => toolCall.isError) ?? false
+        /**
+         * Specific file paths and command summaries from preceding tool call inputs.
+         *
+         * Provides file-level granularity for the tool_file_naming rubric:
+         * - File paths from Read/Edit/Write calls (e.g. "middleware/auth.ts")
+         * - Bash commands showing which CLI tools were run (e.g. "npm test")
+         * - Grep/Glob search scope when scoped to a specific path
+         *
+         * Extract skills: look up by matching utteranceId and use these entries
+         * alongside toolCallsBefore to populate toolsFilesApis with specific files,
+         * not just tool names. Example: if precedingAIToolInputSummaries contains
+         * "middleware/auth.ts", include it in the extracted quote's toolCallsBefore
+         * and in the growth area's toolsFilesApis array.
+         */
+        precedingAIToolInputSummaries: precedingAssistant?.toolCalls ? extractToolInputSummaries(
+          precedingAssistant.toolCalls.filter(
+            (tc) => typeof tc.input === "object" && tc.input !== null
+          )
+        ) : void 0,
+        precedingAIHadError: precedingAssistant?.toolCalls?.some((toolCall) => toolCall.isError) ?? false,
+        // ── Evidence enrichment from Phase 1 evidence contexts ────────────
+        // These fields supply concrete session JSONL data for constructing
+        // specific Evidence field context anchors in PEA growth areas.
+        // Extract workers should use these to build context strings like:
+        //   "In the {projectName} project, after Read(src/auth.ts) then Bash(npm test)"
+        ...evidenceCtx ? {
+          /**
+           * Structured tool call sequence with concrete parameters.
+           * Each entry: {name, detail, isError?, errorText?}
+           *
+           * detail provides:
+           * - file path for Read/Edit/Write (e.g. "src/middleware/auth.ts")
+           * - "pattern [in path]" for Grep/Glob
+           * - command (truncated) for Bash
+           * - description (truncated) for Task/Agent
+           *
+           * Use this to construct evidence context anchors:
+           * "after Read(auth.ts) then Bash(npm test)"
+           * "after Edit(middleware/stripe.ts) [with 1 error]"
+           */
+          precedingToolDetails: evidenceCtx.precedingToolSequence,
+          /**
+           * Context window fill % at this utterance (0-100).
+           * Cite in evidence: "when context was {contextFillPercent}% full".
+           * Absent when token usage data is unavailable.
+           */
+          ...evidenceCtx.contextFillPercent !== void 0 ? { contextFillPercent: evidenceCtx.contextFillPercent } : {},
+          /**
+           * Cumulative tool call errors in session up to this point.
+           * Cite in evidence: "after {cumulativeErrorCount} tool failures in this session".
+           * Use with errorChainMaxLength to detect error spiral patterns.
+           */
+          cumulativeErrorCount: evidenceCtx.cumulativeErrorCount,
+          /**
+           * 1-indexed user turn number within this session.
+           * Cite in evidence: "turn {sessionTurnNumber} of the session".
+           * Distinguishes "first message" from "mid-session correction" patterns.
+           */
+          sessionTurnNumber: evidenceCtx.sessionTurnNumber,
+          /**
+           * Seconds elapsed since session start at this utterance.
+           * Convert to minutes: Math.round(sessionDurationAtTurnSec / 60).
+           * Cite in evidence: "after {N} minutes into the session".
+           */
+          ...evidenceCtx.sessionDurationAtTurnSec !== void 0 ? { sessionDurationAtTurnSec: evidenceCtx.sessionDurationAtTurnSec } : {}
+        } : {}
       }];
     });
   });
@@ -487,4 +613,4 @@ async function execute(args) {
 export {
   execute
 };
-//# sourceMappingURL=get-prompt-context-YTSLPRJO.js.map
+//# sourceMappingURL=get-prompt-context-A6MHV6TG.js.map

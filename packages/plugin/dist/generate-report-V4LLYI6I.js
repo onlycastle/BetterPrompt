@@ -1,7 +1,7 @@
 import {
   markAnalysisComplete
-} from "./chunk-LPUYAQ2F.js";
-import "./chunk-RQKQQ22T.js";
+} from "./chunk-CLCAJ5NO.js";
+import "./chunk-F5Y7AP55.js";
 import "./chunk-FW6ZW4J3.js";
 import {
   REQUIRED_STAGE_NAMES,
@@ -10,10 +10,10 @@ import {
   getDomainResult,
   getStageOutput,
   getStageStatuses
-} from "./chunk-TPRBO53W.js";
+} from "./chunk-C2D64W37.js";
 import {
   getPluginDataDir
-} from "./chunk-VNV2GGMC.js";
+} from "./chunk-YLUEXS7F.js";
 import "./chunk-NSBPE2FW.js";
 
 // cli/commands/generate-report.ts
@@ -145,6 +145,23 @@ function renderEvidenceList(evidence) {
         `).join("")}
       </ul>
     </details>
+  `;
+}
+function renderKbTip(kbTip) {
+  if (!kbTip?.title) return "";
+  const credBadge = kbTip.credibilityTier === "high" ? '<span class="kb-cred kb-cred-high">\u2605 Authoritative</span>' : kbTip.credibilityTier === "medium" ? '<span class="kb-cred kb-cred-medium">\u25CF Practitioner</span>' : '<span class="kb-cred kb-cred-standard">\u25CB Community</span>';
+  const authorLine = kbTip.sourceAuthor ? ` \u2014 ${escapeHtml(kbTip.sourceAuthor)}` : "";
+  const linkHtml = kbTip.sourceUrl ? `<a href="${escapeHtml(kbTip.sourceUrl)}" target="_blank" rel="noopener" class="kb-source-link">View source${authorLine}</a>` : "";
+  return `
+    <div class="kb-tip-card">
+      <div class="kb-tip-header">
+        <span class="kb-tip-label">\u{1F4A1} Recommended Resource</span>
+        ${credBadge}
+      </div>
+      <div class="kb-tip-title">${escapeHtml(kbTip.title ?? "")}</div>
+      <div class="kb-tip-summary">${escapeHtml(kbTip.summary ?? "")}</div>
+      ${linkHtml}
+    </div>
   `;
 }
 function polarToCartesian(cx, cy, radius, angleDeg) {
@@ -281,6 +298,7 @@ function generateDomainSection(result) {
         ${renderRichText(g.description)}
         <div class="recommendation">${renderRichText(g.recommendation)}</div>
         ${renderEvidenceList(g.evidence)}
+        ${renderKbTip(g.kbTip)}
       </div>
     `).join("");
   return `
@@ -925,6 +943,66 @@ function generateBaseCss() {
       margin-top: 8px;
       font-size: 11px;
       color: var(--ink-muted);
+    }
+
+    /* \u2500\u2500 KB Tip Card (inline on growth cards) \u2500\u2500 */
+    .kb-tip-card {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: color-mix(in srgb, var(--accent-color) 8%, transparent);
+      border-left: 3px solid var(--accent-color);
+      border-radius: 0 6px 6px 0;
+      font-size: 13px;
+    }
+    .kb-tip-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .kb-tip-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      color: var(--ink-secondary);
+    }
+    .kb-cred {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+    .kb-cred-high {
+      background: color-mix(in srgb, #22c55e 15%, transparent);
+      color: #16a34a;
+    }
+    .kb-cred-medium {
+      background: color-mix(in srgb, #3b82f6 12%, transparent);
+      color: #2563eb;
+    }
+    .kb-cred-standard {
+      background: color-mix(in srgb, var(--ink-muted) 10%, transparent);
+      color: var(--ink-muted);
+    }
+    .kb-tip-title {
+      font-weight: 600;
+      color: var(--ink-primary);
+      margin-bottom: 4px;
+    }
+    .kb-tip-summary {
+      color: var(--ink-secondary);
+      line-height: 1.4;
+    }
+    .kb-source-link {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--accent-color);
+      text-decoration: none;
+    }
+    .kb-source-link:hover {
+      text-decoration: underline;
     }
 
     /* \u2500\u2500 Domain Sections \u2500\u2500 */
@@ -1574,4 +1652,4 @@ async function execute(args) {
 export {
   execute
 };
-//# sourceMappingURL=generate-report-I2FNJEHX.js.map
+//# sourceMappingURL=generate-report-V4LLYI6I.js.map

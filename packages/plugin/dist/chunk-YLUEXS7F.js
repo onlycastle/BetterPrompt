@@ -27538,6 +27538,511 @@ function date8(params) {
 // ../../node_modules/zod/v4/classic/external.js
 config2(en_default2());
 
+// ../shared/dist/schemas/growth-area-pea.js
+var PEASeveritySchema = external_exports2.enum(["critical", "high", "medium", "low"]);
+var PEAPatternSchema = external_exports2.object({
+  /**
+   * Concise, specific title naming the pattern and relevant technology.
+   * BAD:  "Error Handling Issues"
+   * GOOD: "Untested Error Handling in Express Middleware Routes"
+   */
+  title: external_exports2.string(),
+  /**
+   * 4-6 sentences describing what the pattern is and why it matters
+   * for what the builder is trying to achieve (goal_relevance).
+   * Must reference specific behavior, not generic descriptions.
+   */
+  description: external_exports2.string().min(100),
+  /** How critical this pattern is to address */
+  severity: PEASeveritySchema,
+  /**
+   * Specific tools, files, APIs, or technologies the builder actually
+   * interacted with that are relevant to this pattern.
+   * Examples: ["Express.js", "middleware/auth.ts", "Prisma ORM", "jest"]
+   *
+   * Rubric: tool_file_naming — at least one item required.
+   */
+  toolsFilesApis: external_exports2.array(external_exports2.string()).min(1).max(10)
+});
+var DistinctMomentSchema = external_exports2.object({
+  /**
+   * ISO 8601 timestamp of the session moment (from UserUtterance.timestamp).
+   * Optional for backward compatibility; populated by new analysis runs.
+   *
+   * Enables:
+   * 1. Temporal verification that moments are from distinct times
+   * 2. Chronological ordering of evidence in reports
+   * 3. Cross-referencing with session JSONL logs by timestamp
+   */
+  timestamp: external_exports2.string().optional(),
+  /**
+   * Utterance ID from Phase 1 (format: {sessionId}_{turnIndex}).
+   * Required for evidence verification and linking back to original session.
+   */
+  utteranceId: external_exports2.string(),
+  /**
+   * Explicit session ID — which session this moment comes from.
+   * Enables distinct-session verification (2-3+ distinct sessions required)
+   * and multi-session evidence grouping in team aggregation views.
+   *
+   * Extracted from the utteranceId prefix (everything before the last _turnIndex)
+   * or provided directly by the LLM when session context is available.
+   */
+  sessionId: external_exports2.string(),
+  /**
+   * Direct quote from the developer's message (min 15 chars).
+   * Must be the developer's actual words, not a paraphrase.
+   */
+  quote: external_exports2.string().min(15),
+  /**
+   * What was happening at this moment — enough context to understand
+   * the significance of the quote within the session flow.
+   */
+  context: external_exports2.string().min(20),
+  /**
+   * What specific behavior this moment demonstrates (behavior description).
+   * Connects the raw quote to the growth area's pattern.
+   * Example: "Retried the same failing approach without reading the error message"
+   */
+  observation: external_exports2.string().min(20)
+});
+var PEAActionSchema = external_exports2.object({
+  /**
+   * The specific action to take in the next session.
+   * Must be concrete enough to verify by checking future session logs.
+   *
+   * BAD:  "Be more careful with error handling"
+   * GOOD: "Before writing catch blocks in Express middleware, add a test
+   *        case for the error path using jest.spyOn on the failing service"
+   */
+  instruction: external_exports2.string().min(50),
+  /**
+   * How to verify this action was taken by checking future session logs.
+   * Describes what evidence would appear in a session where the action was applied.
+   *
+   * Example: "Session log should show test file creation before or alongside
+   *           error handling code, with jest.spyOn or mock patterns visible"
+   */
+  verificationCheck: external_exports2.string().min(30),
+  /**
+   * Why this action matters for what the builder is trying to achieve.
+   * Connects the action to the builder's actual goals, not abstract best practices.
+   *
+   * Must reference the builder's specific project context, technology stack,
+   * or stated objectives — not generic platitudes like "improves code quality".
+   *
+   * GOOD: "Your Express API handles payment webhooks — untested error paths
+   *        in middleware could silently drop Stripe events, causing revenue loss"
+   * GOOD: "You're building a multi-tenant SaaS dashboard with Prisma — schema
+   *        migrations without diff checks risk breaking tenant data isolation"
+   *
+   * BAD:  "This will help you write better code" (generic, no project context)
+   * BAD:  "Testing is important for code quality" (platitude, not personalized)
+   *
+   * Evaluation criterion: goal_relevance
+   * - Explains WHY the pattern matters for the builder's specific goals
+   * - References the builder's actual project, technology, or stated objectives
+   * - Connects observed behavior to real-world professional consequences
+   */
+  goalRelevance: external_exports2.string().min(50)
+});
+var QualityRubricSchema = external_exports2.object({
+  /**
+   * References 2-3+ distinct specific moments from actual sessions
+   * with specific exchanges, not just a count.
+   */
+  distinctMoments: external_exports2.boolean(),
+  /**
+   * Proposed next-session action is concrete enough to verify
+   * by checking future session logs.
+   */
+  verifiableAction: external_exports2.boolean(),
+  /**
+   * Growth area is specific to this builder's actual behavior,
+   * not dressed-up generic advice that could apply to anyone.
+   */
+  patternSpecificity: external_exports2.boolean(),
+  /**
+   * Growth area names specific tools, files, APIs, or technologies
+   * the builder actually interacted with.
+   */
+  toolFileNaming: external_exports2.boolean()
+});
+function passesQualityRubric(rubric) {
+  return rubric.distinctMoments && rubric.verifiableAction && rubric.patternSpecificity && rubric.toolFileNaming;
+}
+var KbTipAttachmentSchema = external_exports2.object({
+  /** Knowledge item or professional insight ID */
+  tipId: external_exports2.string(),
+  /** Tip title */
+  title: external_exports2.string(),
+  /** Brief actionable content from the tip */
+  summary: external_exports2.string(),
+  /** Source URL for attribution */
+  sourceUrl: external_exports2.string(),
+  /** Source author name */
+  sourceAuthor: external_exports2.string(),
+  /**
+   * Source platform (e.g., 'reddit', 'twitter', 'web', 'youtube').
+   * Used as a credibility signal alongside credibilityTier.
+   */
+  sourcePlatform: external_exports2.string().optional(),
+  /**
+   * Source credibility tier.
+   * - 'high': Recognized authority, official docs, peer-reviewed
+   * - 'medium': Known practitioner, established blog
+   * - 'standard': Community content, forum posts
+   */
+  credibilityTier: external_exports2.enum(["high", "medium", "standard"]).optional(),
+  /**
+   * Match relevance score (0-1).
+   * Determined by KB matcher's keyword + dimension overlap scoring.
+   * Only tips above the relevance threshold are attached.
+   */
+  relevanceScore: external_exports2.number().min(0).max(1)
+});
+var KB_TIP_RELEVANCE_THRESHOLD = 0.3;
+var GrowthAreaPEASchema = external_exports2.object({
+  // ── Pattern ──────────────────────────────────────────────────────────
+  /** The observed behavioral pattern */
+  pattern: PEAPatternSchema,
+  // ── Evidence ─────────────────────────────────────────────────────────
+  /**
+   * 2-8 distinct moments from actual sessions demonstrating the pattern.
+   * Minimum 2 ensures this isn't a one-off observation.
+   */
+  evidence: external_exports2.array(DistinctMomentSchema).min(2).max(8),
+  // ── Action ───────────────────────────────────────────────────────────
+  /** Concrete next-session action */
+  action: PEAActionSchema,
+  // ── Quality Gate ─────────────────────────────────────────────────────
+  /** 4-criteria rubric — all must be true to ship */
+  qualityRubric: QualityRubricSchema,
+  // ── KB Enrichment (post-processing) ──────────────────────────────────
+  /** Best-match KB tip, attached by deterministic matcher. Absent if below threshold. */
+  kbTip: KbTipAttachmentSchema.optional(),
+  /**
+   * Best-match knowledge tip — canonical field name for UI rendering.
+   *
+   * Populated post-generation by the deterministic KB matcher.
+   * One tip per growth area, or absent if no item exceeds the relevance threshold.
+   *
+   * This is the forward-facing field name used by the report renderer.
+   * `kbTip` is the internal pipeline field; `knowledgeTip` is the display field.
+   * Both are populated by the same KB matcher — use `knowledgeTip` in new code.
+   *
+   * Source credibility tier required for scoring transparency (source_credibility criterion).
+   */
+  knowledgeTip: KbTipAttachmentSchema.optional(),
+  // ── Domain & Metadata ────────────────────────────────────────────────
+  /** Which analysis domain produced this growth area */
+  domain: external_exports2.string(),
+  /**
+   * Freeform LLM-generated category tags for team-level clustering.
+   * NOT constrained to a fixed taxonomy — the LLM picks descriptive tags.
+   * Examples: ["error-handling", "test-coverage", "express-middleware"]
+   *
+   * Populated during analysis; used by team aggregation for cross-developer
+   * pattern detection with natural clustering.
+   */
+  categoryTags: external_exports2.array(external_exports2.string()).optional(),
+  /**
+   * Flag for growth areas with sparse evidence.
+   * Set when evidence count is at the minimum (2) or when confidence
+   * in the pattern is low. Never produce empty reports — flag instead.
+   */
+  lowConfidence: external_exports2.boolean().optional(),
+  // ── Preview fields (free tier gating) ────────────────────────────────
+  /** Truncated pattern description for free tier blur teaser */
+  descriptionPreview: external_exports2.string().optional(),
+  /** Truncated action instruction for free tier blur teaser */
+  actionPreview: external_exports2.string().optional()
+});
+var GrowthAreaPEALLMOutputSchema = external_exports2.object({
+  /** The observed behavioral pattern */
+  pattern: PEAPatternSchema,
+  /** 2-8 distinct moments demonstrating the pattern */
+  evidence: external_exports2.array(DistinctMomentSchema).min(2).max(8),
+  /** Concrete next-session action */
+  action: PEAActionSchema,
+  /** Which analysis domain this belongs to */
+  domain: external_exports2.string(),
+  /** Freeform category tags for team clustering */
+  categoryTags: external_exports2.array(external_exports2.string()).min(1).max(5),
+  /** Flag sparse evidence */
+  lowConfidence: external_exports2.boolean().optional()
+});
+var TeamGrowthAreaPEAAggregateSchema = external_exports2.object({
+  /** Pattern title (shared across affected members) */
+  patternTitle: external_exports2.string(),
+  /** Analysis domain */
+  domain: external_exports2.string(),
+  /** Human-readable domain label */
+  domainLabel: external_exports2.string(),
+  /** Highest severity across affected members */
+  predominantSeverity: PEASeveritySchema,
+  /** How many team members exhibit this pattern */
+  memberCount: external_exports2.number().min(1),
+  /** Names of affected team members */
+  affectedMembers: external_exports2.array(external_exports2.string()),
+  /**
+   * Freeform LLM-generated category tags aggregated from individual
+   * growth areas. De-duplicated and frequency-ranked.
+   */
+  categoryTags: external_exports2.array(external_exports2.string()),
+  /**
+   * Actionable team-level recommendation a manager could implement.
+   * Must be specific enough to act on (e.g., "Schedule a 1-hour workshop
+   * on Express error handling patterns" not "Improve error handling").
+   *
+   * Rubric: team_actionability
+   */
+  teamRecommendation: external_exports2.string(),
+  /** Sample evidence summary from the most affected member */
+  sampleEvidenceSummary: external_exports2.string(),
+  /** Per-member severity breakdown for the heatmap/detail view */
+  memberSeverities: external_exports2.array(external_exports2.object({
+    memberName: external_exports2.string(),
+    severity: PEASeveritySchema
+  })),
+  /** Best-match KB tip from among individual members' tips (if any) */
+  kbTip: KbTipAttachmentSchema.optional(),
+  /**
+   * Best-match knowledge tip — canonical display field for team-level growth area cards.
+   * Populated from the highest-relevance individual member kbTip during aggregation.
+   * Absent if no member had a qualifying KB tip above the threshold.
+   */
+  knowledgeTip: KbTipAttachmentSchema.optional()
+});
+function validateDistinctEvidence(moments) {
+  if (moments.length < 2) {
+    return {
+      valid: false,
+      lowConfidence: true,
+      distinctUtteranceCount: new Set(moments.map((m) => m.utteranceId)).size,
+      distinctSessionCount: new Set(moments.map((m) => m.sessionId)).size,
+      reason: `Need at least 2 evidence moments to establish a pattern (have ${moments.length}).`
+    };
+  }
+  const distinctUtteranceIds = new Set(moments.map((m) => m.utteranceId));
+  const distinctSessionIds = new Set(moments.map((m) => m.sessionId));
+  if (distinctUtteranceIds.size < 2) {
+    return {
+      valid: false,
+      lowConfidence: true,
+      distinctUtteranceCount: distinctUtteranceIds.size,
+      distinctSessionCount: distinctSessionIds.size,
+      reason: `Evidence moments reference only ${distinctUtteranceIds.size} distinct utterance(s). Need at least 2 distinct moments (different utteranceIds) to establish a pattern, not the same moment cited multiple times.`
+    };
+  }
+  const isSingleSession = distinctSessionIds.size < 2;
+  return {
+    valid: true,
+    lowConfidence: isSingleSession || moments.length <= 2,
+    distinctUtteranceCount: distinctUtteranceIds.size,
+    distinctSessionCount: distinctSessionIds.size,
+    reason: isSingleSession ? `All ${moments.length} evidence moments come from the same session. Cross-session evidence is stronger proof of a recurring pattern.` : void 0
+  };
+}
+var TOOL_FILE_API_PATTERNS = [
+  // Claude Code tools (appear as tool_use blocks in session logs)
+  /\b(Read|Edit|Grep|Glob|Bash|Write|Task|TodoWrite|WebSearch|WebFetch|MultiEdit|NotebookEdit)\b/,
+  // Slash commands
+  /\/(plan|compact|clear|review|commit|test|help|init)\b/,
+  // Build/test CLI tools
+  /\b(npm|npx|yarn|pnpm|git|vitest|jest|pytest|cargo|make|docker|curl|webpack|vite|eslint|prettier|tsc|tsx|pip|poetry|terraform|kubectl|helm|ansible)\b/,
+  // Programming languages (when named as technology, not as generic words)
+  /\b(Python|TypeScript|JavaScript|Rust|Go|Java|Ruby|Swift|Kotlin|C\+\+|C#|Elixir|Haskell|Scala)\b/,
+  // Common frameworks and libraries (case-sensitive for precision)
+  /\b(Express|React|Next\.js|Prisma|Drizzle|Tailwind|Zod|PostgreSQL|MongoDB|Redis|GraphQL|REST|Vue|Angular|Svelte|Django|Flask|FastAPI|Spring|Rails)\b/i,
+  // React ecosystem (hooks, common libraries)
+  /\b(useMemo|useCallback|useEffect|useState|useRef|useContext|React\.memo|Recharts|Chart\.js|D3|react-query|zustand|redux)\b/,
+  // Python ecosystem (data science, web, packages)
+  /\b(pandas|numpy|pathlib|asyncio|FastAPI|SQLAlchemy|Alembic|celery|airflow|dbt|Great Expectations)\b/,
+  // DevOps and IaC tools
+  /\b(Terraform|Kubernetes|Ansible|Helm|Pulumi|CloudFormation|ArgoCD|Jenkins|CircleCI|Datadog|Prometheus|Grafana)\b/,
+  // Specific file names (common config/doc files)
+  /\b(CLAUDE\.md|package\.json|tsconfig\.json|\.env|README\.md|Dockerfile|Makefile|\.gitignore)\b/,
+  // File paths with extensions (e.g., middleware/auth.ts, src/api/routes.ts)
+  /\b[\w/-]+\.(ts|tsx|js|jsx|py|rs|go|java|rb|sql|yaml|yml|toml|json|md|css|scss|html)\b/,
+  // API and service names
+  /\b(Stripe|OpenAI|Anthropic|GitHub|AWS|GCP|Azure|Supabase|Vercel|Netlify|Firebase)\b/,
+  // Database and ORM tools
+  /\b(SQLite|MySQL|Postgres|DynamoDB|Mongoose|Sequelize|Knex|TypeORM|Drizzle)\b/i,
+  // Generic but specific-enough technology names
+  /\b(middleware|webhook|API endpoint|REST API|GraphQL query|database migration|schema)\b/i
+];
+function containsToolFileApiReference(text) {
+  return TOOL_FILE_API_PATTERNS.some((pattern) => pattern.test(text));
+}
+function isValidToolFileApiEntry(entry) {
+  const trimmed = entry.trim();
+  if (trimmed.length < 2)
+    return false;
+  const VAGUE_ENTRIES = /^(the tool|some (tool|api|framework|library)|a (tool|api|framework)|tool|api|framework|library|technology|unknown|n\/a|none|tbd)$/i;
+  if (VAGUE_ENTRIES.test(trimmed))
+    return false;
+  if (containsToolFileApiReference(trimmed))
+    return true;
+  if (/[./@-]/.test(trimmed) || /^[A-Z]/.test(trimmed))
+    return true;
+  return trimmed.length >= 3;
+}
+var VERIFIABLE_SIGNAL_PATTERNS = [
+  // Claude Code tools (appear as tool_use blocks in session logs)
+  // Includes MultiEdit and NotebookEdit for broader tool coverage
+  /\b(Read|Edit|MultiEdit|Grep|Glob|Bash|Write|Task|TodoWrite|WebSearch|WebFetch|NotebookEdit)\b/,
+  // Slash commands (appear in user messages)
+  /\/(plan|compact|clear|review|commit|test|help)\b/,
+  // CLI commands (appear in Bash tool_use) — includes Python quality tools
+  /\b(npm|npx|git|vitest|jest|pytest|cargo|make|docker|curl|ruff|mypy|black|pylint|pre-commit|tsc|tsx)\b/,
+  // File patterns (appear in tool_use arguments)
+  /\b(CLAUDE\.md|package\.json|tsconfig|\.env|README)\b/,
+  /\.\w{1,4}\b/,
+  // file extensions like .ts, .tsx, .json, .md, .py, .rs
+  // Prompt structure patterns (verifiable in user message content)
+  /\b(first (message|prompt|3 messages)|session start|before (any|writing|coding|implementation))\b/i,
+  // Behavioral sequence patterns (verifiable in message ordering)
+  /\b(before|after|then|followed by|prior to)\b.*\b(tool_use|message|prompt|command|edit|change)\b/i,
+  // Session-level patterns
+  /\b(fresh session|new session|separate session|session contains|session log)\b/i,
+  // Testing patterns
+  /\b(test suite|test file|test case|unit test|integration test|run tests)\b/i,
+  // tool_use block references (explicit JSONL session log artifact names)
+  /\btool_use\b/i
+];
+function hasObservableSignal(instruction, verificationCheck) {
+  const combined = `${instruction} ${verificationCheck}`;
+  return VERIFIABLE_SIGNAL_PATTERNS.some((pattern) => pattern.test(combined));
+}
+function evaluateQualityRubric(pea) {
+  const evidenceResult = validateDistinctEvidence(pea.evidence);
+  const distinctMoments = evidenceResult.valid;
+  const verifiableAction = pea.action.instruction.length >= 50 && pea.action.verificationCheck.length >= 30 && hasObservableSignal(pea.action.instruction, pea.action.verificationCheck);
+  const patternSpecificity = pea.pattern.toolsFilesApis.length >= 1 && pea.pattern.description.length >= 100;
+  const hasValidEntries = pea.pattern.toolsFilesApis.length >= 1 && pea.pattern.toolsFilesApis.some(isValidToolFileApiEntry);
+  const titleOrDescContainsTool = containsToolFileApiReference(pea.pattern.title) || containsToolFileApiReference(pea.pattern.description);
+  const toolFileNaming = hasValidEntries && titleOrDescContainsTool;
+  return {
+    distinctMoments,
+    verifiableAction,
+    patternSpecificity,
+    toolFileNaming
+  };
+}
+function _tokenizeForContentCheck(text) {
+  return text.trim().toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 1);
+}
+function _quoteJaccardSimilarity(a, b) {
+  const tokensA = _tokenizeForContentCheck(a);
+  const tokensB = _tokenizeForContentCheck(b);
+  if (tokensA.length === 0 && tokensB.length === 0)
+    return 1;
+  if (tokensA.length === 0 || tokensB.length === 0)
+    return 0;
+  const freqB = /* @__PURE__ */ new Map();
+  for (const t of tokensB)
+    freqB.set(t, (freqB.get(t) ?? 0) + 1);
+  let intersection3 = 0;
+  const used = /* @__PURE__ */ new Map();
+  for (const t of tokensA) {
+    const available = (freqB.get(t) ?? 0) - (used.get(t) ?? 0);
+    if (available > 0) {
+      intersection3++;
+      used.set(t, (used.get(t) ?? 0) + 1);
+    }
+  }
+  const union3 = tokensA.length + tokensB.length - intersection3;
+  return union3 === 0 ? 1 : intersection3 / union3;
+}
+var REPEATED_CONTENT_THRESHOLD_SAME_SESSION = 0.65;
+var REPEATED_CONTENT_THRESHOLD_CROSS_SESSION = 0.8;
+var GENERIC_OBSERVATION_PATTERNS = [
+  // Pure adjective+noun labels with no tool/file/tech context
+  /^(bad|poor|wrong|incorrect|invalid|improper)\s+(error handling|testing|planning|code|approach)[\s.!]*$/i,
+  // "Needs/need improvement" patterns
+  /^(needs?|need)\s+(improvement|to improve|better|more|fixing)[\s.!]*$/i,
+  // "Not testing/planning/..." patterns
+  /^(not|doesn'?t?|did not)\s+(test|plan|verify|check|read|document)[\s.!]*$/i,
+  // "Shows/demonstrates/indicates bad/poor [1-4 words]" — catches multi-word labels
+  // up to ~35 chars after the verb+adjective to avoid false positives on specific descriptions
+  /^(shows?|demonstrates?|indicates?)\s+(bad|poor|lack of|absence of)\s+\w[\w\s]{0,34}[\s.!]*$/i,
+  // Developer-centric generic labels
+  /^developer\s+(made|has|shows?)\s+(a\s+)?(mistake|error|issue|problem)\b[\s.!]*$/i,
+  /^(this|the developer)\s+(shows?|demonstrates?)\s+(the\s+)?(pattern|problem|issue|behavior)[\s.!]*$/i,
+  /^(suggests?|indicates?|implies?)\s+(poor|bad|weak|lack of)\b/i
+];
+function _isWeakObservation(observation) {
+  if (observation.trim().length < 25)
+    return true;
+  return GENERIC_OBSERVATION_PATTERNS.some((p) => p.test(observation.trim()));
+}
+function _hasConcreteContextAnchor(context) {
+  if (containsToolFileApiReference(context))
+    return true;
+  const projectNamePattern = /\b[a-z][a-z0-9]*(-[a-z][a-z0-9]*)+\b|\b[A-Z][a-z]+[A-Z][a-z]+\b/;
+  return projectNamePattern.test(context);
+}
+function validateEvidenceContentDistinctness(moments) {
+  const issues = [];
+  let repeatedContentCount = 0;
+  let genericContextCount = 0;
+  let weakObservationCount = 0;
+  for (let i = 0; i < moments.length; i++) {
+    const moment = moments[i];
+    let foundRepeat = false;
+    for (let j = 0; j < i; j++) {
+      if (foundRepeat)
+        break;
+      const earlier = moments[j];
+      const sameSess = moment.sessionId === earlier.sessionId;
+      const threshold = sameSess ? REPEATED_CONTENT_THRESHOLD_SAME_SESSION : REPEATED_CONTENT_THRESHOLD_CROSS_SESSION;
+      const similarity = _quoteJaccardSimilarity(moment.quote, earlier.quote);
+      if (similarity >= threshold) {
+        repeatedContentCount++;
+        foundRepeat = true;
+        issues.push({
+          momentIndex: i,
+          utteranceId: moment.utteranceId,
+          issueType: "repeated_content",
+          message: `Evidence moment [${i}] (utteranceId: "${moment.utteranceId}") shares ${Math.round(similarity * 100)}% word similarity with moment [${j}] (utteranceId: "${earlier.utteranceId}"). Repeated quotes \u2014 even with different utteranceIds \u2014 do not establish a pattern. Fix: replace with a genuinely distinct quote from a DIFFERENT session turn that shows the same behavioral pattern from a new angle (e.g., a consequence of the first behavior, or the same behavior in a different project context). Check quotes[n].utteranceId to confirm the replacement comes from a different turn in the extraction data.`,
+          similarToIndex: j,
+          similarity
+        });
+      }
+    }
+    if (!_hasConcreteContextAnchor(moment.context)) {
+      genericContextCount++;
+      const truncatedContext = moment.context.length > 80 ? `${moment.context.slice(0, 80)}...` : moment.context;
+      issues.push({
+        momentIndex: i,
+        utteranceId: moment.utteranceId,
+        issueType: "generic_context",
+        message: `Evidence moment [${i}] (utteranceId: "${moment.utteranceId}") has a generic context that does not reference any concrete session anchor: "${truncatedContext}". Fix: context MUST include at least one of: (a) tool name from quotes[n].toolCallsBefore \u2014 e.g., "after Read then Bash calls", (b) project name from quotes[n].projectName \u2014 e.g., "in the payment-api project", (c) specific file path or technology from the quote text \u2014 e.g., "editing middleware/stripe.ts" or "while running npm test". BAD: "working on a backend task". GOOD: "in the payment-api project, after Read then Bash on middleware/stripe.ts".`
+      });
+    }
+    if (_isWeakObservation(moment.observation)) {
+      weakObservationCount++;
+      const truncatedObs = moment.observation.length > 80 ? `${moment.observation.slice(0, 80)}...` : moment.observation;
+      issues.push({
+        momentIndex: i,
+        utteranceId: moment.utteranceId,
+        issueType: "weak_observation",
+        message: `Evidence moment [${i}] (utteranceId: "${moment.utteranceId}") has a weak observation that does not describe the specific behavior demonstrated: "${truncatedObs}". Fix: observation must name the SPECIFIC behavior \u2014 the tool used, command run, or interaction pattern \u2014 and why it matters for the pattern. BAD: "shows bad error handling" or "not testing" (generic labels). GOOD: "wrapped failing Stripe webhook handler in a generic catch block without writing a jest test for the error path first \u2014 the catch silently swallows the validation error".`
+      });
+    }
+  }
+  const majority = Math.ceil(moments.length / 2);
+  const valid = repeatedContentCount === 0 && genericContextCount < majority && weakObservationCount < majority;
+  return {
+    valid,
+    issues,
+    repeatedContentCount,
+    genericContextCount,
+    weakObservationCount
+  };
+}
+
 // ../shared/dist/schemas/session.js
 var ToolCallSchema = external_exports2.object({
   id: external_exports2.string(),
@@ -27680,6 +28185,67 @@ var Phase1SessionMetricsSchema = external_exports2.object({
   aiInsightBlockCount: external_exports2.number().int().min(0).optional(),
   expertSignals: ExpertSignalsSchema.optional()
 });
+var ToolCallEvidenceSchema = external_exports2.object({
+  /** Tool name (e.g. "Read", "Edit", "Bash", "Grep", "Glob") */
+  name: external_exports2.string(),
+  /**
+   * Concrete parameter detail for this tool call type:
+   * - Read/Edit/Write: file_path value
+   * - Grep: pattern (+ optional path)
+   * - Glob: pattern (+ optional path)
+   * - Bash: command string (truncated to 120 chars)
+   * - Task/Agent: description/prompt (truncated to 80 chars)
+   * - WebFetch: url value (truncated to 120 chars)
+   */
+  detail: external_exports2.string().optional(),
+  /** Whether this tool call resulted in an error */
+  isError: external_exports2.boolean().optional(),
+  /**
+   * Truncated error message (max 200 chars) from the tool result.
+   * Only present when isError is true. Used for "after X failed with Y" evidence context.
+   */
+  errorText: external_exports2.string().optional()
+});
+var UtteranceEvidenceContextSchema = external_exports2.object({
+  /**
+   * Utterance ID — matches UserUtterance.id format: {sessionId}_{messageIndex}.
+   * This is the primary lookup key connecting evidence context to utterances.
+   */
+  utteranceId: external_exports2.string(),
+  /** Session this utterance belongs to */
+  sessionId: external_exports2.string(),
+  /** ISO 8601 timestamp from the raw JSONL message — enables temporal verification */
+  timestamp: external_exports2.string(),
+  /**
+   * Sequence of tool calls the AI made in the response immediately preceding
+   * this utterance. Includes concrete parameters (file paths, commands, patterns)
+   * and error states for specific citation in evidence context fields.
+   *
+   * Empty array when there is no preceding AI response or no tool calls were made.
+   * Used to build context anchors like "after Read(auth.ts) then Bash(npm test)".
+   */
+  precedingToolSequence: external_exports2.array(ToolCallEvidenceSchema),
+  /**
+   * Context window fill percentage (0-100) computed from the preceding
+   * assistant message's token usage. Enables evidence like "context was 87% full".
+   * Absent when token usage data is unavailable.
+   */
+  contextFillPercent: external_exports2.number().min(0).max(100).optional(),
+  /**
+   * Cumulative count of tool call errors in this session up to and including
+   * the assistant response preceding this utterance.
+   * Enables evidence like "the 4th tool failure in this session".
+   */
+  cumulativeErrorCount: external_exports2.number().int().min(0),
+  /** 1-indexed user turn number within this session (1 = first user message) */
+  sessionTurnNumber: external_exports2.number().int().min(1),
+  /**
+   * Seconds elapsed since session start at this utterance's timestamp.
+   * Enables temporal context in evidence: "early in the session" vs "after 45 minutes".
+   * Absent when session start time cannot be determined.
+   */
+  sessionDurationAtTurnSec: external_exports2.number().min(0).optional()
+});
 var ActivitySessionSchema = external_exports2.object({
   sessionId: external_exports2.string(),
   projectName: external_exports2.string(),
@@ -27702,7 +28268,19 @@ var Phase1OutputSchema = external_exports2.object({
   activitySessions: external_exports2.array(ActivitySessionSchema).optional(),
   /** Full parsed sessions preserved for downstream evidence and parity needs */
   sessions: external_exports2.array(ParsedSessionSchema).optional(),
-  skippedFiles: external_exports2.number().optional()
+  skippedFiles: external_exports2.number().optional(),
+  /**
+   * Rich evidence contexts extracted per user utterance from session JSONL.
+   *
+   * Provides concrete metrics (context fill %, cumulative error counts),
+   * tool call sequences with parameters (file paths, commands, patterns),
+   * and timestamps for each utterance. Used by LLM workers to populate
+   * Evidence field moments in PEA growth areas with specific session anchors.
+   *
+   * Look up by utteranceId: evidenceContexts.find(ctx => ctx.utteranceId === id)
+   * Ordered by session then turn position for predictable access patterns.
+   */
+  evidenceContexts: external_exports2.array(UtteranceEvidenceContextSchema).optional()
 });
 
 // ../shared/dist/schemas/deterministic-scores.js
@@ -27751,7 +28329,48 @@ var DeterministicTypeResultSchema = external_exports2.object({
 var EvidenceSchema = external_exports2.object({
   utteranceId: external_exports2.string(),
   quote: external_exports2.string(),
-  context: external_exports2.string().optional()
+  context: external_exports2.string().optional(),
+  /** Explicit session ID for multi-session evidence grouping (v2) */
+  sessionId: external_exports2.string().optional(),
+  /** What behavior the developer exhibited in this moment (v2) */
+  behaviorDescription: external_exports2.string().optional()
+});
+var EvidenceMomentSchema = external_exports2.object({
+  /** Utterance ID for source verification (format: {sessionId}_{turnIndex}) */
+  utteranceId: external_exports2.string(),
+  /** Explicit session ID — enables grouping evidence by session and verifying distinct sessions */
+  sessionId: external_exports2.string(),
+  /** Direct quote from the developer's message */
+  quote: external_exports2.string(),
+  /** What behavior the developer exhibited — describes the pattern this moment demonstrates */
+  behaviorDescription: external_exports2.string(),
+  /** Brief context label (optional, for UI badges like "debugging", "reviewing") */
+  context: external_exports2.string().optional(),
+  /**
+   * ISO 8601 timestamp of the session moment (from UserUtterance.timestamp).
+   * Enables temporal verification of distinctness: moments from the same
+   * timestamp are likely the same exchange, not independent evidence.
+   * Also enables chronological ordering of evidence in reports and
+   * cross-referencing with session JSONL logs by time.
+   */
+  timestamp: external_exports2.string().optional()
+});
+var VerifiableActionSchema = external_exports2.object({
+  /** Concrete action to take in the next session (min 50 chars) */
+  action: external_exports2.string().min(50),
+  /**
+   * How to verify this action was taken by checking session logs (min 30 chars).
+   * Must describe an observable signal: tool_use blocks, specific keywords in
+   * user messages, prompt structure patterns, or behavioral sequences.
+   */
+  checkDescription: external_exports2.string().min(30),
+  /**
+   * The specific tool, command, file, API, or behavioral pattern this action
+   * targets. Used for cross-referencing with session log tool_use events.
+   * Examples: "/plan command", "Grep tool", "test suite execution via Bash",
+   * "CLAUDE.md constraints", "TodoWrite task decomposition"
+   */
+  toolOrPattern: external_exports2.string().optional()
 });
 var DomainStrengthSchema = external_exports2.object({
   title: external_exports2.string(),
@@ -27763,7 +28382,127 @@ var DomainGrowthAreaSchema = external_exports2.object({
   description: external_exports2.string().min(100),
   severity: external_exports2.enum(["critical", "high", "medium", "low"]),
   recommendation: external_exports2.string().min(50),
-  evidence: external_exports2.array(EvidenceSchema).min(1)
+  /** Legacy evidence array — backward compatible, accepts base EvidenceSchema items */
+  evidence: external_exports2.array(EvidenceSchema).min(1),
+  /**
+   * v2 evidence moments in Pattern→Evidence→Action format.
+   * Each moment is a distinct exchange from a specific session with:
+   * - sessionId: explicit session reference
+   * - quote: the developer's exact words
+   * - behaviorDescription: what behavior this moment demonstrates
+   *
+   * Minimum 2 moments required to establish a pattern (not a one-off).
+   * When present, supersedes legacy `evidence` array for display.
+   */
+  evidenceMoments: external_exports2.array(EvidenceMomentSchema).min(2).optional(),
+  /**
+   * Low-confidence flag — set when evidence is sparse (fewer distinct
+   * sessions than ideal). Reports should never be empty; instead they
+   * surface this flag so the UI can show a confidence indicator.
+   */
+  lowConfidence: external_exports2.boolean().optional(),
+  /**
+   * Verifiable next-session action — a concrete behavior change
+   * checkable against future session logs. Optional for backward
+   * compatibility with old data; required by quality gate for new analyses.
+   *
+   * Quality rubric: verifiable_action criterion requires that the proposed
+   * action is specific enough to verify by checking future session logs.
+   * Actions that pass: "Use /plan before implementation" (checkable via tool_use).
+   * Actions that fail: "Try to plan more" (not observable in logs).
+   */
+  verifiableAction: VerifiableActionSchema.optional(),
+  /**
+   * Why this growth area matters for what the builder is trying to achieve.
+   * Connects the observed pattern to the builder's actual goals, not abstract
+   * best practices. Must reference the builder's specific project context,
+   * technology stack, or stated objectives.
+   *
+   * Evaluation criterion: goal_relevance
+   * - Explains WHY the pattern matters for the builder's specific goals
+   * - References the builder's actual project/technology/objective
+   * - Not abstract advice like "this will make you more productive"
+   *
+   * Optional for backward compatibility with old data; required by quality
+   * gate for new analyses.
+   *
+   * @example "Your Express API handles payment webhooks — untested error paths
+   *           in middleware could silently drop Stripe events, causing revenue loss"
+   */
+  goalRelevance: external_exports2.string().min(30).optional(),
+  /**
+   * Specific tools, files, APIs, or technologies the builder actually interacted
+   * with that are relevant to this growth area pattern.
+   *
+   * Examples: ["Express.js", "middleware/auth.ts", "Prisma ORM", "jest"]
+   *
+   * Rubric criterion: tool_file_naming — at least one entry required in new analyses.
+   * Renders as tag pills in the Pattern section of PEA-format growth area cards.
+   * Optional for backward compatibility with pre-PEA growth areas.
+   */
+  toolsFilesApis: external_exports2.array(external_exports2.string()).min(1).max(10).optional(),
+  /**
+   * Best-match knowledge base tip attached by the deterministic KB matcher.
+   * Populated post-generation during report assembly — NOT LLM-generated.
+   * Absent if no KB item exceeds the relevance threshold for this growth area.
+   *
+   * Includes source credibility signal for transparency.
+   */
+  kbTip: KbTipAttachmentSchema.optional(),
+  /**
+   * Best-match knowledge tip — canonical display field name.
+   *
+   * Functionally identical to `kbTip` but uses the canonical user-facing name
+   * used by report renderers and UI components. Populated by the same
+   * deterministic KB matcher as `kbTip`.
+   *
+   * Use `knowledgeTip` in new code; `kbTip` is the legacy internal field.
+   */
+  knowledgeTip: KbTipAttachmentSchema.optional(),
+  /**
+   * Freeform LLM-generated behavioral category tags for cross-developer
+   * clustering in team views. NOT constrained to a fixed taxonomy — the
+   * LLM picks descriptive tags during analysis.
+   *
+   * Examples: ["error-handling", "test-coverage", "express-middleware"]
+   *
+   * Populated when growth area originates from the PEA pipeline.
+   * Used by team aggregation to detect shared patterns across developers
+   * via tag overlap (2+ shared tags = same cluster).
+   *
+   * Optional for backward compatibility with pre-PEA growth areas.
+   */
+  categoryTags: external_exports2.array(external_exports2.string()).min(1).max(5).optional(),
+  /**
+   * Structured Pattern → Evidence → Action sub-object.
+   *
+   * Provides distinct, typed fields for the three parts of a growth area
+   * instead of embedding them in freeform `description` and `recommendation`
+   * text blobs. When present, the save-domain-results quality gate runs the
+   * 4-criteria quality rubric (evaluateQualityRubric) on this structure.
+   *
+   * - pattern: The specific observed behavioral pattern with tools/files named
+   * - evidence: 2-8 distinct moments from actual sessions (DistinctMomentSchema)
+   * - action: Concrete next-session action verifiable in future session logs
+   *
+   * Optional for backward compatibility with data generated before PEA format.
+   * Required by quality gate for all new growth areas from the PEA pipeline.
+   *
+   * Maps to the LLM output schema GrowthAreaPEALLMOutputSchema (shared package).
+   */
+  pea: external_exports2.object({
+    /** The specific observed behavioral pattern */
+    pattern: PEAPatternSchema,
+    /**
+     * 2-8 distinct moments from actual sessions demonstrating the pattern.
+     * Uses DistinctMomentSchema (with `observation` field) rather than
+     * EvidenceMomentSchema (with `behaviorDescription`) to maintain the
+     * PEA vocabulary distinction at the schema level.
+     */
+    evidence: external_exports2.array(DistinctMomentSchema).min(2).max(8),
+    /** Concrete next-session action with verifiable signal */
+    action: PEAActionSchema
+  }).optional()
 });
 var DomainResultSchema = external_exports2.object({
   domain: external_exports2.enum([
@@ -27958,7 +28697,33 @@ var InsightEvidenceSchema = external_exports2.object({
   /** Direct quote or paraphrase from the developer's message */
   quote: external_exports2.string(),
   /** Brief context description */
-  context: external_exports2.string().optional()
+  context: external_exports2.string().optional(),
+  /** Explicit session ID for multi-session evidence grouping (v2) */
+  sessionId: external_exports2.string().optional(),
+  /** What behavior the developer exhibited in this moment (v2) */
+  behaviorDescription: external_exports2.string().optional()
+});
+var EvidenceMomentSchema2 = external_exports2.object({
+  /** Utterance ID for source verification (format: {sessionId}_{turnIndex}) */
+  utteranceId: external_exports2.string(),
+  /** Explicit session ID — enables distinct-session verification */
+  sessionId: external_exports2.string(),
+  /** Direct quote from the developer's message */
+  quote: external_exports2.string(),
+  /** What behavior this moment demonstrates in the growth pattern */
+  behaviorDescription: external_exports2.string(),
+  /** Brief context label (optional, for UI badges) */
+  context: external_exports2.string().optional(),
+  /**
+   * ISO 8601 timestamp of the session moment (from UserUtterance.timestamp).
+   * Optional for backward compatibility; populated by new analysis runs.
+   *
+   * Enables:
+   * 1. Temporal verification that moments are from distinct times
+   * 2. Chronological ordering of evidence in reports
+   * 3. Cross-referencing with session JSONL logs by timestamp
+   */
+  timestamp: external_exports2.string().optional()
 });
 var EvidenceItemSchema = external_exports2.union([
   external_exports2.string(),
@@ -27995,7 +28760,76 @@ var WorkerGrowthSchema = external_exports2.object({
   /** Truncated description preview for free tier blur teaser (set by ContentGateway) */
   descriptionPreview: external_exports2.string().optional(),
   /** Truncated recommendation preview for free tier blur teaser (set by ContentGateway) */
-  recommendationPreview: external_exports2.string().optional()
+  recommendationPreview: external_exports2.string().optional(),
+  /**
+   * v2 evidence moments in Pattern→Evidence→Action format.
+   * Each moment is a distinct exchange from a specific session with:
+   * - sessionId: explicit session reference
+   * - quote: the developer's exact words
+   * - behaviorDescription: what behavior this moment demonstrates
+   *
+   * Minimum 2 moments required to establish a pattern.
+   * When present, supersedes legacy `evidence` array for display.
+   */
+  evidenceMoments: external_exports2.array(EvidenceMomentSchema2).min(2).optional(),
+  /**
+   * Low-confidence flag — set when evidence is sparse (fewer distinct
+   * sessions than ideal). Never produce empty reports; surface this flag
+   * so UI can show a confidence indicator instead.
+   */
+  lowConfidence: external_exports2.boolean().optional(),
+  /**
+   * Verifiable next-session action — a concrete behavior change
+   * checkable against future session logs.
+   *
+   * Optional for backward compatibility with old data; required by
+   * quality gate for new analyses. The action field describes what the
+   * developer should do in their next session, and checkDescription
+   * explains how to verify it was attempted by examining session logs.
+   *
+   * @see VerifiableActionSchema in domain-result.ts for full docs
+   */
+  verifiableAction: VerifiableActionSchema.optional(),
+  // ── PEA Display Fields (populated by peaToWorkerGrowth converter) ────
+  /**
+   * Specific tools, files, APIs, or technologies from the PEA pattern.
+   * Displayed as tag pills in the Pattern section of PEA-format cards.
+   * Only populated when growth area originates from PEA pipeline.
+   */
+  toolsFilesApis: external_exports2.array(external_exports2.string()).optional(),
+  /**
+   * Why the recommended action matters for this builder's goals.
+   * From PEA action.goalRelevance — connects action to real-world impact.
+   * Displayed in the Action section of PEA-format cards.
+   */
+  actionGoalRelevance: external_exports2.string().optional(),
+  /**
+   * Freeform LLM-generated behavioral category tags for cross-developer
+   * clustering in team views. From PEA categoryTags — not a fixed taxonomy.
+   * Examples: ["error-handling", "test-coverage", "express-middleware"]
+   *
+   * Used by team aggregation to detect shared patterns via tag overlap.
+   * Only populated when growth area originates from PEA pipeline.
+   */
+  categoryTags: external_exports2.array(external_exports2.string()).min(1).max(5).optional(),
+  // ── KB Tip Attachment (post-processing by deterministic matcher) ──────
+  /**
+   * Best-match knowledge base tip attached by the deterministic KB matcher.
+   * Populated post-generation during report assembly — NOT LLM-generated.
+   * One best-match tip per growth area, or absent if no item exceeds
+   * the relevance threshold.
+   *
+   * Includes source credibility signal for scoring transparency.
+   */
+  kbTip: KbTipAttachmentSchema.optional(),
+  /**
+   * Best-match knowledge tip — canonical display field name.
+   *
+   * Same content as `kbTip` but uses the canonical user-facing name.
+   * Populated by the deterministic KB matcher during report assembly.
+   * Use `knowledgeTip` in new code; `kbTip` is the legacy internal field.
+   */
+  knowledgeTip: KbTipAttachmentSchema.optional()
 });
 var ReferencedInsightSchema = external_exports2.object({
   /** Insight ID (e.g., "pi-001") */
@@ -28469,6 +29303,404 @@ var CanonicalAnalysisRunSchema = external_exports2.object({
   translation: TranslatorOutputSchema.optional(),
   debug: external_exports2.record(external_exports2.string(), external_exports2.unknown()).optional()
 });
+
+// ../shared/dist/matching/knowledge-resource-matcher.js
+var DIMENSION_DISPLAY_NAMES = {
+  aiCollaboration: "AI Collaboration Mastery",
+  contextEngineering: "Context Engineering",
+  burnoutRisk: "Burnout Risk Assessment",
+  aiControl: "AI Control & Verification",
+  skillResilience: "Skill Resilience",
+  TrustVerification: "Trust & Verification",
+  KnowledgeGap: "Knowledge Gaps",
+  WorkflowHabit: "Workflow Habits",
+  ContextEfficiency: "Context Efficiency",
+  CommunicationPatterns: "Communication Patterns"
+};
+function matchKnowledgeResources(context, knowledgeItems, professionalInsights) {
+  if (context.growthAreasByDimension.size === 0) {
+    return [];
+  }
+  const results = [];
+  for (const [dimension, growthAreas] of context.growthAreasByDimension) {
+    const dimensionItems = knowledgeItems.filter((item) => item.applicableDimensions.includes(dimension));
+    const dimensionInsights = professionalInsights.filter((insight) => insight.applicableDimensions.includes(dimension));
+    const scoredItems = scoreKnowledgeItems(dimensionItems, dimension, growthAreas);
+    const scoredInsights = scoreProfessionalInsights(dimensionInsights, context);
+    if (scoredItems.length > 0 || scoredInsights.length > 0) {
+      results.push({
+        dimension,
+        dimensionDisplayName: DIMENSION_DISPLAY_NAMES[dimension] ?? dimension,
+        knowledgeItems: scoredItems,
+        professionalInsights: scoredInsights
+      });
+    }
+  }
+  return results;
+}
+var DOMAIN_TO_KB_DIMENSION = {
+  // Legacy 6-domain names
+  thinkingQuality: "TrustVerification",
+  communicationPatterns: "CommunicationPatterns",
+  learningBehavior: "KnowledgeGap",
+  contextEfficiency: "ContextEfficiency",
+  sessionOutcome: "WorkflowHabit",
+  // v2 5-dimension framework (mirrors kb-growth-area-enricher.ts mapping)
+  aiPartnership: "TrustVerification",
+  sessionCraft: "ContextEfficiency",
+  toolMastery: "WorkflowHabit",
+  skillResilience: "KnowledgeGap",
+  sessionMastery: "WorkflowHabit"
+};
+var MISTAKE_CATEGORY_TO_DIMENSION = {
+  debugging: "WorkflowHabit",
+  syntax: "KnowledgeGap",
+  logic: "WorkflowHabit",
+  testing: "TrustVerification",
+  security: "TrustVerification",
+  architecture: "ContextEfficiency",
+  performance: "ContextEfficiency",
+  documentation: "CommunicationPatterns"
+};
+function extractMatchingContextFromDomainResults(domainResults, primaryType, controlLevel) {
+  const growthAreasByDimension = /* @__PURE__ */ new Map();
+  for (const result of domainResults) {
+    const dimension = DOMAIN_TO_KB_DIMENSION[result.domain];
+    if (!dimension)
+      continue;
+    for (const area of result.growthAreas) {
+      if (!growthAreasByDimension.has(dimension)) {
+        growthAreasByDimension.set(dimension, []);
+      }
+      growthAreasByDimension.get(dimension).push({
+        title: area.title,
+        description: area.description,
+        recommendation: area.recommendation ?? "",
+        dimension
+      });
+    }
+    if (result.domain === "thinkingQuality" && result.data) {
+      const antiPatterns = result.data.verificationAntiPatterns;
+      if (Array.isArray(antiPatterns)) {
+        const dim = "TrustVerification";
+        if (!growthAreasByDimension.has(dim)) {
+          growthAreasByDimension.set(dim, []);
+        }
+        for (const ap of antiPatterns) {
+          if (typeof ap === "object" && ap !== null) {
+            const typed = ap;
+            growthAreasByDimension.get(dim).push({
+              title: String(typed.type ?? "").replace(/_/g, " "),
+              description: `Detected ${String(typed.type ?? "")} pattern`,
+              recommendation: typeof typed.improvement === "string" ? typed.improvement : "",
+              dimension: dim
+            });
+          }
+        }
+      }
+    }
+    if (result.domain === "learningBehavior" && result.data) {
+      const gaps = result.data.knowledgeGaps;
+      if (Array.isArray(gaps)) {
+        const dim = "KnowledgeGap";
+        if (!growthAreasByDimension.has(dim)) {
+          growthAreasByDimension.set(dim, []);
+        }
+        for (const gap of gaps) {
+          if (typeof gap === "object" && gap !== null) {
+            const typed = gap;
+            const topic = String(typed.topic ?? typed.area ?? "");
+            growthAreasByDimension.get(dim).push({
+              title: topic,
+              description: `Knowledge gap in ${topic}`,
+              recommendation: `Study ${topic} to strengthen understanding`,
+              dimension: dim
+            });
+          }
+        }
+      }
+      const mistakes = result.data.repeatedMistakePatterns;
+      if (Array.isArray(mistakes)) {
+        for (const rm of mistakes) {
+          if (typeof rm === "object" && rm !== null) {
+            const typed = rm;
+            const category = String(typed.category ?? "").toLowerCase();
+            const dim = MISTAKE_CATEGORY_TO_DIMENSION[category] ?? "WorkflowHabit";
+            if (!growthAreasByDimension.has(dim)) {
+              growthAreasByDimension.set(dim, []);
+            }
+            growthAreasByDimension.get(dim).push({
+              title: String(typed.mistakeType ?? typed.category ?? ""),
+              description: typeof typed.description === "string" ? typed.description : "",
+              recommendation: typeof typed.recommendation === "string" ? typed.recommendation : "",
+              dimension: dim
+            });
+          }
+        }
+      }
+    }
+  }
+  return {
+    primaryType,
+    controlLevel,
+    growthAreasByDimension
+  };
+}
+function scoreKnowledgeItems(items, dimension, growthAreas) {
+  return items.map((item) => {
+    const baseScore = item.relevanceScore * 5;
+    const tagScore = computeTagOverlap(item.tags, growthAreas);
+    const subCatScore = computeSubCategoryOverlap(item.subCategories?.[dimension], growthAreas);
+    const resolvedTier = inferCredibilityTier(item.credibilityTier, item.sourcePlatform);
+    const preCredibilityScore = baseScore + tagScore + subCatScore;
+    const credMultiplier = CREDIBILITY_SCORE_MULTIPLIER[resolvedTier] ?? 1;
+    const matchScore = Math.min(preCredibilityScore * credMultiplier, 10);
+    return {
+      id: item.id,
+      title: item.title,
+      summary: item.summary,
+      sourceUrl: item.sourceUrl,
+      sourceAuthor: item.sourceAuthor,
+      contentType: item.contentType,
+      tags: item.tags,
+      relevanceScore: item.relevanceScore,
+      matchScore: Math.round(matchScore * 100) / 100,
+      sourcePlatform: item.sourcePlatform,
+      credibilityTier: resolvedTier
+    };
+  }).sort((a, b) => b.matchScore - a.matchScore);
+}
+function scoreProfessionalInsights(insights, context) {
+  return insights.map((insight) => {
+    let score = insight.priority;
+    if (context.primaryType && insight.applicableStyles?.includes(context.primaryType)) {
+      score += 2;
+    }
+    if (context.controlLevel && insight.applicableControlLevels?.includes(context.controlLevel)) {
+      score += 1.5;
+    }
+    const resolvedTier = insight.credibilityTier === "high" ? "high" : "medium";
+    const credMultiplier = CREDIBILITY_SCORE_MULTIPLIER[resolvedTier] ?? 1;
+    const matchScore = Math.min(score * credMultiplier, 10);
+    return {
+      id: insight.id,
+      title: insight.title,
+      keyTakeaway: insight.keyTakeaway,
+      actionableAdvice: insight.actionableAdvice,
+      sourceAuthor: insight.sourceAuthor,
+      sourceUrl: insight.sourceUrl,
+      category: insight.category,
+      priority: insight.priority,
+      matchScore: Math.round(matchScore * 100) / 100,
+      credibilityTier: resolvedTier
+    };
+  }).sort((a, b) => b.matchScore - a.matchScore);
+}
+var PLATFORM_CREDIBILITY_INFERENCE = {
+  web: "medium",
+  manual: "medium",
+  youtube: "medium",
+  linkedin: "medium",
+  reddit: "standard",
+  twitter: "standard",
+  threads: "standard"
+};
+function inferCredibilityTier(explicitTier, sourcePlatform) {
+  if (explicitTier)
+    return explicitTier;
+  if (sourcePlatform && sourcePlatform in PLATFORM_CREDIBILITY_INFERENCE) {
+    return PLATFORM_CREDIBILITY_INFERENCE[sourcePlatform];
+  }
+  return "standard";
+}
+var CREDIBILITY_SCORE_MULTIPLIER = {
+  high: 1.25,
+  // Official docs, recognized authority, peer-reviewed
+  medium: 1.1,
+  // Known practitioner, established blog
+  standard: 1
+  // Community content, forum posts — no boost
+};
+function computeTagOverlap(tags, growthAreas) {
+  if (tags.length === 0 || growthAreas.length === 0)
+    return 0;
+  const growthText = growthAreas.map((ga) => `${ga.title} ${ga.description} ${ga.recommendation}`).join(" ").toLowerCase();
+  const matchCount = tags.filter((tag) => growthText.includes(tag.toLowerCase().replace(/-/g, " "))).length;
+  return Math.min(matchCount, 3);
+}
+function computeSubCategoryOverlap(keywords, growthAreas) {
+  if (!keywords || keywords.length === 0)
+    return 0;
+  const growthText = growthAreas.map((ga) => `${ga.title} ${ga.description}`).join(" ").toLowerCase();
+  const matchCount = keywords.filter((kw) => growthText.includes(kw.toLowerCase())).length;
+  return Math.min(matchCount * 0.5, 2);
+}
+
+// ../shared/dist/matching/kb-growth-area-enricher.js
+var CREDIBILITY_MULTIPLIER = {
+  high: 1.25,
+  // Official docs, recognized authority, peer-reviewed
+  medium: 1.1,
+  // Known practitioner, established blog
+  standard: 1
+  // Community content, forum posts — no boost
+};
+function enrichGrowthAreasWithKbTips(domainResults, knowledgeItems, professionalInsights, primaryType, controlLevel) {
+  if (knowledgeItems.length === 0 && professionalInsights.length === 0) {
+    return domainResults;
+  }
+  const matchingContext = extractMatchingContextFromDomainResults(domainResults.map((r) => ({
+    domain: r.domain,
+    growthAreas: r.growthAreas.map((ga) => ({
+      title: ga.title,
+      description: ga.description,
+      recommendation: ga.recommendation
+    })),
+    data: r.data
+  })), primaryType, controlLevel);
+  const dimensionMatches = matchKnowledgeResources(matchingContext, knowledgeItems, professionalInsights);
+  const dimensionItemsMap = /* @__PURE__ */ new Map();
+  const dimensionInsightsMap = /* @__PURE__ */ new Map();
+  for (const match of dimensionMatches) {
+    dimensionItemsMap.set(match.dimension, match.knowledgeItems);
+    dimensionInsightsMap.set(match.dimension, match.professionalInsights);
+  }
+  return domainResults.map((result) => ({
+    ...result,
+    growthAreas: result.growthAreas.map((ga) => {
+      const tip = findBestTipForGrowthArea(ga, result.domain, knowledgeItems, dimensionItemsMap, dimensionInsightsMap);
+      if (tip) {
+        return { ...ga, kbTip: tip, knowledgeTip: tip };
+      }
+      return ga;
+    })
+  }));
+}
+var DOMAIN_TO_KB_DIMENSION2 = {
+  thinkingQuality: "TrustVerification",
+  communicationPatterns: "CommunicationPatterns",
+  learningBehavior: "KnowledgeGap",
+  contextEfficiency: "ContextEfficiency",
+  sessionOutcome: "WorkflowHabit",
+  // v2 domains map to their closest KB dimensions
+  aiPartnership: "TrustVerification",
+  sessionCraft: "ContextEfficiency",
+  toolMastery: "WorkflowHabit",
+  skillResilience: "KnowledgeGap",
+  sessionMastery: "WorkflowHabit"
+};
+function findBestTipForGrowthArea(growthArea, domain3, allKnowledgeItems, dimensionItemsMap, dimensionInsightsMap) {
+  const dimension = DOMAIN_TO_KB_DIMENSION2[domain3];
+  if (!dimension)
+    return null;
+  const growthText = `${growthArea.title} ${growthArea.description} ${growthArea.recommendation}`.toLowerCase();
+  const candidates = [];
+  const dimensionItems = dimensionItemsMap.get(dimension) ?? [];
+  for (const item of dimensionItems) {
+    const originalItem = allKnowledgeItems.find((ki) => ki.id === item.id);
+    candidates.push({
+      tipId: item.id,
+      title: item.title,
+      summary: item.summary,
+      sourceUrl: item.sourceUrl,
+      sourceAuthor: item.sourceAuthor,
+      sourcePlatform: item.sourcePlatform ?? originalItem?.sourcePlatform,
+      credibilityTier: item.credibilityTier ?? inferCredibilityTier(originalItem?.credibilityTier, originalItem?.sourcePlatform),
+      baseScore: item.matchScore
+    });
+  }
+  const dimensionInsights = dimensionInsightsMap.get(dimension) ?? [];
+  for (const insight of dimensionInsights) {
+    candidates.push({
+      tipId: insight.id,
+      title: insight.title,
+      summary: insight.keyTakeaway,
+      sourceUrl: insight.sourceUrl,
+      sourceAuthor: insight.sourceAuthor,
+      sourcePlatform: void 0,
+      credibilityTier: insight.credibilityTier,
+      baseScore: insight.matchScore
+    });
+  }
+  if (candidates.length === 0)
+    return null;
+  let bestCandidate = null;
+  let bestScore = -1;
+  for (const candidate of candidates) {
+    let score = candidate.baseScore;
+    const credMultiplier = CREDIBILITY_MULTIPLIER[candidate.credibilityTier ?? "standard"] ?? 1;
+    score *= credMultiplier;
+    const tipKeywords = extractKeywords(candidate.title + " " + candidate.summary);
+    const affinityBoost = computeKeywordAffinity(tipKeywords, growthText);
+    score += affinityBoost;
+    if (score > bestScore) {
+      bestScore = score;
+      bestCandidate = candidate;
+    }
+  }
+  if (!bestCandidate)
+    return null;
+  const normalizedScore = Math.min(bestScore / 10, 1);
+  if (normalizedScore < KB_TIP_RELEVANCE_THRESHOLD)
+    return null;
+  return {
+    tipId: bestCandidate.tipId,
+    title: bestCandidate.title,
+    summary: bestCandidate.summary,
+    sourceUrl: bestCandidate.sourceUrl,
+    sourceAuthor: bestCandidate.sourceAuthor,
+    sourcePlatform: bestCandidate.sourcePlatform,
+    credibilityTier: bestCandidate.credibilityTier,
+    relevanceScore: Math.round(normalizedScore * 100) / 100
+  };
+}
+function extractKeywords(text) {
+  const stopWords = /* @__PURE__ */ new Set([
+    "the",
+    "and",
+    "for",
+    "with",
+    "this",
+    "that",
+    "from",
+    "your",
+    "you",
+    "are",
+    "was",
+    "were",
+    "been",
+    "will",
+    "can",
+    "has",
+    "have",
+    "had",
+    "not",
+    "but",
+    "use",
+    "using",
+    "how",
+    "when",
+    "what",
+    "which",
+    "more",
+    "also",
+    "than",
+    "into",
+    "each",
+    "all",
+    "their",
+    "some"
+  ]);
+  const words = text.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !stopWords.has(w));
+  return [...new Set(words)];
+}
+function computeKeywordAffinity(tipKeywords, growthText) {
+  if (tipKeywords.length === 0)
+    return 0;
+  const matchCount = tipKeywords.filter((kw) => growthText.includes(kw)).length;
+  const overlapRatio = matchCount / tipKeywords.length;
+  return Math.min(overlapRatio * 2, 2);
+}
 
 // ../shared/dist/evaluation/canonical-analysis.js
 var DOMAIN_TO_EVALUATION_DIMENSION = {
@@ -29081,13 +30313,15 @@ function buildCanonicalEvaluation(args) {
 }
 function assembleCanonicalAnalysisRun(args) {
   const activitySessions = buildReportActivitySessions(args.phase1Output, args.stageOutputs.sessionSummaries);
+  const processedDomainResults = deduplicateNearDuplicateEvidence(applyEvidenceVerification(args.domainResults, args.stageOutputs.evidenceVerification));
+  const enrichedDomainResults = args.knowledgeItems?.length || args.professionalInsights?.length ? enrichGrowthAreasWithKbTips(processedDomainResults, args.knowledgeItems ?? [], args.professionalInsights ?? [], args.typeResult?.primaryType, args.typeResult?.controlLevel) : processedDomainResults;
   const evaluation = buildCanonicalEvaluation({
     analyzedAt: args.analyzedAt,
     phase1Output: args.phase1Output,
     activitySessions,
     deterministicScores: args.deterministicScores,
     typeResult: args.typeResult,
-    domainResults: args.domainResults,
+    domainResults: enrichedDomainResults,
     stageOutputs: args.stageOutputs
   });
   return {
@@ -29097,7 +30331,7 @@ function assembleCanonicalAnalysisRun(args) {
     activitySessions,
     deterministicScores: args.deterministicScores,
     typeResult: args.typeResult,
-    domainResults: deduplicateNearDuplicateEvidence(applyEvidenceVerification(args.domainResults, args.stageOutputs.evidenceVerification)),
+    domainResults: enrichedDomainResults,
     stageOutputs: args.stageOutputs,
     evaluation,
     ...args.stageOutputs.translator ? { translation: args.stageOutputs.translator } : {}
@@ -29205,8 +30439,10 @@ function scoreCommunicationPatterns(metrics, phase1Output) {
   const wordCounts = phase1Output.developerUtterances.map((u) => u.wordCount);
   const cv = coefficientOfVariation(wordCounts);
   const consistencyScore = 100 * Math.exp(-0.3 * cv);
+  const toolRatio = metrics.expertSignals?.properToolSelectionRatio ?? 0.5;
+  const toolScore = toolRatio * 100;
   const expertBonus = expertBonusToolMastery(metrics);
-  return clampScore(promptQualityScore * 0.4 + structureScore * 0.3 + consistencyScore * 0.3 + expertBonus);
+  return clampScore(promptQualityScore * 0.3 + structureScore * 0.25 + consistencyScore * 0.2 + toolScore * 0.25 + expertBonus);
 }
 function scoreControl(metrics) {
   const totalUtterances = Math.max(metrics.totalDeveloperUtterances, 1);
@@ -29529,10 +30765,489 @@ function computeDeterministicType(scores, phase1Output) {
   };
 }
 
+// ../shared/dist/validation/growth-area-quality-checker.js
+var GENERIC_TITLE_PATTERNS = [
+  /^improve\s+[\w\s]+\s+(practices?|habits?|skills?)/i,
+  /^better\s+[\w\s]+\s+(would|could|should)/i,
+  /^consider\s+using\s+[\w\s]+\s+more/i,
+  /^(plan|think|test)\s+(before|more)\s+(implementing|coding|carefully)/i,
+  /^(enhance|strengthen|develop)\s+(your\s+)?[\w\s]+\s+(approach|strategy|workflow)/i,
+  /^(lack|absence)\s+of\s+[\w\s]+\s+(planning|testing|review)/i
+];
+var GENERIC_DESCRIPTION_PHRASES = [
+  /this will help you write better code/i,
+  /testing is important for (software|code) quality/i,
+  /better error handling improves reliability/i,
+  /planning saves time in the long run/i,
+  /this is a (common|frequent|typical) (mistake|problem|issue)/i,
+  /could apply to any (developer|project|codebase)/i,
+  /generally (considered|regarded) (best|good) practice/i,
+  /it'?s (always|generally) (good|better|best) to/i
+];
+function detectGenericTitle(title) {
+  const matches = [];
+  for (const pattern of GENERIC_TITLE_PATTERNS) {
+    if (pattern.test(title)) {
+      matches.push(`Title matches generic template: "${title}"`);
+    }
+  }
+  return matches;
+}
+function detectGenericDescription(description) {
+  const matches = [];
+  for (const pattern of GENERIC_DESCRIPTION_PHRASES) {
+    if (pattern.test(description)) {
+      const match = description.match(pattern);
+      matches.push(`Description contains generic phrase: "${match?.[0] ?? ""}"`);
+    }
+  }
+  return matches;
+}
+var SEVERITY_EVIDENCE_THRESHOLDS = {
+  critical: { minMoments: 3, minSessions: 2 },
+  high: { minMoments: 2, minSessions: 2 },
+  medium: { minMoments: 2, minSessions: 1 },
+  low: { minMoments: 2, minSessions: 1 }
+};
+function validateSeverityJustification(severity, evidenceCount, sessionCount) {
+  const threshold = SEVERITY_EVIDENCE_THRESHOLDS[severity];
+  if (!threshold) {
+    return { justified: false, reason: `Unknown severity level: "${severity}"` };
+  }
+  if (evidenceCount < threshold.minMoments) {
+    return {
+      justified: false,
+      reason: `Severity "${severity}" requires at least ${threshold.minMoments} evidence moments but has ${evidenceCount}`
+    };
+  }
+  if (sessionCount < threshold.minSessions) {
+    return {
+      justified: false,
+      reason: `Severity "${severity}" requires evidence from at least ${threshold.minSessions} sessions but has ${sessionCount}`
+    };
+  }
+  return { justified: true };
+}
+var BEHAVIORAL_MARKERS = [
+  // Quantification: "in X of Y sessions", "across N sessions"
+  /\b(in\s+\d+\s+of\s+\d+|across\s+\d+|in\s+\d+\s+sessions?)\b/i,
+  // Behavioral verbs: "you consistently/repeatedly/frequently..."
+  /\b(consistently|repeatedly|frequently|regularly|habitually|always|never|rarely)\b/i,
+  // Observed behavior: "you did X", "the developer X"
+  /\b(you\s+(skip|miss|avoid|omit|forget|ignore|bypass|neglect)|developer\s+(skips?|misses?|avoids?))\b/i,
+  // Session references
+  /\b(sessions?\s+(show|reveal|demonstrate|indicate)|observed\s+in|pattern\s+(of|across|in))\b/i
+];
+function detectBehavioralMarkers(description) {
+  const markers = [];
+  for (const pattern of BEHAVIORAL_MARKERS) {
+    const match = description.match(pattern);
+    if (match) {
+      markers.push(match[0]);
+    }
+  }
+  return {
+    markerCount: markers.length,
+    markers,
+    // Need at least 2 behavioral markers to establish it describes a pattern
+    hasBehavioralPattern: markers.length >= 2
+  };
+}
+function analyzeEvidenceIsolation(evidence) {
+  const reasons = [];
+  const utteranceIds = evidence.map((e) => e.utteranceId);
+  const distinctUtterances = new Set(utteranceIds).size;
+  if (distinctUtterances < evidence.length) {
+    reasons.push(`${evidence.length - distinctUtterances} duplicate utteranceId(s) \u2014 same moment cited multiple times`);
+  }
+  const sessionIds = new Set(evidence.map((e) => e.sessionId));
+  if (sessionIds.size === 1 && evidence.length > 0) {
+    reasons.push("All evidence from a single session \u2014 no cross-session recurrence proven");
+  }
+  const shortQuotes = evidence.filter((e) => e.quote.length < 20);
+  if (shortQuotes.length > 0) {
+    reasons.push(`${shortQuotes.length} quote(s) under 20 chars \u2014 may be fragments rather than meaningful exchanges`);
+  }
+  const weakObservations = evidence.filter((e) => e.observation.length < 30 || /^(bad|poor|wrong|needs improvement|not good)/i.test(e.observation));
+  if (weakObservations.length > evidence.length / 2) {
+    reasons.push("Majority of observations are too short or generic to demonstrate a pattern");
+  }
+  return {
+    isolated: distinctUtterances < 2 || reasons.length >= 2,
+    reasons,
+    distinctUtterances,
+    distinctSessions: sessionIds.size
+  };
+}
+function scoreDistinctMoments(evidence) {
+  const signals = [];
+  const deficiencies = [];
+  let score = 0;
+  const result = validateDistinctEvidence(evidence);
+  if (!result.valid) {
+    deficiencies.push(result.reason ?? "Evidence validation failed");
+    return { score: 0, pass: false, signals, deficiencies };
+  }
+  score += 0.4;
+  signals.push(`${result.distinctUtteranceCount} distinct utterance(s)`);
+  if (result.distinctSessionCount >= 2) {
+    score += 0.25;
+    signals.push(`Evidence spans ${result.distinctSessionCount} distinct sessions`);
+  } else {
+    deficiencies.push("All evidence from a single session");
+  }
+  if (evidence.length >= 4) {
+    score += 0.2;
+    signals.push(`${evidence.length} evidence moments (rich)`);
+  } else if (evidence.length >= 3) {
+    score += 0.15;
+    signals.push(`${evidence.length} evidence moments`);
+  }
+  const substantialQuotes = evidence.filter((e) => e.quote.length >= 30);
+  if (substantialQuotes.length === evidence.length) {
+    score += 0.15;
+    signals.push("All quotes are substantial (30+ chars)");
+  } else if (substantialQuotes.length > 0) {
+    score += 0.05;
+    deficiencies.push(`${evidence.length - substantialQuotes.length} quote(s) are short \u2014 may be summaries rather than verbatim`);
+  } else {
+    deficiencies.push("No substantial quotes (all under 30 chars)");
+  }
+  return { score: Math.min(1, score), pass: result.valid, signals, deficiencies };
+}
+function scoreVerifiableAction(action) {
+  const signals = [];
+  const deficiencies = [];
+  let score = 0;
+  if (action.instruction.length >= 50) {
+    score += 0.2;
+    signals.push(`Instruction is ${action.instruction.length} chars (substantial)`);
+  } else {
+    deficiencies.push(`Instruction is only ${action.instruction.length} chars (need 50+)`);
+  }
+  if (action.verificationCheck.length >= 30) {
+    score += 0.15;
+    signals.push("Verification check describes what to look for");
+  } else {
+    deficiencies.push(`Verification check is only ${action.verificationCheck.length} chars (need 30+)`);
+  }
+  if (hasObservableSignal(action.instruction, action.verificationCheck)) {
+    score += 0.35;
+    signals.push("References observable session-log signals (tools, commands, patterns)");
+  } else {
+    deficiencies.push("No observable session-log signal found \u2014 action may be vague advice");
+  }
+  if (action.goalRelevance.length >= 50) {
+    score += 0.15;
+    signals.push("Goal relevance explains why the action matters");
+  } else {
+    deficiencies.push(`Goal relevance is too short (${action.goalRelevance.length} chars, need 50+)`);
+  }
+  if (containsToolFileApiReference(action.instruction)) {
+    score += 0.15;
+    signals.push("Action instruction names specific tools/commands");
+  }
+  const pass = action.instruction.length >= 50 && action.verificationCheck.length >= 30 && hasObservableSignal(action.instruction, action.verificationCheck);
+  return { score: Math.min(1, score), pass, signals, deficiencies };
+}
+function scorePatternSpecificity(pattern) {
+  const signals = [];
+  const deficiencies = [];
+  let score = 0;
+  if (pattern.description.length >= 150) {
+    score += 0.2;
+    signals.push(`Description is ${pattern.description.length} chars (detailed)`);
+  } else if (pattern.description.length >= 100) {
+    score += 0.1;
+    signals.push(`Description is ${pattern.description.length} chars (adequate)`);
+  } else {
+    deficiencies.push(`Description is only ${pattern.description.length} chars (need 100+)`);
+  }
+  const markers = detectBehavioralMarkers(pattern.description);
+  if (markers.hasBehavioralPattern) {
+    score += 0.3;
+    signals.push(`${markers.markerCount} behavioral markers found: ${markers.markers.join(", ")}`);
+  } else if (markers.markerCount >= 1) {
+    score += 0.1;
+    deficiencies.push(`Only ${markers.markerCount} behavioral marker \u2014 needs quantification + behavior verb`);
+  } else {
+    deficiencies.push("No behavioral markers \u2014 description reads like advice, not observation");
+  }
+  const genericTitle = detectGenericTitle(pattern.title);
+  const genericDesc = detectGenericDescription(pattern.description);
+  if (genericTitle.length === 0 && genericDesc.length === 0) {
+    score += 0.25;
+    signals.push("No generic advice patterns detected");
+  } else {
+    if (genericTitle.length > 0)
+      deficiencies.push(...genericTitle);
+    if (genericDesc.length > 0)
+      deficiencies.push(...genericDesc);
+  }
+  const validEntries = pattern.toolsFilesApis.filter(isValidToolFileApiEntry);
+  if (validEntries.length >= 2) {
+    score += 0.25;
+    signals.push(`${validEntries.length} specific tools/files/APIs named`);
+  } else if (validEntries.length === 1) {
+    score += 0.15;
+    signals.push("1 specific tool/file/API named");
+  } else {
+    deficiencies.push("No valid tool/file/API entries");
+  }
+  const pass = pattern.toolsFilesApis.length >= 1 && pattern.description.length >= 100;
+  return { score: Math.min(1, score), pass, signals, deficiencies };
+}
+function scoreToolFileNaming(pattern) {
+  const signals = [];
+  const deficiencies = [];
+  let score = 0;
+  const validEntries = pattern.toolsFilesApis.filter(isValidToolFileApiEntry);
+  if (validEntries.length >= 1) {
+    score += 0.3;
+    signals.push(`Valid tool entries: ${validEntries.join(", ")}`);
+  } else {
+    deficiencies.push("No valid tool/file/API entries (all are vague placeholders)");
+  }
+  if (containsToolFileApiReference(pattern.title)) {
+    score += 0.35;
+    signals.push("Title names a specific tool/file/API");
+  } else {
+    deficiencies.push("Title does not reference any specific tool, file, or API");
+  }
+  if (containsToolFileApiReference(pattern.description)) {
+    score += 0.35;
+    signals.push("Description references specific tools/files/APIs");
+  } else {
+    deficiencies.push("Description does not reference any specific tool, file, or API");
+  }
+  const hasValidEntries = validEntries.length >= 1;
+  const titleOrDescContainsTool = containsToolFileApiReference(pattern.title) || containsToolFileApiReference(pattern.description);
+  const pass = hasValidEntries && titleOrDescContainsTool;
+  return { score: Math.min(1, score), pass, signals, deficiencies };
+}
+function flagGenericArea(pattern, specificityScore) {
+  const evidence = [];
+  const genericTitle = detectGenericTitle(pattern.title);
+  const genericDesc = detectGenericDescription(pattern.description);
+  const markers = detectBehavioralMarkers(pattern.description);
+  if (genericTitle.length > 0)
+    evidence.push(...genericTitle);
+  if (genericDesc.length > 0)
+    evidence.push(...genericDesc);
+  if (!markers.hasBehavioralPattern) {
+    evidence.push("Description lacks behavioral markers (no quantification or observed behavior verbs)");
+  }
+  if (specificityScore.score < 0.4) {
+    evidence.push(`Pattern specificity score is low (${specificityScore.score.toFixed(2)})`);
+  }
+  const detected = evidence.length >= 2;
+  return {
+    detected,
+    severity: genericTitle.length > 0 ? "critical" : "warning",
+    evidence,
+    suggestion: detected ? 'Replace generic title with specific behavior + technology (e.g., "Skipping vitest After Prisma Schema Changes"). Add quantification ("in X of Y sessions") and name specific files/tools the builder interacted with.' : "No generic area problems detected."
+  };
+}
+function flagIsolatedQuotes(evidence, momentsScore) {
+  const isolation = analyzeEvidenceIsolation(evidence);
+  const diagnostics = [...isolation.reasons];
+  if (momentsScore.score < 0.4) {
+    diagnostics.push(`Distinct moments score is low (${momentsScore.score.toFixed(2)})`);
+  }
+  return {
+    detected: isolation.isolated,
+    severity: isolation.distinctUtterances < 2 ? "critical" : "warning",
+    evidence: diagnostics,
+    suggestion: isolation.isolated ? "Include evidence from 2+ distinct sessions with different utteranceIds. Each quote should be the developer's verbatim words (30+ chars), not a summary. Observations should describe specific behavior, not generic judgments." : "No isolated quote problems detected."
+  };
+}
+function flagArbitraryScores(severity, evidence) {
+  const sessionIds = new Set(evidence.map((e) => e.sessionId));
+  const justification = validateSeverityJustification(severity, evidence.length, sessionIds.size);
+  const diagnostics = [];
+  if (!justification.justified && justification.reason) {
+    diagnostics.push(justification.reason);
+  }
+  if (severity === "critical" && evidence.length <= 2) {
+    diagnostics.push("Critical severity with minimal evidence (2 or fewer moments)");
+  }
+  if ((severity === "critical" || severity === "high") && sessionIds.size < 2) {
+    diagnostics.push(`${severity} severity but evidence from only ${sessionIds.size} session(s)`);
+  }
+  const detected = diagnostics.length > 0;
+  return {
+    detected,
+    severity: severity === "critical" ? "critical" : "warning",
+    evidence: diagnostics,
+    suggestion: detected ? `Either downgrade severity to match evidence weight, or add more evidence moments from additional sessions. ${severity === "critical" ? "Critical severity requires 3+ moments from 2+ sessions." : "High severity requires 2+ moments from 2+ sessions."}` : "Severity is justified by evidence weight."
+  };
+}
+function flagMissingPatterns(pattern, evidence) {
+  const diagnostics = [];
+  const markers = detectBehavioralMarkers(pattern.description);
+  if (!markers.hasBehavioralPattern) {
+    diagnostics.push(`Description has only ${markers.markerCount} behavioral marker(s) (need 2+). A pattern should include quantification (e.g., "in 4 of 6 sessions") and behavioral observation verbs.`);
+  }
+  if (pattern.description.length < 100) {
+    diagnostics.push(`Description is only ${pattern.description.length} chars \u2014 too short to describe a behavioral pattern with context.`);
+  }
+  const weakObservations = evidence.filter((e) => e.observation.length < 30);
+  if (weakObservations.length > evidence.length / 2) {
+    diagnostics.push(`${weakObservations.length} of ${evidence.length} evidence observations are too short (<30 chars) to demonstrate the described pattern.`);
+  }
+  const detected = diagnostics.length >= 2;
+  return {
+    detected,
+    severity: markers.markerCount === 0 ? "critical" : "warning",
+    evidence: diagnostics,
+    suggestion: detected ? 'Rewrite the description to describe what the builder ACTUALLY DID (not what they should do). Include: (1) quantification like "in X of Y sessions", (2) behavioral verbs like "consistently skips/avoids/omits", (3) specific context about when/where the behavior occurs.' : "Pattern description adequately describes an observed behavioral pattern."
+  };
+}
+function validateGrowthAreaQuality(growthArea) {
+  const distinctMoments = scoreDistinctMoments(growthArea.evidence);
+  const verifiableAction = scoreVerifiableAction(growthArea.action);
+  const patternSpecificity = scorePatternSpecificity(growthArea.pattern);
+  const toolFileNaming = scoreToolFileNaming(growthArea.pattern);
+  const genericArea = flagGenericArea(growthArea.pattern, patternSpecificity);
+  const isolatedQuotes = flagIsolatedQuotes(growthArea.evidence, distinctMoments);
+  const arbitraryScores = flagArbitraryScores(growthArea.pattern.severity, growthArea.evidence);
+  const missingPatterns = flagMissingPatterns(growthArea.pattern, growthArea.evidence);
+  const weights = {
+    distinctMoments: 0.3,
+    // Evidence is foundational
+    verifiableAction: 0.25,
+    // Actionability is key
+    patternSpecificity: 0.25,
+    // Must be specific, not generic
+    toolFileNaming: 0.2
+    // Technical grounding
+  };
+  const overallScore = distinctMoments.score * weights.distinctMoments + verifiableAction.score * weights.verifiableAction + patternSpecificity.score * weights.patternSpecificity + toolFileNaming.score * weights.toolFileNaming;
+  const rubric = {
+    distinctMoments: distinctMoments.pass,
+    verifiableAction: verifiableAction.pass,
+    patternSpecificity: patternSpecificity.pass,
+    toolFileNaming: toolFileNaming.pass
+  };
+  const allCriteriaPass = distinctMoments.pass && verifiableAction.pass && patternSpecificity.pass && toolFileNaming.pass;
+  const hasCriticalProblem = genericArea.detected && genericArea.severity === "critical" || isolatedQuotes.detected && isolatedQuotes.severity === "critical" || arbitraryScores.detected && arbitraryScores.severity === "critical" || missingPatterns.detected && missingPatterns.severity === "critical";
+  const passes = allCriteriaPass && !hasCriticalProblem;
+  const summary = buildDiagnosticSummary(growthArea.pattern.title, passes, overallScore, { distinctMoments, verifiableAction, patternSpecificity, toolFileNaming }, { genericArea, isolatedQuotes, arbitraryScores, missingPatterns });
+  return {
+    passes,
+    overallScore,
+    criteria: {
+      distinctMoments,
+      verifiableAction,
+      patternSpecificity,
+      toolFileNaming
+    },
+    problems: {
+      genericArea,
+      isolatedQuotes,
+      arbitraryScores,
+      missingPatterns
+    },
+    rubric,
+    summary
+  };
+}
+function buildDiagnosticSummary(title, passes, overallScore, criteria, problems) {
+  const lines = [];
+  lines.push(`Quality Validation: "${title}"`);
+  lines.push(`Result: ${passes ? "PASS" : "FAIL"} (score: ${overallScore.toFixed(2)})`);
+  lines.push("");
+  lines.push("Criteria:");
+  const criteriaEntries = [
+    ["distinct_moments", criteria.distinctMoments],
+    ["verifiable_action", criteria.verifiableAction],
+    ["pattern_specificity", criteria.patternSpecificity],
+    ["tool_file_naming", criteria.toolFileNaming]
+  ];
+  for (const [name, criterion] of criteriaEntries) {
+    const status = criterion.pass ? "PASS" : "FAIL";
+    lines.push(`  ${name}: ${status} (${criterion.score.toFixed(2)})`);
+    if (criterion.deficiencies.length > 0) {
+      for (const d of criterion.deficiencies) {
+        lines.push(`    - ${d}`);
+      }
+    }
+  }
+  const detectedProblems = Object.entries(problems).filter(([, flag]) => flag.detected);
+  if (detectedProblems.length > 0) {
+    lines.push("");
+    lines.push("Problems detected:");
+    for (const [name, flag] of detectedProblems) {
+      lines.push(`  ${name} (${flag.severity}):`);
+      for (const e of flag.evidence) {
+        lines.push(`    - ${e}`);
+      }
+      lines.push(`    Fix: ${flag.suggestion}`);
+    }
+  }
+  return lines.join("\n");
+}
+
+// ../shared/dist/matching/kb-loader.js
+import { readdirSync, readFileSync } from "fs";
+import { join } from "path";
+import { homedir } from "os";
+var KNOWLEDGE_BASE_PATH = join(homedir(), ".betterprompt", "knowledge");
+var ITEMS_PATH = join(KNOWLEDGE_BASE_PATH, "items");
+function parseKnowledgeItem(item) {
+  if (typeof item.id !== "string" || typeof item.title !== "string" || typeof item.summary !== "string")
+    return null;
+  const source = item.source;
+  const relevance = item.relevance;
+  const sourcePlatform = source?.platform ?? void 0;
+  const credibilityTier = source?.credibilityTier ?? void 0;
+  const validTiers = ["high", "medium", "standard"];
+  return {
+    id: item.id,
+    title: item.title,
+    summary: item.summary,
+    sourceUrl: source?.url ?? "",
+    sourceAuthor: source?.author ?? "Unknown",
+    contentType: item.contentType ?? "insight",
+    tags: Array.isArray(item.tags) ? item.tags.filter((t) => typeof t === "string") : [],
+    applicableDimensions: Array.isArray(item.applicableDimensions) ? item.applicableDimensions.filter((d) => typeof d === "string") : [],
+    subCategories: item.subCategories ?? void 0,
+    relevanceScore: typeof relevance?.score === "number" ? relevance.score : 0.5,
+    sourcePlatform,
+    credibilityTier: credibilityTier && validTiers.includes(credibilityTier) ? credibilityTier : void 0
+  };
+}
+function loadKnowledgeItemsFromDiskSync() {
+  try {
+    const files = readdirSync(ITEMS_PATH);
+    const jsonFiles = files.filter((f) => f.endsWith(".json"));
+    if (jsonFiles.length === 0)
+      return [];
+    const items = [];
+    for (const file3 of jsonFiles) {
+      try {
+        const raw = readFileSync(join(ITEMS_PATH, file3), "utf-8");
+        const item = JSON.parse(raw);
+        const parsed = parseKnowledgeItem(item);
+        if (parsed)
+          items.push(parsed);
+      } catch {
+        continue;
+      }
+    }
+    return items;
+  } catch {
+    return [];
+  }
+}
+function loadProfessionalInsightsFromDiskSync() {
+  return [];
+}
+
 // lib/core/session-scanner.ts
 import { readFile, readdir, stat, mkdir, writeFile } from "fs/promises";
-import { join, basename } from "path";
-import { homedir } from "os";
+import { join as join2, basename } from "path";
+import { homedir as homedir2 } from "os";
 
 // lib/core/types.ts
 var TextBlockSchema = external_exports.object({
@@ -29609,14 +31324,21 @@ var JSONLLineSchema = external_exports.discriminatedUnion("type", [
 
 // lib/core/session-scanner.ts
 function getPluginDataDir() {
-  return join(homedir(), ".betterprompt");
+  return join2(homedir2(), ".betterprompt");
 }
 function getScanCacheDir() {
-  return join(getPluginDataDir(), "scan-cache");
+  return join2(getPluginDataDir(), "scan-cache");
 }
 
 export {
   external_exports,
+  passesQualityRubric,
+  validateDistinctEvidence,
+  containsToolFileApiReference,
+  isValidToolFileApiEntry,
+  hasObservableSignal,
+  evaluateQualityRubric,
+  validateEvidenceContentDistinctness,
   DomainStrengthSchema,
   DomainGrowthAreaSchema,
   STAGE_NAMES,
@@ -29627,7 +31349,10 @@ export {
   computeDeterministicScores,
   CONTEXT_WINDOW_SIZE,
   computeDeterministicType,
+  loadKnowledgeItemsFromDiskSync,
+  loadProfessionalInsightsFromDiskSync,
+  validateGrowthAreaQuality,
   getPluginDataDir,
   getScanCacheDir
 };
-//# sourceMappingURL=chunk-VNV2GGMC.js.map
+//# sourceMappingURL=chunk-YLUEXS7F.js.map

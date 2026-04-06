@@ -1,7 +1,9 @@
 import {
   assembleCanonicalAnalysisRun,
-  getPluginDataDir
-} from "./chunk-VNV2GGMC.js";
+  getPluginDataDir,
+  loadKnowledgeItemsFromDiskSync,
+  loadProfessionalInsightsFromDiskSync
+} from "./chunk-YLUEXS7F.js";
 
 // lib/results-db.ts
 import Database from "better-sqlite3";
@@ -144,6 +146,8 @@ function assembleCanonicalRun(runId = getLatestRunId() ?? void 0) {
   if (!runId) return null;
   const run = getAnalysisRun(runId);
   if (!run?.phase1Output) return null;
+  const knowledgeItems = loadKnowledgeItemsFromDiskSync();
+  const professionalInsights = loadProfessionalInsightsFromDiskSync();
   const stageOutputs = getAllStageOutputs(runId);
   const assembledRun = assembleCanonicalAnalysisRun({
     runId,
@@ -152,7 +156,9 @@ function assembleCanonicalRun(runId = getLatestRunId() ?? void 0) {
     deterministicScores: run.scores,
     stageOutputs,
     typeResult: run.typeResult,
-    domainResults: getDomainResults(runId)
+    domainResults: getDomainResults(runId),
+    knowledgeItems,
+    professionalInsights
   });
   saveAssembledArtifacts(runId, assembledRun.activitySessions, assembledRun.evaluation);
   return assembledRun;
@@ -304,4 +310,4 @@ export {
   saveTypeResult,
   assembleCanonicalRun
 };
-//# sourceMappingURL=chunk-TPRBO53W.js.map
+//# sourceMappingURL=chunk-C2D64W37.js.map
