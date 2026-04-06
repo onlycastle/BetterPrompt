@@ -25,6 +25,11 @@ import type {
   TranslatorOutput,
   WeeklyInsights,
 } from '../schemas/index.js';
+import { enrichGrowthAreasWithKbTips } from '../matching/kb-growth-area-enricher.js';
+import type {
+  PortableKnowledgeItem,
+  PortableProfessionalInsight,
+} from '../matching/knowledge-resource-matcher.js';
 
 type EvaluationPayload = CanonicalAnalysisRun['evaluation'];
 type TranslationFields = Record<string, unknown>;
@@ -955,11 +960,34 @@ export function assembleCanonicalAnalysisRun(args: {
   typeResult: DeterministicTypeResult | null;
   domainResults: DomainResult[];
   stageOutputs: CanonicalStageOutputs;
+  /** Pre-loaded knowledge items for KB tip enrichment (optional). */
+  knowledgeItems?: PortableKnowledgeItem[];
+  /** Pre-loaded professional insights for KB tip enrichment (optional). */
+  professionalInsights?: PortableProfessionalInsight[];
 }): CanonicalAnalysisRun {
   const activitySessions = buildReportActivitySessions(
     args.phase1Output,
     args.stageOutputs.sessionSummaries,
   );
+
+  // Apply evidence verification and deduplication first
+  const processedDomainResults = deduplicateNearDuplicateEvidence(
+    applyEvidenceVerification(
+      args.domainResults,
+      args.stageOutputs.evidenceVerification,
+    ),
+  );
+
+  // Enrich growth areas with KB tips (deterministic matching, no LLM)
+  const enrichedDomainResults = (args.knowledgeItems?.length || args.professionalInsights?.length)
+    ? enrichGrowthAreasWithKbTips(
+        processedDomainResults,
+        args.knowledgeItems ?? [],
+        args.professionalInsights ?? [],
+        args.typeResult?.primaryType,
+        args.typeResult?.controlLevel,
+      )
+    : processedDomainResults;
 
   const evaluation = buildCanonicalEvaluation({
     analyzedAt: args.analyzedAt,
@@ -967,7 +995,7 @@ export function assembleCanonicalAnalysisRun(args: {
     activitySessions,
     deterministicScores: args.deterministicScores,
     typeResult: args.typeResult,
-    domainResults: args.domainResults,
+    domainResults: enrichedDomainResults,
     stageOutputs: args.stageOutputs,
   });
 
@@ -978,12 +1006,7 @@ export function assembleCanonicalAnalysisRun(args: {
     activitySessions,
     deterministicScores: args.deterministicScores,
     typeResult: args.typeResult,
-    domainResults: deduplicateNearDuplicateEvidence(
-      applyEvidenceVerification(
-        args.domainResults,
-        args.stageOutputs.evidenceVerification,
-      ),
-    ),
+    domainResults: enrichedDomainResults,
     stageOutputs: args.stageOutputs,
     evaluation,
     ...(args.stageOutputs.translator ? { translation: args.stageOutputs.translator } : {}),
