@@ -8,7 +8,93 @@
   margin: 0 auto;
 }
 
-/* Back link */
+/* ─── Team-context breadcrumb ────────────────────────────────────────────────
+ *
+ *  Layout:  [← back-arrow]  [Enterprise]  ›  [Alpha Team]  ›  [Jane Doe]
+ *
+ *  The back-arrow is a standalone icon button linked to the immediate parent.
+ *  The trail uses an <ol> so screen-readers announce "breadcrumb, 3 items".
+ *  `aria-current="page"` on the final <span> marks the current location.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+/* Back-arrow button — links to immediate parent */
+.breadcrumbBack {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--ink-muted);
+  text-decoration: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.breadcrumbBack:hover {
+  background: var(--surface-2, rgba(0, 0, 0, 0.06));
+  color: var(--ink-primary);
+}
+
+/* Ordered list that holds breadcrumb segments */
+.breadcrumbTrail {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+}
+
+/* Individual breadcrumb segment wrapper */
+.breadcrumbItem {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Separator chevron between segments */
+.breadcrumbSep {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-subtle, var(--ink-muted));
+  opacity: 0.5;
+}
+
+/* Clickable ancestor link */
+.breadcrumbLink {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.breadcrumbLink:hover {
+  color: var(--sketch-cyan);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Current page — not a link, visually distinct */
+.breadcrumbCurrent {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+  white-space: nowrap;
+}
+
+/* Legacy back-link kept for any consumers that still reference it */
 .backLink {
   display: inline-flex;
   align-items: center;

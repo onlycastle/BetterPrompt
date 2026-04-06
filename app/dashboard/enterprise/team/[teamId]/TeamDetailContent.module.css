@@ -44,6 +44,31 @@
   font-weight: var(--weight-semibold);
   color: var(--ink-primary);
   margin: 0 0 var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+/* Badge shown on Team Action Plan header when recommendations are LLM-generated */
+.llmBadge {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-primary);
+  background: var(--sketch-cyan, #06b6d4);
+  color: var(--white, #fff);
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+}
+
+/* Inline error display for analysis fetch failures */
+.errorText {
+  color: var(--red-600, #dc2626);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  padding: var(--space-sm) 0;
 }
 
 @media (max-width: 768px) {

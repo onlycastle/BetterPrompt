@@ -1,17 +1,26 @@
 /**
  * MemberDetailContent
- * Manager diagnostic view: continuous scroll through member's full profile
+ * Manager diagnostic view: continuous scroll through member's full profile.
+ * Supports contextual back navigation when accessed via team drill-down.
+ *
+ * Navigation:
+ *   Team drill-down:  Enterprise / [TeamName] / [MemberName]
+ *   Members list:     Members / [MemberName]
+ *
+ * The breadcrumb trail is driven by `backTo` props derived from URL search params
+ * (`?from=team&teamId=xxx&teamName=yyy`) — no extra API fetch required.
  */
 
 'use client';
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, FolderOpen } from 'lucide-react';
+import { ArrowLeft, ChevronRight, FolderOpen } from 'lucide-react';
 import { useMember } from '@/hooks';
 import { MemberProfileHeader } from '@/components/enterprise/MemberProfileHeader';
 import { MemberDimensionChart } from '@/components/enterprise/MemberDimensionChart';
 import { MemberAntiPatternList } from '@/components/enterprise/MemberAntiPatternList';
+import { MemberGrowthAreaList } from '@/components/enterprise/MemberGrowthAreaList';
 import { StatCard } from '@/components/enterprise/StatCard';
 import { TrendLineChart } from '@/components/enterprise/TrendLineChart';
 import { ProgressRing } from '@/components/dashboard/ProgressRing';
@@ -29,10 +38,94 @@ const DOMAIN_ICONS: Record<string, string> = {
 
 interface MemberDetailContentProps {
   memberId: string;
+  /** Navigation context: where the user came from (enables contextual back link) */
+  backTo?: {
+    /** Source view: 'team' for team detail, 'members' for org member list (default) */
+    from: 'team' | 'members';
+    /** Team ID when navigating from team view */
+    teamId?: string;
+    /** Team name for display in the back link */
+    teamName?: string;
+  };
 }
 
-export function MemberDetailContent({ memberId }: MemberDetailContentProps) {
+export function MemberDetailContent({ memberId, backTo }: MemberDetailContentProps) {
   const { data: member, isLoading, error } = useMember(memberId);
+
+  // Immediate parent href/label for the back-arrow button
+  const backHref = backTo?.from === 'team' && backTo.teamId
+    ? `/dashboard/enterprise/team/${backTo.teamId}`
+    : '/dashboard/enterprise/members';
+  const backLabel = backTo?.from === 'team' && backTo.teamName
+    ? `Back to ${backTo.teamName}`
+    : 'Back to Members';
+
+  // The member name shown in the breadcrumb trail's final segment.
+  // Falls back to '…' while loading so the breadcrumb renders immediately.
+  const memberCrumbLabel = isLoading ? '…' : (member?.name ?? memberId);
+
+  /**
+   * Team-context breadcrumb — renders in ALL states (loading, error, data).
+   *
+   * Team drill-down:  Enterprise  ›  [TeamName]  ›  [MemberName]
+   * Members list:     Members  ›  [MemberName]
+   *
+   * The back-arrow at the left navigates to the immediate parent
+   * (matches the deepest clickable ancestor in the trail).
+   */
+  const breadcrumb = (
+    <nav className={styles.breadcrumb} aria-label="Breadcrumb">
+      <Link href={backHref} className={styles.breadcrumbBack} aria-label={backLabel}>
+        <ArrowLeft size={14} />
+      </Link>
+      <ol className={styles.breadcrumbTrail}>
+        {backTo?.from === 'team' && backTo.teamId ? (
+          <>
+            <li className={styles.breadcrumbItem}>
+              <Link href="/dashboard/enterprise" className={styles.breadcrumbLink}>
+                Enterprise
+              </Link>
+            </li>
+            <li className={styles.breadcrumbSep} aria-hidden="true">
+              <ChevronRight size={12} />
+            </li>
+            <li className={styles.breadcrumbItem}>
+              <Link
+                href={`/dashboard/enterprise/team/${backTo.teamId}`}
+                className={styles.breadcrumbLink}
+              >
+                {backTo.teamName ?? 'Team'}
+              </Link>
+            </li>
+            <li className={styles.breadcrumbSep} aria-hidden="true">
+              <ChevronRight size={12} />
+            </li>
+            <li className={styles.breadcrumbItem}>
+              <span className={styles.breadcrumbCurrent} aria-current="page">
+                {memberCrumbLabel}
+              </span>
+            </li>
+          </>
+        ) : (
+          <>
+            <li className={styles.breadcrumbItem}>
+              <Link href="/dashboard/enterprise/members" className={styles.breadcrumbLink}>
+                Members
+              </Link>
+            </li>
+            <li className={styles.breadcrumbSep} aria-hidden="true">
+              <ChevronRight size={12} />
+            </li>
+            <li className={styles.breadcrumbItem}>
+              <span className={styles.breadcrumbCurrent} aria-current="page">
+                {memberCrumbLabel}
+              </span>
+            </li>
+          </>
+        )}
+      </ol>
+    </nav>
+  );
 
   // Convert weeklyTokenTrend to HistoryEntry format for TrendLineChart
   const tokenTrendData: HistoryEntry[] = useMemo(() => {
@@ -46,10 +139,7 @@ export function MemberDetailContent({ memberId }: MemberDetailContentProps) {
   if (isLoading) {
     return (
       <div className={styles.container}>
-        <Link href="/dashboard/enterprise/members" className={styles.backLink}>
-          <ArrowLeft size={16} />
-          Back to Members
-        </Link>
+        {breadcrumb}
         <p>Loading member...</p>
       </div>
     );
@@ -58,10 +148,7 @@ export function MemberDetailContent({ memberId }: MemberDetailContentProps) {
   if (error) {
     return (
       <div className={styles.container}>
-        <Link href="/dashboard/enterprise/members" className={styles.backLink}>
-          <ArrowLeft size={16} />
-          Back to Members
-        </Link>
+        {breadcrumb}
         <p>Failed to load member: {error.message}</p>
       </div>
     );
@@ -70,10 +157,7 @@ export function MemberDetailContent({ memberId }: MemberDetailContentProps) {
   if (!member) {
     return (
       <div className={styles.container}>
-        <Link href="/dashboard/enterprise/members" className={styles.backLink}>
-          <ArrowLeft size={16} />
-          Back to Members
-        </Link>
+        {breadcrumb}
         <div className={styles.notFound}>
           <h2>Member not found</h2>
           <p>The member you are looking for does not exist or has been removed.</p>
@@ -88,11 +172,8 @@ export function MemberDetailContent({ memberId }: MemberDetailContentProps) {
 
   return (
     <div className={styles.container}>
-      {/* Back link */}
-      <Link href="/dashboard/enterprise/members" className={styles.backLink}>
-        <ArrowLeft size={16} />
-        Back to Members
-      </Link>
+      {/* Team-context breadcrumb — full hierarchy path with back-arrow */}
+      {breadcrumb}
 
       {/* Section 0: Member Profile Header */}
       <MemberProfileHeader member={member} />
@@ -115,6 +196,14 @@ export function MemberDetailContent({ memberId }: MemberDetailContentProps) {
           <MemberDimensionChart dimensions={member.dimensions} />
         </div>
       </section>
+
+      {/* Section 1b: Growth Areas — PEA format */}
+      {member.growthAreas.length > 0 && (
+        <section className={styles.section}>
+          <h3 className={styles.sectionTitle}>Growth Areas</h3>
+          <MemberGrowthAreaList growthAreas={member.growthAreas} />
+        </section>
+      )}
 
       {/* Section 2: Strengths Overview */}
       <section className={styles.section}>
