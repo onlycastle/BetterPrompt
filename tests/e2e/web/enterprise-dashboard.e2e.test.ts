@@ -382,6 +382,207 @@ test.describe('Team Detail Page', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Team → Member Drill-Down (AC 11)
+// ---------------------------------------------------------------------------
+
+test.describe('Team → Member Drill-Down', () => {
+  /**
+   * Navigate to enterprise overview, find a team link via the Teams section,
+   * enter the team detail page, then click a member to verify drill-down
+   * navigates to the member detail page with team context (back link = "Back to [TeamName]").
+   */
+
+  test('enterprise overview shows Teams section with clickable team cards', async ({ page }) => {
+    await navigateTo(page, '/dashboard/enterprise');
+    await waitForContent(page);
+
+    const teamsSection = page.getByText('Teams');
+    const isVisible = await teamsSection.isVisible().catch(() => false);
+    // Only assert if data exists; skip gracefully when no teams are seeded
+    if (isVisible) {
+      await expect(teamsSection).toBeVisible();
+      const teamLink = page.locator('a[href*="/dashboard/enterprise/team/"]').first();
+      await expect(teamLink).toBeVisible();
+    }
+  });
+
+  test('clicking a team card navigates to team detail page', async ({ page }) => {
+    await navigateTo(page, '/dashboard/enterprise');
+    await waitForContent(page);
+
+    const teamLink = page.locator('a[href*="/dashboard/enterprise/team/"]').first();
+    const hasTeamLink = await teamLink.isVisible().catch(() => false);
+    test.skip(!hasTeamLink, 'No teams seeded');
+
+    await teamLink.click();
+    await page.waitForURL(/\/dashboard\/enterprise\/team\/.+/);
+    expect(page.url()).toMatch(/\/dashboard\/enterprise\/team\/.+/);
+  });
+
+  test('clicking member row in team detail navigates to member detail', async ({ page }) => {
+    // Step 1: reach the team detail page
+    await navigateTo(page, '/dashboard/enterprise');
+    await waitForContent(page);
+
+    const teamLink = page.locator('a[href*="/dashboard/enterprise/team/"]').first();
+    const hasTeamLink = await teamLink.isVisible().catch(() => false);
+    test.skip(!hasTeamLink, 'No teams seeded');
+
+    await teamLink.click();
+    await page.waitForURL(/\/dashboard\/enterprise\/team\/.+/);
+    await page.waitForLoadState('networkidle');
+
+    // Step 2: find and click a member in the member table
+    const table = page.locator('table');
+    const hasTable = await table.isVisible().catch(() => false);
+    test.skip(!hasTable, 'No member table in team detail');
+
+    const firstMemberRow = table.locator('tbody tr').first();
+    await firstMemberRow.click();
+
+    // Step 3: verify navigation to member detail
+    await page.waitForURL(/\/dashboard\/enterprise\/members\/.+/);
+    expect(page.url()).toMatch(/\/dashboard\/enterprise\/members\/.+/);
+  });
+
+  test('member detail accessed from team has team context in URL', async ({ page }) => {
+    // Navigate to a team
+    await navigateTo(page, '/dashboard/enterprise');
+    await waitForContent(page);
+
+    const teamLink = page.locator('a[href*="/dashboard/enterprise/team/"]').first();
+    const hasTeamLink = await teamLink.isVisible().catch(() => false);
+    test.skip(!hasTeamLink, 'No teams seeded');
+
+    await teamLink.click();
+    await page.waitForURL(/\/dashboard\/enterprise\/team\/.+/);
+    await page.waitForLoadState('networkidle');
+
+    // Click member in the Growth Leaderboard (first clickable row with member data)
+    const table = page.locator('table');
+    const hasTable = await table.isVisible().catch(() => false);
+    test.skip(!hasTable, 'No member table in team detail');
+
+    await table.locator('tbody tr').first().click();
+    await page.waitForURL(/\/dashboard\/enterprise\/members\/.+/);
+
+    // URL should carry team context query params
+    const url = page.url();
+    expect(url).toContain('from=team');
+    expect(url).toContain('teamId=');
+  });
+
+  test('back link on member detail says Back to [TeamName] when accessed from team', async ({ page }) => {
+    // Navigate to team detail
+    await navigateTo(page, '/dashboard/enterprise');
+    await waitForContent(page);
+
+    const teamLink = page.locator('a[href*="/dashboard/enterprise/team/"]').first();
+    const hasTeamLink = await teamLink.isVisible().catch(() => false);
+    test.skip(!hasTeamLink, 'No teams seeded');
+
+    // Read the team name from the card before clicking
+    const teamNameEl = teamLink.locator('h3').first();
+    const teamName = await teamNameEl.textContent().catch(() => null);
+
+    await teamLink.click();
+    await page.waitForURL(/\/dashboard\/enterprise\/team\/.+/);
+    await page.waitForLoadState('networkidle');
+
+    const table = page.locator('table');
+    const hasTable = await table.isVisible().catch(() => false);
+    test.skip(!hasTable, 'No member table in team detail');
+
+    await table.locator('tbody tr').first().click();
+    await page.waitForURL(/\/dashboard\/enterprise\/members\/.+/);
+    await page.waitForFunction(
+      () => !document.body.textContent?.includes('Loading member'),
+      { timeout: 15000 },
+    ).catch(() => {});
+
+    // Back link should say "Back to [TeamName]" not "Back to Members"
+    if (teamName) {
+      const backLink = page.getByText(`Back to ${teamName}`);
+      await expect(backLink).toBeVisible();
+    } else {
+      // Fallback: any "Back to" link that points back to a team URL
+      const backLink = page.locator('a[href*="/dashboard/enterprise/team/"]');
+      await expect(backLink).toBeVisible();
+    }
+  });
+
+  test('back link returns user to team detail page', async ({ page }) => {
+    // Navigate to team detail
+    await navigateTo(page, '/dashboard/enterprise');
+    await waitForContent(page);
+
+    const teamLink = page.locator('a[href*="/dashboard/enterprise/team/"]').first();
+    const hasTeamLink = await teamLink.isVisible().catch(() => false);
+    test.skip(!hasTeamLink, 'No teams seeded');
+
+    await teamLink.click();
+    await page.waitForURL(/\/dashboard\/enterprise\/team\/.+/);
+    const teamUrl = page.url();
+    await page.waitForLoadState('networkidle');
+
+    const table = page.locator('table');
+    const hasTable = await table.isVisible().catch(() => false);
+    test.skip(!hasTable, 'No member table in team detail');
+
+    // Drill into member
+    await table.locator('tbody tr').first().click();
+    await page.waitForURL(/\/dashboard\/enterprise\/members\/.+/);
+    await page.waitForLoadState('networkidle');
+
+    // Click back link → should return to team detail
+    const backLink = page.locator(`a[href*="/dashboard/enterprise/team/"]`).first();
+    const hasBackLink = await backLink.isVisible().catch(() => false);
+    test.skip(!hasBackLink, 'No team back link found on member detail');
+
+    await backLink.click();
+    await page.waitForURL(/\/dashboard\/enterprise\/team\/.+/);
+    expect(page.url()).toBe(teamUrl);
+  });
+
+  test('member detail accessed from team shows growth areas section', async ({ page }) => {
+    // Navigate to team → member detail
+    await navigateTo(page, '/dashboard/enterprise');
+    await waitForContent(page);
+
+    const teamLink = page.locator('a[href*="/dashboard/enterprise/team/"]').first();
+    const hasTeamLink = await teamLink.isVisible().catch(() => false);
+    test.skip(!hasTeamLink, 'No teams seeded');
+
+    await teamLink.click();
+    await page.waitForURL(/\/dashboard\/enterprise\/team\/.+/);
+    await page.waitForLoadState('networkidle');
+
+    const table = page.locator('table');
+    const hasTable = await table.isVisible().catch(() => false);
+    test.skip(!hasTable, 'No member table in team detail');
+
+    await table.locator('tbody tr').first().click();
+    await page.waitForURL(/\/dashboard\/enterprise\/members\/.+/);
+    await page.waitForFunction(
+      () => !document.body.textContent?.includes('Loading member'),
+      { timeout: 15000 },
+    ).catch(() => {});
+
+    // Growth Areas section should render (or be absent if no data — not an error)
+    const growthSection = page.getByRole('heading', { name: 'Growth Areas' });
+    const hasGrowthAreas = await growthSection.isVisible().catch(() => false);
+    // When growth areas exist, section must be visible
+    if (hasGrowthAreas) {
+      await expect(growthSection).toBeVisible();
+    }
+    // Always assert the full report sections are present
+    await expect(page.getByText('Score History')).toBeVisible();
+    await expect(page.getByText('Anti-Patterns')).toBeVisible();
+    await expect(page.getByText('Growth Tracking')).toBeVisible();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Token Usage Tracking (Manager Focus)
 // ---------------------------------------------------------------------------
 

@@ -227,6 +227,16 @@ Extract quotes for the following categories. Each quote must be the developer's 
 - Include `utteranceId` for every quote
 - For first prompts, capture the complete opening message (truncate at 200 characters if necessary, preserve the start)
 
+### Concrete Session Data Capture (Required for downstream evidence quality)
+
+For each extracted quote, also capture these fields from the Phase 1 data to enable concrete evidence context in the write stage:
+
+- **`projectName`**: The project name for the session this quote comes from. Look up from `phase1.sessionOverviews` (match by `sessionId`). Use `'unknown'` only if genuinely unavailable.
+- **`toolCallsBefore`**: The Claude tools invoked immediately before this utterance. Look up from `phase1.developerUtterances` (match by `utteranceId`) and use the `precedingAIToolCalls` array (max 5 tools). Use `[]` if the utterance has no preceding tool calls. Especially useful for `correction_event` and `e_gap_request` quotes — what tool had just run?
+- **`filePathsAccessed`**: Specific file paths and commands from the preceding tool call inputs. Look up from `phase1.interactionSnapshots` (match by `utteranceId`) and use the `precedingAIToolInputSummaries` array. For Skill Resilience growth areas, file paths show which specific files the developer was working with when a correction or explanation request happened (e.g., `"src/lib/auth.ts"` shows the developer needed help specifically with auth logic). Include relevant entries in `toolCallsBefore`. Use `[]` if none available.
+
+These fields are consumed by the write stage when constructing evidence moment `context` fields and `toolsFilesApis` arrays — they MUST be present for growth areas to reference concrete session data rather than generic descriptions.
+
 ## Format
 
 ### Scoring
@@ -250,19 +260,30 @@ Use Write to save the following JSON structure to `~/.betterprompt/tmp/stage-ext
       "text": "In src/auth/middleware.ts, the validateToken function fails when the JWT is expired but the refresh token is still valid. Without modifying the token schema, add logic to attempt a silent refresh before rejecting.",
       "category": "first_prompt",
       "signalType": "strength",
-      "sessionId": "abc123"
+      "sessionId": "abc123",
+      "projectName": "<project name from sessionOverviews where sessionId matches>",
+      "toolCallsBefore": [],
+      "timestamp": "<ISO timestamp from phase1.interactionSnapshots — look up by matching utteranceId (e.g. '2026-03-16T09:00:00.000Z')>"
     },
     {
       "utteranceId": "def456_8",
       "text": "That's the wrong method -- use createServerClient not createClient for server components",
       "category": "correction_event",
-      "signalType": "strength"
+      "signalType": "strength",
+      "sessionId": "<id>",
+      "projectName": "<project name from sessionOverviews>",
+      "toolCallsBefore": ["<tool that generated the incorrect output>"],
+      "timestamp": "<ISO timestamp from phase1.interactionSnapshots — look up by matching utteranceId>"
     },
     {
       "utteranceId": "ghi789_14",
       "text": "Wait, what does this useEffect dependency array actually do?",
       "category": "e_gap_request",
-      "signalType": "growth"
+      "signalType": "growth",
+      "sessionId": "<id>",
+      "projectName": "<project name from sessionOverviews>",
+      "toolCallsBefore": ["<tool that generated the code being questioned>"],
+      "timestamp": "<ISO timestamp from phase1.interactionSnapshots — look up by matching utteranceId>"
     }
   ],
   "patterns": [
@@ -359,6 +380,10 @@ Print a brief `[bp]` status line at each key step:
 - [ ] Included at least one E_gap quote and one developer-explains-to-AI quote
 - [ ] Every quote uses schema-compatible `signalType` values (`strength` or `growth`)
 - [ ] Every pattern uses schema-compatible `frequency` values (`consistent`, `occasional`, or `rare`)
+- [ ] Every quote has `projectName` populated from `phase1.sessionOverviews` (matched by sessionId)
+- [ ] Every quote has `toolCallsBefore` populated from `phase1.developerUtterances[n].precedingAIToolCalls` (matched by utteranceId), or `[]` if none
+- [ ] `correction_event` quotes have `toolCallsBefore` showing what tool generated the incorrect output (key for evidence context)
+- [ ] Every quote has `timestamp` from `phase1.interactionSnapshots[n].timestamp` (look up snapshot where `snapshot.utteranceId === quote.utteranceId`)
 - [ ] `dominantPattern` reflects the strongest recurring pattern based on `frequency` and session coverage
 - [ ] No hedging language used anywhere in output
 - [ ] Wrote output JSON to `~/.betterprompt/tmp/stage-extractSkillResilience.json`

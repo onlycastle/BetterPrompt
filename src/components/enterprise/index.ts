@@ -62,3 +62,9 @@ export type { MemberDimensionChartProps } from './MemberDimensionChart';
 
 export { MemberAntiPatternList } from './MemberAntiPatternList';
 export type { MemberAntiPatternListProps } from './MemberAntiPatternList';
+
+export { CrossDeveloperPatterns } from './CrossDeveloperPatterns';
+export type { CrossDeveloperPatternsProps } from './CrossDeveloperPatterns';
+
+export { TeamRecommendations } from './TeamRecommendations';
+export type { TeamRecommendationsProps } from './TeamRecommendations';

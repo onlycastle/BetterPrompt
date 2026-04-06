@@ -14,6 +14,8 @@ import styles from './AntiPatternDeepDive.module.css';
 
 export interface AntiPatternDeepDiveProps {
   aggregates: EnhancedAntiPatternAggregate[];
+  /** Optional callback when an affected member name is clicked — enables drill-down to member detail */
+  onMemberClick?: (memberName: string) => void;
 }
 
 const IMPACT_COLORS = {
@@ -22,7 +24,7 @@ const IMPACT_COLORS = {
   low: 'var(--ink-muted)',
 } as const;
 
-export function AntiPatternDeepDive({ aggregates }: AntiPatternDeepDiveProps) {
+export function AntiPatternDeepDive({ aggregates, onMemberClick }: AntiPatternDeepDiveProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   if (aggregates.length === 0) {
@@ -88,7 +90,22 @@ export function AntiPatternDeepDive({ aggregates }: AntiPatternDeepDiveProps) {
                 <p className={styles.description}>{agg.description}</p>
                 {agg.affectedMembers.length > 0 && (
                   <p className={styles.affectedMembers}>
-                    <strong>Affected:</strong> {agg.affectedMembers.join(', ')}
+                    <strong>Affected:</strong>{' '}
+                    {onMemberClick
+                      ? agg.affectedMembers.map((name, i) => (
+                          <span key={name}>
+                            {i > 0 && ', '}
+                            <button
+                              className={styles.memberLink}
+                              onClick={() => onMemberClick(name)}
+                              title={`View ${name}'s detail report`}
+                            >
+                              {name}
+                            </button>
+                          </span>
+                        ))
+                      : agg.affectedMembers.join(', ')
+                    }
                   </p>
                 )}
                 <div className={styles.insightCallout}>

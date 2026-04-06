@@ -17,6 +17,12 @@
  */
 
 import { z } from 'zod';
+import { VerifiableActionSchema } from './domain-result.js';
+import { KbTipAttachmentSchema } from './growth-area-pea.js';
+
+// Re-export for convenience
+export { VerifiableActionSchema } from './domain-result.js';
+export type { VerifiableAction } from './domain-result.js';
 
 // ============================================================================
 // Shared Evidence Schemas
@@ -33,8 +39,42 @@ export const InsightEvidenceSchema = z.object({
   quote: z.string(),
   /** Brief context description */
   context: z.string().optional(),
+  /** Explicit session ID for multi-session evidence grouping (v2) */
+  sessionId: z.string().optional(),
+  /** What behavior the developer exhibited in this moment (v2) */
+  behaviorDescription: z.string().optional(),
 });
 export type InsightEvidence = z.infer<typeof InsightEvidenceSchema>;
+
+/**
+ * Rich evidence moment for Pattern→Evidence→Action growth areas (v2).
+ *
+ * All fields required — captures a distinct exchange from a specific session.
+ * Minimum 2 moments per growth area establish a pattern across sessions.
+ */
+export const EvidenceMomentSchema = z.object({
+  /** Utterance ID for source verification (format: {sessionId}_{turnIndex}) */
+  utteranceId: z.string(),
+  /** Explicit session ID — enables distinct-session verification */
+  sessionId: z.string(),
+  /** Direct quote from the developer's message */
+  quote: z.string(),
+  /** What behavior this moment demonstrates in the growth pattern */
+  behaviorDescription: z.string(),
+  /** Brief context label (optional, for UI badges) */
+  context: z.string().optional(),
+  /**
+   * ISO 8601 timestamp of the session moment (from UserUtterance.timestamp).
+   * Optional for backward compatibility; populated by new analysis runs.
+   *
+   * Enables:
+   * 1. Temporal verification that moments are from distinct times
+   * 2. Chronological ordering of evidence in reports
+   * 3. Cross-referencing with session JSONL logs by timestamp
+   */
+  timestamp: z.string().optional(),
+});
+export type EvidenceMoment = z.infer<typeof EvidenceMomentSchema>;
 
 /**
  * Evidence can be either a simple string (legacy) or structured with utterance linking.
@@ -111,6 +151,82 @@ export const WorkerGrowthSchema = z.object({
   descriptionPreview: z.string().optional(),
   /** Truncated recommendation preview for free tier blur teaser (set by ContentGateway) */
   recommendationPreview: z.string().optional(),
+  /**
+   * v2 evidence moments in Pattern→Evidence→Action format.
+   * Each moment is a distinct exchange from a specific session with:
+   * - sessionId: explicit session reference
+   * - quote: the developer's exact words
+   * - behaviorDescription: what behavior this moment demonstrates
+   *
+   * Minimum 2 moments required to establish a pattern.
+   * When present, supersedes legacy `evidence` array for display.
+   */
+  evidenceMoments: z.array(EvidenceMomentSchema).min(2).optional(),
+  /**
+   * Low-confidence flag — set when evidence is sparse (fewer distinct
+   * sessions than ideal). Never produce empty reports; surface this flag
+   * so UI can show a confidence indicator instead.
+   */
+  lowConfidence: z.boolean().optional(),
+  /**
+   * Verifiable next-session action — a concrete behavior change
+   * checkable against future session logs.
+   *
+   * Optional for backward compatibility with old data; required by
+   * quality gate for new analyses. The action field describes what the
+   * developer should do in their next session, and checkDescription
+   * explains how to verify it was attempted by examining session logs.
+   *
+   * @see VerifiableActionSchema in domain-result.ts for full docs
+   */
+  verifiableAction: VerifiableActionSchema.optional(),
+
+  // ── PEA Display Fields (populated by peaToWorkerGrowth converter) ────
+
+  /**
+   * Specific tools, files, APIs, or technologies from the PEA pattern.
+   * Displayed as tag pills in the Pattern section of PEA-format cards.
+   * Only populated when growth area originates from PEA pipeline.
+   */
+  toolsFilesApis: z.array(z.string()).optional(),
+
+  /**
+   * Why the recommended action matters for this builder's goals.
+   * From PEA action.goalRelevance — connects action to real-world impact.
+   * Displayed in the Action section of PEA-format cards.
+   */
+  actionGoalRelevance: z.string().optional(),
+
+  /**
+   * Freeform LLM-generated behavioral category tags for cross-developer
+   * clustering in team views. From PEA categoryTags — not a fixed taxonomy.
+   * Examples: ["error-handling", "test-coverage", "express-middleware"]
+   *
+   * Used by team aggregation to detect shared patterns via tag overlap.
+   * Only populated when growth area originates from PEA pipeline.
+   */
+  categoryTags: z.array(z.string()).min(1).max(5).optional(),
+
+  // ── KB Tip Attachment (post-processing by deterministic matcher) ──────
+
+  /**
+   * Best-match knowledge base tip attached by the deterministic KB matcher.
+   * Populated post-generation during report assembly — NOT LLM-generated.
+   * One best-match tip per growth area, or absent if no item exceeds
+   * the relevance threshold.
+   *
+   * Includes source credibility signal for scoring transparency.
+   */
+  kbTip: KbTipAttachmentSchema.optional(),
+
+  /**
+   * Best-match knowledge tip — canonical display field name.
+   *
+   * Same content as `kbTip` but uses the canonical user-facing name.
+   * Populated by the deterministic KB matcher during report assembly.
+   * Use `knowledgeTip` in new code; `kbTip` is the legacy internal field.
+   */
+  knowledgeTip: KbTipAttachmentSchema.optional(),
 });
 export type WorkerGrowth = z.infer<typeof WorkerGrowthSchema>;
 

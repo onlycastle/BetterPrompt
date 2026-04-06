@@ -7,12 +7,13 @@
 
 import { useMemo } from 'react';
 import { Card, CardContent } from '../ui/Card';
-import { pluralizeMembers } from './format-utils';
 import type { TeamGrowthAreaAggregate } from '../../types/enterprise';
 import styles from './CommonGrowthAreas.module.css';
 
 export interface CommonGrowthAreasProps {
   areas: TeamGrowthAreaAggregate[];
+  /** Optional callback when an affected member name is clicked — enables drill-down to member detail */
+  onMemberClick?: (memberName: string) => void;
 }
 
 const DOMAIN_ORDER = [
@@ -59,7 +60,7 @@ function getSeverityClass(severity: string): string {
   return classMap[severity] ?? styles.severityLow;
 }
 
-export function CommonGrowthAreas({ areas }: CommonGrowthAreasProps) {
+export function CommonGrowthAreas({ areas, onMemberClick }: CommonGrowthAreasProps) {
   const groupedByDomain = useMemo(() => {
     const groups = new Map<string, TeamGrowthAreaAggregate[]>();
 
@@ -114,17 +115,40 @@ export function CommonGrowthAreas({ areas }: CommonGrowthAreasProps) {
                   <div key={`${area.domain}-${area.title}-${idx}`} className={styles.areaItem}>
                     <div className={styles.areaHeader}>
                       <span className={styles.areaTitle}>{area.title}</span>
-                      <span className={`${styles.severityBadge} ${getSeverityClass(area.predominantSeverity)}`}>
-                        {area.predominantSeverity}
-                      </span>
+                      <div className={styles.areaBadges}>
+                        {area.hasLowConfidenceContributors && (
+                          <span className={styles.emergingBadge} title="Some team members have limited evidence for this pattern — needs more sessions to confirm">
+                            Emerging
+                          </span>
+                        )}
+                        <span className={`${styles.severityBadge} ${getSeverityClass(area.predominantSeverity)}`}>
+                          {area.predominantSeverity}
+                        </span>
+                      </div>
                     </div>
                     <div className={styles.memberInfo}>
                       <span className={styles.memberCount}>
-                        {pluralizeMembers(area.memberCount)} affected
+                        {area.totalDevs > 0
+                          ? `${area.memberCount} of ${area.totalDevs} devs`
+                          : `${area.memberCount} dev${area.memberCount !== 1 ? 's' : ''}`}
                       </span>
                       {area.affectedMembers.length > 0 && (
                         <span className={styles.memberNames}>
-                          ({area.affectedMembers.join(', ')})
+                          ({onMemberClick
+                            ? area.affectedMembers.map((name, mi) => (
+                                <span key={name}>
+                                  {mi > 0 && ', '}
+                                  <button
+                                    className={styles.memberLink}
+                                    onClick={() => onMemberClick(name)}
+                                    title={`View ${name}'s detail report`}
+                                  >
+                                    {name}
+                                  </button>
+                                </span>
+                              ))
+                            : area.affectedMembers.join(', ')
+                          })
                         </span>
                       )}
                     </div>

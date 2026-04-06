@@ -28,14 +28,18 @@ Zero-config local auth — server auto-creates `local@localhost` admin via `getO
 - Org members: `app/api/org/members` (GET all members as TeamMemberAnalysis[])
 - Teams CRUD: `app/api/teams`, `app/api/teams/[teamId]`
 - Team members: `app/api/teams/[teamId]/members`, `app/api/teams/[teamId]/members/[userId]`
+- Team analysis: `app/api/teams/[teamId]/analysis` (GET — server-side PEA pattern analysis + LLM recommendations)
 
 ## Team Management
 
 - `src/lib/local/team-store.ts`: CRUD for organizations, teams, team members (SQLite)
 - `src/lib/local/evaluation-to-team.ts`: Pure mapper from `StoredAnalysisResult[]` → `TeamMemberAnalysis`
-- `src/lib/enterprise/aggregation.ts`: Team-level aggregation (growth areas, KPT, anti-patterns, team analytics)
+- `src/lib/enterprise/aggregation.ts`: Team-level aggregation (growth areas, KPT, anti-patterns, team analytics, PEA clustering)
+- `src/lib/enterprise/tag-similarity.ts`: Jaro-Winkler tag clustering for cross-developer pattern grouping
+- `src/lib/enterprise/tag-similarity-llm.ts`: LLM-powered category enrichment for tag clusters
+- `src/lib/enterprise/team-recommendations-prompt.ts`: Team-level action items (deterministic + LLM paths)
 - `src/lib/enterprise-access.ts`: Access control (checks `user.organizationId`)
-- API routes: `app/api/org/`, `app/api/teams/`
+- API routes: `app/api/org/`, `app/api/teams/`, `app/api/teams/[teamId]/analysis`
 - Enterprise pages: `app/dashboard/enterprise/` (overview, members, team detail, settings, setup)
 - Setup flow: `app/dashboard/enterprise/setup/` (first-time org creation)
 
@@ -43,6 +47,7 @@ Zero-config local auth — server auto-creates `local@localhost` admin via `getO
 
 ```
 Plugin local analysis → optional /api/analysis/sync → analysis_results table → /api/org/members → evaluation-to-team mapper → TeamMemberAnalysis → hooks → enterprise UI
+Team analysis: /api/teams/[teamId]/analysis → aggregation.ts (PEA clustering + tag similarity) → team-recommendations-prompt.ts (deterministic or LLM) → TeamAnalysisOutput
 ```
 
 ### Access Control

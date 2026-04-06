@@ -172,6 +172,7 @@ export function MembersContent() {
         members={memberList}
         showDepartment
         onRowClick={handleRowClick}
+        getHref={(member) => `/dashboard/enterprise/members/${member.id}`}
         onEdit={setEditTarget}
         onRemove={setRemoveTarget}
       />

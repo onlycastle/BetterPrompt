@@ -7,24 +7,46 @@
 
 'use client';
 
-import { useMemo } from 'react';
-import { useOrganization, useMembers, useOrgAntiPatterns, useOrgGrowthAreas, useOrgKpt } from '@/hooks';
+import { useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useOrganization, useMembers, useTeams, useOrgAntiPatterns, useOrgGrowthAreas, useOrgGrowthAreasPEA, useOrgTeamActionItems, useOrgKpt } from '@/hooks';
 import { StatCard } from '@/components/enterprise/StatCard';
+import { TeamOverviewGrid } from '@/components/enterprise/TeamOverviewGrid';
 import { formatTokens, getTokenDelta } from '@/components/enterprise/format-utils';
 import { GrowthLeaderboard } from '@/components/enterprise/GrowthLeaderboard';
 import { TokenUsagePanel } from '@/components/enterprise/TokenUsagePanel';
 import { AntiPatternDeepDive } from '@/components/enterprise/AntiPatternDeepDive';
 import { CommonGrowthAreas } from '@/components/enterprise/CommonGrowthAreas';
+import { CrossDeveloperPatterns } from '@/components/enterprise/CrossDeveloperPatterns';
+import { TeamRecommendations } from '@/components/enterprise/TeamRecommendations';
 import { TeamKPTPanel } from '@/components/enterprise/TeamKPTPanel';
 import { ProjectActivityFeed } from '@/components/enterprise/ProjectActivityFeed';
 import { Card, CardContent } from '@/components/ui/Card';
+import type { TeamMemberAnalysis } from '@/types/enterprise';
 import styles from './EnterpriseOverviewContent.module.css';
 
 export function EnterpriseOverviewContent() {
   const { data: org, isLoading: orgLoading, error: orgError } = useOrganization();
   const { data: members, isLoading: membersLoading } = useMembers();
+  const { data: teams } = useTeams();
+  const router = useRouter();
+
+  // Navigate to individual member detail report from any drill-down point
+  const handleMemberClick = useCallback((member: TeamMemberAnalysis) => {
+    router.push(`/dashboard/enterprise/members/${member.id}`);
+  }, [router]);
+
+  // Resolve member name → member detail navigation (used by CommonGrowthAreas drill-down)
+  const handleMemberNameClick = useCallback((memberName: string) => {
+    const member = members?.find(m => m.name === memberName);
+    if (member) {
+      router.push(`/dashboard/enterprise/members/${member.id}`);
+    }
+  }, [members, router]);
   const { data: antiPatterns } = useOrgAntiPatterns();
   const { data: growthAreas } = useOrgGrowthAreas();
+  const { data: peaPatterns, totalMembers: peaTotalMembers } = useOrgGrowthAreasPEA();
+  const { data: teamActionItems } = useOrgTeamActionItems();
   const { data: kpt } = useOrgKpt();
 
   // Aggregate stats
@@ -102,13 +124,25 @@ export function EnterpriseOverviewContent() {
         <StatCard label="Anti-Patterns" value={totalAntiPatterns} suffix=" detected" />
       </div>
 
+      {/* Teams Grid — clickable team cards link to team detail pages */}
+      {teams && teams.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Teams</h2>
+          <TeamOverviewGrid teams={teams} />
+        </section>
+      )}
+
       {/* Growth Leaderboard */}
       {members && members.length > 0 && (
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Growth Leaderboard</h2>
           <Card>
             <CardContent>
-              <GrowthLeaderboard members={members} />
+              <GrowthLeaderboard
+                members={members}
+                onMemberClick={handleMemberClick}
+                getHref={(member) => `/dashboard/enterprise/members/${member.id}`}
+              />
             </CardContent>
           </Card>
         </section>
@@ -128,9 +162,17 @@ export function EnterpriseOverviewContent() {
           <h2 className={styles.sectionTitle}>Anti-Pattern Deep Dive</h2>
           <Card>
             <CardContent>
-              <AntiPatternDeepDive aggregates={antiPatterns} />
+              <AntiPatternDeepDive aggregates={antiPatterns} onMemberClick={handleMemberNameClick} />
             </CardContent>
           </Card>
+        </section>
+      )}
+
+      {/* Team Action Plan — prioritized manager-actionable recommendations */}
+      {teamActionItems && teamActionItems.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Team Action Plan</h2>
+          <TeamRecommendations items={teamActionItems} onMemberClick={handleMemberNameClick} />
         </section>
       )}
 
@@ -138,7 +180,15 @@ export function EnterpriseOverviewContent() {
       {growthAreas && growthAreas.length > 0 && (
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Common Growth Areas</h2>
-          <CommonGrowthAreas areas={growthAreas} />
+          <CommonGrowthAreas areas={growthAreas} onMemberClick={handleMemberNameClick} />
+        </section>
+      )}
+
+      {/* Cross-Developer Patterns (PEA-format with tag clustering) */}
+      {peaPatterns && peaPatterns.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Cross-Developer Patterns</h2>
+          <CrossDeveloperPatterns patterns={peaPatterns} totalMembers={peaTotalMembers} onMemberClick={handleMemberNameClick} />
         </section>
       )}
 
@@ -154,7 +204,7 @@ export function EnterpriseOverviewContent() {
       {members && members.length > 0 && (
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Project Activity</h2>
-          <ProjectActivityFeed members={members} />
+          <ProjectActivityFeed members={members} onMemberClick={handleMemberNameClick} />
         </section>
       )}
     </div>

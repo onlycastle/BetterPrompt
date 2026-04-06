@@ -23,6 +23,8 @@ export type {
   ExpertSignals,
   Phase1SessionMetrics,
   Phase1Output,
+  ToolCallEvidence,
+  UtteranceEvidenceContext,
   ReportActivitySession,
   DeterministicScores,
   CodingStyleType,

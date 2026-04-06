@@ -150,6 +150,16 @@ Use this reference to evaluate whether the builder chose the right tool for each
 - Do NOT paraphrase -- every quote must be verbatim session text
 - Group quotes into themed clusters in the `patterns` array
 
+### Concrete Session Data Capture (Required for downstream evidence quality)
+
+For each extracted quote, also capture these fields from the Phase 1 data to enable concrete evidence context in the write stage:
+
+- **`projectName`**: The project name for the session this quote comes from. Look up from `phase1.sessionOverviews` (match by `sessionId`). Use `'unknown'` only if genuinely unavailable.
+- **`toolCallsBefore`**: The Claude tools invoked immediately before this utterance. Look up from `phase1.developerUtterances` (match by `utteranceId`) and use the `precedingAIToolCalls` array (max 5 tools). Use `[]` if the utterance has no preceding tool calls.
+- **`filePathsAccessed`**: Specific file paths and commands from the preceding tool call inputs. Look up from `phase1.interactionSnapshots` (match by `utteranceId`) and use the `precedingAIToolInputSummaries` array. These are crucial for Tool Mastery growth areas — instead of generic `["Bash"]`, you get `["Bash", "npm test --watch"]` or `["Read", "src/lib/auth.ts"]`. Include the most relevant entries in `toolCallsBefore` alongside tool names. Use `[]` if none available.
+
+These fields are consumed by the write stage when constructing evidence moment `context` fields and `toolsFilesApis` arrays — they MUST be present and accurate for growth areas to reference concrete session data rather than generic descriptions.
+
 ## Pattern Detection
 
 Identify **3-8 patterns** using exactly these category values:
@@ -194,7 +204,10 @@ Use Write to save the following JSON structure to `~/.betterprompt/tmp/stage-ext
       "sessionId": "<id>",
       "behavioralMarker": "<diversity|advanced_usage|workflow_composition>",
       "signalType": "<strength|growth>",
-      "confidence": 0.0
+      "confidence": 0.0,
+      "projectName": "<project name from sessionOverviews where sessionId matches>",
+      "toolCallsBefore": ["<tool1>", "<tool2>"],
+      "timestamp": "<ISO timestamp from phase1.interactionSnapshots — look up by matching utteranceId (e.g. '2026-03-16T09:08:00.000Z')>"
     }
   ],
   "patterns": [
@@ -252,6 +265,9 @@ Before saving output, verify:
 - [ ] 15+ quotes extracted with utteranceIds and sessionIds
 - [ ] Each quote is VERBATIM session text, not paraphrased
 - [ ] Each quote tagged with `behavioralMarker` and `signalType`
+- [ ] Every quote has `projectName` populated from `phase1.sessionOverviews` (matched by sessionId)
+- [ ] Every quote has `toolCallsBefore` populated from `phase1.developerUtterances[n].precedingAIToolCalls` (matched by utteranceId), or `[]` if none
+- [ ] Every quote has `timestamp` from `phase1.interactionSnapshots[n].timestamp` (look up snapshot where `snapshot.utteranceId === quote.utteranceId`)
 - [ ] Bash overuse detection applied against the tool selection appropriateness table
 - [ ] 3+ patterns identified, each with 2+ quote references and a frequency value
 - [ ] All three sub-dimension scores computed (diversity, advanced usage, workflow composition)

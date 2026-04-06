@@ -11,20 +11,20 @@ import { fileURLToPath } from "url";
 var pluginRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 ensureNativeDeps({ pluginRoot, fatal: true });
 var COMMANDS = {
-  "scan-sessions": () => import("../scan-sessions-JELKQQQZ.js"),
-  "extract-data": () => import("../extract-data-X2MHYU2X.js"),
-  "get-prompt-context": () => import("../get-prompt-context-YTSLPRJO.js"),
-  "save-stage-output": () => import("../save-stage-output-2LXJWJ3W.js"),
-  "get-stage-output": () => import("../get-stage-output-4FT6IXCQ.js"),
-  "save-domain-results": () => import("../save-domain-results-G7OF7M3X.js"),
-  "get-domain-results": () => import("../get-domain-results-Z244FSRB.js"),
-  "get-run-progress": () => import("../get-run-progress-QZ7WAT2Q.js"),
-  "classify-developer-type": () => import("../classify-developer-type-6UXPAB2I.js"),
-  "verify-evidence": () => import("../verify-evidence-QBGWIVKE.js"),
-  "generate-report": () => import("../generate-report-I2FNJEHX.js"),
-  "sync-to-team": () => import("../sync-to-team-P4LN2ZS2.js"),
-  "get-user-prefs": () => import("../get-user-prefs-UO7WIJPT.js"),
-  "save-user-prefs": () => import("../save-user-prefs-HPU6EL7Q.js")
+  "scan-sessions": () => import("../scan-sessions-3Z3DFVP6.js"),
+  "extract-data": () => import("../extract-data-WMDOXE6E.js"),
+  "get-prompt-context": () => import("../get-prompt-context-A6MHV6TG.js"),
+  "save-stage-output": () => import("../save-stage-output-7H2PTZTN.js"),
+  "get-stage-output": () => import("../get-stage-output-QXQMHOME.js"),
+  "save-domain-results": () => import("../save-domain-results-OC7X3XXK.js"),
+  "get-domain-results": () => import("../get-domain-results-TAQOPDJS.js"),
+  "get-run-progress": () => import("../get-run-progress-EYUFRTGS.js"),
+  "classify-developer-type": () => import("../classify-developer-type-ROQPCNBA.js"),
+  "verify-evidence": () => import("../verify-evidence-NVZ6Y6HS.js"),
+  "generate-report": () => import("../generate-report-V4LLYI6I.js"),
+  "sync-to-team": () => import("../sync-to-team-HKDPBXZH.js"),
+  "get-user-prefs": () => import("../get-user-prefs-NWRZUI7R.js"),
+  "save-user-prefs": () => import("../save-user-prefs-7XBYTTVU.js")
 };
 function toCamelCase(str) {
   return str.replace(/-([a-z])/g, (_, c) => c.toUpperCase());

@@ -14,6 +14,8 @@ export {
   ExpertSignalsSchema,
   Phase1SessionMetricsSchema,
   ActivitySessionSchema,
+  ToolCallEvidenceSchema,
+  UtteranceEvidenceContextSchema,
   Phase1OutputSchema,
 } from './phase1-output.js';
 export type {
@@ -25,6 +27,8 @@ export type {
   ExpertSignals,
   Phase1SessionMetrics,
   ActivitySession,
+  ToolCallEvidence,
+  UtteranceEvidenceContext,
   Phase1Output,
 } from './phase1-output.js';
 
@@ -61,6 +65,8 @@ export type {
 // Domain results
 export {
   EvidenceSchema,
+  EvidenceMomentSchema,
+  VerifiableActionSchema,
   DomainStrengthSchema,
   DomainGrowthAreaSchema,
   DomainResultSchema,
@@ -70,6 +76,8 @@ export {
 } from './domain-result.js';
 export type {
   Evidence,
+  EvidenceMoment,
+  VerifiableAction,
   DomainStrength,
   DomainGrowthArea,
   DomainResult,
@@ -131,10 +139,56 @@ export type {
   StageName,
 } from './stage-outputs.js';
 
+// Growth Area PEA (Pattern → Evidence → Action)
+export {
+  PEASeveritySchema,
+  PEAPatternSchema,
+  DistinctMomentSchema,
+  PEAActionSchema,
+  QualityRubricSchema,
+  KbTipAttachmentSchema,
+  GrowthAreaPEASchema,
+  GrowthAreaPEALLMOutputSchema,
+  TeamGrowthAreaPEAAggregateSchema,
+  KB_TIP_RELEVANCE_THRESHOLD,
+  TOOL_FILE_API_PATTERNS,
+  passesQualityRubric,
+  evaluateQualityRubric,
+  hasObservableSignal,
+  containsToolFileApiReference,
+  isValidToolFileApiEntry,
+  processLLMOutputToPEA,
+  processLLMOutputBatchToPEA,
+  peaToDomainGrowthArea,
+  peaToWorkerGrowth,
+  peaToMemberGrowthArea,
+  validateDistinctEvidence,
+  validateEvidenceContentDistinctness,
+  getLowConfidenceDetail,
+  shouldFlagLowConfidence,
+} from './growth-area-pea.js';
+export type {
+  PEASeverity,
+  PEAPattern,
+  DistinctMoment,
+  PEAAction,
+  QualityRubric,
+  KbTipAttachment,
+  GrowthAreaPEA,
+  GrowthAreaPEALLMOutput,
+  TeamGrowthAreaPEAAggregate,
+  EvidenceDistinctnessResult,
+  EvidenceContentIssue,
+  EvidenceContentDistinctnessResult,
+  LowConfidenceReason,
+  LowConfidenceDetail,
+} from './growth-area-pea.js';
+
 // Worker outputs (Phase 2)
 export {
   // Shared types
   InsightEvidenceSchema,
+  EvidenceMomentSchema as WorkerEvidenceMomentSchema,
   WorkerStrengthSchema,
   WorkerGrowthSeveritySchema,
   WorkerGrowthSchema,
@@ -167,6 +221,7 @@ export {
 } from './worker-outputs.js';
 export type {
   InsightEvidence,
+  EvidenceMoment as WorkerEvidenceMoment,
   WorkerStrength,
   WorkerGrowthSeverity,
   WorkerGrowth,

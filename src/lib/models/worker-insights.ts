@@ -38,6 +38,12 @@ export const InsightEvidenceSchema = z.object({
 
   /** Brief context description (optional) */
   context: z.string().optional(),
+
+  /** Explicit session ID for multi-session evidence grouping (v2) */
+  sessionId: z.string().optional(),
+
+  /** What behavior the developer exhibited in this moment (v2) */
+  behaviorDescription: z.string().optional(),
 });
 export type InsightEvidence = z.infer<typeof InsightEvidenceSchema>;
 
@@ -124,6 +130,133 @@ export const WorkerGrowthSchema = z.object({
 
   /** Truncated recommendation preview for free tier blur teaser (set by ContentGateway) */
   recommendationPreview: z.string().optional(),
+
+  /**
+   * Verifiable next-session action — a concrete, checkable behavior change.
+   *
+   * Each growth area proposes an action the developer can take in their NEXT
+   * session. The action must be specific enough to verify by examining future
+   * session logs (e.g., checking for specific tool_use blocks, keywords in
+   * user messages, or behavioral sequences).
+   *
+   * Optional for backward compatibility; required by quality gate for new analyses.
+   *
+   * @example
+   * {
+   *   action: "In your next debugging session, run the failing test via Bash before making any code changes to establish a baseline.",
+   *   checkDescription: "Session starts with Bash tool_use containing 'test' or 'vitest' command before any Edit tool_use.",
+   *   toolOrPattern: "Bash test execution"
+   * }
+   */
+  verifiableAction: z.object({
+    /** Concrete action to take in the next session (min 50 chars) */
+    action: z.string().min(50),
+    /** How to verify this action was taken by checking session logs (min 30 chars) */
+    checkDescription: z.string().min(30),
+    /** Specific tool, command, file, or behavioral pattern targeted */
+    toolOrPattern: z.string().optional(),
+  }).optional(),
+
+  /**
+   * v2 evidence moments in Pattern→Evidence→Action format.
+   * Each moment is a distinct exchange from a specific session with:
+   * - sessionId: explicit session reference
+   * - quote: the developer's exact words
+   * - behaviorDescription: what behavior this moment demonstrates
+   *
+   * Minimum 2 moments required to establish a pattern.
+   * When present, supersedes legacy `evidence` array for display.
+   */
+  evidenceMoments: z.array(z.object({
+    utteranceId: z.string(),
+    sessionId: z.string(),
+    quote: z.string(),
+    behaviorDescription: z.string(),
+    context: z.string().optional(),
+    /**
+     * ISO 8601 timestamp of the session moment (from UserUtterance.timestamp).
+     * Optional for backward compatibility; populated by new analysis runs.
+     */
+    timestamp: z.string().optional(),
+  })).min(2).optional(),
+
+  /**
+   * Low-confidence flag — set when evidence is sparse (fewer distinct
+   * sessions than ideal). Never produce empty reports; surface this flag
+   * so UI can show a confidence indicator instead.
+   */
+  lowConfidence: z.boolean().optional(),
+
+  // ── PEA Display Fields (populated by peaToWorkerGrowth converter) ────
+
+  /**
+   * Specific tools, files, APIs, or technologies from the PEA pattern.
+   * Displayed as tag pills in the Pattern section of PEA-format cards.
+   * Only populated when growth area originates from PEA pipeline.
+   */
+  toolsFilesApis: z.array(z.string()).optional(),
+
+  /**
+   * Why the recommended action matters for this builder's goals.
+   * From PEA action.goalRelevance — connects action to real-world impact.
+   * Displayed in the Action section of PEA-format cards.
+   */
+  actionGoalRelevance: z.string().optional(),
+
+  // ── KB Tip Attachment (post-processing by deterministic matcher) ──────
+
+  /**
+   * Best-match knowledge base tip attached by the deterministic KB matcher.
+   * Populated post-generation during report assembly — NOT LLM-generated.
+   * One best-match tip per growth area, or absent if no item exceeds
+   * the relevance threshold.
+   *
+   * Includes source credibility signal for scoring transparency.
+   */
+  kbTip: z.object({
+    /** Knowledge item or professional insight ID */
+    tipId: z.string(),
+    /** Tip title */
+    title: z.string(),
+    /** Brief actionable content from the tip */
+    summary: z.string(),
+    /** Source URL for attribution */
+    sourceUrl: z.string(),
+    /** Source author name */
+    sourceAuthor: z.string(),
+    /** Source platform (e.g., 'reddit', 'twitter', 'web', 'youtube') */
+    sourcePlatform: z.string().optional(),
+    /** Source credibility tier: 'high' | 'medium' | 'standard' */
+    credibilityTier: z.enum(['high', 'medium', 'standard']).optional(),
+    /** Match relevance score (0-1), only tips above threshold attached */
+    relevanceScore: z.number().min(0).max(1),
+  }).optional(),
+
+  /**
+   * Best-match knowledge tip — canonical display field name.
+   *
+   * Same content as `kbTip` but uses the canonical user-facing name used
+   * by report renderers and UI components. Populated by the same deterministic
+   * KB matcher. Use `knowledgeTip` in new code; `kbTip` is the legacy field.
+   */
+  knowledgeTip: z.object({
+    /** Knowledge item or professional insight ID */
+    tipId: z.string(),
+    /** Tip title */
+    title: z.string(),
+    /** Brief actionable content from the tip */
+    summary: z.string(),
+    /** Source URL for attribution */
+    sourceUrl: z.string(),
+    /** Source author name */
+    sourceAuthor: z.string(),
+    /** Source platform (e.g., 'reddit', 'twitter', 'web', 'youtube') */
+    sourcePlatform: z.string().optional(),
+    /** Source credibility tier: 'high' | 'medium' | 'standard' */
+    credibilityTier: z.enum(['high', 'medium', 'standard']).optional(),
+    /** Match relevance score (0-1), only tips above threshold attached */
+    relevanceScore: z.number().min(0).max(1),
+  }).optional(),
 });
 export type WorkerGrowth = z.infer<typeof WorkerGrowthSchema>;
 
@@ -198,8 +331,51 @@ export const StructuredEvidenceLLMSchema = z.object({
 
   /** Brief context description (optional) */
   context: z.string().optional(),
+
+  /** Explicit session ID for multi-session evidence grouping (v2, optional for backward compat) */
+  sessionId: z.string().optional(),
+
+  /** What behavior the developer exhibited (v2, optional for backward compat) */
+  behaviorDescription: z.string().optional(),
 });
 export type StructuredEvidenceLLM = z.infer<typeof StructuredEvidenceLLMSchema>;
+
+/**
+ * v2 Evidence Moment for Pattern→Evidence→Action growth areas.
+ *
+ * Unlike StructuredEvidenceLLMSchema where sessionId and behaviorDescription
+ * are optional, this schema requires all fields. Each moment captures a
+ * distinct exchange from a specific session that demonstrates a growth pattern.
+ *
+ * Used by StructuredGrowthMomentLLMSchema for new growth area generation.
+ * Minimum 2 moments per growth area to establish a repeating pattern.
+ *
+ * Gemini Nesting Depth: same L3 as base evidence (safe).
+ */
+export const StructuredEvidenceMomentLLMSchema = z.object({
+  /** Utterance ID for source verification (format: {sessionId}_{turnIndex}) */
+  utteranceId: z.string(),
+
+  /** Explicit session ID — which session this moment comes from */
+  sessionId: z.string(),
+
+  /** Direct quote from the developer's message (min 15 chars) */
+  quote: z.string().min(15),
+
+  /** What behavior this moment demonstrates in the growth pattern */
+  behaviorDescription: z.string().min(20),
+
+  /** Brief context label (optional, for UI badges like "debugging") */
+  context: z.string().optional(),
+
+  /**
+   * ISO 8601 timestamp of the session moment (from UserUtterance.timestamp).
+   * Optional for backward compatibility; populated by new analysis runs.
+   * Enables temporal verification of distinctness and chronological ordering.
+   */
+  timestamp: z.string().optional(),
+});
+export type StructuredEvidenceMomentLLM = z.infer<typeof StructuredEvidenceMomentLLMSchema>;
 
 /**
  * Structured strength for LLM output.
@@ -248,8 +424,99 @@ export const StructuredGrowthLLMSchema = z.object({
 
   /** Severity level: critical | high | medium | low */
   severity: WorkerGrowthSeveritySchema.optional(),
+
+  /**
+   * Verifiable next-session action — the concrete behavior change this
+   * growth area proposes. Must be specific enough to verify by checking
+   * future session logs (tool_use blocks, keyword patterns, etc.).
+   *
+   * @example
+   * {
+   *   action: "In your next debugging session, use Grep to search for the error message across the codebase before asking the AI to guess the cause.",
+   *   checkDescription: "Session contains Grep tool_use with error-related pattern before any 'fix this' or 'debug' user message.",
+   *   toolOrPattern: "Grep tool for error search"
+   * }
+   */
+  verifiableAction: z.object({
+    action: z.string().min(50),
+    checkDescription: z.string().min(30),
+    toolOrPattern: z.string().optional(),
+  }).optional(),
 });
 export type StructuredGrowthLLM = z.infer<typeof StructuredGrowthLLMSchema>;
+
+/**
+ * v2 Growth Area LLM Schema — Pattern→Evidence→Action format.
+ *
+ * This is the NEW LLM output format for growth areas that enforces:
+ * - 2-3+ distinct evidence moments from different sessions
+ * - Each moment has explicit sessionId, direct quote, and behavior description
+ * - Low-confidence flag for sparse evidence scenarios
+ *
+ * Quality rubric criteria enforced:
+ * - distinct_moments: min 2 evidence moments with explicit sessionIds
+ * - verifiable_action: recommendation is concrete enough to verify in session logs
+ * - pattern_specificity: description min 300 chars with specific behavioral patterns
+ * - tool_file_naming: title/description should name specific tools/files/APIs
+ *
+ * Gemini Nesting Depth:
+ * root{} → growthAreas[] → area{} → evidenceMoments[] → moment{}
+ *   L1                      L2                            L3 (safe)
+ */
+export const StructuredGrowthMomentLLMSchema = z.object({
+  /** Clear, specific title naming tools/files/APIs the builder interacted with */
+  title: z.string(),
+
+  /** 6-10 sentences: Pattern description specific to this builder's actual behavior (min 300 chars) */
+  description: z.string().min(300),
+
+  /**
+   * 2-8 evidence moments from distinct sessions.
+   * Each moment: {utteranceId, sessionId, quote (min 15 chars), behaviorDescription (min 20 chars)}
+   */
+  evidenceMoments: z.array(StructuredEvidenceMomentLLMSchema).min(2).max(8),
+
+  /** Legacy evidence for backward compatibility (auto-populated from evidenceMoments) */
+  evidence: z.array(StructuredEvidenceLLMSchema).optional(),
+
+  /** 4-6 sentences with step-by-step actionable advice (min 150 chars) */
+  recommendation: z.string().min(150),
+
+  /** Severity level: critical | high | medium | low */
+  severity: WorkerGrowthSeveritySchema,
+
+  /**
+   * Low-confidence flag — set true when:
+   * - Evidence comes from fewer than 3 distinct sessions
+   * - Pattern observed in <20% of analyzed sessions
+   * - Corpus size is small (<10 sessions)
+   * Never produce empty reports; flag sparse evidence instead.
+   */
+  lowConfidence: z.boolean().optional(),
+
+  /**
+   * Verifiable next-session action — the concrete behavior change this
+   * growth area proposes. REQUIRED for v2 growth areas (Pattern→Evidence→Action).
+   *
+   * The "Action" in Pattern→Evidence→Action must be:
+   * 1. Specific to the developer's actual toolchain (names tools/files/commands)
+   * 2. Executable in a single next session (not a multi-week plan)
+   * 3. Verifiable by checking session logs (observable signal described in checkDescription)
+   *
+   * @example
+   * {
+   *   action: "Before your next refactoring session, create a CLAUDE.md entry listing the files you plan to modify and the acceptance criteria for each change.",
+   *   checkDescription: "Session contains Edit or Write tool_use targeting CLAUDE.md with file list and criteria before any source code modifications.",
+   *   toolOrPattern: "CLAUDE.md constraint specification"
+   * }
+   */
+  verifiableAction: z.object({
+    action: z.string().min(50),
+    checkDescription: z.string().min(30),
+    toolOrPattern: z.string().optional(),
+  }),
+});
+export type StructuredGrowthMomentLLM = z.infer<typeof StructuredGrowthMomentLLMSchema>;
 
 // ============================================================================
 // Parsing Functions
@@ -508,9 +775,10 @@ export function parseStructuredStrengths(
  * Convert structured LLM growth areas to WorkerGrowth array.
  *
  * Directly maps structured evidence objects (no string parsing needed).
+ * Preserves verifiableAction when present in LLM output.
  *
  * @param llmGrowthAreas - Array of StructuredGrowthLLM from LLM output
- * @returns Array of WorkerGrowth with validated evidence
+ * @returns Array of WorkerGrowth with validated evidence and verifiable actions
  */
 export function parseStructuredGrowthAreas(
   llmGrowthAreas: StructuredGrowthLLM[] | undefined
@@ -518,14 +786,183 @@ export function parseStructuredGrowthAreas(
   if (!llmGrowthAreas || llmGrowthAreas.length === 0) return [];
 
   return llmGrowthAreas
-    .map((g) => ({
-      title: g.title,
-      description: g.description,
-      evidence: parseStructuredEvidence(g.evidence),
-      recommendation: g.recommendation,
-      severity: g.severity,
-    }))
+    .map((g) => {
+      const result: WorkerGrowth = {
+        title: g.title,
+        description: g.description,
+        evidence: parseStructuredEvidence(g.evidence),
+        recommendation: g.recommendation,
+        severity: g.severity,
+      };
+
+      // Preserve verifiableAction from LLM output when present
+      if (g.verifiableAction) {
+        result.verifiableAction = {
+          action: g.verifiableAction.action,
+          checkDescription: g.verifiableAction.checkDescription,
+          ...(g.verifiableAction.toolOrPattern && {
+            toolOrPattern: g.verifiableAction.toolOrPattern,
+          }),
+        };
+      }
+
+      return result;
+    })
     .filter((g) => g.title && g.description && g.evidence.length > 0);
+}
+
+// ============================================================================
+// v2 Evidence Moment Parsing (Pattern→Evidence→Action format)
+// ============================================================================
+
+/**
+ * Evidence moment type used in v2 growth areas.
+ * Inline type matching the evidenceMoments Zod schema on WorkerGrowthSchema.
+ */
+export interface EvidenceMoment {
+  utteranceId: string;
+  sessionId: string;
+  quote: string;
+  behaviorDescription: string;
+  context?: string;
+  /**
+   * ISO 8601 timestamp of the session moment (from UserUtterance.timestamp).
+   * Optional for backward compatibility; populated by new analysis runs.
+   * Enables temporal verification of distinctness and chronological ordering.
+   */
+  timestamp?: string;
+}
+
+/**
+ * Validate and parse v2 evidence moments from LLM output.
+ *
+ * Validates:
+ * - utteranceId format ({sessionId}_{turnIndex})
+ * - sessionId is non-empty
+ * - quote minimum length (15 chars)
+ * - behaviorDescription minimum length (20 chars)
+ * - Deduplicates by normalized quote text
+ *
+ * @param moments - Array of StructuredEvidenceMomentLLM from LLM output
+ * @returns Validated EvidenceMoment array (invalid/duplicate items filtered out)
+ */
+export function parseEvidenceMoments(
+  moments: StructuredEvidenceMomentLLM[]
+): EvidenceMoment[] {
+  const seenQuotes = new Set<string>();
+
+  return moments
+    .filter((m) => {
+      // Validate utteranceId format
+      if (!m.utteranceId || !/_\d+$/.test(m.utteranceId)) {
+        console.warn(
+          `[parseEvidenceMoments] Invalid utteranceId format: "${m.utteranceId}"`
+        );
+        return false;
+      }
+      // Validate sessionId
+      if (!m.sessionId || m.sessionId.trim().length === 0) {
+        console.warn(
+          `[parseEvidenceMoments] Missing sessionId for utterance: "${m.utteranceId}"`
+        );
+        return false;
+      }
+      // Validate quote minimum length
+      if (!m.quote || m.quote.length < 15) {
+        console.warn(
+          `[parseEvidenceMoments] Quote too short (min 15 chars): "${m.quote?.slice(0, 30)}..."`
+        );
+        return false;
+      }
+      // Validate behaviorDescription minimum length
+      if (!m.behaviorDescription || m.behaviorDescription.length < 20) {
+        console.warn(
+          `[parseEvidenceMoments] behaviorDescription too short (min 20 chars): "${m.behaviorDescription?.slice(0, 30)}..."`
+        );
+        return false;
+      }
+      // Deduplicate by normalized quote text
+      const normalizedQuote = m.quote.trim().toLowerCase();
+      if (seenQuotes.has(normalizedQuote)) {
+        console.warn(
+          `[parseEvidenceMoments] Duplicate quote filtered: "${m.quote.slice(0, 50)}..."`
+        );
+        return false;
+      }
+      seenQuotes.add(normalizedQuote);
+      return true;
+    })
+    .map((m) => ({
+      utteranceId: m.utteranceId,
+      sessionId: m.sessionId,
+      quote: m.quote.trim(),
+      behaviorDescription: m.behaviorDescription.trim(),
+      context: m.context?.trim() || undefined,
+      timestamp: m.timestamp || undefined,
+    }));
+}
+
+/**
+ * Convert v2 evidence moments to legacy InsightEvidence array.
+ *
+ * Generates backward-compatible evidence from EvidenceMoment objects
+ * so that existing components (ExpandableEvidence) can render them
+ * without modification. The behaviorDescription maps to the context field.
+ *
+ * @param moments - Validated EvidenceMoment array
+ * @returns InsightEvidence array for legacy evidence field
+ */
+export function evidenceMomentsToLegacy(moments: EvidenceMoment[]): InsightEvidence[] {
+  return moments.map((m) => ({
+    utteranceId: m.utteranceId,
+    quote: m.quote,
+    context: m.behaviorDescription,
+    sessionId: m.sessionId,
+    behaviorDescription: m.behaviorDescription,
+  }));
+}
+
+/**
+ * Convert v2 structured growth area LLM output to WorkerGrowth array.
+ *
+ * Handles the new StructuredGrowthMomentLLMSchema format with evidence moments.
+ * Auto-populates legacy `evidence` from `evidenceMoments` for backward compat.
+ *
+ * @param llmGrowthAreas - Array of StructuredGrowthMomentLLM from LLM output
+ * @returns Array of WorkerGrowth with both evidenceMoments and legacy evidence
+ */
+export function parseStructuredGrowthMoments(
+  llmGrowthAreas: StructuredGrowthMomentLLM[] | undefined
+): WorkerGrowth[] {
+  if (!llmGrowthAreas || llmGrowthAreas.length === 0) return [];
+
+  return llmGrowthAreas
+    .map((g) => {
+      const validatedMoments = parseEvidenceMoments(g.evidenceMoments);
+      const legacyEvidence = evidenceMomentsToLegacy(validatedMoments);
+
+      return {
+        title: g.title,
+        description: g.description,
+        evidence: legacyEvidence,
+        evidenceMoments: validatedMoments,
+        recommendation: g.recommendation,
+        severity: g.severity,
+        lowConfidence: g.lowConfidence,
+      };
+    })
+    .filter((g) => g.title && g.description && g.evidenceMoments.length >= 2);
+}
+
+/**
+ * Extract distinct session IDs from evidence moments.
+ * Used to verify the "2-3+ distinct sessions" quality criterion.
+ *
+ * @param moments - Evidence moment array
+ * @returns Set of unique session IDs
+ */
+export function getDistinctSessions(moments: EvidenceMoment[]): Set<string> {
+  return new Set(moments.map((m) => m.sessionId));
 }
 
 // ============================================================================

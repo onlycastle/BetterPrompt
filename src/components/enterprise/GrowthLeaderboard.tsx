@@ -6,6 +6,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { ProgressRing } from '../dashboard/ProgressRing';
 import { formatTokens, getTokenDelta, getDeltaIndicator } from './format-utils';
 import type { TeamMemberAnalysis, MemberProjectActivity } from '../../types/enterprise';
@@ -13,6 +14,14 @@ import styles from './GrowthLeaderboard.module.css';
 
 export interface GrowthLeaderboardProps {
   members: TeamMemberAnalysis[];
+  /** Optional callback when a member row is clicked — enables drill-down to member detail */
+  onMemberClick?: (member: TeamMemberAnalysis) => void;
+  /**
+   * URL builder for the individual developer report page.
+   * When provided, renders a semantic Next.js Link in the last column so users can
+   * right-click to open in a new tab, and assistive technology sees a real anchor.
+   */
+  getHref?: (member: TeamMemberAnalysis) => string;
 }
 
 type SortKey = 'currentScore' | 'weeklyTokens';
@@ -44,7 +53,8 @@ function renderDelta(pct: number | null, suffix: string): React.ReactNode {
   );
 }
 
-export function GrowthLeaderboard({ members }: GrowthLeaderboardProps) {
+export function GrowthLeaderboard({ members, onMemberClick, getHref }: GrowthLeaderboardProps) {
+  const isClickable = !!onMemberClick || !!getHref;
   const [sortKey, setSortKey] = useState<SortKey>('currentScore');
   const [teamFilter, setTeamFilter] = useState<string>('all');
 
@@ -103,6 +113,7 @@ export function GrowthLeaderboard({ members }: GrowthLeaderboardProps) {
                 Tokens{sortIndicator('weeklyTokens')}
               </th>
               <th className={styles.th}>This Week</th>
+              {isClickable && <th className={styles.th} aria-label="Report link" />}
             </tr>
           </thead>
           <tbody>
@@ -110,7 +121,14 @@ export function GrowthLeaderboard({ members }: GrowthLeaderboardProps) {
               const tokenDelta = getTokenDelta(member.tokenUsage.weeklyTokenTrend);
               const summaryLines = getRecentSummaryLines(member.projects);
               return (
-                <tr key={member.id} className={styles.row}>
+                <tr
+                  key={member.id}
+                  className={`${styles.row} ${isClickable ? styles.clickableRow : ''}`}
+                  onClick={onMemberClick ? () => onMemberClick(member) : undefined}
+                  role={onMemberClick ? 'button' : undefined}
+                  tabIndex={onMemberClick ? 0 : undefined}
+                  onKeyDown={onMemberClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onMemberClick(member); } } : undefined}
+                >
                   <td className={styles.td}>
                     <span className={styles.rank}>{idx + 1}</span>
                   </td>
@@ -150,12 +168,29 @@ export function GrowthLeaderboard({ members }: GrowthLeaderboardProps) {
                       <span className={styles.summaryEmpty}>No activity</span>
                     )}
                   </td>
+                  {isClickable && (
+                    <td className={styles.td}>
+                      {getHref ? (
+                        <Link
+                          href={getHref(member)}
+                          className={styles.viewLink}
+                          onClick={e => e.stopPropagation()}
+                          title={`View ${member.name}'s report`}
+                          aria-label={`View ${member.name}'s report`}
+                        >
+                          View <span aria-hidden="true">→</span>
+                        </Link>
+                      ) : (
+                        <span className={styles.rowArrow} aria-hidden="true">›</span>
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={5} className={styles.emptyRow}>No members match filters</td>
+                <td colSpan={isClickable ? 6 : 5} className={styles.emptyRow}>No members match filters</td>
               </tr>
             )}
           </tbody>

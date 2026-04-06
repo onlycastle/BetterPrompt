@@ -20,6 +20,7 @@ import type {
 } from './types.js';
 import { CONTEXT_WINDOW_SIZE } from './types.js';
 import { stripSystemTags } from '../scanner/strip-system-tags.js';
+import { buildEvidenceContexts } from './evidence-extractor.js';
 
 // ============================================================================
 // Constants
@@ -843,11 +844,110 @@ export async function extractPhase1DataFromParsedSessions(
     };
   });
 
+  // Build per-utterance evidence contexts from the full session transcripts.
+  // This layer supplies concrete metrics (tool call sequences with parameters,
+  // context fill %, cumulative error counts, session timing) for Evidence field
+  // population in PEA growth areas. Downstream write-stage workers use this
+  // to construct "after Read(auth.ts) then Bash(npm test)" context anchors.
+  const evidenceContexts = buildEvidenceContexts(sessions);
+
   return {
     developerUtterances: allUtterances,
     sessionMetrics,
     ...(allInsightBlocks.length > 0 ? { aiInsightBlocks: allInsightBlocks } : {}),
     activitySessions,
     sessions,
+    evidenceContexts,
   };
+}
+
+/**
+ * Select sessions spread across the date range for diverse evidence gathering.
+ *
+ * Instead of taking the N most recent sessions (which may all be from one day),
+ * this distributes slots proportionally across active dates, picking the longest
+ * sessions per day (more content = richer evidence for LLM analysis).
+ */
+export function selectDateSpreadSessions(
+  sessions: ParsedSession[],
+  maxSessions: number,
+): ParsedSession[] {
+  if (sessions.length <= maxSessions) return sessions;
+
+  // Group by date
+  const byDate = new Map<string, ParsedSession[]>();
+  for (const s of sessions) {
+    const dateKey = s.startTime.slice(0, 10);
+    const group = byDate.get(dateKey);
+    if (group) {
+      group.push(s);
+    } else {
+      byDate.set(dateKey, [s]);
+    }
+  }
+
+  // Sort each day's sessions by duration descending (longest = richest evidence)
+  for (const group of byDate.values()) {
+    group.sort((a, b) => b.durationSeconds - a.durationSeconds);
+  }
+
+  // Distribute slots proportionally across dates (most recent dates first)
+  const dateKeys = [...byDate.keys()].sort().reverse();
+  const slotsPerDate = new Map<string, number>();
+  let remaining = maxSessions;
+
+  // First pass: proportional allocation (at least 1 per date)
+  for (const date of dateKeys) {
+    const count = byDate.get(date)!.length;
+    const share = Math.max(1, Math.round((count / sessions.length) * maxSessions));
+    const allocated = Math.min(share, count, remaining);
+    slotsPerDate.set(date, allocated);
+    remaining -= allocated;
+    if (remaining <= 0) break;
+  }
+
+  // Second pass: distribute remaining slots to dates that have unused sessions
+  if (remaining > 0) {
+    for (const date of dateKeys) {
+      const available = byDate.get(date)!.length - (slotsPerDate.get(date) ?? 0);
+      if (available > 0) {
+        const extra = Math.min(available, remaining);
+        slotsPerDate.set(date, (slotsPerDate.get(date) ?? 0) + extra);
+        remaining -= extra;
+        if (remaining <= 0) break;
+      }
+    }
+  }
+
+  // Collect selected sessions, maintain chronological order
+  const selected: ParsedSession[] = [];
+  for (const date of dateKeys) {
+    const group = byDate.get(date)!;
+    const count = slotsPerDate.get(date) ?? 0;
+    selected.push(...group.slice(0, count));
+  }
+
+  return selected.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+}
+
+/**
+ * Build lightweight activity metadata from parsed sessions using pre-computed stats.
+ * This is O(n) over session count with no message parsing — suitable for ALL sessions.
+ * Used to provide accurate heatmap, token totals, and session counts across the full history.
+ */
+export function buildActivityMetadataFromSessions(
+  sessions: ParsedSession[],
+): Phase1Output['activitySessions'] {
+  return sessions.map(session => ({
+    sessionId: session.sessionId,
+    projectName: session.projectName ?? 'unknown',
+    ...(session.projectPath ? { projectPath: session.projectPath } : {}),
+    startTime: session.startTime,
+    durationSeconds: Math.round(session.durationSeconds),
+    messageCount: session.stats.userMessageCount + session.stats.assistantMessageCount,
+    userMessageCount: session.stats.userMessageCount,
+    assistantMessageCount: session.stats.assistantMessageCount,
+    totalInputTokens: session.stats.totalInputTokens,
+    totalOutputTokens: session.stats.totalOutputTokens,
+  }));
 }

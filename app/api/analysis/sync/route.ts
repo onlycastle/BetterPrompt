@@ -35,6 +35,10 @@ interface PluginDomainResult {
     severity: 'critical' | 'high' | 'medium' | 'low';
     recommendation: string;
     evidence: Array<{ utteranceId: string; quote: string; context?: string }>;
+    /** Why this pattern matters for the builder's specific goals (AC 5: goal_relevance) */
+    goalRelevance?: string;
+    /** Freeform LLM-generated behavioral category tags for team clustering (AC 13) */
+    categoryTags?: string[];
   }>;
   data?: Record<string, unknown>;
   analyzedAt: string;
@@ -111,6 +115,8 @@ function transformToEvaluation(report: PluginReport): VerboseEvaluation {
       evidence: Array<{ utteranceId: string; quote: string; context?: string }>;
       recommendation: string;
       severity?: 'critical' | 'high' | 'medium' | 'low';
+      /** Why this pattern matters for the builder's goals (goal_relevance criterion) */
+      actionGoalRelevance?: string;
     }>;
     domainScore: number;
   }> = {};
@@ -137,6 +143,10 @@ function transformToEvaluation(report: PluginReport): VerboseEvaluation {
         evidence: ga.evidence,
         recommendation: ga.recommendation,
         severity: ga.severity,
+        // Map goalRelevance → actionGoalRelevance for frontend WorkerGrowth rendering
+        ...(ga.goalRelevance ? { actionGoalRelevance: ga.goalRelevance } : {}),
+        // Thread freeform LLM-generated category tags for team clustering
+        ...(ga.categoryTags?.length ? { categoryTags: ga.categoryTags } : {}),
       })),
       domainScore: dr.overallScore,
     };

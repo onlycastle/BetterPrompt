@@ -40,6 +40,20 @@ export interface PortableKnowledgeItem {
   applicableDimensions: string[];
   subCategories?: Record<string, string[]>;
   relevanceScore: number;
+  /**
+   * Source platform (e.g., 'reddit', 'twitter', 'web', 'youtube', 'linkedin').
+   * Used alongside credibilityTier for source authority scoring.
+   */
+  sourcePlatform?: string;
+  /**
+   * Source credibility tier — explicit authority signal.
+   * - 'high': Official docs, recognized authority, peer-reviewed
+   * - 'medium': Known practitioner, established blog
+   * - 'standard': Community content, forum posts
+   *
+   * When absent, inferred from sourcePlatform via inferCredibilityTier().
+   */
+  credibilityTier?: 'high' | 'medium' | 'standard';
 }
 
 /** A curated professional insight. */
@@ -55,6 +69,16 @@ export interface PortableProfessionalInsight {
   applicableDimensions: string[];
   applicableStyles?: string[];
   applicableControlLevels?: string[];
+  /**
+   * Source credibility tier for authority-based ranking.
+   * - 'high': Official docs, recognized authority, peer-reviewed content
+   * - 'medium': Known practitioner, editorially vetted (default for insights)
+   * - 'standard': Community content, forum posts
+   *
+   * When absent, professional insights default to 'medium' (editorially curated baseline).
+   * Implement AC 9: source_credibility evaluation criterion.
+   */
+  credibilityTier?: 'high' | 'medium' | 'standard';
 }
 
 /** Matched knowledge item with score. */
@@ -68,6 +92,10 @@ export interface MatchedKnowledgeItem {
   tags: string[];
   relevanceScore: number;
   matchScore: number;
+  /** Source platform carried through for downstream credibility display */
+  sourcePlatform?: string;
+  /** Resolved credibility tier (explicit or inferred from platform) */
+  credibilityTier?: 'high' | 'medium' | 'standard';
 }
 
 /** Matched professional insight with score. */
@@ -81,6 +109,8 @@ export interface MatchedProfessionalInsight {
   category: string;
   priority: number;
   matchScore: number;
+  /** Professional insights are curated → baseline 'medium' credibility */
+  credibilityTier: 'high' | 'medium' | 'standard';
 }
 
 /** Result: matched resources grouped by dimension. */
@@ -174,11 +204,18 @@ export function matchKnowledgeResources(
 
 /** Maps worker domain → knowledge base dimension (used for resource matching, NOT report display). */
 const DOMAIN_TO_KB_DIMENSION: Record<string, string> = {
+  // Legacy 6-domain names
   thinkingQuality: 'TrustVerification',
   communicationPatterns: 'CommunicationPatterns',
   learningBehavior: 'KnowledgeGap',
   contextEfficiency: 'ContextEfficiency',
   sessionOutcome: 'WorkflowHabit',
+  // v2 5-dimension framework (mirrors kb-growth-area-enricher.ts mapping)
+  aiPartnership: 'TrustVerification',
+  sessionCraft: 'ContextEfficiency',
+  toolMastery: 'WorkflowHabit',
+  skillResilience: 'KnowledgeGap',
+  sessionMastery: 'WorkflowHabit',
 };
 
 const MISTAKE_CATEGORY_TO_DIMENSION: Record<string, string> = {
@@ -315,7 +352,16 @@ function scoreKnowledgeItems(
         item.subCategories?.[dimension],
         growthAreas,
       );
-      const matchScore = Math.min(baseScore + tagScore + subCatScore, 10);
+
+      // Resolve credibility tier: explicit > platform-inferred > standard
+      const resolvedTier = inferCredibilityTier(item.credibilityTier, item.sourcePlatform);
+
+      // Apply credibility multiplier to the composite relevance score.
+      // This boosts authoritative sources when keyword relevance is close,
+      // implementing the source_credibility evaluation criterion.
+      const preCredibilityScore = baseScore + tagScore + subCatScore;
+      const credMultiplier = CREDIBILITY_SCORE_MULTIPLIER[resolvedTier] ?? 1.0;
+      const matchScore = Math.min(preCredibilityScore * credMultiplier, 10);
 
       return {
         id: item.id,
@@ -327,6 +373,8 @@ function scoreKnowledgeItems(
         tags: item.tags,
         relevanceScore: item.relevanceScore,
         matchScore: Math.round(matchScore * 100) / 100,
+        sourcePlatform: item.sourcePlatform,
+        credibilityTier: resolvedTier,
       };
     })
     .sort((a, b) => b.matchScore - a.matchScore);
@@ -351,7 +399,16 @@ function scoreProfessionalInsights(
         score += 1.5;
       }
 
-      const matchScore = Math.min(score, 10);
+      // Professional insights are curated content — baseline 'medium' credibility.
+      // Resolve to explicit tier if the insight carries one, otherwise default
+      // to 'medium' since these are editorially vetted.
+      // credibilityTier is now a typed field on PortableProfessionalInsight (AC 9).
+      const resolvedTier: 'high' | 'medium' | 'standard' =
+        insight.credibilityTier === 'high' ? 'high' : 'medium';
+
+      // Apply credibility multiplier to professional insight scoring
+      const credMultiplier = CREDIBILITY_SCORE_MULTIPLIER[resolvedTier] ?? 1.0;
+      const matchScore = Math.min(score * credMultiplier, 10);
 
       return {
         id: insight.id,
@@ -363,10 +420,72 @@ function scoreProfessionalInsights(
         category: insight.category,
         priority: insight.priority,
         matchScore: Math.round(matchScore * 100) / 100,
+        credibilityTier: resolvedTier,
       };
     })
     .sort((a, b) => b.matchScore - a.matchScore);
 }
+
+// ============================================================================
+// Source Authority & Credibility Scoring
+// ============================================================================
+
+/**
+ * Platform-based credibility inference.
+ *
+ * When a knowledge item doesn't carry an explicit credibilityTier,
+ * we infer one from its source platform. This ensures every item
+ * participates in credibility scoring even without manual curation.
+ *
+ * Heuristic rationale:
+ * - 'web' / 'manual': Often official docs or curated — lean medium
+ * - 'youtube' / 'linkedin': Established practitioners — lean medium
+ * - 'reddit' / 'twitter' / 'threads': Community content — standard
+ *
+ * Evaluation criterion: source_credibility
+ */
+const PLATFORM_CREDIBILITY_INFERENCE: Record<string, 'high' | 'medium' | 'standard'> = {
+  web: 'medium',
+  manual: 'medium',
+  youtube: 'medium',
+  linkedin: 'medium',
+  reddit: 'standard',
+  twitter: 'standard',
+  threads: 'standard',
+};
+
+/**
+ * Resolve the credibility tier for a knowledge item.
+ *
+ * Priority: explicit credibilityTier > platform-inferred > 'standard'
+ *
+ * Exported for downstream consumers (e.g., kb-growth-area-enricher)
+ * and for unit testing.
+ */
+export function inferCredibilityTier(
+  explicitTier?: 'high' | 'medium' | 'standard',
+  sourcePlatform?: string,
+): 'high' | 'medium' | 'standard' {
+  if (explicitTier) return explicitTier;
+  if (sourcePlatform && sourcePlatform in PLATFORM_CREDIBILITY_INFERENCE) {
+    return PLATFORM_CREDIBILITY_INFERENCE[sourcePlatform];
+  }
+  return 'standard';
+}
+
+/**
+ * Credibility scoring multiplier applied to base match score.
+ *
+ * Higher-credibility sources get a meaningful boost (up to 25%)
+ * that can tip ranking order when keyword relevance is close.
+ * This implements the source_credibility evaluation criterion:
+ * "KB tip source has demonstrated authority or practitioner credibility"
+ */
+const CREDIBILITY_SCORE_MULTIPLIER: Record<string, number> = {
+  high: 1.25,     // Official docs, recognized authority, peer-reviewed
+  medium: 1.1,    // Known practitioner, established blog
+  standard: 1.0,  // Community content, forum posts — no boost
+};
 
 // ============================================================================
 // Tag & SubCategory Overlap (exported for testing)

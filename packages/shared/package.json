@@ -9,7 +9,9 @@
     ".": "./dist/index.js",
     "./schemas": "./dist/schemas/index.js",
     "./evaluation": "./dist/evaluation/index.js",
-    "./scoring": "./dist/scoring/index.js"
+    "./scoring": "./dist/scoring/index.js",
+    "./matching": "./dist/matching/index.js",
+    "./matching/kb-loader.js": "./dist/matching/kb-loader.js"
   },
   "scripts": {
     "build": "tsc",

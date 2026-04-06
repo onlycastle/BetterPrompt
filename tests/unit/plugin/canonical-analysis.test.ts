@@ -12,6 +12,7 @@ import type {
   DomainResult,
   Phase1Output,
 } from '../../../packages/plugin/lib/core/types.js';
+import type { PortableKnowledgeItem } from '../../../packages/shared/src/matching/knowledge-resource-matcher.js';
 
 function createPhase1Output(): Phase1Output {
   return {
@@ -350,5 +351,148 @@ describe('canonical plugin analysis assembly', () => {
     expect(parsed.success).toBe(true);
     expect(run.domainResults[0]?.strengths[0]?.evidence).toHaveLength(1);
     expect(run.domainResults[1]?.growthAreas[0]?.evidence).toHaveLength(1);
+  });
+
+  // ── AC 7: KB matcher wired into pipeline ─────────────────────────────────
+  // Verifies that assembleCanonicalAnalysisRun routes the knowledgeItems
+  // parameter through to enrichGrowthAreasWithKbTips, attaching one
+  // best-match KB tip per qualifying growth area.
+  //
+  // This tests the PIPELINE INTEGRATION POINT — not the enricher in isolation
+  // (that is covered by tests/unit/plugin/kb-tip-attachment.test.ts).
+
+  describe('AC 7: KB matcher wired into assembleCanonicalAnalysisRun pipeline', () => {
+    // The contextEfficiency domain maps to 'ContextEfficiency' KB dimension.
+    // createDomainResults() has a growth area in contextEfficiency about
+    // 'Long context carryover'. Providing a KB item for that dimension
+    // verifies the end-to-end wiring from parameter → enricher → output.
+    const contextEfficiencyKbItem: PortableKnowledgeItem = {
+      id: 'kb-context-efficiency-integration',
+      title: 'Context Window Management in Claude Code',
+      summary: 'Use /compact to trim stale context and keep sessions focused. Restate the current objective after switching tasks.',
+      sourceUrl: 'https://docs.anthropic.com/claude-code/context-management',
+      sourceAuthor: 'Anthropic Docs',
+      contentType: 'documentation',
+      tags: ['context-window', 'stale-context', 'session-management', 'claude-code'],
+      applicableDimensions: ['ContextEfficiency'],
+      relevanceScore: 0.85,
+      sourcePlatform: 'web',
+      credibilityTier: 'high',
+    };
+
+    it('attaches kbTip to growth areas when knowledgeItems provided and match dimension', () => {
+      const run = assembleCanonicalAnalysisRun({
+        runId: 8,
+        analyzedAt: '2026-03-16T00:00:00.000Z',
+        phase1Output: createPhase1Output(),
+        deterministicScores,
+        typeResult,
+        domainResults: createDomainResults(),
+        stageOutputs: createStageOutputs(),
+        knowledgeItems: [contextEfficiencyKbItem],
+        professionalInsights: [],
+      });
+
+      // The contextEfficiency growth area should have a KB tip attached
+      const contextDomain = run.domainResults.find(r => r.domain === 'contextEfficiency');
+      expect(contextDomain).toBeDefined();
+      expect(contextDomain!.growthAreas.length).toBeGreaterThan(0);
+
+      // At least one growth area should have a kbTip (dimension matches)
+      const withTip = contextDomain!.growthAreas.filter(ga => ga.kbTip !== undefined);
+      expect(withTip.length).toBeGreaterThan(0);
+
+      // Verify the tip carries the expected fields
+      const tip = withTip[0]!.kbTip!;
+      expect(tip.tipId).toBe('kb-context-efficiency-integration');
+      expect(tip.relevanceScore).toBeGreaterThanOrEqual(0.3); // above threshold
+      expect(tip.relevanceScore).toBeLessThanOrEqual(1);
+      expect(tip.credibilityTier).toBe('high');
+      expect(tip.sourcePlatform).toBe('web');
+      expect(tip.sourceAuthor).toBe('Anthropic Docs');
+    });
+
+    it('knowledgeTip mirrors kbTip on every enriched growth area (dual-write)', () => {
+      const run = assembleCanonicalAnalysisRun({
+        runId: 9,
+        analyzedAt: '2026-03-16T00:00:00.000Z',
+        phase1Output: createPhase1Output(),
+        deterministicScores,
+        typeResult,
+        domainResults: createDomainResults(),
+        stageOutputs: createStageOutputs(),
+        knowledgeItems: [contextEfficiencyKbItem],
+        professionalInsights: [],
+      });
+
+      for (const dr of run.domainResults) {
+        for (const ga of dr.growthAreas) {
+          if (ga.kbTip) {
+            expect(ga.knowledgeTip).toBeDefined();
+            expect(ga.knowledgeTip).toEqual(ga.kbTip);
+          } else {
+            expect(ga.knowledgeTip).toBeUndefined();
+          }
+        }
+      }
+    });
+
+    it('does NOT attach tips when knowledgeItems is omitted (graceful no-op)', () => {
+      const run = assembleCanonicalAnalysisRun({
+        runId: 10,
+        analyzedAt: '2026-03-16T00:00:00.000Z',
+        phase1Output: createPhase1Output(),
+        deterministicScores,
+        typeResult,
+        domainResults: createDomainResults(),
+        stageOutputs: createStageOutputs(),
+        // knowledgeItems intentionally omitted
+      });
+
+      for (const dr of run.domainResults) {
+        for (const ga of dr.growthAreas) {
+          expect(ga.kbTip).toBeUndefined();
+          expect(ga.knowledgeTip).toBeUndefined();
+        }
+      }
+    });
+
+    it('does NOT attach tips when knowledgeItems is empty array', () => {
+      const run = assembleCanonicalAnalysisRun({
+        runId: 11,
+        analyzedAt: '2026-03-16T00:00:00.000Z',
+        phase1Output: createPhase1Output(),
+        deterministicScores,
+        typeResult,
+        domainResults: createDomainResults(),
+        stageOutputs: createStageOutputs(),
+        knowledgeItems: [],
+        professionalInsights: [],
+      });
+
+      for (const dr of run.domainResults) {
+        for (const ga of dr.growthAreas) {
+          expect(ga.kbTip).toBeUndefined();
+          expect(ga.knowledgeTip).toBeUndefined();
+        }
+      }
+    });
+
+    it('schema validation still passes with KB tips attached', () => {
+      const run = assembleCanonicalAnalysisRun({
+        runId: 12,
+        analyzedAt: '2026-03-16T00:00:00.000Z',
+        phase1Output: createPhase1Output(),
+        deterministicScores,
+        typeResult,
+        domainResults: createDomainResults(),
+        stageOutputs: createStageOutputs(),
+        knowledgeItems: [contextEfficiencyKbItem],
+        professionalInsights: [],
+      });
+
+      const parsed = CanonicalAnalysisRunSchema.safeParse(run);
+      expect(parsed.success).toBe(true);
+    });
   });
 });

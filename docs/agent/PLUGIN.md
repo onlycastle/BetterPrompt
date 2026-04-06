@@ -41,6 +41,7 @@ Claude Code plugin at `packages/plugin/`. MCP server + queued auto-analysis hook
 | `lib/core/session-scanner.ts` | Claude Code JSONL parsing and local data-dir helpers |
 | `lib/core/multi-source-session-scanner.ts` | Multi-source scanner coordinator (Claude Code + Cursor) |
 | `lib/core/data-extractor.ts` | Phase 1 utterance extraction from parsed sessions |
+| `lib/core/evidence-extractor.ts` | Structured evidence context extraction for growth areas |
 | `lib/core/deterministic-scorer.ts` | Rubric-based deterministic scoring |
 | `lib/core/deterministic-type-mapper.ts` | 5x3 type matrix classification |
 | `lib/core/types.ts` | Shared type definitions |
@@ -181,8 +182,10 @@ The `SessionEnd` hook skips auto-analysis when `durationMs <= 0` (duration unava
 
 ```
 scan_sessions → extract_data → [agent-dispatched skills] →
+  (evidence-extractor injects structured evidence contexts into prompt-context) →
   classify_developer_type → verify_evidence →
-  near-duplicate evidence dedup →
+  near-duplicate evidence dedup → PEA quality validation (growth-area-quality-checker) →
+  KB tip enrichment (kb-growth-area-enricher) →
   generate_report → (optional) sync_to_team
 ```
 
@@ -267,7 +270,7 @@ Output: `packages/plugin/dist/` (ESM, ES2022/NodeNext)
 | Package | Purpose |
 |---------|---------|
 | `@modelcontextprotocol/sdk` | MCP server + stdio transport |
-| `@betterprompt/shared` | Shared Zod schemas (domain results, stage outputs, evidence) |
+| `@betterprompt/shared` | Shared Zod schemas (domain results, stage outputs, evidence, PEA growth areas, validation) |
 | `better-sqlite3` | Insight cache + results DB + stage DB |
 | `zod` | Input validation for MCP tools |
 

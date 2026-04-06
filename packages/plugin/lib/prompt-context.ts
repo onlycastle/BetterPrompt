@@ -14,8 +14,10 @@ import type {
   DomainResult,
   ParsedSession,
   Phase1Output,
+  UtteranceEvidenceContext,
 } from './core/types.js';
 import { CONTEXT_WINDOW_SIZE } from './core/types.js';
+import { buildEvidenceContextIndex } from './core/evidence-extractor.js';
 
 export const PROMPT_CONTEXT_KINDS = [
   'sessionSummaries',
@@ -50,6 +52,73 @@ interface PromptContextInput {
 type SessionMessageWithMeta = ParsedSession['messages'][number] & {
   isMeta?: boolean;
 };
+
+/**
+ * Extract specific file paths and key inputs from preceding AI tool calls.
+ *
+ * Provides file-level granularity for the tool_file_naming rubric criterion:
+ * rather than just knowing "Read was called", the LLM knows "Read was called
+ * on middleware/auth.ts", enabling toolsFilesApis to include specific files.
+ *
+ * Extracts:
+ * - File paths from Read/Edit/Write/MultiEdit (file_path field)
+ * - Search path scope from Grep/Glob (path field)
+ * - Abbreviated Bash commands (first 80 chars, showing CLI tools used)
+ *
+ * @param toolCalls - Preceding assistant tool calls with input data
+ * @returns Deduped list of file paths and command summaries (max 6 entries)
+ */
+function extractToolInputSummaries(
+  toolCalls: Array<{ name: string; input: Record<string, unknown> }>,
+): string[] {
+  const seen = new Set<string>();
+  const summaries: string[] = [];
+
+  for (const tc of toolCalls.slice(0, 8)) {
+    const input = tc.input;
+
+    // File-based tools: extract the file path (most valuable for tool_file_naming)
+    if (['Read', 'Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(tc.name)) {
+      const fp = typeof input.file_path === 'string' ? input.file_path : null;
+      if (fp) {
+        // Use last 2 path segments to keep it readable (e.g. "middleware/auth.ts")
+        const parts = fp.replace(/\\/g, '/').split('/').filter(Boolean);
+        const brief = parts.length > 2 ? parts.slice(-2).join('/') : fp;
+        if (!seen.has(brief)) { seen.add(brief); summaries.push(brief); }
+      }
+    }
+
+    // Grep: capture the scope path when it's a specific directory or file
+    if (tc.name === 'Grep') {
+      const searchPath = typeof input.path === 'string' ? input.path : null;
+      if (searchPath && searchPath !== '.' && searchPath !== '/') {
+        const parts = searchPath.replace(/\\/g, '/').split('/').filter(Boolean);
+        const brief = parts.length > 2 ? parts.slice(-2).join('/') : searchPath;
+        if (!seen.has(brief)) { seen.add(brief); summaries.push(brief); }
+      }
+    }
+
+    // Glob: capture the pattern when it references a specific directory scope
+    if (tc.name === 'Glob') {
+      const globPath = typeof input.path === 'string' ? input.path : null;
+      if (globPath && globPath !== '.' && globPath !== '/') {
+        const parts = globPath.replace(/\\/g, '/').split('/').filter(Boolean);
+        const brief = parts.length > 2 ? parts.slice(-2).join('/') : globPath;
+        if (!seen.has(brief)) { seen.add(brief); summaries.push(brief); }
+      }
+    }
+
+    // Bash: capture the first 80 chars of the command (shows CLI tools used)
+    if (tc.name === 'Bash' && typeof input.command === 'string') {
+      const cmd = input.command.trim().slice(0, 80);
+      if (cmd && !seen.has(cmd)) { seen.add(cmd); summaries.push(cmd); }
+    }
+
+    if (summaries.length >= 6) break;
+  }
+
+  return summaries;
+}
 
 const SKILL_INJECTION_PREFIX = 'Base directory for this skill:';
 
@@ -175,6 +244,15 @@ function buildInteractionSnapshots(
 ) {
   const { maxUserChars = 260, maxAssistantChars = 220 } = options ?? {};
 
+  // Build O(1) lookup index from pre-computed Phase 1 evidence contexts.
+  // The evidence contexts provide concrete tool call details (file paths,
+  // commands, error text), context fill %, and cumulative error counts
+  // needed by LLM extract workers to construct Evidence field context anchors.
+  const evidenceContextIndex: Map<string, UtteranceEvidenceContext> | null =
+    phase1Output.evidenceContexts
+      ? buildEvidenceContextIndex(phase1Output.evidenceContexts)
+      : null;
+
   const snapshots = (phase1Output.sessions ?? []).flatMap((session) => {
     const messages = session.messages.map(asSessionMessageWithMeta);
     return messages.flatMap((message, index) => {
@@ -182,15 +260,30 @@ function buildInteractionSnapshots(
         return [];
       }
 
+      // Extract utteranceId once so we can use it both in the snapshot and
+      // for evidence context lookup without recomputing.
+      const utteranceId = `${session.sessionId}_${index}`;
+
       const precedingAssistant = [...messages.slice(0, index)]
         .reverse()
         .find((candidate) => candidate.role === 'assistant');
 
+      // Look up the pre-computed evidence context for this utterance.
+      // Present when Phase 1 extraction ran with evidence context building enabled.
+      const evidenceCtx: UtteranceEvidenceContext | undefined =
+        evidenceContextIndex?.get(utteranceId);
+
       return [{
-        utteranceId: `${session.sessionId}_${index}`,
+        utteranceId,
         sessionId: session.sessionId,
         projectName: session.projectName ?? 'unknown',
         turnIndex: index,
+        /**
+         * ISO timestamp of the message — enables evidence moments to carry
+         * explicit session time for temporal verification of distinctness.
+         * LLM extract/write stages should propagate this into evidenceMoments.
+         */
+        timestamp: message.timestamp,
         text: trimText(message.content, maxUserChars),
         characterCount: message.content.length,
         hasQuestion: message.content.includes('?'),
@@ -199,7 +292,79 @@ function buildInteractionSnapshots(
         precedingAssistantLength: precedingAssistant?.content?.length ?? 0,
         precedingAssistantHadCodeBlock: Boolean(precedingAssistant?.content?.includes('```')),
         precedingAIToolCalls: precedingAssistant?.toolCalls?.map((toolCall) => toolCall.name).slice(0, 8),
+        /**
+         * Specific file paths and command summaries from preceding tool call inputs.
+         *
+         * Provides file-level granularity for the tool_file_naming rubric:
+         * - File paths from Read/Edit/Write calls (e.g. "middleware/auth.ts")
+         * - Bash commands showing which CLI tools were run (e.g. "npm test")
+         * - Grep/Glob search scope when scoped to a specific path
+         *
+         * Extract skills: look up by matching utteranceId and use these entries
+         * alongside toolCallsBefore to populate toolsFilesApis with specific files,
+         * not just tool names. Example: if precedingAIToolInputSummaries contains
+         * "middleware/auth.ts", include it in the extracted quote's toolCallsBefore
+         * and in the growth area's toolsFilesApis array.
+         */
+        precedingAIToolInputSummaries: precedingAssistant?.toolCalls
+          ? extractToolInputSummaries(
+              precedingAssistant.toolCalls
+                .filter((tc): tc is { name: string; input: Record<string, unknown>; id: string } =>
+                  typeof tc.input === 'object' && tc.input !== null,
+                ),
+            )
+          : undefined,
         precedingAIHadError: precedingAssistant?.toolCalls?.some((toolCall) => toolCall.isError) ?? false,
+        // ── Evidence enrichment from Phase 1 evidence contexts ────────────
+        // These fields supply concrete session JSONL data for constructing
+        // specific Evidence field context anchors in PEA growth areas.
+        // Extract workers should use these to build context strings like:
+        //   "In the {projectName} project, after Read(src/auth.ts) then Bash(npm test)"
+        ...(evidenceCtx ? {
+          /**
+           * Structured tool call sequence with concrete parameters.
+           * Each entry: {name, detail, isError?, errorText?}
+           *
+           * detail provides:
+           * - file path for Read/Edit/Write (e.g. "src/middleware/auth.ts")
+           * - "pattern [in path]" for Grep/Glob
+           * - command (truncated) for Bash
+           * - description (truncated) for Task/Agent
+           *
+           * Use this to construct evidence context anchors:
+           * "after Read(auth.ts) then Bash(npm test)"
+           * "after Edit(middleware/stripe.ts) [with 1 error]"
+           */
+          precedingToolDetails: evidenceCtx.precedingToolSequence,
+          /**
+           * Context window fill % at this utterance (0-100).
+           * Cite in evidence: "when context was {contextFillPercent}% full".
+           * Absent when token usage data is unavailable.
+           */
+          ...(evidenceCtx.contextFillPercent !== undefined
+            ? { contextFillPercent: evidenceCtx.contextFillPercent }
+            : {}),
+          /**
+           * Cumulative tool call errors in session up to this point.
+           * Cite in evidence: "after {cumulativeErrorCount} tool failures in this session".
+           * Use with errorChainMaxLength to detect error spiral patterns.
+           */
+          cumulativeErrorCount: evidenceCtx.cumulativeErrorCount,
+          /**
+           * 1-indexed user turn number within this session.
+           * Cite in evidence: "turn {sessionTurnNumber} of the session".
+           * Distinguishes "first message" from "mid-session correction" patterns.
+           */
+          sessionTurnNumber: evidenceCtx.sessionTurnNumber,
+          /**
+           * Seconds elapsed since session start at this utterance.
+           * Convert to minutes: Math.round(sessionDurationAtTurnSec / 60).
+           * Cite in evidence: "after {N} minutes into the session".
+           */
+          ...(evidenceCtx.sessionDurationAtTurnSec !== undefined
+            ? { sessionDurationAtTurnSec: evidenceCtx.sessionDurationAtTurnSec }
+            : {}),
+        } : {}),
       }];
     });
   });
