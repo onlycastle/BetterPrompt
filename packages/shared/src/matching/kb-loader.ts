@@ -84,34 +84,39 @@ function parseKnowledgeItem(item: Record<string, unknown>): PortableKnowledgeIte
  * Reads ~/.betterprompt/knowledge/items/*.json, validates minimally,
  * and converts to PortableKnowledgeItem[].
  *
- * Returns empty array if directory doesn't exist or has no items.
- * Individual parse failures are skipped silently (defensive loading).
+ * Returns empty array if the knowledge directory doesn't exist (legitimate
+ * "no data" case — not an error). Individual file parse failures are logged
+ * to stderr and skipped so one corrupt file doesn't block all KB items.
  */
 export function loadKnowledgeItemsFromDiskSync(): PortableKnowledgeItem[] {
+  let files: string[];
   try {
-    const files = readdirSync(ITEMS_PATH);
-    const jsonFiles = files.filter(f => f.endsWith('.json'));
-    if (jsonFiles.length === 0) return [];
-
-    const items: PortableKnowledgeItem[] = [];
-
-    for (const file of jsonFiles) {
-      try {
-        const raw = readFileSync(join(ITEMS_PATH, file), 'utf-8');
-        const item = JSON.parse(raw) as Record<string, unknown>;
-        const parsed = parseKnowledgeItem(item);
-        if (parsed) items.push(parsed);
-      } catch {
-        // Skip unparseable files
-        continue;
-      }
-    }
-
-    return items;
+    files = readdirSync(ITEMS_PATH);
   } catch {
-    // Directory doesn't exist — no KB items available
+    // Directory doesn't exist — no KB items available (not an error)
     return [];
   }
+
+  const jsonFiles = files.filter(f => f.endsWith('.json'));
+  if (jsonFiles.length === 0) return [];
+
+  const items: PortableKnowledgeItem[] = [];
+
+  for (const file of jsonFiles) {
+    try {
+      const raw = readFileSync(join(ITEMS_PATH, file), 'utf-8');
+      const item = JSON.parse(raw) as Record<string, unknown>;
+      const parsed = parseKnowledgeItem(item);
+      if (parsed) items.push(parsed);
+    } catch (err) {
+      // Surface parse failures per No Fallback Policy — log and continue
+      // so one corrupt file doesn't block all KB items
+      console.warn(`[kb-loader] Failed to parse ${file}: ${err instanceof Error ? err.message : String(err)}`);
+      continue;
+    }
+  }
+
+  return items;
 }
 
 // Backward-compatible async wrapper

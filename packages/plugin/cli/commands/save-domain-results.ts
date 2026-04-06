@@ -291,7 +291,14 @@ function parseStringifiedInput(value: unknown): unknown {
   const trimmed = value.trim();
   if (!trimmed) return value;
   if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-    try { return JSON.parse(trimmed); } catch { return value; }
+    try {
+      return JSON.parse(trimmed);
+    } catch (err) {
+      throw new Error(
+        `Invalid JSON in stringified input: ${err instanceof Error ? err.message : String(err)}. ` +
+        `Value starts with: ${trimmed.slice(0, 80)}...`,
+      );
+    }
   }
   if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
     const n = Number(trimmed);
@@ -737,7 +744,7 @@ function validateContentQuality(
     // the peaToWorkerGrowth() conversion (actionGoalRelevance).
     // ====================================================================
     const goalRelevanceText = area.goalRelevance ?? area.pea?.action?.goalRelevance ?? '';
-    const descriptionHasGoalSection = /WHY IT MATTERS|why this matters|goal|trying to achieve/i.test(area.description);
+    const descriptionHasGoalSection = /WHY IT MATTERS|why this matters|why it matters for|matters for your|trying to achieve/i.test(area.description);
 
     if (!goalRelevanceText && !descriptionHasGoalSection) {
       issues.push({
