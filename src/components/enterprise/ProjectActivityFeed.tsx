@@ -12,6 +12,8 @@ import styles from './ProjectActivityFeed.module.css';
 
 export interface ProjectActivityFeedProps {
   members: TeamMemberAnalysis[];
+  /** Optional callback when a contributor name is clicked — enables drill-down to member detail */
+  onMemberClick?: (memberName: string) => void;
 }
 
 interface AggregatedProject {
@@ -20,7 +22,7 @@ interface AggregatedProject {
   contributors: { name: string; sessionCount: number; summaryLines: string[] }[];
 }
 
-export function ProjectActivityFeed({ members }: ProjectActivityFeedProps) {
+export function ProjectActivityFeed({ members, onMemberClick }: ProjectActivityFeedProps) {
   const [showAll, setShowAll] = useState(false);
 
   const projects = useMemo<AggregatedProject[]>(() => {
@@ -66,7 +68,17 @@ export function ProjectActivityFeed({ members }: ProjectActivityFeedProps) {
                 {project.contributors.map(c => (
                   <div key={c.name} className={styles.contributor}>
                     <div className={styles.contributorHeader}>
-                      <span className={styles.contributorName}>{c.name}</span>
+                      {onMemberClick ? (
+                        <button
+                          className={`${styles.contributorName} ${styles.contributorLink}`}
+                          onClick={() => onMemberClick(c.name)}
+                          title={`View ${c.name}'s detail report`}
+                        >
+                          {c.name}
+                        </button>
+                      ) : (
+                        <span className={styles.contributorName}>{c.name}</span>
+                      )}
                       <span className={styles.contributorSessions}>{c.sessionCount} sessions</span>
                     </div>
                     {c.summaryLines.map((line, i) => (

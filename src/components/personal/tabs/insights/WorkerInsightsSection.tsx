@@ -35,6 +35,7 @@ import type { TranslatedAgentInsights, UtteranceLookupEntry } from '../../../../
 import type { CommunicationStrength, CommunicationGrowth } from '../../../../lib/transformers/prompt-pattern-transformer';
 import { useScrollReveal } from '../../../../hooks/useScrollReveal';
 import { ExpandableEvidence } from './ExpandableEvidence';
+import { getLowConfidenceDetail } from '@betterprompt/shared';
 import styles from './WorkerInsightsSection.module.css';
 
 function isCommunicationStrength(item: WorkerStrength): item is CommunicationStrength {
@@ -164,18 +165,125 @@ function getSeverityLabel(severity: string): string {
 }
 
 /**
+ * Detect whether a WorkerGrowth has PEA (Pattern→Evidence→Action) structured data.
+ *
+ * PEA data is present when the growth area was generated via the PEA pipeline
+ * and converted through peaToWorkerGrowth(). Detection: evidenceMoments array
+ * with 2+ moments AND verifiableAction present.
+ */
+function hasPEAData(growth: WorkerGrowth): boolean {
+  return Boolean(
+    growth.evidenceMoments &&
+    growth.evidenceMoments.length >= 2 &&
+    growth.verifiableAction
+  );
+}
+
+/**
+ * PEA Evidence Moment — renders a distinct moment with session context
+ *
+ * Layout (narrative order):
+ *   ┌── #N  Session X  [timestamp?] ─────────────────────────────
+ *   │  [context framing — what was happening at this moment]
+ *   │  developer said:
+ *   │  ❝ verbatim quote — developer's exact words ❞
+ *   │  ↳ observation — what behavior this demonstrates
+ *   └─────────────────────────────────────────────────────────────
+ *
+ * Visual distinction: each moment gets a left-border accent color
+ * via data-moment-index (cycles through 4 colors: blue, violet, cyan, indigo).
+ */
+function PEAEvidenceMoment({
+  moment,
+  index,
+  sessionNumber,
+}: {
+  moment: {
+    utteranceId: string;
+    sessionId: string;
+    quote: string;
+    behaviorDescription: string;
+    context?: string;
+    timestamp?: string;
+  };
+  index: number;
+  /** 1-based display number of this session (by first-appearance order) */
+  sessionNumber: number;
+}) {
+  // Format ISO timestamp to human-readable "Apr 3, 2026" when available
+  const formattedDate = moment.timestamp
+    ? (() => {
+        try {
+          return new Date(moment.timestamp).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          });
+        } catch {
+          return null;
+        }
+      })()
+    : null;
+
+  return (
+    <div
+      className={styles.peaMoment}
+      data-moment-index={index % 4}
+    >
+      {/* Header: moment number, human-readable session reference, optional timestamp */}
+      <div className={styles.peaMomentHeader}>
+        <span className={styles.peaMomentIndex}>#{index + 1}</span>
+        <span className={styles.peaMomentSession}>
+          Session {sessionNumber}
+        </span>
+        {formattedDate && (
+          <span className={styles.peaMomentTimestamp}>{formattedDate}</span>
+        )}
+      </div>
+
+      {/* Context framing — what was happening at this moment (before the quote) */}
+      {moment.context && (
+        <p className={styles.peaMomentContextFrame}>{moment.context}</p>
+      )}
+
+      {/* Verbatim quote — developer's exact words, labeled explicitly */}
+      <div className={styles.peaMomentQuoteWrapper}>
+        <span className={styles.peaMomentQuoteLabel}>developer said:</span>
+        <blockquote className={styles.peaMomentQuote}>
+          &ldquo;{moment.quote}&rdquo;
+        </blockquote>
+      </div>
+
+      {/* Observation — what behavior this moment demonstrates */}
+      <p className={styles.peaMomentObservation}>
+        <span className={styles.peaMomentObservationArrow}>↳</span>
+        {moment.behaviorDescription}
+      </p>
+    </div>
+  );
+}
+
+/**
  * Card component for a single growth area
- * CSS ::before pseudo-element handles the '!' prefix
  *
- * Data-driven UI: recommendation presence determines whether a concrete fix
- * can be displayed. When a saved result lacks that field, the UI falls back to
- * a neutral placeholder instead of an unlock prompt.
+ * Renders in two modes based on data shape:
  *
- * Supports Communication Pattern metadata (_meta) for showing
- * frequency/effectiveness badges when present.
+ * **PEA Mode** (evidenceMoments + verifiableAction present):
+ *   Three visually distinct sections with section labels and separator styling:
+ *   ┌─ PATTERN ─────────── amber bg | title, description, tools/files tags, severity
+ *   ├─ EVIDENCE ────────── blue bg  | distinct moments with session IDs and quotes
+ *   └─ ACTION ──────────── green bg | concrete instruction, verification check, goal relevance
  *
- * Professional Insights:
- * - Shows inline insight content when referencedInsights are present
+ *   Supplementary content (indented within card):
+ *   · KB Tip (kbTip)              — one best-match knowledge tip from deterministic matcher
+ *   · Expert Knowledge (optional) — professional insight matched to this growth area
+ *
+ * **Legacy Mode** (fallback for pre-PEA data):
+ *   Original flat layout with description → evidence → recommendation
+ *
+ * Visual differentiation: amber/yellow for Pattern, blue for Evidence, green for Action.
+ * Color-coded section labels (🔍 Pattern, 📋 Evidence, 🎯 Action) with arrow dividers.
+ * Low-confidence flag shown as top banner when evidence is sparse.
  */
 export function GrowthCard({
   growth,
@@ -199,25 +307,308 @@ export function GrowthCard({
     : '';
 
   const hasRecommendation = Boolean(growth.recommendation);
+  const isPEA = hasPEAData(growth);
+
+  // Resolve canonical KB tip for rendering.
+  // `knowledgeTip` is the forward-facing display field populated by the KB matcher.
+  // `kbTip` is the legacy internal field — kept for backward-compat with stored reports.
+  // Prefer `knowledgeTip`; fall back to `kbTip` so both old and new reports render tips.
+  const activeTip = growth.knowledgeTip ?? growth.kbTip;
 
   // Check if this is a Communication Pattern (has _meta)
   const isCommunication = isCommunicationGrowth(growth);
 
   // Count unique sessions from evidence (for "Found in N sessions" display)
-  // Note: EvidenceItem is a union type (string | InsightEvidence), so runtime type check
-  // is required. Legacy/cached data may contain plain strings without utteranceId.
   const sessionCount = useMemo(() => {
+    // PEA mode: count from evidenceMoments (more accurate session IDs)
+    if (isPEA && growth.evidenceMoments) {
+      const sessions = new Set<string>();
+      for (const m of growth.evidenceMoments) {
+        sessions.add(m.sessionId);
+      }
+      return sessions.size;
+    }
+    // Legacy mode: extract from utteranceId prefix
     const sessions = new Set<string>();
     for (const ev of growth.evidence) {
       if (typeof ev === 'object' && 'utteranceId' in ev) {
-        // Extract sessionId from utteranceId (format: sessionId_turnIndex)
         const sessionId = ev.utteranceId.split('_')[0];
         if (sessionId) sessions.add(sessionId);
       }
     }
     return sessions.size;
-  }, [growth.evidence]);
+  }, [growth.evidence, growth.evidenceMoments, isPEA]);
 
+  // Session-number map: sessionId → 1-based display number by first-appearance order.
+  // Enables human-readable "Session 1", "Session 2" labels instead of raw hash IDs.
+  // Built unconditionally (before any early returns) to satisfy React hook rules.
+  const sessionNumberMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (growth.evidenceMoments) {
+      for (const m of growth.evidenceMoments) {
+        if (!map.has(m.sessionId)) {
+          map.set(m.sessionId, map.size + 1);
+        }
+      }
+    }
+    return map;
+  }, [growth.evidenceMoments]);
+
+  // ── PEA Mode: Pattern → Evidence → Action layout ──────────────────────
+  if (isPEA) {
+    return (
+      <div
+        className={`${styles.insightCard} ${styles.growthCard} ${styles.peaCard}`}
+        data-immersive={immersive || undefined}
+        data-dark={isDark || undefined}
+      >
+        {/* Low confidence indicator — emerging pattern needing more sessions */}
+        {growth.lowConfidence && (() => {
+          // Use getLowConfidenceDetail for specific, actionable messages when
+          // evidence moments are available (PEA format); fall back to generic message.
+          const evidenceForDetail = growth.evidenceMoments
+            ? growth.evidenceMoments.map(m => ({ utteranceId: m.utteranceId, sessionId: m.sessionId }))
+            : null;
+          const detail = evidenceForDetail
+            ? getLowConfidenceDetail(evidenceForDetail, growth.lowConfidence)
+            : null;
+          const message = detail?.message
+            ?? (sessionCount <= 1
+              ? 'Detected in 1 session — needs more sessions to confirm this is a recurring pattern'
+              : `Based on ${growth.evidenceMoments?.length ?? growth.evidence.length} moments — more sessions will strengthen confidence in this pattern`
+            );
+          return (
+            <div className={styles.peaLowConfidence}>
+              <span className={styles.peaLowConfidenceIcon}>⚠</span>
+              <span className={styles.peaLowConfidenceLabel}>{detail?.label ?? 'Emerging Pattern'}</span>
+              <span className={styles.peaLowConfidenceSep}>·</span>
+              <span>{message}</span>
+            </div>
+          );
+        })()}
+
+        {/* ── PATTERN Section ───────────────────────────────────────── */}
+        <div className={styles.peaSection} data-pea-section="pattern">
+          <div className={styles.peaSectionLabel}>
+            <span className={styles.peaSectionIcon}>🔍</span>
+            <span>Pattern</span>
+          </div>
+
+          <div className={styles.cardHeader}>
+            <h4 className={styles.cardTitle}>{growth.title}</h4>
+            {isCommunication && (
+              <div className={styles.patternBadges}>
+                <span className={styles.frequencyBadge}>
+                  {FREQUENCY_LABELS[growth._meta.frequency]}
+                </span>
+                <span className={styles.effectivenessBadgeOpportunity}>
+                  {EFFECTIVENESS_LABELS[growth._meta.effectiveness]}
+                </span>
+              </div>
+            )}
+            {!isCommunication && growth.severity && (
+              <span className={`${styles.severityBadge} ${severityClass}`}>
+                {growth.severity}
+              </span>
+            )}
+          </div>
+
+          <p className={styles.cardDescription}>{growth.description}</p>
+
+          {/* Tools/Files/APIs tags */}
+          {growth.toolsFilesApis && growth.toolsFilesApis.length > 0 && (
+            <div className={styles.peaToolTags}>
+              {growth.toolsFilesApis.map((tag, i) => (
+                <span key={i} className={styles.peaToolTag}>{tag}</span>
+              ))}
+            </div>
+          )}
+
+          {/* Metadata row */}
+          {!isCommunication && (
+            <div className={styles.growthMeta}>
+              {sessionCount > 0 && (
+                <span className={styles.evidenceCount}>
+                  📊 {sessionCount} session{sessionCount !== 1 ? 's' : ''}
+                </span>
+              )}
+              {growth.severity && (
+                <span className={styles.severityLevel} data-severity={growth.severity}>
+                  {getSeverityLabel(growth.severity)}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Section Divider: Pattern → Evidence ─────────────────── */}
+        <div className={styles.peaDivider}>
+          <span className={styles.peaDividerLine} />
+          <span className={styles.peaDividerArrow}>▼</span>
+          <span className={styles.peaDividerLine} />
+        </div>
+
+        {/* ── EVIDENCE Section ──────────────────────────────────────── */}
+        <div className={styles.peaSection} data-pea-section="evidence">
+          <div className={styles.peaSectionLabel}>
+            <span className={styles.peaSectionIcon}>📋</span>
+            <span>Evidence</span>
+            <span className={styles.peaMomentCount}>
+              {growth.evidenceMoments!.length} moment{growth.evidenceMoments!.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <div className={styles.peaMomentsList}>
+            {growth.evidenceMoments!.map((moment, idx) => (
+              <PEAEvidenceMoment
+                key={moment.utteranceId}
+                moment={moment}
+                index={idx}
+                sessionNumber={sessionNumberMap.get(moment.sessionId) ?? idx + 1}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* ── Section Divider: Evidence → Action ──────────────────── */}
+        <div className={styles.peaDivider}>
+          <span className={styles.peaDividerLine} />
+          <span className={styles.peaDividerArrow}>▼</span>
+          <span className={styles.peaDividerLine} />
+        </div>
+
+        {/* ── ACTION Section ────────────────────────────────────────── */}
+        <div className={styles.peaSection} data-pea-section="action">
+          <div className={styles.peaSectionLabel}>
+            <span className={styles.peaSectionIcon}>🎯</span>
+            <span>Action</span>
+          </div>
+
+          <div className={styles.peaActionContent}>
+            <p className={styles.peaActionInstruction}>
+              {growth.verifiableAction!.action}
+            </p>
+
+            {/* Goal relevance — why this matters for the builder's specific goals */}
+            {growth.actionGoalRelevance && (
+              <div className={styles.peaGoalRelevance}>
+                <div className={styles.peaGoalHeader}>
+                  <span className={styles.peaGoalIcon}>💡</span>
+                  <span className={styles.peaGoalLabel}>Why this matters for your goals</span>
+                </div>
+                <p className={styles.peaGoalText}>{growth.actionGoalRelevance}</p>
+              </div>
+            )}
+
+            {/* Verification check — how to verify the action */}
+            <div className={styles.peaVerification}>
+              <span className={styles.peaVerificationLabel}>✓ How to verify</span>
+              <p className={styles.peaVerificationText}>
+                {growth.verifiableAction!.checkDescription}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* KB Tip — one best-match tip from deterministic KB matcher.
+            Renders `knowledgeTip` (canonical display field) or `kbTip` (legacy)
+            when present, resolved via `activeTip` computed above. */}
+        {activeTip && activeTip.title && (
+          <div className={styles.kbTipCard}>
+            <div className={styles.kbTipHeader}>
+              <div className={styles.kbTipHeaderLeft}>
+                <span>💡</span>
+                <span className={styles.kbTipLabel}>Recommended Resource</span>
+              </div>
+              {activeTip.credibilityTier && (
+                <span
+                  className={styles.kbTipCredibilityBadge}
+                  data-tier={activeTip.credibilityTier}
+                >
+                  {activeTip.credibilityTier === 'high' ? 'Authoritative' :
+                   activeTip.credibilityTier === 'medium' ? 'Practitioner' : 'Community'}
+                </span>
+              )}
+            </div>
+            <h5 className={styles.kbTipTitle}>{activeTip.title}</h5>
+            <p className={styles.kbTipSummary}>{activeTip.summary}</p>
+            <div className={styles.kbTipFooter}>
+              {activeTip.sourceAuthor && (
+                <span className={styles.kbTipAuthor}>
+                  — {activeTip.sourceAuthor}
+                </span>
+              )}
+              {activeTip.sourceUrl && (
+                <a
+                  href={activeTip.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.kbTipSourceLink}
+                >
+                  View source <span className={styles.kbTipSourceArrow}>&rarr;</span>
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Expert Knowledge — bridge + card (shared with legacy) */}
+        {referencedInsights && referencedInsights.length > 0 && (
+          <>
+            <div className={styles.expertBridge}>
+              <span className={styles.bridgeLine} />
+              <span className={styles.bridgeLabel}>&gt; Matched to this finding</span>
+              <span className={styles.bridgeLine} />
+            </div>
+            <div className={styles.expertKnowledgeCard}>
+              <div className={styles.expertHeader}>
+                <div className={styles.expertHeaderLeft}>
+                  <span>📖</span>
+                  <span className={styles.expertLabel}>Expert Knowledge</span>
+                </div>
+                <span className={styles.expertCategoryBadge}>{referencedInsights[0].category}</span>
+              </div>
+              <h5 className={styles.expertTitle}>{referencedInsights[0].title}</h5>
+              {referencedInsights[0].keyTakeaway ? (
+                <>
+                  <blockquote className={styles.expertTakeaway}>
+                    {referencedInsights[0].keyTakeaway}
+                  </blockquote>
+                  {referencedInsights[0].sourceAuthor && (
+                    <p className={styles.expertAuthorAttribution}>
+                      — {referencedInsights[0].sourceAuthor}
+                    </p>
+                  )}
+                  {referencedInsights[0].actionableAdvice?.slice(0, 2).map((advice, i) => (
+                    <div key={i} className={styles.expertAdviceItem}>
+                      <span className={styles.expertAdvicePrefix}>&gt;</span>
+                      <span className={styles.expertAdviceText}>{advice}</span>
+                    </div>
+                  ))}
+                  {referencedInsights[0].url && (
+                    <div className={styles.expertSourceFooter}>
+                      <a
+                        href={referencedInsights[0].url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.expertSourceButton}
+                      >
+                        Read Full Article <span className={styles.expertSourceArrow}>&rarr;</span>
+                      </a>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <span className={styles.expertLocked}>🔓 Unlock Full Insight</span>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // ── Legacy Mode: Original flat layout ──────────────────────────────────
   return (
     <div className={`${styles.insightCard} ${styles.growthCard}`} data-immersive={immersive || undefined} data-dark={isDark || undefined}>
       <div className={styles.cardHeader}>
@@ -277,6 +668,48 @@ export function GrowthCard({
           <p className={styles.recommendationText}>
             No explicit next step was generated for this finding in the stored report.
           </p>
+        </div>
+      )}
+
+      {/* KB Tip — one best-match tip from deterministic KB matcher.
+          Renders `knowledgeTip` (canonical display field) or `kbTip` (legacy)
+          when present, resolved via `activeTip` computed above. */}
+      {activeTip && activeTip.title && (
+        <div className={styles.kbTipCard}>
+          <div className={styles.kbTipHeader}>
+            <div className={styles.kbTipHeaderLeft}>
+              <span>💡</span>
+              <span className={styles.kbTipLabel}>Recommended Resource</span>
+            </div>
+            {activeTip.credibilityTier && (
+              <span
+                className={styles.kbTipCredibilityBadge}
+                data-tier={activeTip.credibilityTier}
+              >
+                {activeTip.credibilityTier === 'high' ? 'Authoritative' :
+                 activeTip.credibilityTier === 'medium' ? 'Practitioner' : 'Community'}
+              </span>
+            )}
+          </div>
+          <h5 className={styles.kbTipTitle}>{activeTip.title}</h5>
+          <p className={styles.kbTipSummary}>{activeTip.summary}</p>
+          <div className={styles.kbTipFooter}>
+            {activeTip.sourceAuthor && (
+              <span className={styles.kbTipAuthor}>
+                — {activeTip.sourceAuthor}
+              </span>
+            )}
+            {activeTip.sourceUrl && (
+              <a
+                href={activeTip.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.kbTipSourceLink}
+              >
+                View source <span className={styles.kbTipSourceArrow}>&rarr;</span>
+              </a>
+            )}
+          </div>
         </div>
       )}
 

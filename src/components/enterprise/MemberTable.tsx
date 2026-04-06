@@ -6,7 +6,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, Pencil, Trash2, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+import { Search, Pencil, Trash2 } from 'lucide-react';
 import { ProgressRing } from '../dashboard/ProgressRing';
 import { formatTokens, getTokenDelta, getDeltaIndicator } from './format-utils';
 import type { TeamMemberAnalysis } from '../../types/enterprise';
@@ -24,6 +25,13 @@ export interface MemberTableProps {
   showDepartment?: boolean;
   /** Callback when a row is clicked (enables clickable rows) */
   onRowClick?: (member: TeamMemberAnalysis) => void;
+  /**
+   * URL builder for the individual developer report page.
+   * When provided, renders a semantic Next.js Link in each row so users can
+   * right-click to open in a new tab, and assistive technology sees a real anchor.
+   * The whole row remains clickable via onRowClick for a broad click target.
+   */
+  getHref?: (member: TeamMemberAnalysis) => string;
   /** Callback when edit action is clicked */
   onEdit?: (member: TeamMemberAnalysis) => void;
   /** Callback when remove action is clicked */
@@ -33,9 +41,9 @@ export interface MemberTableProps {
 type SortKey = 'name' | 'overallScore' | 'tokenUsage' | 'lastAnalyzedAt';
 type SortDir = 'asc' | 'desc';
 
-export function MemberTable({ members, showDepartment = false, onRowClick, onEdit, onRemove }: MemberTableProps) {
+export function MemberTable({ members, showDepartment = false, onRowClick, getHref, onEdit, onRemove }: MemberTableProps) {
   const hasActions = !!onEdit || !!onRemove;
-  const isClickable = !!onRowClick;
+  const isClickable = !!onRowClick || !!getHref;
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('overallScore');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -123,7 +131,7 @@ export function MemberTable({ members, showDepartment = false, onRowClick, onEdi
               <th className={styles.th}>Sessions</th>
               <th className={styles.th}>Issues</th>
               {hasActions && <th className={styles.th}>Actions</th>}
-              {isClickable && <th className={styles.th} aria-label="Navigate" />}
+              {isClickable && <th className={styles.th} aria-label="Report link" />}
             </tr>
           </thead>
           <tbody>
@@ -139,7 +147,7 @@ export function MemberTable({ members, showDepartment = false, onRowClick, onEdi
                 <tr
                   key={member.id}
                   className={`${styles.row} ${isClickable ? styles.clickableRow : ''}`}
-                  onClick={isClickable ? () => onRowClick(member) : undefined}
+                  onClick={onRowClick ? () => onRowClick(member) : undefined}
                 >
                   <td className={styles.td}>
                     <div className={styles.nameCell}>
@@ -212,7 +220,19 @@ export function MemberTable({ members, showDepartment = false, onRowClick, onEdi
                   )}
                   {isClickable && (
                     <td className={styles.td}>
-                      <ChevronRight size={16} className={styles.rowArrow} />
+                      {getHref ? (
+                        <Link
+                          href={getHref(member)}
+                          className={styles.viewLink}
+                          onClick={e => e.stopPropagation()}
+                          title={`View ${member.name}'s report`}
+                          aria-label={`View ${member.name}'s report`}
+                        >
+                          View <span aria-hidden="true">→</span>
+                        </Link>
+                      ) : (
+                        <span className={styles.rowArrow} aria-hidden="true">›</span>
+                      )}
                     </td>
                   )}
                 </tr>

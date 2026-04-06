@@ -494,6 +494,564 @@
 }
 
 /* ============================================================================
+   PEA Card — Pattern → Evidence → Action 3-section layout
+   ============================================================================ */
+
+.peaCard {
+  padding: 0;
+  border-left: 4px solid var(--sketch-yellow);
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.peaCard::before {
+  /* Override the default '!' prefix — PEA uses section labels instead */
+  content: none;
+}
+
+.peaCard:hover {
+  background: var(--surface-1);
+  transform: none;
+}
+
+/* ── PEA Section Container ─────────────────────────────────────────────── */
+
+.peaSection {
+  padding: var(--space-md) var(--space-lg);
+  position: relative;
+}
+
+/* Pattern section: warm amber accent */
+.peaSection[data-pea-section="pattern"] {
+  background: rgba(255, 217, 61, 0.08);
+  border-bottom: none;
+}
+
+/* Evidence section: cool blue accent */
+.peaSection[data-pea-section="evidence"] {
+  background: rgba(96, 165, 250, 0.06);
+}
+
+/* Action section: energetic green accent */
+.peaSection[data-pea-section="action"] {
+  background: rgba(74, 222, 128, 0.06);
+}
+
+/* ── PEA Section Label (icon + text) ───────────────────────────────────── */
+
+.peaSectionLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+  font-family: var(--font-interface, var(--font-primary));
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.peaSection[data-pea-section="pattern"] .peaSectionLabel {
+  color: var(--sketch-yellow-dark, #b45309);
+}
+
+.peaSection[data-pea-section="evidence"] .peaSectionLabel {
+  color: var(--sketch-blue-text, #1d4ed8);
+}
+
+.peaSection[data-pea-section="action"] .peaSectionLabel {
+  color: var(--sketch-green-text, #15803d);
+}
+
+.peaSectionIcon {
+  font-size: 14px;
+}
+
+/* ── PEA Divider (arrow between sections) ──────────────────────────────── */
+
+.peaDivider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 0 var(--space-lg);
+  height: 20px;
+  background: var(--surface-1);
+}
+
+.peaDividerLine {
+  flex: 1;
+  height: 1px;
+  background: var(--border-default, #e5e7eb);
+}
+
+.peaDividerArrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  line-height: 1;
+}
+
+/* ── PEA Tool/File Tags ────────────────────────────────────────────────── */
+
+.peaToolTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: var(--space-sm);
+}
+
+.peaToolTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--ink-primary);
+  color: var(--bg-paper, #fff);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.01em;
+  line-height: 1.5;
+}
+
+/* ── PEA Evidence Moments ──────────────────────────────────────────────── */
+
+.peaMomentCount {
+  margin-left: auto;
+  font-weight: var(--weight-medium);
+  font-size: 11px;
+  opacity: 0.7;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.peaMomentsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.peaMoment {
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(96, 165, 250, 0.15);
+  /* Default: left accent matches evidence section color */
+  border-left: 3px solid rgba(96, 165, 250, 0.45);
+}
+
+/* Per-moment left-border accents for visual distinction between moments.
+   Cycles through 4 accent colors so each moment is visually differentiated. */
+.peaMoment[data-moment-index="0"] {
+  border-left-color: rgba(96, 165, 250, 0.55);  /* blue */
+}
+
+.peaMoment[data-moment-index="1"] {
+  border-left-color: rgba(139, 92, 246, 0.55);  /* violet */
+}
+
+.peaMoment[data-moment-index="2"] {
+  border-left-color: rgba(6, 182, 212, 0.55);   /* cyan/teal */
+}
+
+.peaMoment[data-moment-index="3"] {
+  border-left-color: rgba(67, 56, 202, 0.55);   /* indigo */
+}
+
+.peaMomentHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.peaMomentIndex {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  color: var(--sketch-blue-text, #1d4ed8);
+  background: rgba(96, 165, 250, 0.12);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.peaMomentSession {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  font-weight: var(--weight-medium);
+}
+
+/* Timestamp — right-aligned, shown when the ISO timestamp is available */
+.peaMomentTimestamp {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  opacity: 0.65;
+}
+
+/* Context framing — what was happening at this moment.
+   Rendered BEFORE the quote to frame the verbatim words in their session context. */
+.peaMomentContextFrame {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-secondary);
+  margin: 0 0 var(--space-xs) 0;
+  padding: 3px 8px;
+  background: rgba(96, 165, 250, 0.05);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid rgba(96, 165, 250, 0.2);
+  line-height: 1.5;
+}
+
+/* Verbatim quote wrapper — contains the "developer said:" label and the blockquote */
+.peaMomentQuoteWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: var(--space-xs) 0;
+}
+
+/* "developer said:" verbatim label — makes explicit that the quote is the
+   developer's exact words (not a paraphrase or summary) */
+.peaMomentQuoteLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--sketch-blue-text, #1d4ed8);
+  opacity: 0.55;
+}
+
+.peaMomentQuote {
+  font-family: var(--font-reading, var(--font-primary));
+  font-size: clamp(0.92rem, 0.98vw, 0.98rem);
+  font-style: italic;
+  color: var(--ink-primary);
+  margin: 0;
+  padding-left: var(--space-sm);
+  line-height: 1.6;
+  font-weight: var(--weight-medium);
+}
+
+.peaMomentObservation {
+  font-family: var(--font-reading, var(--font-primary));
+  font-size: clamp(0.88rem, 0.94vw, 0.94rem);
+  color: var(--ink-secondary);
+  margin: 0;
+  line-height: 1.6;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+/* Arrow prefix on the observation line — visually indicates "interpretation of above" */
+.peaMomentObservationArrow {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-muted);
+  opacity: 0.65;
+  line-height: 1.6;
+}
+
+/* ── PEA Action Section ────────────────────────────────────────────────── */
+
+.peaActionContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.peaActionInstruction {
+  font-family: var(--font-reading, var(--font-primary));
+  font-size: clamp(0.96rem, 1.02vw, 1.02rem);
+  color: var(--ink-primary);
+  margin: 0;
+  line-height: 1.72;
+  letter-spacing: -0.002em;
+  font-weight: var(--weight-medium);
+}
+
+.peaGoalRelevance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(74, 222, 128, 0.08);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--sketch-green, #22c55e);
+}
+
+/* Header row: icon + "Why this matters for your goals" label */
+.peaGoalHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.peaGoalIcon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* AC 5: Explicit label connecting the growth area to builder goals */
+.peaGoalLabel {
+  font-family: var(--font-interface, var(--font-primary));
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sketch-green, #22c55e);
+}
+
+.peaGoalText {
+  font-family: var(--font-reading, var(--font-primary));
+  font-size: clamp(0.9rem, 0.96vw, 0.96rem);
+  color: var(--ink-secondary);
+  margin: 0;
+  line-height: 1.65;
+  font-style: italic;
+}
+
+.peaVerification {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--ink-primary);
+  border-radius: var(--radius-md);
+  box-shadow: 2px 2px 0 var(--ink-muted);
+}
+
+.peaVerificationLabel {
+  display: block;
+  font-family: var(--font-interface, var(--font-primary));
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sketch-green, #22c55e);
+  margin-bottom: var(--space-xs);
+}
+
+.peaVerificationText {
+  font-family: var(--font-mono);
+  font-size: clamp(0.88rem, 0.94vw, 0.94rem);
+  color: var(--bg-paper, #fff);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ── PEA Low Confidence Indicator ──────────────────────────────────────── */
+
+.peaLowConfidence {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-lg);
+  background: rgba(251, 146, 60, 0.1);
+  border-bottom: 1px solid rgba(251, 146, 60, 0.2);
+  font-family: var(--font-interface, var(--font-primary));
+  font-size: 12px;
+  color: var(--sketch-orange, #f57c00);
+}
+
+.peaLowConfidenceIcon {
+  font-size: 13px;
+}
+
+.peaLowConfidenceLabel {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.peaLowConfidenceSep {
+  opacity: 0.5;
+  font-weight: 300;
+}
+
+/* ── PEA Dark Mode Overrides ───────────────────────────────────────────── */
+
+.insightCard[data-dark].peaCard {
+  background: rgba(255, 255, 255, 0.04);
+  border-left-color: var(--sketch-yellow);
+}
+
+.insightCard[data-dark] .peaSection[data-pea-section="pattern"] {
+  background: rgba(255, 217, 61, 0.05);
+}
+
+.insightCard[data-dark] .peaSection[data-pea-section="evidence"] {
+  background: rgba(96, 165, 250, 0.04);
+}
+
+.insightCard[data-dark] .peaSection[data-pea-section="action"] {
+  background: rgba(74, 222, 128, 0.04);
+}
+
+.insightCard[data-dark] .peaDivider {
+  background: transparent;
+}
+
+.insightCard[data-dark] .peaDividerLine {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.insightCard[data-dark] .peaDividerArrow {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.insightCard[data-dark] .peaToolTag {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.insightCard[data-dark] .peaMoment {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(96, 165, 250, 0.12);
+}
+
+/* Dark mode per-moment accent colors (slightly higher opacity for dark bg readability) */
+.insightCard[data-dark] .peaMoment[data-moment-index="0"] {
+  border-left-color: rgba(96, 165, 250, 0.4);
+}
+
+.insightCard[data-dark] .peaMoment[data-moment-index="1"] {
+  border-left-color: rgba(139, 92, 246, 0.4);
+}
+
+.insightCard[data-dark] .peaMoment[data-moment-index="2"] {
+  border-left-color: rgba(6, 182, 212, 0.4);
+}
+
+.insightCard[data-dark] .peaMoment[data-moment-index="3"] {
+  border-left-color: rgba(67, 56, 202, 0.4);
+}
+
+.insightCard[data-dark] .peaMomentQuote {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.insightCard[data-dark] .peaMomentObservation {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.insightCard[data-dark] .peaMomentContextFrame {
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(96, 165, 250, 0.04);
+  border-left-color: rgba(96, 165, 250, 0.15);
+}
+
+.insightCard[data-dark] .peaMomentQuoteLabel {
+  color: rgba(96, 165, 250, 0.7);
+}
+
+.insightCard[data-dark] .peaMomentTimestamp {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.insightCard[data-dark] .peaMomentObservationArrow {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.insightCard[data-dark] .peaGoalRelevance {
+  background: rgba(74, 222, 128, 0.06);
+  border-left-color: rgba(74, 222, 128, 0.4);
+}
+
+.insightCard[data-dark] .peaGoalLabel {
+  color: rgba(74, 222, 128, 0.8);
+}
+
+.insightCard[data-dark] .peaGoalText {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.insightCard[data-dark] .peaVerification {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.insightCard[data-dark] .peaVerificationText {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.insightCard[data-dark] .peaLowConfidence {
+  background: rgba(251, 146, 60, 0.06);
+  border-bottom-color: rgba(251, 146, 60, 0.12);
+}
+
+/* ── PEA Immersive Mode Overrides ──────────────────────────────────────── */
+
+.insightCard[data-immersive].peaCard {
+  border-left: none;
+  border: 1px solid var(--border-default, #e5e7eb);
+  border-radius: var(--radius-lg);
+}
+
+.insightCard[data-immersive].peaCard .peaSection {
+  padding: var(--space-lg) var(--space-xl);
+}
+
+.insightCard[data-immersive][data-dark].peaCard {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* ── PEA Responsive ────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .peaSection {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .peaDivider {
+    padding: 0 var(--space-md);
+    height: 16px;
+  }
+
+  .peaMoment {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .peaMomentTimestamp {
+    display: none; /* hide timestamp on small screens to save space */
+  }
+
+  .peaMomentContextFrame {
+    font-size: 10px;
+  }
+
+  .peaToolTags {
+    gap: 4px;
+  }
+
+  .peaToolTag {
+    font-size: 10px;
+    padding: 1px 6px;
+  }
+
+  .peaVerification {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .peaLowConfidence {
+    padding: var(--space-xs) var(--space-md);
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .peaSection {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .insightCard[data-immersive].peaCard .peaSection {
+    padding: var(--space-sm) var(--space-md);
+  }
+}
+
+/* ============================================================================
    Card Content
    ============================================================================ */
 
@@ -1161,6 +1719,173 @@
   .insightCard::before {
     font-size: var(--text-sm);
   }
+}
+
+/* ============================================================================
+   KB Tip — One best-match knowledge tip per growth area
+   ============================================================================ */
+
+.kbTipCard {
+  margin-top: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--sketch-blue-soft, rgba(59, 130, 246, 0.06));
+  border: 1.5px solid var(--sketch-blue, rgba(59, 130, 246, 0.25));
+  border-radius: var(--radius-lg);
+}
+
+.kbTipHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.kbTipHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.kbTipLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--sketch-blue-text, #3B82F6);
+}
+
+.kbTipCredibilityBadge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--sketch-blue-soft, rgba(59, 130, 246, 0.08));
+  color: var(--sketch-blue-text, #3B82F6);
+  border: 1px solid var(--sketch-blue, rgba(59, 130, 246, 0.25));
+}
+
+.kbTipCredibilityBadge[data-tier="high"] {
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.kbTipCredibilityBadge[data-tier="medium"] {
+  background: rgba(59, 130, 246, 0.08);
+  color: #3B82F6;
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.kbTipTitle {
+  font-family: var(--font-mono);
+  font-size: var(--text-md, 14px);
+  font-weight: var(--weight-bold);
+  color: var(--ink-primary);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.kbTipSummary {
+  font-size: var(--text-sm, 13px);
+  line-height: 1.5;
+  color: var(--ink-secondary);
+  margin: 0 0 var(--space-sm) 0;
+}
+
+.kbTipFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.kbTipAuthor {
+  font-size: var(--text-xs, 11px);
+  font-style: italic;
+  color: var(--ink-tertiary);
+}
+
+.kbTipSourceLink {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--weight-semibold);
+  color: var(--sketch-blue-text, #3B82F6);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.kbTipSourceLink:hover {
+  text-decoration: underline;
+}
+
+.kbTipSourceArrow {
+  font-size: 13px;
+}
+
+/* Dark mode support for KB tip */
+.insightCard[data-dark] .kbTipCard {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.insightCard[data-dark] .kbTipLabel,
+.insightCard[data-dark] .kbTipSourceLink {
+  color: #60A5FA;
+}
+
+/* Immersive mode — stripped-down styling */
+.insightCard[data-immersive] .kbTipCard {
+  background: transparent;
+  border: none;
+  padding: var(--space-sm) 0;
+  border-top: 1px solid var(--sketch-blue, rgba(59, 130, 246, 0.2));
+}
+
+/* PEA Card context — indent supplementary content (kbTip + expert knowledge)
+   to prevent edge-to-edge rendering and show rounded corners.
+   The peaCard has overflow:hidden + padding:0, so these children need
+   their own horizontal margins to frame properly within the card. */
+
+.peaCard .kbTipCard {
+  margin-left: var(--space-md);
+  margin-right: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.peaCard .expertBridge {
+  padding-left: var(--space-md);
+  padding-right: var(--space-md);
+}
+
+.peaCard .expertKnowledgeCard {
+  margin-left: var(--space-md);
+  margin-right: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+/* Immersive + PEA: remove horizontal margins (bare, no card frame) */
+.insightCard[data-immersive].peaCard .kbTipCard {
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: var(--space-sm);
+}
+
+.insightCard[data-immersive].peaCard .expertBridge {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.insightCard[data-immersive].peaCard .expertKnowledgeCard {
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: var(--space-sm);
 }
 
 /* ============================================================================

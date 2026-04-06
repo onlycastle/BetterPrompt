@@ -94,6 +94,32 @@
   font-family: var(--font-primary);
 }
 
+/* Badge container for severity + emerging */
+.areaBadges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Emerging pattern badge for low-confidence team areas */
+.emergingBadge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1px var(--space-xs);
+  border-radius: var(--radius-sm);
+  line-height: 1.4;
+  white-space: nowrap;
+  background: rgba(251, 146, 60, 0.15);
+  color: var(--sketch-orange, #f57c00);
+  border: 1px solid rgba(251, 146, 60, 0.3);
+  cursor: help;
+}
+
 /* Severity badge pill */
 .severityBadge {
   display: inline-block;
@@ -144,6 +170,26 @@
 .memberNames {
   font-size: var(--text-xs);
   color: var(--ink-muted);
+}
+
+/* Clickable member name for drill-down to individual detail report */
+.memberLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--sketch-cyan);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  transition: color var(--transition-fast);
+}
+
+.memberLink:hover {
+  color: var(--ink-primary);
+  text-decoration-style: solid;
 }
 
 /* Recommendation text */
