@@ -155,6 +155,104 @@ export const Phase1SessionMetricsSchema = z.object({
 export type Phase1SessionMetrics = z.infer<typeof Phase1SessionMetricsSchema>;
 
 // ============================================================================
+// Utterance Evidence Context Schema (concrete session JSONL evidence)
+// ============================================================================
+
+/**
+ * Concrete detail extracted from a single AI tool call.
+ *
+ * Provides the specific parameters needed to populate Evidence field
+ * "context" anchors in PEA growth areas. For example:
+ * - Read("src/lib/auth.ts") → "after reading src/lib/auth.ts"
+ * - Bash("npm test") → "after running npm test"
+ * - Grep("isAuthenticated") → "after searching for isAuthenticated"
+ */
+export const ToolCallEvidenceSchema = z.object({
+  /** Tool name (e.g. "Read", "Edit", "Bash", "Grep", "Glob") */
+  name: z.string(),
+
+  /**
+   * Concrete parameter detail for this tool call type:
+   * - Read/Edit/Write: file_path value
+   * - Grep: pattern (+ optional path)
+   * - Glob: pattern (+ optional path)
+   * - Bash: command string (truncated to 120 chars)
+   * - Task/Agent: description/prompt (truncated to 80 chars)
+   * - WebFetch: url value (truncated to 120 chars)
+   */
+  detail: z.string().optional(),
+
+  /** Whether this tool call resulted in an error */
+  isError: z.boolean().optional(),
+
+  /**
+   * Truncated error message (max 200 chars) from the tool result.
+   * Only present when isError is true. Used for "after X failed with Y" evidence context.
+   */
+  errorText: z.string().optional(),
+});
+export type ToolCallEvidence = z.infer<typeof ToolCallEvidenceSchema>;
+
+/**
+ * Rich evidence context for a single user utterance, extracted from session JSONL.
+ *
+ * Provides the concrete metrics, tool call sequences, and timestamps needed
+ * to populate Evidence field moments in PEA growth areas without requiring
+ * LLM workers to re-parse session logs.
+ *
+ * Look up by utteranceId to get evidence context for a specific moment:
+ *   evidenceContexts.find(ctx => ctx.utteranceId === utteranceId)
+ */
+export const UtteranceEvidenceContextSchema = z.object({
+  /**
+   * Utterance ID — matches UserUtterance.id format: {sessionId}_{messageIndex}.
+   * This is the primary lookup key connecting evidence context to utterances.
+   */
+  utteranceId: z.string(),
+
+  /** Session this utterance belongs to */
+  sessionId: z.string(),
+
+  /** ISO 8601 timestamp from the raw JSONL message — enables temporal verification */
+  timestamp: z.string(),
+
+  /**
+   * Sequence of tool calls the AI made in the response immediately preceding
+   * this utterance. Includes concrete parameters (file paths, commands, patterns)
+   * and error states for specific citation in evidence context fields.
+   *
+   * Empty array when there is no preceding AI response or no tool calls were made.
+   * Used to build context anchors like "after Read(auth.ts) then Bash(npm test)".
+   */
+  precedingToolSequence: z.array(ToolCallEvidenceSchema),
+
+  /**
+   * Context window fill percentage (0-100) computed from the preceding
+   * assistant message's token usage. Enables evidence like "context was 87% full".
+   * Absent when token usage data is unavailable.
+   */
+  contextFillPercent: z.number().min(0).max(100).optional(),
+
+  /**
+   * Cumulative count of tool call errors in this session up to and including
+   * the assistant response preceding this utterance.
+   * Enables evidence like "the 4th tool failure in this session".
+   */
+  cumulativeErrorCount: z.number().int().min(0),
+
+  /** 1-indexed user turn number within this session (1 = first user message) */
+  sessionTurnNumber: z.number().int().min(1),
+
+  /**
+   * Seconds elapsed since session start at this utterance's timestamp.
+   * Enables temporal context in evidence: "early in the session" vs "after 45 minutes".
+   * Absent when session start time cannot be determined.
+   */
+  sessionDurationAtTurnSec: z.number().min(0).optional(),
+});
+export type UtteranceEvidenceContext = z.infer<typeof UtteranceEvidenceContextSchema>;
+
+// ============================================================================
 // Activity Session Schema (per-session metadata for Phase 1.5/2 stages)
 // ============================================================================
 
@@ -194,5 +292,17 @@ export const Phase1OutputSchema = z.object({
   /** Full parsed sessions preserved for downstream evidence and parity needs */
   sessions: z.array(ParsedSessionSchema).optional(),
   skippedFiles: z.number().optional(),
+  /**
+   * Rich evidence contexts extracted per user utterance from session JSONL.
+   *
+   * Provides concrete metrics (context fill %, cumulative error counts),
+   * tool call sequences with parameters (file paths, commands, patterns),
+   * and timestamps for each utterance. Used by LLM workers to populate
+   * Evidence field moments in PEA growth areas with specific session anchors.
+   *
+   * Look up by utteranceId: evidenceContexts.find(ctx => ctx.utteranceId === id)
+   * Ordered by session then turn position for predictable access patterns.
+   */
+  evidenceContexts: z.array(UtteranceEvidenceContextSchema).optional(),
 });
 export type Phase1Output = z.infer<typeof Phase1OutputSchema>;
