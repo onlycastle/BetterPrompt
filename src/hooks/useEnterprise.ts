@@ -6,10 +6,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   aggregateGrowthAreas,
+  aggregateGrowthAreasPEA,
   aggregateKPT,
   aggregateEnhancedAntiPatterns,
   buildTeamAnalytics,
   buildOrganizationAnalytics,
+  generateTeamActionItems,
 } from '@/lib/enterprise/aggregation';
 import type {
   OrganizationAnalytics,
@@ -17,7 +19,10 @@ import type {
   TeamMemberAnalysis,
   EnhancedAntiPatternAggregate,
   TeamGrowthAreaAggregate,
+  TeamGrowthAreaPEAAggregate,
   TeamKPTAggregate,
+  TeamActionItem,
+  TeamAnalysisOutput,
 } from '@/types/enterprise';
 import type { StoredTeam, StoredTeamMember, StoredOrganization } from '@/lib/local/team-store';
 
@@ -225,10 +230,71 @@ export function useOrgGrowthAreas(): AsyncState<TeamGrowthAreaAggregate[]> {
   return { data: aggregated, isLoading, error, refetch };
 }
 
+/**
+ * Cross-developer pattern detection using PEA-format growth areas.
+ * Returns aggregated patterns with freeform category tags, team recommendations,
+ * per-member severity breakdowns, and KB tip attachments.
+ */
+export function useOrgGrowthAreasPEA(): AsyncState<TeamGrowthAreaPEAAggregate[]> & { totalMembers: number } {
+  const { data: members, isLoading, error, refetch } = useApiFetch<TeamMemberAnalysis[]>('/api/org/members');
+
+  const aggregated = members ? aggregateGrowthAreasPEA(members) : null;
+  const totalMembers = members?.length ?? 0;
+
+  return { data: aggregated, isLoading, error, refetch, totalMembers };
+}
+
 export function useOrgKpt(): AsyncState<TeamKPTAggregate> {
   const { data: members, isLoading, error, refetch } = useApiFetch<TeamMemberAnalysis[]>('/api/org/members');
 
   const aggregated = members ? aggregateKPT(members) : null;
 
   return { data: aggregated, isLoading, error, refetch };
+}
+
+// ---------------------------------------------------------------------------
+// Team action items hook (prioritized recommendations for managers)
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate prioritized team action items from cross-developer pattern analysis.
+ * Returns up to 7 concrete, manager-actionable recommendations sorted by impact.
+ * Each item includes urgency level, specific action, rationale, and affected members.
+ */
+export function useOrgTeamActionItems(): AsyncState<TeamActionItem[]> {
+  const { data: members, isLoading, error, refetch } = useApiFetch<TeamMemberAnalysis[]>('/api/org/members');
+
+  const items = members
+    ? generateTeamActionItems(aggregateGrowthAreasPEA(members), members.length)
+    : null;
+
+  return { data: items, isLoading, error, refetch };
+}
+
+// ---------------------------------------------------------------------------
+// Team analysis hook — patterns + recommendations co-located (server-side)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch the full team analysis output for a team, including cross-developer
+ * patterns and manager recommendations in a single co-located response.
+ *
+ * Calls GET /api/teams/[teamId]/analysis which runs server-side:
+ *   1. aggregateGrowthAreasPEA() — two-pass cross-developer pattern detection
+ *   2. generateLLMTeamRecommendations() when ANTHROPIC_API_KEY is set,
+ *      or generateTeamActionItems() (deterministic) otherwise
+ *
+ * This replaces multiple client-side useMemo calls with a single server-side
+ * computation where patterns and recommendations are guaranteed to be derived
+ * from the same member dataset in the same request.
+ *
+ * The `recommendationSource` field in the returned data indicates whether
+ * recommendations were LLM-generated ('llm') or template-based ('deterministic').
+ *
+ * @param teamId - The team ID to analyze
+ */
+export function useTeamAnalysis(teamId: string | null): AsyncState<TeamAnalysisOutput> {
+  return useApiFetch<TeamAnalysisOutput>(
+    teamId ? `/api/teams/${teamId}/analysis` : null,
+  );
 }

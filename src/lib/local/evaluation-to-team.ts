@@ -374,12 +374,41 @@ function buildGrowthAreas(
     if (!container?.growthAreas?.length) continue;
 
     for (const ga of container.growthAreas) {
+      // Extract PEA-sourced fields from WorkerGrowth (typed as unknown for flexibility)
+      const gaAny = ga as unknown as {
+        actionGoalRelevance?: string;
+        severity?: string;
+        categoryTags?: string[];
+        toolsFilesApis?: string[];
+        kbTip?: {
+          tipId: string;
+          title: string;
+          summary: string;
+          sourceUrl: string;
+          sourceAuthor: string;
+          sourcePlatform?: string;
+          credibilityTier?: 'high' | 'medium' | 'standard';
+          relevanceScore: number;
+        };
+      };
+      const goalRelevance = gaAny.actionGoalRelevance;
+      const kbTip = gaAny.kbTip;
+      // Freeform LLM-generated behavioral category tags for team clustering
+      const categoryTags = gaAny.categoryTags;
+      // Specific tools, files, APIs the builder interacted with (tool_file_naming rubric)
+      const toolsFilesApis = gaAny.toolsFilesApis;
       areas.push({
         title: ga.title,
         domain: config.key,
-        severity: (ga as unknown as { severity?: string }).severity as MemberGrowthArea['severity'] ?? 'medium',
+        severity: gaAny.severity as MemberGrowthArea['severity'] ?? 'medium',
         recommendation: ga.recommendation,
-      });
+        ...(goalRelevance ? { goalRelevance } : {}),
+        ...(kbTip ? { kbTip } : {}),
+        // Thread category tags through for team-level aggregation (PEA pipeline)
+        ...(categoryTags?.length ? { categoryTags } : {}),
+        // Thread tools/files/APIs through for UI rendering (tool_file_naming rubric)
+        ...(toolsFilesApis?.length ? { toolsFilesApis } : {}),
+      } as MemberGrowthArea);
     }
   }
 
