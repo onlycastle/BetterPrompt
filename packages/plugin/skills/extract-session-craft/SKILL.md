@@ -86,6 +86,17 @@ Extract signals OBJECTIVELY. Identify BOTH strength and growth signals with equa
 - `behavioralMarker` values: `context_management`, `sustainability`, `learning`
 - `signalType` values: `strength` or `growth`
 
+### Concrete Session Data Capture (Required for downstream evidence quality)
+
+For each extracted quote, also capture these fields from the Phase 1 data to enable concrete evidence context in the write stage:
+
+- **`projectName`**: The project name for the session this quote comes from. Look up from `phase1.sessionOverviews` (match by `sessionId`). Use `'unknown'` only if genuinely unavailable.
+- **`toolCallsBefore`**: The Claude tools invoked immediately before this utterance. Look up from `phase1.developerUtterances` (match by `utteranceId`) and use the `precedingAIToolCalls` array (max 5 tools). Use `[]` if the utterance has no preceding tool calls.
+- **`contextFillPct`**: The context fill percentage at this session turn, if available from `phase1.developerUtterances`. Especially important for `context_management` marker quotes.
+- **`filePathsAccessed`**: Specific file paths and commands from the preceding tool call inputs. Look up from `phase1.interactionSnapshots` (match by `utteranceId`) and use the `precedingAIToolInputSummaries` array. For Session Craft growth areas, Bash commands (e.g., `"grep -r pattern ."`) reveal what was causing context bloat; file paths (e.g., `"packages/shared/src/"`) show what directories were being scanned. Include relevant entries in `toolCallsBefore`. Use `[]` if none available.
+
+These fields are consumed by the write stage when constructing evidence moment `context` fields and `toolsFilesApis` arrays — they MUST be present for growth areas to reference concrete session data rather than generic descriptions.
+
 ## Output Format
 
 Use Write to save the following JSON structure to `~/.betterprompt/tmp/stage-extractSessionCraft.json`:
@@ -93,7 +104,20 @@ Use Write to save the following JSON structure to `~/.betterprompt/tmp/stage-ext
 ```json
 {
   "dimension": "sessionCraft",
-  "quotes": [...],
+  "quotes": [
+    {
+      "text": "<verbatim quote>",
+      "utteranceId": "<id>",
+      "sessionId": "<id>",
+      "behavioralMarker": "<context_management|sustainability|learning>",
+      "signalType": "<strength|growth>",
+      "confidence": 0.0,
+      "projectName": "<project name from sessionOverviews where sessionId matches>",
+      "toolCallsBefore": ["<tool1>", "<tool2>"],
+      "contextFillPct": 0,
+      "timestamp": "<ISO timestamp from phase1.interactionSnapshots — look up by matching utteranceId (e.g. '2026-03-16T09:08:00.000Z')>"
+    }
+  ],
   "patterns": [...],
   "signals": {
     "contextEfficiencyScore": 0,
@@ -128,5 +152,9 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-stage-output --stage extractSe
 - [ ] Analyzed ALL sessions
 - [ ] 12+ quotes extracted with utteranceIds
 - [ ] Signals cover all 3 sub-dimensions
+- [ ] Every quote has `projectName` populated from `phase1.sessionOverviews` (matched by sessionId)
+- [ ] Every quote has `toolCallsBefore` populated from `phase1.developerUtterances[n].precedingAIToolCalls` (matched by utteranceId), or `[]` if none
+- [ ] Context-management quotes have `contextFillPct` populated where available
+- [ ] Every quote has `timestamp` from `phase1.interactionSnapshots[n].timestamp` (look up snapshot where `snapshot.utteranceId === quote.utteranceId`)
 - [ ] Wrote output JSON to `~/.betterprompt/tmp/stage-extractSessionCraft.json`
 - [ ] Ran CLI `save-stage-output` with stage `extractSessionCraft`

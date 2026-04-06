@@ -79,6 +79,16 @@ Look for these positive indicators that distinguish experts:
 - `behavioralMarker`: `bare_retry`, `context_overflow`, `excessive_iteration`, `frustration`, `topic_mixing`, `blind_acceptance`, `marathon`, `tool_failure`
 - `signalType`: always `growth` (quotes show anti-pattern PRESENCE, which is what we want to reduce)
 
+### Concrete Session Data Capture (Required for downstream evidence quality)
+
+For each extracted quote, also capture these fields from the Phase 1 data to enable concrete evidence context in the write stage:
+
+- **`projectName`**: The project name for the session this quote comes from. Look up from `phase1.sessionOverviews` (match by `sessionId`). Use `'unknown'` only if genuinely unavailable.
+- **`toolCallsBefore`**: The Claude tools invoked immediately before this utterance. Look up from `phase1.developerUtterances` (match by `utteranceId`) and use the `precedingAIToolCalls` array (max 5 tools). Use `[]` if the utterance has no preceding tool calls. Critical for `bare_retry` and `tool_failure` anti-patterns — what tool had just failed?
+- **`filePathsAccessed`**: Specific file paths and commands from the preceding tool call inputs. Look up from `phase1.interactionSnapshots` (match by `utteranceId`) and use the `precedingAIToolInputSummaries` array. For Session Mastery growth areas, Bash commands (e.g., `"npm run build"`) reveal what was being retried; file paths (e.g., `"src/middleware/auth.ts"`) show which specific file triggered a bare retry or tool failure. Include relevant entries in `toolCallsBefore`. Use `[]` if none available.
+
+These fields are consumed by the write stage when constructing evidence moment `context` fields and `toolsFilesApis` arrays — they MUST be present for growth areas to reference concrete session data rather than generic anti-pattern descriptions.
+
 ## Output Format
 
 Use Write to save the following JSON structure to `~/.betterprompt/tmp/stage-extractSessionMastery.json`:
@@ -93,7 +103,10 @@ Use Write to save the following JSON structure to `~/.betterprompt/tmp/stage-ext
       "sessionId": "<id>",
       "behavioralMarker": "<anti-pattern type>",
       "signalType": "growth",
-      "confidence": 0.0
+      "confidence": 0.0,
+      "projectName": "<project name from sessionOverviews where sessionId matches>",
+      "toolCallsBefore": ["<tool1>", "<tool2>"],
+      "timestamp": "<ISO timestamp from phase1.interactionSnapshots — look up by matching utteranceId (e.g. '2026-03-16T09:08:00.000Z')>"
     }
   ],
   "patterns": [
@@ -150,5 +163,9 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/cli/index.js save-stage-output --stage extractSe
 - [ ] Did NOT penalize absence of scaffolding tools when sessions are clean
 - [ ] Computed per-session cleanliness scores
 - [ ] Identified expert behavior indicators
+- [ ] Every quote has `projectName` populated from `phase1.sessionOverviews` (matched by sessionId)
+- [ ] Every quote has `toolCallsBefore` populated from `phase1.developerUtterances[n].precedingAIToolCalls` (matched by utteranceId), or `[]` if none
+- [ ] `bare_retry` and `tool_failure` quotes have `toolCallsBefore` showing the tool that failed (critical for evidence specificity)
+- [ ] Every quote has `timestamp` from `phase1.interactionSnapshots[n].timestamp` (look up snapshot where `snapshot.utteranceId === quote.utteranceId`)
 - [ ] Wrote output JSON to `~/.betterprompt/tmp/stage-extractSessionMastery.json`
 - [ ] Ran CLI `save-stage-output` with stage `extractSessionMastery`

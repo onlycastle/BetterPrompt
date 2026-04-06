@@ -10,7 +10,11 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { readCachedParsedSessions } from '../../lib/core/multi-source-session-scanner.js';
 import { getPluginDataDir } from '../../lib/core/session-scanner.js';
-import { extractPhase1DataFromParsedSessions } from '../../lib/core/data-extractor.js';
+import {
+  extractPhase1DataFromParsedSessions,
+  buildActivityMetadataFromSessions,
+  selectDateSpreadSessions,
+} from '../../lib/core/data-extractor.js';
 import { computeDeterministicScores } from '../../lib/core/deterministic-scorer.js';
 import { buildReportActivitySessions } from '../../lib/evaluation-assembler.js';
 import { createAnalysisRun } from '../../lib/results-db.js';
@@ -48,9 +52,29 @@ export async function execute(args: Record<string, unknown>): Promise<string> {
   markAnalysisStarted();
 
   try {
-    const selectedSessions = sessions.slice(0, maxSessions);
+    // Phase 1 extraction runs on a date-spread subset (for diverse LLM evidence)
+    const selectedSessions = selectDateSpreadSessions(sessions, maxSessions);
     const phase1Output = await extractPhase1DataFromParsedSessions(selectedSessions);
     const scores = computeDeterministicScores(phase1Output);
+
+    // Activity metadata from ALL sessions (cheap — uses pre-computed ParsedSession.stats)
+    // This ensures the heatmap, session count, active days, and token totals reflect full history
+    const allSessionsActivity = buildActivityMetadataFromSessions(sessions);
+    phase1Output.activitySessions = allSessionsActivity;
+
+    // Update high-level counts/dateRange to reflect all sessions (scoring already computed above)
+    const allTimestamps = sessions.map(s => new Date(s.startTime).getTime()).sort((a, b) => a - b);
+    if (allTimestamps.length > 0) {
+      phase1Output.sessionMetrics = {
+        ...phase1Output.sessionMetrics,
+        totalSessions: sessions.length,
+        dateRange: {
+          earliest: new Date(allTimestamps[0]!).toISOString(),
+          latest: new Date(allTimestamps[allTimestamps.length - 1]!).toISOString(),
+        },
+      };
+    }
+
     const activitySessions = buildReportActivitySessions(phase1Output);
 
     const pluginDataDir = getPluginDataDir();

@@ -73,14 +73,85 @@ For each strength cluster:
   - utteranceId: Reference to source
   - context: Brief insight (max 150 chars)
 
-### Growth Areas (1-3 per dimension)
+### Growth Areas (1-3 per dimension) — Pattern → Evidence → Action
 
-For each growth area:
-- **title**: Short, descriptive (max 50 chars). Frame as opportunity, not criticism
-- **description**: 300+ characters using WHAT-WHY-HOW
+> **CRITICAL**: Read `../shared/pea-growth-area-format.md` for the full specification. Every growth area MUST pass the 4-criteria quality rubric.
+
+Each growth area follows the **Pattern → Evidence → Action** structure:
+
+#### Pattern (title + description)
+- **title**: Specific to THIS builder, naming tools/files/APIs they actually used (max 60 chars)
+  - BAD: "AI Dependency Issues" — generic, could apply to anyone
+  - GOOD: "Accepting Unverified Prisma Migrations Without Schema Diff" — specific, names technology and behavior
+- **description**: 300+ characters structured as:
+  - PATTERN (2-3 sentences): The specific resilience/dependency behavioral pattern with quantified frequency
+  - WHY IT MATTERS (1-2 sentences): Why this matters for skill independence and code quality
+  - IMPACT (1-2 sentences): Risk of undetected errors, skill atrophy, production issues
 - **severity**: One of `low`, `medium`, `high`, or `critical` based on breadth + impact of the gap
-- **evidence**: 2-4 evidence items from extraction data
-- **recommendation**: 150+ characters with specific, actionable steps
+
+#### Evidence (2-3+ distinct moments with verbatim quotes and observed behaviors)
+
+> **READ**: `../shared/pea-growth-area-format.md` § "Evidence Citation from Extraction Objects" for the field mapping table and § "Evidence Moment Extraction Protocol" for step-by-step extraction with GOOD vs BAD examples.
+
+#### Citation Lookup (run before writing each evidence moment)
+
+For each evidence moment, locate the corresponding quote in the extraction stage output:
+
+```
+1. Find: quotes[n] where quotes[n].signalType === "growth"
+         AND quotes[n].behavioralMarker in ["ai_dependency", "hallucination_tolerance", "cold_start", "explainability_gap", "blind_acceptance"]
+         AND quotes[n].text is relevant to this growth area's resilience pattern
+
+2. Copy directly — do NOT modify:
+   - quotes[n].text        → evidenceMoments[n].quote        (verbatim)
+   - quotes[n].utteranceId → evidenceMoments[n].utteranceId  (citation link)
+   - quotes[n].sessionId   → evidenceMoments[n].sessionId    (session link)
+   - quotes[n].timestamp   → evidenceMoments[n].timestamp    (temporal anchor)
+
+3. Build context:
+   "In the {quotes[n].projectName} project" +
+   (quotes[n].toolCallsBefore.length > 0 ? ", after {tool1} then {tool2}" : "") +
+   ", <what AI output was accepted or what verification was missing>"
+
+4. After selecting all moments: count distinct sessionId values.
+   2+ distinct sessionIds → lowConfidence: false
+   1 sessionId only       → lowConfidence: true (cite 2+ different utteranceIds)
+```
+
+For each growth area, extract 2-3+ distinct moments:
+
+1. **Scan the extraction `quotes` array** for quotes related to AI dependency, hallucination tolerance, cold-start quality, or explainability gaps. Look for `signalType: "growth"` quotes showing blind acceptance, shallow first prompts, or missing verification.
+2. **Select moments from different sessions** — cross-session evidence shows the resilience gap persists across different problem domains and projects. Same-session moments are valid only when cross-session evidence is unavailable (set `lowConfidence: true`).
+3. **Copy the developer's EXACT words** from `quotes[n].text` — character-for-character. Do NOT paraphrase. If the developer wrote "looks good, let's move on" after a complex code generation, that is the verbatim quote.
+4. **Describe the observed resilience behavior** in `behaviorDescription`: name the specific AI output that was accepted or challenged, what verification was missing, and what the consequence was. Example: "Accepted a Prisma migration with a destructive column rename without running `prisma db pull` to diff against the live schema — the AI-generated migration would have dropped the users.email column in production."
+5. **Populate `context` with concrete session anchors** from the extraction quote fields:
+   - `quotes[n].projectName` → always include: "in the **{projectName}** project"
+   - `quotes[n].toolCallsBefore` → name the tool that generated the output being blindly accepted: "after an **Edit** call that generated 80 lines of Prisma migration code"
+   - Technology/library names in `quotes[n].text` → extract: "Prisma migration", "React hooks", "Supabase auth"
+
+   **Example**: If quote has `projectName: "saas-backend"` and `toolCallsBefore: ["Edit"]`, and the developer said "looks good, let's move on", write context as: "In the saas-backend project, immediately after an Edit call that wrote 60+ lines of Prisma migration code — the developer accepted without running `prisma db pull` to verify schema safety"
+
+   **CRITICAL**: The `context` field must be specific enough that a future code reviewer could locate this exact moment in the session logs. Generic descriptions like "working on a complex feature" are rejected.
+
+Each evidence moment must have:
+- **evidenceMoments**: 2+ items, each with `utteranceId` (from `quotes[n].utteranceId`), `sessionId` (from `quotes[n].sessionId`), `quote` (verbatim from `quotes[n].text`, min 15 chars), `behaviorDescription` (min 20 chars), `context` (min 20 chars), `timestamp` (from `quotes[n].timestamp`)
+- **evidence**: Same moments in legacy format for backward compatibility
+- Evidence must come directly from the extraction data — never fabricate quotes
+- Set `lowConfidence: true` when only 2 moments or all from a single session
+
+#### Action (recommendation + verifiableAction)
+- **recommendation**: 150+ chars, concrete next-session action referencing observable session-log signals
+- **verifiableAction**: Structured object with:
+  - `action` (50+ chars): Specific behavior to build resilience
+  - `checkDescription` (30+ chars): What evidence appears in session logs
+  - `toolOrPattern`: The specific tool/command/pattern targeted
+
+#### Anti-Generic-Advice Check
+Before outputting each growth area, verify:
+1. Could I swap in any other developer and this still makes sense? → If yes, make it more specific
+2. Does the action reference something visible in session logs? → If no, add tool/command reference
+3. Am I quoting 2+ actual developer moments with their EXACT words? → If no, go back to extraction data and pull verbatim quotes
+4. Does title or description name a specific tool/file/technology? → If no, add one
 
 ### Behavioral Signature
 
@@ -138,17 +209,72 @@ Write the following JSON to `~/.betterprompt/tmp/domain-skillResilience.json`, t
   ],
   "growthAreas": [
     {
-      "title": "<max 50 chars, opportunity frame>",
-      "description": "<300+ chars, WHAT-WHY-HOW>",
+      "title": "<Pattern title naming specific tools/files — max 60 chars>",
+      "description": "<300+ chars: PATTERN (what + quantified frequency) + WHY IT MATTERS + IMPACT>",
       "severity": "<low|medium|high|critical>",
       "evidence": [
+        { "utteranceId": "<[E] first moment — quotes[n].utteranceId>", "quote": "<[E] verbatim, min 15 chars>", "context": "<[E] min 20 chars — concrete anchor>", "sessionId": "<[E] quotes[n].sessionId>", "behaviorDescription": "<[E] min 20 chars>", "timestamp": "<[E] verbatim ISO from quotes[n].timestamp>" },
+        { "utteranceId": "<[E] SECOND DISTINCT — different utteranceId>", "quote": "<[E] verbatim, min 15 chars>", "context": "<[E] min 20 chars — concrete anchor>", "sessionId": "<[E] ideally different session>", "behaviorDescription": "<[E] min 20 chars>", "timestamp": "<[E] ISO>" }
+      ],
+      "evidenceMoments": [
         {
-          "quote": "<verbatim from extraction>",
-          "utteranceId": "<id>",
-          "context": "<max 150 chars>"
+          "utteranceId":        "<[E] first distinct moment — from quotes[n].utteranceId>",
+          "sessionId":          "<[E] from quotes[n].sessionId>",
+          "quote":              "<[E] developer's EXACT words — verbatim, min 15 chars>",
+          "behaviorDescription":"<[E] min 20 chars — names what AI output was accepted and what verification was missing>",
+          "context":            "<[E] min 20 chars — project name + tool that generated AI output + what was blindly accepted>",
+          "timestamp":          "<[E] ISO 8601 — verbatim from quotes[n].timestamp — never generated>"
+        },
+        {
+          "utteranceId":        "<[E] SECOND DISTINCT moment — DIFFERENT utteranceId — quality gate rejects duplicates>",
+          "sessionId":          "<[E] from quotes[n].sessionId — different session preferred for cross-session evidence>",
+          "quote":              "<[E] verbatim, min 15 chars — different exchange from first>",
+          "behaviorDescription":"<[E] min 20 chars — names specific AI dependency or skill gap>",
+          "context":            "<[E] min 20 chars with concrete session anchor>",
+          "timestamp":          "<[E] ISO 8601>"
         }
       ],
-      "recommendation": "<150+ chars, specific and actionable>"
+      "recommendation": "<[A] 150+ chars — concrete next-session action with tool/command references>",
+      "verifiableAction": {
+        "action":          "<[A] 50+ chars — specific behavior to adopt>",
+        "checkDescription":"<[A] 30+ chars — observable signal in session logs>",
+        "toolOrPattern":   "<[A] tool or command targeted>"
+      },
+      "goalRelevance":  "<[A] 50+ chars — WHY this resilience gap matters for the builder's specific goals. Reference their project and what independent skills they need.>",
+      "categoryTags":   ["<[M] descriptive-behavioral-tag-1>", "<[M] descriptive-behavioral-tag-2>"],
+      "toolsFilesApis": ["<[P] specific technology or library the builder accepted without verification>", "<[P] tool they should use to verify independently>"],
+      "lowConfidence":  false,
+      "pea": {
+        "pattern": {
+          "title":        "<[P] same as top-level title>",
+          "description":  "<[P] 100+ chars — specific AI dependency or skill gap behavioral pattern, names technology and quantified frequency>",
+          "severity":     "<[P] same as top-level severity>",
+          "toolsFilesApis": ["<[P] specific technology, library, or tool the builder interacted with>"]
+        },
+        "evidence": [
+          {
+            "utteranceId":  "<[E] first distinct moment — from extraction data>",
+            "sessionId":    "<[E] which session this moment is from>",
+            "quote":        "<[E] developer's EXACT words — min 15 chars — verbatim from quotes[n].text>",
+            "context":      "<[E] min 20 chars — MUST name project + tool that generated AI output + what was accepted without verification>",
+            "observation":  "<[E] min 20 chars — what AI dependency behavior this moment demonstrates>",
+            "timestamp":    "<[E] ISO 8601 — verbatim from quotes[n].timestamp — never generate or approximate>"
+          },
+          {
+            "utteranceId":  "<[E] SECOND DISTINCT moment — different utteranceId — hard gate rejects fewer than 2>",
+            "sessionId":    "<[E] ideally different from first — cross-session = strongest pattern proof>",
+            "quote":        "<[E] EXACT words, min 15 chars — different exchange from first>",
+            "context":      "<[E] min 20 chars with concrete session anchor>",
+            "observation":  "<[E] min 20 chars — what this moment demonstrates>",
+            "timestamp":    "<[E] ISO 8601>"
+          }
+        ],
+        "action": {
+          "instruction":       "<[A] 50+ chars — specific verification behavior to adopt. MUST reference observable signals: Bash commands, tool names (Read, Grep), slash commands, or explicit verification patterns.>",
+          "verificationCheck": "<[A] 30+ chars — what evidence appears in future session logs that the developer verified AI output before accepting>",
+          "goalRelevance":     "<[A] 50+ chars — WHY building this independent skill matters for the builder's specific project and professional growth.>"
+        }
+      }
     }
   ],
   "data": {
@@ -202,3 +328,20 @@ Print a brief `[bp]` status line at each key step:
 - [ ] vpcMetrics computed from available signals using VCP paper definitions
 - [ ] Never internally spawned additional Agents or Tasks
 - [ ] Saved domain results via CLI with domain `"skillResilience"`
+
+### PEA Quality Gate (every growth area MUST pass ALL four)
+- [ ] **distinct_moments**: 2+ evidenceMoments with different utteranceIds cited from extraction `quotes[]`
+- [ ] **verifiable_action**: verifiableAction references specific tools, commands, or session-log signals
+- [ ] **pattern_specificity**: Title and description are specific to THIS builder, not generic advice
+- [ ] **tool_file_naming**: Title or description names specific tools, files, APIs, or technologies
+- [ ] Every growth area has `evidenceMoments` array with 2+ items
+- [ ] Every growth area has `verifiableAction` with action (50+ chars) and checkDescription (30+ chars)
+- [ ] `lowConfidence` set to `true` when only 2 moments OR all evidence from a single session
+- [ ] Every evidenceMoment `quote` is copied verbatim from `quotes[n].text` in the extraction stage output (not paraphrased)
+- [ ] Every evidenceMoment `utteranceId` matches an actual entry in the extraction `quotes[]` array
+- [ ] Every evidenceMoment `sessionId` is copied from `quotes[n].sessionId`
+- [ ] Every evidenceMoment `timestamp` is copied from `quotes[n].timestamp` (never generated or approximated)
+- [ ] Evidence moments reference at least 2 distinct `sessionId` values OR `lowConfidence: true` is set
+- [ ] Every growth area has `categoryTags` array with 1-5 freeform descriptive tags
+- [ ] Every growth area has `pea` sub-object with `pattern` (incl. toolsFilesApis), `evidence` (min 2 moments with `observation`), and `action` (with `instruction`, `verificationCheck`, `goalRelevance`)
+- [ ] `pea.pattern.toolsFilesApis` contains at least one valid tool/file/API (not a generic placeholder like "tool" or "API")

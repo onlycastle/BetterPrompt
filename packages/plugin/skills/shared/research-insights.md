@@ -142,3 +142,65 @@ Run parallel Claude instances for independent tasks. Each instance gets clean co
 - **EACH** growth area: 2-3 evidence quotes with specific examples
 - **NO HEDGING**: Use "is", "does", "demonstrates" -- never "may", "might", "tends to"
 - **QUANTIFY**: "in X of Y sessions", not "often" or "sometimes"
+
+## Verifiable Next-Session Action Requirement (MANDATORY)
+
+Every growth area **MUST** include a `verifiableAction` object with a concrete next-session action that can be checked against future session logs. This is a non-negotiable quality gate — growth areas without verifiable actions will be rejected by the save-domain-results CLI.
+
+### What Makes an Action Verifiable
+
+A verifiable action describes a specific behavior change the developer can take in their **next session** that produces an **observable signal** in session logs. The signal must be one of:
+
+| Signal Type | Examples | What Appears in Logs |
+|------------|---------|---------------------|
+| Tool usage | "Use Grep to search before asking AI" | `tool_use` block with `name: "Grep"` |
+| Slash commands | "Start with /plan before implementation" | User message containing `/plan` |
+| CLI commands | "Run vitest before making changes" | Bash `tool_use` with `vitest` in command |
+| File operations | "Create a CLAUDE.md constraint list" | Write/Edit `tool_use` targeting `CLAUDE.md` |
+| Prompt patterns | "State goal and constraints in first message" | First user message contains constraint keywords |
+| Behavioral sequence | "Read test file before editing source" | Read `tool_use` for `.test.ts` before Edit `tool_use` for `.ts` |
+
+### verifiableAction Object Format
+
+```json
+{
+  "verifiableAction": {
+    "action": "In your next session involving API changes, run the existing test suite via Bash ('npm test') before making any code modifications to establish a passing baseline.",
+    "checkDescription": "Session contains Bash tool_use with 'npm test' or 'vitest' command appearing before any Edit tool_use targeting source files.",
+    "toolOrPattern": "Bash test execution"
+  }
+}
+```
+
+**Fields:**
+- `action` (required, min 50 chars): The specific behavior to adopt. Must name tools, commands, files, or patterns.
+- `checkDescription` (required, min 30 chars): How a reviewer would verify this in session logs. Describes the observable signal.
+- `toolOrPattern` (optional): The primary tool, command, or pattern targeted.
+
+### Actions That PASS the Rubric
+
+| Growth Area | Verifiable Action | Why It Passes |
+|------------|------------------|---------------|
+| "Unverified AI Output" | "In your next session, add at least one Read tool call to verify file state after every AI-generated Edit" | Tool_use sequence is checkable in logs |
+| "Missing Test Execution" | "Run the test suite via Bash before AND after each code change" | Bash tool_use with test command is observable |
+| "Context Window Bloat" | "Use /compact when context exceeds 60% capacity" | /compact command in user messages is searchable |
+| "No Planning Phase" | "Start your next session with TodoWrite to decompose the task into 3+ subtasks" | TodoWrite tool_use in first 3 turns is verifiable |
+
+### Actions That FAIL the Rubric
+
+| Generic Action | Why It Fails | How to Fix |
+|---------------|-------------|-----------|
+| "Try to plan more" | No observable signal in logs | "Use /plan or TodoWrite in your first 3 messages" |
+| "Be more careful with AI output" | Not checkable — "careful" isn't observable | "Add a Read tool call after each Edit to verify changes" |
+| "Improve your testing habits" | Vague aspiration, not a session action | "Run 'npm test' via Bash before committing" |
+| "Consider using more tools" | No specific tool named, no timing | "Use Grep instead of Bash for file searches" |
+
+### Quality Gate Enforcement
+
+The `save-domain-results` CLI validates:
+1. `verifiableAction` object is present on every growth area
+2. `action` field is >= 50 characters
+3. `checkDescription` field is >= 30 characters
+4. Combined text references at least one observable session-log signal (tool name, command, file reference, or prompt pattern)
+
+Growth areas failing any of these checks will be rejected with a `quality_error` status.

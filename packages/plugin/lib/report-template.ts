@@ -176,6 +176,40 @@ function renderEvidenceList(
   `;
 }
 
+/**
+ * Render a matched KB tip inline on a growth card.
+ * Shows the tip title, summary, author, and credibility tier
+ * with a link to the source. Returns empty string if no tip attached.
+ */
+function renderKbTip(
+  kbTip?: { tipId?: string; title?: string; summary?: string; sourceUrl?: string; sourceAuthor?: string; credibilityTier?: string; relevanceScore?: number } | null,
+): string {
+  if (!kbTip?.title) return '';
+
+  const credBadge = kbTip.credibilityTier === 'high'
+    ? '<span class="kb-cred kb-cred-high">★ Authoritative</span>'
+    : kbTip.credibilityTier === 'medium'
+      ? '<span class="kb-cred kb-cred-medium">● Practitioner</span>'
+      : '<span class="kb-cred kb-cred-standard">○ Community</span>';
+
+  const authorLine = kbTip.sourceAuthor ? ` — ${escapeHtml(kbTip.sourceAuthor)}` : '';
+  const linkHtml = kbTip.sourceUrl
+    ? `<a href="${escapeHtml(kbTip.sourceUrl)}" target="_blank" rel="noopener" class="kb-source-link">View source${authorLine}</a>`
+    : '';
+
+  return `
+    <div class="kb-tip-card">
+      <div class="kb-tip-header">
+        <span class="kb-tip-label">💡 Recommended Resource</span>
+        ${credBadge}
+      </div>
+      <div class="kb-tip-title">${escapeHtml(kbTip.title ?? '')}</div>
+      <div class="kb-tip-summary">${escapeHtml(kbTip.summary ?? '')}</div>
+      ${linkHtml}
+    </div>
+  `;
+}
+
 // ============================================================================
 // SVG Radar Chart (ported from RadarChart.tsx math)
 // ============================================================================
@@ -371,6 +405,7 @@ function generateDomainSection(result: DomainResult): string {
         ${renderRichText(g.description)}
         <div class="recommendation">${renderRichText(g.recommendation)}</div>
         ${renderEvidenceList(g.evidence)}
+        ${renderKbTip(g.kbTip)}
       </div>
     `)
     .join('');
@@ -1135,6 +1170,66 @@ function generateBaseCss(): string {
       margin-top: 8px;
       font-size: 11px;
       color: var(--ink-muted);
+    }
+
+    /* ── KB Tip Card (inline on growth cards) ── */
+    .kb-tip-card {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: color-mix(in srgb, var(--accent-color) 8%, transparent);
+      border-left: 3px solid var(--accent-color);
+      border-radius: 0 6px 6px 0;
+      font-size: 13px;
+    }
+    .kb-tip-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .kb-tip-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      color: var(--ink-secondary);
+    }
+    .kb-cred {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+    .kb-cred-high {
+      background: color-mix(in srgb, #22c55e 15%, transparent);
+      color: #16a34a;
+    }
+    .kb-cred-medium {
+      background: color-mix(in srgb, #3b82f6 12%, transparent);
+      color: #2563eb;
+    }
+    .kb-cred-standard {
+      background: color-mix(in srgb, var(--ink-muted) 10%, transparent);
+      color: var(--ink-muted);
+    }
+    .kb-tip-title {
+      font-weight: 600;
+      color: var(--ink-primary);
+      margin-bottom: 4px;
+    }
+    .kb-tip-summary {
+      color: var(--ink-secondary);
+      line-height: 1.4;
+    }
+    .kb-source-link {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--accent-color);
+      text-decoration: none;
+    }
+    .kb-source-link:hover {
+      text-decoration: underline;
     }
 
     /* ── Domain Sections ── */

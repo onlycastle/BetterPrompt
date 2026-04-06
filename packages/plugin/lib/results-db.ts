@@ -21,6 +21,10 @@ import type {
 } from './core/types.js';
 import { assembleCanonicalAnalysisRun } from './evaluation-assembler.js';
 import { getAllStageOutputs } from './stage-db.js';
+import {
+  loadKnowledgeItemsFromDiskSync,
+  loadProfessionalInsightsFromDiskSync,
+} from '@betterprompt/shared/matching/kb-loader.js';
 
 const DB_FILE = 'results.db';
 
@@ -252,6 +256,10 @@ export function assembleCanonicalRun(runId = getLatestRunId() ?? undefined): Can
   const run = getAnalysisRun(runId);
   if (!run?.phase1Output) return null;
 
+  // Load KB data for growth area enrichment (deterministic, no LLM)
+  const knowledgeItems = loadKnowledgeItemsFromDiskSync();
+  const professionalInsights = loadProfessionalInsightsFromDiskSync();
+
   const stageOutputs = getAllStageOutputs(runId) as CanonicalStageOutputs;
   const assembledRun = assembleCanonicalAnalysisRun({
     runId,
@@ -261,6 +269,8 @@ export function assembleCanonicalRun(runId = getLatestRunId() ?? undefined): Can
     stageOutputs,
     typeResult: run.typeResult,
     domainResults: getDomainResults(runId),
+    knowledgeItems,
+    professionalInsights,
   });
 
   saveAssembledArtifacts(runId, assembledRun.activitySessions, assembledRun.evaluation);
