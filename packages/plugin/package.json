@@ -36,12 +36,12 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "better-sqlite3": "^12.8.0",
-    "zod": "^4.3.6"
+    "better-sqlite3": "^12.10.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.9.0",
     "tsup": "^8.5.0",
     "typescript": "^5.7.0"
   }
